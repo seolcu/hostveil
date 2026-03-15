@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg
+# Enforces Conventional Commits format.
+# https://www.conventionalcommits.org/
+
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+first_line=$(echo "$commit_msg" | head -1)
+
+# Skip merge commits and fixups
+if echo "$first_line" | grep -qE "^(Merge |fixup! |squash! )"; then
+  exit 0
+fi
+
+# <type>(<optional scope>): <description>
+# - type: one of the allowed keywords
+# - scope: optional, lowercase alphanumeric + / . _ -
+# - description: 1–72 chars, must not be empty
+pattern="^(feat|fix|docs|refactor|test|chore|ci)(\([a-z0-9/._-]+\))?: .{1,72}$"
+
+if ! echo "$first_line" | grep -qE "$pattern"; then
+  echo ""
+  echo "  [commit-msg] Commit rejected: message does not follow Conventional Commits."
+  echo ""
+  echo "  Format : <type>(<scope>): <description>"
+  echo "  Types  : feat, fix, docs, refactor, test, chore, ci"
+  echo "  Example: feat(proto/rules): add privileged container detection"
+  echo ""
+  echo "  Your message: $first_line"
+  echo ""
+  exit 1
+fi
+
+exit 0

@@ -67,6 +67,20 @@ refactor(proto): extract rule engine into separate module
 - Do not end the summary line with a period
 - Body is optional but encouraged for non-trivial changes
 
+## Git Hooks
+
+Commit message format and branch naming are enforced locally via `.githooks/`.
+
+**One-time setup — run this after cloning:**
+
+```sh
+git config core.hooksPath .githooks
+```
+
+After this:
+- Commits that don't follow Conventional Commits format will be **rejected** with an explanation.
+- Pushes from branches with non-standard names will show a **warning** (not blocked).
+
 ## Development Setup
 
 > To be updated as the project matures.
