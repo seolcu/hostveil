@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "hostveil"
+version = "0.1.0-demo"
+description = "Lightweight security dashboard for self-hosted Docker Compose environments"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0",
+]
+
+[project.scripts]
+hostveil = "hostveil.demo:main"
