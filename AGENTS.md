@@ -65,6 +65,34 @@ hostveil/
 - Use a virtual environment; do not commit `.venv/`
 - Follow the project's rule engine interface so logic ports cleanly to Rust
 
+## GitHub Issues & Milestones
+
+All planned work is tracked as GitHub Issues organized into 4 Milestones. **AI agents are expected to participate in this workflow without being told to do so.**
+
+**Milestones** (see `github.com/seolcu/hostveil/milestones`):
+
+| # | Title | Due |
+|---|---|---|
+| 1 | Python CLI Prototype | 2026-03-30 |
+| 2 | Service Research & Rule Validation | 2026-04-19 |
+| 3 | Rust TUI Implementation | 2026-05-31 |
+| 4 | Finalization & Submission | 2026-06-21 |
+
+**How AI agents should use Issues:**
+
+- **Before starting work:** check if a matching Issue already exists (`gh issue list`). If it does, reference it. If the work is clearly scoped and not tracked yet, create an Issue before starting.
+- **In commit messages:** always add `Closes #N` or `Refs #N` in the footer when a commit relates to an Issue. `Closes` auto-closes the Issue on merge; `Refs` links without closing.
+- **In PRs:** link the relevant Issue(s) in the PR description. The PR title should follow Conventional Commits format.
+- **When discovering untracked work:** create a new Issue with a clear title, a brief description, and a "Done when" checklist. Assign it to the correct Milestone.
+- **Do not close Issues manually** — let `Closes #N` in merged commits do it automatically.
+
+**Example commit footer:**
+```
+feat(proto/rules): add privileged container detection
+
+Closes #4
+```
+
 ## What NOT To Do
 
 - Do not mix `proto/` (Python) and `src/` (Rust) logic
