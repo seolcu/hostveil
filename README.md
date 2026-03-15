@@ -1,323 +1,53 @@
+**[한국어](README.ko.md)** | English
+
 # hostveil
 
-- 팀 이름: 내컴퓨터누가해킹했어
-- 팀원 이름: 조하은, 설규원
+> Lightweight, integrated security dashboard for self-hosted Docker Compose environments.
 
-## 1. 주제
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Status: Early Development](https://img.shields.io/badge/status-early%20development-orange)](https://github.com/seolcu/hostveil)
 
-> 셀프호스팅을 위한 통합 보안 도구
+Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typically need to run and interpret several separate security tools — Lynis, Trivy, Dockle, Docker Bench — with results scattered across all of them. hostveil consolidates this into a single terminal dashboard: scored findings, prioritized by severity, each with a clear fix path.
 
-> Integrated security tool for self-hosting.
+Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/overview/) (scored audits with actionable guidance) and [btop](https://github.com/aristocratos/btop) (lightweight TUI design).
 
-셀프호스팅 서비스를 제공하는 서버를 대상으로,
-여러 보안 도구를 따로 사용하지 않아도 보안 상태를 통합 점검하고,
-문제의 위험도/우선순위/해결 방법을 한 번에 제시하는 대시보드형 보안 도구를 제작한다.
+## Features
 
-중간 단계에서는 간단한 Python CLI 프로토타입으로 핵심 기능을 검증하고,
-최종적으로는 Rust 기반 TUI 형태로 구현한다.
+- **Security Overview Dashboard** — overall score with per-category breakdown and severity counts
+- **Service-aware Rule Checks** — checks tailored to each service's known data locations and config structure
+- **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
+- **Quick Fix** — one-command auto-fix for safe, low-risk items; patch drafts for higher-risk ones
 
-## 2. 문제 정의
+## Audit Axes
 
-셀프호스팅 환경에서는 서버 하드닝, 컨테이너/이미지 스캔, 침입 차단, 공급망 신뢰 평가 등을 위한 도구가 각각 존재한다.
-하지만 실제 운영자는 이들을 개별적으로 탐색하고 설치/설정해야 하며, 결과 역시 분산되어 있어 전체 보안 상태를 한눈에 파악하기 어렵다.
+| Axis | What it checks |
+|---|---|
+| Sensitive data exposure | `.env` files, plaintext/default credentials, secrets in volumes |
+| Excessive permissions | `privileged: true`, root user, broad volume mounts, `network_mode: host` |
+| Unnecessary exposure | Public ports, admin pages, services bypassing reverse proxy |
+| Update/maintenance risk | `latest` image tags, missing version pins, outdated images |
 
-또한 셀프호스팅 서비스는 다음과 같은 특성을 가진다.
+## Installation
 
-- 서비스별 중요 데이터(secret, 비밀번호, DB, 토큰)의 저장 위치가 제각각임
-- Docker Compose, reverse proxy, 볼륨 설정, 포트/방화벽 등 운영 설정 자체가 보안 리스크가 됨
-- 일반적인 취약점 스캐너만으로는 운영자 관점의 실질적 위험 우선순위를 제시하기 어려움
+> Not yet available. The project is in early development.
+>
+> Planned: `curl -fsSL https://get.hostveil.dev | sh` and `cargo install hostveil`.
 
-따라서 본 프로젝트는 셀프호스팅 환경에 특화된 보안 점검 규칙과 대시보드를 통해,
-운영자가 자신의 환경을 쉽게 진단하고 일부 문제는 즉시 수정할 수 있도록 하는 것을 목표로 한다.
+## Usage
 
-## 3. 목표
+> Coming soon.
 
-본 프로젝트의 목표는 다음과 같다.
+## Status
 
-1. 대표적인 셀프호스팅 서비스의 중요 데이터 위치와 운영상 보안 포인트를 체계화
-2. Docker Compose 기반 환경의 보안 상태를 자동 점검
-3. 결과를 점수화하여 우선순위와 해결 방법을 제시
-4. 즉시 수정 가능한 항목에 대해 Quick Fix 기능 제공
-5. 경량 환경에서도 사용할 수 있도록 가벼운 CLI/TUI 도구로 구현
+hostveil is in active early development. The implementation is planned in two phases:
 
-## 4. 범위
+1. **Python CLI prototype** — rapid validation of the rule engine, scoring model, and Quick Fix logic
+2. **Rust TUI** — lightweight, production-ready terminal dashboard ported from the validated prototype
 
-프로젝트 범위는 다음과 같이 제한한다.
+## Contributing
 
-### 대상 환경
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- Docker Compose 기반 단일 서버 셀프호스팅 환경
+## License
 
-### 1차 탐색 대상 서비스
-
-- Jellyfin
-- Nextcloud
-- Vaultwarden
-- Gitea
-- Immich
-
-### 1차 점검 항목
-
-도구의 범위를 넓히지 않기 위해, 초기에는 아래 4개 축에 집중한다.
-
-1. 민감 정보 저장/노출 위험
-   - `.env`, config, volume 내부의 secret/비밀번호/토큰 저장 여부
-   - 평문 비밀번호 또는 기본 비밀번호 사용 여부
-
-2. 과도한 권한 설정
-   - `privileged: true`
-   - root user 실행
-   - 과하게 넓은 볼륨 마운트 범위
-   - `network_mode: host`
-
-3. 외부 노출 위험
-   - 불필요한 public port 개방
-   - reverse proxy 뒤에 있어야 할 서비스의 직접 노출
-   - 관리자 페이지의 외부 노출
-
-4. 업데이트/유지보수 위험
-   - `latest` 태그 남용
-   - 버전 pinning 부재
-   - 오래된 이미지 사용 여부
-
-## 5. 선행 연구 및 기존 도구와의 차이점
-
-### 기존 도구
-
-기존에는 다음과 같은 도구들이 존재한다.
-
-- 서버 하드닝 감사 도구: Lynis
-- 컨테이너/이미지/IaC 스캐너: Trivy, Dockle, Docker Bench
-- 침입 차단 및 방어 도구: CrowdSec, Fail2ban
-- 공급망 신뢰 평가 도구: OpenSSF, Scorecard
-
-이들은 각각 유용하지만, 사용자가 직접 찾아서 설정해야 하고 결과도 분산되어 있다.
-
-### 본 프로젝트의 차별점
-
-본 프로젝트는 이러한 기능들을 모두 새로 구현하는 것이 아니라,
-셀프호스팅 운영자 관점에서 중요한 보안 포인트를 통합적으로 보여주는 경량 점검 도구를 목표로 한다.
-
-차별점은 다음과 같다.
-
-- 일반적인 서버가 아니라 셀프호스팅 서비스 운영 환경에 초점
-- 단순 탐지에 그치지 않고 점수/우선순위/해결 가이드 제공
-- 일부 항목에 대해서는 Quick Fix 제공
-- 개발 초기부터 서비스별 중요 데이터 위치를 정형화된 형태로 정리
-
-## 6. 레퍼런스
-
-### 1. Chrome DevTools Lighthouse
-
-- 여러 항목별 점수를 매겨 전체 상태를 보여줌
-- 문제별 설명과 해결 가이드를 제공함
-- 본 프로젝트에서는 이를 참고하여 보안 점수화 + 해결 가이드 구조를 설계
-- 추가로, 즉시 수정 가능한 항목에 대해서는 Quick Fix 기능 도입
-
-### 2. btop
-
-- 가볍고 직관적인 TUI 디자인
-- 실시간 상태 확인에 적합한 인터페이스
-- 최종 결과물의 UI/UX 방향성 참고
-
-## 7. 핵심 기능
-
-### 1. Security Overview Dashboard
-
-- 전체 보안 점수
-- 항목별 세부 점수
-- 심각도별 문제 개수 표시
-
-### 2. Service-aware Rule Check
-
-- 서비스별로 다른 민감 정보 위치와 설정 파일 구조를 반영
-- 예: Vaultwarden, Nextcloud, Gitea의 주요 데이터/설정 위치를 기준으로 검사
-
-### 3. Actionable Guidance
-
-- 문제 설명
-- 왜 위험한지
-- 어떻게 해결해야 하는지
-- 관련 설정 파일/위치 제시
-
-### 4. Quick Fix
-
-Quick Fix는 위험도를 고려해 두 단계로 구분한다.
-
-- Safe Quick Fix
-  - 자동 적용 가능
-  - 되돌리기 쉬운 설정 수정
-
-- Guided Fix
-  - 자동 적용 대신 수정안/패치 초안 제공
-  - 사용자가 검토 후 반영
-
-## 8. 구현 계획
-
-### 미니 테스트
-
-- Python CLI로 핵심 로직 구현
-- Compose 파일/설정 파일/볼륨 경로를 기반으로 정적 점검 수행
-- 서비스별 중요 데이터 위치와 규칙 엔진 검증
-
-### 최종 결과물
-
-- Rust 기반 TUI로 구현
-- Python CLI에서 검증된 핵심 규칙을 경량 환경에 맞게 이식
-- btop 스타일의 직관적인 대시보드 제공
-
-## 9. 역할 분담
-
-### 조하은
-
-- 대표적인 셀프호스팅 서비스의 중요 데이터 저장 위치 조사 및 정리
-- 서비스별 보안 점검 규칙 설계
-- 테스트용 취약 설정 케이스 제작
-- 도구 제작 참여
-
-### 설규원
-
-- 서버 및 네트워크 실험 환경 구축
-- Docker Compose 기반 테스트 환경 구성
-- 탐지 로직 및 도구 구현
-- 도구 제작 참여
-
-### 공통
-
-- 점수화 모델 설계
-- Quick Fix 기능 설계
-- 테스트 및 평가
-- 문서/발표 자료 작성
-
-## 10. 세부 추진 계획
-
-### 1단계: 서비스 탐색 및 아티팩트 정리
-
-- 대상 서비스 리스트업
-- 각 서비스의 중요 데이터 종류 정리
-- 설치 방식 중 Docker Compose 기반에 초점 맞추기
-- 서비스별 주요 데이터 및 설정 위치 정리
-
-### 2단계: 취약점/리스크 검증
-
-- 서비스별 운영 설정에서 발생 가능한 보안 리스크 도출
-- 테스트 환경에서 대표적인 취약 설정 재현
-- 도구가 탐지해야 할 규칙 목록 정의
-
-### 3단계: CLI 프로토타입 구현
-
-- 점검 규칙 적용
-- 점수화 및 리포트 출력
-- Quick Fix 초안 구현
-
-### 4단계: Rust TUI 구현
-
-- CLI 로직 이식
-- 대시보드 화면 구성
-- 결과 시각화 및 사용자 경험 개선
-
-## 11. 주차별 계획
-
-### 01주차 (03/02~03/08)
-
-- 킥오프
-- 프로젝트 방향 논의
-
-### 02주차 (03/09~03/15)
-
-- 주제 정리 및 미팅
-- 문제 정의 및 범위 축소
-- 대상 환경을 Docker Compose 기반으로 확정
-
-### 03주차 (03/16~03/22)
-
-- 프로젝트 PT
-- 서버 구축 시작
-- 대상 서비스 설치 및 아티팩트 탐색 시작
-
-### 04주차 (03/23~03/29)
-
-- 멘토링
-- 서비스별 중요 데이터/설정 위치 리스트업
-- 점검 규칙 초안 작성
-
-### 05주차 (03/30~04/05)
-
-- 취약 설정 케이스 설계 및 검증
-- Python CLI MVP 구현 시작
-- 개별 미팅
-
-### 06주차 (04/06~04/12)
-
-- 멘토링
-- 추가 아티팩트 탐색
-- CLI 규칙 엔진 보완
-
-### 07주차 (04/13~04/19)
-
-- 제안 발표
-- 서비스별 리스트업 및 취약점 검증 보완
-- 점수화 모델 초안 확정
-
-### 08주차 (04/20~04/26)
-
-- TUI 환경 구성
-- Quick Fix 설계
-- 제안서 작성
-
-### 09주차 (04/28~05/03)
-
-- 멘토링
-- Rust TUI 구현 진행
-- CLI 기능 이식
-
-### 10주차 (05/04~05/10)
-
-- 설계 발표
-- 대시보드 기능 구현
-- 결과 시각화 보완
-
-### 11주차 (05/11~05/17)
-
-- 팀 미팅
-- 개발 진행
-- 탐지 정확도 및 UI 개선
-
-### 12주차 (05/18~05/24)
-
-- 멘토링
-- 개발 보완 및 테스트
-- Quick Fix 기능 정리
-
-### 13주차 (05/25~05/31)
-
-- 개발 보완 및 테스트
-- 기능 마무리 및 안정화
-
-### 14주차 (06/01~06/07)
-
-- 설계서 제출
-- 발표 PT 제작
-
-### 15주차 (06/08~06/14)
-
-- 마무리
-- 리포트 작성
-
-### 16주차 (06/15~06/21)
-
-- 최종보고서 제출
-
-## 12. 기대 효과 및 기여
-
-본 프로젝트를 통해 다음과 같은 결과를 기대한다.
-
-1. 대표적인 셀프호스팅 서비스의 중요 데이터 위치 및 보안 포인트를 체계화한 지식 베이스
-2. 셀프호스팅 환경에 특화된 경량 보안 점검 도구
-3. 운영자가 이해하기 쉬운 보안 점수 및 해결 가이드
-4. 일부 문제를 즉시 해결할 수 있는 Quick Fix 인터페이스
-5. 기존 보안 도구들이 분산적으로 다루던 영역을 운영자 관점에서 통합적으로 보여주는 실용적 접근
-
-## 13. 한 줄 요약
-
-여러 보안 도구를 따로 익히지 않아도, 셀프호스팅 서비스 운영자가 자신의 Docker Compose 환경을 한 번에 점검하고 우선순위와 해결 방법을 받을 수 있는 경량 보안 대시보드를 만든다.
+hostveil is free software licensed under the [GNU General Public License v3.0](LICENSE).
