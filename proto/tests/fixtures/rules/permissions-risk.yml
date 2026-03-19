@@ -1,0 +1,35 @@
+services:
+  privileged:
+    image: example/privileged:1.0
+    user: "1000:1000"
+    privileged: true
+
+  root_user:
+    image: example/root:1.0
+    user: root
+
+  implicit_root:
+    image: example/implicit:1.0
+
+  hostnet:
+    image: example/net:1.0
+    user: "1000:1000"
+    network_mode: host
+
+  docker_socket:
+    image: example/socket:1.0
+    user: "1000:1000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  host_home:
+    image: example/home:1.0
+    user: "1000:1000"
+    volumes:
+      - /home/media:/data
+
+  safe:
+    image: example/safe:1.0
+    user: "1000:1000"
+    volumes:
+      - ./data:/data
