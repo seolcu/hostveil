@@ -1,0 +1,8 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    ports:
+      - "80:80"
+    privileged: true
+    environment:
+      ADMIN_TOKEN: supersecret
