@@ -21,6 +21,13 @@ MESSAGES = {
         "cli.description": "Description: {description}",
         "cli.why_risky": "Why risky: {text}",
         "cli.how_to_fix": "How to fix: {text}",
+        "cli.safe_fix_none": "No safe fixes are available for this compose file.",
+        "cli.safe_fix_plan": "Safe fixes: {count}",
+        "cli.safe_fix_prompt": "Apply {count} safe fix(es) to {path}? [y/N]: ",
+        "cli.safe_fix_cancelled": "Safe fixes cancelled.",
+        "cli.safe_fix_backup": "Backup created: {path}",
+        "cli.safe_fix_applied": "Applied fix: {summary}",
+        "cli.safe_fix_dry_run": "Dry run only; no files were changed.",
         "cli.scan_complete": "Parsed {service_count} service(s) from {path}.",
         "parser.compose_file_not_found": "Could not find docker-compose.yml or docker-compose.yaml in {path}.",
         "parser.compose_path_missing": "Compose path does not exist: {path}",
@@ -86,6 +93,8 @@ MESSAGES = {
         "finding.sensitive.env_file_secret.description": "{service} references {env_file}, which contains plaintext secret values.",
         "finding.sensitive.env_file_secret.why": "Plaintext env files are frequently copied into backups, shells, and repositories without adequate protection.",
         "finding.sensitive.env_file_secret.fix": "Move secrets to Docker secrets or ensure the env file is protected and excluded from version control.",
+        "fix.safe.bind_localhost": "Bind {service} port {port} to 127.0.0.1",
+        "fix.safe.nginx_stable": "Pin {service} image from nginx to nginx:stable",
     }
 }
 
