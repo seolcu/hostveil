@@ -1,0 +1,22 @@
+services:
+  inline_secret:
+    image: postgres:16.4
+    environment:
+      POSTGRES_PASSWORD: supersecret
+      API_TOKEN: ${API_TOKEN}
+
+  default_credential:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+
+  env_file_secret:
+    image: ghcr.io/example/app:1.0.0
+    env_file:
+      - .env
+
+  safe:
+    image: ghcr.io/example/safe:1.0.0
+    environment:
+      APP_ENV: production
+      JWT_SECRET_FILE: /run/secrets/jwt

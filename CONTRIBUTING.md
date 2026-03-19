@@ -74,7 +74,15 @@ refactor(proto): extract rule engine into separate module
 ### Python Prototype (`proto/`)
 
 ```sh
-# Coming soon
+python3 -m venv proto/.venv
+source proto/.venv/bin/activate
+pip install -e "proto[dev]"
+
+# Run the prototype CLI
+python -m hostveil scan path/to/docker-compose.yml
+
+# Run tests
+pytest
 ```
 
 ### Rust TUI (`src/`)

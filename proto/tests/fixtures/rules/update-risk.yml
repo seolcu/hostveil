@@ -1,0 +1,12 @@
+services:
+  latest:
+    image: nginx:latest
+
+  no_tag:
+    image: nginx
+
+  major_only:
+    image: redis:7
+
+  pinned:
+    image: postgres:16.4
