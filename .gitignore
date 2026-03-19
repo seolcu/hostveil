@@ -33,3 +33,4 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+!proto/tests/fixtures/rules/sensitive-risk/.env
