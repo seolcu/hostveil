@@ -27,7 +27,7 @@ It audits Docker Compose setups across four axes: sensitive data exposure, exces
 ```
 hostveil/
 ├── src/              # Rust TUI (not yet started)
-├── proto/            # Python CLI prototype (not yet started)
+├── proto/            # Python CLI prototype (active implementation)
 ├── docs/
 │   └── adr/          # Architecture Decision Records — read before changing architecture
 ├── .github/

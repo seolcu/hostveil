@@ -29,13 +29,23 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Installation
 
-> Not yet available. The project is in early development.
->
-> Planned: `curl -fsSL https://get.hostveil.dev | sh` and `cargo install hostveil`.
+The final packaged binary is not available yet. The current working implementation is the Python prototype in `proto/`.
+
+```sh
+python3 -m venv proto/.venv
+source proto/.venv/bin/activate
+pip install -e "proto[dev]"
+```
 
 ## Usage
 
-> Coming soon.
+Run the prototype CLI against a Compose file or directory:
+
+```sh
+python -m hostveil scan path/to/docker-compose.yml
+python -m hostveil fix path/to/docker-compose.yml --dry-run --yes
+python -m hostveil patch path/to/docker-compose.yml --patch
+```
 
 ## Status
 
@@ -43,6 +53,15 @@ hostveil is in active early development. The implementation is planned in two ph
 
 1. **Python CLI prototype** — rapid validation of the rule engine, scoring model, and Quick Fix logic
 2. **Rust TUI** — lightweight, production-ready terminal dashboard ported from the validated prototype
+
+Current prototype coverage:
+
+- Docker Compose parsing with default override merging
+- Four audit axes: sensitive data, permissions, exposure, and update risk
+- Scoring model with severity counts and per-axis scores
+- Terminal scan report with `--no-color` support
+- Safe Quick Fix flow with backup, dry-run diff, and confirmation
+- Guided patch generation for risky changes
 
 ## Contributing
 

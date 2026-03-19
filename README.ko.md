@@ -29,13 +29,23 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 ## 설치
 
-> 아직 제공되지 않습니다. 현재 초기 개발 단계입니다.
->
-> 예정: `curl -fsSL https://get.hostveil.dev | sh` 및 `cargo install hostveil`
+최종 배포용 바이너리는 아직 제공되지 않습니다. 현재 동작하는 구현은 `proto/` 안의 Python 프로토타입입니다.
+
+```sh
+python3 -m venv proto/.venv
+source proto/.venv/bin/activate
+pip install -e "proto[dev]"
+```
 
 ## 사용법
 
-> 준비 중입니다.
+Compose 파일 또는 디렉터리를 대상으로 프로토타입 CLI를 실행할 수 있습니다.
+
+```sh
+python -m hostveil scan path/to/docker-compose.yml
+python -m hostveil fix path/to/docker-compose.yml --dry-run --yes
+python -m hostveil patch path/to/docker-compose.yml --patch
+```
 
 ## 현황
 
@@ -43,6 +53,15 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 
 1. **Python CLI 프로토타입** — 규칙 엔진, 점수화 모델, Quick Fix 로직을 빠르게 검증
 2. **Rust TUI** — 검증된 프로토타입을 기반으로 한 경량 프로덕션 수준 터미널 대시보드
+
+현재 프로토타입 범위:
+
+- 기본 override 병합을 포함한 Docker Compose 파싱
+- 네 가지 감사 축: 민감 정보, 권한, 노출, 업데이트 위험
+- 심각도 카운트와 축별 점수를 포함한 점수화 모델
+- `--no-color`를 지원하는 터미널 스캔 리포트
+- 백업, dry-run diff, 확인 절차를 포함한 Safe Quick Fix 흐름
+- 위험한 변경을 위한 Guided patch 생성
 
 ## 기여
 
