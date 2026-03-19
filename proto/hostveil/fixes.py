@@ -29,6 +29,12 @@ class SafeFixResult:
     backup_path: Path | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class GuidedFixResult:
+    changed: bool
+    diff: str
+
+
 def load_fix_context(path: str | Path) -> tuple[ComposeBundle, list[Finding]]:
     bundle = load_bundle(path)
     project = load_project(path)
@@ -63,6 +69,16 @@ def apply_safe_fixes(bundle: ComposeBundle, findings: list[Finding]) -> SafeFixR
         applied=result.applied,
         backup_path=backup_path,
     )
+
+
+def preview_guided_fixes(bundle: ComposeBundle, findings: list[Finding]) -> GuidedFixResult:
+    working_data = deepcopy(bundle.primary_data)
+    changed = _apply_guided_fixes_to_data(working_data, findings)
+    if not changed:
+        return GuidedFixResult(changed=False, diff="")
+    updated_text = dump_compose(working_data)
+    diff = build_diff(bundle.primary_path, bundle.primary_text, updated_text)
+    return GuidedFixResult(changed=True, diff=diff)
 
 
 def dump_compose(data: Any) -> str:
@@ -124,6 +140,38 @@ def _apply_safe_fixes_to_data(
                 )
             )
     return applied
+
+
+def _apply_guided_fixes_to_data(data: Any, findings: list[Finding]) -> bool:
+    services = data.get("services", {}) if isinstance(data, dict) else {}
+    finding_ids_by_service = _group_findings(findings)
+    changed = False
+
+    for service_name, service_data in services.items():
+        if not isinstance(service_data, dict):
+            continue
+        if "permissions.privileged" not in finding_ids_by_service.get(service_name, set()):
+            continue
+        if not service_data.get("privileged"):
+            continue
+
+        keys = list(service_data.keys())
+        insert_at = keys.index("privileged") if "privileged" in keys else len(keys)
+        del service_data["privileged"]
+        cap_add_values = list(service_data.get("cap_add", []))
+        if "NET_BIND_SERVICE" not in cap_add_values:
+            cap_add_values.append("NET_BIND_SERVICE")
+        if "cap_add" in service_data:
+            service_data["cap_add"] = cap_add_values
+        else:
+            service_data.insert(insert_at, "cap_add", cap_add_values)
+        if hasattr(service_data, "yaml_set_comment_before_after_key"):
+            service_data.yaml_set_comment_before_after_key(
+                "cap_add",
+                before=tr("fix.guided.privileged_comment"),
+            )
+        changed = True
+    return changed
 
 
 def _group_findings(findings: list[Finding]) -> dict[str, set[str]]:

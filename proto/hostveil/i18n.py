@@ -28,6 +28,8 @@ MESSAGES = {
         "cli.safe_fix_backup": "Backup created: {path}",
         "cli.safe_fix_applied": "Applied fix: {summary}",
         "cli.safe_fix_dry_run": "Dry run only; no files were changed.",
+        "cli.guided_fix_none": "No guided fixes are available for this compose file.",
+        "cli.guided_fix_written": "Guided patch written to {path}",
         "cli.scan_complete": "Parsed {service_count} service(s) from {path}.",
         "parser.compose_file_not_found": "Could not find docker-compose.yml or docker-compose.yaml in {path}.",
         "parser.compose_path_missing": "Compose path does not exist: {path}",
@@ -95,6 +97,7 @@ MESSAGES = {
         "finding.sensitive.env_file_secret.fix": "Move secrets to Docker secrets or ensure the env file is protected and excluded from version control.",
         "fix.safe.bind_localhost": "Bind {service} port {port} to 127.0.0.1",
         "fix.safe.nginx_stable": "Pin {service} image from nginx to nginx:stable",
+        "fix.guided.privileged_comment": "hostveil guided fix: replace privileged mode with a minimal capability set. Review the required capabilities before applying in production.",
     }
 }
 

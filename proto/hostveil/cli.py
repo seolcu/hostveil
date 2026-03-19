@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import argparse
 
-from .fixes import apply_safe_fixes, load_fix_context, preview_safe_fixes
+from pathlib import Path
+
+from .fixes import (
+    apply_safe_fixes,
+    load_fix_context,
+    preview_guided_fixes,
+    preview_safe_fixes,
+)
 from .formatter import format_report
 from .i18n import tr
 from .parser import ComposeParseError, load_project
@@ -25,6 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
     fix_parser.add_argument("--dry-run", action="store_true")
     fix_parser.add_argument("--yes", action="store_true")
     fix_parser.add_argument("--no-color", action="store_true")
+
+    patch_parser = subparsers.add_parser("patch")
+    patch_parser.add_argument("path")
+    patch_parser.add_argument("--patch", action="store_true")
+    patch_parser.add_argument("--output")
 
     return parser
 
@@ -80,6 +92,27 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.safe_fix_backup", path=str(result.backup_path)))
         for applied in result.applied:
             print(tr("cli.safe_fix_applied", summary=applied.summary))
+        return 0
+
+    if args.command == "patch":
+        try:
+            bundle, findings = load_fix_context(args.path)
+        except ComposeParseError as error:
+            print(tr("cli.parser_error", message=str(error)))
+            return 1
+
+        result = preview_guided_fixes(bundle, findings)
+        if not result.changed:
+            print(tr("cli.guided_fix_none"))
+            return 0
+
+        if args.patch:
+            print(result.diff)
+            return 0
+
+        output_path = Path(args.output) if args.output else bundle.primary_path.parent / "hostveil-fixes.patch"
+        output_path.write_text(result.diff + "\n", encoding="utf-8")
+        print(tr("cli.guided_fix_written", path=str(output_path)))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
