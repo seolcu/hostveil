@@ -2,3 +2,5 @@ markdown-it-py==4.0.0
 mdurl==0.1.2
 Pygments==2.19.2
 rich==14.3.3
+ruamel.yaml==0.18.17
+ruamel.yaml.clib==0.2.15

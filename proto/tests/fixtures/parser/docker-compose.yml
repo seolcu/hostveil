@@ -1,0 +1,16 @@
+services:
+  web:
+    image: nginx
+    ports:
+      - "8080:80"
+    environment:
+      APP_ENV: production
+      SHARED: base
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+
+  app:
+    image: ghcr.io/example/app:1.0.0
+    user: "1000:1000"
+    env_file:
+      - .env
