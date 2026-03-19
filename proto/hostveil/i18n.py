@@ -59,6 +59,18 @@ MESSAGES = {
         "finding.permissions.sensitive_mount.description": "{service} mounts the sensitive host path {path}.",
         "finding.permissions.sensitive_mount.why": "Mounting sensitive host paths can expose secrets, host control sockets, or broad filesystem access to the container.",
         "finding.permissions.sensitive_mount.fix": "Remove the mount or replace it with a narrower path that exposes only the required data.",
+        "finding.sensitive.inline_secret.title": "Service hardcodes a secret in environment",
+        "finding.sensitive.inline_secret.description": "{service} sets the sensitive variable {variable} directly in environment.",
+        "finding.sensitive.inline_secret.why": "Inline secrets are easy to leak through version control, backups, and process inspection.",
+        "finding.sensitive.inline_secret.fix": "Move the secret to Docker secrets, an external secret manager, or a protected env file outside version control.",
+        "finding.sensitive.default_credential.title": "Service uses a default or empty credential",
+        "finding.sensitive.default_credential.description": "{service} sets {variable} to a default or empty credential.",
+        "finding.sensitive.default_credential.why": "Default credentials are widely known and are often the first thing attackers try.",
+        "finding.sensitive.default_credential.fix": "Set a unique secret value and keep it outside the compose file where possible.",
+        "finding.sensitive.env_file_secret.title": "Referenced env file contains plaintext secrets",
+        "finding.sensitive.env_file_secret.description": "{service} references {env_file}, which contains plaintext secret values.",
+        "finding.sensitive.env_file_secret.why": "Plaintext env files are frequently copied into backups, shells, and repositories without adequate protection.",
+        "finding.sensitive.env_file_secret.fix": "Move secrets to Docker secrets or ensure the env file is protected and excluded from version control.",
     }
 }
 
