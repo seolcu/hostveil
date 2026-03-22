@@ -57,6 +57,41 @@ def test_format_report_sorts_findings_and_supports_plain_output() -> None:
     assert "Sensitive data exposure: 25" in output
 
 
+def test_format_report_colors_why_risky_and_how_to_fix() -> None:
+    report = ScoreReport(
+        overall=100,
+        axis_scores={
+            Axis.SENSITIVE_DATA: 100,
+            Axis.EXCESSIVE_PERMISSIONS: 100,
+            Axis.UNNECESSARY_EXPOSURE: 100,
+            Axis.UPDATE_RISK: 100,
+        },
+        finding_counts={
+            Severity.CRITICAL: 0,
+            Severity.HIGH: 1,
+            Severity.MEDIUM: 0,
+            Severity.LOW: 0,
+        },
+    )
+    findings = [
+        Finding(
+            check_id="x",
+            axis=Axis.SENSITIVE_DATA,
+            severity=Severity.HIGH,
+            title="T",
+            description="d",
+            why_risky="because",
+            how_to_fix="do this",
+            affected_service="svc",
+        ),
+    ]
+    output = format_report(report, findings, "c.yml", color=True)
+    assert "\u001b[38;5;208m" in output
+    assert "\u001b[32mHow to fix:" in output
+    assert "Why risky: because" in output
+    assert "How to fix: do this" in output
+
+
 def test_cli_scan_renders_summary_without_color(capsys) -> None:
     exit_code = main(["scan", str(FIXTURE), "--no-color"])
 

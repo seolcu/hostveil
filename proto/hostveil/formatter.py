@@ -11,6 +11,7 @@ BOLD = "\033[1m"
 FG_RED = "\033[31m"
 FG_YELLOW = "\033[33m"
 FG_GREEN = "\033[32m"
+FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 
 SEVERITY_COLORS = {
@@ -79,13 +80,15 @@ def format_report(
             color=color,
             bold=True,
         )
+        why_line = tr("cli.why_risky", text=finding.why_risky)
+        fix_line = tr("cli.how_to_fix", text=finding.how_to_fix)
         lines.extend(
             [
                 f"- [{severity_label}] {finding.title}",
                 f"  {tr('cli.affected_service', service=finding.affected_service)}",
                 f"  {tr('cli.description', description=finding.description)}",
-                f"  {tr('cli.why_risky', text=finding.why_risky)}",
-                f"  {tr('cli.how_to_fix', text=finding.how_to_fix)}",
+                f"  {_style(why_line, FG_ORANGE, color=color)}",
+                f"  {_style(fix_line, FG_GREEN, color=color)}",
             ]
         )
 
