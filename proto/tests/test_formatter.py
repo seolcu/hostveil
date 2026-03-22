@@ -53,7 +53,7 @@ def test_format_report_sorts_findings_and_supports_plain_output() -> None:
 
     assert "\u001b[" not in output
     assert output.index("[CRITICAL] Privileged") < output.index("[HIGH] Inline secret")
-    assert "Overall score: 74/100" in output
+    assert "Overall safety score: 74/100 (100 = safest)" in output
     assert "Sensitive data exposure: 25" in output
 
 
@@ -64,6 +64,6 @@ def test_cli_scan_renders_summary_without_color(capsys) -> None:
 
     assert exit_code == 0
     assert "hostveil scan report" in captured.out
-    assert "Overall score:" in captured.out
+    assert "Overall safety score:" in captured.out
     assert "Affected service: vaultwarden" in captured.out
     assert "[CRITICAL] Container runs in privileged mode" in captured.out
