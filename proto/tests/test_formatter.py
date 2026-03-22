@@ -87,7 +87,7 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
     ]
     output = format_report(report, findings, "c.yml", color=True)
     assert "\u001b[38;5;208m" in output
-    assert "\u001b[32mHow to fix:" in output
+    assert "\u001b[1m\u001b[32mHow to fix:" in output
     assert "Why risky: because" in output
     assert "How to fix: do this" in output
 

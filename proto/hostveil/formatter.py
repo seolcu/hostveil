@@ -87,8 +87,8 @@ def format_report(
                 f"- [{severity_label}] {finding.title}",
                 f"  {tr('cli.affected_service', service=finding.affected_service)}",
                 f"  {tr('cli.description', description=finding.description)}",
-                f"  {_style(why_line, FG_ORANGE, color=color)}",
-                f"  {_style(fix_line, FG_GREEN, color=color)}",
+                f"  {_style(why_line, FG_ORANGE, color=color, bold=True)}",
+                f"  {_style(fix_line, FG_GREEN, color=color, bold=True)}",
             ]
         )
 
