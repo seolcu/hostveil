@@ -8,7 +8,8 @@ from hostveil.cli import main
 FIXTURE = Path(__file__).parent / "fixtures" / "safe-fix.yml"
 
 
-def test_quick_fix_preview_colors_diff_when_color_enabled(tmp_path: Path, capsys) -> None:
+def test_quick_fix_preview_colors_diff_when_color_enabled(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -16,8 +17,8 @@ def test_quick_fix_preview_colors_diff_when_color_enabled(tmp_path: Path, capsys
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "\u001b[31m" in captured.out
-    assert "\u001b[32m" in captured.out
+    assert "\u001b[1m\u001b[31m" in captured.out
+    assert "\u001b[1m\u001b[32m" in captured.out
 
 
 def test_quick_fix_preview_shows_diff_without_writing(tmp_path: Path, capsys) -> None:

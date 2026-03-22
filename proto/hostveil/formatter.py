@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
 from .i18n import tr
 from .models import Axis, Finding, ScoreReport, SEVERITY_ORDER, Severity
 
@@ -27,6 +30,31 @@ AXIS_DISPLAY_ORDER = (
     Axis.UNNECESSARY_EXPOSURE,
     Axis.UPDATE_RISK,
 )
+
+
+def should_use_color(*, no_color_cli_flag: bool) -> bool:
+    """Use ANSI styles unless the user opted out (--no-color or NO_COLOR)."""
+    if no_color_cli_flag:
+        return False
+    return os.environ.get("NO_COLOR", "").strip() == ""
+
+
+def enable_ansi_if_windows() -> None:
+    """Turn on virtual-terminal ANSI on Windows so scan/fix colors render in conhost."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        std_out = -11
+        enable_vt = 0x0004
+        handle = kernel32.GetStdHandle(std_out)
+        mode = ctypes.c_uint()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(handle, mode.value | enable_vt)
+    except Exception:
+        pass
 
 
 def format_report(
@@ -102,9 +130,9 @@ def format_unified_diff(diff: str, *, color: bool) -> str:
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):
-            out.append(_style(line, FG_GREEN, color=True))
+            out.append(_style(line, FG_GREEN, color=color, bold=True))
         elif line.startswith("---") or line.startswith("-"):
-            out.append(_style(line, FG_RED, color=True))
+            out.append(_style(line, FG_RED, color=color, bold=True))
         else:
             out.append(line)
     return "\n".join(out)

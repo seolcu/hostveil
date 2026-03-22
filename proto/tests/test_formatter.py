@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hostveil.cli import main
-from hostveil.formatter import format_report, format_unified_diff
+from hostveil.formatter import format_report, format_unified_diff, should_use_color
 from hostveil.models import Axis, Finding, ScoreReport, Severity
 
 
@@ -95,12 +95,20 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
     out = format_unified_diff(diff, color=True)
-    assert "\u001b[31m--- a.yml\u001b[0m" in out
-    assert "\u001b[32m+++ b.yml\u001b[0m" in out
-    assert "\u001b[31m-old\u001b[0m" in out
-    assert "\u001b[32m+new\u001b[0m" in out
+    assert "\u001b[1m\u001b[31m--- a.yml\u001b[0m" in out
+    assert "\u001b[1m\u001b[32m+++ b.yml\u001b[0m" in out
+    assert "\u001b[1m\u001b[31m-old\u001b[0m" in out
+    assert "\u001b[1m\u001b[32m+new\u001b[0m" in out
     plain = format_unified_diff(diff, color=False)
     assert plain == diff
+
+
+def test_should_use_color_respects_cli_and_no_color_env(monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    assert should_use_color(no_color_cli_flag=False) is True
+    assert should_use_color(no_color_cli_flag=True) is False
+    monkeypatch.setenv("NO_COLOR", "1")
+    assert should_use_color(no_color_cli_flag=False) is False
 
 
 def test_cli_scan_renders_summary_without_color(capsys) -> None:

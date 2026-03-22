@@ -12,7 +12,12 @@ from .fixes import (
     preview_all_fixes,
     preview_safe_fixes,
 )
-from .formatter import format_report, format_unified_diff
+from .formatter import (
+    enable_ansi_if_windows,
+    format_report,
+    format_unified_diff,
+    should_use_color,
+)
 from .i18n import tr
 from .parser import ComposeParseError, load_project
 from .scanner import scan_project
@@ -62,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    enable_ansi_if_windows()
 
     if args.command == "scan":
         try:
@@ -71,12 +77,13 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         findings = scan_project(project)
         report = build_score_report(findings)
+        use_color = should_use_color(no_color_cli_flag=args.no_color)
         print(
             format_report(
                 report,
                 findings,
                 str(project.primary_file),
-                color=not args.no_color,
+                color=use_color,
             )
         )
         return 0
@@ -93,8 +100,9 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.safe_fix_none"))
             return 0
 
+        use_color = should_use_color(no_color_cli_flag=args.no_color)
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
-        print(format_unified_diff(preview.diff, color=not args.no_color))
+        print(format_unified_diff(preview.diff, color=use_color))
         if args.preview_changes:
             print(tr("cli.safe_fix_preview_only"))
             return 0
@@ -124,8 +132,9 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.patch_fix_none"))
             return 0
 
+        use_color = should_use_color(no_color_cli_flag=args.no_color)
         print(tr("cli.patch_fix_plan", summary=_patch_plan_summary(preview)))
-        print(format_unified_diff(preview.diff, color=not args.no_color))
+        print(format_unified_diff(preview.diff, color=use_color))
         if args.preview_changes:
             print(tr("cli.patch_fix_preview_only"))
             return 0
