@@ -12,7 +12,7 @@ from .fixes import (
     preview_all_fixes,
     preview_safe_fixes,
 )
-from .formatter import format_report
+from .formatter import format_report, format_unified_diff
 from .i18n import tr
 from .parser import ComposeParseError, load_project
 from .scanner import scan_project
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
-        print(preview.diff)
+        print(format_unified_diff(preview.diff, color=not args.no_color))
         if args.preview_changes:
             print(tr("cli.safe_fix_preview_only"))
             return 0
@@ -125,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         print(tr("cli.patch_fix_plan", summary=_patch_plan_summary(preview)))
-        print(preview.diff)
+        print(format_unified_diff(preview.diff, color=not args.no_color))
         if args.preview_changes:
             print(tr("cli.patch_fix_preview_only"))
             return 0

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hostveil.cli import main
-from hostveil.formatter import format_report
+from hostveil.formatter import format_report, format_unified_diff
 from hostveil.models import Axis, Finding, ScoreReport, Severity
 
 
@@ -90,6 +90,17 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
     assert "\u001b[32mHow to fix:" in output
     assert "Why risky: because" in output
     assert "How to fix: do this" in output
+
+
+def test_format_unified_diff_colors_add_and_remove_lines() -> None:
+    diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
+    out = format_unified_diff(diff, color=True)
+    assert "\u001b[31m--- a.yml\u001b[0m" in out
+    assert "\u001b[32m+++ b.yml\u001b[0m" in out
+    assert "\u001b[31m-old\u001b[0m" in out
+    assert "\u001b[32m+new\u001b[0m" in out
+    plain = format_unified_diff(diff, color=False)
+    assert plain == diff
 
 
 def test_cli_scan_renders_summary_without_color(capsys) -> None:

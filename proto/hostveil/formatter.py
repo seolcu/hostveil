@@ -95,6 +95,21 @@ def format_report(
     return "\n".join(lines)
 
 
+def format_unified_diff(diff: str, *, color: bool) -> str:
+    """Color unified diff lines: removals red, additions green."""
+    if not color or not diff.strip():
+        return diff
+    out: list[str] = []
+    for line in diff.splitlines():
+        if line.startswith("+++") or line.startswith("+"):
+            out.append(_style(line, FG_GREEN, color=True))
+        elif line.startswith("---") or line.startswith("-"):
+            out.append(_style(line, FG_RED, color=True))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def _format_overall_score(score: int, *, color: bool) -> str:
     return tr("cli.overall_score", score=_color_score(score, color=color))
 
