@@ -35,6 +35,15 @@ class GuidedFixResult:
     diff: str
 
 
+@dataclass(slots=True, frozen=True)
+class AllFixesResult:
+    changed: bool
+    diff: str
+    safe_applied: tuple[SafeFixProposal, ...]
+    guided_changed: bool
+    backup_path: Path | None = None
+
+
 def load_fix_context(path: str | Path) -> tuple[ComposeBundle, list[Finding]]:
     bundle = load_bundle(path)
     project = load_project(path)
@@ -79,6 +88,47 @@ def preview_guided_fixes(bundle: ComposeBundle, findings: list[Finding]) -> Guid
     updated_text = dump_compose(working_data)
     diff = build_diff(bundle.primary_path, bundle.primary_text, updated_text)
     return GuidedFixResult(changed=True, diff=diff)
+
+
+def preview_all_fixes(bundle: ComposeBundle, findings: list[Finding]) -> AllFixesResult:
+    working_data = deepcopy(bundle.primary_data)
+    safe_applied = _apply_safe_fixes_to_data(working_data, findings)
+    guided_changed = _apply_guided_fixes_to_data(working_data, findings)
+    if not safe_applied and not guided_changed:
+        return AllFixesResult(
+            changed=False,
+            diff="",
+            safe_applied=(),
+            guided_changed=False,
+        )
+    updated_text = dump_compose(working_data)
+    diff = build_diff(bundle.primary_path, bundle.primary_text, updated_text)
+    return AllFixesResult(
+        changed=True,
+        diff=diff,
+        safe_applied=tuple(safe_applied),
+        guided_changed=guided_changed,
+    )
+
+
+def apply_all_fixes(bundle: ComposeBundle, findings: list[Finding]) -> AllFixesResult:
+    preview = preview_all_fixes(bundle, findings)
+    if not preview.changed:
+        return preview
+
+    backup_path = bundle.primary_path.with_suffix(bundle.primary_path.suffix + ".bak")
+    copy2(bundle.primary_path, backup_path)
+    working_data = deepcopy(bundle.primary_data)
+    _apply_safe_fixes_to_data(working_data, findings)
+    _apply_guided_fixes_to_data(working_data, findings)
+    bundle.primary_path.write_text(dump_compose(working_data), encoding="utf-8")
+    return AllFixesResult(
+        changed=True,
+        diff=preview.diff,
+        safe_applied=preview.safe_applied,
+        guided_changed=preview.guided_changed,
+        backup_path=backup_path,
+    )
 
 
 def dump_compose(data: Any) -> str:
