@@ -2,6 +2,12 @@ use std::collections::BTreeMap;
 
 use crate::domain::{Axis, Finding, ScoreReport, Severity};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Coverage {
+    pub compose: bool,
+    pub host_hardening: bool,
+}
+
 fn severity_penalty(severity: Severity) -> u16 {
     match severity {
         Severity::Critical => 75,
@@ -11,17 +17,35 @@ fn severity_penalty(severity: Severity) -> u16 {
     }
 }
 
-fn axis_weight(axis: Axis) -> f32 {
-    match axis {
-        Axis::SensitiveData => 0.35,
-        Axis::ExcessivePermissions => 0.30,
-        Axis::UnnecessaryExposure => 0.20,
-        Axis::UpdateSupplyChainRisk => 0.15,
-        Axis::HostHardening => 0.0,
+fn axis_weight(axis: Axis, coverage: Coverage) -> f32 {
+    match (coverage.compose, coverage.host_hardening, axis) {
+        (true, false, Axis::SensitiveData) => 0.35,
+        (true, false, Axis::ExcessivePermissions) => 0.30,
+        (true, false, Axis::UnnecessaryExposure) => 0.20,
+        (true, false, Axis::UpdateSupplyChainRisk) => 0.15,
+        (true, false, Axis::HostHardening) => 0.0,
+        (true, true, Axis::SensitiveData) => 0.30,
+        (true, true, Axis::ExcessivePermissions) => 0.25,
+        (true, true, Axis::UnnecessaryExposure) => 0.15,
+        (true, true, Axis::UpdateSupplyChainRisk) => 0.15,
+        (true, true, Axis::HostHardening) => 0.15,
+        (false, true, Axis::HostHardening) => 1.0,
+        (false, true, _) => 0.0,
+        (false, false, _) => 0.0,
     }
 }
 
 pub fn build_score_report(findings: &[Finding]) -> ScoreReport {
+    build_score_report_with_coverage(
+        findings,
+        Coverage {
+            compose: true,
+            host_hardening: false,
+        },
+    )
+}
+
+pub fn build_score_report_with_coverage(findings: &[Finding], coverage: Coverage) -> ScoreReport {
     let mut axis_penalties = BTreeMap::new();
     let mut severity_counts = BTreeMap::new();
 
@@ -46,11 +70,17 @@ pub fn build_score_report(findings: &[Finding]) -> ScoreReport {
         })
         .collect::<BTreeMap<_, _>>();
 
-    let overall = Axis::ALL
+    let weighted = Axis::ALL
         .into_iter()
-        .map(|axis| axis_scores.get(&axis).copied().unwrap_or(100) as f32 * axis_weight(axis))
-        .sum::<f32>()
-        .round() as u8;
+        .map(|axis| {
+            axis_scores.get(&axis).copied().unwrap_or(100) as f32 * axis_weight(axis, coverage)
+        })
+        .sum::<f32>();
+    let overall = if coverage.compose || coverage.host_hardening {
+        weighted.round() as u8
+    } else {
+        100
+    };
 
     ScoreReport {
         overall,
@@ -121,5 +151,23 @@ mod tests {
         ]);
 
         assert_eq!(report.axis_scores[&Axis::ExcessivePermissions], 0);
+    }
+
+    #[test]
+    fn host_hardening_affects_overall_only_when_covered() {
+        let findings = [finding(Axis::HostHardening, Severity::Critical, "host")];
+
+        let without_host = build_score_report(&findings);
+        let with_host = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: false,
+                host_hardening: true,
+            },
+        );
+
+        assert_eq!(without_host.overall, 100);
+        assert_eq!(without_host.axis_scores[&Axis::HostHardening], 25);
+        assert_eq!(with_host.overall, 25);
     }
 }

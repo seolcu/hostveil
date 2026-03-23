@@ -148,12 +148,20 @@ fn bootstrap_copy(scan_result: &ScanResult) -> BootstrapCopy {
 }
 
 fn compose_status(scan_result: &ScanResult) -> String {
-    match &scan_result.metadata.compose_file {
-        Some(path) => i18n::tr_status_compose_loaded(
+    match (
+        &scan_result.metadata.compose_file,
+        &scan_result.metadata.host_root,
+    ) {
+        (Some(path), Some(_)) => i18n::tr_status_compose_and_host_loaded(
             &path.display().to_string(),
             scan_result.metadata.service_count,
         ),
-        None => i18n::tr("app.status.no_target"),
+        (Some(path), None) => i18n::tr_status_compose_loaded(
+            &path.display().to_string(),
+            scan_result.metadata.service_count,
+        ),
+        (None, Some(path)) => i18n::tr_status_host_loaded(&path.display().to_string()),
+        (None, None) => i18n::tr("app.status.no_target"),
     }
 }
 
@@ -167,11 +175,16 @@ fn compose_summary_lines(scan_result: &ScanResult) -> Vec<String> {
     if let Some(path) = &metadata.compose_root {
         lines.push(i18n::tr_summary_compose_root(&path.display().to_string()));
     }
-    if metadata.loaded_files.is_empty() {
+    if let Some(path) = &metadata.host_root {
+        lines.push(i18n::tr_summary_host_root(&path.display().to_string()));
+    }
+    if metadata.loaded_files.is_empty() && metadata.host_root.is_none() {
         lines.push(i18n::tr("app.summary.none"));
     } else {
-        lines.push(i18n::tr_summary_loaded_files(metadata.loaded_files.len()));
-        lines.push(i18n::tr_summary_service_count(metadata.service_count));
+        if !metadata.loaded_files.is_empty() {
+            lines.push(i18n::tr_summary_loaded_files(metadata.loaded_files.len()));
+            lines.push(i18n::tr_summary_service_count(metadata.service_count));
+        }
         lines.push(i18n::tr_summary_finding_count(scan_result.findings.len()));
         lines.push(i18n::tr_summary_overall_score(
             scan_result.score_report.overall,
@@ -209,6 +222,7 @@ mod tests {
             metadata: ScanMetadata {
                 compose_root: Some(PathBuf::from("/srv/demo")),
                 compose_file: Some(PathBuf::from("/srv/demo/docker-compose.yml")),
+                host_root: Some(PathBuf::from("/")),
                 loaded_files: vec![
                     PathBuf::from("/srv/demo/docker-compose.yml"),
                     PathBuf::from("/srv/demo/docker-compose.override.yml"),
@@ -219,11 +233,16 @@ mod tests {
             ..ScanResult::default()
         });
 
-        assert!(copy.status.contains("Loaded 2 service(s)"));
+        assert!(copy.status.contains("host checks enabled"));
         assert!(
             copy.summary_lines
                 .iter()
                 .any(|line| line.contains("Compose file: /srv/demo/docker-compose.yml"))
+        );
+        assert!(
+            copy.summary_lines
+                .iter()
+                .any(|line| line.contains("Host root: /"))
         );
     }
 }

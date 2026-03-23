@@ -134,6 +134,7 @@ pub enum AdapterStatus {
 pub struct ScanMetadata {
     pub compose_root: Option<PathBuf>,
     pub compose_file: Option<PathBuf>,
+    pub host_root: Option<PathBuf>,
     pub loaded_files: Vec<PathBuf>,
     pub service_count: usize,
     pub adapters: BTreeMap<String, AdapterStatus>,

@@ -68,12 +68,29 @@ pub fn tr_status_compose_loaded(path: &str, count: usize) -> String {
     t!("app.status.compose_loaded", path = path, count = count).into_owned()
 }
 
+pub fn tr_status_host_loaded(path: &str) -> String {
+    t!("app.status.host_loaded", path = path).into_owned()
+}
+
+pub fn tr_status_compose_and_host_loaded(path: &str, count: usize) -> String {
+    t!(
+        "app.status.compose_and_host_loaded",
+        path = path,
+        count = count
+    )
+    .into_owned()
+}
+
 pub fn tr_summary_compose_file(path: &str) -> String {
     t!("app.summary.compose_file", path = path).into_owned()
 }
 
 pub fn tr_summary_compose_root(path: &str) -> String {
     t!("app.summary.compose_root", path = path).into_owned()
+}
+
+pub fn tr_summary_host_root(path: &str) -> String {
+    t!("app.summary.host_root", path = path).into_owned()
 }
 
 pub fn tr_summary_loaded_files(count: usize) -> String {
@@ -96,7 +113,8 @@ pub fn tr_summary_finding_count(count: usize) -> String {
 mod tests {
     use super::{
         tr, tr_compose_parse_error, tr_io_error, tr_missing_argument_value,
-        tr_status_compose_loaded, tr_summary_finding_count, tr_summary_overall_score,
+        tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
+        tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
         tr_summary_service_count, tr_unknown_argument,
     };
     use crate::compose::ComposeParseError;
@@ -151,8 +169,29 @@ mod tests {
     }
 
     #[test]
+    fn formats_host_loaded_status() {
+        assert_eq!(
+            tr_status_host_loaded("/snapshot"),
+            "Loaded host checks from /snapshot"
+        );
+    }
+
+    #[test]
+    fn formats_compose_and_host_loaded_status() {
+        assert_eq!(
+            tr_status_compose_and_host_loaded("/srv/docker-compose.yml", 2),
+            "Loaded 2 service(s) from /srv/docker-compose.yml with host checks enabled"
+        );
+    }
+
+    #[test]
     fn formats_service_count_summary() {
         assert_eq!(tr_summary_service_count(3), "Service count: 3");
+    }
+
+    #[test]
+    fn formats_host_root_summary() {
+        assert_eq!(tr_summary_host_root("/snapshot"), "Host root: /snapshot");
     }
 
     #[test]

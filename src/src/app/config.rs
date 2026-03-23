@@ -13,6 +13,7 @@ pub struct AppConfig {
     pub output_mode: OutputMode,
     pub show_help: bool,
     pub compose_path: Option<PathBuf>,
+    pub host_root: Option<PathBuf>,
 }
 
 impl Default for AppConfig {
@@ -21,6 +22,7 @@ impl Default for AppConfig {
             output_mode: OutputMode::Tui,
             show_help: false,
             compose_path: None,
+            host_root: None,
         }
     }
 }
@@ -46,6 +48,19 @@ impl AppConfig {
                         return Err(AppError::MissingArgumentValue("--compose"));
                     }
                     config.compose_path = Some(PathBuf::from(value));
+                }
+                "--host-root" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--host-root"))?;
+                    config.host_root = Some(PathBuf::from(value));
+                }
+                _ if argument.starts_with("--host-root=") => {
+                    let value = argument.trim_start_matches("--host-root=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--host-root"));
+                    }
+                    config.host_root = Some(PathBuf::from(value));
                 }
                 _ => return Err(AppError::UnknownArgument(argument)),
             }
@@ -104,5 +119,27 @@ mod tests {
         let config = AppConfig::parse([String::from("--help")]).expect("config should parse");
 
         assert!(config.show_help);
+    }
+
+    #[test]
+    fn parses_host_root_flag() {
+        let config = AppConfig::parse([String::from("--host-root"), String::from("/snapshot")])
+            .expect("config should parse");
+
+        assert_eq!(
+            config.host_root.as_deref(),
+            Some(std::path::Path::new("/snapshot"))
+        );
+    }
+
+    #[test]
+    fn parses_inline_host_root_flag() {
+        let config =
+            AppConfig::parse([String::from("--host-root=/snapshot")]).expect("config should parse");
+
+        assert_eq!(
+            config.host_root.as_deref(),
+            Some(std::path::Path::new("/snapshot"))
+        );
     }
 }

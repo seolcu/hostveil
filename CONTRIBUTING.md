@@ -106,6 +106,7 @@ cargo test
 # Run the current Rust binary
 cargo run -- --help
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
+cargo run -- --json --host-root /
 ```
 
 The repository pins the shared Rust toolchain in `rust-toolchain.toml`.
