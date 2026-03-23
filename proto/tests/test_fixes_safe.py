@@ -17,8 +17,8 @@ def test_quick_fix_preview_colors_diff_when_color_enabled(tmp_path: Path, capsys
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "\u001b[1m\u001b[31m" in captured.out
-    assert "\u001b[1m\u001b[32m" in captured.out
+    assert "\u001b[41m\u001b[97m" in captured.out
+    assert "\u001b[42m\u001b[30m" in captured.out
 
 
 def test_quick_fix_preview_shows_diff_without_writing(tmp_path: Path, capsys) -> None:

@@ -95,10 +95,10 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
     out = format_unified_diff(diff, color=True)
-    assert "\u001b[1m\u001b[31m--- a.yml\u001b[0m" in out
-    assert "\u001b[1m\u001b[32m+++ b.yml\u001b[0m" in out
-    assert "\u001b[1m\u001b[31m-old\u001b[0m" in out
-    assert "\u001b[1m\u001b[32m+new\u001b[0m" in out
+    assert "\u001b[41m\u001b[97m--- a.yml\u001b[0m" in out
+    assert "\u001b[42m\u001b[30m+++ b.yml\u001b[0m" in out
+    assert "\u001b[41m\u001b[97m-old\u001b[0m" in out
+    assert "\u001b[42m\u001b[30m+new\u001b[0m" in out
     plain = format_unified_diff(diff, color=False)
     assert plain == diff
 

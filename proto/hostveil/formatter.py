@@ -16,6 +16,11 @@ FG_YELLOW = "\033[33m"
 FG_GREEN = "\033[32m"
 FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
+# Unified diff: full-line background (high-contrast foreground on each)
+BG_RED = "\033[41m"
+BG_GREEN = "\033[42m"
+FG_ON_DIFF_RED = "\033[97m"
+FG_ON_DIFF_GREEN = "\033[30m"
 
 SEVERITY_COLORS = {
     Severity.CRITICAL: FG_RED,
@@ -124,15 +129,15 @@ def format_report(
 
 
 def format_unified_diff(diff: str, *, color: bool) -> str:
-    """Color unified diff lines: removals red, additions green."""
+    """Highlight unified diff lines with background color (red = removed, green = added)."""
     if not color or not diff.strip():
         return diff
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):
-            out.append(_style(line, FG_GREEN, color=color, bold=True))
+            out.append(f"{BG_GREEN}{FG_ON_DIFF_GREEN}{line}{RESET}")
         elif line.startswith("---") or line.startswith("-"):
-            out.append(_style(line, FG_RED, color=color, bold=True))
+            out.append(f"{BG_RED}{FG_ON_DIFF_RED}{line}{RESET}")
         else:
             out.append(line)
     return "\n".join(out)
