@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
 from .i18n import tr
 from .models import Axis, Finding, ScoreReport, SEVERITY_ORDER, Severity
 
@@ -11,6 +14,7 @@ BOLD = "\033[1m"
 FG_RED = "\033[31m"
 FG_YELLOW = "\033[33m"
 FG_GREEN = "\033[32m"
+FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 
 SEVERITY_COLORS = {
@@ -26,6 +30,31 @@ AXIS_DISPLAY_ORDER = (
     Axis.UNNECESSARY_EXPOSURE,
     Axis.UPDATE_RISK,
 )
+
+
+def should_use_color(*, no_color_cli_flag: bool) -> bool:
+    """Use ANSI styles unless the user opted out (--no-color or NO_COLOR)."""
+    if no_color_cli_flag:
+        return False
+    return "NO_COLOR" not in os.environ
+
+
+def enable_ansi_if_windows() -> None:
+    """Turn on virtual-terminal ANSI on Windows so scan/fix colors render in conhost."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        std_out = -11
+        enable_vt = 0x0004
+        handle = kernel32.GetStdHandle(std_out)
+        mode = ctypes.c_uint()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(handle, mode.value | enable_vt)
+    except Exception:
+        pass
 
 
 def format_report(
@@ -79,17 +108,34 @@ def format_report(
             color=color,
             bold=True,
         )
+        why_line = tr("cli.why_risky", text=finding.why_risky)
+        fix_line = tr("cli.how_to_fix", text=finding.how_to_fix)
         lines.extend(
             [
                 f"- [{severity_label}] {finding.title}",
                 f"  {tr('cli.affected_service', service=finding.affected_service)}",
                 f"  {tr('cli.description', description=finding.description)}",
-                f"  {tr('cli.why_risky', text=finding.why_risky)}",
-                f"  {tr('cli.how_to_fix', text=finding.how_to_fix)}",
+                f"  {_style(why_line, FG_ORANGE, color=color, bold=True)}",
+                f"  {_style(fix_line, FG_GREEN, color=color, bold=True)}",
             ]
         )
 
     return "\n".join(lines)
+
+
+def format_unified_diff(diff: str, *, color: bool) -> str:
+    """Color unified diff lines: removals red, additions green."""
+    if not color or not diff.strip():
+        return diff
+    out: list[str] = []
+    for line in diff.splitlines():
+        if line.startswith("+++") or line.startswith("+"):
+            out.append(_style(line, FG_GREEN, color=color, bold=True))
+        elif line.startswith("---") or line.startswith("-"):
+            out.append(_style(line, FG_RED, color=color, bold=True))
+        else:
+            out.append(line)
+    return "\n".join(out)
 
 
 def _format_overall_score(score: int, *, color: bool) -> str:

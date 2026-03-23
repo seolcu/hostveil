@@ -16,7 +16,8 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 - **Security Overview Dashboard** — overall score with per-category breakdown and severity counts
 - **Service-aware Rule Checks** — checks tailored to each service's known data locations and config structure
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
-- **Quick Fix** — one-command auto-fix for safe, low-risk items; patch drafts for higher-risk ones
+- **quick-fix** — one-command auto-fix for safe, low-risk items
+- **fix** — applies every available fix at once, including review-required guided changes, with preview, backup, and confirmation
 
 ## Audit Axes
 
@@ -43,8 +44,8 @@ Run the prototype CLI against a Compose file or directory:
 
 ```sh
 python -m hostveil scan path/to/docker-compose.yml
-python -m hostveil fix path/to/docker-compose.yml --dry-run --yes
-python -m hostveil patch path/to/docker-compose.yml --patch
+python -m hostveil quick-fix path/to/docker-compose.yml --preview-changes --yes
+python -m hostveil fix path/to/docker-compose.yml --preview-changes --yes
 ```
 
 ## Status
@@ -58,10 +59,10 @@ Current prototype coverage:
 
 - Docker Compose parsing with default override merging
 - Four audit axes: sensitive data, permissions, exposure, and update risk
-- Scoring model with severity counts and per-axis scores
+- Scoring model with severity counts and per-category safety scores
 - Terminal scan report with `--no-color` support
-- Safe Quick Fix flow with backup, dry-run diff, and confirmation
-- Guided patch generation for risky changes
+- `quick-fix` flow with backup, preview-only diff (`--preview-changes`), and confirmation
+- `fix` flow that combines safe fixes with review-required guided changes in one write to the compose file
 
 ## Contributing
 

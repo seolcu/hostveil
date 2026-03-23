@@ -16,7 +16,8 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 - **보안 개요 대시보드** — 카테고리별 세부 점수 및 심각도 카운트를 포함한 전체 점수
 - **서비스 인식 규칙 점검** — 각 서비스의 데이터 위치와 설정 구조에 맞춘 점검
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
-- **Quick Fix** — 낮은 위험 항목은 한 명령으로 자동 수정; 높은 위험 항목은 수정 초안 제공
+- **quick-fix** — 낮은 위험 항목만 한 명령으로 자동 수정
+- **fix** — 안전 수정과 검토가 필요한 가이드 기반 수정까지 한 번에 적용하며, 미리보기·백업·확인을 지원
 
 ## 점검 항목
 
@@ -43,8 +44,8 @@ Compose 파일 또는 디렉터리를 대상으로 프로토타입 CLI를 실행
 
 ```sh
 python -m hostveil scan path/to/docker-compose.yml
-python -m hostveil fix path/to/docker-compose.yml --dry-run --yes
-python -m hostveil patch path/to/docker-compose.yml --patch
+python -m hostveil quick-fix path/to/docker-compose.yml --preview-changes --yes
+python -m hostveil fix path/to/docker-compose.yml --preview-changes --yes
 ```
 
 ## 현황
@@ -60,8 +61,8 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - 네 가지 감사 축: 민감 정보, 권한, 노출, 업데이트 위험
 - 심각도 카운트와 축별 점수를 포함한 점수화 모델
 - `--no-color`를 지원하는 터미널 스캔 리포트
-- 백업, dry-run diff, 확인 절차를 포함한 Safe Quick Fix 흐름
-- 위험한 변경을 위한 Guided patch 생성
+- 백업, 변경 미리보기(`--preview-changes`), 확인 절차를 포함한 `quick-fix` 흐름
+- 안전 수정과 검토가 필요한 가이드 수정까지 함께 적용하는 `fix` 흐름
 
 ## 기여
 
