@@ -20,6 +20,9 @@ FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
+# Full-width rules: Unicode box-drawing horizontal (solid line), not ASCII hyphen runs.
+HORIZONTAL_RULE_CHAR = "\u2500"
+
 # Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
 # light or dark terminal themes; pad to terminal width so the fill runs edge-to-edge.
 DIFF_BG_REMOVED = "\033[48;2;56;30;34m"
@@ -148,7 +151,7 @@ def _group_findings_by_service(
 
 
 def _findings_service_separator(*, color: bool) -> str:
-    line = "-" * _diff_line_width()
+    line = HORIZONTAL_RULE_CHAR * _diff_line_width()
     if not color:
         return line
     return f"{FG_GRAY}{line}{RESET}"

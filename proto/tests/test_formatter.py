@@ -154,7 +154,7 @@ def test_format_report_groups_findings_by_service_with_separator(monkeypatch) ->
     nx = output.index("Affected service: nginx")
     vw = output.index("Affected service: vaultwarden")
     assert nx < vw
-    sep = "-" * 50
+    sep = "\u2500" * 50
     assert nx < output.index(sep) < vw
     assert output.count("Affected service:") == 2
 
