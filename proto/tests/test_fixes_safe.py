@@ -25,7 +25,7 @@ def test_quick_fix_preview_shows_diff_without_writing(tmp_path: Path, capsys) ->
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["quick-fix", str(compose_file), "--preview-changes", "--yes", "--no-color"])
+    exit_code = main(["quick-fix", str(compose_file), "--preview-changes", "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -38,7 +38,7 @@ def test_quick_fix_apply_writes_backup_and_updates_compose(tmp_path: Path, capsy
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["quick-fix", str(compose_file), "--yes", "--no-color"])
+    exit_code = main(["quick-fix", str(compose_file), "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0

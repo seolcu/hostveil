@@ -14,7 +14,6 @@ MESSAGES = {
         "cli.help.fix": "Apply every available fix, including review-required guided changes.",
         "cli.help.preview_changes": "Show planned changes without modifying any files.",
         "cli.help.yes": "Skip the confirmation prompt.",
-        "cli.help.no_color": "Disable ANSI colors in output.",
         "cli.parser_error": "Failed to parse compose file: {message}",
         "cli.report_title": "hostveil scan report",
         "cli.report_path": "Compose file: {path}",

@@ -153,14 +153,11 @@ def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     assert plain == diff
 
 
-def test_should_use_color_respects_cli_and_no_color_env(monkeypatch) -> None:
+def test_should_use_color_respects_no_color_env(monkeypatch) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
-    assert should_use_color(no_color_cli_flag=False) is True
-    assert should_use_color(no_color_cli_flag=True) is False
-    monkeypatch.setenv("NO_COLOR", "")
-    assert should_use_color(no_color_cli_flag=False) is False
+    assert should_use_color() is True
     monkeypatch.setenv("NO_COLOR", "1")
-    assert should_use_color(no_color_cli_flag=False) is False
+    assert should_use_color() is False
 
 
 def test_cli_help_describes_fix_command_split() -> None:
@@ -173,8 +170,9 @@ def test_cli_help_describes_fix_command_split() -> None:
     assert "review-required" in help_output
 
 
-def test_cli_scan_renders_summary_without_color(capsys) -> None:
-    exit_code = main(["scan", str(FIXTURE), "--no-color"])
+def test_cli_scan_renders_summary(capsys, monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    exit_code = main(["scan", str(FIXTURE)])
 
     captured = capsys.readouterr()
 
@@ -182,4 +180,4 @@ def test_cli_scan_renders_summary_without_color(capsys) -> None:
     assert "hostveil scan report" in captured.out
     assert "Overall safety score:" in captured.out
     assert "Affected service: vaultwarden" in captured.out
-    assert "[CRITICAL] Container runs in privileged mode" in captured.out
+    assert "Container runs in privileged mode" in captured.out

@@ -33,14 +33,6 @@ def _all_fix_plan_summary(preview: AllFixesResult) -> str:
     return ", ".join(parts)
 
 
-def _add_common_output_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help=tr("cli.help.no_color"),
-    )
-
-
 def _add_common_fix_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("path")
     parser.add_argument(
@@ -53,7 +45,6 @@ def _add_common_fix_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help=tr("cli.help.yes"),
     )
-    _add_common_output_arguments(parser)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -66,7 +57,6 @@ def build_parser() -> argparse.ArgumentParser:
         description=tr("cli.help.scan"),
     )
     scan_parser.add_argument("path")
-    _add_common_output_arguments(scan_parser)
 
     quick_fix_parser = subparsers.add_parser(
         "quick-fix",
@@ -98,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         findings = scan_project(project)
         report = build_score_report(findings)
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
         print(
             format_report(
                 report,
@@ -121,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.safe_fix_none"))
             return 0
 
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
         print(format_unified_diff(preview.diff, color=use_color))
         if args.preview_changes:
@@ -153,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.all_fix_none"))
             return 0
 
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
         print(tr("cli.all_fix_plan", summary=_all_fix_plan_summary(preview)))
         print(format_unified_diff(preview.diff, color=use_color))
         if args.preview_changes:
