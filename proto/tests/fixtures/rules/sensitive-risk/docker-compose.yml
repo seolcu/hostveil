@@ -13,7 +13,7 @@ services:
   env_file_secret:
     image: ghcr.io/example/app:1.0.0
     env_file:
-      - .env
+    - .env
 
   safe:
     image: ghcr.io/example/safe:1.0.0
