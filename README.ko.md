@@ -32,11 +32,31 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 최종 배포용 바이너리는 아직 제공되지 않습니다. 현재 동작하는 구현은 `proto/` 안의 Python 프로토타입입니다.
 
+**Linux / macOS**
+
 ```sh
 python3 -m venv proto/.venv
 source proto/.venv/bin/activate
 pip install -e "proto[dev]"
 ```
+
+**Windows (PowerShell)** — 저장소 루트에서:
+
+```powershell
+python -m venv proto\.venv
+.\proto\.venv\Scripts\Activate.ps1
+pip install -e "proto[dev]"
+```
+
+스크립트 실행이 막혀 있으면 관리자 PowerShell에서 한 번 `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`를 실행하거나, **명령 프롬프트(cmd)** 를 사용하세요:
+
+```bat
+python -m venv proto\.venv
+proto\.venv\Scripts\activate.bat
+pip install -e "proto[dev]"
+```
+
+`python`이 인식되지 않으면 Windows용 Python 런처로 `py -m venv proto\.venv`를 사용할 수 있습니다.
 
 ## 사용법
 

@@ -32,11 +32,31 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 The final packaged binary is not available yet. The current working implementation is the Python prototype in `proto/`.
 
+**Linux and macOS**
+
 ```sh
 python3 -m venv proto/.venv
 source proto/.venv/bin/activate
 pip install -e "proto[dev]"
 ```
+
+**Windows (PowerShell)** — from the repository root:
+
+```powershell
+python -m venv proto\.venv
+.\proto\.venv\Scripts\Activate.ps1
+pip install -e "proto[dev]"
+```
+
+If script execution is disabled, run PowerShell as Administrator once: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`, or use **Command Prompt** instead:
+
+```bat
+python -m venv proto\.venv
+proto\.venv\Scripts\activate.bat
+pip install -e "proto[dev]"
+```
+
+Use `py -m venv proto\.venv` if `python` is not on your `PATH` (Windows Python launcher).
 
 ## Usage
 
