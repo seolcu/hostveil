@@ -5,9 +5,9 @@ Keep this file concise. It is not a substitute for README or docs — it covers 
 
 ## What This Project Is
 
-hostveil is a **lightweight TUI security dashboard for self-hosted Docker Compose environments**.
+hostveil is a **lightweight TUI security dashboard for Linux self-hosted environments centered on Docker Compose deployments**.
 
-It audits Docker Compose setups across four axes: sensitive data exposure, excessive permissions, unnecessary external exposure, and update/maintenance risk. Results are scored like Chrome Lighthouse: prioritized by severity, each finding paired with an explanation and a fix path. The prototype currently offers a safe `quick-fix` flow and a broader `fix` flow that can also apply review-required guided changes after preview and confirmation.
+The Python prototype validated the Compose parser, rule engine, scoring model, and fix flows. The real product direction is broader: native Compose checks, Linux host hardening checks, and optional external scanner adapters should all feed one scored self-hosting security tool. The long-term target audit axes are sensitive data exposure, excessive permissions, unnecessary exposure, update/supply-chain risk, and host hardening.
 
 **Target users:** Self-hosters running services like Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich on a single Linux server.
 
@@ -16,18 +16,20 @@ It audits Docker Compose setups across four axes: sensitive data exposure, exces
 | Phase | Language | Form | Timeline |
 |---|---|---|---|
 | Prototype | Python | CLI | Weeks 3–8 |
-| Final product | Rust | TUI | Weeks 8–14 |
+| Final product | Rust | TUI + JSON export | Weeks 8–14 |
 
-- Python prototype lives in `proto/` — its purpose is to validate rule logic before committing to Rust
-- Rust TUI lives in `src/` — TUI framework is likely `ratatui` (not yet decided; check `docs/adr/`)
-- i18n: default output in English; user-configurable locale (library TBD; check `docs/adr/`)
+- Python prototype lives in `proto/` — it is now a frozen reference implementation for Compose behavior
+- Rust product lives in `src/` — all new product work should default here unless the user explicitly asks to touch `proto/`
+- Runtime target: Linux only; Windows contributors should use WSL
+- TUI stack: `ratatui` + `crossterm` (see `docs/adr/0003-tui-framework.md`)
+- i18n: default output in English; Rust uses `rust-i18n` (see `docs/adr/0004-i18n-library.md`)
 
 ## Directory Layout
 
 ```
 hostveil/
-├── src/              # Rust TUI (not yet started)
-├── proto/            # Python CLI prototype (active implementation)
+├── src/              # Rust product (active implementation target)
+├── proto/            # Python CLI prototype (frozen reference)
 ├── docs/
 │   └── adr/          # Architecture Decision Records — read before changing architecture
 ├── .github/

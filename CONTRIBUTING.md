@@ -69,9 +69,11 @@ refactor(proto): extract rule engine into separate module
 
 ## Development Setup
 
-> To be updated as the project matures.
+The product is now entering the Rust implementation phase.
 
 ### Python Prototype (`proto/`)
+
+The Python prototype is a frozen reference implementation. Use it to confirm parser, scoring, and fix behavior; do not treat it as the main delivery target unless a task explicitly says otherwise.
 
 ```sh
 python3 -m venv proto/.venv
@@ -87,9 +89,26 @@ pytest
 
 ### Rust TUI (`src/`)
 
+Official runtime support is **Linux only**.
+
+If you contribute from Windows, use **WSL** (Ubuntu recommended) instead of native PowerShell. The goal is one shared Linux-like Rust workflow for the team.
+
+From the repository root:
+
 ```sh
-# Coming soon
+rustup default stable
+
+cargo build
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+
+# Run the current Rust binary
+cargo run -- --help
+cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 ```
+
+The repository pins the shared Rust toolchain in `rust-toolchain.toml`.
 
 ## i18n
 
