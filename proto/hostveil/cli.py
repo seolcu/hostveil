@@ -17,6 +17,7 @@ from .formatter import (
     format_report,
     format_unified_diff,
     should_use_color,
+    strip_unified_diff_file_headers,
 )
 from .i18n import tr
 from .parser import ComposeParseError, load_project
@@ -112,8 +113,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         use_color = should_use_color()
+        print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
-        print(format_unified_diff(preview.diff, color=use_color))
+        print(
+            format_unified_diff(
+                strip_unified_diff_file_headers(preview.diff),
+                color=use_color,
+            )
+        )
         if args.preview_changes:
             print(tr("cli.safe_fix_preview_only"))
             return 0
@@ -144,8 +151,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         use_color = should_use_color()
+        print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.all_fix_plan", summary=_all_fix_plan_summary(preview)))
-        print(format_unified_diff(preview.diff, color=use_color))
+        print(
+            format_unified_diff(
+                strip_unified_diff_file_headers(preview.diff),
+                color=use_color,
+            )
+        )
         if args.preview_changes:
             print(tr("cli.all_fix_preview_only"))
             return 0

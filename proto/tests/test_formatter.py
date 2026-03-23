@@ -4,7 +4,12 @@ import re
 from pathlib import Path
 
 from hostveil.cli import build_parser, main
-from hostveil.formatter import format_report, format_unified_diff, should_use_color
+from hostveil.formatter import (
+    format_report,
+    format_unified_diff,
+    should_use_color,
+    strip_unified_diff_file_headers,
+)
 from hostveil.models import Axis, Finding, ScoreReport, Severity
 
 
@@ -147,6 +152,12 @@ def test_format_report_groups_findings_by_service_with_separator() -> None:
     sep = "-" * 50
     assert nx < output.index(sep) < vw
     assert output.count("Affected service:") == 2
+
+
+def test_strip_unified_diff_file_headers() -> None:
+    raw = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
+    assert strip_unified_diff_file_headers(raw) == "@@ -1 +1 @@\n-old\n+new"
+    assert strip_unified_diff_file_headers("@@ only\n") == "@@ only\n"
 
 
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:

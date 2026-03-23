@@ -161,6 +161,14 @@ def _pad_line_for_full_width_highlight(line: str, width: int) -> str:
     return line + (" " * (width - len(line)))
 
 
+def strip_unified_diff_file_headers(diff: str) -> str:
+    """Drop the --- / +++ path lines so the target path is not shown twice in the UI."""
+    lines = diff.splitlines()
+    if len(lines) >= 2 and lines[0].startswith("--- ") and lines[1].startswith("+++ "):
+        return "\n".join(lines[2:])
+    return diff
+
+
 def format_unified_diff(diff: str, *, color: bool, line_width: int | None = None) -> str:
     """Highlight +/- diff lines as full-width dark rows (removed vs added)."""
     if not color or not diff.strip():

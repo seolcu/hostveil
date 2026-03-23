@@ -27,6 +27,7 @@ MESSAGES = {
         "cli.why_risky": "Why risky: {text}",
         "cli.how_to_fix": "How to fix: {text}",
         "cli.safe_fix_none": "No safe fixes are available for this compose file.",
+        "cli.fix_file": "Fix file: {path}",
         "cli.safe_fix_plan": "Safe fixes: {count}",
         "cli.safe_fix_prompt": "Apply {count} safe fix(es) to {path}? [y/N]: ",
         "cli.safe_fix_cancelled": "Safe fixes cancelled.",

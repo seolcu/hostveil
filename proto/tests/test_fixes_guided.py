@@ -16,7 +16,7 @@ def test_fix_preview_shows_guided_diff_without_writing(tmp_path: Path, capsys) -
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "--- " in captured.out
+    assert "Fix file:" in captured.out
     assert "+# hostveil guided fix: replace privileged mode with a minimal capability set." in captured.out
     assert "+    cap_add:" in captured.out
     assert "-    privileged: true" in captured.out

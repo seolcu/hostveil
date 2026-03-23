@@ -29,6 +29,7 @@ def test_quick_fix_preview_shows_diff_without_writing(tmp_path: Path, capsys) ->
     captured = capsys.readouterr()
 
     assert exit_code == 0
+    assert "Fix file:" in captured.out
     assert "Preview only; no files were changed." in captured.out
     assert "+    image: nginx:stable" in captured.out
     assert compose_file.read_text(encoding="utf-8") == FIXTURE.read_text(encoding="utf-8")
