@@ -160,9 +160,20 @@ def _findings_service_separator(*, color: bool) -> str:
     return f"{FG_GRAY}{line}{RESET}"
 
 
-def code_section_separator_line(*, color: bool) -> str:
-    """Full-width rule between prose and diff/code (same width as highlighted diff lines)."""
-    return _findings_service_separator(color=color)
+def code_section_separator_line(*, color: bool, width: int | None = None) -> str:
+    """Rule between prose and diff/code; width can follow a specific block."""
+    if width is None:
+        return _findings_service_separator(color=color)
+    if not color:
+        return HORIZONTAL_RULE_CHAR * width
+    return f"{RULE_SEPARATOR_BG}{' ' * width}{RESET}"
+
+
+def measure_block_width(text: str, *, minimum: int = 20) -> int:
+    """Return a stable render width based on the longest line in the block."""
+    if not text.strip():
+        return minimum
+    return max(minimum, max(len(line) for line in text.splitlines()))
 
 
 def _pad_line_for_full_width_highlight(line: str, width: int) -> str:
@@ -183,7 +194,7 @@ def format_unified_diff(diff: str, *, color: bool, line_width: int | None = None
     """Highlight +/- diff lines as full-width dark rows (removed vs added)."""
     if not color or not diff.strip():
         return diff
-    width = line_width if line_width is not None else _diff_line_width()
+    width = line_width if line_width is not None else measure_block_width(diff)
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):
