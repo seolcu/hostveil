@@ -13,10 +13,12 @@ from .fixes import (
     preview_safe_fixes,
 )
 from .formatter import (
+    code_section_separator_line,
     enable_ansi_if_windows,
     format_report,
     format_unified_diff,
     should_use_color,
+    strip_unified_diff_file_headers,
 )
 from .i18n import tr
 from .parser import ComposeParseError, load_project
@@ -33,14 +35,6 @@ def _all_fix_plan_summary(preview: AllFixesResult) -> str:
     return ", ".join(parts)
 
 
-def _add_common_output_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help=tr("cli.help.no_color"),
-    )
-
-
 def _add_common_fix_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("path")
     parser.add_argument(
@@ -53,7 +47,6 @@ def _add_common_fix_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help=tr("cli.help.yes"),
     )
-    _add_common_output_arguments(parser)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -66,7 +59,6 @@ def build_parser() -> argparse.ArgumentParser:
         description=tr("cli.help.scan"),
     )
     scan_parser.add_argument("path")
-    _add_common_output_arguments(scan_parser)
 
     quick_fix_parser = subparsers.add_parser(
         "quick-fix",
@@ -98,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         findings = scan_project(project)
         report = build_score_report(findings)
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
         print(
             format_report(
                 report,
@@ -121,10 +113,18 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.safe_fix_none"))
             return 0
 
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
+        print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
-        print(format_unified_diff(preview.diff, color=use_color))
+        print(code_section_separator_line(color=use_color))
+        print(
+            format_unified_diff(
+                strip_unified_diff_file_headers(preview.diff),
+                color=use_color,
+            )
+        )
         if args.preview_changes:
+            print(code_section_separator_line(color=use_color))
             print(tr("cli.safe_fix_preview_only"))
             return 0
 
@@ -135,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
         result = apply_safe_fixes(bundle, findings)
+        print(code_section_separator_line(color=use_color))
         if result.backup_path is not None:
             print(tr("cli.safe_fix_backup", path=str(result.backup_path)))
         for applied in result.applied:
@@ -153,10 +154,18 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.all_fix_none"))
             return 0
 
-        use_color = should_use_color(no_color_cli_flag=args.no_color)
+        use_color = should_use_color()
+        print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.all_fix_plan", summary=_all_fix_plan_summary(preview)))
-        print(format_unified_diff(preview.diff, color=use_color))
+        print(code_section_separator_line(color=use_color))
+        print(
+            format_unified_diff(
+                strip_unified_diff_file_headers(preview.diff),
+                color=use_color,
+            )
+        )
         if args.preview_changes:
+            print(code_section_separator_line(color=use_color))
             print(tr("cli.all_fix_preview_only"))
             return 0
 
@@ -167,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
         result = apply_all_fixes(bundle, findings)
+        print(code_section_separator_line(color=use_color))
         if result.backup_path is not None:
             print(tr("cli.safe_fix_backup", path=str(result.backup_path)))
         for applied in result.safe_applied:

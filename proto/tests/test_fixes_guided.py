@@ -12,11 +12,11 @@ def test_fix_preview_shows_guided_diff_without_writing(tmp_path: Path, capsys) -
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["fix", str(compose_file), "--preview-changes", "--yes", "--no-color"])
+    exit_code = main(["fix", str(compose_file), "--preview-changes", "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "--- " in captured.out
+    assert "Fix file:" in captured.out
     assert "+# hostveil guided fix: replace privileged mode with a minimal capability set." in captured.out
     assert "+    cap_add:" in captured.out
     assert "-    privileged: true" in captured.out
@@ -28,7 +28,7 @@ def test_fix_apply_updates_compose_and_creates_backup(tmp_path: Path, capsys) ->
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["fix", str(compose_file), "--yes", "--no-color"])
+    exit_code = main(["fix", str(compose_file), "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0

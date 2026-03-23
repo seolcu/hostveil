@@ -80,7 +80,7 @@ Current prototype coverage:
 - Docker Compose parsing with default override merging
 - Four audit axes: sensitive data, permissions, exposure, and update risk
 - Scoring model with severity counts and per-category safety scores
-- Terminal scan report with `--no-color` support
+- Terminal scan report with ANSI styling (disable with `NO_COLOR` in the environment)
 - `quick-fix` flow with backup, preview-only diff (`--preview-changes`), and confirmation
 - `fix` flow that combines safe fixes with review-required guided changes in one write to the compose file
 

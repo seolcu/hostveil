@@ -17,18 +17,19 @@ def test_quick_fix_preview_colors_diff_when_color_enabled(tmp_path: Path, capsys
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "\u001b[1m\u001b[31m" in captured.out
-    assert "\u001b[1m\u001b[32m" in captured.out
+    assert "\u001b[48;2;56;30;34m" in captured.out
+    assert "\u001b[48;2;26;52;40m" in captured.out
 
 
 def test_quick_fix_preview_shows_diff_without_writing(tmp_path: Path, capsys) -> None:
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["quick-fix", str(compose_file), "--preview-changes", "--yes", "--no-color"])
+    exit_code = main(["quick-fix", str(compose_file), "--preview-changes", "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
+    assert "Fix file:" in captured.out
     assert "Preview only; no files were changed." in captured.out
     assert "+    image: nginx:stable" in captured.out
     assert compose_file.read_text(encoding="utf-8") == FIXTURE.read_text(encoding="utf-8")
@@ -38,7 +39,7 @@ def test_quick_fix_apply_writes_backup_and_updates_compose(tmp_path: Path, capsy
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
 
-    exit_code = main(["quick-fix", str(compose_file), "--yes", "--no-color"])
+    exit_code = main(["quick-fix", str(compose_file), "--yes"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
