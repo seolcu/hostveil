@@ -20,16 +20,16 @@ services:
     image: example/socket:1.0
     user: "1000:1000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    - /var/run/docker.sock:/var/run/docker.sock
 
   host_home:
     image: example/home:1.0
     user: "1000:1000"
     volumes:
-      - /home/media:/data
+    - /home/media:/data
 
   safe:
     image: example/safe:1.0
     user: "1000:1000"
     volumes:
-      - ./data:/data
+    - ./data:/data
