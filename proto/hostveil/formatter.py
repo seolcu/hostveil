@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from collections import defaultdict
 
@@ -20,12 +21,12 @@ FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
 FINDINGS_SERVICE_SEPARATOR_WIDTH = 50
-# Unified diff: true-color pastel backgrounds. Terminals do not support alpha; low-saturation
-# RGB mimics a light “tint” so text stays readable (pure 41/42 was too harsh).
-DIFF_BG_REMOVED = "\033[48;2;255;232;234m"
-DIFF_FG_REMOVED = "\033[38;2;95;40;50m"
-DIFF_BG_ADDED = "\033[48;2;230;248;235m"
-DIFF_FG_ADDED = "\033[38;2;28;85;55m"
+# Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
+# light or dark terminal themes; pad to terminal width so the fill runs edge-to-edge.
+DIFF_BG_REMOVED = "\033[48;2;56;30;34m"
+DIFF_FG_REMOVED = "\033[38;2;252;236;238m"
+DIFF_BG_ADDED = "\033[48;2;26;52;40m"
+DIFF_FG_ADDED = "\033[38;2;220;248;228m"
 
 SEVERITY_COLORS = {
     Severity.CRITICAL: FG_RED,
@@ -147,16 +148,32 @@ def _findings_service_separator(*, color: bool) -> str:
     return f"{FG_GRAY}{line}{RESET}"
 
 
-def format_unified_diff(diff: str, *, color: bool) -> str:
-    """Highlight unified diff lines with muted true-color backgrounds (removed vs added)."""
+def _diff_line_width() -> int:
+    try:
+        return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
+    except Exception:
+        return 80
+
+
+def _pad_line_for_full_width_highlight(line: str, width: int) -> str:
+    if len(line) >= width:
+        return line
+    return line + (" " * (width - len(line)))
+
+
+def format_unified_diff(diff: str, *, color: bool, line_width: int | None = None) -> str:
+    """Highlight +/- diff lines as full-width dark rows (removed vs added)."""
     if not color or not diff.strip():
         return diff
+    width = line_width if line_width is not None else _diff_line_width()
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):
-            out.append(f"{DIFF_BG_ADDED}{DIFF_FG_ADDED}{line}{RESET}")
+            padded = _pad_line_for_full_width_highlight(line, width)
+            out.append(f"{DIFF_BG_ADDED}{DIFF_FG_ADDED}{padded}{RESET}")
         elif line.startswith("---") or line.startswith("-"):
-            out.append(f"{DIFF_BG_REMOVED}{DIFF_FG_REMOVED}{line}{RESET}")
+            padded = _pad_line_for_full_width_highlight(line, width)
+            out.append(f"{DIFF_BG_REMOVED}{DIFF_FG_REMOVED}{padded}{RESET}")
         else:
             out.append(line)
     return "\n".join(out)

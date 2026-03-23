@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from hostveil.cli import build_parser, main
@@ -8,6 +9,12 @@ from hostveil.models import Axis, Finding, ScoreReport, Severity
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "report-scan.yml"
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[@-~]")
+
+
+def _strip_ansi(s: str) -> str:
+    return _ANSI_ESCAPE.sub("", s)
 
 
 def test_format_report_sorts_findings_and_supports_plain_output() -> None:
@@ -144,11 +151,16 @@ def test_format_report_groups_findings_by_service_with_separator() -> None:
 
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
-    out = format_unified_diff(diff, color=True)
-    assert "\u001b[48;2;255;232;234m\u001b[38;2;95;40;50m--- a.yml\u001b[0m" in out
-    assert "\u001b[48;2;230;248;235m\u001b[38;2;28;85;55m+++ b.yml\u001b[0m" in out
-    assert "\u001b[48;2;255;232;234m\u001b[38;2;95;40;50m-old\u001b[0m" in out
-    assert "\u001b[48;2;230;248;235m\u001b[38;2;28;85;55m+new\u001b[0m" in out
+    width = 20
+    out = format_unified_diff(diff, color=True, line_width=width)
+    lines = out.splitlines()
+    assert "\u001b[48;2;56;30;34m\u001b[38;2;252;236;238m" in lines[0]
+    assert "\u001b[48;2;26;52;40m\u001b[38;2;220;248;228m" in lines[1]
+    assert len(_strip_ansi(lines[0])) == width
+    assert len(_strip_ansi(lines[1])) == width
+    assert _strip_ansi(lines[2]) == "@@ -1 +1 @@"
+    assert len(_strip_ansi(lines[3])) == width
+    assert len(_strip_ansi(lines[4])) == width
     plain = format_unified_diff(diff, color=False)
     assert plain == diff
 
