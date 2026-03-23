@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 from hostveil.cli import build_parser, main
 from hostveil.formatter import (
@@ -106,7 +107,7 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
     assert "How to fix: do this" in output
 
 
-def test_format_report_groups_findings_by_service_with_separator() -> None:
+def test_format_report_groups_findings_by_service_with_separator(monkeypatch) -> None:
     report = ScoreReport(
         overall=50,
         axis_scores={
@@ -144,6 +145,10 @@ def test_format_report_groups_findings_by_service_with_separator() -> None:
             affected_service="vaultwarden",
         ),
     ]
+    monkeypatch.setattr(
+        "hostveil.formatter.shutil.get_terminal_size",
+        lambda _fallback=None: SimpleNamespace(columns=50, lines=24),
+    )
     output = format_report(report, findings, "c.yml", color=False)
 
     nx = output.index("Affected service: nginx")

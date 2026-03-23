@@ -20,7 +20,6 @@ FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
-FINDINGS_SERVICE_SEPARATOR_WIDTH = 50
 # Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
 # light or dark terminal themes; pad to terminal width so the fill runs edge-to-edge.
 DIFF_BG_REMOVED = "\033[48;2;56;30;34m"
@@ -64,6 +63,13 @@ def enable_ansi_if_windows() -> None:
             kernel32.SetConsoleMode(handle, mode.value | enable_vt)
     except Exception:
         pass
+
+
+def _diff_line_width() -> int:
+    try:
+        return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
+    except Exception:
+        return 80
 
 
 def format_report(
@@ -142,22 +148,15 @@ def _group_findings_by_service(
 
 
 def _findings_service_separator(*, color: bool) -> str:
-    line = "-" * FINDINGS_SERVICE_SEPARATOR_WIDTH
+    line = "-" * _diff_line_width()
     if not color:
         return line
     return f"{FG_GRAY}{line}{RESET}"
 
 
 def code_section_separator_line(*, color: bool) -> str:
-    """Gray rule between prose and diff/code blocks (same style as findings separators)."""
+    """Full-width gray rule between prose and diff/code (same style as findings separators)."""
     return _findings_service_separator(color=color)
-
-
-def _diff_line_width() -> int:
-    try:
-        return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
-    except Exception:
-        return 80
 
 
 def _pad_line_for_full_width_highlight(line: str, width: int) -> str:
