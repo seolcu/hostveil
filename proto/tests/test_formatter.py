@@ -145,10 +145,10 @@ def test_format_report_groups_findings_by_service_with_separator() -> None:
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
     out = format_unified_diff(diff, color=True)
-    assert "\u001b[41m\u001b[97m--- a.yml\u001b[0m" in out
-    assert "\u001b[42m\u001b[30m+++ b.yml\u001b[0m" in out
-    assert "\u001b[41m\u001b[97m-old\u001b[0m" in out
-    assert "\u001b[42m\u001b[30m+new\u001b[0m" in out
+    assert "\u001b[48;2;255;232;234m\u001b[38;2;95;40;50m--- a.yml\u001b[0m" in out
+    assert "\u001b[48;2;230;248;235m\u001b[38;2;28;85;55m+++ b.yml\u001b[0m" in out
+    assert "\u001b[48;2;255;232;234m\u001b[38;2;95;40;50m-old\u001b[0m" in out
+    assert "\u001b[48;2;230;248;235m\u001b[38;2;28;85;55m+new\u001b[0m" in out
     plain = format_unified_diff(diff, color=False)
     assert plain == diff
 

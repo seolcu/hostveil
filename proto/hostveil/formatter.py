@@ -20,11 +20,12 @@ FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
 FINDINGS_SERVICE_SEPARATOR_WIDTH = 50
-# Unified diff: full-line background (high-contrast foreground on each)
-BG_RED = "\033[41m"
-BG_GREEN = "\033[42m"
-FG_ON_DIFF_RED = "\033[97m"
-FG_ON_DIFF_GREEN = "\033[30m"
+# Unified diff: true-color pastel backgrounds. Terminals do not support alpha; low-saturation
+# RGB mimics a light “tint” so text stays readable (pure 41/42 was too harsh).
+DIFF_BG_REMOVED = "\033[48;2;255;232;234m"
+DIFF_FG_REMOVED = "\033[38;2;95;40;50m"
+DIFF_BG_ADDED = "\033[48;2;230;248;235m"
+DIFF_FG_ADDED = "\033[38;2;28;85;55m"
 
 SEVERITY_COLORS = {
     Severity.CRITICAL: FG_RED,
@@ -147,15 +148,15 @@ def _findings_service_separator(*, color: bool) -> str:
 
 
 def format_unified_diff(diff: str, *, color: bool) -> str:
-    """Highlight unified diff lines with background color (red = removed, green = added)."""
+    """Highlight unified diff lines with muted true-color backgrounds (removed vs added)."""
     if not color or not diff.strip():
         return diff
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):
-            out.append(f"{BG_GREEN}{FG_ON_DIFF_GREEN}{line}{RESET}")
+            out.append(f"{DIFF_BG_ADDED}{DIFF_FG_ADDED}{line}{RESET}")
         elif line.startswith("---") or line.startswith("-"):
-            out.append(f"{BG_RED}{FG_ON_DIFF_RED}{line}{RESET}")
+            out.append(f"{DIFF_BG_REMOVED}{DIFF_FG_REMOVED}{line}{RESET}")
         else:
             out.append(line)
     return "\n".join(out)
