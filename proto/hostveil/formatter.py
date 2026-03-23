@@ -20,10 +20,8 @@ FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
-# Plain-text rules (no color): Unicode box-drawing horizontal.
+# Separator rules: Unicode box-drawing horizontal (thin line), gray when color is on.
 HORIZONTAL_RULE_CHAR = "\u2500"
-# Colored rules: space-filled row + bg so width matches diff padding (one cell per column).
-RULE_SEPARATOR_BG = "\033[48;2;58;58;58m"
 
 # Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
 # light or dark terminal themes; pad to terminal width so the fill runs edge-to-edge.
@@ -161,12 +159,13 @@ def _findings_service_separator(*, color: bool) -> str:
 
 
 def code_section_separator_line(*, color: bool, width: int | None = None) -> str:
-    """Rule between prose and diff/code; width can follow a specific block."""
+    """Thin rule between prose and diff/code; optional width matches diff block."""
     if width is None:
         return _findings_service_separator(color=color)
+    line = HORIZONTAL_RULE_CHAR * width
     if not color:
-        return HORIZONTAL_RULE_CHAR * width
-    return f"{RULE_SEPARATOR_BG}{' ' * width}{RESET}"
+        return line
+    return f"{FG_GRAY}{line}{RESET}"
 
 
 def measure_block_width(text: str, *, minimum: int = 20) -> int:
