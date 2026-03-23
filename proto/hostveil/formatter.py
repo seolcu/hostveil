@@ -71,10 +71,6 @@ def enable_ansi_if_windows() -> None:
 
 
 def _diff_line_width() -> int:
-    cols = os.environ.get("COLUMNS")
-    if cols and cols.isdigit():
-        # Avoid terminal auto-wrap at the last column by keeping one-cell margin.
-        return max(20, int(cols) - 1)
     try:
         # Avoid terminal auto-wrap at the last column by keeping one-cell margin.
         return max(20, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
