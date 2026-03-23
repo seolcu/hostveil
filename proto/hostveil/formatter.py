@@ -20,7 +20,7 @@ FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
-# Full-width rules: Unicode box-drawing horizontal (solid line), not ASCII hyphen runs.
+# Separator rules: Unicode box-drawing horizontal (thin line), gray when color is on.
 HORIZONTAL_RULE_CHAR = "\u2500"
 
 # Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
@@ -47,7 +47,7 @@ AXIS_DISPLAY_ORDER = (
 
 def should_use_color() -> bool:
     """Use ANSI styles unless NO_COLOR is set (https://no-color.org/)."""
-    return os.environ.get("NO_COLOR", "").strip() == ""
+    return "NO_COLOR" not in os.environ
 
 
 def enable_ansi_if_windows() -> None:
@@ -70,9 +70,10 @@ def enable_ansi_if_windows() -> None:
 
 def _diff_line_width() -> int:
     try:
-        return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
+        # Avoid terminal auto-wrap at the last column by keeping one-cell margin.
+        return max(20, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
     except Exception:
-        return 80
+        return 79
 
 
 def format_report(
@@ -157,9 +158,21 @@ def _findings_service_separator(*, color: bool) -> str:
     return f"{FG_GRAY}{line}{RESET}"
 
 
-def code_section_separator_line(*, color: bool) -> str:
-    """Full-width gray rule between prose and diff/code (same style as findings separators)."""
-    return _findings_service_separator(color=color)
+def code_section_separator_line(*, color: bool, width: int | None = None) -> str:
+    """Thin rule between prose and diff/code; optional width matches diff block."""
+    if width is None:
+        return _findings_service_separator(color=color)
+    line = HORIZONTAL_RULE_CHAR * width
+    if not color:
+        return line
+    return f"{FG_GRAY}{line}{RESET}"
+
+
+def measure_block_width(text: str, *, minimum: int = 20) -> int:
+    """Return a stable render width based on the longest line in the block."""
+    if not text.strip():
+        return minimum
+    return max(minimum, max(len(line) for line in text.splitlines()))
 
 
 def _pad_line_for_full_width_highlight(line: str, width: int) -> str:
@@ -180,7 +193,7 @@ def format_unified_diff(diff: str, *, color: bool, line_width: int | None = None
     """Highlight +/- diff lines as full-width dark rows (removed vs added)."""
     if not color or not diff.strip():
         return diff
-    width = line_width if line_width is not None else _diff_line_width()
+    width = line_width if line_width is not None else measure_block_width(diff)
     out: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++") or line.startswith("+"):

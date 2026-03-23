@@ -8,6 +8,7 @@ from hostveil.cli import build_parser, main
 from hostveil.formatter import (
     format_report,
     format_unified_diff,
+    measure_block_width,
     should_use_color,
     strip_unified_diff_file_headers,
 )
@@ -154,7 +155,7 @@ def test_format_report_groups_findings_by_service_with_separator(monkeypatch) ->
     nx = output.index("Affected service: nginx")
     vw = output.index("Affected service: vaultwarden")
     assert nx < vw
-    sep = "\u2500" * 50
+    sep = "\u2500" * 49
     assert nx < output.index(sep) < vw
     assert output.count("Affected service:") == 2
 
@@ -165,6 +166,10 @@ def test_strip_unified_diff_file_headers() -> None:
     assert strip_unified_diff_file_headers("@@ only\n") == "@@ only\n"
 
 
+def test_measure_block_width_uses_longest_line() -> None:
+    text = "@@ hunk @@\n-abc\n+a much longer changed line"
+    assert measure_block_width(text) == len("+a much longer changed line")
+    assert measure_block_width("", minimum=20) == 20
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:
     diff = "--- a.yml\n+++ b.yml\n@@ -1 +1 @@\n-old\n+new"
     width = 20
@@ -184,6 +189,8 @@ def test_format_unified_diff_colors_add_and_remove_lines() -> None:
 def test_should_use_color_respects_no_color_env(monkeypatch) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
     assert should_use_color() is True
+    monkeypatch.setenv("NO_COLOR", "")
+    assert should_use_color() is False
     monkeypatch.setenv("NO_COLOR", "1")
     assert should_use_color() is False
 
