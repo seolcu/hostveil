@@ -20,8 +20,10 @@ FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
 FG_GRAY = "\033[90m"
 
-# Full-width rules: Unicode box-drawing horizontal (solid line), not ASCII hyphen runs.
+# Plain-text rules (no color): Unicode box-drawing horizontal.
 HORIZONTAL_RULE_CHAR = "\u2500"
+# Colored rules: space-filled row + bg so width matches diff padding (one cell per column).
+RULE_SEPARATOR_BG = "\033[48;2;58;58;58m"
 
 # Unified diff: dark full-row highlights (true color). Light text on dark bg reads well on
 # light or dark terminal themes; pad to terminal width so the fill runs edge-to-edge.
@@ -69,6 +71,9 @@ def enable_ansi_if_windows() -> None:
 
 
 def _diff_line_width() -> int:
+    cols = os.environ.get("COLUMNS")
+    if cols and cols.isdigit():
+        return max(40, int(cols))
     try:
         return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)
     except Exception:
@@ -158,7 +163,7 @@ def _findings_service_separator(*, color: bool) -> str:
 
 
 def code_section_separator_line(*, color: bool) -> str:
-    """Full-width gray rule between prose and diff/code (same style as findings separators)."""
+    """Full-width rule between prose and diff/code (same width as highlighted diff lines)."""
     return _findings_service_separator(color=color)
 
 
