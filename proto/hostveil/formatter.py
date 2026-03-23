@@ -148,6 +148,11 @@ def _findings_service_separator(*, color: bool) -> str:
     return f"{FG_GRAY}{line}{RESET}"
 
 
+def code_section_separator_line(*, color: bool) -> str:
+    """Gray rule between prose and diff/code blocks (same style as findings separators)."""
+    return _findings_service_separator(color=color)
+
+
 def _diff_line_width() -> int:
     try:
         return max(40, shutil.get_terminal_size(fallback=(80, 24)).columns)

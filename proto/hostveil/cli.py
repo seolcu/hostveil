@@ -13,6 +13,7 @@ from .fixes import (
     preview_safe_fixes,
 )
 from .formatter import (
+    code_section_separator_line,
     enable_ansi_if_windows,
     format_report,
     format_unified_diff,
@@ -115,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         use_color = should_use_color()
         print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.safe_fix_plan", count=len(preview.applied)))
+        print(code_section_separator_line(color=use_color))
         print(
             format_unified_diff(
                 strip_unified_diff_file_headers(preview.diff),
@@ -122,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         if args.preview_changes:
+            print(code_section_separator_line(color=use_color))
             print(tr("cli.safe_fix_preview_only"))
             return 0
 
@@ -132,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
         result = apply_safe_fixes(bundle, findings)
+        print(code_section_separator_line(color=use_color))
         if result.backup_path is not None:
             print(tr("cli.safe_fix_backup", path=str(result.backup_path)))
         for applied in result.applied:
@@ -153,6 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         use_color = should_use_color()
         print(tr("cli.fix_file", path=str(bundle.primary_path)))
         print(tr("cli.all_fix_plan", summary=_all_fix_plan_summary(preview)))
+        print(code_section_separator_line(color=use_color))
         print(
             format_unified_diff(
                 strip_unified_diff_file_headers(preview.diff),
@@ -160,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         if args.preview_changes:
+            print(code_section_separator_line(color=use_color))
             print(tr("cli.all_fix_preview_only"))
             return 0
 
@@ -170,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
         result = apply_all_fixes(bundle, findings)
+        print(code_section_separator_line(color=use_color))
         if result.backup_path is not None:
             print(tr("cli.safe_fix_backup", path=str(result.backup_path)))
         for applied in result.safe_applied:
