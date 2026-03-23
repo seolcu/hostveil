@@ -16,7 +16,7 @@ Implement in two sequential phases:
 
 1. **Python CLI prototype** (`proto/`, weeks 3–8): Implement all core logic in Python. Validate the rule engine, scoring model, and Quick Fix behaviour against real Docker Compose configurations. Python allows fast iteration and easy refactoring during the discovery phase.
 
-2. **Rust TUI** (`src/`, weeks 8–14): Port the validated logic to Rust. Add the terminal dashboard UI using `ratatui` (or equivalent — see ADR 0002). The Rust binary is self-contained, fast, and suitable for distribution via `cargo install` or a shell installer script.
+2. **Rust TUI** (`src/`, weeks 8–14): Port the validated logic to Rust. Add the terminal dashboard UI using `ratatui` + `crossterm` (see ADR 0003). The Rust binary is self-contained, fast, and suitable for distribution via `cargo install` or a shell installer script.
 
 ## Consequences
 

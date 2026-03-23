@@ -1,0 +1,163 @@
+app:
+  name: "hostveil"
+  status:
+    bootstrap: "Rust bootstrap is ready; the real TUI and scan engine land next."
+    no_target: "No scan target selected yet. Pass --compose PATH to validate the Rust parser pipeline."
+    compose_loaded: "Loaded %{count} service(s) from %{path}"
+    host_loaded: "Loaded host checks from %{path}"
+    compose_and_host_loaded: "Loaded %{count} service(s) from %{path} with host checks enabled"
+  help:
+    text: |
+      hostveil
+
+      Usage:
+        hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil --help
+
+      Options:
+        --compose PATH  parse a Compose file or directory through the Rust pipeline
+        --host-root PATH  inspect host configuration files from a Linux root or snapshot
+        --json          emit scan result JSON instead of launching the TUI
+        -h, --help      show this help message
+  hint:
+    quit: "Press q or Esc to quit"
+    json: "Use --json to inspect the current scan result structure"
+  panel:
+    status: "Status"
+    hints: "Hints"
+    next_steps: "Next Steps"
+    next_step_one: "Implement the generalized findings model and scan pipeline"
+    next_step_two: "Port the Compose parser and rule engine into Rust"
+    next_step_three: "Replace this placeholder with the real dashboard overview"
+  summary:
+    title: "Current Scan Context"
+    none: "No Compose target loaded"
+    compose_file: "Compose file: %{path}"
+    compose_root: "Working directory: %{path}"
+    host_root: "Host root: %{path}"
+    loaded_files: "Loaded file count: %{count}"
+    service_count: "Service count: %{count}"
+    overall_score: "Overall score: %{score}"
+    finding_count: "Finding count: %{count}"
+  error:
+    unknown_argument: "unknown argument: %{argument}"
+    missing_argument_value: "missing value for argument: %{flag}"
+    compose_path_missing: "compose path does not exist: %{path}"
+    compose_file_not_found: "compose file was not found in directory: %{path}"
+    compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"
+    compose_missing_services: "no services were found in %{path}"
+    compose_io: "failed to read %{path}: %{message}"
+    io: "application error: %{message}"
+    json_export_failed: "failed to serialize the current scan result"
+    missing_translation: "missing translation for key: %{key}"
+finding:
+  updates:
+    latest:
+      title: "Image uses the latest tag"
+      description: "%{service} uses %{image}, which tracks a moving target instead of a stable version."
+      why: "A moving tag makes deployments harder to reproduce and can pull breaking changes without warning."
+      fix: "Pin the image to a specific version or digest before the next deploy."
+    no_tag:
+      title: "Image is missing an explicit tag"
+      description: "%{service} uses %{image} without an explicit tag."
+      why: "Images without a tag implicitly resolve to latest-like behavior and make updates unpredictable."
+      fix: "Add a stable, explicit tag such as a pinned release version."
+    major_only:
+      title: "Image is only pinned to a major version"
+      description: "%{service} uses %{image}, which pins only the major version."
+      why: "Major-only tags can still move to new minor or patch releases with behavior changes."
+      fix: "Pin at least a minor or patch version for predictable rollouts."
+  exposure:
+    public_bind:
+      title: "Service is published on a public interface"
+      description: "%{service} publishes %{port} on a publicly reachable host interface."
+      why: "Public bindings increase the attack surface and can bypass a safer localhost-only or reverse-proxy setup."
+      fix: "Bind the port to 127.0.0.1 unless the service truly needs direct external access."
+    admin_public:
+      title: "Admin interface is exposed publicly"
+      description: "%{service} exposes an administrative interface on %{port}."
+      why: "Public admin panels are high-value targets for brute force, enumeration, and exploit attempts."
+      fix: "Put the admin interface behind a private network or reverse proxy with authentication."
+    reverse_proxy:
+      title: "Service should sit behind a reverse proxy"
+      description: "%{service} is directly published on %{port} even though it is usually safer behind a reverse proxy."
+      why: "Directly publishing user-facing apps makes TLS, auth hardening, and access control easier to miss."
+      fix: "Route the service through a reverse proxy and remove the direct public port where possible."
+  permissions:
+    privileged:
+      title: "Container runs in privileged mode"
+      description: "%{service} enables privileged mode."
+      why: "Privileged containers get broad kernel and device access that sharply increases breakout impact."
+      fix: "Drop privileged mode and grant only the minimal capabilities the service actually needs."
+    root:
+      title: "Container runs as root"
+      description: "%{service} is configured to run as root."
+      why: "A compromised root container has a larger blast radius and makes host escapes more dangerous."
+      fix: "Configure the service to run as a non-root UID/GID where supported."
+    implicit_root:
+      title: "Container does not set a user"
+      description: "%{service} does not set a user, so it likely runs as root by default."
+      why: "Many images default to root, which grants more filesystem and process access than needed."
+      fix: "Set an explicit non-root user in the compose file when the image supports it."
+    host_network:
+      title: "Container uses host networking"
+      description: "%{service} uses network_mode: host."
+      why: "Host networking removes network isolation and can expose more ports and traffic than intended."
+      fix: "Use bridge networking unless the service has a strong, documented need for host mode."
+    sensitive_mount:
+      title: "Container mounts a sensitive host path"
+      description: "%{service} mounts the sensitive host path %{path}."
+      why: "Mounting sensitive host paths can expose secrets, host control sockets, or broad filesystem access to the container."
+      fix: "Remove the mount or replace it with a narrower path that exposes only the required data."
+  sensitive:
+    inline_secret:
+      title: "Service hardcodes a secret in environment"
+      description: "%{service} sets the sensitive variable %{variable} directly in environment."
+      why: "Inline secrets are easy to leak through version control, backups, and process inspection."
+      fix: "Move the secret to Docker secrets, an external secret manager, or a protected env file outside version control."
+    default_credential:
+      title: "Service uses a default or empty credential"
+      description: "%{service} sets %{variable} to a default or empty credential."
+      why: "Default credentials are widely known and are often the first thing attackers try."
+      fix: "Set a unique secret value and keep it outside the compose file where possible."
+    env_file_secret:
+      title: "Referenced env file contains plaintext secrets"
+      description: "%{service} references %{env_file}, which contains plaintext secret values."
+      why: "Plaintext env files are frequently copied into backups, shells, and repositories without adequate protection."
+      fix: "Move secrets to Docker secrets or ensure the env file is protected and excluded from version control."
+  host:
+    ssh_root_login:
+      title: "SSH root login is enabled"
+      description: "%{path} allows root login with PermitRootLogin %{value}."
+      why: "Allowing direct root login gives attackers one high-value account to target and removes an extra privilege boundary after compromise."
+      fix: "Set PermitRootLogin no and use a non-root account with sudo for administrative access."
+    ssh_password_auth:
+      title: "SSH password authentication is enabled"
+      description: "%{path} enables PasswordAuthentication yes."
+      why: "Password-based SSH login is easier to brute force, phish, or reuse across hosts than key-based authentication."
+      fix: "Disable PasswordAuthentication after verifying that administrators can log in with SSH keys."
+    ssh_empty_passwords:
+      title: "SSH allows empty passwords"
+      description: "%{path} enables PermitEmptyPasswords yes."
+      why: "Permitting empty passwords can expose the host to trivial compromise if any login-capable account is misconfigured."
+      fix: "Set PermitEmptyPasswords no and review local user accounts for weak or missing credentials."
+    ssh_pubkey_auth:
+      title: "SSH public key authentication is disabled"
+      description: "%{path} sets PubkeyAuthentication no."
+      why: "Disabling public key authentication pushes administrators toward weaker password-based access or other less auditable workarounds."
+      fix: "Set PubkeyAuthentication yes and enroll administrator keys before disabling password-based SSH login."
+    docker_socket_world_writable:
+      title: "Docker socket is world writable"
+      description: "%{path} is writable by all local users with mode %{mode}."
+      why: "Anyone who can write to the Docker socket can control containers and often gain root-equivalent access on the host."
+      fix: "Restrict the socket to root and the intended admin group, then audit which users belong to that group."
+    docker_socket_world_readable:
+      title: "Docker socket is world readable"
+      description: "%{path} is readable by all local users with mode %{mode}."
+      why: "Broad read access can leak sensitive runtime and image metadata and often indicates weak Docker socket access control."
+      fix: "Restrict socket permissions to root and the intended admin group."
+    docker_daemon_tcp_public:
+      title: "Docker daemon exposes a TCP listener"
+      description: "%{path} configures Docker to listen on a non-local TCP host."
+      why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
+      fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
