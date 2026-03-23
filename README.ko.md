@@ -1,4 +1,4 @@
-English | **[한국어](README.ko.md)**
+**[English](README.md)** | 한국어
 
 # hostveil
 

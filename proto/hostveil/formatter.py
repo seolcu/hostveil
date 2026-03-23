@@ -47,7 +47,7 @@ AXIS_DISPLAY_ORDER = (
 
 def should_use_color() -> bool:
     """Use ANSI styles unless NO_COLOR is set (https://no-color.org/)."""
-    return os.environ.get("NO_COLOR", "").strip() == ""
+    return "NO_COLOR" not in os.environ
 
 
 def enable_ansi_if_windows() -> None:
