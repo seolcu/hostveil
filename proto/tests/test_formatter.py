@@ -52,7 +52,9 @@ def test_format_report_sorts_findings_and_supports_plain_output() -> None:
     output = format_report(report, findings, "docker-compose.yml", color=False)
 
     assert "\u001b[" not in output
+    assert output.index("Affected service: svc") < output.index("[CRITICAL] Privileged")
     assert output.index("[CRITICAL] Privileged") < output.index("[HIGH] Inline secret")
+    assert output.count("Affected service: svc") == 1
     assert "Overall safety score: 74/100 (100 = safest)" in output
     assert "Sensitive data exposure: 25" in output
 
@@ -90,6 +92,54 @@ def test_format_report_colors_why_risky_and_how_to_fix() -> None:
     assert "\u001b[1m\u001b[32mHow to fix:" in output
     assert "Why risky: because" in output
     assert "How to fix: do this" in output
+
+
+def test_format_report_groups_findings_by_service_with_separator() -> None:
+    report = ScoreReport(
+        overall=50,
+        axis_scores={
+            Axis.SENSITIVE_DATA: 100,
+            Axis.EXCESSIVE_PERMISSIONS: 100,
+            Axis.UNNECESSARY_EXPOSURE: 100,
+            Axis.UPDATE_RISK: 100,
+        },
+        finding_counts={
+            Severity.CRITICAL: 0,
+            Severity.HIGH: 2,
+            Severity.MEDIUM: 0,
+            Severity.LOW: 0,
+        },
+    )
+    findings = [
+        Finding(
+            check_id="b",
+            axis=Axis.EXCESSIVE_PERMISSIONS,
+            severity=Severity.HIGH,
+            title="B",
+            description="db",
+            why_risky="wb",
+            how_to_fix="fb",
+            affected_service="nginx",
+        ),
+        Finding(
+            check_id="a",
+            axis=Axis.SENSITIVE_DATA,
+            severity=Severity.HIGH,
+            title="A",
+            description="da",
+            why_risky="wa",
+            how_to_fix="fa",
+            affected_service="vaultwarden",
+        ),
+    ]
+    output = format_report(report, findings, "c.yml", color=False)
+
+    nx = output.index("Affected service: nginx")
+    vw = output.index("Affected service: vaultwarden")
+    assert nx < vw
+    sep = "-" * 50
+    assert nx < output.index(sep) < vw
+    assert output.count("Affected service:") == 2
 
 
 def test_format_unified_diff_colors_add_and_remove_lines() -> None:

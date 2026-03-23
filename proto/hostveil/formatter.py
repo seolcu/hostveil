@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections import defaultdict
 
 from .i18n import tr
 from .models import Axis, Finding, ScoreReport, SEVERITY_ORDER, Severity
@@ -16,6 +17,9 @@ FG_YELLOW = "\033[33m"
 FG_GREEN = "\033[32m"
 FG_ORANGE = "\033[38;5;208m"
 FG_CYAN = "\033[36m"
+FG_GRAY = "\033[90m"
+
+FINDINGS_SERVICE_SEPARATOR_WIDTH = 50
 # Unified diff: full-line background (high-contrast foreground on each)
 BG_RED = "\033[41m"
 BG_GREEN = "\033[42m"
@@ -94,38 +98,54 @@ def format_report(
         ]
     )
 
-    ordered_findings = sorted(
-        findings,
-        key=lambda finding: (
-            SEVERITY_ORDER[finding.severity],
-            finding.affected_service,
-            finding.check_id,
-        ),
-    )
-    if not ordered_findings:
+    if not findings:
         lines.append(tr("cli.no_findings"))
         return "\n".join(lines)
 
-    for finding in ordered_findings:
-        severity_label = _style(
-            finding.severity.value.upper(),
-            SEVERITY_COLORS[finding.severity],
-            color=color,
-            bold=True,
-        )
-        why_line = tr("cli.why_risky", text=finding.why_risky)
-        fix_line = tr("cli.how_to_fix", text=finding.how_to_fix)
-        lines.extend(
-            [
-                f"- [{severity_label}] {finding.title}",
-                f"  {tr('cli.affected_service', service=finding.affected_service)}",
-                f"  {tr('cli.description', description=finding.description)}",
-                f"  {_style(why_line, FG_ORANGE, color=color, bold=True)}",
-                f"  {_style(fix_line, FG_GREEN, color=color, bold=True)}",
-            ]
-        )
+    by_service = _group_findings_by_service(findings)
+    for index, (service_name, service_findings) in enumerate(by_service):
+        if index > 0:
+            lines.append(_findings_service_separator(color=color))
+        lines.append(tr("cli.affected_service", service=service_name))
+        for finding in service_findings:
+            severity_label = _style(
+                finding.severity.value.upper(),
+                SEVERITY_COLORS[finding.severity],
+                color=color,
+                bold=True,
+            )
+            why_line = tr("cli.why_risky", text=finding.why_risky)
+            fix_line = tr("cli.how_to_fix", text=finding.how_to_fix)
+            lines.extend(
+                [
+                    f"- [{severity_label}] {finding.title}",
+                    f"  {tr('cli.description', description=finding.description)}",
+                    f"  {_style(why_line, FG_ORANGE, color=color, bold=True)}",
+                    f"  {_style(fix_line, FG_GREEN, color=color, bold=True)}",
+                ]
+            )
 
     return "\n".join(lines)
+
+
+def _group_findings_by_service(
+    findings: list[Finding],
+) -> list[tuple[str, list[Finding]]]:
+    grouped: dict[str, list[Finding]] = defaultdict(list)
+    for finding in findings:
+        grouped[finding.affected_service].append(finding)
+    for svc in grouped:
+        grouped[svc].sort(
+            key=lambda f: (SEVERITY_ORDER[f.severity], f.check_id),
+        )
+    return sorted(grouped.items(), key=lambda item: item[0])
+
+
+def _findings_service_separator(*, color: bool) -> str:
+    line = "-" * FINDINGS_SERVICE_SEPARATOR_WIDTH
+    if not color:
+        return line
+    return f"{FG_GRAY}{line}{RESET}"
 
 
 def format_unified_diff(diff: str, *, color: bool) -> str:
