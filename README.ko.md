@@ -17,7 +17,7 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 - **서비스 인식 규칙 점검** — 각 서비스의 데이터 위치와 설정 구조에 맞춘 점검
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
 - **quick-fix** — 낮은 위험 항목만 한 명령으로 자동 수정
-- **patch** — 안전한 자동 수정과 가이드 기반 수정(예: privileged 컨테이너)을 한 번에 compose 파일에 반영(백업·확인 포함)
+- **fix** — 안전 수정과 검토가 필요한 가이드 기반 수정까지 한 번에 적용하며, 미리보기·백업·확인을 지원
 
 ## 점검 항목
 
@@ -45,7 +45,7 @@ Compose 파일 또는 디렉터리를 대상으로 프로토타입 CLI를 실행
 ```sh
 python -m hostveil scan path/to/docker-compose.yml
 python -m hostveil quick-fix path/to/docker-compose.yml --preview-changes --yes
-python -m hostveil patch path/to/docker-compose.yml --preview-changes --yes
+python -m hostveil fix path/to/docker-compose.yml --preview-changes --yes
 ```
 
 ## 현황
@@ -62,7 +62,7 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - 심각도 카운트와 축별 점수를 포함한 점수화 모델
 - `--no-color`를 지원하는 터미널 스캔 리포트
 - 백업, 변경 미리보기(`--preview-changes`), 확인 절차를 포함한 `quick-fix` 흐름
-- 안전 수정과 가이드 수정을 한 번에 적용하는 `patch` 흐름
+- 안전 수정과 검토가 필요한 가이드 수정까지 함께 적용하는 `fix` 흐름
 
 ## 기여
 

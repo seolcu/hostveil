@@ -24,42 +24,63 @@ from .scanner import scan_project
 from .scoring import build_score_report
 
 
-def _patch_plan_summary(preview: AllFixesResult) -> str:
+def _all_fix_plan_summary(preview: AllFixesResult) -> str:
     parts: list[str] = []
     if preview.safe_applied:
-        parts.append(tr("cli.patch_part_safe", count=len(preview.safe_applied)))
+        parts.append(tr("cli.all_fix_part_safe", count=len(preview.safe_applied)))
     if preview.guided_changed:
-        parts.append(tr("cli.patch_part_guided"))
+        parts.append(tr("cli.all_fix_part_guided"))
     return ", ".join(parts)
+
+
+def _add_common_output_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help=tr("cli.help.no_color"),
+    )
+
+
+def _add_common_fix_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("path")
+    parser.add_argument(
+        "--preview-changes",
+        action="store_true",
+        help=tr("cli.help.preview_changes"),
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help=tr("cli.help.yes"),
+    )
+    _add_common_output_arguments(parser)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hostveil")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    scan_parser = subparsers.add_parser("scan")
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help=tr("cli.help.scan"),
+        description=tr("cli.help.scan"),
+    )
     scan_parser.add_argument("path")
-    scan_parser.add_argument("--no-color", action="store_true")
+    _add_common_output_arguments(scan_parser)
 
-    quick_fix_parser = subparsers.add_parser("quick-fix")
-    quick_fix_parser.add_argument("path")
-    quick_fix_parser.add_argument(
-        "--preview-changes",
-        action="store_true",
-        help="Show what would change without modifying any files",
+    quick_fix_parser = subparsers.add_parser(
+        "quick-fix",
+        help=tr("cli.help.quick_fix"),
+        description=tr("cli.help.quick_fix"),
     )
-    quick_fix_parser.add_argument("--yes", action="store_true")
-    quick_fix_parser.add_argument("--no-color", action="store_true")
+    _add_common_fix_arguments(quick_fix_parser)
 
-    patch_parser = subparsers.add_parser("patch")
-    patch_parser.add_argument("path")
-    patch_parser.add_argument(
-        "--preview-changes",
-        action="store_true",
-        help="Show what would change without modifying any files",
+    fix_parser = subparsers.add_parser(
+        "fix",
+        help=tr("cli.help.fix"),
+        description=tr("cli.help.fix"),
     )
-    patch_parser.add_argument("--yes", action="store_true")
-    patch_parser.add_argument("--no-color", action="store_true")
+    _add_common_fix_arguments(fix_parser)
 
     return parser
 
@@ -120,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             print(tr("cli.safe_fix_applied", summary=applied.summary))
         return 0
 
-    if args.command == "patch":
+    if args.command == "fix":
         try:
             bundle, findings = load_fix_context(args.path)
         except ComposeParseError as error:
@@ -129,20 +150,20 @@ def main(argv: list[str] | None = None) -> int:
 
         preview = preview_all_fixes(bundle, findings)
         if not preview.changed:
-            print(tr("cli.patch_fix_none"))
+            print(tr("cli.all_fix_none"))
             return 0
 
         use_color = should_use_color(no_color_cli_flag=args.no_color)
-        print(tr("cli.patch_fix_plan", summary=_patch_plan_summary(preview)))
+        print(tr("cli.all_fix_plan", summary=_all_fix_plan_summary(preview)))
         print(format_unified_diff(preview.diff, color=use_color))
         if args.preview_changes:
-            print(tr("cli.patch_fix_preview_only"))
+            print(tr("cli.all_fix_preview_only"))
             return 0
 
         if not args.yes:
-            answer = input(tr("cli.patch_fix_prompt", path=str(bundle.primary_path)))
+            answer = input(tr("cli.all_fix_prompt", path=str(bundle.primary_path)))
             if answer.strip().lower() not in {"y", "yes"}:
-                print(tr("cli.patch_fix_cancelled"))
+                print(tr("cli.all_fix_cancelled"))
                 return 0
 
         result = apply_all_fixes(bundle, findings)
@@ -151,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         for applied in result.safe_applied:
             print(tr("cli.safe_fix_applied", summary=applied.summary))
         if result.guided_changed:
-            print(tr("cli.patch_guided_applied"))
+            print(tr("cli.all_fix_guided_applied"))
         return 0
 
     parser.error(f"Unknown command: {args.command}")

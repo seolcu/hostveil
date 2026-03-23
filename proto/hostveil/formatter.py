@@ -36,7 +36,7 @@ def should_use_color(*, no_color_cli_flag: bool) -> bool:
     """Use ANSI styles unless the user opted out (--no-color or NO_COLOR)."""
     if no_color_cli_flag:
         return False
-    return os.environ.get("NO_COLOR", "").strip() == ""
+    return "NO_COLOR" not in os.environ
 
 
 def enable_ansi_if_windows() -> None:

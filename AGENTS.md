@@ -7,7 +7,7 @@ Keep this file concise. It is not a substitute for README or docs — it covers 
 
 hostveil is a **lightweight TUI security dashboard for self-hosted Docker Compose environments**.
 
-It audits Docker Compose setups across four axes: sensitive data exposure, excessive permissions, unnecessary external exposure, and update/maintenance risk. Results are scored like Chrome Lighthouse: prioritized by severity, each finding paired with an explanation and a fix path. A Quick Fix feature applies safe changes automatically and provides patch drafts for riskier ones.
+It audits Docker Compose setups across four axes: sensitive data exposure, excessive permissions, unnecessary external exposure, and update/maintenance risk. Results are scored like Chrome Lighthouse: prioritized by severity, each finding paired with an explanation and a fix path. The prototype currently offers a safe `quick-fix` flow and a broader `fix` flow that can also apply review-required guided changes after preview and confirmation.
 
 **Target users:** Self-hosters running services like Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich on a single Linux server.
 

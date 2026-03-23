@@ -17,7 +17,7 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 - **Service-aware Rule Checks** — checks tailored to each service's known data locations and config structure
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **quick-fix** — one-command auto-fix for safe, low-risk items
-- **patch** — applies every available fix at once (safe fixes plus guided changes such as privileged containers), with backup and confirmation
+- **fix** — applies every available fix at once, including review-required guided changes, with preview, backup, and confirmation
 
 ## Audit Axes
 
@@ -45,7 +45,7 @@ Run the prototype CLI against a Compose file or directory:
 ```sh
 python -m hostveil scan path/to/docker-compose.yml
 python -m hostveil quick-fix path/to/docker-compose.yml --preview-changes --yes
-python -m hostveil patch path/to/docker-compose.yml --preview-changes --yes
+python -m hostveil fix path/to/docker-compose.yml --preview-changes --yes
 ```
 
 ## Status
@@ -62,7 +62,7 @@ Current prototype coverage:
 - Scoring model with severity counts and per-category safety scores
 - Terminal scan report with `--no-color` support
 - `quick-fix` flow with backup, preview-only diff (`--preview-changes`), and confirmation
-- `patch` flow that combines safe and guided fixes in one write to the compose file
+- `fix` flow that combines safe fixes with review-required guided changes in one write to the compose file
 
 ## Contributing
 

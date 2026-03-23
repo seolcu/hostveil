@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hostveil.cli import main
+from hostveil.cli import build_parser, main
 from hostveil.formatter import format_report, format_unified_diff, should_use_color
 from hostveil.models import Axis, Finding, ScoreReport, Severity
 
@@ -107,8 +107,20 @@ def test_should_use_color_respects_cli_and_no_color_env(monkeypatch) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
     assert should_use_color(no_color_cli_flag=False) is True
     assert should_use_color(no_color_cli_flag=True) is False
+    monkeypatch.setenv("NO_COLOR", "")
+    assert should_use_color(no_color_cli_flag=False) is False
     monkeypatch.setenv("NO_COLOR", "1")
     assert should_use_color(no_color_cli_flag=False) is False
+
+
+def test_cli_help_describes_fix_command_split() -> None:
+    help_output = build_parser().format_help()
+
+    assert "quick-fix" in help_output
+    assert "Apply only safe, low-risk fixes." in help_output
+    assert "fix" in help_output
+    assert "Apply every available fix" in help_output
+    assert "review-required" in help_output
 
 
 def test_cli_scan_renders_summary_without_color(capsys) -> None:
