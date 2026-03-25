@@ -33,9 +33,13 @@ app:
     json: "Use --json to inspect the current scan result structure"
     open_findings: "Press Enter or Right to inspect findings"
     switch_focus: "Press Tab, Left, or Right to switch focus"
+    switch_focus_compact: "Tab or Left/Right switch focus"
     list_move: "Use Arrow keys or j/k to move through findings"
+    list_move_compact: "Up/Down or j/k move"
     detail_scroll: "Use Arrow keys, j/k, or PageUp/PageDown to scroll detail"
+    detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn scroll"
     back_overview: "Press q or Esc to return to the overview"
+    back_overview_compact: "q or Esc back"
   footer:
     quit: "quit"
     findings: "open findings"
