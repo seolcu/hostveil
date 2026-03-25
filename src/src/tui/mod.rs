@@ -152,6 +152,7 @@ enum OverviewLayoutMode {
 enum FindingsLayoutMode {
     SideBySide,
     Stacked,
+    Narrow,
 }
 
 pub fn run(scan_result: &ScanResult) -> io::Result<()> {
@@ -336,6 +337,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult) {
 }
 
 fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
+    let mode = findings_layout_mode(frame.area());
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -345,7 +347,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         ])
         .split(frame.area());
 
-    let content = match findings_layout_mode(frame.area()) {
+    let content = match mode {
         FindingsLayoutMode::SideBySide => Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
@@ -354,16 +356,23 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
             .split(layout[1]),
+        FindingsLayoutMode::Narrow => Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+            .split(layout[1]),
     };
 
-    frame.render_widget(findings_header(scan_result, state), layout[0]);
+    frame.render_widget(
+        findings_header(scan_result, state, layout[0].width, mode),
+        layout[0],
+    );
 
     let mut list_state = ListState::default();
     if state.finding_count() > 0 {
         list_state.select(Some(state.selected_index));
     }
 
-    let list = List::new(findings_list_items(scan_result))
+    let list = List::new(findings_list_items(scan_result, content[0].width, mode))
         .block(
             Block::default()
                 .title(findings_list_title(state.findings_focus))
@@ -382,7 +391,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             state.findings_focus == FindingsFocus::Detail,
         ));
     let detail_inner = detail_block.inner(content[1]);
-    let detail_text = finding_detail_text(scan_result, state);
+    let detail_text = finding_detail_text(scan_result, state, detail_inner.width, mode);
     let detail_content_height = estimated_wrapped_text_height(&detail_text, detail_inner.width);
     let detail_max_scroll = detail_content_height.saturating_sub(detail_inner.height as usize);
     state.clamp_detail_scroll(detail_max_scroll);
@@ -401,7 +410,10 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         detail_inner.height,
         state,
     );
-    frame.render_widget(findings_footer(state.findings_focus), layout[2]);
+    frame.render_widget(
+        findings_footer(state.findings_focus, layout[2].width, mode),
+        layout[2],
+    );
 }
 
 fn overview_layout_mode(area: Rect) -> OverviewLayoutMode {
@@ -417,8 +429,10 @@ fn overview_layout_mode(area: Rect) -> OverviewLayoutMode {
 fn findings_layout_mode(area: Rect) -> FindingsLayoutMode {
     if area.width >= 96 && area.height >= 24 {
         FindingsLayoutMode::SideBySide
-    } else {
+    } else if area.width >= 72 && area.height >= 18 {
         FindingsLayoutMode::Stacked
+    } else {
+        FindingsLayoutMode::Narrow
     }
 }
 
@@ -627,84 +641,158 @@ fn overview_footer() -> Paragraph<'static> {
     .block(Block::default().borders(Borders::TOP))
 }
 
-fn findings_header(scan_result: &ScanResult, state: &AppState) -> Paragraph<'static> {
+fn findings_header(
+    scan_result: &ScanResult,
+    state: &AppState,
+    available_width: u16,
+    mode: FindingsLayoutMode,
+) -> Paragraph<'static> {
+    let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let text = if state.finding_count() == 0 {
         t!("app.finding.empty_status").into_owned()
-    } else {
-        t!(
+    } else if mode == FindingsLayoutMode::SideBySide {
+        let selection = t!(
             "app.finding.status",
             index = state.selected_index + 1,
             count = state.finding_count(),
             focus = focus_label(state.findings_focus)
         )
-        .into_owned()
+        .into_owned();
+        let scan_status = compose_status(scan_result);
+        truncate_text(&format!("{} | {}", selection, scan_status), inner_width)
+    } else {
+        truncate_text(
+            &format!(
+                "{}/{} | {}",
+                state.selected_index + 1,
+                state.finding_count(),
+                focus_label(state.findings_focus)
+            ),
+            inner_width,
+        )
     };
 
-    Paragraph::new(Text::from(vec![
-        Line::styled(
-            t!("app.finding.header").into_owned(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Line::raw(format!("{} | {}", text, compose_status(scan_result))),
-    ]))
-    .block(
-        Block::default()
-            .title(t!("app.panel.status").into_owned())
-            .borders(Borders::ALL),
-    )
-    .wrap(Wrap { trim: true })
+    Paragraph::new(text)
+        .block(
+            Block::default()
+                .title(t!("app.panel.status").into_owned())
+                .borders(Borders::ALL),
+        )
+        .wrap(Wrap { trim: true })
 }
 
-fn findings_footer(focus: FindingsFocus) -> Paragraph<'static> {
+fn findings_footer(
+    focus: FindingsFocus,
+    available_width: u16,
+    mode: FindingsLayoutMode,
+) -> Paragraph<'static> {
+    let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let movement = match focus {
+        FindingsFocus::List if mode == FindingsLayoutMode::Narrow => {
+            t!("app.hint.list_move_compact").into_owned()
+        }
+        FindingsFocus::Detail if mode == FindingsLayoutMode::Narrow => {
+            t!("app.hint.detail_scroll_compact").into_owned()
+        }
         FindingsFocus::List => t!("app.hint.list_move").into_owned(),
         FindingsFocus::Detail => t!("app.hint.detail_scroll").into_owned(),
     };
+    let controls = if mode == FindingsLayoutMode::Narrow {
+        format!(
+            "{} | {}",
+            t!("app.hint.switch_focus_compact").into_owned(),
+            t!("app.hint.back_overview_compact").into_owned()
+        )
+    } else {
+        format!(
+            "{} | {}",
+            t!("app.hint.switch_focus").into_owned(),
+            t!("app.hint.back_overview").into_owned()
+        )
+    };
 
     Paragraph::new(Text::from(vec![
-        Line::raw(movement),
-        Line::raw(t!("app.hint.switch_focus").into_owned()),
-        Line::raw(t!("app.hint.back_overview").into_owned()),
+        Line::raw(truncate_text(&movement, inner_width)),
+        Line::raw(truncate_text(&controls, inner_width)),
     ]))
     .block(Block::default().borders(Borders::TOP))
     .wrap(Wrap { trim: true })
 }
 
-fn findings_list_items(scan_result: &ScanResult) -> Vec<ListItem<'static>> {
+fn findings_list_items(
+    scan_result: &ScanResult,
+    available_width: u16,
+    mode: FindingsLayoutMode,
+) -> Vec<ListItem<'static>> {
     if scan_result.findings.is_empty() {
         return vec![ListItem::new(t!("app.finding.empty_title").into_owned())];
     }
+
+    let inner_width = available_width.saturating_sub(2).max(16) as usize;
 
     sorted_finding_indices(scan_result)
         .into_iter()
         .filter_map(|index| scan_result.findings.get(index))
         .map(|finding| {
-            let title = format!(
-                "[{}] {}",
-                severity_short_label(finding.severity),
-                finding.title
-            );
-            let meta = format!(
-                "{} | {} | {}",
-                source_label(finding.source),
-                scope_label(finding.scope),
-                finding.subject
+            let compact_subject = finding_list_subject(finding);
+            let title = truncate_text(
+                &format!(
+                    "[{}] {}",
+                    severity_short_label(finding.severity),
+                    finding.title
+                ),
+                inner_width,
             );
 
-            ListItem::new(Text::from(vec![
-                Line::styled(
-                    title,
+            match mode {
+                FindingsLayoutMode::Narrow => ListItem::new(Line::styled(
+                    truncate_text(
+                        &format!(
+                            "[{}] {} - {}",
+                            severity_short_label(finding.severity),
+                            finding.title,
+                            compact_subject
+                        ),
+                        inner_width,
+                    ),
                     severity_style(finding.severity).add_modifier(Modifier::BOLD),
-                ),
-                Line::raw(meta),
-            ]))
+                )),
+                FindingsLayoutMode::Stacked => ListItem::new(Text::from(vec![
+                    Line::styled(
+                        title,
+                        severity_style(finding.severity).add_modifier(Modifier::BOLD),
+                    ),
+                    Line::raw(truncate_text(
+                        &format!("{} | {}", source_label(finding.source), compact_subject),
+                        inner_width,
+                    )),
+                ])),
+                FindingsLayoutMode::SideBySide => ListItem::new(Text::from(vec![
+                    Line::styled(
+                        title,
+                        severity_style(finding.severity).add_modifier(Modifier::BOLD),
+                    ),
+                    Line::raw(truncate_text(
+                        &format!(
+                            "{} | {} | {}",
+                            source_label(finding.source),
+                            scope_label(finding.scope),
+                            finding.subject
+                        ),
+                        inner_width,
+                    )),
+                ])),
+            }
         })
         .collect()
 }
 
-fn finding_detail_text(scan_result: &ScanResult, state: &AppState) -> Text<'static> {
+fn finding_detail_text(
+    scan_result: &ScanResult,
+    state: &AppState,
+    available_width: u16,
+    mode: FindingsLayoutMode,
+) -> Text<'static> {
     let Some(finding) = state.selected_finding(scan_result) else {
         return Text::from(vec![
             Line::styled(
@@ -715,20 +803,36 @@ fn finding_detail_text(scan_result: &ScanResult, state: &AppState) -> Text<'stat
         ]);
     };
 
+    let compact = mode == FindingsLayoutMode::Narrow || available_width < 52;
+
     let mut lines = vec![
         Line::styled(
             finding.title.clone(),
             severity_style(finding.severity).add_modifier(Modifier::BOLD),
         ),
-        Line::raw(format!(
-            "{} | {} | {}",
-            source_label(finding.source),
-            scope_label(finding.scope),
-            finding.subject
-        )),
+        Line::raw(if compact {
+            truncate_text(
+                &format!(
+                    "{} | {} | {}",
+                    severity_label(finding.severity),
+                    source_label(finding.source),
+                    finding_list_subject(finding)
+                ),
+                available_width.max(16) as usize,
+            )
+        } else {
+            format!(
+                "{} | {} | {}",
+                source_label(finding.source),
+                scope_label(finding.scope),
+                finding.subject
+            )
+        }),
     ];
 
-    if let Some(service) = &finding.related_service {
+    if let Some(service) = &finding.related_service
+        && (!compact || service != &finding.subject)
+    {
         lines.push(Line::raw(String::new()));
         lines.push(Line::styled(
             t!("app.finding.related_service_label").into_owned(),
@@ -764,6 +868,13 @@ fn finding_detail_text(scan_result: &ScanResult, state: &AppState) -> Text<'stat
     }
 
     Text::from(lines)
+}
+
+fn finding_list_subject(finding: &Finding) -> String {
+    finding
+        .related_service
+        .clone()
+        .unwrap_or_else(|| finding.subject.clone())
 }
 
 fn detail_section(label: String, value: &str) -> Vec<Line<'static>> {
@@ -1784,6 +1895,26 @@ mod tests {
         assert!(content.contains("Findings"));
         assert!(content.contains("Detail"));
         assert!(state.detail_scroll < u16::MAX);
+    }
+
+    #[test]
+    fn narrow_findings_view_uses_compact_copy_and_rows() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(60, 20)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("narrow findings view should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(content.contains("[CRIT] Admin interface is exposed publicly - adminer"));
+        assert!(content.contains("Critical | Native Compose | adminer"));
+        assert!(content.contains("Tab or Left/Right switch focus"));
+        assert!(content.contains("q or Esc back"));
+        assert!(!content.contains("PageUp/PageDown"));
     }
 
     fn buffer_to_string(backend: &TestBackend) -> String {
