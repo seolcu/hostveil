@@ -6,6 +6,7 @@ i18n!("locales", fallback = "en");
 pub mod adapters;
 pub mod app;
 pub mod compose;
+pub mod discovery;
 pub mod domain;
 pub mod export;
 pub mod fix;

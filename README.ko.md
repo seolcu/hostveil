@@ -49,6 +49,10 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 rustup default stable
 cargo build
 cargo run -- --help
+cargo run
+cargo run -- --json
+
+# 스냅샷/타깃 테스트용 고급 override
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 ```
@@ -106,6 +110,7 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - override 병합과 정규화를 포함한 Compose parser 포팅 및 parity 테스트 추가
 - 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 일부 포팅하고 fixture 테스트로 검증
 - `--host-root`를 통한 SSH posture 및 Docker host exposure 기본 점검 시작
+- 인자 없는 live scan이 host 스캔 + Docker 기반 Compose 자동 발견 + 현재 디렉터리 fallback으로 동작
 
 ## 기여
 

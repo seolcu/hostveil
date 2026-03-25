@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use serde_json::Value as JsonValue;
 
-use crate::domain::{Axis, Finding, RemediationKind, Scope, Severity, Source};
+use crate::domain::{Axis, Finding, HostRuntimeInfo, RemediationKind, Scope, Severity, Source};
 
 const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
@@ -33,6 +34,15 @@ impl HostScanner {
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
         findings
+    }
+}
+
+pub fn collect_host_runtime_info(context: &HostContext) -> HostRuntimeInfo {
+    HostRuntimeInfo {
+        hostname: read_hostname(&context.root),
+        docker_version: discover_docker_version(&context.root),
+        uptime: read_uptime(&context.root),
+        load_average: read_load_average(&context.root),
     }
 }
 
@@ -260,6 +270,102 @@ fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
     path.exists().then_some(path)
 }
 
+fn read_hostname(root: &Path) -> Option<String> {
+    let path = resolve_existing_path(root, "etc/hostname")?;
+    let content = fs::read_to_string(path).ok()?;
+    let trimmed = content.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
+}
+
+fn read_uptime(root: &Path) -> Option<String> {
+    let path = resolve_existing_path(root, "proc/uptime")?;
+    let content = fs::read_to_string(path).ok()?;
+    let seconds = parse_uptime_seconds(&content)?;
+    Some(format_uptime(seconds))
+}
+
+fn read_load_average(root: &Path) -> Option<String> {
+    let path = resolve_existing_path(root, "proc/loadavg")?;
+    let content = fs::read_to_string(path).ok()?;
+    parse_load_average(&content)
+}
+
+fn parse_uptime_seconds(content: &str) -> Option<u64> {
+    let seconds = content.split_whitespace().next()?.parse::<f64>().ok()?;
+    Some(seconds.floor() as u64)
+}
+
+fn format_uptime(seconds: u64) -> String {
+    let days = seconds / 86_400;
+    let hours = (seconds % 86_400) / 3_600;
+    let minutes = (seconds % 3_600) / 60;
+
+    if days > 0 {
+        format!("{days}d {hours}h {minutes}m")
+    } else if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else {
+        format!("{minutes}m")
+    }
+}
+
+fn parse_load_average(content: &str) -> Option<String> {
+    let parts = content
+        .split_whitespace()
+        .take(3)
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    (parts.len() == 3).then(|| parts.join(" "))
+}
+
+fn discover_docker_version(root: &Path) -> Option<String> {
+    if !is_live_root(root) {
+        return None;
+    }
+
+    try_command(&["docker", "version", "--format", "{{.Server.Version}}"])
+        .filter(|value| !value.contains("{{"))
+        .or_else(|| {
+            try_command(&["docker", "--version"])
+                .and_then(|output| parse_docker_version_output(&output))
+        })
+        .or_else(|| {
+            try_command(&["dockerd", "--version"])
+                .and_then(|output| parse_docker_version_output(&output))
+        })
+}
+
+fn try_command(command: &[&str]) -> Option<String> {
+    let (program, args) = command.split_first()?;
+    let output = Command::new(program).args(args).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    (!stdout.is_empty()).then_some(stdout)
+}
+
+fn parse_docker_version_output(output: &str) -> Option<String> {
+    let trimmed = output.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some((_, rest)) = trimmed.split_once("Docker version ") {
+        let version = rest.split(',').next()?.trim();
+        return (!version.is_empty()).then(|| version.to_owned());
+    }
+
+    Some(trimmed.to_owned())
+}
+
+fn is_live_root(root: &Path) -> bool {
+    root.canonicalize()
+        .map(|path| path == Path::new("/"))
+        .unwrap_or(false)
+}
+
 fn parse_sshd_config(path: &Path) -> std::io::Result<BTreeMap<String, String>> {
     let mut settings = BTreeMap::new();
     let content = fs::read_to_string(path)?;
@@ -421,6 +527,35 @@ mod tests {
         assert!(findings.is_empty());
 
         fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn collects_runtime_info_from_host_snapshot() {
+        let root = temp_host_root("runtime");
+        write_file(&root.join("etc/hostname"), "home-server\n");
+        write_file(&root.join("proc/uptime"), "1221720.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.42 0.31 0.27 1/100 1234\n");
+
+        let info = collect_host_runtime_info(&HostContext { root: root.clone() });
+
+        assert_eq!(info.hostname.as_deref(), Some("home-server"));
+        assert_eq!(info.uptime.as_deref(), Some("14d 3h 22m"));
+        assert_eq!(info.load_average.as_deref(), Some("0.42 0.31 0.27"));
+        assert!(info.docker_version.is_none());
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parses_docker_version_output() {
+        assert_eq!(
+            super::parse_docker_version_output("Docker version 26.1.4, build deadbeef\n"),
+            Some(String::from("26.1.4"))
+        );
+        assert_eq!(
+            super::parse_docker_version_output("27.0.3\n"),
+            Some(String::from("27.0.3"))
+        );
     }
 
     #[test]
