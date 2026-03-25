@@ -1,34 +1,82 @@
 app:
   name: "hostveil"
+  header:
+    subtitle: "Linux Self-Hosting Security Dashboard"
   status:
     bootstrap: "Rust bootstrap is ready; the real TUI and scan engine land next."
     no_target: "No scan target selected yet. Pass --compose PATH to validate the Rust parser pipeline."
     compose_loaded: "Loaded %{count} service(s) from %{path}"
     host_loaded: "Loaded host checks from %{path}"
     compose_and_host_loaded: "Loaded %{count} service(s) from %{path} with host checks enabled"
+    live_discovery: "Live scan: %{project_count} project(s) discovered with host checks enabled"
+    live_host_only: "Live scan: host-only mode"
+    live_docker_missing: "Live scan: Docker unavailable, host-only mode"
+    live_docker_denied: "Live scan: Docker permission denied, host-only mode"
+    live_docker_failed: "Live scan: Docker discovery failed, host-only mode"
   help:
     text: |
       hostveil
 
       Usage:
+        hostveil
+        hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--json]
         hostveil --help
 
       Options:
-        --compose PATH  parse a Compose file or directory through the Rust pipeline
-        --host-root PATH  inspect host configuration files from a Linux root or snapshot
-        --json          emit scan result JSON instead of launching the TUI
-        -h, --help      show this help message
+        --compose PATH    override live discovery with a specific Compose file or directory
+        --host-root PATH  override the default live host root (/) with a Linux root or snapshot
+        --json            emit scan result JSON instead of launching the TUI
+        -h, --help        show this help message
   hint:
     quit: "Press q or Esc to quit"
     json: "Use --json to inspect the current scan result structure"
+    open_findings: "Press Enter or Right to inspect findings"
+    switch_focus: "Press Tab, Left, or Right to switch focus"
+    list_move: "Use Arrow keys or j/k to move through findings"
+    detail_scroll: "Use Arrow keys, j/k, or PageUp/PageDown to scroll detail"
+    back_overview: "Press q or Esc to return to the overview"
+  footer:
+    quit: "quit"
+    findings: "open findings"
+    json: "export JSON"
   panel:
     status: "Status"
     hints: "Hints"
+    server_status: "Server Status"
+    scan_results: "Scan Results"
+    security_scores: "Security Scores"
+    fix_paths: "Fix Paths"
+    overview_score: "Overview Score"
+    overview_axes: "Axis Scores"
+    overview_activity: "Findings and Adapters"
+    overview_findings: "Top Findings"
     next_steps: "Next Steps"
     next_step_one: "Implement the generalized findings model and scan pipeline"
     next_step_two: "Port the Compose parser and rule engine into Rust"
     next_step_three: "Replace this placeholder with the real dashboard overview"
+    findings_list: "Findings"
+    findings_list_active: "Findings [list focus]"
+    finding_detail: "Detail"
+    finding_detail_active: "Detail [detail focus]"
+  overview:
+    score_caption: "Overall posture"
+    findings_available: "%{count} finding(s) available. Open the findings view for details."
+    no_findings: "No findings detected yet."
+    adapters_none: "No optional adapter status reported yet."
+  server:
+    host_name: "Host"
+    root_path: "Root"
+    docker_version: "Docker"
+    uptime: "Uptime"
+    load: "Load"
+    services_heading: "Services"
+    no_services: "No Compose services loaded yet."
+    no_image: "image unavailable"
+    more_services: "... and %{count} more service(s)"
+    not_scanned: "not scanned"
+    not_loaded: "not loaded"
+    not_available: "n/a"
   summary:
     title: "Current Scan Context"
     none: "No Compose target loaded"
@@ -50,6 +98,61 @@ app:
     io: "application error: %{message}"
     json_export_failed: "failed to serialize the current scan result"
     missing_translation: "missing translation for key: %{key}"
+  finding:
+    header: "Findings Detail"
+    status: "%{index}/%{count} selected | focus: %{focus}"
+    empty_status: "No findings are available yet"
+    empty_title: "No findings yet"
+    empty_description: "Run a scan target or wait for findings to appear."
+    focus_list: "list"
+    focus_detail: "detail"
+    subject_label: "Subject"
+    related_service_label: "Related Service"
+    description_label: "Description"
+    why_label: "Why Risky"
+    fix_label: "How to Fix"
+    evidence_label: "Evidence"
+    no_evidence: "No structured evidence for this finding."
+  result:
+    host_group: "Host"
+    ok: "OK"
+    none: "No grouped scan results yet."
+    single_finding: "1 finding"
+    multi_findings: "%{count} findings"
+    discovery_heading: "Discovery"
+    warnings_heading: "Warnings"
+    docker_available: "available"
+    docker_missing: "missing"
+    docker_permission_denied: "permission denied"
+    docker_failed: "failed: %{detail}"
+  fix:
+    none: "No remediation items are available yet."
+axis:
+  sensitive_data: "Sensitive Data"
+  permissions: "Permissions"
+  exposure: "Exposure"
+  updates: "Supply Chain"
+  host_hardening: "Host Hardening"
+severity:
+  critical: "Critical"
+  high: "High"
+  medium: "Medium"
+  low: "Low"
+scope:
+  service: "Service"
+  image: "Image"
+  host: "Host"
+  project: "Project"
+source:
+  native_compose: "Native Compose"
+  native_host: "Native Host"
+  trivy: "Trivy"
+  lynis: "Lynis"
+  dockle: "Dockle"
+adapter:
+  available: "available"
+  missing: "missing"
+  failed: "failed: %{detail}"
 finding:
   updates:
     latest:

@@ -105,6 +105,10 @@ cargo test
 
 # Run the current Rust binary
 cargo run -- --help
+cargo run
+cargo run -- --json
+
+# Advanced overrides for targeted snapshots or fixtures
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 ```

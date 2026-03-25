@@ -106,6 +106,46 @@ pub struct ScoreReport {
     pub severity_counts: BTreeMap<Severity, usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServiceSummary {
+    pub name: String,
+    pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+pub struct HostRuntimeInfo {
+    pub hostname: Option<String>,
+    pub docker_version: Option<String>,
+    pub uptime: Option<String>,
+    pub load_average: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ScanMode {
+    #[default]
+    Explicit,
+    Live,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "state", content = "detail", rename_all = "snake_case")]
+pub enum DockerDiscoveryStatus {
+    Available,
+    Missing,
+    PermissionDenied,
+    Failed(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+pub struct DiscoveredProjectSummary {
+    pub name: String,
+    pub source: String,
+    pub compose_path: Option<PathBuf>,
+    pub working_dir: Option<PathBuf>,
+    pub service_count: usize,
+}
+
 impl Default for ScoreReport {
     fn default() -> Self {
         let axis_scores = Axis::ALL.into_iter().map(|axis| (axis, 100)).collect();
@@ -132,11 +172,17 @@ pub enum AdapterStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct ScanMetadata {
+    pub scan_mode: ScanMode,
     pub compose_root: Option<PathBuf>,
     pub compose_file: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
+    pub host_runtime: Option<HostRuntimeInfo>,
     pub loaded_files: Vec<PathBuf>,
     pub service_count: usize,
+    pub services: Vec<ServiceSummary>,
+    pub discovered_projects: Vec<DiscoveredProjectSummary>,
+    pub docker_status: Option<DockerDiscoveryStatus>,
+    pub warnings: Vec<String>,
     pub adapters: BTreeMap<String, AdapterStatus>,
 }
 

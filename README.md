@@ -49,6 +49,10 @@ Current Rust bootstrap setup from the repository root:
 rustup default stable
 cargo build
 cargo run -- --help
+cargo run
+cargo run -- --json
+
+# Advanced overrides for snapshots or targeted testing
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 ```
@@ -106,6 +110,7 @@ Current Rust bootstrap status:
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model partially ported with Rust fixture tests
 - Native Linux host checks started for SSH posture and Docker host exposure via `--host-root`
+- No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
 
 ## Contributing
 
