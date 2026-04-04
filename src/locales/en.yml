@@ -21,11 +21,17 @@ app:
         hostveil
         hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil --quick-fix PATH [--preview-changes] [--yes]
+        hostveil --fix PATH [--preview-changes] [--yes]
         hostveil --help
 
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
         --host-root PATH  override the default live host root (/) with a Linux root or snapshot
+        --quick-fix PATH  preview or apply safe Compose-only fixes for a specific file or directory
+        --fix PATH        preview or apply safe and guided Compose review changes for a specific file or directory
+        --preview-changes show the planned diff without writing any files
+        --yes             apply the reviewed changes without an interactive confirmation prompt
         --json            emit scan result JSON instead of launching the TUI
         -h, --help        show this help message
   hint:
@@ -74,6 +80,12 @@ app:
     docker_version: "Docker"
     uptime: "Uptime"
     load: "Load"
+    controls: "Defenses"
+    fail2ban: "Fail2ban"
+    crowdsec: "CrowdSec"
+    control_enabled: "enabled"
+    control_installed: "installed"
+    control_not_detected: "not detected"
     services_heading: "Services"
     no_services: "No Compose services loaded yet."
     no_image: "image unavailable"
@@ -94,12 +106,14 @@ app:
   error:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"
+    invalid_argument_combination: "invalid argument combination: %{message}"
     compose_path_missing: "compose path does not exist: %{path}"
     compose_file_not_found: "compose file was not found in directory: %{path}"
     compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"
     compose_missing_services: "no services were found in %{path}"
     compose_io: "failed to read %{path}: %{message}"
     io: "application error: %{message}"
+    fix_serialize: "failed to serialize the updated compose file: %{message}"
     json_export_failed: "failed to serialize the current scan result"
     missing_translation: "missing translation for key: %{key}"
   finding:
@@ -130,7 +144,19 @@ app:
     docker_permission_denied: "permission denied"
     docker_failed: "failed: %{detail}"
   fix:
-    none: "No remediation items are available yet."
+    none: "No Compose remediation changes are available for the current target."
+    file: "Compose file: %{path}"
+    safe_plan: "%{count} safe change(s) are ready to review."
+    guided_plan: "%{count} guided change(s) are ready to review."
+    preview_only: "Preview only: no files were modified."
+    cancelled: "Cancelled without writing changes."
+    backup: "Created backup: %{path}"
+    applied: "Applied: %{summary}"
+    confirm_quick: "Apply the safe Compose changes to %{path}? [y/N]: "
+    confirm_all: "Apply the reviewed Compose changes to %{path}? [y/N]: "
+    safe_bind_localhost: "%{service}: bind the published port %{port} to 127.0.0.1"
+    safe_nginx_stable: "%{service}: pin nginx to nginx:stable"
+    guided_privileged_cap_add: "%{service}: replace privileged mode with a minimal NET_BIND_SERVICE capability review"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"
