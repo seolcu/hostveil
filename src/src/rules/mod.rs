@@ -207,4 +207,63 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn immich_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("immich", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn immich_vulnerable_fixture_produces_expected_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("immich", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "immich-server", Severity::Medium),
+                (
+                    "exposure.reverse_proxy_expected",
+                    "immich-server",
+                    Severity::High,
+                ),
+                ("permissions.implicit_root", "immich-server", Severity::Medium),
+                (
+                    "permissions.implicit_root",
+                    "immich-machine-learning",
+                    Severity::Medium,
+                ),
+                ("permissions.implicit_root", "redis", Severity::Medium),
+                ("permissions.implicit_root", "database", Severity::Medium),
+                ("sensitive.env_file_plaintext", "immich-server", Severity::High),
+                (
+                    "sensitive.env_file_plaintext",
+                    "immich-machine-learning",
+                    Severity::High,
+                ),
+                ("updates.major_only_tag", "immich-server", Severity::Low),
+                (
+                    "updates.major_only_tag",
+                    "immich-machine-learning",
+                    Severity::Low,
+                ),
+                ("updates.no_tag", "redis", Severity::Medium),
+                ("updates.no_tag", "database", Severity::Medium),
+            ]
+        );
+    }
 }

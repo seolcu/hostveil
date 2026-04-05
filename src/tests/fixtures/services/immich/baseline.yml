@@ -1,0 +1,40 @@
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:v2.1.0
+    user: "1000:1000"
+    volumes:
+      - ./library:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "127.0.0.1:2283:2283"
+    depends_on:
+      - redis
+      - database
+    restart: always
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:v2.1.0
+    user: "1000:1000"
+    volumes:
+      - model-cache:/cache
+    restart: always
+
+  redis:
+    image: docker.io/valkey/valkey:9.0.0
+    user: "1000:1000"
+    restart: always
+
+  database:
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+    user: "1000:1000"
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: immich
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+      - ./secrets:/run/secrets:ro
+    restart: always
+
+volumes:
+  model-cache:
