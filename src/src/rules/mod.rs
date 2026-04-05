@@ -1,11 +1,13 @@
 mod exposure;
 mod permissions;
 mod sensitive;
+mod service_aware;
 mod updates;
 
 pub use exposure::{is_public_port, scan_exposure_risk};
 pub use permissions::{classify_sensitive_mount, scan_permission_risk};
 pub use sensitive::scan_sensitive_data;
+pub use service_aware::scan_service_aware_risk;
 pub use updates::{scan_update_risk, split_image_reference};
 
 use crate::compose::ComposeProject;
@@ -21,6 +23,7 @@ impl RuleEngine {
         findings.extend(scan_permission_risk(project));
         findings.extend(scan_sensitive_data(project));
         findings.extend(scan_update_risk(project));
+        findings.extend(scan_service_aware_risk(project));
         findings
     }
 }
@@ -101,15 +104,30 @@ mod tests {
                 ))
                 .collect::<Vec<_>>(),
             vec![
-                ("exposure.public_binding", "vaultwarden", Severity::Medium,),
+                ("exposure.public_binding", "vaultwarden", Severity::Medium),
                 (
                     "exposure.reverse_proxy_expected",
                     "vaultwarden",
                     Severity::High,
                 ),
-                ("permissions.implicit_root", "vaultwarden", Severity::Medium,),
+                ("permissions.implicit_root", "vaultwarden", Severity::Medium),
                 ("sensitive.inline_secret", "vaultwarden", Severity::High),
                 ("updates.latest_tag", "vaultwarden", Severity::High),
+                (
+                    "service.vaultwarden.signups_enabled",
+                    "vaultwarden",
+                    Severity::Medium,
+                ),
+                (
+                    "service.vaultwarden.admin_surface_public",
+                    "vaultwarden",
+                    Severity::High,
+                ),
+                (
+                    "service.vaultwarden.insecure_domain",
+                    "vaultwarden",
+                    Severity::High,
+                ),
             ]
         );
     }

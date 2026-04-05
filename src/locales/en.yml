@@ -268,3 +268,19 @@ finding:
       description: "%{path} configures Docker to listen on a non-local TCP host."
       why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
       fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
+  vaultwarden:
+    signups_enabled:
+      title: "Vaultwarden signups are left enabled"
+      description: "%{service} sets SIGNUPS_ALLOWED=true."
+      why: "Leaving open registration enabled after initial setup makes it easier for unwanted accounts to be created and expands the public attack surface of a password manager service."
+      fix: "Disable signups after the initial onboarding window or gate account creation through an invite-only workflow."
+    admin_surface_public:
+      title: "Vaultwarden admin surface is reachable from a public bind"
+      description: "%{service} enables the admin token while the service is also published on a public interface."
+      why: "A publicly reachable Vaultwarden deployment with the admin page enabled exposes a high-value management surface to probing, brute force, and credential leakage risks."
+      fix: "Keep Vaultwarden behind a reverse proxy or localhost-only bind and avoid exposing the admin page to the public internet."
+    insecure_domain:
+      title: "Vaultwarden domain is configured for public HTTP"
+      description: "%{service} sets DOMAIN to %{domain}, which is not an HTTPS base URL."
+      why: "Vaultwarden expects a secure context for important web features, and using a public HTTP base URL weakens transport security for a password manager deployment."
+      fix: "Terminate TLS at a reverse proxy and set DOMAIN to the external HTTPS base URL."
