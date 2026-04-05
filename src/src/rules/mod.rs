@@ -166,4 +166,45 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn gitea_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("gitea", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn gitea_vulnerable_fixture_produces_expected_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("gitea", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "server", Severity::Medium),
+                ("exposure.reverse_proxy_expected", "server", Severity::High),
+                ("permissions.implicit_root", "server", Severity::Medium),
+                ("permissions.implicit_root", "db", Severity::Medium),
+                ("sensitive.default_credential", "server", Severity::Critical),
+                ("sensitive.inline_secret", "server", Severity::High),
+                ("sensitive.inline_secret", "server", Severity::High),
+                ("sensitive.default_credential", "db", Severity::Critical),
+                ("updates.latest_tag", "server", Severity::High),
+                ("updates.major_only_tag", "db", Severity::Low),
+            ]
+        );
+    }
 }
