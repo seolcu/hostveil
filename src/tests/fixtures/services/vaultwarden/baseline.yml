@@ -1,0 +1,15 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.35.4
+    container_name: vaultwarden
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      DOMAIN: "https://vaultwarden.example.com"
+      SIGNUPS_ALLOWED: "false"
+      ADMIN_TOKEN_FILE: "/run/secrets/admin_token"
+    volumes:
+      - ./vw-data:/data
+      - ./secrets:/run/secrets:ro
+    ports:
+      - "127.0.0.1:8000:80"
