@@ -87,9 +87,7 @@ impl AppConfig {
                     config.set_fix_target(FixMode::QuickFix, PathBuf::from(value))?;
                 }
                 "--fix" => {
-                    let value = args
-                        .next()
-                        .ok_or(AppError::MissingArgumentValue("--fix"))?;
+                    let value = args.next().ok_or(AppError::MissingArgumentValue("--fix"))?;
                     config.set_fix_target(FixMode::Fix, PathBuf::from(value))?;
                 }
                 _ if argument.starts_with("--fix=") => {
@@ -110,9 +108,9 @@ impl AppConfig {
     fn validate(&self) -> Result<(), AppError> {
         if self.fix_mode.is_some() {
             if self.fix_target_path.is_none() {
-                return Err(AppError::InvalidArgumentCombination(
-                    String::from("a compose target is required for fix operations"),
-                ));
+                return Err(AppError::InvalidArgumentCombination(String::from(
+                    "a compose target is required for fix operations",
+                )));
             }
             if self.host_root.is_some() {
                 return Err(AppError::InvalidArgumentCombination(String::from(
@@ -245,14 +243,14 @@ mod tests {
 
     #[test]
     fn parses_inline_fix_mode() {
-        let config = AppConfig::parse([
-            String::from("--fix=stack"),
-            String::from("--yes"),
-        ])
-        .expect("config should parse");
+        let config = AppConfig::parse([String::from("--fix=stack"), String::from("--yes")])
+            .expect("config should parse");
 
         assert_eq!(config.fix_mode, Some(FixMode::Fix));
-        assert_eq!(config.fix_target_path.as_deref(), Some(std::path::Path::new("stack")));
+        assert_eq!(
+            config.fix_target_path.as_deref(),
+            Some(std::path::Path::new("stack"))
+        );
         assert!(config.assume_yes);
     }
 
@@ -265,7 +263,10 @@ mod tests {
         ])
         .expect_err("config should reject incompatible flags");
 
-        assert!(matches!(error, super::AppError::InvalidArgumentCombination(_)));
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
     }
 
     #[test]
@@ -273,6 +274,9 @@ mod tests {
         let error = AppConfig::parse([String::from("--preview-changes")])
             .expect_err("preview should require fix mode");
 
-        assert!(matches!(error, super::AppError::InvalidArgumentCombination(_)));
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
     }
 }

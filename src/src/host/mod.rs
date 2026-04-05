@@ -590,7 +590,10 @@ mod tests {
     fn collects_runtime_info_from_host_snapshot() {
         let root = temp_host_root("runtime");
         write_file(&root.join("etc/hostname"), "home-server\n");
-        write_file(&root.join("etc/fail2ban/jail.local"), "[sshd]\nenabled = true\n");
+        write_file(
+            &root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
+        );
         write_file(
             &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
             "enabled\n",

@@ -281,12 +281,18 @@ mod tests {
             &host_root.join("proc/loadavg"),
             "0.42 0.31 0.27 1/100 1234\n",
         );
-        write_file(&host_root.join("etc/fail2ban/jail.local"), "[sshd]\nenabled = true\n");
+        write_file(
+            &host_root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
+        );
         write_file(
             &host_root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
             "enabled\n",
         );
-        write_file(&host_root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
+        write_file(
+            &host_root.join("etc/crowdsec/config.yaml"),
+            "api:\n  server:\n",
+        );
         write_file(&host_root.join("var/run/docker.sock"), "socket");
         fs::set_permissions(
             host_root.join("var/run/docker.sock"),
@@ -334,11 +340,19 @@ mod tests {
             Some("0.42 0.31 0.27")
         );
         assert_eq!(
-            result.metadata.host_runtime.as_ref().map(|info| info.fail2ban),
+            result
+                .metadata
+                .host_runtime
+                .as_ref()
+                .map(|info| info.fail2ban),
             Some(crate::domain::DefensiveControlStatus::Enabled)
         );
         assert_eq!(
-            result.metadata.host_runtime.as_ref().map(|info| info.crowdsec),
+            result
+                .metadata
+                .host_runtime
+                .as_ref()
+                .map(|info| info.crowdsec),
             Some(crate::domain::DefensiveControlStatus::Installed)
         );
         assert!(

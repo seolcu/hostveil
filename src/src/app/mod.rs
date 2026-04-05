@@ -109,16 +109,21 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     Ok(())
 }
 
-fn confirm_fix(compose_path: &std::path::Path, mode: crate::fix::FixMode) -> Result<bool, AppError> {
+fn confirm_fix(
+    compose_path: &std::path::Path,
+    mode: crate::fix::FixMode,
+) -> Result<bool, AppError> {
     let prompt = match mode {
         crate::fix::FixMode::QuickFix => t!(
             "app.fix.confirm_quick",
             path = compose_path.display().to_string()
         )
         .into_owned(),
-        crate::fix::FixMode::Fix => {
-            t!("app.fix.confirm_all", path = compose_path.display().to_string()).into_owned()
-        }
+        crate::fix::FixMode::Fix => t!(
+            "app.fix.confirm_all",
+            path = compose_path.display().to_string()
+        )
+        .into_owned(),
     };
 
     print!("{prompt}");
@@ -126,13 +131,20 @@ fn confirm_fix(compose_path: &std::path::Path, mode: crate::fix::FixMode) -> Res
 
     let mut answer = String::new();
     io::stdin().read_line(&mut answer)?;
-    Ok(matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes"))
+    Ok(matches!(
+        answer.trim().to_ascii_lowercase().as_str(),
+        "y" | "yes"
+    ))
 }
 
 fn print_fix_review(plan: &fix::FixPlan) {
     println!(
         "{}",
-        t!("app.fix.file", path = plan.compose_file.display().to_string()).into_owned()
+        t!(
+            "app.fix.file",
+            path = plan.compose_file.display().to_string()
+        )
+        .into_owned()
     );
 
     if !plan.safe_applied.is_empty() {

@@ -46,7 +46,9 @@ pub enum FixError {
 impl fmt::Display for FixError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ComposeParse(error) => write!(f, "{}", crate::i18n::tr_compose_parse_error(error)),
+            Self::ComposeParse(error) => {
+                write!(f, "{}", crate::i18n::tr_compose_parse_error(error))
+            }
             Self::Io(error) => write!(f, "{}", crate::i18n::tr_io_error(&error.to_string())),
             Self::Serialize(message) => write!(
                 f,
@@ -169,13 +171,11 @@ fn apply_safe_fixes(
             && let Some(image) = image_string(service)
             && is_safe_nginx_image(&image)
         {
-            service.insert(
-                yaml_key("image"),
-                Value::String(format!("{image}:stable")),
-            );
+            service.insert(yaml_key("image"), Value::String(format!("{image}:stable")));
             applied.push(FixProposal {
                 service: service_name.clone(),
-                summary: t!("app.fix.safe_nginx_stable", service = service_name.as_str()).into_owned(),
+                summary: t!("app.fix.safe_nginx_stable", service = service_name.as_str())
+                    .into_owned(),
             });
         }
 
@@ -252,7 +252,10 @@ fn apply_guided_fixes(
             continue;
         };
 
-        if !capabilities.iter().any(|value| value.as_str() == Some("NET_BIND_SERVICE")) {
+        if !capabilities
+            .iter()
+            .any(|value| value.as_str() == Some("NET_BIND_SERVICE"))
+        {
             capabilities.push(Value::String(String::from("NET_BIND_SERVICE")));
         }
 
@@ -276,7 +279,10 @@ fn services_mapping_mut(document: &mut Value) -> Option<&mut Mapping> {
         .as_mapping_mut()
 }
 
-fn service_mapping_mut<'a>(services: &'a mut Mapping, service_name: &str) -> Option<&'a mut Mapping> {
+fn service_mapping_mut<'a>(
+    services: &'a mut Mapping,
+    service_name: &str,
+) -> Option<&'a mut Mapping> {
     services.get_mut(yaml_key(service_name))?.as_mapping_mut()
 }
 
@@ -306,7 +312,10 @@ fn rewrite_public_port_mapping(mapping: &mut Mapping) -> Option<String> {
     }
 
     let before = render_compact_port_mapping(mapping, &published);
-    mapping.insert(yaml_key("host_ip"), Value::String(String::from("127.0.0.1")));
+    mapping.insert(
+        yaml_key("host_ip"),
+        Value::String(String::from("127.0.0.1")),
+    );
     Some(before)
 }
 
@@ -354,9 +363,15 @@ fn rewrite_public_port_string(spec: &mut String) -> Option<String> {
         } => Some(format!("127.0.0.1:{host_port}:{container_port}{protocol}")),
         ShortPort::Published {
             host_ip: Some(host_ip),
-            host_port,
-            container_port,
-        } if matches!(host_ip.as_str(), "127.0.0.1" | "::1" | "localhost" | "[::1]") => None,
+            host_port: _,
+            container_port: _,
+        } if matches!(
+            host_ip.as_str(),
+            "127.0.0.1" | "::1" | "localhost" | "[::1]"
+        ) =>
+        {
+            None
+        }
         ShortPort::Published {
             host_ip: Some(_),
             host_port,
@@ -446,8 +461,8 @@ fn yaml_truthy(value: &Value) -> bool {
 }
 
 fn dump_document(document: &Value) -> Result<String, FixError> {
-    let rendered = serde_yaml::to_string(document)
-        .map_err(|error| FixError::Serialize(error.to_string()))?;
+    let rendered =
+        serde_yaml::to_string(document).map_err(|error| FixError::Serialize(error.to_string()))?;
     Ok(rendered
         .strip_prefix("---\n")
         .unwrap_or(rendered.as_str())
@@ -603,7 +618,7 @@ mod tests {
                 "    image: alpine:3.20\n",
                 "    privileged: true\n",
                 "    ports:\n",
-                "      - \"8080:80\"\n"
+                "      - \"127.0.0.1:8080:80\"\n"
             ),
         );
 
