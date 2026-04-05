@@ -43,7 +43,7 @@ The final packaged Rust binary is not available yet. The Python prototype in `pr
 
 Official runtime support for the real product is Linux. If you contribute from Windows, use WSL rather than native PowerShell.
 
-Current Rust bootstrap setup from the repository root:
+Current Rust setup from the repository root:
 
 ```sh
 rustup default stable
@@ -100,12 +100,12 @@ Planned Rust v1 scope:
 - TUI-first workflow plus minimal headless JSON export
 - Linux-only runtime support with contributor setup documented for WSL
 
-Current Rust bootstrap status:
+Current Rust implementation status:
 
 - Cargo workspace initialized at the repository root
 - Active Rust crate scaffolded under `src/`
 - Pinned stable toolchain via `rust-toolchain.toml`
-- `ratatui` + `crossterm` TUI bootstrap wired and localized through `rust-i18n`
+- `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model partially ported with Rust fixture tests

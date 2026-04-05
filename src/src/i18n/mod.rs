@@ -125,6 +125,14 @@ mod tests {
     }
 
     #[test]
+    fn returns_updated_no_target_copy() {
+        assert_eq!(
+            tr("app.status.no_target"),
+            "No explicit target was provided. Run without arguments for live discovery, or pass --compose PATH / --host-root PATH for a targeted scan."
+        );
+    }
+
+    #[test]
     fn formats_unknown_argument_message() {
         assert_eq!(tr_unknown_argument("--bad"), "unknown argument: --bad");
     }
