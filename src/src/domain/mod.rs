@@ -118,6 +118,17 @@ pub struct HostRuntimeInfo {
     pub docker_version: Option<String>,
     pub uptime: Option<String>,
     pub load_average: Option<String>,
+    pub fail2ban: DefensiveControlStatus,
+    pub crowdsec: DefensiveControlStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DefensiveControlStatus {
+    #[default]
+    NotDetected,
+    Installed,
+    Enabled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]

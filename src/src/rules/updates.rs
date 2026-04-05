@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use crate::compose::ComposeProject;
-use crate::domain::{Axis, Finding, Severity};
+use crate::domain::{Axis, Finding, RemediationKind, Severity};
 
-use super::{ServiceFindingText, service_finding};
+use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
 
 pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -15,7 +15,7 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
 
         let (repository, tag) = split_image_reference(image);
         match tag.as_deref() {
-            None => findings.push(service_finding(
+            None => findings.push(service_finding_with_remediation(
                 "updates.no_tag",
                 Axis::UpdateSupplyChainRisk,
                 Severity::Medium,
@@ -35,6 +35,11 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                     (String::from("image"), image.to_owned()),
                     (String::from("repository"), repository.clone()),
                 ]),
+                if is_safe_nginx_repository(&repository) {
+                    RemediationKind::Safe
+                } else {
+                    RemediationKind::None
+                },
             )),
             Some("latest") => findings.push(service_finding(
                 "updates.latest_tag",
@@ -112,6 +117,13 @@ fn is_major_only_tag(tag: &str) -> bool {
             .all(|character| character.is_ascii_digit())
 }
 
+fn is_safe_nginx_repository(repository: &str) -> bool {
+    matches!(
+        repository,
+        "nginx" | "library/nginx" | "docker.io/nginx" | "docker.io/library/nginx"
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -169,5 +181,18 @@ mod tests {
                 .iter()
                 .all(|finding| finding.related_service.as_deref() != Some("pinned"))
         );
+    }
+
+    #[test]
+    fn marks_nginx_missing_tag_as_safe_remediation() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture()).expect("project should parse");
+
+        let finding = scan_update_risk(&project)
+            .into_iter()
+            .find(|finding| finding.related_service.as_deref() == Some("no_tag"))
+            .expect("missing tag finding should exist");
+
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Safe);
     }
 }

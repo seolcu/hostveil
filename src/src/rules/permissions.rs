@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::compose::{ComposeProject, VolumeMount};
-use crate::domain::{Axis, Finding, Severity};
+use crate::compose::{ComposeProject, ComposeService, VolumeMount};
+use crate::domain::{Axis, Finding, RemediationKind, Severity};
 
-use super::{ServiceFindingText, service_finding};
+use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
 
 const ROOT_USERS: [&str; 3] = ["root", "0", "0:0"];
 const SENSITIVE_EXACT_PATHS: [&str; 2] = ["/", "/var/run/docker.sock"];
@@ -15,7 +15,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
 
     for service in project.services.values() {
         if service.privileged {
-            findings.push(service_finding(
+            findings.push(service_finding_with_remediation(
                 "permissions.privileged",
                 Axis::ExcessivePermissions,
                 Severity::Critical,
@@ -31,6 +31,11 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                     how_to_fix: t!("finding.permissions.privileged.fix").into_owned(),
                 },
                 BTreeMap::new(),
+                if supports_guided_privileged_fix(service) {
+                    RemediationKind::Guided
+                } else {
+                    RemediationKind::None
+                },
             ));
         }
 
@@ -159,9 +164,19 @@ fn mount_severity(path: &str) -> Severity {
     }
 }
 
+fn supports_guided_privileged_fix(service: &ComposeService) -> bool {
+    service
+        .ports
+        .iter()
+        .filter_map(|port| port.container_port.parse::<u16>().ok())
+        .any(|port| port < 1024)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::compose::ComposeParser;
 
@@ -172,6 +187,19 @@ mod tests {
             .join("../proto/tests/fixtures/rules/permissions-risk.yml")
             .canonicalize()
             .expect("fixture should exist")
+    }
+
+    fn temp_compose_dir(name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "hostveil-rules-permissions-{name}-{}-{nanos}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("temp dir should exist");
+        path
     }
 
     #[test]
@@ -226,5 +254,34 @@ mod tests {
                 .iter()
                 .all(|finding| finding.related_service.as_deref() != Some("safe"))
         );
+    }
+
+    #[test]
+    fn marks_privileged_mode_as_guided_remediation() {
+        let root = temp_compose_dir("guided");
+        let path = root.join("docker-compose.yml");
+        fs::write(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:1.27.5\n",
+                "    privileged: true\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        )
+        .expect("fixture should be written");
+        let project =
+            ComposeParser::parse_path_without_override(&path).expect("project should parse");
+
+        let finding = scan_permission_risk(&project)
+            .into_iter()
+            .find(|finding| finding.id == "permissions.privileged")
+            .expect("privileged finding should exist");
+
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Guided);
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
     }
 }

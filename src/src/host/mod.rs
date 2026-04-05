@@ -6,12 +6,15 @@ use std::process::Command;
 
 use serde_json::Value as JsonValue;
 
-use crate::domain::{Axis, Finding, HostRuntimeInfo, RemediationKind, Scope, Severity, Source};
+use crate::domain::{
+    Axis, DefensiveControlStatus, Finding, HostRuntimeInfo, RemediationKind, Scope, Severity,
+    Source,
+};
 
 const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
-const FAIL2BAN_MARKERS: [&str; 6] = [
+const FAIL2BAN_INSTALL_MARKERS: [&str; 6] = [
     "etc/fail2ban",
     "usr/bin/fail2ban-client",
     "usr/bin/fail2ban-server",
@@ -19,13 +22,21 @@ const FAIL2BAN_MARKERS: [&str; 6] = [
     "lib/systemd/system/fail2ban.service",
     "usr/lib/systemd/system/fail2ban.service",
 ];
-const CROWDSEC_MARKERS: [&str; 6] = [
+const FAIL2BAN_ENABLED_MARKERS: [&str; 2] = [
+    "etc/systemd/system/multi-user.target.wants/fail2ban.service",
+    "etc/systemd/system/default.target.wants/fail2ban.service",
+];
+const CROWDSEC_INSTALL_MARKERS: [&str; 6] = [
     "etc/crowdsec",
     "usr/bin/crowdsec",
     "usr/bin/cscli",
     "usr/local/bin/cscli",
     "lib/systemd/system/crowdsec.service",
     "usr/lib/systemd/system/crowdsec.service",
+];
+const CROWDSEC_ENABLED_MARKERS: [&str; 2] = [
+    "etc/systemd/system/multi-user.target.wants/crowdsec.service",
+    "etc/systemd/system/default.target.wants/crowdsec.service",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +71,16 @@ pub fn collect_host_runtime_info(context: &HostContext) -> HostRuntimeInfo {
         docker_version: discover_docker_version(&context.root),
         uptime: read_uptime(&context.root),
         load_average: read_load_average(&context.root),
+        fail2ban: detect_defensive_control(
+            &context.root,
+            &FAIL2BAN_INSTALL_MARKERS,
+            &FAIL2BAN_ENABLED_MARKERS,
+        ),
+        crowdsec: detect_defensive_control(
+            &context.root,
+            &CROWDSEC_INSTALL_MARKERS,
+            &CROWDSEC_ENABLED_MARKERS,
+        ),
     }
 }
 
@@ -283,8 +304,10 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
 }
 
 fn scan_defensive_controls(context: &HostContext) -> Vec<Finding> {
-    let fail2ban_present = has_any_marker(&context.root, &FAIL2BAN_MARKERS);
-    let crowdsec_present = has_any_marker(&context.root, &CROWDSEC_MARKERS);
+    let fail2ban_present = has_any_marker(&context.root, &FAIL2BAN_INSTALL_MARKERS)
+        || has_any_marker(&context.root, &FAIL2BAN_ENABLED_MARKERS);
+    let crowdsec_present = has_any_marker(&context.root, &CROWDSEC_INSTALL_MARKERS)
+        || has_any_marker(&context.root, &CROWDSEC_ENABLED_MARKERS);
 
     if fail2ban_present || crowdsec_present {
         return Vec::new();
@@ -323,6 +346,26 @@ fn has_any_marker(root: &Path, markers: &[&str]) -> bool {
     markers
         .iter()
         .any(|marker| resolve_existing_path(root, marker).is_some())
+}
+
+fn detect_defensive_control(
+    root: &Path,
+    install_markers: &[&str],
+    enabled_markers: &[&str],
+) -> DefensiveControlStatus {
+    if enabled_markers
+        .iter()
+        .any(|marker| resolve_existing_path(root, marker).is_some())
+    {
+        DefensiveControlStatus::Enabled
+    } else if install_markers
+        .iter()
+        .any(|marker| resolve_existing_path(root, marker).is_some())
+    {
+        DefensiveControlStatus::Installed
+    } else {
+        DefensiveControlStatus::NotDetected
+    }
 }
 
 fn read_hostname(root: &Path) -> Option<String> {
@@ -593,6 +636,15 @@ mod tests {
     fn collects_runtime_info_from_host_snapshot() {
         let root = temp_host_root("runtime");
         write_file(&root.join("etc/hostname"), "home-server\n");
+        write_file(
+            &root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
+        );
+        write_file(
+            &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
+            "enabled\n",
+        );
+        write_file(&root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
         write_file(&root.join("proc/uptime"), "1221720.00 0.00\n");
         write_file(&root.join("proc/loadavg"), "0.42 0.31 0.27 1/100 1234\n");
 
@@ -602,6 +654,8 @@ mod tests {
         assert_eq!(info.uptime.as_deref(), Some("14d 3h 22m"));
         assert_eq!(info.load_average.as_deref(), Some("0.42 0.31 0.27"));
         assert!(info.docker_version.is_none());
+        assert_eq!(info.fail2ban, DefensiveControlStatus::Enabled);
+        assert_eq!(info.crowdsec, DefensiveControlStatus::Installed);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
