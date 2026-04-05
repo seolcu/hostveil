@@ -101,11 +101,7 @@ mod tests {
                 ))
                 .collect::<Vec<_>>(),
             vec![
-                (
-                    "exposure.public_binding",
-                    "vaultwarden",
-                    Severity::Medium,
-                ),
+                ("exposure.public_binding", "vaultwarden", Severity::Medium,),
                 (
                     "exposure.reverse_proxy_expected",
                     "vaultwarden",
@@ -118,18 +114,10 @@ mod tests {
                     Severity::Critical,
                 ),
                 ("permissions.root_user", "adminer", Severity::High),
-                (
-                    "permissions.implicit_root",
-                    "postgres",
-                    Severity::Medium,
-                ),
+                ("permissions.implicit_root", "postgres", Severity::Medium,),
                 ("permissions.privileged", "backup", Severity::Critical),
                 ("sensitive.inline_secret", "vaultwarden", Severity::High),
-                (
-                    "sensitive.env_file_plaintext",
-                    "postgres",
-                    Severity::High,
-                ),
+                ("sensitive.env_file_plaintext", "postgres", Severity::High,),
                 ("updates.latest_tag", "vaultwarden", Severity::High),
                 ("updates.latest_tag", "adminer", Severity::High),
                 ("updates.no_tag", "postgres", Severity::Medium),
