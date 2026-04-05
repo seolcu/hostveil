@@ -80,8 +80,9 @@ mod tests {
 
     #[test]
     fn vaultwarden_baseline_stays_clear_under_generic_rules() {
-        let project = ComposeParser::parse_path_without_override(fixture("vaultwarden", "baseline.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("vaultwarden", "baseline.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -90,8 +91,9 @@ mod tests {
 
     #[test]
     fn vaultwarden_vulnerable_fixture_produces_expected_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("vaultwarden", "vulnerable.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("vaultwarden", "vulnerable.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -135,8 +137,9 @@ mod tests {
 
     #[test]
     fn jellyfin_baseline_stays_clear_under_generic_rules() {
-        let project = ComposeParser::parse_path_without_override(fixture("jellyfin", "baseline.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("jellyfin", "baseline.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -145,8 +148,9 @@ mod tests {
 
     #[test]
     fn jellyfin_vulnerable_fixture_produces_expected_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("jellyfin", "vulnerable.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("jellyfin", "vulnerable.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -163,6 +167,21 @@ mod tests {
                 ("exposure.public_binding", "jellyfin", Severity::Medium),
                 ("permissions.implicit_root", "jellyfin", Severity::Medium),
                 ("updates.no_tag", "jellyfin", Severity::Medium),
+                (
+                    "service.jellyfin.insecure_published_url",
+                    "jellyfin",
+                    Severity::High,
+                ),
+                (
+                    "service.jellyfin.discovery_public",
+                    "jellyfin",
+                    Severity::Medium,
+                ),
+                (
+                    "service.jellyfin.media_mount_writable",
+                    "jellyfin",
+                    Severity::Low,
+                ),
             ]
         );
     }
@@ -179,8 +198,9 @@ mod tests {
 
     #[test]
     fn gitea_vulnerable_fixture_produces_expected_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("gitea", "vulnerable.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("gitea", "vulnerable.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -204,6 +224,17 @@ mod tests {
                 ("sensitive.default_credential", "db", Severity::Critical),
                 ("updates.latest_tag", "server", Severity::High),
                 ("updates.major_only_tag", "db", Severity::Low),
+                ("service.gitea.web_and_ssh_public", "server", Severity::High,),
+                (
+                    "service.gitea.ssh_published_public",
+                    "server",
+                    Severity::Medium,
+                ),
+                (
+                    "service.gitea.inline_security_secrets",
+                    "server",
+                    Severity::High,
+                ),
             ]
         );
     }
@@ -220,8 +251,9 @@ mod tests {
 
     #[test]
     fn immich_vulnerable_fixture_produces_expected_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("immich", "vulnerable.yml"))
-            .expect("project should parse");
+        let project =
+            ComposeParser::parse_path_without_override(fixture("immich", "vulnerable.yml"))
+                .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
 
@@ -241,7 +273,11 @@ mod tests {
                     "immich-server",
                     Severity::High,
                 ),
-                ("permissions.implicit_root", "immich-server", Severity::Medium),
+                (
+                    "permissions.implicit_root",
+                    "immich-server",
+                    Severity::Medium
+                ),
                 (
                     "permissions.implicit_root",
                     "immich-machine-learning",
@@ -249,7 +285,11 @@ mod tests {
                 ),
                 ("permissions.implicit_root", "redis", Severity::Medium),
                 ("permissions.implicit_root", "database", Severity::Medium),
-                ("sensitive.env_file_plaintext", "immich-server", Severity::High),
+                (
+                    "sensitive.env_file_plaintext",
+                    "immich-server",
+                    Severity::High
+                ),
                 (
                     "sensitive.env_file_plaintext",
                     "immich-machine-learning",
@@ -263,6 +303,16 @@ mod tests {
                 ),
                 ("updates.no_tag", "redis", Severity::Medium),
                 ("updates.no_tag", "database", Severity::Medium),
+                (
+                    "service.immich.shared_secret_env_file",
+                    "immich-server",
+                    Severity::High,
+                ),
+                (
+                    "service.immich.default_db_password",
+                    "immich-server",
+                    Severity::Critical,
+                ),
             ]
         );
     }

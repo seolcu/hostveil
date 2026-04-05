@@ -284,3 +284,46 @@ finding:
       description: "%{service} sets DOMAIN to %{domain}, which is not an HTTPS base URL."
       why: "Vaultwarden expects a secure context for important web features, and using a public HTTP base URL weakens transport security for a password manager deployment."
       fix: "Terminate TLS at a reverse proxy and set DOMAIN to the external HTTPS base URL."
+  jellyfin:
+    insecure_published_url:
+      title: "Jellyfin published URL uses public HTTP"
+      description: "%{service} sets JELLYFIN_PublishedServerUrl to %{url}, which is not an HTTPS URL."
+      why: "Publishing a media service with an HTTP external URL weakens transport security and makes it easier to expose clients to insecure or mixed-content access paths."
+      fix: "Expose Jellyfin through HTTPS and set JELLYFIN_PublishedServerUrl to the external HTTPS URL seen by clients."
+    discovery_public:
+      title: "Jellyfin autodiscovery port is publicly reachable"
+      description: "%{service} publishes the autodiscovery port on %{port}."
+      why: "A publicly reachable autodiscovery port increases the visibility of the media server and is often unnecessary outside a trusted local network."
+      fix: "Limit the autodiscovery port to a local network, bind it narrowly, or disable the public publish when discovery is not needed."
+    media_mount_writable:
+      title: "Jellyfin media library is mounted writable"
+      description: "%{service} mounts %{path} without read-only protection."
+      why: "Granting write access to media libraries increases the impact of a compromise and makes accidental or malicious file modification easier."
+      fix: "Mount media libraries read-only unless Jellyfin truly needs write access for that path."
+  gitea:
+    web_and_ssh_public:
+      title: "Gitea publishes both web and SSH surfaces publicly"
+      description: "%{service} exposes both the web UI and the Git-over-SSH endpoint directly on public interfaces."
+      why: "Publishing both user-facing surfaces directly broadens the attack surface and makes it easier to miss proxy, auth, and rate-limiting protections."
+      fix: "Prefer a reverse proxy or narrow binds for the web UI, and expose SSH only when it is intentionally required."
+    ssh_published_public:
+      title: "Gitea SSH endpoint is publicly reachable"
+      description: "%{service} publishes the Git-over-SSH port on %{port}."
+      why: "A public SSH endpoint is a separate attack surface that can attract brute force and enumeration even if the web UI is otherwise hardened."
+      fix: "Limit SSH exposure to the intended network, use key-based auth, and avoid publishing it publicly when HTTPS clone/push is sufficient."
+    inline_security_secrets:
+      title: "Gitea app secrets are hardcoded in Compose"
+      description: "%{service} sets %{variables} directly in environment."
+      why: "Inlining Gitea security tokens in Compose makes them easier to leak through repositories, backups, and process inspection, and misses the documented __FILE-based secret path."
+      fix: "Move Gitea security secrets to files or a secrets backend and prefer the documented __FILE configuration path for sensitive values."
+  immich:
+    shared_secret_env_file:
+      title: "Immich shares one secret env file across multiple services"
+      description: "%{service} is part of an Immich stack where %{env_file} is reused across multiple services and contains secret values."
+      why: "Sharing one plaintext env file across the server and machine-learning services increases blast radius if that file is copied, leaked, or mounted too broadly."
+      fix: "Split sensitive values by service where practical and move high-value secrets such as database credentials to a safer secret delivery path."
+    default_db_password:
+      title: "Immich stack keeps the default database password"
+      description: "%{service} is part of an Immich deployment that still uses the default DB_PASSWORD value."
+      why: "Leaving the default database password in place makes the storage backend easier to compromise if the stack or env file is exposed."
+      fix: "Replace the default DB password with a unique random value before deploying or exposing the stack."
