@@ -1,0 +1,13 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      DOMAIN: "http://vaultwarden.example.com"
+      SIGNUPS_ALLOWED: "true"
+      ADMIN_TOKEN: "supersecret"
+    volumes:
+      - ./vw-data:/data
+    ports:
+      - "8000:80"

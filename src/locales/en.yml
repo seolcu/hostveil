@@ -3,8 +3,8 @@ app:
   header:
     subtitle: "Linux Self-Hosting Security Dashboard"
   status:
-    bootstrap: "Rust bootstrap is ready; the real TUI and scan engine land next."
-    no_target: "No scan target selected yet. Pass --compose PATH to validate the Rust parser pipeline."
+    bootstrap: "Rust scan, TUI, and JSON export are available for active development."
+    no_target: "No explicit target was provided. Run without arguments for live discovery, or pass --compose PATH / --host-root PATH for a targeted scan."
     compose_loaded: "Loaded %{count} service(s) from %{path}"
     host_loaded: "Loaded host checks from %{path}"
     compose_and_host_loaded: "Loaded %{count} service(s) from %{path} with host checks enabled"
@@ -21,11 +21,17 @@ app:
         hostveil
         hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil --quick-fix PATH [--preview-changes] [--yes]
+        hostveil --fix PATH [--preview-changes] [--yes]
         hostveil --help
 
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
         --host-root PATH  override the default live host root (/) with a Linux root or snapshot
+        --quick-fix PATH  preview or apply safe Compose-only fixes for a specific file or directory
+        --fix PATH        preview or apply safe and guided Compose review changes for a specific file or directory
+        --preview-changes show the planned diff without writing any files
+        --yes             apply the reviewed changes without an interactive confirmation prompt
         --json            emit scan result JSON instead of launching the TUI
         -h, --help        show this help message
   hint:
@@ -56,9 +62,9 @@ app:
     overview_activity: "Findings and Adapters"
     overview_findings: "Top Findings"
     next_steps: "Next Steps"
-    next_step_one: "Implement the generalized findings model and scan pipeline"
-    next_step_two: "Port the Compose parser and rule engine into Rust"
-    next_step_three: "Replace this placeholder with the real dashboard overview"
+    next_step_one: "Review the highest-severity findings first"
+    next_step_two: "Use --json for automation and regression snapshots"
+    next_step_three: "Use --compose PATH or --host-root PATH for targeted scans"
     findings_list: "Findings"
     findings_list_active: "Findings [list focus]"
     finding_detail: "Detail"
@@ -74,6 +80,12 @@ app:
     docker_version: "Docker"
     uptime: "Uptime"
     load: "Load"
+    controls: "Defenses"
+    fail2ban: "Fail2ban"
+    crowdsec: "CrowdSec"
+    control_enabled: "enabled"
+    control_installed: "installed"
+    control_not_detected: "not detected"
     services_heading: "Services"
     no_services: "No Compose services loaded yet."
     no_image: "image unavailable"
@@ -83,7 +95,7 @@ app:
     not_available: "n/a"
   summary:
     title: "Current Scan Context"
-    none: "No Compose target loaded"
+    none: "No Compose project was loaded in this scan"
     compose_file: "Compose file: %{path}"
     compose_root: "Working directory: %{path}"
     host_root: "Host root: %{path}"
@@ -94,12 +106,14 @@ app:
   error:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"
+    invalid_argument_combination: "invalid argument combination: %{message}"
     compose_path_missing: "compose path does not exist: %{path}"
     compose_file_not_found: "compose file was not found in directory: %{path}"
     compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"
     compose_missing_services: "no services were found in %{path}"
     compose_io: "failed to read %{path}: %{message}"
     io: "application error: %{message}"
+    fix_serialize: "failed to serialize the updated compose file: %{message}"
     json_export_failed: "failed to serialize the current scan result"
     missing_translation: "missing translation for key: %{key}"
   finding:
@@ -130,7 +144,19 @@ app:
     docker_permission_denied: "permission denied"
     docker_failed: "failed: %{detail}"
   fix:
-    none: "No remediation items are available yet."
+    none: "No Compose remediation changes are available for the current target."
+    file: "Compose file: %{path}"
+    safe_plan: "%{count} safe change(s) are ready to review."
+    guided_plan: "%{count} guided change(s) are ready to review."
+    preview_only: "Preview only: no files were modified."
+    cancelled: "Cancelled without writing changes."
+    backup: "Created backup: %{path}"
+    applied: "Applied: %{summary}"
+    confirm_quick: "Apply the safe Compose changes to %{path}? [y/N]: "
+    confirm_all: "Apply the reviewed Compose changes to %{path}? [y/N]: "
+    safe_bind_localhost: "%{service}: bind the published port %{port} to 127.0.0.1"
+    safe_nginx_stable: "%{service}: pin nginx to nginx:stable"
+    guided_privileged_cap_add: "%{service}: replace privileged mode with a minimal NET_BIND_SERVICE capability review"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"
@@ -268,3 +294,67 @@ finding:
       description: "%{path} configures Docker to listen on a non-local TCP host."
       why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
       fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
+    defensive_controls_missing:
+      title: "No intrusion-prevention control was detected"
+      description: "%{path} does not show local markers for Fail2ban or CrowdSec."
+      why: "Basic blocking or ban automation can slow down repeated password attacks, scanning, and other noisy abuse against exposed services."
+      fix: "Install and enable at least one host-level defensive control such as Fail2ban or CrowdSec, then verify it is protecting the services you expose."
+  vaultwarden:
+    signups_enabled:
+      title: "Vaultwarden signups are left enabled"
+      description: "%{service} sets SIGNUPS_ALLOWED=true."
+      why: "Leaving open registration enabled after initial setup makes it easier for unwanted accounts to be created and expands the public attack surface of a password manager service."
+      fix: "Disable signups after the initial onboarding window or gate account creation through an invite-only workflow."
+    admin_surface_public:
+      title: "Vaultwarden admin surface is reachable from a public bind"
+      description: "%{service} enables the admin token while the service is also published on a public interface."
+      why: "A publicly reachable Vaultwarden deployment with the admin page enabled exposes a high-value management surface to probing, brute force, and credential leakage risks."
+      fix: "Keep Vaultwarden behind a reverse proxy or localhost-only bind and avoid exposing the admin page to the public internet."
+    insecure_domain:
+      title: "Vaultwarden domain is configured for public HTTP"
+      description: "%{service} sets DOMAIN to %{domain}, which is not an HTTPS base URL."
+      why: "Vaultwarden expects a secure context for important web features, and using a public HTTP base URL weakens transport security for a password manager deployment."
+      fix: "Terminate TLS at a reverse proxy and set DOMAIN to the external HTTPS base URL."
+  jellyfin:
+    insecure_published_url:
+      title: "Jellyfin published URL uses public HTTP"
+      description: "%{service} sets JELLYFIN_PublishedServerUrl to %{url}, which is not an HTTPS URL."
+      why: "Publishing a media service with an HTTP external URL weakens transport security and makes it easier to expose clients to insecure or mixed-content access paths."
+      fix: "Expose Jellyfin through HTTPS and set JELLYFIN_PublishedServerUrl to the external HTTPS URL seen by clients."
+    discovery_public:
+      title: "Jellyfin autodiscovery port is publicly reachable"
+      description: "%{service} publishes the autodiscovery port on %{port}."
+      why: "A publicly reachable autodiscovery port increases the visibility of the media server and is often unnecessary outside a trusted local network."
+      fix: "Limit the autodiscovery port to a local network, bind it narrowly, or disable the public publish when discovery is not needed."
+    media_mount_writable:
+      title: "Jellyfin media library is mounted writable"
+      description: "%{service} mounts %{path} without read-only protection."
+      why: "Granting write access to media libraries increases the impact of a compromise and makes accidental or malicious file modification easier."
+      fix: "Mount media libraries read-only unless Jellyfin truly needs write access for that path."
+  gitea:
+    web_and_ssh_public:
+      title: "Gitea publishes both web and SSH surfaces publicly"
+      description: "%{service} exposes both the web UI and the Git-over-SSH endpoint directly on public interfaces."
+      why: "Publishing both user-facing surfaces directly broadens the attack surface and makes it easier to miss proxy, auth, and rate-limiting protections."
+      fix: "Prefer a reverse proxy or narrow binds for the web UI, and expose SSH only when it is intentionally required."
+    ssh_published_public:
+      title: "Gitea SSH endpoint is publicly reachable"
+      description: "%{service} publishes the Git-over-SSH port on %{port}."
+      why: "A public SSH endpoint is a separate attack surface that can attract brute force and enumeration even if the web UI is otherwise hardened."
+      fix: "Limit SSH exposure to the intended network, use key-based auth, and avoid publishing it publicly when HTTPS clone/push is sufficient."
+    inline_security_secrets:
+      title: "Gitea app secrets are hardcoded in Compose"
+      description: "%{service} sets %{variables} directly in environment."
+      why: "Inlining Gitea security tokens in Compose makes them easier to leak through repositories, backups, and process inspection, and misses the documented __FILE-based secret path."
+      fix: "Move Gitea security secrets to files or a secrets backend and prefer the documented __FILE configuration path for sensitive values."
+  immich:
+    shared_secret_env_file:
+      title: "Immich shares one secret env file across multiple services"
+      description: "%{service} is part of an Immich stack where %{env_file} is reused across multiple services and contains secret values."
+      why: "Sharing one plaintext env file across the server and machine-learning services increases blast radius if that file is copied, leaked, or mounted too broadly."
+      fix: "Split sensitive values by service where practical and move high-value secrets such as database credentials to a safer secret delivery path."
+    default_db_password:
+      title: "Immich stack keeps the default database password"
+      description: "%{service} is part of an Immich deployment that still uses the default DB_PASSWORD value."
+      why: "Leaving the default database password in place makes the storage backend easier to compromise if the stack or env file is exposed."
+      fix: "Replace the default DB password with a unique random value before deploying or exposing the stack."
