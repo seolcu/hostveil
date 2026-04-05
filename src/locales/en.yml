@@ -3,8 +3,8 @@ app:
   header:
     subtitle: "Linux Self-Hosting Security Dashboard"
   status:
-    bootstrap: "Rust bootstrap is ready; the real TUI and scan engine land next."
-    no_target: "No scan target selected yet. Pass --compose PATH to validate the Rust parser pipeline."
+    bootstrap: "Rust scan, TUI, and JSON export are available for active development."
+    no_target: "No explicit target was provided. Run without arguments for live discovery, or pass --compose PATH / --host-root PATH for a targeted scan."
     compose_loaded: "Loaded %{count} service(s) from %{path}"
     host_loaded: "Loaded host checks from %{path}"
     compose_and_host_loaded: "Loaded %{count} service(s) from %{path} with host checks enabled"
@@ -56,9 +56,9 @@ app:
     overview_activity: "Findings and Adapters"
     overview_findings: "Top Findings"
     next_steps: "Next Steps"
-    next_step_one: "Implement the generalized findings model and scan pipeline"
-    next_step_two: "Port the Compose parser and rule engine into Rust"
-    next_step_three: "Replace this placeholder with the real dashboard overview"
+    next_step_one: "Review the highest-severity findings first"
+    next_step_two: "Use --json for automation and regression snapshots"
+    next_step_three: "Use --compose PATH or --host-root PATH for targeted scans"
     findings_list: "Findings"
     findings_list_active: "Findings [list focus]"
     finding_detail: "Detail"
@@ -83,7 +83,7 @@ app:
     not_available: "n/a"
   summary:
     title: "Current Scan Context"
-    none: "No Compose target loaded"
+    none: "No Compose project was loaded in this scan"
     compose_file: "Compose file: %{path}"
     compose_root: "Working directory: %{path}"
     host_root: "Host root: %{path}"

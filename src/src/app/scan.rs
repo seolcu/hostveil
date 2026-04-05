@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_bootstrap_without_scan_target() {
+    fn allows_live_scan_without_explicit_target() {
         let config = AppConfig::default();
 
         let result = run(&config).expect("live scan should succeed even without Docker access");
