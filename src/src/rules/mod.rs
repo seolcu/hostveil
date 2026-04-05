@@ -81,7 +81,7 @@ fn service_finding_with_remediation(
 }
 
 #[cfg(test)]
-mod tests {
+mod realistic_fixture_tests {
     use std::path::{Path, PathBuf};
 
     use crate::compose::ComposeParser;
@@ -402,6 +402,11 @@ mod tests {
                 ("updates.latest_tag", "vaultwarden", Severity::High),
                 ("updates.latest_tag", "adminer", Severity::High),
                 ("updates.no_tag", "postgres", Severity::Medium),
+                (
+                    "service.vaultwarden.admin_surface_public",
+                    "vaultwarden",
+                    Severity::High,
+                ),
             ]
         );
     }
