@@ -11,6 +11,22 @@ use crate::domain::{Axis, Finding, HostRuntimeInfo, RemediationKind, Scope, Seve
 const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
+const FAIL2BAN_MARKERS: [&str; 6] = [
+    "etc/fail2ban",
+    "usr/bin/fail2ban-client",
+    "usr/bin/fail2ban-server",
+    "usr/sbin/fail2ban-server",
+    "lib/systemd/system/fail2ban.service",
+    "usr/lib/systemd/system/fail2ban.service",
+];
+const CROWDSEC_MARKERS: [&str; 6] = [
+    "etc/crowdsec",
+    "usr/bin/crowdsec",
+    "usr/bin/cscli",
+    "usr/local/bin/cscli",
+    "lib/systemd/system/crowdsec.service",
+    "usr/lib/systemd/system/crowdsec.service",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostContext {
@@ -33,6 +49,7 @@ impl HostScanner {
         let mut findings = Vec::new();
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
+        findings.extend(scan_defensive_controls(context));
         findings
     }
 }
@@ -265,9 +282,47 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
     findings
 }
 
+fn scan_defensive_controls(context: &HostContext) -> Vec<Finding> {
+    let fail2ban_present = has_any_marker(&context.root, &FAIL2BAN_MARKERS);
+    let crowdsec_present = has_any_marker(&context.root, &CROWDSEC_MARKERS);
+
+    if fail2ban_present || crowdsec_present {
+        return Vec::new();
+    }
+
+    vec![host_finding(
+        "host.defensive_controls_missing",
+        Severity::Low,
+        &context.root,
+        HostFindingText {
+            title: t!("finding.host.defensive_controls_missing.title").into_owned(),
+            description: t!(
+                "finding.host.defensive_controls_missing.description",
+                path = context.root.display().to_string()
+            )
+            .into_owned(),
+            why_risky: t!("finding.host.defensive_controls_missing.why").into_owned(),
+            how_to_fix: t!("finding.host.defensive_controls_missing.fix").into_owned(),
+        },
+        BTreeMap::from([
+            (String::from("path"), context.root.display().to_string()),
+            (
+                String::from("checked_controls"),
+                String::from("fail2ban,crowdsec"),
+            ),
+        ]),
+    )]
+}
+
 fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
     let path = root.join(relative);
     path.exists().then_some(path)
+}
+
+fn has_any_marker(root: &Path, markers: &[&str]) -> bool {
+    markers
+        .iter()
+        .any(|marker| resolve_existing_path(root, marker).is_some())
 }
 
 fn read_hostname(root: &Path) -> Option<String> {
@@ -487,6 +542,7 @@ mod tests {
                 "host.ssh_pubkey_auth_disabled",
                 "host.docker_socket_world_writable",
                 "host.docker_daemon_tcp_public",
+                "host.defensive_controls_missing",
             ]
         );
         assert!(findings.iter().all(|finding| finding.scope == Scope::Host));
@@ -515,6 +571,10 @@ mod tests {
             &root.join(DOCKER_DAEMON_CONFIG_PATH),
             r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"]}"#,
         );
+        write_file(
+            &root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
+        );
         write_file(&root.join(DOCKER_SOCKET_PATH), "socket");
         fs::set_permissions(
             root.join(DOCKER_SOCKET_PATH),
@@ -542,6 +602,22 @@ mod tests {
         assert_eq!(info.uptime.as_deref(), Some("14d 3h 22m"));
         assert_eq!(info.load_average.as_deref(), Some("0.42 0.31 0.27"));
         assert!(info.docker_version.is_none());
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn defensive_control_finding_is_cleared_when_crowdsec_exists() {
+        let root = temp_host_root("crowdsec-present");
+        write_file(&root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.defensive_controls_missing")
+        );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
