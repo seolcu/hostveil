@@ -11,7 +11,7 @@ pub use service_aware::scan_service_aware_risk;
 pub use updates::{scan_update_risk, split_image_reference};
 
 use crate::compose::ComposeProject;
-use crate::domain::Finding;
+use crate::domain::{Finding, RemediationKind};
 
 #[derive(Debug, Default)]
 pub struct RuleEngine;
@@ -43,6 +43,26 @@ fn service_finding(
     text: ServiceFindingText,
     evidence: std::collections::BTreeMap<String, String>,
 ) -> Finding {
+    service_finding_with_remediation(
+        id,
+        axis,
+        severity,
+        service_name,
+        text,
+        evidence,
+        RemediationKind::None,
+    )
+}
+
+fn service_finding_with_remediation(
+    id: &str,
+    axis: crate::domain::Axis,
+    severity: crate::domain::Severity,
+    service_name: &str,
+    text: ServiceFindingText,
+    evidence: std::collections::BTreeMap<String, String>,
+    remediation: RemediationKind,
+) -> Finding {
     Finding {
         id: id.to_owned(),
         axis,
@@ -56,7 +76,7 @@ fn service_finding(
         why_risky: text.why_risky,
         how_to_fix: text.how_to_fix,
         evidence,
-        remediation: crate::domain::RemediationKind::None,
+        remediation,
     }
 }
 
