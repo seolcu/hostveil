@@ -56,3 +56,61 @@ fn service_finding(
         remediation: crate::domain::RemediationKind::None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use crate::compose::ComposeParser;
+    use crate::domain::Severity;
+
+    use super::RuleEngine;
+
+    fn fixture(path: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/services/vaultwarden")
+            .join(path)
+            .canonicalize()
+            .expect("fixture should exist")
+    }
+
+    #[test]
+    fn vaultwarden_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn vaultwarden_vulnerable_fixture_produces_expected_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "vaultwarden", Severity::Medium,),
+                (
+                    "exposure.reverse_proxy_expected",
+                    "vaultwarden",
+                    Severity::High,
+                ),
+                ("permissions.implicit_root", "vaultwarden", Severity::Medium,),
+                ("sensitive.inline_secret", "vaultwarden", Severity::High),
+                ("updates.latest_tag", "vaultwarden", Severity::High),
+            ]
+        );
+    }
+}
