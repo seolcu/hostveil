@@ -60,6 +60,7 @@ impl HostScanner {
         let mut findings = Vec::new();
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
+        findings.extend(scan_defensive_controls(context));
         findings
     }
 }
@@ -302,9 +303,49 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
     findings
 }
 
+fn scan_defensive_controls(context: &HostContext) -> Vec<Finding> {
+    let fail2ban_present = has_any_marker(&context.root, &FAIL2BAN_INSTALL_MARKERS)
+        || has_any_marker(&context.root, &FAIL2BAN_ENABLED_MARKERS);
+    let crowdsec_present = has_any_marker(&context.root, &CROWDSEC_INSTALL_MARKERS)
+        || has_any_marker(&context.root, &CROWDSEC_ENABLED_MARKERS);
+
+    if fail2ban_present || crowdsec_present {
+        return Vec::new();
+    }
+
+    vec![host_finding(
+        "host.defensive_controls_missing",
+        Severity::Low,
+        &context.root,
+        HostFindingText {
+            title: t!("finding.host.defensive_controls_missing.title").into_owned(),
+            description: t!(
+                "finding.host.defensive_controls_missing.description",
+                path = context.root.display().to_string()
+            )
+            .into_owned(),
+            why_risky: t!("finding.host.defensive_controls_missing.why").into_owned(),
+            how_to_fix: t!("finding.host.defensive_controls_missing.fix").into_owned(),
+        },
+        BTreeMap::from([
+            (String::from("path"), context.root.display().to_string()),
+            (
+                String::from("checked_controls"),
+                String::from("fail2ban,crowdsec"),
+            ),
+        ]),
+    )]
+}
+
 fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
     let path = root.join(relative);
     path.exists().then_some(path)
+}
+
+fn has_any_marker(root: &Path, markers: &[&str]) -> bool {
+    markers
+        .iter()
+        .any(|marker| resolve_existing_path(root, marker).is_some())
 }
 
 fn detect_defensive_control(
@@ -544,6 +585,7 @@ mod tests {
                 "host.ssh_pubkey_auth_disabled",
                 "host.docker_socket_world_writable",
                 "host.docker_daemon_tcp_public",
+                "host.defensive_controls_missing",
             ]
         );
         assert!(findings.iter().all(|finding| finding.scope == Scope::Host));
@@ -571,6 +613,10 @@ mod tests {
         write_file(
             &root.join(DOCKER_DAEMON_CONFIG_PATH),
             r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"]}"#,
+        );
+        write_file(
+            &root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
         );
         write_file(&root.join(DOCKER_SOCKET_PATH), "socket");
         fs::set_permissions(
@@ -610,6 +656,22 @@ mod tests {
         assert!(info.docker_version.is_none());
         assert_eq!(info.fail2ban, DefensiveControlStatus::Enabled);
         assert_eq!(info.crowdsec, DefensiveControlStatus::Installed);
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn defensive_control_finding_is_cleared_when_crowdsec_exists() {
+        let root = temp_host_root("crowdsec-present");
+        write_file(&root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.defensive_controls_missing")
+        );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }

@@ -294,3 +294,8 @@ finding:
       description: "%{path} configures Docker to listen on a non-local TCP host."
       why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
       fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
+    defensive_controls_missing:
+      title: "No intrusion-prevention control was detected"
+      description: "%{path} does not show local markers for Fail2ban or CrowdSec."
+      why: "Basic blocking or ban automation can slow down repeated password attacks, scanning, and other noisy abuse against exposed services."
+      fix: "Install and enable at least one host-level defensive control such as Fail2ban or CrowdSec, then verify it is protecting the services you expose."
