@@ -28,6 +28,10 @@ pub fn tr_missing_argument_value(flag: &str) -> String {
     t!("app.error.missing_argument_value", flag = flag).into_owned()
 }
 
+pub fn tr_invalid_argument_combination(message: &str) -> String {
+    t!("app.error.invalid_argument_combination", message = message).into_owned()
+}
+
 pub fn tr_compose_parse_error(error: &ComposeParseError) -> String {
     match error {
         ComposeParseError::ComposePathMissing { path } => t!(
@@ -112,10 +116,10 @@ pub fn tr_summary_finding_count(count: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        tr, tr_compose_parse_error, tr_io_error, tr_missing_argument_value,
-        tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
-        tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
-        tr_summary_service_count, tr_unknown_argument,
+        tr, tr_compose_parse_error, tr_invalid_argument_combination, tr_io_error,
+        tr_missing_argument_value, tr_status_compose_and_host_loaded, tr_status_compose_loaded,
+        tr_status_host_loaded, tr_summary_finding_count, tr_summary_host_root,
+        tr_summary_overall_score, tr_summary_service_count, tr_unknown_argument,
     };
     use crate::compose::ComposeParseError;
 
@@ -155,6 +159,14 @@ mod tests {
         assert_eq!(
             tr_missing_argument_value("--compose"),
             "missing value for argument: --compose"
+        );
+    }
+
+    #[test]
+    fn formats_invalid_argument_combination_message() {
+        assert_eq!(
+            tr_invalid_argument_combination("--json is not supported with fix operations"),
+            "invalid argument combination: --json is not supported with fix operations"
         );
     }
 

@@ -19,8 +19,8 @@ use ratatui::widgets::{
 };
 
 use crate::domain::{
-    Axis, DockerDiscoveryStatus, Finding, RemediationKind, ScanMode, ScanResult, Scope, Severity,
-    Source,
+    Axis, DefensiveControlStatus, DockerDiscoveryStatus, Finding, RemediationKind, ScanMode,
+    ScanResult, Scope, Severity, Source,
 };
 use crate::i18n;
 
@@ -1076,12 +1076,18 @@ fn remediation_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line
 }
 
 fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
-    let mut lines = vec![Line::styled(
+    let mut lines = Vec::new();
+
+    if let Some(summary) = defensive_controls_summary(scan_result, available_width) {
+        lines.push(Line::raw(summary));
+    }
+
+    lines.push(Line::styled(
         t!("app.server.services_heading").into_owned(),
         Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
-    )];
+    ));
 
     if scan_result.metadata.services.is_empty() {
         lines.push(Line::raw(t!("app.server.no_services").into_owned()));
@@ -1112,6 +1118,23 @@ fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
     }
 
     lines
+}
+
+fn defensive_controls_summary(scan_result: &ScanResult, available_width: u16) -> Option<String> {
+    let runtime = scan_result.metadata.host_runtime.as_ref()?;
+    let summary = format!(
+        "{}: {} {} | {} {}",
+        t!("app.server.controls").into_owned(),
+        t!("app.server.fail2ban").into_owned(),
+        defensive_control_status_label(runtime.fail2ban),
+        t!("app.server.crowdsec").into_owned(),
+        defensive_control_status_label(runtime.crowdsec),
+    );
+
+    Some(truncate_text(
+        &summary,
+        available_width.saturating_sub(4).max(20) as usize,
+    ))
 }
 
 fn score_rows(scan_result: &ScanResult) -> Vec<(String, u8, bool)> {
@@ -1473,6 +1496,14 @@ fn load_ratio(scan_result: &ScanResult) -> Option<f64> {
     Some((first / 2.0).clamp(0.0, 1.0))
 }
 
+fn defensive_control_status_label(status: DefensiveControlStatus) -> String {
+    match status {
+        DefensiveControlStatus::NotDetected => t!("app.server.control_not_detected").into_owned(),
+        DefensiveControlStatus::Installed => t!("app.server.control_installed").into_owned(),
+        DefensiveControlStatus::Enabled => t!("app.server.control_enabled").into_owned(),
+    }
+}
+
 fn kv_line(label: String, value: String) -> Line<'static> {
     Line::from(vec![
         Span::styled(format!("{label: <14}"), Style::default().fg(Color::Cyan)),
@@ -1710,6 +1741,8 @@ mod tests {
                     docker_version: Some(String::from("24.0.7")),
                     uptime: Some(String::from("14d 3h 22m")),
                     load_average: Some(String::from("0.42 0.31 0.27")),
+                    fail2ban: DefensiveControlStatus::Enabled,
+                    crowdsec: DefensiveControlStatus::Installed,
                 }),
                 loaded_files: vec![
                     PathBuf::from("/srv/demo/docker-compose.yml"),
@@ -1833,6 +1866,8 @@ mod tests {
         assert!(content.contains("24.0.7"));
         assert!(content.contains("14d 3h 22m"));
         assert!(content.contains("0.42 0.31 0.27"));
+        assert!(content.contains("Fail2ban enabled"));
+        assert!(content.contains("CrowdSec installed"));
     }
 
     #[test]

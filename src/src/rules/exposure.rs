@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use crate::compose::{ComposeProject, PortBinding};
-use crate::domain::{Axis, Finding, Severity};
+use crate::domain::{Axis, Finding, RemediationKind, Severity};
 
-use super::{ServiceFindingText, service_finding};
+use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
 
 const ADMIN_SERVICE_HINTS: [&str; 5] = ["adminer", "pgadmin", "phpmyadmin", "portainer", "traefik"];
 const REVERSE_PROXY_HINTS: [&str; 4] = ["vaultwarden", "nextcloud", "gitea", "immich"];
@@ -23,7 +23,7 @@ pub fn scan_exposure_risk(project: &ComposeProject) -> Vec<Finding> {
         }
 
         let first_public = public_ports[0];
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "exposure.public_binding",
             Axis::UnnecessaryExposure,
             Severity::Medium,
@@ -57,6 +57,7 @@ pub fn scan_exposure_risk(project: &ComposeProject) -> Vec<Finding> {
                     first_public.container_port.clone(),
                 ),
             ]),
+            RemediationKind::Safe,
         ));
 
         if matches_known_service(
@@ -185,5 +186,18 @@ mod tests {
                 .iter()
                 .all(|finding| finding.related_service.as_deref() != Some("redis"))
         );
+    }
+
+    #[test]
+    fn marks_public_binding_as_safe_remediation() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture()).expect("project should parse");
+
+        let finding = scan_exposure_risk(&project)
+            .into_iter()
+            .find(|finding| finding.id == "exposure.public_binding")
+            .expect("public binding finding should exist");
+
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Safe);
     }
 }
