@@ -69,9 +69,10 @@ mod tests {
 
     use super::RuleEngine;
 
-    fn fixture(path: &str) -> PathBuf {
+    fn fixture(service: &str, path: &str) -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/services/vaultwarden")
+            .join("tests/fixtures/services")
+            .join(service)
             .join(path)
             .canonicalize()
             .expect("fixture should exist")
@@ -79,7 +80,7 @@ mod tests {
 
     #[test]
     fn vaultwarden_baseline_stays_clear_under_generic_rules() {
-        let project = ComposeParser::parse_path_without_override(fixture("baseline.yml"))
+        let project = ComposeParser::parse_path_without_override(fixture("vaultwarden", "baseline.yml"))
             .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
@@ -89,7 +90,7 @@ mod tests {
 
     #[test]
     fn vaultwarden_vulnerable_fixture_produces_expected_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("vulnerable.yml"))
+        let project = ComposeParser::parse_path_without_override(fixture("vaultwarden", "vulnerable.yml"))
             .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
@@ -128,6 +129,40 @@ mod tests {
                     "vaultwarden",
                     Severity::High,
                 ),
+            ]
+        );
+    }
+
+    #[test]
+    fn jellyfin_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("jellyfin", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn jellyfin_vulnerable_fixture_produces_expected_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("jellyfin", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "jellyfin", Severity::Medium),
+                ("permissions.implicit_root", "jellyfin", Severity::Medium),
+                ("updates.no_tag", "jellyfin", Severity::Medium),
             ]
         );
     }
