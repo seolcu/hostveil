@@ -32,7 +32,7 @@ assert_file_contains() {
   local path="$1"
   local pattern="$2"
 
-  rg -q --fixed-strings -- "$pattern" "$path" || {
+  grep -Fq -- "$pattern" "$path" || {
     printf 'error: %s did not contain expected text: %s\n' "$path" "$pattern" >&2
     exit 1
   }
