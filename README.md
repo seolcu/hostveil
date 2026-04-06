@@ -70,18 +70,44 @@ source proto/.venv/bin/activate
 pip install -e "proto[dev]"
 ```
 
-Planned alpha delivery path:
+Current alpha delivery path:
 
 - GitHub Releases tarballs for `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
 - Published `SHA256SUMS` for release artifact verification
 - A small install script that selects the correct Linux binary for the host architecture
 - Optional external tools such as Docker and Trivy discovered from `PATH` instead of being bundled
-- Alpha updates handled by rerunning the install script or replacing the binary manually
+- Installer lifecycle commands for install, upgrade, launch-time auto-upgrade, and uninstall
 
-Install a published alpha release:
+Install the latest preview release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/<tag>/scripts/install.sh | bash -s -- --version <tag> --channel preview
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+```
+
+Upgrade an existing installation to the latest release on its saved channel:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --upgrade
+```
+
+Automatic upgrades are enabled by default. Every `hostveil` launch checks the saved release channel and upgrades before starting if a newer version is available.
+
+Disable automatic upgrades:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --disable-auto-upgrade
+```
+
+Re-enable automatic upgrades:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --enable-auto-upgrade
+```
+
+Uninstall hostveil cleanly:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --uninstall
 ```
 
 ## Usage
@@ -169,7 +195,7 @@ Planned install and update model for alpha:
 - Download a single architecture-specific Linux binary archive
 - Verify the archive against `SHA256SUMS`
 - Install to a standard user or system binary path such as `~/.local/bin` or `/usr/local/bin`
-- Update by rerunning the install script or manually replacing the binary with a newer release
+- Track install metadata so launch-time auto-upgrade, explicit `--upgrade`, and `--uninstall` actions work cleanly
 
 Alpha release gates:
 
