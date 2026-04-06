@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   validate:
-    name: fmt, clippy, test
+    name: fmt, clippy, test, smoke
     runs-on: ubuntu-latest
 
     steps:
@@ -44,3 +44,9 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+
+      - name: Build debug binary
+        run: cargo build --workspace
+
+      - name: Run smoke tests
+        run: ./scripts/smoke-test.sh target/debug/hostveil
