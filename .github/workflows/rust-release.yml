@@ -139,11 +139,31 @@ jobs:
           body: |
             ## Install
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/install.sh | bash -s -- --version ${{ github.ref_name }} --channel preview
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --channel preview
             ```
 
-            ## Update
-            Rerun the install script with the newer tag, or replace the installed binary manually.
+            ## Upgrade
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --upgrade
+            ```
+
+            ## Automatic upgrades
+            Automatic upgrades are enabled by default whenever `hostveil` launches.
+
+            Disable them with:
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --disable-auto-upgrade
+            ```
+
+            Re-enable them with:
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --enable-auto-upgrade
+            ```
+
+            ## Uninstall
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --uninstall
+            ```
 
             ## Optional dependencies
             - Docker improves live Compose discovery when it is available.
