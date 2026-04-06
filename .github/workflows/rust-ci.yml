@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   validate:
-    name: fmt, clippy, test, smoke
+    name: fmt, clippy, test, smoke, installer
     runs-on: ubuntu-latest
 
     steps:
@@ -50,3 +50,6 @@ jobs:
 
       - name: Run smoke tests
         run: ./scripts/smoke-test.sh target/debug/hostveil
+
+      - name: Run installer tests
+        run: ./scripts/test-install-script.sh target/debug/hostveil

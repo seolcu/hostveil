@@ -4,6 +4,7 @@ set -euo pipefail
 REPO="${HOSTVEIL_REPO:-seolcu/hostveil}"
 CHANNEL="${HOSTVEIL_CHANNEL:-preview}"
 INSTALL_DIR="${HOSTVEIL_INSTALL_DIR:-}"
+DOWNLOAD_BASE_URL="${HOSTVEIL_DOWNLOAD_BASE_URL:-}"
 REQUESTED_VERSION=""
 
 usage() {
@@ -80,31 +81,46 @@ else
   fail "curl or wget is required"
 fi
 
+extract_checksum_hash() {
+  local checksums_file="$1"
+  local archive_name="$2"
+
+  awk -v archive="$archive_name" '
+    NF >= 2 {
+      path = $2
+      if (path == archive || path == ("./" archive) || path == ("dist/" archive)) {
+        print $1
+        exit
+      }
+    }
+  ' "$checksums_file"
+}
+
 if command -v sha256sum >/dev/null 2>&1; then
-  verify_checksum() {
-    local checksums_file="$1"
-    local archive_name="$2"
-    local archive_path="$3"
-    local expected
-    expected="$(grep "  ${archive_name}$" "$checksums_file" || true)"
-    [[ -n "$expected" ]] || fail "no checksum entry found for ${archive_name}"
-    (cd "$(dirname "$archive_path")" && printf '%s\n' "$expected" | sha256sum -c - >/dev/null)
+  hash_file() {
+    sha256sum "$1" | awk '{print $1}'
   }
 elif command -v shasum >/dev/null 2>&1; then
-  verify_checksum() {
-    local checksums_file="$1"
-    local archive_name="$2"
-    local archive_path="$3"
-    local expected_hash
-    expected_hash="$(sed -n "s/^\([0-9a-fA-F]\{64\}\)  ${archive_name}$/\1/p" "$checksums_file")"
-    [[ -n "$expected_hash" ]] || fail "no checksum entry found for ${archive_name}"
-    local actual_hash
-    actual_hash="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
-    [[ "$actual_hash" == "$expected_hash" ]] || fail "checksum verification failed for ${archive_name}"
+  hash_file() {
+    shasum -a 256 "$1" | awk '{print $1}'
   }
 else
   fail "sha256sum or shasum is required"
 fi
+
+verify_checksum() {
+  local checksums_file="$1"
+  local archive_name="$2"
+  local archive_path="$3"
+  local expected_hash
+  local actual_hash
+
+  expected_hash="$(extract_checksum_hash "$checksums_file" "$archive_name")"
+  [[ -n "$expected_hash" ]] || fail "no checksum entry found for ${archive_name}"
+
+  actual_hash="$(hash_file "$archive_path")"
+  [[ "$actual_hash" == "$expected_hash" ]] || fail "checksum verification failed for ${archive_name}"
+}
 
 normalize_version() {
   if [[ "$1" == v* ]]; then
@@ -172,8 +188,15 @@ tag="$(resolve_version)"
 target="$(detect_target)"
 install_dir="$(resolve_install_dir)"
 archive_name="hostveil-${tag}-${target}.tar.gz"
-archive_url="https://github.com/${REPO}/releases/download/${tag}/${archive_name}"
-checksums_url="https://github.com/${REPO}/releases/download/${tag}/SHA256SUMS"
+
+if [[ -n "$DOWNLOAD_BASE_URL" ]]; then
+  download_base_url="$DOWNLOAD_BASE_URL"
+else
+  download_base_url="https://github.com/${REPO}/releases/download/${tag}"
+fi
+
+archive_url="${download_base_url}/${archive_name}"
+checksums_url="${download_base_url}/SHA256SUMS"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
