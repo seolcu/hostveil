@@ -23,6 +23,7 @@ app:
         hostveil [--compose PATH] [--host-root PATH] [--json]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
+        hostveil --version
         hostveil --help
 
       Options:
@@ -33,7 +34,10 @@ app:
         --preview-changes show the planned diff without writing any files
         --yes             apply the reviewed changes without an interactive confirmation prompt
         --json            emit scan result JSON instead of launching the TUI
+        -V, --version     show version information
         -h, --help        show this help message
+  version:
+    text: "%{name} %{version}"
   hint:
     quit: "Press q or Esc to quit"
     json: "Use --json to inspect the current scan result structure"
@@ -115,6 +119,7 @@ app:
     io: "application error: %{message}"
     fix_serialize: "failed to serialize the updated compose file: %{message}"
     json_export_failed: "failed to serialize the current scan result"
+    tui_requires_terminal: "the interactive TUI requires a terminal; use --json for non-interactive runs"
     missing_translation: "missing translation for key: %{key}"
   finding:
     header: "Findings Detail"

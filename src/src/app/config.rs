@@ -13,6 +13,7 @@ pub enum OutputMode {
 pub struct AppConfig {
     pub output_mode: OutputMode,
     pub show_help: bool,
+    pub show_version: bool,
     pub compose_path: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
     pub fix_mode: Option<FixMode>,
@@ -26,6 +27,7 @@ impl Default for AppConfig {
         Self {
             output_mode: OutputMode::Tui,
             show_help: false,
+            show_version: false,
             compose_path: None,
             host_root: None,
             fix_mode: None,
@@ -45,6 +47,7 @@ impl AppConfig {
             match argument.as_str() {
                 "--json" => config.output_mode = OutputMode::Json,
                 "-h" | "--help" => config.show_help = true,
+                "-V" | "--version" => config.show_version = true,
                 "--preview-changes" => config.preview_changes = true,
                 "--yes" => config.assume_yes = true,
                 "--compose" => {
@@ -160,6 +163,7 @@ mod tests {
 
         assert_eq!(config.output_mode, OutputMode::Tui);
         assert!(!config.show_help);
+        assert!(!config.show_version);
         assert!(config.fix_mode.is_none());
     }
 
@@ -200,6 +204,13 @@ mod tests {
         let config = AppConfig::parse([String::from("--help")]).expect("config should parse");
 
         assert!(config.show_help);
+    }
+
+    #[test]
+    fn parses_version_flag() {
+        let config = AppConfig::parse([String::from("--version")]).expect("config should parse");
+
+        assert!(config.show_version);
     }
 
     #[test]

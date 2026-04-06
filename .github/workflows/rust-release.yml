@@ -1,0 +1,159 @@
+name: Rust Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: rust-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: validate release tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Build release binary for smoke tests
+        run: cargo build --release --workspace
+
+      - name: Run smoke tests
+        run: ./scripts/smoke-test.sh target/release/hostveil
+
+  build:
+    name: build ${{ matrix.target }}
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            linker: ""
+          - target: aarch64-unknown-linux-gnu
+            linker: aarch64-linux-gnu-gcc
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install aarch64 cross compiler
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install --yes gcc-aarch64-linux-gnu
+
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --workspace --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
+
+      - name: Package release archive
+        run: |
+          mkdir -p dist/package
+          cp target/${{ matrix.target }}/release/hostveil dist/package/hostveil
+          cp README.md LICENSE dist/package/
+          tar -C dist/package -czf dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz hostveil README.md LICENSE
+
+      - name: Upload packaged archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: hostveil-${{ matrix.target }}
+          path: dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+
+  checksums:
+    name: generate checksums
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download packaged archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: sha256sum dist/*.tar.gz > dist/SHA256SUMS
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: hostveil-checksums
+          path: dist/SHA256SUMS
+
+  release:
+    name: publish prerelease
+    needs: checksums
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download packaged archives and checksums
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Prepare install script asset
+        run: cp scripts/install.sh dist/install.sh
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          body: |
+            ## Install
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/install.sh | bash -s -- --version ${{ github.ref_name }} --channel preview
+            ```
+
+            ## Update
+            Rerun the install script with the newer tag, or replace the installed binary manually.
+
+            ## Optional dependencies
+            - Docker improves live Compose discovery when it is available.
+            - Trivy is planned as an optional adapter and is not required for this alpha release.
+
+            ## Known limitations
+            - Linux only
+            - Nextcloud-specific service-aware rules are not included yet
+            - TUI-embedded guided diff review is still deferred from the first alpha
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/install.sh

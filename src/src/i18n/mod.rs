@@ -24,6 +24,10 @@ pub fn tr_unknown_argument(argument: &str) -> String {
     t!("app.error.unknown_argument", argument = argument).into_owned()
 }
 
+pub fn tr_version(name: &str, version: &str) -> String {
+    t!("app.version.text", name = name, version = version).into_owned()
+}
+
 pub fn tr_missing_argument_value(flag: &str) -> String {
     t!("app.error.missing_argument_value", flag = flag).into_owned()
 }
@@ -66,6 +70,10 @@ pub fn tr_compose_parse_error(error: &ComposeParseError) -> String {
 
 pub fn tr_io_error(message: &str) -> String {
     t!("app.error.io", message = message).into_owned()
+}
+
+pub fn tr_tui_requires_terminal() -> String {
+    t!("app.error.tui_requires_terminal").into_owned()
 }
 
 pub fn tr_status_compose_loaded(path: &str, count: usize) -> String {
@@ -119,7 +127,8 @@ mod tests {
         tr, tr_compose_parse_error, tr_invalid_argument_combination, tr_io_error,
         tr_missing_argument_value, tr_status_compose_and_host_loaded, tr_status_compose_loaded,
         tr_status_host_loaded, tr_summary_finding_count, tr_summary_host_root,
-        tr_summary_overall_score, tr_summary_service_count, tr_unknown_argument,
+        tr_summary_overall_score, tr_summary_service_count, tr_tui_requires_terminal,
+        tr_unknown_argument, tr_version,
     };
     use crate::compose::ComposeParseError;
 
@@ -142,6 +151,14 @@ mod tests {
     }
 
     #[test]
+    fn formats_version_message() {
+        assert_eq!(
+            tr_version("hostveil", "0.1.0-alpha.1"),
+            "hostveil 0.1.0-alpha.1"
+        );
+    }
+
+    #[test]
     fn falls_back_for_unknown_key() {
         assert_eq!(
             tr("does.not.exist"),
@@ -152,6 +169,14 @@ mod tests {
     #[test]
     fn formats_io_error_message() {
         assert_eq!(tr_io_error("boom"), "application error: boom");
+    }
+
+    #[test]
+    fn formats_tui_requires_terminal_message() {
+        assert_eq!(
+            tr_tui_requires_terminal(),
+            "the interactive TUI requires a terminal; use --json for non-interactive runs"
+        );
     }
 
     #[test]

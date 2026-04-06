@@ -4,7 +4,7 @@ mod scan;
 pub use config::{AppConfig, OutputMode};
 
 use std::fmt;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 use crate::compose::ComposeParseError;
 use crate::export;
@@ -17,6 +17,7 @@ pub enum AppError {
     UnknownArgument(String),
     MissingArgumentValue(&'static str),
     InvalidArgumentCombination(String),
+    TuiRequiresTerminal,
     ComposeParse(ComposeParseError),
     Fix(FixError),
     Io(io::Error),
@@ -32,6 +33,7 @@ impl fmt::Display for AppError {
             Self::InvalidArgumentCombination(message) => {
                 write!(f, "{}", i18n::tr_invalid_argument_combination(message))
             }
+            Self::TuiRequiresTerminal => write!(f, "{}", i18n::tr_tui_requires_terminal()),
             Self::ComposeParse(error) => write!(f, "{}", i18n::tr_compose_parse_error(error)),
             Self::Fix(error) => write!(f, "{error}"),
             Self::Io(error) => write!(f, "{}", i18n::tr_io_error(&error.to_string())),
@@ -64,6 +66,14 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
 
     if config.show_help {
         print!("{}", i18n::tr("app.help.text"));
+        return Ok(());
+    }
+
+    if config.show_version {
+        println!(
+            "{}",
+            i18n::tr_version(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+        );
         return Ok(());
     }
 
@@ -100,7 +110,12 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     let scan_result = scan::run(&config)?;
 
     match config.output_mode {
-        OutputMode::Tui => tui::run(&scan_result)?,
+        OutputMode::Tui => {
+            if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+                return Err(AppError::TuiRequiresTerminal);
+            }
+            tui::run(&scan_result)?;
+        }
         OutputMode::Json => {
             print!("{}", export::scan_result_json(&scan_result));
         }

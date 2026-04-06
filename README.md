@@ -39,7 +39,9 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Installation
 
-The final packaged Rust binary is not available yet. The Python prototype in `proto/` is now a frozen reference implementation for Compose parsing, scoring, and fix behavior while active product work moves into `src/`.
+Alpha Rust releases are delivered through GitHub Releases as Linux binaries. The Python prototype in `proto/` remains a frozen reference implementation for Compose parsing, scoring, and fix behavior while active product work continues in `src/`.
+
+The first public Rust release is planned as a Linux-only prerelease (`v0.1.0-alpha.N`), not as a stable `v1.0` launch.
 
 Official runtime support for the real product is Linux. If you contribute from Windows, use WSL rather than native PowerShell.
 
@@ -49,6 +51,7 @@ Current Rust setup from the repository root:
 rustup default stable
 cargo build
 cargo run -- --help
+cargo run -- --version
 cargo run
 cargo run -- --json
 
@@ -65,6 +68,20 @@ Current reference prototype setup:
 python3 -m venv proto/.venv
 source proto/.venv/bin/activate
 pip install -e "proto[dev]"
+```
+
+Planned alpha delivery path:
+
+- GitHub Releases tarballs for `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
+- Published `SHA256SUMS` for release artifact verification
+- A small install script that selects the correct Linux binary for the host architecture
+- Optional external tools such as Docker and Trivy discovered from `PATH` instead of being bundled
+- Alpha updates handled by rerunning the install script or replacing the binary manually
+
+Install a published alpha release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/<tag>/scripts/install.sh | bash -s -- --version <tag> --channel preview
 ```
 
 ## Usage
@@ -114,6 +131,53 @@ Current Rust implementation status:
 - Native Linux host checks started for SSH posture and Docker host exposure via `--host-root`
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
+
+## First Alpha Release Plan
+
+The first public Rust release should optimize for safe delivery and fast feedback, not for complete v1 feature coverage.
+
+Must-have for `v0.1.0-alpha.N`:
+
+- Linux-only prerelease scope with clear known limitations
+- Native Compose and host checks through one shared scan result
+- TUI overview plus finding detail navigation for real scan results
+- Minimal headless JSON export for automation and regression snapshots
+- Previewable Compose `--quick-fix` and `--fix` flows with backup-safe writes
+- Release artifacts published through GitHub Releases with checksums
+- An install script for Linux binary download and upgrade
+- Core smoke-test coverage for the supported CLI entry points before publishing
+
+Explicitly deferred from the first alpha:
+
+- Nextcloud-specific service-aware rules
+- Trivy integration as the first optional external adapter
+- TUI-embedded guided diff review before writes
+- Package-manager distribution such as apt, dnf, Homebrew, or AUR
+- Built-in self-update commands
+- Final scoring ADR and stable weighting guarantees
+
+Optional dependency policy for alpha:
+
+- `hostveil` should install and run without Docker or Trivy being present
+- Docker-based live discovery improves Compose coverage when available
+- Trivy remains an optional adapter; if it is missing, scans continue with reduced coverage instead of failing
+- Missing external tools should be shown as coverage or adapter status, not as fatal startup errors
+
+Planned install and update model for alpha:
+
+- Install from GitHub Releases rather than from a package manager
+- Download a single architecture-specific Linux binary archive
+- Verify the archive against `SHA256SUMS`
+- Install to a standard user or system binary path such as `~/.local/bin` or `/usr/local/bin`
+- Update by rerunning the install script or manually replacing the binary with a newer release
+
+Alpha release gates:
+
+- `cargo fmt --check`
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+- `cargo test --workspace`
+- Smoke tests for `hostveil`, `hostveil --json`, targeted Compose scans, targeted host scans, and preview-only fix flows
+- Release notes that document supported platforms, optional dependencies, and known limitations
 
 ## Contributing
 

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BINARY_PATH="${1:-$ROOT_DIR/target/debug/hostveil}"
+
+[[ -x "$BINARY_PATH" ]] || {
+  printf 'error: binary is not executable: %s\n' "$BINARY_PATH" >&2
+  exit 1
+}
+
+COMPOSE_FIXTURE="$ROOT_DIR/proto/tests/fixtures/parser/docker-compose.yml"
+TMP_HOST_ROOT="$(mktemp -d)"
+cleanup() {
+  rm -rf "$TMP_HOST_ROOT"
+}
+trap cleanup EXIT
+
+mkdir -p "$TMP_HOST_ROOT/etc/ssh" "$TMP_HOST_ROOT/proc" "$TMP_HOST_ROOT/var/run"
+printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' > "$TMP_HOST_ROOT/etc/ssh/sshd_config"
+printf 'alpha-smoke\n' > "$TMP_HOST_ROOT/etc/hostname"
+printf '3600.00 0.00\n' > "$TMP_HOST_ROOT/proc/uptime"
+printf '0.10 0.20 0.30 1/100 123\n' > "$TMP_HOST_ROOT/proc/loadavg"
+touch "$TMP_HOST_ROOT/var/run/docker.sock"
+chmod 666 "$TMP_HOST_ROOT/var/run/docker.sock"
+
+VERSION_OUTPUT="$($BINARY_PATH --version)"
+printf '%s\n' "$VERSION_OUTPUT" | grep -q '^hostveil '
+
+$BINARY_PATH --help | grep -q -- '--version'
+$BINARY_PATH --json | grep -q '"scan_mode": "live"'
+$BINARY_PATH --json --compose "$COMPOSE_FIXTURE" | grep -q '"findings"'
+$BINARY_PATH --json --host-root "$TMP_HOST_ROOT" | grep -q '"host_runtime"'
+$BINARY_PATH --quick-fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
+$BINARY_PATH --fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
+
+set +e
+BARE_OUTPUT="$($BINARY_PATH 2>&1 >/dev/null)"
+BARE_STATUS=$?
+set -e
+
+[[ $BARE_STATUS -ne 0 ]]
+printf '%s\n' "$BARE_OUTPUT" | grep -q 'requires a terminal'
+
+printf 'Smoke tests passed for %s\n' "$BINARY_PATH"

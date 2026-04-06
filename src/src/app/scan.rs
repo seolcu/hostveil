@@ -227,6 +227,7 @@ mod tests {
         let config = AppConfig {
             output_mode: OutputMode::Json,
             show_help: false,
+            show_version: false,
             compose_path: Some(parser_fixture()),
             host_root: None,
             fix_mode: None,
@@ -303,6 +304,7 @@ mod tests {
         let config = AppConfig {
             output_mode: OutputMode::Json,
             show_help: false,
+            show_version: false,
             compose_path: Some(parser_fixture()),
             host_root: Some(host_root.clone()),
             fix_mode: None,
