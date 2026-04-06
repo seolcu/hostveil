@@ -105,7 +105,7 @@ jobs:
           merge-multiple: true
 
       - name: Generate checksums
-        run: sha256sum dist/*.tar.gz > dist/SHA256SUMS
+        run: (cd dist && sha256sum *.tar.gz > SHA256SUMS)
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
