@@ -18,6 +18,7 @@ pub enum AppError {
     MissingArgumentValue(&'static str),
     InvalidArgumentCombination(String),
     TuiRequiresTerminal,
+    FixRequiresTerminal,
     ComposeParse(ComposeParseError),
     Fix(FixError),
     Io(io::Error),
@@ -34,6 +35,7 @@ impl fmt::Display for AppError {
                 write!(f, "{}", i18n::tr_invalid_argument_combination(message))
             }
             Self::TuiRequiresTerminal => write!(f, "{}", i18n::tr_tui_requires_terminal()),
+            Self::FixRequiresTerminal => write!(f, "{}", i18n::tr_fix_requires_terminal()),
             Self::ComposeParse(error) => write!(f, "{}", i18n::tr_compose_parse_error(error)),
             Self::Fix(error) => write!(f, "{error}"),
             Self::Io(error) => write!(f, "{}", i18n::tr_io_error(&error.to_string())),
@@ -85,21 +87,35 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
         })?;
 
         let preview_plan = fix::preview(compose_path, mode)?;
-        print_fix_review(&preview_plan);
-
         if config.preview_changes {
+            print_fix_review(&preview_plan);
             println!();
             print!("{}", t!("app.fix.preview_only").into_owned());
             return Ok(());
         }
 
         if !preview_plan.changed() {
+            print_fix_review(&preview_plan);
             return Ok(());
         }
 
-        if !config.assume_yes && !confirm_fix(compose_path, mode)? {
-            print!("{}", t!("app.fix.cancelled").into_owned());
-            return Ok(());
+        if mode == crate::fix::FixMode::Fix {
+            if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+                return Err(AppError::FixRequiresTerminal);
+            }
+
+            let confirmed = tui::run_fix_review(&preview_plan)?;
+            if !confirmed {
+                print!("{}", t!("app.fix.cancelled").into_owned());
+                return Ok(());
+            }
+        } else {
+            print_fix_review(&preview_plan);
+
+            if !config.assume_yes && !confirm_fix(compose_path, mode)? {
+                print!("{}", t!("app.fix.cancelled").into_owned());
+                return Ok(());
+            }
         }
 
         let applied_plan = fix::apply(compose_path, mode)?;

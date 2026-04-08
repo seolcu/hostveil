@@ -50,6 +50,9 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn scroll"
     back_overview: "Press q or Esc to return to the overview"
     back_overview_compact: "q or Esc back"
+    fix_review_scroll: "Use Up/Down or PgUp/PgDn to scroll the diff"
+    fix_review_apply: "Press y or Enter to apply the reviewed changes"
+    fix_review_cancel: "Press q or Esc to cancel"
   footer:
     quit: "quit"
     findings: "open findings"
@@ -61,6 +64,8 @@ app:
     scan_results: "Scan Results"
     security_scores: "Security Scores"
     fix_paths: "Fix Paths"
+    fix_review: "Fix Review"
+    fix_diff: "Diff"
     overview_score: "Overview Score"
     overview_axes: "Axis Scores"
     overview_activity: "Findings and Adapters"
@@ -120,6 +125,7 @@ app:
     fix_serialize: "failed to serialize the updated compose file: %{message}"
     json_export_failed: "failed to serialize the current scan result"
     tui_requires_terminal: "the interactive TUI requires a terminal; use --json for non-interactive runs"
+    fix_requires_terminal: "guided Compose fixes require a terminal review; use --preview-changes to inspect the diff non-interactively"
     missing_translation: "missing translation for key: %{key}"
   finding:
     header: "Findings Detail"
@@ -189,6 +195,12 @@ adapter:
   missing: "missing"
   failed: "failed: %{detail}"
 finding:
+  trivy:
+    image_vulnerabilities:
+      title: "Image has known vulnerabilities"
+      description: "%{image} has %{count} vulnerability record(s) reported by Trivy."
+      why: "Known vulnerabilities in base images or packages can be exploited when exposed services are reachable."
+      fix: "Update the image to a patched version, rebuild if needed, and pin a stable tag or digest before the next deploy."
   updates:
     latest:
       title: "Image uses the latest tag"

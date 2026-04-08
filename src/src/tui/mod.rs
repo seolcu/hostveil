@@ -24,6 +24,10 @@ use crate::domain::{
 };
 use crate::i18n;
 
+mod fix_review;
+
+pub use fix_review::run_fix_review;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Screen {
     Overview,
