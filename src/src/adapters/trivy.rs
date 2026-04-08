@@ -144,7 +144,9 @@ fn summarize_report(image: &str, report: TrivyReport) -> Option<TrivyImageSummar
         }
 
         for vuln in result.vulnerabilities.unwrap_or_default() {
-            let severity = vuln.severity.as_deref().and_then(parse_trivy_severity)?;
+            let Some(severity) = vuln.severity.as_deref().and_then(parse_trivy_severity) else {
+                continue;
+            };
 
             *counts.entry(severity).or_insert(0) += 1;
 
@@ -357,5 +359,35 @@ mod tests {
         assert_eq!(finding.related_service.as_deref(), Some("demo"));
         assert!(finding.evidence.contains_key("vulnerabilities_total"));
         assert!(finding.evidence.contains_key("sample_ids"));
+    }
+
+    #[test]
+    fn ignores_unmapped_severities_without_dropping_known_findings() {
+        let report: TrivyReport = serde_json::from_str(
+            r#"{
+                "Results": [
+                    {
+                        "Target": "demo:1.0",
+                        "Vulnerabilities": [
+                            {
+                                "VulnerabilityID": "CVE-2026-9999",
+                                "Severity": "UNKNOWN"
+                            },
+                            {
+                                "VulnerabilityID": "CVE-2026-0002",
+                                "Severity": "HIGH"
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+        )
+        .expect("fixture should parse");
+
+        let summary = summarize_report("demo:1.0", report).expect("known findings should remain");
+
+        assert_eq!(summary.total, 1);
+        assert_eq!(summary.max_severity, Severity::High);
+        assert_eq!(summary.sample_ids, vec![String::from("CVE-2026-0002")]);
     }
 }
