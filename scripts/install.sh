@@ -273,6 +273,44 @@ resolve_install_dir() {
   fi
 }
 
+normalize_dir_path() {
+  local path="$1"
+
+  while [[ "$path" != "/" && "$path" == */ ]]; do
+    path="${path%/}"
+  done
+
+  printf '%s\n' "$path"
+}
+
+path_contains_dir() {
+  local path_value="$1"
+  local expected_dir
+  local entry
+
+  expected_dir="$(normalize_dir_path "$2")"
+  IFS=':' read -r -a path_entries <<< "$path_value"
+
+  for entry in "${path_entries[@]}"; do
+    if [[ "$(normalize_dir_path "$entry")" == "$expected_dir" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+install_dir_is_available_on_path() {
+  local login_path
+
+  if path_contains_dir "$PATH" "$1"; then
+    return 0
+  fi
+
+  login_path="$(bash -lc 'printf "%s" "$PATH"' 2>/dev/null || true)"
+  [[ -n "$login_path" ]] && path_contains_dir "$login_path" "$1"
+}
+
 resolve_download_base_url() {
   local tag="$1"
 
@@ -557,7 +595,7 @@ perform_install() {
   write_wrapper_script
 
   log "Installed hostveil ${tag} to $(resolve_wrapper_path)"
-  if [[ ":$PATH:" != *":${INSTALL_DIR}:"* ]]; then
+  if ! install_dir_is_available_on_path "$INSTALL_DIR"; then
     log "Note: ${INSTALL_DIR} is not currently on PATH."
   fi
 }
