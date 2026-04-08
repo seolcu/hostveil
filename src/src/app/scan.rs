@@ -1,6 +1,7 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+use crate::adapters;
 use crate::compose::{ComposeParseError, ComposeParser, ComposeProject};
 use crate::discovery::{DockerDiscoveryResult, discover_running_compose_projects, project_summary};
 use crate::domain::{DiscoveredProjectSummary, ScanMode, ScanResult, ServiceSummary};
@@ -31,8 +32,20 @@ pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
         }
     }
 
+    apply_external_adapters(&mut result);
+
     result.score_report = scoring::build_score_report_with_coverage(&result.findings, coverage);
     Ok(result)
+}
+
+fn apply_external_adapters(result: &mut ScanResult) {
+    let trivy_output = adapters::trivy::scan(&result.metadata.services);
+    result
+        .metadata
+        .adapters
+        .insert(String::from("trivy"), trivy_output.status);
+    result.metadata.warnings.extend(trivy_output.warnings);
+    result.findings.extend(trivy_output.findings);
 }
 
 fn uses_live_discovery(config: &AppConfig) -> bool {
@@ -189,7 +202,7 @@ mod tests {
     use std::path::Path;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use crate::domain::{DockerDiscoveryStatus, ScanMode};
+    use crate::domain::{AdapterStatus, DockerDiscoveryStatus, ScanMode};
 
     use super::{apply_current_dir_fallback, run, scan_compose_project};
     use crate::app::{AppConfig, OutputMode};
@@ -223,6 +236,34 @@ mod tests {
     }
 
     #[test]
+    fn records_trivy_adapter_status_in_scan_metadata() {
+        let config = AppConfig {
+            output_mode: OutputMode::Json,
+            show_help: false,
+            show_version: false,
+            compose_path: Some(parser_fixture()),
+            host_root: None,
+            fix_mode: None,
+            fix_target_path: None,
+            preview_changes: false,
+            assume_yes: false,
+        };
+
+        let result = run(&config).expect("scan should succeed");
+
+        let status = result
+            .metadata
+            .adapters
+            .get("trivy")
+            .expect("scan should always record Trivy adapter status");
+
+        assert!(matches!(
+            status,
+            AdapterStatus::Available | AdapterStatus::Missing | AdapterStatus::Failed(_)
+        ));
+    }
+
+    #[test]
     fn populates_scan_metadata_from_compose_project() {
         let config = AppConfig {
             output_mode: OutputMode::Json,
@@ -245,7 +286,7 @@ mod tests {
         assert!(result.metadata.compose_file.is_some());
         assert_eq!(result.metadata.services.len(), 2);
         assert!(result.metadata.host_runtime.is_none());
-        assert_eq!(result.findings.len(), 4);
+        assert!(result.findings.len() >= 4);
         assert_eq!(
             result.score_report.axis_scores[&crate::domain::Axis::ExcessivePermissions],
             10

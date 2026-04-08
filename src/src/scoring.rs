@@ -170,4 +170,88 @@ mod tests {
         assert_eq!(without_host.axis_scores[&Axis::HostHardening], 25);
         assert_eq!(with_host.overall, 25);
     }
+
+    fn expected_python_overall(axis_scores: &BTreeMap<Axis, u8>) -> u8 {
+        // Mirrors proto/hostveil/scoring.py for Compose-only scans.
+        let weighted = axis_scores[&Axis::SensitiveData] as f32 * 0.35
+            + axis_scores[&Axis::ExcessivePermissions] as f32 * 0.30
+            + axis_scores[&Axis::UnnecessaryExposure] as f32 * 0.20
+            + axis_scores[&Axis::UpdateSupplyChainRisk] as f32 * 0.15;
+        weighted.round() as u8
+    }
+
+    #[test]
+    fn matches_python_prototype_for_compose_only_scans() {
+        let findings = vec![
+            finding(Axis::SensitiveData, Severity::High, "a"),
+            finding(Axis::SensitiveData, Severity::Low, "b"),
+            finding(Axis::ExcessivePermissions, Severity::Medium, "c"),
+            finding(Axis::UnnecessaryExposure, Severity::Critical, "d"),
+            finding(Axis::UpdateSupplyChainRisk, Severity::Low, "e"),
+        ];
+
+        let report = build_score_report(&findings);
+
+        assert_eq!(report.overall, expected_python_overall(&report.axis_scores));
+    }
+
+    #[test]
+    fn severe_permissions_drops_score_more_than_low_risk_supply_chain() {
+        let low_risk = build_score_report(&[finding(
+            Axis::UpdateSupplyChainRisk,
+            Severity::Low,
+            "supply",
+        )]);
+        let high_risk = build_score_report(&[finding(
+            Axis::ExcessivePermissions,
+            Severity::Critical,
+            "priv",
+        )]);
+
+        assert!(high_risk.overall < low_risk.overall);
+    }
+
+    #[test]
+    fn weights_sum_to_one_for_known_coverage_modes() {
+        let compose_only = Axis::ALL
+            .into_iter()
+            .map(|axis| {
+                axis_weight(
+                    axis,
+                    Coverage {
+                        compose: true,
+                        host_hardening: false,
+                    },
+                )
+            })
+            .sum::<f32>();
+        let compose_and_host = Axis::ALL
+            .into_iter()
+            .map(|axis| {
+                axis_weight(
+                    axis,
+                    Coverage {
+                        compose: true,
+                        host_hardening: true,
+                    },
+                )
+            })
+            .sum::<f32>();
+        let host_only = Axis::ALL
+            .into_iter()
+            .map(|axis| {
+                axis_weight(
+                    axis,
+                    Coverage {
+                        compose: false,
+                        host_hardening: true,
+                    },
+                )
+            })
+            .sum::<f32>();
+
+        assert!((compose_only - 1.0).abs() < 0.0001);
+        assert!((compose_and_host - 1.0).abs() < 0.0001);
+        assert!((host_only - 1.0).abs() < 0.0001);
+    }
 }

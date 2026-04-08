@@ -76,6 +76,10 @@ pub fn tr_tui_requires_terminal() -> String {
     t!("app.error.tui_requires_terminal").into_owned()
 }
 
+pub fn tr_fix_requires_terminal() -> String {
+    t!("app.error.fix_requires_terminal").into_owned()
+}
+
 pub fn tr_status_compose_loaded(path: &str, count: usize) -> String {
     t!("app.status.compose_loaded", path = path, count = count).into_owned()
 }
@@ -124,11 +128,11 @@ pub fn tr_summary_finding_count(count: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        tr, tr_compose_parse_error, tr_invalid_argument_combination, tr_io_error,
-        tr_missing_argument_value, tr_status_compose_and_host_loaded, tr_status_compose_loaded,
-        tr_status_host_loaded, tr_summary_finding_count, tr_summary_host_root,
-        tr_summary_overall_score, tr_summary_service_count, tr_tui_requires_terminal,
-        tr_unknown_argument, tr_version,
+        tr, tr_compose_parse_error, tr_fix_requires_terminal, tr_invalid_argument_combination,
+        tr_io_error, tr_missing_argument_value, tr_status_compose_and_host_loaded,
+        tr_status_compose_loaded, tr_status_host_loaded, tr_summary_finding_count,
+        tr_summary_host_root, tr_summary_overall_score, tr_summary_service_count,
+        tr_tui_requires_terminal, tr_unknown_argument, tr_version,
     };
     use crate::compose::ComposeParseError;
 
@@ -176,6 +180,14 @@ mod tests {
         assert_eq!(
             tr_tui_requires_terminal(),
             "the interactive TUI requires a terminal; use --json for non-interactive runs"
+        );
+    }
+
+    #[test]
+    fn formats_fix_requires_terminal_message() {
+        assert_eq!(
+            tr_fix_requires_terminal(),
+            "guided Compose fixes require a terminal review; use --preview-changes to inspect the diff non-interactively"
         );
     }
 

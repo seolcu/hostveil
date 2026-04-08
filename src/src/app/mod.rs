@@ -18,6 +18,7 @@ pub enum AppError {
     MissingArgumentValue(&'static str),
     InvalidArgumentCombination(String),
     TuiRequiresTerminal,
+    FixRequiresTerminal,
     ComposeParse(ComposeParseError),
     Fix(FixError),
     Io(io::Error),
@@ -34,6 +35,7 @@ impl fmt::Display for AppError {
                 write!(f, "{}", i18n::tr_invalid_argument_combination(message))
             }
             Self::TuiRequiresTerminal => write!(f, "{}", i18n::tr_tui_requires_terminal()),
+            Self::FixRequiresTerminal => write!(f, "{}", i18n::tr_fix_requires_terminal()),
             Self::ComposeParse(error) => write!(f, "{}", i18n::tr_compose_parse_error(error)),
             Self::Fix(error) => write!(f, "{error}"),
             Self::Io(error) => write!(f, "{}", i18n::tr_io_error(&error.to_string())),
@@ -85,21 +87,39 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
         })?;
 
         let preview_plan = fix::preview(compose_path, mode)?;
-        print_fix_review(&preview_plan);
-
         if config.preview_changes {
+            print_fix_review(&preview_plan);
             println!();
             print!("{}", t!("app.fix.preview_only").into_owned());
             return Ok(());
         }
 
         if !preview_plan.changed() {
+            print_fix_review(&preview_plan);
             return Ok(());
         }
 
-        if !config.assume_yes && !confirm_fix(compose_path, mode)? {
-            print!("{}", t!("app.fix.cancelled").into_owned());
-            return Ok(());
+        if mode == crate::fix::FixMode::Fix {
+            if config.assume_yes {
+                print_fix_review(&preview_plan);
+            } else {
+                if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+                    return Err(AppError::FixRequiresTerminal);
+                }
+
+                let confirmed = tui::run_fix_review(&preview_plan)?;
+                if !confirmed {
+                    print!("{}", t!("app.fix.cancelled").into_owned());
+                    return Ok(());
+                }
+            }
+        } else {
+            print_fix_review(&preview_plan);
+
+            if !config.assume_yes && !confirm_fix(compose_path, mode)? {
+                print!("{}", t!("app.fix.cancelled").into_owned());
+                return Ok(());
+            }
         }
 
         let applied_plan = fix::apply(compose_path, mode)?;
@@ -203,5 +223,86 @@ fn print_fix_result(plan: &fix::FixPlan) {
             "{}",
             t!("app.fix.applied", summary = applied.summary.as_str()).into_owned()
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{AppError, run};
+
+    fn temp_compose_dir(name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "hostveil-app-{name}-{}-{nanos}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("temp dir should exist");
+        path
+    }
+
+    fn write_compose(path: &Path, content: &str) {
+        fs::write(path, content).expect("compose file should be written");
+    }
+
+    #[test]
+    fn fix_requires_terminal_without_yes() {
+        let root = temp_compose_dir("fix-terminal");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  app:\n",
+                "    image: alpine:3.20\n",
+                "    privileged: true\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8080:80\"\n"
+            ),
+        );
+
+        let error = run([String::from("--fix"), path.display().to_string()])
+            .expect_err("non-interactive guided fix should require terminal review");
+
+        assert!(matches!(error, AppError::FixRequiresTerminal));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn fix_with_yes_applies_guided_changes_without_terminal() {
+        let root = temp_compose_dir("fix-yes");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  app:\n",
+                "    image: alpine:3.20\n",
+                "    privileged: true\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8080:80\"\n"
+            ),
+        );
+
+        run([
+            String::from("--fix"),
+            path.display().to_string(),
+            String::from("--yes"),
+        ])
+        .expect("guided fix should apply without interactive review when --yes is set");
+
+        let updated = fs::read_to_string(&path).expect("compose file should be readable");
+        assert!(path.with_extension("yml.bak").exists());
+        assert!(updated.contains("NET_BIND_SERVICE"));
+        assert!(!updated.contains("privileged: true"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
     }
 }
