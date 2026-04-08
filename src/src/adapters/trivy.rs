@@ -20,6 +20,8 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
         findings: Vec::new(),
         warnings: Vec::new(),
     };
+    let mut successful_scans = 0_usize;
+    let mut first_scan_error: Option<String> = None;
 
     match detect_trivy() {
         TrivyAvailability::Missing => {
@@ -43,11 +45,14 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
     for image in images {
         match scan_image(&image) {
             Ok(Some(summary)) => {
+                successful_scans += 1;
                 output.findings.push(summary_to_finding(&summary, services));
             }
-            Ok(None) => {}
+            Ok(None) => successful_scans += 1,
             Err(error) => {
-                output.status = AdapterStatus::Failed(error.clone());
+                if first_scan_error.is_none() {
+                    first_scan_error = Some(error.clone());
+                }
                 output
                     .warnings
                     .push(format!("Trivy scan failed for {image}: {error}"));
@@ -55,7 +60,21 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
         }
     }
 
+    finalize_status_after_image_scans(&mut output, successful_scans, first_scan_error);
+
     output
+}
+
+fn finalize_status_after_image_scans(
+    output: &mut TrivyScanOutput,
+    successful_scans: usize,
+    first_scan_error: Option<String>,
+) {
+    if successful_scans == 0
+        && let Some(error) = first_scan_error
+    {
+        output.status = AdapterStatus::Failed(error);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -389,5 +408,42 @@ mod tests {
         assert_eq!(summary.total, 1);
         assert_eq!(summary.max_severity, Severity::High);
         assert_eq!(summary.sample_ids, vec![String::from("CVE-2026-0002")]);
+    }
+
+    #[test]
+    fn keeps_adapter_available_when_only_some_image_scans_fail() {
+        let mut output = TrivyScanOutput {
+            status: AdapterStatus::Available,
+            findings: Vec::new(),
+            warnings: Vec::new(),
+        };
+
+        finalize_status_after_image_scans(
+            &mut output,
+            1,
+            Some(String::from("registry denied access")),
+        );
+
+        assert_eq!(output.status, AdapterStatus::Available);
+    }
+
+    #[test]
+    fn marks_adapter_failed_when_all_image_scans_fail() {
+        let mut output = TrivyScanOutput {
+            status: AdapterStatus::Available,
+            findings: Vec::new(),
+            warnings: Vec::new(),
+        };
+
+        finalize_status_after_image_scans(
+            &mut output,
+            0,
+            Some(String::from("registry denied access")),
+        );
+
+        assert_eq!(
+            output.status,
+            AdapterStatus::Failed(String::from("registry denied access"))
+        );
     }
 }
