@@ -15,7 +15,7 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 - **Security Overview Dashboard** — overall score with per-category breakdown and severity counts
 - **Native Self-hosting-aware Checks** — checks tailored to each service's known data locations, Compose structure, and operational risk
-- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime
+- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy is supported as an optional, recommended image vulnerability adapter)
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 

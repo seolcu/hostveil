@@ -1,5 +1,7 @@
 use crate::domain::Finding;
 
+pub mod trivy;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterAvailability {
     Available,
