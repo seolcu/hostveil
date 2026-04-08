@@ -168,17 +168,10 @@ fn scan_compose_project(project: &ComposeProject, result: &mut ScanResult) {
     }
 
     for service in project.services.values() {
-        if result
-            .metadata
-            .services
-            .iter()
-            .all(|existing| existing.name != service.name)
-        {
-            result.metadata.services.push(ServiceSummary {
-                name: service.name.clone(),
-                image: service.image.clone(),
-            });
-        }
+        result.metadata.services.push(ServiceSummary {
+            name: service.name.clone(),
+            image: service.image.clone(),
+        });
     }
 
     result.metadata.service_count = result.metadata.services.len();
@@ -468,6 +461,55 @@ mod tests {
 
         assert_eq!(result.metadata.service_count, 3);
         assert_eq!(result.metadata.loaded_files.len(), 3);
+
+        fs::remove_dir_all(second_dir).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn service_name_collisions_across_projects_are_preserved() {
+        let first =
+            ComposeParser::parse_path(parser_fixture()).expect("first project should parse");
+        let second_dir = temp_host_root("duplicate-service-name");
+        write_file(
+            &second_dir.join("docker-compose.yml"),
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: caddy:2.9\n",
+                "    user: 1000:1000\n"
+            ),
+        );
+        let second = ComposeParser::parse_path(&second_dir).expect("second project should parse");
+
+        let mut result = crate::domain::ScanResult::default();
+        scan_compose_project(&first, &mut result);
+        scan_compose_project(&second, &mut result);
+
+        assert_eq!(result.metadata.service_count, 3);
+        assert_eq!(
+            result
+                .metadata
+                .services
+                .iter()
+                .filter(|service| service.name == "web")
+                .count(),
+            2
+        );
+        assert!(
+            result
+                .metadata
+                .services
+                .iter()
+                .any(|service| service.name == "web" && service.image.as_deref() == Some("nginx"))
+        );
+        assert!(
+            result
+                .metadata
+                .services
+                .iter()
+                .any(|service| service.name == "web"
+                    && service.image.as_deref() == Some("caddy:2.9"))
+        );
 
         fs::remove_dir_all(second_dir).expect("temp dir should be removed");
     }

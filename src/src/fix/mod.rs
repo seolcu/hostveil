@@ -108,7 +108,7 @@ fn build_fix_plan(path: &Path, mode: FixMode) -> Result<FixPlan, FixError> {
     let diff_preview = if safe_applied.is_empty() && guided_applied.is_empty() {
         String::new()
     } else {
-        let updated_text = dump_document(&document)?;
+        let updated_text = render_document_like_original(&bundle.primary_text, &document)?;
         build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
     };
 
@@ -133,7 +133,15 @@ fn render_updated_text(path: &Path, mode: FixMode) -> Result<String, FixError> {
         apply_guided_fixes(&mut document, &findings_by_service);
     }
 
-    dump_document(&document)
+    render_document_like_original(&bundle.primary_text, &document)
+}
+
+fn render_document_like_original(
+    original_text: &str,
+    document: &Value,
+) -> Result<String, FixError> {
+    let rendered = dump_document(document)?;
+    Ok(merge_original_formatting(original_text, &rendered))
 }
 
 fn findings_by_service(findings: &[crate::domain::Finding]) -> BTreeMap<String, BTreeSet<String>> {
@@ -469,6 +477,157 @@ fn dump_document(document: &Value) -> Result<String, FixError> {
         .to_owned())
 }
 
+fn merge_original_formatting(before: &str, after: &str) -> String {
+    let before_lines = before.lines().map(str::to_owned).collect::<Vec<_>>();
+    let after_lines = after.lines().map(str::to_owned).collect::<Vec<_>>();
+    let mut merged = Vec::with_capacity(after_lines.len());
+    let mut search_start = 0_usize;
+
+    for after_line in &after_lines {
+        let normalized_after = normalized_yaml_line(after_line);
+        let mut matched_index = None;
+
+        for (offset, before_line) in before_lines[search_start..].iter().enumerate() {
+            if normalized_yaml_line(before_line) == normalized_after {
+                matched_index = Some(search_start + offset);
+                break;
+            }
+        }
+
+        if let Some(index) = matched_index {
+            if before_lines[search_start..index]
+                .iter()
+                .all(|line| line.trim().is_empty())
+            {
+                merged.extend(before_lines[search_start..index].iter().cloned());
+            }
+
+            merged.push(before_lines[index].clone());
+            search_start = index + 1;
+        } else if let Some(rewritten) = before_lines
+            .get(search_start)
+            .and_then(|before_line| rewrite_with_original_line_style(before_line, after_line))
+        {
+            merged.push(rewritten);
+            search_start += 1;
+        } else {
+            merged.push(after_line.clone());
+        }
+    }
+
+    let mut output = merged.join("\n");
+    if after.ends_with('\n') {
+        output.push('\n');
+    }
+    output
+}
+
+fn normalized_yaml_line(line: &str) -> String {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    if let Some(item) = trimmed.strip_prefix("- ") {
+        return format!("- {}", normalized_yaml_scalar(item));
+    }
+
+    if let Some((key, value)) = trimmed.split_once(':') {
+        if value.trim().is_empty() {
+            return format!("{}:", key.trim_end());
+        }
+
+        return format!("{}: {}", key.trim_end(), normalized_yaml_scalar(value));
+    }
+
+    trimmed.to_owned()
+}
+
+fn normalized_yaml_scalar(value: &str) -> String {
+    let trimmed = value.trim();
+
+    if let Some(unquoted) = trimmed
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return unquoted.to_owned();
+    }
+    if let Some(unquoted) = trimmed
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+    {
+        return unquoted.to_owned();
+    }
+
+    trimmed.to_owned()
+}
+
+fn rewrite_with_original_line_style(before_line: &str, after_line: &str) -> Option<String> {
+    let before_trimmed = before_line.trim();
+    let after_trimmed = after_line.trim();
+
+    if let (Some(before_scalar), Some(after_scalar)) = (
+        before_trimmed.strip_prefix("- "),
+        after_trimmed.strip_prefix("- "),
+    ) {
+        let prefix_end = before_line.find("- ")? + 2;
+        let prefix = &before_line[..prefix_end];
+        return Some(format!(
+            "{prefix}{}",
+            rewrite_scalar_with_original_style(before_scalar, after_scalar)
+        ));
+    }
+
+    let (before_prefix, before_key, before_scalar) = split_yaml_scalar_line(before_line)?;
+    let (_, after_key, after_scalar) = split_yaml_scalar_line(after_line)?;
+    if before_key != after_key {
+        return None;
+    }
+
+    Some(format!(
+        "{before_prefix}{}",
+        rewrite_scalar_with_original_style(before_scalar, after_scalar)
+    ))
+}
+
+fn split_yaml_scalar_line(line: &str) -> Option<(&str, &str, &str)> {
+    let colon_index = line.find(':')?;
+    let rest = &line[colon_index + 1..];
+    if rest.trim().is_empty() {
+        return None;
+    }
+
+    let value_offset = rest.len() - rest.trim_start().len();
+    let value_index = colon_index + 1 + value_offset;
+    Some((
+        &line[..value_index],
+        line[..colon_index].trim(),
+        &line[value_index..],
+    ))
+}
+
+fn rewrite_scalar_with_original_style(before_scalar: &str, after_scalar: &str) -> String {
+    let trimmed_after = after_scalar.trim();
+    let trimmed_before = before_scalar.trim();
+
+    if let Some(unquoted) = trimmed_before
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        && !unquoted.contains('"')
+    {
+        return format!("\"{trimmed_after}\"");
+    }
+    if let Some(unquoted) = trimmed_before
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        && !unquoted.contains('\'')
+    {
+        return format!("'{trimmed_after}'");
+    }
+
+    trimmed_after.to_owned()
+}
+
 fn build_diff(path: &Path, before: &str, after: &str) -> String {
     if before == after {
         return String::new();
@@ -562,7 +721,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{FixMode, apply, preview};
+    use super::{FixMode, apply, merge_original_formatting, preview};
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -655,5 +814,74 @@ mod tests {
         assert!(updated.contains("127.0.0.1:8080:80"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn preview_and_apply_keep_unrelated_yaml_formatting_stable() {
+        let root = temp_compose_dir("preserve-formatting");
+        let path = root.join("compose.yaml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  jellyfin:\n",
+                "    image: lscr.io/linuxserver/jellyfin:latest\n",
+                "    container_name: jellyfin\n",
+                "    environment:\n",
+                "      - PUID=1000\n",
+                "      - PGID=1000\n",
+                "      - TZ=Asia/Seoul\n",
+                "    volumes:\n",
+                "      - ./config:/config\n",
+                "      - /srv/media:/media:ro\n",
+                "    ports:\n",
+                "      - \"8096:8096\"\n",
+                "    restart: unless-stopped\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        assert!(!plan.diff_preview.contains("-      - PUID=1000"));
+        assert!(!plan.diff_preview.contains("+    - PUID=1000"));
+        assert!(
+            plan.diff_preview
+                .contains("+      - \"127.0.0.1:8096:8096\"")
+        );
+
+        apply(&path, FixMode::QuickFix).expect("quick-fix apply should succeed");
+        let updated = fs::read_to_string(&path).expect("compose file should be readable");
+
+        assert!(updated.contains("      - PUID=1000"));
+        assert!(updated.contains("      - /srv/media:/media:ro"));
+        assert!(updated.contains("      - \"127.0.0.1:8096:8096\""));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn merge_original_formatting_preserves_blank_lines_and_quotes_for_unchanged_lines() {
+        let before = concat!(
+            "services:\n",
+            "  web:\n",
+            "    user: \"1000:1000\"\n",
+            "\n",
+            "  admin:\n",
+            "    ports:\n",
+            "      - \"8080:80\"\n"
+        );
+        let after = concat!(
+            "services:\n",
+            "  web:\n",
+            "    user: 1000:1000\n",
+            "  admin:\n",
+            "    ports:\n",
+            "    - 127.0.0.1:8080:80\n"
+        );
+
+        let merged = merge_original_formatting(before, after);
+
+        assert!(merged.contains("    user: \"1000:1000\""));
+        assert!(merged.contains("\n\n  admin:\n"));
+        assert!(merged.contains("      - \"127.0.0.1:8080:80\""));
     }
 }
