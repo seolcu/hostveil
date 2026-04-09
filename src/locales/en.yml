@@ -23,7 +23,7 @@ app:
         hostveil [--compose PATH] [--host-root PATH] [--json]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
-        hostveil upgrade [--channel preview|stable] [--version TAG]
+        hostveil upgrade [--version TAG]
         hostveil uninstall
         hostveil auto-upgrade enable
         hostveil auto-upgrade disable
@@ -32,7 +32,7 @@ app:
 
       Lifecycle:
         First install:
-          curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+          curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
         After install:
           hostveil upgrade
           hostveil uninstall

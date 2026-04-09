@@ -39,9 +39,9 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Installation
 
-Alpha Rust releases are delivered through GitHub Releases as Linux binaries. The Python prototype in `proto/` remains a frozen reference implementation for Compose parsing, scoring, and fix behavior while active product work continues in `src/`.
+Rust releases are delivered through GitHub Releases as Linux binaries. The Python prototype in `proto/` remains a frozen reference implementation for Compose parsing, scoring, and fix behavior while active product work continues in `src/`.
 
-The first public Rust release is planned as a Linux-only prerelease (`v0.1.0-alpha.N`), not as a stable `v1.0` launch.
+hostveil release tags follow `vX.Y.Z`, while the crate and binary version use `X.Y.Z`. Until compatibility is intentionally declared stable, releases stay on the `0.Y.Z` line instead of using prerelease suffixes.
 
 Official runtime support for the real product is Linux. If you contribute from Windows, use WSL rather than native PowerShell.
 
@@ -70,7 +70,7 @@ source proto/.venv/bin/activate
 pip install -e "proto[dev]"
 ```
 
-Current alpha delivery path:
+Current release delivery path:
 
 - GitHub Releases tarballs for `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
 - Published `SHA256SUMS` for release artifact verification
@@ -78,21 +78,21 @@ Current alpha delivery path:
 - Optional external tools such as Docker and Trivy discovered from `PATH` instead of being bundled
 - First-install bootstrap via installer script, then installed lifecycle commands for upgrade, launch-time auto-upgrade, and uninstall
 
-Install the latest preview release:
+Install the latest release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
 ```
 
 After the first install, use the installed `hostveil` command for lifecycle actions.
 
-Upgrade an existing installation to the latest release on its saved channel:
+Upgrade an existing installation to the latest available release:
 
 ```sh
 hostveil upgrade
 ```
 
-Automatic upgrades are enabled by default. Every `hostveil` launch checks the saved release channel and upgrades before starting if a newer version is available.
+Automatic upgrades are enabled by default. Every `hostveil` launch checks the saved install metadata and upgrades before starting if a newer version is available.
 
 Disable automatic upgrades:
 
@@ -160,13 +160,21 @@ Current Rust implementation status:
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
 
-## First Alpha Release Plan
+## Release Policy
 
-The first public Rust release should optimize for safe delivery and fast feedback, not for complete v1 feature coverage.
+hostveil release versions follow standard SemVer without suffixes: `X.Y.Z` for the crate and binary, and `vX.Y.Z` for Git tags.
 
-Must-have for `v0.1.0-alpha.N`:
+- Stay on `0.Y.Z` until the project is intentionally ready for `1.0.0`
+- Bump patch for backward-compatible fixes, install/update flow fixes, and shipped polish
+- Bump minor for new user-visible features, command surface changes, and materially expanded rule or adapter coverage
+- Reserve `1.0.0` for the point where compatibility expectations become intentionally stable
+- Do not bump versions in every PR; version changes should land as dedicated release work
+- Create GitHub Releases only from annotated `vX.Y.Z` tags pushed from `main`
+- The release tag must match `src/Cargo.toml` and `Cargo.lock`
 
-- Linux-only prerelease scope with clear known limitations
+Current release priorities:
+
+- Linux-only scope with clear known limitations
 - Native Compose and host checks through one shared scan result
 - TUI overview plus finding detail navigation for real scan results
 - Minimal headless JSON export for automation and regression snapshots
@@ -175,7 +183,7 @@ Must-have for `v0.1.0-alpha.N`:
 - An install script for first install plus installed lifecycle commands for later upgrades
 - Core smoke-test coverage for the supported CLI entry points before publishing
 
-Explicitly deferred from the first alpha:
+Explicitly deferred from the current early-release scope:
 
 - Nextcloud-specific service-aware rules
 - Trivy integration as the first optional external adapter
@@ -183,14 +191,14 @@ Explicitly deferred from the first alpha:
 - Package-manager distribution such as apt, dnf, Homebrew, or AUR
 - Final scoring ADR and stable weighting guarantees
 
-Optional dependency policy for alpha:
+Optional dependency policy for current releases:
 
 - `hostveil` should install and run without Docker or Trivy being present
 - Docker-based live discovery improves Compose coverage when available
 - Trivy remains an optional adapter; if it is missing, scans continue with reduced coverage instead of failing
 - Missing external tools should be shown as coverage or adapter status, not as fatal startup errors
 
-Planned install and update model for alpha:
+Planned install and update model for current releases:
 
 - Install from GitHub Releases rather than from a package manager
 - Download a single architecture-specific Linux binary archive
@@ -198,7 +206,7 @@ Planned install and update model for alpha:
 - Install to a standard user or system binary path such as `~/.local/bin` or `/usr/local/bin`
 - Track install metadata so launch-time auto-upgrade and installed `hostveil upgrade` / `hostveil uninstall` actions work cleanly
 
-Alpha release gates:
+Release gates:
 
 - `cargo fmt --check`
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
