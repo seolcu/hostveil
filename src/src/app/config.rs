@@ -9,11 +9,30 @@ pub enum OutputMode {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LifecycleCommand {
+    Upgrade,
+    Uninstall,
+    AutoUpgradeEnable,
+    AutoUpgradeDisable,
+}
+
+impl LifecycleCommand {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Upgrade => "upgrade",
+            Self::Uninstall => "uninstall",
+            Self::AutoUpgradeEnable | Self::AutoUpgradeDisable => "auto-upgrade",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub output_mode: OutputMode,
     pub show_help: bool,
     pub show_version: bool,
+    pub lifecycle_command: Option<LifecycleCommand>,
     pub compose_path: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
     pub fix_mode: Option<FixMode>,
@@ -28,6 +47,7 @@ impl Default for AppConfig {
             output_mode: OutputMode::Tui,
             show_help: false,
             show_version: false,
+            lifecycle_command: None,
             compose_path: None,
             host_root: None,
             fix_mode: None,
@@ -40,6 +60,17 @@ impl Default for AppConfig {
 
 impl AppConfig {
     pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let args: Vec<String> = args.into_iter().collect();
+
+        if let Some(command) = args.first() {
+            match command.as_str() {
+                "upgrade" => return Self::parse_upgrade(args.into_iter().skip(1)),
+                "uninstall" => return Self::parse_uninstall(args.into_iter().skip(1)),
+                "auto-upgrade" => return Self::parse_auto_upgrade(args.into_iter().skip(1)),
+                _ => {}
+            }
+        }
+
         let mut config = Self::default();
         let mut args = args.into_iter();
 
@@ -108,7 +139,99 @@ impl AppConfig {
         Ok(config)
     }
 
+    fn parse_upgrade(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let mut config = Self::default();
+        let mut args = args.into_iter();
+
+        while let Some(argument) = args.next() {
+            match argument.as_str() {
+                "--version" => {
+                    args.next()
+                        .ok_or(AppError::MissingArgumentValue("--version"))?;
+                }
+                _ if argument.starts_with("--version=") => {
+                    let value = argument.trim_start_matches("--version=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--version"));
+                    }
+                }
+                "--channel" => {
+                    args.next()
+                        .ok_or(AppError::MissingArgumentValue("--channel"))?;
+                }
+                _ if argument.starts_with("--channel=") => {
+                    let value = argument.trim_start_matches("--channel=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--channel"));
+                    }
+                }
+                "-h" | "--help" => config.show_help = true,
+                _ => return Err(AppError::UnknownArgument(argument)),
+            }
+        }
+
+        config.lifecycle_command = Some(LifecycleCommand::Upgrade);
+        config.validate()?;
+        Ok(config)
+    }
+
+    fn parse_uninstall(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let mut config = Self::default();
+
+        for argument in args {
+            match argument.as_str() {
+                "-h" | "--help" => config.show_help = true,
+                _ => return Err(AppError::UnknownArgument(argument)),
+            }
+        }
+
+        config.lifecycle_command = Some(LifecycleCommand::Uninstall);
+        config.validate()?;
+        Ok(config)
+    }
+
+    fn parse_auto_upgrade(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let mut config = Self::default();
+        let mut args = args.into_iter();
+
+        let Some(mode) = args.next() else {
+            return Err(AppError::InvalidArgumentCombination(String::from(
+                "choose one of enable or disable for auto-upgrade",
+            )));
+        };
+
+        let lifecycle_command = match mode.as_str() {
+            "enable" => LifecycleCommand::AutoUpgradeEnable,
+            "disable" => LifecycleCommand::AutoUpgradeDisable,
+            "-h" | "--help" => {
+                config.show_help = true;
+                config.validate()?;
+                return Ok(config);
+            }
+            _ => {
+                return Err(AppError::InvalidArgumentCombination(String::from(
+                    "choose one of enable or disable for auto-upgrade",
+                )));
+            }
+        };
+
+        for argument in args {
+            match argument.as_str() {
+                "-h" | "--help" => config.show_help = true,
+                _ => return Err(AppError::UnknownArgument(argument)),
+            }
+        }
+
+        config.lifecycle_command = Some(lifecycle_command);
+        config.validate()?;
+        Ok(config)
+    }
+
     fn validate(&self) -> Result<(), AppError> {
+        if self.lifecycle_command.is_some() {
+            return Ok(());
+        }
+
         if self.fix_mode.is_some() {
             if self.fix_target_path.is_none() {
                 return Err(AppError::InvalidArgumentCombination(String::from(
@@ -154,7 +277,7 @@ impl AppConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::{AppConfig, OutputMode};
+    use super::{AppConfig, LifecycleCommand, OutputMode};
     use crate::fix::FixMode;
 
     #[test]
@@ -164,6 +287,7 @@ mod tests {
         assert_eq!(config.output_mode, OutputMode::Tui);
         assert!(!config.show_help);
         assert!(!config.show_version);
+        assert!(config.lifecycle_command.is_none());
         assert!(config.fix_mode.is_none());
     }
 
@@ -284,6 +408,49 @@ mod tests {
     fn rejects_preview_without_fix_mode() {
         let error = AppConfig::parse([String::from("--preview-changes")])
             .expect_err("preview should require fix mode");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn parses_upgrade_lifecycle_command() {
+        let config = AppConfig::parse([
+            String::from("upgrade"),
+            String::from("--channel"),
+            String::from("stable"),
+            String::from("--version=v0.1.0"),
+        ])
+        .expect("upgrade command should parse");
+
+        assert_eq!(config.lifecycle_command, Some(LifecycleCommand::Upgrade));
+    }
+
+    #[test]
+    fn parses_uninstall_lifecycle_command() {
+        let config =
+            AppConfig::parse([String::from("uninstall")]).expect("uninstall command should parse");
+
+        assert_eq!(config.lifecycle_command, Some(LifecycleCommand::Uninstall));
+    }
+
+    #[test]
+    fn parses_auto_upgrade_enable_command() {
+        let config = AppConfig::parse([String::from("auto-upgrade"), String::from("enable")])
+            .expect("auto-upgrade enable should parse");
+
+        assert_eq!(
+            config.lifecycle_command,
+            Some(LifecycleCommand::AutoUpgradeEnable)
+        );
+    }
+
+    #[test]
+    fn rejects_auto_upgrade_without_mode() {
+        let error = AppConfig::parse([String::from("auto-upgrade")])
+            .expect_err("auto-upgrade should require a mode");
 
         assert!(matches!(
             error,

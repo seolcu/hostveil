@@ -36,6 +36,14 @@ pub fn tr_invalid_argument_combination(message: &str) -> String {
     t!("app.error.invalid_argument_combination", message = message).into_owned()
 }
 
+pub fn tr_lifecycle_command_requires_installed_wrapper(command: &str) -> String {
+    t!(
+        "app.error.lifecycle_requires_installed_wrapper",
+        command = command
+    )
+    .into_owned()
+}
+
 pub fn tr_compose_parse_error(error: &ComposeParseError) -> String {
     match error {
         ComposeParseError::ComposePathMissing { path } => t!(
@@ -129,10 +137,10 @@ pub fn tr_summary_finding_count(count: usize) -> String {
 mod tests {
     use super::{
         tr, tr_compose_parse_error, tr_fix_requires_terminal, tr_invalid_argument_combination,
-        tr_io_error, tr_missing_argument_value, tr_status_compose_and_host_loaded,
-        tr_status_compose_loaded, tr_status_host_loaded, tr_summary_finding_count,
-        tr_summary_host_root, tr_summary_overall_score, tr_summary_service_count,
-        tr_tui_requires_terminal, tr_unknown_argument, tr_version,
+        tr_io_error, tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
+        tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
+        tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
+        tr_summary_service_count, tr_tui_requires_terminal, tr_unknown_argument, tr_version,
     };
     use crate::compose::ComposeParseError;
 
@@ -204,6 +212,14 @@ mod tests {
         assert_eq!(
             tr_invalid_argument_combination("--json is not supported with fix operations"),
             "invalid argument combination: --json is not supported with fix operations"
+        );
+    }
+
+    #[test]
+    fn formats_lifecycle_wrapper_error_message() {
+        assert_eq!(
+            tr_lifecycle_command_requires_installed_wrapper("upgrade"),
+            "upgrade is only available through an installed hostveil wrapper; install hostveil first with the installer script"
         );
     }
 

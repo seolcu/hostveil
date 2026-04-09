@@ -57,6 +57,11 @@ Usage:
   install.sh --enable-auto-upgrade
   install.sh --uninstall [--to DIR]
 
+After first install, prefer the installed hostveil command:
+  hostveil upgrade [--channel preview|stable] [--version TAG]
+  hostveil auto-upgrade enable|disable
+  hostveil uninstall
+
 Options:
   --version TAG            install or upgrade to a specific release tag
   --channel NAME           choose preview or stable when --version is omitted
@@ -491,6 +496,46 @@ if [[ -f "\$METADATA_PATH" ]]; then
 fi
 
 binary_path="\${HOSTVEIL_META_BINARY_PATH:-\$DEFAULT_BINARY_PATH}"
+
+run_manager_command() {
+  if [[ ! -x "\$MANAGER_SCRIPT_PATH" ]]; then
+    printf 'error: hostveil lifecycle manager is unavailable; reinstall hostveil with the installer\n' >&2
+    exit 1
+  fi
+
+  HOSTVEIL_SKIP_AUTO_UPGRADE=1 exec "\$MANAGER_SCRIPT_PATH" "\$@"
+}
+
+case "\${1:-}" in
+  upgrade)
+    shift
+    run_manager_command --upgrade "\$@"
+    ;;
+  uninstall)
+    shift
+    run_manager_command --uninstall "\$@"
+    ;;
+  auto-upgrade)
+    shift
+    case "\${1:-}" in
+      enable)
+        shift
+        run_manager_command --enable-auto-upgrade "\$@"
+        ;;
+      disable)
+        shift
+        run_manager_command --disable-auto-upgrade "\$@"
+        ;;
+      -h|--help)
+        exec "\$binary_path" --help
+        ;;
+      *)
+        printf 'error: auto-upgrade expects enable or disable\n' >&2
+        exit 1
+        ;;
+    esac
+    ;;
+esac
 
 if [[ "\${HOSTVEIL_SKIP_AUTO_UPGRADE:-}" != "1" && "\${HOSTVEIL_AUTO_UPGRADE_RUNNING:-}" != "1" && "\${HOSTVEIL_META_AUTO_UPGRADE:-enabled}" != "disabled" && -x "\$MANAGER_SCRIPT_PATH" ]]; then
   HOSTVEIL_AUTO_UPGRADE_RUNNING=1 HOSTVEIL_SKIP_AUTO_UPGRADE=1 "\$MANAGER_SCRIPT_PATH" --upgrade >/dev/null 2>&1 || true

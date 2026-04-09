@@ -142,9 +142,11 @@ jobs:
             curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --channel preview
             ```
 
+            After the first install, use the installed `hostveil` command for lifecycle actions.
+
             ## Upgrade
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --upgrade
+            hostveil upgrade
             ```
 
             ## Automatic upgrades
@@ -152,17 +154,17 @@ jobs:
 
             Disable them with:
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --disable-auto-upgrade
+            hostveil auto-upgrade disable
             ```
 
             Re-enable them with:
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --enable-auto-upgrade
+            hostveil auto-upgrade enable
             ```
 
             ## Uninstall
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --uninstall
+            hostveil uninstall
             ```
 
             ## Optional dependencies

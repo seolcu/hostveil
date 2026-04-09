@@ -76,7 +76,7 @@ Current alpha delivery path:
 - Published `SHA256SUMS` for release artifact verification
 - A small install script that selects the correct Linux binary for the host architecture
 - Optional external tools such as Docker and Trivy discovered from `PATH` instead of being bundled
-- Installer lifecycle commands for install, upgrade, launch-time auto-upgrade, and uninstall
+- First-install bootstrap via installer script, then installed lifecycle commands for upgrade, launch-time auto-upgrade, and uninstall
 
 Install the latest preview release:
 
@@ -84,10 +84,12 @@ Install the latest preview release:
 curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
 ```
 
+After the first install, use the installed `hostveil` command for lifecycle actions.
+
 Upgrade an existing installation to the latest release on its saved channel:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --upgrade
+hostveil upgrade
 ```
 
 Automatic upgrades are enabled by default. Every `hostveil` launch checks the saved release channel and upgrades before starting if a newer version is available.
@@ -95,19 +97,19 @@ Automatic upgrades are enabled by default. Every `hostveil` launch checks the sa
 Disable automatic upgrades:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --disable-auto-upgrade
+hostveil auto-upgrade disable
 ```
 
 Re-enable automatic upgrades:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --enable-auto-upgrade
+hostveil auto-upgrade enable
 ```
 
 Uninstall hostveil cleanly:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --uninstall
+hostveil uninstall
 ```
 
 ## Usage
@@ -170,7 +172,7 @@ Must-have for `v0.1.0-alpha.N`:
 - Minimal headless JSON export for automation and regression snapshots
 - Previewable Compose `--quick-fix` and `--fix` flows with backup-safe writes
 - Release artifacts published through GitHub Releases with checksums
-- An install script for Linux binary download and upgrade
+- An install script for first install plus installed lifecycle commands for later upgrades
 - Core smoke-test coverage for the supported CLI entry points before publishing
 
 Explicitly deferred from the first alpha:
@@ -179,7 +181,6 @@ Explicitly deferred from the first alpha:
 - Trivy integration as the first optional external adapter
 - TUI-embedded guided diff review before writes
 - Package-manager distribution such as apt, dnf, Homebrew, or AUR
-- Built-in self-update commands
 - Final scoring ADR and stable weighting guarantees
 
 Optional dependency policy for alpha:
@@ -195,7 +196,7 @@ Planned install and update model for alpha:
 - Download a single architecture-specific Linux binary archive
 - Verify the archive against `SHA256SUMS`
 - Install to a standard user or system binary path such as `~/.local/bin` or `/usr/local/bin`
-- Track install metadata so launch-time auto-upgrade, explicit `--upgrade`, and `--uninstall` actions work cleanly
+- Track install metadata so launch-time auto-upgrade and installed `hostveil upgrade` / `hostveil uninstall` actions work cleanly
 
 Alpha release gates:
 

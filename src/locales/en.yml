@@ -23,8 +23,20 @@ app:
         hostveil [--compose PATH] [--host-root PATH] [--json]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
+        hostveil upgrade [--channel preview|stable] [--version TAG]
+        hostveil uninstall
+        hostveil auto-upgrade enable
+        hostveil auto-upgrade disable
         hostveil --version
         hostveil --help
+
+      Lifecycle:
+        First install:
+          curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+        After install:
+          hostveil upgrade
+          hostveil uninstall
+          hostveil auto-upgrade enable|disable
 
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
@@ -116,6 +128,7 @@ app:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"
     invalid_argument_combination: "invalid argument combination: %{message}"
+    lifecycle_requires_installed_wrapper: "%{command} is only available through an installed hostveil wrapper; install hostveil first with the installer script"
     compose_path_missing: "compose path does not exist: %{path}"
     compose_file_not_found: "compose file was not found in directory: %{path}"
     compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"

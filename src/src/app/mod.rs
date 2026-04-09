@@ -17,6 +17,7 @@ pub enum AppError {
     UnknownArgument(String),
     MissingArgumentValue(&'static str),
     InvalidArgumentCombination(String),
+    LifecycleCommandRequiresInstalledWrapper(&'static str),
     TuiRequiresTerminal,
     FixRequiresTerminal,
     ComposeParse(ComposeParseError),
@@ -34,6 +35,11 @@ impl fmt::Display for AppError {
             Self::InvalidArgumentCombination(message) => {
                 write!(f, "{}", i18n::tr_invalid_argument_combination(message))
             }
+            Self::LifecycleCommandRequiresInstalledWrapper(command) => write!(
+                f,
+                "{}",
+                i18n::tr_lifecycle_command_requires_installed_wrapper(command)
+            ),
             Self::TuiRequiresTerminal => write!(f, "{}", i18n::tr_tui_requires_terminal()),
             Self::FixRequiresTerminal => write!(f, "{}", i18n::tr_fix_requires_terminal()),
             Self::ComposeParse(error) => write!(f, "{}", i18n::tr_compose_parse_error(error)),
@@ -77,6 +83,12 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             i18n::tr_version(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         );
         return Ok(());
+    }
+
+    if let Some(command) = config.lifecycle_command {
+        return Err(AppError::LifecycleCommandRequiresInstalledWrapper(
+            command.name(),
+        ));
     }
 
     if let Some(mode) = config.fix_mode {
@@ -304,5 +316,16 @@ mod tests {
         assert!(!updated.contains("privileged: true"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn installed_lifecycle_command_requires_wrapper_context() {
+        let error = run([String::from("upgrade")])
+            .expect_err("direct binary lifecycle commands should fail clearly");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresInstalledWrapper("upgrade")
+        ));
     }
 }
