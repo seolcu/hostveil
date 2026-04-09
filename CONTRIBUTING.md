@@ -67,6 +67,38 @@ refactor(proto): extract rule engine into separate module
 - Do not end the summary line with a period
 - Body is optional but encouraged for non-trivial changes
 
+## Versioning And Releases
+
+We use **Semantic Versioning** for shipped versions.
+
+- Package and binary version format: `X.Y.Z`
+- Git tag format: `vX.Y.Z`
+- Do not use `-alpha`, `-beta`, or other prerelease suffixes in normal release tags
+- Until the project declares stable compatibility, stay on the `0.Y.Z` line instead of jumping to `1.0.0`
+
+### How To Bump Versions
+
+- Bump **patch** (`0.4.2` -> `0.4.3`) for bug fixes, install/update flow fixes, reliability improvements, and other backward-compatible polish
+- Bump **minor** (`0.4.2` -> `0.5.0`) for new user-visible features, new commands, new rule coverage, or materially expanded functionality
+- Bump **major** (`1.4.2` -> `2.0.0`) only for intentional breaking compatibility changes after `1.0.0`
+- Use `1.0.0` only when the project is ready to treat CLI behavior, release policy, and compatibility expectations as stable
+
+### When To Bump Versions
+
+- Do **not** bump the version in every feature PR
+- Bump the version only in a dedicated release change when `main` is ready to ship
+- Keep `src/Cargo.toml` and `Cargo.lock` aligned in the same change
+- Release commits should use a dedicated message such as `chore(release): bump version to v0.5.0`
+
+### When Releases Happen
+
+- Create a GitHub Release only from `main`
+- Release only when there is a meaningful shipped change since the previous tag
+- Docs-only changes normally ship with the next code release instead of triggering a standalone release
+- After the release change is merged, create and push an annotated tag `vX.Y.Z` from that `main` commit
+- The tag push is the only thing that should trigger the release workflow
+- The pushed tag must match the version in `src/Cargo.toml`
+
 ## Development Setup
 
 The product is now entering the Rust implementation phase.

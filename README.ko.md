@@ -39,9 +39,9 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 ## 설치
 
-Alpha Rust 릴리스는 GitHub Releases를 통해 Linux 바이너리로 제공합니다. `proto/` 안의 Python 프로토타입은 Compose 파싱, 점수화, 수정 흐름을 설명하는 고정된 참고 구현으로 유지되고, 실제 제품 개발은 `src/`에서 진행합니다.
+Rust 릴리스는 GitHub Releases를 통해 Linux 바이너리로 제공합니다. `proto/` 안의 Python 프로토타입은 Compose 파싱, 점수화, 수정 흐름을 설명하는 고정된 참고 구현으로 유지되고, 실제 제품 개발은 `src/`에서 진행합니다.
 
-첫 공개 Rust 릴리스는 안정화된 `v1.0`이 아니라 Linux 전용 프리릴리스(`v0.1.0-alpha.N`)입니다.
+hostveil 릴리스 태그는 `vX.Y.Z`, 크레이트와 바이너리 버전은 `X.Y.Z` 형식을 사용합니다. 호환성을 의도적으로 안정화했다고 선언하기 전까지는 prerelease 접미사 대신 `0.Y.Z` 라인을 유지합니다.
 
 실제 제품의 공식 런타임 지원 대상은 Linux입니다. Windows에서 개발할 경우 native PowerShell 대신 WSL 사용을 권장합니다.
 
@@ -59,7 +59,7 @@ cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 ```
 
-현재 alpha 전달 경로:
+현재 릴리스 전달 경로:
 
 - `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`용 GitHub Releases tarball
 - 릴리스 아티팩트 검증용 `SHA256SUMS`
@@ -67,10 +67,10 @@ cargo run -- --json --host-root /
 - Docker, Trivy 같은 외부 도구는 번들하지 않고 `PATH`에서 선택적으로 탐지
 - 첫 설치는 installer script로, 이후 업그레이드/자동 업데이트 토글/삭제는 설치된 `hostveil` 명령으로 수행
 
-최신 preview 릴리스 설치:
+최신 릴리스 설치:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
 ```
 
 최초 설치 이후 라이프사이클 명령:
@@ -136,6 +136,17 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 일부 포팅하고 fixture 테스트로 검증
 - `--host-root`를 통한 SSH posture 및 Docker host exposure 기본 점검 시작
 - 인자 없는 live scan이 host 스캔 + Docker 기반 Compose 자동 발견 + 현재 디렉터리 fallback으로 동작
+
+## 릴리스 규칙
+
+hostveil은 접미사 없는 SemVer를 사용합니다. 크레이트/바이너리 버전은 `X.Y.Z`, Git 태그는 `vX.Y.Z`입니다.
+
+- `1.0.0`을 선언하기 전까지는 `0.Y.Z` 라인을 유지합니다.
+- 하위 호환 버그 수정, 설치/업데이트 흐름 수정, 안정성 개선은 patch를 올립니다.
+- 새 기능, 새 명령, 사용자에게 보이는 범위 확장은 minor를 올립니다.
+- 버전은 모든 PR마다 올리지 않고, 배포 준비가 끝난 시점의 전용 release 변경에서만 올립니다.
+- GitHub Release는 `main`에서 만든 annotated tag `vX.Y.Z`를 푸시할 때만 생성합니다.
+- 태그, `src/Cargo.toml`, `Cargo.lock`의 버전은 항상 일치해야 합니다.
 
 ## 기여
 

@@ -51,20 +51,20 @@ usage() {
 Manage hostveil Linux installs from GitHub Releases.
 
 Usage:
-  install.sh [--channel preview|stable] [--version TAG] [--to DIR]
-  install.sh --upgrade [--channel preview|stable] [--version TAG] [--to DIR]
+  install.sh [--version TAG] [--to DIR]
+  install.sh --upgrade [--version TAG] [--to DIR]
   install.sh --disable-auto-upgrade
   install.sh --enable-auto-upgrade
   install.sh --uninstall [--to DIR]
 
 After first install, prefer the installed hostveil command:
-  hostveil upgrade [--channel preview|stable] [--version TAG]
+  hostveil upgrade [--version TAG]
   hostveil auto-upgrade enable|disable
   hostveil uninstall
 
 Options:
   --version TAG            install or upgrade to a specific release tag
-  --channel NAME           choose preview or stable when --version is omitted
+  --channel NAME           legacy compatibility option; current documented releases use a single track
   --to DIR                 install into a specific binary directory
   --upgrade                upgrade an existing install using saved metadata
   --disable-auto-upgrade   stop checking for upgrades when hostveil launches

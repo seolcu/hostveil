@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install stable Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -28,6 +28,26 @@ jobs:
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
+
+      - name: Verify tag matches Cargo version
+        run: |
+          [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            printf 'error: release tags must use vX.Y.Z\n' >&2
+            exit 1
+          }
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          cargo_version="$(sed -n 's/^version = "\([^"]*\)"$/\1/p' src/Cargo.toml)"
+
+          [[ -n "${cargo_version}" ]] || {
+            printf 'error: failed to read version from src/Cargo.toml\n' >&2
+            exit 1
+          }
+
+          [[ "${tag_version}" == "${cargo_version}" ]] || {
+            printf 'error: tag %s does not match Cargo version %s\n' "${GITHUB_REF_NAME}" "${cargo_version}" >&2
+            exit 1
+          }
 
       - name: Check formatting
         run: cargo fmt --check
@@ -59,7 +79,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install stable Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -114,13 +134,13 @@ jobs:
           path: dist/SHA256SUMS
 
   release:
-    name: publish prerelease
+    name: publish release
     needs: checksums
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download packaged archives and checksums
         uses: actions/download-artifact@v4
@@ -134,12 +154,11 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           body: |
             ## Install
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash -s -- --channel preview
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash
             ```
 
             After the first install, use the installed `hostveil` command for lifecycle actions.
@@ -169,12 +188,12 @@ jobs:
 
             ## Optional dependencies
             - Docker improves live Compose discovery when it is available.
-            - Trivy is planned as an optional adapter and is not required for this alpha release.
+            - Trivy is planned as an optional adapter and is not required for this release.
 
             ## Known limitations
             - Linux only
             - Nextcloud-specific service-aware rules are not included yet
-            - TUI-embedded guided diff review is still deferred from the first alpha
+            - TUI-embedded guided diff review is still deferred from the current release scope
           files: |
             dist/*.tar.gz
             dist/SHA256SUMS

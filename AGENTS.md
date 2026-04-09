@@ -63,6 +63,13 @@ hostveil/
 - `Cargo.lock` must be committed — hostveil is a binary crate
 - Run `cargo clippy` and `cargo fmt` before committing
 
+**Versioning and releases:**
+- Use SemVer `X.Y.Z` for the crate and binary version
+- Use annotated Git tags in the form `vX.Y.Z`
+- Stay on `0.Y.Z` until the project is intentionally ready for `1.0.0`
+- Treat version bumps as release work, not as routine feature work
+- Keep `src/Cargo.toml`, `Cargo.lock`, and the release tag aligned
+
 **Python (when proto/ exists):**
 - Use a virtual environment; do not commit `.venv/`
 - Follow the project's rule engine interface so logic ports cleanly to Rust
