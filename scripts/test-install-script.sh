@@ -236,7 +236,7 @@ run_upgrade_auto_uninstall_case() {
     XDG_STATE_HOME="$state_home" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_two" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --upgrade --version v0.0.2-test
+    hostveil upgrade --version v0.0.2-test
 
   [[ -x "$manager_path" ]] || {
     printf 'error: lifecycle manager was not restored during upgrade fallback\n' >&2
@@ -255,7 +255,8 @@ run_upgrade_auto_uninstall_case() {
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.3-test'
 
   XDG_STATE_HOME="$state_home" \
-    bash "$INSTALLER_PATH" --disable-auto-upgrade
+    PATH="$install_dir:$PATH" \
+    hostveil auto-upgrade disable
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=disabled'
 
   XDG_STATE_HOME="$state_home" \
@@ -268,7 +269,8 @@ run_upgrade_auto_uninstall_case() {
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.3-test'
 
   XDG_STATE_HOME="$state_home" \
-    bash "$INSTALLER_PATH" --enable-auto-upgrade
+    PATH="$install_dir:$PATH" \
+    hostveil auto-upgrade enable
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
 
   XDG_STATE_HOME="$state_home" \
@@ -281,7 +283,8 @@ run_upgrade_auto_uninstall_case() {
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.4-test'
 
   XDG_STATE_HOME="$state_home" \
-    bash "$INSTALLER_PATH" --uninstall
+    PATH="$install_dir:$PATH" \
+    hostveil uninstall
 
   [[ ! -e "$install_dir/hostveil" ]] || {
     printf 'error: wrapper still exists after uninstall\n' >&2

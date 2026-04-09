@@ -39,7 +39,9 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 ## 설치
 
-최종 Rust 바이너리는 아직 제공되지 않습니다. `proto/` 안의 Python 프로토타입은 이제 Compose 파싱, 점수화, 수정 흐름을 설명하는 참고 구현으로 유지되고, 실제 제품 개발은 `src/`로 이동합니다.
+Alpha Rust 릴리스는 GitHub Releases를 통해 Linux 바이너리로 제공합니다. `proto/` 안의 Python 프로토타입은 Compose 파싱, 점수화, 수정 흐름을 설명하는 고정된 참고 구현으로 유지되고, 실제 제품 개발은 `src/`에서 진행합니다.
+
+첫 공개 Rust 릴리스는 안정화된 `v1.0`이 아니라 Linux 전용 프리릴리스(`v0.1.0-alpha.N`)입니다.
 
 실제 제품의 공식 런타임 지원 대상은 Linux입니다. Windows에서 개발할 경우 native PowerShell 대신 WSL 사용을 권장합니다.
 
@@ -55,6 +57,29 @@ cargo run -- --json
 # 스냅샷/타깃 테스트용 고급 override
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
+```
+
+현재 alpha 전달 경로:
+
+- `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`용 GitHub Releases tarball
+- 릴리스 아티팩트 검증용 `SHA256SUMS`
+- 호스트 아키텍처에 맞는 Linux 바이너리를 선택하는 작은 설치 스크립트
+- Docker, Trivy 같은 외부 도구는 번들하지 않고 `PATH`에서 선택적으로 탐지
+- 첫 설치는 installer script로, 이후 업그레이드/자동 업데이트 토글/삭제는 설치된 `hostveil` 명령으로 수행
+
+최신 preview 릴리스 설치:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --channel preview
+```
+
+최초 설치 이후 라이프사이클 명령:
+
+```sh
+hostveil upgrade
+hostveil auto-upgrade disable
+hostveil auto-upgrade enable
+hostveil uninstall
 ```
 
 현재 참고용 프로토타입 실행 방법:

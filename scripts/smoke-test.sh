@@ -28,11 +28,21 @@ VERSION_OUTPUT="$($BINARY_PATH --version)"
 printf '%s\n' "$VERSION_OUTPUT" | grep -q '^hostveil '
 
 $BINARY_PATH --help | grep -q -- '--version'
+$BINARY_PATH --help | grep -q -- 'hostveil upgrade'
+$BINARY_PATH --help | grep -q -- 'hostveil auto-upgrade enable'
 $BINARY_PATH --json | grep -q '"scan_mode": "live"'
 $BINARY_PATH --json --compose "$COMPOSE_FIXTURE" | grep -q '"findings"'
 $BINARY_PATH --json --host-root "$TMP_HOST_ROOT" | grep -q '"host_runtime"'
 $BINARY_PATH --quick-fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
 $BINARY_PATH --fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
+
+set +e
+UPGRADE_OUTPUT="$($BINARY_PATH upgrade 2>&1 >/dev/null)"
+UPGRADE_STATUS=$?
+set -e
+
+[[ $UPGRADE_STATUS -ne 0 ]]
+printf '%s\n' "$UPGRADE_OUTPUT" | grep -q 'installed hostveil wrapper'
 
 set +e
 BARE_OUTPUT="$($BINARY_PATH 2>&1 >/dev/null)"
