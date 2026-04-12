@@ -45,6 +45,10 @@ REQUESTED_VERSION=""
 ACTION="install"
 AUTO_UPGRADE_SETTING="enabled"
 metadata_loaded=0
+SETUP_TOOLS=""
+SETUP_TOOLS_SET=0
+SKIP_SETUP=0
+SETUP_ASSUME_YES=0
 
 usage() {
   cat <<'EOF'
@@ -56,8 +60,10 @@ Usage:
   install.sh --disable-auto-upgrade
   install.sh --enable-auto-upgrade
   install.sh --uninstall [--to DIR]
+  install.sh [--version TAG] [--to DIR] [--with-tools LIST] [--yes]
 
 After first install, prefer the installed hostveil command:
+  hostveil setup
   hostveil upgrade [--version TAG]
   hostveil auto-upgrade enable|disable
   hostveil uninstall
@@ -66,10 +72,13 @@ Options:
   --version TAG            install or upgrade to a specific release tag
   --channel NAME           legacy compatibility option; current documented releases use a single track
   --to DIR                 install into a specific binary directory
+  --with-tools LIST        comma-separated optional tools to install after hostveil is installed
   --upgrade                upgrade an existing install using saved metadata
   --disable-auto-upgrade   stop checking for upgrades when hostveil launches
   --enable-auto-upgrade    resume checking for upgrades when hostveil launches
+  --skip-setup             skip the post-install optional tool setup flow
   --uninstall              remove hostveil and related lifecycle files
+  --yes                    accept the recommended post-install tool setup without prompting
   -h, --help               show this help message
 EOF
 }
@@ -111,6 +120,20 @@ while (($# > 0)); do
       INSTALL_DIR="$2"
       INSTALL_DIR_SET=1
       shift 2
+      ;;
+    --with-tools)
+      (($# >= 2)) || fail "missing value for --with-tools"
+      SETUP_TOOLS="$2"
+      SETUP_TOOLS_SET=1
+      shift 2
+      ;;
+    --skip-setup|--without-tools)
+      SKIP_SETUP=1
+      shift
+      ;;
+    --yes)
+      SETUP_ASSUME_YES=1
+      shift
       ;;
     --upgrade)
       set_action "upgrade"
@@ -589,6 +612,41 @@ prune_empty_dir() {
   fi
 }
 
+tty_is_available() {
+  [[ -t 1 && -r /dev/tty && -w /dev/tty ]]
+}
+
+run_post_install_setup() {
+  local wrapper_path
+  local setup_args=(setup)
+
+  if [[ "$ACTION" != "install" ]] || (( SKIP_SETUP == 1 )) || [[ "${HOSTVEIL_INSTALLER_SKIP_SETUP:-}" == "1" ]]; then
+    return
+  fi
+
+  wrapper_path="$(resolve_wrapper_path)"
+  [[ -x "$wrapper_path" ]] || return
+
+  if (( SETUP_TOOLS_SET == 1 )); then
+    setup_args+=(--yes --tools "$SETUP_TOOLS")
+    log "Running post-install setup for: ${SETUP_TOOLS}"
+  elif (( SETUP_ASSUME_YES == 1 )); then
+    setup_args+=(--yes)
+    log "Running post-install setup with the recommended tool defaults"
+  elif tty_is_available; then
+    log "Launching the post-install setup wizard"
+  else
+    log "Skipping optional tool setup because no interactive terminal was detected. Run 'hostveil setup' later."
+    return
+  fi
+
+  if tty_is_available; then
+    HOSTVEIL_SKIP_AUTO_UPGRADE=1 "$wrapper_path" "${setup_args[@]}" </dev/tty >/dev/tty 2>/dev/tty
+  else
+    HOSTVEIL_SKIP_AUTO_UPGRADE=1 "$wrapper_path" "${setup_args[@]}"
+  fi
+}
+
 perform_install() {
   local tag
   local target
@@ -643,6 +701,8 @@ perform_install() {
   if ! install_dir_is_available_on_path "$INSTALL_DIR"; then
     log "Note: ${INSTALL_DIR} is not currently on PATH."
   fi
+
+  run_post_install_setup
 }
 
 perform_upgrade() {
@@ -686,12 +746,19 @@ perform_uninstall() {
 }
 
 validate_action() {
+  if (( SKIP_SETUP == 1 )) && (( SETUP_TOOLS_SET == 1 )); then
+    fail "choose either --skip-setup or --with-tools"
+  fi
+
   case "$ACTION" in
     install|upgrade)
       ;;
     enable-auto-upgrade|disable-auto-upgrade|uninstall)
       if [[ -n "$REQUESTED_VERSION" ]]; then
         fail "--version is not supported with --${ACTION}"
+      fi
+      if (( SETUP_TOOLS_SET == 1 )) || (( SKIP_SETUP == 1 )) || (( SETUP_ASSUME_YES == 1 )); then
+        fail "setup flags are only supported during install"
       fi
       ;;
     *)

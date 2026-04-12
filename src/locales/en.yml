@@ -21,6 +21,7 @@ app:
         hostveil
         hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil setup [--tool NAME]... [--tools LIST] [--yes]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
         hostveil upgrade [--version TAG]
@@ -34,6 +35,7 @@ app:
         First install:
           curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
         After install:
+          hostveil setup
           hostveil upgrade
           hostveil uninstall
           hostveil auto-upgrade enable|disable
@@ -41,6 +43,8 @@ app:
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
         --host-root PATH  override the default live host root (/) with a Linux root or snapshot
+        --tool NAME       select a setup tool explicitly for hostveil setup (repeatable)
+        --tools LIST      comma-separated setup tool list for unattended setup runs
         --quick-fix PATH  preview or apply safe Compose-only fixes for a specific file or directory
         --fix PATH        preview or apply safe and guided Compose review changes for a specific file or directory
         --preview-changes show the planned diff without writing any files
@@ -103,10 +107,11 @@ app:
     load: "Load"
     controls: "Defenses"
     fail2ban: "Fail2ban"
-    crowdsec: "CrowdSec"
     control_enabled: "enabled"
     control_installed: "installed"
     control_not_detected: "not detected"
+    control_jails: "%{count} jails"
+    control_banned_ips: "%{count} banned"
     services_heading: "Services"
     no_services: "No Compose services loaded yet."
     no_image: "image unavailable"
@@ -124,6 +129,40 @@ app:
     service_count: "Service count: %{count}"
     overall_score: "Overall score: %{score}"
     finding_count: "Finding count: %{count}"
+  adapter:
+    lynis_pentest_mode: "Lynis ran in unprivileged pentest mode; some root-only checks may be omitted."
+    lynis_non_zero_exit: "Lynis exited with a non-zero status: %{detail}. Parsed the available report anyway."
+    lynis_report_missing: "Lynis did not produce a report file."
+  setup:
+    heading: "hostveil setup"
+    detected_os: "Detected OS: %{name}"
+    selected_tools: "Selected tools: %{tools}"
+    planned_changes: "Planned changes"
+    prompt_tools: "Select the optional tools to install and configure"
+    prompt_confirm: "Apply this setup plan?"
+    skipped: "Setup skipped. Run `hostveil setup` later to configure optional tools."
+    requesting_sudo: "Requesting sudo access for package installation and system configuration..."
+    running_step: "Running: %{step}"
+    verification_heading: "Verification"
+    complete: "Setup complete. Re-run `hostveil setup` any time to adjust the installed tool set."
+    check_failed: "%{command} could not be verified: %{detail}"
+    error:
+      unsupported_os: "hostveil setup does not yet support automatic dependency installation on"
+    step:
+      dnf_install: "Install packages with dnf: %{packages}"
+      apt_install: "Install packages with apt: %{packages}"
+      trivy_repo: "Add the upstream Trivy APT repository"
+      fail2ban_baseline: "Write a managed Fail2Ban sshd baseline and enable the service"
+    tool:
+      lynis:
+        name: "Lynis"
+        prompt: "Lynis: host auditing and hardening checks"
+      trivy:
+        name: "Trivy"
+        prompt: "Trivy: image and container vulnerability scanning"
+      fail2ban:
+        name: "Fail2Ban"
+        prompt: "Fail2Ban: basic intrusion-prevention for SSH"
   error:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"
@@ -162,6 +201,7 @@ app:
     single_finding: "1 finding"
     multi_findings: "%{count} findings"
     discovery_heading: "Discovery"
+    adapters_heading: "Adapters"
     warnings_heading: "Warnings"
     docker_available: "available"
     docker_missing: "missing"
@@ -206,8 +246,24 @@ source:
 adapter:
   available: "available"
   missing: "missing"
+  skipped: "skipped: %{detail}"
   failed: "failed: %{detail}"
+  reason:
+    no_image_targets: "no image targets were discovered"
+    host_not_scanned: "host scanning was not requested"
+    live_host_only: "a live host scan rooted at / is required"
 finding:
+  lynis:
+    host_warnings:
+      title: "Lynis reported host hardening warnings"
+      description: "Lynis reported %{count} warning(s) for %{subject} with hardening index %{index}."
+      why: "Lynis warnings usually point to host-level hardening gaps that expand the attack surface or weaken recovery after compromise."
+      fix: "Review the reported Lynis warnings first, apply the highest-impact host hardening changes, and rerun the audit to confirm the result."
+    host_suggestions:
+      title: "Lynis reported additional hardening suggestions"
+      description: "Lynis reported %{count} suggestion(s) for %{subject} with hardening index %{index}."
+      why: "Even when they are not immediate break-fix items, accumulated hardening suggestions often reveal a weaker default host posture than intended."
+      fix: "Work through the Lynis suggestions that fit this host's role and rerun the audit after each hardening pass."
   trivy:
     image_vulnerabilities:
       title: "Image has known vulnerabilities"
@@ -324,11 +380,16 @@ finding:
       description: "%{path} configures Docker to listen on a non-local TCP host."
       why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
       fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
+    fail2ban_not_enabled:
+      title: "Fail2ban is installed but not active"
+      description: "%{path} shows local Fail2ban markers, but no enabled service marker was detected."
+      why: "Installing Fail2ban without enabling the service or a real jail leaves repeated login abuse and noisy scanning unmitigated."
+      fix: "Enable the Fail2ban service, configure at least one real jail such as sshd, and verify the client can report active status."
     defensive_controls_missing:
       title: "No intrusion-prevention control was detected"
-      description: "%{path} does not show local markers for Fail2ban or CrowdSec."
+      description: "%{path} does not show local markers for Fail2ban."
       why: "Basic blocking or ban automation can slow down repeated password attacks, scanning, and other noisy abuse against exposed services."
-      fix: "Install and enable at least one host-level defensive control such as Fail2ban or CrowdSec, then verify it is protecting the services you expose."
+      fix: "Install and enable Fail2ban, then verify it is protecting the services you expose."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

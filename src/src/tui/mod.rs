@@ -19,8 +19,8 @@ use ratatui::widgets::{
 };
 
 use crate::domain::{
-    Axis, DefensiveControlStatus, DockerDiscoveryStatus, Finding, RemediationKind, ScanMode,
-    ScanResult, Scope, Severity, Source,
+    AdapterStatus, Axis, DefensiveControlStatus, DockerDiscoveryStatus, Finding, HostRuntimeInfo,
+    RemediationKind, ScanMode, ScanResult, Scope, Severity, Source,
 };
 use crate::i18n;
 
@@ -556,6 +556,12 @@ fn render_scan_results_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_re
         }
     }
 
+    let adapter_lines = adapter_summary_lines(scan_result, inner.width);
+    if !adapter_lines.is_empty() {
+        lines.push(Line::raw(String::new()));
+        lines.extend(adapter_lines);
+    }
+
     if !scan_result.metadata.warnings.is_empty() {
         lines.push(Line::raw(String::new()));
         lines.push(Line::styled(
@@ -1082,9 +1088,7 @@ fn remediation_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line
 fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    if let Some(summary) = defensive_controls_summary(scan_result, available_width) {
-        lines.push(Line::raw(summary));
-    }
+    lines.extend(defensive_controls_lines(scan_result, available_width));
 
     lines.push(Line::styled(
         t!("app.server.services_heading").into_owned(),
@@ -1124,21 +1128,49 @@ fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
     lines
 }
 
-fn defensive_controls_summary(scan_result: &ScanResult, available_width: u16) -> Option<String> {
-    let runtime = scan_result.metadata.host_runtime.as_ref()?;
-    let summary = format!(
-        "{}: {} {} | {} {}",
-        t!("app.server.controls").into_owned(),
+fn defensive_controls_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+    let Some(runtime) = scan_result.metadata.host_runtime.as_ref() else {
+        return Vec::new();
+    };
+    let text_width = available_width.saturating_sub(4).max(20) as usize;
+    let fail2ban = defensive_control_summary(
         t!("app.server.fail2ban").into_owned(),
-        defensive_control_status_label(runtime.fail2ban),
-        t!("app.server.crowdsec").into_owned(),
-        defensive_control_status_label(runtime.crowdsec),
+        runtime.fail2ban,
+        fail2ban_detail(runtime),
     );
+    vec![Line::raw(truncate_text(
+        &format!("{}: {}", t!("app.server.controls").into_owned(), fail2ban),
+        text_width,
+    ))]
+}
 
-    Some(truncate_text(
-        &summary,
-        available_width.saturating_sub(4).max(20) as usize,
-    ))
+fn defensive_control_summary(
+    label: String,
+    status: DefensiveControlStatus,
+    detail: Option<String>,
+) -> String {
+    match detail {
+        Some(detail) => format!(
+            "{} {} ({})",
+            label,
+            defensive_control_status_label(status),
+            detail
+        ),
+        None => format!("{} {}", label, defensive_control_status_label(status)),
+    }
+}
+
+fn fail2ban_detail(runtime: &HostRuntimeInfo) -> Option<String> {
+    let mut parts = Vec::new();
+
+    if let Some(count) = runtime.fail2ban_jails {
+        parts.push(t!("app.server.control_jails", count = count).into_owned());
+    }
+    if let Some(count) = runtime.fail2ban_banned_ips {
+        parts.push(t!("app.server.control_banned_ips", count = count).into_owned());
+    }
+
+    (!parts.is_empty()).then(|| parts.join(", "))
 }
 
 fn score_rows(scan_result: &ScanResult) -> Vec<(String, u8, bool)> {
@@ -1438,6 +1470,55 @@ fn docker_status_label(status: &DockerDiscoveryStatus) -> String {
         }
         DockerDiscoveryStatus::Failed(detail) => {
             t!("app.result.docker_failed", detail = detail.as_str()).into_owned()
+        }
+    }
+}
+
+fn adapter_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+    if scan_result.metadata.adapters.is_empty() {
+        return Vec::new();
+    }
+
+    let text_width = available_width.saturating_sub(4).max(20) as usize;
+    let mut lines = vec![Line::styled(
+        t!("app.result.adapters_heading").into_owned(),
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )];
+
+    for (name, status) in &scan_result.metadata.adapters {
+        lines.push(Line::raw(truncate_text(
+            &format!(
+                "* {}: {}",
+                adapter_name_label(name),
+                adapter_status_label(status)
+            ),
+            text_width,
+        )));
+    }
+
+    lines
+}
+
+fn adapter_name_label(name: &str) -> String {
+    match name {
+        "lynis" => source_label(Source::Lynis),
+        "trivy" => source_label(Source::Trivy),
+        "dockle" => source_label(Source::Dockle),
+        _ => name.to_owned(),
+    }
+}
+
+fn adapter_status_label(status: &AdapterStatus) -> String {
+    match status {
+        AdapterStatus::Available => t!("adapter.available").into_owned(),
+        AdapterStatus::Missing => t!("adapter.missing").into_owned(),
+        AdapterStatus::Skipped(detail) => {
+            t!("adapter.skipped", detail = detail.as_str()).into_owned()
+        }
+        AdapterStatus::Failed(detail) => {
+            t!("adapter.failed", detail = detail.as_str()).into_owned()
         }
     }
 }
@@ -1746,7 +1827,8 @@ mod tests {
                     uptime: Some(String::from("14d 3h 22m")),
                     load_average: Some(String::from("0.42 0.31 0.27")),
                     fail2ban: DefensiveControlStatus::Enabled,
-                    crowdsec: DefensiveControlStatus::Installed,
+                    fail2ban_jails: Some(2),
+                    fail2ban_banned_ips: Some(5),
                 }),
                 loaded_files: vec![
                     PathBuf::from("/srv/demo/docker-compose.yml"),
@@ -1870,8 +1952,10 @@ mod tests {
         assert!(content.contains("24.0.7"));
         assert!(content.contains("14d 3h 22m"));
         assert!(content.contains("0.42 0.31 0.27"));
-        assert!(content.contains("Fail2ban enabled"));
-        assert!(content.contains("CrowdSec installed"));
+        assert!(content.contains("Fail2ban enabled (2 jails, 5 banned)"));
+        assert!(content.contains("Adapters"));
+        assert!(content.contains("Lynis: available"));
+        assert!(content.contains("Trivy: missing"));
     }
 
     #[test]

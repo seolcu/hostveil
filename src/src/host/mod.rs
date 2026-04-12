@@ -26,18 +26,6 @@ const FAIL2BAN_ENABLED_MARKERS: [&str; 2] = [
     "etc/systemd/system/multi-user.target.wants/fail2ban.service",
     "etc/systemd/system/default.target.wants/fail2ban.service",
 ];
-const CROWDSEC_INSTALL_MARKERS: [&str; 6] = [
-    "etc/crowdsec",
-    "usr/bin/crowdsec",
-    "usr/bin/cscli",
-    "usr/local/bin/cscli",
-    "lib/systemd/system/crowdsec.service",
-    "usr/lib/systemd/system/crowdsec.service",
-];
-const CROWDSEC_ENABLED_MARKERS: [&str; 2] = [
-    "etc/systemd/system/multi-user.target.wants/crowdsec.service",
-    "etc/systemd/system/default.target.wants/crowdsec.service",
-];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostContext {
@@ -57,31 +45,48 @@ pub struct HostScanner;
 
 impl HostScanner {
     pub fn scan(&self, context: &HostContext) -> Vec<Finding> {
+        let runtime = collect_host_runtime_info(context);
+        self.scan_with_runtime(context, &runtime)
+    }
+
+    pub fn scan_with_runtime(
+        &self,
+        context: &HostContext,
+        runtime: &HostRuntimeInfo,
+    ) -> Vec<Finding> {
         let mut findings = Vec::new();
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
-        findings.extend(scan_defensive_controls(context));
+        findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
 }
 
 pub fn collect_host_runtime_info(context: &HostContext) -> HostRuntimeInfo {
+    let controls = collect_defensive_controls_snapshot(&context.root);
+
     HostRuntimeInfo {
         hostname: read_hostname(&context.root),
         docker_version: discover_docker_version(&context.root),
         uptime: read_uptime(&context.root),
         load_average: read_load_average(&context.root),
-        fail2ban: detect_defensive_control(
-            &context.root,
-            &FAIL2BAN_INSTALL_MARKERS,
-            &FAIL2BAN_ENABLED_MARKERS,
-        ),
-        crowdsec: detect_defensive_control(
-            &context.root,
-            &CROWDSEC_INSTALL_MARKERS,
-            &CROWDSEC_ENABLED_MARKERS,
-        ),
+        fail2ban: controls.fail2ban_status,
+        fail2ban_jails: controls.fail2ban_jails,
+        fail2ban_banned_ips: controls.fail2ban_banned_ips,
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct DefensiveControlsSnapshot {
+    fail2ban_status: DefensiveControlStatus,
+    fail2ban_jails: Option<usize>,
+    fail2ban_banned_ips: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct Fail2BanLiveSummary {
+    jails: Option<usize>,
+    banned_ips: Option<usize>,
 }
 
 fn host_finding(
@@ -303,49 +308,53 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
     findings
 }
 
-fn scan_defensive_controls(context: &HostContext) -> Vec<Finding> {
-    let fail2ban_present = has_any_marker(&context.root, &FAIL2BAN_INSTALL_MARKERS)
-        || has_any_marker(&context.root, &FAIL2BAN_ENABLED_MARKERS);
-    let crowdsec_present = has_any_marker(&context.root, &CROWDSEC_INSTALL_MARKERS)
-        || has_any_marker(&context.root, &CROWDSEC_ENABLED_MARKERS);
-
-    if fail2ban_present || crowdsec_present {
-        return Vec::new();
+fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo) -> Vec<Finding> {
+    match runtime.fail2ban {
+        DefensiveControlStatus::Enabled => Vec::new(),
+        DefensiveControlStatus::Installed => vec![host_finding(
+            "host.fail2ban_not_enabled",
+            Severity::Medium,
+            &context.root,
+            HostFindingText {
+                title: t!("finding.host.fail2ban_not_enabled.title").into_owned(),
+                description: t!(
+                    "finding.host.fail2ban_not_enabled.description",
+                    path = context.root.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.fail2ban_not_enabled.why").into_owned(),
+                how_to_fix: t!("finding.host.fail2ban_not_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), context.root.display().to_string()),
+                (String::from("control"), String::from("fail2ban")),
+            ]),
+        )],
+        DefensiveControlStatus::NotDetected => vec![host_finding(
+            "host.defensive_controls_missing",
+            Severity::Low,
+            &context.root,
+            HostFindingText {
+                title: t!("finding.host.defensive_controls_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.defensive_controls_missing.description",
+                    path = context.root.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.defensive_controls_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.defensive_controls_missing.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), context.root.display().to_string()),
+                (String::from("checked_controls"), String::from("fail2ban")),
+            ]),
+        )],
     }
-
-    vec![host_finding(
-        "host.defensive_controls_missing",
-        Severity::Low,
-        &context.root,
-        HostFindingText {
-            title: t!("finding.host.defensive_controls_missing.title").into_owned(),
-            description: t!(
-                "finding.host.defensive_controls_missing.description",
-                path = context.root.display().to_string()
-            )
-            .into_owned(),
-            why_risky: t!("finding.host.defensive_controls_missing.why").into_owned(),
-            how_to_fix: t!("finding.host.defensive_controls_missing.fix").into_owned(),
-        },
-        BTreeMap::from([
-            (String::from("path"), context.root.display().to_string()),
-            (
-                String::from("checked_controls"),
-                String::from("fail2ban,crowdsec"),
-            ),
-        ]),
-    )]
 }
 
 fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
     let path = root.join(relative);
     path.exists().then_some(path)
-}
-
-fn has_any_marker(root: &Path, markers: &[&str]) -> bool {
-    markers
-        .iter()
-        .any(|marker| resolve_existing_path(root, marker).is_some())
 }
 
 fn detect_defensive_control(
@@ -366,6 +375,231 @@ fn detect_defensive_control(
     } else {
         DefensiveControlStatus::NotDetected
     }
+}
+
+fn collect_defensive_controls_snapshot(root: &Path) -> DefensiveControlsSnapshot {
+    let mut snapshot = DefensiveControlsSnapshot {
+        fail2ban_status: detect_defensive_control(
+            root,
+            &FAIL2BAN_INSTALL_MARKERS,
+            &FAIL2BAN_ENABLED_MARKERS,
+        ),
+        fail2ban_jails: count_enabled_fail2ban_jails(root),
+        ..DefensiveControlsSnapshot::default()
+    };
+
+    if !is_live_root(root) {
+        return snapshot;
+    }
+
+    if let Some(live) = collect_fail2ban_live_summary() {
+        snapshot.fail2ban_status = DefensiveControlStatus::Enabled;
+        if live.jails.is_some() {
+            snapshot.fail2ban_jails = live.jails;
+        }
+        snapshot.fail2ban_banned_ips = live.banned_ips;
+    }
+
+    snapshot
+}
+
+fn count_enabled_fail2ban_jails(root: &Path) -> Option<usize> {
+    let mut parser = Fail2BanJailParser::default();
+    let mut parsed_any_file = false;
+
+    for path in fail2ban_jail_config_paths(root) {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        parsed_any_file = true;
+        parser.apply(&text);
+    }
+
+    parsed_any_file.then(|| parser.enabled_jail_count())
+}
+
+fn fail2ban_jail_config_paths(root: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    paths.push(root.join("etc/fail2ban/jail.conf"));
+    paths.extend(sorted_fail2ban_dir_entries(
+        root,
+        "etc/fail2ban/jail.d",
+        "conf",
+    ));
+    paths.push(root.join("etc/fail2ban/jail.local"));
+    paths.extend(sorted_fail2ban_dir_entries(
+        root,
+        "etc/fail2ban/jail.d",
+        "local",
+    ));
+
+    paths
+}
+
+fn sorted_fail2ban_dir_entries(root: &Path, relative_dir: &str, extension: &str) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(root.join(relative_dir)) else {
+        return Vec::new();
+    };
+
+    let mut paths = entries
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some(extension))
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths
+}
+
+#[derive(Debug, Default)]
+struct Fail2BanJailParser {
+    default_enabled: bool,
+    sections: BTreeMap<String, Option<bool>>,
+}
+
+impl Fail2BanJailParser {
+    fn apply(&mut self, text: &str) {
+        let mut current_section: Option<String> = None;
+
+        for raw_line in text.lines() {
+            let line = strip_ini_comments(raw_line);
+            if line.is_empty() {
+                continue;
+            }
+
+            if let Some(section) = parse_ini_section(line) {
+                current_section = Some(section.clone());
+                if !is_special_fail2ban_section(&section) {
+                    self.sections.entry(section).or_insert(None);
+                }
+                continue;
+            }
+
+            let Some(section) = current_section.as_deref() else {
+                continue;
+            };
+            let Some((key, value)) = parse_ini_key_value(line) else {
+                continue;
+            };
+            if !key.eq_ignore_ascii_case("enabled") {
+                continue;
+            }
+            let Some(enabled) = parse_ini_bool(value) else {
+                continue;
+            };
+
+            if section.eq_ignore_ascii_case("DEFAULT") {
+                self.default_enabled = enabled;
+            } else if !is_special_fail2ban_section(section) {
+                self.sections.insert(section.to_owned(), Some(enabled));
+            }
+        }
+    }
+
+    fn enabled_jail_count(&self) -> usize {
+        self.sections
+            .values()
+            .filter(|enabled| enabled.unwrap_or(self.default_enabled))
+            .count()
+    }
+}
+
+fn strip_ini_comments(line: &str) -> &str {
+    let trimmed = line.trim();
+    if trimmed.starts_with('#') || trimmed.starts_with(';') {
+        return "";
+    }
+
+    let hash_index = line.find('#');
+    let semicolon_index = line.find(" ;").map(|index| index + 1);
+    let comment_index = match (hash_index, semicolon_index) {
+        (Some(hash), Some(semicolon)) => Some(hash.min(semicolon)),
+        (Some(hash), None) => Some(hash),
+        (None, Some(semicolon)) => Some(semicolon),
+        (None, None) => None,
+    };
+
+    line[..comment_index.unwrap_or(line.len())].trim()
+}
+
+fn parse_ini_section(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    trimmed
+        .strip_prefix('[')?
+        .strip_suffix(']')
+        .map(str::trim)
+        .filter(|section| !section.is_empty())
+        .map(str::to_owned)
+}
+
+fn parse_ini_key_value(line: &str) -> Option<(&str, &str)> {
+    let (key, value) = line.split_once('=')?;
+    Some((key.trim(), value.trim()))
+}
+
+fn parse_ini_bool(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+fn is_special_fail2ban_section(section: &str) -> bool {
+    section.eq_ignore_ascii_case("DEFAULT") || section.eq_ignore_ascii_case("INCLUDES")
+}
+
+fn collect_fail2ban_live_summary() -> Option<Fail2BanLiveSummary> {
+    try_command(&["fail2ban-client", "ping"])?;
+
+    let status_output = try_command(&["fail2ban-client", "status"]);
+    let Some(status_output) = status_output else {
+        return Some(Fail2BanLiveSummary::default());
+    };
+
+    let jails = parse_fail2ban_jails(&status_output);
+    let mut total_banned = 0usize;
+    let mut parsed_any_banned = jails.is_empty();
+
+    for jail in &jails {
+        let Some(jail_output) = try_command(&["fail2ban-client", "status", jail.as_str()]) else {
+            continue;
+        };
+        let Some(currently_banned) = parse_fail2ban_currently_banned(&jail_output) else {
+            continue;
+        };
+        total_banned += currently_banned;
+        parsed_any_banned = true;
+    }
+
+    Some(Fail2BanLiveSummary {
+        jails: Some(jails.len()),
+        banned_ips: parsed_any_banned.then_some(total_banned),
+    })
+}
+
+fn parse_fail2ban_jails(output: &str) -> Vec<String> {
+    output
+        .lines()
+        .find_map(|line| line.split_once("Jail list:"))
+        .map(|(_, list)| {
+            list.split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn parse_fail2ban_currently_banned(output: &str) -> Option<usize> {
+    parse_labeled_usize(output, "Currently banned:")
+}
+
+fn parse_labeled_usize(output: &str, label: &str) -> Option<usize> {
+    output.lines().find_map(|line| {
+        let (_, value) = line.trim().split_once(label)?;
+        value.trim().parse::<usize>().ok()
+    })
 }
 
 fn read_hostname(root: &Path) -> Option<String> {
@@ -618,6 +852,10 @@ mod tests {
             &root.join("etc/fail2ban/jail.local"),
             "[sshd]\nenabled = true\n",
         );
+        write_file(
+            &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
+            "enabled\n",
+        );
         write_file(&root.join(DOCKER_SOCKET_PATH), "socket");
         fs::set_permissions(
             root.join(DOCKER_SOCKET_PATH),
@@ -644,7 +882,6 @@ mod tests {
             &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
             "enabled\n",
         );
-        write_file(&root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
         write_file(&root.join("proc/uptime"), "1221720.00 0.00\n");
         write_file(&root.join("proc/loadavg"), "0.42 0.31 0.27 1/100 1234\n");
 
@@ -655,18 +892,79 @@ mod tests {
         assert_eq!(info.load_average.as_deref(), Some("0.42 0.31 0.27"));
         assert!(info.docker_version.is_none());
         assert_eq!(info.fail2ban, DefensiveControlStatus::Enabled);
-        assert_eq!(info.crowdsec, DefensiveControlStatus::Installed);
+        assert_eq!(info.fail2ban_jails, Some(1));
+        assert_eq!(info.fail2ban_banned_ips, None);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
 
     #[test]
-    fn defensive_control_finding_is_cleared_when_crowdsec_exists() {
-        let root = temp_host_root("crowdsec-present");
-        write_file(&root.join("etc/crowdsec/config.yaml"), "api:\n  server:\n");
+    fn counts_enabled_fail2ban_jails_from_config_precedence_order() {
+        let root = temp_host_root("fail2ban-config-order");
+        write_file(
+            &root.join("etc/fail2ban/jail.conf"),
+            concat!(
+                "[DEFAULT]\n",
+                "enabled = false\n",
+                "\n",
+                "[sshd]\n",
+                "enabled = false\n",
+                "\n",
+                "[nginx-http-auth]\n",
+                "enabled = false\n"
+            ),
+        );
+        write_file(
+            &root.join("etc/fail2ban/jail.d/10-enable-sshd.local"),
+            "[sshd]\nenabled = true ; keep sshd enabled\n",
+        );
+        write_file(
+            &root.join("etc/fail2ban/jail.d/20-enable-default.local"),
+            "[DEFAULT]\nenabled = true\n",
+        );
+        write_file(
+            &root.join("etc/fail2ban/jail.d/30-disable-nginx.local"),
+            "[nginx-http-auth]\nenabled = false\n",
+        );
+
+        let count = count_enabled_fail2ban_jails(&root);
+
+        assert_eq!(count, Some(1));
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn defensive_control_missing_finding_is_cleared_when_fail2ban_is_enabled() {
+        let root = temp_host_root("fail2ban-enabled");
+        write_file(
+            &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
+            "enabled\n",
+        );
 
         let findings = HostScanner.scan(&HostContext { root: root.clone() });
 
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.defensive_controls_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn reports_fail2ban_when_installed_but_not_enabled() {
+        let root = temp_host_root("fail2ban-installed");
+        write_file(&root.join("etc/fail2ban/jail.local"), "[DEFAULT]\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.fail2ban_not_enabled")
+        );
         assert!(
             findings
                 .iter()
@@ -706,5 +1004,29 @@ mod tests {
         assert_eq!(parsed.get("permitrootlogin"), Some(&String::from("no")));
 
         fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parses_fail2ban_status_output() {
+        let jails = parse_fail2ban_jails(concat!(
+            "Status\n",
+            "|- Number of jail:  2\n",
+            "`- Jail list: sshd, nginx-http-auth\n"
+        ));
+
+        assert_eq!(
+            jails,
+            vec![String::from("sshd"), String::from("nginx-http-auth")]
+        );
+        assert_eq!(
+            parse_fail2ban_currently_banned(concat!(
+                "Status for the jail: sshd\n",
+                "|- Filter\n",
+                "|  |- Currently failed: 0\n",
+                "`- Actions\n",
+                "   |- Currently banned: 3\n"
+            )),
+            Some(3)
+        );
     }
 }

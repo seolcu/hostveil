@@ -27,12 +27,47 @@ impl LifecycleCommand {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SetupTool {
+    Lynis,
+    Trivy,
+    Fail2Ban,
+}
+
+impl SetupTool {
+    pub const ALL: [Self; 3] = [Self::Lynis, Self::Trivy, Self::Fail2Ban];
+
+    pub fn from_arg(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "lynis" => Some(Self::Lynis),
+            "trivy" => Some(Self::Trivy),
+            "fail2ban" => Some(Self::Fail2Ban),
+            _ => None,
+        }
+    }
+
+    pub fn cli_name(self) -> &'static str {
+        match self {
+            Self::Lynis => "lynis",
+            Self::Trivy => "trivy",
+            Self::Fail2Ban => "fail2ban",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SetupConfig {
+    pub selected_tools: Option<Vec<SetupTool>>,
+    pub assume_yes: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub output_mode: OutputMode,
     pub show_help: bool,
     pub show_version: bool,
     pub lifecycle_command: Option<LifecycleCommand>,
+    pub setup_command: Option<SetupConfig>,
     pub compose_path: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
     pub fix_mode: Option<FixMode>,
@@ -48,6 +83,7 @@ impl Default for AppConfig {
             show_help: false,
             show_version: false,
             lifecycle_command: None,
+            setup_command: None,
             compose_path: None,
             host_root: None,
             fix_mode: None,
@@ -64,6 +100,7 @@ impl AppConfig {
 
         if let Some(command) = args.first() {
             match command.as_str() {
+                "setup" => return Self::parse_setup(args.into_iter().skip(1)),
                 "upgrade" => return Self::parse_upgrade(args.into_iter().skip(1)),
                 "uninstall" => return Self::parse_uninstall(args.into_iter().skip(1)),
                 "auto-upgrade" => return Self::parse_auto_upgrade(args.into_iter().skip(1)),
@@ -135,6 +172,54 @@ impl AppConfig {
             }
         }
 
+        config.validate()?;
+        Ok(config)
+    }
+
+    fn parse_setup(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let mut config = Self::default();
+        let mut setup = SetupConfig::default();
+        let mut selected_tools = Vec::new();
+        let mut args = args.into_iter();
+
+        while let Some(argument) = args.next() {
+            match argument.as_str() {
+                "--yes" => setup.assume_yes = true,
+                "--tool" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--tool"))?;
+                    push_setup_tool(&mut selected_tools, &value)?;
+                }
+                _ if argument.starts_with("--tool=") => {
+                    let value = argument.trim_start_matches("--tool=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--tool"));
+                    }
+                    push_setup_tool(&mut selected_tools, value)?;
+                }
+                "--tools" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--tools"))?;
+                    parse_setup_tool_list(&mut selected_tools, &value)?;
+                }
+                _ if argument.starts_with("--tools=") => {
+                    let value = argument.trim_start_matches("--tools=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--tools"));
+                    }
+                    parse_setup_tool_list(&mut selected_tools, value)?;
+                }
+                "-h" | "--help" => config.show_help = true,
+                _ => return Err(AppError::UnknownArgument(argument)),
+            }
+        }
+
+        if !selected_tools.is_empty() {
+            setup.selected_tools = Some(selected_tools);
+        }
+        config.setup_command = Some(setup);
         config.validate()?;
         Ok(config)
     }
@@ -228,6 +313,10 @@ impl AppConfig {
     }
 
     fn validate(&self) -> Result<(), AppError> {
+        if self.setup_command.is_some() {
+            return Ok(());
+        }
+
         if self.lifecycle_command.is_some() {
             return Ok(());
         }
@@ -275,9 +364,40 @@ impl AppConfig {
     }
 }
 
+fn push_setup_tool(tools: &mut Vec<SetupTool>, value: &str) -> Result<(), AppError> {
+    let tool = SetupTool::from_arg(value).ok_or_else(|| {
+        AppError::InvalidArgumentCombination(format!("unsupported setup tool: {value}"))
+    })?;
+    if !tools.contains(&tool) {
+        tools.push(tool);
+    }
+    Ok(())
+}
+
+fn parse_setup_tool_list(tools: &mut Vec<SetupTool>, value: &str) -> Result<(), AppError> {
+    let mut parsed_any = false;
+
+    for entry in value
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+    {
+        parsed_any = true;
+        push_setup_tool(tools, entry)?;
+    }
+
+    if parsed_any {
+        Ok(())
+    } else {
+        Err(AppError::InvalidArgumentCombination(String::from(
+            "--tools requires at least one tool name",
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AppConfig, LifecycleCommand, OutputMode};
+    use super::{AppConfig, LifecycleCommand, OutputMode, SetupTool};
     use crate::fix::FixMode;
 
     #[test]
@@ -288,6 +408,7 @@ mod tests {
         assert!(!config.show_help);
         assert!(!config.show_version);
         assert!(config.lifecycle_command.is_none());
+        assert!(config.setup_command.is_none());
         assert!(config.fix_mode.is_none());
     }
 
@@ -451,6 +572,46 @@ mod tests {
     fn rejects_auto_upgrade_without_mode() {
         let error = AppConfig::parse([String::from("auto-upgrade")])
             .expect_err("auto-upgrade should require a mode");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn parses_setup_command_with_explicit_tools() {
+        let config = AppConfig::parse([
+            String::from("setup"),
+            String::from("--tools=lynis,fail2ban"),
+            String::from("--tool"),
+            String::from("trivy"),
+            String::from("--yes"),
+        ])
+        .expect("setup command should parse");
+
+        let setup = config
+            .setup_command
+            .expect("setup command should be captured");
+        assert!(setup.assume_yes);
+        assert_eq!(
+            setup.selected_tools,
+            Some(vec![
+                SetupTool::Lynis,
+                SetupTool::Fail2Ban,
+                SetupTool::Trivy
+            ])
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_setup_tool() {
+        let error = AppConfig::parse([
+            String::from("setup"),
+            String::from("--tool"),
+            String::from("dockle"),
+        ])
+        .expect_err("unknown setup tool should be rejected");
 
         assert!(matches!(
             error,

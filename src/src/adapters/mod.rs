@@ -1,5 +1,6 @@
 use crate::domain::Finding;
 
+pub mod lynis;
 pub mod trivy;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

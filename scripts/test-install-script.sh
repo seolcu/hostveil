@@ -306,10 +306,59 @@ run_upgrade_auto_uninstall_case() {
   rm -rf "$case_dir"
 }
 
+run_post_install_setup_handoff_case() {
+  local case_dir
+  local release_dir
+  local install_dir
+  local setup_log
+  local archive_name
+  local checksum
+
+  case_dir="$(mktemp -d)"
+  release_dir="$case_dir/release"
+  install_dir="$case_dir/install/bin"
+  setup_log="$case_dir/setup.log"
+  archive_name="hostveil-v0.0.9-test-${TARGET_TRIPLE}.tar.gz"
+
+  mkdir -p "$release_dir/package"
+  cat > "$release_dir/package/hostveil" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  --version)
+    printf 'hostveil 0.0.9-test\n'
+    ;;
+  setup)
+    printf '%s\n' "$*" > "${HOSTVEIL_SETUP_LOG:?}"
+    ;;
+  *)
+    printf 'fake hostveil received: %s\n' "$*"
+    ;;
+esac
+EOF
+  chmod 0755 "$release_dir/package/hostveil"
+  cp "$ROOT_DIR/README.md" "$ROOT_DIR/LICENSE" "$release_dir/package/"
+  tar -C "$release_dir/package" -czf "$release_dir/$archive_name" hostveil README.md LICENSE
+  checksum="$(sha256sum "$release_dir/$archive_name" | awk '{print $1}')"
+  printf '%s  %s\n' "$checksum" "$archive_name" > "$release_dir/SHA256SUMS"
+
+  HOSTVEIL_SETUP_LOG="$setup_log" \
+    XDG_STATE_HOME="$case_dir/state" \
+    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_dir" \
+    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+    bash "$INSTALLER_PATH" --version v0.0.9-test --to "$install_dir" --with-tools lynis,trivy
+
+  assert_file_contains "$setup_log" 'setup --yes --tools lynis,trivy'
+
+  rm -rf "$case_dir"
+}
+
 run_install_case ""
 run_install_case "dist/"
 run_latest_install_case
 run_login_path_detection_case
 run_upgrade_auto_uninstall_case
+run_post_install_setup_handoff_case
 
 printf 'Installer tests passed for %s\n' "$BINARY_PATH"
