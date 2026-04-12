@@ -62,6 +62,34 @@ cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --previe
 cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 ```
 
+Container-based development and installer validation:
+
+```sh
+# Start the normal Rust dev container
+./scripts/dev-env.sh up dev
+./scripts/dev-env.sh shell dev
+
+# Bring up distro-specific labs for setup validation
+./scripts/dev-env.sh up fedora-lab ubuntu-lab debian-lab rocky-lab
+
+# Exercise optional-tool setup inside a lab instead of on the host
+./scripts/dev-env.sh setup fedora-lab lynis,trivy,fail2ban
+./scripts/dev-env.sh setup ubuntu-lab lynis,trivy
+
+# Run a host-root scan against the lab container itself
+./scripts/dev-env.sh scan rocky-lab
+```
+
+The lab stack lives in `compose.dev.yml` and currently covers:
+
+- `dev`: normal Rust development shell
+- `fedora-lab`: Fedora + systemd + dnf validation
+- `rocky-lab`: Rocky Linux + systemd + RHEL-like validation
+- `ubuntu-lab`: Ubuntu + systemd + apt validation
+- `debian-lab`: Debian + systemd + apt validation
+
+The lab images share a generic `docker/labs/systemd-lab.Dockerfile`, so adding more distro services later should be a compose-level change instead of a full redesign.
+
 Current reference prototype setup:
 
 ```sh

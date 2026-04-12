@@ -59,6 +59,34 @@ cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 ```
 
+컨테이너 기반 개발 및 installer 검증:
+
+```sh
+# 일반 Rust 개발용 컨테이너 시작
+./scripts/dev-env.sh up dev
+./scripts/dev-env.sh shell dev
+
+# 배포판별 setup 검증용 lab 시작
+./scripts/dev-env.sh up fedora-lab ubuntu-lab debian-lab rocky-lab
+
+# 호스트 대신 lab 안에서 optional tool setup 실행
+./scripts/dev-env.sh setup fedora-lab lynis,trivy,fail2ban
+./scripts/dev-env.sh setup ubuntu-lab lynis,trivy
+
+# lab 컨테이너 자체를 host-root 대상으로 스캔
+./scripts/dev-env.sh scan rocky-lab
+```
+
+lab 스택은 `compose.dev.yml`에 있으며 현재 다음 환경을 제공합니다.
+
+- `dev`: 일반 Rust 개발 쉘
+- `fedora-lab`: Fedora + systemd + dnf 검증
+- `rocky-lab`: Rocky Linux + systemd + RHEL 계열 검증
+- `ubuntu-lab`: Ubuntu + systemd + apt 검증
+- `debian-lab`: Debian + systemd + apt 검증
+
+lab 이미지는 공통 `docker/labs/systemd-lab.Dockerfile`을 공유하므로, 이후 다른 배포판을 추가할 때도 전체 구조를 다시 만들 필요 없이 compose 서비스만 늘리면 됩니다.
+
 현재 릴리스 전달 경로:
 
 - `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`용 GitHub Releases tarball
