@@ -3,7 +3,8 @@ use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use dialoguer::{Confirm, MultiSelect, theme::ColorfulTheme};
 
@@ -331,8 +332,24 @@ fn configure_fail2ban_baseline() -> Result<(), AppError> {
     )?;
     run_privileged_command("fail2ban-client", &["-t"])?;
     run_privileged_command("systemctl", &["enable", "--now", "fail2ban"])?;
-    run_privileged_command("fail2ban-client", &["status"])?;
-    run_privileged_command("fail2ban-client", &["status", "sshd"])?;
+    wait_for_privileged_command(
+        "systemctl",
+        &["is-active", "--quiet", "fail2ban"],
+        10,
+        Duration::from_millis(500),
+    )?;
+    wait_for_privileged_command(
+        "fail2ban-client",
+        &["status"],
+        10,
+        Duration::from_millis(500),
+    )?;
+    wait_for_privileged_command(
+        "fail2ban-client",
+        &["status", "sshd"],
+        10,
+        Duration::from_millis(500),
+    )?;
     Ok(())
 }
 
@@ -449,6 +466,35 @@ fn run_privileged_command(program: &str, args: &[&str]) -> Result<String, AppErr
         .map_err(|error| AppError::Io(io::Error::other(error.to_string())))?;
     command_output_to_result(program, args, output)
         .map_err(|error| AppError::Io(io::Error::other(error)))
+}
+
+fn wait_for_privileged_command(
+    program: &str,
+    args: &[&str],
+    retries: usize,
+    delay: Duration,
+) -> Result<String, AppError> {
+    let mut last_error = None;
+
+    for attempt in 0..retries {
+        match run_privileged_command(program, args) {
+            Ok(output) => return Ok(output),
+            Err(error) => {
+                last_error = Some(error);
+                if attempt + 1 < retries {
+                    thread::sleep(delay);
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| {
+        AppError::Io(io::Error::other(format!(
+            "{} did not succeed after {} attempt(s)",
+            format_command(program, args),
+            retries
+        )))
+    }))
 }
 
 fn run_privileged_command_with_stdin(
@@ -633,6 +679,31 @@ ID_LIKE=debian
         );
 
         assert_eq!(distro.family, DistroFamily::Debian);
+    }
+
+    #[test]
+    fn parses_debian_as_debian_family() {
+        let distro = parse_os_release(
+            r#"
+PRETTY_NAME="Debian GNU/Linux trixie/sid"
+ID=debian
+"#,
+        );
+
+        assert_eq!(distro.family, DistroFamily::Debian);
+    }
+
+    #[test]
+    fn parses_rocky_as_fedora_family() {
+        let distro = parse_os_release(
+            r#"
+PRETTY_NAME="Rocky Linux 9.5"
+ID=rocky
+ID_LIKE="rhel centos fedora"
+"#,
+        );
+
+        assert_eq!(distro.family, DistroFamily::Fedora);
     }
 
     #[test]

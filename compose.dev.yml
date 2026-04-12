@@ -1,0 +1,148 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+      args:
+        USER_ID: ${HOSTVEIL_UID:-1000}
+        GROUP_ID: ${HOSTVEIL_GID:-1000}
+        USER_NAME: ${HOSTVEIL_USER:-hostveil}
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    init: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/workspace
+
+  fedora-lab:
+    build:
+      context: .
+      dockerfile: docker/labs/systemd-lab.Dockerfile
+      args:
+        BASE_IMAGE: fedora:43
+        DISTRO_FAMILY: dnf
+        LAB_LABEL: Fedora 43
+    privileged: true
+    cgroup: host
+    stop_signal: SIGRTMIN+3
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    environment:
+      container: docker
+      CARGO_HOME: /cargo
+      RUSTUP_HOME: /rustup
+    working_dir: /workspace
+    command: ["/sbin/init"]
+    volumes:
+      - .:/workspace:ro
+      - fedora-cargo:/cargo
+      - fedora-rustup:/rustup
+      - fedora-target:/workspace/target
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    profiles: ["labs", "fedora", "rpm"]
+
+  rocky-lab:
+    build:
+      context: .
+      dockerfile: docker/labs/systemd-lab.Dockerfile
+      args:
+        BASE_IMAGE: rockylinux:9
+        DISTRO_FAMILY: dnf
+        LAB_LABEL: Rocky Linux 9
+    privileged: true
+    cgroup: host
+    stop_signal: SIGRTMIN+3
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    environment:
+      container: docker
+      CARGO_HOME: /cargo
+      RUSTUP_HOME: /rustup
+    working_dir: /workspace
+    command: ["/sbin/init"]
+    volumes:
+      - .:/workspace:ro
+      - rocky-cargo:/cargo
+      - rocky-rustup:/rustup
+      - rocky-target:/workspace/target
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    profiles: ["labs", "rocky", "rpm"]
+
+  ubuntu-lab:
+    build:
+      context: .
+      dockerfile: docker/labs/systemd-lab.Dockerfile
+      args:
+        BASE_IMAGE: ubuntu:24.04
+        DISTRO_FAMILY: apt
+        LAB_LABEL: Ubuntu 24.04
+    privileged: true
+    cgroup: host
+    stop_signal: SIGRTMIN+3
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    environment:
+      container: docker
+      CARGO_HOME: /cargo
+      RUSTUP_HOME: /rustup
+      DEBIAN_FRONTEND: noninteractive
+    working_dir: /workspace
+    command: ["/sbin/init"]
+    volumes:
+      - .:/workspace:ro
+      - ubuntu-cargo:/cargo
+      - ubuntu-rustup:/rustup
+      - ubuntu-target:/workspace/target
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    profiles: ["labs", "ubuntu", "deb"]
+
+  debian-lab:
+    build:
+      context: .
+      dockerfile: docker/labs/systemd-lab.Dockerfile
+      args:
+        BASE_IMAGE: debian:trixie
+        DISTRO_FAMILY: apt
+        LAB_LABEL: Debian trixie
+    privileged: true
+    cgroup: host
+    stop_signal: SIGRTMIN+3
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    environment:
+      container: docker
+      CARGO_HOME: /cargo
+      RUSTUP_HOME: /rustup
+      DEBIAN_FRONTEND: noninteractive
+    working_dir: /workspace
+    command: ["/sbin/init"]
+    volumes:
+      - .:/workspace:ro
+      - debian-cargo:/cargo
+      - debian-rustup:/rustup
+      - debian-target:/workspace/target
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    profiles: ["labs", "debian", "deb"]
+
+volumes:
+  fedora-cargo:
+  fedora-rustup:
+  fedora-target:
+  rocky-cargo:
+  rocky-rustup:
+  rocky-target:
+  ubuntu-cargo:
+  ubuntu-rustup:
+  ubuntu-target:
+  debian-cargo:
+  debian-rustup:
+  debian-target:
