@@ -90,6 +90,12 @@ The lab stack lives in `compose.dev.yml` and currently covers:
 
 The lab images share a generic `docker/labs/systemd-lab.Dockerfile`, so adding more distro services later should be a compose-level change instead of a full redesign.
 
+Recent validation coverage for the live install and scan flows includes:
+
+- local Fedora workstation validation for `hostveil setup --yes` and live host scans
+- Ubuntu-based real server validation for `hostveil setup --yes --tools lynis,trivy` and follow-up live host scans
+- containerized setup validation for Fedora, Ubuntu, Debian, and Rocky lab environments
+
 Current reference prototype setup:
 
 ```sh

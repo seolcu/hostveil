@@ -191,6 +191,34 @@ EOF
   rm -rf "$case_dir"
 }
 
+run_current_path_detection_case() {
+  local case_dir
+  local release_dir
+  local install_dir
+  local output_path
+
+  case_dir="$(mktemp -d)"
+  release_dir="$case_dir/release"
+  install_dir="$case_dir/install/bin"
+  output_path="$case_dir/install.log"
+
+  create_release_fixture "$release_dir" "v0.0.6-test" ""
+
+  PATH="$install_dir:/usr/bin:/bin" \
+    XDG_STATE_HOME="$case_dir/state" \
+    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_dir" \
+    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+    bash "$INSTALLER_PATH" --version v0.0.6-test --to "$install_dir" \
+    > "$output_path"
+
+  if grep -Fq -- 'not currently on PATH' "$output_path"; then
+    printf 'error: installer warned even though the current shell PATH already included the install dir\n' >&2
+    exit 1
+  fi
+
+  rm -rf "$case_dir"
+}
+
 run_upgrade_auto_uninstall_case() {
   local case_dir
   local release_one
@@ -358,6 +386,7 @@ run_install_case ""
 run_install_case "dist/"
 run_latest_install_case
 run_login_path_detection_case
+run_current_path_detection_case
 run_upgrade_auto_uninstall_case
 run_post_install_setup_handoff_case
 
