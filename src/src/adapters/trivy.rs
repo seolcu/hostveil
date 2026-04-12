@@ -23,6 +23,12 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
     let mut successful_scans = 0_usize;
     let mut first_scan_error: Option<String> = None;
 
+    let images = dedup_images(services);
+    if images.is_empty() {
+        output.status = AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned());
+        return output;
+    }
+
     match detect_trivy() {
         TrivyAvailability::Missing => {
             output.status = AdapterStatus::Missing;
@@ -35,11 +41,6 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
             output.status = AdapterStatus::Failed(detail);
             return output;
         }
-    }
-
-    let images = dedup_images(services);
-    if images.is_empty() {
-        return output;
     }
 
     for image in images {
@@ -445,5 +446,16 @@ mod tests {
             output.status,
             AdapterStatus::Failed(String::from("registry denied access"))
         );
+    }
+
+    #[test]
+    fn skips_when_no_image_targets_are_available() {
+        let output = scan(&[]);
+
+        assert_eq!(
+            output.status,
+            AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
+        );
+        assert!(output.findings.is_empty());
     }
 }

@@ -1,7 +1,8 @@
 mod config;
 mod scan;
+mod setup;
 
-pub use config::{AppConfig, OutputMode};
+pub use config::{AppConfig, OutputMode, SetupConfig, SetupTool};
 
 use std::fmt;
 use std::io::{self, IsTerminal, Write};
@@ -83,6 +84,10 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             i18n::tr_version(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
         );
         return Ok(());
+    }
+
+    if let Some(setup_config) = config.setup_command.as_ref() {
+        return setup::run(setup_config);
     }
 
     if let Some(command) = config.lifecycle_command {

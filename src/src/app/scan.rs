@@ -46,6 +46,14 @@ fn apply_external_adapters(result: &mut ScanResult) {
         .insert(String::from("trivy"), trivy_output.status);
     result.metadata.warnings.extend(trivy_output.warnings);
     result.findings.extend(trivy_output.findings);
+
+    let lynis_output = adapters::lynis::scan(result.metadata.host_root.as_deref());
+    result
+        .metadata
+        .adapters
+        .insert(String::from("lynis"), lynis_output.status);
+    result.metadata.warnings.extend(lynis_output.warnings);
+    result.findings.extend(lynis_output.findings);
 }
 
 fn uses_live_discovery(config: &AppConfig) -> bool {
@@ -182,10 +190,13 @@ fn apply_host_scan(host_root: PathBuf, result: &mut ScanResult) {
     let context = HostContext {
         root: host_root.clone(),
     };
+    let runtime_info = collect_host_runtime_info(&context);
 
     result.metadata.host_root = Some(host_root);
-    result.metadata.host_runtime = Some(collect_host_runtime_info(&context));
-    result.findings.extend(HostScanner.scan(&context));
+    result.metadata.host_runtime = Some(runtime_info.clone());
+    result
+        .findings
+        .extend(HostScanner.scan_with_runtime(&context, &runtime_info));
 }
 
 #[cfg(test)]
@@ -235,6 +246,7 @@ mod tests {
             show_help: false,
             show_version: false,
             lifecycle_command: None,
+            setup_command: None,
             compose_path: Some(parser_fixture()),
             host_root: None,
             fix_mode: None,
@@ -253,8 +265,75 @@ mod tests {
 
         assert!(matches!(
             status,
-            AdapterStatus::Available | AdapterStatus::Missing | AdapterStatus::Failed(_)
+            AdapterStatus::Available
+                | AdapterStatus::Missing
+                | AdapterStatus::Skipped(_)
+                | AdapterStatus::Failed(_)
         ));
+    }
+
+    #[test]
+    fn records_lynis_as_skipped_for_compose_only_scans() {
+        let config = AppConfig {
+            output_mode: OutputMode::Json,
+            show_help: false,
+            show_version: false,
+            lifecycle_command: None,
+            setup_command: None,
+            compose_path: Some(parser_fixture()),
+            host_root: None,
+            fix_mode: None,
+            fix_target_path: None,
+            preview_changes: false,
+            assume_yes: false,
+        };
+
+        let result = run(&config).expect("scan should succeed");
+
+        let status = result
+            .metadata
+            .adapters
+            .get("lynis")
+            .expect("scan should always record Lynis adapter status");
+
+        assert!(matches!(status, AdapterStatus::Skipped(_)));
+    }
+
+    #[test]
+    fn records_lynis_as_skipped_for_host_snapshots() {
+        let host_root = temp_host_root("lynis-snapshot");
+        write_file(&host_root.join("etc/hostname"), "snapshot-host\n");
+        write_file(&host_root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(
+            &host_root.join("proc/loadavg"),
+            "0.01 0.01 0.00 1/100 123\n",
+        );
+
+        let config = AppConfig {
+            output_mode: OutputMode::Json,
+            show_help: false,
+            show_version: false,
+            lifecycle_command: None,
+            setup_command: None,
+            compose_path: None,
+            host_root: Some(host_root.clone()),
+            fix_mode: None,
+            fix_target_path: None,
+            preview_changes: false,
+            assume_yes: false,
+        };
+
+        let result = run(&config).expect("snapshot host scan should succeed");
+
+        let status = result
+            .metadata
+            .adapters
+            .get("lynis")
+            .expect("scan should always record Lynis adapter status");
+
+        assert!(matches!(status, AdapterStatus::Skipped(_)));
+
+        fs::remove_dir_all(host_root).expect("temp root should be removed");
     }
 
     #[test]
@@ -264,6 +343,7 @@ mod tests {
             show_help: false,
             show_version: false,
             lifecycle_command: None,
+            setup_command: None,
             compose_path: Some(parser_fixture()),
             host_root: None,
             fix_mode: None,
@@ -326,10 +406,6 @@ mod tests {
             &host_root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
             "enabled\n",
         );
-        write_file(
-            &host_root.join("etc/crowdsec/config.yaml"),
-            "api:\n  server:\n",
-        );
         write_file(&host_root.join("var/run/docker.sock"), "socket");
         fs::set_permissions(
             host_root.join("var/run/docker.sock"),
@@ -342,6 +418,7 @@ mod tests {
             show_help: false,
             show_version: false,
             lifecycle_command: None,
+            setup_command: None,
             compose_path: Some(parser_fixture()),
             host_root: Some(host_root.clone()),
             fix_mode: None,
@@ -385,14 +462,6 @@ mod tests {
                 .as_ref()
                 .map(|info| info.fail2ban),
             Some(crate::domain::DefensiveControlStatus::Enabled)
-        );
-        assert_eq!(
-            result
-                .metadata
-                .host_runtime
-                .as_ref()
-                .map(|info| info.crowdsec),
-            Some(crate::domain::DefensiveControlStatus::Installed)
         );
         assert!(
             result

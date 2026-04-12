@@ -7,7 +7,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Status: Early Development](https://img.shields.io/badge/status-early%20development-orange)](https://github.com/seolcu/hostveil)
 
-Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스터는 보안 상태를 확인하기 위해 Lynis, Trivy, Dockle, Docker Bench, Fail2ban, CrowdSec 같은 도구를 각각 따로 설치하고 해석해야 합니다. hostveil은 이런 신호를 하나의 터미널 중심 워크플로로 통합하는 것을 목표로 합니다. 심각도 순으로 정렬된 점수화된 발견 사항, 셀프호스팅 맥락에 맞춘 설명, 그리고 구체적인 해결 가이드를 한 번에 제공합니다.
+Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스터는 보안 상태를 확인하기 위해 Lynis, Trivy, Dockle, Docker Bench, Fail2ban 같은 도구를 각각 따로 설치하고 해석해야 합니다. hostveil은 이런 신호를 하나의 터미널 중심 워크플로로 통합하는 것을 목표로 합니다. 심각도 순으로 정렬된 점수화된 발견 사항, 셀프호스팅 맥락에 맞춘 설명, 그리고 구체적인 해결 가이드를 한 번에 제공합니다.
 
 [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/overview/) (실행 가능한 가이드를 포함한 점수화 감사)와 [btop](https://github.com/aristocratos/btop) (경량 TUI 디자인)에서 영감을 받았습니다.
 
@@ -71,6 +71,20 @@ cargo run -- --json --host-root /
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+```
+
+터미널이 가능하면 installer는 설치 직후 `hostveil setup`으로 넘어가 Lynis, Trivy, Fail2Ban 같은 추천 도구를 바로 설치하고 기본 설정까지 진행할 수 있습니다.
+
+나중에 다시 setup을 실행하려면:
+
+```sh
+hostveil setup
+```
+
+무인 설치에서는 bootstrap 단계에서 설치할 도구를 명시할 수 있습니다.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --with-tools lynis,trivy,fail2ban
 ```
 
 최초 설치 이후 라이프사이클 명령:

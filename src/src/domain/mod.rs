@@ -119,7 +119,8 @@ pub struct HostRuntimeInfo {
     pub uptime: Option<String>,
     pub load_average: Option<String>,
     pub fail2ban: DefensiveControlStatus,
-    pub crowdsec: DefensiveControlStatus,
+    pub fail2ban_jails: Option<usize>,
+    pub fail2ban_banned_ips: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
@@ -178,6 +179,7 @@ impl Default for ScoreReport {
 pub enum AdapterStatus {
     Available,
     Missing,
+    Skipped(String),
     Failed(String),
 }
 

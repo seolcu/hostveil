@@ -1,0 +1,15 @@
+report_version_major=1
+report_version_minor=0
+report_datetime_start=2026-04-12 10:15:20
+report_datetime_end=2026-04-12 10:16:03
+lynis_version=3.1.6
+hostname=demo-host
+os=Linux
+os_fullname=Fedora Linux 43
+hardening_index=67
+lynis_tests_done=214
+warning[]=AUTH-9286|Root account has no password set|Check /etc/shadow for passwordless root access|text:Set a strong root password or lock the account|
+warning[]=SSH-7408|PermitRootLogin is enabled|PermitRootLogin yes|text:Set PermitRootLogin no and reload sshd|
+suggestion[]=PKGS-7390|Install a package auditing tool|dnf updateinfo is not configured for unattended review|text:Install and configure a package auditing or auto-update workflow|
+details[]=SSH-7408|sshd|desc:sshd option PermitRootLogin;field:PermitRootLogin;prefval:NO;value:YES;|
+finish=true

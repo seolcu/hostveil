@@ -9,6 +9,7 @@ readme = "../README.md"
 
 [dependencies]
 crossterm = "0.29"
+dialoguer = "0.12"
 indexmap = { version = "2", features = ["serde"] }
 ratatui = "0.29"
 rust-i18n = "3"
