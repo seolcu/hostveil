@@ -163,6 +163,11 @@ jobs:
 
             After the first install, use the installed `hostveil` command for lifecycle actions.
 
+            Optional dependency setup after install:
+            ```sh
+            hostveil setup
+            ```
+
             ## Upgrade
             ```sh
             hostveil upgrade
@@ -188,7 +193,9 @@ jobs:
 
             ## Optional dependencies
             - Docker improves live Compose discovery when it is available.
-            - Trivy is planned as an optional adapter and is not required for this release.
+            - Trivy is supported as an optional image vulnerability adapter.
+            - Lynis is supported as an optional host-audit adapter.
+            - Fail2Ban remains optional; host scans continue without it, but host hardening coverage is reduced.
 
             ## Known limitations
             - Linux only
