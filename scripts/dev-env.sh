@@ -36,7 +36,7 @@ EOF
 }
 
 compose() {
-  docker compose -f "$COMPOSE_FILE" "$@"
+  docker compose --profile labs -f "$COMPOSE_FILE" "$@"
 }
 
 ensure_docker() {
