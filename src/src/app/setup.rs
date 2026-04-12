@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
@@ -32,24 +32,53 @@ struct SetupPlan {
     steps: Vec<SetupStep>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SetupState {
+    installed_tools: BTreeSet<SetupTool>,
+    fail2ban_baseline_ready: bool,
+}
+
 impl SetupPlan {
     fn new(distro: DistroInfo, tools: Vec<SetupTool>) -> Result<Self, AppError> {
+        let state = SetupState::detect(&tools);
+        Self::new_with_state(distro, tools, &state)
+    }
+
+    fn new_with_state(
+        distro: DistroInfo,
+        tools: Vec<SetupTool>,
+        state: &SetupState,
+    ) -> Result<Self, AppError> {
         let mut package_set = Vec::new();
         let mut steps = Vec::new();
 
         for tool in &tools {
-            if *tool == SetupTool::Trivy && distro.family == DistroFamily::Debian {
+            if *tool == SetupTool::Trivy
+                && distro.family == DistroFamily::Debian
+                && !state.tool_is_installed(SetupTool::Trivy)
+            {
                 steps.push(SetupStep::ConfigureTrivyAptRepo);
             }
-            package_set.push(tool.package_name().to_owned());
+
+            if !state.tool_is_installed(*tool) {
+                package_set.push(tool.package_name().to_owned());
+            }
         }
 
         package_set.sort();
         package_set.dedup();
 
         match distro.family {
-            DistroFamily::Fedora => steps.push(SetupStep::DnfInstall(package_set)),
-            DistroFamily::Debian => steps.push(SetupStep::AptInstall(package_set)),
+            DistroFamily::Fedora => {
+                if !package_set.is_empty() {
+                    steps.push(SetupStep::DnfInstall(package_set));
+                }
+            }
+            DistroFamily::Debian => {
+                if !package_set.is_empty() {
+                    steps.push(SetupStep::AptInstall(package_set));
+                }
+            }
             DistroFamily::Unsupported => {
                 return Err(AppError::Io(io::Error::other(format!(
                     "{} {}",
@@ -59,7 +88,7 @@ impl SetupPlan {
             }
         }
 
-        if tools.contains(&SetupTool::Fail2Ban) {
+        if tools.contains(&SetupTool::Fail2Ban) && !state.fail2ban_baseline_ready {
             steps.push(SetupStep::ConfigureFail2BanBaseline);
         }
 
@@ -72,6 +101,26 @@ impl SetupPlan {
 
     fn requires_privileges(&self) -> bool {
         !self.steps.is_empty()
+    }
+}
+
+impl SetupState {
+    fn detect(tools: &[SetupTool]) -> Self {
+        let installed_tools = tools
+            .iter()
+            .copied()
+            .filter(|tool| command_exists(tool.detection_command()))
+            .collect();
+
+        Self {
+            installed_tools,
+            fail2ban_baseline_ready: tools.contains(&SetupTool::Fail2Ban)
+                && fail2ban_baseline_is_ready(),
+        }
+    }
+
+    fn tool_is_installed(&self, tool: SetupTool) -> bool {
+        self.installed_tools.contains(&tool)
     }
 }
 
@@ -428,6 +477,25 @@ fn command_exists(program: &str) -> bool {
         .unwrap_or(false)
 }
 
+fn fail2ban_baseline_is_ready() -> bool {
+    if !command_exists("systemctl") {
+        return false;
+    }
+
+    let baseline = match fs::read_to_string(FAIL2BAN_BASELINE_PATH) {
+        Ok(baseline) => baseline,
+        Err(_) => return false,
+    };
+
+    normalize_file_content(&baseline) == normalize_file_content(FAIL2BAN_BASELINE_CONTENT)
+        && run_command("systemctl", &["is-enabled", "fail2ban"]).is_ok()
+        && run_command("systemctl", &["is-active", "fail2ban"]).is_ok()
+}
+
+fn normalize_file_content(content: &str) -> &str {
+    content.trim_end_matches(['\r', '\n'])
+}
+
 fn shell_escape(value: &str) -> String {
     value.replace('"', "\\\"")
 }
@@ -612,6 +680,14 @@ impl SetupTool {
         self.cli_name()
     }
 
+    fn detection_command(self) -> &'static str {
+        match self {
+            Self::Lynis => "lynis",
+            Self::Trivy => "trivy",
+            Self::Fail2Ban => "fail2ban-client",
+        }
+    }
+
     fn display_name(self) -> String {
         match self {
             Self::Lynis => t!("app.setup.tool.lynis.name").into_owned(),
@@ -708,12 +784,16 @@ ID_LIKE="rhel centos fedora"
 
     #[test]
     fn builds_fedora_plan_without_extra_repo_step() {
-        let plan = SetupPlan::new(
+        let plan = SetupPlan::new_with_state(
             DistroInfo {
                 family: DistroFamily::Fedora,
                 pretty_name: String::from("Fedora Linux 43"),
             },
             vec![SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
         )
         .expect("fedora plan should build");
 
@@ -732,12 +812,16 @@ ID_LIKE="rhel centos fedora"
 
     #[test]
     fn builds_debian_plan_with_trivy_repo_step() {
-        let plan = SetupPlan::new(
+        let plan = SetupPlan::new_with_state(
             DistroInfo {
                 family: DistroFamily::Debian,
                 pretty_name: String::from("Ubuntu 24.04.4 LTS"),
             },
             vec![SetupTool::Trivy, SetupTool::Fail2Ban],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
         )
         .expect("debian plan should build");
 
@@ -757,5 +841,35 @@ ID_LIKE="rhel centos fedora"
         let path_text = path.display().to_string();
 
         assert!(path_text.contains("hostveil-trivy-"));
+    }
+
+    #[test]
+    fn skips_steps_when_requested_tools_are_already_ready() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            vec![SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban],
+            &SetupState {
+                installed_tools: [SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban]
+                    .into_iter()
+                    .collect(),
+                fail2ban_baseline_ready: true,
+            },
+        )
+        .expect("ready fedora plan should build");
+
+        assert!(plan.steps.is_empty());
+    }
+
+    #[test]
+    fn normalizes_trailing_newlines_when_comparing_managed_files() {
+        assert_eq!(
+            normalize_file_content(FAIL2BAN_BASELINE_CONTENT),
+            normalize_file_content(
+                "[sshd]\nenabled = true\nbackend = systemd\nbantime = 1h\nfindtime = 10m\nmaxretry = 5"
+            )
+        );
     }
 }

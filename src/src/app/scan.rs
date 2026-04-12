@@ -3,7 +3,10 @@ use std::path::{Path, PathBuf};
 
 use crate::adapters;
 use crate::compose::{ComposeParseError, ComposeParser, ComposeProject};
-use crate::discovery::{DockerDiscoveryResult, discover_running_compose_projects, project_summary};
+use crate::discovery::{
+    DiscoveredComposeProject, DockerDiscoveryResult, discover_running_compose_projects,
+    project_summary,
+};
 use crate::domain::{DiscoveredProjectSummary, ScanMode, ScanResult, ServiceSummary};
 use crate::host::{HostContext, HostScanner, collect_host_runtime_info};
 use crate::rules::RuleEngine;
@@ -95,28 +98,96 @@ fn apply_discovered_projects(
             .discovered_projects
             .push(project_summary(project));
 
-        if let Some(path) = &project.compose_path {
-            match ComposeParser::parse_path(path) {
-                Ok(parsed) => {
-                    scan_compose_project(&parsed, result);
-                    coverage.compose = true;
+        match load_discovered_project(project) {
+            Ok((parsed, warning)) => {
+                if let Some(warning) = warning {
+                    result.metadata.warnings.push(warning);
                 }
-                Err(error) => {
-                    result.metadata.warnings.push(format!(
-                        "Failed to parse discovered project {}: {}",
-                        project.name, error
-                    ));
-                }
+                scan_compose_project(&parsed, result);
+                coverage.compose = true;
             }
-        } else {
-            result.metadata.warnings.push(format!(
-                "Discovered project {} has no usable compose path.",
-                project.name
-            ));
+            Err(warning) => {
+                result.metadata.warnings.push(warning);
+            }
         }
     }
 
     Ok(())
+}
+
+fn load_discovered_project(
+    project: &DiscoveredComposeProject,
+) -> Result<(ComposeProject, Option<String>), String> {
+    if let Some(path) = &project.compose_path {
+        match ComposeParser::parse_path(path) {
+            Ok(parsed) => return Ok((parsed, None)),
+            Err(ComposeParseError::ComposePathMissing { .. })
+            | Err(ComposeParseError::ComposeFileNotFound { .. }) => {
+                if let Some(working_dir) = project.working_dir.as_ref().filter(|dir| *dir != path) {
+                    match ComposeParser::parse_path(working_dir) {
+                        Ok(parsed) => {
+                            return Ok((
+                                parsed,
+                                Some(format!(
+                                    "Docker metadata for discovered project {} still points to missing compose path {}; recovered by scanning {} instead.",
+                                    project.name,
+                                    path.display(),
+                                    working_dir.display()
+                                )),
+                            ));
+                        }
+                        Err(ComposeParseError::ComposePathMissing { .. })
+                        | Err(ComposeParseError::ComposeFileNotFound { .. }) => {}
+                        Err(error) => {
+                            return Err(format!(
+                                "Discovered project {} points to missing compose path {} and fallback scan of {} failed: {}",
+                                project.name,
+                                path.display(),
+                                working_dir.display(),
+                                error
+                            ));
+                        }
+                    }
+                }
+
+                return Err(format!(
+                    "Discovered project {} points to missing compose path {} from Docker metadata. Recreate or remove the containers to refresh the saved Compose labels.",
+                    project.name,
+                    path.display()
+                ));
+            }
+            Err(error) => {
+                return Err(format!(
+                    "Failed to parse discovered project {}: {}",
+                    project.name, error
+                ));
+            }
+        }
+    }
+
+    if let Some(working_dir) = &project.working_dir {
+        return ComposeParser::parse_path(working_dir)
+            .map(|parsed| (parsed, None))
+            .map_err(|error| match error {
+                ComposeParseError::ComposePathMissing { .. }
+                | ComposeParseError::ComposeFileNotFound { .. } => format!(
+                    "Discovered project {} did not expose a compose file path, and no compose file was found in {}.",
+                    project.name,
+                    working_dir.display()
+                ),
+                _ => format!(
+                    "Failed to parse discovered project {} from working directory {}: {}",
+                    project.name,
+                    working_dir.display(),
+                    error
+                ),
+            });
+    }
+
+    Err(format!(
+        "Discovered project {} has no usable compose path.",
+        project.name
+    ))
 }
 
 fn apply_current_dir_fallback(
@@ -206,9 +277,10 @@ mod tests {
     use std::path::Path;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use crate::discovery::{DiscoveredComposeProject, DiscoveredContainerService};
     use crate::domain::{AdapterStatus, DockerDiscoveryStatus, ScanMode};
 
-    use super::{apply_current_dir_fallback, run, scan_compose_project};
+    use super::{apply_current_dir_fallback, apply_discovered_projects, run, scan_compose_project};
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
 
@@ -584,5 +656,82 @@ mod tests {
         );
 
         fs::remove_dir_all(second_dir).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn discovered_project_uses_working_dir_when_compose_label_is_stale() {
+        let temp_dir = temp_host_root("stale-compose-label");
+        write_file(
+            &temp_dir.join("docker-compose.yml"),
+            concat!("services:\n", "  demo:\n", "    image: nginx:1.27.5\n"),
+        );
+
+        let discovery = crate::discovery::DockerDiscoveryResult {
+            status: DockerDiscoveryStatus::Available,
+            projects: vec![DiscoveredComposeProject {
+                name: String::from("demo"),
+                compose_path: Some(temp_dir.join("deleted-compose.yml")),
+                working_dir: Some(temp_dir.clone()),
+                services: vec![DiscoveredContainerService {
+                    name: String::from("demo"),
+                    image: Some(String::from("nginx:1.27.5")),
+                }],
+                source: "docker",
+            }],
+            warnings: Vec::new(),
+        };
+
+        let mut result = crate::domain::ScanResult::default();
+        let mut coverage = crate::scoring::Coverage::default();
+
+        apply_discovered_projects(&discovery, &mut result, &mut coverage)
+            .expect("discovered project should recover from stale label");
+
+        assert!(coverage.compose);
+        assert_eq!(result.metadata.service_count, 1);
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("recovered by scanning"))
+        );
+
+        fs::remove_dir_all(temp_dir).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn discovered_project_reports_stale_docker_metadata_when_paths_are_gone() {
+        let missing_root = temp_host_root("missing-compose-label");
+        let compose_path = missing_root.join("docker-compose.yml");
+        let working_dir = missing_root.join("gone-working-dir");
+        fs::remove_dir_all(&missing_root).expect("temp dir should be removed before scan");
+
+        let discovery = crate::discovery::DockerDiscoveryResult {
+            status: DockerDiscoveryStatus::Available,
+            projects: vec![DiscoveredComposeProject {
+                name: String::from("demo"),
+                compose_path: Some(compose_path.clone()),
+                working_dir: Some(working_dir.clone()),
+                services: vec![DiscoveredContainerService {
+                    name: String::from("demo"),
+                    image: Some(String::from("nginx:1.27.5")),
+                }],
+                source: "docker",
+            }],
+            warnings: Vec::new(),
+        };
+
+        let mut result = crate::domain::ScanResult::default();
+        let mut coverage = crate::scoring::Coverage::default();
+
+        apply_discovered_projects(&discovery, &mut result, &mut coverage)
+            .expect("stale discovery warning should not fail the scan");
+
+        assert!(!coverage.compose);
+        assert!(result.metadata.warnings.iter().any(|warning| {
+            warning.contains("Docker metadata")
+                && warning.contains("refresh the saved Compose labels")
+        }));
     }
 }
