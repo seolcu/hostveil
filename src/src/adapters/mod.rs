@@ -1,5 +1,6 @@
 use crate::domain::Finding;
 
+pub mod dockle;
 pub mod lynis;
 pub mod trivy;
 

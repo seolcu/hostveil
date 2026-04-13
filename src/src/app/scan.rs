@@ -22,6 +22,7 @@ use super::{AppConfig, AppError};
 pub struct AdapterScanUpdate {
     trivy: adapters::trivy::TrivyScanOutput,
     lynis: adapters::lynis::LynisScanOutput,
+    dockle: adapters::dockle::DockleScanOutput,
 }
 
 pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
@@ -79,7 +80,11 @@ pub fn prepare_background_adapter_scan(result: &mut ScanResult) -> Receiver<Adap
 }
 
 pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterScanUpdate) {
-    let AdapterScanUpdate { trivy, lynis } = update;
+    let AdapterScanUpdate {
+        trivy,
+        lynis,
+        dockle,
+    } = update;
 
     result
         .metadata
@@ -94,6 +99,14 @@ pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterSca
         .insert(String::from("lynis"), lynis.status);
     result.metadata.warnings.extend(lynis.warnings);
     result.findings.extend(lynis.findings);
+
+    result
+        .metadata
+        .adapters
+        .insert(String::from("dockle"), dockle.status);
+    result.metadata.warnings.extend(dockle.warnings);
+    result.findings.extend(dockle.findings);
+
     result.score_report =
         scoring::build_score_report_with_coverage(&result.findings, coverage_from_result(result));
 }
@@ -102,7 +115,10 @@ fn scan_external_adapters(
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
 ) -> AdapterScanUpdate {
-    let trivy_handle = thread::spawn(move || adapters::trivy::scan(&services));
+    let trivy_services = services.clone();
+    let dockle_services = services;
+    let trivy_handle = thread::spawn(move || adapters::trivy::scan(&trivy_services));
+    let dockle_handle = thread::spawn(move || adapters::dockle::scan(&dockle_services));
     let lynis_handle = thread::spawn(move || adapters::lynis::scan(host_root.as_deref()));
 
     AdapterScanUpdate {
@@ -112,6 +128,9 @@ fn scan_external_adapters(
         lynis: lynis_handle
             .join()
             .unwrap_or_else(|_| failed_lynis_output()),
+        dockle: dockle_handle
+            .join()
+            .unwrap_or_else(|_| failed_dockle_output()),
     }
 }
 
@@ -125,6 +144,16 @@ fn seed_adapter_statuses(result: &mut ScanResult) {
         .metadata
         .adapters
         .insert(String::from("trivy"), trivy_status);
+
+    let dockle_status = if has_image_targets(&result.metadata.services) {
+        AdapterStatus::Pending
+    } else {
+        AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
+    };
+    result
+        .metadata
+        .adapters
+        .insert(String::from("dockle"), dockle_status);
 
     let lynis_status = match result.metadata.host_root.as_deref() {
         None => AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
@@ -159,6 +188,14 @@ fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
 fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
     adapters::lynis::LynisScanOutput {
         status: AdapterStatus::Failed(String::from("Lynis scan thread panicked")),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn failed_dockle_output() -> adapters::dockle::DockleScanOutput {
+    adapters::dockle::DockleScanOutput {
+        status: AdapterStatus::Failed(String::from("Dockle scan thread panicked")),
         findings: Vec::new(),
         warnings: Vec::new(),
     }
@@ -758,6 +795,19 @@ mod tests {
                     )],
                     warnings: Vec::new(),
                 },
+                dockle: crate::adapters::dockle::DockleScanOutput {
+                    status: AdapterStatus::Available,
+                    findings: vec![test_finding(
+                        "dockle.image_best_practice.nginx_1_27_5",
+                        Axis::UpdateSupplyChainRisk,
+                        Severity::Medium,
+                        Scope::Image,
+                        Source::Dockle,
+                        "nginx:1.27.5",
+                        Some("web"),
+                    )],
+                    warnings: Vec::new(),
+                },
             },
         );
 
@@ -787,12 +837,22 @@ mod tests {
                 .iter()
                 .any(|finding| finding.scope == Scope::Host && finding.source == Source::Lynis)
         );
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|finding| finding.scope == Scope::Image && finding.source == Source::Dockle)
+        );
         assert_eq!(
             result.metadata.adapters.get("trivy"),
             Some(&AdapterStatus::Available)
         );
         assert_eq!(
             result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Available)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("dockle"),
             Some(&AdapterStatus::Available)
         );
     }
@@ -999,6 +1059,10 @@ mod tests {
             result.metadata.adapters.get("trivy"),
             Some(&AdapterStatus::Pending)
         );
+        assert_eq!(
+            result.metadata.adapters.get("dockle"),
+            Some(&AdapterStatus::Pending)
+        );
     }
 
     #[test]
@@ -1013,6 +1077,10 @@ mod tests {
         ));
         assert!(matches!(
             result.metadata.adapters.get("trivy"),
+            Some(AdapterStatus::Skipped(_))
+        ));
+        assert!(matches!(
+            result.metadata.adapters.get("dockle"),
             Some(AdapterStatus::Skipped(_))
         ));
     }
