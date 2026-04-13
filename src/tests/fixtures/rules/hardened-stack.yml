@@ -7,13 +7,13 @@ services:
     environment:
       DOMAIN: ${VAULTWARDEN_DOMAIN}
 
-  nextcloud:
-    image: nextcloud:29.0.7
-    user: "33:33"
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:v2.1.0
+    user: "1000:1000"
     ports:
-      - "127.0.0.1:8081:80"
+      - "127.0.0.1:2283:2283"
     volumes:
-      - ./nextcloud:/var/www/html
+      - ./immich:/data
 
   gitea:
     image: gitea/gitea:1.21.11

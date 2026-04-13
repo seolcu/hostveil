@@ -7,7 +7,7 @@ from ..models import Axis, ComposeProject, Finding, PortBinding, Severity
 
 
 ADMIN_SERVICE_HINTS = ("adminer", "pgadmin", "phpmyadmin", "portainer", "traefik")
-REVERSE_PROXY_HINTS = ("vaultwarden", "nextcloud", "gitea", "immich")
+REVERSE_PROXY_HINTS = ("vaultwarden", "gitea", "immich")
 LOCAL_ONLY_HOSTS = {"127.0.0.1", "::1", "localhost"}
 PUBLIC_HOSTS = {None, "0.0.0.0", "::", "[::]"}
 

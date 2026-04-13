@@ -9,7 +9,7 @@ hostveil is a **lightweight TUI security dashboard for Linux self-hosted environ
 
 The Python prototype validated the Compose parser, rule engine, scoring model, and fix flows. The real product direction is broader: native Compose checks, Linux host hardening checks, and optional external scanner adapters should all feed one scored self-hosting security tool. The long-term target audit axes are sensitive data exposure, excessive permissions, unnecessary exposure, update/supply-chain risk, and host hardening.
 
-**Target users:** Self-hosters running services like Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich on a single Linux server.
+**Target users:** Self-hosters running services like Jellyfin, Vaultwarden, Gitea, Immich on a single Linux server.
 
 ## Tech Stack
 
@@ -76,7 +76,7 @@ hostveil/
 
 ## GitHub Issues & Milestones
 
-All planned work is tracked as GitHub Issues organized into 4 Milestones. **AI agents are expected to participate in this workflow without being told to do so.**
+All planned work is tracked as GitHub Issues organized into 3 Milestones. **AI agents are expected to participate in this workflow without being told to do so.**
 
 **Milestones** (see `github.com/seolcu/hostveil/milestones`):
 
@@ -85,7 +85,6 @@ All planned work is tracked as GitHub Issues organized into 4 Milestones. **AI a
 | 1 | Python CLI Prototype | 2026-03-30 |
 | 2 | Service Research & Rule Validation | 2026-04-19 |
 | 3 | Rust TUI Implementation | 2026-05-31 |
-| 4 | Finalization & Submission | 2026-06-21 |
 
 **How AI agents should use Issues:**
 

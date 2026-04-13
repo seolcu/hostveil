@@ -201,19 +201,19 @@ mod tests {
     #[test]
     fn project_summary_captures_display_data() {
         let project = DiscoveredComposeProject {
-            name: String::from("nextcloud"),
-            compose_path: Some(PathBuf::from("/srv/nextcloud/docker-compose.yml")),
-            working_dir: Some(PathBuf::from("/srv/nextcloud")),
+            name: String::from("immich"),
+            compose_path: Some(PathBuf::from("/srv/immich/docker-compose.yml")),
+            working_dir: Some(PathBuf::from("/srv/immich")),
             services: vec![DiscoveredContainerService {
-                name: String::from("app"),
-                image: Some(String::from("nextcloud:27.1.2")),
+                name: String::from("server"),
+                image: Some(String::from("ghcr.io/immich-app/immich-server:v2.1.0")),
             }],
             source: "docker",
         };
 
         let summary = project_summary(&project);
 
-        assert_eq!(summary.name, "nextcloud");
+        assert_eq!(summary.name, "immich");
         assert_eq!(summary.source, "docker");
         assert_eq!(summary.service_count, 1);
     }
