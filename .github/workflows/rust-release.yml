@@ -199,7 +199,6 @@ jobs:
 
             ## Known limitations
             - Linux only
-            - Nextcloud-specific service-aware rules are not included yet
             - TUI-embedded guided diff review is still deferred from the current release scope
           files: |
             dist/*.tar.gz

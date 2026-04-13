@@ -17,7 +17,7 @@ from rich.text import Text
 
 SERVICES = [
     ("Vaultwarden", "vaultwarden/server:1.30.1"),
-    ("Nextcloud",   "nextcloud:27.1.2"),
+    ("Immich",      "ghcr.io/immich-app/immich-server:v2.1.0"),
     ("Jellyfin",    "jellyfin/jellyfin:10.8.13"),
     ("Gitea",       "gitea:latest"),
     ("Nginx",       "nginx"),
@@ -34,7 +34,7 @@ SCAN_CHECKS = [
 
 SCAN_RESULTS = [
     ("Vaultwarden", "CRITICAL", 1),
-    ("Nextcloud",   "CRITICAL", 1),
+    ("Immich",      "CRITICAL", 1),
     ("Jellyfin",    "HIGH",     1),
     ("Gitea",       "MEDIUM",   1),
     ("Nginx",       "LOW",      1),
@@ -52,7 +52,7 @@ QUICKFIXES = [
     ("SAFE",   "Bind Jellyfin port 8096 → 127.0.0.1"),
     ("SAFE",   "Pin gitea:latest → gitea/gitea:1.21"),
     ("GUIDED", "Remove privileged:true (Vaultwarden)"),
-    ("GUIDED", "Move Nextcloud DB password to secret"),
+    ("GUIDED", "Move Immich DB password to secret"),
 ]
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

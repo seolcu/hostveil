@@ -109,7 +109,7 @@ run_install_case() {
     printf 'error: local lifecycle manager was not saved for checksum prefix %s\n' "$checksum_prefix" >&2
     exit 1
   }
-  [[ "$($install_dir/hostveil --version)" == "$EXPECTED_VERSION" ]] || {
+  [[ "$(HOSTVEIL_SKIP_AUTO_UPGRADE=1 "$install_dir/hostveil" --version)" == "$EXPECTED_VERSION" ]] || {
     printf 'error: installed wrapper returned an unexpected version for checksum prefix %s\n' "$checksum_prefix" >&2
     exit 1
   }
@@ -141,7 +141,7 @@ run_latest_install_case() {
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
     bash "$INSTALLER_PATH" --channel preview --to "$install_dir"
 
-  [[ "$($install_dir/hostveil --version)" == "$EXPECTED_VERSION" ]] || {
+  [[ "$(HOSTVEIL_SKIP_AUTO_UPGRADE=1 "$install_dir/hostveil" --version)" == "$EXPECTED_VERSION" ]] || {
     printf 'error: latest install did not install the expected binary\n' >&2
     exit 1
   }
@@ -334,6 +334,118 @@ run_upgrade_auto_uninstall_case() {
   rm -rf "$case_dir"
 }
 
+run_custom_state_dir_case() {
+  local case_dir
+  local default_state_home
+  local custom_state_dir
+  local release_one
+  local release_two
+  local release_three
+  local api_three
+  local install_dir
+  local metadata_path
+  local manager_path
+
+  case_dir="$(mktemp -d)"
+  default_state_home="$case_dir/default-state"
+  custom_state_dir="$case_dir/custom-state/isolated-hostveil"
+  release_one="$case_dir/release-one"
+  release_two="$case_dir/release-two"
+  release_three="$case_dir/release-three"
+  api_three="$case_dir/api-three"
+  install_dir="$case_dir/install/bin"
+  metadata_path="$custom_state_dir/install.env"
+  manager_path="$custom_state_dir/manage.sh"
+
+  create_release_fixture "$release_one" "v0.1.0-test" ""
+  create_release_fixture "$release_two" "v0.2.0-test" ""
+  create_release_fixture "$release_three" "v0.3.0-test" ""
+  create_releases_api_fixture "$api_three" "v0.3.0-test"
+
+  XDG_STATE_HOME="$default_state_home" \
+    HOSTVEIL_STATE_DIR="$custom_state_dir" \
+    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_one" \
+    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+    bash "$INSTALLER_PATH" --version v0.1.0-test --to "$install_dir"
+
+  [[ -x "$install_dir/hostveil" ]] || {
+    printf 'error: wrapper install is missing for custom state dir case\n' >&2
+    exit 1
+  }
+  [[ -x "$manager_path" ]] || {
+    printf 'error: lifecycle manager was not saved in the custom state dir\n' >&2
+    exit 1
+  }
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_STATE_DIR='
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.1.0-test'
+  [[ ! -e "$default_state_home/hostveil/install.env" ]] || {
+    printf 'error: install metadata leaked into the default state dir\n' >&2
+    exit 1
+  }
+
+  PATH="$install_dir:$PATH" \
+    XDG_STATE_HOME="$default_state_home" \
+    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_two" \
+    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+    hostveil upgrade --version v0.2.0-test
+
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.2.0-test'
+  [[ ! -e "$default_state_home/hostveil/install.env" ]] || {
+    printf 'error: upgrade recreated metadata in the default state dir\n' >&2
+    exit 1
+  }
+
+  XDG_STATE_HOME="$default_state_home" \
+    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_three" \
+    HOSTVEIL_RELEASES_API_URL="file://$api_three/releases.json" \
+    HOSTVEIL_LATEST_STABLE_API_URL="file://$api_three/latest.json" \
+    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+    "$install_dir/hostveil" --version >/dev/null
+
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.3.0-test'
+  [[ ! -e "$default_state_home/hostveil/install.env" ]] || {
+    printf 'error: auto-upgrade recreated metadata in the default state dir\n' >&2
+    exit 1
+  }
+
+  XDG_STATE_HOME="$default_state_home" \
+    PATH="$install_dir:$PATH" \
+    hostveil auto-upgrade disable
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=disabled'
+
+  XDG_STATE_HOME="$default_state_home" \
+    PATH="$install_dir:$PATH" \
+    hostveil auto-upgrade enable
+  assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
+
+  XDG_STATE_HOME="$default_state_home" \
+    PATH="$install_dir:$PATH" \
+    hostveil uninstall
+
+  [[ ! -e "$install_dir/hostveil" ]] || {
+    printf 'error: wrapper still exists after custom state uninstall\n' >&2
+    exit 1
+  }
+  [[ ! -e "$install_dir/hostveil-bin" ]] || {
+    printf 'error: payload binary still exists after custom state uninstall\n' >&2
+    exit 1
+  }
+  [[ ! -e "$manager_path" ]] || {
+    printf 'error: custom state lifecycle manager still exists after uninstall\n' >&2
+    exit 1
+  }
+  [[ ! -e "$metadata_path" ]] || {
+    printf 'error: custom state install metadata still exists after uninstall\n' >&2
+    exit 1
+  }
+  [[ ! -e "$default_state_home/hostveil" ]] || {
+    printf 'error: uninstall touched the default state dir unexpectedly\n' >&2
+    exit 1
+  }
+
+  rm -rf "$case_dir"
+}
+
 run_post_install_setup_handoff_case() {
   local case_dir
   local release_dir
@@ -388,6 +500,7 @@ run_latest_install_case
 run_login_path_detection_case
 run_current_path_detection_case
 run_upgrade_auto_uninstall_case
+run_custom_state_dir_case
 run_post_install_setup_handoff_case
 
 printf 'Installer tests passed for %s\n' "$BINARY_PATH"

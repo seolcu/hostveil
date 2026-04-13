@@ -6,7 +6,7 @@ use crate::domain::{Axis, Finding, RemediationKind, Severity};
 use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
 
 const ADMIN_SERVICE_HINTS: [&str; 5] = ["adminer", "pgadmin", "phpmyadmin", "portainer", "traefik"];
-const REVERSE_PROXY_HINTS: [&str; 4] = ["vaultwarden", "nextcloud", "gitea", "immich"];
+const REVERSE_PROXY_HINTS: [&str; 3] = ["vaultwarden", "gitea", "immich"];
 const LOCAL_ONLY_HOSTS: [&str; 3] = ["127.0.0.1", "::1", "localhost"];
 
 pub fn scan_exposure_risk(project: &ComposeProject) -> Vec<Finding> {

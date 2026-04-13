@@ -1879,6 +1879,48 @@ mod tests {
         }
     }
 
+    fn mixed_scope_result() -> ScanResult {
+        let mut result = sample_result();
+        result.findings.push(Finding {
+            id: String::from("trivy.image_vulnerabilities.adminer_latest"),
+            axis: Axis::UpdateSupplyChainRisk,
+            severity: Severity::High,
+            scope: Scope::Image,
+            source: Source::Trivy,
+            subject: String::from("adminer:latest"),
+            related_service: Some(String::from("adminer")),
+            title: String::from("Image vulnerabilities found"),
+            description: String::from("adminer:latest has multiple high-risk vulnerabilities."),
+            why_risky: String::from("Known CVEs increase the chance of compromise."),
+            how_to_fix: String::from("Pin and rebuild with a patched image."),
+            evidence: BTreeMap::from([(String::from("image"), String::from("adminer:latest"))]),
+            remediation: RemediationKind::None,
+        });
+        result.findings.push(Finding {
+            id: String::from("project.compose_bundle_loaded"),
+            axis: Axis::SensitiveData,
+            severity: Severity::Low,
+            scope: Scope::Project,
+            source: Source::NativeCompose,
+            subject: String::from("/srv/demo/docker-compose.yml"),
+            related_service: None,
+            title: String::from("Project-level compose review"),
+            description: String::from(
+                "Project-wide settings should be reviewed alongside per-service findings.",
+            ),
+            why_risky: String::from(
+                "Shared Compose settings can affect every service in the stack.",
+            ),
+            how_to_fix: String::from("Review the Compose project configuration as a whole."),
+            evidence: BTreeMap::from([(
+                String::from("compose_file"),
+                String::from("/srv/demo/docker-compose.yml"),
+            )]),
+            remediation: RemediationKind::None,
+        });
+        result
+    }
+
     #[test]
     fn overview_navigation_opens_findings() {
         let mut state = AppState::new(&sample_result());
@@ -2013,6 +2055,29 @@ mod tests {
         assert!(content.contains("Native Compose"));
         assert!(content.contains("Service"));
         assert!(content.contains("adminer"));
+    }
+
+    #[test]
+    fn findings_view_renders_project_scope_from_shared_scan_result() {
+        let result = mixed_scope_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.selected_index = result
+            .findings
+            .iter()
+            .position(|finding| finding.scope == Scope::Project)
+            .expect("project finding should exist");
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings view should render mixed scopes");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(content.contains("Project"));
+        assert!(content.contains("Project-level compose review"));
+        assert!(content.contains("/srv/demo/docker-compose.yml"));
     }
 
     #[test]
