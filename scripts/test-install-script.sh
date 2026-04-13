@@ -39,6 +39,16 @@ assert_file_contains() {
   }
 }
 
+assert_file_not_contains() {
+  local path="$1"
+  local pattern="$2"
+
+  if grep -Fq -- "$pattern" "$path"; then
+    printf 'error: %s unexpectedly contained text: %s\n' "$path" "$pattern" >&2
+    exit 1
+  fi
+}
+
 create_release_fixture() {
   local release_dir="$1"
   local tag="$2"
@@ -116,6 +126,7 @@ run_install_case() {
 
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.0-test'
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
+  assert_file_not_contains "$metadata_path" 'HOSTVEIL_META_CHANNEL='
 
   rm -rf "$case_dir"
 }
@@ -378,6 +389,7 @@ run_custom_state_dir_case() {
   }
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_STATE_DIR='
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.1.0-test'
+  assert_file_not_contains "$metadata_path" 'HOSTVEIL_META_CHANNEL='
   [[ ! -e "$default_state_home/hostveil/install.env" ]] || {
     printf 'error: install metadata leaked into the default state dir\n' >&2
     exit 1

@@ -194,6 +194,7 @@ jobs:
             ## Optional dependencies
             - Docker improves live Compose discovery when it is available.
             - Trivy is supported as an optional image vulnerability adapter.
+            - Dockle is supported as an optional image hardening adapter.
             - Lynis is supported as an optional host-audit adapter.
             - Fail2Ban remains optional; host scans continue without it, but host hardening coverage is reduced.
 

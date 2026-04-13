@@ -175,11 +175,12 @@ fn apply_safe_fixes(
             continue;
         };
 
-        if finding_ids.contains("updates.no_tag")
+        if should_pin_nginx_image_to_stable(finding_ids)
             && let Some(image) = image_string(service)
-            && is_safe_nginx_image(&image)
+            && let Some(stable_image) = stable_nginx_image_for_findings(&image, finding_ids)
+            && image != stable_image
         {
-            service.insert(yaml_key("image"), Value::String(format!("{image}:stable")));
+            service.insert(yaml_key("image"), Value::String(stable_image));
             applied.push(FixProposal {
                 service: service_name.clone(),
                 summary: t!("app.fix.safe_nginx_stable", service = service_name.as_str())
@@ -228,53 +229,64 @@ fn apply_guided_fixes(
     let mut applied = Vec::new();
 
     for (service_name, finding_ids) in findings_by_service {
-        if !finding_ids.contains("permissions.privileged") {
-            continue;
-        }
-
-        let Some(service) = service_mapping_mut(services, service_name) else {
-            continue;
-        };
-        let Some(privileged) = service.get(yaml_key("privileged")) else {
-            continue;
-        };
-        if !yaml_truthy(privileged) {
-            continue;
-        }
-        if !service_uses_low_port(service) {
-            continue;
-        }
-
-        if matches!(service.get(yaml_key("cap_add")), Some(value) if !value.is_sequence()) {
-            continue;
-        }
-
-        service.remove(yaml_key("privileged"));
-        if service.get(yaml_key("cap_add")).is_none() {
-            service.insert(yaml_key("cap_add"), Value::Sequence(Sequence::new()));
-        }
-        let Some(cap_add) = service.get_mut(yaml_key("cap_add")) else {
-            continue;
-        };
-        let Some(capabilities) = cap_add.as_sequence_mut() else {
-            continue;
-        };
-
-        if !capabilities
-            .iter()
-            .any(|value| value.as_str() == Some("NET_BIND_SERVICE"))
+        if finding_ids.contains("permissions.privileged")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && apply_guided_privileged_low_port_fix(service)
         {
-            capabilities.push(Value::String(String::from("NET_BIND_SERVICE")));
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.guided_privileged_cap_add",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
         }
 
-        applied.push(FixProposal {
-            service: service_name.clone(),
-            summary: t!(
-                "app.fix.guided_privileged_cap_add",
-                service = service_name.as_str()
-            )
-            .into_owned(),
-        });
+        if finding_ids.contains("service.vaultwarden.signups_enabled")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && update_environment_value(service, "SIGNUPS_ALLOWED", "false", false)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.guided_vaultwarden_signups",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.gitea.inline_security_secrets")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && externalize_gitea_security_env(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.guided_gitea_externalize_secrets",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("updates.latest_tag")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && let Some(image) = image_string(service)
+            && let Some(stable_image) = stable_nginx_image_for_findings(&image, finding_ids)
+            && image != stable_image
+        {
+            service.insert(yaml_key("image"), Value::String(stable_image));
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.guided_nginx_stable",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
     }
 
     applied
@@ -300,6 +312,176 @@ fn yaml_key(key: &str) -> Value {
 
 fn image_string(service: &Mapping) -> Option<String> {
     service.get(yaml_key("image"))?.as_str().map(str::to_owned)
+}
+
+fn should_pin_nginx_image_to_stable(finding_ids: &BTreeSet<String>) -> bool {
+    finding_ids.contains("updates.no_tag")
+        || finding_ids.contains("updates.latest_tag")
+        || finding_ids.contains("updates.major_only_tag")
+}
+
+fn stable_nginx_image_for_findings(image: &str, finding_ids: &BTreeSet<String>) -> Option<String> {
+    if image.contains('@') {
+        return None;
+    }
+
+    let (repository, tag) = crate::rules::split_image_reference(image);
+    if !is_safe_nginx_image(&repository) {
+        return None;
+    }
+
+    let matches_no_tag = finding_ids.contains("updates.no_tag") && tag.is_none();
+    let matches_latest =
+        finding_ids.contains("updates.latest_tag") && tag.as_deref() == Some("latest");
+    let matches_major_only = finding_ids.contains("updates.major_only_tag")
+        && tag.as_deref().is_some_and(is_major_only_tag);
+
+    (matches_no_tag || matches_latest || matches_major_only)
+        .then_some(format!("{repository}:stable"))
+}
+
+fn is_major_only_tag(tag: &str) -> bool {
+    let candidate = tag.strip_prefix('v').unwrap_or(tag);
+    !candidate.is_empty()
+        && candidate
+            .chars()
+            .all(|character| character.is_ascii_digit())
+}
+
+fn apply_guided_privileged_low_port_fix(service: &mut Mapping) -> bool {
+    let Some(privileged) = service.get(yaml_key("privileged")) else {
+        return false;
+    };
+    if !yaml_truthy(privileged) {
+        return false;
+    }
+    if !service_uses_low_port(service) {
+        return false;
+    }
+
+    if matches!(service.get(yaml_key("cap_add")), Some(value) if !value.is_sequence()) {
+        return false;
+    }
+
+    service.remove(yaml_key("privileged"));
+    if service.get(yaml_key("cap_add")).is_none() {
+        service.insert(yaml_key("cap_add"), Value::Sequence(Sequence::new()));
+    }
+    let Some(cap_add) = service.get_mut(yaml_key("cap_add")) else {
+        return false;
+    };
+    let Some(capabilities) = cap_add.as_sequence_mut() else {
+        return false;
+    };
+
+    if !capabilities
+        .iter()
+        .any(|value| value.as_str() == Some("NET_BIND_SERVICE"))
+    {
+        capabilities.push(Value::String(String::from("NET_BIND_SERVICE")));
+    }
+
+    true
+}
+
+fn externalize_gitea_security_env(service: &mut Mapping) -> bool {
+    let mut changed = false;
+    for key in [
+        "GITEA__security__SECRET_KEY",
+        "GITEA__security__INTERNAL_TOKEN",
+    ] {
+        let placeholder = format!("${{{key}}}");
+        changed |= update_environment_value(service, key, &placeholder, false);
+    }
+
+    changed
+}
+
+fn update_environment_value(
+    service: &mut Mapping,
+    key: &str,
+    value: &str,
+    insert_if_missing: bool,
+) -> bool {
+    let Some(environment) = service.get_mut(yaml_key("environment")) else {
+        return false;
+    };
+
+    match environment {
+        Value::Mapping(mapping) => {
+            let environment_key = yaml_key(key);
+            match mapping.get(&environment_key) {
+                Some(current) if environment_value_matches(current, value) => false,
+                Some(_) => {
+                    mapping.insert(environment_key, environment_scalar_value(value));
+                    true
+                }
+                None if insert_if_missing => {
+                    mapping.insert(environment_key, environment_scalar_value(value));
+                    true
+                }
+                None => false,
+            }
+        }
+        Value::Sequence(sequence) => {
+            update_environment_sequence(sequence, key, value, insert_if_missing)
+        }
+        _ => false,
+    }
+}
+
+fn update_environment_sequence(
+    sequence: &mut Sequence,
+    key: &str,
+    value: &str,
+    insert_if_missing: bool,
+) -> bool {
+    for item in sequence.iter_mut() {
+        let Value::String(entry) = item else {
+            continue;
+        };
+
+        let trimmed = entry.trim();
+        if let Some((entry_key, entry_value)) = trimmed.split_once('=')
+            && entry_key.trim() == key
+        {
+            if entry_value.trim() == value {
+                return false;
+            }
+            *entry = format!("{key}={value}");
+            return true;
+        }
+
+        if trimmed == key {
+            *entry = format!("{key}={value}");
+            return true;
+        }
+    }
+
+    if insert_if_missing {
+        sequence.push(Value::String(format!("{key}={value}")));
+        true
+    } else {
+        false
+    }
+}
+
+fn environment_value_matches(current: &Value, expected: &str) -> bool {
+    match expected {
+        "false" => !yaml_truthy(current),
+        "true" => yaml_truthy(current),
+        _ => current
+            .as_str()
+            .is_some_and(|value| value.trim() == expected.trim()),
+    }
+}
+
+fn environment_scalar_value(value: &str) -> Value {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" => Value::Bool(true),
+        "false" => Value::Bool(false),
+        _ => Value::String(value.to_owned()),
+    }
 }
 
 fn rewrite_public_port(port: &mut Value) -> Option<String> {
@@ -787,6 +969,99 @@ mod tests {
         assert_eq!(plan.guided_applied.len(), 1);
         assert!(plan.diff_preview.contains("cap_add"));
         assert!(plan.diff_preview.contains("NET_BIND_SERVICE"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_quick_fix_pins_nginx_latest_to_stable() {
+        let root = temp_compose_dir("quick-nginx-latest");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:latest\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8080:80\"\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 1);
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.contains("nginx:stable"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_guided_fix_for_vaultwarden_signups() {
+        let root = temp_compose_dir("guided-vaultwarden-signups");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  vaultwarden:\n",
+                "    image: vaultwarden/server:1.30.1\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n",
+                "    environment:\n",
+                "      SIGNUPS_ALLOWED: true\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert_eq!(plan.guided_applied.len(), 1);
+        assert!(
+            plan.guided_applied
+                .iter()
+                .any(|proposal| proposal.summary.contains("SIGNUPS_ALLOWED"))
+        );
+        assert!(plan.diff_preview.contains("SIGNUPS_ALLOWED: false"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_guided_fix_for_gitea_inline_security_secrets() {
+        let root = temp_compose_dir("guided-gitea-secrets");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  server:\n",
+                "    image: gitea/gitea:1.21.11\n",
+                "    ports:\n",
+                "      - \"3000:3000\"\n",
+                "      - \"2222:22\"\n",
+                "    environment:\n",
+                "      - GITEA__security__SECRET_KEY=replace-me\n",
+                "      - GITEA__security__INTERNAL_TOKEN=replace-me-too\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert_eq!(plan.guided_applied.len(), 1);
+        assert!(
+            plan.guided_applied
+                .iter()
+                .any(|proposal| proposal.summary.contains("Gitea"))
+        );
+        assert!(
+            plan.diff_preview
+                .contains("GITEA__security__SECRET_KEY=${GITEA__security__SECRET_KEY}")
+        );
+        assert!(
+            plan.diff_preview
+                .contains("GITEA__security__INTERNAL_TOKEN=${GITEA__security__INTERNAL_TOKEN}")
+        );
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

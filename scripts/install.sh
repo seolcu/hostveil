@@ -10,11 +10,11 @@ else
 fi
 
 if [[ -n ${HOSTVEIL_CHANNEL+x} ]]; then
-  CHANNEL="$HOSTVEIL_CHANNEL"
-  CHANNEL_SET=1
+  LEGACY_CHANNEL="$HOSTVEIL_CHANNEL"
+  LEGACY_CHANNEL_SET=1
 else
-  CHANNEL="preview"
-  CHANNEL_SET=0
+  LEGACY_CHANNEL=""
+  LEGACY_CHANNEL_SET=0
 fi
 
 if [[ -n ${HOSTVEIL_INSTALL_DIR+x} ]]; then
@@ -86,7 +86,7 @@ After first install, prefer the installed hostveil command:
 
 Options:
   --version TAG            install or upgrade to a specific release tag
-  --channel NAME           legacy compatibility option; current documented releases use a single track
+  --channel NAME           legacy compatibility option; ignored because releases now use a single track
   --to DIR                 install into a specific binary directory
   --with-tools LIST        comma-separated optional tools to install after hostveil is installed
   --upgrade                upgrade an existing install using saved metadata
@@ -127,8 +127,8 @@ while (($# > 0)); do
       ;;
     --channel)
       (($# >= 2)) || fail "missing value for --channel"
-      CHANNEL="$2"
-      CHANNEL_SET=1
+      LEGACY_CHANNEL="$2"
+      LEGACY_CHANNEL_SET=1
       shift 2
       ;;
     --to)
@@ -176,6 +176,10 @@ while (($# > 0)); do
       ;;
   esac
 done
+
+if (( LEGACY_CHANNEL_SET == 1 )); then
+  log "Ignoring legacy channel selection '${LEGACY_CHANNEL}'; hostveil now uses a single SemVer release track."
+fi
 
 if command -v curl >/dev/null 2>&1; then
   fetch_to_file() {
@@ -273,20 +277,18 @@ resolve_version() {
     return
   fi
 
-  if [[ "$CHANNEL" == "stable" ]]; then
-    if tag_json="$(fetch_to_stdout "$(resolve_latest_stable_api_url)" 2>/dev/null)"; then
-      tag_name="$(printf '%s\n' "$tag_json" | extract_first_tag)"
-      [[ -n "$tag_name" ]] || fail "failed to resolve the latest stable release"
+  if tag_json="$(fetch_to_stdout "$(resolve_latest_stable_api_url)" 2>/dev/null)"; then
+    tag_name="$(printf '%s\n' "$tag_json" | extract_first_tag)"
+    if [[ -n "$tag_name" ]]; then
       printf '%s\n' "$tag_name"
       return
     fi
-
-    log "No stable release was found; falling back to the latest preview release."
   fi
 
+  log "Latest-release endpoint unavailable; falling back to the most recent release listing."
   tag_json="$(fetch_to_stdout "$(resolve_releases_api_url)")"
   tag_name="$(printf '%s\n' "$tag_json" | extract_first_tag)"
-  [[ -n "$tag_name" ]] || fail "failed to resolve the latest preview release"
+  [[ -n "$tag_name" ]] || fail "failed to resolve the latest release"
   printf '%s\n' "$tag_name"
 }
 
@@ -397,9 +399,6 @@ apply_metadata_defaults() {
   if (( REPO_SET == 0 )) && [[ -n "${HOSTVEIL_META_REPO:-}" ]]; then
     REPO="$HOSTVEIL_META_REPO"
   fi
-  if (( CHANNEL_SET == 0 )) && [[ -n "${HOSTVEIL_META_CHANNEL:-}" ]]; then
-    CHANNEL="$HOSTVEIL_META_CHANNEL"
-  fi
   if (( INSTALL_DIR_SET == 0 )) && [[ -n "${HOSTVEIL_META_INSTALL_DIR:-}" ]]; then
     INSTALL_DIR="$HOSTVEIL_META_INSTALL_DIR"
   fi
@@ -467,18 +466,6 @@ infer_installed_tag_from_binary() {
   fi
 }
 
-infer_channel_from_tag() {
-  local tag="$1"
-
-  if [[ -z "$tag" ]] || [[ "$tag" == "unknown" ]]; then
-    printf '%s\n' "$CHANNEL"
-  elif [[ "$tag" == *-* ]]; then
-    printf 'preview\n'
-  else
-    printf 'stable\n'
-  fi
-}
-
 resolve_current_installed_tag() {
   if (( metadata_loaded == 1 )) && [[ -n "${HOSTVEIL_META_INSTALLED_TAG:-}" ]]; then
     printf '%s\n' "$HOSTVEIL_META_INSTALLED_TAG"
@@ -495,7 +482,6 @@ write_metadata() {
   {
     printf 'HOSTVEIL_META_STATE_DIR=%q\n' "$STATE_DIR"
     printf 'HOSTVEIL_META_REPO=%q\n' "$REPO"
-    printf 'HOSTVEIL_META_CHANNEL=%q\n' "$CHANNEL"
     printf 'HOSTVEIL_META_INSTALL_DIR=%q\n' "$INSTALL_DIR"
     printf 'HOSTVEIL_META_WRAPPER_PATH=%q\n' "$(resolve_wrapper_path)"
     printf 'HOSTVEIL_META_BINARY_PATH=%q\n' "$(resolve_binary_path)"
@@ -617,9 +603,6 @@ resolve_existing_install_context() {
 
   if (( metadata_loaded == 0 )); then
     installed_tag="$(infer_installed_tag_from_binary "$entrypoint_path")"
-    if (( CHANNEL_SET == 0 )); then
-      CHANNEL="$(infer_channel_from_tag "$installed_tag")"
-    fi
     write_metadata "$installed_tag"
     metadata_loaded=0
     load_metadata_if_present
@@ -687,11 +670,6 @@ perform_install() {
   local checksums_url
   local tmpdir
   local installed_tag
-
-  case "$CHANNEL" in
-    preview|stable) ;;
-    *) fail "unsupported channel: $CHANNEL" ;;
-  esac
 
   INSTALL_DIR="$(resolve_install_dir)"
   tag="$(resolve_version)"

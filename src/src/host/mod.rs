@@ -227,6 +227,28 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         ));
     }
 
+    if settings
+        .get("permituserenvironment")
+        .is_some_and(|value| value == "yes")
+    {
+        findings.push(host_finding(
+            "host.ssh_user_environment_enabled",
+            Severity::Medium,
+            &config_path,
+            HostFindingText {
+                title: t!("finding.host.ssh_user_environment.title").into_owned(),
+                description: t!(
+                    "finding.host.ssh_user_environment.description",
+                    path = config_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.ssh_user_environment.why").into_owned(),
+                how_to_fix: t!("finding.host.ssh_user_environment.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), config_path.display().to_string())]),
+        ));
+    }
+
     findings
 }
 
@@ -285,24 +307,74 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
     if let Some(daemon_path) = resolve_existing_path(&context.root, DOCKER_DAEMON_CONFIG_PATH)
         && let Ok(text) = fs::read_to_string(&daemon_path)
         && let Ok(json) = serde_json::from_str::<JsonValue>(&text)
-        && daemon_hosts_include_public_tcp(&json)
     {
-        findings.push(host_finding(
-            "host.docker_daemon_tcp_public",
-            Severity::High,
-            &daemon_path,
-            HostFindingText {
-                title: t!("finding.host.docker_daemon_tcp_public.title").into_owned(),
-                description: t!(
-                    "finding.host.docker_daemon_tcp_public.description",
-                    path = daemon_path.display().to_string()
-                )
-                .into_owned(),
-                why_risky: t!("finding.host.docker_daemon_tcp_public.why").into_owned(),
-                how_to_fix: t!("finding.host.docker_daemon_tcp_public.fix").into_owned(),
-            },
-            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
-        ));
+        if daemon_hosts_include_public_tcp(&json) {
+            findings.push(host_finding(
+                "host.docker_daemon_tcp_public",
+                Severity::High,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_daemon_tcp_public.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_daemon_tcp_public.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_daemon_tcp_public.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_daemon_tcp_public.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+            ));
+
+            if !daemon_tlsverify_enabled(&json) {
+                findings.push(host_finding(
+                    "host.docker_daemon_tcp_no_tlsverify",
+                    Severity::Critical,
+                    &daemon_path,
+                    HostFindingText {
+                        title: t!("finding.host.docker_daemon_tcp_no_tlsverify.title").into_owned(),
+                        description: t!(
+                            "finding.host.docker_daemon_tcp_no_tlsverify.description",
+                            path = daemon_path.display().to_string()
+                        )
+                        .into_owned(),
+                        why_risky: t!("finding.host.docker_daemon_tcp_no_tlsverify.why")
+                            .into_owned(),
+                        how_to_fix: t!("finding.host.docker_daemon_tcp_no_tlsverify.fix")
+                            .into_owned(),
+                    },
+                    BTreeMap::from([
+                        (String::from("path"), daemon_path.display().to_string()),
+                        (
+                            String::from("tlsverify"),
+                            docker_daemon_setting_state(&json, "tlsverify"),
+                        ),
+                    ]),
+                ));
+            }
+        }
+
+        if docker_daemon_iptables_disabled(&json) {
+            findings.push(host_finding(
+                "host.docker_daemon_iptables_disabled",
+                Severity::High,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_daemon_iptables_disabled.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_daemon_iptables_disabled.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_daemon_iptables_disabled.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_daemon_iptables_disabled.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), daemon_path.display().to_string()),
+                    (String::from("iptables"), String::from("false")),
+                ]),
+            ));
+        }
     }
 
     findings
@@ -737,6 +809,25 @@ fn daemon_hosts_include_public_tcp(document: &JsonValue) -> bool {
     }
 }
 
+fn daemon_tlsverify_enabled(document: &JsonValue) -> bool {
+    document
+        .get("tlsverify")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false)
+}
+
+fn docker_daemon_iptables_disabled(document: &JsonValue) -> bool {
+    document.get("iptables").and_then(JsonValue::as_bool) == Some(false)
+}
+
+fn docker_daemon_setting_state(document: &JsonValue, key: &str) -> String {
+    match document.get(key).and_then(JsonValue::as_bool) {
+        Some(true) => String::from("true"),
+        Some(false) => String::from("false"),
+        None => String::from("missing"),
+    }
+}
+
 fn host_is_public_tcp(value: &JsonValue) -> bool {
     let Some(host) = value.as_str() else {
         return false;
@@ -791,12 +882,13 @@ mod tests {
                 "PermitRootLogin yes\n",
                 "PasswordAuthentication yes\n",
                 "PermitEmptyPasswords yes\n",
-                "PubkeyAuthentication no\n"
+                "PubkeyAuthentication no\n",
+                "PermitUserEnvironment yes\n"
             ),
         );
         write_file(
             &root.join(DOCKER_DAEMON_CONFIG_PATH),
-            r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2375"]}"#,
+            r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2375"], "tlsverify": false, "iptables": false}"#,
         );
         write_file(&root.join(DOCKER_SOCKET_PATH), "socket");
         fs::set_permissions(
@@ -817,8 +909,11 @@ mod tests {
                 "host.ssh_password_auth_enabled",
                 "host.ssh_empty_passwords_enabled",
                 "host.ssh_pubkey_auth_disabled",
+                "host.ssh_user_environment_enabled",
                 "host.docker_socket_world_writable",
                 "host.docker_daemon_tcp_public",
+                "host.docker_daemon_tcp_no_tlsverify",
+                "host.docker_daemon_iptables_disabled",
                 "host.defensive_controls_missing",
             ]
         );
@@ -841,7 +936,8 @@ mod tests {
                 "PermitRootLogin no\n",
                 "PasswordAuthentication no\n",
                 "PermitEmptyPasswords no\n",
-                "PubkeyAuthentication yes\n"
+                "PubkeyAuthentication yes\n",
+                "PermitUserEnvironment no\n"
             ),
         );
         write_file(
@@ -866,6 +962,30 @@ mod tests {
         let findings = HostScanner.scan(&HostContext { root: root.clone() });
 
         assert!(findings.is_empty());
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn public_docker_tcp_with_tlsverify_avoids_extra_tls_finding() {
+        let root = temp_host_root("docker-tlsverify");
+        write_file(
+            &root.join(DOCKER_DAEMON_CONFIG_PATH),
+            r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"], "tlsverify": true}"#,
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.docker_daemon_tcp_public")
+        );
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.docker_daemon_tcp_no_tlsverify")
+        );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }

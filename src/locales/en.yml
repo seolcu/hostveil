@@ -66,6 +66,8 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn scroll"
     back_overview: "Press q or Esc to return to the overview"
     back_overview_compact: "q or Esc back"
+    finding_controls: "Tab or Left/Right switch focus | s severity | x source | o sort | 1-4 jump | q or Esc back"
+    finding_controls_compact: "Tab/LR focus | s sev | x src | o sort | 1-4 jump | q back"
     fix_review_scroll: "Use Up/Down or PgUp/PgDn to scroll the diff"
     fix_review_apply: "Press y or Enter to apply the reviewed changes"
     fix_review_cancel: "Press q or Esc to cancel"
@@ -194,6 +196,13 @@ app:
     fix_label: "How to Fix"
     evidence_label: "Evidence"
     no_evidence: "No structured evidence for this finding."
+    severity_filter_short: "sev"
+    source_filter_short: "src"
+    sort_short: "sort"
+    filter_all: "all"
+    sort_severity: "severity"
+    sort_source: "source"
+    sort_subject: "subject"
   result:
     host_group: "Host"
     ok: "OK"
@@ -221,6 +230,9 @@ app:
     safe_bind_localhost: "%{service}: bind the published port %{port} to 127.0.0.1"
     safe_nginx_stable: "%{service}: pin nginx to nginx:stable"
     guided_privileged_cap_add: "%{service}: replace privileged mode with a minimal NET_BIND_SERVICE capability review"
+    guided_vaultwarden_signups: "%{service}: set SIGNUPS_ALLOWED to false"
+    guided_gitea_externalize_secrets: "%{service}: replace inline Gitea security secrets with environment placeholders"
+    guided_nginx_stable: "%{service}: review and pin nginx to nginx:stable"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"
@@ -271,6 +283,12 @@ finding:
       description: "%{image} has %{count} vulnerability record(s) reported by Trivy."
       why: "Known vulnerabilities in base images or packages can be exploited when exposed services are reachable."
       fix: "Update the image to a patched version, rebuild if needed, and pin a stable tag or digest before the next deploy."
+  dockle:
+    image_best_practice:
+      title: "Image failed Dockle best-practice checks"
+      description: "%{image} triggered %{count} best-practice or hardening check(s) in Dockle."
+      why: "Dockle findings often indicate image-layer hardening gaps that increase exploitability or weaken runtime isolation in self-hosted deployments."
+      fix: "Review the Dockle checkpoint IDs, update the Dockerfile or base image accordingly, and rescan until high-impact findings are addressed."
   updates:
     latest:
       title: "Image uses the latest tag"
@@ -366,6 +384,11 @@ finding:
       description: "%{path} sets PubkeyAuthentication no."
       why: "Disabling public key authentication pushes administrators toward weaker password-based access or other less auditable workarounds."
       fix: "Set PubkeyAuthentication yes and enroll administrator keys before disabling password-based SSH login."
+    ssh_user_environment:
+      title: "SSH allows user-controlled environment files"
+      description: "%{path} enables PermitUserEnvironment yes."
+      why: "Allowing SSH users to inject environment variables can weaken restricted command setups and create unexpected execution paths after login."
+      fix: "Set PermitUserEnvironment no unless you have a narrow, reviewed need for user-managed SSH environment files."
     docker_socket_world_writable:
       title: "Docker socket is world writable"
       description: "%{path} is writable by all local users with mode %{mode}."
@@ -381,6 +404,16 @@ finding:
       description: "%{path} configures Docker to listen on a non-local TCP host."
       why: "A public or broadly reachable Docker API can allow remote container control and host compromise if not strongly protected."
       fix: "Remove the TCP listener or bind it to localhost with strong authentication and network restrictions."
+    docker_daemon_tcp_no_tlsverify:
+      title: "Docker TCP listener lacks TLS client verification"
+      description: "%{path} exposes a non-local TCP Docker host without tlsverify enabled."
+      why: "A remotely reachable Docker API without strong client authentication can allow full container control and often leads directly to host compromise."
+      fix: "Prefer the local Unix socket. If a TCP listener is unavoidable, require TLS with client certificate verification and restrict who can reach it."
+    docker_daemon_iptables_disabled:
+      title: "Docker disables iptables management"
+      description: "%{path} sets iptables to false in daemon.json."
+      why: "Disabling Docker's iptables integration can leave published ports and container networking exposed in ways the operator does not expect."
+      fix: "Keep iptables enabled unless you fully replace Docker's network policy with audited firewall rules."
     fail2ban_not_enabled:
       title: "Fail2ban is installed but not active"
       description: "%{path} shows local Fail2ban markers, but no enabled service marker was detected."

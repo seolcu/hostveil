@@ -33,7 +33,7 @@ hostveil/
 ├── docs/
 │   └── adr/          # Architecture Decision Records — read before changing architecture
 ├── .github/
-│   └── workflows/    # CI/CD (not yet set up)
+│   └── workflows/    # Rust CI and release workflows
 ├── AGENTS.md         # This file
 ├── CONTRIBUTING.md   # Git conventions, branch strategy, commit format
 ├── LICENSE           # GPLv3
@@ -76,15 +76,14 @@ hostveil/
 
 ## GitHub Issues & Milestones
 
-All planned work is tracked as GitHub Issues organized into 3 Milestones. **AI agents are expected to participate in this workflow without being told to do so.**
+All planned work is tracked as GitHub Issues organized into Milestones. **AI agents are expected to participate in this workflow without being told to do so.**
 
-**Milestones** (see `github.com/seolcu/hostveil/milestones`):
+**Current milestone state** (see `github.com/seolcu/hostveil/milestones`):
 
-| # | Title | Due |
-|---|---|---|
-| 1 | Python CLI Prototype | 2026-03-30 |
-| 2 | Service Research & Rule Validation | 2026-04-19 |
-| 3 | Rust TUI Implementation | 2026-05-31 |
+- Closed: `#1 Python CLI Prototype`
+- Closed: `#2 Service Research & Rule Validation`
+- Closed: `#3 Rust TUI Implementation`
+- Active: `#5 v0.2 Hardening and UX`
 
 **How AI agents should use Issues:**
 

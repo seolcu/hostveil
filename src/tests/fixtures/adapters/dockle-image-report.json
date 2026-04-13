@@ -1,0 +1,42 @@
+{
+  "summary": {
+    "fatal": 2,
+    "warn": 1,
+    "info": 1,
+    "pass": 0
+  },
+  "details": [
+    {
+      "code": "CIS-DI-0001",
+      "title": "Create a user for the container",
+      "level": "WARN",
+      "alerts": [
+        "Last user should not be root"
+      ]
+    },
+    {
+      "code": "CIS-DI-0009",
+      "title": "Use COPY instead of ADD in Dockerfile",
+      "level": "FATAL",
+      "alerts": [
+        "Use COPY for added files"
+      ]
+    },
+    {
+      "code": "DKL-DI-0005",
+      "title": "Clear apt-get caches",
+      "level": "FATAL",
+      "alerts": [
+        "Run apt-get clean and remove lists"
+      ]
+    },
+    {
+      "code": "CIS-DI-0008",
+      "title": "Confirm safety of setuid/setgid files",
+      "level": "INFO",
+      "alerts": [
+        "setuid file found"
+      ]
+    }
+  ]
+}
