@@ -128,7 +128,7 @@ struct TrivyImageSummary {
 
 fn scan_image(image: &str) -> Result<Option<TrivyImageSummary>, String> {
     let output = Command::new("trivy")
-        .args(["image", "--format", "json", image])
+        .args(trivy_image_args(image))
         .env("NO_COLOR", "1")
         .output()
         .map_err(|error| error.to_string())?;
@@ -149,6 +149,18 @@ fn scan_image(image: &str) -> Result<Option<TrivyImageSummary>, String> {
         .map_err(|error| format!("failed to parse Trivy JSON: {error}"))?;
 
     Ok(summarize_report(image, report))
+}
+
+fn trivy_image_args(image: &str) -> [&str; 7] {
+    [
+        "image",
+        "--quiet",
+        "--format",
+        "json",
+        "--scanners",
+        "vuln",
+        image,
+    ]
 }
 
 fn summarize_report(image: &str, report: TrivyReport) -> Option<TrivyImageSummary> {
@@ -457,5 +469,21 @@ mod tests {
             AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
         );
         assert!(output.findings.is_empty());
+    }
+
+    #[test]
+    fn uses_vulnerability_only_scan_args() {
+        assert_eq!(
+            trivy_image_args("demo:1.0"),
+            [
+                "image",
+                "--quiet",
+                "--format",
+                "json",
+                "--scanners",
+                "vuln",
+                "demo:1.0",
+            ]
+        );
     }
 }

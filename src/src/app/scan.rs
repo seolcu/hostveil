@@ -1,5 +1,7 @@
 use std::env;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, Receiver};
+use std::thread;
 
 use crate::adapters;
 use crate::compose::{ComposeParseError, ComposeParser, ComposeProject};
@@ -7,14 +9,28 @@ use crate::discovery::{
     DiscoveredComposeProject, DockerDiscoveryResult, discover_running_compose_projects,
     project_summary,
 };
-use crate::domain::{DiscoveredProjectSummary, ScanMode, ScanResult, ServiceSummary};
+use crate::domain::{
+    AdapterStatus, DiscoveredProjectSummary, ScanMode, ScanResult, ServiceSummary,
+};
 use crate::host::{HostContext, HostScanner, collect_host_runtime_info};
 use crate::rules::RuleEngine;
 use crate::scoring;
 
 use super::{AppConfig, AppError};
 
+#[derive(Debug)]
+pub struct AdapterScanUpdate {
+    trivy: adapters::trivy::TrivyScanOutput,
+    lynis: adapters::lynis::LynisScanOutput,
+}
+
 pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
+    let mut result = run_native(config)?;
+    apply_external_adapters(&mut result);
+    Ok(result)
+}
+
+pub fn run_native(config: &AppConfig) -> Result<ScanResult, AppError> {
     let mut result = ScanResult::default();
     let mut coverage = scoring::Coverage::default();
 
@@ -35,28 +51,124 @@ pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
         }
     }
 
-    apply_external_adapters(&mut result);
-
     result.score_report = scoring::build_score_report_with_coverage(&result.findings, coverage);
     Ok(result)
 }
 
 fn apply_external_adapters(result: &mut ScanResult) {
-    let trivy_output = adapters::trivy::scan(&result.metadata.services);
-    result
-        .metadata
-        .adapters
-        .insert(String::from("trivy"), trivy_output.status);
-    result.metadata.warnings.extend(trivy_output.warnings);
-    result.findings.extend(trivy_output.findings);
+    let update = scan_external_adapters(
+        result.metadata.services.clone(),
+        result.metadata.host_root.clone(),
+    );
+    apply_external_adapter_update(result, update);
+}
 
-    let lynis_output = adapters::lynis::scan(result.metadata.host_root.as_deref());
+pub fn prepare_background_adapter_scan(result: &mut ScanResult) -> Receiver<AdapterScanUpdate> {
+    seed_adapter_statuses(result);
+
+    let services = result.metadata.services.clone();
+    let host_root = result.metadata.host_root.clone();
+    let (sender, receiver) = mpsc::channel();
+
+    thread::spawn(move || {
+        let update = scan_external_adapters(services, host_root);
+        let _ = sender.send(update);
+    });
+
+    receiver
+}
+
+pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterScanUpdate) {
+    let AdapterScanUpdate { trivy, lynis } = update;
+
     result
         .metadata
         .adapters
-        .insert(String::from("lynis"), lynis_output.status);
-    result.metadata.warnings.extend(lynis_output.warnings);
-    result.findings.extend(lynis_output.findings);
+        .insert(String::from("trivy"), trivy.status);
+    result.metadata.warnings.extend(trivy.warnings);
+    result.findings.extend(trivy.findings);
+
+    result
+        .metadata
+        .adapters
+        .insert(String::from("lynis"), lynis.status);
+    result.metadata.warnings.extend(lynis.warnings);
+    result.findings.extend(lynis.findings);
+    result.score_report =
+        scoring::build_score_report_with_coverage(&result.findings, coverage_from_result(result));
+}
+
+fn scan_external_adapters(
+    services: Vec<ServiceSummary>,
+    host_root: Option<PathBuf>,
+) -> AdapterScanUpdate {
+    let trivy_handle = thread::spawn(move || adapters::trivy::scan(&services));
+    let lynis_handle = thread::spawn(move || adapters::lynis::scan(host_root.as_deref()));
+
+    AdapterScanUpdate {
+        trivy: trivy_handle
+            .join()
+            .unwrap_or_else(|_| failed_trivy_output()),
+        lynis: lynis_handle
+            .join()
+            .unwrap_or_else(|_| failed_lynis_output()),
+    }
+}
+
+fn seed_adapter_statuses(result: &mut ScanResult) {
+    let trivy_status = if has_image_targets(&result.metadata.services) {
+        AdapterStatus::Pending
+    } else {
+        AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
+    };
+    result
+        .metadata
+        .adapters
+        .insert(String::from("trivy"), trivy_status);
+
+    let lynis_status = match result.metadata.host_root.as_deref() {
+        None => AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
+        Some(path) if path != Path::new("/") => {
+            AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned())
+        }
+        Some(_) => AdapterStatus::Pending,
+    };
+    result
+        .metadata
+        .adapters
+        .insert(String::from("lynis"), lynis_status);
+}
+
+fn has_image_targets(services: &[ServiceSummary]) -> bool {
+    services.iter().any(|service| {
+        service
+            .image
+            .as_deref()
+            .is_some_and(|image| !image.trim().is_empty())
+    })
+}
+
+fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
+    adapters::trivy::TrivyScanOutput {
+        status: AdapterStatus::Failed(String::from("Trivy scan thread panicked")),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
+    adapters::lynis::LynisScanOutput {
+        status: AdapterStatus::Failed(String::from("Lynis scan thread panicked")),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn coverage_from_result(result: &ScanResult) -> scoring::Coverage {
+    scoring::Coverage {
+        compose: result.metadata.compose_file.is_some() || !result.metadata.services.is_empty(),
+        host_hardening: result.metadata.host_root.is_some(),
+    }
 }
 
 fn uses_live_discovery(config: &AppConfig) -> bool {
@@ -274,13 +386,16 @@ fn apply_host_scan(host_root: PathBuf, result: &mut ScanResult) {
 mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::discovery::{DiscoveredComposeProject, DiscoveredContainerService};
-    use crate::domain::{AdapterStatus, DockerDiscoveryStatus, ScanMode};
+    use crate::domain::{AdapterStatus, DockerDiscoveryStatus, ScanMode, ServiceSummary};
 
-    use super::{apply_current_dir_fallback, apply_discovered_projects, run, scan_compose_project};
+    use super::{
+        apply_current_dir_fallback, apply_discovered_projects, run, scan_compose_project,
+        seed_adapter_statuses,
+    };
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
 
@@ -733,5 +848,42 @@ mod tests {
             warning.contains("Docker metadata")
                 && warning.contains("refresh the saved Compose labels")
         }));
+    }
+
+    #[test]
+    fn seed_adapter_statuses_marks_pending_for_live_targets() {
+        let mut result = crate::domain::ScanResult::default();
+        result.metadata.host_root = Some(PathBuf::from("/"));
+        result.metadata.services.push(ServiceSummary {
+            name: String::from("demo"),
+            image: Some(String::from("nginx:1.27.5")),
+        });
+
+        seed_adapter_statuses(&mut result);
+
+        assert_eq!(
+            result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Pending)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Pending)
+        );
+    }
+
+    #[test]
+    fn seed_adapter_statuses_marks_skipped_when_targets_are_missing() {
+        let mut result = crate::domain::ScanResult::default();
+
+        seed_adapter_statuses(&mut result);
+
+        assert!(matches!(
+            result.metadata.adapters.get("lynis"),
+            Some(AdapterStatus::Skipped(_))
+        ));
+        assert!(matches!(
+            result.metadata.adapters.get("trivy"),
+            Some(AdapterStatus::Skipped(_))
+        ));
     }
 }

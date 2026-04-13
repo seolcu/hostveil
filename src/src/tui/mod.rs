@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::io;
+use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use crossterm::execute;
@@ -159,7 +160,10 @@ enum FindingsLayoutMode {
     Narrow,
 }
 
-pub fn run(scan_result: &ScanResult) -> io::Result<()> {
+pub fn run<F>(scan_result: &mut ScanResult, mut refresh: F) -> io::Result<()>
+where
+    F: FnMut(&mut ScanResult) -> bool,
+{
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -168,7 +172,7 @@ pub fn run(scan_result: &ScanResult) -> io::Result<()> {
     let mut terminal = Terminal::new(backend)?;
     let mut state = AppState::new(scan_result);
 
-    let result = run_event_loop(&mut terminal, scan_result, &mut state);
+    let result = run_event_loop(&mut terminal, scan_result, &mut state, &mut refresh);
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -177,20 +181,30 @@ pub fn run(scan_result: &ScanResult) -> io::Result<()> {
     result
 }
 
-fn run_event_loop(
+fn run_event_loop<F>(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    scan_result: &ScanResult,
+    scan_result: &mut ScanResult,
     state: &mut AppState,
-) -> io::Result<()> {
+    refresh: &mut F,
+) -> io::Result<()>
+where
+    F: FnMut(&mut ScanResult) -> bool,
+{
     loop {
+        if refresh(scan_result) {
+            state.clamp_selection(scan_result);
+        }
+
         terminal.draw(|frame| render(frame, scan_result, state))?;
 
-        match event::read()? {
-            Event::Key(key) if key.kind == KeyEventKind::Press && handle_key(state, key) => {
-                return Ok(());
+        if event::poll(Duration::from_millis(100))? {
+            match event::read()? {
+                Event::Key(key) if key.kind == KeyEventKind::Press && handle_key(state, key) => {
+                    return Ok(());
+                }
+                Event::Resize(_, _) => {}
+                _ => {}
             }
-            Event::Resize(_, _) => {}
-            _ => {}
         }
     }
 }
@@ -1512,6 +1526,7 @@ fn adapter_name_label(name: &str) -> String {
 
 fn adapter_status_label(status: &AdapterStatus) -> String {
     match status {
+        AdapterStatus::Pending => t!("adapter.pending").into_owned(),
         AdapterStatus::Available => t!("adapter.available").into_owned(),
         AdapterStatus::Missing => t!("adapter.missing").into_owned(),
         AdapterStatus::Skipped(detail) => {

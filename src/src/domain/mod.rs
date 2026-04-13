@@ -177,6 +177,7 @@ impl Default for ScoreReport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", content = "detail", rename_all = "snake_case")]
 pub enum AdapterStatus {
+    Pending,
     Available,
     Missing,
     Skipped(String),
