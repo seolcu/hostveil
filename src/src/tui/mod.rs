@@ -41,6 +41,13 @@ enum FindingsFocus {
     Detail,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FindingSortMode {
+    Severity,
+    Source,
+    Subject,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AppState {
     screen: Screen,
@@ -48,16 +55,31 @@ struct AppState {
     selected_index: usize,
     detail_scroll: u16,
     sorted_indices: Vec<usize>,
+    severity_filter: Option<Severity>,
+    source_filter: Option<Source>,
+    sort_mode: FindingSortMode,
 }
 
 impl AppState {
     fn new(scan_result: &ScanResult) -> Self {
+        let severity_filter = None;
+        let source_filter = None;
+        let sort_mode = FindingSortMode::Severity;
+
         Self {
             screen: Screen::Overview,
             findings_focus: FindingsFocus::List,
             selected_index: 0,
             detail_scroll: 0,
-            sorted_indices: sorted_finding_indices(scan_result),
+            sorted_indices: visible_finding_indices(
+                scan_result,
+                severity_filter,
+                source_filter,
+                sort_mode,
+            ),
+            severity_filter,
+            source_filter,
+            sort_mode,
         }
     }
 
@@ -121,7 +143,12 @@ impl AppState {
     }
 
     fn clamp_selection(&mut self, scan_result: &ScanResult) {
-        self.sorted_indices = sorted_finding_indices(scan_result);
+        self.sorted_indices = visible_finding_indices(
+            scan_result,
+            self.severity_filter,
+            self.source_filter,
+            self.sort_mode,
+        );
 
         if self.sorted_indices.is_empty() {
             self.selected_index = 0;
@@ -136,6 +163,55 @@ impl AppState {
         self.detail_scroll = self
             .detail_scroll
             .min(max_scroll.min(u16::MAX as usize) as u16);
+    }
+
+    fn cycle_severity_filter(&mut self) {
+        self.severity_filter = match self.severity_filter {
+            None => Some(Severity::Critical),
+            Some(Severity::Critical) => Some(Severity::High),
+            Some(Severity::High) => Some(Severity::Medium),
+            Some(Severity::Medium) => Some(Severity::Low),
+            Some(Severity::Low) => None,
+        };
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
+    fn cycle_source_filter(&mut self) {
+        self.source_filter = match self.source_filter {
+            None => Some(Source::NativeCompose),
+            Some(Source::NativeCompose) => Some(Source::NativeHost),
+            Some(Source::NativeHost) => Some(Source::Trivy),
+            Some(Source::Trivy) => Some(Source::Lynis),
+            Some(Source::Lynis) => Some(Source::Dockle),
+            Some(Source::Dockle) => None,
+        };
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
+    fn cycle_sort_mode(&mut self) {
+        self.sort_mode = match self.sort_mode {
+            FindingSortMode::Severity => FindingSortMode::Source,
+            FindingSortMode::Source => FindingSortMode::Subject,
+            FindingSortMode::Subject => FindingSortMode::Severity,
+        };
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
+    fn jump_to_severity(&mut self, scan_result: &ScanResult, severity: Severity) {
+        self.clamp_selection(scan_result);
+
+        if let Some(position) = self.sorted_indices.iter().position(|index| {
+            scan_result
+                .findings
+                .get(*index)
+                .is_some_and(|finding| finding.severity == severity)
+        }) {
+            self.selected_index = position;
+            self.detail_scroll = 0;
+        }
     }
 }
 
@@ -199,7 +275,9 @@ where
 
         if event::poll(Duration::from_millis(100))? {
             match event::read()? {
-                Event::Key(key) if key.kind == KeyEventKind::Press && handle_key(state, key) => {
+                Event::Key(key)
+                    if key.kind == KeyEventKind::Press && handle_key(state, scan_result, key) =>
+                {
                     return Ok(());
                 }
                 Event::Resize(_, _) => {}
@@ -209,10 +287,10 @@ where
     }
 }
 
-fn handle_key(state: &mut AppState, key: KeyEvent) -> bool {
+fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> bool {
     match state.screen {
         Screen::Overview => handle_overview_key(state, key),
-        Screen::Findings => handle_findings_key(state, key),
+        Screen::Findings => handle_findings_key(state, scan_result, key),
     }
 }
 
@@ -227,10 +305,38 @@ fn handle_overview_key(state: &mut AppState, key: KeyEvent) -> bool {
     }
 }
 
-fn handle_findings_key(state: &mut AppState, key: KeyEvent) -> bool {
+fn handle_findings_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> bool {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
             state.return_to_overview();
+            false
+        }
+        KeyCode::Char('s') => {
+            state.cycle_severity_filter();
+            false
+        }
+        KeyCode::Char('x') => {
+            state.cycle_source_filter();
+            false
+        }
+        KeyCode::Char('o') => {
+            state.cycle_sort_mode();
+            false
+        }
+        KeyCode::Char('1') => {
+            state.jump_to_severity(scan_result, Severity::Critical);
+            false
+        }
+        KeyCode::Char('2') => {
+            state.jump_to_severity(scan_result, Severity::High);
+            false
+        }
+        KeyCode::Char('3') => {
+            state.jump_to_severity(scan_result, Severity::Medium);
+            false
+        }
+        KeyCode::Char('4') => {
+            state.jump_to_severity(scan_result, Severity::Low);
             false
         }
         KeyCode::Tab => {
@@ -390,17 +496,22 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         list_state.select(Some(state.selected_index));
     }
 
-    let list = List::new(findings_list_items(scan_result, content[0].width, mode))
-        .block(
-            Block::default()
-                .title(findings_list_title(state.findings_focus))
-                .borders(Borders::ALL)
-                .border_style(focus_border_style(
-                    state.findings_focus == FindingsFocus::List,
-                )),
-        )
-        .highlight_symbol("> ")
-        .highlight_style(Style::default().bg(Color::DarkGray));
+    let list = List::new(findings_list_items(
+        scan_result,
+        state,
+        content[0].width,
+        mode,
+    ))
+    .block(
+        Block::default()
+            .title(findings_list_title(state.findings_focus))
+            .borders(Borders::ALL)
+            .border_style(focus_border_style(
+                state.findings_focus == FindingsFocus::List,
+            )),
+    )
+    .highlight_symbol("> ")
+    .highlight_style(Style::default().bg(Color::DarkGray));
 
     let detail_block = Block::default()
         .title(findings_detail_title(state.findings_focus))
@@ -672,8 +783,16 @@ fn findings_header(
     mode: FindingsLayoutMode,
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
+    let filters = finding_filter_summary(state);
     let text = if state.finding_count() == 0 {
-        t!("app.finding.empty_status").into_owned()
+        truncate_text(
+            &format!(
+                "{} | {}",
+                t!("app.finding.empty_status").into_owned(),
+                filters
+            ),
+            inner_width,
+        )
     } else if mode == FindingsLayoutMode::SideBySide {
         let selection = t!(
             "app.finding.status",
@@ -683,14 +802,18 @@ fn findings_header(
         )
         .into_owned();
         let scan_status = compose_status(scan_result);
-        truncate_text(&format!("{} | {}", selection, scan_status), inner_width)
+        truncate_text(
+            &format!("{} | {} | {}", selection, filters, scan_status),
+            inner_width,
+        )
     } else {
         truncate_text(
             &format!(
-                "{}/{} | {}",
+                "{}/{} | {} | {}",
                 state.selected_index + 1,
                 state.finding_count(),
-                focus_label(state.findings_focus)
+                focus_label(state.findings_focus),
+                filters,
             ),
             inner_width,
         )
@@ -722,17 +845,9 @@ fn findings_footer(
         FindingsFocus::Detail => t!("app.hint.detail_scroll").into_owned(),
     };
     let controls = if mode == FindingsLayoutMode::Narrow {
-        format!(
-            "{} | {}",
-            t!("app.hint.switch_focus_compact").into_owned(),
-            t!("app.hint.back_overview_compact").into_owned()
-        )
+        t!("app.hint.finding_controls_compact").into_owned()
     } else {
-        format!(
-            "{} | {}",
-            t!("app.hint.switch_focus").into_owned(),
-            t!("app.hint.back_overview").into_owned()
-        )
+        t!("app.hint.finding_controls").into_owned()
     };
 
     Paragraph::new(Text::from(vec![
@@ -745,17 +860,20 @@ fn findings_footer(
 
 fn findings_list_items(
     scan_result: &ScanResult,
+    state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
 ) -> Vec<ListItem<'static>> {
-    if scan_result.findings.is_empty() {
+    if state.finding_count() == 0 {
         return vec![ListItem::new(t!("app.finding.empty_title").into_owned())];
     }
 
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
 
-    sorted_finding_indices(scan_result)
-        .into_iter()
+    state
+        .sorted_indices
+        .iter()
+        .copied()
         .filter_map(|index| scan_result.findings.get(index))
         .map(|finding| {
             let compact_subject = finding_list_subject(finding);
@@ -899,6 +1017,13 @@ fn finding_list_subject(finding: &Finding) -> String {
         .related_service
         .clone()
         .unwrap_or_else(|| finding.subject.clone())
+}
+
+fn finding_sort_subject(finding: &Finding) -> &str {
+    finding
+        .related_service
+        .as_deref()
+        .unwrap_or(&finding.subject)
 }
 
 fn detail_section(label: String, value: &str) -> Vec<Line<'static>> {
@@ -1075,7 +1200,7 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
 fn remediation_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
     let text_width = available_width.saturating_sub(12).max(16) as usize;
 
-    sorted_finding_indices(scan_result)
+    visible_finding_indices(scan_result, None, None, FindingSortMode::Severity)
         .into_iter()
         .take(4)
         .filter_map(|index| scan_result.findings.get(index))
@@ -1407,22 +1532,85 @@ fn result_group_label(finding: &Finding) -> String {
     }
 }
 
-fn sorted_finding_indices(scan_result: &ScanResult) -> Vec<usize> {
+fn visible_finding_indices(
+    scan_result: &ScanResult,
+    severity_filter: Option<Severity>,
+    source_filter: Option<Source>,
+    sort_mode: FindingSortMode,
+) -> Vec<usize> {
     let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
+    indices.retain(|index| {
+        scan_result.findings.get(*index).is_some_and(|finding| {
+            severity_filter.is_none_or(|severity| finding.severity == severity)
+                && source_filter.is_none_or(|source| finding.source == source)
+        })
+    });
     indices.sort_by(|left, right| {
-        compare_findings(&scan_result.findings[*left], &scan_result.findings[*right])
+        compare_findings(
+            &scan_result.findings[*left],
+            &scan_result.findings[*right],
+            sort_mode,
+        )
     });
     indices
 }
 
-fn compare_findings(left: &Finding, right: &Finding) -> Ordering {
-    severity_rank(left.severity)
-        .cmp(&severity_rank(right.severity))
-        .then_with(|| left.title.cmp(&right.title))
-        .then_with(|| source_label(left.source).cmp(&source_label(right.source)))
-        .then_with(|| scope_label(left.scope).cmp(&scope_label(right.scope)))
-        .then_with(|| left.subject.cmp(&right.subject))
-        .then_with(|| left.id.cmp(&right.id))
+fn compare_findings(left: &Finding, right: &Finding, sort_mode: FindingSortMode) -> Ordering {
+    match sort_mode {
+        FindingSortMode::Severity => severity_rank(left.severity)
+            .cmp(&severity_rank(right.severity))
+            .then_with(|| left.title.cmp(&right.title))
+            .then_with(|| left.source.cmp(&right.source))
+            .then_with(|| left.scope.cmp(&right.scope))
+            .then_with(|| left.subject.cmp(&right.subject))
+            .then_with(|| left.id.cmp(&right.id)),
+        FindingSortMode::Source => left
+            .source
+            .cmp(&right.source)
+            .then_with(|| severity_rank(left.severity).cmp(&severity_rank(right.severity)))
+            .then_with(|| left.title.cmp(&right.title))
+            .then_with(|| left.scope.cmp(&right.scope))
+            .then_with(|| left.subject.cmp(&right.subject))
+            .then_with(|| left.id.cmp(&right.id)),
+        FindingSortMode::Subject => finding_sort_subject(left)
+            .cmp(finding_sort_subject(right))
+            .then_with(|| severity_rank(left.severity).cmp(&severity_rank(right.severity)))
+            .then_with(|| left.title.cmp(&right.title))
+            .then_with(|| left.source.cmp(&right.source))
+            .then_with(|| left.id.cmp(&right.id)),
+    }
+}
+
+fn finding_filter_summary(state: &AppState) -> String {
+    format!(
+        "{}:{} {}:{} {}:{}",
+        t!("app.finding.severity_filter_short").into_owned(),
+        severity_filter_label(state.severity_filter),
+        t!("app.finding.source_filter_short").into_owned(),
+        source_filter_label(state.source_filter),
+        t!("app.finding.sort_short").into_owned(),
+        sort_mode_label(state.sort_mode),
+    )
+}
+
+fn severity_filter_label(filter: Option<Severity>) -> String {
+    filter
+        .map(severity_label)
+        .unwrap_or_else(|| t!("app.finding.filter_all").into_owned())
+}
+
+fn source_filter_label(filter: Option<Source>) -> String {
+    filter
+        .map(source_label)
+        .unwrap_or_else(|| t!("app.finding.filter_all").into_owned())
+}
+
+fn sort_mode_label(sort_mode: FindingSortMode) -> String {
+    match sort_mode {
+        FindingSortMode::Severity => t!("app.finding.sort_severity").into_owned(),
+        FindingSortMode::Source => t!("app.finding.sort_source").into_owned(),
+        FindingSortMode::Subject => t!("app.finding.sort_subject").into_owned(),
+    }
 }
 
 fn compose_status(scan_result: &ScanResult) -> String {
@@ -1923,10 +2111,12 @@ mod tests {
 
     #[test]
     fn overview_navigation_opens_findings() {
-        let mut state = AppState::new(&sample_result());
+        let result = sample_result();
+        let mut state = AppState::new(&result);
 
         let should_exit = handle_key(
             &mut state,
+            &result,
             KeyEvent::new(KeyCode::Enter, crossterm::event::KeyModifiers::NONE),
         );
 
@@ -1943,27 +2133,101 @@ mod tests {
 
         handle_key(
             &mut state,
+            &result,
             KeyEvent::new(KeyCode::Down, crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.selected_index, 1);
 
         handle_key(
             &mut state,
+            &result,
             KeyEvent::new(KeyCode::Tab, crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.findings_focus, FindingsFocus::Detail);
 
         handle_key(
             &mut state,
+            &result,
             KeyEvent::new(KeyCode::PageDown, crossterm::event::KeyModifiers::NONE),
         );
         assert!(state.detail_scroll > 0);
 
         handle_key(
             &mut state,
+            &result,
             KeyEvent::new(KeyCode::Esc, crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.screen, Screen::Overview);
+    }
+
+    #[test]
+    fn findings_controls_cycle_filters_and_sort_modes() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('s'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.severity_filter, Some(Severity::Critical));
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('x'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.source_filter, Some(Source::NativeCompose));
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('o'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(state.sort_mode, FindingSortMode::Source);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('o'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(state.sort_mode, FindingSortMode::Subject);
+    }
+
+    #[test]
+    fn findings_controls_can_jump_to_requested_severity() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('4'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state
+                .selected_finding(&result)
+                .map(|finding| finding.severity),
+            Some(Severity::Low)
+        );
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('1'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state
+                .selected_finding(&result)
+                .map(|finding| finding.severity),
+            Some(Severity::Critical)
+        );
     }
 
     #[test]
@@ -2062,10 +2326,15 @@ mod tests {
         let result = mixed_scope_result();
         let mut state = AppState::new(&result);
         state.open_findings();
-        state.selected_index = result
-            .findings
+        state.selected_index = state
+            .sorted_indices
             .iter()
-            .position(|finding| finding.scope == Scope::Project)
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|finding| finding.scope == Scope::Project)
+            })
             .expect("project finding should exist");
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
 
@@ -2115,8 +2384,8 @@ mod tests {
 
         assert!(content.contains("[CRIT] Admin interface is exposed publicly - adminer"));
         assert!(content.contains("Critical | Native Compose | adminer"));
-        assert!(content.contains("Tab or Left/Right switch focus"));
-        assert!(content.contains("q or Esc back"));
+        assert!(content.contains("s sev | x src | o sort"));
+        assert!(content.contains("q back"));
         assert!(!content.contains("PageUp/PageDown"));
     }
 
