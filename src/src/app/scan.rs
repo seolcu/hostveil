@@ -384,17 +384,21 @@ fn apply_host_scan(host_root: PathBuf, result: &mut ScanResult) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::discovery::{DiscoveredComposeProject, DiscoveredContainerService};
-    use crate::domain::{AdapterStatus, DockerDiscoveryStatus, ScanMode, ServiceSummary};
+    use crate::domain::{
+        AdapterStatus, Axis, DockerDiscoveryStatus, Finding, RemediationKind, ScanMode, Scope,
+        ServiceSummary, Severity, Source,
+    };
 
     use super::{
-        apply_current_dir_fallback, apply_discovered_projects, run, scan_compose_project,
-        seed_adapter_statuses,
+        AdapterScanUpdate, apply_current_dir_fallback, apply_discovered_projects,
+        apply_external_adapter_update, run, scan_compose_project, seed_adapter_statuses,
     };
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
@@ -424,6 +428,32 @@ mod tests {
             fs::create_dir_all(parent).expect("parent should be created");
         }
         fs::write(path, content).expect("file should be written");
+    }
+
+    fn test_finding(
+        id: &str,
+        axis: Axis,
+        severity: Severity,
+        scope: Scope,
+        source: Source,
+        subject: &str,
+        related_service: Option<&str>,
+    ) -> Finding {
+        Finding {
+            id: id.to_owned(),
+            axis,
+            severity,
+            scope,
+            source,
+            subject: subject.to_owned(),
+            related_service: related_service.map(str::to_owned),
+            title: format!("Synthetic finding {id}"),
+            description: format!("Synthetic description for {id}"),
+            why_risky: String::from("Synthetic risk explanation"),
+            how_to_fix: String::from("Synthetic remediation guidance"),
+            evidence: BTreeMap::from([(String::from("id"), id.to_owned())]),
+            remediation: RemediationKind::None,
+        }
     }
 
     #[test]
@@ -665,6 +695,106 @@ mod tests {
         assert!(result.score_report.axis_scores[&crate::domain::Axis::HostHardening] < 100);
 
         fs::remove_dir_all(host_root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn native_and_adapter_findings_share_one_scan_result() {
+        let mut result = crate::domain::ScanResult {
+            findings: vec![
+                test_finding(
+                    "project.compose_bundle_loaded",
+                    Axis::SensitiveData,
+                    Severity::Low,
+                    Scope::Project,
+                    Source::NativeCompose,
+                    "/srv/demo/docker-compose.yml",
+                    None,
+                ),
+                test_finding(
+                    "service.public_binding",
+                    Axis::UnnecessaryExposure,
+                    Severity::Medium,
+                    Scope::Service,
+                    Source::NativeCompose,
+                    "web",
+                    Some("web"),
+                ),
+            ],
+            ..Default::default()
+        };
+        result.metadata.services.push(ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("nginx:1.27.5")),
+        });
+        result.metadata.host_root = Some(PathBuf::from("/"));
+
+        seed_adapter_statuses(&mut result);
+        apply_external_adapter_update(
+            &mut result,
+            AdapterScanUpdate {
+                trivy: crate::adapters::trivy::TrivyScanOutput {
+                    status: AdapterStatus::Available,
+                    findings: vec![test_finding(
+                        "trivy.image_vulnerabilities.nginx_1_27_5",
+                        Axis::UpdateSupplyChainRisk,
+                        Severity::High,
+                        Scope::Image,
+                        Source::Trivy,
+                        "nginx:1.27.5",
+                        Some("web"),
+                    )],
+                    warnings: Vec::new(),
+                },
+                lynis: crate::adapters::lynis::LynisScanOutput {
+                    status: AdapterStatus::Available,
+                    findings: vec![test_finding(
+                        "lynis.ssh.password_authentication_enabled",
+                        Axis::HostHardening,
+                        Severity::High,
+                        Scope::Host,
+                        Source::Lynis,
+                        "/etc/ssh/sshd_config",
+                        None,
+                    )],
+                    warnings: Vec::new(),
+                },
+            },
+        );
+
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|finding| finding.scope == Scope::Project
+                    && finding.source == Source::NativeCompose)
+        );
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|finding| finding.scope == Scope::Service
+                    && finding.source == Source::NativeCompose)
+        );
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|finding| finding.scope == Scope::Image && finding.source == Source::Trivy)
+        );
+        assert!(
+            result
+                .findings
+                .iter()
+                .any(|finding| finding.scope == Scope::Host && finding.source == Source::Lynis)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Available)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Available)
+        );
     }
 
     #[test]
