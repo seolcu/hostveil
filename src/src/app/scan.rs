@@ -65,6 +65,16 @@ fn apply_external_adapters(result: &mut ScanResult) {
 }
 
 pub fn prepare_background_adapter_scan(result: &mut ScanResult) -> Receiver<AdapterScanUpdate> {
+    spawn_background_adapter_scan(result, scan_external_adapters)
+}
+
+fn spawn_background_adapter_scan<F>(
+    result: &mut ScanResult,
+    scan_fn: F,
+) -> Receiver<AdapterScanUpdate>
+where
+    F: FnOnce(Vec<ServiceSummary>, Option<PathBuf>) -> AdapterScanUpdate + Send + 'static,
+{
     seed_adapter_statuses(result);
 
     let services = result.metadata.services.clone();
@@ -72,7 +82,7 @@ pub fn prepare_background_adapter_scan(result: &mut ScanResult) -> Receiver<Adap
     let (sender, receiver) = mpsc::channel();
 
     thread::spawn(move || {
-        let update = scan_external_adapters(services, host_root);
+        let update = scan_fn(services, host_root);
         let _ = sender.send(update);
     });
 
@@ -223,17 +233,26 @@ fn run_live_scan(
     coverage.host_hardening = true;
 
     let discovery = discover_running_compose_projects();
+    apply_live_discovery_result(&discovery, &env::current_dir()?, result, coverage)
+}
+
+fn apply_live_discovery_result(
+    discovery: &DockerDiscoveryResult,
+    fallback_dir: &Path,
+    result: &mut ScanResult,
+    coverage: &mut scoring::Coverage,
+) -> Result<(), AppError> {
     result.metadata.docker_status = Some(discovery.status.clone());
     result.metadata.warnings.extend(discovery.warnings.clone());
 
     if !discovery.projects.is_empty() {
-        apply_discovered_projects(&discovery, result, coverage)?;
+        apply_discovered_projects(discovery, result, coverage)?;
         if coverage.compose {
             return Ok(());
         }
     }
 
-    apply_current_dir_fallback(result, coverage)
+    apply_current_dir_fallback_from(fallback_dir, result, coverage)
 }
 
 fn apply_discovered_projects(
@@ -339,13 +358,21 @@ fn load_discovered_project(
     ))
 }
 
+#[cfg(test)]
 fn apply_current_dir_fallback(
     result: &mut ScanResult,
     coverage: &mut scoring::Coverage,
 ) -> Result<(), AppError> {
     let current_dir = env::current_dir()?;
+    apply_current_dir_fallback_from(&current_dir, result, coverage)
+}
 
-    match ComposeParser::parse_path(&current_dir) {
+fn apply_current_dir_fallback_from(
+    current_dir: &Path,
+    result: &mut ScanResult,
+    coverage: &mut scoring::Coverage,
+) -> Result<(), AppError> {
+    match ComposeParser::parse_path(current_dir) {
         Ok(project) => {
             let summary = DiscoveredProjectSummary {
                 name: project
@@ -425,6 +452,9 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
+    use std::sync::mpsc::TryRecvError;
+    use std::thread;
+    use std::time::Duration;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::discovery::{DiscoveredComposeProject, DiscoveredContainerService};
@@ -435,7 +465,8 @@ mod tests {
 
     use super::{
         AdapterScanUpdate, apply_current_dir_fallback, apply_discovered_projects,
-        apply_external_adapter_update, run, scan_compose_project, seed_adapter_statuses,
+        apply_external_adapter_update, apply_live_discovery_result, run, scan_compose_project,
+        seed_adapter_statuses, spawn_background_adapter_scan,
     };
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
@@ -1038,6 +1069,121 @@ mod tests {
             warning.contains("Docker metadata")
                 && warning.contains("refresh the saved Compose labels")
         }));
+    }
+
+    #[test]
+    fn live_scan_falls_back_to_current_dir_after_stale_discovery_paths_fail() {
+        let missing_root = temp_host_root("live-stale-compose-fallback");
+        let current_dir = temp_host_root("live-current-dir-compose");
+        let compose_path = missing_root.join("docker-compose.yml");
+        let working_dir = missing_root.join("gone-working-dir");
+        fs::remove_dir_all(&missing_root).expect("temp dir should be removed before scan");
+        write_file(
+            &current_dir.join("docker-compose.yml"),
+            concat!(
+                "services:\n",
+                "  demo:\n",
+                "    image: nginx:1.27.5\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        );
+
+        let discovery = crate::discovery::DockerDiscoveryResult {
+            status: DockerDiscoveryStatus::Available,
+            projects: vec![DiscoveredComposeProject {
+                name: String::from("demo"),
+                compose_path: Some(compose_path),
+                working_dir: Some(working_dir),
+                services: vec![DiscoveredContainerService {
+                    name: String::from("demo"),
+                    image: Some(String::from("nginx:1.27.5")),
+                }],
+                source: "docker",
+            }],
+            warnings: vec![String::from("Docker returned stale Compose labels")],
+        };
+
+        let mut result = crate::domain::ScanResult::default();
+        let mut coverage = crate::scoring::Coverage {
+            host_hardening: true,
+            ..Default::default()
+        };
+
+        apply_live_discovery_result(&discovery, &current_dir, &mut result, &mut coverage)
+            .expect("live scan fallback should succeed");
+
+        assert!(coverage.compose);
+        assert_eq!(result.metadata.service_count, 1);
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("stale Compose labels"))
+        );
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| { warning.contains("current directory as a Compose fallback") })
+        );
+        assert_eq!(result.metadata.discovered_projects.len(), 2);
+        assert_eq!(result.metadata.discovered_projects[1].source, "current_dir");
+
+        fs::remove_dir_all(current_dir).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn background_adapter_scan_does_not_block_tui_startup() {
+        let mut result = crate::domain::ScanResult::default();
+        result.metadata.host_root = Some(PathBuf::from("/"));
+        result.metadata.services.push(ServiceSummary {
+            name: String::from("demo"),
+            image: Some(String::from("nginx:1.27.5")),
+        });
+
+        let receiver = spawn_background_adapter_scan(&mut result, |_, _| {
+            thread::sleep(Duration::from_millis(150));
+            AdapterScanUpdate {
+                trivy: crate::adapters::trivy::TrivyScanOutput {
+                    status: AdapterStatus::Missing,
+                    findings: Vec::new(),
+                    warnings: Vec::new(),
+                },
+                lynis: crate::adapters::lynis::LynisScanOutput {
+                    status: AdapterStatus::Skipped(String::from("not requested")),
+                    findings: Vec::new(),
+                    warnings: Vec::new(),
+                },
+                dockle: crate::adapters::dockle::DockleScanOutput {
+                    status: AdapterStatus::Missing,
+                    findings: Vec::new(),
+                    warnings: Vec::new(),
+                },
+            }
+        });
+
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Pending)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("dockle"),
+            Some(&AdapterStatus::Pending)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Pending)
+        );
+        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
+
+        let update = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("background scan should eventually finish");
+        assert_eq!(update.trivy.status, AdapterStatus::Missing);
+        assert_eq!(update.dockle.status, AdapterStatus::Missing);
     }
 
     #[test]

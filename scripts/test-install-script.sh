@@ -387,6 +387,7 @@ run_custom_state_dir_case() {
     printf 'error: lifecycle manager was not saved in the custom state dir\n' >&2
     exit 1
   }
+  assert_file_contains "$install_dir/hostveil" "$custom_state_dir"
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_STATE_DIR='
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.1.0-test'
   assert_file_not_contains "$metadata_path" 'HOSTVEIL_META_CHANNEL='
