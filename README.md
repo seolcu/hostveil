@@ -203,8 +203,9 @@ Current Rust implementation status:
 - `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
-- Native Compose rule engine and scoring model partially ported with Rust fixture tests
-- Native Linux host checks started for SSH posture and Docker host exposure via `--host-root`
+- Native Compose rule engine and scoring model ported with Rust fixture tests
+- Native Linux host checks added for SSH posture, Docker host exposure, and defensive-control telemetry via `--host-root`
+- Optional Trivy image and Lynis host adapters integrated into the shared findings pipeline
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
 
@@ -233,16 +234,17 @@ Current release priorities:
 
 Explicitly deferred from the current early-release scope:
 
-- Trivy integration as the first optional external adapter
+- Additional optional adapters beyond Trivy, Lynis, and Dockle
 - TUI-embedded guided diff review before writes
 - Package-manager distribution such as apt, dnf, Homebrew, or AUR
 - Final scoring ADR and stable weighting guarantees
 
 Optional dependency policy for current releases:
 
-- `hostveil` should install and run without Docker or Trivy being present
+- `hostveil` should install and run without Docker, Trivy, Dockle, or Lynis being present
 - Docker-based live discovery improves Compose coverage when available
-- Trivy remains an optional adapter; if it is missing, scans continue with reduced coverage instead of failing
+- Trivy and Dockle remain optional image adapters; if either is missing, scans continue with reduced coverage instead of failing
+- Lynis remains an optional host adapter; if it is missing, scans continue with reduced host-audit coverage instead of failing
 - Missing external tools should be shown as coverage or adapter status, not as fatal startup errors
 
 Planned install and update model for current releases:
