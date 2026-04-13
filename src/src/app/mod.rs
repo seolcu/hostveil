@@ -144,16 +144,28 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
         return Ok(());
     }
 
-    let scan_result = scan::run(&config)?;
-
     match config.output_mode {
         OutputMode::Tui => {
             if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
                 return Err(AppError::TuiRequiresTerminal);
             }
-            tui::run(&scan_result)?;
+
+            let mut scan_result = scan::run_native(&config)?;
+            let adapter_updates = scan::prepare_background_adapter_scan(&mut scan_result);
+
+            tui::run(&mut scan_result, move |scan_result| {
+                let mut updated = false;
+
+                while let Ok(update) = adapter_updates.try_recv() {
+                    scan::apply_external_adapter_update(scan_result, update);
+                    updated = true;
+                }
+
+                updated
+            })?;
         }
         OutputMode::Json => {
+            let scan_result = scan::run(&config)?;
             print!("{}", export::scan_result_json(&scan_result));
         }
     }

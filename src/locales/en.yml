@@ -244,6 +244,7 @@ source:
   lynis: "Lynis"
   dockle: "Dockle"
 adapter:
+  pending: "pending"
   available: "available"
   missing: "missing"
   skipped: "skipped: %{detail}"
