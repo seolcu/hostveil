@@ -34,7 +34,23 @@ else
 fi
 
 DOWNLOAD_BASE_URL="${HOSTVEIL_DOWNLOAD_BASE_URL:-}"
-STATE_DIR="${HOSTVEIL_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hostveil}"
+
+resolve_state_dir() {
+  local default_state_dir script_path script_name script_dir
+
+  default_state_dir="${HOSTVEIL_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hostveil}"
+  script_path="${BASH_SOURCE[0]}"
+  script_name="$(basename "$script_path")"
+  script_dir="$(cd "$(dirname "$script_path")" && pwd)"
+
+  if [[ "$script_name" == "manage.sh" ]] && [[ -f "$script_dir/install.env" ]]; then
+    printf '%s\n' "$script_dir"
+  else
+    printf '%s\n' "$default_state_dir"
+  fi
+}
+
+STATE_DIR="$(resolve_state_dir)"
 
 WRAPPER_NAME="hostveil"
 BINARY_NAME="hostveil-bin"
@@ -477,6 +493,7 @@ write_metadata() {
   mkdir -p "$STATE_DIR"
 
   {
+    printf 'HOSTVEIL_META_STATE_DIR=%q\n' "$STATE_DIR"
     printf 'HOSTVEIL_META_REPO=%q\n' "$REPO"
     printf 'HOSTVEIL_META_CHANNEL=%q\n' "$CHANNEL"
     printf 'HOSTVEIL_META_INSTALL_DIR=%q\n' "$INSTALL_DIR"
@@ -509,24 +526,38 @@ write_wrapper_script() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-METADATA_PATH=$(printf '%q' "$METADATA_PATH")
-MANAGER_SCRIPT_PATH=$(printf '%q' "$MANAGER_SCRIPT_PATH")
+DEFAULT_STATE_DIR=$(printf '%q' "$STATE_DIR")
 DEFAULT_BINARY_PATH=$(printf '%q' "$binary_path")
 
-if [[ -f "\$METADATA_PATH" ]]; then
+state_dir="\$DEFAULT_STATE_DIR"
+metadata_path="\$state_dir/install.env"
+manager_script_path="\$state_dir/manage.sh"
+
+if [[ -f "\$metadata_path" ]]; then
   # shellcheck disable=SC1090
-  source "\$METADATA_PATH"
+  source "\$metadata_path"
+fi
+
+if [[ -n "\${HOSTVEIL_META_STATE_DIR:-}" ]] && [[ "\$HOSTVEIL_META_STATE_DIR" != "\$state_dir" ]]; then
+  state_dir="\$HOSTVEIL_META_STATE_DIR"
+  metadata_path="\$state_dir/install.env"
+  manager_script_path="\$state_dir/manage.sh"
+
+  if [[ -f "\$metadata_path" ]]; then
+    # shellcheck disable=SC1090
+    source "\$metadata_path"
+  fi
 fi
 
 binary_path="\${HOSTVEIL_META_BINARY_PATH:-\$DEFAULT_BINARY_PATH}"
 
 run_manager_command() {
-  if [[ ! -x "\$MANAGER_SCRIPT_PATH" ]]; then
+  if [[ ! -x "\$manager_script_path" ]]; then
     printf 'error: hostveil lifecycle manager is unavailable; reinstall hostveil with the installer\n' >&2
     exit 1
   fi
 
-  HOSTVEIL_SKIP_AUTO_UPGRADE=1 exec "\$MANAGER_SCRIPT_PATH" "\$@"
+  HOSTVEIL_STATE_DIR="\$state_dir" HOSTVEIL_SKIP_AUTO_UPGRADE=1 exec "\$manager_script_path" "\$@"
 }
 
 case "\${1:-}" in
@@ -560,11 +591,11 @@ case "\${1:-}" in
     ;;
 esac
 
-if [[ "\${HOSTVEIL_SKIP_AUTO_UPGRADE:-}" != "1" && "\${HOSTVEIL_AUTO_UPGRADE_RUNNING:-}" != "1" && "\${HOSTVEIL_META_AUTO_UPGRADE:-enabled}" != "disabled" && -x "\$MANAGER_SCRIPT_PATH" ]]; then
-  HOSTVEIL_AUTO_UPGRADE_RUNNING=1 HOSTVEIL_SKIP_AUTO_UPGRADE=1 "\$MANAGER_SCRIPT_PATH" --upgrade >/dev/null 2>&1 || true
-  if [[ -f "\$METADATA_PATH" ]]; then
+if [[ "\${HOSTVEIL_SKIP_AUTO_UPGRADE:-}" != "1" && "\${HOSTVEIL_AUTO_UPGRADE_RUNNING:-}" != "1" && "\${HOSTVEIL_META_AUTO_UPGRADE:-enabled}" != "disabled" && -x "\$manager_script_path" ]]; then
+  HOSTVEIL_STATE_DIR="\$state_dir" HOSTVEIL_AUTO_UPGRADE_RUNNING=1 HOSTVEIL_SKIP_AUTO_UPGRADE=1 "\$manager_script_path" --upgrade >/dev/null 2>&1 || true
+  if [[ -f "\$metadata_path" ]]; then
     # shellcheck disable=SC1090
-    source "\$METADATA_PATH"
+    source "\$metadata_path"
     binary_path="\${HOSTVEIL_META_BINARY_PATH:-\$DEFAULT_BINARY_PATH}"
   fi
 fi
