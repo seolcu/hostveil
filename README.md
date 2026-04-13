@@ -60,6 +60,10 @@ cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
+
+# Locale overrides (currently: en, ko)
+HOSTVEIL_LOCALE=ko cargo run -- --help
+LANG=ko_KR.UTF-8 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 ```
 
 Container-based development and installer validation:
