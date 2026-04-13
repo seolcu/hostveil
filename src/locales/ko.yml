@@ -1,0 +1,312 @@
+app:
+  name: "hostveil"
+  header:
+    subtitle: "리눅스 셀프호스팅 보안 대시보드"
+  status:
+    bootstrap: "Rust 스캔, TUI, JSON 내보내기를 사용할 수 있습니다."
+    no_target: "명시적인 대상이 없습니다. 인자 없이 실행하면 라이브 탐색을 수행하고, 특정 대상은 --compose PATH 또는 --host-root PATH를 사용하세요."
+    compose_loaded: "%{path}에서 서비스 %{count}개를 로드했습니다"
+    host_loaded: "%{path}에서 호스트 점검을 로드했습니다"
+    compose_and_host_loaded: "%{path}에서 서비스 %{count}개를 로드했고 호스트 점검을 함께 활성화했습니다"
+    live_discovery: "라이브 스캔: 프로젝트 %{project_count}개를 발견했고 호스트 점검을 활성화했습니다"
+    live_host_only: "라이브 스캔: 호스트 전용 모드"
+    live_docker_missing: "라이브 스캔: Docker를 찾지 못해 호스트 전용 모드로 전환합니다"
+    live_docker_denied: "라이브 스캔: Docker 권한이 없어 호스트 전용 모드로 전환합니다"
+    live_docker_failed: "라이브 스캔: Docker 탐색에 실패해 호스트 전용 모드로 전환합니다"
+  help:
+    usage: "사용법"
+    options: "옵션"
+    lifecycle: "수명주기"
+    text: |
+      hostveil
+
+      사용법:
+        hostveil
+        hostveil --json
+        hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil setup [--tool NAME]... [--tools LIST] [--yes]
+        hostveil --quick-fix PATH [--preview-changes] [--yes]
+        hostveil --fix PATH [--preview-changes] [--yes]
+        hostveil upgrade [--version TAG]
+        hostveil uninstall
+        hostveil auto-upgrade enable
+        hostveil auto-upgrade disable
+        hostveil --version
+        hostveil --help
+
+      수명주기:
+        첫 설치:
+          curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+        설치 후:
+          hostveil setup
+          hostveil upgrade
+          hostveil uninstall
+          hostveil auto-upgrade enable|disable
+
+      옵션:
+        --compose PATH    라이브 탐색 대신 특정 Compose 파일 또는 디렉터리를 사용합니다
+        --host-root PATH  기본 호스트 루트(/) 대신 특정 Linux 루트 또는 스냅샷을 사용합니다
+        --tool NAME       hostveil setup에서 설치 도구를 명시적으로 선택합니다(반복 가능)
+        --tools LIST      무인 setup 실행용 쉼표 구분 도구 목록입니다
+        --quick-fix PATH  특정 파일 또는 디렉터리에 안전한 Compose 전용 수정을 미리보기 또는 적용합니다
+        --fix PATH        특정 파일 또는 디렉터리에 안전/가이드 Compose 변경을 미리보기 또는 적용합니다
+        --preview-changes 파일을 쓰지 않고 예정된 diff를 표시합니다
+        --yes             대화형 확인 없이 검토한 변경을 적용합니다
+        --json            TUI 대신 스캔 결과 JSON을 출력합니다
+        -V, --version     버전 정보를 표시합니다
+        -h, --help        이 도움말을 표시합니다
+  version:
+    text: "%{name} %{version}"
+  hint:
+    quit: "q 또는 Esc를 눌러 종료"
+    json: "현재 스캔 결과 구조를 확인하려면 --json을 사용하세요"
+    open_findings: "Enter 또는 Right로 발견 항목을 엽니다"
+    switch_focus: "Tab, Left, Right로 포커스를 전환합니다"
+    switch_focus_compact: "Tab 또는 Left/Right로 포커스 전환"
+    list_move: "Arrow 키 또는 j/k로 발견 항목을 이동합니다"
+    list_move_compact: "Up/Down 또는 j/k 이동"
+    detail_scroll: "Arrow 키, j/k, PageUp/PageDown으로 상세 내용을 스크롤합니다"
+    detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn 스크롤"
+    back_overview: "q 또는 Esc를 눌러 개요로 돌아갑니다"
+    back_overview_compact: "q 또는 Esc로 뒤로"
+    finding_controls: "Tab 또는 Left/Right 포커스 전환 | s 심각도 | x 소스 | o 정렬 | 1-4 점프 | q 또는 Esc 뒤로"
+    finding_controls_compact: "Tab/LR 포커스 | s 심각도 | x 소스 | o 정렬 | 1-4 점프 | q 뒤로"
+    fix_review_scroll: "Up/Down 또는 PgUp/PgDn으로 diff를 스크롤합니다"
+    fix_review_apply: "y 또는 Enter를 눌러 검토한 변경을 적용합니다"
+    fix_review_cancel: "q 또는 Esc를 눌러 취소합니다"
+  footer:
+    quit: "종료"
+    findings: "발견 항목 열기"
+    json: "JSON 내보내기"
+  panel:
+    status: "상태"
+    hints: "힌트"
+    server_status: "서버 상태"
+    scan_results: "스캔 결과"
+    security_scores: "보안 점수"
+    fix_paths: "수정 경로"
+    fix_review: "수정 검토"
+    fix_diff: "Diff"
+    overview_score: "전체 점수"
+    overview_axes: "축별 점수"
+    overview_activity: "발견 사항과 어댑터"
+    overview_findings: "주요 발견 사항"
+    next_steps: "다음 단계"
+    next_step_one: "심각도가 높은 발견 사항부터 검토하세요"
+    next_step_two: "자동화와 회귀 스냅샷에는 --json을 사용하세요"
+    next_step_three: "대상 스캔에는 --compose PATH 또는 --host-root PATH를 사용하세요"
+    findings_list: "발견 항목"
+    findings_list_active: "발견 항목 [리스트 포커스]"
+    finding_detail: "상세"
+    finding_detail_active: "상세 [상세 포커스]"
+  overview:
+    score_caption: "전체 보안 상태"
+    findings_available: "발견 항목 %{count}개가 있습니다. 상세 보기를 열어 확인하세요."
+    no_findings: "현재 발견 항목이 없습니다."
+    adapters_none: "아직 보고된 선택형 어댑터 상태가 없습니다."
+  server:
+    host_name: "호스트"
+    root_path: "루트"
+    docker_version: "Docker"
+    uptime: "업타임"
+    load: "부하"
+    controls: "방어 제어"
+    fail2ban: "Fail2ban"
+    control_enabled: "활성"
+    control_installed: "설치됨"
+    control_not_detected: "감지되지 않음"
+    control_jails: "jail %{count}개"
+    control_banned_ips: "차단 IP %{count}개"
+    services_heading: "서비스"
+    no_services: "로드된 Compose 서비스가 없습니다."
+    no_image: "이미지 정보 없음"
+    more_services: "... 외 %{count}개 서비스"
+    not_scanned: "스캔 안 됨"
+    not_loaded: "로드 안 됨"
+    not_available: "해당 없음"
+  summary:
+    title: "현재 스캔 컨텍스트"
+    none: "이번 스캔에서 로드된 Compose 프로젝트가 없습니다"
+    compose_file: "Compose 파일: %{path}"
+    compose_root: "작업 디렉터리: %{path}"
+    host_root: "호스트 루트: %{path}"
+    loaded_files: "로드된 파일 수: %{count}"
+    service_count: "서비스 수: %{count}"
+    overall_score: "전체 점수: %{score}"
+    finding_count: "발견 항목 수: %{count}"
+  adapter:
+    lynis_pentest_mode: "Lynis가 비권한 pentest 모드로 실행되어 root 권한이 필요한 일부 점검이 생략될 수 있습니다."
+    lynis_non_zero_exit: "Lynis가 비정상 종료 코드로 종료했습니다: %{detail}. 사용 가능한 보고서는 계속 파싱했습니다."
+    lynis_report_missing: "Lynis가 보고서 파일을 생성하지 않았습니다."
+  setup:
+    heading: "hostveil setup"
+    detected_os: "감지된 OS: %{name}"
+    selected_tools: "선택된 도구: %{tools}"
+    planned_changes: "예정된 변경"
+    prompt_tools: "설치하고 구성할 선택형 도구를 고르세요"
+    prompt_confirm: "이 setup 계획을 적용할까요?"
+    skipped: "Setup을 건너뛰었습니다. 나중에 `hostveil setup`으로 다시 구성하세요."
+    requesting_sudo: "패키지 설치와 시스템 구성을 위해 sudo 권한을 요청합니다..."
+    running_step: "실행 중: %{step}"
+    verification_heading: "검증"
+    complete: "Setup이 완료되었습니다. 설치 도구를 조정하려면 언제든지 `hostveil setup`을 다시 실행하세요."
+    check_failed: "%{command} 검증에 실패했습니다: %{detail}"
+    error:
+      unsupported_os: "hostveil setup은 아직 자동 의존성 설치를 지원하지 않습니다:"
+    step:
+      dnf_install: "dnf로 패키지 설치: %{packages}"
+      apt_install: "apt로 패키지 설치: %{packages}"
+      trivy_repo: "Trivy APT 저장소 추가"
+      fail2ban_baseline: "관리형 Fail2Ban sshd 기본 설정을 작성하고 서비스를 활성화"
+    tool:
+      lynis:
+        name: "Lynis"
+        prompt: "Lynis: 호스트 감사 및 하드닝 점검"
+      trivy:
+        name: "Trivy"
+        prompt: "Trivy: 이미지/컨테이너 취약점 스캔"
+      fail2ban:
+        name: "Fail2Ban"
+        prompt: "Fail2Ban: SSH 기본 침입 방지"
+  error:
+    unknown_argument: "알 수 없는 인자: %{argument}"
+    missing_argument_value: "인자 값이 없습니다: %{flag}"
+    invalid_argument_combination: "잘못된 인자 조합: %{message}"
+    lifecycle_requires_installed_wrapper: "%{command} 명령은 설치된 hostveil 래퍼에서만 사용할 수 있습니다. 먼저 설치 스크립트로 hostveil을 설치하세요"
+    compose_path_missing: "compose 경로가 존재하지 않습니다: %{path}"
+    compose_file_not_found: "디렉터리에서 compose 파일을 찾지 못했습니다: %{path}"
+    compose_malformed_yaml: "%{path}의 YAML 파싱에 실패했습니다: %{message}"
+    compose_missing_services: "%{path}에서 서비스를 찾지 못했습니다"
+    compose_io: "%{path} 읽기에 실패했습니다: %{message}"
+    io: "애플리케이션 오류: %{message}"
+    fix_serialize: "업데이트된 compose 파일 직렬화에 실패했습니다: %{message}"
+    json_export_failed: "현재 스캔 결과 직렬화에 실패했습니다"
+    tui_requires_terminal: "대화형 TUI는 터미널이 필요합니다. 비대화형 실행에는 --json을 사용하세요"
+    fix_requires_terminal: "guided Compose 수정은 터미널 검토가 필요합니다. 비대화형에서는 --preview-changes로 diff를 확인하세요"
+    missing_translation: "번역 키를 찾지 못했습니다: %{key}"
+  finding:
+    header: "발견 항목 상세"
+    status: "%{count}개 중 %{index} 선택 | 포커스: %{focus}"
+    empty_status: "아직 발견 항목이 없습니다"
+    empty_title: "발견 항목 없음"
+    empty_description: "대상을 스캔하거나 발견 항목이 생길 때까지 기다리세요."
+    focus_list: "리스트"
+    focus_detail: "상세"
+    subject_label: "대상"
+    related_service_label: "연관 서비스"
+    description_label: "설명"
+    why_label: "위험한 이유"
+    fix_label: "해결 방법"
+    evidence_label: "증거"
+    no_evidence: "이 발견 항목에는 구조화된 증거가 없습니다."
+    severity_filter_short: "심각도"
+    source_filter_short: "소스"
+    sort_short: "정렬"
+    filter_all: "전체"
+    sort_severity: "심각도"
+    sort_source: "소스"
+    sort_subject: "대상"
+  result:
+    host_group: "호스트"
+    ok: "정상"
+    none: "그룹화된 스캔 결과가 없습니다."
+    single_finding: "발견 항목 1개"
+    multi_findings: "발견 항목 %{count}개"
+    discovery_heading: "탐색"
+    adapters_heading: "어댑터"
+    warnings_heading: "경고"
+    docker_available: "사용 가능"
+    docker_missing: "없음"
+    docker_permission_denied: "권한 없음"
+    docker_failed: "실패: %{detail}"
+  fix:
+    none: "현재 대상에 적용 가능한 Compose 수정이 없습니다."
+    file: "Compose 파일: %{path}"
+    safe_plan: "안전한 변경 %{count}개를 검토할 수 있습니다."
+    guided_plan: "가이드 변경 %{count}개를 검토할 수 있습니다."
+    preview_only: "미리보기 전용: 파일은 수정되지 않았습니다."
+    cancelled: "파일을 쓰지 않고 취소했습니다."
+    backup: "백업 생성: %{path}"
+    applied: "적용됨: %{summary}"
+    confirm_quick: "%{path}에 안전한 Compose 변경을 적용할까요? [y/N]: "
+    confirm_all: "%{path}에 검토한 Compose 변경을 적용할까요? [y/N]: "
+    safe_bind_localhost: "%{service}: 공개 포트 %{port}를 127.0.0.1에 바인딩"
+    safe_nginx_stable: "%{service}: nginx를 nginx:stable로 고정"
+    guided_privileged_cap_add: "%{service}: privileged 모드를 최소 NET_BIND_SERVICE capability 검토 방식으로 대체"
+    guided_vaultwarden_signups: "%{service}: SIGNUPS_ALLOWED를 false로 설정"
+    guided_gitea_externalize_secrets: "%{service}: Gitea 보안 시크릿의 inline 값을 환경 변수 플레이스홀더로 교체"
+    guided_nginx_stable: "%{service}: nginx를 nginx:stable로 고정하도록 검토"
+axis:
+  sensitive_data: "민감 데이터"
+  permissions: "권한"
+  exposure: "노출"
+  updates: "공급망"
+  host_hardening: "호스트 하드닝"
+severity:
+  critical: "치명적"
+  high: "높음"
+  medium: "보통"
+  low: "낮음"
+scope:
+  service: "서비스"
+  image: "이미지"
+  host: "호스트"
+  project: "프로젝트"
+source:
+  native_compose: "네이티브 Compose"
+  native_host: "네이티브 호스트"
+  trivy: "Trivy"
+  lynis: "Lynis"
+  dockle: "Dockle"
+adapter:
+  pending: "대기 중"
+  available: "사용 가능"
+  missing: "없음"
+  skipped: "건너뜀: %{detail}"
+  failed: "실패: %{detail}"
+  reason:
+    no_image_targets: "발견된 이미지 대상이 없습니다"
+    host_not_scanned: "호스트 스캔이 요청되지 않았습니다"
+    live_host_only: "루트(/) 기반 라이브 호스트 스캔이 필요합니다"
+finding:
+  lynis:
+    host_warnings:
+      title: "Lynis가 호스트 하드닝 경고를 보고했습니다"
+      description: "Lynis가 %{subject}에 대해 하드닝 지수 %{index}와 함께 경고 %{count}개를 보고했습니다."
+      why: "Lynis 경고는 공격 표면을 넓히거나 침해 후 복구를 약화시키는 호스트 하드닝 공백을 가리키는 경우가 많습니다."
+      fix: "Lynis 경고를 우선순위대로 검토하고 영향이 큰 하드닝부터 적용한 뒤 감사 결과를 다시 확인하세요."
+    host_suggestions:
+      title: "Lynis가 추가 하드닝 제안을 보고했습니다"
+      description: "Lynis가 %{subject}에 대해 하드닝 지수 %{index}와 함께 제안 %{count}개를 보고했습니다."
+      why: "즉시 조치 항목이 아니더라도 하드닝 제안이 누적되면 기본 호스트 보안 상태가 기대보다 약하다는 신호일 수 있습니다."
+      fix: "호스트 역할에 맞는 Lynis 제안을 순차적으로 적용하고 각 단계 후 다시 감사를 수행하세요."
+  trivy:
+    image_vulnerabilities:
+      title: "이미지에 알려진 취약점이 있습니다"
+      description: "%{image}에서 Trivy가 보고한 취약점 기록 %{count}개가 발견되었습니다."
+      why: "기반 이미지나 패키지의 알려진 취약점은 노출된 서비스가 있을 때 악용될 수 있습니다."
+      fix: "이미지를 패치된 버전으로 업데이트하고 필요한 경우 재빌드한 뒤, 다음 배포 전 안정적인 태그나 digest로 고정하세요."
+  dockle:
+    image_best_practice:
+      title: "이미지가 Dockle 모범 사례 점검을 통과하지 못했습니다"
+      description: "%{image}에서 Dockle 모범 사례/하드닝 점검 %{count}개가 감지되었습니다."
+      why: "Dockle 발견 사항은 이미지 레이어 하드닝 부족을 나타내며, 셀프호스팅 환경에서 악용 가능성을 높이거나 런타임 격리를 약화시킬 수 있습니다."
+      fix: "Dockle 체크포인트 ID를 기준으로 Dockerfile 또는 기반 이미지를 개선하고, 영향이 큰 항목이 해소될 때까지 재스캔하세요."
+  updates:
+    latest:
+      title: "이미지가 latest 태그를 사용합니다"
+      description: "%{service}가 %{image}를 사용하고 있어 고정 버전 대신 가변 대상을 추적합니다."
+      why: "가변 태그는 배포 재현성을 떨어뜨리고 예고 없는 변경을 끌어올 수 있습니다."
+      fix: "다음 배포 전 특정 버전 또는 digest로 이미지를 고정하세요."
+    no_tag:
+      title: "이미지에 명시적인 태그가 없습니다"
+      description: "%{service}가 명시적 태그 없이 %{image}를 사용합니다."
+      why: "태그 없는 이미지는 latest와 유사하게 해석되어 업데이트가 예측 불가능해집니다."
+      fix: "고정 릴리스 버전 같은 안정적인 명시 태그를 추가하세요."
+    major_only:
+      title: "이미지가 메이저 버전만 고정되어 있습니다"
+      description: "%{service}가 메이저 버전만 고정된 %{image}를 사용합니다."
+      why: "메이저 전용 태그도 마이너/패치 업데이트로 이동해 동작 변화를 유발할 수 있습니다."
+      fix: "예측 가능한 롤아웃을 위해 최소 마이너 또는 패치 버전까지 고정하세요."
+test:
+  fallback_probe: "English fallback probe"

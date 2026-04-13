@@ -1,4 +1,55 @@
+use std::env;
+
 use crate::compose::ComposeParseError;
+
+pub fn initialize_locale_from_env() {
+    let hostveil_locale = env::var("HOSTVEIL_LOCALE").ok();
+    let lc_all = env::var("LC_ALL").ok();
+    let lang = env::var("LANG").ok();
+
+    rust_i18n::set_locale(resolve_preferred_locale(
+        hostveil_locale.as_deref(),
+        lc_all.as_deref(),
+        lang.as_deref(),
+    ));
+}
+
+fn resolve_preferred_locale(
+    hostveil_locale: Option<&str>,
+    lc_all: Option<&str>,
+    lang: Option<&str>,
+) -> &'static str {
+    [hostveil_locale, lc_all, lang]
+        .into_iter()
+        .flatten()
+        .find_map(normalize_locale_tag)
+        .unwrap_or("en")
+}
+
+fn normalize_locale_tag(raw: &str) -> Option<&'static str> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let without_codeset = trimmed.split_once('.').map_or(trimmed, |(head, _)| head);
+    let without_modifier = without_codeset
+        .split_once('@')
+        .map_or(without_codeset, |(head, _)| head);
+    let language = without_modifier.replace('_', "-").to_ascii_lowercase();
+
+    if language == "c" || language == "posix" {
+        return Some("en");
+    }
+
+    if language.starts_with("ko") {
+        Some("ko")
+    } else if language.starts_with("en") {
+        Some("en")
+    } else {
+        None
+    }
+}
 
 pub fn tr(key: &str) -> String {
     match key {
@@ -136,8 +187,9 @@ pub fn tr_summary_finding_count(count: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        tr, tr_compose_parse_error, tr_fix_requires_terminal, tr_invalid_argument_combination,
-        tr_io_error, tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
+        normalize_locale_tag, resolve_preferred_locale, tr, tr_compose_parse_error,
+        tr_fix_requires_terminal, tr_invalid_argument_combination, tr_io_error,
+        tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
         tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
         tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
         tr_summary_service_count, tr_tui_requires_terminal, tr_unknown_argument, tr_version,
@@ -275,5 +327,55 @@ mod tests {
     #[test]
     fn formats_finding_count_summary() {
         assert_eq!(tr_summary_finding_count(4), "Finding count: 4");
+    }
+
+    #[test]
+    fn locale_resolver_prefers_explicit_hostveil_locale() {
+        assert_eq!(
+            resolve_preferred_locale(Some("ko_KR.UTF-8"), Some("en_US.UTF-8"), Some("en_US")),
+            "ko"
+        );
+    }
+
+    #[test]
+    fn locale_resolver_uses_system_locale_when_explicit_locale_is_missing() {
+        assert_eq!(
+            resolve_preferred_locale(None, Some("ko-KR"), Some("en_US.UTF-8")),
+            "ko"
+        );
+    }
+
+    #[test]
+    fn locale_resolver_falls_back_to_english_for_unknown_values() {
+        assert_eq!(
+            resolve_preferred_locale(Some("fr_FR.UTF-8"), Some("de_DE"), Some("es_ES")),
+            "en"
+        );
+        assert_eq!(resolve_preferred_locale(Some("C.UTF-8"), None, None), "en");
+    }
+
+    #[test]
+    fn locale_tag_parser_handles_common_variants() {
+        assert_eq!(normalize_locale_tag("ko_KR.UTF-8"), Some("ko"));
+        assert_eq!(normalize_locale_tag("en-US"), Some("en"));
+        assert_eq!(normalize_locale_tag("POSIX"), Some("en"));
+        assert_eq!(normalize_locale_tag(""), None);
+    }
+
+    #[test]
+    fn korean_locale_translates_cli_and_tui_strings() {
+        assert_eq!(t!("app.help.usage", locale = "ko").into_owned(), "사용법");
+        assert_eq!(
+            t!("app.hint.quit", locale = "ko").into_owned(),
+            "q 또는 Esc를 눌러 종료"
+        );
+    }
+
+    #[test]
+    fn korean_locale_falls_back_to_english_for_missing_keys() {
+        assert_eq!(
+            t!("test.fallback_probe", locale = "ko").into_owned(),
+            "English fallback probe"
+        );
     }
 }

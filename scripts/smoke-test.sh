@@ -30,10 +30,12 @@ printf '%s\n' "$VERSION_OUTPUT" | grep -q '^hostveil '
 $BINARY_PATH --help | grep -q -- '--version'
 $BINARY_PATH --help | grep -q -- 'hostveil upgrade'
 $BINARY_PATH --help | grep -q -- 'hostveil auto-upgrade enable'
+HOSTVEIL_LOCALE=ko $BINARY_PATH --help | grep -q '사용법'
 $BINARY_PATH --json | grep -q '"scan_mode": "live"'
 $BINARY_PATH --json --compose "$COMPOSE_FIXTURE" | grep -q '"findings"'
 $BINARY_PATH --json --host-root "$TMP_HOST_ROOT" | grep -q '"host_runtime"'
 $BINARY_PATH --quick-fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
+HOSTVEIL_LOCALE=ko $BINARY_PATH --quick-fix "$COMPOSE_FIXTURE" --preview-changes | grep -q '미리보기 전용'
 $BINARY_PATH --fix "$COMPOSE_FIXTURE" --preview-changes | grep -q 'Preview only: no files were modified.'
 
 set +e
