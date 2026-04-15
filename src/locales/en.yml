@@ -424,6 +424,16 @@ finding:
       description: "%{path} does not show local markers for Fail2ban."
       why: "Basic blocking or ban automation can slow down repeated password attacks, scanning, and other noisy abuse against exposed services."
       fix: "Install and enable Fail2ban, then verify it is protecting the services you expose."
+    ufw_disabled:
+      title: "UFW is installed but disabled"
+      description: "%{path} shows UFW is present but ENABLED is set to no."
+      why: "A host firewall helps narrow inbound exposure and makes it harder for accidentally published services to become reachable."
+      fix: "Enable UFW, review the default policy, and allow only the ports you intentionally expose."
+    unattended_upgrades_disabled:
+      title: "Automatic security updates are disabled"
+      description: "%{path} disables unattended-upgrades."
+      why: "Missing security updates can leave known vulnerabilities unpatched longer than intended."
+      fix: "Enable unattended-upgrades (or an equivalent patching workflow) so security fixes are applied regularly."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"
