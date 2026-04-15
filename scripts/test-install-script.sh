@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BINARY_PATH="${1:-$ROOT_DIR/target/debug/hostveil}"
 INSTALLER_PATH="$ROOT_DIR/scripts/install.sh"
 REAL_BASH="$(command -v bash)"
+# Keep test output deterministic across developer locales; allow explicit override.
+HOSTVEIL_TEST_LOCALE="${HOSTVEIL_TEST_LOCALE:-en}"
+export HOSTVEIL_LOCALE="$HOSTVEIL_TEST_LOCALE"
 
 [[ -x "$BINARY_PATH" ]] || {
   printf 'error: binary is not executable: %s\n' "$BINARY_PATH" >&2
