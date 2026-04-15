@@ -53,7 +53,10 @@ hostveil/
 - Do **not** bundle unrelated changes into one commit — split them
 - Do **not** commit a broken or half-finished state; if a task spans multiple commits, ensure each intermediate commit at least compiles/runs
 - Prefer small, reviewable commits over large, hard-to-review ones
-- Always run the relevant checks before committing: `cargo clippy && cargo fmt` (Rust), or verify the prototype runs (Python)
+- Always run the relevant checks before committing:
+	- Rust baseline: `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`
+	- Rust install/release/entrypoint-impacting changes: also run `./scripts/smoke-test.sh target/debug/hostveil` and `./scripts/test-install-script.sh target/debug/hostveil`
+	- Python prototype work: verify the prototype still runs (and tests where relevant)
 
 **i18n:**
 - All user-visible strings must go through the i18n layer — no hardcoded display text
@@ -61,7 +64,7 @@ hostveil/
 
 **Rust (when src/ exists):**
 - `Cargo.lock` must be committed — hostveil is a binary crate
-- Run `cargo clippy` and `cargo fmt` before committing
+- Run `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` before committing
 
 **Versioning and releases:**
 - Use SemVer `X.Y.Z` for the crate and binary version
