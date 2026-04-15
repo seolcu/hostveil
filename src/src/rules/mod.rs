@@ -336,6 +336,62 @@ mod realistic_fixture_tests {
             ]
         );
     }
+
+    #[test]
+    fn nextcloud_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("nextcloud", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn nextcloud_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("nextcloud", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "nextcloud", Severity::Medium),
+                ("permissions.implicit_root", "nextcloud", Severity::Medium),
+                (
+                    "sensitive.default_credential",
+                    "nextcloud",
+                    Severity::Critical,
+                ),
+                ("updates.latest_tag", "nextcloud", Severity::High),
+                (
+                    "service.nextcloud.insecure_overwriteprotocol",
+                    "nextcloud",
+                    Severity::High,
+                ),
+                (
+                    "service.nextcloud.wildcard_trusted_domains",
+                    "nextcloud",
+                    Severity::High,
+                ),
+                (
+                    "service.nextcloud.default_admin_credentials",
+                    "nextcloud",
+                    Severity::Critical,
+                ),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

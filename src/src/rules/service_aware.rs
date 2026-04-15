@@ -12,6 +12,7 @@ enum ServiceKind {
     Vaultwarden,
     Jellyfin,
     Gitea,
+    Nextcloud,
     Immich,
 }
 
@@ -27,6 +28,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Vaultwarden => findings.extend(scan_vaultwarden_risk(service)),
             ServiceKind::Jellyfin => findings.extend(scan_jellyfin_risk(service)),
             ServiceKind::Gitea => findings.extend(scan_gitea_risk(service)),
+            ServiceKind::Nextcloud => findings.extend(scan_nextcloud_risk(service)),
             ServiceKind::Immich => findings.extend(scan_immich_risk(project, service)),
         }
     }
@@ -35,12 +37,9 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
 }
 
 fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
-    let haystack = format!(
-        "{} {}",
-        service.name,
-        service.image.as_deref().unwrap_or_default()
-    )
-    .to_lowercase();
+    let service_name = service.name.to_lowercase();
+    let image = service.image.as_deref().unwrap_or_default().to_lowercase();
+    let haystack = format!("{service_name} {image}");
 
     if haystack.contains("vaultwarden") {
         Some(ServiceKind::Vaultwarden)
@@ -48,7 +47,9 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Jellyfin)
     } else if haystack.contains("gitea") {
         Some(ServiceKind::Gitea)
-    } else if service.name.contains("immich-server") || haystack.contains("immich-server") {
+    } else if image.contains("nextcloud") || service_name == "nextcloud" {
+        Some(ServiceKind::Nextcloud)
+    } else if service_name.contains("immich-server") || haystack.contains("immich-server") {
         Some(ServiceKind::Immich)
     } else {
         None
@@ -292,6 +293,92 @@ fn scan_gitea_risk(service: &ComposeService) -> Vec<Finding> {
     findings
 }
 
+fn scan_nextcloud_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed
+        && let Some(overwrite_protocol) = env_value(service, "OVERWRITEPROTOCOL")
+        && overwrite_protocol.eq_ignore_ascii_case("http")
+    {
+        findings.push(service_finding(
+            "service.nextcloud.insecure_overwriteprotocol",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.nextcloud.insecure_overwriteprotocol.title").into_owned(),
+                description: t!(
+                    "finding.nextcloud.insecure_overwriteprotocol.description",
+                    service = service.name.as_str(),
+                    protocol = overwrite_protocol
+                )
+                .into_owned(),
+                why_risky: t!("finding.nextcloud.insecure_overwriteprotocol.why").into_owned(),
+                how_to_fix: t!("finding.nextcloud.insecure_overwriteprotocol.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("OVERWRITEPROTOCOL")),
+                (String::from("value"), overwrite_protocol.to_owned()),
+            ]),
+        ));
+    }
+
+    if let Some(trusted_domains) = env_value(service, "NEXTCLOUD_TRUSTED_DOMAINS")
+        && contains_wildcard_trusted_domain(trusted_domains)
+    {
+        findings.push(service_finding(
+            "service.nextcloud.wildcard_trusted_domains",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.nextcloud.wildcard_trusted_domains.title").into_owned(),
+                description: t!(
+                    "finding.nextcloud.wildcard_trusted_domains.description",
+                    service = service.name.as_str(),
+                    trusted_domains = trusted_domains
+                )
+                .into_owned(),
+                why_risky: t!("finding.nextcloud.wildcard_trusted_domains.why").into_owned(),
+                how_to_fix: t!("finding.nextcloud.wildcard_trusted_domains.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("trusted_domains"), trusted_domains.to_owned())]),
+        ));
+    }
+
+    if has_default_nextcloud_admin_credentials(service) {
+        findings.push(service_finding(
+            "service.nextcloud.default_admin_credentials",
+            Axis::SensitiveData,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.nextcloud.default_admin_credentials.title").into_owned(),
+                description: t!(
+                    "finding.nextcloud.default_admin_credentials.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.nextcloud.default_admin_credentials.why").into_owned(),
+                how_to_fix: t!("finding.nextcloud.default_admin_credentials.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (
+                    String::from("user_variable"),
+                    String::from("NEXTCLOUD_ADMIN_USER"),
+                ),
+                (
+                    String::from("password_variable"),
+                    String::from("NEXTCLOUD_ADMIN_PASSWORD"),
+                ),
+            ]),
+        ));
+    }
+
+    findings
+}
+
 fn scan_immich_risk(project: &ComposeProject, service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let shared_secret_env_files = shared_secret_env_files(project, "immich");
@@ -380,6 +467,32 @@ fn inline_env_keys(service: &ComposeService, keys: &[&str]) -> Vec<String> {
     keys.iter()
         .filter_map(|key| env_value(service, key).map(|_| (*key).to_owned()))
         .collect()
+}
+
+fn contains_wildcard_trusted_domain(value: &str) -> bool {
+    value
+        .split(|ch: char| ch == ',' || ch.is_whitespace())
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .any(|token| token == "*" || token == "0.0.0.0" || token == "::" || token.starts_with("*."))
+}
+
+fn has_default_nextcloud_admin_credentials(service: &ComposeService) -> bool {
+    let Some(admin_user) = env_value(service, "NEXTCLOUD_ADMIN_USER") else {
+        return false;
+    };
+    let Some(admin_password) = env_value(service, "NEXTCLOUD_ADMIN_PASSWORD") else {
+        return false;
+    };
+
+    if !admin_user.eq_ignore_ascii_case("admin") {
+        return false;
+    }
+
+    matches!(
+        admin_password.to_ascii_lowercase().as_str(),
+        "admin" | "password" | "nextcloud" | "changeme" | "123456" | "12345678"
+    )
 }
 
 fn shared_secret_env_files(project: &ComposeProject, service_prefix: &str) -> Vec<String> {
@@ -592,6 +705,38 @@ mod tests {
             vec![
                 "service.immich.shared_secret_env_file",
                 "service.immich.default_db_password",
+            ]
+        );
+    }
+
+    #[test]
+    fn nextcloud_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("nextcloud", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn nextcloud_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("nextcloud", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.nextcloud.insecure_overwriteprotocol",
+                "service.nextcloud.wildcard_trusted_domains",
+                "service.nextcloud.default_admin_credentials",
             ]
         );
     }
