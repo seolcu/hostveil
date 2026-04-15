@@ -16,8 +16,11 @@ const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
 const UFW_CONFIG_PATH: &str = "etc/ufw/ufw.conf";
+const UFW_DEFAULT_POLICY_PATH: &str = "etc/default/ufw";
 const UFW_INSTALL_MARKERS: [&str; 3] = ["etc/ufw/ufw.conf", "usr/sbin/ufw", "usr/bin/ufw"];
 const APT_AUTO_UPGRADES_CONFIG_PATH: &str = "etc/apt/apt.conf.d/20auto-upgrades";
+const APT_PERIODIC_UNATTENDED_UPGRADE_KEY: &str = "APT::Periodic::Unattended-Upgrade";
+const APT_PERIODIC_UPDATE_PACKAGE_LISTS_KEY: &str = "APT::Periodic::Update-Package-Lists";
 const FAIL2BAN_INSTALL_MARKERS: [&str; 6] = [
     "etc/fail2ban",
     "usr/bin/fail2ban-client",
@@ -252,6 +255,28 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         ));
     }
 
+    if let Some(setting) = settings.get("x11forwarding")
+        && setting.value == "yes"
+    {
+        let subject_path = &setting.source;
+        findings.push(host_finding(
+            "host.ssh_x11_forwarding_enabled",
+            Severity::Medium,
+            subject_path,
+            HostFindingText {
+                title: t!("finding.host.ssh_x11_forwarding.title").into_owned(),
+                description: t!(
+                    "finding.host.ssh_x11_forwarding.description",
+                    path = subject_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.ssh_x11_forwarding.why").into_owned(),
+                how_to_fix: t!("finding.host.ssh_x11_forwarding.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+        ));
+    }
+
     findings
 }
 
@@ -388,41 +413,62 @@ fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
         return Vec::new();
     }
 
-    let Some(config_path) = resolve_existing_path(&context.root, UFW_CONFIG_PATH) else {
-        return Vec::new();
-    };
+    let mut findings = Vec::new();
 
-    let Ok(config_text) = fs::read_to_string(&config_path) else {
-        return Vec::new();
-    };
-
-    let Some(enabled) = parse_ufw_enabled(&config_text) else {
-        return Vec::new();
-    };
-
-    if enabled {
-        return Vec::new();
+    if let Some(config_path) = resolve_existing_path(&context.root, UFW_CONFIG_PATH)
+        && let Ok(config_text) = fs::read_to_string(&config_path)
+        && let Some(enabled) = parse_ufw_enabled(&config_text)
+        && !enabled
+    {
+        findings.push(host_finding(
+            "host.ufw_installed_but_disabled",
+            Severity::Medium,
+            &config_path,
+            HostFindingText {
+                title: t!("finding.host.ufw_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.ufw_disabled.description",
+                    path = config_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.ufw_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.ufw_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), config_path.display().to_string()),
+                (String::from("enabled"), String::from("no")),
+            ]),
+        ));
     }
 
-    vec![host_finding(
-        "host.ufw_installed_but_disabled",
-        Severity::Medium,
-        &config_path,
-        HostFindingText {
-            title: t!("finding.host.ufw_disabled.title").into_owned(),
-            description: t!(
-                "finding.host.ufw_disabled.description",
-                path = config_path.display().to_string()
-            )
-            .into_owned(),
-            why_risky: t!("finding.host.ufw_disabled.why").into_owned(),
-            how_to_fix: t!("finding.host.ufw_disabled.fix").into_owned(),
-        },
-        BTreeMap::from([
-            (String::from("path"), config_path.display().to_string()),
-            (String::from("enabled"), String::from("no")),
-        ]),
-    )]
+    if let Some(defaults_path) = resolve_existing_path(&context.root, UFW_DEFAULT_POLICY_PATH)
+        && let Ok(defaults_text) = fs::read_to_string(&defaults_path)
+        && let Some(policy) = parse_ufw_default_input_policy(&defaults_text)
+        && policy.eq_ignore_ascii_case("accept")
+    {
+        findings.push(host_finding(
+            "host.ufw_default_input_policy_accept",
+            Severity::Medium,
+            &defaults_path,
+            HostFindingText {
+                title: t!("finding.host.ufw_default_input_policy_accept.title").into_owned(),
+                description: t!(
+                    "finding.host.ufw_default_input_policy_accept.description",
+                    path = defaults_path.display().to_string(),
+                    policy = policy.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.ufw_default_input_policy_accept.why").into_owned(),
+                how_to_fix: t!("finding.host.ufw_default_input_policy_accept.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), defaults_path.display().to_string()),
+                (String::from("policy"), policy),
+            ]),
+        ));
+    }
+
+    findings
 }
 
 fn scan_package_update_hardening(context: &HostContext) -> Vec<Finding> {
@@ -435,33 +481,60 @@ fn scan_package_update_hardening(context: &HostContext) -> Vec<Finding> {
         return Vec::new();
     };
 
-    let Some(enabled) = parse_unattended_upgrades_enabled(&config_text) else {
-        return Vec::new();
-    };
+    let mut findings = Vec::new();
 
-    if enabled {
-        return Vec::new();
+    if let Some(enabled) = parse_unattended_upgrades_enabled(&config_text)
+        && !enabled
+    {
+        findings.push(host_finding(
+            "host.apt_unattended_upgrades_disabled",
+            Severity::Medium,
+            &config_path,
+            HostFindingText {
+                title: t!("finding.host.unattended_upgrades_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.unattended_upgrades_disabled.description",
+                    path = config_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.unattended_upgrades_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.unattended_upgrades_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), config_path.display().to_string()),
+                (String::from("unattended_upgrade"), String::from("disabled")),
+            ]),
+        ));
     }
 
-    vec![host_finding(
-        "host.apt_unattended_upgrades_disabled",
-        Severity::Medium,
-        &config_path,
-        HostFindingText {
-            title: t!("finding.host.unattended_upgrades_disabled.title").into_owned(),
-            description: t!(
-                "finding.host.unattended_upgrades_disabled.description",
-                path = config_path.display().to_string()
-            )
-            .into_owned(),
-            why_risky: t!("finding.host.unattended_upgrades_disabled.why").into_owned(),
-            how_to_fix: t!("finding.host.unattended_upgrades_disabled.fix").into_owned(),
-        },
-        BTreeMap::from([
-            (String::from("path"), config_path.display().to_string()),
-            (String::from("unattended_upgrade"), String::from("disabled")),
-        ]),
-    )]
+    if let Some(enabled) = parse_package_lists_auto_update_enabled(&config_text)
+        && !enabled
+    {
+        findings.push(host_finding(
+            "host.apt_package_lists_auto_update_disabled",
+            Severity::Low,
+            &config_path,
+            HostFindingText {
+                title: t!("finding.host.package_lists_auto_update_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.package_lists_auto_update_disabled.description",
+                    path = config_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.package_lists_auto_update_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.package_lists_auto_update_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), config_path.display().to_string()),
+                (
+                    String::from("update_package_lists"),
+                    String::from("disabled"),
+                ),
+            ]),
+        ));
+    }
+
+    findings
 }
 
 fn detect_ufw_installed(root: &Path) -> bool {
@@ -493,16 +566,47 @@ fn parse_ufw_enabled(text: &str) -> Option<bool> {
     None
 }
 
-fn parse_unattended_upgrades_enabled(text: &str) -> Option<bool> {
-    const UNATTENDED_UPGRADE_KEY: &str = "APT::Periodic::Unattended-Upgrade";
-
+fn parse_ufw_default_input_policy(text: &str) -> Option<String> {
     for raw_line in text.lines() {
-        let line = strip_apt_comments(raw_line);
-        if line.is_empty() || !line.contains(UNATTENDED_UPGRADE_KEY) {
+        let line = strip_ini_comments(raw_line);
+        if line.is_empty() {
             continue;
         }
 
-        let (_, value) = line.split_once(UNATTENDED_UPGRADE_KEY)?;
+        let Some((key, value)) = parse_ini_key_value(line) else {
+            continue;
+        };
+        if !key.eq_ignore_ascii_case("DEFAULT_INPUT_POLICY") {
+            continue;
+        }
+
+        let policy = value.trim_matches('"').trim_matches('\'').trim();
+        if policy.is_empty() {
+            continue;
+        }
+
+        return Some(policy.to_ascii_uppercase());
+    }
+
+    None
+}
+
+fn parse_unattended_upgrades_enabled(text: &str) -> Option<bool> {
+    parse_apt_periodic_bool(text, APT_PERIODIC_UNATTENDED_UPGRADE_KEY)
+}
+
+fn parse_package_lists_auto_update_enabled(text: &str) -> Option<bool> {
+    parse_apt_periodic_bool(text, APT_PERIODIC_UPDATE_PACKAGE_LISTS_KEY)
+}
+
+fn parse_apt_periodic_bool(text: &str, key: &str) -> Option<bool> {
+    for raw_line in text.lines() {
+        let line = strip_apt_comments(raw_line);
+        if line.is_empty() || !line.contains(key) {
+            continue;
+        }
+
+        let (_, value) = line.split_once(key)?;
         let value = value
             .trim()
             .trim_start_matches('=')
@@ -1359,6 +1463,22 @@ mod tests {
     }
 
     #[test]
+    fn reports_ssh_x11_forwarding_when_enabled() {
+        let root = temp_host_root("ssh-x11-forwarding");
+        write_file(&root.join(SSH_CONFIG_PATH), "X11Forwarding yes\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ssh_x11_forwarding_enabled")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
     fn parse_sshd_config_honors_include_globs_and_tracks_effective_source() {
         let root = temp_host_root("sshd-include-abs");
         let config_path = root.join(SSH_CONFIG_PATH);
@@ -1503,6 +1623,48 @@ mod tests {
     }
 
     #[test]
+    fn reports_ufw_default_input_policy_accept() {
+        let root = temp_host_root("ufw-default-accept");
+        write_file(&root.join("usr/sbin/ufw"), "");
+        write_file(&root.join(UFW_CONFIG_PATH), "ENABLED=yes\n");
+        write_file(
+            &root.join(UFW_DEFAULT_POLICY_PATH),
+            "DEFAULT_INPUT_POLICY=\"ACCEPT\"\n",
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ufw_default_input_policy_accept")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn does_not_report_ufw_default_policy_when_drop() {
+        let root = temp_host_root("ufw-default-drop");
+        write_file(&root.join("usr/sbin/ufw"), "");
+        write_file(&root.join(UFW_CONFIG_PATH), "ENABLED=yes\n");
+        write_file(
+            &root.join(UFW_DEFAULT_POLICY_PATH),
+            "DEFAULT_INPUT_POLICY=\"DROP\"\n",
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.ufw_default_input_policy_accept")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
     fn does_not_report_ufw_when_enabled() {
         let root = temp_host_root("ufw-enabled");
         write_file(&root.join(UFW_CONFIG_PATH), "ENABLED=yes\n");
@@ -1541,6 +1703,33 @@ mod tests {
     }
 
     #[test]
+    fn reports_package_list_auto_updates_when_disabled() {
+        let root = temp_host_root("apt-package-lists-disabled");
+        write_file(
+            &root.join(APT_AUTO_UPGRADES_CONFIG_PATH),
+            concat!(
+                "APT::Periodic::Update-Package-Lists \"0\";\n",
+                "APT::Periodic::Unattended-Upgrade \"1\";\n"
+            ),
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.apt_package_lists_auto_update_disabled")
+        );
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.apt_unattended_upgrades_disabled")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
     fn unattended_upgrades_parser_handles_common_formats() {
         assert_eq!(
             parse_unattended_upgrades_enabled("APT::Periodic::Unattended-Upgrade \"1\";"),
@@ -1556,6 +1745,30 @@ mod tests {
         );
         assert_eq!(
             parse_unattended_upgrades_enabled("APT::Periodic::Update-Package-Lists \"1\";"),
+            None
+        );
+        assert_eq!(
+            parse_package_lists_auto_update_enabled("APT::Periodic::Update-Package-Lists \"1\";"),
+            Some(true)
+        );
+        assert_eq!(
+            parse_package_lists_auto_update_enabled("APT::Periodic::Update-Package-Lists 0;"),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn ufw_default_input_policy_parser_handles_common_formats() {
+        assert_eq!(
+            parse_ufw_default_input_policy("DEFAULT_INPUT_POLICY=\"ACCEPT\""),
+            Some(String::from("ACCEPT"))
+        );
+        assert_eq!(
+            parse_ufw_default_input_policy("DEFAULT_INPUT_POLICY='DROP'"),
+            Some(String::from("DROP"))
+        );
+        assert_eq!(
+            parse_ufw_default_input_policy("DEFAULT_INPUT_POLICY="),
             None
         );
     }

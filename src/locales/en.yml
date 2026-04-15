@@ -393,6 +393,11 @@ finding:
       description: "%{path} enables PermitUserEnvironment yes."
       why: "Allowing SSH users to inject environment variables can weaken restricted command setups and create unexpected execution paths after login."
       fix: "Set PermitUserEnvironment no unless you have a narrow, reviewed need for user-managed SSH environment files."
+    ssh_x11_forwarding:
+      title: "SSH X11 forwarding is enabled"
+      description: "%{path} enables X11Forwarding yes."
+      why: "X11 forwarding widens SSH session attack surface and can leak display/session trust boundaries from client systems to remote hosts."
+      fix: "Set X11Forwarding no unless remote GUI forwarding is a reviewed requirement, and prefer safer alternatives when possible."
     docker_socket_world_writable:
       title: "Docker socket is world writable"
       description: "%{path} is writable by all local users with mode %{mode}."
@@ -433,11 +438,21 @@ finding:
       description: "%{path} shows UFW is present but ENABLED is set to no."
       why: "A host firewall helps narrow inbound exposure and makes it harder for accidentally published services to become reachable."
       fix: "Enable UFW, review the default policy, and allow only the ports you intentionally expose."
+    ufw_default_input_policy_accept:
+      title: "UFW default incoming policy is ACCEPT"
+      description: "%{path} sets DEFAULT_INPUT_POLICY to %{policy}."
+      why: "An ACCEPT default policy can leave newly exposed services reachable before explicit firewall rules are reviewed."
+      fix: "Set DEFAULT_INPUT_POLICY to DROP (or REJECT), then explicitly allow only the inbound ports you intend to expose."
     unattended_upgrades_disabled:
       title: "Automatic security updates are disabled"
       description: "%{path} disables unattended-upgrades."
       why: "Missing security updates can leave known vulnerabilities unpatched longer than intended."
       fix: "Enable unattended-upgrades (or an equivalent patching workflow) so security fixes are applied regularly."
+    package_lists_auto_update_disabled:
+      title: "Automatic package list refresh is disabled"
+      description: "%{path} disables APT::Periodic::Update-Package-Lists."
+      why: "Outdated package indexes can delay security patch visibility and weaken automated patching expectations."
+      fix: "Enable periodic package list refresh or run an equivalent scheduled update workflow before unattended upgrades run."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

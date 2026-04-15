@@ -313,16 +313,31 @@ finding:
       why: "메이저 전용 태그도 마이너/패치 업데이트로 이동해 동작 변화를 유발할 수 있습니다."
       fix: "예측 가능한 롤아웃을 위해 최소 마이너 또는 패치 버전까지 고정하세요."
   host:
+    ssh_x11_forwarding:
+      title: "SSH X11 포워딩이 활성화되어 있습니다"
+      description: "%{path}에서 X11Forwarding yes가 설정되어 있습니다."
+      why: "X11 포워딩은 SSH 세션 공격 표면을 넓히고 클라이언트의 디스플레이/세션 신뢰 경계를 원격 호스트까지 확장시킬 수 있습니다."
+      fix: "원격 GUI 포워딩이 검토된 요구사항이 아니라면 X11Forwarding을 no로 설정하고, 가능한 경우 더 안전한 대안을 사용하세요."
     ufw_disabled:
       title: "UFW가 설치되어 있지만 비활성화되어 있습니다"
       description: "%{path}에서 UFW가 존재하지만 ENABLED가 no로 설정되어 있습니다."
       why: "호스트 방화벽은 인바운드 노출을 줄이고, 실수로 공개된 서비스가 외부에서 접근 가능해지는 위험을 낮춥니다."
       fix: "UFW를 활성화하고 기본 정책을 검토한 뒤, 의도적으로 노출하는 포트만 허용하세요."
+    ufw_default_input_policy_accept:
+      title: "UFW 기본 인바운드 정책이 ACCEPT입니다"
+      description: "%{path}에서 DEFAULT_INPUT_POLICY가 %{policy}로 설정되어 있습니다."
+      why: "기본 정책이 ACCEPT이면 명시적 방화벽 규칙을 검토하기 전에 새로 노출된 서비스가 외부에서 접근 가능해질 수 있습니다."
+      fix: "DEFAULT_INPUT_POLICY를 DROP(또는 REJECT)으로 설정하고, 의도적으로 노출할 인바운드 포트만 명시적으로 허용하세요."
     unattended_upgrades_disabled:
       title: "자동 보안 업데이트가 비활성화되어 있습니다"
       description: "%{path}에서 unattended-upgrades가 비활성화되어 있습니다."
       why: "보안 업데이트가 적용되지 않으면 알려진 취약점이 의도보다 오래 방치될 수 있습니다."
       fix: "unattended-upgrades(또는 동등한 패치 워크플로)를 활성화해 보안 수정이 정기적으로 적용되도록 하세요."
+    package_lists_auto_update_disabled:
+      title: "패키지 목록 자동 갱신이 비활성화되어 있습니다"
+      description: "%{path}에서 APT::Periodic::Update-Package-Lists가 비활성화되어 있습니다."
+      why: "패키지 인덱스가 오래되면 보안 패치 가시성이 늦어지고 자동 패치 워크플로의 신뢰성이 떨어질 수 있습니다."
+      fix: "unattended-upgrades 실행 전에 정기 패키지 목록 갱신을 활성화하거나 동등한 스케줄 업데이트 절차를 사용하세요."
   nextcloud:
     insecure_overwriteprotocol:
       title: "Nextcloud overwrite protocol이 HTTP로 설정되어 있습니다"
