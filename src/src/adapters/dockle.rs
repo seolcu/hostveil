@@ -461,4 +461,10 @@ mod tests {
         let status = detect_dockle_with_command("false");
         assert!(matches!(status, DockleAvailability::Failed(_)));
     }
+
+    #[test]
+    fn detect_dockle_reports_available_for_true_command() {
+        let status = detect_dockle_with_command("true");
+        assert_eq!(status, DockleAvailability::Available);
+    }
 }

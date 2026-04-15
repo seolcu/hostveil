@@ -27,9 +27,16 @@ fn escape_json(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
+    use serde_json::Value;
 
     use super::scan_result_json;
-    use crate::domain::{Axis, Finding, RemediationKind, ScanResult, Scope, Severity, Source};
+    use crate::domain::{
+        AdapterStatus, Axis, DefensiveControlStatus, DiscoveredProjectSummary,
+        DockerDiscoveryStatus, Finding, HostRuntimeInfo, RemediationKind, ScanMetadata, ScanMode,
+        ScanResult, Scope, ServiceSummary, Severity, Source,
+    };
 
     fn test_finding(
         id: &str,
@@ -55,13 +62,26 @@ mod tests {
         }
     }
 
+    fn parse_json(scan_result: &ScanResult) -> Value {
+        serde_json::from_str(&scan_result_json(scan_result)).expect("exported JSON should parse")
+    }
+
     #[test]
     fn emits_valid_scan_result_shape() {
-        let json = scan_result_json(&ScanResult::default());
+        let json = parse_json(&ScanResult::default());
+        let root = json
+            .as_object()
+            .expect("scan_result_json should return a JSON object");
 
-        assert!(json.contains("\"findings\": []"));
-        assert!(json.contains("\"score_report\":"));
-        assert!(json.contains("\"metadata\":"));
+        assert!(root.contains_key("findings"));
+        assert!(root.contains_key("score_report"));
+        assert!(root.contains_key("metadata"));
+        assert!(json["findings"].is_array());
+        assert!(json["score_report"]["overall"].is_number());
+        assert!(json["score_report"]["axis_scores"].is_object());
+        assert!(json["score_report"]["severity_counts"].is_object());
+        assert!(json["metadata"]["adapters"].is_object());
+        assert!(json["metadata"]["warnings"].is_array());
     }
 
     #[test]
@@ -109,5 +129,98 @@ mod tests {
         assert!(json.contains("\"source\": \"native_compose\""));
         assert!(json.contains("\"source\": \"trivy\""));
         assert!(json.contains("\"source\": \"lynis\""));
+    }
+
+    #[test]
+    fn preserves_key_metadata_and_adapter_contract_fields() {
+        let mut adapters = BTreeMap::new();
+        adapters.insert(String::from("trivy"), AdapterStatus::Available);
+        adapters.insert(
+            String::from("lynis"),
+            AdapterStatus::Failed(String::from("command crashed")),
+        );
+        adapters.insert(
+            String::from("dockle"),
+            AdapterStatus::Skipped(String::from("no image targets")),
+        );
+
+        let result = ScanResult {
+            findings: vec![test_finding(
+                "service.public_binding",
+                Scope::Service,
+                Source::NativeCompose,
+                "web",
+                Some("web"),
+            )],
+            metadata: ScanMetadata {
+                scan_mode: ScanMode::Live,
+                compose_root: Some(PathBuf::from("/srv/demo")),
+                compose_file: Some(PathBuf::from("/srv/demo/compose.yaml")),
+                host_root: Some(PathBuf::from("/")),
+                host_runtime: Some(HostRuntimeInfo {
+                    hostname: Some(String::from("demo-host")),
+                    docker_version: Some(String::from("28.0.1")),
+                    uptime: Some(String::from("2d 1h 4m")),
+                    load_average: Some(String::from("0.21 0.19 0.17")),
+                    fail2ban: DefensiveControlStatus::Enabled,
+                    fail2ban_jails: Some(3),
+                    fail2ban_banned_ips: Some(0),
+                }),
+                loaded_files: vec![
+                    PathBuf::from("/srv/demo/compose.yaml"),
+                    PathBuf::from("/srv/demo/compose.override.yaml"),
+                ],
+                service_count: 1,
+                services: vec![ServiceSummary {
+                    name: String::from("web"),
+                    image: Some(String::from("nginx:1.27.5")),
+                }],
+                discovered_projects: vec![DiscoveredProjectSummary {
+                    name: String::from("demo"),
+                    source: String::from("docker"),
+                    compose_path: Some(PathBuf::from("/srv/demo/compose.yaml")),
+                    working_dir: Some(PathBuf::from("/srv/demo")),
+                    service_count: 1,
+                }],
+                docker_status: Some(DockerDiscoveryStatus::Failed(String::from(
+                    "permission denied",
+                ))),
+                warnings: vec![String::from("discovery fallback was used")],
+                adapters,
+            },
+            ..Default::default()
+        };
+
+        let json = parse_json(&result);
+
+        assert_eq!(json["metadata"]["scan_mode"], "live");
+        assert_eq!(json["metadata"]["compose_root"], "/srv/demo");
+        assert_eq!(json["metadata"]["compose_file"], "/srv/demo/compose.yaml");
+        assert_eq!(json["metadata"]["host_root"], "/");
+        assert_eq!(json["metadata"]["service_count"], 1);
+        assert_eq!(json["metadata"]["services"][0]["name"], "web");
+        assert_eq!(json["metadata"]["services"][0]["image"], "nginx:1.27.5");
+        assert_eq!(json["metadata"]["docker_status"]["state"], "failed");
+        assert_eq!(
+            json["metadata"]["docker_status"]["detail"],
+            "permission denied"
+        );
+        assert_eq!(json["metadata"]["adapters"]["trivy"]["state"], "available");
+        assert_eq!(json["metadata"]["adapters"]["lynis"]["state"], "failed");
+        assert_eq!(
+            json["metadata"]["adapters"]["lynis"]["detail"],
+            "command crashed"
+        );
+        assert_eq!(json["metadata"]["adapters"]["dockle"]["state"], "skipped");
+        assert_eq!(
+            json["metadata"]["adapters"]["dockle"]["detail"],
+            "no image targets"
+        );
+        assert_eq!(json["findings"][0]["id"], "service.public_binding");
+        assert_eq!(json["findings"][0]["scope"], "service");
+        assert_eq!(json["findings"][0]["source"], "native_compose");
+        assert_eq!(json["findings"][0]["evidence"]["subject"], "web");
+        assert!(json["score_report"]["axis_scores"]["sensitive_data"].is_number());
+        assert!(json["score_report"]["severity_counts"]["critical"].is_number());
     }
 }

@@ -86,7 +86,11 @@ enum TrivyAvailability {
 }
 
 fn detect_trivy() -> TrivyAvailability {
-    let output = Command::new("trivy")
+    detect_trivy_with_command("trivy")
+}
+
+fn detect_trivy_with_command(command: &str) -> TrivyAvailability {
+    let output = Command::new(command)
         .arg("--version")
         .env("NO_COLOR", "1")
         .output();
@@ -485,5 +489,23 @@ mod tests {
                 "demo:1.0",
             ]
         );
+    }
+
+    #[test]
+    fn detect_trivy_reports_missing_for_unknown_binary() {
+        let status = detect_trivy_with_command("hostveil-nonexistent-trivy");
+        assert_eq!(status, TrivyAvailability::Missing);
+    }
+
+    #[test]
+    fn detect_trivy_reports_failed_for_non_zero_command() {
+        let status = detect_trivy_with_command("false");
+        assert!(matches!(status, TrivyAvailability::Failed(_)));
+    }
+
+    #[test]
+    fn detect_trivy_reports_available_for_true_command() {
+        let status = detect_trivy_with_command("true");
+        assert_eq!(status, TrivyAvailability::Available);
     }
 }
