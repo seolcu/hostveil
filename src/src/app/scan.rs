@@ -889,6 +889,72 @@ mod tests {
     }
 
     #[test]
+    fn adapter_status_transitions_and_warnings_are_recorded() {
+        let mut result = crate::domain::ScanResult::default();
+        result.metadata.host_root = Some(PathBuf::from("/"));
+        result.metadata.services.push(ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("nginx:1.27.5")),
+        });
+
+        seed_adapter_statuses(&mut result);
+        apply_external_adapter_update(
+            &mut result,
+            AdapterScanUpdate {
+                trivy: crate::adapters::trivy::TrivyScanOutput {
+                    status: AdapterStatus::Missing,
+                    findings: Vec::new(),
+                    warnings: vec![String::from("trivy binary missing")],
+                },
+                lynis: crate::adapters::lynis::LynisScanOutput {
+                    status: AdapterStatus::Failed(String::from("lynis crashed")),
+                    findings: Vec::new(),
+                    warnings: vec![String::from("lynis exited with non-zero status")],
+                },
+                dockle: crate::adapters::dockle::DockleScanOutput {
+                    status: AdapterStatus::Skipped(String::from("no image targets")),
+                    findings: Vec::new(),
+                    warnings: vec![String::from("dockle intentionally skipped")],
+                },
+            },
+        );
+
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Missing)
+        );
+        assert_eq!(
+            result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Failed(String::from("lynis crashed")))
+        );
+        assert_eq!(
+            result.metadata.adapters.get("dockle"),
+            Some(&AdapterStatus::Skipped(String::from("no image targets")))
+        );
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("trivy binary missing"))
+        );
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("lynis exited with non-zero status"))
+        );
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("dockle intentionally skipped"))
+        );
+    }
+
+    #[test]
     fn current_dir_fallback_loads_compose_project_when_docker_finds_nothing() {
         let temp_dir = temp_host_root("cwd-fallback");
         write_file(

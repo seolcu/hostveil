@@ -128,7 +128,11 @@ enum LynisAvailability {
 }
 
 fn detect_lynis() -> LynisAvailability {
-    let output = Command::new("lynis")
+    detect_lynis_with_command("lynis")
+}
+
+fn detect_lynis_with_command(command: &str) -> LynisAvailability {
+    let output = Command::new(command)
         .arg("--version")
         .env("NO_COLOR", "1")
         .output();
@@ -470,5 +474,23 @@ mod tests {
             findings[1].evidence.get("mode").map(String::as_str),
             Some("pentest")
         );
+    }
+
+    #[test]
+    fn detect_lynis_reports_missing_for_unknown_binary() {
+        let status = detect_lynis_with_command("hostveil-nonexistent-lynis");
+        assert_eq!(status, LynisAvailability::Missing);
+    }
+
+    #[test]
+    fn detect_lynis_reports_failed_for_non_zero_command() {
+        let status = detect_lynis_with_command("false");
+        assert!(matches!(status, LynisAvailability::Failed(_)));
+    }
+
+    #[test]
+    fn detect_lynis_reports_available_for_true_command() {
+        let status = detect_lynis_with_command("true");
+        assert_eq!(status, LynisAvailability::Available);
     }
 }
