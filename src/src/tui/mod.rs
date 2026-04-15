@@ -200,6 +200,14 @@ impl AppState {
         self.detail_scroll = 0;
     }
 
+    fn reset_filters_and_sort(&mut self) {
+        self.severity_filter = None;
+        self.source_filter = None;
+        self.sort_mode = FindingSortMode::Severity;
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
     fn jump_to_severity(&mut self, scan_result: &ScanResult, severity: Severity) {
         self.clamp_selection(scan_result);
 
@@ -321,6 +329,10 @@ fn handle_findings_key(state: &mut AppState, scan_result: &ScanResult, key: KeyE
         }
         KeyCode::Char('o') => {
             state.cycle_sort_mode();
+            false
+        }
+        KeyCode::Char('r') => {
+            state.reset_filters_and_sort();
             false
         }
         KeyCode::Char('1') => {
@@ -2197,6 +2209,15 @@ mod tests {
             KeyEvent::new(KeyCode::Char('o'), crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.sort_mode, FindingSortMode::Subject);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('r'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(state.severity_filter, None);
+        assert_eq!(state.source_filter, None);
+        assert_eq!(state.sort_mode, FindingSortMode::Severity);
     }
 
     #[test]
@@ -2384,8 +2405,7 @@ mod tests {
 
         assert!(content.contains("[CRIT] Admin interface is exposed publicly - adminer"));
         assert!(content.contains("Critical | Native Compose | adminer"));
-        assert!(content.contains("s sev | x src | o sort"));
-        assert!(content.contains("q back"));
+        assert!(content.contains("s sev | x src | o sort | r reset"));
         assert!(!content.contains("PageUp/PageDown"));
     }
 
