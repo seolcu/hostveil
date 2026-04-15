@@ -188,30 +188,76 @@ fn apply_safe_fixes(
             });
         }
 
-        if !finding_ids.contains("exposure.public_binding") {
-            continue;
-        }
-
-        let Some(ports) = service.get_mut(yaml_key("ports")) else {
-            continue;
-        };
-        let Some(sequence) = ports.as_sequence_mut() else {
-            continue;
-        };
-
-        for port in sequence.iter_mut() {
-            let Some(before) = rewrite_public_port(port) else {
-                continue;
-            };
+        if finding_ids.contains("service.vaultwarden.insecure_domain")
+            && harden_vaultwarden_domain(service)
+        {
             applied.push(FixProposal {
                 service: service_name.clone(),
                 summary: t!(
-                    "app.fix.safe_bind_localhost",
-                    service = service_name.as_str(),
-                    port = before.as_str()
+                    "app.fix.safe_vaultwarden_domain_https",
+                    service = service_name.as_str()
                 )
                 .into_owned(),
             });
+        }
+
+        if finding_ids.contains("service.jellyfin.insecure_published_url")
+            && harden_jellyfin_published_url(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_jellyfin_published_url_https",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.nextcloud.insecure_overwriteprotocol")
+            && harden_nextcloud_overwriteprotocol(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_nextcloud_overwriteprotocol_https",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.nextcloud.wildcard_trusted_domains")
+            && harden_nextcloud_trusted_domains(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_nextcloud_trusted_domains_wildcard",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("exposure.public_binding")
+            && let Some(ports) = service.get_mut(yaml_key("ports"))
+            && let Some(sequence) = ports.as_sequence_mut()
+        {
+            for port in sequence.iter_mut() {
+                let Some(before) = rewrite_public_port(port) else {
+                    continue;
+                };
+                applied.push(FixProposal {
+                    service: service_name.clone(),
+                    summary: t!(
+                        "app.fix.safe_bind_localhost",
+                        service = service_name.as_str(),
+                        port = before.as_str()
+                    )
+                    .into_owned(),
+                });
+            }
         }
     }
 
@@ -395,6 +441,132 @@ fn externalize_gitea_security_env(service: &mut Mapping) -> bool {
     }
 
     changed
+}
+
+fn harden_vaultwarden_domain(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "DOMAIN") else {
+        return false;
+    };
+    let Some(updated) = rewrite_http_scheme(&current) else {
+        return false;
+    };
+
+    update_environment_value(service, "DOMAIN", &updated, false)
+}
+
+fn harden_jellyfin_published_url(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "JELLYFIN_PublishedServerUrl") else {
+        return false;
+    };
+    let Some(updated) = rewrite_http_scheme(&current) else {
+        return false;
+    };
+
+    update_environment_value(service, "JELLYFIN_PublishedServerUrl", &updated, false)
+}
+
+fn harden_nextcloud_overwriteprotocol(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "OVERWRITEPROTOCOL") else {
+        return false;
+    };
+    if !current.eq_ignore_ascii_case("http") {
+        return false;
+    }
+
+    update_environment_value(service, "OVERWRITEPROTOCOL", "https", false)
+}
+
+fn harden_nextcloud_trusted_domains(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "NEXTCLOUD_TRUSTED_DOMAINS") else {
+        return false;
+    };
+    let Some(updated) = sanitize_nextcloud_trusted_domains(&current) else {
+        return false;
+    };
+
+    update_environment_value(service, "NEXTCLOUD_TRUSTED_DOMAINS", &updated, false)
+}
+
+fn rewrite_http_scheme(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let suffix = lower.strip_prefix("http://")?;
+    Some(format!(
+        "https://{}",
+        &trimmed[trimmed.len() - suffix.len()..]
+    ))
+}
+
+fn sanitize_nextcloud_trusted_domains(value: &str) -> Option<String> {
+    let mut removed_any = false;
+    let mut kept = Vec::<String>::new();
+    let mut seen = BTreeSet::<String>::new();
+
+    for token in value
+        .split(|character: char| character == ',' || character.is_whitespace())
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+    {
+        if is_wildcard_trusted_domain_token(token) {
+            removed_any = true;
+            continue;
+        }
+
+        let normalized = token.to_ascii_lowercase();
+        if seen.insert(normalized) {
+            kept.push(token.to_owned());
+        }
+    }
+
+    if !removed_any || kept.is_empty() {
+        return None;
+    }
+
+    if value.contains(',') {
+        Some(kept.join(","))
+    } else {
+        Some(kept.join(" "))
+    }
+}
+
+fn is_wildcard_trusted_domain_token(token: &str) -> bool {
+    token == "*" || token == "0.0.0.0" || token == "::" || token.starts_with("*.")
+}
+
+fn environment_value(service: &Mapping, key: &str) -> Option<String> {
+    let environment = service.get(yaml_key("environment"))?;
+
+    match environment {
+        Value::Mapping(mapping) => {
+            let current = mapping.get(yaml_key(key))?;
+            yaml_scalar_string(current)
+        }
+        Value::Sequence(sequence) => sequence.iter().find_map(|item| {
+            let Value::String(entry) = item else {
+                return None;
+            };
+            let trimmed = entry.trim();
+            let (entry_key, entry_value) = trimmed.split_once('=')?;
+            (entry_key.trim() == key).then_some(entry_value.trim().to_owned())
+        }),
+        _ => None,
+    }
+}
+
+fn yaml_scalar_string(value: &Value) -> Option<String> {
+    match value {
+        Value::String(value) => {
+            let trimmed = value.trim();
+            (!trimmed.is_empty()).then_some(trimmed.to_owned())
+        }
+        Value::Bool(value) => Some(if *value {
+            String::from("true")
+        } else {
+            String::from("false")
+        }),
+        Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    }
 }
 
 fn update_environment_value(
@@ -1062,6 +1234,164 @@ mod tests {
             plan.diff_preview
                 .contains("GITEA__security__INTERNAL_TOKEN=${GITEA__security__INTERNAL_TOKEN}")
         );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_quick_fix_for_service_specific_hardening() {
+        let root = temp_compose_dir("quick-service-hardening");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  vaultwarden:\n",
+                "    image: vaultwarden/server:1.30.1\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n",
+                "    environment:\n",
+                "      DOMAIN: http://vault.example.com\n",
+                "  jellyfin:\n",
+                "    image: jellyfin/jellyfin:10.9.11\n",
+                "    ports:\n",
+                "      - \"8096:8096\"\n",
+                "    environment:\n",
+                "      JELLYFIN_PublishedServerUrl: http://media.example.com\n",
+                "  nextcloud:\n",
+                "    image: nextcloud:31.0.0\n",
+                "    ports:\n",
+                "      - \"8081:80\"\n",
+                "    environment:\n",
+                "      OVERWRITEPROTOCOL: http\n",
+                "      NEXTCLOUD_TRUSTED_DOMAINS: \"cloud.example.com, *.example.com, 0.0.0.0\"\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 7);
+        assert!(plan.guided_applied.is_empty());
+        assert!(
+            plan.diff_preview
+                .contains("DOMAIN: https://vault.example.com")
+        );
+        assert!(
+            plan.diff_preview
+                .contains("JELLYFIN_PublishedServerUrl: https://media.example.com")
+        );
+        assert!(plan.diff_preview.contains("OVERWRITEPROTOCOL: https"));
+        assert!(
+            plan.diff_preview
+                .contains("NEXTCLOUD_TRUSTED_DOMAINS: \"cloud.example.com\"")
+        );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_quick_fix_noop_when_service_values_are_hardened() {
+        let root = temp_compose_dir("quick-service-noop");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  vaultwarden:\n",
+                "    image: vaultwarden/server:1.30.1\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8080:80\"\n",
+                "    environment:\n",
+                "      DOMAIN: https://vault.example.com\n",
+                "  jellyfin:\n",
+                "    image: jellyfin/jellyfin:10.9.11\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8096:8096\"\n",
+                "    environment:\n",
+                "      JELLYFIN_PublishedServerUrl: https://media.example.com\n",
+                "  nextcloud:\n",
+                "    image: nextcloud:31.0.0\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8081:80\"\n",
+                "    environment:\n",
+                "      OVERWRITEPROTOCOL: https\n",
+                "      NEXTCLOUD_TRUSTED_DOMAINS: cloud.example.com cloud.internal\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert!(plan.safe_applied.is_empty());
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.is_empty());
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn skips_wildcard_trusted_domain_fix_when_it_would_remove_all_entries() {
+        let root = temp_compose_dir("quick-nextcloud-wildcard-only");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  nextcloud:\n",
+                "    image: nextcloud:31.0.0\n",
+                "    ports:\n",
+                "      - \"127.0.0.1:8081:80\"\n",
+                "    environment:\n",
+                "      NEXTCLOUD_TRUSTED_DOMAINS: \"*\"\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert!(plan.safe_applied.is_empty());
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.is_empty());
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_quick_fix_is_idempotent_for_service_hardening() {
+        let root = temp_compose_dir("quick-service-idempotent");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  vaultwarden:\n",
+                "    image: vaultwarden/server:1.30.1\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n",
+                "    environment:\n",
+                "      DOMAIN: http://vault.example.com\n",
+                "  jellyfin:\n",
+                "    image: jellyfin/jellyfin:10.9.11\n",
+                "    ports:\n",
+                "      - \"8096:8096\"\n",
+                "    environment:\n",
+                "      JELLYFIN_PublishedServerUrl: http://media.example.com\n",
+                "  nextcloud:\n",
+                "    image: nextcloud:31.0.0\n",
+                "    ports:\n",
+                "      - \"8081:80\"\n",
+                "    environment:\n",
+                "      OVERWRITEPROTOCOL: http\n",
+                "      NEXTCLOUD_TRUSTED_DOMAINS: \"cloud.example.com, *.example.com\"\n"
+            ),
+        );
+
+        let first = apply(&path, FixMode::QuickFix).expect("first apply should succeed");
+        let second = apply(&path, FixMode::QuickFix).expect("second apply should succeed");
+
+        assert!(first.changed());
+        assert!(first.backup_path.is_some());
+        assert!(second.safe_applied.is_empty());
+        assert!(second.guided_applied.is_empty());
+        assert!(second.backup_path.is_none());
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }
