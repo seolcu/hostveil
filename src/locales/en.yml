@@ -493,3 +493,19 @@ finding:
       description: "%{service} is part of an Immich deployment that still uses the default DB_PASSWORD value."
       why: "Leaving the default database password in place makes the storage backend easier to compromise if the stack or env file is exposed."
       fix: "Replace the default DB password with a unique random value before deploying or exposing the stack."
+  nextcloud:
+    insecure_overwriteprotocol:
+      title: "Nextcloud overwrite protocol is configured as HTTP"
+      description: "%{service} sets OVERWRITEPROTOCOL=%{protocol} while the service is publicly reachable."
+      why: "A public Nextcloud deployment with HTTP overwrite protocol weakens transport guarantees and can expose login or session traffic through insecure paths."
+      fix: "Set OVERWRITEPROTOCOL to https and terminate TLS at the reverse proxy or edge before exposing the service."
+    wildcard_trusted_domains:
+      title: "Nextcloud trusted domains allow wildcard-style host matching"
+      description: "%{service} sets NEXTCLOUD_TRUSTED_DOMAINS to %{trusted_domains}, which includes wildcard-style entries."
+      why: "Overly broad trusted domain matching makes host-header abuse easier and increases the chance of serving requests for unintended hostnames."
+      fix: "List only exact hostnames you control in NEXTCLOUD_TRUSTED_DOMAINS and remove wildcard-style values such as * or *.example.com."
+    default_admin_credentials:
+      title: "Nextcloud uses default admin bootstrap credentials"
+      description: "%{service} keeps NEXTCLOUD_ADMIN_USER and NEXTCLOUD_ADMIN_PASSWORD at default-like values."
+      why: "Default bootstrap credentials are widely known and can be abused quickly if setup endpoints are reachable before hardening is complete."
+      fix: "Use a unique admin username and strong random admin password during bootstrap, then rotate secrets through a safer external secret path."
