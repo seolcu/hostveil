@@ -5,7 +5,10 @@ mod setup;
 pub use config::{AppConfig, OutputMode, SetupConfig, SetupTool};
 
 use std::fmt;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, Write};
+
+#[cfg(not(test))]
+use std::io::IsTerminal;
 
 use crate::compose::ComposeParseError;
 use crate::export;
@@ -120,7 +123,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             if config.assume_yes {
                 print_fix_review(&preview_plan);
             } else {
-                if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+                if !is_interactive_terminal() {
                     return Err(AppError::FixRequiresTerminal);
                 }
 
@@ -146,7 +149,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
 
     match config.output_mode {
         OutputMode::Tui => {
-            if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+            if !is_interactive_terminal() {
                 return Err(AppError::TuiRequiresTerminal);
             }
 
@@ -171,6 +174,18 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+fn is_interactive_terminal() -> bool {
+    #[cfg(test)]
+    {
+        false
+    }
+
+    #[cfg(not(test))]
+    {
+        io::stdin().is_terminal() && io::stdout().is_terminal()
+    }
 }
 
 fn confirm_fix(
