@@ -308,5 +308,16 @@ finding:
       description: "%{service}가 메이저 버전만 고정된 %{image}를 사용합니다."
       why: "메이저 전용 태그도 마이너/패치 업데이트로 이동해 동작 변화를 유발할 수 있습니다."
       fix: "예측 가능한 롤아웃을 위해 최소 마이너 또는 패치 버전까지 고정하세요."
+  host:
+    ufw_disabled:
+      title: "UFW가 설치되어 있지만 비활성화되어 있습니다"
+      description: "%{path}에서 UFW가 존재하지만 ENABLED가 no로 설정되어 있습니다."
+      why: "호스트 방화벽은 인바운드 노출을 줄이고, 실수로 공개된 서비스가 외부에서 접근 가능해지는 위험을 낮춥니다."
+      fix: "UFW를 활성화하고 기본 정책을 검토한 뒤, 의도적으로 노출하는 포트만 허용하세요."
+    unattended_upgrades_disabled:
+      title: "자동 보안 업데이트가 비활성화되어 있습니다"
+      description: "%{path}에서 unattended-upgrades가 비활성화되어 있습니다."
+      why: "보안 업데이트가 적용되지 않으면 알려진 취약점이 의도보다 오래 방치될 수 있습니다."
+      fix: "unattended-upgrades(또는 동등한 패치 워크플로)를 활성화해 보안 수정이 정기적으로 적용되도록 하세요."
 test:
   fallback_probe: "English fallback probe"

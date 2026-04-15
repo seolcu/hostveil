@@ -14,6 +14,9 @@ use crate::domain::{
 const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
+const UFW_CONFIG_PATH: &str = "etc/ufw/ufw.conf";
+const UFW_INSTALL_MARKERS: [&str; 3] = ["etc/ufw/ufw.conf", "usr/sbin/ufw", "usr/bin/ufw"];
+const APT_AUTO_UPGRADES_CONFIG_PATH: &str = "etc/apt/apt.conf.d/20auto-upgrades";
 const FAIL2BAN_INSTALL_MARKERS: [&str; 6] = [
     "etc/fail2ban",
     "usr/bin/fail2ban-client",
@@ -57,6 +60,8 @@ impl HostScanner {
         let mut findings = Vec::new();
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
+        findings.extend(scan_firewall_hardening(context));
+        findings.extend(scan_package_update_hardening(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
@@ -378,6 +383,162 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
     }
 
     findings
+}
+
+fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
+    if !detect_ufw_installed(&context.root) {
+        return Vec::new();
+    }
+
+    let Some(config_path) = resolve_existing_path(&context.root, UFW_CONFIG_PATH) else {
+        return Vec::new();
+    };
+
+    let Ok(config_text) = fs::read_to_string(&config_path) else {
+        return Vec::new();
+    };
+
+    let Some(enabled) = parse_ufw_enabled(&config_text) else {
+        return Vec::new();
+    };
+
+    if enabled {
+        return Vec::new();
+    }
+
+    vec![host_finding(
+        "host.ufw_installed_but_disabled",
+        Severity::Medium,
+        &config_path,
+        HostFindingText {
+            title: t!("finding.host.ufw_disabled.title").into_owned(),
+            description: t!(
+                "finding.host.ufw_disabled.description",
+                path = config_path.display().to_string()
+            )
+            .into_owned(),
+            why_risky: t!("finding.host.ufw_disabled.why").into_owned(),
+            how_to_fix: t!("finding.host.ufw_disabled.fix").into_owned(),
+        },
+        BTreeMap::from([
+            (String::from("path"), config_path.display().to_string()),
+            (String::from("enabled"), String::from("no")),
+        ]),
+    )]
+}
+
+fn scan_package_update_hardening(context: &HostContext) -> Vec<Finding> {
+    let Some(config_path) = resolve_existing_path(&context.root, APT_AUTO_UPGRADES_CONFIG_PATH)
+    else {
+        return Vec::new();
+    };
+
+    let Ok(config_text) = fs::read_to_string(&config_path) else {
+        return Vec::new();
+    };
+
+    let Some(enabled) = parse_unattended_upgrades_enabled(&config_text) else {
+        return Vec::new();
+    };
+
+    if enabled {
+        return Vec::new();
+    }
+
+    vec![host_finding(
+        "host.apt_unattended_upgrades_disabled",
+        Severity::Medium,
+        &config_path,
+        HostFindingText {
+            title: t!("finding.host.unattended_upgrades_disabled.title").into_owned(),
+            description: t!(
+                "finding.host.unattended_upgrades_disabled.description",
+                path = config_path.display().to_string()
+            )
+            .into_owned(),
+            why_risky: t!("finding.host.unattended_upgrades_disabled.why").into_owned(),
+            how_to_fix: t!("finding.host.unattended_upgrades_disabled.fix").into_owned(),
+        },
+        BTreeMap::from([
+            (String::from("path"), config_path.display().to_string()),
+            (String::from("unattended_upgrade"), String::from("disabled")),
+        ]),
+    )]
+}
+
+fn detect_ufw_installed(root: &Path) -> bool {
+    UFW_INSTALL_MARKERS
+        .iter()
+        .any(|marker| resolve_existing_path(root, marker).is_some())
+}
+
+fn parse_ufw_enabled(text: &str) -> Option<bool> {
+    for raw_line in text.lines() {
+        let line = strip_ini_comments(raw_line);
+        if line.is_empty() {
+            continue;
+        }
+
+        let Some((key, value)) = parse_ini_key_value(line) else {
+            continue;
+        };
+        if !key.eq_ignore_ascii_case("ENABLED") {
+            continue;
+        }
+
+        let value = value.trim_matches('"').trim_matches('\'').trim();
+        if let Some(enabled) = parse_ini_bool(value) {
+            return Some(enabled);
+        }
+    }
+
+    None
+}
+
+fn parse_unattended_upgrades_enabled(text: &str) -> Option<bool> {
+    const UNATTENDED_UPGRADE_KEY: &str = "APT::Periodic::Unattended-Upgrade";
+
+    for raw_line in text.lines() {
+        let line = strip_apt_comments(raw_line);
+        if line.is_empty() || !line.contains(UNATTENDED_UPGRADE_KEY) {
+            continue;
+        }
+
+        let (_, value) = line.split_once(UNATTENDED_UPGRADE_KEY)?;
+        let value = value
+            .trim()
+            .trim_start_matches('=')
+            .trim()
+            .trim_end_matches(';')
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'')
+            .trim();
+
+        if let Some(enabled) = parse_ini_bool(value) {
+            return Some(enabled);
+        }
+    }
+
+    None
+}
+
+fn strip_apt_comments(line: &str) -> &str {
+    let trimmed = line.trim();
+    if trimmed.starts_with('#') || trimmed.starts_with("//") {
+        return "";
+    }
+
+    let hash_index = line.find('#');
+    let slash_index = line.find("//");
+    let comment_index = match (hash_index, slash_index) {
+        (Some(hash), Some(slash)) => Some(hash.min(slash)),
+        (Some(hash), None) => Some(hash),
+        (None, Some(slash)) => Some(slash),
+        (None, None) => None,
+    };
+
+    line[..comment_index.unwrap_or(line.len())].trim()
 }
 
 fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo) -> Vec<Finding> {
@@ -1147,6 +1308,81 @@ mod tests {
                 "   |- Currently banned: 3\n"
             )),
             Some(3)
+        );
+    }
+
+    #[test]
+    fn reports_ufw_when_installed_but_disabled() {
+        let root = temp_host_root("ufw-disabled");
+        write_file(&root.join("usr/sbin/ufw"), "");
+        write_file(&root.join(UFW_CONFIG_PATH), "ENABLED=no\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ufw_installed_but_disabled")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn does_not_report_ufw_when_enabled() {
+        let root = temp_host_root("ufw-enabled");
+        write_file(&root.join(UFW_CONFIG_PATH), "ENABLED=yes\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.ufw_installed_but_disabled")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn reports_unattended_upgrades_when_explicitly_disabled() {
+        let root = temp_host_root("apt-auto-upgrades-disabled");
+        write_file(
+            &root.join(APT_AUTO_UPGRADES_CONFIG_PATH),
+            concat!(
+                "APT::Periodic::Update-Package-Lists \"1\";\n",
+                "APT::Periodic::Unattended-Upgrade \"0\";\n"
+            ),
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.apt_unattended_upgrades_disabled")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn unattended_upgrades_parser_handles_common_formats() {
+        assert_eq!(
+            parse_unattended_upgrades_enabled("APT::Periodic::Unattended-Upgrade \"1\";"),
+            Some(true)
+        );
+        assert_eq!(
+            parse_unattended_upgrades_enabled("APT::Periodic::Unattended-Upgrade \"0\";"),
+            Some(false)
+        );
+        assert_eq!(
+            parse_unattended_upgrades_enabled("APT::Periodic::Unattended-Upgrade 1;"),
+            Some(true)
+        );
+        assert_eq!(
+            parse_unattended_upgrades_enabled("APT::Periodic::Update-Package-Lists \"1\";"),
+            None
         );
     }
 }
