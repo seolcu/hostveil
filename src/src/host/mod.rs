@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use glob::glob;
 use serde_json::Value as JsonValue;
 
 use crate::domain::{
@@ -130,127 +131,124 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         return Vec::new();
     };
 
-    let Ok(settings) = parse_sshd_config(&config_path) else {
+    let Ok(settings) = parse_sshd_config(&context.root, &config_path) else {
         return Vec::new();
     };
 
     let mut findings = Vec::new();
 
-    if settings
-        .get("permitrootlogin")
-        .is_some_and(|value| value != "no")
+    if let Some(setting) = settings.get("permitrootlogin")
+        && setting.value != "no"
     {
-        let value = settings
-            .get("permitrootlogin")
-            .cloned()
-            .unwrap_or_else(|| String::from("yes"));
+        let subject_path = &setting.source;
+        let value = setting.value.as_str();
         findings.push(host_finding(
             "host.ssh_root_login_enabled",
             Severity::High,
-            &config_path,
+            subject_path,
             HostFindingText {
                 title: t!("finding.host.ssh_root_login.title").into_owned(),
                 description: t!(
                     "finding.host.ssh_root_login.description",
-                    path = config_path.display().to_string(),
-                    value = value.as_str()
+                    path = subject_path.display().to_string(),
+                    value = value
                 )
                 .into_owned(),
                 why_risky: t!("finding.host.ssh_root_login.why").into_owned(),
                 how_to_fix: t!("finding.host.ssh_root_login.fix").into_owned(),
             },
             BTreeMap::from([
-                (String::from("path"), config_path.display().to_string()),
-                (String::from("value"), value),
+                (String::from("path"), subject_path.display().to_string()),
+                (String::from("value"), value.to_owned()),
             ]),
         ));
     }
 
-    if settings
-        .get("passwordauthentication")
-        .is_some_and(|value| value == "yes")
+    if let Some(setting) = settings.get("passwordauthentication")
+        && setting.value == "yes"
     {
+        let subject_path = &setting.source;
         findings.push(host_finding(
             "host.ssh_password_auth_enabled",
             Severity::High,
-            &config_path,
+            subject_path,
             HostFindingText {
                 title: t!("finding.host.ssh_password_auth.title").into_owned(),
                 description: t!(
                     "finding.host.ssh_password_auth.description",
-                    path = config_path.display().to_string()
+                    path = subject_path.display().to_string()
                 )
                 .into_owned(),
                 why_risky: t!("finding.host.ssh_password_auth.why").into_owned(),
                 how_to_fix: t!("finding.host.ssh_password_auth.fix").into_owned(),
             },
-            BTreeMap::from([(String::from("path"), config_path.display().to_string())]),
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
         ));
     }
 
-    if settings
-        .get("permitemptypasswords")
-        .is_some_and(|value| value == "yes")
+    if let Some(setting) = settings.get("permitemptypasswords")
+        && setting.value == "yes"
     {
+        let subject_path = &setting.source;
         findings.push(host_finding(
             "host.ssh_empty_passwords_enabled",
             Severity::Critical,
-            &config_path,
+            subject_path,
             HostFindingText {
                 title: t!("finding.host.ssh_empty_passwords.title").into_owned(),
                 description: t!(
                     "finding.host.ssh_empty_passwords.description",
-                    path = config_path.display().to_string()
+                    path = subject_path.display().to_string()
                 )
                 .into_owned(),
                 why_risky: t!("finding.host.ssh_empty_passwords.why").into_owned(),
                 how_to_fix: t!("finding.host.ssh_empty_passwords.fix").into_owned(),
             },
-            BTreeMap::from([(String::from("path"), config_path.display().to_string())]),
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
         ));
     }
 
-    if settings
-        .get("pubkeyauthentication")
-        .is_some_and(|value| value == "no")
+    if let Some(setting) = settings.get("pubkeyauthentication")
+        && setting.value == "no"
     {
+        let subject_path = &setting.source;
         findings.push(host_finding(
             "host.ssh_pubkey_auth_disabled",
             Severity::Medium,
-            &config_path,
+            subject_path,
             HostFindingText {
                 title: t!("finding.host.ssh_pubkey_auth.title").into_owned(),
                 description: t!(
                     "finding.host.ssh_pubkey_auth.description",
-                    path = config_path.display().to_string()
+                    path = subject_path.display().to_string()
                 )
                 .into_owned(),
                 why_risky: t!("finding.host.ssh_pubkey_auth.why").into_owned(),
                 how_to_fix: t!("finding.host.ssh_pubkey_auth.fix").into_owned(),
             },
-            BTreeMap::from([(String::from("path"), config_path.display().to_string())]),
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
         ));
     }
 
-    if settings
-        .get("permituserenvironment")
-        .is_some_and(|value| value == "yes")
+    if let Some(setting) = settings.get("permituserenvironment")
+        && setting.value == "yes"
     {
+        let subject_path = &setting.source;
         findings.push(host_finding(
             "host.ssh_user_environment_enabled",
             Severity::Medium,
-            &config_path,
+            subject_path,
             HostFindingText {
                 title: t!("finding.host.ssh_user_environment.title").into_owned(),
                 description: t!(
                     "finding.host.ssh_user_environment.description",
-                    path = config_path.display().to_string()
+                    path = subject_path.display().to_string()
                 )
                 .into_owned(),
                 why_risky: t!("finding.host.ssh_user_environment.why").into_owned(),
                 how_to_fix: t!("finding.host.ssh_user_environment.fix").into_owned(),
             },
-            BTreeMap::from([(String::from("path"), config_path.display().to_string())]),
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
         ));
     }
 
@@ -931,9 +929,32 @@ fn is_live_root(root: &Path) -> bool {
         .unwrap_or(false)
 }
 
-fn parse_sshd_config(path: &Path) -> std::io::Result<BTreeMap<String, String>> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SshdSetting {
+    value: String,
+    source: PathBuf,
+}
+
+fn parse_sshd_config(root: &Path, path: &Path) -> std::io::Result<BTreeMap<String, SshdSetting>> {
     let mut settings = BTreeMap::new();
+    let mut visited = HashSet::new();
+    parse_sshd_config_file(root, path, &mut settings, &mut visited)?;
+    Ok(settings)
+}
+
+fn parse_sshd_config_file(
+    root: &Path,
+    path: &Path,
+    settings: &mut BTreeMap<String, SshdSetting>,
+    visited: &mut HashSet<PathBuf>,
+) -> std::io::Result<()> {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    if !visited.insert(canonical) {
+        return Ok(());
+    }
+
     let content = fs::read_to_string(path)?;
+    let base_dir = path.parent().unwrap_or(root);
 
     for raw_line in content.lines() {
         let stripped = raw_line.split('#').next().unwrap_or_default().trim();
@@ -945,17 +966,56 @@ fn parse_sshd_config(path: &Path) -> std::io::Result<BTreeMap<String, String>> {
         let Some(key) = parts.next() else {
             continue;
         };
+
         if key.eq_ignore_ascii_case("match") {
             break;
         }
+
+        if key.eq_ignore_ascii_case("include") {
+            for pattern in parts {
+                let pattern = pattern.trim_matches('"').trim_matches('\'').trim();
+                if pattern.is_empty() {
+                    continue;
+                }
+
+                let resolved = if pattern.starts_with('/') {
+                    root.join(pattern.trim_start_matches('/'))
+                } else {
+                    base_dir.join(pattern)
+                };
+
+                let mut matches = Vec::new();
+                if let Some(pattern_text) = resolved.to_str()
+                    && let Ok(paths) = glob(pattern_text)
+                {
+                    for entry in paths.flatten() {
+                        matches.push(entry);
+                    }
+                }
+                matches.sort();
+
+                for include_path in matches {
+                    let _ = parse_sshd_config_file(root, &include_path, settings, visited);
+                }
+            }
+
+            continue;
+        }
+
         let Some(value) = parts.next() else {
             continue;
         };
 
-        settings.insert(key.to_ascii_lowercase(), value.to_ascii_lowercase());
+        settings.insert(
+            key.to_ascii_lowercase(),
+            SshdSetting {
+                value: value.to_ascii_lowercase(),
+                source: path.to_path_buf(),
+            },
+        );
     }
 
-    Ok(settings)
+    Ok(())
 }
 
 fn daemon_hosts_include_public_tcp(document: &JsonValue) -> bool {
@@ -1280,9 +1340,99 @@ mod tests {
             ),
         );
 
-        let parsed = parse_sshd_config(&path).expect("config should parse");
+        let parsed = parse_sshd_config(&root, &path).expect("config should parse");
 
-        assert_eq!(parsed.get("permitrootlogin"), Some(&String::from("no")));
+        assert_eq!(
+            parsed
+                .get("permitrootlogin")
+                .map(|setting| setting.value.as_str()),
+            Some("no")
+        );
+
+        assert_eq!(
+            parsed
+                .get("permitrootlogin")
+                .map(|setting| setting.source.as_path()),
+            Some(path.as_path())
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parse_sshd_config_honors_include_globs_and_tracks_effective_source() {
+        let root = temp_host_root("sshd-include-abs");
+        let config_path = root.join(SSH_CONFIG_PATH);
+        let include_path = root.join("etc/ssh/sshd_config.d/10-extra.conf");
+
+        write_file(
+            &config_path,
+            concat!(
+                "Include /etc/ssh/sshd_config.d/*.conf\n",
+                "PermitRootLogin no\n"
+            ),
+        );
+        write_file(&include_path, "PermitRootLogin yes\n");
+
+        let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
+
+        let permit_root = parsed
+            .get("permitrootlogin")
+            .expect("permitrootlogin should be set");
+        assert_eq!(permit_root.value, "no");
+        assert_eq!(permit_root.source, config_path);
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parse_sshd_config_include_can_override_main_when_processed_later() {
+        let root = temp_host_root("sshd-include-rel");
+        let config_path = root.join(SSH_CONFIG_PATH);
+        let include_path = root.join("etc/ssh/sshd_config.d/99-override.conf");
+
+        write_file(
+            &config_path,
+            concat!("PermitRootLogin no\n", "Include sshd_config.d/*.conf\n"),
+        );
+        write_file(&include_path, "PermitRootLogin yes\n");
+
+        let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
+
+        let permit_root = parsed
+            .get("permitrootlogin")
+            .expect("permitrootlogin should be set");
+        assert_eq!(permit_root.value, "yes");
+        assert_eq!(permit_root.source, include_path);
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parse_sshd_config_avoids_include_cycles() {
+        let root = temp_host_root("sshd-include-cycle");
+        let config_path = root.join(SSH_CONFIG_PATH);
+        let include_path = root.join("etc/ssh/sshd_config.d/cycle.conf");
+
+        write_file(
+            &config_path,
+            concat!(
+                "Include /etc/ssh/sshd_config.d/cycle.conf\n",
+                "PermitRootLogin no\n"
+            ),
+        );
+        write_file(
+            &include_path,
+            concat!("Include /etc/ssh/sshd_config\n", "PermitRootLogin yes\n"),
+        );
+
+        let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
+
+        let permit_root = parsed
+            .get("permitrootlogin")
+            .expect("permitrootlogin should be set");
+        assert_eq!(permit_root.value, "no");
+        assert_eq!(permit_root.source, config_path);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
