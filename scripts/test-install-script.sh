@@ -105,7 +105,7 @@ run_install_case() {
   XDG_STATE_HOME="$state_home" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_dir" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --version v0.0.0-test --to "$install_dir"
+    bash "$INSTALLER_PATH" --version v0.0.0-test --to "$install_dir" --skip-setup
 
   [[ -x "$install_dir/hostveil" ]] || {
     printf 'error: wrapper install is missing for checksum prefix %s\n' "$checksum_prefix" >&2
@@ -150,7 +150,7 @@ run_latest_install_case() {
     HOSTVEIL_RELEASES_API_URL="file://$api_dir/releases.json" \
     HOSTVEIL_LATEST_STABLE_API_URL="file://$api_dir/latest.json" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --channel preview --to "$install_dir"
+    bash "$INSTALLER_PATH" --channel preview --to "$install_dir" --skip-setup
 
   [[ "$(HOSTVEIL_SKIP_AUTO_UPGRADE=1 "$install_dir/hostveil" --version)" == "$EXPECTED_VERSION" ]] || {
     printf 'error: latest install did not install the expected binary\n' >&2
@@ -191,7 +191,7 @@ EOF
     XDG_STATE_HOME="$case_dir/state" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_dir" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    "$REAL_BASH" "$INSTALLER_PATH" --version v0.0.5-test --to "$install_dir" \
+    "$REAL_BASH" "$INSTALLER_PATH" --version v0.0.5-test --to "$install_dir" --skip-setup \
     > "$output_path"
 
   if grep -Fq -- 'not currently on PATH' "$output_path"; then
@@ -219,7 +219,7 @@ run_current_path_detection_case() {
     XDG_STATE_HOME="$case_dir/state" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_dir" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --version v0.0.6-test --to "$install_dir" \
+    bash "$INSTALLER_PATH" --version v0.0.6-test --to "$install_dir" --skip-setup \
     > "$output_path"
 
   if grep -Fq -- 'not currently on PATH' "$output_path"; then
@@ -265,7 +265,7 @@ run_upgrade_auto_uninstall_case() {
   XDG_STATE_HOME="$state_home" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_one" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --version v0.0.1-test --to "$install_dir"
+    bash "$INSTALLER_PATH" --version v0.0.1-test --to "$install_dir" --skip-setup
 
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.1-test'
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
@@ -377,7 +377,7 @@ run_custom_state_dir_case() {
     HOSTVEIL_STATE_DIR="$custom_state_dir" \
     HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_one" \
     HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    bash "$INSTALLER_PATH" --version v0.1.0-test --to "$install_dir"
+    bash "$INSTALLER_PATH" --version v0.1.0-test --to "$install_dir" --skip-setup
 
   [[ -x "$install_dir/hostveil" ]] || {
     printf 'error: wrapper install is missing for custom state dir case\n' >&2
