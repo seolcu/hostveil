@@ -954,7 +954,7 @@ fn parse_sshd_config_file(
     }
 
     let content = fs::read_to_string(path)?;
-    let base_dir = path.parent().unwrap_or(root);
+    let include_base_dir = root.join("etc/ssh");
 
     for raw_line in content.lines() {
         let stripped = raw_line.split('#').next().unwrap_or_default().trim();
@@ -981,7 +981,7 @@ fn parse_sshd_config_file(
                 let resolved = if pattern.starts_with('/') {
                     root.join(pattern.trim_start_matches('/'))
                 } else {
-                    base_dir.join(pattern)
+                    include_base_dir.join(pattern)
                 };
 
                 let mut matches = Vec::new();
@@ -1006,13 +1006,12 @@ fn parse_sshd_config_file(
             continue;
         };
 
-        settings.insert(
-            key.to_ascii_lowercase(),
-            SshdSetting {
+        settings
+            .entry(key.to_ascii_lowercase())
+            .or_insert_with(|| SshdSetting {
                 value: value.to_ascii_lowercase(),
                 source: path.to_path_buf(),
-            },
-        );
+            });
     }
 
     Ok(())
@@ -1369,10 +1368,10 @@ mod tests {
             &config_path,
             concat!(
                 "Include /etc/ssh/sshd_config.d/*.conf\n",
-                "PermitRootLogin no\n"
+                "PermitRootLogin yes\n"
             ),
         );
-        write_file(&include_path, "PermitRootLogin yes\n");
+        write_file(&include_path, "PermitRootLogin no\n");
 
         let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
 
@@ -1380,13 +1379,13 @@ mod tests {
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");
-        assert_eq!(permit_root.source, config_path);
+        assert_eq!(permit_root.source, include_path);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
 
     #[test]
-    fn parse_sshd_config_include_can_override_main_when_processed_later() {
+    fn parse_sshd_config_include_does_not_override_existing_setting() {
         let root = temp_host_root("sshd-include-rel");
         let config_path = root.join(SSH_CONFIG_PATH);
         let include_path = root.join("etc/ssh/sshd_config.d/99-override.conf");
@@ -1402,8 +1401,8 @@ mod tests {
         let permit_root = parsed
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
-        assert_eq!(permit_root.value, "yes");
-        assert_eq!(permit_root.source, include_path);
+        assert_eq!(permit_root.value, "no");
+        assert_eq!(permit_root.source, config_path);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
@@ -1417,8 +1416,8 @@ mod tests {
         write_file(
             &config_path,
             concat!(
-                "Include /etc/ssh/sshd_config.d/cycle.conf\n",
-                "PermitRootLogin no\n"
+                "PermitRootLogin no\n",
+                "Include /etc/ssh/sshd_config.d/cycle.conf\n"
             ),
         );
         write_file(
@@ -1433,6 +1432,31 @@ mod tests {
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");
         assert_eq!(permit_root.source, config_path);
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn parse_sshd_config_relative_includes_resolve_from_etc_ssh() {
+        let root = temp_host_root("sshd-include-relative-base");
+        let config_path = root.join(SSH_CONFIG_PATH);
+        let first_include = root.join("etc/ssh/sshd_config.d/10-chain.conf");
+        let chained_include = root.join("etc/ssh/extra.conf");
+
+        write_file(&config_path, "Include /etc/ssh/sshd_config.d/*.conf\n");
+        write_file(
+            &first_include,
+            concat!("Include extra.conf\n", "PermitRootLogin yes\n"),
+        );
+        write_file(&chained_include, "PermitRootLogin no\n");
+
+        let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
+
+        let permit_root = parsed
+            .get("permitrootlogin")
+            .expect("permitrootlogin should be set");
+        assert_eq!(permit_root.value, "no");
+        assert_eq!(permit_root.source, chained_include);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
