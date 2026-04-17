@@ -189,7 +189,7 @@ fn has_image_targets(services: &[ServiceSummary]) -> bool {
 
 fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
     adapters::trivy::TrivyScanOutput {
-        status: AdapterStatus::Failed(String::from("Trivy scan thread panicked")),
+        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Trivy")),
         findings: Vec::new(),
         warnings: Vec::new(),
     }
@@ -197,7 +197,7 @@ fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
 
 fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
     adapters::lynis::LynisScanOutput {
-        status: AdapterStatus::Failed(String::from("Lynis scan thread panicked")),
+        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Lynis")),
         findings: Vec::new(),
         warnings: Vec::new(),
     }
@@ -205,7 +205,7 @@ fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
 
 fn failed_dockle_output() -> adapters::dockle::DockleScanOutput {
     adapters::dockle::DockleScanOutput {
-        status: AdapterStatus::Failed(String::from("Dockle scan thread panicked")),
+        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Dockle")),
         findings: Vec::new(),
         warnings: Vec::new(),
     }
@@ -296,38 +296,37 @@ fn load_discovered_project(
                         Ok(parsed) => {
                             return Ok((
                                 parsed,
-                                Some(format!(
-                                    "Docker metadata for discovered project {} still points to missing compose path {}; recovered by scanning {} instead.",
-                                    project.name,
-                                    path.display(),
-                                    working_dir.display()
+                                Some(crate::i18n::tr_discovery_recovered_missing_compose_path(
+                                    &project.name,
+                                    &path.display().to_string(),
+                                    &working_dir.display().to_string(),
                                 )),
                             ));
                         }
                         Err(ComposeParseError::ComposePathMissing { .. })
                         | Err(ComposeParseError::ComposeFileNotFound { .. }) => {}
                         Err(error) => {
-                            return Err(format!(
-                                "Discovered project {} points to missing compose path {} and fallback scan of {} failed: {}",
-                                project.name,
-                                path.display(),
-                                working_dir.display(),
-                                error
-                            ));
+                            return Err(
+                                crate::i18n::tr_discovery_missing_compose_path_and_fallback_failed(
+                                    &project.name,
+                                    &path.display().to_string(),
+                                    &working_dir.display().to_string(),
+                                    &error.to_string(),
+                                ),
+                            );
                         }
                     }
                 }
 
-                return Err(format!(
-                    "Discovered project {} points to missing compose path {} from Docker metadata. Recreate or remove the containers to refresh the saved Compose labels.",
-                    project.name,
-                    path.display()
+                return Err(crate::i18n::tr_discovery_missing_compose_path(
+                    &project.name,
+                    &path.display().to_string(),
                 ));
             }
             Err(error) => {
-                return Err(format!(
-                    "Failed to parse discovered project {}: {}",
-                    project.name, error
+                return Err(crate::i18n::tr_discovery_parse_failed(
+                    &project.name,
+                    &error.to_string(),
                 ));
             }
         }
@@ -338,23 +337,22 @@ fn load_discovered_project(
             .map(|parsed| (parsed, None))
             .map_err(|error| match error {
                 ComposeParseError::ComposePathMissing { .. }
-                | ComposeParseError::ComposeFileNotFound { .. } => format!(
-                    "Discovered project {} did not expose a compose file path, and no compose file was found in {}.",
-                    project.name,
-                    working_dir.display()
-                ),
-                _ => format!(
-                    "Failed to parse discovered project {} from working directory {}: {}",
-                    project.name,
-                    working_dir.display(),
-                    error
+                | ComposeParseError::ComposeFileNotFound { .. } => {
+                    crate::i18n::tr_discovery_no_compose_file_in_working_dir(
+                        &project.name,
+                        &working_dir.display().to_string(),
+                    )
+                }
+                _ => crate::i18n::tr_discovery_parse_failed_in_working_dir(
+                    &project.name,
+                    &working_dir.display().to_string(),
+                    &error.to_string(),
                 ),
             });
     }
 
-    Err(format!(
-        "Discovered project {} has no usable compose path.",
-        project.name
+    Err(crate::i18n::tr_discovery_no_usable_compose_path(
+        &project.name,
     ))
 }
 
@@ -388,9 +386,10 @@ fn apply_current_dir_fallback_from(
                 service_count: project.services.len(),
             };
             result.metadata.discovered_projects.push(summary);
-            result.metadata.warnings.push(String::from(
-                "Using the current directory as a Compose fallback because no running Compose project was discovered.",
-            ));
+            result
+                .metadata
+                .warnings
+                .push(crate::i18n::tr_discovery_current_dir_fallback_used());
             scan_compose_project(&project, result);
             coverage.compose = true;
             Ok(())
@@ -398,9 +397,12 @@ fn apply_current_dir_fallback_from(
         Err(ComposeParseError::ComposeFileNotFound { .. }) => Ok(()),
         Err(ComposeParseError::ComposePathMissing { .. }) => Ok(()),
         Err(error) => {
-            result.metadata.warnings.push(format!(
-                "Current-directory Compose fallback failed: {error}"
-            ));
+            result
+                .metadata
+                .warnings
+                .push(crate::i18n::tr_discovery_current_dir_fallback_failed(
+                    &error.to_string(),
+                ));
             Ok(())
         }
     }
@@ -464,9 +466,9 @@ mod tests {
     };
 
     use super::{
-        AdapterScanUpdate, apply_current_dir_fallback, apply_discovered_projects,
-        apply_external_adapter_update, apply_live_discovery_result, run, scan_compose_project,
-        seed_adapter_statuses, spawn_background_adapter_scan,
+        AdapterScanUpdate, apply_current_dir_fallback, apply_current_dir_fallback_from,
+        apply_discovered_projects, apply_external_adapter_update, apply_live_discovery_result, run,
+        scan_compose_project, seed_adapter_statuses, spawn_background_adapter_scan,
     };
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
@@ -527,6 +529,7 @@ mod tests {
     #[test]
     fn records_trivy_adapter_status_in_scan_metadata() {
         let config = AppConfig {
+            locale_override: None,
             output_mode: OutputMode::Json,
             show_help: false,
             show_version: false,
@@ -560,6 +563,7 @@ mod tests {
     #[test]
     fn records_lynis_as_skipped_for_compose_only_scans() {
         let config = AppConfig {
+            locale_override: None,
             output_mode: OutputMode::Json,
             show_help: false,
             show_version: false,
@@ -595,6 +599,7 @@ mod tests {
         );
 
         let config = AppConfig {
+            locale_override: None,
             output_mode: OutputMode::Json,
             show_help: false,
             show_version: false,
@@ -618,12 +623,13 @@ mod tests {
 
         assert!(matches!(status, AdapterStatus::Skipped(_)));
 
-        fs::remove_dir_all(host_root).expect("temp root should be removed");
+        let _ = fs::remove_dir_all(host_root);
     }
 
     #[test]
     fn populates_scan_metadata_from_compose_project() {
         let config = AppConfig {
+            locale_override: None,
             output_mode: OutputMode::Json,
             show_help: false,
             show_version: false,
@@ -699,6 +705,7 @@ mod tests {
         .expect("permissions should be set");
 
         let config = AppConfig {
+            locale_override: None,
             output_mode: OutputMode::Json,
             show_help: false,
             show_version: false,
@@ -1091,13 +1098,14 @@ mod tests {
 
         assert!(coverage.compose);
         assert_eq!(result.metadata.service_count, 1);
-        assert!(
-            result
-                .metadata
-                .warnings
-                .iter()
-                .any(|warning| warning.contains("recovered by scanning"))
-        );
+        assert!(result.metadata.warnings.iter().any(|warning| {
+            warning
+                == &crate::i18n::tr_discovery_recovered_missing_compose_path(
+                    "demo",
+                    &temp_dir.join("deleted-compose.yml").display().to_string(),
+                    &temp_dir.display().to_string(),
+                )
+        }));
 
         fs::remove_dir_all(temp_dir).expect("temp dir should be removed");
     }
@@ -1132,8 +1140,11 @@ mod tests {
 
         assert!(!coverage.compose);
         assert!(result.metadata.warnings.iter().any(|warning| {
-            warning.contains("Docker metadata")
-                && warning.contains("refresh the saved Compose labels")
+            warning
+                == &crate::i18n::tr_discovery_missing_compose_path(
+                    "demo",
+                    &compose_path.display().to_string(),
+                )
         }));
     }
 
@@ -1189,11 +1200,9 @@ mod tests {
                 .any(|warning| warning.contains("stale Compose labels"))
         );
         assert!(
-            result
-                .metadata
-                .warnings
-                .iter()
-                .any(|warning| { warning.contains("current directory as a Compose fallback") })
+            result.metadata.warnings.iter().any(|warning| {
+                warning == &crate::i18n::tr_discovery_current_dir_fallback_used()
+            })
         );
         assert_eq!(result.metadata.discovered_projects.len(), 2);
         assert_eq!(result.metadata.discovered_projects[1].source, "current_dir");
@@ -1250,6 +1259,34 @@ mod tests {
             .expect("background scan should eventually finish");
         assert_eq!(update.trivy.status, AdapterStatus::Missing);
         assert_eq!(update.dockle.status, AdapterStatus::Missing);
+    }
+
+    #[test]
+    fn current_dir_fallback_warning_is_localized() {
+        let temp_dir = temp_host_root("cwd-fallback-warning");
+        write_file(
+            &temp_dir.join("docker-compose.yml"),
+            concat!(
+                "services:\n",
+                "  demo:\n",
+                "    image: nginx:1.27.5\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        );
+
+        let mut result = crate::domain::ScanResult::default();
+        let mut coverage = crate::scoring::Coverage::default();
+        apply_current_dir_fallback_from(&temp_dir, &mut result, &mut coverage)
+            .expect("fallback should succeed");
+
+        assert!(
+            result.metadata.warnings.iter().any(|warning| {
+                warning == &crate::i18n::tr_discovery_current_dir_fallback_used()
+            })
+        );
+
+        fs::remove_dir_all(temp_dir).expect("temp dir should be removed");
     }
 
     #[test]

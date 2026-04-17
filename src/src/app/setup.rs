@@ -6,7 +6,7 @@ use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use dialoguer::{Confirm, MultiSelect, theme::ColorfulTheme};
+use dialoguer::{MultiSelect, theme::ColorfulTheme};
 
 use super::{AppError, SetupConfig, SetupTool};
 
@@ -158,11 +158,8 @@ pub fn run(config: &SetupConfig) -> Result<(), AppError> {
     print_plan(&plan);
 
     if !config.assume_yes && io::stdin().is_terminal() && io::stdout().is_terminal() {
-        let confirmed = Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("app.setup.prompt_confirm").into_owned())
-            .default(true)
-            .interact()
-            .map_err(|error| AppError::Io(io::Error::other(error.to_string())))?;
+        let prompt = t!("app.setup.prompt_confirm_default_yes").into_owned();
+        let confirmed = prompt_yes_no_default_yes(&prompt)?;
         if !confirmed {
             println!("{}", t!("app.setup.skipped").into_owned());
             return Ok(());
@@ -189,10 +186,12 @@ fn resolve_requested_tools(config: &SetupConfig) -> Result<Vec<SetupTool>, AppEr
     }
 
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        return Err(AppError::InvalidArgumentCombination(String::from(
-            "setup requires a terminal or explicit --tools/--tool selection; use --yes to accept the recommended defaults",
-        )));
+        return Err(AppError::InvalidArgumentCombination(
+            crate::i18n::tr_setup_requires_terminal_or_explicit_tools(),
+        ));
     }
+
+    println!("{}", t!("app.setup.prompt_tools_help").into_owned());
 
     let labels = SetupTool::ALL
         .into_iter()
@@ -219,6 +218,23 @@ fn resolve_requested_tools(config: &SetupConfig) -> Result<Vec<SetupTool>, AppEr
         .into_iter()
         .map(|index| SetupTool::ALL[index])
         .collect())
+}
+
+fn prompt_yes_no_default_yes(prompt: &str) -> Result<bool, AppError> {
+    loop {
+        print!("{prompt}");
+        io::stdout().flush()?;
+
+        let mut answer = String::new();
+        io::stdin().read_line(&mut answer)?;
+        match answer.trim().to_ascii_lowercase().as_str() {
+            "" | "y" | "yes" => return Ok(true),
+            "n" | "no" => return Ok(false),
+            _ => {
+                println!("{}", t!("app.setup.prompt_invalid_yes_no").into_owned());
+            }
+        }
+    }
 }
 
 fn recommended_tools() -> Vec<SetupTool> {
@@ -442,9 +458,9 @@ fn ensure_sudo_session() -> Result<(), AppError> {
     }
 
     if !command_exists("sudo") {
-        return Err(AppError::Io(io::Error::other(String::from(
-            "sudo is required for setup operations but was not found on PATH",
-        ))));
+        return Err(AppError::Io(io::Error::other(
+            crate::i18n::tr_setup_sudo_missing(),
+        )));
     }
 
     if run_command("sudo", &["-n", "true"]).is_ok() {
@@ -452,16 +468,16 @@ fn ensure_sudo_session() -> Result<(), AppError> {
     }
 
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        return Err(AppError::Io(io::Error::other(String::from(
-            "sudo needs a password but no interactive terminal is available",
-        ))));
+        return Err(AppError::Io(io::Error::other(
+            crate::i18n::tr_setup_sudo_needs_terminal(),
+        )));
     }
 
     println!("{}", t!("app.setup.requesting_sudo").into_owned());
     run_command("sudo", &["-v"]).map(|_| ()).map_err(|error| {
-        AppError::Io(io::Error::other(format!(
-            "failed to obtain sudo credentials: {error}"
-        )))
+        AppError::Io(io::Error::other(
+            crate::i18n::tr_setup_sudo_credentials_failed(&error),
+        ))
     })
 }
 
@@ -871,5 +887,17 @@ ID_LIKE="rhel centos fedora"
                 "[sshd]\nenabled = true\nbackend = systemd\nbantime = 1h\nfindtime = 10m\nmaxretry = 5"
             )
         );
+    }
+
+    #[test]
+    fn setup_terminal_requirement_uses_translation_helper_detail() {
+        let error = resolve_requested_tools(&SetupConfig::default())
+            .expect_err("non-interactive setup should require explicit tools");
+
+        assert!(matches!(
+            error,
+            AppError::InvalidArgumentCombination(message)
+                if message == crate::i18n::tr_setup_requires_terminal_or_explicit_tools()
+        ));
     }
 }

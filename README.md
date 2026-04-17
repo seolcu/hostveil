@@ -132,6 +132,10 @@ Run the setup flow again later:
 hostveil setup
 ```
 
+Locale defaults to English for terminal safety, even if the host locale is non-English. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for an explicit override, and press `g` inside the TUI to switch between English and Korean.
+
+Interactive setup explains the selector controls before input starts, and its confirmation prompts use a default-yes `Y/n` flow.
+
 For unattended installs, you can explicitly pick tools during bootstrap:
 
 ```sh
@@ -230,6 +234,7 @@ Current release priorities:
 - Linux-only scope with clear known limitations
 - Native Compose and host checks through one shared scan result
 - TUI overview plus finding detail navigation for real scan results
+- Explicit locale control with English-by-default terminal behavior and in-TUI language switching
 - Minimal headless JSON export for automation and regression snapshots
 - Previewable Compose `--quick-fix` and `--fix` flows with backup-safe writes
 - Release artifacts published through GitHub Releases with checksums
@@ -239,9 +244,8 @@ Current release priorities:
 Explicitly deferred from the current early-release scope:
 
 - Additional optional adapters beyond Trivy, Lynis, and Dockle
-- TUI-embedded guided diff review before writes
 - Package-manager distribution such as apt, dnf, Homebrew, or AUR
-- Final scoring ADR and stable weighting guarantees
+- Stable scoring-weight guarantees across future releases
 
 Optional dependency policy for current releases:
 

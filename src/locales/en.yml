@@ -14,6 +14,9 @@ app:
     live_docker_denied: "Live scan: Docker permission denied, host-only mode"
     live_docker_failed: "Live scan: Docker discovery failed, host-only mode"
   help:
+    usage: "Usage"
+    lifecycle: "Lifecycle"
+    options: "Options"
     text: |
       hostveil
 
@@ -49,6 +52,7 @@ app:
         --fix PATH        preview or apply safe and guided Compose review changes for a specific file or directory
         --preview-changes show the planned diff without writing any files
         --yes             apply the reviewed changes without an interactive confirmation prompt
+        --locale LANG     use an explicit locale for this run (supported: en, ko)
         --json            emit scan result JSON instead of launching the TUI
         -V, --version     show version information
         -h, --help        show this help message
@@ -66,14 +70,15 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn scroll"
     back_overview: "Press q or Esc to return to the overview"
     back_overview_compact: "q or Esc back"
-    finding_controls: "Tab or Left/Right switch focus | s severity | x source | o sort | r reset | 1-4 jump | q or Esc back"
-    finding_controls_compact: "Tab/LR focus | s sev | x src | o sort | r reset | 1-4 jump | q back"
+    finding_controls: "Tab or Left/Right switch focus | s severity | x source | o sort | r reset | 1-4 jump | g locale | q or Esc back"
+    finding_controls_compact: "Tab/LR focus | s sev | x src | o sort | r reset | 1-4 jump | g lang | q back"
     fix_review_scroll: "Use Up/Down or PgUp/PgDn to scroll the diff"
     fix_review_apply: "Press y or Enter to apply the reviewed changes"
     fix_review_cancel: "Press q or Esc to cancel"
   footer:
     quit: "quit"
     findings: "open findings"
+    locale: "switch locale"
     json: "export JSON"
   panel:
     status: "Status"
@@ -135,13 +140,48 @@ app:
     lynis_pentest_mode: "Lynis ran in unprivileged pentest mode; some root-only checks may be omitted."
     lynis_non_zero_exit: "Lynis exited with a non-zero status: %{detail}. Parsed the available report anyway."
     lynis_report_missing: "Lynis did not produce a report file."
+    scan_failed: "%{tool} scan failed for %{image}: %{error}"
+    json_parse_failed: "failed to parse %{tool} JSON: %{error}"
+    report_parse_failed: "failed to parse %{tool} report contents"
+    command_no_error_detail: "command returned no error detail"
+    scan_thread_panicked: "%{adapter} scan thread panicked"
+  discovery:
+    docker_cli_missing_fallback: "Docker CLI is not available; switching to fallback discovery."
+    docker_failed_fallback: "Docker discovery failed; switching to fallback discovery."
+    docker_failed_detail: "Docker discovery failed: %{detail}"
+    no_projects_current_dir: "No running Compose projects were discovered from Docker; checking the current directory."
+    recovered_missing_compose_path: "Docker metadata for discovered project %{project} still points to missing compose path %{compose_path}; recovered by scanning %{working_dir} instead."
+    missing_compose_path_and_fallback_failed: "Discovered project %{project} points to missing compose path %{compose_path} and fallback scan of %{working_dir} failed: %{error}"
+    missing_compose_path: "Discovered project %{project} points to missing compose path %{compose_path} from Docker metadata. Recreate or remove the containers to refresh the saved Compose labels."
+    parse_failed: "Failed to parse discovered project %{project}: %{error}"
+    no_compose_file_in_working_dir: "Discovered project %{project} did not expose a compose file path, and no compose file was found in %{working_dir}."
+    parse_failed_in_working_dir: "Failed to parse discovered project %{project} from working directory %{working_dir}: %{error}"
+    no_usable_compose_path: "Discovered project %{project} has no usable compose path."
+    current_dir_fallback_used: "Using the current directory as a Compose fallback because no running Compose project was discovered."
+    current_dir_fallback_failed: "Current-directory Compose fallback failed: %{error}"
+  score:
+    overall: "Overall"
+  validation:
+    auto_upgrade_mode_required: "choose one of enable or disable for auto-upgrade"
+    fix_requires_target: "a compose target is required for fix operations"
+    fix_host_root_not_supported: "--host-root is not supported with fix operations"
+    fix_compose_conflict: "use --quick-fix PATH or --fix PATH instead of combining them with --compose"
+    fix_json_not_supported: "--json is not supported with fix operations"
+    preview_yes_requires_fix_mode: "--preview-changes and --yes are only valid with --quick-fix or --fix"
+    fix_mode_conflict: "choose only one of --quick-fix or --fix"
+    unsupported_locale: "unsupported locale: %{value}"
+    duplicate_locale_override: "choose only one --locale override"
+    unsupported_setup_tool: "unsupported setup tool: %{value}"
+    setup_tools_required: "--tools requires at least one tool name"
   setup:
     heading: "hostveil setup"
     detected_os: "Detected OS: %{name}"
     selected_tools: "Selected tools: %{tools}"
     planned_changes: "Planned changes"
     prompt_tools: "Select the optional tools to install and configure"
-    prompt_confirm: "Apply this setup plan?"
+    prompt_tools_help: "Use Arrow keys to move, Space to toggle a tool, Enter to continue, and Esc to cancel."
+    prompt_confirm_default_yes: "Apply this setup plan? [Y/n]: "
+    prompt_invalid_yes_no: "Please answer Y or n."
     skipped: "Setup skipped. Run `hostveil setup` later to configure optional tools."
     requesting_sudo: "Requesting sudo access for package installation and system configuration..."
     running_step: "Running: %{step}"
@@ -150,6 +190,10 @@ app:
     check_failed: "%{command} could not be verified: %{detail}"
     error:
       unsupported_os: "hostveil setup does not yet support automatic dependency installation on"
+      requires_terminal_or_explicit_tools: "setup requires a terminal or explicit --tools/--tool selection; use --yes to accept the recommended defaults"
+      sudo_missing: "sudo is required for setup operations but was not found on PATH"
+      sudo_needs_terminal: "sudo needs a password but no interactive terminal is available"
+      sudo_credentials_failed: "failed to obtain sudo credentials: %{error}"
     step:
       dnf_install: "Install packages with dnf: %{packages}"
       apt_install: "Install packages with apt: %{packages}"
@@ -207,6 +251,7 @@ app:
     host_group: "Host"
     ok: "OK"
     none: "No grouped scan results yet."
+    total_findings: "Total: %{count} findings"
     single_finding: "1 finding"
     multi_findings: "%{count} findings"
     discovery_heading: "Discovery"
@@ -528,3 +573,5 @@ finding:
       description: "%{service} keeps NEXTCLOUD_ADMIN_USER and NEXTCLOUD_ADMIN_PASSWORD at default-like values."
       why: "Default bootstrap credentials are widely known and can be abused quickly if setup endpoints are reachable before hardening is complete."
       fix: "Use a unique admin username and strong random admin password during bootstrap, then rotate secrets through a safer external secret path."
+test:
+  fallback_probe: "English fallback probe"

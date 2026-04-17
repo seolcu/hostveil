@@ -115,6 +115,10 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 hostveil setup
 ```
 
+터미널 호환성을 위해 기본 locale은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하고, TUI 안에서는 `g` 키로 영어/한국어를 전환할 수 있습니다.
+
+대화형 setup은 입력 전에 선택 조작 안내를 먼저 보여주며, 확인 프롬프트는 기본값이 `Y/n` 형식입니다.
+
 무인 설치에서는 bootstrap 단계에서 설치할 도구를 명시할 수 있습니다.
 
 ```sh
@@ -179,6 +183,7 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - `src/` 아래 활성 Rust crate 골격 생성 완료
 - `rust-toolchain.toml`로 stable toolchain 고정
 - `ratatui` + `crossterm` 기반 TUI 부트스트랩과 `rust-i18n` 연결 완료
+- 영어 기본값 + 명시적 locale override(`--locale`, `HOSTVEIL_LOCALE`) + TUI 내 `g` 전환 경로 추가
 - 일반화된 Rust scan result 모델과 최소 JSON export 경로 동작
 - override 병합과 정규화를 포함한 Compose parser 포팅 및 parity 테스트 추가
 - 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 일부 포팅하고 fixture 테스트로 검증

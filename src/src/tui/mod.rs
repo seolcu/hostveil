@@ -305,6 +305,10 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
 fn handle_overview_key(state: &mut AppState, key: KeyEvent) -> bool {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => true,
+        KeyCode::Char('g') => {
+            let _ = i18n::cycle_persisted_locale();
+            false
+        }
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
             state.open_findings();
             false
@@ -333,6 +337,10 @@ fn handle_findings_key(state: &mut AppState, scan_result: &ScanResult, key: KeyE
         }
         KeyCode::Char('r') => {
             state.reset_filters_and_sort();
+            false
+        }
+        KeyCode::Char('g') => {
+            let _ = i18n::cycle_persisted_locale();
             false
         }
         KeyCode::Char('1') => {
@@ -590,6 +598,13 @@ fn header_banner() -> Paragraph<'static> {
             t!("app.header.subtitle").into_owned(),
             Style::default().fg(Color::White),
         ),
+        Span::raw(" | "),
+        Span::styled(
+            current_locale_badge(),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
     ])))
     .alignment(Alignment::Center)
     .block(Block::default().borders(Borders::TOP | Borders::BOTTOM))
@@ -781,6 +796,8 @@ fn overview_footer() -> Paragraph<'static> {
         hint_span("q", t!("app.footer.quit").into_owned()),
         Span::raw("  "),
         hint_span("Enter", t!("app.footer.findings").into_owned()),
+        Span::raw("  "),
+        hint_span("g", t!("app.footer.locale").into_owned()),
         Span::raw("  "),
         hint_span("--json", t!("app.footer.json").into_owned()),
     ])))
@@ -1177,13 +1194,25 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
 
     if available_width < 42 {
         vec![
-            Line::raw(format!("Total: {} findings", scan_result.findings.len())),
+            Line::raw(
+                t!(
+                    "app.result.total_findings",
+                    count = scan_result.findings.len()
+                )
+                .into_owned(),
+            ),
             first_pair,
             second_pair,
         ]
     } else {
         vec![
-            Line::raw(format!("Total: {} findings", scan_result.findings.len())),
+            Line::raw(
+                t!(
+                    "app.result.total_findings",
+                    count = scan_result.findings.len()
+                )
+                .into_owned(),
+            ),
             Line::from(vec![
                 Span::styled(
                     format!("{critical} {}", t!("severity.critical").into_owned()),
@@ -1832,6 +1861,10 @@ fn focus_label(focus: FindingsFocus) -> String {
         FindingsFocus::List => t!("app.finding.focus_list").into_owned(),
         FindingsFocus::Detail => t!("app.finding.focus_detail").into_owned(),
     }
+}
+
+fn current_locale_badge() -> String {
+    format!("LANG {}", i18n::current_locale().to_ascii_uppercase())
 }
 
 fn panel_border_style() -> Style {

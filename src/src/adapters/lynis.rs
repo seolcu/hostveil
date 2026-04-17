@@ -216,7 +216,7 @@ fn command_detail(stderr: &[u8], stdout: &[u8]) -> String {
         return stdout.trim().to_owned();
     }
 
-    String::from("command returned no error detail")
+    crate::i18n::tr_adapter_command_no_error_detail()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -272,7 +272,7 @@ fn parse_report(text: &str) -> Result<LynisReport, String> {
         && report.warnings.is_empty()
         && report.suggestions.is_empty()
     {
-        return Err(String::from("failed to parse Lynis report contents"));
+        return Err(crate::i18n::tr_adapter_report_parse_failed("Lynis"));
     }
 
     Ok(report)
@@ -430,7 +430,9 @@ mod tests {
 
         assert_eq!(
             output.status,
-            AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned())
+            AdapterStatus::Skipped(
+                t!("adapter.reason.host_not_scanned", locale = "en").into_owned()
+            )
         );
     }
 
@@ -440,7 +442,7 @@ mod tests {
 
         assert_eq!(
             output.status,
-            AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned())
+            AdapterStatus::Skipped(t!("adapter.reason.live_host_only", locale = "en").into_owned())
         );
     }
 
