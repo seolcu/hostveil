@@ -48,6 +48,15 @@ enum FindingSortMode {
     Subject,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RemediationFilter {
+    All,
+    Fixable,
+    Safe,
+    Guided,
+    Manual,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AppState {
     screen: Screen,
@@ -57,6 +66,7 @@ struct AppState {
     sorted_indices: Vec<usize>,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
+    remediation_filter: RemediationFilter,
     sort_mode: FindingSortMode,
 }
 
@@ -64,6 +74,7 @@ impl AppState {
     fn new(scan_result: &ScanResult) -> Self {
         let severity_filter = None;
         let source_filter = None;
+        let remediation_filter = RemediationFilter::All;
         let sort_mode = FindingSortMode::Severity;
 
         Self {
@@ -75,10 +86,12 @@ impl AppState {
                 scan_result,
                 severity_filter,
                 source_filter,
+                remediation_filter,
                 sort_mode,
             ),
             severity_filter,
             source_filter,
+            remediation_filter,
             sort_mode,
         }
     }
@@ -147,6 +160,7 @@ impl AppState {
             scan_result,
             self.severity_filter,
             self.source_filter,
+            self.remediation_filter,
             self.sort_mode,
         );
 
@@ -200,9 +214,22 @@ impl AppState {
         self.detail_scroll = 0;
     }
 
+    fn cycle_remediation_filter(&mut self) {
+        self.remediation_filter = match self.remediation_filter {
+            RemediationFilter::All => RemediationFilter::Fixable,
+            RemediationFilter::Fixable => RemediationFilter::Safe,
+            RemediationFilter::Safe => RemediationFilter::Guided,
+            RemediationFilter::Guided => RemediationFilter::Manual,
+            RemediationFilter::Manual => RemediationFilter::All,
+        };
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
     fn reset_filters_and_sort(&mut self) {
         self.severity_filter = None;
         self.source_filter = None;
+        self.remediation_filter = RemediationFilter::All;
         self.sort_mode = FindingSortMode::Severity;
         self.selected_index = 0;
         self.detail_scroll = 0;
@@ -329,6 +356,10 @@ fn handle_findings_key(state: &mut AppState, scan_result: &ScanResult, key: KeyE
         }
         KeyCode::Char('x') => {
             state.cycle_source_filter();
+            false
+        }
+        KeyCode::Char('m') => {
+            state.cycle_remediation_filter();
             false
         }
         KeyCode::Char('o') => {
@@ -906,10 +937,13 @@ fn findings_list_items(
         .filter_map(|index| scan_result.findings.get(index))
         .map(|finding| {
             let compact_subject = finding_list_subject(finding);
+            let remediation_badge = remediation_badge_text(finding.remediation);
+            let remediation_compact = remediation_badge_compact(finding.remediation);
             let title = truncate_text(
                 &format!(
-                    "[{}] {}",
+                    "[{}][{}] {}",
                     severity_short_label(finding.severity),
+                    remediation_badge,
                     finding.title
                 ),
                 inner_width,
@@ -919,8 +953,9 @@ fn findings_list_items(
                 FindingsLayoutMode::Narrow => ListItem::new(Line::styled(
                     truncate_text(
                         &format!(
-                            "[{}] {} - {}",
+                            "[{}][{}] {} - {}",
                             severity_short_label(finding.severity),
+                            remediation_compact,
                             finding.title,
                             compact_subject
                         ),
@@ -934,7 +969,12 @@ fn findings_list_items(
                         severity_style(finding.severity).add_modifier(Modifier::BOLD),
                     ),
                     Line::raw(truncate_text(
-                        &format!("{} | {}", source_label(finding.source), compact_subject),
+                        &format!(
+                            "{} | {} | {}",
+                            source_label(finding.source),
+                            compact_subject,
+                            remediation_badge
+                        ),
                         inner_width,
                     )),
                 ])),
@@ -945,10 +985,11 @@ fn findings_list_items(
                     ),
                     Line::raw(truncate_text(
                         &format!(
-                            "{} | {} | {}",
+                            "{} | {} | {} | {}",
                             source_label(finding.source),
                             scope_label(finding.scope),
-                            finding.subject
+                            finding.subject,
+                            remediation_badge
                         ),
                         inner_width,
                     )),
@@ -984,19 +1025,21 @@ fn finding_detail_text(
         Line::raw(if compact {
             truncate_text(
                 &format!(
-                    "{} | {} | {}",
+                    "{} | {} | {} | {}",
                     severity_label(finding.severity),
                     source_label(finding.source),
-                    finding_list_subject(finding)
+                    finding_list_subject(finding),
+                    remediation_badge_text(finding.remediation)
                 ),
                 available_width.max(16) as usize,
             )
         } else {
             format!(
-                "{} | {} | {}",
+                "{} | {} | {} | {}",
                 source_label(finding.source),
                 scope_label(finding.scope),
-                finding.subject
+                finding.subject,
+                remediation_badge_text(finding.remediation)
             )
         }),
     ];
@@ -1240,8 +1283,15 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
 
 fn remediation_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
     let text_width = available_width.saturating_sub(12).max(16) as usize;
+    let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
+    indices.sort_by(|left, right| {
+        compare_findings_for_remediation(
+            &scan_result.findings[*left],
+            &scan_result.findings[*right],
+        )
+    });
 
-    visible_finding_indices(scan_result, None, None, FindingSortMode::Severity)
+    indices
         .into_iter()
         .take(4)
         .filter_map(|index| scan_result.findings.get(index))
@@ -1577,6 +1627,7 @@ fn visible_finding_indices(
     scan_result: &ScanResult,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
+    remediation_filter: RemediationFilter,
     sort_mode: FindingSortMode,
 ) -> Vec<usize> {
     let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
@@ -1584,6 +1635,7 @@ fn visible_finding_indices(
         scan_result.findings.get(*index).is_some_and(|finding| {
             severity_filter.is_none_or(|severity| finding.severity == severity)
                 && source_filter.is_none_or(|source| finding.source == source)
+                && remediation_filter_matches(finding.remediation, remediation_filter)
         })
     });
     indices.sort_by(|left, right| {
@@ -1622,13 +1674,44 @@ fn compare_findings(left: &Finding, right: &Finding, sort_mode: FindingSortMode)
     }
 }
 
+fn compare_findings_for_remediation(left: &Finding, right: &Finding) -> Ordering {
+    remediation_priority(left.remediation)
+        .cmp(&remediation_priority(right.remediation))
+        .then_with(|| severity_rank(left.severity).cmp(&severity_rank(right.severity)))
+        .then_with(|| left.title.cmp(&right.title))
+        .then_with(|| left.source.cmp(&right.source))
+        .then_with(|| left.scope.cmp(&right.scope))
+        .then_with(|| left.subject.cmp(&right.subject))
+        .then_with(|| left.id.cmp(&right.id))
+}
+
+fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationFilter) -> bool {
+    match filter {
+        RemediationFilter::All => true,
+        RemediationFilter::Fixable => remediation != RemediationKind::None,
+        RemediationFilter::Safe => remediation == RemediationKind::Safe,
+        RemediationFilter::Guided => remediation == RemediationKind::Guided,
+        RemediationFilter::Manual => remediation == RemediationKind::None,
+    }
+}
+
+fn remediation_priority(remediation: RemediationKind) -> u8 {
+    match remediation {
+        RemediationKind::Safe => 0,
+        RemediationKind::Guided => 1,
+        RemediationKind::None => 2,
+    }
+}
+
 fn finding_filter_summary(state: &AppState) -> String {
     format!(
-        "{}:{} {}:{} {}:{}",
+        "{}:{} {}:{} {}:{} {}:{}",
         t!("app.finding.severity_filter_short").into_owned(),
         severity_filter_label(state.severity_filter),
         t!("app.finding.source_filter_short").into_owned(),
         source_filter_label(state.source_filter),
+        t!("app.finding.remediation_filter_short").into_owned(),
+        remediation_filter_label(state.remediation_filter),
         t!("app.finding.sort_short").into_owned(),
         sort_mode_label(state.sort_mode),
     )
@@ -1644,6 +1727,16 @@ fn source_filter_label(filter: Option<Source>) -> String {
     filter
         .map(source_label)
         .unwrap_or_else(|| t!("app.finding.filter_all").into_owned())
+}
+
+fn remediation_filter_label(filter: RemediationFilter) -> String {
+    match filter {
+        RemediationFilter::All => t!("app.finding.filter_all").into_owned(),
+        RemediationFilter::Fixable => t!("app.finding.filter_fixable").into_owned(),
+        RemediationFilter::Safe => t!("app.finding.filter_safe").into_owned(),
+        RemediationFilter::Guided => t!("app.finding.filter_guided").into_owned(),
+        RemediationFilter::Manual => t!("app.finding.filter_manual").into_owned(),
+    }
 }
 
 fn sort_mode_label(sort_mode: FindingSortMode) -> String {
@@ -1954,9 +2047,34 @@ fn scope_label(scope: Scope) -> String {
 
 fn remediation_badge(remediation: RemediationKind) -> (&'static str, Style) {
     match remediation {
-        RemediationKind::Safe => ("SAFE", Style::default().fg(Color::Green)),
-        RemediationKind::Guided => ("GUIDED", Style::default().fg(Color::Yellow)),
-        RemediationKind::None => ("MANUAL", Style::default().fg(Color::Blue)),
+        RemediationKind::Safe => (
+            remediation_badge_text(remediation),
+            Style::default().fg(Color::Green),
+        ),
+        RemediationKind::Guided => (
+            remediation_badge_text(remediation),
+            Style::default().fg(Color::Yellow),
+        ),
+        RemediationKind::None => (
+            remediation_badge_text(remediation),
+            Style::default().fg(Color::Blue),
+        ),
+    }
+}
+
+fn remediation_badge_text(remediation: RemediationKind) -> &'static str {
+    match remediation {
+        RemediationKind::Safe => "SAFE",
+        RemediationKind::Guided => "GUIDED",
+        RemediationKind::None => "MANUAL",
+    }
+}
+
+fn remediation_badge_compact(remediation: RemediationKind) -> &'static str {
+    match remediation {
+        RemediationKind::Safe => "S",
+        RemediationKind::Guided => "G",
+        RemediationKind::None => "M",
     }
 }
 
@@ -2154,6 +2272,59 @@ mod tests {
         result
     }
 
+    fn remediation_priority_result() -> ScanResult {
+        ScanResult {
+            findings: vec![
+                Finding {
+                    id: String::from("manual.critical"),
+                    axis: Axis::SensitiveData,
+                    severity: Severity::Critical,
+                    scope: Scope::Service,
+                    source: Source::NativeCompose,
+                    subject: String::from("critical-manual"),
+                    related_service: Some(String::from("critical-manual")),
+                    title: String::from("Critical manual finding"),
+                    description: String::from("Manual-only remediation."),
+                    why_risky: String::from("High risk remains."),
+                    how_to_fix: String::from("Manual review required."),
+                    evidence: BTreeMap::new(),
+                    remediation: RemediationKind::None,
+                },
+                Finding {
+                    id: String::from("safe.low"),
+                    axis: Axis::UpdateSupplyChainRisk,
+                    severity: Severity::Low,
+                    scope: Scope::Service,
+                    source: Source::NativeCompose,
+                    subject: String::from("safe-finding"),
+                    related_service: Some(String::from("safe-finding")),
+                    title: String::from("Safe fix finding"),
+                    description: String::from("Safe remediation is available."),
+                    why_risky: String::from("Version drift remains."),
+                    how_to_fix: String::from("Apply the safe fix."),
+                    evidence: BTreeMap::new(),
+                    remediation: RemediationKind::Safe,
+                },
+                Finding {
+                    id: String::from("guided.high"),
+                    axis: Axis::UnnecessaryExposure,
+                    severity: Severity::High,
+                    scope: Scope::Service,
+                    source: Source::NativeCompose,
+                    subject: String::from("guided-finding"),
+                    related_service: Some(String::from("guided-finding")),
+                    title: String::from("Guided fix finding"),
+                    description: String::from("Guided remediation is available."),
+                    why_risky: String::from("Exposure remains."),
+                    how_to_fix: String::from("Review the guided fix."),
+                    evidence: BTreeMap::new(),
+                    remediation: RemediationKind::Guided,
+                },
+            ],
+            ..ScanResult::default()
+        }
+    }
+
     #[test]
     fn overview_navigation_opens_findings() {
         let result = sample_result();
@@ -2232,6 +2403,15 @@ mod tests {
         handle_key(
             &mut state,
             &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::Fixable);
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
             KeyEvent::new(KeyCode::Char('o'), crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.sort_mode, FindingSortMode::Source);
@@ -2250,7 +2430,60 @@ mod tests {
         );
         assert_eq!(state.severity_filter, None);
         assert_eq!(state.source_filter, None);
+        assert_eq!(state.remediation_filter, RemediationFilter::All);
         assert_eq!(state.sort_mode, FindingSortMode::Severity);
+    }
+
+    #[test]
+    fn findings_controls_cycle_remediation_filter_states() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::Fixable);
+        assert_eq!(state.finding_count(), 2);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::Safe);
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::Guided);
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::Manual);
+        assert_eq!(state.finding_count(), 1);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.remediation_filter, RemediationFilter::All);
+        assert_eq!(state.finding_count(), 3);
     }
 
     #[test]
@@ -2312,6 +2545,16 @@ mod tests {
     }
 
     #[test]
+    fn overview_fix_paths_prioritize_fixable_findings() {
+        let lines = remediation_lines(&remediation_priority_result(), 80);
+
+        assert!(!lines.is_empty());
+        assert!(line_to_string(&lines[0]).contains("[SAFE]"));
+        assert!(line_to_string(&lines[1]).contains("[GUIDED]"));
+        assert!(line_to_string(&lines[2]).contains("[MANUAL]"));
+    }
+
+    #[test]
     fn overview_renders_full_metadata_in_wide_layout() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -2369,9 +2612,10 @@ mod tests {
 
         assert!(content.contains("Findings [list focus]"));
         assert!(content.contains("Detail"));
+        assert!(content.contains("[GUIDED]"));
         assert!(content.contains("Admin interface is exposed publicly"));
-        assert!(content.contains("Native Compose"));
-        assert!(content.contains("Service"));
+        assert!(content.contains("Native Compose | Service | adminer | GUIDED"));
+        assert!(content.contains("rem:all"));
         assert!(content.contains("adminer"));
     }
 
@@ -2436,10 +2680,17 @@ mod tests {
 
         let content = buffer_to_string(terminal.backend());
 
-        assert!(content.contains("[CRIT] Admin interface is exposed publicly - adminer"));
-        assert!(content.contains("Critical | Native Compose | adminer"));
-        assert!(content.contains("s sev | x src | o sort | r reset"));
+        assert!(content.contains("[CRIT][G] Admin interface is exposed publicly - adminer"));
+        assert!(content.contains("Critical | Native Compose | adminer | GUIDED"));
+        assert!(content.contains("s sev | x src | m rem | o sort | r reset"));
         assert!(!content.contains("PageUp/PageDown"));
+    }
+
+    fn line_to_string(line: &Line<'_>) -> String {
+        line.spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect::<String>()
     }
 
     fn buffer_to_string(backend: &TestBackend) -> String {
