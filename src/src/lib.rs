@@ -14,4 +14,5 @@ pub mod host;
 pub mod i18n;
 pub mod rules;
 pub mod scoring;
+pub mod settings;
 pub mod tui;

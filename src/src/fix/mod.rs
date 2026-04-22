@@ -1170,6 +1170,31 @@ mod tests {
     }
 
     #[test]
+    fn previews_quick_fix_preserves_udp_port_protocol_and_quotes() {
+        let root = temp_compose_dir("quick-udp-port");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx\n",
+                "    ports:\n",
+                "      - \"9090:90/udp\"\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 2);
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.contains("\"127.0.0.1:9090:90/udp\""));
+        assert!(plan.diff_preview.contains("nginx:stable"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
     fn previews_guided_fix_for_vaultwarden_signups() {
         let root = temp_compose_dir("guided-vaultwarden-signups");
         let path = root.join("docker-compose.yml");
@@ -1459,6 +1484,42 @@ mod tests {
         assert!(updated.contains("      - PUID=1000"));
         assert!(updated.contains("      - /srv/media:/media:ro"));
         assert!(updated.contains("      - \"127.0.0.1:8096:8096\""));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn preview_and_apply_preserve_single_quote_style_for_nextcloud_hardening() {
+        let root = temp_compose_dir("preserve-single-quote-style");
+        let path = root.join("compose.yaml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  nextcloud:\n",
+                "    image: nextcloud:31.0.0\n",
+                "    ports:\n",
+                "      - \"8081:80\"\n",
+                "    environment:\n",
+                "      OVERWRITEPROTOCOL: 'http'\n",
+                "      NEXTCLOUD_TRUSTED_DOMAINS: 'cloud.example.com,*.example.com'\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert!(plan.diff_preview.contains("OVERWRITEPROTOCOL: 'https'"));
+        assert!(
+            plan.diff_preview
+                .contains("NEXTCLOUD_TRUSTED_DOMAINS: 'cloud.example.com'")
+        );
+
+        apply(&path, FixMode::QuickFix).expect("quick-fix apply should succeed");
+        let updated = fs::read_to_string(&path).expect("compose file should be readable");
+
+        assert!(updated.contains("      OVERWRITEPROTOCOL: 'https'"));
+        assert!(updated.contains("      NEXTCLOUD_TRUSTED_DOMAINS: 'cloud.example.com'"));
+        assert!(updated.contains("      - \"127.0.0.1:8081:80\""));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

@@ -38,9 +38,7 @@ pub fn discover_running_compose_projects() -> DockerDiscoveryResult {
             return DockerDiscoveryResult {
                 status: DockerDiscoveryStatus::Missing,
                 projects: Vec::new(),
-                warnings: vec![String::from(
-                    "Docker CLI is not available; switching to fallback discovery.",
-                )],
+                warnings: vec![crate::i18n::tr_discovery_docker_cli_missing_fallback()],
             };
         }
     };
@@ -56,9 +54,9 @@ pub fn discover_running_compose_projects() -> DockerDiscoveryResult {
             status,
             projects: Vec::new(),
             warnings: vec![if stderr.is_empty() {
-                String::from("Docker discovery failed; switching to fallback discovery.")
+                crate::i18n::tr_discovery_docker_failed_fallback()
             } else {
-                format!("Docker discovery failed: {stderr}")
+                crate::i18n::tr_discovery_docker_failed_detail(&stderr)
             }],
         };
     }
@@ -66,9 +64,7 @@ pub fn discover_running_compose_projects() -> DockerDiscoveryResult {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let projects = parse_docker_ps_output(&stdout);
     let warnings = if projects.is_empty() {
-        vec![String::from(
-            "No running Compose projects were discovered from Docker; checking the current directory.",
-        )]
+        vec![crate::i18n::tr_discovery_no_projects_current_dir()]
     } else {
         Vec::new()
     };

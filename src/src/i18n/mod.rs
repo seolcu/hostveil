@@ -1,29 +1,76 @@
 use std::env;
+use std::io;
 
 use crate::compose::ComposeParseError;
+use crate::settings;
 
-pub fn initialize_locale_from_env() {
+pub const DEFAULT_LOCALE: &str = "en";
+
+pub fn initialize_locale_from_args(args: &[String]) {
+    let cli_locale = locale_override_from_args(args);
+    initialize_locale(cli_locale.as_deref());
+}
+
+pub fn initialize_locale(cli_locale: Option<&str>) {
+    let configured_locale = settings::load().locale;
     let hostveil_locale = env::var("HOSTVEIL_LOCALE").ok();
-    let lc_all = env::var("LC_ALL").ok();
-    let lang = env::var("LANG").ok();
 
     rust_i18n::set_locale(resolve_preferred_locale(
+        cli_locale,
+        configured_locale.as_deref(),
         hostveil_locale.as_deref(),
-        lc_all.as_deref(),
-        lang.as_deref(),
     ));
 }
 
+pub fn locale_override_from_args(args: &[String]) -> Option<String> {
+    let mut args = args.iter();
+
+    while let Some(argument) = args.next() {
+        match argument.as_str() {
+            "--locale" => {
+                let value = args.next()?;
+                return parse_supported_locale(value).map(str::to_owned);
+            }
+            _ if argument.starts_with("--locale=") => {
+                let value = argument.trim_start_matches("--locale=");
+                return parse_supported_locale(value).map(str::to_owned);
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+pub fn parse_supported_locale(raw: &str) -> Option<&'static str> {
+    normalize_locale_tag(raw)
+}
+
+pub fn current_locale() -> String {
+    rust_i18n::locale().to_string()
+}
+
+pub fn cycle_persisted_locale() -> io::Result<&'static str> {
+    let next = match &*rust_i18n::locale() {
+        "ko" => "en",
+        _ => "ko",
+    };
+
+    rust_i18n::set_locale(next);
+    settings::persist_locale(next)?;
+    Ok(next)
+}
+
 fn resolve_preferred_locale(
+    cli_locale: Option<&str>,
+    configured_locale: Option<&str>,
     hostveil_locale: Option<&str>,
-    lc_all: Option<&str>,
-    lang: Option<&str>,
 ) -> &'static str {
-    [hostveil_locale, lc_all, lang]
+    [cli_locale, hostveil_locale, configured_locale]
         .into_iter()
         .flatten()
-        .find_map(normalize_locale_tag)
-        .unwrap_or("en")
+        .find_map(parse_supported_locale)
+        .unwrap_or(DEFAULT_LOCALE)
 }
 
 fn normalize_locale_tag(raw: &str) -> Option<&'static str> {
@@ -39,13 +86,13 @@ fn normalize_locale_tag(raw: &str) -> Option<&'static str> {
     let language = without_modifier.replace('_', "-").to_ascii_lowercase();
 
     if language == "c" || language == "posix" {
-        return Some("en");
+        return Some(DEFAULT_LOCALE);
     }
 
     if language.starts_with("ko") {
         Some("ko")
     } else if language.starts_with("en") {
-        Some("en")
+        Some(DEFAULT_LOCALE)
     } else {
         None
     }
@@ -85,6 +132,50 @@ pub fn tr_missing_argument_value(flag: &str) -> String {
 
 pub fn tr_invalid_argument_combination(message: &str) -> String {
     t!("app.error.invalid_argument_combination", message = message).into_owned()
+}
+
+pub fn tr_auto_upgrade_mode_required() -> String {
+    t!("app.validation.auto_upgrade_mode_required").into_owned()
+}
+
+pub fn tr_fix_requires_target() -> String {
+    t!("app.validation.fix_requires_target").into_owned()
+}
+
+pub fn tr_fix_host_root_not_supported() -> String {
+    t!("app.validation.fix_host_root_not_supported").into_owned()
+}
+
+pub fn tr_fix_compose_conflict() -> String {
+    t!("app.validation.fix_compose_conflict").into_owned()
+}
+
+pub fn tr_fix_json_not_supported() -> String {
+    t!("app.validation.fix_json_not_supported").into_owned()
+}
+
+pub fn tr_preview_yes_requires_fix_mode() -> String {
+    t!("app.validation.preview_yes_requires_fix_mode").into_owned()
+}
+
+pub fn tr_fix_mode_conflict() -> String {
+    t!("app.validation.fix_mode_conflict").into_owned()
+}
+
+pub fn tr_unsupported_locale(value: &str) -> String {
+    t!("app.validation.unsupported_locale", value = value).into_owned()
+}
+
+pub fn tr_duplicate_locale_override() -> String {
+    t!("app.validation.duplicate_locale_override").into_owned()
+}
+
+pub fn tr_unsupported_setup_tool(value: &str) -> String {
+    t!("app.validation.unsupported_setup_tool", value = value).into_owned()
+}
+
+pub fn tr_setup_tools_required() -> String {
+    t!("app.validation.setup_tools_required").into_owned()
 }
 
 pub fn tr_lifecycle_command_requires_installed_wrapper(command: &str) -> String {
@@ -184,17 +275,180 @@ pub fn tr_summary_finding_count(count: usize) -> String {
     t!("app.summary.finding_count", count = count).into_owned()
 }
 
+pub fn tr_setup_requires_terminal_or_explicit_tools() -> String {
+    t!("app.setup.error.requires_terminal_or_explicit_tools").into_owned()
+}
+
+pub fn tr_setup_sudo_missing() -> String {
+    t!("app.setup.error.sudo_missing").into_owned()
+}
+
+pub fn tr_setup_sudo_needs_terminal() -> String {
+    t!("app.setup.error.sudo_needs_terminal").into_owned()
+}
+
+pub fn tr_setup_sudo_credentials_failed(error: &str) -> String {
+    t!("app.setup.error.sudo_credentials_failed", error = error).into_owned()
+}
+
+pub fn tr_adapter_scan_failed(tool: &str, image: &str, error: &str) -> String {
+    t!(
+        "app.adapter.scan_failed",
+        tool = tool,
+        image = image,
+        error = error
+    )
+    .into_owned()
+}
+
+pub fn tr_adapter_json_parse_failed(tool: &str, error: &str) -> String {
+    t!("app.adapter.json_parse_failed", tool = tool, error = error).into_owned()
+}
+
+pub fn tr_adapter_command_no_error_detail() -> String {
+    t!("app.adapter.command_no_error_detail").into_owned()
+}
+
+pub fn tr_adapter_report_parse_failed(tool: &str) -> String {
+    t!("app.adapter.report_parse_failed", tool = tool).into_owned()
+}
+
+pub fn tr_adapter_scan_thread_panicked(adapter: &str) -> String {
+    t!("app.adapter.scan_thread_panicked", adapter = adapter).into_owned()
+}
+
+pub fn tr_discovery_docker_cli_missing_fallback() -> String {
+    t!("app.discovery.docker_cli_missing_fallback").into_owned()
+}
+
+pub fn tr_discovery_docker_failed_fallback() -> String {
+    t!("app.discovery.docker_failed_fallback").into_owned()
+}
+
+pub fn tr_discovery_docker_failed_detail(detail: &str) -> String {
+    t!("app.discovery.docker_failed_detail", detail = detail).into_owned()
+}
+
+pub fn tr_discovery_no_projects_current_dir() -> String {
+    t!("app.discovery.no_projects_current_dir").into_owned()
+}
+
+pub fn tr_discovery_recovered_missing_compose_path(
+    project: &str,
+    compose_path: &str,
+    working_dir: &str,
+) -> String {
+    t!(
+        "app.discovery.recovered_missing_compose_path",
+        project = project,
+        compose_path = compose_path,
+        working_dir = working_dir
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_missing_compose_path_and_fallback_failed(
+    project: &str,
+    compose_path: &str,
+    working_dir: &str,
+    error: &str,
+) -> String {
+    t!(
+        "app.discovery.missing_compose_path_and_fallback_failed",
+        project = project,
+        compose_path = compose_path,
+        working_dir = working_dir,
+        error = error
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_missing_compose_path(project: &str, compose_path: &str) -> String {
+    t!(
+        "app.discovery.missing_compose_path",
+        project = project,
+        compose_path = compose_path
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_parse_failed(project: &str, error: &str) -> String {
+    t!(
+        "app.discovery.parse_failed",
+        project = project,
+        error = error
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_no_compose_file_in_working_dir(project: &str, working_dir: &str) -> String {
+    t!(
+        "app.discovery.no_compose_file_in_working_dir",
+        project = project,
+        working_dir = working_dir
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_parse_failed_in_working_dir(
+    project: &str,
+    working_dir: &str,
+    error: &str,
+) -> String {
+    t!(
+        "app.discovery.parse_failed_in_working_dir",
+        project = project,
+        working_dir = working_dir,
+        error = error
+    )
+    .into_owned()
+}
+
+pub fn tr_discovery_no_usable_compose_path(project: &str) -> String {
+    t!("app.discovery.no_usable_compose_path", project = project).into_owned()
+}
+
+pub fn tr_discovery_current_dir_fallback_used() -> String {
+    t!("app.discovery.current_dir_fallback_used").into_owned()
+}
+
+pub fn tr_discovery_current_dir_fallback_failed(error: &str) -> String {
+    t!("app.discovery.current_dir_fallback_failed", error = error).into_owned()
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
+    use serde_yaml::Value;
+
     use super::{
-        normalize_locale_tag, resolve_preferred_locale, tr, tr_compose_parse_error,
-        tr_fix_requires_terminal, tr_invalid_argument_combination, tr_io_error,
-        tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
+        locale_override_from_args, normalize_locale_tag, resolve_preferred_locale, tr,
+        tr_compose_parse_error, tr_fix_requires_terminal, tr_invalid_argument_combination,
+        tr_io_error, tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
         tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
         tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
         tr_summary_service_count, tr_tui_requires_terminal, tr_unknown_argument, tr_version,
     };
     use crate::compose::ComposeParseError;
+
+    fn flatten_yaml_keys(value: &Value, prefix: &str, keys: &mut BTreeSet<String>) {
+        if let Value::Mapping(mapping) = value {
+            for (key, value) in mapping {
+                let Value::String(key) = key else {
+                    continue;
+                };
+
+                let next = if prefix.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{prefix}.{key}")
+                };
+                keys.insert(next.clone());
+                flatten_yaml_keys(value, &next, keys);
+            }
+        }
+    }
 
     #[test]
     fn returns_known_translation() {
@@ -330,7 +584,7 @@ mod tests {
     }
 
     #[test]
-    fn locale_resolver_prefers_explicit_hostveil_locale() {
+    fn locale_resolver_prefers_cli_override() {
         assert_eq!(
             resolve_preferred_locale(Some("ko_KR.UTF-8"), Some("en_US.UTF-8"), Some("en_US")),
             "ko"
@@ -338,11 +592,16 @@ mod tests {
     }
 
     #[test]
-    fn locale_resolver_uses_system_locale_when_explicit_locale_is_missing() {
+    fn locale_resolver_prefers_hostveil_env_over_saved_locale() {
         assert_eq!(
             resolve_preferred_locale(None, Some("ko-KR"), Some("en_US.UTF-8")),
-            "ko"
+            "en"
         );
+    }
+
+    #[test]
+    fn locale_resolver_uses_saved_locale_when_no_explicit_override_is_present() {
+        assert_eq!(resolve_preferred_locale(None, Some("ko-KR"), None), "ko");
     }
 
     #[test]
@@ -363,6 +622,22 @@ mod tests {
     }
 
     #[test]
+    fn locale_override_parser_detects_flag_forms() {
+        assert_eq!(
+            locale_override_from_args(&[
+                String::from("--locale"),
+                String::from("ko_KR.UTF-8"),
+                String::from("--json"),
+            ]),
+            Some(String::from("ko"))
+        );
+        assert_eq!(
+            locale_override_from_args(&[String::from("--locale=en")]),
+            Some(String::from("en"))
+        );
+    }
+
+    #[test]
     fn korean_locale_translates_cli_and_tui_strings() {
         assert_eq!(t!("app.help.usage", locale = "ko").into_owned(), "사용법");
         assert_eq!(
@@ -377,5 +652,20 @@ mod tests {
             t!("test.fallback_probe", locale = "ko").into_owned(),
             "English fallback probe"
         );
+    }
+
+    #[test]
+    fn locale_files_keep_en_and_ko_keys_in_sync() {
+        let en: Value =
+            serde_yaml::from_str(include_str!("../../locales/en.yml")).expect("en locale parses");
+        let ko: Value =
+            serde_yaml::from_str(include_str!("../../locales/ko.yml")).expect("ko locale parses");
+
+        let mut en_keys = BTreeSet::new();
+        let mut ko_keys = BTreeSet::new();
+        flatten_yaml_keys(&en, "", &mut en_keys);
+        flatten_yaml_keys(&ko, "", &mut ko_keys);
+
+        assert_eq!(en_keys, ko_keys, "locale keys must stay in sync");
     }
 }

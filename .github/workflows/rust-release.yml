@@ -64,6 +64,9 @@ jobs:
       - name: Run smoke tests
         run: ./scripts/smoke-test.sh target/release/hostveil
 
+      - name: Run installer tests
+        run: ./scripts/test-install-script.sh target/release/hostveil
+
   build:
     name: build ${{ matrix.target }}
     needs: validate
@@ -168,6 +171,8 @@ jobs:
             hostveil setup
             ```
 
+            Locale defaults to English for terminal safety. Use `hostveil --locale ko ...`, `HOSTVEIL_LOCALE=ko hostveil ...`, or press `g` in the TUI for an explicit switch.
+
             ## Upgrade
             ```sh
             hostveil upgrade
@@ -200,7 +205,6 @@ jobs:
 
             ## Known limitations
             - Linux only
-            - TUI-embedded guided diff review is still deferred from the current release scope
           files: |
             dist/*.tar.gz
             dist/SHA256SUMS

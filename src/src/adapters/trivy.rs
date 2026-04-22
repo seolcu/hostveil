@@ -56,7 +56,7 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
                 }
                 output
                     .warnings
-                    .push(format!("Trivy scan failed for {image}: {error}"));
+                    .push(crate::i18n::tr_adapter_scan_failed("Trivy", &image, &error));
             }
         }
     }
@@ -150,7 +150,7 @@ fn scan_image(image: &str) -> Result<Option<TrivyImageSummary>, String> {
     }
 
     let report: TrivyReport = serde_json::from_slice(&output.stdout)
-        .map_err(|error| format!("failed to parse Trivy JSON: {error}"))?;
+        .map_err(|error| crate::i18n::tr_adapter_json_parse_failed("Trivy", &error.to_string()))?;
 
     Ok(summarize_report(image, report))
 }
@@ -470,7 +470,9 @@ mod tests {
 
         assert_eq!(
             output.status,
-            AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
+            AdapterStatus::Skipped(
+                t!("adapter.reason.no_image_targets", locale = "en").into_owned()
+            )
         );
         assert!(output.findings.is_empty());
     }

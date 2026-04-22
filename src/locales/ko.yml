@@ -52,6 +52,7 @@ app:
         --fix PATH        특정 파일 또는 디렉터리에 안전/가이드 Compose 변경을 미리보기 또는 적용합니다
         --preview-changes 파일을 쓰지 않고 예정된 diff를 표시합니다
         --yes             대화형 확인 없이 검토한 변경을 적용합니다
+        --locale LANG     이번 실행에 사용할 언어를 명시합니다 (지원: en, ko)
         --json            TUI 대신 스캔 결과 JSON을 출력합니다
         -V, --version     버전 정보를 표시합니다
         -h, --help        이 도움말을 표시합니다
@@ -69,14 +70,15 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn 스크롤"
     back_overview: "q 또는 Esc를 눌러 개요로 돌아갑니다"
     back_overview_compact: "q 또는 Esc로 뒤로"
-    finding_controls: "Tab 또는 Left/Right 포커스 전환 | s 심각도 | x 소스 | o 정렬 | r 초기화 | 1-4 점프 | q 또는 Esc 뒤로"
-    finding_controls_compact: "Tab/LR 포커스 | s 심각도 | x 소스 | o 정렬 | r 초기화 | 1-4 점프 | q 뒤로"
+    finding_controls: "Tab 또는 Left/Right 포커스 전환 | s 심각도 | x 소스 | m 수정 경로 | o 정렬 | r 초기화 | 1-4 점프 | g 언어 | q 또는 Esc 뒤로"
+    finding_controls_compact: "Tab/LR 포커스 | s 심각도 | x 소스 | m 조치 | o 정렬 | r 초기화 | 1-4 점프 | g 언어 | q 뒤로"
     fix_review_scroll: "Up/Down 또는 PgUp/PgDn으로 diff를 스크롤합니다"
     fix_review_apply: "y 또는 Enter를 눌러 검토한 변경을 적용합니다"
     fix_review_cancel: "q 또는 Esc를 눌러 취소합니다"
   footer:
     quit: "종료"
     findings: "발견 항목 열기"
+    locale: "언어 전환"
     json: "JSON 내보내기"
   panel:
     status: "상태"
@@ -136,15 +138,51 @@ app:
     finding_count: "발견 항목 수: %{count}"
   adapter:
     lynis_pentest_mode: "Lynis가 비권한 pentest 모드로 실행되어 root 권한이 필요한 일부 점검이 생략될 수 있습니다."
+    lynis_root_required_skipped: "Lynis 호스트 감사에는 root 권한이 필요해 데스크톱 권한 확인 창을 피하려고 건너뛰었습니다."
     lynis_non_zero_exit: "Lynis가 비정상 종료 코드로 종료했습니다: %{detail}. 사용 가능한 보고서는 계속 파싱했습니다."
     lynis_report_missing: "Lynis가 보고서 파일을 생성하지 않았습니다."
+    scan_failed: "%{tool} 스캔이 %{image}에서 실패했습니다: %{error}"
+    json_parse_failed: "%{tool} JSON 파싱에 실패했습니다: %{error}"
+    report_parse_failed: "%{tool} 보고서 내용을 파싱하지 못했습니다"
+    command_no_error_detail: "명령에서 오류 상세를 반환하지 않았습니다"
+    scan_thread_panicked: "%{adapter} 스캔 스레드가 패닉으로 종료되었습니다"
+  discovery:
+    docker_cli_missing_fallback: "Docker CLI를 찾지 못해 fallback 탐색으로 전환합니다."
+    docker_failed_fallback: "Docker 탐색에 실패해 fallback 탐색으로 전환합니다."
+    docker_failed_detail: "Docker 탐색에 실패했습니다: %{detail}"
+    no_projects_current_dir: "Docker에서 실행 중인 Compose 프로젝트를 찾지 못해 현재 디렉터리를 확인합니다."
+    recovered_missing_compose_path: "발견된 프로젝트 %{project}의 Docker 메타데이터가 누락된 compose 경로 %{compose_path}를 가리키고 있어 %{working_dir}를 스캔해 복구했습니다."
+    missing_compose_path_and_fallback_failed: "발견된 프로젝트 %{project}가 누락된 compose 경로 %{compose_path}를 가리키고 있고, %{working_dir}에 대한 fallback 스캔도 실패했습니다: %{error}"
+    missing_compose_path: "발견된 프로젝트 %{project}가 Docker 메타데이터의 누락된 compose 경로 %{compose_path}를 가리킵니다. 저장된 Compose 라벨을 갱신하려면 컨테이너를 다시 만들거나 제거하세요."
+    parse_failed: "발견된 프로젝트 %{project}를 파싱하지 못했습니다: %{error}"
+    no_compose_file_in_working_dir: "발견된 프로젝트 %{project}가 compose 파일 경로를 노출하지 않았고, %{working_dir}에서도 compose 파일을 찾지 못했습니다."
+    parse_failed_in_working_dir: "작업 디렉터리 %{working_dir}에서 발견된 프로젝트 %{project}를 파싱하지 못했습니다: %{error}"
+    no_usable_compose_path: "발견된 프로젝트 %{project}에 사용할 수 있는 compose 경로가 없습니다."
+    current_dir_fallback_used: "실행 중인 Compose 프로젝트를 찾지 못해 현재 디렉터리를 Compose fallback으로 사용합니다."
+    current_dir_fallback_failed: "현재 디렉터리 Compose fallback에 실패했습니다: %{error}"
+  score:
+    overall: "전체"
+  validation:
+    auto_upgrade_mode_required: "auto-upgrade에는 enable 또는 disable 중 하나를 선택하세요"
+    fix_requires_target: "fix 작업에는 compose 대상이 필요합니다"
+    fix_host_root_not_supported: "fix 작업에서는 --host-root를 사용할 수 없습니다"
+    fix_compose_conflict: "--compose와 함께 쓰지 말고 --quick-fix PATH 또는 --fix PATH를 사용하세요"
+    fix_json_not_supported: "fix 작업에서는 --json을 사용할 수 없습니다"
+    preview_yes_requires_fix_mode: "--preview-changes와 --yes는 --quick-fix 또는 --fix와 함께 사용할 때만 유효합니다"
+    fix_mode_conflict: "--quick-fix와 --fix 중 하나만 선택하세요"
+    unsupported_locale: "지원하지 않는 언어입니다: %{value}"
+    duplicate_locale_override: "--locale override는 하나만 선택하세요"
+    unsupported_setup_tool: "지원하지 않는 setup 도구입니다: %{value}"
+    setup_tools_required: "--tools에는 최소 하나의 도구 이름이 필요합니다"
   setup:
     heading: "hostveil setup"
     detected_os: "감지된 OS: %{name}"
     selected_tools: "선택된 도구: %{tools}"
     planned_changes: "예정된 변경"
     prompt_tools: "설치하고 구성할 선택형 도구를 고르세요"
-    prompt_confirm: "이 setup 계획을 적용할까요?"
+    prompt_tools_help: "Arrow 키로 이동하고, Space로 도구를 선택 또는 해제하고, Enter로 진행하고, Esc로 취소하세요."
+    prompt_confirm_default_yes: "이 setup 계획을 적용할까요? [Y/n]: "
+    prompt_invalid_yes_no: "Y 또는 n으로 답해주세요."
     skipped: "Setup을 건너뛰었습니다. 나중에 `hostveil setup`으로 다시 구성하세요."
     requesting_sudo: "패키지 설치와 시스템 구성을 위해 sudo 권한을 요청합니다..."
     running_step: "실행 중: %{step}"
@@ -153,6 +191,10 @@ app:
     check_failed: "%{command} 검증에 실패했습니다: %{detail}"
     error:
       unsupported_os: "hostveil setup은 아직 자동 의존성 설치를 지원하지 않습니다:"
+      requires_terminal_or_explicit_tools: "setup에는 터미널이 필요합니다. 또는 --tools/--tool로 명시적으로 선택하고, 추천 기본값을 수락하려면 --yes를 사용하세요"
+      sudo_missing: "setup 작업에는 sudo가 필요하지만 PATH에서 찾지 못했습니다"
+      sudo_needs_terminal: "sudo에 비밀번호가 필요하지만 대화형 터미널을 사용할 수 없습니다"
+      sudo_credentials_failed: "sudo 자격 증명을 얻지 못했습니다: %{error}"
     step:
       dnf_install: "dnf로 패키지 설치: %{packages}"
       apt_install: "apt로 패키지 설치: %{packages}"
@@ -201,8 +243,13 @@ app:
     no_evidence: "이 발견 항목에는 구조화된 증거가 없습니다."
     severity_filter_short: "심각도"
     source_filter_short: "소스"
+    remediation_filter_short: "조치"
     sort_short: "정렬"
     filter_all: "전체"
+    filter_fixable: "수정 가능"
+    filter_safe: "안전"
+    filter_guided: "가이드"
+    filter_manual: "수동"
     sort_severity: "심각도"
     sort_source: "소스"
     sort_subject: "대상"
@@ -210,6 +257,7 @@ app:
     host_group: "호스트"
     ok: "정상"
     none: "그룹화된 스캔 결과가 없습니다."
+    total_findings: "총 발견 항목: %{count}개"
     single_finding: "발견 항목 1개"
     multi_findings: "발견 항목 %{count}개"
     discovery_heading: "탐색"
@@ -312,12 +360,130 @@ finding:
       description: "%{service}가 메이저 버전만 고정된 %{image}를 사용합니다."
       why: "메이저 전용 태그도 마이너/패치 업데이트로 이동해 동작 변화를 유발할 수 있습니다."
       fix: "예측 가능한 롤아웃을 위해 최소 마이너 또는 패치 버전까지 고정하세요."
+  exposure:
+    public_bind:
+      title: "서비스가 공개 인터페이스에 게시되어 있습니다"
+      description: "%{service}가 공개 접근 가능한 호스트 인터페이스에 %{port}를 게시합니다."
+      why: "공개 바인딩은 공격 표면을 넓히고, 더 안전한 localhost 전용 또는 리버스 프록시 구성을 우회할 수 있습니다."
+      fix: "서비스가 정말 직접 외부 접근이 필요하지 않다면 포트를 127.0.0.1에 바인딩하세요."
+    admin_public:
+      title: "관리 인터페이스가 공개 노출되어 있습니다"
+      description: "%{service}가 %{port}에서 관리 인터페이스를 노출합니다."
+      why: "공개된 관리 패널은 무차별 대입, 열거, 취약점 공격의 고가치 표적입니다."
+      fix: "관리 인터페이스를 사설 네트워크 뒤에 두거나 인증이 있는 리버스 프록시 뒤로 이동하세요."
+    reverse_proxy:
+      title: "서비스는 리버스 프록시 뒤에 두는 편이 안전합니다"
+      description: "%{service}는 보통 리버스 프록시 뒤에 둘 때 더 안전하지만, 현재 %{port}에 직접 게시되어 있습니다."
+      why: "사용자 대상 앱을 직접 공개하면 TLS, 인증 하드닝, 접근 제어를 놓치기 쉬워집니다."
+      fix: "가능한 경우 서비스를 리버스 프록시를 통해 노출하고 직접 공개 포트는 제거하세요."
+  permissions:
+    privileged:
+      title: "컨테이너가 privileged 모드로 실행됩니다"
+      description: "%{service}가 privileged 모드를 활성화합니다."
+      why: "privileged 컨테이너는 광범위한 커널/디바이스 접근 권한을 가져 탈출 시 영향이 크게 증가합니다."
+      fix: "privileged 모드를 제거하고 서비스에 실제로 필요한 최소 capability만 부여하세요."
+    root:
+      title: "컨테이너가 root로 실행됩니다"
+      description: "%{service}가 root로 실행되도록 구성되어 있습니다."
+      why: "root 컨테이너가 침해되면 영향 범위가 더 커지고 호스트 탈출도 더 위험해집니다."
+      fix: "지원되는 경우 non-root UID/GID로 서비스를 실행하도록 구성하세요."
+    implicit_root:
+      title: "컨테이너에 user 설정이 없습니다"
+      description: "%{service}가 user를 설정하지 않아 기본적으로 root로 실행될 가능성이 큽니다."
+      why: "많은 이미지는 기본값이 root이며, 이는 필요한 것보다 더 많은 파일시스템과 프로세스 접근 권한을 부여합니다."
+      fix: "이미지가 지원한다면 compose 파일에 명시적인 non-root user를 설정하세요."
+    host_network:
+      title: "컨테이너가 host 네트워킹을 사용합니다"
+      description: "%{service}가 network_mode: host를 사용합니다."
+      why: "host 네트워킹은 네트워크 격리를 제거하고 의도보다 더 많은 포트와 트래픽을 노출할 수 있습니다."
+      fix: "서비스에 강하고 문서화된 필요가 없는 한 bridge 네트워킹을 사용하세요."
+    sensitive_mount:
+      title: "컨테이너가 민감한 호스트 경로를 마운트합니다"
+      description: "%{service}가 민감한 호스트 경로 %{path}를 마운트합니다."
+      why: "민감한 호스트 경로를 마운트하면 시크릿, 호스트 제어 소켓, 광범위한 파일시스템 접근이 컨테이너에 노출될 수 있습니다."
+      fix: "마운트를 제거하거나 필요한 데이터만 노출하는 더 좁은 경로로 바꾸세요."
+  sensitive:
+    inline_secret:
+      title: "서비스가 환경 변수에 시크릿을 하드코딩합니다"
+      description: "%{service}가 민감한 변수 %{variable}를 environment에 직접 설정합니다."
+      why: "inline 시크릿은 버전 관리, 백업, 프로세스 조회를 통해 쉽게 유출될 수 있습니다."
+      fix: "시크릿을 Docker secrets, 외부 secret manager, 또는 버전 관리 밖의 보호된 env 파일로 옮기세요."
+    default_credential:
+      title: "서비스가 기본값 또는 빈 자격 증명을 사용합니다"
+      description: "%{service}가 %{variable}에 기본값 또는 빈 자격 증명을 설정합니다."
+      why: "기본 자격 증명은 널리 알려져 있으며 공격자가 가장 먼저 시도하는 경우가 많습니다."
+      fix: "고유한 시크릿 값을 설정하고 가능하면 compose 파일 밖에서 관리하세요."
+    env_file_secret:
+      title: "참조된 env 파일에 평문 시크릿이 들어 있습니다"
+      description: "%{service}가 평문 시크릿 값을 포함한 %{env_file}를 참조합니다."
+      why: "평문 env 파일은 적절한 보호 없이 백업, 셸, 저장소로 자주 복사됩니다."
+      fix: "시크릿을 Docker secrets로 옮기거나 env 파일을 보호하고 버전 관리에서 제외하세요."
   host:
+    ssh_root_login:
+      title: "SSH root 로그인이 활성화되어 있습니다"
+      description: "%{path}에서 PermitRootLogin %{value}로 root 로그인을 허용합니다."
+      why: "직접 root 로그인을 허용하면 공격자가 노릴 고가치 계정이 하나로 집중되고, 침해 후 추가 권한 경계도 사라집니다."
+      fix: "PermitRootLogin을 no로 설정하고, 관리 작업은 sudo가 가능한 non-root 계정으로 수행하세요."
+    ssh_password_auth:
+      title: "SSH 비밀번호 인증이 활성화되어 있습니다"
+      description: "%{path}에서 PasswordAuthentication yes를 활성화합니다."
+      why: "비밀번호 기반 SSH 로그인은 키 기반 인증보다 무차별 대입, 피싱, 재사용 공격에 더 취약합니다."
+      fix: "관리자가 SSH 키로 로그인할 수 있음을 확인한 뒤 PasswordAuthentication을 비활성화하세요."
+    ssh_empty_passwords:
+      title: "SSH가 빈 비밀번호를 허용합니다"
+      description: "%{path}에서 PermitEmptyPasswords yes를 활성화합니다."
+      why: "빈 비밀번호를 허용하면 로그인 가능한 계정 하나만 잘못 구성되어도 호스트가 매우 쉽게 침해될 수 있습니다."
+      fix: "PermitEmptyPasswords를 no로 설정하고 로컬 사용자 계정의 약하거나 누락된 자격 증명을 점검하세요."
+    ssh_pubkey_auth:
+      title: "SSH 공개키 인증이 비활성화되어 있습니다"
+      description: "%{path}에서 PubkeyAuthentication no를 설정합니다."
+      why: "공개키 인증을 끄면 관리자가 더 약한 비밀번호 기반 접근이나 감사하기 어려운 우회 수단에 의존하게 될 수 있습니다."
+      fix: "비밀번호 기반 SSH 로그인을 끄기 전에 PubkeyAuthentication을 yes로 설정하고 관리자 키를 등록하세요."
+    ssh_user_environment:
+      title: "SSH가 사용자 제어 환경 파일을 허용합니다"
+      description: "%{path}에서 PermitUserEnvironment yes를 활성화합니다."
+      why: "SSH 사용자가 환경 변수를 주입할 수 있으면 제한된 명령 구성이 약해지고 로그인 후 예기치 않은 실행 경로가 생길 수 있습니다."
+      fix: "좁고 검토된 필요가 없다면 PermitUserEnvironment를 no로 설정하세요."
     ssh_x11_forwarding:
       title: "SSH X11 포워딩이 활성화되어 있습니다"
       description: "%{path}에서 X11Forwarding yes가 설정되어 있습니다."
       why: "X11 포워딩은 SSH 세션 공격 표면을 넓히고 클라이언트의 디스플레이/세션 신뢰 경계를 원격 호스트까지 확장시킬 수 있습니다."
       fix: "원격 GUI 포워딩이 검토된 요구사항이 아니라면 X11Forwarding을 no로 설정하고, 가능한 경우 더 안전한 대안을 사용하세요."
+    docker_socket_world_writable:
+      title: "Docker 소켓이 world writable 상태입니다"
+      description: "%{path}가 mode %{mode}로 모든 로컬 사용자에게 쓰기 가능하게 열려 있습니다."
+      why: "Docker 소켓에 쓰기 가능한 사용자는 컨테이너를 제어할 수 있고, 종종 호스트에서 root에 준하는 접근을 얻게 됩니다."
+      fix: "소켓 접근을 root와 의도된 관리자 그룹으로 제한하고, 해당 그룹에 포함된 사용자를 점검하세요."
+    docker_socket_world_readable:
+      title: "Docker 소켓이 world readable 상태입니다"
+      description: "%{path}가 mode %{mode}로 모든 로컬 사용자에게 읽기 가능하게 열려 있습니다."
+      why: "광범위한 읽기 권한은 민감한 런타임/이미지 메타데이터를 유출할 수 있으며, Docker 소켓 접근 제어가 약하다는 신호일 수 있습니다."
+      fix: "소켓 권한을 root와 의도된 관리자 그룹으로 제한하세요."
+    docker_daemon_tcp_public:
+      title: "Docker 데몬이 TCP 리스너를 노출합니다"
+      description: "%{path}가 Docker가 non-local TCP host에 바인딩되도록 구성합니다."
+      why: "공개되거나 넓게 도달 가능한 Docker API는 강하게 보호되지 않으면 원격 컨테이너 제어와 호스트 침해로 이어질 수 있습니다."
+      fix: "TCP 리스너를 제거하거나 localhost에만 바인딩하고, 강한 인증과 네트워크 제한을 적용하세요."
+    docker_daemon_tcp_no_tlsverify:
+      title: "Docker TCP 리스너에 TLS 클라이언트 검증이 없습니다"
+      description: "%{path}가 tlsverify 없이 non-local TCP Docker host를 노출합니다."
+      why: "강한 클라이언트 인증이 없는 원격 Docker API는 전체 컨테이너 제어를 허용할 수 있고, 종종 바로 호스트 침해로 이어집니다."
+      fix: "가능하면 로컬 Unix 소켓을 사용하세요. TCP 리스너가 꼭 필요하다면 클라이언트 인증서를 검증하는 TLS를 강제하고 접근 대상을 제한하세요."
+    docker_daemon_iptables_disabled:
+      title: "Docker가 iptables 관리를 비활성화합니다"
+      description: "%{path}가 daemon.json에서 iptables를 false로 설정합니다."
+      why: "Docker의 iptables 통합을 끄면 게시된 포트와 컨테이너 네트워킹이 운영자 예상과 다른 방식으로 노출될 수 있습니다."
+      fix: "감사된 방화벽 규칙으로 Docker 네트워크 정책을 완전히 대체하지 않는 한 iptables를 활성화 상태로 유지하세요."
+    fail2ban_not_enabled:
+      title: "Fail2ban이 설치되어 있지만 활성 상태가 아닙니다"
+      description: "%{path}에서 로컬 Fail2ban 흔적이 보이지만, 활성화된 서비스 표시는 감지되지 않았습니다."
+      why: "Fail2ban을 설치만 하고 서비스나 실제 jail을 활성화하지 않으면 반복 로그인 시도나 노이즈 스캔을 막지 못합니다."
+      fix: "Fail2ban 서비스를 활성화하고, sshd 같은 실제 jail을 최소 하나 구성한 뒤 클라이언트에서 활성 상태를 확인하세요."
+    defensive_controls_missing:
+      title: "침입 방지 제어가 감지되지 않았습니다"
+      description: "%{path}에서 Fail2ban의 로컬 흔적을 찾지 못했습니다."
+      why: "기본적인 차단/ban 자동화는 반복 비밀번호 공격, 스캔, 기타 노이즈성 남용을 늦추는 데 도움이 됩니다."
+      fix: "Fail2ban을 설치하고 활성화한 뒤, 노출한 서비스가 실제로 보호되고 있는지 확인하세요."
     ufw_disabled:
       title: "UFW가 설치되어 있지만 비활성화되어 있습니다"
       description: "%{path}에서 UFW가 존재하지만 ENABLED가 no로 설정되어 있습니다."
@@ -338,6 +504,65 @@ finding:
       description: "%{path}에서 APT::Periodic::Update-Package-Lists가 비활성화되어 있습니다."
       why: "패키지 인덱스가 오래되면 보안 패치 가시성이 늦어지고 자동 패치 워크플로의 신뢰성이 떨어질 수 있습니다."
       fix: "unattended-upgrades 실행 전에 정기 패키지 목록 갱신을 활성화하거나 동등한 스케줄 업데이트 절차를 사용하세요."
+  vaultwarden:
+    signups_enabled:
+      title: "Vaultwarden 가입이 계속 활성화되어 있습니다"
+      description: "%{service}가 SIGNUPS_ALLOWED=true를 설정합니다."
+      why: "초기 설정 이후에도 공개 가입을 열어두면 원치 않는 계정이 생성되기 쉬워지고, 비밀번호 관리자 서비스의 공개 공격 표면이 넓어집니다."
+      fix: "초기 온보딩이 끝나면 가입을 비활성화하거나, 초대 기반 계정 생성 절차로 제한하세요."
+    admin_surface_public:
+      title: "Vaultwarden 관리자 화면이 공개 바인딩에서 접근 가능합니다"
+      description: "%{service}가 공개 인터페이스에 게시된 상태에서 admin token을 활성화합니다."
+      why: "공개 접근 가능한 Vaultwarden 배포에서 관리자 페이지가 열려 있으면, 고가치 관리 표면이 탐지, 무차별 대입, 자격 증명 유출 위험에 노출됩니다."
+      fix: "Vaultwarden을 리버스 프록시 뒤나 localhost 전용 바인딩 뒤에 두고, 관리자 페이지를 공용 인터넷에 노출하지 마세요."
+    insecure_domain:
+      title: "Vaultwarden DOMAIN이 공개 HTTP로 설정되어 있습니다"
+      description: "%{service}가 DOMAIN=%{domain}을 설정하지만, 이는 HTTPS 기반 URL이 아닙니다."
+      why: "Vaultwarden은 중요한 웹 기능에 안전한 컨텍스트를 기대하며, 공개 HTTP base URL은 비밀번호 관리자 배포의 전송 보안을 약화시킵니다."
+      fix: "리버스 프록시에서 TLS를 종료하고 DOMAIN을 외부 HTTPS base URL로 설정하세요."
+  jellyfin:
+    insecure_published_url:
+      title: "Jellyfin Published URL이 공개 HTTP를 사용합니다"
+      description: "%{service}가 JELLYFIN_PublishedServerUrl=%{url}을 설정하지만, HTTPS URL이 아닙니다."
+      why: "외부 URL이 HTTP인 미디어 서비스는 전송 보안이 약해지고, 클라이언트가 비보안 또는 혼합 콘텐츠 경로로 접근하기 쉬워집니다."
+      fix: "Jellyfin을 HTTPS로 노출하고, JELLYFIN_PublishedServerUrl을 클라이언트가 보는 외부 HTTPS URL로 설정하세요."
+    discovery_public:
+      title: "Jellyfin autodiscovery 포트가 공개 접근 가능합니다"
+      description: "%{service}가 autodiscovery 포트 %{port}를 게시합니다."
+      why: "공개된 autodiscovery 포트는 미디어 서버의 존재를 더 쉽게 드러내며, 신뢰된 로컬 네트워크 밖에서는 대개 필요하지 않습니다."
+      fix: "autodiscovery 포트를 로컬 네트워크로 제한하거나, 좁게 바인딩하거나, 필요하지 않다면 공개 게시를 비활성화하세요."
+    media_mount_writable:
+      title: "Jellyfin 미디어 라이브러리가 쓰기 가능하게 마운트됩니다"
+      description: "%{service}가 %{path}를 read-only 보호 없이 마운트합니다."
+      why: "미디어 라이브러리에 쓰기 권한을 주면 침해 시 영향이 커지고, 실수 또는 악의적 파일 변경도 쉬워집니다."
+      fix: "Jellyfin이 해당 경로에 실제로 쓰기 권한이 필요하지 않다면 read-only로 마운트하세요."
+  gitea:
+    web_and_ssh_public:
+      title: "Gitea가 웹과 SSH 표면을 모두 공개합니다"
+      description: "%{service}가 웹 UI와 Git-over-SSH 엔드포인트를 모두 공개 인터페이스에 직접 노출합니다."
+      why: "사용자 대상 표면을 둘 다 직접 게시하면 공격 표면이 넓어지고, 프록시/인증/속도 제한 보호를 놓치기 쉬워집니다."
+      fix: "웹 UI는 리버스 프록시 또는 좁은 바인딩을 우선하고, SSH는 의도적으로 필요한 경우에만 노출하세요."
+    ssh_published_public:
+      title: "Gitea SSH 엔드포인트가 공개 접근 가능합니다"
+      description: "%{service}가 Git-over-SSH 포트 %{port}를 게시합니다."
+      why: "공개 SSH 엔드포인트는 웹 UI가 하드닝되어 있어도 별도의 공격 표면이 되며, 무차별 대입과 열거를 유발할 수 있습니다."
+      fix: "SSH 노출을 의도한 네트워크로 제한하고, 키 기반 인증을 사용하며, HTTPS clone/push로 충분하다면 공개 게시를 피하세요."
+    inline_security_secrets:
+      title: "Gitea 앱 시크릿이 Compose에 하드코딩되어 있습니다"
+      description: "%{service}가 %{variables}를 environment에 직접 설정합니다."
+      why: "Gitea 보안 토큰을 Compose에 inline으로 두면 저장소, 백업, 프로세스 조회를 통해 유출되기 쉬우며, 문서화된 __FILE 기반 시크릿 경로도 활용하지 못합니다."
+      fix: "Gitea 보안 시크릿을 파일 또는 secrets backend로 옮기고, 민감한 값에는 문서화된 __FILE 설정 경로를 우선 사용하세요."
+  immich:
+    shared_secret_env_file:
+      title: "Immich가 하나의 secret env 파일을 여러 서비스와 공유합니다"
+      description: "%{service}가 속한 Immich 스택에서 %{env_file}이 여러 서비스에 재사용되고 있으며, secret 값을 포함합니다."
+      why: "서버와 머신러닝 서비스가 하나의 평문 env 파일을 공유하면, 그 파일이 복사되거나 유출되거나 과도하게 마운트될 때 영향 범위가 커집니다."
+      fix: "가능하면 민감 값을 서비스별로 분리하고, DB 자격 증명 같은 고가치 시크릿은 더 안전한 전달 경로로 옮기세요."
+    default_db_password:
+      title: "Immich 스택이 기본 DB 비밀번호를 유지합니다"
+      description: "%{service}가 속한 Immich 배포가 여전히 기본 DB_PASSWORD 값을 사용합니다."
+      why: "기본 DB 비밀번호를 그대로 두면 스택이나 env 파일이 노출되었을 때 저장소 백엔드가 더 쉽게 침해될 수 있습니다."
+      fix: "배포하거나 외부에 노출하기 전에 DB 비밀번호를 고유한 랜덤 값으로 바꾸세요."
   nextcloud:
     insecure_overwriteprotocol:
       title: "Nextcloud overwrite protocol이 HTTP로 설정되어 있습니다"

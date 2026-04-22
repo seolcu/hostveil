@@ -41,15 +41,15 @@ We follow **[Conventional Commits](https://www.conventionalcommits.org/)**:
 
 ### Types
 
-| Type | Use when |
-|---|---|
-| `feat` | Adding new functionality |
-| `fix` | Fixing a bug |
-| `docs` | Documentation changes only |
+| Type       | Use when                                   |
+| ---------- | ------------------------------------------ |
+| `feat`     | Adding new functionality                   |
+| `fix`      | Fixing a bug                               |
+| `docs`     | Documentation changes only                 |
 | `refactor` | Code restructuring without behavior change |
-| `test` | Adding or updating tests |
-| `chore` | Build process, tooling, dependency updates |
-| `ci` | CI/CD configuration |
+| `test`     | Adding or updating tests                   |
+| `chore`    | Build process, tooling, dependency updates |
+| `ci`       | CI/CD configuration                        |
 
 ### Examples
 
@@ -98,6 +98,20 @@ We use **Semantic Versioning** for shipped versions.
 - After the release change is merged, create and push an annotated tag `vX.Y.Z` from that `main` commit
 - The tag push is the only thing that should trigger the release workflow
 - The pushed tag must match the version in `src/Cargo.toml`
+
+### Validation Matrix
+
+Use this matrix to understand which gates run in CI versus tag-based release validation.
+
+| Context             | Workflow                                                  | Required checks                                                                                                                                                                                                                                                                                                 |
+| ------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Push / Pull Request | `.github/workflows/rust-ci.yml`                           | `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --workspace`, `./scripts/smoke-test.sh target/debug/hostveil`, `./scripts/test-install-script.sh target/debug/hostveil`                                                     |
+| Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (validate job)       | tag-version match (`src/Cargo.toml`), `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --release --workspace`, `./scripts/smoke-test.sh target/release/hostveil`, `./scripts/test-install-script.sh target/release/hostveil` |
+| Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (build/release jobs) | cross-target release build (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), artifact packaging, `SHA256SUMS`, GitHub Release publish                                                                                                                                                                  |
+
+Locale note for shell-based smoke assertions:
+
+- Smoke and installer tests are designed to run deterministically with English default output unless a test explicitly overrides locale.
 
 ## Development Setup
 

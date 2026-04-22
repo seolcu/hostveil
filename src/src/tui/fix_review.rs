@@ -18,6 +18,13 @@ struct FixReviewState {
     scroll: u16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReviewAction {
+    Continue,
+    Cancel,
+    Accept,
+}
+
 pub fn run_fix_review(plan: &FixPlan) -> io::Result<bool> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -45,19 +52,48 @@ fn run_event_loop(
         terminal.draw(|frame| render(frame, plan, state))?;
 
         match event::read()? {
-            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
-                KeyCode::Char('y') | KeyCode::Enter => return Ok(true),
-                KeyCode::Down | KeyCode::Char('j') => state.scroll = state.scroll.saturating_add(1),
-                KeyCode::Up | KeyCode::Char('k') => state.scroll = state.scroll.saturating_sub(1),
-                KeyCode::PageDown => state.scroll = state.scroll.saturating_add(8),
-                KeyCode::PageUp => state.scroll = state.scroll.saturating_sub(8),
-                _ => {}
-            },
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match apply_key_input(state, key.code) {
+                    ReviewAction::Cancel => return Ok(false),
+                    ReviewAction::Accept => return Ok(true),
+                    ReviewAction::Continue => {}
+                }
+            }
             Event::Resize(_, _) => {}
             _ => {}
         }
     }
+}
+
+fn apply_key_input(state: &mut FixReviewState, code: KeyCode) -> ReviewAction {
+    match code {
+        KeyCode::Char('q') | KeyCode::Esc => ReviewAction::Cancel,
+        KeyCode::Char('y') | KeyCode::Enter => ReviewAction::Accept,
+        KeyCode::Down | KeyCode::Char('j') => {
+            state.scroll = state.scroll.saturating_add(1);
+            ReviewAction::Continue
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            state.scroll = state.scroll.saturating_sub(1);
+            ReviewAction::Continue
+        }
+        KeyCode::PageDown => {
+            state.scroll = state.scroll.saturating_add(8);
+            ReviewAction::Continue
+        }
+        KeyCode::PageUp => {
+            state.scroll = state.scroll.saturating_sub(8);
+            ReviewAction::Continue
+        }
+        _ => ReviewAction::Continue,
+    }
+}
+
+fn clamp_scroll(scroll: u16, diff_lines: usize, diff_height: u16) -> u16 {
+    let max_scroll = diff_lines
+        .saturating_sub(diff_height as usize)
+        .min(u16::MAX as usize) as u16;
+    scroll.min(max_scroll)
 }
 
 fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewState) {
@@ -113,9 +149,8 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
             .collect::<Vec<_>>(),
     );
 
-    let diff_height = chunks[1].height.saturating_sub(2) as usize;
-    let max_scroll = diff_lines.saturating_sub(diff_height);
-    state.scroll = state.scroll.min(max_scroll.min(u16::MAX as usize) as u16);
+    let diff_height = chunks[1].height.saturating_sub(2);
+    state.scroll = clamp_scroll(state.scroll, diff_lines, diff_height);
 
     let diff_widget = Paragraph::new(diff_text)
         .scroll((state.scroll, 0))
@@ -140,4 +175,81 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
                 .title(t!("app.panel.hints").into_owned()),
         );
     frame.render_widget(hints_widget, chunks[2]);
+}
+
+#[cfg(test)]
+mod tests {
+    use crossterm::event::KeyCode;
+
+    use super::{FixReviewState, ReviewAction, apply_key_input, clamp_scroll};
+
+    #[test]
+    fn apply_key_input_handles_accept_and_cancel_shortcuts() {
+        let mut state = FixReviewState { scroll: 0 };
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Char('y')),
+            ReviewAction::Accept
+        );
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Enter),
+            ReviewAction::Accept
+        );
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Char('q')),
+            ReviewAction::Cancel
+        );
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Esc),
+            ReviewAction::Cancel
+        );
+    }
+
+    #[test]
+    fn apply_key_input_updates_scroll_with_navigation_keys() {
+        let mut state = FixReviewState { scroll: 0 };
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Down),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 1);
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Char('j')),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 2);
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::PageDown),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 10);
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Up),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 9);
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::Char('k')),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 8);
+
+        assert_eq!(
+            apply_key_input(&mut state, KeyCode::PageUp),
+            ReviewAction::Continue
+        );
+        assert_eq!(state.scroll, 0);
+    }
+
+    #[test]
+    fn clamp_scroll_limits_scroll_to_visible_diff_range() {
+        assert_eq!(clamp_scroll(50, 10, 4), 6);
+        assert_eq!(clamp_scroll(4, 3, 10), 0);
+        assert_eq!(clamp_scroll(u16::MAX, usize::MAX, 0), u16::MAX);
+    }
 }

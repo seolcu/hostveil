@@ -63,6 +63,7 @@ pub struct SetupConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
+    pub locale_override: Option<String>,
     pub output_mode: OutputMode,
     pub show_help: bool,
     pub show_version: bool,
@@ -79,6 +80,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            locale_override: None,
             output_mode: OutputMode::Tui,
             show_help: false,
             show_version: false,
@@ -97,18 +99,38 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
         let args: Vec<String> = args.into_iter().collect();
+        let (locale_override, args) = strip_locale_override(args)?;
 
         if let Some(command) = args.first() {
             match command.as_str() {
-                "setup" => return Self::parse_setup(args.into_iter().skip(1)),
-                "upgrade" => return Self::parse_upgrade(args.into_iter().skip(1)),
-                "uninstall" => return Self::parse_uninstall(args.into_iter().skip(1)),
-                "auto-upgrade" => return Self::parse_auto_upgrade(args.into_iter().skip(1)),
+                "setup" => {
+                    let mut config = Self::parse_setup(args.into_iter().skip(1))?;
+                    config.locale_override = locale_override;
+                    return Ok(config);
+                }
+                "upgrade" => {
+                    let mut config = Self::parse_upgrade(args.into_iter().skip(1))?;
+                    config.locale_override = locale_override;
+                    return Ok(config);
+                }
+                "uninstall" => {
+                    let mut config = Self::parse_uninstall(args.into_iter().skip(1))?;
+                    config.locale_override = locale_override;
+                    return Ok(config);
+                }
+                "auto-upgrade" => {
+                    let mut config = Self::parse_auto_upgrade(args.into_iter().skip(1))?;
+                    config.locale_override = locale_override;
+                    return Ok(config);
+                }
                 _ => {}
             }
         }
 
-        let mut config = Self::default();
+        let mut config = Self {
+            locale_override,
+            ..Self::default()
+        };
         let mut args = args.into_iter();
 
         while let Some(argument) = args.next() {
@@ -280,9 +302,9 @@ impl AppConfig {
         let mut args = args.into_iter();
 
         let Some(mode) = args.next() else {
-            return Err(AppError::InvalidArgumentCombination(String::from(
-                "choose one of enable or disable for auto-upgrade",
-            )));
+            return Err(AppError::InvalidArgumentCombination(
+                crate::i18n::tr_auto_upgrade_mode_required(),
+            ));
         };
 
         let lifecycle_command = match mode.as_str() {
@@ -294,9 +316,9 @@ impl AppConfig {
                 return Ok(config);
             }
             _ => {
-                return Err(AppError::InvalidArgumentCombination(String::from(
-                    "choose one of enable or disable for auto-upgrade",
-                )));
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_auto_upgrade_mode_required(),
+                ));
             }
         };
 
@@ -323,29 +345,29 @@ impl AppConfig {
 
         if self.fix_mode.is_some() {
             if self.fix_target_path.is_none() {
-                return Err(AppError::InvalidArgumentCombination(String::from(
-                    "a compose target is required for fix operations",
-                )));
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_fix_requires_target(),
+                ));
             }
             if self.host_root.is_some() {
-                return Err(AppError::InvalidArgumentCombination(String::from(
-                    "--host-root is not supported with fix operations",
-                )));
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_fix_host_root_not_supported(),
+                ));
             }
             if self.compose_path.is_some() {
-                return Err(AppError::InvalidArgumentCombination(String::from(
-                    "use --quick-fix PATH or --fix PATH instead of combining them with --compose",
-                )));
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_fix_compose_conflict(),
+                ));
             }
             if self.output_mode == OutputMode::Json {
-                return Err(AppError::InvalidArgumentCombination(String::from(
-                    "--json is not supported with fix operations",
-                )));
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_fix_json_not_supported(),
+                ));
             }
         } else if self.preview_changes || self.assume_yes {
-            return Err(AppError::InvalidArgumentCombination(String::from(
-                "--preview-changes and --yes are only valid with --quick-fix or --fix",
-            )));
+            return Err(AppError::InvalidArgumentCombination(
+                crate::i18n::tr_preview_yes_requires_fix_mode(),
+            ));
         }
 
         Ok(())
@@ -353,9 +375,9 @@ impl AppConfig {
 
     fn set_fix_target(&mut self, mode: FixMode, path: PathBuf) -> Result<(), AppError> {
         if self.fix_mode.is_some() {
-            return Err(AppError::InvalidArgumentCombination(String::from(
-                "choose only one of --quick-fix or --fix",
-            )));
+            return Err(AppError::InvalidArgumentCombination(
+                crate::i18n::tr_fix_mode_conflict(),
+            ));
         }
 
         self.fix_mode = Some(mode);
@@ -364,9 +386,48 @@ impl AppConfig {
     }
 }
 
+fn strip_locale_override(args: Vec<String>) -> Result<(Option<String>, Vec<String>), AppError> {
+    let mut locale_override = None;
+    let mut stripped = Vec::new();
+    let mut args = args.into_iter();
+
+    while let Some(argument) = args.next() {
+        let locale_value = match argument.as_str() {
+            "--locale" => Some(
+                args.next()
+                    .ok_or(AppError::MissingArgumentValue("--locale"))?,
+            ),
+            _ if argument.starts_with("--locale=") => {
+                let value = argument.trim_start_matches("--locale=");
+                if value.is_empty() {
+                    return Err(AppError::MissingArgumentValue("--locale"));
+                }
+                Some(String::from(value))
+            }
+            _ => None,
+        };
+
+        if let Some(value) = locale_value {
+            let normalized = crate::i18n::parse_supported_locale(&value).ok_or_else(|| {
+                AppError::InvalidArgumentCombination(crate::i18n::tr_unsupported_locale(&value))
+            })?;
+
+            if locale_override.replace(String::from(normalized)).is_some() {
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_duplicate_locale_override(),
+                ));
+            }
+        } else {
+            stripped.push(argument);
+        }
+    }
+
+    Ok((locale_override, stripped))
+}
+
 fn push_setup_tool(tools: &mut Vec<SetupTool>, value: &str) -> Result<(), AppError> {
     let tool = SetupTool::from_arg(value).ok_or_else(|| {
-        AppError::InvalidArgumentCombination(format!("unsupported setup tool: {value}"))
+        AppError::InvalidArgumentCombination(crate::i18n::tr_unsupported_setup_tool(value))
     })?;
     if !tools.contains(&tool) {
         tools.push(tool);
@@ -389,9 +450,9 @@ fn parse_setup_tool_list(tools: &mut Vec<SetupTool>, value: &str) -> Result<(), 
     if parsed_any {
         Ok(())
     } else {
-        Err(AppError::InvalidArgumentCombination(String::from(
-            "--tools requires at least one tool name",
-        )))
+        Err(AppError::InvalidArgumentCombination(
+            crate::i18n::tr_setup_tools_required(),
+        ))
     }
 }
 
@@ -417,6 +478,31 @@ mod tests {
         let config = AppConfig::parse([String::from("--json")]).expect("config should parse");
 
         assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn parses_global_locale_override() {
+        let config = AppConfig::parse([
+            String::from("--locale"),
+            String::from("ko_KR.UTF-8"),
+            String::from("--json"),
+        ])
+        .expect("config should parse");
+
+        assert_eq!(config.locale_override.as_deref(), Some("ko"));
+    }
+
+    #[test]
+    fn parses_locale_override_before_subcommand() {
+        let config = AppConfig::parse([
+            String::from("--locale=en"),
+            String::from("setup"),
+            String::from("--yes"),
+        ])
+        .expect("config should parse");
+
+        assert_eq!(config.locale_override.as_deref(), Some("en"));
+        assert!(config.setup_command.is_some());
     }
 
     #[test]
@@ -616,6 +702,37 @@ mod tests {
         assert!(matches!(
             error,
             super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_duplicate_locale_override() {
+        let error = AppConfig::parse([
+            String::from("--locale=en"),
+            String::from("--locale"),
+            String::from("ko"),
+        ])
+        .expect_err("duplicate locale overrides should be rejected");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn duplicate_locale_override_uses_translation_helper_detail() {
+        let error = AppConfig::parse([
+            String::from("--locale=en"),
+            String::from("--locale"),
+            String::from("ko"),
+        ])
+        .expect_err("duplicate locale overrides should be rejected");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(message)
+                if message == crate::i18n::tr_duplicate_locale_override()
         ));
     }
 }

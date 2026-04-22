@@ -3,18 +3,32 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BINARY_PATH="${1:-$ROOT_DIR/target/debug/hostveil}"
+# Keep smoke outputs deterministic across developer locales; allow explicit override.
+HOSTVEIL_TEST_LOCALE="${HOSTVEIL_TEST_LOCALE:-en}"
+export HOSTVEIL_LOCALE="$HOSTVEIL_TEST_LOCALE"
 
 [[ -x "$BINARY_PATH" ]] || {
   printf 'error: binary is not executable: %s\n' "$BINARY_PATH" >&2
   exit 1
 }
 
-COMPOSE_FIXTURE="$ROOT_DIR/proto/tests/fixtures/parser/docker-compose.yml"
 TMP_HOST_ROOT="$(mktemp -d)"
+TMP_COMPOSE_ROOT="$(mktemp -d)"
 cleanup() {
   rm -rf "$TMP_HOST_ROOT"
+  rm -rf "$TMP_COMPOSE_ROOT"
 }
 trap cleanup EXIT
+
+COMPOSE_FIXTURE="$TMP_COMPOSE_ROOT/docker-compose.yml"
+cat > "$COMPOSE_FIXTURE" <<'YAML'
+services:
+  web:
+    build: .
+    privileged: true
+    ports:
+      - "8080:80"
+YAML
 
 mkdir -p "$TMP_HOST_ROOT/etc/ssh" "$TMP_HOST_ROOT/proc" "$TMP_HOST_ROOT/var/run"
 printf 'PermitRootLogin yes\nPasswordAuthentication yes\n' > "$TMP_HOST_ROOT/etc/ssh/sshd_config"

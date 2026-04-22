@@ -54,9 +54,9 @@ pub fn scan(services: &[ServiceSummary]) -> DockleScanOutput {
                 if first_scan_error.is_none() {
                     first_scan_error = Some(error.clone());
                 }
-                output
-                    .warnings
-                    .push(format!("Dockle scan failed for {image}: {error}"));
+                output.warnings.push(crate::i18n::tr_adapter_scan_failed(
+                    "Dockle", &image, &error,
+                ));
             }
         }
     }
@@ -156,7 +156,7 @@ fn scan_image(image: &str) -> Result<Option<DockleImageSummary>, String> {
     }
 
     let report: DockleReport = serde_json::from_slice(&output.stdout)
-        .map_err(|error| format!("failed to parse Dockle JSON: {error}"))?;
+        .map_err(|error| crate::i18n::tr_adapter_json_parse_failed("Dockle", &error.to_string()))?;
 
     Ok(summarize_report(image, report))
 }
@@ -437,7 +437,9 @@ mod tests {
 
         assert_eq!(
             output.status,
-            AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
+            AdapterStatus::Skipped(
+                t!("adapter.reason.no_image_targets", locale = "en").into_owned()
+            )
         );
         assert!(output.findings.is_empty());
     }

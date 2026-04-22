@@ -75,6 +75,7 @@ impl From<FixError> for AppError {
 
 pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     let config = AppConfig::parse(args)?;
+    crate::i18n::initialize_locale(config.locale_override.as_deref());
 
     if config.show_help {
         print!("{}", i18n::tr("app.help.text"));
@@ -101,9 +102,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
 
     if let Some(mode) = config.fix_mode {
         let compose_path = config.fix_target_path.as_ref().ok_or_else(|| {
-            AppError::InvalidArgumentCombination(String::from(
-                "a compose target is required for fix operations",
-            ))
+            AppError::InvalidArgumentCombination(crate::i18n::tr_fix_requires_target())
         })?;
 
         let preview_plan = fix::preview(compose_path, mode)?;
