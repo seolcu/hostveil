@@ -16,7 +16,7 @@ use crate::host::{HostContext, HostScanner, collect_host_runtime_info};
 use crate::rules::RuleEngine;
 use crate::scoring;
 
-use super::{AppConfig, AppError};
+use super::{AdapterSelection, AppConfig, AppError, ScanAdapter};
 
 #[derive(Debug)]
 pub struct AdapterScanUpdate {
@@ -27,7 +27,7 @@ pub struct AdapterScanUpdate {
 
 pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
     let mut result = run_native(config)?;
-    apply_external_adapters(&mut result);
+    apply_external_adapters(&mut result, config.adapter_selection);
     Ok(result)
 }
 
@@ -56,33 +56,40 @@ pub fn run_native(config: &AppConfig) -> Result<ScanResult, AppError> {
     Ok(result)
 }
 
-fn apply_external_adapters(result: &mut ScanResult) {
+fn apply_external_adapters(result: &mut ScanResult, selection: AdapterSelection) {
     let update = scan_external_adapters(
         result.metadata.services.clone(),
         result.metadata.host_root.clone(),
+        selection,
     );
     apply_external_adapter_update(result, update);
 }
 
-pub fn prepare_background_adapter_scan(result: &mut ScanResult) -> Receiver<AdapterScanUpdate> {
-    spawn_background_adapter_scan(result, scan_external_adapters)
+pub fn prepare_background_adapter_scan(
+    result: &mut ScanResult,
+    selection: AdapterSelection,
+) -> Receiver<AdapterScanUpdate> {
+    spawn_background_adapter_scan(result, selection, scan_external_adapters)
 }
 
 fn spawn_background_adapter_scan<F>(
     result: &mut ScanResult,
+    selection: AdapterSelection,
     scan_fn: F,
 ) -> Receiver<AdapterScanUpdate>
 where
-    F: FnOnce(Vec<ServiceSummary>, Option<PathBuf>) -> AdapterScanUpdate + Send + 'static,
+    F: FnOnce(Vec<ServiceSummary>, Option<PathBuf>, AdapterSelection) -> AdapterScanUpdate
+        + Send
+        + 'static,
 {
-    seed_adapter_statuses(result);
+    seed_adapter_statuses(result, selection);
 
     let services = result.metadata.services.clone();
     let host_root = result.metadata.host_root.clone();
     let (sender, receiver) = mpsc::channel();
 
     thread::spawn(move || {
-        let update = scan_fn(services, host_root);
+        let update = scan_fn(services, host_root, selection);
         let _ = sender.send(update);
     });
 
@@ -124,28 +131,37 @@ pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterSca
 fn scan_external_adapters(
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
+    selection: AdapterSelection,
 ) -> AdapterScanUpdate {
-    let trivy_services = services.clone();
-    let dockle_services = services;
-    let trivy_handle = thread::spawn(move || adapters::trivy::scan(&trivy_services));
-    let dockle_handle = thread::spawn(move || adapters::dockle::scan(&dockle_services));
-    let lynis_handle = thread::spawn(move || adapters::lynis::scan(host_root.as_deref()));
+    let trivy_handle = selection.is_enabled(ScanAdapter::Trivy).then(|| {
+        let trivy_services = services.clone();
+        thread::spawn(move || adapters::trivy::scan(&trivy_services))
+    });
+    let dockle_handle = selection.is_enabled(ScanAdapter::Dockle).then(|| {
+        let dockle_services = services;
+        thread::spawn(move || adapters::dockle::scan(&dockle_services))
+    });
+    let lynis_handle = selection
+        .is_enabled(ScanAdapter::Lynis)
+        .then(|| thread::spawn(move || adapters::lynis::scan(host_root.as_deref())));
 
     AdapterScanUpdate {
-        trivy: trivy_handle
-            .join()
-            .unwrap_or_else(|_| failed_trivy_output()),
-        lynis: lynis_handle
-            .join()
-            .unwrap_or_else(|_| failed_lynis_output()),
-        dockle: dockle_handle
-            .join()
-            .unwrap_or_else(|_| failed_dockle_output()),
+        trivy: trivy_handle.map_or_else(disabled_trivy_output, |handle| {
+            handle.join().unwrap_or_else(|_| failed_trivy_output())
+        }),
+        lynis: lynis_handle.map_or_else(disabled_lynis_output, |handle| {
+            handle.join().unwrap_or_else(|_| failed_lynis_output())
+        }),
+        dockle: dockle_handle.map_or_else(disabled_dockle_output, |handle| {
+            handle.join().unwrap_or_else(|_| failed_dockle_output())
+        }),
     }
 }
 
-fn seed_adapter_statuses(result: &mut ScanResult) {
-    let trivy_status = if has_image_targets(&result.metadata.services) {
+fn seed_adapter_statuses(result: &mut ScanResult, selection: AdapterSelection) {
+    let trivy_status = if !selection.is_enabled(ScanAdapter::Trivy) {
+        AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned())
+    } else if has_image_targets(&result.metadata.services) {
         AdapterStatus::Pending
     } else {
         AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
@@ -155,7 +171,9 @@ fn seed_adapter_statuses(result: &mut ScanResult) {
         .adapters
         .insert(String::from("trivy"), trivy_status);
 
-    let dockle_status = if has_image_targets(&result.metadata.services) {
+    let dockle_status = if !selection.is_enabled(ScanAdapter::Dockle) {
+        AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned())
+    } else if has_image_targets(&result.metadata.services) {
         AdapterStatus::Pending
     } else {
         AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned())
@@ -165,12 +183,16 @@ fn seed_adapter_statuses(result: &mut ScanResult) {
         .adapters
         .insert(String::from("dockle"), dockle_status);
 
-    let lynis_status = match result.metadata.host_root.as_deref() {
-        None => AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
-        Some(path) if path != Path::new("/") => {
-            AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned())
+    let lynis_status = if !selection.is_enabled(ScanAdapter::Lynis) {
+        AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned())
+    } else {
+        match result.metadata.host_root.as_deref() {
+            None => AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
+            Some(path) if path != Path::new("/") => {
+                AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned())
+            }
+            Some(_) => AdapterStatus::Pending,
         }
-        Some(_) => AdapterStatus::Pending,
     };
     result
         .metadata
@@ -195,6 +217,14 @@ fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
     }
 }
 
+fn disabled_trivy_output() -> adapters::trivy::TrivyScanOutput {
+    adapters::trivy::TrivyScanOutput {
+        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
 fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
     adapters::lynis::LynisScanOutput {
         status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Lynis")),
@@ -203,9 +233,25 @@ fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
     }
 }
 
+fn disabled_lynis_output() -> adapters::lynis::LynisScanOutput {
+    adapters::lynis::LynisScanOutput {
+        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
 fn failed_dockle_output() -> adapters::dockle::DockleScanOutput {
     adapters::dockle::DockleScanOutput {
         status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Dockle")),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn disabled_dockle_output() -> adapters::dockle::DockleScanOutput {
+    adapters::dockle::DockleScanOutput {
+        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
         findings: Vec::new(),
         warnings: Vec::new(),
     }
@@ -468,9 +514,10 @@ mod tests {
     use super::{
         AdapterScanUpdate, apply_current_dir_fallback, apply_current_dir_fallback_from,
         apply_discovered_projects, apply_external_adapter_update, apply_live_discovery_result, run,
-        run_native, scan_compose_project, seed_adapter_statuses, spawn_background_adapter_scan,
+        run_native, scan_compose_project, scan_external_adapters, seed_adapter_statuses,
+        spawn_background_adapter_scan,
     };
-    use crate::app::{AppConfig, OutputMode};
+    use crate::app::{AdapterSelection, AppConfig, OutputMode};
     use crate::compose::ComposeParser;
 
     fn parser_fixture() -> std::path::PathBuf {
@@ -555,6 +602,7 @@ mod tests {
             setup_command: None,
             compose_path: Some(compose_path.clone()),
             host_root: None,
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -587,6 +635,7 @@ mod tests {
             setup_command: None,
             compose_path: Some(compose_path.clone()),
             host_root: None,
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -626,6 +675,7 @@ mod tests {
             setup_command: None,
             compose_path: None,
             host_root: Some(host_root.clone()),
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -646,6 +696,66 @@ mod tests {
     }
 
     #[test]
+    fn adapters_none_skips_all_external_scanners_in_final_metadata() {
+        let compose_path = no_image_compose_fixture("adapters-none");
+        let config = AppConfig {
+            locale_override: None,
+            output_mode: OutputMode::Json,
+            show_help: false,
+            show_version: false,
+            lifecycle_command: None,
+            setup_command: None,
+            compose_path: Some(compose_path.clone()),
+            host_root: None,
+            adapter_selection: AdapterSelection::none(),
+            fix_mode: None,
+            fix_target_path: None,
+            preview_changes: false,
+            assume_yes: false,
+        };
+
+        let result = run(&config).expect("scan should succeed");
+        let disabled = t!("adapter.reason.disabled_by_selection", locale = "en").into_owned();
+
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Skipped(disabled.clone()))
+        );
+        assert_eq!(
+            result.metadata.adapters.get("dockle"),
+            Some(&AdapterStatus::Skipped(disabled.clone()))
+        );
+        assert_eq!(
+            result.metadata.adapters.get("lynis"),
+            Some(&AdapterStatus::Skipped(disabled))
+        );
+
+        fs::remove_dir_all(compose_path.parent().expect("fixture dir should exist"))
+            .expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn selected_adapter_runs_while_others_are_disabled_in_final_metadata() {
+        let update = scan_external_adapters(
+            Vec::new(),
+            None,
+            AdapterSelection {
+                trivy: true,
+                dockle: false,
+                lynis: false,
+            },
+        );
+        let disabled = t!("adapter.reason.disabled_by_selection", locale = "en").into_owned();
+
+        assert!(matches!(update.trivy.status, AdapterStatus::Skipped(_)));
+        assert_eq!(
+            update.dockle.status,
+            AdapterStatus::Skipped(disabled.clone())
+        );
+        assert_eq!(update.lynis.status, AdapterStatus::Skipped(disabled));
+    }
+
+    #[test]
     fn populates_scan_metadata_from_compose_project() {
         let config = AppConfig {
             locale_override: None,
@@ -656,6 +766,7 @@ mod tests {
             setup_command: None,
             compose_path: Some(parser_fixture()),
             host_root: None,
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -733,6 +844,7 @@ mod tests {
             setup_command: None,
             compose_path: Some(parser_fixture()),
             host_root: Some(host_root.clone()),
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -823,7 +935,7 @@ mod tests {
         });
         result.metadata.host_root = Some(PathBuf::from("/"));
 
-        seed_adapter_statuses(&mut result);
+        seed_adapter_statuses(&mut result, AdapterSelection::all());
         apply_external_adapter_update(
             &mut result,
             AdapterScanUpdate {
@@ -924,7 +1036,7 @@ mod tests {
             image: Some(String::from("nginx:1.27.5")),
         });
 
-        seed_adapter_statuses(&mut result);
+        seed_adapter_statuses(&mut result, AdapterSelection::all());
         apply_external_adapter_update(
             &mut result,
             AdapterScanUpdate {
@@ -1239,26 +1351,27 @@ mod tests {
             image: Some(String::from("nginx:1.27.5")),
         });
 
-        let receiver = spawn_background_adapter_scan(&mut result, |_, _| {
-            thread::sleep(Duration::from_millis(150));
-            AdapterScanUpdate {
-                trivy: crate::adapters::trivy::TrivyScanOutput {
-                    status: AdapterStatus::Missing,
-                    findings: Vec::new(),
-                    warnings: Vec::new(),
-                },
-                lynis: crate::adapters::lynis::LynisScanOutput {
-                    status: AdapterStatus::Skipped(String::from("not requested")),
-                    findings: Vec::new(),
-                    warnings: Vec::new(),
-                },
-                dockle: crate::adapters::dockle::DockleScanOutput {
-                    status: AdapterStatus::Missing,
-                    findings: Vec::new(),
-                    warnings: Vec::new(),
-                },
-            }
-        });
+        let receiver =
+            spawn_background_adapter_scan(&mut result, AdapterSelection::all(), |_, _, _| {
+                thread::sleep(Duration::from_millis(150));
+                AdapterScanUpdate {
+                    trivy: crate::adapters::trivy::TrivyScanOutput {
+                        status: AdapterStatus::Missing,
+                        findings: Vec::new(),
+                        warnings: Vec::new(),
+                    },
+                    lynis: crate::adapters::lynis::LynisScanOutput {
+                        status: AdapterStatus::Skipped(String::from("not requested")),
+                        findings: Vec::new(),
+                        warnings: Vec::new(),
+                    },
+                    dockle: crate::adapters::dockle::DockleScanOutput {
+                        status: AdapterStatus::Missing,
+                        findings: Vec::new(),
+                        warnings: Vec::new(),
+                    },
+                }
+            });
 
         assert_eq!(
             result.metadata.adapters.get("trivy"),
@@ -1318,7 +1431,7 @@ mod tests {
             image: Some(String::from("nginx:1.27.5")),
         });
 
-        seed_adapter_statuses(&mut result);
+        seed_adapter_statuses(&mut result, AdapterSelection::all());
 
         assert_eq!(
             result.metadata.adapters.get("lynis"),
@@ -1335,10 +1448,44 @@ mod tests {
     }
 
     #[test]
+    fn seed_adapter_statuses_marks_disabled_adapters_as_skipped() {
+        let mut result = crate::domain::ScanResult::default();
+        result.metadata.host_root = Some(PathBuf::from("/"));
+        result.metadata.services.push(ServiceSummary {
+            name: String::from("demo"),
+            image: Some(String::from("nginx:1.27.5")),
+        });
+
+        seed_adapter_statuses(
+            &mut result,
+            AdapterSelection {
+                trivy: true,
+                dockle: false,
+                lynis: false,
+            },
+        );
+
+        assert_eq!(
+            result.metadata.adapters.get("trivy"),
+            Some(&AdapterStatus::Pending)
+        );
+        assert!(matches!(
+            result.metadata.adapters.get("dockle"),
+            Some(AdapterStatus::Skipped(detail))
+                if detail == &t!("adapter.reason.disabled_by_selection", locale = "en").into_owned()
+        ));
+        assert!(matches!(
+            result.metadata.adapters.get("lynis"),
+            Some(AdapterStatus::Skipped(detail))
+                if detail == &t!("adapter.reason.disabled_by_selection", locale = "en").into_owned()
+        ));
+    }
+
+    #[test]
     fn seed_adapter_statuses_marks_skipped_when_targets_are_missing() {
         let mut result = crate::domain::ScanResult::default();
 
-        seed_adapter_statuses(&mut result);
+        seed_adapter_statuses(&mut result, AdapterSelection::all());
 
         assert!(matches!(
             result.metadata.adapters.get("lynis"),

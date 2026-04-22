@@ -9,6 +9,81 @@ pub enum OutputMode {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ScanAdapter {
+    Trivy,
+    Dockle,
+    Lynis,
+}
+
+impl ScanAdapter {
+    pub const ALL: [Self; 3] = [Self::Trivy, Self::Dockle, Self::Lynis];
+
+    pub fn from_arg(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "trivy" => Some(Self::Trivy),
+            "dockle" => Some(Self::Dockle),
+            "lynis" => Some(Self::Lynis),
+            _ => None,
+        }
+    }
+
+    pub fn cli_name(self) -> &'static str {
+        match self {
+            Self::Trivy => "trivy",
+            Self::Dockle => "dockle",
+            Self::Lynis => "lynis",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdapterSelection {
+    pub trivy: bool,
+    pub dockle: bool,
+    pub lynis: bool,
+}
+
+impl AdapterSelection {
+    pub const fn all() -> Self {
+        Self {
+            trivy: true,
+            dockle: true,
+            lynis: true,
+        }
+    }
+
+    pub const fn none() -> Self {
+        Self {
+            trivy: false,
+            dockle: false,
+            lynis: false,
+        }
+    }
+
+    pub const fn is_enabled(self, adapter: ScanAdapter) -> bool {
+        match adapter {
+            ScanAdapter::Trivy => self.trivy,
+            ScanAdapter::Dockle => self.dockle,
+            ScanAdapter::Lynis => self.lynis,
+        }
+    }
+
+    fn enable(&mut self, adapter: ScanAdapter) {
+        match adapter {
+            ScanAdapter::Trivy => self.trivy = true,
+            ScanAdapter::Dockle => self.dockle = true,
+            ScanAdapter::Lynis => self.lynis = true,
+        }
+    }
+}
+
+impl Default for AdapterSelection {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LifecycleCommand {
     Upgrade,
@@ -71,6 +146,7 @@ pub struct AppConfig {
     pub setup_command: Option<SetupConfig>,
     pub compose_path: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
+    pub adapter_selection: AdapterSelection,
     pub fix_mode: Option<FixMode>,
     pub fix_target_path: Option<PathBuf>,
     pub preview_changes: bool,
@@ -88,6 +164,7 @@ impl Default for AppConfig {
             setup_command: None,
             compose_path: None,
             host_root: None,
+            adapter_selection: AdapterSelection::all(),
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -98,6 +175,14 @@ impl Default for AppConfig {
 
 impl AppConfig {
     pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
+        let adapter_env = std::env::var("HOSTVEIL_ADAPTERS").ok();
+        Self::parse_with_adapter_env(args, adapter_env.as_deref())
+    }
+
+    fn parse_with_adapter_env(
+        args: impl IntoIterator<Item = String>,
+        adapter_env: Option<&str>,
+    ) -> Result<Self, AppError> {
         let args: Vec<String> = args.into_iter().collect();
         let (locale_override, args) = strip_locale_override(args)?;
 
@@ -131,6 +216,7 @@ impl AppConfig {
             locale_override,
             ..Self::default()
         };
+        let mut adapter_selection_explicit = false;
         let mut args = args.into_iter();
 
         while let Some(argument) = args.next() {
@@ -166,6 +252,21 @@ impl AppConfig {
                     }
                     config.host_root = Some(PathBuf::from(value));
                 }
+                "--adapters" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--adapters"))?;
+                    config.adapter_selection = parse_adapter_selection(&value)?;
+                    adapter_selection_explicit = true;
+                }
+                _ if argument.starts_with("--adapters=") => {
+                    let value = argument.trim_start_matches("--adapters=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--adapters"));
+                    }
+                    config.adapter_selection = parse_adapter_selection(value)?;
+                    adapter_selection_explicit = true;
+                }
                 "--quick-fix" => {
                     let value = args
                         .next()
@@ -192,6 +293,19 @@ impl AppConfig {
                 }
                 _ => return Err(AppError::UnknownArgument(argument)),
             }
+        }
+
+        if !adapter_selection_explicit
+            && config.fix_mode.is_none()
+            && let Some(adapter_env) = adapter_env
+        {
+            config.adapter_selection = parse_adapter_selection(adapter_env)?;
+        }
+
+        if config.fix_mode.is_some() && adapter_selection_explicit {
+            return Err(AppError::InvalidArgumentCombination(
+                crate::i18n::tr_adapters_require_scan_mode(),
+            ));
         }
 
         config.validate()?;
@@ -456,9 +570,51 @@ fn parse_setup_tool_list(tools: &mut Vec<SetupTool>, value: &str) -> Result<(), 
     }
 }
 
+fn parse_adapter_selection(value: &str) -> Result<AdapterSelection, AppError> {
+    let entries: Vec<String> = value
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(|entry| entry.to_ascii_lowercase())
+        .collect();
+
+    if entries.is_empty() {
+        return Err(AppError::InvalidArgumentCombination(
+            crate::i18n::tr_adapter_selection_required(),
+        ));
+    }
+
+    let has_all = entries.iter().any(|entry| entry == "all");
+    let has_none = entries.iter().any(|entry| entry == "none");
+
+    if (has_all || has_none) && entries.len() > 1 {
+        return Err(AppError::InvalidArgumentCombination(
+            crate::i18n::tr_adapter_selection_keyword_conflict(),
+        ));
+    }
+
+    if has_all {
+        return Ok(AdapterSelection::all());
+    }
+
+    if has_none {
+        return Ok(AdapterSelection::none());
+    }
+
+    let mut selection = AdapterSelection::none();
+    for entry in entries {
+        let adapter = ScanAdapter::from_arg(&entry).ok_or_else(|| {
+            AppError::InvalidArgumentCombination(crate::i18n::tr_unsupported_adapter(&entry))
+        })?;
+        selection.enable(adapter);
+    }
+
+    Ok(selection)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AppConfig, LifecycleCommand, OutputMode, SetupTool};
+    use super::{AdapterSelection, AppConfig, LifecycleCommand, OutputMode, SetupTool};
     use crate::fix::FixMode;
 
     #[test]
@@ -470,6 +626,7 @@ mod tests {
         assert!(!config.show_version);
         assert!(config.lifecycle_command.is_none());
         assert!(config.setup_command.is_none());
+        assert_eq!(config.adapter_selection, AdapterSelection::all());
         assert!(config.fix_mode.is_none());
     }
 
@@ -698,6 +855,96 @@ mod tests {
             String::from("dockle"),
         ])
         .expect_err("unknown setup tool should be rejected");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn parses_adapter_selection_all() {
+        let config =
+            AppConfig::parse([String::from("--adapters=all")]).expect("config should parse");
+
+        assert_eq!(config.adapter_selection, AdapterSelection::all());
+    }
+
+    #[test]
+    fn parses_adapter_selection_none() {
+        let config =
+            AppConfig::parse([String::from("--adapters=none")]).expect("config should parse");
+
+        assert_eq!(config.adapter_selection, AdapterSelection::none());
+    }
+
+    #[test]
+    fn parses_adapter_selection_list() {
+        let config = AppConfig::parse([
+            String::from("--adapters"),
+            String::from("trivy,dockle"),
+            String::from("--json"),
+        ])
+        .expect("config should parse");
+
+        assert!(config.adapter_selection.trivy);
+        assert!(config.adapter_selection.dockle);
+        assert!(!config.adapter_selection.lynis);
+    }
+
+    #[test]
+    fn adapter_selection_uses_env_fallback() {
+        let config = AppConfig::parse_with_adapter_env([String::from("--json")], Some("lynis"))
+            .expect("config should parse");
+
+        assert!(!config.adapter_selection.trivy);
+        assert!(!config.adapter_selection.dockle);
+        assert!(config.adapter_selection.lynis);
+    }
+
+    #[test]
+    fn adapter_selection_cli_overrides_env() {
+        let config = AppConfig::parse_with_adapter_env(
+            [String::from("--adapters=trivy"), String::from("--json")],
+            Some("none"),
+        )
+        .expect("config should parse");
+
+        assert!(config.adapter_selection.trivy);
+        assert!(!config.adapter_selection.dockle);
+        assert!(!config.adapter_selection.lynis);
+    }
+
+    #[test]
+    fn rejects_unknown_adapter_selection() {
+        let error = AppConfig::parse([String::from("--adapters=nmap")])
+            .expect_err("unknown adapter should be rejected");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_none_combined_with_adapter_selection() {
+        let error = AppConfig::parse([String::from("--adapters=none,trivy")])
+            .expect_err("none should be exclusive");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_adapters_with_fix_mode() {
+        let error = AppConfig::parse([
+            String::from("--quick-fix"),
+            String::from("docker-compose.yml"),
+            String::from("--adapters=none"),
+        ])
+        .expect_err("adapter selection should require scan mode");
 
         assert!(matches!(
             error,

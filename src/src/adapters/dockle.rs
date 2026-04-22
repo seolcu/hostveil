@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Command;
+use std::time::Duration;
 
 use serde::Deserialize;
 
+use crate::adapters::command;
 use crate::domain::{
     AdapterStatus, Axis, Finding, RemediationKind, Scope, ServiceSummary, Severity, Source,
 };
@@ -15,6 +17,20 @@ pub struct DockleScanOutput {
 }
 
 pub fn scan(services: &[ServiceSummary]) -> DockleScanOutput {
+    scan_with_commands(
+        services,
+        "dockle",
+        "dockle",
+        command::DEFAULT_ADAPTER_TIMEOUT,
+    )
+}
+
+fn scan_with_commands(
+    services: &[ServiceSummary],
+    detect_command: &str,
+    scan_command: &str,
+    timeout: Duration,
+) -> DockleScanOutput {
     let mut output = DockleScanOutput {
         status: AdapterStatus::Missing,
         findings: Vec::new(),
@@ -29,7 +45,7 @@ pub fn scan(services: &[ServiceSummary]) -> DockleScanOutput {
         return output;
     }
 
-    match detect_dockle() {
+    match detect_dockle_with_command_and_timeout(detect_command, timeout) {
         DockleAvailability::Missing => {
             output.status = AdapterStatus::Missing;
             return output;
@@ -44,7 +60,7 @@ pub fn scan(services: &[ServiceSummary]) -> DockleScanOutput {
     }
 
     for image in images {
-        match scan_image(&image) {
+        match scan_image_with_command(scan_command, &image, timeout) {
             Ok(Some(summary)) => {
                 successful_scans += 1;
                 output.findings.push(summary_to_finding(&summary, services));
@@ -85,15 +101,18 @@ enum DockleAvailability {
     Failed(String),
 }
 
-fn detect_dockle() -> DockleAvailability {
-    detect_dockle_with_command("dockle")
+#[cfg(test)]
+fn detect_dockle_with_command(command_name: &str) -> DockleAvailability {
+    detect_dockle_with_command_and_timeout(command_name, command::DEFAULT_ADAPTER_TIMEOUT)
 }
 
-fn detect_dockle_with_command(command: &str) -> DockleAvailability {
-    let output = Command::new(command)
-        .arg("--version")
-        .env("NO_COLOR", "1")
-        .output();
+fn detect_dockle_with_command_and_timeout(
+    command_name: &str,
+    timeout: Duration,
+) -> DockleAvailability {
+    let mut command = Command::new(command_name);
+    command.arg("--version").env("NO_COLOR", "1");
+    let output = command::run_with_timeout(command, timeout);
 
     match output {
         Ok(output) if output.status.success() => DockleAvailability::Available,
@@ -101,8 +120,8 @@ fn detect_dockle_with_command(command: &str) -> DockleAvailability {
             let stderr = String::from_utf8_lossy(&output.stderr);
             DockleAvailability::Failed(truncate(stderr.trim(), 200))
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => DockleAvailability::Missing,
-        Err(error) => DockleAvailability::Failed(truncate(&error.to_string(), 200)),
+        Err(error) if error.is_not_found() => DockleAvailability::Missing,
+        Err(error) => DockleAvailability::Failed(truncate(&error.detail(), 200)),
     }
 }
 
@@ -136,12 +155,14 @@ enum DockleLevel {
     Info,
 }
 
-fn scan_image(image: &str) -> Result<Option<DockleImageSummary>, String> {
-    let output = Command::new("dockle")
-        .args(dockle_image_args(image))
-        .env("NO_COLOR", "1")
-        .output()
-        .map_err(|error| error.to_string())?;
+fn scan_image_with_command(
+    command_name: &str,
+    image: &str,
+    timeout: Duration,
+) -> Result<Option<DockleImageSummary>, String> {
+    let mut command = Command::new(command_name);
+    command.args(dockle_image_args(image)).env("NO_COLOR", "1");
+    let output = command::run_with_timeout(command, timeout).map_err(|error| error.detail())?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

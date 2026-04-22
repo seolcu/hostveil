@@ -2,7 +2,7 @@ mod config;
 mod scan;
 mod setup;
 
-pub use config::{AppConfig, OutputMode, SetupConfig, SetupTool};
+pub use config::{AdapterSelection, AppConfig, OutputMode, ScanAdapter, SetupConfig, SetupTool};
 
 use std::fmt;
 use std::io::{self, Write};
@@ -153,7 +153,8 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             }
 
             let mut scan_result = scan::run_native(&config)?;
-            let adapter_updates = scan::prepare_background_adapter_scan(&mut scan_result);
+            let adapter_updates =
+                scan::prepare_background_adapter_scan(&mut scan_result, config.adapter_selection);
 
             tui::run(&mut scan_result, move |scan_result| {
                 let mut updated = false;

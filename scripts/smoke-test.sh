@@ -6,6 +6,8 @@ BINARY_PATH="${1:-$ROOT_DIR/target/debug/hostveil}"
 # Keep smoke outputs deterministic across developer locales; allow explicit override.
 HOSTVEIL_TEST_LOCALE="${HOSTVEIL_TEST_LOCALE:-en}"
 export HOSTVEIL_LOCALE="$HOSTVEIL_TEST_LOCALE"
+# Keep smoke scans deterministic and avoid optional external scanner execution.
+export HOSTVEIL_ADAPTERS="${HOSTVEIL_ADAPTERS:-none}"
 
 [[ -x "$BINARY_PATH" ]] || {
   printf 'error: binary is not executable: %s\n' "$BINARY_PATH" >&2
@@ -42,6 +44,7 @@ VERSION_OUTPUT="$($BINARY_PATH --version)"
 printf '%s\n' "$VERSION_OUTPUT" | grep -q '^hostveil '
 
 $BINARY_PATH --help | grep -q -- '--version'
+$BINARY_PATH --help | grep -q -- '--adapters'
 $BINARY_PATH --help | grep -q -- 'hostveil upgrade'
 $BINARY_PATH --help | grep -q -- 'hostveil auto-upgrade enable'
 HOSTVEIL_LOCALE=ko $BINARY_PATH --help | grep -q '사용법'

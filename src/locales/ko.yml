@@ -23,7 +23,7 @@ app:
       사용법:
         hostveil
         hostveil --json
-        hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
@@ -46,6 +46,7 @@ app:
       옵션:
         --compose PATH    라이브 탐색 대신 특정 Compose 파일 또는 디렉터리를 사용합니다
         --host-root PATH  기본 호스트 루트(/) 대신 특정 Linux 루트 또는 스냅샷을 사용합니다
+        --adapters LIST   선택형 스캐너를 고릅니다: all, none 또는 쉼표 구분 trivy,dockle,lynis
         --tool NAME       hostveil setup에서 설치 도구를 명시적으로 선택합니다(반복 가능)
         --tools LIST      무인 setup 실행용 쉼표 구분 도구 목록입니다
         --quick-fix PATH  특정 파일 또는 디렉터리에 안전한 Compose 전용 수정을 미리보기 또는 적용합니다
@@ -56,6 +57,9 @@ app:
         --json            TUI 대신 스캔 결과 JSON을 출력합니다
         -V, --version     버전 정보를 표시합니다
         -h, --help        이 도움말을 표시합니다
+
+      환경 변수:
+        --adapters가 없으면 HOSTVEIL_ADAPTERS로 같은 adapter 선택을 지정할 수 있습니다.
   version:
     text: "%{name} %{version}"
   hint:
@@ -145,6 +149,7 @@ app:
     json_parse_failed: "%{tool} JSON 파싱에 실패했습니다: %{error}"
     report_parse_failed: "%{tool} 보고서 내용을 파싱하지 못했습니다"
     command_no_error_detail: "명령에서 오류 상세를 반환하지 않았습니다"
+    command_timed_out: "%{seconds}초 후 시간 초과"
     scan_thread_panicked: "%{adapter} 스캔 스레드가 패닉으로 종료되었습니다"
   discovery:
     docker_cli_missing_fallback: "Docker CLI를 찾지 못해 fallback 탐색으로 전환합니다."
@@ -174,6 +179,10 @@ app:
     duplicate_locale_override: "--locale override는 하나만 선택하세요"
     unsupported_setup_tool: "지원하지 않는 setup 도구입니다: %{value}"
     setup_tools_required: "--tools에는 최소 하나의 도구 이름이 필요합니다"
+    unsupported_adapter: "지원하지 않는 adapter입니다: %{value}"
+    adapter_selection_required: "--adapters에는 all, none 또는 하나 이상의 adapter 이름이 필요합니다"
+    adapter_selection_keyword_conflict: "all과 none은 adapter 이름과 함께 사용할 수 없습니다"
+    adapters_require_scan_mode: "--adapters는 scan 작업에서만 사용할 수 있습니다"
   setup:
     heading: "hostveil setup"
     detected_os: "감지된 OS: %{name}"
@@ -320,6 +329,7 @@ adapter:
     no_image_targets: "발견된 이미지 대상이 없습니다"
     host_not_scanned: "호스트 스캔이 요청되지 않았습니다"
     live_host_only: "루트(/) 기반 라이브 호스트 스캔이 필요합니다"
+    disabled_by_selection: "adapter 선택에 의해 비활성화됨"
 finding:
   lynis:
     host_warnings:
