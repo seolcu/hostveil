@@ -138,6 +138,7 @@ app:
     finding_count: "발견 항목 수: %{count}"
   adapter:
     lynis_pentest_mode: "Lynis가 비권한 pentest 모드로 실행되어 root 권한이 필요한 일부 점검이 생략될 수 있습니다."
+    lynis_root_required_skipped: "Lynis 호스트 감사에는 root 권한이 필요해 데스크톱 권한 확인 창을 피하려고 건너뛰었습니다."
     lynis_non_zero_exit: "Lynis가 비정상 종료 코드로 종료했습니다: %{detail}. 사용 가능한 보고서는 계속 파싱했습니다."
     lynis_report_missing: "Lynis가 보고서 파일을 생성하지 않았습니다."
     scan_failed: "%{tool} 스캔이 %{image}에서 실패했습니다: %{error}"

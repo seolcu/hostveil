@@ -17,6 +17,10 @@ pub struct LynisScanOutput {
 }
 
 pub fn scan(host_root: Option<&Path>) -> LynisScanOutput {
+    scan_with_effective_root(host_root, is_effective_root())
+}
+
+fn scan_with_effective_root(host_root: Option<&Path>, effective_root: bool) -> LynisScanOutput {
     let mut output = LynisScanOutput {
         status: AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
         findings: Vec::new(),
@@ -29,6 +33,12 @@ pub fn scan(host_root: Option<&Path>) -> LynisScanOutput {
 
     if host_root != Path::new(LIVE_HOST_ROOT) {
         output.status = AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned());
+        return output;
+    }
+
+    if !effective_root {
+        output.status =
+            AdapterStatus::Skipped(t!("app.adapter.lynis_root_required_skipped").into_owned());
         return output;
     }
 
@@ -46,17 +56,8 @@ pub fn scan(host_root: Option<&Path>) -> LynisScanOutput {
         }
     }
 
-    let mode = if is_effective_root() {
-        LynisMode::Full
-    } else {
-        output
-            .warnings
-            .push(t!("app.adapter.lynis_pentest_mode").into_owned());
-        LynisMode::Pentest
-    };
-
     let temp_files = temp_report_files();
-    let command_result = run_lynis(mode, &temp_files);
+    let command_result = run_lynis(&temp_files);
     let report_text = fs::read_to_string(&temp_files.report_file);
     cleanup_temp_files(&temp_files);
 
@@ -101,21 +102,19 @@ pub fn scan(host_root: Option<&Path>) -> LynisScanOutput {
         }
     }
 
-    output.findings = report_to_findings(&report, host_root, mode);
+    output.findings = report_to_findings(&report, host_root, LynisMode::Full);
     output
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LynisMode {
     Full,
-    Pentest,
 }
 
 impl LynisMode {
     fn as_evidence_value(self) -> &'static str {
         match self {
             Self::Full => "full",
-            Self::Pentest => "pentest",
         }
     }
 }
@@ -175,7 +174,7 @@ struct LynisCommandResult {
     detail: Option<String>,
 }
 
-fn run_lynis(mode: LynisMode, files: &LynisTempFiles) -> Result<LynisCommandResult, String> {
+fn run_lynis(files: &LynisTempFiles) -> Result<LynisCommandResult, String> {
     let mut command = Command::new("lynis");
     command
         .args(["audit", "system", "--cronjob", "--quiet", "--nocolors"])
@@ -184,10 +183,6 @@ fn run_lynis(mode: LynisMode, files: &LynisTempFiles) -> Result<LynisCommandResu
         .arg("--logfile")
         .arg(&files.log_file)
         .env("NO_COLOR", "1");
-
-    if mode == LynisMode::Pentest {
-        command.arg("--pentest");
-    }
 
     let output = command.output().map_err(|error| error.to_string())?;
 
@@ -447,6 +442,20 @@ mod tests {
     }
 
     #[test]
+    fn skips_live_host_when_not_root_to_avoid_auth_prompts() {
+        let output = scan_with_effective_root(Some(Path::new("/")), false);
+
+        assert_eq!(
+            output.status,
+            AdapterStatus::Skipped(
+                t!("app.adapter.lynis_root_required_skipped", locale = "en").into_owned()
+            )
+        );
+        assert!(output.findings.is_empty());
+        assert!(output.warnings.is_empty());
+    }
+
+    #[test]
     fn summarizes_report_fixture_into_host_findings() {
         let report = parse_report(include_str!(
             "../../tests/fixtures/adapters/lynis-report.dat"
@@ -458,7 +467,7 @@ mod tests {
         assert_eq!(report.warnings.len(), 2);
         assert_eq!(report.suggestions.len(), 1);
 
-        let findings = report_to_findings(&report, Path::new("/"), LynisMode::Pentest);
+        let findings = report_to_findings(&report, Path::new("/"), LynisMode::Full);
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[0].source, Source::Lynis);
         assert_eq!(findings[0].axis, Axis::HostHardening);
@@ -474,7 +483,7 @@ mod tests {
         );
         assert_eq!(
             findings[1].evidence.get("mode").map(String::as_str),
-            Some("pentest")
+            Some("full")
         );
     }
 

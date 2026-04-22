@@ -138,6 +138,7 @@ app:
     finding_count: "Finding count: %{count}"
   adapter:
     lynis_pentest_mode: "Lynis ran in unprivileged pentest mode; some root-only checks may be omitted."
+    lynis_root_required_skipped: "Lynis requires root for host audit; skipped to avoid desktop authorization prompts."
     lynis_non_zero_exit: "Lynis exited with a non-zero status: %{detail}. Parsed the available report anyway."
     lynis_report_missing: "Lynis did not produce a report file."
     scan_failed: "%{tool} scan failed for %{image}: %{error}"
