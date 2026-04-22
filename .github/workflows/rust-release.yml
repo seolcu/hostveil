@@ -64,6 +64,9 @@ jobs:
       - name: Run smoke tests
         run: ./scripts/smoke-test.sh target/release/hostveil
 
+      - name: Run installer tests
+        run: ./scripts/test-install-script.sh target/release/hostveil
+
   build:
     name: build ${{ matrix.target }}
     needs: validate
