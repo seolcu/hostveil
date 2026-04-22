@@ -178,6 +178,22 @@ pub fn tr_setup_tools_required() -> String {
     t!("app.validation.setup_tools_required").into_owned()
 }
 
+pub fn tr_unsupported_adapter(value: &str) -> String {
+    t!("app.validation.unsupported_adapter", value = value).into_owned()
+}
+
+pub fn tr_adapter_selection_required() -> String {
+    t!("app.validation.adapter_selection_required").into_owned()
+}
+
+pub fn tr_adapter_selection_keyword_conflict() -> String {
+    t!("app.validation.adapter_selection_keyword_conflict").into_owned()
+}
+
+pub fn tr_adapters_require_scan_mode() -> String {
+    t!("app.validation.adapters_require_scan_mode").into_owned()
+}
+
 pub fn tr_lifecycle_command_requires_installed_wrapper(command: &str) -> String {
     t!(
         "app.error.lifecycle_requires_installed_wrapper",
@@ -307,6 +323,10 @@ pub fn tr_adapter_json_parse_failed(tool: &str, error: &str) -> String {
 
 pub fn tr_adapter_command_no_error_detail() -> String {
     t!("app.adapter.command_no_error_detail").into_owned()
+}
+
+pub fn tr_adapter_command_timed_out(seconds: u64) -> String {
+    t!("app.adapter.command_timed_out", seconds = seconds).into_owned()
 }
 
 pub fn tr_adapter_report_parse_failed(tool: &str) -> String {

@@ -54,10 +54,12 @@ cargo run -- --help
 cargo run -- --version
 cargo run
 cargo run -- --json
+cargo run -- --json --adapters none
 
 # Advanced overrides for snapshots or targeted testing
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
+HOSTVEIL_ADAPTERS=trivy,dockle cargo run -- --json
 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 
@@ -177,7 +179,11 @@ hostveil
 hostveil --json
 hostveil --compose path/to/docker-compose.yml --json
 hostveil --host-root / --json
+hostveil --json --adapters none
+HOSTVEIL_ADAPTERS=trivy,dockle hostveil --json
 ```
+
+Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle`.
 
 Preview Compose remediation before writing files:
 
@@ -281,6 +287,7 @@ Optional dependency policy for current releases:
 
 - `hostveil` should install and run without Docker, Trivy, Dockle, or Lynis being present
 - Docker-based live discovery improves Compose coverage when available
+- Optional scanner execution can be controlled with `--adapters` or `HOSTVEIL_ADAPTERS`
 - Trivy and Dockle remain optional image adapters; if either is missing, scans continue with reduced coverage instead of failing
 - Lynis remains an optional host adapter; if it is missing, scans continue with reduced host-audit coverage instead of failing
 - Missing external tools should be shown as coverage or adapter status, not as fatal startup errors

@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Command;
+use std::time::Duration;
 
 use serde::Deserialize;
 
+use crate::adapters::command;
 use crate::domain::{
     AdapterStatus, Axis, Finding, RemediationKind, Scope, ServiceSummary, Severity, Source,
 };
@@ -15,6 +17,15 @@ pub struct TrivyScanOutput {
 }
 
 pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
+    scan_with_commands(services, "trivy", "trivy", command::DEFAULT_ADAPTER_TIMEOUT)
+}
+
+fn scan_with_commands(
+    services: &[ServiceSummary],
+    detect_command: &str,
+    scan_command: &str,
+    timeout: Duration,
+) -> TrivyScanOutput {
     let mut output = TrivyScanOutput {
         status: AdapterStatus::Missing,
         findings: Vec::new(),
@@ -29,7 +40,7 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
         return output;
     }
 
-    match detect_trivy() {
+    match detect_trivy_with_command_and_timeout(detect_command, timeout) {
         TrivyAvailability::Missing => {
             output.status = AdapterStatus::Missing;
             return output;
@@ -44,7 +55,7 @@ pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
     }
 
     for image in images {
-        match scan_image(&image) {
+        match scan_image_with_command(scan_command, &image, timeout) {
             Ok(Some(summary)) => {
                 successful_scans += 1;
                 output.findings.push(summary_to_finding(&summary, services));
@@ -85,15 +96,18 @@ enum TrivyAvailability {
     Failed(String),
 }
 
-fn detect_trivy() -> TrivyAvailability {
-    detect_trivy_with_command("trivy")
+#[cfg(test)]
+fn detect_trivy_with_command(command_name: &str) -> TrivyAvailability {
+    detect_trivy_with_command_and_timeout(command_name, command::DEFAULT_ADAPTER_TIMEOUT)
 }
 
-fn detect_trivy_with_command(command: &str) -> TrivyAvailability {
-    let output = Command::new(command)
-        .arg("--version")
-        .env("NO_COLOR", "1")
-        .output();
+fn detect_trivy_with_command_and_timeout(
+    command_name: &str,
+    timeout: Duration,
+) -> TrivyAvailability {
+    let mut command = Command::new(command_name);
+    command.arg("--version").env("NO_COLOR", "1");
+    let output = command::run_with_timeout(command, timeout);
 
     match output {
         Ok(output) if output.status.success() => TrivyAvailability::Available,
@@ -101,8 +115,8 @@ fn detect_trivy_with_command(command: &str) -> TrivyAvailability {
             let stderr = String::from_utf8_lossy(&output.stderr);
             TrivyAvailability::Failed(truncate(stderr.trim(), 200))
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => TrivyAvailability::Missing,
-        Err(error) => TrivyAvailability::Failed(truncate(&error.to_string(), 200)),
+        Err(error) if error.is_not_found() => TrivyAvailability::Missing,
+        Err(error) => TrivyAvailability::Failed(truncate(&error.detail(), 200)),
     }
 }
 
@@ -130,12 +144,14 @@ struct TrivyImageSummary {
     sample_ids: Vec<String>,
 }
 
-fn scan_image(image: &str) -> Result<Option<TrivyImageSummary>, String> {
-    let output = Command::new("trivy")
-        .args(trivy_image_args(image))
-        .env("NO_COLOR", "1")
-        .output()
-        .map_err(|error| error.to_string())?;
+fn scan_image_with_command(
+    command_name: &str,
+    image: &str,
+    timeout: Duration,
+) -> Result<Option<TrivyImageSummary>, String> {
+    let mut command = Command::new(command_name);
+    command.args(trivy_image_args(image)).env("NO_COLOR", "1");
+    let output = command::run_with_timeout(command, timeout).map_err(|error| error.detail())?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -360,7 +376,30 @@ struct TrivyVulnerability {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
     use super::*;
+
+    fn temp_command(content: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "hostveil-trivy-test-command-{}-{nanos}",
+            std::process::id()
+        ));
+        fs::write(&path, content).expect("test command should be written");
+        let mut permissions = fs::metadata(&path)
+            .expect("test command metadata should be available")
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).expect("test command should be executable");
+        path
+    }
 
     #[test]
     fn maps_trivy_severities() {
@@ -462,6 +501,53 @@ mod tests {
             output.status,
             AdapterStatus::Failed(String::from("registry denied access"))
         );
+    }
+
+    #[test]
+    fn partial_image_timeout_preserves_successful_trivy_findings() {
+        rust_i18n::set_locale("en");
+
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'trivy test\n'
+  exit 0
+fi
+image="${@: -1}"
+if [[ "$image" == "slow:1" ]]; then
+  sleep 2
+  exit 0
+fi
+cat <<'JSON'
+{"Results":[{"Target":"fast:1","Vulnerabilities":[{"VulnerabilityID":"CVE-2026-0001","Severity":"HIGH"}]}]}
+JSON
+"#,
+        );
+        let command = command.display().to_string();
+        let services = vec![
+            ServiceSummary {
+                name: String::from("fast"),
+                image: Some(String::from("fast:1")),
+            },
+            ServiceSummary {
+                name: String::from("slow"),
+                image: Some(String::from("slow:1")),
+            },
+        ];
+
+        let output = scan_with_commands(&services, &command, &command, Duration::from_millis(50));
+
+        assert_eq!(output.status, AdapterStatus::Available);
+        assert_eq!(output.findings.len(), 1);
+        assert!(
+            output
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("timed out after"))
+        );
+
+        let _ = fs::remove_file(command);
     }
 
     #[test]

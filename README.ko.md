@@ -54,10 +54,12 @@ cargo run -- --help
 cargo run -- --version
 cargo run
 cargo run -- --json
+cargo run -- --json --adapters none
 
 # 스냅샷/타깃 테스트용 고급 override
 cargo run -- --json --compose proto/tests/fixtures/parser/docker-compose.yml
 cargo run -- --json --host-root /
+HOSTVEIL_ADAPTERS=trivy,dockle cargo run -- --json
 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 
@@ -158,7 +160,11 @@ hostveil
 hostveil --json
 hostveil --compose path/to/docker-compose.yml --json
 hostveil --host-root / --json
+hostveil --json --adapters none
+HOSTVEIL_ADAPTERS=trivy,dockle hostveil --json
 ```
+
+선택형 scanner adapter의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle`처럼 지정합니다.
 
 파일을 쓰기 전에 Compose 수정 계획을 미리 볼 수 있습니다.
 
@@ -260,6 +266,7 @@ v0.4.0 릴리스 하이라이트:
 
 - `hostveil`은 Docker, Trivy, Dockle, Lynis가 없어도 설치/실행되어야 함
 - Docker가 있을 경우 live discovery의 Compose 커버리지를 확장
+- 선택형 scanner 실행은 `--adapters` 또는 `HOSTVEIL_ADAPTERS`로 제어 가능
 - Trivy와 Dockle은 optional image adapter이며, 미설치 시 실패 대신 커버리지 축소로 처리
 - Lynis는 optional host adapter이며, 미설치 시 실패 대신 host-audit 커버리지 축소로 처리
 - 외부 도구 누락은 시작 실패가 아니라 coverage/adapter 상태로 표시

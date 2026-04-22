@@ -3,8 +3,9 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::adapters::command;
 use crate::domain::{AdapterStatus, Axis, Finding, RemediationKind, Scope, Severity, Source};
 
 const LIVE_HOST_ROOT: &str = "/";
@@ -130,17 +131,23 @@ fn detect_lynis() -> LynisAvailability {
     detect_lynis_with_command("lynis")
 }
 
-fn detect_lynis_with_command(command: &str) -> LynisAvailability {
-    let output = Command::new(command)
-        .arg("--version")
-        .env("NO_COLOR", "1")
-        .output();
+fn detect_lynis_with_command(command_name: &str) -> LynisAvailability {
+    detect_lynis_with_command_and_timeout(command_name, command::DEFAULT_ADAPTER_TIMEOUT)
+}
+
+fn detect_lynis_with_command_and_timeout(
+    command_name: &str,
+    timeout: Duration,
+) -> LynisAvailability {
+    let mut command = Command::new(command_name);
+    command.arg("--version").env("NO_COLOR", "1");
+    let output = command::run_with_timeout(command, timeout);
 
     match output {
         Ok(output) if output.status.success() => LynisAvailability::Available,
         Ok(output) => LynisAvailability::Failed(command_detail(&output.stderr, &output.stdout)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => LynisAvailability::Missing,
-        Err(error) => LynisAvailability::Failed(error.to_string()),
+        Err(error) if error.is_not_found() => LynisAvailability::Missing,
+        Err(error) => LynisAvailability::Failed(error.detail()),
     }
 }
 
@@ -175,7 +182,15 @@ struct LynisCommandResult {
 }
 
 fn run_lynis(files: &LynisTempFiles) -> Result<LynisCommandResult, String> {
-    let mut command = Command::new("lynis");
+    run_lynis_with_command("lynis", files, command::DEFAULT_ADAPTER_TIMEOUT)
+}
+
+fn run_lynis_with_command(
+    command_name: &str,
+    files: &LynisTempFiles,
+    timeout: Duration,
+) -> Result<LynisCommandResult, String> {
+    let mut command = Command::new(command_name);
     command
         .args(["audit", "system", "--cronjob", "--quiet", "--nocolors"])
         .arg("--report-file")
@@ -184,7 +199,7 @@ fn run_lynis(files: &LynisTempFiles) -> Result<LynisCommandResult, String> {
         .arg(&files.log_file)
         .env("NO_COLOR", "1");
 
-    let output = command.output().map_err(|error| error.to_string())?;
+    let output = command::run_with_timeout(command, timeout).map_err(|error| error.detail())?;
 
     Ok(LynisCommandResult {
         success: output.status.success(),

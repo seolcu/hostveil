@@ -23,7 +23,7 @@ app:
       Usage:
         hostveil
         hostveil --json
-        hostveil [--compose PATH] [--host-root PATH] [--json]
+        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
         hostveil --quick-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
@@ -46,6 +46,7 @@ app:
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
         --host-root PATH  override the default live host root (/) with a Linux root or snapshot
+        --adapters LIST   choose optional scanners: all, none, or comma-separated trivy,dockle,lynis
         --tool NAME       select a setup tool explicitly for hostveil setup (repeatable)
         --tools LIST      comma-separated setup tool list for unattended setup runs
         --quick-fix PATH  preview or apply safe Compose-only fixes for a specific file or directory
@@ -56,6 +57,9 @@ app:
         --json            emit scan result JSON instead of launching the TUI
         -V, --version     show version information
         -h, --help        show this help message
+
+      Environment:
+        HOSTVEIL_ADAPTERS provides the same adapter selection when --adapters is not set.
   version:
     text: "%{name} %{version}"
   hint:
@@ -145,6 +149,7 @@ app:
     json_parse_failed: "failed to parse %{tool} JSON: %{error}"
     report_parse_failed: "failed to parse %{tool} report contents"
     command_no_error_detail: "command returned no error detail"
+    command_timed_out: "timed out after %{seconds}s"
     scan_thread_panicked: "%{adapter} scan thread panicked"
   discovery:
     docker_cli_missing_fallback: "Docker CLI is not available; switching to fallback discovery."
@@ -174,6 +179,10 @@ app:
     duplicate_locale_override: "choose only one --locale override"
     unsupported_setup_tool: "unsupported setup tool: %{value}"
     setup_tools_required: "--tools requires at least one tool name"
+    unsupported_adapter: "unsupported adapter: %{value}"
+    adapter_selection_required: "--adapters requires all, none, or one or more adapter names"
+    adapter_selection_keyword_conflict: "all and none cannot be combined with adapter names"
+    adapters_require_scan_mode: "--adapters is only valid for scan operations"
   setup:
     heading: "hostveil setup"
     detected_os: "Detected OS: %{name}"
@@ -320,6 +329,7 @@ adapter:
     no_image_targets: "no image targets were discovered"
     host_not_scanned: "host scanning was not requested"
     live_host_only: "a live host scan rooted at / is required"
+    disabled_by_selection: "disabled by adapter selection"
 finding:
   lynis:
     host_warnings:
