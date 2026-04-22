@@ -468,7 +468,7 @@ mod tests {
     use super::{
         AdapterScanUpdate, apply_current_dir_fallback, apply_current_dir_fallback_from,
         apply_discovered_projects, apply_external_adapter_update, apply_live_discovery_result, run,
-        scan_compose_project, seed_adapter_statuses, spawn_background_adapter_scan,
+        run_native, scan_compose_project, seed_adapter_statuses, spawn_background_adapter_scan,
     };
     use crate::app::{AppConfig, OutputMode};
     use crate::compose::ComposeParser;
@@ -500,6 +500,23 @@ mod tests {
         fs::write(path, content).expect("file should be written");
     }
 
+    fn no_image_compose_fixture(name: &str) -> std::path::PathBuf {
+        let root = temp_host_root(name);
+        let path = root.join("docker-compose.yml");
+        write_file(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    build: .\n",
+                "    privileged: true\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        );
+        path
+    }
+
     fn test_finding(
         id: &str,
         axis: Axis,
@@ -528,6 +545,7 @@ mod tests {
 
     #[test]
     fn records_trivy_adapter_status_in_scan_metadata() {
+        let compose_path = no_image_compose_fixture("trivy-status-no-image");
         let config = AppConfig {
             locale_override: None,
             output_mode: OutputMode::Json,
@@ -535,7 +553,7 @@ mod tests {
             show_version: false,
             lifecycle_command: None,
             setup_command: None,
-            compose_path: Some(parser_fixture()),
+            compose_path: Some(compose_path.clone()),
             host_root: None,
             fix_mode: None,
             fix_target_path: None,
@@ -551,17 +569,15 @@ mod tests {
             .get("trivy")
             .expect("scan should always record Trivy adapter status");
 
-        assert!(matches!(
-            status,
-            AdapterStatus::Available
-                | AdapterStatus::Missing
-                | AdapterStatus::Skipped(_)
-                | AdapterStatus::Failed(_)
-        ));
+        assert!(matches!(status, AdapterStatus::Skipped(_)));
+
+        fs::remove_dir_all(compose_path.parent().expect("fixture dir should exist"))
+            .expect("temp dir should be removed");
     }
 
     #[test]
     fn records_lynis_as_skipped_for_compose_only_scans() {
+        let compose_path = no_image_compose_fixture("lynis-compose-only-no-image");
         let config = AppConfig {
             locale_override: None,
             output_mode: OutputMode::Json,
@@ -569,7 +585,7 @@ mod tests {
             show_version: false,
             lifecycle_command: None,
             setup_command: None,
-            compose_path: Some(parser_fixture()),
+            compose_path: Some(compose_path.clone()),
             host_root: None,
             fix_mode: None,
             fix_target_path: None,
@@ -586,6 +602,9 @@ mod tests {
             .expect("scan should always record Lynis adapter status");
 
         assert!(matches!(status, AdapterStatus::Skipped(_)));
+
+        fs::remove_dir_all(compose_path.parent().expect("fixture dir should exist"))
+            .expect("temp dir should be removed");
     }
 
     #[test]
@@ -643,7 +662,7 @@ mod tests {
             assume_yes: false,
         };
 
-        let result = run(&config).expect("scan should succeed");
+        let result = run_native(&config).expect("scan should succeed");
 
         assert_eq!(result.metadata.scan_mode, ScanMode::Explicit);
         assert_eq!(result.metadata.service_count, 2);
@@ -663,7 +682,8 @@ mod tests {
     fn allows_live_scan_without_explicit_target() {
         let config = AppConfig::default();
 
-        let result = run(&config).expect("live scan should succeed even without Docker access");
+        let result =
+            run_native(&config).expect("live scan should succeed even without Docker access");
 
         assert_eq!(result.metadata.scan_mode, ScanMode::Live);
         assert!(result.metadata.host_root.is_some());
@@ -719,7 +739,7 @@ mod tests {
             assume_yes: false,
         };
 
-        let result = run(&config).expect("combined scan should succeed");
+        let result = run_native(&config).expect("combined scan should succeed");
 
         assert_eq!(result.metadata.service_count, 2);
         assert_eq!(result.metadata.host_root, Some(host_root.clone()));
