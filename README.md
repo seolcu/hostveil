@@ -15,7 +15,7 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 - **Security Overview Dashboard** — overall score with per-category breakdown and severity counts
 - **Native Self-hosting-aware Checks** — checks tailored to each service's known data locations, Compose structure, and operational risk
-- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy is supported as an optional, recommended image vulnerability adapter)
+- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, and Lynis are supported as optional adapters)
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 
@@ -170,13 +170,32 @@ hostveil uninstall
 
 ## Usage
 
-Run the frozen prototype CLI against a Compose file or directory:
+Run the Rust product interactively or as a headless JSON scan:
 
 ```sh
-python -m hostveil scan path/to/docker-compose.yml
-python -m hostveil quick-fix path/to/docker-compose.yml --preview-changes --yes
-python -m hostveil fix path/to/docker-compose.yml --preview-changes --yes
+hostveil
+hostveil --json
+hostveil --compose path/to/docker-compose.yml --json
+hostveil --host-root / --json
 ```
+
+Preview Compose remediation before writing files:
+
+```sh
+hostveil --quick-fix path/to/docker-compose.yml --preview-changes
+hostveil --fix path/to/docker-compose.yml --preview-changes
+```
+
+Run installed lifecycle and setup commands:
+
+```sh
+hostveil setup
+hostveil upgrade
+hostveil auto-upgrade disable
+hostveil uninstall
+```
+
+The Python CLI in `proto/` remains a frozen reference implementation. Use it only when comparing or validating historical prototype behavior.
 
 ## Status
 
@@ -209,11 +228,14 @@ Current Rust implementation status:
 - Active Rust crate scaffolded under `src/`
 - Pinned stable toolchain via `rust-toolchain.toml`
 - `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
+- TUI findings navigation supports remediation-first triage for faster review of fixable issues
+- Explicit locale controls are available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI `g` switch
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
 - Native Linux host checks added for SSH posture, Docker host exposure, and defensive-control telemetry via `--host-root`
-- Optional Trivy image and Lynis host adapters integrated into the shared findings pipeline
+- Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
+- Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
 
@@ -228,6 +250,14 @@ hostveil release versions follow standard SemVer without suffixes: `X.Y.Z` for t
 - Do not bump versions in every PR; version changes should land as dedicated release work
 - Create GitHub Releases only from annotated `vX.Y.Z` tags pushed from `main`
 - The release tag must match `src/Cargo.toml` and `Cargo.lock`
+
+v0.4.0 release highlights:
+
+- Remediation-first TUI triage for quickly reviewing fixable findings
+- Explicit locale control through CLI, environment, and in-TUI switching
+- Non-root Lynis scans are skipped to avoid desktop authorization prompts
+- Deterministic smoke and regression tests avoid optional external scanner execution unless explicitly requested
+- Release validation now includes installer-script coverage before publishing
 
 Current release priorities:
 
