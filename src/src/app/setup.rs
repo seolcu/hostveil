@@ -177,6 +177,16 @@ pub fn run(config: &SetupConfig) -> Result<(), AppError> {
 }
 
 fn resolve_requested_tools(config: &SetupConfig) -> Result<Vec<SetupTool>, AppError> {
+    resolve_requested_tools_with_terminal(
+        config,
+        io::stdin().is_terminal() && io::stdout().is_terminal(),
+    )
+}
+
+fn resolve_requested_tools_with_terminal(
+    config: &SetupConfig,
+    has_interactive_terminal: bool,
+) -> Result<Vec<SetupTool>, AppError> {
     if let Some(selected_tools) = &config.selected_tools {
         return Ok(selected_tools.clone());
     }
@@ -185,7 +195,7 @@ fn resolve_requested_tools(config: &SetupConfig) -> Result<Vec<SetupTool>, AppEr
         return Ok(recommended_tools());
     }
 
-    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+    if !has_interactive_terminal {
         return Err(AppError::InvalidArgumentCombination(
             crate::i18n::tr_setup_requires_terminal_or_explicit_tools(),
         ));
@@ -891,7 +901,7 @@ ID_LIKE="rhel centos fedora"
 
     #[test]
     fn setup_terminal_requirement_uses_translation_helper_detail() {
-        let error = resolve_requested_tools(&SetupConfig::default())
+        let error = resolve_requested_tools_with_terminal(&SetupConfig::default(), false)
             .expect_err("non-interactive setup should require explicit tools");
 
         assert!(matches!(
