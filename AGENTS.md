@@ -89,6 +89,7 @@ All planned work is tracked as GitHub Issues organized into Milestones. **AI age
 - Closed: #5 v0.2 Hardening and UX
 - Closed: #8 v0.5.0 Scanner Control and Reliability
 - Closed: #167 v0.6.0 Expanded Remediation and UX Polish
+- Closed: #172 v0.7.0 Containerized Verification Lab
 
 **How AI agents should use Issues:**
 
