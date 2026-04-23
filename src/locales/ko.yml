@@ -116,12 +116,14 @@ app:
   overview:
     score_caption: "전체 보안 상태"
     findings_available: "발견 항목 %{count}개가 있습니다. 상세 보기를 열어 확인하세요."
+    findings_ready: "발견 항목 %{count}개를 바로 검토하고 수정 상세를 확인할 수 있습니다."
     no_findings: "현재 발견 항목이 없습니다."
     adapters_none: "아직 보고된 선택형 어댑터 상태가 없습니다."
     score_pending_detail: "최종 점수는 어댑터 결과를 기다리고 있습니다. 아래 행은 네이티브 기준 점수입니다."
     score_ready: "어댑터 로딩 완료"
     adapter_loading: "%{spinner} 어댑터 로딩 중: %{adapters}"
     action_queue_hint: "개요는 서비스별 다음 조치를 묶어서 보여줍니다. Findings에서 항목별 근거와 수정 상세를 확인하세요."
+    next_step: "다음 단계"
   server:
     host_name: "호스트"
     root_path: "루트"
@@ -157,6 +159,7 @@ app:
     lynis_root_required_skipped: "Lynis 호스트 감사에는 root 권한이 필요해 데스크톱 권한 확인 창을 피하려고 건너뛰었습니다."
     lynis_non_zero_exit: "Lynis가 비정상 종료 코드로 종료했습니다: %{detail}. 사용 가능한 보고서는 계속 파싱했습니다."
     lynis_report_missing: "Lynis가 보고서 파일을 생성하지 않았습니다."
+    lynis_running_elsewhere: "이 호스트에서 Lynis가 이미 실행 중인 것으로 보여 hostveil이 동시 재시도를 건너뛰었습니다."
     scan_failed: "%{tool} 스캔이 %{image}에서 실패했습니다: %{error}"
     json_parse_failed: "%{tool} JSON 파싱에 실패했습니다: %{error}"
     report_parse_failed: "%{tool} 보고서 내용을 파싱하지 못했습니다"

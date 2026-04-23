@@ -59,6 +59,7 @@ impl ThemePreset {
 pub struct Theme {
     pub preset: ThemePreset,
     pub base: Style,
+    pub surface: Style,
     pub border: Style,
     pub title: Style,
     pub muted: Style,
@@ -89,6 +90,7 @@ impl Theme {
         Self {
             preset: ThemePreset::Ansi,
             base: Style::new().fg(Color::Reset),
+            surface: Style::new().fg(Color::Reset),
             border: Style::new().fg(Color::DarkGray),
             title: Style::new().fg(Color::Cyan),
             muted: Style::new().fg(Color::Gray),
@@ -109,6 +111,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Catppuccin,
             base: Style::new().fg(Color::Rgb(205, 214, 244)),
+            surface: Style::new()
+                .fg(Color::Rgb(205, 214, 244))
+                .bg(Color::Rgb(30, 30, 46)),
             border: Style::new().fg(Color::Rgb(88, 91, 112)),
             title: Style::new().fg(Color::Rgb(137, 180, 250)),
             muted: Style::new().fg(Color::Rgb(127, 132, 156)),
@@ -133,6 +138,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Nord,
             base: Style::new().fg(Color::Rgb(216, 222, 233)),
+            surface: Style::new()
+                .fg(Color::Rgb(216, 222, 233))
+                .bg(Color::Rgb(43, 48, 59)),
             border: Style::new().fg(Color::Rgb(76, 86, 106)),
             title: Style::new().fg(Color::Rgb(136, 192, 208)),
             muted: Style::new().fg(Color::Rgb(143, 188, 187)),
@@ -157,6 +165,9 @@ impl Theme {
         Self {
             preset: ThemePreset::TokyoNight,
             base: Style::new().fg(Color::Rgb(169, 177, 214)),
+            surface: Style::new()
+                .fg(Color::Rgb(169, 177, 214))
+                .bg(Color::Rgb(22, 22, 30)),
             border: Style::new().fg(Color::Rgb(68, 76, 113)),
             title: Style::new().fg(Color::Rgb(122, 162, 247)),
             muted: Style::new().fg(Color::Rgb(125, 135, 185)),
@@ -181,6 +192,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Gruvbox,
             base: Style::new().fg(Color::Rgb(235, 219, 178)),
+            surface: Style::new()
+                .fg(Color::Rgb(235, 219, 178))
+                .bg(Color::Rgb(29, 32, 33)),
             border: Style::new().fg(Color::Rgb(102, 92, 84)),
             title: Style::new().fg(Color::Rgb(131, 165, 152)),
             muted: Style::new().fg(Color::Rgb(168, 153, 132)),

@@ -531,11 +531,16 @@ fn handle_findings_key(
 
 fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
     state.clamp_selection(scan_result);
+    render_surface_background(frame, &state.theme);
 
     match state.screen {
         Screen::Overview => render_overview(frame, scan_result, state),
         Screen::Findings => render_findings(frame, scan_result, state),
     }
+}
+
+fn render_surface_background(frame: &mut ratatui::Frame<'_>, theme: &Theme) {
+    frame.render_widget(Block::default().style(theme.surface), frame.area());
 }
 
 fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &AppState) {
@@ -653,10 +658,12 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         mode,
         &state.theme,
     ))
+    .style(state.theme.surface)
     .block(
         Block::default()
             .title(findings_list_title(state.findings_focus))
             .borders(Borders::ALL)
+            .style(state.theme.surface)
             .border_style(focus_border_style(
                 state.findings_focus == FindingsFocus::List,
                 &state.theme,
@@ -668,6 +675,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let detail_block = Block::default()
         .title(findings_detail_title(state.findings_focus))
         .borders(Borders::ALL)
+        .style(state.theme.surface)
         .border_style(focus_border_style(
             state.findings_focus == FindingsFocus::Detail,
             &state.theme,
@@ -681,6 +689,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
 
     let detail = Paragraph::new(detail_text)
         .block(detail_block)
+        .style(state.theme.surface)
         .wrap(Wrap { trim: true })
         .scroll((state.detail_scroll, 0));
 
@@ -754,7 +763,7 @@ fn header_banner(theme: &Theme) -> Paragraph<'static> {
                 .borders(Borders::TOP | Borders::BOTTOM)
                 .border_style(theme.border),
         )
-        .style(theme.base)
+        .style(theme.surface)
 }
 
 fn is_root() -> bool {
@@ -778,7 +787,8 @@ fn render_server_status_panel(
         .title(t!("app.panel.server_status").into_owned())
         .borders(Borders::ALL)
         .border_style(theme.border)
-        .title_style(theme.title);
+        .title_style(theme.title)
+        .style(theme.surface);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -819,7 +829,9 @@ fn render_server_status_panel(
     ];
 
     frame.render_widget(
-        Paragraph::new(Text::from(meta_lines)).wrap(Wrap { trim: true }),
+        Paragraph::new(Text::from(meta_lines))
+            .style(theme.surface)
+            .wrap(Wrap { trim: true }),
         sections[0],
     );
     render_load_gauge_row(frame, sections[1], scan_result, theme);
@@ -829,6 +841,7 @@ fn render_server_status_panel(
             sections[2].width,
             theme,
         )))
+        .style(theme.surface)
         .wrap(Wrap { trim: true }),
         sections[2],
     );
@@ -845,7 +858,8 @@ fn render_scan_results_panel(
         .title(t!("app.panel.scan_results").into_owned())
         .borders(Borders::ALL)
         .border_style(theme.border)
-        .title_style(theme.title);
+        .title_style(theme.title)
+        .style(theme.surface);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -856,6 +870,26 @@ fn render_scan_results_panel(
     let mut lines = result_summary_lines(scan_result, inner.width, theme);
     lines.push(Line::raw(String::new()));
     lines.extend(severity_total_lines(scan_result, inner.width, theme));
+    lines.push(Line::raw(String::new()));
+    if scan_result.findings.is_empty() {
+        lines.push(Line::styled(
+            t!("app.overview.no_findings").into_owned(),
+            theme.muted,
+        ));
+    } else {
+        lines.push(Line::styled(
+            t!(
+                "app.overview.findings_available",
+                count = scan_result.findings.len()
+            )
+            .into_owned(),
+            theme.title.add_modifier(Modifier::BOLD),
+        ));
+        lines.push(Line::styled(
+            t!("app.hint.open_findings").into_owned(),
+            theme.muted,
+        ));
+    }
 
     if let Some(docker_status) = &scan_result.metadata.docker_status {
         lines.push(Line::raw(String::new()));
@@ -900,7 +934,9 @@ fn render_scan_results_panel(
     }
 
     frame.render_widget(
-        Paragraph::new(Text::from(lines)).wrap(Wrap { trim: true }),
+        Paragraph::new(Text::from(lines))
+            .style(theme.surface)
+            .wrap(Wrap { trim: true }),
         inner,
     );
 }
@@ -916,7 +952,8 @@ fn render_security_scores_panel(
         .title(t!("app.panel.security_scores").into_owned())
         .borders(Borders::ALL)
         .border_style(theme.border)
-        .title_style(theme.title);
+        .title_style(theme.title)
+        .style(theme.surface);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -963,7 +1000,8 @@ fn render_fix_paths_panel(
         .title(t!("app.panel.action_queue"))
         .borders(Borders::ALL)
         .border_style(theme.border)
-        .title_style(theme.title);
+        .title_style(theme.title)
+        .style(theme.surface);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -977,7 +1015,9 @@ fn render_fix_paths_panel(
     }
 
     frame.render_widget(
-        Paragraph::new(Text::from(lines)).wrap(Wrap { trim: true }),
+        Paragraph::new(Text::from(lines))
+            .style(theme.surface)
+            .wrap(Wrap { trim: true }),
         inner,
     );
 }
@@ -1053,9 +1093,10 @@ fn findings_header(
                 .title(t!("app.panel.status").into_owned())
                 .borders(Borders::ALL)
                 .border_style(theme.border)
-                .title_style(theme.title),
+                .title_style(theme.title)
+                .style(theme.surface),
         )
-        .style(theme.base)
+        .style(theme.surface)
         .wrap(Wrap { trim: true })
 }
 
@@ -1568,7 +1609,29 @@ fn remediation_lines(
         lines.push(Line::raw(
             t!("app.result.no_remediation_needed").into_owned(),
         ));
-    } else if auto_fixable_count > 0 {
+    }
+
+    if !scan_result.findings.is_empty() {
+        lines.push(Line::raw(""));
+        lines.push(Line::styled(
+            t!("app.overview.next_step").into_owned(),
+            theme.title.add_modifier(Modifier::BOLD),
+        ));
+        lines.push(Line::styled(
+            t!("app.hint.open_findings").into_owned(),
+            theme.highlight.add_modifier(Modifier::BOLD),
+        ));
+        lines.push(Line::styled(
+            t!(
+                "app.overview.findings_ready",
+                count = scan_result.findings.len()
+            )
+            .into_owned(),
+            theme.muted,
+        ));
+    }
+
+    if auto_fixable_count > 0 {
         lines.push(Line::raw(""));
         lines.push(Line::styled(
             t!("app.hint.press_f_to_fix").into_owned(),
@@ -2640,6 +2703,18 @@ mod tests {
         result
     }
 
+    fn no_findings_result() -> ScanResult {
+        let mut result = sample_result();
+        result.findings.clear();
+        result.score_report.severity_counts = BTreeMap::from([
+            (Severity::Critical, 0),
+            (Severity::High, 0),
+            (Severity::Medium, 0),
+            (Severity::Low, 0),
+        ]);
+        result
+    }
+
     #[test]
     fn overview_navigation_opens_findings() {
         let result = sample_result();
@@ -2975,6 +3050,75 @@ mod tests {
     }
 
     #[test]
+    fn preset_themes_apply_body_background_but_ansi_keeps_default() {
+        let result = sample_result();
+        let mut themed_state = AppState::new(&result);
+        themed_state.theme_preset = ThemePreset::Catppuccin;
+        themed_state.theme = Theme::preset(ThemePreset::Catppuccin);
+        let mut themed_terminal =
+            Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        themed_terminal
+            .draw(|frame| render(frame, &result, &mut themed_state))
+            .expect("themed overview should render");
+
+        let themed_body_bg = buffer_bg(themed_terminal.backend(), 10, 10);
+        let themed_footer_bg = buffer_bg(themed_terminal.backend(), 10, 23);
+
+        assert_ne!(themed_body_bg, ratatui::style::Color::Reset);
+        assert_ne!(themed_footer_bg, themed_body_bg);
+
+        let mut ansi_state = AppState::new(&result);
+        ansi_state.theme_preset = ThemePreset::Ansi;
+        ansi_state.theme = Theme::preset(ThemePreset::Ansi);
+        let mut ansi_terminal =
+            Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        ansi_terminal
+            .draw(|frame| render(frame, &result, &mut ansi_state))
+            .expect("ansi overview should render");
+
+        assert_eq!(
+            buffer_bg(ansi_terminal.backend(), 10, 10),
+            ratatui::style::Color::Reset
+        );
+    }
+
+    #[test]
+    fn overview_renders_explicit_findings_cta_when_findings_exist() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(content.contains("Press Enter or Right to inspect findings"));
+        assert!(content.contains("Next Step"));
+        assert!(content.contains("3 finding(s) are ready for review"));
+    }
+
+    #[test]
+    fn overview_hides_findings_cta_when_no_findings_exist() {
+        let result = no_findings_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(content.contains("No findings detected yet."));
+        assert!(!content.contains("Press Enter or Right to inspect findings"));
+        assert!(!content.contains("Next Step"));
+    }
+
+    #[test]
     fn findings_view_renders_selected_finding_details() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -3083,5 +3227,12 @@ mod tests {
         }
 
         output
+    }
+
+    fn buffer_bg(backend: &TestBackend, x: u16, y: u16) -> ratatui::style::Color {
+        backend.buffer()[(x, y)]
+            .style()
+            .bg
+            .unwrap_or(ratatui::style::Color::Reset)
     }
 }

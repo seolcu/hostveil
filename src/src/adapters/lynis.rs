@@ -9,6 +9,7 @@ use crate::adapters::command;
 use crate::domain::{AdapterStatus, Axis, Finding, RemediationKind, Scope, Severity, Source};
 
 const LIVE_HOST_ROOT: &str = "/";
+const LYNIS_PID_EXISTS_MESSAGE: &str = "PID file exists, probably another Lynis process is running";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LynisScanOutput {
@@ -185,11 +186,7 @@ fn run_lynis(files: &LynisTempFiles) -> Result<LynisCommandResult, String> {
     run_lynis_with_command("lynis", files, command::DEFAULT_ADAPTER_TIMEOUT)
 }
 
-fn run_lynis_with_command(
-    command_name: &str,
-    files: &LynisTempFiles,
-    timeout: Duration,
-) -> Result<LynisCommandResult, String> {
+fn build_lynis_command(command_name: &str, files: &LynisTempFiles) -> Command {
     let mut command = Command::new(command_name);
     command
         .args(["audit", "system", "--cronjob", "--quiet", "--nocolors"])
@@ -198,13 +195,127 @@ fn run_lynis_with_command(
         .arg("--logfile")
         .arg(&files.log_file)
         .env("NO_COLOR", "1");
+    command
+}
 
-    let output = command::run_with_timeout(command, timeout).map_err(|error| error.detail())?;
+fn run_lynis_with_command(
+    command_name: &str,
+    files: &LynisTempFiles,
+    timeout: Duration,
+) -> Result<LynisCommandResult, String> {
+    let output = command::run_with_timeout(build_lynis_command(command_name, files), timeout)
+        .map_err(|error| error.detail())?;
+    let detail = command_detail(&output.stderr, &output.stdout);
+
+    if !output.status.success() && is_pid_lockout_detail(&detail) {
+        let pid_paths = known_lynis_pid_files();
+        let cleanup = cleanup_stale_pid_files(&pid_paths, inspect_process_kind);
+
+        if cleanup.active_lynis {
+            return Err(t!("app.adapter.lynis_running_elsewhere").into_owned());
+        }
+
+        if cleanup.removed_any {
+            let retry_output =
+                command::run_with_timeout(build_lynis_command(command_name, files), timeout)
+                    .map_err(|error| error.detail())?;
+            let retry_detail = command_detail(&retry_output.stderr, &retry_output.stdout);
+
+            return Ok(LynisCommandResult {
+                success: retry_output.status.success(),
+                detail: Some(retry_detail),
+            });
+        }
+    }
 
     Ok(LynisCommandResult {
         success: output.status.success(),
-        detail: Some(command_detail(&output.stderr, &output.stdout)),
+        detail: Some(detail),
     })
+}
+
+fn is_pid_lockout_detail(detail: &str) -> bool {
+    detail.contains(LYNIS_PID_EXISTS_MESSAGE)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProcessKind {
+    Missing,
+    Lynis,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct PidCleanupOutcome {
+    removed_any: bool,
+    active_lynis: bool,
+}
+
+fn known_lynis_pid_files() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    if let Some(home) = env::var_os("HOME").filter(|value| !value.is_empty()) {
+        paths.push(PathBuf::from(home).join("lynis.pid"));
+    }
+
+    if let Ok(current_dir) = env::current_dir() {
+        paths.push(current_dir.join("lynis.pid"));
+    }
+
+    paths.push(PathBuf::from("/var/run/lynis.pid"));
+    paths
+}
+
+fn cleanup_stale_pid_files<F>(paths: &[PathBuf], inspect_process: F) -> PidCleanupOutcome
+where
+    F: Fn(u32) -> ProcessKind,
+{
+    let mut outcome = PidCleanupOutcome::default();
+
+    for path in paths {
+        let Ok(contents) = fs::read_to_string(path) else {
+            continue;
+        };
+
+        let pid = contents.trim().parse::<u32>().ok();
+        let should_remove = match pid {
+            None => true,
+            Some(pid) => match inspect_process(pid) {
+                ProcessKind::Missing | ProcessKind::Other => true,
+                ProcessKind::Lynis => {
+                    outcome.active_lynis = true;
+                    false
+                }
+            },
+        };
+
+        if should_remove && fs::remove_file(path).is_ok() {
+            outcome.removed_any = true;
+        }
+    }
+
+    outcome
+}
+
+fn inspect_process_kind(pid: u32) -> ProcessKind {
+    let proc_dir = PathBuf::from("/proc").join(pid.to_string());
+    if !proc_dir.exists() {
+        return ProcessKind::Missing;
+    }
+
+    let cmdline = fs::read(proc_dir.join("cmdline"))
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap_or_default()
+        .replace('\0', " ");
+    let comm = fs::read_to_string(proc_dir.join("comm")).unwrap_or_default();
+    let process_text = format!("{cmdline} {comm}").to_ascii_lowercase();
+
+    if process_text.contains("lynis") {
+        ProcessKind::Lynis
+    } else {
+        ProcessKind::Other
+    }
 }
 
 fn is_effective_root() -> bool {
@@ -433,6 +544,15 @@ fn entry_evidence(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn test_guard() -> std::sync::MutexGuard<'static, ()> {
+        static GUARD: OnceLock<Mutex<()>> = OnceLock::new();
+        GUARD
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("test mutex should not be poisoned")
+    }
 
     #[test]
     fn skips_when_host_scan_was_not_requested() {
@@ -518,5 +638,165 @@ mod tests {
     fn detect_lynis_reports_available_for_true_command() {
         let status = detect_lynis_with_command("true");
         assert_eq!(status, LynisAvailability::Available);
+    }
+
+    #[test]
+    fn cleanup_stale_pid_files_removes_dead_pid_files() {
+        let _guard = test_guard();
+        let pid_path = env::temp_dir().join("hostveil-lynis-stale-dead.pid");
+        fs::write(&pid_path, "424242").expect("pid file should be written");
+
+        let outcome =
+            cleanup_stale_pid_files(std::slice::from_ref(&pid_path), |_| ProcessKind::Missing);
+
+        assert!(outcome.removed_any);
+        assert!(!outcome.active_lynis);
+        assert!(!pid_path.exists());
+    }
+
+    #[test]
+    fn cleanup_stale_pid_files_removes_invalid_pid_content() {
+        let _guard = test_guard();
+        let pid_path = env::temp_dir().join("hostveil-lynis-stale-invalid.pid");
+        fs::write(&pid_path, "not-a-pid").expect("pid file should be written");
+
+        let outcome =
+            cleanup_stale_pid_files(std::slice::from_ref(&pid_path), |_| ProcessKind::Missing);
+
+        assert!(outcome.removed_any);
+        assert!(!outcome.active_lynis);
+        assert!(!pid_path.exists());
+    }
+
+    #[test]
+    fn cleanup_stale_pid_files_removes_non_lynis_process_lock() {
+        let _guard = test_guard();
+        let pid_path = env::temp_dir().join("hostveil-lynis-other-process.pid");
+        fs::write(&pid_path, "1234").expect("pid file should be written");
+
+        let outcome =
+            cleanup_stale_pid_files(std::slice::from_ref(&pid_path), |_| ProcessKind::Other);
+
+        assert!(outcome.removed_any);
+        assert!(!outcome.active_lynis);
+        assert!(!pid_path.exists());
+    }
+
+    #[test]
+    fn cleanup_stale_pid_files_keeps_live_lynis_lock() {
+        let _guard = test_guard();
+        let pid_path = env::temp_dir().join("hostveil-lynis-live.pid");
+        fs::write(&pid_path, "5678").expect("pid file should be written");
+
+        let outcome =
+            cleanup_stale_pid_files(std::slice::from_ref(&pid_path), |_| ProcessKind::Lynis);
+
+        assert!(!outcome.removed_any);
+        assert!(outcome.active_lynis);
+        assert!(pid_path.exists());
+
+        fs::remove_file(&pid_path).expect("test pid file should be cleaned up");
+    }
+
+    #[test]
+    fn detects_pid_lockout_detail() {
+        assert!(is_pid_lockout_detail(
+            "Warning: PID file exists, probably another Lynis process is running."
+        ));
+        assert!(!is_pid_lockout_detail("some other failure"));
+    }
+
+    #[test]
+    fn retries_after_removing_stale_pid_lock() {
+        let _guard = test_guard();
+        let test_dir = env::temp_dir().join("hostveil-lynis-retry-test");
+        let _ = fs::remove_dir_all(&test_dir);
+        fs::create_dir_all(&test_dir).expect("test dir should be created");
+
+        let script_path = test_dir.join("fake-lynis.sh");
+        let script = r#"#!/usr/bin/env bash
+set -euo pipefail
+count_file="$HOME/invocations"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s' "$count" > "$count_file"
+
+if [[ "$1" == "--version" ]]; then
+  exit 0
+fi
+
+report_file=""
+while (($# > 0)); do
+  case "$1" in
+    --report-file)
+      report_file="$2"
+      shift 2
+      ;;
+    --logfile)
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ "$count" -eq 1 ]]; then
+  printf '%s' '999999' > "$HOME/lynis.pid"
+  printf '%s\n' 'Warning: PID file exists, probably another Lynis process is running.' >&2
+  exit 1
+fi
+
+cat > "$report_file" <<'EOF'
+hostname=test-host
+hardening_index=67
+lynis_tests_done=123
+warning[]=AUTH-9286|Test warning|detail|solution
+EOF
+"#;
+        fs::write(&script_path, script).expect("script should be written");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&script_path)
+                .expect("metadata should be readable")
+                .permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&script_path, permissions)
+                .expect("script should be made executable");
+        }
+
+        let original_home = env::var_os("HOME");
+        let original_dir = env::current_dir().expect("current dir should exist");
+        unsafe {
+            env::set_var("HOME", &test_dir);
+        }
+        env::set_current_dir(&test_dir).expect("current dir should switch");
+
+        let temp_files = LynisTempFiles {
+            report_file: test_dir.join("report.dat"),
+            log_file: test_dir.join("lynis.log"),
+        };
+        let result = run_lynis_with_command(
+            script_path.to_str().expect("script path should be utf-8"),
+            &temp_files,
+            Duration::from_secs(5),
+        )
+        .expect("retry should succeed");
+
+        if let Some(home) = original_home {
+            unsafe {
+                env::set_var("HOME", home);
+            }
+        }
+        env::set_current_dir(original_dir).expect("current dir should restore");
+
+        assert!(result.success);
+        assert!(!test_dir.join("lynis.pid").exists());
+
+        let _ = fs::remove_dir_all(&test_dir);
     }
 }
