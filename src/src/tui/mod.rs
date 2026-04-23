@@ -94,7 +94,7 @@ impl AppState {
             .theme
             .as_deref()
             .and_then(ThemePreset::from_key)
-            .unwrap_or(ThemePreset::Ansi);
+            .unwrap_or(ThemePreset::TokyoNight);
 
         Self {
             screen: Screen::Overview,
@@ -1038,9 +1038,10 @@ fn overview_footer(theme: &Theme) -> Paragraph<'static> {
     .block(
         Block::default()
             .borders(Borders::TOP)
-            .border_style(theme.border),
+            .border_style(theme.border)
+            .style(theme.surface),
     )
-    .style(theme.status_bar)
+    .style(theme.surface)
 }
 
 fn findings_header(
@@ -1130,9 +1131,10 @@ fn findings_footer(
     .block(
         Block::default()
             .borders(Borders::TOP)
-            .border_style(theme.border),
+            .border_style(theme.border)
+            .style(theme.surface),
     )
-    .style(theme.status_bar)
+    .style(theme.surface)
     .wrap(Wrap { trim: true })
 }
 
@@ -3066,7 +3068,8 @@ mod tests {
         let themed_footer_bg = buffer_bg(themed_terminal.backend(), 10, 23);
 
         assert_ne!(themed_body_bg, ratatui::style::Color::Reset);
-        assert_ne!(themed_footer_bg, themed_body_bg);
+        // Footer now intentionally shares the surface background for visual consistency.
+        assert_eq!(themed_footer_bg, themed_body_bg);
 
         let mut ansi_state = AppState::new(&result);
         ansi_state.theme_preset = ThemePreset::Ansi;

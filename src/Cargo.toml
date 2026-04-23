@@ -18,3 +18,17 @@ rustix = { version = "0.38", features = ["process"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+
+[package.metadata.deb]
+maintainer = "Gyuwon Seol <seolcu0112@proton.me>"
+copyright = "2026, Gyuwon Seol"
+license-file = ["../LICENSE", "4"]
+extended-description = """\
+Hostveil is a lightweight security dashboard for Linux self-hosted environments.
+"""
+depends = "$auto"
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/hostveil", dest = "/usr/bin/hostveil", mode = "755" },
+]

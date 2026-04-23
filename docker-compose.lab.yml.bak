@@ -7,16 +7,14 @@ services:
       - .:/workspace:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - "127.0.0.1:7681:7681"
+      - "7681:7681"
     environment:
       - HOSTVEIL_LOCALE=en
     privileged: true
-    user: 1000:1000
   vulnerable-service:
-    image: nginx:stable
+    image: nginx:latest
     container_name: hostveil-lab-target
     ports:
-      - "127.0.0.1:8081:80"
+      - "8081:80"
     volumes:
       - /etc/shadow:/mnt/shadow:ro
-    user: 1000:1000

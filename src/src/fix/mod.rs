@@ -1,3 +1,5 @@
+pub mod host;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
@@ -124,13 +126,15 @@ fn build_fix_plan(
         build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
     };
 
-    Ok(FixPlan {
+    let plan = FixPlan {
         compose_file: bundle.primary_path,
         diff_preview,
         backup_path: None,
         safe_applied,
         guided_applied,
-    })
+    };
+
+    Ok(plan)
 }
 
 fn render_updated_text(
