@@ -8,6 +8,7 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 
@@ -145,7 +146,18 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
     let diff_text = Text::from(
         plan.diff_preview
             .lines()
-            .map(|line| Line::from(line.to_owned()))
+            .map(|line| {
+                let style = if line.starts_with('+') {
+                    Style::default().fg(Color::Green)
+                } else if line.starts_with('-') {
+                    Style::default().fg(Color::Red)
+                } else if line.starts_with("@@") {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default()
+                };
+                Line::styled(line.to_owned(), style)
+            })
             .collect::<Vec<_>>(),
     );
 

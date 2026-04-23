@@ -105,7 +105,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             AppError::InvalidArgumentCombination(crate::i18n::tr_fix_requires_target())
         })?;
 
-        let preview_plan = fix::preview(compose_path, mode)?;
+        let preview_plan = fix::preview(compose_path, mode, None)?;
         if config.preview_changes {
             print_fix_review(&preview_plan);
             println!();
@@ -141,7 +141,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
             }
         }
 
-        let applied_plan = fix::apply(compose_path, mode)?;
+        let applied_plan = fix::apply(compose_path, mode, None)?;
         print_fix_result(&applied_plan);
         return Ok(());
     }
@@ -172,10 +172,16 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
 
                 match action {
                     tui::TuiAction::Exit => break,
-                    tui::TuiAction::TriggerFix(compose_path) => {
-                        let preview_plan = fix::preview(&compose_path, crate::fix::FixMode::Fix)?;
+                    tui::TuiAction::TriggerFix {
+                        compose_file,
+                        finding_id,
+                    } => {
+                        let filter = finding_id.map(|id| vec![id]);
+                        let filter_slice = filter.as_deref();
+                        let preview_plan =
+                            fix::preview(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
                         if preview_plan.changed() && tui::run_fix_review(&preview_plan)? {
-                            fix::apply(&compose_path, crate::fix::FixMode::Fix)?;
+                            fix::apply(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
                         }
                     }
                 }

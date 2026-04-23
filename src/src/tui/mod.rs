@@ -273,7 +273,10 @@ enum FindingsLayoutMode {
 
 pub enum TuiAction {
     Exit,
-    TriggerFix(std::path::PathBuf),
+    TriggerFix {
+        compose_file: std::path::PathBuf,
+        finding_id: Option<String>,
+    },
 }
 
 pub fn run<F>(scan_result: &mut ScanResult, mut refresh: F) -> io::Result<TuiAction>
@@ -345,11 +348,12 @@ fn handle_overview_key(
             let _ = i18n::cycle_persisted_locale();
             None
         }
-        KeyCode::Char('f') => scan_result
-            .metadata
-            .compose_file
-            .clone()
-            .map(TuiAction::TriggerFix),
+        KeyCode::Char('f') => scan_result.metadata.compose_file.clone().map(|path| {
+            TuiAction::TriggerFix {
+                compose_file: path,
+                finding_id: None,
+            }
+        }),
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
             state.open_findings();
             None
@@ -392,11 +396,14 @@ fn handle_findings_key(
             let _ = i18n::cycle_persisted_locale();
             None
         }
-        KeyCode::Char('f') => scan_result
-            .metadata
-            .compose_file
-            .clone()
-            .map(TuiAction::TriggerFix),
+        KeyCode::Char('f') => scan_result.metadata.compose_file.clone().map(|path| {
+            TuiAction::TriggerFix {
+                compose_file: path,
+                finding_id: state
+                    .selected_finding(scan_result)
+                    .map(|finding| finding.id.clone()),
+            }
+        }),
         KeyCode::Char('1') => {
             state.jump_to_severity(scan_result, Severity::Critical);
             None
@@ -640,7 +647,7 @@ fn findings_layout_mode(area: Rect) -> FindingsLayoutMode {
 }
 
 fn header_banner() -> Paragraph<'static> {
-    Paragraph::new(Text::from(Line::from(vec![
+    let mut spans = vec![
         Span::styled(
             format!("hostveil v{}", env!("CARGO_PKG_VERSION")),
             Style::default()
@@ -659,9 +666,32 @@ fn header_banner() -> Paragraph<'static> {
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
         ),
-    ])))
-    .alignment(Alignment::Center)
-    .block(Block::default().borders(Borders::TOP | Borders::BOTTOM))
+    ];
+
+    if is_root() {
+        spans.push(Span::raw(" | "));
+        spans.push(Span::styled(
+            "ROOT",
+            Style::default()
+                .fg(Color::Red)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    Paragraph::new(Text::from(Line::from(spans)))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::TOP | Borders::BOTTOM))
+}
+
+fn is_root() -> bool {
+    #[cfg(not(test))]
+    {
+        rustix::process::getuid().is_root()
+    }
+    #[cfg(test)]
+    {
+        false
+    }
 }
 
 fn render_server_status_panel(
