@@ -1094,6 +1094,99 @@ mod tests {
         fs::write(path, content).expect("compose file should be written");
     }
 
+    fn fixture(path: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/rules")
+            .join(path)
+            .canonicalize()
+            .expect("fixture should exist")
+    }
+
+    fn copy_mixed_stack_fixture_to_temp(name: &str) -> PathBuf {
+        let root = temp_compose_dir(name);
+        let source = fixture("mixed-stack");
+        let compose_path = root.join("docker-compose.yml");
+        let env_path = root.join("postgres.env");
+
+        fs::copy(source.join("docker-compose.yml"), &compose_path)
+            .expect("compose fixture should be copied");
+        fs::copy(source.join("postgres.env"), &env_path).expect("env fixture should be copied");
+
+        compose_path
+    }
+
+    #[test]
+    fn previews_quick_fix_changes_for_mixed_stack_fixture() {
+        let path = fixture("mixed-stack");
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 2);
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
+        assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
+    }
+
+    #[test]
+    fn previews_quick_fix_noop_for_hardened_stack_fixture() {
+        let path = fixture("hardened-stack.yml");
+
+        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+
+        assert!(plan.safe_applied.is_empty());
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.is_empty());
+    }
+
+    #[test]
+    fn previews_fix_changes_for_mixed_stack_fixture() {
+        let path = fixture("mixed-stack");
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 2);
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
+        assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
+    }
+
+    #[test]
+    fn previews_fix_noop_for_hardened_stack_fixture() {
+        let path = fixture("hardened-stack.yml");
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert!(plan.safe_applied.is_empty());
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.is_empty());
+    }
+
+    #[test]
+    fn apply_quick_fix_on_mixed_stack_fixture_is_idempotent() {
+        let compose_path = copy_mixed_stack_fixture_to_temp("mixed-stack-apply-idempotent");
+        let root = compose_path
+            .parent()
+            .expect("fixture root should exist")
+            .to_path_buf();
+
+        let first = apply(&compose_path, FixMode::QuickFix).expect("first apply should succeed");
+        let second = apply(&compose_path, FixMode::QuickFix).expect("second apply should succeed");
+
+        assert!(first.changed());
+        assert_eq!(first.safe_applied.len(), 2);
+        assert!(first.backup_path.is_some());
+
+        assert!(second.safe_applied.is_empty());
+        assert!(second.guided_applied.is_empty());
+        assert!(second.backup_path.is_none());
+
+        let env_text = fs::read_to_string(root.join("postgres.env"))
+            .expect("copied env fixture should be readable");
+        assert_eq!(env_text, "POSTGRES_PASSWORD=changeme\n");
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
     #[test]
     fn previews_quick_fix_changes() {
         let root = temp_compose_dir("quick-preview");

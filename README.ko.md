@@ -143,6 +143,8 @@ hostveil auto-upgrade enable
 hostveil uninstall
 ```
 
+라이프사이클 명령은 설치된 래퍼 경로에서만 상태를 변경하도록 설계되어 있습니다. 설치되지 않은 개발 바이너리(예: `cargo run -- upgrade`, `target/debug/hostveil upgrade`)를 직접 실행하면 설치 상태를 바꾸지 않고 안내 오류를 반환합니다: `upgrade 명령은 설치된 hostveil 래퍼에서만 사용할 수 있습니다. 먼저 다음으로 설치하세요: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, 그런 다음 hostveil upgrade를 실행하세요`.
+
 현재 참고용 프로토타입 실행 방법:
 
 ```sh
@@ -181,6 +183,8 @@ hostveil upgrade
 hostveil auto-upgrade disable
 hostveil uninstall
 ```
+
+개발용 바이너리를 설치 없이 직접 실행하면 `upgrade`, `uninstall`, `auto-upgrade`는 설치 상태를 변경하지 않고 안내(예: `upgrade 명령은 설치된 hostveil 래퍼에서만 사용할 수 있습니다...`)를 출력합니다.
 
 `proto/`의 Python CLI는 고정된 참고 구현입니다. 과거 프로토타입 동작을 비교하거나 검증할 때만 사용합니다.
 

@@ -29,13 +29,13 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Target Audit Axes
 
-| Axis | What it checks |
-|---|---|
-| Sensitive data exposure | `.env` files, plaintext/default credentials, secrets in volumes |
-| Excessive permissions | `privileged: true`, root user, broad volume mounts, `network_mode: host` |
-| Unnecessary exposure | Public ports, admin pages, services bypassing reverse proxy |
+| Axis                     | What it checks                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| Sensitive data exposure  | `.env` files, plaintext/default credentials, secrets in volumes                 |
+| Excessive permissions    | `privileged: true`, root user, broad volume mounts, `network_mode: host`        |
+| Unnecessary exposure     | Public ports, admin pages, services bypassing reverse proxy                     |
 | Update/supply chain risk | `latest` image tags, missing version pins, outdated images, image trust signals |
-| Host hardening | SSH posture, Docker host exposure, and defensive controls on the server itself |
+| Host hardening           | SSH posture, Docker host exposure, and defensive controls on the server itself  |
 
 ## Installation
 
@@ -126,6 +126,8 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 
 After the first install, use the installed `hostveil` command for lifecycle actions.
 
+Lifecycle commands are wrapper-managed by design. Running development binaries directly (for example, `cargo run -- upgrade` or `target/debug/hostveil upgrade`) does not perform install-state changes, and instead returns a guidance error: `upgrade is only available through the installed hostveil wrapper. Install first with: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, then run: hostveil upgrade`.
+
 If a terminal is available, the installer can also hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, and Fail2Ban right away.
 
 Run the setup flow again later:
@@ -200,6 +202,8 @@ hostveil upgrade
 hostveil auto-upgrade disable
 hostveil uninstall
 ```
+
+Lifecycle commands are intentionally available through the installed wrapper path. If you run an uninstalled development binary directly, `upgrade`, `uninstall`, and `auto-upgrade` return guidance (e.g., `upgrade is only available through the installed hostveil wrapper...`) instead of mutating install state.
 
 The Python CLI in `proto/` remains a frozen reference implementation. Use it only when comparing or validating historical prototype behavior.
 

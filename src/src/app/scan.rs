@@ -624,6 +624,39 @@ mod tests {
     }
 
     #[test]
+    fn records_dockle_adapter_status_in_scan_metadata() {
+        let compose_path = no_image_compose_fixture("dockle-status-no-image");
+        let config = AppConfig {
+            locale_override: None,
+            output_mode: OutputMode::Json,
+            show_help: false,
+            show_version: false,
+            lifecycle_command: None,
+            setup_command: None,
+            compose_path: Some(compose_path.clone()),
+            host_root: None,
+            adapter_selection: AdapterSelection::all(),
+            fix_mode: None,
+            fix_target_path: None,
+            preview_changes: false,
+            assume_yes: false,
+        };
+
+        let result = run(&config).expect("scan should succeed");
+
+        let status = result
+            .metadata
+            .adapters
+            .get("dockle")
+            .expect("scan should always record Dockle adapter status");
+
+        assert!(matches!(status, AdapterStatus::Skipped(_)));
+
+        fs::remove_dir_all(compose_path.parent().expect("fixture dir should exist"))
+            .expect("temp dir should be removed");
+    }
+
+    #[test]
     fn records_lynis_as_skipped_for_compose_only_scans() {
         let compose_path = no_image_compose_fixture("lynis-compose-only-no-image");
         let config = AppConfig {

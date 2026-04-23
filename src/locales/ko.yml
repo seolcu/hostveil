@@ -42,6 +42,9 @@ app:
           hostveil upgrade
           hostveil uninstall
           hostveil auto-upgrade enable|disable
+        안내:
+          lifecycle 명령은 설치된 hostveil 래퍼가 처리합니다.
+          target/debug/hostveil 같은 개발 바이너리를 직접 실행하면 안내 오류를 반환합니다.
 
       옵션:
         --compose PATH    라이브 탐색 대신 특정 Compose 파일 또는 디렉터리를 사용합니다
@@ -223,7 +226,7 @@ app:
     unknown_argument: "알 수 없는 인자: %{argument}"
     missing_argument_value: "인자 값이 없습니다: %{flag}"
     invalid_argument_combination: "잘못된 인자 조합: %{message}"
-    lifecycle_requires_installed_wrapper: "%{command} 명령은 설치된 hostveil 래퍼에서만 사용할 수 있습니다. 먼저 설치 스크립트로 hostveil을 설치하세요"
+    lifecycle_requires_installed_wrapper: "%{command} 명령은 설치된 hostveil 래퍼에서만 사용할 수 있습니다. 먼저 다음으로 설치하세요: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, 그런 다음 hostveil %{command}를 실행하세요"
     compose_path_missing: "compose 경로가 존재하지 않습니다: %{path}"
     compose_file_not_found: "디렉터리에서 compose 파일을 찾지 못했습니다: %{path}"
     compose_malformed_yaml: "%{path}의 YAML 파싱에 실패했습니다: %{message}"
@@ -262,6 +265,19 @@ app:
     sort_severity: "심각도"
     sort_source: "소스"
     sort_subject: "대상"
+    severity_short:
+      critical: "치명"
+      high: "높음"
+      medium: "보통"
+      low: "낮음"
+    remediation_badge:
+      safe: "안전"
+      guided: "가이드"
+      manual: "수동"
+    remediation_badge_compact:
+      safe: "안"
+      guided: "가"
+      manual: "수"
   result:
     host_group: "호스트"
     ok: "정상"

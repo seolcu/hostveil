@@ -2007,12 +2007,12 @@ fn severity_label(severity: Severity) -> String {
     }
 }
 
-fn severity_short_label(severity: Severity) -> &'static str {
+fn severity_short_label(severity: Severity) -> String {
     match severity {
-        Severity::Critical => "CRIT",
-        Severity::High => "HIGH",
-        Severity::Medium => "MED",
-        Severity::Low => "LOW",
+        Severity::Critical => t!("app.finding.severity_short.critical").into_owned(),
+        Severity::High => t!("app.finding.severity_short.high").into_owned(),
+        Severity::Medium => t!("app.finding.severity_short.medium").into_owned(),
+        Severity::Low => t!("app.finding.severity_short.low").into_owned(),
     }
 }
 
@@ -2045,7 +2045,7 @@ fn scope_label(scope: Scope) -> String {
     }
 }
 
-fn remediation_badge(remediation: RemediationKind) -> (&'static str, Style) {
+fn remediation_badge(remediation: RemediationKind) -> (String, Style) {
     match remediation {
         RemediationKind::Safe => (
             remediation_badge_text(remediation),
@@ -2062,19 +2062,19 @@ fn remediation_badge(remediation: RemediationKind) -> (&'static str, Style) {
     }
 }
 
-fn remediation_badge_text(remediation: RemediationKind) -> &'static str {
+fn remediation_badge_text(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Safe => "SAFE",
-        RemediationKind::Guided => "GUIDED",
-        RemediationKind::None => "MANUAL",
+        RemediationKind::Safe => t!("app.finding.remediation_badge.safe").into_owned(),
+        RemediationKind::Guided => t!("app.finding.remediation_badge.guided").into_owned(),
+        RemediationKind::None => t!("app.finding.remediation_badge.manual").into_owned(),
     }
 }
 
-fn remediation_badge_compact(remediation: RemediationKind) -> &'static str {
+fn remediation_badge_compact(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Safe => "S",
-        RemediationKind::Guided => "G",
-        RemediationKind::None => "M",
+        RemediationKind::Safe => t!("app.finding.remediation_badge_compact.safe").into_owned(),
+        RemediationKind::Guided => t!("app.finding.remediation_badge_compact.guided").into_owned(),
+        RemediationKind::None => t!("app.finding.remediation_badge_compact.manual").into_owned(),
     }
 }
 
