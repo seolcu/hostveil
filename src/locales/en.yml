@@ -2,6 +2,7 @@ app:
   name: "hostveil"
   header:
     subtitle: "Linux Self-Hosting Security Dashboard"
+    theme_badge: "THEME %{theme}"
   status:
     bootstrap: "Rust scan, TUI, and JSON export are available for active development."
     no_target: "No explicit target was provided. Run without arguments for live discovery, or pass --compose PATH / --host-root PATH for a targeted scan."
@@ -78,8 +79,8 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn scroll"
     back_overview: "Press q or Esc to return to the overview"
     back_overview_compact: "q or Esc back"
-    finding_controls: "Tab or Left/Right switch focus | s severity | x source | v service | m remediation | o sort | r reset | 1-4 jump | f fix | g locale | q or Esc back"
-    finding_controls_compact: "Tab/LR focus | s sev | x src | v svc | m rem | o sort | r reset | 1-4 jump | f fix | g lang | q back"
+    finding_controls: "Tab or Left/Right switch focus | s severity | x source | v service | m remediation | o sort | r reset | 1-4 jump | f fix | g locale | t theme | q or Esc back"
+    finding_controls_compact: "Tab/LR focus | s sev | x src | v svc | m rem | o sort | r reset | 1-4 jump | f fix | g lang | t theme | q back"
     fix_review_scroll: "Use Up/Down or PgUp/PgDn to scroll the diff"
     fix_review_apply: "Press y or Enter to apply the reviewed changes"
     fix_review_cancel: "Press q or Esc to cancel"
@@ -87,6 +88,7 @@ app:
     quit: "quit"
     findings: "open findings"
     locale: "switch locale"
+    theme: "switch theme"
     json: "export JSON"
   panel:
     status: "Status"
@@ -96,6 +98,7 @@ app:
     security_scores: "Security Scores"
     fix_paths: "Fix Paths"
     remediation_summary: "Remediation Summary"
+    action_queue: "Action Queue"
     fix_review: "Fix Review"
     fix_diff: "Diff"
     overview_score: "Overview Score"
@@ -115,6 +118,10 @@ app:
     findings_available: "%{count} finding(s) available. Open the findings view for details."
     no_findings: "No findings detected yet."
     adapters_none: "No optional adapter status reported yet."
+    score_pending_detail: "Final score is waiting for adapter results. The rows below are the native baseline."
+    score_ready: "Adapter loading complete"
+    adapter_loading: "%{spinner} loading adapters: %{adapters}"
+    action_queue_hint: "Overview groups next actions by service. Open Findings for per-issue evidence and fix detail."
   server:
     host_name: "Host"
     root_path: "Root"
@@ -346,6 +353,7 @@ source:
   dockle: "Dockle"
 adapter:
   pending: "pending"
+  loading: "loading"
   available: "available"
   missing: "missing"
   skipped: "skipped: %{detail}"

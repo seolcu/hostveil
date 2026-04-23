@@ -2,6 +2,7 @@ app:
   name: "hostveil"
   header:
     subtitle: "리눅스 셀프호스팅 보안 대시보드"
+    theme_badge: "테마 %{theme}"
   status:
     bootstrap: "Rust 스캔, TUI, JSON 내보내기를 사용할 수 있습니다."
     no_target: "명시적인 대상이 없습니다. 인자 없이 실행하면 라이브 탐색을 수행하고, 특정 대상은 --compose PATH 또는 --host-root PATH를 사용하세요."
@@ -78,8 +79,8 @@ app:
     detail_scroll_compact: "Up/Down, j/k, PgUp/PgDn 스크롤"
     back_overview: "q 또는 Esc를 눌러 개요로 돌아갑니다"
     back_overview_compact: "q 또는 Esc로 뒤로"
-    finding_controls: "Tab 또는 Left/Right 포커스 전환 | s 심각도 | x 소스 | v 서비스 | m 수정 경로 | o 정렬 | r 초기화 | 1-4 점프 | f 조치 | g 언어 | q 또는 Esc 뒤로"
-    finding_controls_compact: "Tab/LR 포커스 | s 심각도 | x 소스 | v 서비스 | m 조치 | o 정렬 | r 초기화 | 1-4 점프 | f 조치 | g 언어 | q 뒤로"
+    finding_controls: "Tab 또는 Left/Right 포커스 전환 | s 심각도 | x 소스 | v 서비스 | m 수정 경로 | o 정렬 | r 초기화 | 1-4 점프 | f 조치 | g 언어 | t 테마 | q 또는 Esc 뒤로"
+    finding_controls_compact: "Tab/LR 포커스 | s 심각도 | x 소스 | v 서비스 | m 조치 | o 정렬 | r 초기화 | 1-4 점프 | f 조치 | g 언어 | t 테마 | q 뒤로"
     fix_review_scroll: "Up/Down 또는 PgUp/PgDn으로 diff를 스크롤합니다"
     fix_review_apply: "y 또는 Enter를 눌러 검토한 변경을 적용합니다"
     fix_review_cancel: "q 또는 Esc를 눌러 취소합니다"
@@ -87,6 +88,7 @@ app:
     quit: "종료"
     findings: "발견 항목 열기"
     locale: "언어 전환"
+    theme: "테마 전환"
     json: "JSON 내보내기"
   panel:
     status: "상태"
@@ -96,6 +98,7 @@ app:
     security_scores: "보안 점수"
     fix_paths: "수정 경로"
     remediation_summary: "조치 요약"
+    action_queue: "조치 대기열"
     fix_review: "수정 검토"
     fix_diff: "Diff"
     overview_score: "전체 점수"
@@ -115,6 +118,10 @@ app:
     findings_available: "발견 항목 %{count}개가 있습니다. 상세 보기를 열어 확인하세요."
     no_findings: "현재 발견 항목이 없습니다."
     adapters_none: "아직 보고된 선택형 어댑터 상태가 없습니다."
+    score_pending_detail: "최종 점수는 어댑터 결과를 기다리고 있습니다. 아래 행은 네이티브 기준 점수입니다."
+    score_ready: "어댑터 로딩 완료"
+    adapter_loading: "%{spinner} 어댑터 로딩 중: %{adapters}"
+    action_queue_hint: "개요는 서비스별 다음 조치를 묶어서 보여줍니다. Findings에서 항목별 근거와 수정 상세를 확인하세요."
   server:
     host_name: "호스트"
     root_path: "루트"
@@ -346,6 +353,7 @@ source:
   dockle: "Dockle"
 adapter:
   pending: "대기 중"
+  loading: "로딩 중"
   available: "사용 가능"
   missing: "없음"
   skipped: "건너뜀: %{detail}"
