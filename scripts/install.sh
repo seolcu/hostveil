@@ -578,11 +578,16 @@ case "\${1:-}" in
 esac
 
 if [[ "\${HOSTVEIL_SKIP_AUTO_UPGRADE:-}" != "1" && "\${HOSTVEIL_AUTO_UPGRADE_RUNNING:-}" != "1" && "\${HOSTVEIL_META_AUTO_UPGRADE:-enabled}" != "disabled" && -x "\$manager_script_path" ]]; then
+  previous_tag="\${HOSTVEIL_META_INSTALLED_TAG:-unknown}"
+  printf 'hostveil: checking for updates before launch...\n' >&2
   HOSTVEIL_STATE_DIR="\$state_dir" HOSTVEIL_AUTO_UPGRADE_RUNNING=1 HOSTVEIL_SKIP_AUTO_UPGRADE=1 "\$manager_script_path" --upgrade >/dev/null 2>&1 || true
   if [[ -f "\$metadata_path" ]]; then
     # shellcheck disable=SC1090
     source "\$metadata_path"
     binary_path="\${HOSTVEIL_META_BINARY_PATH:-\$DEFAULT_BINARY_PATH}"
+    if [[ "\${HOSTVEIL_META_INSTALLED_TAG:-unknown}" != "\$previous_tag" ]]; then
+      printf 'hostveil: updated to %s\n' "\${HOSTVEIL_META_INSTALLED_TAG:-unknown}" >&2
+    fi
   fi
 fi
 

@@ -95,6 +95,9 @@ run_install_case() {
   local state_home
   local metadata_path
   local manager_path
+  local wrapper_update_output
+  local wrapper_disabled_output
+  local wrapper_reenabled_output
 
   case_dir="$(mktemp -d)"
   release_dir="$case_dir/release"
@@ -287,42 +290,68 @@ run_upgrade_auto_uninstall_case() {
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.2-test'
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
 
-  XDG_STATE_HOME="$state_home" \
-    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_three" \
-    HOSTVEIL_RELEASES_API_URL="file://$api_three/releases.json" \
-    HOSTVEIL_LATEST_STABLE_API_URL="file://$api_three/latest.json" \
-    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    "$install_dir/hostveil" --version >/dev/null
+  wrapper_update_output="$(
+    XDG_STATE_HOME="$state_home" \
+      HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_three" \
+      HOSTVEIL_RELEASES_API_URL="file://$api_three/releases.json" \
+      HOSTVEIL_LATEST_STABLE_API_URL="file://$api_three/latest.json" \
+      HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+      "$install_dir/hostveil" --version 2>&1
+  )"
 
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.3-test'
+  printf '%s\n' "$wrapper_update_output" | grep -q 'checking for updates before launch' || {
+    printf 'error: wrapper did not announce the launch-time update check\n' >&2
+    exit 1
+  }
+  printf '%s\n' "$wrapper_update_output" | grep -q 'updated to v0.0.3-test' || {
+    printf 'error: wrapper did not announce the updated installed version\n' >&2
+    exit 1
+  }
 
   XDG_STATE_HOME="$state_home" \
     PATH="$install_dir:$PATH" \
     hostveil auto-upgrade disable
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=disabled'
 
-  XDG_STATE_HOME="$state_home" \
-    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_four" \
-    HOSTVEIL_RELEASES_API_URL="file://$api_four/releases.json" \
-    HOSTVEIL_LATEST_STABLE_API_URL="file://$api_four/latest.json" \
-    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    "$install_dir/hostveil" --version >/dev/null
+  wrapper_disabled_output="$(
+    XDG_STATE_HOME="$state_home" \
+      HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_four" \
+      HOSTVEIL_RELEASES_API_URL="file://$api_four/releases.json" \
+      HOSTVEIL_LATEST_STABLE_API_URL="file://$api_four/latest.json" \
+      HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+      "$install_dir/hostveil" --version 2>&1
+  )"
 
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.3-test'
+  ! printf '%s\n' "$wrapper_disabled_output" | grep -q 'checking for updates before launch' || {
+    printf 'error: disabled auto-upgrade still announced a launch-time update check\n' >&2
+    exit 1
+  }
 
   XDG_STATE_HOME="$state_home" \
     PATH="$install_dir:$PATH" \
     hostveil auto-upgrade enable
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_AUTO_UPGRADE=enabled'
 
-  XDG_STATE_HOME="$state_home" \
-    HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_four" \
-    HOSTVEIL_RELEASES_API_URL="file://$api_four/releases.json" \
-    HOSTVEIL_LATEST_STABLE_API_URL="file://$api_four/latest.json" \
-    HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
-    "$install_dir/hostveil" --version >/dev/null
+  wrapper_reenabled_output="$(
+    XDG_STATE_HOME="$state_home" \
+      HOSTVEIL_DOWNLOAD_BASE_URL="file://$release_four" \
+      HOSTVEIL_RELEASES_API_URL="file://$api_four/releases.json" \
+      HOSTVEIL_LATEST_STABLE_API_URL="file://$api_four/latest.json" \
+      HOSTVEIL_INSTALLER_URL="file://$INSTALLER_PATH" \
+      "$install_dir/hostveil" --version 2>&1
+  )"
 
   assert_file_contains "$metadata_path" 'HOSTVEIL_META_INSTALLED_TAG=v0.0.4-test'
+  printf '%s\n' "$wrapper_reenabled_output" | grep -q 'checking for updates before launch' || {
+    printf 'error: re-enabled auto-upgrade did not announce the launch-time update check\n' >&2
+    exit 1
+  }
+  printf '%s\n' "$wrapper_reenabled_output" | grep -q 'updated to v0.0.4-test' || {
+    printf 'error: re-enabled auto-upgrade did not announce the new installed version\n' >&2
+    exit 1
+  }
 
   XDG_STATE_HOME="$state_home" \
     PATH="$install_dir:$PATH" \
