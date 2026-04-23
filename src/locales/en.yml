@@ -42,6 +42,9 @@ app:
           hostveil upgrade
           hostveil uninstall
           hostveil auto-upgrade enable|disable
+        Note:
+          lifecycle commands are handled by the installed hostveil wrapper.
+          direct development binaries (for example target/debug/hostveil) show guidance instead.
 
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
@@ -223,7 +226,7 @@ app:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"
     invalid_argument_combination: "invalid argument combination: %{message}"
-    lifecycle_requires_installed_wrapper: "%{command} is only available through an installed hostveil wrapper; install hostveil first with the installer script"
+    lifecycle_requires_installed_wrapper: "%{command} is only available through the installed hostveil wrapper. Install first with: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, then run: hostveil %{command}"
     compose_path_missing: "compose path does not exist: %{path}"
     compose_file_not_found: "compose file was not found in directory: %{path}"
     compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"
@@ -262,6 +265,19 @@ app:
     sort_severity: "severity"
     sort_source: "source"
     sort_subject: "subject"
+    severity_short:
+      critical: "CRIT"
+      high: "HIGH"
+      medium: "MED"
+      low: "LOW"
+    remediation_badge:
+      safe: "SAFE"
+      guided: "GUIDED"
+      manual: "MANUAL"
+    remediation_badge_compact:
+      safe: "S"
+      guided: "G"
+      manual: "M"
   result:
     host_group: "Host"
     ok: "OK"

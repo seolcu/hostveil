@@ -545,7 +545,7 @@ mod tests {
     fn formats_lifecycle_wrapper_error_message() {
         assert_eq!(
             tr_lifecycle_command_requires_installed_wrapper("upgrade"),
-            "upgrade is only available through an installed hostveil wrapper; install hostveil first with the installer script"
+            "upgrade is only available through the installed hostveil wrapper. Install first with: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, then run: hostveil upgrade"
         );
     }
 
@@ -663,6 +663,22 @@ mod tests {
         assert_eq!(
             t!("app.hint.quit", locale = "ko").into_owned(),
             "q 또는 Esc를 눌러 종료"
+        );
+    }
+
+    #[test]
+    fn korean_locale_translates_finding_badges_and_short_labels() {
+        assert_eq!(
+            t!("app.finding.severity_short.critical", locale = "ko").into_owned(),
+            "치명"
+        );
+        assert_eq!(
+            t!("app.finding.remediation_badge.guided", locale = "ko").into_owned(),
+            "가이드"
+        );
+        assert_eq!(
+            t!("app.finding.remediation_badge_compact.safe", locale = "ko").into_owned(),
+            "안"
         );
     }
 

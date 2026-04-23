@@ -352,12 +352,51 @@ mod tests {
 
     #[test]
     fn installed_lifecycle_command_requires_wrapper_context() {
-        let error = run([String::from("upgrade")])
+        let error = run([String::from("--locale=en"), String::from("upgrade")])
             .expect_err("direct binary lifecycle commands should fail clearly");
 
         assert!(matches!(
             error,
             AppError::LifecycleCommandRequiresInstalledWrapper("upgrade")
         ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("installed hostveil wrapper"));
+        assert!(rendered.contains("hostveil upgrade"));
+        assert!(rendered.contains("install.sh"));
+    }
+
+    #[test]
+    fn uninstall_lifecycle_command_requires_wrapper_context() {
+        let error = run([String::from("--locale=en"), String::from("uninstall")])
+            .expect_err("direct binary uninstall should fail clearly");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresInstalledWrapper("uninstall")
+        ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("installed hostveil wrapper"));
+        assert!(rendered.contains("hostveil uninstall"));
+    }
+
+    #[test]
+    fn auto_upgrade_lifecycle_command_requires_wrapper_context() {
+        let error = run([
+            String::from("--locale=en"),
+            String::from("auto-upgrade"),
+            String::from("disable"),
+        ])
+        .expect_err("direct binary auto-upgrade should fail clearly");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresInstalledWrapper("auto-upgrade")
+        ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("installed hostveil wrapper"));
+        assert!(rendered.contains("hostveil auto-upgrade"));
     }
 }
