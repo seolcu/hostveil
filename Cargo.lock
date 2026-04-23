@@ -377,6 +377,7 @@ dependencies = [
  "indexmap",
  "ratatui",
  "rust-i18n",
+ "rustix 0.38.44",
  "serde",
  "serde_json",
  "serde_yaml",

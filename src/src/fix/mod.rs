@@ -73,17 +73,25 @@ impl From<io::Error> for FixError {
     }
 }
 
-pub fn preview(path: impl AsRef<Path>, mode: FixMode) -> Result<FixPlan, FixError> {
-    build_fix_plan(path.as_ref(), mode)
+pub fn preview(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+) -> Result<FixPlan, FixError> {
+    build_fix_plan(path.as_ref(), mode, only_findings)
 }
 
-pub fn apply(path: impl AsRef<Path>, mode: FixMode) -> Result<FixPlan, FixError> {
-    let mut plan = build_fix_plan(path.as_ref(), mode)?;
+pub fn apply(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+) -> Result<FixPlan, FixError> {
+    let mut plan = build_fix_plan(path.as_ref(), mode, only_findings)?;
     if !plan.changed() {
         return Ok(plan);
     }
 
-    let updated_text = render_updated_text(path.as_ref(), mode)?;
+    let updated_text = render_updated_text(path.as_ref(), mode, only_findings)?;
     let backup_path = backup_path_for(&plan.compose_file);
     fs::copy(&plan.compose_file, &backup_path)?;
     fs::write(&plan.compose_file, updated_text)?;
@@ -91,11 +99,15 @@ pub fn apply(path: impl AsRef<Path>, mode: FixMode) -> Result<FixPlan, FixError>
     Ok(plan)
 }
 
-fn build_fix_plan(path: &Path, mode: FixMode) -> Result<FixPlan, FixError> {
+fn build_fix_plan(
+    path: &Path,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+) -> Result<FixPlan, FixError> {
     let bundle = ComposeParser::load_bundle(path.to_path_buf(), false)?;
     let project = ComposeParser::parse_path_without_override(path.to_path_buf())?;
     let findings = RuleEngine.scan(&project);
-    let findings_by_service = findings_by_service(&findings);
+    let findings_by_service = findings_by_service(&findings, only_findings);
 
     let mut document = bundle.primary_document.clone();
     let safe_applied = apply_safe_fixes(&mut document, &findings_by_service);
@@ -121,11 +133,15 @@ fn build_fix_plan(path: &Path, mode: FixMode) -> Result<FixPlan, FixError> {
     })
 }
 
-fn render_updated_text(path: &Path, mode: FixMode) -> Result<String, FixError> {
+fn render_updated_text(
+    path: &Path,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+) -> Result<String, FixError> {
     let bundle = ComposeParser::load_bundle(path.to_path_buf(), false)?;
     let project = ComposeParser::parse_path_without_override(path.to_path_buf())?;
     let findings = RuleEngine.scan(&project);
-    let findings_by_service = findings_by_service(&findings);
+    let findings_by_service = findings_by_service(&findings, only_findings);
 
     let mut document = bundle.primary_document;
     apply_safe_fixes(&mut document, &findings_by_service);
@@ -144,10 +160,19 @@ fn render_document_like_original(
     Ok(merge_original_formatting(original_text, &rendered))
 }
 
-fn findings_by_service(findings: &[crate::domain::Finding]) -> BTreeMap<String, BTreeSet<String>> {
+fn findings_by_service(
+    findings: &[crate::domain::Finding],
+    filter: Option<&[String]>,
+) -> BTreeMap<String, BTreeSet<String>> {
     let mut grouped = BTreeMap::<String, BTreeSet<String>>::new();
 
     for finding in findings {
+        if let Some(filter) = filter {
+            if !filter.contains(&finding.id) {
+                continue;
+            }
+        }
+
         let Some(service) = finding.related_service.as_ref() else {
             continue;
         };
@@ -259,6 +284,25 @@ fn apply_safe_fixes(
                 });
             }
         }
+
+        if finding_ids.contains("permissions.sensitive_mount")
+            && let Some(volumes) = service.get_mut(yaml_key("volumes"))
+            && let Some(sequence) = volumes.as_sequence_mut()
+        {
+            for volume in sequence.iter_mut() {
+                if let Some(path) = rewrite_sensitive_mount_readonly(volume) {
+                    applied.push(FixProposal {
+                        service: service_name.clone(),
+                        summary: t!(
+                            "app.fix.safe_mount_readonly",
+                            service = service_name.as_str(),
+                            path = path.as_str()
+                        )
+                        .into_owned(),
+                    });
+                }
+            }
+        }
     }
 
     applied
@@ -328,6 +372,20 @@ fn apply_guided_fixes(
                 service: service_name.clone(),
                 summary: t!(
                     "app.fix.guided_nginx_stable",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("permissions.implicit_root")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && apply_harden_implicit_root(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.guided_non_root_user",
                     service = service_name.as_str()
                 )
                 .into_owned(),
@@ -485,6 +543,54 @@ fn harden_nextcloud_trusted_domains(service: &mut Mapping) -> bool {
     };
 
     update_environment_value(service, "NEXTCLOUD_TRUSTED_DOMAINS", &updated, false)
+}
+
+fn apply_harden_implicit_root(service: &mut Mapping) -> bool {
+    if service.get(yaml_key("user")).is_some() {
+        return false;
+    }
+    service.insert(yaml_key("user"), Value::String(String::from("1000:1000")));
+    true
+}
+
+fn rewrite_sensitive_mount_readonly(volume: &mut Value) -> Option<String> {
+    match volume {
+        Value::String(spec) => {
+            let parts: Vec<&str> = spec.split(':').collect();
+            if parts.len() < 2 {
+                return None;
+            }
+            if parts.len() >= 3 && parts[2].eq_ignore_ascii_case("ro") {
+                return None;
+            }
+
+            let source = parts[0].to_owned();
+            let target = parts[1];
+            let new_spec = format!("{source}:{target}:ro");
+            *volume = Value::String(new_spec);
+            Some(source)
+        }
+        Value::Mapping(mapping) => {
+            let mount_type = mapping.get(yaml_key("type")).and_then(|v| v.as_str());
+            if mount_type != Some("bind") {
+                return None;
+            }
+            let read_only = mapping
+                .get(yaml_key("read_only"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if read_only {
+                return None;
+            }
+            mapping.insert(yaml_key("read_only"), Value::Bool(true));
+            mapping.remove(yaml_key("mode"));
+            mapping
+                .get(yaml_key("source"))
+                .and_then(|v| v.as_str())
+                .map(|v| v.to_owned())
+        }
+        _ => None,
+    }
 }
 
 fn rewrite_http_scheme(value: &str) -> Option<String> {
@@ -1119,7 +1225,7 @@ mod tests {
     fn previews_quick_fix_changes_for_mixed_stack_fixture() {
         let path = fixture("mixed-stack");
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1131,7 +1237,7 @@ mod tests {
     fn previews_quick_fix_noop_for_hardened_stack_fixture() {
         let path = fixture("hardened-stack.yml");
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1142,10 +1248,10 @@ mod tests {
     fn previews_fix_changes_for_mixed_stack_fixture() {
         let path = fixture("mixed-stack");
 
-        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
-        assert!(plan.guided_applied.is_empty());
+        assert_eq!(plan.guided_applied.len(), 1); // implicit_root for postgres
         assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
         assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
     }
@@ -1154,7 +1260,7 @@ mod tests {
     fn previews_fix_noop_for_hardened_stack_fixture() {
         let path = fixture("hardened-stack.yml");
 
-        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1169,8 +1275,8 @@ mod tests {
             .expect("fixture root should exist")
             .to_path_buf();
 
-        let first = apply(&compose_path, FixMode::QuickFix).expect("first apply should succeed");
-        let second = apply(&compose_path, FixMode::QuickFix).expect("second apply should succeed");
+        let first = apply(&compose_path, FixMode::QuickFix, None).expect("first apply should succeed");
+        let second = apply(&compose_path, FixMode::QuickFix, None).expect("second apply should succeed");
 
         assert!(first.changed());
         assert_eq!(first.safe_applied.len(), 2);
@@ -1202,7 +1308,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1228,10 +1334,10 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
-        assert_eq!(plan.guided_applied.len(), 1);
+        assert_eq!(plan.guided_applied.len(), 2); // privileged + implicit_root
         assert!(plan.diff_preview.contains("cap_add"));
         assert!(plan.diff_preview.contains("NET_BIND_SERVICE"));
 
@@ -1253,7 +1359,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 1);
         assert!(plan.guided_applied.is_empty());
@@ -1277,7 +1383,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1304,9 +1410,9 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
-        assert_eq!(plan.guided_applied.len(), 1);
+        assert_eq!(plan.guided_applied.len(), 2); // signups_enabled + implicit_root
         assert!(
             plan.guided_applied
                 .iter()
@@ -1336,9 +1442,9 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
-        assert_eq!(plan.guided_applied.len(), 1);
+        assert_eq!(plan.guided_applied.len(), 2); // gitea secrets + implicit_root
         assert!(
             plan.guided_applied
                 .iter()
@@ -1386,7 +1492,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 7);
         assert!(plan.guided_applied.is_empty());
@@ -1437,7 +1543,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1463,7 +1569,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1502,8 +1608,8 @@ mod tests {
             ),
         );
 
-        let first = apply(&path, FixMode::QuickFix).expect("first apply should succeed");
-        let second = apply(&path, FixMode::QuickFix).expect("second apply should succeed");
+        let first = apply(&path, FixMode::QuickFix, None).expect("first apply should succeed");
+        let second = apply(&path, FixMode::QuickFix, None).expect("second apply should succeed");
 
         assert!(first.changed());
         assert!(first.backup_path.is_some());
@@ -1529,7 +1635,7 @@ mod tests {
             ),
         );
 
-        let plan = apply(&path, FixMode::QuickFix).expect("quick-fix apply should succeed");
+        let plan = apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(plan.backup_path.is_some());
@@ -1563,7 +1669,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
         assert!(!plan.diff_preview.contains("-      - PUID=1000"));
         assert!(!plan.diff_preview.contains("+    - PUID=1000"));
         assert!(
@@ -1571,7 +1677,7 @@ mod tests {
                 .contains("+      - \"127.0.0.1:8096:8096\"")
         );
 
-        apply(&path, FixMode::QuickFix).expect("quick-fix apply should succeed");
+        apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(updated.contains("      - PUID=1000"));
@@ -1599,7 +1705,7 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix).expect("quick-fix preview should succeed");
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.diff_preview.contains("OVERWRITEPROTOCOL: 'https'"));
         assert!(
@@ -1607,7 +1713,7 @@ mod tests {
                 .contains("NEXTCLOUD_TRUSTED_DOMAINS: 'cloud.example.com'")
         );
 
-        apply(&path, FixMode::QuickFix).expect("quick-fix apply should succeed");
+        apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(updated.contains("      OVERWRITEPROTOCOL: 'https'"));
@@ -1642,5 +1748,60 @@ mod tests {
         assert!(merged.contains("    user: \"1000:1000\""));
         assert!(merged.contains("\n\n  admin:\n"));
         assert!(merged.contains("      - \"127.0.0.1:8080:80\""));
+    }
+
+    #[test]
+    fn previews_only_specified_finding_when_filtered() {
+        let root = temp_compose_dir("granular");
+        let path = root.join("docker-compose.yml");
+        fs::write(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:latest\n",
+                "    privileged: true\n",
+                "    ports:\n",
+                "      - \"80:80\"\n"
+            ),
+        ).expect("fixture should be written");
+        
+        // This has both updates.latest_tag (safe) and permissions.privileged (guided)
+        let only_latest_tag = Some(vec!["updates.latest_tag".to_string()]);
+        let plan = preview(&path, FixMode::Fix, only_latest_tag.as_deref()).expect("preview should succeed");
+        
+        assert_eq!(plan.safe_applied.len(), 1);
+        assert_eq!(plan.guided_applied.len(), 0);
+        assert!(plan.diff_preview.contains("image: nginx:stable"));
+        assert!(!plan.diff_preview.contains("privileged: false"));
+    }
+
+    #[test]
+    fn previews_safe_fix_for_sensitive_mount() {
+        let root = temp_compose_dir("safe-sensitive-mount");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:stable\n",
+                "    volumes:\n",
+                "      - /etc/shadow:/etc/shadow\n",
+                "      - /var/run/docker.sock:/var/run/docker.sock:rw\n",
+                "      - type: bind\n",
+                "        source: /etc/passwd\n",
+                "        target: /etc/passwd\n"
+            ),
+        );
+
+        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 3);
+        assert!(plan.diff_preview.contains("/etc/shadow:/etc/shadow:ro"));
+        assert!(plan.diff_preview.contains("/var/run/docker.sock:/var/run/docker.sock:ro"));
+        assert!(plan.diff_preview.contains("read_only: true"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
     }
 }

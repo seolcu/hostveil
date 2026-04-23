@@ -8,8 +8,10 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::text::{Line, Text};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use rust_i18n::t;
 
 use crate::fix::FixPlan;
 
@@ -99,40 +101,65 @@ fn clamp_scroll(scroll: u16, diff_lines: usize, diff_height: u16) -> u16 {
 fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewState) {
     let diff_lines = plan.diff_preview.lines().count();
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(9),
-            Constraint::Min(5),
-            Constraint::Length(3),
-        ])
-        .split(frame.area());
-
     let mut summary = Vec::<Line>::new();
-    summary.push(Line::from(
-        t!(
-            "app.fix.file",
-            path = plan.compose_file.display().to_string()
-        )
-        .into_owned(),
-    ));
+    summary.push(Line::from(vec![
+        Span::styled(
+            t!("app.fix.file_label").into_owned(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(": "),
+        Span::raw(plan.compose_file.display().to_string()),
+    ]));
+
     if !plan.safe_applied.is_empty() {
-        summary.push(Line::from(
-            t!("app.fix.safe_plan", count = plan.safe_applied.len()).into_owned(),
-        ));
+        summary.push(Line::raw(""));
+        summary.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", t!("remediation.safe").into_owned()),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(t!("app.fix.safe_plan", count = plan.safe_applied.len()).into_owned()),
+        ]));
         for proposal in &plan.safe_applied {
-            summary.push(Line::from(format!("- {}", proposal.summary)));
-        }
-    }
-    if !plan.guided_applied.is_empty() {
-        summary.push(Line::from(
-            t!("app.fix.guided_plan", count = plan.guided_applied.len()).into_owned(),
-        ));
-        for proposal in &plan.guided_applied {
-            summary.push(Line::from(format!("- {}", proposal.summary)));
+            summary.push(Line::from(vec![
+                Span::raw("  • "),
+                Span::styled(
+                    &proposal.service,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": "),
+                Span::raw(&proposal.summary),
+            ]));
         }
     }
 
+    if !plan.guided_applied.is_empty() {
+        summary.push(Line::raw(""));
+        summary.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", t!("remediation.guided").into_owned()),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(t!("app.fix.guided_plan", count = plan.guided_applied.len()).into_owned()),
+        ]));
+        for proposal in &plan.guided_applied {
+            summary.push(Line::from(vec![
+                Span::raw("  • "),
+                Span::styled(
+                    &proposal.service,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": "),
+                Span::raw(&proposal.summary),
+            ]));
+        }
+    }
+
+    let summary_lines_count = summary.len();
     let summary_widget = Paragraph::new(Text::from(summary))
         .wrap(Wrap { trim: true })
         .block(
@@ -140,12 +167,33 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
                 .title(t!("app.panel.fix_review").into_owned())
                 .borders(Borders::ALL),
         );
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length((summary_lines_count as u16 + 2).min(15).max(5)),
+            Constraint::Min(5),
+            Constraint::Length(3),
+        ])
+        .split(frame.area());
+
     frame.render_widget(summary_widget, chunks[0]);
 
     let diff_text = Text::from(
         plan.diff_preview
             .lines()
-            .map(|line| Line::from(line.to_owned()))
+            .map(|line| {
+                let style = if line.starts_with('+') {
+                    Style::default().fg(Color::Green)
+                } else if line.starts_with('-') {
+                    Style::default().fg(Color::Red)
+                } else if line.starts_with("@@") {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default()
+                };
+                Line::styled(line.to_owned(), style)
+            })
             .collect::<Vec<_>>(),
     );
 
