@@ -1,0 +1,4 @@
+services:
+  web:
+    image: nginx:stable
+    user: 1000:1000

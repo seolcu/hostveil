@@ -1,0 +1,23 @@
+services:
+  lab:
+    build:
+      context: .
+      dockerfile: docker/lab/Dockerfile
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock # For discovery testing
+    ports:
+      - "7681:7681"
+    environment:
+      - HOSTVEIL_LOCALE=en
+    privileged: true # Required for some host hardening checks if run inside
+
+  # A sacrificial target service for testing
+  vulnerable-service:
+    image: nginx:latest
+    container_name: hostveil-lab-target
+    ports:
+      - "8081:80"
+    # No user defined -> implicit root finding
+    volumes:
+      - /etc/shadow:/mnt/shadow:ro # sensitive mount finding
