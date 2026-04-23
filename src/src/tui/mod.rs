@@ -67,6 +67,7 @@ struct AppState {
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
     remediation_filter: RemediationFilter,
+    service_filter: Option<String>,
     sort_mode: FindingSortMode,
 }
 
@@ -74,6 +75,7 @@ impl AppState {
     fn new(scan_result: &ScanResult) -> Self {
         let severity_filter = None;
         let source_filter = None;
+        let service_filter = None;
         let remediation_filter = RemediationFilter::All;
         let sort_mode = FindingSortMode::Severity;
 
@@ -87,11 +89,13 @@ impl AppState {
                 severity_filter,
                 source_filter,
                 remediation_filter,
+                service_filter,
                 sort_mode,
             ),
             severity_filter,
             source_filter,
             remediation_filter,
+            service_filter: None,
             sort_mode,
         }
     }
@@ -161,6 +165,7 @@ impl AppState {
             self.severity_filter,
             self.source_filter,
             self.remediation_filter,
+            self.service_filter.as_deref(),
             self.sort_mode,
         );
 
@@ -204,6 +209,30 @@ impl AppState {
         self.detail_scroll = 0;
     }
 
+    fn cycle_service_filter(&mut self, scan_result: &ScanResult) {
+        let mut services: Vec<String> = scan_result
+            .findings
+            .iter()
+            .filter_map(|f| f.related_service.clone())
+            .collect();
+        services.sort();
+        services.dedup();
+
+        self.service_filter = match &self.service_filter {
+            None if !services.is_empty() => Some(services[0].clone()),
+            Some(current) => {
+                let index = services.iter().position(|s| s == current);
+                match index {
+                    Some(i) if i + 1 < services.len() => Some(services[i + 1].clone()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        self.selected_index = 0;
+        self.detail_scroll = 0;
+    }
+
     fn cycle_sort_mode(&mut self) {
         self.sort_mode = match self.sort_mode {
             FindingSortMode::Severity => FindingSortMode::Source,
@@ -229,6 +258,7 @@ impl AppState {
     fn reset_filters_and_sort(&mut self) {
         self.severity_filter = None;
         self.source_filter = None;
+        self.service_filter = None;
         self.remediation_filter = RemediationFilter::All;
         self.sort_mode = FindingSortMode::Severity;
         self.selected_index = 0;
@@ -382,6 +412,10 @@ fn handle_findings_key(
         }
         KeyCode::Char('m') => {
             state.cycle_remediation_filter();
+            None
+        }
+        KeyCode::Char('v') => {
+            state.cycle_service_filter(scan_result);
             None
         }
         KeyCode::Char('o') => {
@@ -1335,18 +1369,29 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
 }
 
 fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Line<'static>> {
-    let auto_fixable_count = scan_result
-        .findings
-        .iter()
-        .filter(|f| {
-            matches!(
-                f.remediation,
-                crate::domain::RemediationKind::Safe | crate::domain::RemediationKind::Guided
-            )
-        })
-        .count();
+    let mut fixable_by_service = BTreeMap::<String, usize>::new();
+    let mut manual_by_service = BTreeMap::<String, usize>::new();
+    let mut host_manual_count = 0;
 
-    let manual_count = scan_result.findings.len() - auto_fixable_count;
+    for finding in &scan_result.findings {
+        match finding.remediation {
+            crate::domain::RemediationKind::Safe | crate::domain::RemediationKind::Guided => {
+                if let Some(service) = &finding.related_service {
+                    *fixable_by_service.entry(service.clone()).or_default() += 1;
+                }
+            }
+            crate::domain::RemediationKind::None => {
+                if let Some(service) = &finding.related_service {
+                    *manual_by_service.entry(service.clone()).or_default() += 1;
+                } else {
+                    host_manual_count += 1;
+                }
+            }
+        }
+    }
+
+    let auto_fixable_count: usize = fixable_by_service.values().sum();
+    let manual_count: usize = manual_by_service.values().sum::<usize>() + host_manual_count;
 
     let mut lines = Vec::new();
 
@@ -1366,9 +1411,21 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
                 .into_owned(),
             ),
         ]));
+
+        for (service, count) in fixable_by_service {
+            lines.push(Line::from(vec![
+                Span::raw("  • "),
+                Span::styled(service, Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(": {}", count)),
+            ]));
+        }
     }
 
     if manual_count > 0 {
+        if !lines.is_empty() {
+            lines.push(Line::raw(""));
+        }
+
         lines.push(Line::from(vec![
             Span::styled(
                 format!("[{}] ", t!("remediation.manual").into_owned()),
@@ -1378,6 +1435,25 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
             ),
             Span::raw(t!("app.result.manual_summary", count = manual_count).into_owned()),
         ]));
+
+        for (service, count) in manual_by_service {
+            lines.push(Line::from(vec![
+                Span::raw("  • "),
+                Span::styled(service, Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(": {}", count)),
+            ]));
+        }
+
+        if host_manual_count > 0 {
+            lines.push(Line::from(vec![
+                Span::raw("  • "),
+                Span::styled(
+                    t!("scope.host").into_owned(),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(format!(": {}", host_manual_count)),
+            ]));
+        }
     }
 
     if auto_fixable_count == 0 && manual_count == 0 {
@@ -1708,6 +1784,7 @@ fn visible_finding_indices(
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
     remediation_filter: RemediationFilter,
+    service_filter: Option<&str>,
     sort_mode: FindingSortMode,
 ) -> Vec<usize> {
     let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
@@ -1716,6 +1793,8 @@ fn visible_finding_indices(
             severity_filter.is_none_or(|severity| finding.severity == severity)
                 && source_filter.is_none_or(|source| finding.source == source)
                 && remediation_filter_matches(finding.remediation, remediation_filter)
+                && service_filter
+                    .is_none_or(|service| finding.related_service.as_deref() == Some(service))
         })
     });
     indices.sort_by(|left, right| {
@@ -1766,16 +1845,24 @@ fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationF
 
 fn finding_filter_summary(state: &AppState) -> String {
     format!(
-        "{}:{} {}:{} {}:{} {}:{}",
+        "{}:{} {}:{} {}:{} {}:{} {}:{}",
         t!("app.finding.severity_filter_short").into_owned(),
         severity_filter_label(state.severity_filter),
         t!("app.finding.source_filter_short").into_owned(),
         source_filter_label(state.source_filter),
+        t!("app.finding.service_filter_short").into_owned(),
+        service_filter_label(state.service_filter.as_deref()),
         t!("app.finding.remediation_filter_short").into_owned(),
         remediation_filter_label(state.remediation_filter),
         t!("app.finding.sort_short").into_owned(),
         sort_mode_label(state.sort_mode),
     )
+}
+
+fn service_filter_label(filter: Option<&str>) -> String {
+    filter
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| t!("app.finding.filter_all").into_owned())
 }
 
 fn severity_filter_label(filter: Option<Severity>) -> String {
@@ -2676,7 +2763,7 @@ mod tests {
 
         assert!(content.contains("[CRIT][G] Admin interface is exposed publicly - adminer"));
         assert!(content.contains("Critical | Native Compose | adminer | GUIDED"));
-        assert!(content.contains("s sev | x src | m rem | o sort | r reset"));
+        assert!(content.contains("s sev | x src | v svc | m rem | o sort"));
         assert!(!content.contains("PageUp/PageDown"));
     }
 
