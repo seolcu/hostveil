@@ -7,15 +7,19 @@ pub enum ThemePreset {
     Nord,
     TokyoNight,
     Gruvbox,
+    Dracula,
+    Monokai,
 }
 
 impl ThemePreset {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 7] = [
         Self::Ansi,
         Self::Catppuccin,
         Self::Nord,
         Self::TokyoNight,
         Self::Gruvbox,
+        Self::Dracula,
+        Self::Monokai,
     ];
 
     pub const fn as_key(self) -> &'static str {
@@ -25,6 +29,8 @@ impl ThemePreset {
             Self::Nord => "nord",
             Self::TokyoNight => "tokyo_night",
             Self::Gruvbox => "gruvbox",
+            Self::Dracula => "dracula",
+            Self::Monokai => "monokai",
         }
     }
 
@@ -35,6 +41,8 @@ impl ThemePreset {
             Self::Nord => "Nord",
             Self::TokyoNight => "Tokyo Night",
             Self::Gruvbox => "Gruvbox",
+            Self::Dracula => "Dracula",
+            Self::Monokai => "Monokai",
         }
     }
 
@@ -50,7 +58,9 @@ impl ThemePreset {
             Self::Catppuccin => Self::Nord,
             Self::Nord => Self::TokyoNight,
             Self::TokyoNight => Self::Gruvbox,
-            Self::Gruvbox => Self::Ansi,
+            Self::Gruvbox => Self::Dracula,
+            Self::Dracula => Self::Monokai,
+            Self::Monokai => Self::Ansi,
         }
     }
 }
@@ -59,6 +69,7 @@ impl ThemePreset {
 pub struct Theme {
     pub preset: ThemePreset,
     pub base: Style,
+    pub surface: Style,
     pub border: Style,
     pub title: Style,
     pub muted: Style,
@@ -82,6 +93,8 @@ impl Theme {
             ThemePreset::Nord => Self::nord(),
             ThemePreset::TokyoNight => Self::tokyo_night(),
             ThemePreset::Gruvbox => Self::gruvbox(),
+            ThemePreset::Dracula => Self::dracula(),
+            ThemePreset::Monokai => Self::monokai(),
         }
     }
 
@@ -89,6 +102,7 @@ impl Theme {
         Self {
             preset: ThemePreset::Ansi,
             base: Style::new().fg(Color::Reset),
+            surface: Style::new().fg(Color::Reset),
             border: Style::new().fg(Color::DarkGray),
             title: Style::new().fg(Color::Cyan),
             muted: Style::new().fg(Color::Gray),
@@ -109,6 +123,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Catppuccin,
             base: Style::new().fg(Color::Rgb(205, 214, 244)),
+            surface: Style::new()
+                .fg(Color::Rgb(205, 214, 244))
+                .bg(Color::Rgb(30, 30, 46)),
             border: Style::new().fg(Color::Rgb(88, 91, 112)),
             title: Style::new().fg(Color::Rgb(137, 180, 250)),
             muted: Style::new().fg(Color::Rgb(127, 132, 156)),
@@ -133,6 +150,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Nord,
             base: Style::new().fg(Color::Rgb(216, 222, 233)),
+            surface: Style::new()
+                .fg(Color::Rgb(216, 222, 233))
+                .bg(Color::Rgb(43, 48, 59)),
             border: Style::new().fg(Color::Rgb(76, 86, 106)),
             title: Style::new().fg(Color::Rgb(136, 192, 208)),
             muted: Style::new().fg(Color::Rgb(143, 188, 187)),
@@ -157,6 +177,9 @@ impl Theme {
         Self {
             preset: ThemePreset::TokyoNight,
             base: Style::new().fg(Color::Rgb(169, 177, 214)),
+            surface: Style::new()
+                .fg(Color::Rgb(169, 177, 214))
+                .bg(Color::Rgb(22, 22, 30)),
             border: Style::new().fg(Color::Rgb(68, 76, 113)),
             title: Style::new().fg(Color::Rgb(122, 162, 247)),
             muted: Style::new().fg(Color::Rgb(125, 135, 185)),
@@ -181,6 +204,9 @@ impl Theme {
         Self {
             preset: ThemePreset::Gruvbox,
             base: Style::new().fg(Color::Rgb(235, 219, 178)),
+            surface: Style::new()
+                .fg(Color::Rgb(235, 219, 178))
+                .bg(Color::Rgb(29, 32, 33)),
             border: Style::new().fg(Color::Rgb(102, 92, 84)),
             title: Style::new().fg(Color::Rgb(131, 165, 152)),
             muted: Style::new().fg(Color::Rgb(168, 153, 132)),
@@ -198,6 +224,60 @@ impl Theme {
             safe: Color::Rgb(152, 151, 26),
             guided: Color::Rgb(215, 153, 33),
             manual: Color::Rgb(69, 133, 136),
+        }
+    }
+
+    const fn dracula() -> Self {
+        Self {
+            preset: ThemePreset::Dracula,
+            base: Style::new().fg(Color::Rgb(248, 248, 242)),
+            surface: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(40, 42, 54)),
+            border: Style::new().fg(Color::Rgb(98, 114, 164)),
+            title: Style::new().fg(Color::Rgb(139, 233, 253)),
+            muted: Style::new().fg(Color::Rgb(98, 114, 164)),
+            highlight: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(68, 71, 90)),
+            status_bar: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(33, 34, 44)),
+            accent: Color::Rgb(189, 147, 249),
+            crit: Color::Rgb(255, 85, 85),
+            high: Color::Rgb(255, 184, 108),
+            med: Color::Rgb(241, 250, 140),
+            low: Color::Rgb(80, 250, 123),
+            safe: Color::Rgb(80, 250, 123),
+            guided: Color::Rgb(241, 250, 140),
+            manual: Color::Rgb(139, 233, 253),
+        }
+    }
+
+    const fn monokai() -> Self {
+        Self {
+            preset: ThemePreset::Monokai,
+            base: Style::new().fg(Color::Rgb(248, 248, 242)),
+            surface: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(39, 40, 34)),
+            border: Style::new().fg(Color::Rgb(117, 113, 94)),
+            title: Style::new().fg(Color::Rgb(102, 217, 239)),
+            muted: Style::new().fg(Color::Rgb(117, 113, 94)),
+            highlight: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(73, 72, 62)),
+            status_bar: Style::new()
+                .fg(Color::Rgb(248, 248, 242))
+                .bg(Color::Rgb(30, 31, 28)),
+            accent: Color::Rgb(253, 151, 31),
+            crit: Color::Rgb(249, 38, 114),
+            high: Color::Rgb(253, 151, 31),
+            med: Color::Rgb(230, 219, 116),
+            low: Color::Rgb(166, 226, 46),
+            safe: Color::Rgb(166, 226, 46),
+            guided: Color::Rgb(230, 219, 116),
+            manual: Color::Rgb(102, 217, 239),
         }
     }
 }

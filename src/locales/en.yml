@@ -116,12 +116,14 @@ app:
   overview:
     score_caption: "Overall posture"
     findings_available: "%{count} finding(s) available. Open the findings view for details."
+    findings_ready: "%{count} finding(s) are ready for review and fix detail."
     no_findings: "No findings detected yet."
     adapters_none: "No optional adapter status reported yet."
     score_pending_detail: "Final score is waiting for adapter results. The rows below are the native baseline."
     score_ready: "Adapter loading complete"
     adapter_loading: "%{spinner} loading adapters: %{adapters}"
     action_queue_hint: "Overview groups next actions by service. Open Findings for per-issue evidence and fix detail."
+    next_step: "Next Step"
   server:
     host_name: "Host"
     root_path: "Root"
@@ -157,6 +159,7 @@ app:
     lynis_root_required_skipped: "Lynis requires root for host audit; skipped to avoid desktop authorization prompts."
     lynis_non_zero_exit: "Lynis exited with a non-zero status: %{detail}. Parsed the available report anyway."
     lynis_report_missing: "Lynis did not produce a report file."
+    lynis_running_elsewhere: "Lynis appears to already be running on this host. hostveil skipped the concurrent retry."
     scan_failed: "%{tool} scan failed for %{image}: %{error}"
     json_parse_failed: "failed to parse %{tool} JSON: %{error}"
     report_parse_failed: "failed to parse %{tool} report contents"

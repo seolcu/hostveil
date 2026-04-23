@@ -382,6 +382,8 @@ mod tests {
             .permissions();
         permissions.set_mode(0o755);
         fs::set_permissions(&path, permissions).expect("test command should be executable");
+        // Brief yield so the OS can flush the write before the test execs the script.
+        std::thread::sleep(std::time::Duration::from_millis(10));
         path
     }
 
