@@ -360,7 +360,30 @@ struct DockleDetail {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
     use super::*;
+
+    fn temp_command(content: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "hostveil-dockle-test-command-{}-{nanos}",
+            std::process::id()
+        ));
+        fs::write(&path, content).expect("test command should be written");
+        let mut permissions = fs::metadata(&path)
+            .expect("test command metadata should be available")
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).expect("test command should be executable");
+        path
+    }
 
     #[test]
     fn maps_dockle_levels() {
@@ -450,6 +473,53 @@ mod tests {
             output.status,
             AdapterStatus::Failed(String::from("registry denied access"))
         );
+    }
+
+    #[test]
+    fn partial_image_timeout_preserves_successful_dockle_findings() {
+        rust_i18n::set_locale("en");
+
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'dockle test\n'
+  exit 0
+fi
+image="${@: -1}"
+if [[ "$image" == "slow:1" ]]; then
+  sleep 2
+  exit 0
+fi
+cat <<'JSON'
+{"details":[{"code":"DKL-DI-0001","level":"WARN"}]}
+JSON
+"#,
+        );
+        let command = command.display().to_string();
+        let services = vec![
+            ServiceSummary {
+                name: String::from("fast"),
+                image: Some(String::from("fast:1")),
+            },
+            ServiceSummary {
+                name: String::from("slow"),
+                image: Some(String::from("slow:1")),
+            },
+        ];
+
+        let output = scan_with_commands(&services, &command, &command, Duration::from_millis(50));
+
+        assert_eq!(output.status, AdapterStatus::Available);
+        assert_eq!(output.findings.len(), 1);
+        assert!(
+            output
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("timed out after"))
+        );
+
+        let _ = fs::remove_file(command);
     }
 
     #[test]
