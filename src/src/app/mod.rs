@@ -162,8 +162,8 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 let action = tui::run(&mut scan_result, move |scan_result| {
                     let mut updated = false;
 
-                    while let Ok(update) = adapter_updates.try_recv() {
-                        scan::apply_external_adapter_update(scan_result, update);
+                    while let Ok(event) = adapter_updates.try_recv() {
+                        scan::apply_external_adapter_event(scan_result, event);
                         updated = true;
                     }
 

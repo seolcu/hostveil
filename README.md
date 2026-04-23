@@ -13,9 +13,11 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Features
 
-- **Security Overview Dashboard** — overall score with per-category breakdown and severity counts
+- **Security Overview Dashboard** — responsive overview with overall posture, per-axis breakdown, grouped action queue, and adapter activity
 - **Native Self-hosting-aware Checks** — checks tailored to each service's known data locations, Compose structure, and operational risk
 - **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, and Lynis are supported as optional adapters)
+- **Visible Background Progress** — launch-time auto-upgrade checks and in-TUI adapter loading surface status instead of appearing frozen
+- **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, and Gruvbox presets are available from the TUI
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 
@@ -138,6 +140,8 @@ hostveil setup
 
 Locale defaults to English for terminal safety, even if the host locale is non-English. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for an explicit override, and press `g` inside the TUI to switch between English and Korean.
 
+When automatic upgrade checks run through the installed wrapper, hostveil now prints a short launch-time status line so slow update checks are visible instead of feeling like a hang.
+
 Interactive setup explains the selector controls before input starts, and its confirmation prompts use a default-yes `Y/n` flow.
 
 For unattended installs, you can explicitly pick tools during bootstrap:
@@ -186,6 +190,20 @@ HOSTVEIL_ADAPTERS=trivy,dockle hostveil --json
 ```
 
 Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle`.
+
+Current TUI controls:
+
+- `Enter` opens Findings from the overview
+- `g` cycles locale and persists it
+- `t` cycles the theme preset and persists it
+- `f` opens the remediation flow when Compose fixes are available
+
+Current overview model:
+
+- `Security Scores` shows the final score when adapter loading is complete
+- while adapters are still running, the score panel shows adapter progress and keeps the native baseline explicit
+- `Action Queue` is a grouped next-step summary by service or host scope
+- `Findings` is the per-issue drill-down view with evidence, risk explanation, and fix detail
 
 Preview Compose remediation before writing files:
 
@@ -238,13 +256,16 @@ Current Rust implementation status:
 - Active Rust crate scaffolded under `src/`
 - Pinned stable toolchain via `rust-toolchain.toml`
 - `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
+- Responsive overview and findings layouts for narrow, compact, and wide terminals
 - TUI findings navigation supports remediation-first triage for faster review of fixable issues
 - Explicit locale controls are available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI `g` switch
+- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, and Gruvbox palettes
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
 - Native Linux host checks added for SSH posture, Docker host exposure, and defensive-control telemetry via `--host-root`
 - Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
+- Per-adapter background progress is surfaced in the TUI while external coverage is still loading
 - Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback

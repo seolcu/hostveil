@@ -3,7 +3,7 @@ use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub const DEFAULT_ADAPTER_TIMEOUT: Duration = Duration::from_secs(120);
+pub const DEFAULT_ADAPTER_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Debug)]
 pub struct CommandOutput {

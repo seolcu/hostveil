@@ -13,6 +13,7 @@ const CONFIG_FILE_NAME: &str = "config.json";
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct AppSettings {
     pub locale: Option<String>,
+    pub theme: Option<String>,
 }
 
 pub fn load() -> AppSettings {
@@ -25,6 +26,12 @@ pub fn load() -> AppSettings {
 pub fn persist_locale(locale: &str) -> io::Result<()> {
     let mut settings = load();
     settings.locale = Some(locale.to_owned());
+    save(&settings)
+}
+
+pub fn persist_theme(theme: &str) -> io::Result<()> {
+    let mut settings = load();
+    settings.theme = Some(theme.to_owned());
     save(&settings)
 }
 
@@ -85,7 +92,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppSettings, resolve_config_dir, save_to_path};
+    use super::{AppSettings, load_from_path, resolve_config_dir, save_to_path};
 
     fn temp_settings_path(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -133,12 +140,31 @@ mod tests {
         let path = temp_settings_path("save");
         let settings = AppSettings {
             locale: Some(String::from("ko")),
+            theme: Some(String::from("nord")),
         };
 
         save_to_path(&path, &settings).expect("settings should save");
 
         let written = fs::read_to_string(&path).expect("settings file should exist");
         assert!(written.contains("\"locale\": \"ko\""));
+        assert!(written.contains("\"theme\": \"nord\""));
+
+        fs::remove_dir_all(path.parent().expect("config dir should exist"))
+            .expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn loads_saved_theme_and_locale_round_trip() {
+        let path = temp_settings_path("roundtrip");
+        let settings = AppSettings {
+            locale: Some(String::from("en")),
+            theme: Some(String::from("tokyo_night")),
+        };
+
+        save_to_path(&path, &settings).expect("settings should save");
+
+        let loaded = load_from_path(&path).expect("settings should load");
+        assert_eq!(loaded, settings);
 
         fs::remove_dir_all(path.parent().expect("config dir should exist"))
             .expect("temp dir should be removed");

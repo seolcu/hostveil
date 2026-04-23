@@ -11,7 +11,7 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Margin, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::symbols;
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
@@ -24,10 +24,13 @@ use crate::domain::{
     RemediationKind, ScanMode, ScanResult, Scope, Severity, Source,
 };
 use crate::i18n;
+use crate::settings;
 
 mod fix_review;
+mod theme;
 
 pub use fix_review::run_fix_review;
+pub use theme::{Theme, ThemePreset};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Screen {
@@ -57,7 +60,7 @@ enum RemediationFilter {
     Manual,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 struct AppState {
     screen: Screen,
     findings_focus: FindingsFocus,
@@ -69,15 +72,29 @@ struct AppState {
     remediation_filter: RemediationFilter,
     service_filter: Option<String>,
     sort_mode: FindingSortMode,
+    theme: Theme,
+    theme_preset: ThemePreset,
+    tick: usize,
 }
 
 impl AppState {
+    fn cycle_theme(&mut self) {
+        self.theme_preset = self.theme_preset.next();
+        self.theme = Theme::preset(self.theme_preset);
+        let _ = settings::persist_theme(self.theme_preset.as_key());
+    }
+
     fn new(scan_result: &ScanResult) -> Self {
         let severity_filter = None;
         let source_filter = None;
         let service_filter = None;
         let remediation_filter = RemediationFilter::All;
         let sort_mode = FindingSortMode::Severity;
+        let theme_preset = settings::load()
+            .theme
+            .as_deref()
+            .and_then(ThemePreset::from_key)
+            .unwrap_or(ThemePreset::Ansi);
 
         Self {
             screen: Screen::Overview,
@@ -97,6 +114,9 @@ impl AppState {
             remediation_filter,
             service_filter: None,
             sort_mode,
+            theme: Theme::preset(theme_preset),
+            theme_preset,
+            tick: 0,
         }
     }
 
@@ -343,6 +363,7 @@ where
         if refresh(scan_result) {
             state.clamp_selection(scan_result);
         }
+        state.tick = state.tick.wrapping_add(1);
 
         terminal.draw(|frame| render(frame, scan_result, state))?;
 
@@ -387,6 +408,10 @@ fn handle_overview_key(
                     compose_file: path,
                     finding_id: None,
                 })
+        }
+        KeyCode::Char('t') => {
+            state.cycle_theme();
+            None
         }
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
             state.open_findings();
@@ -446,6 +471,10 @@ fn handle_findings_key(
                         .map(|finding| finding.id.clone()),
                 })
         }
+        KeyCode::Char('t') => {
+            state.cycle_theme();
+            None
+        }
         KeyCode::Char('1') => {
             state.jump_to_severity(scan_result, Severity::Critical);
             None
@@ -504,12 +533,12 @@ fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut 
     state.clamp_selection(scan_result);
 
     match state.screen {
-        Screen::Overview => render_overview(frame, scan_result),
+        Screen::Overview => render_overview(frame, scan_result, state),
         Screen::Findings => render_findings(frame, scan_result, state),
     }
 }
 
-fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult) {
+fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &AppState) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -519,68 +548,66 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult) {
         ])
         .split(frame.area());
 
-    frame.render_widget(header_banner(), layout[0]);
+    frame.render_widget(header_banner(&state.theme), layout[0]);
 
     match overview_layout_mode(frame.area()) {
         OverviewLayoutMode::Wide => {
-            let dashboard = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(layout[1]);
-
-            let top_row = Layout::default()
+            let columns = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(dashboard[0]);
-
-            let bottom_row = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(dashboard[1]);
-
-            render_server_status_panel(frame, top_row[0], scan_result);
-            render_scan_results_panel(frame, top_row[1], scan_result);
-            render_security_scores_panel(frame, bottom_row[0], scan_result);
-            render_fix_paths_panel(frame, bottom_row[1], scan_result);
-        }
-        OverviewLayoutMode::Compact => {
-            let rows = Layout::default()
-                .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Percentage(34),
+                    Constraint::Percentage(31),
                     Constraint::Percentage(33),
-                    Constraint::Percentage(33),
+                    Constraint::Percentage(36),
                 ])
                 .split(layout[1]);
-            let top_row = Layout::default()
+            let right_column = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(10), Constraint::Min(10)])
+                .split(columns[2]);
+
+            render_server_status_panel(frame, columns[0], scan_result, &state.theme);
+            render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme);
+            render_security_scores_panel(frame, right_column[0], scan_result, state, &state.theme);
+            render_fix_paths_panel(frame, right_column[1], scan_result, &state.theme);
+        }
+        OverviewLayoutMode::Compact => {
+            let columns = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(rows[0]);
+                .split(layout[1]);
+            let left = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(48), Constraint::Percentage(52)])
+                .split(columns[0]);
+            let right = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(10), Constraint::Min(9)])
+                .split(columns[1]);
 
-            render_server_status_panel(frame, top_row[0], scan_result);
-            render_scan_results_panel(frame, top_row[1], scan_result);
-            render_security_scores_panel(frame, rows[1], scan_result);
-            render_fix_paths_panel(frame, rows[2], scan_result);
+            render_server_status_panel(frame, left[0], scan_result, &state.theme);
+            render_scan_results_panel(frame, left[1], scan_result, state, &state.theme);
+            render_security_scores_panel(frame, right[0], scan_result, state, &state.theme);
+            render_fix_paths_panel(frame, right[1], scan_result, &state.theme);
         }
         OverviewLayoutMode::Narrow => {
             let rows = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Percentage(27),
-                    Constraint::Percentage(25),
-                    Constraint::Percentage(24),
+                    Constraint::Percentage(26),
+                    Constraint::Percentage(26),
+                    Constraint::Percentage(22),
                     Constraint::Percentage(24),
                 ])
                 .split(layout[1]);
 
-            render_server_status_panel(frame, rows[0], scan_result);
-            render_scan_results_panel(frame, rows[1], scan_result);
-            render_security_scores_panel(frame, rows[2], scan_result);
-            render_fix_paths_panel(frame, rows[3], scan_result);
+            render_server_status_panel(frame, rows[0], scan_result, &state.theme);
+            render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme);
+            render_security_scores_panel(frame, rows[2], scan_result, state, &state.theme);
+            render_fix_paths_panel(frame, rows[3], scan_result, &state.theme);
         }
     }
 
-    frame.render_widget(overview_footer(), layout[2]);
+    frame.render_widget(overview_footer(&state.theme), layout[2]);
 }
 
 fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
@@ -597,7 +624,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let content = match mode {
         FindingsLayoutMode::SideBySide => Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+            .constraints([Constraint::Percentage(44), Constraint::Percentage(56)])
             .split(layout[1]),
         FindingsLayoutMode::Stacked => Layout::default()
             .direction(Direction::Vertical)
@@ -610,7 +637,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     };
 
     frame.render_widget(
-        findings_header(scan_result, state, layout[0].width, mode),
+        findings_header(scan_result, state, layout[0].width, mode, &state.theme),
         layout[0],
     );
 
@@ -624,6 +651,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         state,
         content[0].width,
         mode,
+        &state.theme,
     ))
     .block(
         Block::default()
@@ -631,19 +659,22 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             .borders(Borders::ALL)
             .border_style(focus_border_style(
                 state.findings_focus == FindingsFocus::List,
+                &state.theme,
             )),
     )
     .highlight_symbol("> ")
-    .highlight_style(Style::default().bg(Color::DarkGray));
+    .highlight_style(state.theme.highlight);
 
     let detail_block = Block::default()
         .title(findings_detail_title(state.findings_focus))
         .borders(Borders::ALL)
         .border_style(focus_border_style(
             state.findings_focus == FindingsFocus::Detail,
+            &state.theme,
         ));
     let detail_inner = detail_block.inner(content[1]);
-    let detail_text = finding_detail_text(scan_result, state, detail_inner.width, mode);
+    let detail_text =
+        finding_detail_text(scan_result, state, detail_inner.width, mode, &state.theme);
     let detail_content_height = estimated_wrapped_text_height(&detail_text, detail_inner.width);
     let detail_max_scroll = detail_content_height.saturating_sub(detail_inner.height as usize);
     state.clamp_detail_scroll(detail_max_scroll);
@@ -663,7 +694,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         state,
     );
     frame.render_widget(
-        findings_footer(state.findings_focus, layout[2].width, mode),
+        findings_footer(state.findings_focus, layout[2].width, mode, &state.theme),
         layout[2],
     );
 }
@@ -688,25 +719,23 @@ fn findings_layout_mode(area: Rect) -> FindingsLayoutMode {
     }
 }
 
-fn header_banner() -> Paragraph<'static> {
+fn header_banner(theme: &Theme) -> Paragraph<'static> {
     let mut spans = vec![
         Span::styled(
             format!("hostveil v{}", env!("CARGO_PKG_VERSION")),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+            theme.title.add_modifier(Modifier::BOLD),
         ),
         Span::raw(" | "),
-        Span::styled(
-            t!("app.header.subtitle").into_owned(),
-            Style::default().fg(Color::White),
-        ),
+        Span::styled(t!("app.header.subtitle").into_owned(), theme.base),
         Span::raw(" | "),
         Span::styled(
             current_locale_badge(),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(theme.med).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" | "),
+        Span::styled(
+            t!("app.header.theme_badge", theme = theme.preset.label()),
+            theme.muted.add_modifier(Modifier::BOLD),
         ),
     ];
 
@@ -714,13 +743,18 @@ fn header_banner() -> Paragraph<'static> {
         spans.push(Span::raw(" | "));
         spans.push(Span::styled(
             "ROOT",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            Style::default().fg(theme.crit).add_modifier(Modifier::BOLD),
         ));
     }
 
     Paragraph::new(Text::from(Line::from(spans)))
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::TOP | Borders::BOTTOM))
+        .block(
+            Block::default()
+                .borders(Borders::TOP | Borders::BOTTOM)
+                .border_style(theme.border),
+        )
+        .style(theme.base)
 }
 
 fn is_root() -> bool {
@@ -738,11 +772,13 @@ fn render_server_status_panel(
     frame: &mut ratatui::Frame<'_>,
     area: Rect,
     scan_result: &ScanResult,
+    theme: &Theme,
 ) {
     let block = Block::default()
         .title(t!("app.panel.server_status").into_owned())
         .borders(Borders::ALL)
-        .border_style(panel_border_style());
+        .border_style(theme.border)
+        .title_style(theme.title);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -763,18 +799,22 @@ fn render_server_status_panel(
         kv_line(
             t!("app.server.host_name").into_owned(),
             display_hostname(scan_result),
+            theme,
         ),
         kv_line(
             t!("app.server.root_path").into_owned(),
             display_host_root(scan_result),
+            theme,
         ),
         kv_line(
             t!("app.server.docker_version").into_owned(),
             display_docker_version(scan_result),
+            theme,
         ),
         kv_line(
             t!("app.server.uptime").into_owned(),
             display_uptime(scan_result),
+            theme,
         ),
     ];
 
@@ -782,22 +822,30 @@ fn render_server_status_panel(
         Paragraph::new(Text::from(meta_lines)).wrap(Wrap { trim: true }),
         sections[0],
     );
-    render_load_gauge_row(frame, sections[1], scan_result);
+    render_load_gauge_row(frame, sections[1], scan_result, theme);
     frame.render_widget(
         Paragraph::new(Text::from(server_service_lines(
             scan_result,
             sections[2].width,
+            theme,
         )))
         .wrap(Wrap { trim: true }),
         sections[2],
     );
 }
 
-fn render_scan_results_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result: &ScanResult) {
+fn render_scan_results_panel(
+    frame: &mut ratatui::Frame<'_>,
+    area: Rect,
+    scan_result: &ScanResult,
+    state: &AppState,
+    theme: &Theme,
+) {
     let block = Block::default()
         .title(t!("app.panel.scan_results").into_owned())
         .borders(Borders::ALL)
-        .border_style(panel_border_style());
+        .border_style(theme.border)
+        .title_style(theme.title);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -805,17 +853,15 @@ fn render_scan_results_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_re
         return;
     }
 
-    let mut lines = result_summary_lines(scan_result, inner.width);
+    let mut lines = result_summary_lines(scan_result, inner.width, theme);
     lines.push(Line::raw(String::new()));
-    lines.extend(severity_total_lines(scan_result, inner.width));
+    lines.extend(severity_total_lines(scan_result, inner.width, theme));
 
     if let Some(docker_status) = &scan_result.metadata.docker_status {
         lines.push(Line::raw(String::new()));
         lines.push(Line::styled(
             t!("app.result.discovery_heading").into_owned(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+            theme.title.add_modifier(Modifier::BOLD),
         ));
         lines.push(Line::raw(format!(
             "Docker: {}",
@@ -832,7 +878,7 @@ fn render_scan_results_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_re
         }
     }
 
-    let adapter_lines = adapter_summary_lines(scan_result, inner.width);
+    let adapter_lines = adapter_summary_lines(scan_result, inner.width, state, theme);
     if !adapter_lines.is_empty() {
         lines.push(Line::raw(String::new()));
         lines.extend(adapter_lines);
@@ -842,9 +888,7 @@ fn render_scan_results_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_re
         lines.push(Line::raw(String::new()));
         lines.push(Line::styled(
             t!("app.result.warnings_heading").into_owned(),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(theme.med).add_modifier(Modifier::BOLD),
         ));
         for warning in scan_result.metadata.warnings.iter().take(2) {
             let warning_width = inner.width.saturating_sub(4).max(20) as usize;
@@ -865,11 +909,14 @@ fn render_security_scores_panel(
     frame: &mut ratatui::Frame<'_>,
     area: Rect,
     scan_result: &ScanResult,
+    state: &AppState,
+    theme: &Theme,
 ) {
     let block = Block::default()
         .title(t!("app.panel.security_scores").into_owned())
         .borders(Borders::ALL)
-        .border_style(panel_border_style());
+        .border_style(theme.border)
+        .title_style(theme.title);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -878,25 +925,45 @@ fn render_security_scores_panel(
     }
 
     let rows = score_rows(scan_result);
-    let constraints = rows
-        .iter()
-        .map(|_| Constraint::Length(1))
-        .collect::<Vec<_>>();
+    let mut constraints = Vec::new();
+    if has_pending_adapters(scan_result) {
+        constraints.push(Constraint::Length(2));
+        constraints.push(Constraint::Length(1));
+    }
+    constraints.extend(rows.iter().map(|_| Constraint::Length(1)));
     let row_areas = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints)
         .split(inner);
 
-    for ((label, score, emphasize), row_area) in rows.into_iter().zip(row_areas.iter().copied()) {
-        render_score_gauge_row(frame, row_area, &label, score, emphasize);
+    let mut offset = 0;
+    if has_pending_adapters(scan_result) {
+        render_adapter_progress_row(frame, row_areas[0], scan_result, state, theme);
+        frame.render_widget(
+            Paragraph::new(t!("app.overview.score_pending_detail")).style(theme.muted),
+            row_areas[1],
+        );
+        offset = 2;
+    }
+
+    for ((label, score, emphasize), row_area) in
+        rows.into_iter().zip(row_areas.iter().copied().skip(offset))
+    {
+        render_score_gauge_row(frame, row_area, &label, score, emphasize, theme);
     }
 }
 
-fn render_fix_paths_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result: &ScanResult) {
+fn render_fix_paths_panel(
+    frame: &mut ratatui::Frame<'_>,
+    area: Rect,
+    scan_result: &ScanResult,
+    theme: &Theme,
+) {
     let block = Block::default()
-        .title(t!("app.panel.remediation_summary").into_owned())
+        .title(t!("app.panel.action_queue"))
         .borders(Borders::ALL)
-        .border_style(panel_border_style());
+        .border_style(theme.border)
+        .title_style(theme.title);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -904,7 +971,7 @@ fn render_fix_paths_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_resul
         return;
     }
 
-    let mut lines = remediation_lines(scan_result, inner.width);
+    let mut lines = remediation_lines(scan_result, inner.width, theme);
     if lines.is_empty() {
         lines.push(Line::raw(t!("app.fix.none").into_owned()));
     }
@@ -915,18 +982,25 @@ fn render_fix_paths_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_resul
     );
 }
 
-fn overview_footer() -> Paragraph<'static> {
+fn overview_footer(theme: &Theme) -> Paragraph<'static> {
     Paragraph::new(Text::from(Line::from(vec![
-        hint_span("q", t!("app.footer.quit").into_owned()),
+        hint_span("q", t!("app.footer.quit").into_owned(), theme),
         Span::raw("  "),
-        hint_span("Enter", t!("app.footer.findings").into_owned()),
+        hint_span("Enter", t!("app.footer.findings").into_owned(), theme),
         Span::raw("  "),
-        hint_span("g", t!("app.footer.locale").into_owned()),
+        hint_span("g", t!("app.footer.locale").into_owned(), theme),
         Span::raw("  "),
-        hint_span("--json", t!("app.footer.json").into_owned()),
+        hint_span("t", t!("app.footer.theme").into_owned(), theme),
+        Span::raw("  "),
+        hint_span("--json", t!("app.footer.json").into_owned(), theme),
     ])))
     .alignment(Alignment::Left)
-    .block(Block::default().borders(Borders::TOP))
+    .block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(theme.border),
+    )
+    .style(theme.status_bar)
 }
 
 fn findings_header(
@@ -934,6 +1008,7 @@ fn findings_header(
     state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
+    theme: &Theme,
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let filters = finding_filter_summary(state);
@@ -976,8 +1051,11 @@ fn findings_header(
         .block(
             Block::default()
                 .title(t!("app.panel.status").into_owned())
-                .borders(Borders::ALL),
+                .borders(Borders::ALL)
+                .border_style(theme.border)
+                .title_style(theme.title),
         )
+        .style(theme.base)
         .wrap(Wrap { trim: true })
 }
 
@@ -985,6 +1063,7 @@ fn findings_footer(
     focus: FindingsFocus,
     available_width: u16,
     mode: FindingsLayoutMode,
+    theme: &Theme,
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let movement = match focus {
@@ -1007,7 +1086,12 @@ fn findings_footer(
         Line::raw(truncate_text(&movement, inner_width)),
         Line::raw(truncate_text(&controls, inner_width)),
     ]))
-    .block(Block::default().borders(Borders::TOP))
+    .block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(theme.border),
+    )
+    .style(theme.status_bar)
     .wrap(Wrap { trim: true })
 }
 
@@ -1016,6 +1100,7 @@ fn findings_list_items(
     state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
+    theme: &Theme,
 ) -> Vec<ListItem<'static>> {
     if state.finding_count() == 0 {
         return vec![ListItem::new(t!("app.finding.empty_title").into_owned())];
@@ -1054,12 +1139,12 @@ fn findings_list_items(
                         ),
                         inner_width,
                     ),
-                    severity_style(finding.severity).add_modifier(Modifier::BOLD),
+                    severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
                 )),
                 FindingsLayoutMode::Stacked => ListItem::new(Text::from(vec![
                     Line::styled(
                         title,
-                        severity_style(finding.severity).add_modifier(Modifier::BOLD),
+                        severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
                     ),
                     Line::raw(truncate_text(
                         &format!(
@@ -1074,7 +1159,7 @@ fn findings_list_items(
                 FindingsLayoutMode::SideBySide => ListItem::new(Text::from(vec![
                     Line::styled(
                         title,
-                        severity_style(finding.severity).add_modifier(Modifier::BOLD),
+                        severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
                     ),
                     Line::raw(truncate_text(
                         &format!(
@@ -1097,6 +1182,7 @@ fn finding_detail_text(
     state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
+    theme: &Theme,
 ) -> Text<'static> {
     let Some(finding) = state.selected_finding(scan_result) else {
         return Text::from(vec![
@@ -1113,7 +1199,7 @@ fn finding_detail_text(
     let mut lines = vec![
         Line::styled(
             finding.title.clone(),
-            severity_style(finding.severity).add_modifier(Modifier::BOLD),
+            severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
         ),
         Line::raw(if compact {
             truncate_text(
@@ -1246,13 +1332,17 @@ fn result_summary_rows(scan_result: &ScanResult) -> Vec<ResultSummaryRow> {
     rows.into_values().collect()
 }
 
-fn result_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+fn result_summary_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     let rows = result_summary_rows(scan_result);
     if rows.is_empty() {
         return vec![Line::raw(t!("app.result.none").into_owned())];
     }
 
-    let label_width = available_width.saturating_sub(20).clamp(8, 16) as usize;
+    let label_width = available_width.saturating_sub(20).clamp(10, 28) as usize;
 
     rows.into_iter()
         .map(|row| {
@@ -1261,13 +1351,13 @@ fn result_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
                 None => t!("app.result.ok").into_owned(),
             };
             let status_style = match row.severity {
-                Some(severity) => severity_style(severity),
-                None => Style::default().fg(Color::Green),
+                Some(severity) => severity_style(severity, theme),
+                None => Style::default().fg(theme.safe),
             };
             let label = truncate_text(&row.label, label_width);
 
             Line::from(vec![
-                Span::styled("* ", Style::default().fg(Color::Green)),
+                Span::styled("* ", Style::default().fg(theme.safe)),
                 Span::raw(format!("{label: <width$}", width = label_width)),
                 Span::styled(
                     format!("[{status_text}]"),
@@ -1279,7 +1369,11 @@ fn result_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
         .collect()
 }
 
-fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+fn severity_total_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     let critical = scan_result
         .score_report
         .severity_counts
@@ -1308,23 +1402,23 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
     let first_pair = Line::from(vec![
         Span::styled(
             format!("{critical} {}", t!("severity.critical").into_owned()),
-            severity_style(Severity::Critical).add_modifier(Modifier::BOLD),
+            severity_style(Severity::Critical, theme).add_modifier(Modifier::BOLD),
         ),
         Span::raw("  "),
         Span::styled(
             format!("{high} {}", t!("severity.high").into_owned()),
-            severity_style(Severity::High).add_modifier(Modifier::BOLD),
+            severity_style(Severity::High, theme).add_modifier(Modifier::BOLD),
         ),
     ]);
     let second_pair = Line::from(vec![
         Span::styled(
             format!("{medium} {}", t!("severity.medium").into_owned()),
-            severity_style(Severity::Medium).add_modifier(Modifier::BOLD),
+            severity_style(Severity::Medium, theme).add_modifier(Modifier::BOLD),
         ),
         Span::raw("  "),
         Span::styled(
             format!("{low} {}", t!("severity.low").into_owned()),
-            severity_style(Severity::Low).add_modifier(Modifier::BOLD),
+            severity_style(Severity::Low, theme).add_modifier(Modifier::BOLD),
         ),
     ]);
 
@@ -1352,29 +1446,33 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
             Line::from(vec![
                 Span::styled(
                     format!("{critical} {}", t!("severity.critical").into_owned()),
-                    severity_style(Severity::Critical).add_modifier(Modifier::BOLD),
+                    severity_style(Severity::Critical, theme).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("  "),
                 Span::styled(
                     format!("{high} {}", t!("severity.high").into_owned()),
-                    severity_style(Severity::High).add_modifier(Modifier::BOLD),
+                    severity_style(Severity::High, theme).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("  "),
                 Span::styled(
                     format!("{medium} {}", t!("severity.medium").into_owned()),
-                    severity_style(Severity::Medium).add_modifier(Modifier::BOLD),
+                    severity_style(Severity::Medium, theme).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("  "),
                 Span::styled(
                     format!("{low} {}", t!("severity.low").into_owned()),
-                    severity_style(Severity::Low).add_modifier(Modifier::BOLD),
+                    severity_style(Severity::Low, theme).add_modifier(Modifier::BOLD),
                 ),
             ]),
         ]
     }
 }
 
-fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Line<'static>> {
+fn remediation_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     let mut fixable_by_service = BTreeMap::<String, usize>::new();
     let mut manual_by_service = BTreeMap::<String, usize>::new();
     let mut host_manual_count = 0;
@@ -1400,14 +1498,20 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
     let manual_count: usize = manual_by_service.values().sum::<usize>() + host_manual_count;
 
     let mut lines = Vec::new();
+    let text_width = available_width.saturating_sub(4).max(24) as usize;
+
+    let action_hint = t!("app.overview.action_queue_hint").to_string();
+    lines.push(Line::styled(
+        truncate_text(&action_hint, text_width),
+        theme.muted,
+    ));
+    lines.push(Line::raw(String::new()));
 
     if auto_fixable_count > 0 {
         lines.push(Line::from(vec![
             Span::styled(
                 format!("[{}] ", t!("remediation.auto_fixable").into_owned()),
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
+                remediation_style(RemediationKind::Safe, theme).add_modifier(Modifier::BOLD),
             ),
             Span::raw(
                 t!(
@@ -1421,7 +1525,7 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
         for (service, count) in fixable_by_service {
             lines.push(Line::from(vec![
                 Span::raw("  • "),
-                Span::styled(service, Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled(service, theme.base.add_modifier(Modifier::BOLD)),
                 Span::raw(format!(": {}", count)),
             ]));
         }
@@ -1435,9 +1539,7 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
         lines.push(Line::from(vec![
             Span::styled(
                 format!("[{}] ", t!("remediation.manual").into_owned()),
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
+                remediation_style(RemediationKind::None, theme).add_modifier(Modifier::BOLD),
             ),
             Span::raw(t!("app.result.manual_summary", count = manual_count).into_owned()),
         ]));
@@ -1445,7 +1547,7 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
         for (service, count) in manual_by_service {
             lines.push(Line::from(vec![
                 Span::raw("  • "),
-                Span::styled(service, Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled(service, theme.base.add_modifier(Modifier::BOLD)),
                 Span::raw(format!(": {}", count)),
             ]));
         }
@@ -1455,7 +1557,7 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
                 Span::raw("  • "),
                 Span::styled(
                     t!("scope.host").into_owned(),
-                    Style::default().add_modifier(Modifier::BOLD),
+                    theme.base.add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(format!(": {}", host_manual_count)),
             ]));
@@ -1470,23 +1572,29 @@ fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Lin
         lines.push(Line::raw(""));
         lines.push(Line::styled(
             t!("app.hint.press_f_to_fix").into_owned(),
-            Style::default().fg(Color::Green),
+            Style::default().fg(theme.safe),
         ));
     }
 
     lines
 }
 
-fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+fn server_service_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    lines.extend(defensive_controls_lines(scan_result, available_width));
+    lines.extend(defensive_controls_lines(
+        scan_result,
+        available_width,
+        theme,
+    ));
 
     lines.push(Line::styled(
         t!("app.server.services_heading").into_owned(),
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD),
+        theme.title.add_modifier(Modifier::BOLD),
     ));
 
     if scan_result.metadata.services.is_empty() {
@@ -1502,7 +1610,7 @@ fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
             .unwrap_or_else(|| t!("app.server.no_image").into_owned());
         let summary = truncate_text(&format!("{} - {}", service.name, image), text_width);
         lines.push(Line::from(vec![
-            Span::styled("* ", Style::default().fg(Color::Green)),
+            Span::styled("* ", Style::default().fg(theme.safe)),
             Span::raw(summary),
         ]));
     }
@@ -1520,7 +1628,11 @@ fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
     lines
 }
 
-fn defensive_controls_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+fn defensive_controls_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    _theme: &Theme,
+) -> Vec<Line<'static>> {
     let Some(runtime) = scan_result.metadata.host_runtime.as_ref() else {
         return Vec::new();
     };
@@ -1591,6 +1703,7 @@ fn render_score_gauge_row(
     label: &str,
     score: u8,
     emphasize: bool,
+    theme: &Theme,
 ) {
     if area.width == 0 || area.height == 0 {
         return;
@@ -1607,33 +1720,45 @@ fn render_score_gauge_row(
         .split(area);
 
     let label_style = if emphasize {
-        Style::default().add_modifier(Modifier::BOLD)
+        theme.title.add_modifier(Modifier::BOLD)
     } else {
-        Style::default()
+        theme.base
     };
     let label_text = truncate_text(label, label_width.saturating_sub(1).max(4) as usize);
 
     frame.render_widget(Paragraph::new(label_text).style(label_style), row[0]);
     frame.render_widget(
         Paragraph::new(format!("{score:>3}"))
-            .style(score_style(score).add_modifier(Modifier::BOLD)),
+            .style(score_style(score, theme).add_modifier(Modifier::BOLD)),
         row[1],
     );
 
     if row[2].width > 0 {
+        let gauge_width = row[2].width.min(if emphasize { 24 } else { 18 });
+        let gauge_area = Rect::new(
+            row[2].x + row[2].width.saturating_sub(gauge_width),
+            row[2].y,
+            gauge_width,
+            row[2].height,
+        );
         frame.render_widget(
             LineGauge::default()
                 .ratio(score_ratio(score))
                 .label(String::new())
                 .line_set(symbols::line::THICK)
-                .filled_style(score_style(score))
-                .unfilled_style(Style::default().fg(Color::DarkGray)),
-            row[2],
+                .filled_style(score_style(score, theme))
+                .unfilled_style(theme.border),
+            gauge_area,
         );
     }
 }
 
-fn render_load_gauge_row(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result: &ScanResult) {
+fn render_load_gauge_row(
+    frame: &mut ratatui::Frame<'_>,
+    area: Rect,
+    scan_result: &ScanResult,
+    theme: &Theme,
+) {
     if area.width == 0 || area.height == 0 {
         return;
     }
@@ -1654,7 +1779,7 @@ fn render_load_gauge_row(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result
             &label_text,
             label_width.saturating_sub(1).max(6) as usize,
         ))
-        .style(Style::default().fg(Color::Cyan)),
+        .style(theme.title),
         row[0],
     );
 
@@ -1664,11 +1789,61 @@ fn render_load_gauge_row(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result
                 .ratio(load_ratio(scan_result).unwrap_or(0.0))
                 .label(String::new())
                 .line_set(symbols::line::THICK)
-                .filled_style(Style::default().fg(Color::Green))
-                .unfilled_style(Style::default().fg(Color::DarkGray)),
+                .filled_style(theme.safe)
+                .unfilled_style(theme.border),
             row[1],
         );
     }
+}
+
+fn render_adapter_progress_row(
+    frame: &mut ratatui::Frame<'_>,
+    area: Rect,
+    scan_result: &ScanResult,
+    state: &AppState,
+    theme: &Theme,
+) {
+    if area.width == 0 || area.height == 0 {
+        return;
+    }
+
+    let (complete, total) = adapter_completion(scan_result);
+    let ratio = if total == 0 {
+        1.0
+    } else {
+        complete as f64 / total as f64
+    };
+    let label_width = area.width.saturating_sub(18).clamp(12, 28);
+    let row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(label_width),
+            Constraint::Length(5),
+            Constraint::Min(8),
+        ])
+        .split(area);
+
+    frame.render_widget(
+        Paragraph::new(truncate_text(
+            &adapter_progress_label(scan_result, state.tick),
+            label_width.max(8) as usize,
+        ))
+        .style(theme.muted),
+        row[0],
+    );
+    frame.render_widget(
+        Paragraph::new(format!("{complete}/{total}")).style(theme.base),
+        row[1],
+    );
+    frame.render_widget(
+        LineGauge::default()
+            .ratio(ratio)
+            .label(String::new())
+            .line_set(symbols::line::THICK)
+            .filled_style(theme.title)
+            .unfilled_style(theme.border),
+        row[2],
+    );
 }
 
 fn render_detail_scrollbar(
@@ -1964,7 +2139,12 @@ fn docker_status_label(status: &DockerDiscoveryStatus) -> String {
     }
 }
 
-fn adapter_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
+fn adapter_summary_lines(
+    scan_result: &ScanResult,
+    available_width: u16,
+    state: &AppState,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     if scan_result.metadata.adapters.is_empty() {
         return Vec::new();
     }
@@ -1972,10 +2152,15 @@ fn adapter_summary_lines(scan_result: &ScanResult, available_width: u16) -> Vec<
     let text_width = available_width.saturating_sub(4).max(20) as usize;
     let mut lines = vec![Line::styled(
         t!("app.result.adapters_heading").into_owned(),
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD),
+        theme.title.add_modifier(Modifier::BOLD),
     )];
+
+    if has_pending_adapters(scan_result) {
+        lines.push(Line::styled(
+            truncate_text(&adapter_progress_label(scan_result, state.tick), text_width),
+            theme.muted,
+        ));
+    }
 
     for (name, status) in &scan_result.metadata.adapters {
         lines.push(Line::raw(truncate_text(
@@ -2002,7 +2187,7 @@ fn adapter_name_label(name: &str) -> String {
 
 fn adapter_status_label(status: &AdapterStatus) -> String {
     match status {
-        AdapterStatus::Pending => t!("adapter.pending").into_owned(),
+        AdapterStatus::Pending => t!("adapter.loading").into_owned(),
         AdapterStatus::Available => t!("adapter.available").into_owned(),
         AdapterStatus::Missing => t!("adapter.missing").into_owned(),
         AdapterStatus::Skipped(detail) => {
@@ -2012,6 +2197,52 @@ fn adapter_status_label(status: &AdapterStatus) -> String {
             t!("adapter.failed", detail = detail.as_str()).into_owned()
         }
     }
+}
+
+fn has_pending_adapters(scan_result: &ScanResult) -> bool {
+    scan_result
+        .metadata
+        .adapters
+        .values()
+        .any(|status| matches!(status, AdapterStatus::Pending))
+}
+
+fn adapter_completion(scan_result: &ScanResult) -> (usize, usize) {
+    let total = scan_result.metadata.adapters.len();
+    let complete = scan_result
+        .metadata
+        .adapters
+        .values()
+        .filter(|status| !matches!(status, AdapterStatus::Pending))
+        .count();
+
+    (complete, total)
+}
+
+fn spinner_frame(tick: usize) -> &'static str {
+    const FRAMES: [&str; 8] = ["-", "\\", "|", "/", "-", "\\", "|", "/"];
+    FRAMES[tick % FRAMES.len()]
+}
+
+fn adapter_progress_label(scan_result: &ScanResult, tick: usize) -> String {
+    let pending = scan_result
+        .metadata
+        .adapters
+        .iter()
+        .filter(|(_, status)| matches!(status, AdapterStatus::Pending))
+        .map(|(name, _)| adapter_name_label(name))
+        .collect::<Vec<_>>();
+
+    if pending.is_empty() {
+        return t!("app.overview.score_ready").to_string();
+    }
+
+    t!(
+        "app.overview.adapter_loading",
+        spinner = spinner_frame(tick),
+        adapters = pending.join(", ")
+    )
+    .into_owned()
 }
 
 fn display_host_root(scan_result: &ScanResult) -> String {
@@ -2080,9 +2311,9 @@ fn defensive_control_status_label(status: DefensiveControlStatus) -> String {
     }
 }
 
-fn kv_line(label: String, value: String) -> Line<'static> {
+fn kv_line(label: String, value: String, theme: &Theme) -> Line<'static> {
     Line::from(vec![
-        Span::styled(format!("{label: <14}"), Style::default().fg(Color::Cyan)),
+        Span::styled(format!("{label: <14}"), theme.title),
         Span::raw(value),
     ])
 }
@@ -2114,20 +2345,12 @@ fn current_locale_badge() -> String {
     format!("LANG {}", i18n::current_locale().to_ascii_uppercase())
 }
 
-fn panel_border_style() -> Style {
-    Style::default().fg(Color::Cyan)
+fn focus_border_style(active: bool, theme: &Theme) -> Style {
+    if active { theme.title } else { theme.border }
 }
 
-fn focus_border_style(active: bool) -> Style {
-    if active {
-        Style::default().fg(Color::Green)
-    } else {
-        panel_border_style()
-    }
-}
-
-fn hint_span(key: &str, label: String) -> Span<'static> {
-    Span::styled(format!("[{key}] {label}"), Style::default().fg(Color::Cyan))
+fn hint_span(key: &str, label: String, theme: &Theme) -> Span<'static> {
+    Span::styled(format!("[{key}] {label}"), theme.title)
 }
 
 fn truncate_text(value: &str, max_chars: usize) -> String {
@@ -2215,22 +2438,30 @@ fn remediation_badge_compact(remediation: RemediationKind) -> String {
     }
 }
 
-fn severity_style(severity: Severity) -> Style {
+fn severity_style(severity: Severity, theme: &Theme) -> Style {
     Style::default().fg(match severity {
-        Severity::Critical => Color::Red,
-        Severity::High => Color::LightRed,
-        Severity::Medium => Color::Yellow,
-        Severity::Low => Color::Green,
+        Severity::Critical => theme.crit,
+        Severity::High => theme.high,
+        Severity::Medium => theme.med,
+        Severity::Low => theme.low,
     })
 }
 
-fn score_style(score: u8) -> Style {
+fn remediation_style(remediation: RemediationKind, theme: &Theme) -> Style {
+    Style::default().fg(match remediation {
+        RemediationKind::Safe => theme.safe,
+        RemediationKind::Guided => theme.guided,
+        RemediationKind::None => theme.manual,
+    })
+}
+
+fn score_style(score: u8, theme: &Theme) -> Style {
     Style::default().fg(if score >= 80 {
-        Color::Green
+        theme.safe
     } else if score >= 60 {
-        Color::Yellow
+        theme.med
     } else {
-        Color::LightRed
+        theme.crit
     })
 }
 
@@ -2617,7 +2848,7 @@ mod tests {
         assert!(content.contains("Server Status"));
         assert!(content.contains("Scan Results"));
         assert!(content.contains("Security Scores"));
-        assert!(content.contains("Remediation Summary"));
+        assert!(content.contains("Action Queue"));
         assert!(content.contains("61"));
         assert!(content.contains("adminer"));
         assert!(content.contains("home-server"));
@@ -2630,7 +2861,7 @@ mod tests {
 
     #[test]
     fn overview_remediation_summary_shows_auto_and_manual_counts() {
-        let lines = remediation_lines(&sample_result(), 80);
+        let lines = remediation_lines(&sample_result(), 80, &Theme::preset(ThemePreset::Ansi));
 
         let text: String = lines
             .iter()
@@ -2657,7 +2888,7 @@ mod tests {
         assert!(content.contains("24.0.7"));
         assert!(content.contains("14d 3h 22m"));
         assert!(content.contains("0.42 0.31 0.27"));
-        assert!(content.contains("Fail2ban enabled (2 jails, 5 banned)"));
+        assert!(content.contains("Fail2ban enabled"));
         assert!(content.contains("Adapters"));
         assert!(content.contains("Lynis: available"));
         assert!(content.contains("Trivy: missing"));
@@ -2678,10 +2909,69 @@ mod tests {
         assert!(content.contains("Server Status"));
         assert!(content.contains("Scan Results"));
         assert!(content.contains("Security Scores"));
-        assert!(content.contains("Remediation Summary"));
+        assert!(content.contains("Action Queue"));
         assert!(content.contains("0.42 0.31 0.27"));
         assert!(!content.contains("########"));
         assert!(!content.contains("----------"));
+    }
+
+    #[test]
+    fn overview_renders_loading_copy_without_exposing_pending_state() {
+        let mut result = sample_result();
+        result
+            .metadata
+            .adapters
+            .insert(String::from("trivy"), AdapterStatus::Pending);
+        result
+            .metadata
+            .adapters
+            .insert(String::from("dockle"), AdapterStatus::Pending);
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(!content.contains("pending"));
+    }
+
+    #[test]
+    fn adapter_progress_label_uses_loading_copy_instead_of_pending() {
+        let mut result = sample_result();
+        result
+            .metadata
+            .adapters
+            .insert(String::from("trivy"), AdapterStatus::Pending);
+        result
+            .metadata
+            .adapters
+            .insert(String::from("dockle"), AdapterStatus::Pending);
+
+        let label = adapter_progress_label(&result, 0);
+
+        assert!(label.contains("loading adapters"));
+        assert!(label.contains("Trivy"));
+        assert!(label.contains("Dockle"));
+        assert!(!label.contains("pending"));
+    }
+
+    #[test]
+    fn theme_cycle_advances_to_next_preset() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        let initial = state.theme_preset;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), crossterm::event::KeyModifiers::NONE),
+        );
+
+        assert_eq!(state.theme_preset, initial.next());
+        assert_eq!(state.theme.preset, initial.next());
     }
 
     #[test]
