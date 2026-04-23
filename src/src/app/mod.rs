@@ -152,20 +152,34 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 return Err(AppError::TuiRequiresTerminal);
             }
 
-            let mut scan_result = scan::run_native(&config)?;
-            let adapter_updates =
-                scan::prepare_background_adapter_scan(&mut scan_result, config.adapter_selection);
+            loop {
+                let mut scan_result = scan::run_native(&config)?;
+                let adapter_updates = scan::prepare_background_adapter_scan(
+                    &mut scan_result,
+                    config.adapter_selection,
+                );
 
-            tui::run(&mut scan_result, move |scan_result| {
-                let mut updated = false;
+                let action = tui::run(&mut scan_result, move |scan_result| {
+                    let mut updated = false;
 
-                while let Ok(update) = adapter_updates.try_recv() {
-                    scan::apply_external_adapter_update(scan_result, update);
-                    updated = true;
+                    while let Ok(update) = adapter_updates.try_recv() {
+                        scan::apply_external_adapter_update(scan_result, update);
+                        updated = true;
+                    }
+
+                    updated
+                })?;
+
+                match action {
+                    tui::TuiAction::Exit => break,
+                    tui::TuiAction::TriggerFix(compose_path) => {
+                        let preview_plan = fix::preview(&compose_path, crate::fix::FixMode::Fix)?;
+                        if preview_plan.changed() && tui::run_fix_review(&preview_plan)? {
+                            fix::apply(&compose_path, crate::fix::FixMode::Fix)?;
+                        }
+                    }
                 }
-
-                updated
-            })?;
+            }
         }
         OutputMode::Json => {
             let scan_result = scan::run(&config)?;

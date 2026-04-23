@@ -271,7 +271,12 @@ enum FindingsLayoutMode {
     Narrow,
 }
 
-pub fn run<F>(scan_result: &mut ScanResult, mut refresh: F) -> io::Result<()>
+pub enum TuiAction {
+    Exit,
+    TriggerFix(std::path::PathBuf),
+}
+
+pub fn run<F>(scan_result: &mut ScanResult, mut refresh: F) -> io::Result<TuiAction>
 where
     F: FnMut(&mut ScanResult) -> bool,
 {
@@ -297,7 +302,7 @@ fn run_event_loop<F>(
     scan_result: &mut ScanResult,
     state: &mut AppState,
     refresh: &mut F,
-) -> io::Result<()>
+) -> io::Result<TuiAction>
 where
     F: FnMut(&mut ScanResult) -> bool,
 {
@@ -310,10 +315,10 @@ where
 
         if event::poll(Duration::from_millis(100))? {
             match event::read()? {
-                Event::Key(key)
-                    if key.kind == KeyEventKind::Press && handle_key(state, scan_result, key) =>
-                {
-                    return Ok(());
+                Event::Key(key) if key.kind == KeyEventKind::Press => {
+                    if let Some(action) = handle_key(state, scan_result, key) {
+                        return Ok(action);
+                    }
                 }
                 Event::Resize(_, _) => {}
                 _ => {}
@@ -322,109 +327,127 @@ where
     }
 }
 
-fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> bool {
+fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> Option<TuiAction> {
     match state.screen {
-        Screen::Overview => handle_overview_key(state, key),
+        Screen::Overview => handle_overview_key(state, scan_result, key),
         Screen::Findings => handle_findings_key(state, scan_result, key),
     }
 }
 
-fn handle_overview_key(state: &mut AppState, key: KeyEvent) -> bool {
+fn handle_overview_key(
+    state: &mut AppState,
+    scan_result: &ScanResult,
+    key: KeyEvent,
+) -> Option<TuiAction> {
     match key.code {
-        KeyCode::Char('q') | KeyCode::Esc => true,
+        KeyCode::Char('q') | KeyCode::Esc => Some(TuiAction::Exit),
         KeyCode::Char('g') => {
             let _ = i18n::cycle_persisted_locale();
-            false
+            None
         }
+        KeyCode::Char('f') => scan_result
+            .metadata
+            .compose_file
+            .clone()
+            .map(TuiAction::TriggerFix),
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
             state.open_findings();
-            false
+            None
         }
-        _ => false,
+        _ => None,
     }
 }
 
-fn handle_findings_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> bool {
+fn handle_findings_key(
+    state: &mut AppState,
+    scan_result: &ScanResult,
+    key: KeyEvent,
+) -> Option<TuiAction> {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
             state.return_to_overview();
-            false
+            None
         }
         KeyCode::Char('s') => {
             state.cycle_severity_filter();
-            false
+            None
         }
         KeyCode::Char('x') => {
             state.cycle_source_filter();
-            false
+            None
         }
         KeyCode::Char('m') => {
             state.cycle_remediation_filter();
-            false
+            None
         }
         KeyCode::Char('o') => {
             state.cycle_sort_mode();
-            false
+            None
         }
         KeyCode::Char('r') => {
             state.reset_filters_and_sort();
-            false
+            None
         }
         KeyCode::Char('g') => {
             let _ = i18n::cycle_persisted_locale();
-            false
+            None
         }
+        KeyCode::Char('f') => scan_result
+            .metadata
+            .compose_file
+            .clone()
+            .map(TuiAction::TriggerFix),
         KeyCode::Char('1') => {
             state.jump_to_severity(scan_result, Severity::Critical);
-            false
+            None
         }
         KeyCode::Char('2') => {
             state.jump_to_severity(scan_result, Severity::High);
-            false
+            None
         }
         KeyCode::Char('3') => {
             state.jump_to_severity(scan_result, Severity::Medium);
-            false
+            None
         }
         KeyCode::Char('4') => {
             state.jump_to_severity(scan_result, Severity::Low);
-            false
+            None
         }
         KeyCode::Tab => {
             state.toggle_focus();
-            false
+            None
         }
         KeyCode::Left | KeyCode::Char('h') => {
             state.focus_list();
-            false
+            None
         }
         KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
             state.focus_detail();
-            false
+            None
         }
         KeyCode::Down | KeyCode::Char('j') => {
             match state.findings_focus {
                 FindingsFocus::List => state.select_next(),
                 FindingsFocus::Detail => state.scroll_detail_down(1),
             }
-            false
+            None
         }
         KeyCode::Up | KeyCode::Char('k') => {
             match state.findings_focus {
                 FindingsFocus::List => state.select_previous(),
                 FindingsFocus::Detail => state.scroll_detail_up(1),
             }
-            false
+            None
         }
         KeyCode::PageDown => {
             state.scroll_detail_down(8);
-            false
+            None
         }
         KeyCode::PageUp => {
             state.scroll_detail_up(8);
-            false
+            None
         }
-        _ => false,
+        _ => None,
     }
 }
 
@@ -801,7 +824,7 @@ fn render_security_scores_panel(
 
 fn render_fix_paths_panel(frame: &mut ratatui::Frame<'_>, area: Rect, scan_result: &ScanResult) {
     let block = Block::default()
-        .title(t!("app.panel.fix_paths").into_owned())
+        .title(t!("app.panel.remediation_summary").into_owned())
         .borders(Borders::ALL)
         .border_style(panel_border_style());
     let inner = block.inner(area);
@@ -1281,38 +1304,65 @@ fn severity_total_lines(scan_result: &ScanResult, available_width: u16) -> Vec<L
     }
 }
 
-fn remediation_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
-    let text_width = available_width.saturating_sub(12).max(16) as usize;
-    let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
-    indices.sort_by(|left, right| {
-        compare_findings_for_remediation(
-            &scan_result.findings[*left],
-            &scan_result.findings[*right],
-        )
-    });
-
-    indices
-        .into_iter()
-        .take(4)
-        .filter_map(|index| scan_result.findings.get(index))
-        .map(|finding| {
-            let (label, style) = remediation_badge(finding.remediation);
-            let text = truncate_text(
-                if finding.how_to_fix.trim().is_empty() {
-                    &finding.title
-                } else {
-                    &finding.how_to_fix
-                },
-                text_width,
-            );
-
-            Line::from(vec![
-                Span::styled(format!("[{}]", label), style.add_modifier(Modifier::BOLD)),
-                Span::raw("  "),
-                Span::raw(text),
-            ])
+fn remediation_lines(scan_result: &ScanResult, _available_width: u16) -> Vec<Line<'static>> {
+    let auto_fixable_count = scan_result
+        .findings
+        .iter()
+        .filter(|f| {
+            matches!(
+                f.remediation,
+                crate::domain::RemediationKind::Safe | crate::domain::RemediationKind::Guided
+            )
         })
-        .collect()
+        .count();
+
+    let manual_count = scan_result.findings.len() - auto_fixable_count;
+
+    let mut lines = Vec::new();
+
+    if auto_fixable_count > 0 {
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", t!("remediation.auto_fixable").into_owned()),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(
+                t!(
+                    "app.result.auto_fixable_summary",
+                    count = auto_fixable_count
+                )
+                .into_owned(),
+            ),
+        ]));
+    }
+
+    if manual_count > 0 {
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", t!("remediation.manual").into_owned()),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(t!("app.result.manual_summary", count = manual_count).into_owned()),
+        ]));
+    }
+
+    if auto_fixable_count == 0 && manual_count == 0 {
+        lines.push(Line::raw(
+            t!("app.result.no_remediation_needed").into_owned(),
+        ));
+    } else if auto_fixable_count > 0 {
+        lines.push(Line::raw(""));
+        lines.push(Line::styled(
+            t!("app.hint.press_f_to_fix").into_owned(),
+            Style::default().fg(Color::Green),
+        ));
+    }
+
+    lines
 }
 
 fn server_service_lines(scan_result: &ScanResult, available_width: u16) -> Vec<Line<'static>> {
@@ -1674,17 +1724,6 @@ fn compare_findings(left: &Finding, right: &Finding, sort_mode: FindingSortMode)
     }
 }
 
-fn compare_findings_for_remediation(left: &Finding, right: &Finding) -> Ordering {
-    remediation_priority(left.remediation)
-        .cmp(&remediation_priority(right.remediation))
-        .then_with(|| severity_rank(left.severity).cmp(&severity_rank(right.severity)))
-        .then_with(|| left.title.cmp(&right.title))
-        .then_with(|| left.source.cmp(&right.source))
-        .then_with(|| left.scope.cmp(&right.scope))
-        .then_with(|| left.subject.cmp(&right.subject))
-        .then_with(|| left.id.cmp(&right.id))
-}
-
 fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationFilter) -> bool {
     match filter {
         RemediationFilter::All => true,
@@ -1692,14 +1731,6 @@ fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationF
         RemediationFilter::Safe => remediation == RemediationKind::Safe,
         RemediationFilter::Guided => remediation == RemediationKind::Guided,
         RemediationFilter::Manual => remediation == RemediationKind::None,
-    }
-}
-
-fn remediation_priority(remediation: RemediationKind) -> u8 {
-    match remediation {
-        RemediationKind::Safe => 0,
-        RemediationKind::Guided => 1,
-        RemediationKind::None => 2,
     }
 }
 
@@ -2045,23 +2076,6 @@ fn scope_label(scope: Scope) -> String {
     }
 }
 
-fn remediation_badge(remediation: RemediationKind) -> (String, Style) {
-    match remediation {
-        RemediationKind::Safe => (
-            remediation_badge_text(remediation),
-            Style::default().fg(Color::Green),
-        ),
-        RemediationKind::Guided => (
-            remediation_badge_text(remediation),
-            Style::default().fg(Color::Yellow),
-        ),
-        RemediationKind::None => (
-            remediation_badge_text(remediation),
-            Style::default().fg(Color::Blue),
-        ),
-    }
-}
-
 fn remediation_badge_text(remediation: RemediationKind) -> String {
     match remediation {
         RemediationKind::Safe => t!("app.finding.remediation_badge.safe").into_owned(),
@@ -2272,71 +2286,18 @@ mod tests {
         result
     }
 
-    fn remediation_priority_result() -> ScanResult {
-        ScanResult {
-            findings: vec![
-                Finding {
-                    id: String::from("manual.critical"),
-                    axis: Axis::SensitiveData,
-                    severity: Severity::Critical,
-                    scope: Scope::Service,
-                    source: Source::NativeCompose,
-                    subject: String::from("critical-manual"),
-                    related_service: Some(String::from("critical-manual")),
-                    title: String::from("Critical manual finding"),
-                    description: String::from("Manual-only remediation."),
-                    why_risky: String::from("High risk remains."),
-                    how_to_fix: String::from("Manual review required."),
-                    evidence: BTreeMap::new(),
-                    remediation: RemediationKind::None,
-                },
-                Finding {
-                    id: String::from("safe.low"),
-                    axis: Axis::UpdateSupplyChainRisk,
-                    severity: Severity::Low,
-                    scope: Scope::Service,
-                    source: Source::NativeCompose,
-                    subject: String::from("safe-finding"),
-                    related_service: Some(String::from("safe-finding")),
-                    title: String::from("Safe fix finding"),
-                    description: String::from("Safe remediation is available."),
-                    why_risky: String::from("Version drift remains."),
-                    how_to_fix: String::from("Apply the safe fix."),
-                    evidence: BTreeMap::new(),
-                    remediation: RemediationKind::Safe,
-                },
-                Finding {
-                    id: String::from("guided.high"),
-                    axis: Axis::UnnecessaryExposure,
-                    severity: Severity::High,
-                    scope: Scope::Service,
-                    source: Source::NativeCompose,
-                    subject: String::from("guided-finding"),
-                    related_service: Some(String::from("guided-finding")),
-                    title: String::from("Guided fix finding"),
-                    description: String::from("Guided remediation is available."),
-                    why_risky: String::from("Exposure remains."),
-                    how_to_fix: String::from("Review the guided fix."),
-                    evidence: BTreeMap::new(),
-                    remediation: RemediationKind::Guided,
-                },
-            ],
-            ..ScanResult::default()
-        }
-    }
-
     #[test]
     fn overview_navigation_opens_findings() {
         let result = sample_result();
         let mut state = AppState::new(&result);
 
-        let should_exit = handle_key(
+        let action = handle_key(
             &mut state,
             &result,
             KeyEvent::new(KeyCode::Enter, crossterm::event::KeyModifiers::NONE),
         );
 
-        assert!(!should_exit);
+        assert!(action.is_none());
         assert_eq!(state.screen, Screen::Findings);
         assert_eq!(state.findings_focus, FindingsFocus::List);
     }
@@ -2533,25 +2494,28 @@ mod tests {
         assert!(content.contains("Server Status"));
         assert!(content.contains("Scan Results"));
         assert!(content.contains("Security Scores"));
-        assert!(content.contains("Fix Paths"));
+        assert!(content.contains("Remediation Summary"));
         assert!(content.contains("61"));
         assert!(content.contains("adminer"));
         assert!(content.contains("home-server"));
         assert!(content.contains("24.0.7"));
         assert!(content.contains("0.42 0.31 0.27"));
-        assert!(content.contains("GUIDED"));
+        assert!(content.contains("AUTO"));
         assert!(!content.contains("########"));
         assert!(!content.contains("----------"));
     }
 
     #[test]
-    fn overview_fix_paths_prioritize_fixable_findings() {
-        let lines = remediation_lines(&remediation_priority_result(), 80);
+    fn overview_remediation_summary_shows_auto_and_manual_counts() {
+        let lines = remediation_lines(&sample_result(), 80);
 
-        assert!(!lines.is_empty());
-        assert!(line_to_string(&lines[0]).contains("[SAFE]"));
-        assert!(line_to_string(&lines[1]).contains("[GUIDED]"));
-        assert!(line_to_string(&lines[2]).contains("[MANUAL]"));
+        let text: String = lines
+            .iter()
+            .map(|l| line_to_string(l))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(text.contains("AUTO"));
+        assert!(text.contains("MANUAL"));
     }
 
     #[test]
@@ -2591,7 +2555,7 @@ mod tests {
         assert!(content.contains("Server Status"));
         assert!(content.contains("Scan Results"));
         assert!(content.contains("Security Scores"));
-        assert!(content.contains("Fix Paths"));
+        assert!(content.contains("Remediation Summary"));
         assert!(content.contains("0.42 0.31 0.27"));
         assert!(!content.contains("########"));
         assert!(!content.contains("----------"));
