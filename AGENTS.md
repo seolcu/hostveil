@@ -88,7 +88,7 @@ All planned work is tracked as GitHub Issues organized into Milestones. **AI age
 - Closed: #3 Rust TUI Implementation
 - Closed: #5 v0.2 Hardening and UX
 - Closed: #8 v0.5.0 Scanner Control and Reliability
-- Active: #167 v0.6.0 Expanded Remediation and UX Polish
+- Closed: #167 v0.6.0 Expanded Remediation and UX Polish
 
 **How AI agents should use Issues:**
 

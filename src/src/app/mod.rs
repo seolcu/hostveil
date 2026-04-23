@@ -1,5 +1,5 @@
 mod config;
-mod scan;
+pub(crate) mod scan;
 mod setup;
 
 pub use config::{AdapterSelection, AppConfig, OutputMode, ScanAdapter, SetupConfig, SetupTool};
