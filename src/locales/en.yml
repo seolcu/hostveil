@@ -318,6 +318,8 @@ app:
     guided_vaultwarden_signups: "%{service}: set SIGNUPS_ALLOWED to false"
     guided_gitea_externalize_secrets: "%{service}: replace inline Gitea security secrets with environment placeholders"
     guided_nginx_stable: "%{service}: review and pin nginx to nginx:stable"
+    guided_non_root_user: "%{service}: configure an explicit non-root user (1000:1000)"
+    safe_mount_readonly: "%{service}: mount sensitive path %{path} as read-only"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"

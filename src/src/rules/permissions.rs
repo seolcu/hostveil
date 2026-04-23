@@ -40,7 +40,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
         }
 
         match service.user.as_deref() {
-            None => findings.push(service_finding(
+            None => findings.push(service_finding_with_remediation(
                 "permissions.implicit_root",
                 Axis::ExcessivePermissions,
                 Severity::Medium,
@@ -56,6 +56,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                     how_to_fix: t!("finding.permissions.implicit_root.fix").into_owned(),
                 },
                 BTreeMap::new(),
+                RemediationKind::Guided,
             )),
             Some(user) if ROOT_USERS.contains(&user.trim().to_lowercase().as_str()) => {
                 findings.push(service_finding(
@@ -104,7 +105,11 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                 continue;
             };
 
-            findings.push(service_finding(
+            if mount.mode.as_deref() == Some("ro") {
+                continue;
+            }
+
+            findings.push(service_finding_with_remediation(
                 "permissions.sensitive_mount",
                 Axis::ExcessivePermissions,
                 mount_severity(sensitive_path),
@@ -121,6 +126,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                     how_to_fix: t!("finding.permissions.sensitive_mount.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), sensitive_path.to_owned())]),
+                RemediationKind::Safe,
             ));
         }
     }

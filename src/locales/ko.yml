@@ -318,6 +318,8 @@ app:
     guided_vaultwarden_signups: "%{service}: SIGNUPS_ALLOWED를 false로 설정"
     guided_gitea_externalize_secrets: "%{service}: Gitea 보안 시크릿의 inline 값을 환경 변수 플레이스홀더로 교체"
     guided_nginx_stable: "%{service}: nginx를 nginx:stable로 고정하도록 검토"
+    guided_non_root_user: "%{service}: 명시적인 non-root 사용자(1000:1000) 구성"
+    safe_mount_readonly: "%{service}: 민감한 경로 %{path}를 읽기 전용으로 마운트"
 axis:
   sensitive_data: "민감 데이터"
   permissions: "권한"
