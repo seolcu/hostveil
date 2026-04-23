@@ -6,9 +6,12 @@ fn main() -> ExitCode {
     let bin_args: Vec<String> = args.into_iter().skip(1).collect();
 
     let is_user_mode = bin_args.iter().any(|arg| arg == "--user-mode");
-    let is_passive = bin_args.iter().any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V");
+    let is_passive = bin_args
+        .iter()
+        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V");
 
-    if !is_user_mode && !is_passive
+    if !is_user_mode
+        && !is_passive
         && let Ok(output) = Command::new("id").arg("-u").output()
         && let Ok(uid_str) = String::from_utf8(output.stdout)
         && uid_str.trim() != "0"
