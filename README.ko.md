@@ -13,9 +13,11 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 ## 주요 기능
 
-- **보안 개요 대시보드** — 카테고리별 세부 점수 및 심각도 카운트를 포함한 전체 점수
+- **보안 개요 대시보드** — 전체 보안 상태, 축별 점수, 그룹화된 조치 대기열, 어댑터 활동을 한 화면에 표시
 - **셀프호스팅 맥락 기반 기본 점검** — 각 서비스의 데이터 위치, Compose 구조, 운영 위험을 반영한 점검
 - **선택적 외부 스캐너 어댑터** — Trivy, Dockle, Lynis 같은 기존 도구 결과를 런타임 필수 의존성으로 강제하지 않고 통합
+- **보이는 백그라운드 진행 상태** — 실행 시 자동 업데이트 점검과 TUI 내부 어댑터 로딩 상태를 숨기지 않고 표시
+- **테마 프리셋** — 터미널 기본 ANSI와 Catppuccin, Nord, Tokyo Night, Gruvbox 팔레트를 TUI에서 전환 가능
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
 - **Compose 중심 수정 흐름** — `quick-fix`와 `fix`는 미리보기와 백업이 가능한 Compose 변경에 집중
 
@@ -126,6 +128,8 @@ hostveil setup
 
 터미널 호환성을 위해 기본 locale은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하고, TUI 안에서는 `g` 키로 영어/한국어를 전환할 수 있습니다.
 
+설치된 래퍼 경로에서 자동 업데이트 점검이 실행될 때는 이제 짧은 상태 줄을 출력하므로, 느린 업데이트 확인이 멈춘 것처럼 보이지 않습니다.
+
 대화형 setup은 입력 전에 선택 조작 안내를 먼저 보여주며, 확인 프롬프트는 기본값이 `Y/n` 형식입니다.
 
 무인 설치에서는 bootstrap 단계에서 설치할 도구를 명시할 수 있습니다.
@@ -167,6 +171,20 @@ HOSTVEIL_ADAPTERS=trivy,dockle hostveil --json
 ```
 
 선택형 scanner adapter의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle`처럼 지정합니다.
+
+현재 TUI 주요 조작:
+
+- `Enter`: 개요에서 Findings 화면 열기
+- `g`: locale 전환 및 설정 저장
+- `t`: 테마 프리셋 전환 및 설정 저장
+- `f`: Compose 수정이 가능할 때 remediation 흐름 열기
+
+현재 overview 화면 규칙:
+
+- `Security Scores`는 어댑터 로딩이 끝나면 최종 점수를 보여줍니다
+- 어댑터가 아직 실행 중이면 점수 패널에서 진행 상태와 네이티브 기준 점수를 분리해 보여줍니다
+- `Action Queue`는 서비스 또는 호스트 단위로 묶은 다음 조치 요약입니다
+- `Findings`는 근거, 위험 설명, 수정 방법까지 포함한 항목별 상세 화면입니다
 
 파일을 쓰기 전에 Compose 수정 계획을 미리 볼 수 있습니다.
 
@@ -219,13 +237,16 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - `src/` 아래 활성 Rust crate 골격 생성 완료
 - `rust-toolchain.toml`로 stable toolchain 고정
 - `ratatui` + `crossterm` 기반 TUI 부트스트랩과 `rust-i18n` 연결 완료
+- 좁은 터미널, 중간 폭, 넓은 화면을 나누는 responsive overview/findings 레이아웃 적용
 - 영어 기본값 + 명시적 locale override(`--locale`, `HOSTVEIL_LOCALE`) + TUI 내 `g` 전환 경로 추가
+- ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox 테마 프리셋과 설정 저장 추가
 - 수정 가능한 finding을 빠르게 검토할 수 있는 remediation-first TUI triage 추가
 - 일반화된 Rust scan result 모델과 최소 JSON export 경로 동작
 - override 병합과 정규화를 포함한 Compose parser 포팅 및 parity 테스트 추가
 - 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 일부 포팅하고 fixture 테스트로 검증
 - `--host-root`를 통한 SSH posture 및 Docker host exposure 기본 점검 시작
 - Trivy, Dockle, Lynis optional adapter가 공통 finding pipeline에 통합됨
+- external coverage가 로딩 중일 때 TUI에 어댑터별 진행 상태를 표시
 - root가 아닌 live host scan에서는 데스크톱 인증창을 피하기 위해 Lynis 실행을 건너뜀
 - 인자 없는 live scan이 host 스캔 + Docker 기반 Compose 자동 발견 + 현재 디렉터리 fallback으로 동작
 
