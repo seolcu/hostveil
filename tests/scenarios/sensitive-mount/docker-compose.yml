@@ -1,0 +1,5 @@
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - /etc/shadow:/mnt/shadow

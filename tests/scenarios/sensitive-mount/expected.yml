@@ -1,0 +1,6 @@
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - /etc/shadow:/mnt/shadow:ro
+    user: 1000:1000
