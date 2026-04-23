@@ -171,7 +171,7 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length((summary_lines_count as u16 + 2).min(15).max(5)),
+            Constraint::Length((summary_lines_count as u16 + 2).clamp(5, 15)),
             Constraint::Min(5),
             Constraint::Length(3),
         ])

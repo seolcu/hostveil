@@ -167,10 +167,10 @@ fn findings_by_service(
     let mut grouped = BTreeMap::<String, BTreeSet<String>>::new();
 
     for finding in findings {
-        if let Some(filter) = filter {
-            if !filter.contains(&finding.id) {
-                continue;
-            }
+        if let Some(filter) = filter
+            && !filter.contains(&finding.id)
+        {
+            continue;
         }
 
         let Some(service) = finding.related_service.as_ref() else {
@@ -1225,7 +1225,8 @@ mod tests {
     fn previews_quick_fix_changes_for_mixed_stack_fixture() {
         let path = fixture("mixed-stack");
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1237,7 +1238,8 @@ mod tests {
     fn previews_quick_fix_noop_for_hardened_stack_fixture() {
         let path = fixture("hardened-stack.yml");
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1275,8 +1277,10 @@ mod tests {
             .expect("fixture root should exist")
             .to_path_buf();
 
-        let first = apply(&compose_path, FixMode::QuickFix, None).expect("first apply should succeed");
-        let second = apply(&compose_path, FixMode::QuickFix, None).expect("second apply should succeed");
+        let first =
+            apply(&compose_path, FixMode::QuickFix, None).expect("first apply should succeed");
+        let second =
+            apply(&compose_path, FixMode::QuickFix, None).expect("second apply should succeed");
 
         assert!(first.changed());
         assert_eq!(first.safe_applied.len(), 2);
@@ -1308,7 +1312,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1359,7 +1364,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 1);
         assert!(plan.guided_applied.is_empty());
@@ -1383,7 +1389,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 2);
         assert!(plan.guided_applied.is_empty());
@@ -1492,7 +1499,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 7);
         assert!(plan.guided_applied.is_empty());
@@ -1543,7 +1551,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1569,7 +1578,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.safe_applied.is_empty());
         assert!(plan.guided_applied.is_empty());
@@ -1669,7 +1679,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
         assert!(!plan.diff_preview.contains("-      - PUID=1000"));
         assert!(!plan.diff_preview.contains("+    - PUID=1000"));
         assert!(
@@ -1705,7 +1716,8 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.diff_preview.contains("OVERWRITEPROTOCOL: 'https'"));
         assert!(
@@ -1764,12 +1776,14 @@ mod tests {
                 "    ports:\n",
                 "      - \"80:80\"\n"
             ),
-        ).expect("fixture should be written");
-        
+        )
+        .expect("fixture should be written");
+
         // This has both updates.latest_tag (safe) and permissions.privileged (guided)
         let only_latest_tag = Some(vec!["updates.latest_tag".to_string()]);
-        let plan = preview(&path, FixMode::Fix, only_latest_tag.as_deref()).expect("preview should succeed");
-        
+        let plan = preview(&path, FixMode::Fix, only_latest_tag.as_deref())
+            .expect("preview should succeed");
+
         assert_eq!(plan.safe_applied.len(), 1);
         assert_eq!(plan.guided_applied.len(), 0);
         assert!(plan.diff_preview.contains("image: nginx:stable"));
@@ -1795,11 +1809,15 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
 
         assert_eq!(plan.safe_applied.len(), 3);
         assert!(plan.diff_preview.contains("/etc/shadow:/etc/shadow:ro"));
-        assert!(plan.diff_preview.contains("/var/run/docker.sock:/var/run/docker.sock:ro"));
+        assert!(
+            plan.diff_preview
+                .contains("/var/run/docker.sock:/var/run/docker.sock:ro")
+        );
         assert!(plan.diff_preview.contains("read_only: true"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");

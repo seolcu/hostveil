@@ -378,12 +378,16 @@ fn handle_overview_key(
             let _ = i18n::cycle_persisted_locale();
             None
         }
-        KeyCode::Char('f') => scan_result.metadata.compose_file.clone().map(|path| {
-            TuiAction::TriggerFix {
-                compose_file: path,
-                finding_id: None,
-            }
-        }),
+        KeyCode::Char('f') => {
+            scan_result
+                .metadata
+                .compose_file
+                .clone()
+                .map(|path| TuiAction::TriggerFix {
+                    compose_file: path,
+                    finding_id: None,
+                })
+        }
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
             state.open_findings();
             None
@@ -430,14 +434,18 @@ fn handle_findings_key(
             let _ = i18n::cycle_persisted_locale();
             None
         }
-        KeyCode::Char('f') => scan_result.metadata.compose_file.clone().map(|path| {
-            TuiAction::TriggerFix {
-                compose_file: path,
-                finding_id: state
-                    .selected_finding(scan_result)
-                    .map(|finding| finding.id.clone()),
-            }
-        }),
+        KeyCode::Char('f') => {
+            scan_result
+                .metadata
+                .compose_file
+                .clone()
+                .map(|path| TuiAction::TriggerFix {
+                    compose_file: path,
+                    finding_id: state
+                        .selected_finding(scan_result)
+                        .map(|finding| finding.id.clone()),
+                })
+        }
         KeyCode::Char('1') => {
             state.jump_to_severity(scan_result, Severity::Critical);
             None
@@ -706,9 +714,7 @@ fn header_banner() -> Paragraph<'static> {
         spans.push(Span::raw(" | "));
         spans.push(Span::styled(
             "ROOT",
-            Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         ));
     }
 
