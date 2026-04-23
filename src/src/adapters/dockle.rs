@@ -523,6 +523,44 @@ JSON
     }
 
     #[test]
+    fn marks_adapter_failed_when_all_image_scans_timeout() {
+        rust_i18n::set_locale("en");
+
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'dockle test\n'
+  exit 0
+fi
+sleep 2
+exit 0
+"#,
+        );
+        let command = command.display().to_string();
+        let services = vec![
+            ServiceSummary {
+                name: String::from("slow_one"),
+                image: Some(String::from("slow:1")),
+            },
+            ServiceSummary {
+                name: String::from("slow_two"),
+                image: Some(String::from("slow:2")),
+            },
+        ];
+
+        let output = scan_with_commands(&services, &command, &command, Duration::from_millis(50));
+
+        assert!(
+            matches!(output.status, AdapterStatus::Failed(ref msg) if msg.contains("timed out after"))
+        );
+        assert!(output.findings.is_empty());
+        assert_eq!(output.warnings.len(), 2);
+
+        let _ = fs::remove_file(command);
+    }
+
+    #[test]
     fn skips_when_no_image_targets_are_available() {
         let output = scan(&[]);
 

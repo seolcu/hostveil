@@ -1139,6 +1139,29 @@ mod tests {
     }
 
     #[test]
+    fn previews_fix_changes_for_mixed_stack_fixture() {
+        let path = fixture("mixed-stack");
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 2);
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
+        assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
+    }
+
+    #[test]
+    fn previews_fix_noop_for_hardened_stack_fixture() {
+        let path = fixture("hardened-stack.yml");
+
+        let plan = preview(&path, FixMode::Fix).expect("fix preview should succeed");
+
+        assert!(plan.safe_applied.is_empty());
+        assert!(plan.guided_applied.is_empty());
+        assert!(plan.diff_preview.is_empty());
+    }
+
+    #[test]
     fn apply_quick_fix_on_mixed_stack_fixture_is_idempotent() {
         let compose_path = copy_mixed_stack_fixture_to_temp("mixed-stack-apply-idempotent");
         let root = compose_path
