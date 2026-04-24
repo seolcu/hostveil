@@ -90,6 +90,14 @@ app:
     locale: "언어 전환"
     theme: "테마 전환"
     json: "JSON 내보내기"
+  tab:
+    overview: "개요"
+    findings: "발견 항목"
+    settings: "설정"
+  settings:
+    theme: "테마"
+    layout: "레이아웃"
+    locale: "언어"
   panel:
     status: "상태"
     hints: "힌트"
@@ -113,6 +121,7 @@ app:
     findings_list_active: "발견 항목 [리스트 포커스]"
     finding_detail: "상세"
     finding_detail_active: "상세 [상세 포커스]"
+    settings: "설정"
   overview:
     score_caption: "전체 보안 상태"
     findings_available: "발견 항목 %{count}개가 있습니다. 상세 보기를 열어 확인하세요."

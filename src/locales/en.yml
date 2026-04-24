@@ -90,6 +90,14 @@ app:
     locale: "switch locale"
     theme: "switch theme"
     json: "export JSON"
+  tab:
+    overview: "Overview"
+    findings: "Findings"
+    settings: "Settings"
+  settings:
+    theme: "Theme"
+    layout: "Layout"
+    locale: "Locale"
   panel:
     status: "Status"
     hints: "Hints"
@@ -113,6 +121,7 @@ app:
     findings_list_active: "Findings [list focus]"
     finding_detail: "Detail"
     finding_detail_active: "Detail [detail focus]"
+    settings: "Settings"
   overview:
     score_caption: "Overall posture"
     findings_available: "%{count} finding(s) available. Open the findings view for details."
