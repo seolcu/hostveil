@@ -40,6 +40,40 @@ hostveil/
 └── README.md         # English-first; README.ko.md is the Korean version
 ```
 
+## Development Environment
+
+The project provides containerized environments for safe testing without polluting the host or requiring host-level sudo.
+
+### `compose.dev.yml` — Multi-distro lab
+
+- `dev` service: Rust development container with writable workspace
+- Distro labs (`fedora-lab`, `rocky-lab`, `ubuntu-lab`, `debian-lab`): systemd-based containers for testing `hostveil setup` and host scans across distributions
+- Managed via `scripts/dev-env.sh`:
+  - `scripts/dev-env.sh up dev` — start dev container
+  - `scripts/dev-env.sh shell dev` — enter dev container shell
+  - `scripts/dev-env.sh up fedora-lab` — start a distro lab
+  - `scripts/dev-env.sh setup ubuntu-lab lynis,trivy` — run setup in a lab
+  - `scripts/dev-env.sh scan rocky-lab` — run a JSON scan in a lab
+  - `scripts/dev-env.sh down` — tear everything down
+
+### `docker-compose.lab.yml` — Web TUI observation
+
+- `lab` service: ttyd-based container exposing hostveil TUI on `http://localhost:7681`
+- `vulnerable-service`: nginx with intentional misconfigurations for scanning
+- Build artifacts are persisted in the `lab-target` volume so you can build inside the container despite the read-only source mount
+
+### Test scripts (CI-facing)
+
+- `scripts/smoke-test.sh target/debug/hostveil` — quick integration tests
+- `scripts/test-install-script.sh target/debug/hostveil` — installer lifecycle tests
+- `scripts/verify-fixes.sh target/debug/hostveil` — fix scenario validation against `tests/scenarios/`
+
+### Fix scenarios
+
+- `tests/scenarios/sensitive-mount/` — validates sensitive mount detection and remediation
+- `tests/scenarios/implicit-root/` — validates implicit root detection and remediation
+- Each scenario contains a `docker-compose.yml` (input) and `expected.yml` (expected output after fix)
+
 ## Conventions
 
 **Git:**

@@ -5,6 +5,7 @@ services:
       dockerfile: docker/lab/Dockerfile
     volumes:
       - .:/workspace:ro
+      - lab-target:/workspace/target
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "127.0.0.1:7681:7681"
@@ -20,3 +21,6 @@ services:
     volumes:
       - /etc/shadow:/mnt/shadow:ro
     user: 1000:1000
+
+volumes:
+  lab-target:
