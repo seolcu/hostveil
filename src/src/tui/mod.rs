@@ -1151,36 +1151,37 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(4),
-            Constraint::Min(10),
+            Constraint::Length(2),
+            Constraint::Min(8),
             Constraint::Length(3),
         ])
         .split(frame.area());
 
     header_banner(frame, state, layout[0]);
 
+    frame.render_widget(
+        findings_header(scan_result, state, layout[1].width, mode, &state.theme),
+        layout[1],
+    );
+
     let content = match mode {
         FindingsLayoutMode::SideBySide => Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(44), Constraint::Percentage(56)])
-            .split(layout[1]),
+            .split(layout[2]),
         FindingsLayoutMode::Stacked => Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
-            .split(layout[1]),
+            .split(layout[2]),
         FindingsLayoutMode::Narrow => Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
-            .split(layout[1]),
+            .split(layout[2]),
         FindingsLayoutMode::CompactList => Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-            .split(layout[1]),
+            .split(layout[2]),
     };
-
-    frame.render_widget(
-        findings_header(scan_result, state, layout[0].width, mode, &state.theme),
-        layout[0],
-    );
 
     let mut list_state = ListState::default();
     let viewport_items = content[0].height.saturating_sub(2).max(1) as usize;
@@ -1280,8 +1281,8 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         state,
     );
     frame.render_widget(
-        findings_footer(state.findings_focus, layout[2].width, mode, &state.theme),
-        layout[2],
+        findings_footer(state.findings_focus, layout[3].width, mode, &state.theme),
+        layout[3],
     );
 }
 
@@ -1469,10 +1470,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
 
     // Dim the background behind the modal
     frame.render_widget(
-        Block::default().style(theme.surface.add_modifier(Modifier::DIM)),
+        Block::default().style(theme.muted),
         area,
     );
     frame.render_widget(Clear, modal);
+
     let block = Block::default()
         .title(format!(" {} ", t!("app.panel.settings")))
         .borders(Borders::ALL)
@@ -1484,33 +1486,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Header/Tabs
+            Constraint::Length(1), // Spacer
             Constraint::Min(1),    // Settings
             Constraint::Length(1), // Footer
         ])
         .split(inner);
-
-    let categories = [
-        t!("app.settings.category_appearance").into_owned(),
-        t!("app.settings.category_localization").into_owned(),
-    ];
-    let cat_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(layout[0]);
-
-    for (i, cat) in categories.iter().enumerate() {
-        frame.render_widget(
-            Paragraph::new(cat.to_string())
-                .alignment(Alignment::Center)
-                .block(
-                    Block::default()
-                        .borders(Borders::BOTTOM)
-                        .border_style(if i == 0 { theme.title } else { theme.border }),
-                ),
-            cat_layout[i],
-        );
-    }
 
     let current_locale = i18n::current_locale();
     let rows = [
@@ -1907,17 +1887,10 @@ fn findings_header(
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let filters = finding_filter_summary(state);
-    let text = if state.finding_count() == 0 {
-        let tabs = format!(
-            "[1] {} | [2] {} | [3] {}",
-            t!("app.tab.overview").into_owned(),
-            t!("app.tab.findings").into_owned(),
-            t!("app.tab.settings").into_owned()
-        );
+    let status_text = if state.finding_count() == 0 {
         format!(
-            "{} | {} | {}",
+            "{} | {}",
             t!("app.finding.empty_status").into_owned(),
-            tabs,
             filters
         )
     } else if mode == FindingsLayoutMode::SideBySide {
@@ -1939,18 +1912,14 @@ fn findings_header(
         )
     };
 
-    Paragraph::new(Text::from(vec![Line::raw(
-        wrap_text_to_lines(&text, inner_width).join(" "),
-    )]))
-    .block(
-        Block::default()
-            .borders(Borders::BOTTOM)
-            .border_style(theme.border)
-            .title(t!("app.panel.findings_header").into_owned())
-            .title_style(theme.title),
-    )
+    let title_text = t!("app.panel.findings_header").into_owned();
+    let wrapped_status = wrap_text_to_lines(&status_text, inner_width).join(" ");
+
+    Paragraph::new(Text::from(vec![
+        Line::styled(title_text, theme.title),
+        Line::styled(wrapped_status, theme.base),
+    ]))
     .style(theme.surface)
-    .wrap(Wrap { trim: true })
 }
 
 fn findings_footer(
@@ -3947,7 +3916,7 @@ mod tests {
         let result = sample_result();
         let mut state = AppState::new(&result);
         state.open_findings();
-        let mut terminal = Terminal::new(TestBackend::new(60, 20)).expect("terminal should build");
+        let mut terminal = Terminal::new(TestBackend::new(60, 24)).expect("terminal should build");
 
         terminal
             .draw(|frame| render(frame, &result, &mut state))
@@ -4104,8 +4073,9 @@ mod tests {
             .draw(|frame| render(frame, &result, &mut state))
             .expect("settings modal should render");
         let content = buffer_to_string(terminal.backend());
-        assert!(content.contains("Appearance"));
-        assert!(content.contains("Localization"));
+        assert!(content.contains("Theme"));
+        assert!(content.contains("Layout"));
+        assert!(content.contains("Locale"));
 
         let (rect, _) = state
             .hit_boxes
