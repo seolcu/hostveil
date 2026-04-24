@@ -362,30 +362,9 @@ impl AppConfig {
 
     fn parse_upgrade(args: impl IntoIterator<Item = String>) -> Result<Self, AppError> {
         let mut config = Self::default();
-        let mut args = args.into_iter();
 
-        while let Some(argument) = args.next() {
+        for argument in args {
             match argument.as_str() {
-                "--version" => {
-                    args.next()
-                        .ok_or(AppError::MissingArgumentValue("--version"))?;
-                }
-                _ if argument.starts_with("--version=") => {
-                    let value = argument.trim_start_matches("--version=");
-                    if value.is_empty() {
-                        return Err(AppError::MissingArgumentValue("--version"));
-                    }
-                }
-                "--channel" => {
-                    args.next()
-                        .ok_or(AppError::MissingArgumentValue("--channel"))?;
-                }
-                _ if argument.starts_with("--channel=") => {
-                    let value = argument.trim_start_matches("--channel=");
-                    if value.is_empty() {
-                        return Err(AppError::MissingArgumentValue("--channel"));
-                    }
-                }
                 "-h" | "--help" => config.show_help = true,
                 _ => return Err(AppError::UnknownArgument(argument)),
             }
@@ -781,13 +760,8 @@ mod tests {
 
     #[test]
     fn parses_upgrade_lifecycle_command() {
-        let config = AppConfig::parse([
-            String::from("upgrade"),
-            String::from("--channel"),
-            String::from("stable"),
-            String::from("--version=v0.1.0"),
-        ])
-        .expect("upgrade command should parse");
+        let config = AppConfig::parse([String::from("upgrade")])
+            .expect("upgrade command should parse");
 
         assert_eq!(config.lifecycle_command, Some(LifecycleCommand::Upgrade));
     }
