@@ -74,6 +74,18 @@ pub enum Source {
     Dockle,
 }
 
+impl Source {
+    pub const fn as_key(self) -> &'static str {
+        match self {
+            Self::NativeCompose => "native_compose",
+            Self::NativeHost => "native_host",
+            Self::Trivy => "trivy",
+            Self::Lynis => "lynis",
+            Self::Dockle => "dockle",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RemediationKind {

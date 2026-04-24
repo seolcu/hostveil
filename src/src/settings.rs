@@ -15,6 +15,11 @@ pub struct AppSettings {
     pub locale: Option<String>,
     pub theme: Option<String>,
     pub layout: Option<String>,
+    pub severity_filter: Option<String>,
+    pub source_filter: Option<String>,
+    pub service_filter: Option<String>,
+    pub remediation_filter: Option<String>,
+    pub sort_mode: Option<String>,
 }
 
 pub fn load() -> AppSettings {
@@ -39,6 +44,22 @@ pub fn persist_theme(theme: &str) -> io::Result<()> {
 pub fn persist_layout(layout: &str) -> io::Result<()> {
     let mut settings = load();
     settings.layout = Some(layout.to_owned());
+    save(&settings)
+}
+
+pub fn persist_findings_view(
+    severity_filter: Option<&str>,
+    source_filter: Option<&str>,
+    service_filter: Option<&str>,
+    remediation_filter: Option<&str>,
+    sort_mode: Option<&str>,
+) -> io::Result<()> {
+    let mut settings = load();
+    settings.severity_filter = severity_filter.map(str::to_owned);
+    settings.source_filter = source_filter.map(str::to_owned);
+    settings.service_filter = service_filter.map(str::to_owned);
+    settings.remediation_filter = remediation_filter.map(str::to_owned);
+    settings.sort_mode = sort_mode.map(str::to_owned);
     save(&settings)
 }
 
@@ -99,7 +120,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppSettings, load_from_path, resolve_config_dir, save_to_path};
+    use super::{load_from_path, resolve_config_dir, save_to_path, AppSettings};
 
     fn temp_settings_path(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -149,6 +170,7 @@ mod tests {
             locale: Some(String::from("ko")),
             theme: Some(String::from("nord")),
             layout: Some(String::from("balanced")),
+            ..Default::default()
         };
 
         save_to_path(&path, &settings).expect("settings should save");
@@ -169,6 +191,7 @@ mod tests {
             locale: Some(String::from("en")),
             theme: Some(String::from("tokyo_night")),
             layout: Some(String::from("wide")),
+            ..Default::default()
         };
 
         save_to_path(&path, &settings).expect("settings should save");

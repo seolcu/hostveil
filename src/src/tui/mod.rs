@@ -203,11 +203,25 @@ impl AppState {
         let settings = settings::AppSettings::default();
         #[cfg(not(test))]
         let settings = settings::load();
-        let severity_filter = None;
-        let source_filter = None;
-        let service_filter = None;
-        let remediation_filter = RemediationFilter::All;
-        let sort_mode = FindingSortMode::Severity;
+        let severity_filter = settings
+            .severity_filter
+            .as_deref()
+            .and_then(Self::parse_severity_filter);
+        let source_filter = settings
+            .source_filter
+            .as_deref()
+            .and_then(Self::parse_source_filter);
+        let service_filter = settings.service_filter.clone();
+        let remediation_filter = settings
+            .remediation_filter
+            .as_deref()
+            .and_then(Self::parse_remediation_filter)
+            .unwrap_or(RemediationFilter::All);
+        let sort_mode = settings
+            .sort_mode
+            .as_deref()
+            .and_then(Self::parse_sort_mode)
+            .unwrap_or(FindingSortMode::Severity);
         let theme_preset = settings
             .theme
             .as_deref()
@@ -240,7 +254,7 @@ impl AppState {
                 severity_filter,
                 source_filter,
                 remediation_filter,
-                service_filter,
+                service_filter.as_deref(),
                 sort_mode,
             ),
             severity_filter,
@@ -435,6 +449,7 @@ impl AppState {
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn cycle_source_filter(&mut self) {
@@ -448,6 +463,7 @@ impl AppState {
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn cycle_service_filter(&mut self, scan_result: &ScanResult) {
@@ -472,6 +488,7 @@ impl AppState {
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn cycle_sort_mode(&mut self) {
@@ -482,6 +499,7 @@ impl AppState {
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn cycle_remediation_filter(&mut self) {
@@ -494,6 +512,7 @@ impl AppState {
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn reset_filters_and_sort(&mut self) {
@@ -504,6 +523,7 @@ impl AppState {
         self.sort_mode = FindingSortMode::Severity;
         self.selected_index = 0;
         self.detail_scroll = 0;
+        self.persist_findings_view();
     }
 
     fn jump_to_severity(&mut self, scan_result: &ScanResult, severity: Severity) {
@@ -518,6 +538,68 @@ impl AppState {
             self.selected_index = position;
             self.detail_scroll = 0;
         }
+    }
+
+    fn parse_severity_filter(value: &str) -> Option<Severity> {
+        match value {
+            "critical" => Some(Severity::Critical),
+            "high" => Some(Severity::High),
+            "medium" => Some(Severity::Medium),
+            "low" => Some(Severity::Low),
+            _ => None,
+        }
+    }
+
+    fn parse_source_filter(value: &str) -> Option<Source> {
+        match value {
+            "native_compose" => Some(Source::NativeCompose),
+            "native_host" => Some(Source::NativeHost),
+            "trivy" => Some(Source::Trivy),
+            "lynis" => Some(Source::Lynis),
+            "dockle" => Some(Source::Dockle),
+            _ => None,
+        }
+    }
+
+    fn parse_remediation_filter(value: &str) -> Option<RemediationFilter> {
+        match value {
+            "all" => Some(RemediationFilter::All),
+            "fixable" => Some(RemediationFilter::Fixable),
+            "safe" => Some(RemediationFilter::Safe),
+            "guided" => Some(RemediationFilter::Guided),
+            "manual" => Some(RemediationFilter::Manual),
+            _ => None,
+        }
+    }
+
+    fn parse_sort_mode(value: &str) -> Option<FindingSortMode> {
+        match value {
+            "severity" => Some(FindingSortMode::Severity),
+            "source" => Some(FindingSortMode::Source),
+            "subject" => Some(FindingSortMode::Subject),
+            _ => None,
+        }
+    }
+
+    fn persist_findings_view(&self) {
+        #[cfg(not(test))]
+        let _ = settings::persist_findings_view(
+            self.severity_filter.map(|s| s.as_key()),
+            self.source_filter.map(|s| s.as_key()),
+            self.service_filter.as_deref(),
+            Some(match self.remediation_filter {
+                RemediationFilter::All => "all",
+                RemediationFilter::Fixable => "fixable",
+                RemediationFilter::Safe => "safe",
+                RemediationFilter::Guided => "guided",
+                RemediationFilter::Manual => "manual",
+            }),
+            Some(match self.sort_mode {
+                FindingSortMode::Severity => "severity",
+                FindingSortMode::Source => "source",
+                FindingSortMode::Subject => "subject",
+            }),
+        );
     }
 }
 
