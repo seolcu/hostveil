@@ -9,10 +9,12 @@ pub enum ThemePreset {
     Gruvbox,
     Dracula,
     Monokai,
+    Light,
+    SolarizedLight,
 }
 
 impl ThemePreset {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 9] = [
         Self::Ansi,
         Self::Catppuccin,
         Self::Nord,
@@ -20,6 +22,8 @@ impl ThemePreset {
         Self::Gruvbox,
         Self::Dracula,
         Self::Monokai,
+        Self::Light,
+        Self::SolarizedLight,
     ];
 
     pub const fn as_key(self) -> &'static str {
@@ -31,6 +35,8 @@ impl ThemePreset {
             Self::Gruvbox => "gruvbox",
             Self::Dracula => "dracula",
             Self::Monokai => "monokai",
+            Self::Light => "light",
+            Self::SolarizedLight => "solarized_light",
         }
     }
 
@@ -43,6 +49,8 @@ impl ThemePreset {
             Self::Gruvbox => "Gruvbox",
             Self::Dracula => "Dracula",
             Self::Monokai => "Monokai",
+            Self::Light => "Light",
+            Self::SolarizedLight => "Solarized Light",
         }
     }
 
@@ -60,7 +68,9 @@ impl ThemePreset {
             Self::TokyoNight => Self::Gruvbox,
             Self::Gruvbox => Self::Dracula,
             Self::Dracula => Self::Monokai,
-            Self::Monokai => Self::Ansi,
+            Self::Monokai => Self::Light,
+            Self::Light => Self::SolarizedLight,
+            Self::SolarizedLight => Self::Ansi,
         }
     }
 }
@@ -95,6 +105,8 @@ impl Theme {
             ThemePreset::Gruvbox => Self::gruvbox(),
             ThemePreset::Dracula => Self::dracula(),
             ThemePreset::Monokai => Self::monokai(),
+            ThemePreset::Light => Self::light(),
+            ThemePreset::SolarizedLight => Self::solarized_light(),
         }
     }
 
@@ -278,6 +290,60 @@ impl Theme {
             safe: Color::Rgb(166, 226, 46),
             guided: Color::Rgb(230, 219, 116),
             manual: Color::Rgb(102, 217, 239),
+        }
+    }
+
+    const fn light() -> Self {
+        Self {
+            preset: ThemePreset::Light,
+            base: Style::new().fg(Color::Rgb(51, 51, 51)),
+            surface: Style::new()
+                .fg(Color::Rgb(51, 51, 51))
+                .bg(Color::Rgb(250, 250, 250)),
+            border: Style::new().fg(Color::Rgb(180, 180, 180)),
+            title: Style::new().fg(Color::Rgb(0, 102, 204)),
+            muted: Style::new().fg(Color::Rgb(136, 136, 136)),
+            highlight: Style::new()
+                .fg(Color::Rgb(51, 51, 51))
+                .bg(Color::Rgb(220, 220, 220)),
+            status_bar: Style::new()
+                .fg(Color::Rgb(102, 102, 102))
+                .bg(Color::Rgb(240, 240, 240)),
+            accent: Color::Rgb(0, 102, 204),
+            crit: Color::Rgb(204, 0, 0),
+            high: Color::Rgb(230, 126, 34),
+            med: Color::Rgb(241, 196, 15),
+            low: Color::Rgb(39, 174, 96),
+            safe: Color::Rgb(39, 174, 96),
+            guided: Color::Rgb(241, 196, 15),
+            manual: Color::Rgb(0, 102, 204),
+        }
+    }
+
+    const fn solarized_light() -> Self {
+        Self {
+            preset: ThemePreset::SolarizedLight,
+            base: Style::new().fg(Color::Rgb(101, 123, 131)),
+            surface: Style::new()
+                .fg(Color::Rgb(101, 123, 131))
+                .bg(Color::Rgb(253, 246, 227)),
+            border: Style::new().fg(Color::Rgb(147, 161, 161)),
+            title: Style::new().fg(Color::Rgb(38, 139, 210)),
+            muted: Style::new().fg(Color::Rgb(147, 161, 161)),
+            highlight: Style::new()
+                .fg(Color::Rgb(101, 123, 131))
+                .bg(Color::Rgb(238, 232, 213)),
+            status_bar: Style::new()
+                .fg(Color::Rgb(131, 148, 150))
+                .bg(Color::Rgb(245, 238, 220)),
+            accent: Color::Rgb(38, 139, 210),
+            crit: Color::Rgb(220, 50, 47),
+            high: Color::Rgb(203, 75, 22),
+            med: Color::Rgb(181, 137, 0),
+            low: Color::Rgb(133, 153, 0),
+            safe: Color::Rgb(133, 153, 0),
+            guided: Color::Rgb(181, 137, 0),
+            manual: Color::Rgb(38, 139, 210),
         }
     }
 }
