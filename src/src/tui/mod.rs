@@ -160,7 +160,6 @@ enum RemediationFilter {
 enum HitTarget {
     TabOverview,
     TabFindings,
-    TabSettings,
     FindingList(usize),
     FindingsDetail,
     OverviewPanel(OverviewFocus),
@@ -526,20 +525,6 @@ impl AppState {
         self.persist_findings_view();
     }
 
-    fn jump_to_severity(&mut self, scan_result: &ScanResult, severity: Severity) {
-        self.clamp_selection(scan_result);
-
-        if let Some(position) = self.sorted_indices.iter().position(|index| {
-            scan_result
-                .findings
-                .get(*index)
-                .is_some_and(|finding| finding.severity == severity)
-        }) {
-            self.selected_index = position;
-            self.detail_scroll = 0;
-        }
-    }
-
     fn parse_severity_filter(value: &str) -> Option<Severity> {
         match value {
             "critical" => Some(Severity::Critical),
@@ -727,7 +712,6 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
                 match target {
                     HitTarget::TabOverview => state.return_to_overview(),
                     HitTarget::TabFindings => state.open_findings(),
-                    HitTarget::TabSettings => state.open_settings(),
                     HitTarget::FindingList(index) => {
                         state.focus_list();
                         state.selected_index = index;
@@ -788,22 +772,20 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
         return None;
     }
 
-    if state.screen == Screen::Overview {
-        match key.code {
-            KeyCode::Char('1') => {
-                state.screen = Screen::Overview;
-                return None;
-            }
-            KeyCode::Char('2') => {
-                state.screen = Screen::Findings;
-                return None;
-            }
-            KeyCode::Char('3') => {
-                state.open_settings();
-                return None;
-            }
-            _ => {}
+    match key.code {
+        KeyCode::Char('1') => {
+            state.screen = Screen::Overview;
+            return None;
         }
+        KeyCode::Char('2') => {
+            state.screen = Screen::Findings;
+            return None;
+        }
+        KeyCode::Char('s') => {
+            state.open_settings();
+            return None;
+        }
+        _ => {}
     }
 
     match state.screen {
@@ -857,10 +839,6 @@ fn handle_overview_key(
 ) -> Option<TuiAction> {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => Some(TuiAction::Exit),
-        KeyCode::Char('g') => {
-            let _ = i18n::cycle_persisted_locale();
-            None
-        }
         KeyCode::Char('f') => {
             scan_result
                 .metadata
@@ -870,10 +848,6 @@ fn handle_overview_key(
                     compose_file: path,
                     finding_id: None,
                 })
-        }
-        KeyCode::Char('t') => {
-            state.cycle_theme();
-            None
         }
         KeyCode::Char('L') => {
             state.cycle_layout();
@@ -917,7 +891,7 @@ fn handle_findings_key(
             state.return_to_overview();
             None
         }
-        KeyCode::Char('s') => {
+        KeyCode::Char('S') => {
             state.cycle_severity_filter();
             None
         }
@@ -941,10 +915,6 @@ fn handle_findings_key(
             state.reset_filters_and_sort();
             None
         }
-        KeyCode::Char('g') => {
-            let _ = i18n::cycle_persisted_locale();
-            None
-        }
         KeyCode::Char('f') => {
             scan_result
                 .metadata
@@ -956,26 +926,6 @@ fn handle_findings_key(
                         .selected_finding(scan_result)
                         .map(|finding| finding.id.clone()),
                 })
-        }
-        KeyCode::Char('t') => {
-            state.cycle_theme();
-            None
-        }
-        KeyCode::Char('1') => {
-            state.jump_to_severity(scan_result, Severity::Critical);
-            None
-        }
-        KeyCode::Char('2') => {
-            state.jump_to_severity(scan_result, Severity::High);
-            None
-        }
-        KeyCode::Char('3') => {
-            state.jump_to_severity(scan_result, Severity::Medium);
-            None
-        }
-        KeyCode::Char('4') => {
-            state.jump_to_severity(scan_result, Severity::Low);
-            None
         }
         KeyCode::Tab => {
             state.toggle_focus();
@@ -1200,11 +1150,13 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Min(10),
             Constraint::Length(3),
         ])
         .split(frame.area());
+
+    header_banner(frame, state, layout[0]);
 
     let content = match mode {
         FindingsLayoutMode::SideBySide => Layout::default()
@@ -1458,12 +1410,7 @@ fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rec
 
 fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState) {
     let theme = &state.theme;
-    let constraints = [
-        Constraint::Min(14),
-        Constraint::Min(14),
-        Constraint::Min(14),
-        Constraint::Min(1),
-    ];
+    let constraints = [Constraint::Min(20), Constraint::Min(20), Constraint::Min(1)];
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(constraints)
@@ -1511,46 +1458,21 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
             chunks[i],
         );
     }
-
-    // Settings tab
-    let settings_active = state.settings_open;
-    let settings_rect = chunks[2];
-    state
-        .hit_boxes
-        .push((settings_rect, HitTarget::TabSettings));
-    frame.render_widget(
-        Paragraph::new(Line::from(vec![
-            Span::styled("[3] ", theme.muted),
-            Span::styled(
-                t!("app.panel.settings").into_owned(),
-                if settings_active {
-                    theme.title.add_modifier(Modifier::BOLD)
-                } else {
-                    theme.base
-                },
-            ),
-        ]))
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(if settings_active {
-                    theme.title
-                } else {
-                    theme.border
-                }),
-        ),
-        settings_rect,
-    );
 }
 
 fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let area = frame.area();
     let modal = centered_rect(70, 50, area);
     let modal = clamp_rect_width(modal, 80);
-    frame.render_widget(Clear, modal);
 
     let theme = &state.theme;
+
+    // Dim the background behind the modal
+    frame.render_widget(
+        Block::default().style(theme.surface.add_modifier(Modifier::DIM)),
+        area,
+    );
+    frame.render_widget(Clear, modal);
     let block = Block::default()
         .title(format!(" {} ", t!("app.panel.settings")))
         .borders(Borders::ALL)
@@ -1962,9 +1884,7 @@ fn overview_footer(theme: &Theme) -> Paragraph<'static> {
         Span::raw("  "),
         hint_span("Enter", t!("app.footer.findings").into_owned(), theme),
         Span::raw("  "),
-        hint_span("g", t!("app.footer.locale").into_owned(), theme),
-        Span::raw("  "),
-        hint_span("t", t!("app.footer.theme").into_owned(), theme),
+        hint_span("s", t!("app.footer.settings").into_owned(), theme),
         Span::raw("  "),
         hint_span("--json", t!("app.footer.json").into_owned(), theme),
     ])))
@@ -3618,7 +3538,7 @@ mod tests {
         handle_key(
             &mut state,
             &result,
-            KeyEvent::new(KeyCode::Char('s'), crossterm::event::KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT),
         );
         state.clamp_selection(&result);
         assert_eq!(state.severity_filter, Some(Severity::Critical));
@@ -3720,34 +3640,28 @@ mod tests {
     }
 
     #[test]
-    fn findings_controls_can_jump_to_requested_severity() {
+    fn findings_controls_can_filter_by_severity() {
         let result = sample_result();
         let mut state = AppState::new(&result);
         state.open_findings();
 
+        // Press 'S' once → Critical filter
         handle_key(
             &mut state,
             &result,
-            KeyEvent::new(KeyCode::Char('4'), crossterm::event::KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT),
         );
-        assert_eq!(
-            state
-                .selected_finding(&result)
-                .map(|finding| finding.severity),
-            Some(Severity::Low)
-        );
+        assert_eq!(state.severity_filter, Some(Severity::Critical));
 
-        handle_key(
-            &mut state,
-            &result,
-            KeyEvent::new(KeyCode::Char('1'), crossterm::event::KeyModifiers::NONE),
-        );
-        assert_eq!(
-            state
-                .selected_finding(&result)
-                .map(|finding| finding.severity),
-            Some(Severity::Critical)
-        );
+        // Press 'S' three more times → Low filter
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT),
+            );
+        }
+        assert_eq!(state.severity_filter, Some(Severity::Low));
     }
 
     #[test]
@@ -3882,11 +3796,7 @@ mod tests {
         let mut state = AppState::new(&result);
 
         let initial = state.theme_preset;
-        handle_key(
-            &mut state,
-            &result,
-            KeyEvent::new(KeyCode::Char('t'), crossterm::event::KeyModifiers::NONE),
-        );
+        state.cycle_theme();
 
         assert_eq!(state.theme_preset, initial.next());
         assert_eq!(state.theme.preset, initial.next());
@@ -4047,7 +3957,7 @@ mod tests {
 
         assert!(content.contains("[CRIT][G] Admin interface is exposed publicly - adminer"));
         assert!(content.contains("Critical | Native Compose | adminer | GUIDED"));
-        assert!(content.contains("s sev | x src | v svc | m rem | o sort"));
+        assert!(content.contains("S sev | x src | v svc | m rem | o sort"));
         assert!(!content.contains("PageUp/PageDown"));
     }
 
