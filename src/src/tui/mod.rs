@@ -23,7 +23,7 @@ use ratatui::widgets::{
 
 use crate::domain::{
     AdapterStatus, Axis, DefensiveControlStatus, DockerDiscoveryStatus, Finding, HostRuntimeInfo,
-    RemediationKind, ScanMode, ScanResult, Scope, Severity, Source,
+    RemediationKind, ScanResult, Scope, Severity, Source,
 };
 use crate::i18n;
 use crate::settings;
@@ -157,7 +157,19 @@ enum RemediationFilter {
 }
 
 #[derive(Debug, Clone)]
+enum HitTarget {
+    TabOverview,
+    TabFindings,
+    TabSettings,
+    FindingList(usize),
+    FindingsDetail,
+    OverviewPanel(OverviewFocus),
+    SettingsRow(usize),
+}
+
+#[derive(Debug, Clone)]
 struct AppState {
+    hit_boxes: Vec<(Rect, HitTarget)>,
     screen: Screen,
     settings_open: bool,
     settings_row: usize,
@@ -183,10 +195,13 @@ impl AppState {
     fn cycle_theme(&mut self) {
         self.theme_preset = self.theme_preset.next();
         self.theme = Theme::preset(self.theme_preset);
-        let _ = settings::persist_theme(self.theme_preset.as_key());
+        persist_theme_choice(self.theme_preset.as_key());
     }
 
     fn new(scan_result: &ScanResult) -> Self {
+        #[cfg(test)]
+        let settings = settings::AppSettings::default();
+        #[cfg(not(test))]
         let settings = settings::load();
         let severity_filter = None;
         let source_filter = None;
@@ -205,6 +220,7 @@ impl AppState {
             .unwrap_or(LayoutPreset::Adaptive);
 
         Self {
+            hit_boxes: Vec::new(),
             screen: Screen::Overview,
             settings_open: false,
             settings_row: 0,
@@ -241,12 +257,12 @@ impl AppState {
 
     fn cycle_layout(&mut self) {
         self.layout_preset = self.layout_preset.next();
-        let _ = settings::persist_layout(self.layout_preset.as_key());
+        persist_layout_choice(self.layout_preset.as_key());
     }
 
     fn cycle_layout_backward(&mut self) {
         self.layout_preset = self.layout_preset.previous();
-        let _ = settings::persist_layout(self.layout_preset.as_key());
+        persist_layout_choice(self.layout_preset.as_key());
     }
 
     fn open_settings(&mut self) {
@@ -505,6 +521,20 @@ impl AppState {
     }
 }
 
+fn persist_theme_choice(theme: &str) {
+    #[cfg(not(test))]
+    let _ = settings::persist_theme(theme);
+    #[cfg(test)]
+    let _ = theme;
+}
+
+fn persist_layout_choice(layout: &str) {
+    #[cfg(not(test))]
+    let _ = settings::persist_layout(layout);
+    #[cfg(test)]
+    let _ = layout;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResultSummaryRow {
     label: String,
@@ -515,6 +545,7 @@ struct ResultSummaryRow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OverviewLayoutMode {
     Wide,
+    Tall,
     Compact,
     Narrow,
     Focus,
@@ -524,6 +555,7 @@ enum OverviewLayoutMode {
 enum FindingsLayoutMode {
     SideBySide,
     Stacked,
+    CompactList,
     Narrow,
 }
 
@@ -595,48 +627,45 @@ where
 }
 
 fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEvent) {
+    let hit = state
+        .hit_boxes
+        .iter()
+        .rev()
+        .find(|(rect, _)| {
+            mouse.column >= rect.x
+                && mouse.column < rect.x + rect.width
+                && mouse.row >= rect.y
+                && mouse.row < rect.y + rect.height
+        })
+        .map(|(_, target)| target.clone());
+
     match mouse.kind {
         MouseEventKind::Down(MouseButton::Left) => {
-            if hit_tab(mouse.column, mouse.row) {
-                handle_tab_click(state, mouse.column);
-                return;
-            }
-
-            if state.settings_open {
-                handle_settings_click(state, mouse.column, mouse.row);
-                return;
-            }
-
-            if state.screen == Screen::Findings {
-                if mouse.column < 40 {
-                    state.focus_list();
-                } else {
-                    state.focus_detail();
-                }
-
-                if state.findings_focus == FindingsFocus::List && state.finding_count() > 0 {
-                    let index = mouse.row.saturating_sub(4) as usize;
-                    if index < state.finding_count() {
+            if let Some(target) = hit {
+                match target {
+                    HitTarget::TabOverview => state.return_to_overview(),
+                    HitTarget::TabFindings => state.open_findings(),
+                    HitTarget::TabSettings => state.open_settings(),
+                    HitTarget::FindingList(index) => {
+                        state.focus_list();
                         state.selected_index = index;
                         state.detail_scroll = 0;
                     }
+                    HitTarget::FindingsDetail => state.focus_detail(),
+                    HitTarget::OverviewPanel(focus) => state.overview_focus = focus,
+                    HitTarget::SettingsRow(row) => {
+                        state.settings_row = row;
+                        state.adjust_setting_right();
+                    }
                 }
-            } else {
-                state.overview_focus = match mouse.column {
-                    0..=39 => OverviewFocus::ServerStatus,
-                    40..=79 => OverviewFocus::ScanResults,
-                    80..=119 => OverviewFocus::SecurityScores,
-                    _ => OverviewFocus::FixPaths,
-                };
+            } else if state.settings_open {
+                state.close_settings();
             }
         }
         MouseEventKind::ScrollDown => {
             if state.settings_open {
                 state.settings_next_row();
-                return;
-            }
-
-            if state.screen == Screen::Findings {
+            } else if state.screen == Screen::Findings {
                 if state.findings_focus == FindingsFocus::List {
                     state.select_next();
                 } else {
@@ -649,10 +678,7 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
         MouseEventKind::ScrollUp => {
             if state.settings_open {
                 state.settings_prev_row();
-                return;
-            }
-
-            if state.screen == Screen::Findings {
+            } else if state.screen == Screen::Findings {
                 if state.findings_focus == FindingsFocus::List {
                     state.select_previous();
                 } else {
@@ -666,31 +692,6 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
     }
 
     state.clamp_selection(scan_result);
-}
-
-fn hit_tab(_x: u16, y: u16) -> bool {
-    y == 1
-}
-
-fn handle_tab_click(state: &mut AppState, x: u16) {
-    match x {
-        0..=28 => state.screen = Screen::Overview,
-        29..=58 => state.screen = Screen::Findings,
-        _ => state.open_settings(),
-    }
-}
-
-fn handle_settings_click(state: &mut AppState, x: u16, y: u16) {
-    if !(8..=12).contains(&y) {
-        return;
-    }
-
-    state.settings_row = (y.saturating_sub(8) as usize).min(SettingsRow::all().len() - 1);
-    if x > 70 {
-        state.adjust_setting_right();
-    } else if x > 50 {
-        state.adjust_setting_left();
-    }
 }
 
 fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> Option<TuiAction> {
@@ -731,6 +732,18 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
 
 fn handle_settings_key(state: &mut AppState, key: KeyEvent) -> Option<TuiAction> {
     match key.code {
+        KeyCode::Char('1') => {
+            state.settings_row = 0;
+            None
+        }
+        KeyCode::Char('2') => {
+            state.settings_row = 1;
+            None
+        }
+        KeyCode::Char('3') => {
+            state.settings_row = 2;
+            None
+        }
         KeyCode::Esc | KeyCode::Enter => {
             state.close_settings();
             None
@@ -921,6 +934,7 @@ fn handle_findings_key(
 }
 
 fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
+    state.hit_boxes.clear();
     state.clamp_selection(scan_result);
     render_surface_background(frame, &state.theme);
 
@@ -948,7 +962,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         ])
         .split(frame.area());
 
-    frame.render_widget(header_banner(state), layout[0]);
+    header_banner(frame, state, layout[0]);
 
     match overview_layout_mode(frame.area(), state.layout_preset) {
         OverviewLayoutMode::Wide => {
@@ -965,10 +979,59 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .constraints([Constraint::Length(10), Constraint::Min(10)])
                 .split(columns[2]);
 
+            state.hit_boxes.push((
+                columns[0],
+                HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+            ));
+            state.hit_boxes.push((
+                columns[1],
+                HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+            ));
+            state.hit_boxes.push((
+                right_column[0],
+                HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+            ));
+            state.hit_boxes.push((
+                right_column[1],
+                HitTarget::OverviewPanel(OverviewFocus::FixPaths),
+            ));
+
             render_server_status_panel(frame, columns[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme);
             render_security_scores_panel(frame, right_column[0], scan_result, state, &state.theme);
             render_fix_paths_panel(frame, right_column[1], scan_result, state, &state.theme);
+        }
+        OverviewLayoutMode::Tall => {
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(30),
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(30),
+                ])
+                .split(layout[1]);
+
+            state.hit_boxes.push((
+                rows[0],
+                HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+            ));
+            state.hit_boxes.push((
+                rows[1],
+                HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+            ));
+            state.hit_boxes.push((
+                rows[2],
+                HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+            ));
+            state
+                .hit_boxes
+                .push((rows[3], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
+
+            render_server_status_panel(frame, rows[0], scan_result, state, &state.theme);
+            render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme);
+            render_security_scores_panel(frame, rows[2], scan_result, state, &state.theme);
+            render_fix_paths_panel(frame, rows[3], scan_result, state, &state.theme);
         }
         OverviewLayoutMode::Compact => {
             let columns = Layout::default()
@@ -983,6 +1046,22 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(10), Constraint::Min(9)])
                 .split(columns[1]);
+
+            state.hit_boxes.push((
+                left[0],
+                HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+            ));
+            state.hit_boxes.push((
+                left[1],
+                HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+            ));
+            state.hit_boxes.push((
+                right[0],
+                HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+            ));
+            state
+                .hit_boxes
+                .push((right[1], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
 
             render_server_status_panel(frame, left[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, left[1], scan_result, state, &state.theme);
@@ -999,6 +1078,22 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                     Constraint::Percentage(24),
                 ])
                 .split(layout[1]);
+
+            state.hit_boxes.push((
+                rows[0],
+                HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+            ));
+            state.hit_boxes.push((
+                rows[1],
+                HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+            ));
+            state.hit_boxes.push((
+                rows[2],
+                HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+            ));
+            state
+                .hit_boxes
+                .push((rows[3], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
 
             render_server_status_panel(frame, rows[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme);
@@ -1042,6 +1137,10 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
             .split(layout[1]),
+        FindingsLayoutMode::CompactList => Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+            .split(layout[1]),
     };
 
     frame.render_widget(
@@ -1052,9 +1151,19 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let mut list_state = ListState::default();
     let viewport_items = content[0].height.saturating_sub(2).max(1) as usize;
     let max_list_scroll = state.finding_count().saturating_sub(viewport_items);
-    let list_scroll = state
+    let mut list_scroll = state
         .findings_list_scroll
         .min(max_list_scroll.min(u16::MAX as usize) as u16);
+    if state.finding_count() > 0 {
+        let selected = state.selected_index.min(state.finding_count() - 1);
+        let selected_scroll = selected as u16;
+        if selected_scroll < list_scroll {
+            list_scroll = selected_scroll;
+        } else if selected >= list_scroll as usize + viewport_items {
+            list_scroll = (selected + 1 - viewport_items).min(max_list_scroll) as u16;
+        }
+        state.findings_list_scroll = list_scroll;
+    }
     let start = list_scroll as usize;
     let end = (start + viewport_items).min(state.finding_count());
 
@@ -1115,6 +1224,11 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         .wrap(Wrap { trim: true })
         .scroll((state.detail_scroll, 0));
 
+    register_finding_list_hit_boxes(scan_result, state, content[0], mode, start, end);
+    state
+        .hit_boxes
+        .push((content[1], HitTarget::FindingsDetail));
+
     frame.render_stateful_widget(list, content[0], &mut list_state);
     render_scrollbar(
         frame,
@@ -1137,11 +1251,64 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     );
 }
 
+fn register_finding_list_hit_boxes(
+    scan_result: &ScanResult,
+    state: &mut AppState,
+    area: Rect,
+    mode: FindingsLayoutMode,
+    start: usize,
+    end: usize,
+) {
+    if area.width <= 2 || area.height <= 2 || start >= end {
+        return;
+    }
+
+    let inner = area.inner(Margin {
+        vertical: 1,
+        horizontal: 1,
+    });
+    let mut y = inner.y;
+    let max_y = inner.y.saturating_add(inner.height);
+    let text_width = area.width.saturating_sub(2).max(16) as usize;
+
+    for visible_index in start..end {
+        let Some(finding_index) = state.sorted_indices.get(visible_index).copied() else {
+            continue;
+        };
+        let Some(finding) = scan_result.findings.get(finding_index) else {
+            continue;
+        };
+
+        let item_height = finding_list_item_line_count(finding, text_width, mode)
+            .max(1)
+            .min(max_y.saturating_sub(y) as usize) as u16;
+        if item_height == 0 {
+            break;
+        }
+
+        state.hit_boxes.push((
+            Rect {
+                x: inner.x,
+                y,
+                width: inner.width,
+                height: item_height,
+            },
+            HitTarget::FindingList(visible_index),
+        ));
+        y = y.saturating_add(item_height);
+        if y >= max_y {
+            break;
+        }
+    }
+}
+
 fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode {
     match preset {
         LayoutPreset::Adaptive => {
-            if area.width >= 110 && area.height >= 28 {
+            if area.width >= 120 && area.height >= 28 {
                 OverviewLayoutMode::Wide
+            } else if area.width >= 80 && area.height >= 40 {
+                OverviewLayoutMode::Tall
             } else if area.width >= 80 && area.height >= 24 {
                 OverviewLayoutMode::Compact
             } else {
@@ -1149,7 +1316,13 @@ fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode 
             }
         }
         LayoutPreset::Wide => OverviewLayoutMode::Wide,
-        LayoutPreset::Balanced => OverviewLayoutMode::Compact,
+        LayoutPreset::Balanced => {
+            if area.height > area.width {
+                OverviewLayoutMode::Tall
+            } else {
+                OverviewLayoutMode::Compact
+            }
+        }
         LayoutPreset::Compact => OverviewLayoutMode::Narrow,
         LayoutPreset::Focus => OverviewLayoutMode::Focus,
     }
@@ -1169,13 +1342,18 @@ fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode 
         LayoutPreset::Wide => FindingsLayoutMode::SideBySide,
         LayoutPreset::Balanced => FindingsLayoutMode::Stacked,
         LayoutPreset::Compact => FindingsLayoutMode::Narrow,
-        LayoutPreset::Focus => FindingsLayoutMode::Narrow,
+        LayoutPreset::Focus => FindingsLayoutMode::CompactList,
     }
 }
 
-fn header_banner(state: &AppState) -> Paragraph<'static> {
+fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rect) {
     let theme = &state.theme;
-    let mut spans = vec![
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(2)])
+        .split(area);
+
+    let title_spans = vec![
         Span::styled(
             format!("hostveil v{}", env!("CARGO_PKG_VERSION")),
             theme.title.add_modifier(Modifier::BOLD),
@@ -1187,100 +1365,207 @@ fn header_banner(state: &AppState) -> Paragraph<'static> {
             current_locale_badge(),
             Style::default().fg(theme.med).add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" | "),
-        Span::styled(
-            t!("app.header.theme_badge", theme = theme.preset.label()),
-            theme.muted.add_modifier(Modifier::BOLD),
+    ];
+    frame.render_widget(
+        Paragraph::new(Line::from(title_spans)).alignment(Alignment::Center),
+        chunks[0],
+    );
+
+    render_tabs(frame, chunks[1], state);
+}
+
+fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState) {
+    let theme = &state.theme;
+    let constraints = [
+        Constraint::Length(20),
+        Constraint::Length(20),
+        Constraint::Length(20),
+        Constraint::Min(1),
+    ];
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(constraints)
+        .split(area);
+
+    let tabs = [
+        (
+            Screen::Overview,
+            HitTarget::TabOverview,
+            t!("app.tab.overview").into_owned(),
+            "1",
+        ),
+        (
+            Screen::Findings,
+            HitTarget::TabFindings,
+            t!("app.tab.findings").into_owned(),
+            "2",
         ),
     ];
 
-    if is_root() {
-        spans.push(Span::raw(" | "));
-        spans.push(Span::styled(
-            "ROOT",
-            Style::default().fg(theme.crit).add_modifier(Modifier::BOLD),
-        ));
+    for (i, (screen, target, label, key)) in tabs.iter().enumerate() {
+        let is_active = state.screen == *screen;
+        let style = if is_active {
+            theme
+                .title
+                .add_modifier(Modifier::BOLD)
+                .bg(theme.highlight.fg.unwrap_or(ratatui::style::Color::Reset))
+        } else {
+            theme.base
+        };
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(if is_active { theme.title } else { theme.border });
+
+        state.hit_boxes.push((chunks[i], target.clone()));
+
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(format!("[{}] ", key), theme.muted),
+                Span::styled(label.clone(), style),
+            ]))
+            .alignment(Alignment::Center)
+            .block(block),
+            chunks[i],
+        );
     }
 
-    Paragraph::new(Text::from(vec![Line::from(spans), tab_line(state)]))
+    // Settings tab
+    let settings_active = state.settings_open;
+    let settings_rect = chunks[2];
+    state
+        .hit_boxes
+        .push((settings_rect, HitTarget::TabSettings));
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled("[3] ", theme.muted),
+            Span::styled(
+                t!("app.panel.settings").into_owned(),
+                if settings_active {
+                    theme.title.add_modifier(Modifier::BOLD)
+                } else {
+                    theme.base
+                },
+            ),
+        ]))
         .alignment(Alignment::Center)
         .block(
             Block::default()
-                .borders(Borders::TOP | Borders::BOTTOM)
-                .border_style(theme.border),
-        )
-        .style(theme.surface)
+                .borders(Borders::ALL)
+                .border_style(if settings_active {
+                    theme.title
+                } else {
+                    theme.border
+                }),
+        ),
+        settings_rect,
+    );
 }
 
-fn tab_line(state: &AppState) -> Line<'static> {
-    let overview = if state.screen == Screen::Overview {
-        format!("[1] {}*", t!("app.tab.overview").into_owned())
-    } else {
-        format!("[1] {}", t!("app.tab.overview").into_owned())
-    };
-    let findings = if state.screen == Screen::Findings {
-        format!("[2] {}*", t!("app.tab.findings").into_owned())
-    } else {
-        format!("[2] {}", t!("app.tab.findings").into_owned())
-    };
-
-    Line::raw(format!(
-        "{}  |  {}  |  [3] {}  |  {}: {}",
-        overview,
-        findings,
-        t!("app.tab.settings").into_owned(),
-        t!("app.settings.layout").into_owned(),
-        state.layout_preset.label()
-    ))
-}
-
-fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &AppState) {
+fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let area = frame.area();
-    let modal = centered_rect(60, 40, area);
+    let modal = centered_rect(70, 50, area);
     frame.render_widget(Clear, modal);
 
+    let theme = &state.theme;
     let block = Block::default()
-        .title(t!("app.panel.settings").into_owned())
+        .title(format!(" {} ", t!("app.panel.settings")))
         .borders(Borders::ALL)
-        .style(state.theme.surface)
-        .border_style(state.theme.border)
-        .title_style(state.theme.title);
+        .border_style(theme.title)
+        .style(theme.surface);
     let inner = block.inner(modal);
     frame.render_widget(block, modal);
 
-    let rows = vec![
-        format!(
-            "{}: {}",
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header/Tabs
+            Constraint::Min(1),    // Settings
+            Constraint::Length(1), // Footer
+        ])
+        .split(inner);
+
+    let categories = [
+        t!("app.settings.category_appearance").into_owned(),
+        t!("app.settings.category_behavior").into_owned(),
+        t!("app.settings.category_localization").into_owned(),
+    ];
+    let cat_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+        ])
+        .split(layout[0]);
+
+    for (i, cat) in categories.iter().enumerate() {
+        frame.render_widget(
+            Paragraph::new(cat.to_string())
+                .alignment(Alignment::Center)
+                .block(
+                    Block::default()
+                        .borders(Borders::BOTTOM)
+                        .border_style(if i == 0 { theme.title } else { theme.border }),
+                ),
+            cat_layout[i],
+        );
+    }
+
+    let current_locale = i18n::current_locale();
+    let rows = [
+        (
+            SettingsRow::Theme,
             t!("app.settings.theme").into_owned(),
-            state.theme_preset.label()
+            state.theme_preset.label(),
         ),
-        format!(
-            "{}: {}",
+        (
+            SettingsRow::Layout,
             t!("app.settings.layout").into_owned(),
-            state.layout_preset.label()
+            state.layout_preset.label(),
         ),
-        format!(
-            "{}: {}",
+        (
+            SettingsRow::Locale,
             t!("app.settings.locale").into_owned(),
-            i18n::current_locale()
+            current_locale.as_str(),
         ),
     ];
 
-    let lines = rows
-        .into_iter()
-        .enumerate()
-        .map(|(index, row)| {
-            if index == state.settings_row {
-                Line::styled(format!("> {}", row), state.theme.highlight)
-            } else {
-                Line::raw(format!("  {}", row))
-            }
-        })
-        .collect::<Vec<_>>();
+    let row_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(vec![Constraint::Length(2); rows.len()])
+        .split(layout[1]);
+
+    for (i, (_id, label, value)) in rows.iter().enumerate() {
+        let is_active = i == state.settings_row;
+        let rect = row_layout[i];
+        state.hit_boxes.push((rect, HitTarget::SettingsRow(i)));
+
+        let style = if is_active {
+            theme.highlight
+        } else {
+            theme.base
+        };
+        let prefix = if is_active { "> " } else { "  " };
+
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(prefix, style),
+                Span::styled(format!("{}: ", label), style),
+                Span::styled(
+                    value.to_string(),
+                    if is_active { theme.title } else { theme.muted },
+                ),
+            ])),
+            rect,
+        );
+    }
 
     frame.render_widget(
-        Paragraph::new(Text::from(lines)).wrap(Wrap { trim: false }),
-        inner,
+        Paragraph::new(t!("app.settings.hint").into_owned())
+            .alignment(Alignment::Center)
+            .style(theme.muted),
+        layout[2],
     );
 }
 
@@ -1302,17 +1587,6 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
-}
-
-fn is_root() -> bool {
-    #[cfg(not(test))]
-    {
-        rustix::process::getuid().is_root()
-    }
-    #[cfg(test)]
-    {
-        false
-    }
 }
 
 fn render_server_status_panel(
@@ -1462,12 +1736,11 @@ fn render_scan_results_panel(
             t!("app.result.warnings_heading").into_owned(),
             Style::default().fg(theme.med).add_modifier(Modifier::BOLD),
         ));
-        for warning in scan_result.metadata.warnings.iter().take(2) {
+        for warning in scan_result.metadata.warnings.iter().take(3) {
             let warning_width = inner.width.saturating_sub(4).max(20) as usize;
-            lines.push(Line::raw(format!(
-                "- {}",
-                truncate_text(warning, warning_width)
-            )));
+            for wrapped in wrap_text_to_lines(warning, warning_width) {
+                lines.push(Line::raw(format!("- {}", wrapped)));
+            }
         }
     }
 
@@ -1511,11 +1784,12 @@ fn render_security_scores_panel(
         return;
     }
 
+    let text_width = inner.width.saturating_sub(2).max(16) as usize;
     let mut lines = Vec::new();
     if has_pending_adapters(scan_result) {
-        lines.push(Line::styled(
-            adapter_progress_label(scan_result, state.tick),
-            theme.muted,
+        lines.push(Line::raw(
+            wrap_text_to_lines(&adapter_progress_label(scan_result, state.tick), text_width)
+                .join(" "),
         ));
         lines.push(Line::raw(
             t!("app.overview.score_pending_detail").into_owned(),
@@ -1614,7 +1888,7 @@ fn overview_footer(theme: &Theme) -> Paragraph<'static> {
 }
 
 fn findings_header(
-    scan_result: &ScanResult,
+    _scan_result: &ScanResult,
     state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
@@ -1623,28 +1897,17 @@ fn findings_header(
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let filters = finding_filter_summary(state);
     let text = if state.finding_count() == 0 {
-        truncate_text(
-            &format!(
-                "{} | {} | {}",
-                t!("app.finding.empty_status").into_owned(),
-                if state.screen == Screen::Findings {
-                    format!(
-                        "[1] {} | [2] {}* | [3] {}",
-                        t!("app.tab.overview").into_owned(),
-                        t!("app.tab.findings").into_owned(),
-                        t!("app.tab.settings").into_owned()
-                    )
-                } else {
-                    format!(
-                        "[1] {} | [2] {} | [3] {}",
-                        t!("app.tab.overview").into_owned(),
-                        t!("app.tab.findings").into_owned(),
-                        t!("app.tab.settings").into_owned()
-                    )
-                },
-                filters
-            ),
-            inner_width,
+        let tabs = format!(
+            "[1] {} | [2] {} | [3] {}",
+            t!("app.tab.overview").into_owned(),
+            t!("app.tab.findings").into_owned(),
+            t!("app.tab.settings").into_owned()
+        );
+        format!(
+            "{} | {} | {}",
+            t!("app.finding.empty_status").into_owned(),
+            tabs,
+            filters
         )
     } else if mode == FindingsLayoutMode::SideBySide {
         let selection = t!(
@@ -1654,35 +1917,29 @@ fn findings_header(
             focus = focus_label(state.findings_focus)
         )
         .into_owned();
-        let scan_status = compose_status(scan_result);
-        truncate_text(
-            &format!("{} | {} | {}", selection, filters, scan_status),
-            inner_width,
-        )
+        format!("{} | {}", selection, filters)
     } else {
-        truncate_text(
-            &format!(
-                "{}/{} | {} | {}",
-                state.selected_index + 1,
-                state.finding_count(),
-                focus_label(state.findings_focus),
-                filters,
-            ),
-            inner_width,
+        format!(
+            "{}/{} | {} | {}",
+            state.selected_index + 1,
+            state.finding_count(),
+            focus_label(state.findings_focus),
+            filters,
         )
     };
 
-    Paragraph::new(text)
-        .block(
-            Block::default()
-                .title(t!("app.panel.status").into_owned())
-                .borders(Borders::ALL)
-                .border_style(theme.border)
-                .title_style(theme.title)
-                .style(theme.surface),
-        )
-        .style(theme.surface)
-        .wrap(Wrap { trim: true })
+    Paragraph::new(Text::from(vec![Line::raw(
+        wrap_text_to_lines(&text, inner_width).join(" "),
+    )]))
+    .block(
+        Block::default()
+            .borders(Borders::BOTTOM)
+            .border_style(theme.border)
+            .title(t!("app.panel.findings_header").into_owned())
+            .title_style(theme.title),
+    )
+    .style(theme.surface)
+    .wrap(Wrap { trim: true })
 }
 
 fn findings_footer(
@@ -1709,8 +1966,8 @@ fn findings_footer(
     };
 
     Paragraph::new(Text::from(vec![
-        Line::raw(truncate_text(&movement, inner_width)),
-        Line::raw(truncate_text(&controls, inner_width)),
+        Line::raw(wrap_text_to_lines(&movement, inner_width).join(" ")),
+        Line::raw(wrap_text_to_lines(&controls, inner_width).join(" ")),
     ]))
     .block(
         Block::default()
@@ -1744,64 +2001,117 @@ fn findings_list_items(
             let compact_subject = finding_list_subject(finding);
             let remediation_badge = remediation_badge_text(finding.remediation);
             let remediation_compact = remediation_badge_compact(finding.remediation);
-            let title = truncate_text(
-                &format!(
+            let title_full = if mode == FindingsLayoutMode::Narrow {
+                format!(
+                    "[{}][{}] {} - {}",
+                    severity_short_label(finding.severity),
+                    remediation_compact,
+                    finding.title,
+                    compact_subject
+                )
+            } else {
+                format!(
                     "[{}][{}] {}",
                     severity_short_label(finding.severity),
                     remediation_badge,
                     finding.title
-                ),
-                inner_width,
-            );
+                )
+            };
+            let title_lines = wrap_text_to_lines(&title_full, inner_width);
+
+            let mut lines = Vec::new();
+            let style = severity_style(finding.severity, theme).add_modifier(Modifier::BOLD);
+            for (i, line) in title_lines.iter().enumerate() {
+                if i == 0 {
+                    lines.push(Line::styled(line.clone(), style));
+                } else {
+                    lines.push(Line::raw(format!("  {}", line)));
+                }
+            }
 
             match mode {
-                FindingsLayoutMode::Narrow => ListItem::new(Line::styled(
-                    truncate_text(
-                        &format!(
-                            "[{}][{}] {} - {}",
-                            severity_short_label(finding.severity),
-                            remediation_compact,
-                            finding.title,
-                            compact_subject
-                        ),
-                        inner_width,
-                    ),
-                    severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
-                )),
-                FindingsLayoutMode::Stacked => ListItem::new(Text::from(vec![
-                    Line::styled(
-                        title,
-                        severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
-                    ),
-                    Line::raw(truncate_text(
-                        &format!(
-                            "{} | {} | {}",
-                            source_label(finding.source),
-                            compact_subject,
-                            remediation_badge
-                        ),
-                        inner_width,
-                    )),
-                ])),
-                FindingsLayoutMode::SideBySide => ListItem::new(Text::from(vec![
-                    Line::styled(
-                        title,
-                        severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
-                    ),
-                    Line::raw(truncate_text(
-                        &format!(
-                            "{} | {} | {} | {}",
-                            source_label(finding.source),
-                            scope_label(finding.scope),
-                            finding.subject,
-                            remediation_badge
-                        ),
-                        inner_width,
-                    )),
-                ])),
+                FindingsLayoutMode::Narrow => {
+                    let subtitle = format!("[{}] {}", remediation_compact, compact_subject);
+                    lines.push(Line::raw(format!("  {}", subtitle)));
+                }
+                FindingsLayoutMode::Stacked => {
+                    let subtitle = format!(
+                        "{} | {} | {}",
+                        source_label(finding.source),
+                        compact_subject,
+                        remediation_badge
+                    );
+                    for sub_line in wrap_text_to_lines(&subtitle, inner_width) {
+                        lines.push(Line::raw(format!("  {}", sub_line)));
+                    }
+                }
+                FindingsLayoutMode::SideBySide | FindingsLayoutMode::CompactList => {
+                    let subtitle = format!(
+                        "{} | {} | {} | {}",
+                        source_label(finding.source),
+                        scope_label(finding.scope),
+                        finding.subject,
+                        remediation_badge
+                    );
+                    for sub_line in wrap_text_to_lines(&subtitle, inner_width) {
+                        lines.push(Line::raw(format!("  {}", sub_line)));
+                    }
+                }
             }
+            ListItem::new(Text::from(lines))
         })
         .collect()
+}
+
+fn finding_list_item_line_count(
+    finding: &Finding,
+    inner_width: usize,
+    mode: FindingsLayoutMode,
+) -> usize {
+    let compact_subject = finding_list_subject(finding);
+    let remediation_badge = remediation_badge_text(finding.remediation);
+    let remediation_compact = remediation_badge_compact(finding.remediation);
+    let title = if mode == FindingsLayoutMode::Narrow {
+        format!(
+            "[{}][{}] {} - {}",
+            severity_short_label(finding.severity),
+            remediation_compact,
+            finding.title,
+            compact_subject
+        )
+    } else {
+        format!(
+            "[{}][{}] {}",
+            severity_short_label(finding.severity),
+            remediation_badge,
+            finding.title
+        )
+    };
+
+    let subtitle = match mode {
+        FindingsLayoutMode::Narrow => {
+            return wrap_text_to_lines(&title, inner_width).len() + 1;
+        }
+        FindingsLayoutMode::Stacked => {
+            format!(
+                "{} | {} | {}",
+                source_label(finding.source),
+                compact_subject,
+                remediation_badge
+            )
+        }
+        FindingsLayoutMode::SideBySide | FindingsLayoutMode::CompactList => {
+            format!(
+                "{} | {} | {} | {}",
+                source_label(finding.source),
+                scope_label(finding.scope),
+                finding.subject,
+                remediation_badge
+            )
+        }
+    };
+
+    wrap_text_to_lines(&title, inner_width).len() + wrap_text_to_lines(&subtitle, inner_width).len()
 }
 
 fn finding_detail_text(
@@ -1829,15 +2139,12 @@ fn finding_detail_text(
             severity_style(finding.severity, theme).add_modifier(Modifier::BOLD),
         ),
         Line::raw(if compact {
-            truncate_text(
-                &format!(
-                    "{} | {} | {} | {}",
-                    severity_label(finding.severity),
-                    source_label(finding.source),
-                    finding_list_subject(finding),
-                    remediation_badge_text(finding.remediation)
-                ),
-                available_width.max(16) as usize,
+            format!(
+                "{} | {} | {} | {}",
+                severity_label(finding.severity),
+                source_label(finding.source),
+                finding_list_subject(finding),
+                remediation_badge_text(finding.remediation)
             )
         } else {
             format!(
@@ -1981,7 +2288,7 @@ fn result_summary_lines(
                 Some(severity) => severity_style(severity, theme),
                 None => Style::default().fg(theme.safe),
             };
-            let label = truncate_text(&row.label, label_width);
+            let label = wrap_text_to_lines(&row.label, label_width).join(" ");
 
             Line::from(vec![
                 Span::styled("* ", Style::default().fg(theme.safe)),
@@ -2129,7 +2436,7 @@ fn remediation_lines(
 
     let action_hint = t!("app.overview.action_queue_hint").to_string();
     lines.push(Line::styled(
-        truncate_text(&action_hint, text_width),
+        wrap_text_to_lines(&action_hint, text_width).join(" "),
         theme.muted,
     ));
     lines.push(Line::raw(String::new()));
@@ -2257,11 +2564,9 @@ fn server_service_lines(
             .image
             .clone()
             .unwrap_or_else(|| t!("app.server.no_image").into_owned());
-        let summary = truncate_text(&format!("{} - {}", service.name, image), text_width);
-        lines.push(Line::from(vec![
-            Span::styled("* ", Style::default().fg(theme.safe)),
-            Span::raw(summary),
-        ]));
+        lines.push(Line::raw(
+            wrap_text_to_lines(&format!("{} - {}", service.name, image), text_width).join(" "),
+        ));
     }
 
     if scan_result.metadata.services.len() > 4 {
@@ -2291,10 +2596,13 @@ fn defensive_controls_lines(
         runtime.fail2ban,
         fail2ban_detail(runtime),
     );
-    vec![Line::raw(truncate_text(
-        &format!("{}: {}", t!("app.server.controls").into_owned(), fail2ban),
-        text_width,
-    ))]
+    vec![Line::raw(
+        wrap_text_to_lines(
+            &format!("{}: {}", t!("app.server.controls").into_owned(), fail2ban),
+            text_width,
+        )
+        .join(" "),
+    )]
 }
 
 fn defensive_control_summary(
@@ -2602,48 +2910,6 @@ fn sort_mode_label(sort_mode: FindingSortMode) -> String {
     }
 }
 
-fn compose_status(scan_result: &ScanResult) -> String {
-    if scan_result.metadata.scan_mode == ScanMode::Live {
-        return match &scan_result.metadata.docker_status {
-            Some(DockerDiscoveryStatus::Available)
-                if !scan_result.metadata.discovered_projects.is_empty() =>
-            {
-                t!(
-                    "app.status.live_discovery",
-                    project_count = scan_result.metadata.discovered_projects.len()
-                )
-                .into_owned()
-            }
-            Some(DockerDiscoveryStatus::Missing) => {
-                t!("app.status.live_docker_missing").into_owned()
-            }
-            Some(DockerDiscoveryStatus::PermissionDenied) => {
-                t!("app.status.live_docker_denied").into_owned()
-            }
-            Some(DockerDiscoveryStatus::Failed(_)) => {
-                t!("app.status.live_docker_failed").into_owned()
-            }
-            _ => t!("app.status.live_host_only").into_owned(),
-        };
-    }
-
-    match (
-        &scan_result.metadata.compose_file,
-        &scan_result.metadata.host_root,
-    ) {
-        (Some(path), Some(_)) => i18n::tr_status_compose_and_host_loaded(
-            &path.display().to_string(),
-            scan_result.metadata.service_count,
-        ),
-        (Some(path), None) => i18n::tr_status_compose_loaded(
-            &path.display().to_string(),
-            scan_result.metadata.service_count,
-        ),
-        (None, Some(path)) => i18n::tr_status_host_loaded(&path.display().to_string()),
-        (None, None) => i18n::tr("app.status.no_target"),
-    }
-}
-
 fn findings_count_label(count: usize) -> String {
     if count == 1 {
         t!("app.result.single_finding").into_owned()
@@ -2683,20 +2949,24 @@ fn adapter_summary_lines(
 
     if has_pending_adapters(scan_result) {
         lines.push(Line::styled(
-            truncate_text(&adapter_progress_label(scan_result, state.tick), text_width),
+            wrap_text_to_lines(&adapter_progress_label(scan_result, state.tick), text_width)
+                .join(" "),
             theme.muted,
         ));
     }
 
     for (name, status) in &scan_result.metadata.adapters {
-        lines.push(Line::raw(truncate_text(
-            &format!(
-                "* {}: {}",
-                adapter_name_label(name),
-                adapter_status_label(status)
-            ),
-            text_width,
-        )));
+        lines.push(Line::raw(
+            wrap_text_to_lines(
+                &format!(
+                    "* {}: {}",
+                    adapter_name_label(name),
+                    adapter_status_label(status)
+                ),
+                text_width,
+            )
+            .join(" "),
+        ));
     }
 
     lines
@@ -2854,13 +3124,31 @@ fn hint_span(key: &str, label: String, theme: &Theme) -> Span<'static> {
     Span::styled(format!("[{key}] {label}"), theme.title)
 }
 
-fn truncate_text(value: &str, max_chars: usize) -> String {
-    let count = value.chars().count();
-    if count <= max_chars {
-        return value.to_owned();
+fn wrap_text_to_lines(value: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![value.to_owned()];
     }
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
 
-    value.chars().take(max_chars).collect::<String>()
+    for word in value.split_whitespace() {
+        if current_line.is_empty() {
+            current_line.push_str(word);
+        } else if current_line.len() + 1 + word.len() <= width {
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            lines.push(current_line);
+            current_line = word.to_owned();
+        }
+    }
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+    if lines.is_empty() && !value.is_empty() {
+        lines.push(String::new());
+    }
+    lines
 }
 
 fn severity_rank(severity: Severity) -> u8 {
@@ -2961,7 +3249,7 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        AdapterStatus, DiscoveredProjectSummary, DockerDiscoveryStatus, HostRuntimeInfo,
+        AdapterStatus, DiscoveredProjectSummary, DockerDiscoveryStatus, HostRuntimeInfo, ScanMode,
         ScoreReport, ServiceSummary,
     };
 
@@ -3136,6 +3424,46 @@ mod tests {
             (Severity::Medium, 0),
             (Severity::Low, 0),
         ]);
+        result
+    }
+
+    fn long_content_result() -> ScanResult {
+        let mut result = mixed_scope_result();
+        result.metadata.services = vec![
+            ServiceSummary {
+                name: String::from("adminer-with-a-very-long-service-name"),
+                image: Some(String::from(
+                    "registry.example.test/selfhost/adminer-with-long-path:2026.04.24",
+                )),
+            },
+            ServiceSummary {
+                name: String::from("vaultwarden"),
+                image: Some(String::from("vaultwarden/server:1.30.1")),
+            },
+            ServiceSummary {
+                name: String::from("nextcloud"),
+                image: Some(String::from("nextcloud:29.0.4-apache")),
+            },
+            ServiceSummary {
+                name: String::from("immich-machine-learning"),
+                image: Some(String::from(
+                    "ghcr.io/immich-app/immich-machine-learning:v1.99.0",
+                )),
+            },
+            ServiceSummary {
+                name: String::from("gitea"),
+                image: Some(String::from("gitea/gitea:1.22.0-rootless")),
+            },
+        ];
+        result.findings[0].title = String::from(
+            "Administrative interface is exposed publicly with a long explanation-worthy title",
+        );
+        result.findings[0].description = String::from(
+            "The service publishes an administrative HTTP interface to every network interface, so the full sentence must remain visible in the TUI.",
+        );
+        result.findings[0].how_to_fix = String::from(
+            "Bind the port to localhost, move it behind a reverse proxy with authentication, or remove the public port mapping.",
+        );
         result
     }
 
@@ -3630,6 +3958,175 @@ mod tests {
         assert!(content.contains("Critical | Native Compose | adminer | GUIDED"));
         assert!(content.contains("s sev | x src | v svc | m rem | o sort"));
         assert!(!content.contains("PageUp/PageDown"));
+    }
+
+    #[test]
+    fn tui_buffers_do_not_use_visible_ellipsis_for_security_content() {
+        let result = long_content_result();
+        let mut overview_state = AppState::new(&result);
+        let mut overview_terminal =
+            Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        overview_terminal
+            .draw(|frame| render(frame, &result, &mut overview_state))
+            .expect("overview should render");
+        let overview = buffer_to_string(overview_terminal.backend());
+
+        let mut findings_state = AppState::new(&result);
+        findings_state.open_findings();
+        let mut findings_terminal =
+            Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        findings_terminal
+            .draw(|frame| render(frame, &result, &mut findings_state))
+            .expect("findings should render");
+        let findings = buffer_to_string(findings_terminal.backend());
+
+        assert!(!overview.contains("..."));
+        assert!(!findings.contains("..."));
+        assert!(overview.contains("additional service"));
+        assert!(findings.contains("Administrative interface is exposed publicly"));
+    }
+
+    #[test]
+    fn layout_presets_render_across_representative_terminal_sizes() {
+        let sizes = [
+            (50, 16),
+            (60, 20),
+            (80, 24),
+            (100, 30),
+            (120, 40),
+            (160, 45),
+        ];
+        let presets = [
+            LayoutPreset::Adaptive,
+            LayoutPreset::Wide,
+            LayoutPreset::Balanced,
+            LayoutPreset::Compact,
+            LayoutPreset::Focus,
+        ];
+        let result = long_content_result();
+
+        for preset in presets {
+            for (width, height) in sizes {
+                let mut overview_state = AppState::new(&result);
+                overview_state.layout_preset = preset;
+                let mut overview_terminal =
+                    Terminal::new(TestBackend::new(width, height)).expect("terminal should build");
+                overview_terminal
+                    .draw(|frame| render(frame, &result, &mut overview_state))
+                    .expect("overview should render");
+                let overview = buffer_to_string(overview_terminal.backend());
+                assert!(overview.contains("hostveil"));
+
+                let mut findings_state = AppState::new(&result);
+                findings_state.layout_preset = preset;
+                findings_state.open_findings();
+                let mut findings_terminal =
+                    Terminal::new(TestBackend::new(width, height)).expect("terminal should build");
+                findings_terminal
+                    .draw(|frame| render(frame, &result, &mut findings_state))
+                    .expect("findings should render");
+                let findings = buffer_to_string(findings_terminal.backend());
+                assert!(findings.contains("Findings") || findings.contains("Detail"));
+            }
+        }
+
+        assert_eq!(
+            findings_layout_mode(
+                Rect {
+                    x: 0,
+                    y: 0,
+                    width: 120,
+                    height: 40,
+                },
+                LayoutPreset::Focus,
+            ),
+            FindingsLayoutMode::CompactList
+        );
+    }
+
+    #[test]
+    fn mouse_click_selects_the_actual_visible_finding_row() {
+        let result = long_content_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings should render");
+
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::FindingList(1)))
+            .expect("second visible row should be clickable")
+            .clone();
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(state.selected_index, 1);
+    }
+
+    #[test]
+    fn settings_modal_supports_keyboard_and_mouse_adjustments() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_settings();
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('2'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 1);
+
+        let initial_layout = state.layout_preset;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Right, crossterm::event::KeyModifiers::NONE),
+        );
+        assert_eq!(state.layout_preset, initial_layout.next());
+
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("settings modal should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(content.contains("Appearance"));
+        assert!(content.contains("Behavior"));
+        assert!(content.contains("Localization"));
+
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::SettingsRow(0)))
+            .expect("theme row should be clickable")
+            .clone();
+        let initial_theme = state.theme_preset;
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(state.settings_row, 0);
+        assert_eq!(state.theme_preset, initial_theme.next());
     }
 
     fn line_to_string(line: &Line<'_>) -> String {
