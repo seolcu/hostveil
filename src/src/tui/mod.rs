@@ -1487,16 +1487,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
 
     let categories = [
         t!("app.settings.category_appearance").into_owned(),
-        t!("app.settings.category_behavior").into_owned(),
         t!("app.settings.category_localization").into_owned(),
     ];
     let cat_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(layout[0]);
 
     for (i, cat) in categories.iter().enumerate() {
@@ -4104,7 +4099,6 @@ mod tests {
             .expect("settings modal should render");
         let content = buffer_to_string(terminal.backend());
         assert!(content.contains("Appearance"));
-        assert!(content.contains("Behavior"));
         assert!(content.contains("Localization"));
 
         let (rect, _) = state
