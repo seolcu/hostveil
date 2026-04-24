@@ -1547,6 +1547,7 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
 fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let area = frame.area();
     let modal = centered_rect(70, 50, area);
+    let modal = clamp_rect_width(modal, 80);
     frame.render_widget(Clear, modal);
 
     let theme = &state.theme;
@@ -1664,6 +1665,19 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+fn clamp_rect_width(r: Rect, max_width: u16) -> Rect {
+    if r.width <= max_width {
+        return r;
+    }
+    let excess = r.width - max_width;
+    Rect {
+        x: r.x + excess / 2,
+        y: r.y,
+        width: max_width,
+        height: r.height,
+    }
 }
 
 fn render_server_status_panel(

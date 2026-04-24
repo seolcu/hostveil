@@ -117,6 +117,7 @@ app:
     overview_axes: "Axis Scores"
     overview_activity: "Findings and Adapters"
     overview_findings: "Top Findings"
+    findings_header: "Findings"
     next_steps: "Next Steps"
     next_step_one: "Review the highest-severity findings first"
     next_step_two: "Use --json for automation and regression snapshots"

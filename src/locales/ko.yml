@@ -117,6 +117,7 @@ app:
     overview_axes: "축별 점수"
     overview_activity: "발견 사항과 어댑터"
     overview_findings: "주요 발견 사항"
+    findings_header: "발견 사항"
     next_steps: "다음 단계"
     next_step_one: "심각도가 높은 발견 사항부터 검토하세요"
     next_step_two: "자동화와 회귀 스냅샷에는 --json을 사용하세요"
