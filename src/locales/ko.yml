@@ -237,6 +237,7 @@ app:
       apt_install: "apt로 패키지 설치: %{packages}"
       trivy_repo: "Trivy APT 저장소 추가"
       fail2ban_baseline: "관리형 Fail2Ban sshd 기본 설정을 작성하고 서비스를 활성화"
+      manual_install: "%{tool} 수동 설치 필요"
     tool:
       lynis:
         name: "Lynis"
@@ -244,9 +245,13 @@ app:
       trivy:
         name: "Trivy"
         prompt: "Trivy: 이미지/컨테이너 취약점 스캔"
+      dockle:
+        name: "Dockle"
+        prompt: "Dockle: 이미지 모범 사례 및 CIS 벤치마크 점검"
       fail2ban:
         name: "Fail2Ban"
         prompt: "Fail2Ban: SSH 기본 침입 방지"
+    manual_install: "%{tool}을(를) 수동으로 설치해 주세요: %{instruction}"
   error:
     unknown_argument: "알 수 없는 인자: %{argument}"
     missing_argument_value: "인자 값이 없습니다: %{flag}"

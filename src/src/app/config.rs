@@ -106,16 +106,18 @@ impl LifecycleCommand {
 pub enum SetupTool {
     Lynis,
     Trivy,
+    Dockle,
     Fail2Ban,
 }
 
 impl SetupTool {
-    pub const ALL: [Self; 3] = [Self::Lynis, Self::Trivy, Self::Fail2Ban];
+    pub const ALL: [Self; 4] = [Self::Lynis, Self::Trivy, Self::Dockle, Self::Fail2Ban];
 
     pub fn from_arg(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "lynis" => Some(Self::Lynis),
             "trivy" => Some(Self::Trivy),
+            "dockle" => Some(Self::Dockle),
             "fail2ban" => Some(Self::Fail2Ban),
             _ => None,
         }
@@ -125,6 +127,7 @@ impl SetupTool {
         match self {
             Self::Lynis => "lynis",
             Self::Trivy => "trivy",
+            Self::Dockle => "dockle",
             Self::Fail2Ban => "fail2ban",
         }
     }
@@ -826,7 +829,7 @@ mod tests {
         let error = AppConfig::parse([
             String::from("setup"),
             String::from("--tool"),
-            String::from("dockle"),
+            String::from("nmap"),
         ])
         .expect_err("unknown setup tool should be rejected");
 

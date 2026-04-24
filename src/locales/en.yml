@@ -237,6 +237,7 @@ app:
       apt_install: "Install packages with apt: %{packages}"
       trivy_repo: "Add the upstream Trivy APT repository"
       fail2ban_baseline: "Write a managed Fail2Ban sshd baseline and enable the service"
+      manual_install: "Manual install required for %{tool}"
     tool:
       lynis:
         name: "Lynis"
@@ -244,9 +245,13 @@ app:
       trivy:
         name: "Trivy"
         prompt: "Trivy: image and container vulnerability scanning"
+      dockle:
+        name: "Dockle"
+        prompt: "Dockle: image best-practice and CIS benchmark checks"
       fail2ban:
         name: "Fail2Ban"
         prompt: "Fail2Ban: basic intrusion-prevention for SSH"
+    manual_install: "Please install %{tool} manually: %{instruction}"
   error:
     unknown_argument: "unknown argument: %{argument}"
     missing_argument_value: "missing value for argument: %{flag}"

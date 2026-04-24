@@ -6,7 +6,7 @@ use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use dialoguer::{MultiSelect, theme::ColorfulTheme};
+use dialoguer::{theme::ColorfulTheme, MultiSelect};
 
 use super::{AppError, SetupConfig, SetupTool};
 
@@ -61,7 +61,16 @@ impl SetupPlan {
             }
 
             if !state.tool_is_installed(*tool) {
-                package_set.push(tool.package_name().to_owned());
+                if *tool == SetupTool::Dockle {
+                    steps.push(SetupStep::ManualInstall {
+                        tool: tool.display_name(),
+                        instruction: String::from(
+                            "Install from https://github.com/goodwithtech/dockle/releases",
+                        ),
+                    });
+                } else {
+                    package_set.push(tool.package_name().to_owned());
+                }
             }
         }
 
@@ -130,6 +139,7 @@ enum SetupStep {
     AptInstall(Vec<String>),
     ConfigureTrivyAptRepo,
     ConfigureFail2BanBaseline,
+    ManualInstall { tool: String, instruction: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -364,6 +374,17 @@ fn execute_plan(plan: &SetupPlan) -> Result<(), AppError> {
             SetupStep::ConfigureFail2BanBaseline => {
                 configure_fail2ban_baseline()?;
             }
+            SetupStep::ManualInstall { tool, instruction } => {
+                println!(
+                    "{}",
+                    t!(
+                        "app.setup.manual_install",
+                        tool = tool.as_str(),
+                        instruction = instruction.as_str()
+                    )
+                    .into_owned()
+                );
+            }
         }
     }
 
@@ -436,6 +457,7 @@ fn print_verification(plan: &SetupPlan) {
         match tool {
             SetupTool::Lynis => print_command_check("lynis", &["--version"]),
             SetupTool::Trivy => print_command_check("trivy", &["--version"]),
+            SetupTool::Dockle => print_command_check("dockle", &["--version"]),
             SetupTool::Fail2Ban => {
                 print_command_check("systemctl", &["is-enabled", "fail2ban"]);
                 print_command_check("systemctl", &["is-active", "fail2ban"]);
@@ -710,6 +732,7 @@ impl SetupTool {
         match self {
             Self::Lynis => "lynis",
             Self::Trivy => "trivy",
+            Self::Dockle => "dockle",
             Self::Fail2Ban => "fail2ban-client",
         }
     }
@@ -718,6 +741,7 @@ impl SetupTool {
         match self {
             Self::Lynis => t!("app.setup.tool.lynis.name").into_owned(),
             Self::Trivy => t!("app.setup.tool.trivy.name").into_owned(),
+            Self::Dockle => t!("app.setup.tool.dockle.name").into_owned(),
             Self::Fail2Ban => t!("app.setup.tool.fail2ban.name").into_owned(),
         }
     }
@@ -726,6 +750,7 @@ impl SetupTool {
         match self {
             Self::Lynis => t!("app.setup.tool.lynis.prompt").into_owned(),
             Self::Trivy => t!("app.setup.tool.trivy.prompt").into_owned(),
+            Self::Dockle => t!("app.setup.tool.dockle.prompt").into_owned(),
             Self::Fail2Ban => t!("app.setup.tool.fail2ban.prompt").into_owned(),
         }
     }
@@ -746,6 +771,9 @@ impl SetupStep {
             .into_owned(),
             Self::ConfigureTrivyAptRepo => t!("app.setup.step.trivy_repo").into_owned(),
             Self::ConfigureFail2BanBaseline => t!("app.setup.step.fail2ban_baseline").into_owned(),
+            Self::ManualInstall { tool, .. } => {
+                t!("app.setup.step.manual_install", tool = tool.as_str()).into_owned()
+            }
         }
     }
 }
