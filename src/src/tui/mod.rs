@@ -1459,9 +1459,9 @@ fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rec
 fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState) {
     let theme = &state.theme;
     let constraints = [
-        Constraint::Length(20),
-        Constraint::Length(20),
-        Constraint::Length(20),
+        Constraint::Min(14),
+        Constraint::Min(14),
+        Constraint::Min(14),
         Constraint::Min(1),
     ];
     let chunks = Layout::default()
@@ -1789,10 +1789,6 @@ fn render_scan_results_panel(
             )
             .into_owned(),
             theme.title.add_modifier(Modifier::BOLD),
-        ));
-        lines.push(Line::styled(
-            t!("app.hint.open_findings").into_owned(),
-            theme.muted,
         ));
     }
 
