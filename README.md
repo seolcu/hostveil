@@ -13,11 +13,12 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 
 ## Features
 
-- **Security Overview Dashboard** — responsive overview with overall posture, per-axis breakdown, grouped action queue, and adapter activity
+- **Security Overview Dashboard** — responsive overview with overall posture, per-axis breakdown, grouped action queue, adapter activity, and selectable layouts
 - **Native Self-hosting-aware Checks** — checks tailored to each service's known data locations, Compose structure, and operational risk
 - **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, and Lynis are supported as optional adapters)
 - **Visible Background Progress** — launch-time auto-upgrade checks and in-TUI adapter loading surface status instead of appearing frozen
-- **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, and Gruvbox presets are available from the TUI
+- **Settings Modal** — change theme, layout, and locale from the TUI with keyboard or mouse controls
+- **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, and Monokai presets are available from the TUI
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 
@@ -256,10 +257,11 @@ Current Rust implementation status:
 - Active Rust crate scaffolded under `src/`
 - Pinned stable toolchain via `rust-toolchain.toml`
 - `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
-- Responsive overview and findings layouts for narrow, compact, and wide terminals
+- Responsive overview and findings layouts with persisted Adaptive, Wide, Balanced, Compact, and Focus presets
+- Scrollable overview/finding panels, tabbed navigation, and mouse hit targets mirror keyboard workflows
 - TUI findings navigation supports remediation-first triage for faster review of fixable issues
 - Explicit locale controls are available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI `g` switch
-- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, and Gruvbox palettes
+- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, and Monokai palettes
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
@@ -282,13 +284,13 @@ hostveil release versions follow standard SemVer without suffixes: `X.Y.Z` for t
 - Create GitHub Releases only from annotated `vX.Y.Z` tags pushed from `main`
 - The release tag must match `src/Cargo.toml` and `Cargo.lock`
 
-v0.4.0 release highlights:
+v0.10.0 release highlights:
 
-- Remediation-first TUI triage for quickly reviewing fixable findings
-- Explicit locale control through CLI, environment, and in-TUI switching
-- Non-root Lynis scans are skipped to avoid desktop authorization prompts
-- Deterministic smoke and regression tests avoid optional external scanner execution unless explicitly requested
-- Release validation now includes installer-script coverage before publishing
+- TUI layout presets are user-selectable and covered by a render matrix across representative terminal sizes
+- Visible TUI security content wraps instead of relying on ellipsis-style truncation
+- Overview and Findings panels support scrolling with visible scrollbars where content overflows
+- Settings modal exposes theme, layout, and locale controls through localized keyboard and mouse workflows
+- Tab navigation and precise mouse hit targets make Overview, Findings, and Settings more discoverable
 
 Current release priorities:
 
