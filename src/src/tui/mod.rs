@@ -1038,7 +1038,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Min(12),
             Constraint::Length(2),
         ])
@@ -1432,7 +1432,7 @@ fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rec
     let theme = &state.theme;
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(2)])
+        .constraints([Constraint::Length(1), Constraint::Length(3)])
         .split(area);
 
     let title_spans = vec![
