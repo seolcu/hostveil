@@ -14,6 +14,7 @@ const CONFIG_FILE_NAME: &str = "config.json";
 pub struct AppSettings {
     pub locale: Option<String>,
     pub theme: Option<String>,
+    pub layout: Option<String>,
 }
 
 pub fn load() -> AppSettings {
@@ -32,6 +33,12 @@ pub fn persist_locale(locale: &str) -> io::Result<()> {
 pub fn persist_theme(theme: &str) -> io::Result<()> {
     let mut settings = load();
     settings.theme = Some(theme.to_owned());
+    save(&settings)
+}
+
+pub fn persist_layout(layout: &str) -> io::Result<()> {
+    let mut settings = load();
+    settings.layout = Some(layout.to_owned());
     save(&settings)
 }
 
@@ -141,6 +148,7 @@ mod tests {
         let settings = AppSettings {
             locale: Some(String::from("ko")),
             theme: Some(String::from("nord")),
+            layout: Some(String::from("balanced")),
         };
 
         save_to_path(&path, &settings).expect("settings should save");
@@ -148,6 +156,7 @@ mod tests {
         let written = fs::read_to_string(&path).expect("settings file should exist");
         assert!(written.contains("\"locale\": \"ko\""));
         assert!(written.contains("\"theme\": \"nord\""));
+        assert!(written.contains("\"layout\": \"balanced\""));
 
         fs::remove_dir_all(path.parent().expect("config dir should exist"))
             .expect("temp dir should be removed");
@@ -159,6 +168,7 @@ mod tests {
         let settings = AppSettings {
             locale: Some(String::from("en")),
             theme: Some(String::from("tokyo_night")),
+            layout: Some(String::from("wide")),
         };
 
         save_to_path(&path, &settings).expect("settings should save");

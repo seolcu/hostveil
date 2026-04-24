@@ -3,7 +3,10 @@ use std::collections::BTreeMap;
 use std::io;
 use std::time::Duration;
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
+    KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -12,11 +15,10 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Margin, Rect};
 use ratatui::style::{Modifier, Style};
-use ratatui::symbols;
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
-    Block, Borders, LineGauge, List, ListItem, ListState, Paragraph, Scrollbar,
-    ScrollbarOrientation, ScrollbarState, Wrap,
+    Block, Borders, Clear, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation,
+    ScrollbarState, Wrap,
 };
 
 use crate::domain::{
@@ -36,6 +38,100 @@ pub use theme::{Theme, ThemePreset};
 enum Screen {
     Overview,
     Findings,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum LayoutPreset {
+    Adaptive,
+    Wide,
+    Balanced,
+    Compact,
+    Focus,
+}
+
+impl LayoutPreset {
+    fn as_key(self) -> &'static str {
+        match self {
+            Self::Adaptive => "adaptive",
+            Self::Wide => "wide",
+            Self::Balanced => "balanced",
+            Self::Compact => "compact",
+            Self::Focus => "focus",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Adaptive => "Auto",
+            Self::Wide => "Wide",
+            Self::Balanced => "Balanced",
+            Self::Compact => "Compact",
+            Self::Focus => "Focus",
+        }
+    }
+
+    fn from_key(value: &str) -> Option<Self> {
+        match value {
+            "adaptive" => Some(Self::Adaptive),
+            "wide" => Some(Self::Wide),
+            "balanced" => Some(Self::Balanced),
+            "compact" => Some(Self::Compact),
+            "focus" => Some(Self::Focus),
+            _ => None,
+        }
+    }
+
+    fn next(self) -> Self {
+        match self {
+            Self::Adaptive => Self::Wide,
+            Self::Wide => Self::Balanced,
+            Self::Balanced => Self::Compact,
+            Self::Compact => Self::Focus,
+            Self::Focus => Self::Adaptive,
+        }
+    }
+
+    fn previous(self) -> Self {
+        match self {
+            Self::Adaptive => Self::Focus,
+            Self::Wide => Self::Adaptive,
+            Self::Balanced => Self::Wide,
+            Self::Compact => Self::Balanced,
+            Self::Focus => Self::Compact,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum OverviewFocus {
+    ServerStatus,
+    ScanResults,
+    SecurityScores,
+    FixPaths,
+}
+
+impl OverviewFocus {
+    fn next(self) -> Self {
+        match self {
+            Self::ServerStatus => Self::ScanResults,
+            Self::ScanResults => Self::SecurityScores,
+            Self::SecurityScores => Self::FixPaths,
+            Self::FixPaths => Self::ServerStatus,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SettingsRow {
+    Theme,
+    Layout,
+    Locale,
+}
+
+impl SettingsRow {
+    fn all() -> [Self; 3] {
+        [Self::Theme, Self::Layout, Self::Locale]
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,15 +159,21 @@ enum RemediationFilter {
 #[derive(Debug, Clone)]
 struct AppState {
     screen: Screen,
+    settings_open: bool,
+    settings_row: usize,
     findings_focus: FindingsFocus,
+    overview_focus: OverviewFocus,
     selected_index: usize,
     detail_scroll: u16,
+    findings_list_scroll: u16,
+    overview_scroll: BTreeMap<OverviewFocus, u16>,
     sorted_indices: Vec<usize>,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
     remediation_filter: RemediationFilter,
     service_filter: Option<String>,
     sort_mode: FindingSortMode,
+    layout_preset: LayoutPreset,
     theme: Theme,
     theme_preset: ThemePreset,
     tick: usize,
@@ -85,22 +187,38 @@ impl AppState {
     }
 
     fn new(scan_result: &ScanResult) -> Self {
+        let settings = settings::load();
         let severity_filter = None;
         let source_filter = None;
         let service_filter = None;
         let remediation_filter = RemediationFilter::All;
         let sort_mode = FindingSortMode::Severity;
-        let theme_preset = settings::load()
+        let theme_preset = settings
             .theme
             .as_deref()
             .and_then(ThemePreset::from_key)
             .unwrap_or(ThemePreset::TokyoNight);
+        let layout_preset = settings
+            .layout
+            .as_deref()
+            .and_then(LayoutPreset::from_key)
+            .unwrap_or(LayoutPreset::Adaptive);
 
         Self {
             screen: Screen::Overview,
+            settings_open: false,
+            settings_row: 0,
             findings_focus: FindingsFocus::List,
+            overview_focus: OverviewFocus::ServerStatus,
             selected_index: 0,
             detail_scroll: 0,
+            findings_list_scroll: 0,
+            overview_scroll: BTreeMap::from([
+                (OverviewFocus::ServerStatus, 0),
+                (OverviewFocus::ScanResults, 0),
+                (OverviewFocus::SecurityScores, 0),
+                (OverviewFocus::FixPaths, 0),
+            ]),
             sorted_indices: visible_finding_indices(
                 scan_result,
                 severity_filter,
@@ -114,9 +232,65 @@ impl AppState {
             remediation_filter,
             service_filter: None,
             sort_mode,
+            layout_preset,
             theme: Theme::preset(theme_preset),
             theme_preset,
             tick: 0,
+        }
+    }
+
+    fn cycle_layout(&mut self) {
+        self.layout_preset = self.layout_preset.next();
+        let _ = settings::persist_layout(self.layout_preset.as_key());
+    }
+
+    fn cycle_layout_backward(&mut self) {
+        self.layout_preset = self.layout_preset.previous();
+        let _ = settings::persist_layout(self.layout_preset.as_key());
+    }
+
+    fn open_settings(&mut self) {
+        self.settings_open = true;
+    }
+
+    fn close_settings(&mut self) {
+        self.settings_open = false;
+    }
+
+    fn active_settings_row(&self) -> SettingsRow {
+        let rows = SettingsRow::all();
+        rows[self.settings_row.min(rows.len() - 1)]
+    }
+
+    fn settings_next_row(&mut self) {
+        self.settings_row = (self.settings_row + 1) % SettingsRow::all().len();
+    }
+
+    fn settings_prev_row(&mut self) {
+        self.settings_row = self.settings_row.saturating_sub(1);
+    }
+
+    fn adjust_setting_right(&mut self) {
+        match self.active_settings_row() {
+            SettingsRow::Theme => self.cycle_theme(),
+            SettingsRow::Layout => self.cycle_layout(),
+            SettingsRow::Locale => {
+                let _ = i18n::cycle_persisted_locale();
+            }
+        }
+    }
+
+    fn adjust_setting_left(&mut self) {
+        match self.active_settings_row() {
+            SettingsRow::Theme => {
+                for _ in 0..(ThemePreset::ALL.len().saturating_sub(1)) {
+                    self.cycle_theme();
+                }
+            }
+            SettingsRow::Layout => self.cycle_layout_backward(),
+            SettingsRow::Locale => {
+                let _ = i18n::cycle_persisted_locale();
+            }
         }
     }
 
@@ -134,18 +308,21 @@ impl AppState {
         self.screen = Screen::Findings;
         self.findings_focus = FindingsFocus::List;
         self.detail_scroll = 0;
+        self.findings_list_scroll = 0;
     }
 
     fn return_to_overview(&mut self) {
         self.screen = Screen::Overview;
         self.findings_focus = FindingsFocus::List;
         self.detail_scroll = 0;
+        self.findings_list_scroll = 0;
     }
 
     fn select_next(&mut self) {
         if self.finding_count() > 1 {
             self.selected_index = (self.selected_index + 1).min(self.finding_count() - 1);
             self.detail_scroll = 0;
+            self.findings_list_scroll = self.findings_list_scroll.saturating_add(1);
         }
     }
 
@@ -153,6 +330,7 @@ impl AppState {
         if self.finding_count() > 1 {
             self.selected_index = self.selected_index.saturating_sub(1);
             self.detail_scroll = 0;
+            self.findings_list_scroll = self.findings_list_scroll.saturating_sub(1);
         }
     }
 
@@ -192,10 +370,37 @@ impl AppState {
         if self.sorted_indices.is_empty() {
             self.selected_index = 0;
             self.detail_scroll = 0;
+            self.findings_list_scroll = 0;
             return;
         }
 
         self.selected_index = self.selected_index.min(self.sorted_indices.len() - 1);
+        self.findings_list_scroll = self.findings_list_scroll.min(self.selected_index as u16);
+    }
+
+    fn active_overview_scroll(&self) -> u16 {
+        self.overview_scroll
+            .get(&self.overview_focus)
+            .copied()
+            .unwrap_or(0)
+    }
+
+    fn set_active_overview_scroll(&mut self, value: u16) {
+        self.overview_scroll.insert(self.overview_focus, value);
+    }
+
+    fn scroll_overview_down(&mut self, amount: u16) {
+        let next = self.active_overview_scroll().saturating_add(amount);
+        self.set_active_overview_scroll(next);
+    }
+
+    fn scroll_overview_up(&mut self, amount: u16) {
+        let next = self.active_overview_scroll().saturating_sub(amount);
+        self.set_active_overview_scroll(next);
+    }
+
+    fn focus_next_overview_panel(&mut self) {
+        self.overview_focus = self.overview_focus.next();
     }
 
     fn clamp_detail_scroll(&mut self, max_scroll: usize) {
@@ -312,6 +517,7 @@ enum OverviewLayoutMode {
     Wide,
     Compact,
     Narrow,
+    Focus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -335,7 +541,7 @@ where
 {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -344,7 +550,11 @@ where
     let result = run_event_loop(&mut terminal, scan_result, &mut state, &mut refresh);
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
 
     result
@@ -374,6 +584,9 @@ where
                         return Ok(action);
                     }
                 }
+                Event::Mouse(mouse) => {
+                    handle_mouse(state, scan_result, mouse);
+                }
                 Event::Resize(_, _) => {}
                 _ => {}
             }
@@ -381,10 +594,164 @@ where
     }
 }
 
+fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEvent) {
+    match mouse.kind {
+        MouseEventKind::Down(MouseButton::Left) => {
+            if hit_tab(mouse.column, mouse.row) {
+                handle_tab_click(state, mouse.column);
+                return;
+            }
+
+            if state.settings_open {
+                handle_settings_click(state, mouse.column, mouse.row);
+                return;
+            }
+
+            if state.screen == Screen::Findings {
+                if mouse.column < 40 {
+                    state.focus_list();
+                } else {
+                    state.focus_detail();
+                }
+
+                if state.findings_focus == FindingsFocus::List && state.finding_count() > 0 {
+                    let index = mouse.row.saturating_sub(4) as usize;
+                    if index < state.finding_count() {
+                        state.selected_index = index;
+                        state.detail_scroll = 0;
+                    }
+                }
+            } else {
+                state.overview_focus = match mouse.column {
+                    0..=39 => OverviewFocus::ServerStatus,
+                    40..=79 => OverviewFocus::ScanResults,
+                    80..=119 => OverviewFocus::SecurityScores,
+                    _ => OverviewFocus::FixPaths,
+                };
+            }
+        }
+        MouseEventKind::ScrollDown => {
+            if state.settings_open {
+                state.settings_next_row();
+                return;
+            }
+
+            if state.screen == Screen::Findings {
+                if state.findings_focus == FindingsFocus::List {
+                    state.select_next();
+                } else {
+                    state.scroll_detail_down(2);
+                }
+            } else {
+                state.scroll_overview_down(2);
+            }
+        }
+        MouseEventKind::ScrollUp => {
+            if state.settings_open {
+                state.settings_prev_row();
+                return;
+            }
+
+            if state.screen == Screen::Findings {
+                if state.findings_focus == FindingsFocus::List {
+                    state.select_previous();
+                } else {
+                    state.scroll_detail_up(2);
+                }
+            } else {
+                state.scroll_overview_up(2);
+            }
+        }
+        _ => {}
+    }
+
+    state.clamp_selection(scan_result);
+}
+
+fn hit_tab(_x: u16, y: u16) -> bool {
+    y == 1
+}
+
+fn handle_tab_click(state: &mut AppState, x: u16) {
+    match x {
+        0..=28 => state.screen = Screen::Overview,
+        29..=58 => state.screen = Screen::Findings,
+        _ => state.open_settings(),
+    }
+}
+
+fn handle_settings_click(state: &mut AppState, x: u16, y: u16) {
+    if !(8..=12).contains(&y) {
+        return;
+    }
+
+    state.settings_row = (y.saturating_sub(8) as usize).min(SettingsRow::all().len() - 1);
+    if x > 70 {
+        state.adjust_setting_right();
+    } else if x > 50 {
+        state.adjust_setting_left();
+    }
+}
+
 fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> Option<TuiAction> {
+    if state.settings_open {
+        return handle_settings_key(state, key);
+    }
+
+    if matches!(key.code, KeyCode::Char('?'))
+        || (matches!(key.code, KeyCode::Char(',')) && key.modifiers.contains(KeyModifiers::CONTROL))
+    {
+        state.open_settings();
+        return None;
+    }
+
+    if state.screen == Screen::Overview {
+        match key.code {
+            KeyCode::Char('1') => {
+                state.screen = Screen::Overview;
+                return None;
+            }
+            KeyCode::Char('2') => {
+                state.screen = Screen::Findings;
+                return None;
+            }
+            KeyCode::Char('3') => {
+                state.open_settings();
+                return None;
+            }
+            _ => {}
+        }
+    }
+
     match state.screen {
         Screen::Overview => handle_overview_key(state, scan_result, key),
         Screen::Findings => handle_findings_key(state, scan_result, key),
+    }
+}
+
+fn handle_settings_key(state: &mut AppState, key: KeyEvent) -> Option<TuiAction> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Enter => {
+            state.close_settings();
+            None
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            state.settings_next_row();
+            None
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            state.settings_prev_row();
+            None
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            state.adjust_setting_right();
+            None
+        }
+        KeyCode::Left | KeyCode::Char('h') => {
+            state.adjust_setting_left();
+            None
+        }
+        _ => None,
     }
 }
 
@@ -411,6 +778,30 @@ fn handle_overview_key(
         }
         KeyCode::Char('t') => {
             state.cycle_theme();
+            None
+        }
+        KeyCode::Char('L') => {
+            state.cycle_layout();
+            None
+        }
+        KeyCode::Tab => {
+            state.focus_next_overview_panel();
+            None
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            state.scroll_overview_down(1);
+            None
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            state.scroll_overview_up(1);
+            None
+        }
+        KeyCode::PageDown => {
+            state.scroll_overview_down(8);
+            None
+        }
+        KeyCode::PageUp => {
+            state.scroll_overview_up(8);
             None
         }
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
@@ -537,13 +928,17 @@ fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut 
         Screen::Overview => render_overview(frame, scan_result, state),
         Screen::Findings => render_findings(frame, scan_result, state),
     }
+
+    if state.settings_open {
+        render_settings_modal(frame, state);
+    }
 }
 
 fn render_surface_background(frame: &mut ratatui::Frame<'_>, theme: &Theme) {
     frame.render_widget(Block::default().style(theme.surface), frame.area());
 }
 
-fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &AppState) {
+fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -553,9 +948,9 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         ])
         .split(frame.area());
 
-    frame.render_widget(header_banner(&state.theme), layout[0]);
+    frame.render_widget(header_banner(state), layout[0]);
 
-    match overview_layout_mode(frame.area()) {
+    match overview_layout_mode(frame.area(), state.layout_preset) {
         OverviewLayoutMode::Wide => {
             let columns = Layout::default()
                 .direction(Direction::Horizontal)
@@ -570,10 +965,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .constraints([Constraint::Length(10), Constraint::Min(10)])
                 .split(columns[2]);
 
-            render_server_status_panel(frame, columns[0], scan_result, &state.theme);
+            render_server_status_panel(frame, columns[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme);
             render_security_scores_panel(frame, right_column[0], scan_result, state, &state.theme);
-            render_fix_paths_panel(frame, right_column[1], scan_result, &state.theme);
+            render_fix_paths_panel(frame, right_column[1], scan_result, state, &state.theme);
         }
         OverviewLayoutMode::Compact => {
             let columns = Layout::default()
@@ -589,10 +984,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .constraints([Constraint::Length(10), Constraint::Min(9)])
                 .split(columns[1]);
 
-            render_server_status_panel(frame, left[0], scan_result, &state.theme);
+            render_server_status_panel(frame, left[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, left[1], scan_result, state, &state.theme);
             render_security_scores_panel(frame, right[0], scan_result, state, &state.theme);
-            render_fix_paths_panel(frame, right[1], scan_result, &state.theme);
+            render_fix_paths_panel(frame, right[1], scan_result, state, &state.theme);
         }
         OverviewLayoutMode::Narrow => {
             let rows = Layout::default()
@@ -605,10 +1000,18 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 ])
                 .split(layout[1]);
 
-            render_server_status_panel(frame, rows[0], scan_result, &state.theme);
+            render_server_status_panel(frame, rows[0], scan_result, state, &state.theme);
             render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme);
             render_security_scores_panel(frame, rows[2], scan_result, state, &state.theme);
-            render_fix_paths_panel(frame, rows[3], scan_result, &state.theme);
+            render_fix_paths_panel(frame, rows[3], scan_result, state, &state.theme);
+        }
+        OverviewLayoutMode::Focus => {
+            let columns = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(48), Constraint::Percentage(52)])
+                .split(layout[1]);
+            render_security_scores_panel(frame, columns[0], scan_result, state, &state.theme);
+            render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme);
         }
     }
 
@@ -616,7 +1019,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
 }
 
 fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
-    let mode = findings_layout_mode(frame.area());
+    let mode = findings_layout_mode(frame.area(), state.layout_preset);
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -647,30 +1050,49 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     );
 
     let mut list_state = ListState::default();
+    let viewport_items = content[0].height.saturating_sub(2).max(1) as usize;
+    let max_list_scroll = state.finding_count().saturating_sub(viewport_items);
+    let list_scroll = state
+        .findings_list_scroll
+        .min(max_list_scroll.min(u16::MAX as usize) as u16);
+    let start = list_scroll as usize;
+    let end = (start + viewport_items).min(state.finding_count());
+
     if state.finding_count() > 0 {
-        list_state.select(Some(state.selected_index));
+        if state.selected_index < start || state.selected_index >= end {
+            let selected = state.selected_index.min(state.finding_count() - 1);
+            let visible_selected = selected.saturating_sub(start).min(viewport_items - 1);
+            list_state.select(Some(visible_selected));
+        } else {
+            list_state.select(Some(state.selected_index.saturating_sub(start)));
+        }
     }
 
-    let list = List::new(findings_list_items(
-        scan_result,
-        state,
-        content[0].width,
-        mode,
-        &state.theme,
-    ))
-    .style(state.theme.surface)
-    .block(
-        Block::default()
-            .title(findings_list_title(state.findings_focus))
-            .borders(Borders::ALL)
-            .style(state.theme.surface)
-            .border_style(focus_border_style(
-                state.findings_focus == FindingsFocus::List,
-                &state.theme,
-            )),
-    )
-    .highlight_symbol("> ")
-    .highlight_style(state.theme.highlight);
+    let all_items = findings_list_items(scan_result, state, content[0].width, mode, &state.theme);
+    let visible_items = if all_items.is_empty() {
+        all_items
+    } else {
+        all_items
+            .into_iter()
+            .skip(start)
+            .take(viewport_items)
+            .collect::<Vec<_>>()
+    };
+
+    let list = List::new(visible_items)
+        .style(state.theme.surface)
+        .block(
+            Block::default()
+                .title(findings_list_title(state.findings_focus))
+                .borders(Borders::ALL)
+                .style(state.theme.surface)
+                .border_style(focus_border_style(
+                    state.findings_focus == FindingsFocus::List,
+                    &state.theme,
+                )),
+        )
+        .highlight_symbol("> ")
+        .highlight_style(state.theme.highlight);
 
     let detail_block = Block::default()
         .title(findings_detail_title(state.findings_focus))
@@ -694,6 +1116,13 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         .scroll((state.detail_scroll, 0));
 
     frame.render_stateful_widget(list, content[0], &mut list_state);
+    render_scrollbar(
+        frame,
+        content[0],
+        state.finding_count(),
+        viewport_items as u16,
+        list_scroll,
+    );
     frame.render_widget(detail, content[1]);
     render_detail_scrollbar(
         frame,
@@ -708,27 +1137,44 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     );
 }
 
-fn overview_layout_mode(area: Rect) -> OverviewLayoutMode {
-    if area.width >= 110 && area.height >= 28 {
-        OverviewLayoutMode::Wide
-    } else if area.width >= 80 && area.height >= 24 {
-        OverviewLayoutMode::Compact
-    } else {
-        OverviewLayoutMode::Narrow
+fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode {
+    match preset {
+        LayoutPreset::Adaptive => {
+            if area.width >= 110 && area.height >= 28 {
+                OverviewLayoutMode::Wide
+            } else if area.width >= 80 && area.height >= 24 {
+                OverviewLayoutMode::Compact
+            } else {
+                OverviewLayoutMode::Narrow
+            }
+        }
+        LayoutPreset::Wide => OverviewLayoutMode::Wide,
+        LayoutPreset::Balanced => OverviewLayoutMode::Compact,
+        LayoutPreset::Compact => OverviewLayoutMode::Narrow,
+        LayoutPreset::Focus => OverviewLayoutMode::Focus,
     }
 }
 
-fn findings_layout_mode(area: Rect) -> FindingsLayoutMode {
-    if area.width >= 96 && area.height >= 24 {
-        FindingsLayoutMode::SideBySide
-    } else if area.width >= 72 && area.height >= 18 {
-        FindingsLayoutMode::Stacked
-    } else {
-        FindingsLayoutMode::Narrow
+fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode {
+    match preset {
+        LayoutPreset::Adaptive => {
+            if area.width >= 96 && area.height >= 24 {
+                FindingsLayoutMode::SideBySide
+            } else if area.width >= 72 && area.height >= 18 {
+                FindingsLayoutMode::Stacked
+            } else {
+                FindingsLayoutMode::Narrow
+            }
+        }
+        LayoutPreset::Wide => FindingsLayoutMode::SideBySide,
+        LayoutPreset::Balanced => FindingsLayoutMode::Stacked,
+        LayoutPreset::Compact => FindingsLayoutMode::Narrow,
+        LayoutPreset::Focus => FindingsLayoutMode::Narrow,
     }
 }
 
-fn header_banner(theme: &Theme) -> Paragraph<'static> {
+fn header_banner(state: &AppState) -> Paragraph<'static> {
+    let theme = &state.theme;
     let mut spans = vec![
         Span::styled(
             format!("hostveil v{}", env!("CARGO_PKG_VERSION")),
@@ -756,7 +1202,7 @@ fn header_banner(theme: &Theme) -> Paragraph<'static> {
         ));
     }
 
-    Paragraph::new(Text::from(Line::from(spans)))
+    Paragraph::new(Text::from(vec![Line::from(spans), tab_line(state)]))
         .alignment(Alignment::Center)
         .block(
             Block::default()
@@ -764,6 +1210,98 @@ fn header_banner(theme: &Theme) -> Paragraph<'static> {
                 .border_style(theme.border),
         )
         .style(theme.surface)
+}
+
+fn tab_line(state: &AppState) -> Line<'static> {
+    let overview = if state.screen == Screen::Overview {
+        format!("[1] {}*", t!("app.tab.overview").into_owned())
+    } else {
+        format!("[1] {}", t!("app.tab.overview").into_owned())
+    };
+    let findings = if state.screen == Screen::Findings {
+        format!("[2] {}*", t!("app.tab.findings").into_owned())
+    } else {
+        format!("[2] {}", t!("app.tab.findings").into_owned())
+    };
+
+    Line::raw(format!(
+        "{}  |  {}  |  [3] {}  |  {}: {}",
+        overview,
+        findings,
+        t!("app.tab.settings").into_owned(),
+        t!("app.settings.layout").into_owned(),
+        state.layout_preset.label()
+    ))
+}
+
+fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &AppState) {
+    let area = frame.area();
+    let modal = centered_rect(60, 40, area);
+    frame.render_widget(Clear, modal);
+
+    let block = Block::default()
+        .title(t!("app.panel.settings").into_owned())
+        .borders(Borders::ALL)
+        .style(state.theme.surface)
+        .border_style(state.theme.border)
+        .title_style(state.theme.title);
+    let inner = block.inner(modal);
+    frame.render_widget(block, modal);
+
+    let rows = vec![
+        format!(
+            "{}: {}",
+            t!("app.settings.theme").into_owned(),
+            state.theme_preset.label()
+        ),
+        format!(
+            "{}: {}",
+            t!("app.settings.layout").into_owned(),
+            state.layout_preset.label()
+        ),
+        format!(
+            "{}: {}",
+            t!("app.settings.locale").into_owned(),
+            i18n::current_locale()
+        ),
+    ];
+
+    let lines = rows
+        .into_iter()
+        .enumerate()
+        .map(|(index, row)| {
+            if index == state.settings_row {
+                Line::styled(format!("> {}", row), state.theme.highlight)
+            } else {
+                Line::raw(format!("  {}", row))
+            }
+        })
+        .collect::<Vec<_>>();
+
+    frame.render_widget(
+        Paragraph::new(Text::from(lines)).wrap(Wrap { trim: false }),
+        inner,
+    );
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
 
 fn is_root() -> bool {
@@ -781,6 +1319,7 @@ fn render_server_status_panel(
     frame: &mut ratatui::Frame<'_>,
     area: Rect,
     scan_result: &ScanResult,
+    state: &AppState,
     theme: &Theme,
 ) {
     let block = Block::default()
@@ -796,16 +1335,12 @@ fn render_server_status_panel(
         return;
     }
 
-    let sections = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(4),
-            Constraint::Length(1),
-            Constraint::Min(0),
-        ])
-        .split(inner);
-
-    let meta_lines = vec![
+    let mut lines = vec![
+        kv_line(
+            t!("app.server.load").into_owned(),
+            load_display(scan_result),
+            theme,
+        ),
         kv_line(
             t!("app.server.host_name").into_owned(),
             display_hostname(scan_result),
@@ -827,24 +1362,27 @@ fn render_server_status_panel(
             theme,
         ),
     ];
+    lines.push(Line::raw(String::new()));
+    lines.extend(server_service_lines(scan_result, inner.width, theme));
+
+    let content = Text::from(lines);
+    let content_height = estimated_wrapped_text_height(&content, inner.width);
+    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let scroll = state
+        .overview_scroll
+        .get(&OverviewFocus::ServerStatus)
+        .copied()
+        .unwrap_or(0)
+        .min(max_scroll.min(u16::MAX as usize) as u16);
 
     frame.render_widget(
-        Paragraph::new(Text::from(meta_lines))
+        Paragraph::new(content)
             .style(theme.surface)
-            .wrap(Wrap { trim: true }),
-        sections[0],
+            .wrap(Wrap { trim: false })
+            .scroll((scroll, 0)),
+        inner,
     );
-    render_load_gauge_row(frame, sections[1], scan_result, theme);
-    frame.render_widget(
-        Paragraph::new(Text::from(server_service_lines(
-            scan_result,
-            sections[2].width,
-            theme,
-        )))
-        .style(theme.surface)
-        .wrap(Wrap { trim: true }),
-        sections[2],
-    );
+    render_scrollbar(frame, area, content_height, inner.height, scroll);
 }
 
 fn render_scan_results_panel(
@@ -933,12 +1471,24 @@ fn render_scan_results_panel(
         }
     }
 
+    let content = Text::from(lines);
+    let content_height = estimated_wrapped_text_height(&content, inner.width);
+    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let scroll = state
+        .overview_scroll
+        .get(&OverviewFocus::ScanResults)
+        .copied()
+        .unwrap_or(0)
+        .min(max_scroll.min(u16::MAX as usize) as u16);
+
     frame.render_widget(
-        Paragraph::new(Text::from(lines))
+        Paragraph::new(content)
             .style(theme.surface)
-            .wrap(Wrap { trim: true }),
+            .wrap(Wrap { trim: false })
+            .scroll((scroll, 0)),
         inner,
     );
+    render_scrollbar(frame, area, content_height, inner.height, scroll);
 }
 
 fn render_security_scores_panel(
@@ -961,39 +1511,46 @@ fn render_security_scores_panel(
         return;
     }
 
-    let rows = score_rows(scan_result);
-    let mut constraints = Vec::new();
+    let mut lines = Vec::new();
     if has_pending_adapters(scan_result) {
-        constraints.push(Constraint::Length(2));
-        constraints.push(Constraint::Length(1));
+        lines.push(Line::styled(
+            adapter_progress_label(scan_result, state.tick),
+            theme.muted,
+        ));
+        lines.push(Line::raw(
+            t!("app.overview.score_pending_detail").into_owned(),
+        ));
+        lines.push(Line::raw(String::new()));
     }
-    constraints.extend(rows.iter().map(|_| Constraint::Length(1)));
-    let row_areas = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints)
-        .split(inner);
-
-    let mut offset = 0;
-    if has_pending_adapters(scan_result) {
-        render_adapter_progress_row(frame, row_areas[0], scan_result, state, theme);
-        frame.render_widget(
-            Paragraph::new(t!("app.overview.score_pending_detail")).style(theme.muted),
-            row_areas[1],
-        );
-        offset = 2;
+    for (label, score, _) in score_rows(scan_result) {
+        lines.push(Line::raw(format!("{}: {}", label, score)));
     }
 
-    for ((label, score, emphasize), row_area) in
-        rows.into_iter().zip(row_areas.iter().copied().skip(offset))
-    {
-        render_score_gauge_row(frame, row_area, &label, score, emphasize, theme);
-    }
+    let content = Text::from(lines);
+    let content_height = estimated_wrapped_text_height(&content, inner.width);
+    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let scroll = state
+        .overview_scroll
+        .get(&OverviewFocus::SecurityScores)
+        .copied()
+        .unwrap_or(0)
+        .min(max_scroll.min(u16::MAX as usize) as u16);
+
+    frame.render_widget(
+        Paragraph::new(content)
+            .style(theme.surface)
+            .wrap(Wrap { trim: false })
+            .scroll((scroll, 0)),
+        inner,
+    );
+    render_scrollbar(frame, area, content_height, inner.height, scroll);
 }
 
 fn render_fix_paths_panel(
     frame: &mut ratatui::Frame<'_>,
     area: Rect,
     scan_result: &ScanResult,
+    state: &AppState,
     theme: &Theme,
 ) {
     let block = Block::default()
@@ -1014,12 +1571,24 @@ fn render_fix_paths_panel(
         lines.push(Line::raw(t!("app.fix.none").into_owned()));
     }
 
+    let content = Text::from(lines);
+    let content_height = estimated_wrapped_text_height(&content, inner.width);
+    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let scroll = state
+        .overview_scroll
+        .get(&OverviewFocus::FixPaths)
+        .copied()
+        .unwrap_or(0)
+        .min(max_scroll.min(u16::MAX as usize) as u16);
+
     frame.render_widget(
-        Paragraph::new(Text::from(lines))
+        Paragraph::new(content)
             .style(theme.surface)
-            .wrap(Wrap { trim: true }),
+            .wrap(Wrap { trim: false })
+            .scroll((scroll, 0)),
         inner,
     );
+    render_scrollbar(frame, area, content_height, inner.height, scroll);
 }
 
 fn overview_footer(theme: &Theme) -> Paragraph<'static> {
@@ -1056,8 +1625,23 @@ fn findings_header(
     let text = if state.finding_count() == 0 {
         truncate_text(
             &format!(
-                "{} | {}",
+                "{} | {} | {}",
                 t!("app.finding.empty_status").into_owned(),
+                if state.screen == Screen::Findings {
+                    format!(
+                        "[1] {} | [2] {}* | [3] {}",
+                        t!("app.tab.overview").into_owned(),
+                        t!("app.tab.findings").into_owned(),
+                        t!("app.tab.settings").into_owned()
+                    )
+                } else {
+                    format!(
+                        "[1] {} | [2] {} | [3] {}",
+                        t!("app.tab.overview").into_owned(),
+                        t!("app.tab.findings").into_owned(),
+                        t!("app.tab.settings").into_owned()
+                    )
+                },
                 filters
             ),
             inner_width,
@@ -1762,155 +2346,6 @@ fn score_rows(scan_result: &ScanResult) -> Vec<(String, u8, bool)> {
     rows
 }
 
-fn render_score_gauge_row(
-    frame: &mut ratatui::Frame<'_>,
-    area: Rect,
-    label: &str,
-    score: u8,
-    emphasize: bool,
-    theme: &Theme,
-) {
-    if area.width == 0 || area.height == 0 {
-        return;
-    }
-
-    let label_width = area.width.saturating_sub(14).clamp(8, 18);
-    let row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(label_width),
-            Constraint::Length(4),
-            Constraint::Min(0),
-        ])
-        .split(area);
-
-    let label_style = if emphasize {
-        theme.title.add_modifier(Modifier::BOLD)
-    } else {
-        theme.base
-    };
-    let label_text = truncate_text(label, label_width.saturating_sub(1).max(4) as usize);
-
-    frame.render_widget(Paragraph::new(label_text).style(label_style), row[0]);
-    frame.render_widget(
-        Paragraph::new(format!("{score:>3}"))
-            .style(score_style(score, theme).add_modifier(Modifier::BOLD)),
-        row[1],
-    );
-
-    if row[2].width > 0 {
-        let gauge_width = row[2].width.min(if emphasize { 24 } else { 18 });
-        let gauge_area = Rect::new(
-            row[2].x + row[2].width.saturating_sub(gauge_width),
-            row[2].y,
-            gauge_width,
-            row[2].height,
-        );
-        frame.render_widget(
-            LineGauge::default()
-                .ratio(score_ratio(score))
-                .label(String::new())
-                .line_set(symbols::line::THICK)
-                .filled_style(score_style(score, theme))
-                .unfilled_style(theme.border),
-            gauge_area,
-        );
-    }
-}
-
-fn render_load_gauge_row(
-    frame: &mut ratatui::Frame<'_>,
-    area: Rect,
-    scan_result: &ScanResult,
-    theme: &Theme,
-) {
-    if area.width == 0 || area.height == 0 {
-        return;
-    }
-
-    let label_text = format!(
-        "{} {}",
-        t!("app.server.load").into_owned(),
-        load_display(scan_result)
-    );
-    let label_width = area.width.saturating_sub(12).clamp(10, 24);
-    let row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(label_width), Constraint::Min(0)])
-        .split(area);
-
-    frame.render_widget(
-        Paragraph::new(truncate_text(
-            &label_text,
-            label_width.saturating_sub(1).max(6) as usize,
-        ))
-        .style(theme.title),
-        row[0],
-    );
-
-    if row[1].width > 0 {
-        frame.render_widget(
-            LineGauge::default()
-                .ratio(load_ratio(scan_result).unwrap_or(0.0))
-                .label(String::new())
-                .line_set(symbols::line::THICK)
-                .filled_style(theme.safe)
-                .unfilled_style(theme.border),
-            row[1],
-        );
-    }
-}
-
-fn render_adapter_progress_row(
-    frame: &mut ratatui::Frame<'_>,
-    area: Rect,
-    scan_result: &ScanResult,
-    state: &AppState,
-    theme: &Theme,
-) {
-    if area.width == 0 || area.height == 0 {
-        return;
-    }
-
-    let (complete, total) = adapter_completion(scan_result);
-    let ratio = if total == 0 {
-        1.0
-    } else {
-        complete as f64 / total as f64
-    };
-    let label_width = area.width.saturating_sub(18).clamp(12, 28);
-    let row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(label_width),
-            Constraint::Length(5),
-            Constraint::Min(8),
-        ])
-        .split(area);
-
-    frame.render_widget(
-        Paragraph::new(truncate_text(
-            &adapter_progress_label(scan_result, state.tick),
-            label_width.max(8) as usize,
-        ))
-        .style(theme.muted),
-        row[0],
-    );
-    frame.render_widget(
-        Paragraph::new(format!("{complete}/{total}")).style(theme.base),
-        row[1],
-    );
-    frame.render_widget(
-        LineGauge::default()
-            .ratio(ratio)
-            .label(String::new())
-            .line_set(symbols::line::THICK)
-            .filled_style(theme.title)
-            .unfilled_style(theme.border),
-        row[2],
-    );
-}
-
 fn render_detail_scrollbar(
     frame: &mut ratatui::Frame<'_>,
     area: Rect,
@@ -1926,6 +2361,36 @@ fn render_detail_scrollbar(
         .content_length(content_height)
         .viewport_content_length(viewport_height as usize)
         .position(state.detail_scroll as usize);
+
+    frame.render_stateful_widget(
+        Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None)
+            .track_symbol(None)
+            .thumb_symbol("▐"),
+        area.inner(Margin {
+            vertical: 1,
+            horizontal: 0,
+        }),
+        &mut scrollbar_state,
+    );
+}
+
+fn render_scrollbar(
+    frame: &mut ratatui::Frame<'_>,
+    area: Rect,
+    content_height: usize,
+    viewport_height: u16,
+    scroll: u16,
+) {
+    if area.width == 0 || area.height <= 2 || content_height <= viewport_height as usize {
+        return;
+    }
+
+    let mut scrollbar_state = ScrollbarState::default()
+        .content_length(content_height)
+        .viewport_content_length(viewport_height as usize)
+        .position(scroll as usize);
 
     frame.render_stateful_widget(
         Scrollbar::new(ScrollbarOrientation::VerticalRight)
@@ -1998,10 +2463,6 @@ fn estimated_wrapped_line_height(line: &Line<'_>, width: usize) -> usize {
     } else {
         rendered_lines
     }
-}
-
-fn score_ratio(score: u8) -> f64 {
-    (score as f64 / 100.0).clamp(0.0, 1.0)
 }
 
 fn result_group_key(finding: &Finding) -> String {
@@ -2272,18 +2733,6 @@ fn has_pending_adapters(scan_result: &ScanResult) -> bool {
         .any(|status| matches!(status, AdapterStatus::Pending))
 }
 
-fn adapter_completion(scan_result: &ScanResult) -> (usize, usize) {
-    let total = scan_result.metadata.adapters.len();
-    let complete = scan_result
-        .metadata
-        .adapters
-        .values()
-        .filter(|status| !matches!(status, AdapterStatus::Pending))
-        .count();
-
-    (complete, total)
-}
-
 fn spinner_frame(tick: usize) -> &'static str {
     const FRAMES: [&str; 8] = ["-", "\\", "|", "/", "-", "\\", "|", "/"];
     FRAMES[tick % FRAMES.len()]
@@ -2355,19 +2804,6 @@ fn load_display(scan_result: &ScanResult) -> String {
         .unwrap_or_else(|| t!("app.server.not_available").into_owned())
 }
 
-fn load_ratio(scan_result: &ScanResult) -> Option<f64> {
-    let runtime = scan_result.metadata.host_runtime.as_ref()?;
-    let first = runtime
-        .load_average
-        .as_deref()?
-        .split_whitespace()
-        .next()?
-        .parse::<f64>()
-        .ok()?;
-
-    Some((first / 2.0).clamp(0.0, 1.0))
-}
-
 fn defensive_control_status_label(status: DefensiveControlStatus) -> String {
     match status {
         DefensiveControlStatus::NotDetected => t!("app.server.control_not_detected").into_owned(),
@@ -2424,11 +2860,7 @@ fn truncate_text(value: &str, max_chars: usize) -> String {
         return value.to_owned();
     }
 
-    value
-        .chars()
-        .take(max_chars.saturating_sub(3))
-        .collect::<String>()
-        + "..."
+    value.chars().take(max_chars).collect::<String>()
 }
 
 fn severity_rank(severity: Severity) -> u8 {
@@ -2517,16 +2949,6 @@ fn remediation_style(remediation: RemediationKind, theme: &Theme) -> Style {
         RemediationKind::Safe => theme.safe,
         RemediationKind::Guided => theme.guided,
         RemediationKind::None => theme.manual,
-    })
-}
-
-fn score_style(score: u8, theme: &Theme) -> Style {
-    Style::default().fg(if score >= 80 {
-        theme.safe
-    } else if score >= 60 {
-        theme.med
-    } else {
-        theme.crit
     })
 }
 
