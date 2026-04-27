@@ -721,7 +721,10 @@ fn temp_path(prefix: &str) -> PathBuf {
 
 impl SetupTool {
     fn recommended(self) -> bool {
-        true
+        // Dockle requires manual installation from GitHub releases, so it is
+        // not pre-selected by default. The other three are available from
+        // standard package repositories.
+        matches!(self, Self::Lynis | Self::Trivy | Self::Fail2Ban)
     }
 
     fn package_name(self) -> &'static str {
