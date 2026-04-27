@@ -1189,10 +1189,7 @@ fn parse_sshd_config_file(
         if key_lower == "listenaddress" {
             result.listen_addresses.push(setting);
         } else {
-            result
-                .settings
-                .entry(key_lower)
-                .or_insert(setting);
+            result.settings.entry(key_lower).or_insert(setting);
         }
     }
 

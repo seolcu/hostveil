@@ -398,15 +398,14 @@ fn load_discovered_project(
     // If a service was defined with `build:` and no `image:`, the parser leaves
     // image as None. Try to backfill from the live container discovery data.
     for (service_name, service) in parsed.0.services.iter_mut() {
-        if service.image.is_none() {
-            if let Some(discovered) = project
+        if service.image.is_none()
+            && let Some(discovered) = project
                 .services
                 .iter()
                 .find(|s| s.name == *service_name)
                 .and_then(|s| s.image.as_ref())
-            {
-                service.image = Some(discovered.clone());
-            }
+        {
+            service.image = Some(discovered.clone());
         }
     }
     Ok(parsed)
