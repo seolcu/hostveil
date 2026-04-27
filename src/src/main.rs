@@ -19,10 +19,14 @@ fn main() -> ExitCode {
         let exe = std::env::current_exe().unwrap_or_else(|_| "hostveil".into());
         let mut cmd = Command::new("sudo");
         cmd.arg(exe);
-        cmd.args(&bin_args);
-        if let Ok(hostveil_locale) = std::env::var("HOSTVEIL_LOCALE") {
-            cmd.env("HOSTVEIL_LOCALE", hostveil_locale);
+        // Pass HOSTVEIL_LOCALE as an explicit CLI argument so it survives
+        // sudo's default env_reset policy.
+        let has_locale_flag = bin_args.iter().any(|a| a.starts_with("--locale"));
+        if !has_locale_flag && let Ok(hostveil_locale) = std::env::var("HOSTVEIL_LOCALE") {
+            cmd.arg("--locale");
+            cmd.arg(&hostveil_locale);
         }
+        cmd.args(&bin_args);
         let err = cmd.exec();
         eprintln!("Failed to elevate privileges: {err}");
         return ExitCode::FAILURE;
