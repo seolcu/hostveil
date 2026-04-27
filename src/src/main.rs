@@ -20,6 +20,9 @@ fn main() -> ExitCode {
         let mut cmd = Command::new("sudo");
         cmd.arg(exe);
         cmd.args(&bin_args);
+        if let Ok(hostveil_locale) = std::env::var("HOSTVEIL_LOCALE") {
+            cmd.env("HOSTVEIL_LOCALE", hostveil_locale);
+        }
         let err = cmd.exec();
         eprintln!("Failed to elevate privileges: {err}");
         return ExitCode::FAILURE;
