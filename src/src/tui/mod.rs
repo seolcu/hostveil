@@ -1584,6 +1584,17 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
     }
 }
 
+fn darken_color(color: ratatui::style::Color, factor: f32) -> ratatui::style::Color {
+    match color {
+        ratatui::style::Color::Rgb(r, g, b) => ratatui::style::Color::Rgb(
+            ((r as f32) * factor).clamp(0.0, 255.0) as u8,
+            ((g as f32) * factor).clamp(0.0, 255.0) as u8,
+            ((b as f32) * factor).clamp(0.0, 255.0) as u8,
+        ),
+        _ => color,
+    }
+}
+
 fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let area = frame.area();
     let modal = centered_rect(70, 50, area);
@@ -1591,11 +1602,20 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
 
     let theme = &state.theme;
 
-    // Dim the background behind the modal while preserving original colours
-    frame.render_widget(
-        Block::default().style(Style::default().add_modifier(Modifier::DIM)),
-        area,
-    );
+    // Dim the background behind the modal by darkening each cell's bg colour
+    {
+        let buffer = frame.buffer_mut();
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                if let Some(cell) = buffer.cell_mut((x, y)) {
+                    let style = cell.style();
+                    if let Some(bg) = style.bg {
+                        cell.set_style(style.bg(darken_color(bg, 0.55)));
+                    }
+                }
+            }
+        }
+    }
     frame.render_widget(Clear, modal);
 
     let block = Block::default()
@@ -4278,18 +4298,19 @@ mod tests {
     }
 
     #[test]
-    fn settings_modal_dim_preserves_original_colours() {
+    fn settings_modal_dim_darkens_background_and_preserves_fg() {
         let result = sample_result();
         let mut state = AppState::new(&result);
         state.theme_preset = ThemePreset::TokyoNight;
         state.theme = crate::tui::theme::Theme::preset(ThemePreset::TokyoNight);
         let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
 
-        // Render without modal first and capture a coloured cell behind it.
+        // Render without modal first and capture a cell behind it.
         terminal
             .draw(|frame| render(frame, &result, &mut state))
             .expect("overview should render");
         let fg_before = terminal.backend().buffer()[(2, 15)].style().fg;
+        let bg_before = terminal.backend().buffer()[(2, 15)].style().bg;
 
         // Open settings modal and re-render.
         state.settings_open = true;
@@ -4297,21 +4318,28 @@ mod tests {
             .draw(|frame| render(frame, &result, &mut state))
             .expect("settings modal should render");
         let fg_after = terminal.backend().buffer()[(2, 15)].style().fg;
+        let bg_after = terminal.backend().buffer()[(2, 15)].style().bg;
 
-        let muted_fg = state.theme.muted.fg;
-
-        // The dim overlay must not replace the original text colour with
-        // theme.muted.fg (the old buggy behaviour).
-        assert_ne!(
-            fg_after, muted_fg,
-            "modal dim should not overwrite background text with theme.muted.fg"
-        );
-
-        // More importantly, the colour should stay the same as before dimming.
+        // Foreground colour must stay exactly the same.
         assert_eq!(
             fg_before, fg_after,
             "modal dim must preserve the original cell foreground colour"
         );
+
+        // Background colour must have been darkened (or remain None).
+        match (bg_before, bg_after) {
+            (
+                Some(ratatui::style::Color::Rgb(r1, g1, b1)),
+                Some(ratatui::style::Color::Rgb(r2, g2, b2)),
+            ) => {
+                assert!(
+                    r2 <= r1 && g2 <= g1 && b2 <= b1,
+                    "modal dim must darken the background colour, before=Rgb({r1},{g1},{b1}) after=Rgb({r2},{g2},{b2})"
+                );
+            }
+            (None, None) => {} // no bg to dim
+            _ => panic!("modal dim changed bg presence unexpectedly"),
+        }
     }
 
     fn line_to_string(line: &Line<'_>) -> String {
