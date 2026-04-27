@@ -107,6 +107,12 @@ The project provides containerized environments for safe testing without polluti
 - Treat version bumps as release work, not as routine feature work
 - Keep `src/Cargo.toml`, `Cargo.lock`, and the release tag aligned
 
+**TUI / Visual QA:**
+- TUI changes must include automated `TestBackend` render tests that inspect buffer cells — do not rely solely on manual terminal verification.
+- When changing styles, colours, or layout, assert on actual `Cell::style().fg` / `Cell::style().bg` values to catch contrast, dimming, and inversion bugs.
+- Helper functions `buffer_to_string`, `buffer_bg`, and similar exist in `src/tui/mod.rs` tests — reuse them.
+- Run `cargo test --workspace` after every visual change; if a test does not exist for the affected widget, add one before committing.
+
 **Python (when proto/ exists):**
 - Use a virtual environment; do not commit `.venv/`
 - Follow the project's rule engine interface so logic ports cleanly to Rust
@@ -117,7 +123,7 @@ All planned work is tracked as GitHub Issues organized into Milestones. **AI age
 
 **Current milestone state** (see `github.com/seolcu/hostveil/milestones`):
 
-- Open: #11 v0.11.0 Stabilization & Dead Code Cleanup
+- Closed: #11 v0.11.0 Stabilization & Dead Code Cleanup
 - Closed: #1 Python CLI Prototype
 - Closed: #2 Service Research & Rule Validation
 - Closed: #3 Rust TUI Implementation
