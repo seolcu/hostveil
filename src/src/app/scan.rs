@@ -432,7 +432,29 @@ fn load_discovered_project(
 fn resolve_images_from_compose_config(
     project: &DiscoveredComposeProject,
 ) -> Option<std::collections::BTreeMap<String, String>> {
-    let working_dir = project.working_dir.as_ref()?;
+    let working_dir = project.working_dir.as_ref().cloned().or_else(|| {
+        project
+            .compose_path
+            .as_ref()?
+            .parent()
+            .map(Path::to_path_buf)
+    })?;
+
+    // Prefer docker compose config because it resolves the effective image
+    // name for build-only services (e.g. project-service).
+    if let Some(map) = run_compose_config_for_images(&working_dir)
+        && !map.is_empty()
+    {
+        return Some(map);
+    }
+
+    // Fallback: inspect running containers for this project.
+    run_compose_ps_for_images(&project.name, &working_dir)
+}
+
+fn run_compose_config_for_images(
+    working_dir: &Path,
+) -> Option<std::collections::BTreeMap<String, String>> {
     let output = std::process::Command::new("docker")
         .args(["compose", "config", "--format", "json"])
         .current_dir(working_dir)
@@ -449,6 +471,39 @@ fn resolve_images_from_compose_config(
             map.insert(name.clone(), image.to_string());
         }
     }
+    Some(map)
+}
+
+fn run_compose_ps_for_images(
+    _project_name: &str,
+    working_dir: &Path,
+) -> Option<std::collections::BTreeMap<String, String>> {
+    let output = std::process::Command::new("docker")
+        .args(["compose", "ps", "--format", "json"])
+        .current_dir(working_dir)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let mut map = std::collections::BTreeMap::new();
+
+    // docker compose ps --format json returns either a single object or an
+    // array of objects depending on the Docker Compose version.
+    let entries = match json {
+        serde_json::Value::Array(arr) => arr,
+        serde_json::Value::Object(_) => vec![json],
+        _ => return None,
+    };
+
+    for entry in entries {
+        let service = entry.get("Service")?.as_str()?;
+        let image = entry.get("Image")?.as_str()?;
+        map.insert(service.to_owned(), image.to_owned());
+    }
+
     Some(map)
 }
 
