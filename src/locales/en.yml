@@ -264,6 +264,7 @@ app:
     compose_malformed_yaml: "failed to parse YAML in %{path}: %{message}"
     compose_missing_services: "no services were found in %{path}"
     compose_io: "failed to read %{path}: %{message}"
+    host_root_path_missing: "host-root path does not exist: %{path}"
     io: "application error: %{message}"
     fix_serialize: "failed to serialize the updated compose file: %{message}"
     json_export_failed: "failed to serialize the current scan result"

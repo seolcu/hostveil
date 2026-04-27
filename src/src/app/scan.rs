@@ -54,6 +54,11 @@ pub fn run_native(config: &AppConfig) -> Result<ScanResult, AppError> {
         }
 
         if let Some(host_root) = &config.host_root {
+            if !host_root.exists() {
+                return Err(AppError::InvalidArgumentCombination(
+                    crate::i18n::tr_host_root_path_missing(&host_root.display().to_string()),
+                ));
+            }
             apply_host_scan(host_root.clone(), &mut result);
             coverage.host_hardening = true;
         }

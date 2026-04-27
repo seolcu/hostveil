@@ -264,6 +264,7 @@ app:
     compose_malformed_yaml: "%{path}의 YAML 파싱에 실패했습니다: %{message}"
     compose_missing_services: "%{path}에서 서비스를 찾지 못했습니다"
     compose_io: "%{path} 읽기에 실패했습니다: %{message}"
+    host_root_path_missing: "host-root 경로가 존재하지 않습니다: %{path}"
     io: "애플리케이션 오류: %{message}"
     fix_serialize: "업데이트된 compose 파일 직렬화에 실패했습니다: %{message}"
     json_export_failed: "현재 스캔 결과 직렬화에 실패했습니다"

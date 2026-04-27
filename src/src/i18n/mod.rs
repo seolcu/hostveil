@@ -436,6 +436,10 @@ pub fn tr_discovery_current_dir_fallback_failed(error: &str) -> String {
     t!("app.discovery.current_dir_fallback_failed", error = error).into_owned()
 }
 
+pub fn tr_host_root_path_missing(path: &str) -> String {
+    t!("app.error.host_root_path_missing", path = path).into_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
