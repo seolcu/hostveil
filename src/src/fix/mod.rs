@@ -27,6 +27,7 @@ pub struct FixProposal {
 pub struct FixPlan {
     pub compose_file: PathBuf,
     pub diff_preview: String,
+    pub updated_text: String,
     pub backup_path: Option<PathBuf>,
     pub safe_applied: Vec<FixProposal>,
     pub guided_applied: Vec<FixProposal>,
@@ -93,10 +94,9 @@ pub fn apply(
         return Ok(plan);
     }
 
-    let updated_text = render_updated_text(path.as_ref(), mode, only_findings)?;
     let backup_path = backup_path_for(&plan.compose_file);
     fs::copy(&plan.compose_file, &backup_path)?;
-    fs::write(&plan.compose_file, updated_text)?;
+    fs::write(&plan.compose_file, &plan.updated_text)?;
     plan.backup_path = Some(backup_path);
     Ok(plan)
 }
@@ -119,41 +119,23 @@ fn build_fix_plan(
         Vec::new()
     };
 
+    let updated_text = render_document_like_original(&bundle.primary_text, &document)?;
     let diff_preview = if safe_applied.is_empty() && guided_applied.is_empty() {
         String::new()
     } else {
-        let updated_text = render_document_like_original(&bundle.primary_text, &document)?;
         build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
     };
 
     let plan = FixPlan {
         compose_file: bundle.primary_path,
         diff_preview,
+        updated_text,
         backup_path: None,
         safe_applied,
         guided_applied,
     };
 
     Ok(plan)
-}
-
-fn render_updated_text(
-    path: &Path,
-    mode: FixMode,
-    only_findings: Option<&[String]>,
-) -> Result<String, FixError> {
-    let bundle = ComposeParser::load_bundle(path.to_path_buf(), false)?;
-    let project = ComposeParser::parse_path_without_override(path.to_path_buf())?;
-    let findings = RuleEngine.scan(&project);
-    let findings_by_service = findings_by_service(&findings, only_findings);
-
-    let mut document = bundle.primary_document;
-    apply_safe_fixes(&mut document, &findings_by_service);
-    if mode == FixMode::Fix {
-        apply_guided_fixes(&mut document, &findings_by_service);
-    }
-
-    render_document_like_original(&bundle.primary_text, &document)
 }
 
 fn render_document_like_original(
