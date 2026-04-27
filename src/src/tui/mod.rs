@@ -1028,10 +1028,38 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 HitTarget::OverviewPanel(OverviewFocus::FixPaths),
             ));
 
-            render_server_status_panel(frame, columns[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ServerStatus);
-            render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ScanResults);
-            render_security_scores_panel(frame, right_column[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::SecurityScores);
-            render_fix_paths_panel(frame, right_column[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::FixPaths);
+            render_server_status_panel(
+                frame,
+                columns[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ServerStatus,
+            );
+            render_scan_results_panel(
+                frame,
+                columns[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ScanResults,
+            );
+            render_security_scores_panel(
+                frame,
+                right_column[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::SecurityScores,
+            );
+            render_fix_paths_panel(
+                frame,
+                right_column[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::FixPaths,
+            );
         }
         OverviewLayoutMode::Tall => {
             let rows = Layout::default()
@@ -1060,10 +1088,38 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .hit_boxes
                 .push((rows[3], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
 
-            render_server_status_panel(frame, rows[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ServerStatus);
-            render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ScanResults);
-            render_security_scores_panel(frame, rows[2], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::SecurityScores);
-            render_fix_paths_panel(frame, rows[3], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::FixPaths);
+            render_server_status_panel(
+                frame,
+                rows[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ServerStatus,
+            );
+            render_scan_results_panel(
+                frame,
+                rows[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ScanResults,
+            );
+            render_security_scores_panel(
+                frame,
+                rows[2],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::SecurityScores,
+            );
+            render_fix_paths_panel(
+                frame,
+                rows[3],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::FixPaths,
+            );
         }
         OverviewLayoutMode::Compact => {
             let columns = Layout::default()
@@ -1095,10 +1151,38 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .hit_boxes
                 .push((right[1], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
 
-            render_server_status_panel(frame, left[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ServerStatus);
-            render_scan_results_panel(frame, left[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ScanResults);
-            render_security_scores_panel(frame, right[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::SecurityScores);
-            render_fix_paths_panel(frame, right[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::FixPaths);
+            render_server_status_panel(
+                frame,
+                left[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ServerStatus,
+            );
+            render_scan_results_panel(
+                frame,
+                left[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ScanResults,
+            );
+            render_security_scores_panel(
+                frame,
+                right[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::SecurityScores,
+            );
+            render_fix_paths_panel(
+                frame,
+                right[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::FixPaths,
+            );
         }
         OverviewLayoutMode::Narrow => {
             let rows = Layout::default()
@@ -1127,18 +1211,60 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .hit_boxes
                 .push((rows[3], HitTarget::OverviewPanel(OverviewFocus::FixPaths)));
 
-            render_server_status_panel(frame, rows[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ServerStatus);
-            render_scan_results_panel(frame, rows[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ScanResults);
-            render_security_scores_panel(frame, rows[2], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::SecurityScores);
-            render_fix_paths_panel(frame, rows[3], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::FixPaths);
+            render_server_status_panel(
+                frame,
+                rows[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ServerStatus,
+            );
+            render_scan_results_panel(
+                frame,
+                rows[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ScanResults,
+            );
+            render_security_scores_panel(
+                frame,
+                rows[2],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::SecurityScores,
+            );
+            render_fix_paths_panel(
+                frame,
+                rows[3],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::FixPaths,
+            );
         }
         OverviewLayoutMode::Focus => {
             let columns = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(48), Constraint::Percentage(52)])
                 .split(layout[1]);
-            render_security_scores_panel(frame, columns[0], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::SecurityScores);
-            render_scan_results_panel(frame, columns[1], scan_result, state, &state.theme, state.overview_focus == OverviewFocus::ScanResults);
+            render_security_scores_panel(
+                frame,
+                columns[0],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::SecurityScores,
+            );
+            render_scan_results_panel(
+                frame,
+                columns[1],
+                scan_result,
+                state,
+                &state.theme,
+                state.overview_focus == OverviewFocus::ScanResults,
+            );
         }
     }
 
@@ -1469,10 +1595,7 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let theme = &state.theme;
 
     // Dim the background behind the modal
-    frame.render_widget(
-        Block::default().style(theme.muted),
-        area,
-    );
+    frame.render_widget(Block::default().style(theme.muted), area);
     frame.render_widget(Clear, modal);
 
     let block = Block::default()
@@ -1593,7 +1716,11 @@ fn render_server_status_panel(
     let block = Block::default()
         .title(t!("app.panel.server_status").into_owned())
         .borders(Borders::ALL)
-        .border_style(if is_focused { theme.title } else { theme.border })
+        .border_style(if is_focused {
+            theme.title
+        } else {
+            theme.border
+        })
         .title_style(theme.title)
         .style(theme.surface);
     let inner = block.inner(area);
@@ -1664,7 +1791,11 @@ fn render_scan_results_panel(
     let block = Block::default()
         .title(t!("app.panel.scan_results").into_owned())
         .borders(Borders::ALL)
-        .border_style(if is_focused { theme.title } else { theme.border })
+        .border_style(if is_focused {
+            theme.title
+        } else {
+            theme.border
+        })
         .title_style(theme.title)
         .style(theme.surface);
     let inner = block.inner(area);
@@ -1766,7 +1897,11 @@ fn render_security_scores_panel(
     let block = Block::default()
         .title(t!("app.panel.security_scores").into_owned())
         .borders(Borders::ALL)
-        .border_style(if is_focused { theme.title } else { theme.border })
+        .border_style(if is_focused {
+            theme.title
+        } else {
+            theme.border
+        })
         .title_style(theme.title)
         .style(theme.surface);
     let inner = block.inner(area);
@@ -1823,7 +1958,11 @@ fn render_fix_paths_panel(
     let block = Block::default()
         .title(t!("app.panel.action_queue"))
         .borders(Borders::ALL)
-        .border_style(if is_focused { theme.title } else { theme.border })
+        .border_style(if is_focused {
+            theme.title
+        } else {
+            theme.border
+        })
         .title_style(theme.title)
         .style(theme.surface);
     let inner = block.inner(area);

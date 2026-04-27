@@ -120,7 +120,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{load_from_path, resolve_config_dir, save_to_path, AppSettings};
+    use super::{AppSettings, load_from_path, resolve_config_dir, save_to_path};
 
     fn temp_settings_path(name: &str) -> PathBuf {
         let nanos = SystemTime::now()

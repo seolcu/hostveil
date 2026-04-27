@@ -763,8 +763,8 @@ mod tests {
 
     #[test]
     fn parses_upgrade_lifecycle_command() {
-        let config = AppConfig::parse([String::from("upgrade")])
-            .expect("upgrade command should parse");
+        let config =
+            AppConfig::parse([String::from("upgrade")]).expect("upgrade command should parse");
 
         assert_eq!(config.lifecycle_command, Some(LifecycleCommand::Upgrade));
     }
