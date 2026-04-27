@@ -3463,6 +3463,19 @@ mod tests {
                     (Severity::Medium, 0),
                     (Severity::Low, 1),
                 ]),
+                axis_weights: BTreeMap::from([
+                    (Axis::SensitiveData, 0.35),
+                    (Axis::ExcessivePermissions, 0.30),
+                    (Axis::UnnecessaryExposure, 0.20),
+                    (Axis::UpdateSupplyChainRisk, 0.15),
+                    (Axis::HostHardening, 0.0),
+                ]),
+                severity_deductions: BTreeMap::from([
+                    (Severity::Critical, 75),
+                    (Severity::High, 35),
+                    (Severity::Medium, 15),
+                    (Severity::Low, 5),
+                ]),
             },
             metadata: crate::domain::ScanMetadata {
                 scan_mode: ScanMode::Live,

@@ -111,11 +111,13 @@ pub struct Finding {
     pub remediation: RemediationKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScoreReport {
     pub overall: u8,
     pub axis_scores: BTreeMap<Axis, u8>,
     pub severity_counts: BTreeMap<Severity, usize>,
+    pub axis_weights: BTreeMap<Axis, f32>,
+    pub severity_deductions: BTreeMap<Severity, u16>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -182,6 +184,11 @@ impl Default for ScoreReport {
             overall: 100,
             axis_scores,
             severity_counts,
+            axis_weights: Axis::ALL.into_iter().map(|axis| (axis, 0.0)).collect(),
+            severity_deductions: Severity::ALL
+                .into_iter()
+                .map(|severity| (severity, 0))
+                .collect(),
         }
     }
 }
@@ -212,7 +219,7 @@ pub struct ScanMetadata {
     pub adapters: BTreeMap<String, AdapterStatus>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct ScanResult {
     pub findings: Vec<Finding>,
     pub score_report: ScoreReport,

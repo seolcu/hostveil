@@ -80,6 +80,8 @@ mod tests {
         assert!(json["score_report"]["overall"].is_number());
         assert!(json["score_report"]["axis_scores"].is_object());
         assert!(json["score_report"]["severity_counts"].is_object());
+        assert!(json["score_report"]["axis_weights"].is_object());
+        assert!(json["score_report"]["severity_deductions"].is_object());
         assert!(json["metadata"]["adapters"].is_object());
         assert!(json["metadata"]["warnings"].is_array());
     }

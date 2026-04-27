@@ -86,6 +86,14 @@ pub fn build_score_report_with_coverage(findings: &[Finding], coverage: Coverage
         overall,
         axis_scores,
         severity_counts,
+        axis_weights: Axis::ALL
+            .into_iter()
+            .map(|axis| (axis, axis_weight(axis, coverage)))
+            .collect(),
+        severity_deductions: Severity::ALL
+            .into_iter()
+            .map(|severity| (severity, severity_penalty(severity)))
+            .collect(),
     }
 }
 
