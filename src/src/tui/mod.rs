@@ -3450,6 +3450,12 @@ mod tests {
             ],
             score_report: ScoreReport {
                 overall: 61,
+                scan_focus: vec![
+                    Axis::SensitiveData,
+                    Axis::ExcessivePermissions,
+                    Axis::UnnecessaryExposure,
+                    Axis::UpdateSupplyChainRisk,
+                ],
                 axis_scores: BTreeMap::from([
                     (Axis::SensitiveData, 100),
                     (Axis::ExcessivePermissions, 100),

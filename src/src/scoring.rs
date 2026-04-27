@@ -83,8 +83,14 @@ pub fn build_score_report_with_coverage(findings: &[Finding], coverage: Coverage
         100
     };
 
+    let scan_focus = Axis::ALL
+        .into_iter()
+        .filter(|axis| axis_weight(*axis, coverage) > 0.0)
+        .collect();
+
     ScoreReport {
         overall,
+        scan_focus,
         axis_scores,
         severity_counts,
         axis_weights,

@@ -114,6 +114,7 @@ pub struct Finding {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScoreReport {
     pub overall: u8,
+    pub scan_focus: Vec<Axis>,
     pub axis_scores: BTreeMap<Axis, u8>,
     pub severity_counts: BTreeMap<Severity, usize>,
     pub axis_weights: BTreeMap<Axis, f32>,
@@ -181,6 +182,7 @@ impl Default for ScoreReport {
 
         Self {
             overall: 100,
+            scan_focus: Vec::new(),
             axis_scores: BTreeMap::new(),
             severity_counts,
             axis_weights: BTreeMap::new(),
