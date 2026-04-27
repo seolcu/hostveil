@@ -1561,10 +1561,7 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
     for (i, (screen, target, label, key)) in tabs.iter().enumerate() {
         let is_active = state.screen == *screen;
         let style = if is_active {
-            theme
-                .title
-                .add_modifier(Modifier::BOLD)
-                .bg(theme.highlight.fg.unwrap_or(ratatui::style::Color::Reset))
+            theme.highlight.add_modifier(Modifier::BOLD)
         } else {
             theme.base
         };
@@ -1594,8 +1591,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
 
     let theme = &state.theme;
 
-    // Dim the background behind the modal
-    frame.render_widget(Block::default().style(theme.muted), area);
+    // Dim the background behind the modal while preserving original colours
+    frame.render_widget(
+        Block::default().style(Style::default().add_modifier(Modifier::DIM)),
+        area,
+    );
     frame.render_widget(Clear, modal);
 
     let block = Block::default()
@@ -4236,6 +4236,82 @@ mod tests {
 
         assert_eq!(state.settings_row, 0);
         assert_eq!(state.theme_preset, initial_theme.next());
+    }
+
+    #[test]
+    fn selected_tab_uses_highlight_background() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.theme_preset = ThemePreset::TokyoNight;
+        state.theme = crate::tui::theme::Theme::preset(ThemePreset::TokyoNight);
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let expected_bg = state
+            .theme
+            .highlight
+            .bg
+            .expect("highlight should define a background colour");
+
+        // Scan the top banner area where tabs live (y 1..4, x 0..50 covers the
+        // first tab) and assert at least one cell carries the highlight bg.
+        let backend = terminal.backend();
+        let buffer = backend.buffer();
+        let mut found = false;
+        for y in 1..4 {
+            for x in 0..50 {
+                if buffer[(x, y)].style().bg == Some(expected_bg) {
+                    found = true;
+                    break;
+                }
+            }
+            if found {
+                break;
+            }
+        }
+        assert!(
+            found,
+            "active tab background should contain theme.highlight.bg"
+        );
+    }
+
+    #[test]
+    fn settings_modal_dim_preserves_original_colours() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.theme_preset = ThemePreset::TokyoNight;
+        state.theme = crate::tui::theme::Theme::preset(ThemePreset::TokyoNight);
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
+
+        // Render without modal first and capture a coloured cell behind it.
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+        let fg_before = terminal.backend().buffer()[(2, 15)].style().fg;
+
+        // Open settings modal and re-render.
+        state.settings_open = true;
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("settings modal should render");
+        let fg_after = terminal.backend().buffer()[(2, 15)].style().fg;
+
+        let muted_fg = state.theme.muted.fg;
+
+        // The dim overlay must not replace the original text colour with
+        // theme.muted.fg (the old buggy behaviour).
+        assert_ne!(
+            fg_after, muted_fg,
+            "modal dim should not overwrite background text with theme.muted.fg"
+        );
+
+        // More importantly, the colour should stay the same as before dimming.
+        assert_eq!(
+            fg_before, fg_after,
+            "modal dim must preserve the original cell foreground colour"
+        );
     }
 
     fn line_to_string(line: &Line<'_>) -> String {
