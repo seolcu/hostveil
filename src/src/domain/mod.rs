@@ -174,7 +174,6 @@ pub struct DiscoveredProjectSummary {
 
 impl Default for ScoreReport {
     fn default() -> Self {
-        let axis_scores = Axis::ALL.into_iter().map(|axis| (axis, 100)).collect();
         let severity_counts = Severity::ALL
             .into_iter()
             .map(|severity| (severity, 0))
@@ -182,9 +181,9 @@ impl Default for ScoreReport {
 
         Self {
             overall: 100,
-            axis_scores,
+            axis_scores: BTreeMap::new(),
             severity_counts,
-            axis_weights: Axis::ALL.into_iter().map(|axis| (axis, 0.0)).collect(),
+            axis_weights: BTreeMap::new(),
             severity_deductions: Severity::ALL
                 .into_iter()
                 .map(|severity| (severity, 0))

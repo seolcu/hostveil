@@ -61,21 +61,22 @@ pub fn build_score_report_with_coverage(findings: &[Finding], coverage: Coverage
         *severity_counts.entry(finding.severity).or_insert(0) += 1;
     }
 
-    let axis_scores = Axis::ALL
-        .into_iter()
-        .map(|axis| {
+    let mut axis_scores = BTreeMap::new();
+    let mut axis_weights = BTreeMap::new();
+    let mut weighted = 0.0_f32;
+
+    for axis in Axis::ALL {
+        let weight = axis_weight(axis, coverage);
+        if weight > 0.0 {
             let penalty = axis_penalties.get(&axis).copied().unwrap_or_default();
             let score = 100_i16 - penalty as i16;
-            (axis, score.max(0) as u8)
-        })
-        .collect::<BTreeMap<_, _>>();
+            let score = score.max(0) as u8;
+            axis_scores.insert(axis, score);
+            axis_weights.insert(axis, weight);
+            weighted += score as f32 * weight;
+        }
+    }
 
-    let weighted = Axis::ALL
-        .into_iter()
-        .map(|axis| {
-            axis_scores.get(&axis).copied().unwrap_or(100) as f32 * axis_weight(axis, coverage)
-        })
-        .sum::<f32>();
     let overall = if coverage.compose || coverage.host_hardening {
         weighted.round() as u8
     } else {
@@ -86,10 +87,7 @@ pub fn build_score_report_with_coverage(findings: &[Finding], coverage: Coverage
         overall,
         axis_scores,
         severity_counts,
-        axis_weights: Axis::ALL
-            .into_iter()
-            .map(|axis| (axis, axis_weight(axis, coverage)))
-            .collect(),
+        axis_weights,
         severity_deductions: Severity::ALL
             .into_iter()
             .map(|severity| (severity, severity_penalty(severity)))
@@ -137,7 +135,7 @@ mod tests {
         assert_eq!(report.axis_scores[&Axis::ExcessivePermissions], 100);
         assert_eq!(report.axis_scores[&Axis::UnnecessaryExposure], 60);
         assert_eq!(report.axis_scores[&Axis::UpdateSupplyChainRisk], 100);
-        assert_eq!(report.axis_scores[&Axis::HostHardening], 100);
+        assert!(!report.axis_scores.contains_key(&Axis::HostHardening));
         assert_eq!(report.severity_counts[&Severity::Critical], 1);
         assert_eq!(report.severity_counts[&Severity::High], 1);
         assert_eq!(report.severity_counts[&Severity::Low], 1);
@@ -175,8 +173,9 @@ mod tests {
         );
 
         assert_eq!(without_host.overall, 100);
-        assert_eq!(without_host.axis_scores[&Axis::HostHardening], 25);
+        assert!(!without_host.axis_scores.contains_key(&Axis::HostHardening));
         assert_eq!(with_host.overall, 25);
+        assert_eq!(with_host.axis_scores[&Axis::HostHardening], 25);
     }
 
     fn expected_python_overall(axis_scores: &BTreeMap<Axis, u8>) -> u8 {

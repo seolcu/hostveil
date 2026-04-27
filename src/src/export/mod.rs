@@ -222,7 +222,7 @@ mod tests {
         assert_eq!(json["findings"][0]["scope"], "service");
         assert_eq!(json["findings"][0]["source"], "native_compose");
         assert_eq!(json["findings"][0]["evidence"]["subject"], "web");
-        assert!(json["score_report"]["axis_scores"]["sensitive_data"].is_number());
+        assert!(json["score_report"]["axis_scores"].is_object());
         assert!(json["score_report"]["severity_counts"]["critical"].is_number());
     }
 }
