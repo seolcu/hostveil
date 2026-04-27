@@ -143,7 +143,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(127, 132, 156)),
             highlight: Style::new()
                 .fg(Color::Rgb(205, 214, 244))
-                .bg(Color::Rgb(49, 50, 68)),
+                .bg(Color::Rgb(70, 71, 95)),
             status_bar: Style::new()
                 .fg(Color::Rgb(147, 153, 178))
                 .bg(Color::Rgb(24, 24, 37)),
@@ -170,7 +170,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(143, 188, 187)),
             highlight: Style::new()
                 .fg(Color::Rgb(229, 233, 240))
-                .bg(Color::Rgb(59, 66, 82)),
+                .bg(Color::Rgb(82, 91, 110)),
             status_bar: Style::new()
                 .fg(Color::Rgb(129, 161, 193))
                 .bg(Color::Rgb(46, 52, 64)),
@@ -197,7 +197,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(125, 135, 185)),
             highlight: Style::new()
                 .fg(Color::Rgb(192, 202, 245))
-                .bg(Color::Rgb(41, 46, 66)),
+                .bg(Color::Rgb(65, 72, 100)),
             status_bar: Style::new()
                 .fg(Color::Rgb(125, 135, 185))
                 .bg(Color::Rgb(26, 27, 38)),
@@ -224,7 +224,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(168, 153, 132)),
             highlight: Style::new()
                 .fg(Color::Rgb(251, 241, 199))
-                .bg(Color::Rgb(60, 56, 54)),
+                .bg(Color::Rgb(85, 80, 77)),
             status_bar: Style::new()
                 .fg(Color::Rgb(168, 153, 132))
                 .bg(Color::Rgb(40, 40, 40)),
@@ -251,7 +251,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(98, 114, 164)),
             highlight: Style::new()
                 .fg(Color::Rgb(248, 248, 242))
-                .bg(Color::Rgb(68, 71, 90)),
+                .bg(Color::Rgb(90, 93, 115)),
             status_bar: Style::new()
                 .fg(Color::Rgb(248, 248, 242))
                 .bg(Color::Rgb(33, 34, 44)),
@@ -278,7 +278,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(117, 113, 94)),
             highlight: Style::new()
                 .fg(Color::Rgb(248, 248, 242))
-                .bg(Color::Rgb(73, 72, 62)),
+                .bg(Color::Rgb(95, 94, 82)),
             status_bar: Style::new()
                 .fg(Color::Rgb(248, 248, 242))
                 .bg(Color::Rgb(30, 31, 28)),
@@ -305,7 +305,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(136, 136, 136)),
             highlight: Style::new()
                 .fg(Color::Rgb(51, 51, 51))
-                .bg(Color::Rgb(220, 220, 220)),
+                .bg(Color::Rgb(200, 200, 200)),
             status_bar: Style::new()
                 .fg(Color::Rgb(102, 102, 102))
                 .bg(Color::Rgb(240, 240, 240)),
@@ -332,7 +332,7 @@ impl Theme {
             muted: Style::new().fg(Color::Rgb(147, 161, 161)),
             highlight: Style::new()
                 .fg(Color::Rgb(101, 123, 131))
-                .bg(Color::Rgb(238, 232, 213)),
+                .bg(Color::Rgb(220, 214, 195)),
             status_bar: Style::new()
                 .fg(Color::Rgb(131, 148, 150))
                 .bg(Color::Rgb(245, 238, 220)),
