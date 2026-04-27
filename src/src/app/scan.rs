@@ -408,7 +408,43 @@ fn load_discovered_project(
             service.image = Some(discovered.clone());
         }
     }
+    // If image is still None (e.g. container not running, or untagged image),
+    // try resolving via docker compose config which knows the built image.
+    if parsed.0.services.values().any(|s| s.image.is_none())
+        && let Some(resolved) = resolve_images_from_compose_config(project)
+    {
+        for (service_name, service) in parsed.0.services.iter_mut() {
+            if service.image.is_none()
+                && let Some(image) = resolved.get(service_name)
+            {
+                service.image = Some(image.clone());
+            }
+        }
+    }
     Ok(parsed)
+}
+
+fn resolve_images_from_compose_config(
+    project: &DiscoveredComposeProject,
+) -> Option<std::collections::BTreeMap<String, String>> {
+    let working_dir = project.working_dir.as_ref()?;
+    let output = std::process::Command::new("docker")
+        .args(["compose", "config", "--format", "json"])
+        .current_dir(working_dir)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let mut map = std::collections::BTreeMap::new();
+    let services = json.get("services")?.as_object()?;
+    for (name, service) in services {
+        if let Some(image) = service.get("image").and_then(|v| v.as_str()) {
+            map.insert(name.clone(), image.to_string());
+        }
+    }
+    Some(map)
 }
 
 fn load_discovered_project_parsed(
