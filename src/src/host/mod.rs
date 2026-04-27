@@ -134,10 +134,11 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         return Vec::new();
     };
 
-    let Ok(settings) = parse_sshd_config(&context.root, &config_path) else {
+    let Ok(config_result) = parse_sshd_config(&context.root, &config_path) else {
         return Vec::new();
     };
 
+    let settings = &config_result.settings;
     let mut findings = Vec::new();
 
     if let Some(setting) = settings.get("permitrootlogin")
@@ -277,7 +278,67 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         ));
     }
 
+    // ListenAddress — default is 0.0.0.0 (all interfaces). Flag if missing or
+    // if any entry binds to a wildcard address.
+    if !config_result.listen_addresses.is_empty() {
+        if config_result
+            .listen_addresses
+            .iter()
+            .any(|s| is_wildcard_listen_address(&s.value))
+        {
+            let subject_path = &config_result.listen_addresses[0].source;
+            let values = config_result
+                .listen_addresses
+                .iter()
+                .map(|s| s.value.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            findings.push(host_finding(
+                "host.ssh_listens_on_all_interfaces",
+                Severity::Medium,
+                subject_path,
+                HostFindingText {
+                    title: t!("finding.host.ssh_listen_all.title").into_owned(),
+                    description: t!(
+                        "finding.host.ssh_listen_all.description",
+                        path = subject_path.display().to_string(),
+                        values = values
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.ssh_listen_all.why").into_owned(),
+                    how_to_fix: t!("finding.host.ssh_listen_all.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), subject_path.display().to_string()),
+                    (String::from("values"), values),
+                ]),
+            ));
+        }
+    } else {
+        let subject_path = &config_path;
+        findings.push(host_finding(
+            "host.ssh_listens_on_all_interfaces",
+            Severity::Medium,
+            subject_path,
+            HostFindingText {
+                title: t!("finding.host.ssh_listen_all.title").into_owned(),
+                description: t!(
+                    "finding.host.ssh_listen_all.description_default",
+                    path = subject_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.ssh_listen_all.why").into_owned(),
+                how_to_fix: t!("finding.host.ssh_listen_all.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+        ));
+    }
+
     findings
+}
+
+fn is_wildcard_listen_address(value: &str) -> bool {
+    value == "0.0.0.0" || value == "::" || value == "*"
 }
 
 fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
@@ -1039,17 +1100,26 @@ struct SshdSetting {
     source: PathBuf,
 }
 
-fn parse_sshd_config(root: &Path, path: &Path) -> std::io::Result<BTreeMap<String, SshdSetting>> {
-    let mut settings = BTreeMap::new();
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SshdConfigResult {
+    settings: BTreeMap<String, SshdSetting>,
+    listen_addresses: Vec<SshdSetting>,
+}
+
+fn parse_sshd_config(root: &Path, path: &Path) -> std::io::Result<SshdConfigResult> {
+    let mut result = SshdConfigResult {
+        settings: BTreeMap::new(),
+        listen_addresses: Vec::new(),
+    };
     let mut visited = HashSet::new();
-    parse_sshd_config_file(root, path, &mut settings, &mut visited)?;
-    Ok(settings)
+    parse_sshd_config_file(root, path, &mut result, &mut visited)?;
+    Ok(result)
 }
 
 fn parse_sshd_config_file(
     root: &Path,
     path: &Path,
-    settings: &mut BTreeMap<String, SshdSetting>,
+    result: &mut SshdConfigResult,
     visited: &mut HashSet<PathBuf>,
 ) -> std::io::Result<()> {
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
@@ -1099,7 +1169,7 @@ fn parse_sshd_config_file(
                 matches.sort();
 
                 for include_path in matches {
-                    let _ = parse_sshd_config_file(root, &include_path, settings, visited);
+                    let _ = parse_sshd_config_file(root, &include_path, result, visited);
                 }
             }
 
@@ -1110,12 +1180,20 @@ fn parse_sshd_config_file(
             continue;
         };
 
-        settings
-            .entry(key.to_ascii_lowercase())
-            .or_insert_with(|| SshdSetting {
-                value: value.to_ascii_lowercase(),
-                source: path.to_path_buf(),
-            });
+        let setting = SshdSetting {
+            value: value.to_ascii_lowercase(),
+            source: path.to_path_buf(),
+        };
+
+        let key_lower = key.to_ascii_lowercase();
+        if key_lower == "listenaddress" {
+            result.listen_addresses.push(setting);
+        } else {
+            result
+                .settings
+                .entry(key_lower)
+                .or_insert(setting);
+        }
     }
 
     Ok(())
@@ -1234,6 +1312,7 @@ mod tests {
                 "host.ssh_empty_passwords_enabled",
                 "host.ssh_pubkey_auth_disabled",
                 "host.ssh_user_environment_enabled",
+                "host.ssh_listens_on_all_interfaces",
                 "host.docker_socket_world_writable",
                 "host.docker_daemon_tcp_public",
                 "host.docker_daemon_tcp_no_tlsverify",
@@ -1261,7 +1340,8 @@ mod tests {
                 "PasswordAuthentication no\n",
                 "PermitEmptyPasswords no\n",
                 "PubkeyAuthentication yes\n",
-                "PermitUserEnvironment no\n"
+                "PermitUserEnvironment no\n",
+                "ListenAddress 127.0.0.1\n"
             ),
         );
         write_file(
@@ -1447,6 +1527,7 @@ mod tests {
 
         assert_eq!(
             parsed
+                .settings
                 .get("permitrootlogin")
                 .map(|setting| setting.value.as_str()),
             Some("no")
@@ -1454,6 +1535,7 @@ mod tests {
 
         assert_eq!(
             parsed
+                .settings
                 .get("permitrootlogin")
                 .map(|setting| setting.source.as_path()),
             Some(path.as_path())
@@ -1496,6 +1578,7 @@ mod tests {
         let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
 
         let permit_root = parsed
+            .settings
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");
@@ -1519,6 +1602,7 @@ mod tests {
         let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
 
         let permit_root = parsed
+            .settings
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");
@@ -1548,6 +1632,7 @@ mod tests {
         let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
 
         let permit_root = parsed
+            .settings
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");
@@ -1573,6 +1658,7 @@ mod tests {
         let parsed = parse_sshd_config(&root, &config_path).expect("config should parse");
 
         let permit_root = parsed
+            .settings
             .get("permitrootlogin")
             .expect("permitrootlogin should be set");
         assert_eq!(permit_root.value, "no");

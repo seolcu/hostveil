@@ -515,6 +515,12 @@ finding:
       description: "%{path}에서 X11Forwarding yes가 설정되어 있습니다."
       why: "X11 포워딩은 SSH 세션 공격 표면을 넓히고 클라이언트의 디스플레이/세션 신뢰 경계를 원격 호스트까지 확장시킬 수 있습니다."
       fix: "원격 GUI 포워딩이 검토된 요구사항이 아니라면 X11Forwarding을 no로 설정하고, 가능한 경우 더 안전한 대안을 사용하세요."
+    ssh_listen_all:
+      title: "SSH가 모든 네트워크 인터페이스에서 수신 중입니다"
+      description: "%{path}가 SSH를 모든 인터페이스에 바인딩합니다 (ListenAddress %{values})."
+      description_default: "%{path}에 ListenAddress가 설정되지 않았으므로, SSH는 기본적으로 모든 인터페이스에 바인딩됩니다."
+      why: "모든 인터페이스에 SSH를 노출하면 공격 표면이 늘어나며, 특히 공개되거나 신뢰할 수 없는 네트워크 세그먼트가 있는 호스트에서 위험합니다."
+      fix: "ListenAddress를 추가하여 SSH를 localhost, 관리 VLAN, Tailscale 등 신뢰할 수 있는 인터페이스로 제한하세요."
     docker_socket_world_writable:
       title: "Docker 소켓이 world writable 상태입니다"
       description: "%{path}가 mode %{mode}로 모든 로컬 사용자에게 쓰기 가능하게 열려 있습니다."

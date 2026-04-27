@@ -515,6 +515,12 @@ finding:
       description: "%{path} enables X11Forwarding yes."
       why: "X11 forwarding widens SSH session attack surface and can leak display/session trust boundaries from client systems to remote hosts."
       fix: "Set X11Forwarding no unless remote GUI forwarding is a reviewed requirement, and prefer safer alternatives when possible."
+    ssh_listen_all:
+      title: "SSH listens on all network interfaces"
+      description: "%{path} binds SSH to all interfaces (ListenAddress %{values})."
+      description_default: "%{path} has no ListenAddress set, so SSH binds to all interfaces by default."
+      why: "Exposing SSH on every interface increases attack surface, especially on hosts with public or untrusted network segments."
+      fix: "Add ListenAddress to restrict SSH to trusted interfaces such as localhost, a management VLAN, or Tailscale."
     docker_socket_world_writable:
       title: "Docker socket is world writable"
       description: "%{path} is writable by all local users with mode %{mode}."
