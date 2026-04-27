@@ -203,7 +203,7 @@ fn run_trivy_command(
 ) -> Result<command::CommandOutput, command::CommandError> {
     let mut command = Command::new(command_name);
     command
-        .args(trivy_image_args(image))
+        .args(trivy_image_args(image, timeout))
         .arg("--cache-dir")
         .arg(cache_path)
         .env("NO_COLOR", "1");
@@ -226,15 +226,20 @@ fn is_cache_lock_error(error: &command::CommandError) -> bool {
     lower.contains("cache") && (lower.contains("lock") || lower.contains("timeout"))
 }
 
-fn trivy_image_args(image: &str) -> [&str; 7] {
-    [
-        "image",
-        "--quiet",
-        "--format",
-        "json",
-        "--scanners",
-        "vuln",
-        image,
+fn trivy_image_args(image: &str, timeout: Duration) -> Vec<String> {
+    // Give Trivy a slightly shorter internal timeout so it can exit gracefully
+    // before our external kill signal arrives.
+    let trivy_timeout = timeout.as_secs().saturating_sub(5).max(10);
+    vec![
+        String::from("image"),
+        String::from("--quiet"),
+        String::from("--format"),
+        String::from("json"),
+        String::from("--scanners"),
+        String::from("vuln"),
+        String::from("--timeout"),
+        format!("{}s", trivy_timeout),
+        image.to_owned(),
     ]
 }
 
@@ -627,14 +632,16 @@ JSON
     #[test]
     fn uses_vulnerability_only_scan_args() {
         assert_eq!(
-            trivy_image_args("demo:1.0"),
-            [
+            trivy_image_args("demo:1.0", Duration::from_secs(300)),
+            vec![
                 "image",
                 "--quiet",
                 "--format",
                 "json",
                 "--scanners",
                 "vuln",
+                "--timeout",
+                "295s",
                 "demo:1.0",
             ]
         );
