@@ -149,9 +149,33 @@ fn scan_image_with_command(
     image: &str,
     timeout: Duration,
 ) -> Result<Option<TrivyImageSummary>, String> {
-    let mut command = Command::new(command_name);
-    command.args(trivy_image_args(image)).env("NO_COLOR", "1");
-    let output = command::run_with_timeout(command, timeout).map_err(|error| error.detail())?;
+    let cache_dir = temp_trivy_cache_dir();
+    let cache_path = cache_dir.display().to_string();
+
+    let result = run_trivy_command(command_name, image, &cache_path, timeout);
+
+    // If the first attempt failed with a cache lock / timeout message, wait a
+    // moment and retry once with a fresh cache directory.
+    let output = match result {
+        Ok(output) => output,
+        Err(error) if is_cache_lock_error(&error) => {
+            let _ = std::fs::remove_dir_all(&cache_dir);
+            std::thread::sleep(Duration::from_millis(500));
+
+            let cache_dir = temp_trivy_cache_dir();
+            let cache_path = cache_dir.display().to_string();
+            let retry_result = run_trivy_command(command_name, image, &cache_path, timeout);
+            let output = retry_result.map_err(|error| error.detail())?;
+            let _ = std::fs::remove_dir_all(&cache_dir);
+            output
+        }
+        Err(error) => {
+            let _ = std::fs::remove_dir_all(&cache_dir);
+            return Err(error.detail());
+        }
+    };
+
+    let _ = std::fs::remove_dir_all(&cache_dir);
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -169,6 +193,37 @@ fn scan_image_with_command(
         .map_err(|error| crate::i18n::tr_adapter_json_parse_failed("Trivy", &error.to_string()))?;
 
     Ok(summarize_report(image, report))
+}
+
+fn run_trivy_command(
+    command_name: &str,
+    image: &str,
+    cache_path: &str,
+    timeout: Duration,
+) -> Result<command::CommandOutput, command::CommandError> {
+    let mut command = Command::new(command_name);
+    command
+        .args(trivy_image_args(image))
+        .arg("--cache-dir")
+        .arg(cache_path)
+        .env("NO_COLOR", "1");
+    command::run_with_timeout(command, timeout)
+}
+
+fn temp_trivy_cache_dir() -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time should move forward")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "hostveil-trivy-cache-{}-{nanos}",
+        std::process::id()
+    ))
+}
+
+fn is_cache_lock_error(error: &command::CommandError) -> bool {
+    let lower = error.detail().to_ascii_lowercase();
+    lower.contains("cache") && (lower.contains("lock") || lower.contains("timeout"))
 }
 
 fn trivy_image_args(image: &str) -> [&str; 7] {
@@ -514,7 +569,13 @@ if [[ "${1:-}" == "--version" ]]; then
   printf 'trivy test\n'
   exit 0
 fi
-image="${@: -1}"
+image=""
+for arg in "$@"; do
+  if [[ "$arg" == "--cache-dir" ]]; then
+    break
+  fi
+  image="$arg"
+done
 if [[ "$image" == "slow:1" ]]; then
   sleep 2
   exit 0
