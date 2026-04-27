@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::process::Command;
 
@@ -17,8 +18,13 @@ pub fn apply_host_fixes(
     // Check if we need to fix ufw
     if has_finding(findings, filter, "host.ufw_installed_but_disabled") {
         if mode == FixMode::Fix {
-            // Apply ufw enable
-            let _ = Command::new("ufw").arg("enable").output();
+            let output = Command::new("ufw").arg("enable").output()?;
+            if !output.status.success() {
+                return Err(FixError::Io(io::Error::other(format!(
+                    "ufw enable failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ))));
+            }
         }
         applied.push(FixProposal {
             service: String::from("host"),
@@ -28,12 +34,20 @@ pub fn apply_host_fixes(
 
     if has_finding(findings, filter, "host.ssh_root_login_enabled") {
         if mode == FixMode::Fix {
-            // Apply sshd_config fix
             let config_path = host_root.join("etc/ssh/sshd_config");
-            if let Ok(text) = fs::read_to_string(&config_path) {
-                let updated = text.replace("PermitRootLogin yes", "PermitRootLogin no");
-                let _ = fs::write(&config_path, updated);
-                let _ = Command::new("systemctl").arg("reload").arg("sshd").output();
+            let text = fs::read_to_string(&config_path)?;
+            let updated = text.replace("PermitRootLogin yes", "PermitRootLogin no");
+            fs::write(&config_path, updated)?;
+
+            let output = Command::new("systemctl")
+                .arg("reload")
+                .arg("sshd")
+                .output()?;
+            if !output.status.success() {
+                return Err(FixError::Io(io::Error::other(format!(
+                    "sshd reload failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ))));
             }
         }
         applied.push(FixProposal {
