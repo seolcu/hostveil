@@ -17,7 +17,8 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 - **셀프호스팅 맥락 기반 기본 점검** — 각 서비스의 데이터 위치, Compose 구조, 운영 위험을 반영한 점검
 - **선택적 외부 스캐너 어댑터** — Trivy, Dockle, Lynis 같은 기존 도구 결과를 런타임 필수 의존성으로 강제하지 않고 통합
 - **보이는 백그라운드 진행 상태** — 실행 시 자동 업데이트 점검과 TUI 내부 어댑터 로딩 상태를 숨기지 않고 표시
-- **테마 프리셋** — 터미널 기본 ANSI와 Catppuccin, Nord, Tokyo Night, Gruvbox 팔레트를 TUI에서 전환 가능
+- **설정 모달** — TUI에서 키보드나 마우스로 테마, 레이아웃, 언어 설정을 변경 가능
+- **테마 프리셋** — 터미널 기본 ANSI와 Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, Solarized Light 프리셋을 TUI에서 전환 가능
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
 - **Compose 중심 수정 흐름** — `quick-fix`와 `fix`는 미리보기와 백업이 가능한 Compose 변경에 집중
 
@@ -67,7 +68,7 @@ cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-chan
 
 # locale override (현재: en, ko)
 HOSTVEIL_LOCALE=ko cargo run -- --help
-LANG=ko_KR.UTF-8 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
+cargo run -- --locale ko --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 ```
 
 컨테이너 기반 개발 및 installer 검증:
@@ -109,7 +110,7 @@ lab 이미지는 공통 `docker/labs/systemd-lab.Dockerfile`을 공유하므로,
 - `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`용 GitHub Releases tarball
 - 릴리스 아티팩트 검증용 `SHA256SUMS`
 - 호스트 아키텍처에 맞는 Linux 바이너리를 선택하는 작은 설치 스크립트
-- Docker, Trivy, Dockle, Lynis 같은 외부 도구는 번들하지 않고 `PATH`에서 선택적으로 탐지
+- 선택형 외부 도구는 번들하지 않으며, 설치 후 setup은 Lynis, Trivy, Fail2Ban을 패키지 저장소에서 설치하고 Dockle의 수동 설치 경로를 안내할 수 있음
 - 첫 설치는 installer script로, 이후 업그레이드/자동 업데이트 토글/삭제는 설치된 `hostveil` 명령으로 수행
 
 최신 릴리스 설치:
@@ -126,7 +127,7 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 hostveil setup
 ```
 
-터미널 호환성을 위해 기본 locale은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하고, TUI 안에서는 `g` 키로 영어/한국어를 전환할 수 있습니다.
+터미널 호환성을 위해 기본 locale은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하세요. TUI에서는 설정(`s`)을 열어 언어를 전환하고 저장할 수 있습니다.
 
 설치된 래퍼 경로에서 자동 업데이트 점검이 실행될 때는 이제 짧은 상태 줄을 출력하므로, 느린 업데이트 확인이 멈춘 것처럼 보이지 않습니다.
 
@@ -175,8 +176,8 @@ HOSTVEIL_ADAPTERS=trivy,dockle hostveil --json
 현재 TUI 주요 조작:
 
 - `Enter`: 개요에서 Findings 화면 열기
-- `g`: locale 전환 및 설정 저장
-- `t`: 테마 프리셋 전환 및 설정 저장
+- `s`: 설정 열기(테마/레이아웃/언어)
+- `L`: 레이아웃 프리셋 전환(개요)
 - `f`: Compose 수정이 가능할 때 remediation 흐름 열기
 
 현재 overview 화면 규칙:
@@ -237,17 +238,19 @@ hostveil은 현재 초기 개발 단계입니다. 구현은 두 단계로 계획
 - `src/` 아래 활성 Rust crate 골격 생성 완료
 - `rust-toolchain.toml`로 stable toolchain 고정
 - `ratatui` + `crossterm` 기반 TUI 부트스트랩과 `rust-i18n` 연결 완료
-- 좁은 터미널, 중간 폭, 넓은 화면을 나누는 responsive overview/findings 레이아웃 적용
-- 영어 기본값 + 명시적 locale override(`--locale`, `HOSTVEIL_LOCALE`) + TUI 내 `g` 전환 경로 추가
-- ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox 테마 프리셋과 설정 저장 추가
+- Adaptive, Wide, Balanced, Compact, Focus 프리셋을 저장하는 responsive overview/findings 레이아웃 적용
+- 스크롤 가능한 overview/finding 패널, tab navigation, 마우스 클릭 영역이 키보드 조작 흐름과 동일하게 동작
+- 영어 기본값 + 명시적 locale override(`--locale`, `HOSTVEIL_LOCALE`) + TUI 설정(`s`)을 통한 언어 전환/저장 경로 추가
+- ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, Solarized Light 테마 프리셋과 설정 저장 추가
 - 수정 가능한 finding을 빠르게 검토할 수 있는 remediation-first TUI triage 추가
 - 일반화된 Rust scan result 모델과 최소 JSON export 경로 동작
 - override 병합과 정규화를 포함한 Compose parser 포팅 및 parity 테스트 추가
-- 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 일부 포팅하고 fixture 테스트로 검증
-- `--host-root`를 통한 SSH posture 및 Docker host exposure 기본 점검 시작
+- 기본 Compose 규칙 엔진과 점수화 모델을 Rust로 포팅하고 fixture 테스트로 검증
+- `--host-root`를 통한 SSH posture, Docker host exposure, defensive-control telemetry 기본 점검 추가
 - Trivy, Dockle, Lynis optional adapter가 공통 finding pipeline에 통합됨
 - external coverage가 로딩 중일 때 TUI에 어댑터별 진행 상태를 표시
 - root가 아닌 live host scan에서는 데스크톱 인증창을 피하기 위해 Lynis 실행을 건너뜀
+- 미리보기 가능한 `--quick-fix`/`--fix` 작업과 백업 안전성을 갖춘 초기 Rust Compose remediation flow 추가
 - 인자 없는 live scan이 host 스캔 + Docker 기반 Compose 자동 발견 + 현재 디렉터리 fallback으로 동작
 
 ## 릴리스 규칙
@@ -274,7 +277,7 @@ v0.4.0 릴리스 하이라이트:
 - Linux 전용 범위를 유지하고 알려진 한계를 명확히 문서화
 - Native Compose 점검과 host 점검을 하나의 결과 모델로 통합
 - 실제 스캔 결과 기준의 TUI 개요 및 finding 상세 탐색
-- 영어 기본 터미널 동작과 명시적 locale 전환(`--locale`, `HOSTVEIL_LOCALE`, TUI `g`) 보장
+- 영어 기본 터미널 동작과 명시적 locale 전환(`--locale`, `HOSTVEIL_LOCALE`, TUI 설정 `s`) 보장
 - 자동화/회귀 스냅샷을 위한 최소한의 headless JSON export 유지
 - 미리보기 가능한 Compose `--quick-fix`/`--fix` 흐름과 백업 안전성 유지
 - 체크섬 포함 GitHub Releases 아티팩트 배포
@@ -310,6 +313,7 @@ v0.4.0 릴리스 하이라이트:
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
 - `cargo test --workspace`
 - `hostveil`, `hostveil --json`, 타깃 Compose/host 스캔, preview-only fix 흐름에 대한 smoke test
+- install, upgrade, auto-upgrade, custom state directory, setup handoff, uninstall을 검증하는 installer lifecycle 테스트
 - 지원 플랫폼, optional dependency, known limitation을 담은 release note
 
 ## 기여

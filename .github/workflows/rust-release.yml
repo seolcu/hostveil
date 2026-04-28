@@ -171,7 +171,7 @@ jobs:
             hostveil setup
             ```
 
-            Locale defaults to English for terminal safety. Use `hostveil --locale ko ...`, `HOSTVEIL_LOCALE=ko hostveil ...`, or press `g` in the TUI for an explicit switch.
+            Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for an explicit override. In the TUI, open Settings (`s`) to switch locale and persist it.
 
             ## Upgrade
             ```sh
