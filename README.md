@@ -18,7 +18,7 @@ Inspired by [Chrome Lighthouse](https://developer.chrome.com/docs/lighthouse/ove
 - **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, and Lynis are supported as optional adapters)
 - **Visible Background Progress** — launch-time auto-upgrade checks and in-TUI adapter loading surface status instead of appearing frozen
 - **Settings Modal** — change theme, layout, and locale from the TUI with keyboard or mouse controls
-- **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, and Monokai presets are available from the TUI
+- **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light presets are available from the TUI
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
 - **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 
@@ -68,7 +68,7 @@ cargo run -- --fix proto/tests/fixtures/parser/docker-compose.yml --preview-chan
 
 # Locale overrides (currently: en, ko)
 HOSTVEIL_LOCALE=ko cargo run -- --help
-LANG=ko_KR.UTF-8 cargo run -- --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
+cargo run -- --locale ko --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 ```
 
 Container-based development and installer validation:
@@ -118,7 +118,7 @@ Current release delivery path:
 - GitHub Releases tarballs for `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
 - Published `SHA256SUMS` for release artifact verification
 - A small install script that selects the correct Linux binary for the host architecture
-- Optional external tools such as Lynis, Trivy, and Fail2Ban can be installed through a post-install setup flow instead of being bundled
+- Optional external tools are not bundled; post-install setup can install Lynis, Trivy, and Fail2Ban from package repositories and can surface Dockle's manual install path
 - First-install bootstrap via installer script, then installed lifecycle commands for upgrade, launch-time auto-upgrade, and uninstall
 
 Install the latest release:
@@ -139,7 +139,7 @@ Run the setup flow again later:
 hostveil setup
 ```
 
-Locale defaults to English for terminal safety, even if the host locale is non-English. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for an explicit override, and press `g` inside the TUI to switch between English and Korean.
+Locale defaults to English for terminal safety, even if the host locale is non-English. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for an explicit override. In the TUI, open Settings (`s`) to switch locale and persist it.
 
 When automatic upgrade checks run through the installed wrapper, hostveil now prints a short launch-time status line so slow update checks are visible instead of feeling like a hang.
 
@@ -195,8 +195,8 @@ Optional scanner adapters default to `all`. Use `--adapters none` for native-onl
 Current TUI controls:
 
 - `Enter` opens Findings from the overview
-- `g` cycles locale and persists it
-- `t` cycles the theme preset and persists it
+- `s` opens Settings (theme, layout, locale)
+- `L` cycles the layout preset (overview)
 - `f` opens the remediation flow when Compose fixes are available
 
 Current overview model:
@@ -260,8 +260,8 @@ Current Rust implementation status:
 - Responsive overview and findings layouts with persisted Adaptive, Wide, Balanced, Compact, and Focus presets
 - Scrollable overview/finding panels, tabbed navigation, and mouse hit targets mirror keyboard workflows
 - TUI findings navigation supports remediation-first triage for faster review of fixable issues
-- Explicit locale controls are available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI `g` switch
-- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, and Monokai palettes
+- Explicit locale controls are available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI Settings modal (`s`)
+- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light palettes
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
@@ -333,6 +333,7 @@ Release gates:
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
 - `cargo test --workspace`
 - Smoke tests for `hostveil`, `hostveil --json`, targeted Compose scans, targeted host scans, and preview-only fix flows
+- Installer lifecycle tests for install, upgrade, auto-upgrade, custom state directories, setup handoff, and uninstall
 - Release notes that document supported platforms, optional dependencies, and known limitations
 
 ## Contributing
