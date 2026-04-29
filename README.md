@@ -74,6 +74,18 @@ cargo run -- --locale ko --quick-fix proto/tests/fixtures/parser/docker-compose.
 Container-based development and installer validation:
 
 ```sh
+# Start a realistic self-hosting lab with intentionally vulnerable services
+./scripts/self-hosting-lab.sh up
+
+# Enter the lab container and run hostveil directly
+./scripts/self-hosting-lab.sh shell
+
+# Quick smoke check
+./scripts/self-hosting-lab.sh check
+
+# Tear everything down including volumes
+./scripts/self-hosting-lab.sh reset
+
 # Start the normal Rust dev container
 ./scripts/dev-env.sh up dev
 ./scripts/dev-env.sh shell dev
@@ -98,6 +110,10 @@ The lab stack lives in `compose.dev.yml` and currently covers:
 - `debian-lab`: Debian + systemd + apt validation
 
 The lab images share a generic `docker/labs/systemd-lab.Dockerfile`, so adding more distro services later should be a compose-level change instead of a full redesign.
+
+The self-hosting lab is managed by `scripts/self-hosting-lab.sh`. The runner lives in `docker-compose.lab.yml`, while the intentionally vulnerable target stack lives in `docker/lab/self-hosting-stack.yml`. It spins up misconfigured Vaultwarden, Jellyfin, Gitea, Nextcloud, PostgreSQL, and nginx services so Compose parsing, scoring, fix previews, and TUI behavior can be exercised without copying development builds to a real server.
+
+For safety, the helper script rewrites public port bindings to `127.0.0.1` before starting the lab services. The original Compose file keeps literal `0.0.0.0` bindings so hostveil still reports them as findings.
 
 Recent validation coverage for the live install and scan flows includes:
 

@@ -13,14 +13,6 @@ services:
       - HOSTVEIL_LOCALE=en
     privileged: true
     user: 1000:1000
-  vulnerable-service:
-    image: nginx:stable
-    container_name: hostveil-lab-target
-    ports:
-      - "127.0.0.1:8081:80"
-    volumes:
-      - /etc/shadow:/mnt/shadow:ro
-    user: 1000:1000
 
 volumes:
   lab-target:
