@@ -43,6 +43,7 @@ enum Screen {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum LayoutPreset {
     Adaptive,
+    AdaptiveLegacy,
     Wide,
     Balanced,
     Compact,
@@ -53,6 +54,7 @@ impl LayoutPreset {
     fn as_key(self) -> &'static str {
         match self {
             Self::Adaptive => "adaptive",
+            Self::AdaptiveLegacy => "adaptive_legacy",
             Self::Wide => "wide",
             Self::Balanced => "balanced",
             Self::Compact => "compact",
@@ -63,6 +65,7 @@ impl LayoutPreset {
     fn label(self) -> &'static str {
         match self {
             Self::Adaptive => "Auto",
+            Self::AdaptiveLegacy => "Adaptive",
             Self::Wide => "Wide",
             Self::Balanced => "Balanced",
             Self::Compact => "Compact",
@@ -73,6 +76,7 @@ impl LayoutPreset {
     fn from_key(value: &str) -> Option<Self> {
         match value {
             "adaptive" => Some(Self::Adaptive),
+            "adaptive_legacy" => Some(Self::AdaptiveLegacy),
             "wide" => Some(Self::Wide),
             "balanced" => Some(Self::Balanced),
             "compact" => Some(Self::Compact),
@@ -83,7 +87,8 @@ impl LayoutPreset {
 
     fn next(self) -> Self {
         match self {
-            Self::Adaptive => Self::Wide,
+            Self::Adaptive => Self::AdaptiveLegacy,
+            Self::AdaptiveLegacy => Self::Wide,
             Self::Wide => Self::Balanced,
             Self::Balanced => Self::Compact,
             Self::Compact => Self::Focus,
@@ -94,7 +99,8 @@ impl LayoutPreset {
     fn previous(self) -> Self {
         match self {
             Self::Adaptive => Self::Focus,
-            Self::Wide => Self::Adaptive,
+            Self::AdaptiveLegacy => Self::Adaptive,
+            Self::Wide => Self::AdaptiveLegacy,
             Self::Balanced => Self::Wide,
             Self::Compact => Self::Balanced,
             Self::Focus => Self::Compact,
@@ -1006,60 +1012,121 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                     Constraint::Percentage(36),
                 ])
                 .split(layout[1]);
-            let right_column = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Length(10), Constraint::Min(10)])
-                .split(columns[2]);
 
-            state.hit_boxes.push((
-                columns[0],
-                HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
-            ));
-            state.hit_boxes.push((
-                columns[1],
-                HitTarget::OverviewPanel(OverviewFocus::ScanResults),
-            ));
-            state.hit_boxes.push((
-                right_column[0],
-                HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
-            ));
-            state.hit_boxes.push((
-                right_column[1],
-                HitTarget::OverviewPanel(OverviewFocus::FixPaths),
-            ));
+            if state.layout_preset == LayoutPreset::AdaptiveLegacy {
+                // Legacy adaptive layout keeps the 3-column split, but:
+                // - left column stacks Server Status + Security Scores
+                // - Scan Results and Action Queue are full-height side-by-side
+                let left_column = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(12), Constraint::Length(10)])
+                    .split(columns[0]);
 
-            render_server_status_panel(
-                frame,
-                columns[0],
-                scan_result,
-                state,
-                &state.theme,
-                state.overview_focus == OverviewFocus::ServerStatus,
-            );
-            render_scan_results_panel(
-                frame,
-                columns[1],
-                scan_result,
-                state,
-                &state.theme,
-                state.overview_focus == OverviewFocus::ScanResults,
-            );
-            render_security_scores_panel(
-                frame,
-                right_column[0],
-                scan_result,
-                state,
-                &state.theme,
-                state.overview_focus == OverviewFocus::SecurityScores,
-            );
-            render_fix_paths_panel(
-                frame,
-                right_column[1],
-                scan_result,
-                state,
-                &state.theme,
-                state.overview_focus == OverviewFocus::FixPaths,
-            );
+                state.hit_boxes.push((
+                    left_column[0],
+                    HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+                ));
+                state.hit_boxes.push((
+                    columns[1],
+                    HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+                ));
+                state.hit_boxes.push((
+                    left_column[1],
+                    HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+                ));
+                state.hit_boxes.push((
+                    columns[2],
+                    HitTarget::OverviewPanel(OverviewFocus::FixPaths),
+                ));
+
+                render_server_status_panel(
+                    frame,
+                    left_column[0],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::ServerStatus,
+                );
+                render_scan_results_panel(
+                    frame,
+                    columns[1],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::ScanResults,
+                );
+                render_security_scores_panel(
+                    frame,
+                    left_column[1],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::SecurityScores,
+                );
+                render_fix_paths_panel(
+                    frame,
+                    columns[2],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::FixPaths,
+                );
+            } else {
+                let right_column = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Length(10), Constraint::Min(10)])
+                    .split(columns[2]);
+
+                state.hit_boxes.push((
+                    columns[0],
+                    HitTarget::OverviewPanel(OverviewFocus::ServerStatus),
+                ));
+                state.hit_boxes.push((
+                    columns[1],
+                    HitTarget::OverviewPanel(OverviewFocus::ScanResults),
+                ));
+                state.hit_boxes.push((
+                    right_column[0],
+                    HitTarget::OverviewPanel(OverviewFocus::SecurityScores),
+                ));
+                state.hit_boxes.push((
+                    right_column[1],
+                    HitTarget::OverviewPanel(OverviewFocus::FixPaths),
+                ));
+
+                render_server_status_panel(
+                    frame,
+                    columns[0],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::ServerStatus,
+                );
+                render_scan_results_panel(
+                    frame,
+                    columns[1],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::ScanResults,
+                );
+                render_security_scores_panel(
+                    frame,
+                    right_column[0],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::SecurityScores,
+                );
+                render_fix_paths_panel(
+                    frame,
+                    right_column[1],
+                    scan_result,
+                    state,
+                    &state.theme,
+                    state.overview_focus == OverviewFocus::FixPaths,
+                );
+            }
         }
         OverviewLayoutMode::Tall => {
             let rows = Layout::default()
@@ -1465,7 +1532,21 @@ fn register_finding_list_hit_boxes(
 
 fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode {
     match preset {
+        // Auto now tracks the "Balanced" layout intent (stable, aspect-ratio driven)
+        // while still falling back to the narrow layout for small terminals.
         LayoutPreset::Adaptive => {
+            if area.width >= 80 && area.height >= 24 {
+                if area.height > area.width {
+                    OverviewLayoutMode::Tall
+                } else {
+                    OverviewLayoutMode::Compact
+                }
+            } else {
+                OverviewLayoutMode::Narrow
+            }
+        }
+        // Legacy adaptive keeps the old responsive breakpoints.
+        LayoutPreset::AdaptiveLegacy => {
             if area.width >= 120 && area.height >= 28 {
                 OverviewLayoutMode::Wide
             } else if area.width >= 80 && area.height >= 40 {
@@ -1491,7 +1572,16 @@ fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode 
 
 fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode {
     match preset {
+        // Auto now mirrors the "Balanced" layout intent (stacked) while still
+        // falling back to the narrow layout for small terminals.
         LayoutPreset::Adaptive => {
+            if area.width >= 72 && area.height >= 18 {
+                FindingsLayoutMode::Stacked
+            } else {
+                FindingsLayoutMode::Narrow
+            }
+        }
+        LayoutPreset::AdaptiveLegacy => {
             if area.width >= 96 && area.height >= 24 {
                 FindingsLayoutMode::SideBySide
             } else if area.width >= 72 && area.height >= 18 {
@@ -3855,6 +3945,7 @@ mod tests {
     fn overview_renders_full_metadata_in_wide_layout() {
         let result = sample_result();
         let mut state = AppState::new(&result);
+        state.layout_preset = LayoutPreset::Wide;
         let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
 
         terminal
@@ -3871,6 +3962,40 @@ mod tests {
         assert!(content.contains("Adapters"));
         assert!(content.contains("Lynis: available"));
         assert!(content.contains("Trivy: missing"));
+    }
+
+    #[test]
+    fn legacy_adaptive_wide_layout_stacks_status_and_scores_and_places_queue_next_to_scan_results()
+    {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.layout_preset = LayoutPreset::AdaptiveLegacy;
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("legacy adaptive overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        let (status_x, status_y) =
+            find_rendered_position(&content, "Server Status").expect("server status title");
+        let (scan_x, scan_y) =
+            find_rendered_position(&content, "Scan Results").expect("scan results title");
+        let (scores_x, scores_y) =
+            find_rendered_position(&content, "Security Scores").expect("security scores title");
+        let (queue_x, queue_y) =
+            find_rendered_position(&content, "Action Queue").expect("action queue title");
+
+        // Scan results and action queue should be full-height side-by-side.
+        assert_eq!(status_y, scan_y);
+        assert_eq!(scan_y, queue_y);
+        assert!(queue_x > scan_x);
+
+        // Server status and security scores should be stacked in the left column.
+        assert!(scores_y > status_y);
+        assert!(scores_x < scan_x);
+        assert_eq!(scores_x, status_x);
     }
 
     #[test]
@@ -4112,6 +4237,7 @@ mod tests {
     fn tui_buffers_do_not_use_visible_ellipsis_for_security_content() {
         let result = long_content_result();
         let mut overview_state = AppState::new(&result);
+        overview_state.layout_preset = LayoutPreset::Wide;
         let mut overview_terminal =
             Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
 
@@ -4148,6 +4274,7 @@ mod tests {
         ];
         let presets = [
             LayoutPreset::Adaptive,
+            LayoutPreset::AdaptiveLegacy,
             LayoutPreset::Wide,
             LayoutPreset::Balanced,
             LayoutPreset::Compact,
@@ -4388,5 +4515,15 @@ mod tests {
             .style()
             .bg
             .unwrap_or(ratatui::style::Color::Reset)
+    }
+
+    fn find_rendered_position(rendered: &str, needle: &str) -> Option<(usize, usize)> {
+        for (y, line) in rendered.lines().enumerate() {
+            if let Some(byte_index) = line.find(needle) {
+                let x = line[..byte_index].chars().count();
+                return Some((x, y));
+            }
+        }
+        None
     }
 }
