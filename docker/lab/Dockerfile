@@ -1,4 +1,6 @@
-FROM rust:1-bookworm
+FROM rust:1.95-bookworm
+
+ENV RUSTUP_TOOLCHAIN=1.95.0
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
@@ -28,6 +30,11 @@ RUN curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.70.0/t
 RUN curl -fsSL https://github.com/goodwithtech/dockle/releases/download/v0.4.14/dockle_0.4.14_Linux-64bit.tar.gz -o /tmp/dockle.tar.gz \
     && tar -xzf /tmp/dockle.tar.gz -C /usr/local/bin dockle \
     && rm /tmp/dockle.tar.gz
+
+# Install Docker CLI
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-28.0.4.tgz -o /tmp/docker.tgz \
+    && tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1 docker/docker \
+    && rm /tmp/docker.tgz
 
 # Create user with sudo access
 RUN groupadd --gid "${GROUP_ID}" "${USER_NAME}" \
