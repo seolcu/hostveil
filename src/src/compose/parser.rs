@@ -388,7 +388,7 @@ fn coerce_command(value: &Value) -> String {
         Value::String(text) => text.clone(),
         Value::Sequence(sequence) => sequence
             .iter()
-            .map(|item| yaml_value_to_string(item))
+            .map(yaml_value_to_string)
             .collect::<Vec<_>>()
             .join(" "),
         other => yaml_value_to_string(other),

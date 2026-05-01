@@ -399,31 +399,33 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let publicly_exposed = service.ports.iter().any(is_public_port);
 
-    if publicly_exposed {
-        if let Some(port) = service.ports.iter().find(|port| {
-            (port.container_port == "80" || port.container_port == "443" || port.container_port == "8080")
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "80"
+                || port.container_port == "443"
+                || port.container_port == "8080")
                 && (port.protocol == "tcp" || port.protocol == "udp")
                 && is_public_port(port)
-        }) {
-            findings.push(service_finding(
-                "service.pihole.admin_public",
-                Axis::UnnecessaryExposure,
-                Severity::High,
-                &service.name,
-                ServiceFindingText {
-                    title: t!("finding.pihole.admin_public.title").into_owned(),
-                    description: t!(
-                        "finding.pihole.admin_public.description",
-                        service = service.name.as_str(),
-                        port = port.raw.as_str()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.pihole.admin_public.why").into_owned(),
-                    how_to_fix: t!("finding.pihole.admin_public.fix").into_owned(),
-                },
-                BTreeMap::from([(String::from("port"), port.raw.clone())]),
-            ));
-        }
+        })
+    {
+        findings.push(service_finding(
+            "service.pihole.admin_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.pihole.admin_public.title").into_owned(),
+                description: t!(
+                    "finding.pihole.admin_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.pihole.admin_public.why").into_owned(),
+                how_to_fix: t!("finding.pihole.admin_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
     }
 
     if let Some(webpassword) = env_value(service, "WEBPASSWORD") {
@@ -466,31 +468,31 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
         ));
     }
 
-    if publicly_exposed {
-        if let Some(port) = service.ports.iter().find(|port| {
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
             port.container_port == "53"
                 && (port.protocol == "tcp" || port.protocol == "udp")
                 && is_public_port(port)
-        }) {
-            findings.push(service_finding(
-                "service.pihole.dns_public",
-                Axis::UnnecessaryExposure,
-                Severity::Medium,
-                &service.name,
-                ServiceFindingText {
-                    title: t!("finding.pihole.dns_public.title").into_owned(),
-                    description: t!(
-                        "finding.pihole.dns_public.description",
-                        service = service.name.as_str(),
-                        port = port.raw.as_str()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.pihole.dns_public.why").into_owned(),
-                    how_to_fix: t!("finding.pihole.dns_public.fix").into_owned(),
-                },
-                BTreeMap::from([(String::from("port"), port.raw.clone())]),
-            ));
-        }
+        })
+    {
+        findings.push(service_finding(
+            "service.pihole.dns_public",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.pihole.dns_public.title").into_owned(),
+                description: t!(
+                    "finding.pihole.dns_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.pihole.dns_public.why").into_owned(),
+                how_to_fix: t!("finding.pihole.dns_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
     }
 
     findings
@@ -508,31 +510,29 @@ fn scan_home_assistant_risk(service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let publicly_exposed = service.ports.iter().any(is_public_port);
 
-    if publicly_exposed {
-        if let Some(port) = service.ports.iter().find(|port| {
-            port.container_port == "8123"
-                && port.protocol == "tcp"
-                && is_public_port(port)
-        }) {
-            findings.push(service_finding(
-                "service.homeassistant.ui_public",
-                Axis::UnnecessaryExposure,
-                Severity::Medium,
-                &service.name,
-                ServiceFindingText {
-                    title: t!("finding.homeassistant.ui_public.title").into_owned(),
-                    description: t!(
-                        "finding.homeassistant.ui_public.description",
-                        service = service.name.as_str(),
-                        port = port.raw.as_str()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.homeassistant.ui_public.why").into_owned(),
-                    how_to_fix: t!("finding.homeassistant.ui_public.fix").into_owned(),
-                },
-                BTreeMap::from([(String::from("port"), port.raw.clone())]),
-            ));
-        }
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            port.container_port == "8123" && port.protocol == "tcp" && is_public_port(port)
+        })
+    {
+        findings.push(service_finding(
+            "service.homeassistant.ui_public",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.homeassistant.ui_public.title").into_owned(),
+                description: t!(
+                    "finding.homeassistant.ui_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.homeassistant.ui_public.why").into_owned(),
+                how_to_fix: t!("finding.homeassistant.ui_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
     }
 
     if service.network_mode.as_deref() == Some("host") {
@@ -590,31 +590,33 @@ fn scan_portainer_risk(service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let publicly_exposed = service.ports.iter().any(is_public_port);
 
-    if publicly_exposed {
-        if let Some(port) = service.ports.iter().find(|port| {
-            (port.container_port == "8000" || port.container_port == "9000" || port.container_port == "9443")
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "8000"
+                || port.container_port == "9000"
+                || port.container_port == "9443")
                 && port.protocol == "tcp"
                 && is_public_port(port)
-        }) {
-            findings.push(service_finding(
-                "service.portainer.admin_ui_public",
-                Axis::UnnecessaryExposure,
-                Severity::High,
-                &service.name,
-                ServiceFindingText {
-                    title: t!("finding.portainer.admin_ui_public.title").into_owned(),
-                    description: t!(
-                        "finding.portainer.admin_ui_public.description",
-                        service = service.name.as_str(),
-                        port = port.raw.as_str()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.portainer.admin_ui_public.why").into_owned(),
-                    how_to_fix: t!("finding.portainer.admin_ui_public.fix").into_owned(),
-                },
-                BTreeMap::from([(String::from("port"), port.raw.clone())]),
-            ));
-        }
+        })
+    {
+        findings.push(service_finding(
+            "service.portainer.admin_ui_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.portainer.admin_ui_public.title").into_owned(),
+                description: t!(
+                    "finding.portainer.admin_ui_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.portainer.admin_ui_public.why").into_owned(),
+                how_to_fix: t!("finding.portainer.admin_ui_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
     }
 
     let has_docker_socket = service.volumes.iter().any(|mount| {
@@ -637,10 +639,7 @@ fn scan_portainer_risk(service: &ComposeService) -> Vec<Finding> {
                 why_risky: t!("finding.portainer.docker_socket_mounted.why").into_owned(),
                 how_to_fix: t!("finding.portainer.docker_socket_mounted.fix").into_owned(),
             },
-            BTreeMap::from([(
-                String::from("mount"),
-                String::from("/var/run/docker.sock"),
-            )]),
+            BTreeMap::from([(String::from("mount"), String::from("/var/run/docker.sock"))]),
         ));
     }
 
@@ -664,10 +663,7 @@ fn scan_portainer_risk(service: &ComposeService) -> Vec<Finding> {
                 why_risky: t!("finding.portainer.auth_disabled.why").into_owned(),
                 how_to_fix: t!("finding.portainer.auth_disabled.fix").into_owned(),
             },
-            BTreeMap::from([(
-                String::from("flag"),
-                String::from("--no-auth"),
-            )]),
+            BTreeMap::from([(String::from("flag"), String::from("--no-auth"))]),
         ));
     }
 
@@ -718,7 +714,10 @@ fn scan_traefik_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.traefik.dashboard_public.fix").into_owned(),
             },
             BTreeMap::from([
-                (String::from("variable"), String::from("TRAEFIK_API_DASHBOARD")),
+                (
+                    String::from("variable"),
+                    String::from("TRAEFIK_API_DASHBOARD"),
+                ),
                 (
                     String::from("public_port_count"),
                     service.ports.len().to_string(),
@@ -1189,9 +1188,8 @@ mod tests {
 
     #[test]
     fn pihole_baseline_avoids_service_specific_findings() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
-                .expect("project should parse");
+        let project = ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
+            .expect("project should parse");
 
         let findings = scan_service_aware_risk(&project);
 

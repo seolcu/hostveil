@@ -594,31 +594,30 @@ fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
 
     let apparmor_present =
         resolve_existing_path(&context.root, "sys/kernel/security/apparmor").is_some();
-    if apparmor_present {
-        if let Some(mode) = read_sysctl(context, "sys/kernel/security/apparmor/profiles")
-            && mode.contains(" (complain)")
-        {
-            findings.push(host_finding(
-                "host.apparmor_complain_mode",
-                Severity::Medium,
-                &context.root.join("sys/kernel/security/apparmor/profiles"),
-                HostFindingText {
-                    title: t!("finding.host.apparmor_complain_mode.title").into_owned(),
-                    description: t!(
-                        "finding.host.apparmor_complain_mode.description",
-                        path = context
-                            .root
-                            .join("sys/kernel/security/apparmor/profiles")
-                            .display()
-                            .to_string()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.host.apparmor_complain_mode.why").into_owned(),
-                    how_to_fix: t!("finding.host.apparmor_complain_mode.fix").into_owned(),
-                },
-                BTreeMap::new(),
-            ));
-        }
+    if apparmor_present
+        && let Some(mode) = read_sysctl(context, "sys/kernel/security/apparmor/profiles")
+        && mode.contains(" (complain)")
+    {
+        findings.push(host_finding(
+            "host.apparmor_complain_mode",
+            Severity::Medium,
+            &context.root.join("sys/kernel/security/apparmor/profiles"),
+            HostFindingText {
+                title: t!("finding.host.apparmor_complain_mode.title").into_owned(),
+                description: t!(
+                    "finding.host.apparmor_complain_mode.description",
+                    path = context
+                        .root
+                        .join("sys/kernel/security/apparmor/profiles")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.apparmor_complain_mode.why").into_owned(),
+                how_to_fix: t!("finding.host.apparmor_complain_mode.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
     }
 
     if !selinux_installed && !apparmor_present {
@@ -685,10 +684,7 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 why_risky: t!("finding.host.kernel_aslr_disabled.why").into_owned(),
                 how_to_fix: t!("finding.host.kernel_aslr_disabled.fix").into_owned(),
             },
-            BTreeMap::from([(
-                String::from("value"),
-                String::from("0"),
-            )]),
+            BTreeMap::from([(String::from("value"), String::from("0"))]),
         ));
     }
 
@@ -713,10 +709,7 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 why_risky: t!("finding.host.kernel_syn_cookies_disabled.why").into_owned(),
                 how_to_fix: t!("finding.host.kernel_syn_cookies_disabled.fix").into_owned(),
             },
-            BTreeMap::from([(
-                String::from("value"),
-                String::from("0"),
-            )]),
+            BTreeMap::from([(String::from("value"), String::from("0"))]),
         ));
     }
 
@@ -726,7 +719,9 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
         findings.push(host_finding(
             "host.kernel.broadcast_ping_allowed",
             Severity::Low,
-            &context.root.join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
+            &context
+                .root
+                .join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
             HostFindingText {
                 title: t!("finding.host.kernel_broadcast_ping_allowed.title").into_owned(),
                 description: t!(
@@ -741,42 +736,35 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 why_risky: t!("finding.host.kernel_broadcast_ping_allowed.why").into_owned(),
                 how_to_fix: t!("finding.host.kernel_broadcast_ping_allowed.fix").into_owned(),
             },
-            BTreeMap::from([(
-                String::from("value"),
-                String::from("0"),
-            )]),
+            BTreeMap::from([(String::from("value"), String::from("0"))]),
         ));
     }
 
     let docker_present = resolve_existing_path(&context.root, DOCKER_SOCKET_PATH).is_some();
-    if !docker_present {
-        if let Some(value) = read_sysctl(context, "proc/sys/net/ipv4/ip_forward")
-            && value.trim() == "1"
-        {
-            findings.push(host_finding(
-                "host.kernel.ip_forward_enabled",
-                Severity::Medium,
-                &context.root.join("proc/sys/net/ipv4/ip_forward"),
-                HostFindingText {
-                    title: t!("finding.host.kernel_ip_forward_enabled.title").into_owned(),
-                    description: t!(
-                        "finding.host.kernel_ip_forward_enabled.description",
-                        path = context
-                            .root
-                            .join("proc/sys/net/ipv4/ip_forward")
-                            .display()
-                            .to_string()
-                    )
-                    .into_owned(),
-                    why_risky: t!("finding.host.kernel_ip_forward_enabled.why").into_owned(),
-                    how_to_fix: t!("finding.host.kernel_ip_forward_enabled.fix").into_owned(),
-                },
-                BTreeMap::from([(
-                    String::from("value"),
-                    String::from("1"),
-                )]),
-            ));
-        }
+    if !docker_present
+        && let Some(value) = read_sysctl(context, "proc/sys/net/ipv4/ip_forward")
+        && value.trim() == "1"
+    {
+        findings.push(host_finding(
+            "host.kernel.ip_forward_enabled",
+            Severity::Medium,
+            &context.root.join("proc/sys/net/ipv4/ip_forward"),
+            HostFindingText {
+                title: t!("finding.host.kernel_ip_forward_enabled.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_ip_forward_enabled.description",
+                    path = context
+                        .root
+                        .join("proc/sys/net/ipv4/ip_forward")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_ip_forward_enabled.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_ip_forward_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("value"), String::from("1"))]),
+        ));
     }
 
     findings
@@ -1571,6 +1559,7 @@ mod tests {
                 "host.docker_daemon_tcp_public",
                 "host.docker_daemon_tcp_no_tlsverify",
                 "host.docker_daemon_iptables_disabled",
+                "host.mac_framework_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -1610,6 +1599,7 @@ mod tests {
                 "host.kernel.syn_cookies_disabled",
                 "host.kernel.broadcast_ping_allowed",
                 "host.kernel.ip_forward_enabled",
+                "host.mac_framework_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -1634,6 +1624,10 @@ mod tests {
         write_file(
             &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
             "enabled\n",
+        );
+        write_file(
+            &root.join("sys/kernel/security/apparmor/profiles"),
+            "/usr/sbin/dnsmasq (enforce)\n",
         );
         write_file(&root.join("etc/hostname"), "hardened\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
@@ -1740,6 +1734,17 @@ mod tests {
             fs::Permissions::from_mode(0o660),
         )
         .expect("permissions should be set");
+        write_file(&root.join("proc/sys/kernel/randomize_va_space"), "2\n");
+        write_file(&root.join("proc/sys/net/ipv4/tcp_syncookies"), "1\n");
+        write_file(
+            &root.join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
+            "1\n",
+        );
+        write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "0\n");
+        write_file(
+            &root.join("sys/kernel/security/apparmor/profiles"),
+            "/usr/sbin/dnsmasq (enforce)\n",
+        );
 
         let findings = HostScanner.scan(&HostContext { root: root.clone() });
 
