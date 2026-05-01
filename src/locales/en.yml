@@ -577,6 +577,26 @@ finding:
       description: "%{path} disables APT::Periodic::Update-Package-Lists."
       why: "Outdated package indexes can delay security patch visibility and weaken automated patching expectations."
       fix: "Enable periodic package list refresh or run an equivalent scheduled update workflow before unattended upgrades run."
+    kernel_aslr_disabled:
+      title: "Kernel ASLR is disabled"
+      description: "%{path} is set to 0, disabling address space layout randomization."
+      why: "ASLR makes memory corruption exploits harder by randomizing process memory layouts. Disabling it significantly increases exploit reliability."
+      fix: "Set /proc/sys/kernel/randomize_va_space to 2 (full ASLR) and verify it persists across reboots in sysctl.conf or a sysctl.d drop-in."
+    kernel_syn_cookies_disabled:
+      title: "TCP SYN cookies are disabled"
+      description: "%{path} is set to 0, disabling SYN flood protection."
+      why: "Without SYN cookies, the host is more vulnerable to SYN flood denial-of-service attacks that can exhaust connection state tables."
+      fix: "Set /proc/sys/net/ipv4/tcp_syncookies to 1 and persist the change in sysctl configuration."
+    kernel_broadcast_ping_allowed:
+      title: "Broadcast ICMP echo requests are allowed"
+      description: "%{path} is set to 0, allowing broadcast ping responses."
+      why: "Responding to broadcast pings can facilitate network reconnaissance and amplification-style scanning."
+      fix: "Set /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts to 1 and persist the change in sysctl configuration."
+    kernel_ip_forward_enabled:
+      title: "IP forwarding is enabled without Docker"
+      description: "%{path} is set to 1 and no local Docker socket was detected."
+      why: "IP forwarding turns the host into a router. When it is enabled without a clear need such as Docker or a known routing role, it can expose internal traffic paths."
+      fix: "Set /proc/sys/net/ipv4/ip_forward to 0 unless this host intentionally routes traffic, and persist the change in sysctl configuration."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

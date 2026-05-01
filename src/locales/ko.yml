@@ -573,10 +573,30 @@ finding:
       why: "보안 업데이트가 적용되지 않으면 알려진 취약점이 의도보다 오래 방치될 수 있습니다."
       fix: "unattended-upgrades(또는 동등한 패치 워크플로)를 활성화해 보안 수정이 정기적으로 적용되도록 하세요."
     package_lists_auto_update_disabled:
-      title: "패키지 목록 자동 갱신이 비활성화되어 있습니다"
-      description: "%{path}에서 APT::Periodic::Update-Package-Lists가 비활성화되어 있습니다."
-      why: "패키지 인덱스가 오래되면 보안 패치 가시성이 늦어지고 자동 패치 워크플로의 신뢰성이 떨어질 수 있습니다."
-      fix: "unattended-upgrades 실행 전에 정기 패키지 목록 갱신을 활성화하거나 동등한 스케줄 업데이트 절차를 사용하세요."
+      title: "자동 패키지 목록 새로고침이 비활성화되어 있습니다"
+      description: "%{path}가 APT::Periodic::Update-Package-Lists를 비활성화합니다."
+      why: "오래된 패키지 인덱스는 보안 패치 가시성을 지연시키고 자동 패치 기대를 약화시킬 수 있습니다."
+      fix: "주기적 패키지 목록 새로고침을 활성화하거나, 자동 업그레이드 전에 동등한 예약 업데이트 워크플로우를 실행하세요."
+    kernel_aslr_disabled:
+      title: "커널 ASLR이 비활성화되어 있습니다"
+      description: "%{path}가 0으로 설정되어 주소 공간 배치 무작위화가 꺼져 있습니다."
+      why: "ASLR은 프로세스 메모리 배치를 무작위화해 메모리 손상 익스플로잇을 어렵게 만듭니다. 비활성화하면 익스플로잇 성공 가능성이 크게 높아집니다."
+      fix: "/proc/sys/kernel/randomize_va_space를 2(전체 ASLR)로 설정하고, sysctl.conf나 sysctl.d 드롭인 파일에서 재부팅 후에도 유지되는지 확인하세요."
+    kernel_syn_cookies_disabled:
+      title: "TCP SYN 쿠키가 비활성화되어 있습니다"
+      description: "%{path}가 0으로 설정되어 SYN 플러드 보호가 꺼져 있습니다."
+      why: "SYN 쿠키가 없으면 호스트는 연결 상태 테이블을 고갈시키는 SYN 플러드 서비스 거부 공격에 더 취약합니다."
+      fix: "/proc/sys/net/ipv4/tcp_syncookies를 1로 설정하고 sysctl 설정에서 변경을 영구화하세요."
+    kernel_broadcast_ping_allowed:
+      title: "브로드캐스트 ICMP 에코 요청이 허용됩니다"
+      description: "%{path}가 0으로 설정되어 브로드캐스트 핑 응답이 허용됩니다."
+      why: "브로드캐스트 핑에 응답하면 네트워크 정찰과 증폭형 스캐닝을 촉진할 수 있습니다."
+      fix: "/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts를 1로 설정하고 sysctl 설정에서 변경을 영구화하세요."
+    kernel_ip_forward_enabled:
+      title: "Docker 없이 IP 포워딩이 활성화되어 있습니다"
+      description: "%{path}가 1로 설정되어 있고 로컬 Docker 소켓이 감지되지 않았습니다."
+      why: "IP 포워딩은 호스트를 라우터로 만듭니다. Docker나 알려진 라우팅 역할 없이 활성화되면 낮부 트래픽 경로를 노출할 수 있습니다."
+      fix: "이 호스트가 의도적으로 트래픽을 라우팅하지 않는 한 /proc/sys/net/ipv4/ip_forward를 0으로 설정하고 sysctl 설정에서 영구화하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"

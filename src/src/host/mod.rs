@@ -66,6 +66,7 @@ impl HostScanner {
         findings.extend(scan_docker_host_exposure(context));
         findings.extend(scan_firewall_hardening(context));
         findings.extend(scan_package_update_hardening(context));
+        findings.extend(scan_kernel_hardening(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
@@ -530,6 +531,134 @@ fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
     }
 
     findings
+}
+
+fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if let Some(value) = read_sysctl(context, "proc/sys/kernel/randomize_va_space")
+        && value.trim() == "0"
+    {
+        findings.push(host_finding(
+            "host.kernel.aslr_disabled",
+            Severity::High,
+            &context.root.join("proc/sys/kernel/randomize_va_space"),
+            HostFindingText {
+                title: t!("finding.host.kernel_aslr_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_aslr_disabled.description",
+                    path = context
+                        .root
+                        .join("proc/sys/kernel/randomize_va_space")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_aslr_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_aslr_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("value"),
+                String::from("0"),
+            )]),
+        ));
+    }
+
+    if let Some(value) = read_sysctl(context, "proc/sys/net/ipv4/tcp_syncookies")
+        && value.trim() == "0"
+    {
+        findings.push(host_finding(
+            "host.kernel.syn_cookies_disabled",
+            Severity::Medium,
+            &context.root.join("proc/sys/net/ipv4/tcp_syncookies"),
+            HostFindingText {
+                title: t!("finding.host.kernel_syn_cookies_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_syn_cookies_disabled.description",
+                    path = context
+                        .root
+                        .join("proc/sys/net/ipv4/tcp_syncookies")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_syn_cookies_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_syn_cookies_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("value"),
+                String::from("0"),
+            )]),
+        ));
+    }
+
+    if let Some(value) = read_sysctl(context, "proc/sys/net/ipv4/icmp_echo_ignore_broadcasts")
+        && value.trim() == "0"
+    {
+        findings.push(host_finding(
+            "host.kernel.broadcast_ping_allowed",
+            Severity::Low,
+            &context.root.join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
+            HostFindingText {
+                title: t!("finding.host.kernel_broadcast_ping_allowed.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_broadcast_ping_allowed.description",
+                    path = context
+                        .root
+                        .join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_broadcast_ping_allowed.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_broadcast_ping_allowed.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("value"),
+                String::from("0"),
+            )]),
+        ));
+    }
+
+    let docker_present = resolve_existing_path(&context.root, DOCKER_SOCKET_PATH).is_some();
+    if !docker_present {
+        if let Some(value) = read_sysctl(context, "proc/sys/net/ipv4/ip_forward")
+            && value.trim() == "1"
+        {
+            findings.push(host_finding(
+                "host.kernel.ip_forward_enabled",
+                Severity::Medium,
+                &context.root.join("proc/sys/net/ipv4/ip_forward"),
+                HostFindingText {
+                    title: t!("finding.host.kernel_ip_forward_enabled.title").into_owned(),
+                    description: t!(
+                        "finding.host.kernel_ip_forward_enabled.description",
+                        path = context
+                            .root
+                            .join("proc/sys/net/ipv4/ip_forward")
+                            .display()
+                            .to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.kernel_ip_forward_enabled.why").into_owned(),
+                    how_to_fix: t!("finding.host.kernel_ip_forward_enabled.fix").into_owned(),
+                },
+                BTreeMap::from([(
+                    String::from("value"),
+                    String::from("1"),
+                )]),
+            ));
+        }
+    }
+
+    findings
+}
+
+fn read_sysctl(context: &HostContext, relative: &str) -> Option<String> {
+    let path = context.root.join(relative);
+    let text = fs::read_to_string(&path).ok()?;
+    let trimmed = text.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
 fn scan_package_update_hardening(context: &HostContext) -> Vec<Finding> {
@@ -1323,6 +1452,68 @@ mod tests {
                 .iter()
                 .all(|finding| finding.source == Source::NativeHost)
         );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_insecure_sysctl_settings() {
+        let root = temp_host_root("sysctl-insecure");
+        write_file(&root.join("proc/sys/kernel/randomize_va_space"), "0\n");
+        write_file(&root.join("proc/sys/net/ipv4/tcp_syncookies"), "0\n");
+        write_file(
+            &root.join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
+            "0\n",
+        );
+        write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "1\n");
+        write_file(&root.join("etc/hostname"), "sysctl-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "host.kernel.aslr_disabled",
+                "host.kernel.syn_cookies_disabled",
+                "host.kernel.broadcast_ping_allowed",
+                "host.kernel.ip_forward_enabled",
+                "host.defensive_controls_missing",
+            ]
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_hardened_sysctl_snapshot() {
+        let root = temp_host_root("sysctl-hardened");
+        write_file(&root.join("proc/sys/kernel/randomize_va_space"), "2\n");
+        write_file(&root.join("proc/sys/net/ipv4/tcp_syncookies"), "1\n");
+        write_file(
+            &root.join("proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"),
+            "1\n",
+        );
+        write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "0\n");
+        write_file(
+            &root.join("etc/fail2ban/jail.local"),
+            "[sshd]\nenabled = true\n",
+        );
+        write_file(
+            &root.join("etc/systemd/system/multi-user.target.wants/fail2ban.service"),
+            "enabled\n",
+        );
+        write_file(&root.join("etc/hostname"), "hardened\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(findings.is_empty());
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
