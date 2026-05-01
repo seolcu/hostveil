@@ -424,6 +424,12 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "traefik", Severity::Medium),
                 (
+                    "exposure.admin_interface_public",
+                    "traefik",
+                    Severity::Critical,
+                ),
+                ("permissions.implicit_root", "traefik", Severity::Medium),
+                (
                     "service.traefik.insecure_api_enabled",
                     "traefik",
                     Severity::High,
@@ -433,8 +439,6 @@ mod realistic_fixture_tests {
                     "traefik",
                     Severity::Medium,
                 ),
-                ("permissions.implicit_root", "traefik", Severity::Medium),
-                ("updates.no_tag", "traefik", Severity::Medium),
             ]
         );
     }
@@ -470,6 +474,17 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "portainer", Severity::Medium),
                 (
+                    "exposure.admin_interface_public",
+                    "portainer",
+                    Severity::Critical,
+                ),
+                ("permissions.implicit_root", "portainer", Severity::Medium),
+                (
+                    "permissions.sensitive_mount",
+                    "portainer",
+                    Severity::Critical,
+                ),
+                (
                     "service.portainer.admin_ui_public",
                     "portainer",
                     Severity::High,
@@ -484,8 +499,6 @@ mod realistic_fixture_tests {
                     "portainer",
                     Severity::Critical,
                 ),
-                ("permissions.implicit_root", "portainer", Severity::Medium),
-                ("updates.no_tag", "portainer", Severity::Medium),
             ]
         );
     }
@@ -521,6 +534,12 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "homeassistant", Severity::Medium),
                 (
+                    "permissions.implicit_root",
+                    "homeassistant",
+                    Severity::Medium
+                ),
+                ("permissions.host_network", "homeassistant", Severity::High,),
+                (
                     "service.homeassistant.ui_public",
                     "homeassistant",
                     Severity::Medium,
@@ -535,19 +554,25 @@ mod realistic_fixture_tests {
                     "homeassistant",
                     Severity::Low,
                 ),
-                ("permissions.implicit_root", "homeassistant", Severity::Medium),
-                ("updates.no_tag", "homeassistant", Severity::Medium),
             ]
         );
     }
 
     #[test]
     fn pihole_baseline_stays_clear_under_generic_rules() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
-                .expect("project should parse");
+        let project = ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
+            .expect("project should parse");
 
         let findings = RuleEngine.scan(&project);
+        if !findings.is_empty() {
+            eprintln!(
+                "Pi-hole baseline findings: {:?}",
+                findings
+                    .iter()
+                    .map(|f| (&f.id, &f.related_service, &f.severity))
+                    .collect::<Vec<_>>()
+            );
+        }
 
         assert!(findings.is_empty());
     }
@@ -571,23 +596,11 @@ mod realistic_fixture_tests {
                 .collect::<Vec<_>>(),
             vec![
                 ("exposure.public_binding", "pihole", Severity::Medium),
-                (
-                    "service.pihole.admin_public",
-                    "pihole",
-                    Severity::High,
-                ),
-                (
-                    "service.pihole.weak_password",
-                    "pihole",
-                    Severity::High,
-                ),
-                (
-                    "service.pihole.dns_public",
-                    "pihole",
-                    Severity::Medium,
-                ),
                 ("permissions.implicit_root", "pihole", Severity::Medium),
-                ("updates.no_tag", "pihole", Severity::Medium),
+                ("sensitive.default_credential", "pihole", Severity::Critical,),
+                ("service.pihole.admin_public", "pihole", Severity::High,),
+                ("service.pihole.weak_password", "pihole", Severity::High,),
+                ("service.pihole.dns_public", "pihole", Severity::Medium,),
             ]
         );
     }

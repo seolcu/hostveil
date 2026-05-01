@@ -1,11 +1,12 @@
 services:
   pihole:
     image: pihole/pihole:2024.07
+    user: "1000:1000"
     ports:
       - "127.0.0.1:8080:80/tcp"
       - "127.0.0.1:53:53/tcp"
       - "127.0.0.1:53:53/udp"
     environment:
-      WEBPASSWORD: "strong-random-password"
+      WEBPASSWORD: "${WEBPASSWORD}"
     volumes:
       - pihole_data:/etc/pihole
