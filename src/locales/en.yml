@@ -652,6 +652,17 @@ finding:
       description: "%{service} keeps NEXTCLOUD_ADMIN_USER and NEXTCLOUD_ADMIN_PASSWORD at default-like values."
       why: "Default bootstrap credentials are widely known and can be abused quickly if setup endpoints are reachable before hardening is complete."
       fix: "Use a unique admin username and strong random admin password during bootstrap, then rotate secrets through a safer external secret path."
+  traefik:
+    insecure_api_enabled:
+      title: "Traefik insecure API is enabled"
+      description: "%{service} sets TRAEFIK_API_INSECURE=true, exposing the API and dashboard without TLS or authentication."
+      why: "The insecure API removes transport and authentication protections from the Traefik dashboard and API, making them trivial to discover and abuse."
+      fix: "Disable TRAEFIK_API_INSECURE. Access the dashboard through a secure entrypoint with TLS and basic-auth or IP whitelist middleware."
+    dashboard_public:
+      title: "Traefik dashboard is enabled on a public bind"
+      description: "%{service} enables the dashboard while also publishing ports on a public interface."
+      why: "A publicly reachable Traefik dashboard exposes routing configuration, health state, and metrics that aid reconnaissance and targeted attacks."
+      fix: "Restrict the dashboard to localhost or a management network, or protect it with authentication and TLS through a secure entrypoint."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

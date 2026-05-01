@@ -1,0 +1,10 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    ports:
+      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    environment:
+      TRAEFIK_API_DASHBOARD: "true"
+      TRAEFIK_API_INSECURE: "true"

@@ -392,6 +392,52 @@ mod realistic_fixture_tests {
             ]
         );
     }
+
+    #[test]
+    fn traefik_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("traefik", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn traefik_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("traefik", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "traefik", Severity::Medium),
+                (
+                    "service.traefik.insecure_api_enabled",
+                    "traefik",
+                    Severity::High,
+                ),
+                (
+                    "service.traefik.dashboard_public",
+                    "traefik",
+                    Severity::Medium,
+                ),
+                ("permissions.implicit_root", "traefik", Severity::Medium),
+                ("updates.no_tag", "traefik", Severity::Medium),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

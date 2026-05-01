@@ -14,6 +14,7 @@ enum ServiceKind {
     Gitea,
     Nextcloud,
     Immich,
+    Traefik,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -30,6 +31,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Gitea => findings.extend(scan_gitea_risk(service)),
             ServiceKind::Nextcloud => findings.extend(scan_nextcloud_risk(service)),
             ServiceKind::Immich => findings.extend(scan_immich_risk(project, service)),
+            ServiceKind::Traefik => findings.extend(scan_traefik_risk(service)),
         }
     }
 
@@ -51,6 +53,8 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Nextcloud)
     } else if service_name.contains("immich-server") || haystack.contains("immich-server") {
         Some(ServiceKind::Immich)
+    } else if haystack.contains("traefik") {
+        Some(ServiceKind::Traefik)
     } else {
         None
     }
@@ -371,6 +375,62 @@ fn scan_nextcloud_risk(service: &ComposeService) -> Vec<Finding> {
                 (
                     String::from("password_variable"),
                     String::from("NEXTCLOUD_ADMIN_PASSWORD"),
+                ),
+            ]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_traefik_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if env_truthy(service, "TRAEFIK_API_INSECURE") {
+        findings.push(service_finding(
+            "service.traefik.insecure_api_enabled",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.traefik.insecure_api_enabled.title").into_owned(),
+                description: t!(
+                    "finding.traefik.insecure_api_enabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.traefik.insecure_api_enabled.why").into_owned(),
+                how_to_fix: t!("finding.traefik.insecure_api_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("TRAEFIK_API_INSECURE"),
+            )]),
+        ));
+    }
+
+    if publicly_exposed && env_truthy(service, "TRAEFIK_API_DASHBOARD") {
+        findings.push(service_finding(
+            "service.traefik.dashboard_public",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.traefik.dashboard_public.title").into_owned(),
+                description: t!(
+                    "finding.traefik.dashboard_public.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.traefik.dashboard_public.why").into_owned(),
+                how_to_fix: t!("finding.traefik.dashboard_public.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("TRAEFIK_API_DASHBOARD")),
+                (
+                    String::from("public_port_count"),
+                    service.ports.len().to_string(),
                 ),
             ]),
         ));
@@ -737,6 +797,37 @@ mod tests {
                 "service.nextcloud.insecure_overwriteprotocol",
                 "service.nextcloud.wildcard_trusted_domains",
                 "service.nextcloud.default_admin_credentials",
+            ]
+        );
+    }
+
+    #[test]
+    fn traefik_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("traefik", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn traefik_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("traefik", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.traefik.insecure_api_enabled",
+                "service.traefik.dashboard_public",
             ]
         );
     }
