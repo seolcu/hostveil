@@ -597,6 +597,26 @@ finding:
       description: "%{path} is set to 1 and no local Docker socket was detected."
       why: "IP forwarding turns the host into a router. When it is enabled without a clear need such as Docker or a known routing role, it can expose internal traffic paths."
       fix: "Set /proc/sys/net/ipv4/ip_forward to 0 unless this host intentionally routes traffic, and persist the change in sysctl configuration."
+    selinux_permissive:
+      title: "SELinux is in permissive mode"
+      description: "%{path} sets SELINUX to permissive."
+      why: "Permissive mode logs policy violations but does not enforce them, leaving the host with only discretionary access control protections."
+      fix: "Set SELINUX=enforcing in /etc/selinux/config, regenerate the policy if needed, and reboot into enforcing mode after verifying compatibility."
+    selinux_disabled:
+      title: "SELinux is disabled"
+      description: "%{path} sets SELINUX to disabled."
+      why: "Disabling SELinux removes mandatory access control entirely, reducing the defense-in-depth available for system processes and containers."
+      fix: "Set SELINUX=enforcing in /etc/selinux/config, regenerate the policy, and reboot after validating that critical services still start correctly."
+    apparmor_complain_mode:
+      title: "AppArmor profiles are in complain mode"
+      description: "%{path} shows one or more profiles in complain mode."
+      why: "Complain mode logs policy violations but does not block them, so a compromised service can still perform actions that a hardened profile would deny."
+      fix: "Transition profiles from complain to enforce mode after testing them in a staging environment, and monitor for denials before enforcing."
+    mac_framework_missing:
+      title: "No mandatory access control framework detected"
+      description: "%{path} does not show SELinux or AppArmor installation markers."
+      why: "Mandatory access control frameworks add a layer of defense-in-depth beyond traditional Unix permissions. Their absence means fewer constraints on compromised processes."
+      fix: "Consider installing and configuring AppArmor or SELinux for your distribution, and ensure critical services run under confined profiles."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

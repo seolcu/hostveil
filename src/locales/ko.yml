@@ -597,6 +597,26 @@ finding:
       description: "%{path}가 1로 설정되어 있고 로컬 Docker 소켓이 감지되지 않았습니다."
       why: "IP 포워딩은 호스트를 라우터로 만듭니다. Docker나 알려진 라우팅 역할 없이 활성화되면 낮부 트래픽 경로를 노출할 수 있습니다."
       fix: "이 호스트가 의도적으로 트래픽을 라우팅하지 않는 한 /proc/sys/net/ipv4/ip_forward를 0으로 설정하고 sysctl 설정에서 영구화하세요."
+    selinux_permissive:
+      title: "SELinux가 permissive 모드입니다"
+      description: "%{path}가 SELINUX를 permissive로 설정했습니다."
+      why: "Permissive 모드는 정책 위반을 기록하지만 강제하지 않아, 호스트가 임의 접근 제어 보호만으로 남게 됩니다."
+      fix: "/etc/selinux/config에서 SELINUX=enforcing으로 설정하고, 필요하면 정책을 재생성한 후 호환성을 확인하고 enforcing 모드로 재부팅하세요."
+    selinux_disabled:
+      title: "SELinux가 비활성화되어 있습니다"
+      description: "%{path}가 SELINUX를 disabled로 설정했습니다."
+      why: "SELinux를 비활성화하면 강제 접근 제어가 완전히 제거되어, 시스템 프로세스와 컨테이너에 사용할 수 있는 방어 깊이가 줄어듭니다."
+      fix: "/etc/selinux/config에서 SELINUX=enforcing으로 설정하고 정책을 재생성한 후, 중요 서비스가 정상 시작되는지 확인하고 재부팅하세요."
+    apparmor_complain_mode:
+      title: "AppArmor 프로필이 complain 모드입니다"
+      description: "%{path}에 complain 모드의 프로필이 하나 이상 존재합니다."
+      why: "Complain 모드는 정책 위반을 기록하지만 차단하지 않아, 침핵된 서비스가 강화된 프로필이 거부할 행위를 여전히 수행할 수 있습니다."
+      fix: "스테이징 환경에서 테스트 후 프로필을 complain에서 enforce 모드로 전환하고, enforcing 전 denial을 모니터링하세요."
+    mac_framework_missing:
+      title: "강제 접근 제어 프레임워크가 감지되지 않았습니다"
+      description: "%{path}에 SELinux 또는 AppArmor 설치 마커가 없습니다."
+      why: "강제 접근 제어 프레임워크는 기존 Unix 권한을 넘어 방어 깊이를 추가합니다. 이들이 없으면 침핵된 프로세스에 대한 제약이 줄어듭니다."
+      fix: "해당 배포판에 AppArmor 또는 SELinux를 설치 및 구성하고, 중요 서비스가 제한된 프로필 하에서 실행되도록 하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"
