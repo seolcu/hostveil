@@ -15,6 +15,7 @@ enum ServiceKind {
     Nextcloud,
     Immich,
     Traefik,
+    Portainer,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -32,6 +33,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Nextcloud => findings.extend(scan_nextcloud_risk(service)),
             ServiceKind::Immich => findings.extend(scan_immich_risk(project, service)),
             ServiceKind::Traefik => findings.extend(scan_traefik_risk(service)),
+            ServiceKind::Portainer => findings.extend(scan_portainer_risk(service)),
         }
     }
 
@@ -55,6 +57,8 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Immich)
     } else if haystack.contains("traefik") {
         Some(ServiceKind::Traefik)
+    } else if haystack.contains("portainer") {
+        Some(ServiceKind::Portainer)
     } else {
         None
     }
@@ -377,6 +381,94 @@ fn scan_nextcloud_risk(service: &ComposeService) -> Vec<Finding> {
                     String::from("NEXTCLOUD_ADMIN_PASSWORD"),
                 ),
             ]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_portainer_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed {
+        if let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "8000" || port.container_port == "9000" || port.container_port == "9443")
+                && port.protocol == "tcp"
+                && is_public_port(port)
+        }) {
+            findings.push(service_finding(
+                "service.portainer.admin_ui_public",
+                Axis::UnnecessaryExposure,
+                Severity::High,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.portainer.admin_ui_public.title").into_owned(),
+                    description: t!(
+                        "finding.portainer.admin_ui_public.description",
+                        service = service.name.as_str(),
+                        port = port.raw.as_str()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.portainer.admin_ui_public.why").into_owned(),
+                    how_to_fix: t!("finding.portainer.admin_ui_public.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("port"), port.raw.clone())]),
+            ));
+        }
+    }
+
+    let has_docker_socket = service.volumes.iter().any(|mount| {
+        mount.source.as_deref() == Some("/var/run/docker.sock")
+            || mount.source.as_deref() == Some("/run/docker.sock")
+    });
+    if has_docker_socket {
+        findings.push(service_finding(
+            "service.portainer.docker_socket_mounted",
+            Axis::ExcessivePermissions,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.portainer.docker_socket_mounted.title").into_owned(),
+                description: t!(
+                    "finding.portainer.docker_socket_mounted.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.portainer.docker_socket_mounted.why").into_owned(),
+                how_to_fix: t!("finding.portainer.docker_socket_mounted.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("mount"),
+                String::from("/var/run/docker.sock"),
+            )]),
+        ));
+    }
+
+    let no_auth = service
+        .command
+        .as_deref()
+        .is_some_and(|cmd| cmd.contains("--no-auth"));
+    if no_auth {
+        findings.push(service_finding(
+            "service.portainer.auth_disabled",
+            Axis::SensitiveData,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.portainer.auth_disabled.title").into_owned(),
+                description: t!(
+                    "finding.portainer.auth_disabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.portainer.auth_disabled.why").into_owned(),
+                how_to_fix: t!("finding.portainer.auth_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("flag"),
+                String::from("--no-auth"),
+            )]),
         ));
     }
 
@@ -828,6 +920,38 @@ mod tests {
             vec![
                 "service.traefik.insecure_api_enabled",
                 "service.traefik.dashboard_public",
+            ]
+        );
+    }
+
+    #[test]
+    fn portainer_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("portainer", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn portainer_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("portainer", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.portainer.admin_ui_public",
+                "service.portainer.docker_socket_mounted",
+                "service.portainer.auth_disabled",
             ]
         );
     }

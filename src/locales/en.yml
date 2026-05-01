@@ -663,6 +663,22 @@ finding:
       description: "%{service} enables the dashboard while also publishing ports on a public interface."
       why: "A publicly reachable Traefik dashboard exposes routing configuration, health state, and metrics that aid reconnaissance and targeted attacks."
       fix: "Restrict the dashboard to localhost or a management network, or protect it with authentication and TLS through a secure entrypoint."
+  portainer:
+    admin_ui_public:
+      title: "Portainer admin UI is publicly exposed"
+      description: "%{service} exposes the Portainer management interface on %{port}."
+      why: "A publicly reachable Portainer UI is a high-value target because it offers full container and host management capabilities to anyone who can authenticate or exploit it."
+      fix: "Restrict Portainer to localhost, a management VPN, or a reverse proxy with strong authentication. Avoid publishing the admin port directly to the internet."
+    docker_socket_mounted:
+      title: "Portainer mounts the Docker socket"
+      description: "%{service} binds the host Docker socket into the container."
+      why: "A container with access to the Docker socket can create, modify, or delete containers and often escalate to root-equivalent host access."
+      fix: "Review whether the Docker socket mount is required. If using Portainer Agent, consider removing the direct socket mount from the Portainer CE/EE container."
+    auth_disabled:
+      title: "Portainer authentication is disabled"
+      description: "%{service} is started with --no-auth, disabling built-in authentication."
+      why: "Running Portainer without authentication allows anyone who can reach the UI to manage containers, images, and host resources without any credentials."
+      fix: "Remove --no-auth and enforce built-in authentication, or front Portainer with an external identity provider through a reverse proxy."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

@@ -130,6 +130,7 @@ struct ServiceAccumulator {
     privileged: bool,
     cap_add: Vec<String>,
     network_mode: Option<String>,
+    command: Option<String>,
     source_files: Vec<PathBuf>,
 }
 
@@ -171,6 +172,9 @@ impl ServiceAccumulator {
         if let Some(value) = mapping_get(source, "network_mode") {
             self.network_mode = coerce_string(value);
         }
+        if let Some(value) = mapping_get(source, "command") {
+            self.command = Some(coerce_command(value));
+        }
     }
 
     fn build(self, name: String) -> ComposeService {
@@ -186,6 +190,7 @@ impl ServiceAccumulator {
             privileged: self.privileged,
             cap_add: self.cap_add,
             network_mode: self.network_mode,
+            command: self.command,
             source_files: self.source_files,
         }
     }
@@ -376,6 +381,18 @@ fn coerce_env_files(value: &Value) -> Vec<String> {
         .into_iter()
         .map(|item| yaml_value_to_string(&item))
         .collect()
+}
+
+fn coerce_command(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Sequence(sequence) => sequence
+            .iter()
+            .map(|item| yaml_value_to_string(item))
+            .collect::<Vec<_>>()
+            .join(" "),
+        other => yaml_value_to_string(other),
+    }
 }
 
 fn coerce_networks(value: &Value) -> Vec<String> {

@@ -36,6 +36,7 @@ pub struct ComposeService {
     pub privileged: bool,
     pub cap_add: Vec<String>,
     pub network_mode: Option<String>,
+    pub command: Option<String>,
     pub source_files: Vec<PathBuf>,
 }
 

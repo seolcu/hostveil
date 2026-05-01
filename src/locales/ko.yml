@@ -663,6 +663,22 @@ finding:
       description: "%{service}가 포트를 공개 인터페이스에 게시하면서 대시보드를 활성화했습니다."
       why: "공개적으로 접근 가능한 Traefik 대시보드는 라우팅 설정, 상태, 메트릭을 노출해 정찰 및 대상 공격에 도움을 줄 수 있습니다."
       fix: "대시보드를 localhost 또는 관리 네트워크로 제한하거나, 안전한 엔드포인트를 통해 인증과 TLS로 보호하세요."
+  portainer:
+    admin_ui_public:
+      title: "Portainer 관리 UI가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Portainer 관리 인터페이스를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 Portainer UI는 컨테이너와 호스트를 완전히 관리할 수 있는 권한을 제공하므로, 인증되거나 악용된 공격자에게 매우 높은 가치를 갖는 대상입니다."
+      fix: "Portainer를 localhost, 관리 VPN, 또는 강력한 인증이 적용된 리버스 프록시로 제한하세요. 관리 포트를 인터넷에 직접 게시하지 마세요."
+    docker_socket_mounted:
+      title: "Portainer가 Docker 소켓을 마운트했습니다"
+      description: "%{service}가 호스트 Docker 소켓을 컨테이너에 바인딩했습니다."
+      why: "Docker 소켓에 접근 가능한 컨테이너는 컨테이너를 생성, 수정, 삭제할 수 있으며, 종종 호스트의 루트 수준 권한으로 에스컬레이션할 수 있습니다."
+      fix: "Docker 소켓 마운트가 필수인지 검토하세요. Portainer Agent를 사용 중이라면 Portainer CE/EE 컨테이너에서 직접 소켓 마운트를 제거하는 것을 고려하세요."
+    auth_disabled:
+      title: "Portainer 인증이 비활성화되어 있습니다"
+      description: "%{service}가 --no-auth 옵션으로 실행되어 내장 인증이 꺼져 있습니다."
+      why: "인증 없이 Portainer를 실행하면 UI에 접근할 수 있는 누구나 자격 증명 없이 컨테이너, 이미지, 호스트 리소스를 관리할 수 있습니다."
+      fix: "--no-auth를 제거하고 내장 인증을 활성화하거나, 리버스 프록시를 통해 외부 ID 공급자를 연동하세요."
 remediation:
   auto_fixable: "자동"
   manual: "수동"
