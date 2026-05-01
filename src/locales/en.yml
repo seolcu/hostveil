@@ -695,6 +695,27 @@ finding:
       description: "%{service} mounts the host device %{path} into the container."
       why: "Device mounts can expose serial ports, USB radios, and Bluetooth adapters to the container, increasing the impact of a compromise."
       fix: "Review whether the device mount is required. Remove unnecessary device mounts and restrict access to the minimum required hardware."
+  pihole:
+    admin_public:
+      title: "Pi-hole admin interface is publicly exposed"
+      description: "%{service} exposes the Pi-hole web admin on %{port}."
+      why: "A publicly reachable Pi-hole admin interface allows anyone to inspect blocklists, query logs, and change DNS configuration."
+      fix: "Restrict the Pi-hole admin interface to localhost or a trusted network, or place it behind a reverse proxy with authentication."
+    weak_password:
+      title: "Pi-hole uses a weak web password"
+      description: "%{service} sets WEBPASSWORD to a weak or default value."
+      why: "A weak or default Pi-hole admin password makes it easier for attackers to gain administrative control of DNS filtering and inspect network query history."
+      fix: "Set a strong, unique WEBPASSWORD in the compose file or an external secret, and rotate it regularly."
+    no_password:
+      title: "Pi-hole has no web password configured"
+      description: "%{service} does not set WEBPASSWORD, leaving the admin interface unprotected."
+      why: "Without a web password, anyone who can reach the Pi-hole admin interface can change DNS settings, disable blocking, and view query logs."
+      fix: "Set a strong WEBPASSWORD environment variable or use an external secret to protect the Pi-hole admin interface."
+    dns_public:
+      title: "Pi-hole DNS is exposed on a public interface"
+      description: "%{service} publishes the DNS port on %{port} to a public interface."
+      why: "Exposing DNS to the public internet can turn the host into an open resolver, enabling DNS amplification attacks and unauthorized use."
+      fix: "Bind DNS port 53 to a LAN IP or localhost unless you intentionally run a public DNS resolver with rate limiting and logging."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

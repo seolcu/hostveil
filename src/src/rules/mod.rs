@@ -540,6 +540,57 @@ mod realistic_fixture_tests {
             ]
         );
     }
+
+    #[test]
+    fn pihole_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn pihole_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("pihole", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "pihole", Severity::Medium),
+                (
+                    "service.pihole.admin_public",
+                    "pihole",
+                    Severity::High,
+                ),
+                (
+                    "service.pihole.weak_password",
+                    "pihole",
+                    Severity::High,
+                ),
+                (
+                    "service.pihole.dns_public",
+                    "pihole",
+                    Severity::Medium,
+                ),
+                ("permissions.implicit_root", "pihole", Severity::Medium),
+                ("updates.no_tag", "pihole", Severity::Medium),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

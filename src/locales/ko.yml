@@ -695,6 +695,27 @@ finding:
       description: "%{service}가 호스트 디바이스 %{path}를 컨테이너에 마운트했습니다."
       why: "디바이스 마운트는 시리얼 포트, USB 라디오, 블루투스 어댑터를 컨테이너에 노출해, 침해 발생 시 영향을 키울 수 있습니다."
       fix: "디바이스 마운트가 필요한지 검토하세요. 불필요한 디바이스 마운트를 제거하고, 필요한 하드웨어에 대한 접근만 최소화하세요."
+  pihole:
+    admin_public:
+      title: "Pi-hole 관리 인터페이스가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Pi-hole 웹 관리 페이지를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 Pi-hole 관리 인터페이스는 누구나 차단 목록, 쿼리 로그를 확인하고 DNS 설정을 변경할 수 있게 합니다."
+      fix: "Pi-hole 관리 인터페이스를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+    weak_password:
+      title: "Pi-hole이 약한 웹 비밀번호를 사용하고 있습니다"
+      description: "%{service}가 WEBPASSWORD를 약하거나 기본값으로 설정했습니다."
+      why: "약하거나 기본 Pi-hole 관리자 비밀번호는 공격자가 DNS 필터링 관리 권한을 획득하고 네트워크 쿼리 기록을 엿보기 쉽게 만듭니다."
+      fix: "Compose 파일이나 외부 시크릿에 강력하고 고유한 WEBPASSWORD를 설정하고, 정기적으로 교체하세요."
+    no_password:
+      title: "Pi-hole에 웹 비밀번호가 설정되지 않았습니다"
+      description: "%{service}가 WEBPASSWORD를 설정하지 않아 관리 인터페이스가 보호되지 않습니다."
+      why: "웹 비밀번호가 없으면 Pi-hole 관리 인터페이스에 접근할 수 있는 누구나 DNS 설정을 변경하고, 차단을 비활성화하며, 쿼리 로그를 볼 수 있습니다."
+      fix: "강력한 WEBPASSWORD 환경 변수를 설정하거나 외부 시크릿을 사용해 Pi-hole 관리 인터페이스를 보호하세요."
+    dns_public:
+      title: "Pi-hole DNS가 공개 인터페이스에 노출되어 있습니다"
+      description: "%{service}가 DNS 포트를 %{port}에 공개 인터페이스에 게시했습니다."
+      why: "DNS를 공개 인터넷에 노출하면 호스트가 오픈 리졸버가 되어 DNS 증폭 공격과 무단 사용을 유발할 수 있습니다."
+      fix: "DNS 포트 53을 LAN IP 또는 localhost에 바인딩하세요. 의도적으로 공개 DNS 리졸버를 운영하지 않는 한 rate limiting과 로깅을 함께 적용하세요."
 remediation:
   auto_fixable: "자동"
   manual: "수동"

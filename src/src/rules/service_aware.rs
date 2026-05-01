@@ -17,6 +17,7 @@ enum ServiceKind {
     Traefik,
     Portainer,
     HomeAssistant,
+    Pihole,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -36,6 +37,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Traefik => findings.extend(scan_traefik_risk(service)),
             ServiceKind::Portainer => findings.extend(scan_portainer_risk(service)),
             ServiceKind::HomeAssistant => findings.extend(scan_home_assistant_risk(service)),
+            ServiceKind::Pihole => findings.extend(scan_pihole_risk(service)),
         }
     }
 
@@ -63,6 +65,8 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Portainer)
     } else if haystack.contains("homeassistant") || haystack.contains("home-assistant") {
         Some(ServiceKind::HomeAssistant)
+    } else if haystack.contains("pihole") || haystack.contains("pi-hole") {
+        Some(ServiceKind::Pihole)
     } else {
         None
     }
@@ -389,6 +393,115 @@ fn scan_nextcloud_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     findings
+}
+
+fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed {
+        if let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "80" || port.container_port == "443" || port.container_port == "8080")
+                && (port.protocol == "tcp" || port.protocol == "udp")
+                && is_public_port(port)
+        }) {
+            findings.push(service_finding(
+                "service.pihole.admin_public",
+                Axis::UnnecessaryExposure,
+                Severity::High,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.pihole.admin_public.title").into_owned(),
+                    description: t!(
+                        "finding.pihole.admin_public.description",
+                        service = service.name.as_str(),
+                        port = port.raw.as_str()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.pihole.admin_public.why").into_owned(),
+                    how_to_fix: t!("finding.pihole.admin_public.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("port"), port.raw.clone())]),
+            ));
+        }
+    }
+
+    if let Some(webpassword) = env_value(service, "WEBPASSWORD") {
+        if webpassword.is_empty() || is_weak_pihole_password(webpassword) {
+            findings.push(service_finding(
+                "service.pihole.weak_password",
+                Axis::SensitiveData,
+                Severity::High,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.pihole.weak_password.title").into_owned(),
+                    description: t!(
+                        "finding.pihole.weak_password.description",
+                        service = service.name.as_str()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.pihole.weak_password.why").into_owned(),
+                    how_to_fix: t!("finding.pihole.weak_password.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
+            ));
+        }
+    } else {
+        findings.push(service_finding(
+            "service.pihole.no_password",
+            Axis::SensitiveData,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.pihole.no_password.title").into_owned(),
+                description: t!(
+                    "finding.pihole.no_password.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.pihole.no_password.why").into_owned(),
+                how_to_fix: t!("finding.pihole.no_password.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
+        ));
+    }
+
+    if publicly_exposed {
+        if let Some(port) = service.ports.iter().find(|port| {
+            port.container_port == "53"
+                && (port.protocol == "tcp" || port.protocol == "udp")
+                && is_public_port(port)
+        }) {
+            findings.push(service_finding(
+                "service.pihole.dns_public",
+                Axis::UnnecessaryExposure,
+                Severity::Medium,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.pihole.dns_public.title").into_owned(),
+                    description: t!(
+                        "finding.pihole.dns_public.description",
+                        service = service.name.as_str(),
+                        port = port.raw.as_str()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.pihole.dns_public.why").into_owned(),
+                    how_to_fix: t!("finding.pihole.dns_public.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("port"), port.raw.clone())]),
+            ));
+        }
+    }
+
+    findings
+}
+
+fn is_weak_pihole_password(password: &str) -> bool {
+    let lower = password.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "password" | "admin" | "pihole" | "123456" | "12345678" | "changeme" | ""
+    )
 }
 
 fn scan_home_assistant_risk(service: &ComposeService) -> Vec<Finding> {
@@ -1070,6 +1183,38 @@ mod tests {
                 "service.homeassistant.ui_public",
                 "service.homeassistant.host_network",
                 "service.homeassistant.device_mount",
+            ]
+        );
+    }
+
+    #[test]
+    fn pihole_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("pihole", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn pihole_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("pihole", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.pihole.admin_public",
+                "service.pihole.weak_password",
+                "service.pihole.dns_public",
             ]
         );
     }
