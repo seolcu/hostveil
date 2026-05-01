@@ -281,12 +281,13 @@ Current Rust implementation status:
 - Generalized Rust scan result model and minimal JSON export path working
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
-- Native Linux host checks added for SSH posture, Docker host exposure, and defensive-control telemetry via `--host-root`
+- Native Linux host checks added for SSH posture, Docker host exposure, kernel sysctl hardening (ASLR, SYN cookies, broadcast ping, IP forwarding), SELinux/AppArmor status, and defensive-control telemetry via `--host-root`
 - Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
 - Per-adapter background progress is surfaced in the TUI while external coverage is still loading
 - Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
+- Service-aware Compose checks expanded to Traefik, Portainer, Home Assistant, and Pi-hole in addition to Vaultwarden, Jellyfin, Gitea, Immich, and Nextcloud
 
 ## Release Policy
 
