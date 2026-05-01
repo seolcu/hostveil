@@ -16,6 +16,7 @@ enum ServiceKind {
     Immich,
     Traefik,
     Portainer,
+    HomeAssistant,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -34,6 +35,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Immich => findings.extend(scan_immich_risk(project, service)),
             ServiceKind::Traefik => findings.extend(scan_traefik_risk(service)),
             ServiceKind::Portainer => findings.extend(scan_portainer_risk(service)),
+            ServiceKind::HomeAssistant => findings.extend(scan_home_assistant_risk(service)),
         }
     }
 
@@ -59,6 +61,8 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Traefik)
     } else if haystack.contains("portainer") {
         Some(ServiceKind::Portainer)
+    } else if haystack.contains("homeassistant") || haystack.contains("home-assistant") {
+        Some(ServiceKind::HomeAssistant)
     } else {
         None
     }
@@ -381,6 +385,88 @@ fn scan_nextcloud_risk(service: &ComposeService) -> Vec<Finding> {
                     String::from("NEXTCLOUD_ADMIN_PASSWORD"),
                 ),
             ]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_home_assistant_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed {
+        if let Some(port) = service.ports.iter().find(|port| {
+            port.container_port == "8123"
+                && port.protocol == "tcp"
+                && is_public_port(port)
+        }) {
+            findings.push(service_finding(
+                "service.homeassistant.ui_public",
+                Axis::UnnecessaryExposure,
+                Severity::Medium,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.homeassistant.ui_public.title").into_owned(),
+                    description: t!(
+                        "finding.homeassistant.ui_public.description",
+                        service = service.name.as_str(),
+                        port = port.raw.as_str()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.homeassistant.ui_public.why").into_owned(),
+                    how_to_fix: t!("finding.homeassistant.ui_public.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("port"), port.raw.clone())]),
+            ));
+        }
+    }
+
+    if service.network_mode.as_deref() == Some("host") {
+        findings.push(service_finding(
+            "service.homeassistant.host_network",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.homeassistant.host_network.title").into_owned(),
+                description: t!(
+                    "finding.homeassistant.host_network.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.homeassistant.host_network.why").into_owned(),
+                how_to_fix: t!("finding.homeassistant.host_network.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
+    }
+
+    if let Some(device_path) = service.volumes.iter().find_map(|mount| {
+        let source = mount.source.as_deref()?;
+        if source.starts_with("/dev/") {
+            Some(source)
+        } else {
+            None
+        }
+    }) {
+        findings.push(service_finding(
+            "service.homeassistant.device_mount",
+            Axis::ExcessivePermissions,
+            Severity::Low,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.homeassistant.device_mount.title").into_owned(),
+                description: t!(
+                    "finding.homeassistant.device_mount.description",
+                    service = service.name.as_str(),
+                    path = device_path
+                )
+                .into_owned(),
+                why_risky: t!("finding.homeassistant.device_mount.why").into_owned(),
+                how_to_fix: t!("finding.homeassistant.device_mount.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), device_path.to_owned())]),
         ));
     }
 
@@ -952,6 +1038,38 @@ mod tests {
                 "service.portainer.admin_ui_public",
                 "service.portainer.docker_socket_mounted",
                 "service.portainer.auth_disabled",
+            ]
+        );
+    }
+
+    #[test]
+    fn homeassistant_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("homeassistant", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn homeassistant_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("homeassistant", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.homeassistant.ui_public",
+                "service.homeassistant.host_network",
+                "service.homeassistant.device_mount",
             ]
         );
     }

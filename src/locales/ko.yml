@@ -679,6 +679,22 @@ finding:
       description: "%{service}가 --no-auth 옵션으로 실행되어 내장 인증이 꺼져 있습니다."
       why: "인증 없이 Portainer를 실행하면 UI에 접근할 수 있는 누구나 자격 증명 없이 컨테이너, 이미지, 호스트 리소스를 관리할 수 있습니다."
       fix: "--no-auth를 제거하고 내장 인증을 활성화하거나, 리버스 프록시를 통해 외부 ID 공급자를 연동하세요."
+  homeassistant:
+    ui_public:
+      title: "Home Assistant UI가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Home Assistant 웹 인터페이스를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 Home Assistant 인스턴스는 공격 표면을 늘리고, 스마트 홈 제어, 칩라 피드, 자동화 로직을 노출할 수 있습니다."
+      fix: "Home Assistant를 localhost 또는 강력한 인증이 적용된 리버스 프록시로 제한하고, 포트 8123을 인터넷에 직접 게시하지 마세요."
+    host_network:
+      title: "Home Assistant가 호스트 네트워킹을 사용합니다"
+      description: "%{service}가 network_mode를 host로 설정했습니다."
+      why: "호스트 네트워킹은 네트워크 격리를 제거하고, 특히 발견 프로토콜에서 의도보다 더 많은 포트와 멀티캐스트 트래픽을 노출할 수 있습니다."
+      fix: "문서화된 필요가 없는 한 브리지 네트워킹을 사용하고, 불필요한 발견 통합 구성 요소를 비활성화하세요."
+    device_mount:
+      title: "Home Assistant가 호스트 디바이스를 마운트했습니다"
+      description: "%{service}가 호스트 디바이스 %{path}를 컨테이너에 마운트했습니다."
+      why: "디바이스 마운트는 시리얼 포트, USB 라디오, 블루투스 어댑터를 컨테이너에 노출해, 침해 발생 시 영향을 키울 수 있습니다."
+      fix: "디바이스 마운트가 필요한지 검토하세요. 불필요한 디바이스 마운트를 제거하고, 필요한 하드웨어에 대한 접근만 최소화하세요."
 remediation:
   auto_fixable: "자동"
   manual: "수동"

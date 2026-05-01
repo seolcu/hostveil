@@ -679,6 +679,22 @@ finding:
       description: "%{service} is started with --no-auth, disabling built-in authentication."
       why: "Running Portainer without authentication allows anyone who can reach the UI to manage containers, images, and host resources without any credentials."
       fix: "Remove --no-auth and enforce built-in authentication, or front Portainer with an external identity provider through a reverse proxy."
+  homeassistant:
+    ui_public:
+      title: "Home Assistant UI is publicly exposed"
+      description: "%{service} exposes the Home Assistant web interface on %{port}."
+      why: "A publicly reachable Home Assistant instance increases attack surface and can expose smart home controls, camera feeds, and automation logic."
+      fix: "Restrict Home Assistant to localhost or a reverse proxy with strong authentication, and avoid publishing port 8123 directly to the internet."
+    host_network:
+      title: "Home Assistant uses host networking"
+      description: "%{service} sets network_mode to host."
+      why: "Host networking removes network isolation and can expose more ports and multicast traffic than intended, especially for discovery protocols."
+      fix: "Use bridge networking unless Home Assistant has a documented need for host mode, and disable unnecessary discovery integrations."
+    device_mount:
+      title: "Home Assistant mounts a host device"
+      description: "%{service} mounts the host device %{path} into the container."
+      why: "Device mounts can expose serial ports, USB radios, and Bluetooth adapters to the container, increasing the impact of a compromise."
+      fix: "Review whether the device mount is required. Remove unnecessary device mounts and restrict access to the minimum required hardware."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

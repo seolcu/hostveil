@@ -1,0 +1,9 @@
+services:
+  homeassistant:
+    image: homeassistant/home-assistant:2024.12
+    network_mode: host
+    ports:
+      - "8123:8123"
+    volumes:
+      - hass_config:/config
+      - /dev/ttyUSB0:/dev/ttyUSB0
