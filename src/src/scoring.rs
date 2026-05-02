@@ -8,6 +8,12 @@ pub struct Coverage {
     pub host_hardening: bool,
 }
 
+/// Severity penalty table.
+///
+/// These values are intentionally steep: a single Critical finding drops an
+/// axis score from 100 to 25, two Critical findings cap the axis at 0.
+/// The spread ensures that severity differences are visible in the final
+/// weighted score even after axis weights are applied.
 fn severity_penalty(severity: Severity) -> u16 {
     match severity {
         Severity::Critical => 75,
@@ -17,6 +23,27 @@ fn severity_penalty(severity: Severity) -> u16 {
     }
 }
 
+/// Coverage-aware axis weights.
+///
+/// Weights are derived from ADR 0005 and must sum to 1.0 for every
+/// `(compose, host_hardening)` combination that is actually used.
+///
+/// Compose-only (the default scan mode):
+/// - SensitiveData        0.35  (highest — data exposure is the core risk)
+/// - ExcessivePermissions 0.30  (second — root/privileged containers)
+/// - UnnecessaryExposure  0.20  (third — public ports, admin UIs)
+/// - UpdateSupplyChainRisk 0.15 (lowest — tag drift, image age)
+///
+/// Compose + HostHardening:
+/// - SensitiveData        0.30
+/// - ExcessivePermissions 0.25
+/// - UnnecessaryExposure  0.15
+/// - UpdateSupplyChainRisk 0.15
+/// - HostHardening        0.15  (new axis, equal to exposure/updates)
+///
+/// Host-only:
+/// - HostHardening        1.0
+/// - All other axes       0.0
 fn axis_weight(axis: Axis, coverage: Coverage) -> f32 {
     match (coverage.compose, coverage.host_hardening, axis) {
         (true, false, Axis::SensitiveData) => 0.35,
@@ -266,5 +293,78 @@ mod tests {
         assert!((compose_only - 1.0).abs() < 0.0001);
         assert!((compose_and_host - 1.0).abs() < 0.0001);
         assert!((host_only - 1.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn empty_findings_yield_perfect_score() {
+        let report = build_score_report(&[]);
+
+        assert_eq!(report.overall, 100);
+        for axis in Axis::ALL {
+            assert_eq!(
+                report.axis_scores.get(&axis).copied().unwrap_or(100),
+                100,
+                "axis {axis:?} should be 100 with no findings"
+            );
+        }
+    }
+
+    #[test]
+    fn multiple_medium_findings_accumulate_and_cap_at_zero() {
+        // 7 Medium findings in the same axis: 7 * 15 = 105, capped at 0
+        let findings: Vec<Finding> = (0..7)
+            .map(|index| {
+                finding(
+                    Axis::UnnecessaryExposure,
+                    Severity::Medium,
+                    &format!("f{index}"),
+                )
+            })
+            .collect();
+        let report = build_score_report(&findings);
+
+        assert_eq!(report.axis_scores[&Axis::UnnecessaryExposure], 0);
+        assert_eq!(report.severity_counts[&Severity::Medium], 7);
+    }
+
+    #[test]
+    fn critical_composite_scores_lower_than_low_only() {
+        // Two Critical findings in high-weight axes
+        let critical_composite = build_score_report(&[
+            finding(Axis::SensitiveData, Severity::Critical, "secret"),
+            finding(Axis::ExcessivePermissions, Severity::Critical, "priv"),
+        ]);
+
+        // One Low finding in the lowest-weight axis
+        let low_only =
+            build_score_report(&[finding(Axis::UpdateSupplyChainRisk, Severity::Low, "tag")]);
+
+        assert!(
+            critical_composite.overall < low_only.overall,
+            "critical composite ({}) should score lower than low-only ({})",
+            critical_composite.overall,
+            low_only.overall
+        );
+    }
+
+    #[test]
+    fn host_only_scan_ignores_compose_findings() {
+        let findings = [
+            finding(Axis::SensitiveData, Severity::Critical, "secret"),
+            finding(Axis::HostHardening, Severity::High, "ssh"),
+        ];
+
+        let report = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: false,
+                host_hardening: true,
+            },
+        );
+
+        // Only HostHardening should contribute; SensitiveData is ignored
+        assert_eq!(report.overall, 65); // 100 - 35 (High penalty)
+        assert_eq!(report.axis_scores[&Axis::HostHardening], 65);
+        assert!(!report.axis_scores.contains_key(&Axis::SensitiveData));
     }
 }
