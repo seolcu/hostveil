@@ -16,13 +16,8 @@ pub struct DockleScanOutput {
     pub warnings: Vec<String>,
 }
 
-pub fn scan(services: &[ServiceSummary]) -> DockleScanOutput {
-    scan_with_commands(
-        services,
-        "dockle",
-        "dockle",
-        command::DEFAULT_ADAPTER_TIMEOUT,
-    )
+pub fn scan(services: &[ServiceSummary], timeout: Duration) -> DockleScanOutput {
+    scan_with_commands(services, "dockle", "dockle", timeout)
 }
 
 fn scan_with_commands(
@@ -564,7 +559,7 @@ exit 0
 
     #[test]
     fn skips_when_no_image_targets_are_available() {
-        let output = scan(&[]);
+        let output = scan(&[], command::DEFAULT_ADAPTER_TIMEOUT);
 
         assert_eq!(
             output.status,

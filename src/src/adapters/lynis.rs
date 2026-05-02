@@ -82,7 +82,8 @@ fn scan_with_effective_root(host_root: Option<&Path>, effective_root: bool) -> L
     let report = match parse_report(&report_text) {
         Ok(report) => report,
         Err(error) => {
-            output.status = AdapterStatus::Failed(error);
+            output.warnings.push(error.clone());
+            output.status = AdapterStatus::Available;
             return output;
         }
     };
@@ -99,8 +100,7 @@ fn scan_with_effective_root(host_root: Option<&Path>, effective_root: bool) -> L
             }
         }
         Err(error) => {
-            output.status = AdapterStatus::Failed(error);
-            return output;
+            output.warnings.push(error.clone());
         }
     }
 
@@ -375,12 +375,12 @@ fn parse_report(text: &str) -> Result<LynisReport, String> {
             "hardening_index" => report.hardening_index = value.trim().parse::<u8>().ok(),
             "lynis_tests_done" => report.tests_done = value.trim().parse::<usize>().ok(),
             "warning[]" => {
-                if let Some(entry) = parse_pipe_entry(value) {
+                if let Some(entry) = parse_pipe_entry_flexible(value) {
                     report.warnings.push(entry);
                 }
             }
             "suggestion[]" => {
-                if let Some(entry) = parse_pipe_entry(value) {
+                if let Some(entry) = parse_pipe_entry_flexible(value) {
                     report.suggestions.push(entry);
                 }
             }
@@ -415,6 +415,28 @@ fn parse_pipe_entry(value: &str) -> Option<LynisEntry> {
         message: message.to_owned(),
         details: details.to_owned(),
         solution,
+    })
+}
+
+fn parse_pipe_entry_flexible(value: &str) -> Option<LynisEntry> {
+    if let Some(entry) = parse_pipe_entry(value) {
+        return Some(entry);
+    }
+
+    let mut parts = value.split_whitespace();
+    let test_id = parts.next()?.trim();
+    let message = parts.next()?.trim();
+    let details = parts.collect::<Vec<_>>().join(" ").trim().to_owned();
+
+    if test_id.is_empty() || message.is_empty() {
+        return None;
+    }
+
+    Some(LynisEntry {
+        test_id: test_id.to_owned(),
+        message: message.to_owned(),
+        details,
+        solution: None,
     })
 }
 
@@ -798,5 +820,109 @@ EOF
         assert!(!test_dir.join("lynis.pid").exists());
 
         let _ = fs::remove_dir_all(&test_dir);
+    }
+
+    #[test]
+    fn parse_report_skips_malformed_entries_and_parses_valid_ones() {
+        let text = concat!(
+            "hostname=test-host\n",
+            "hardening_index=67\n",
+            "warning[]=AUTH-9286|Test warning|detail|solution\n",
+            "warning[]=malformed-entry\n",
+            "warning[]=AUTH-9287|Another warning\n",
+            "suggestion[]=AUTH-1234|Suggestion without details\n",
+        );
+
+        let report = parse_report(text).expect("report should parse");
+
+        assert_eq!(report.hostname.as_deref(), Some("test-host"));
+        assert_eq!(report.hardening_index, Some(67));
+        assert_eq!(report.warnings.len(), 2);
+        assert_eq!(report.suggestions.len(), 1);
+        assert_eq!(report.warnings[0].test_id, "AUTH-9286");
+        assert_eq!(report.warnings[1].test_id, "AUTH-9287");
+        assert_eq!(report.suggestions[0].test_id, "AUTH-1234");
+    }
+
+    #[test]
+    fn scan_with_effective_root_keeps_available_when_report_parse_fails_partially() {
+        let report_text = "not_a_valid_key\n";
+
+        let output = scan_with_effective_root_and_report(
+            Some(Path::new("/")),
+            true,
+            report_text,
+            Ok(LynisCommandResult {
+                success: false,
+                detail: Some(String::from("non-zero exit")),
+            }),
+        );
+
+        assert!(
+            matches!(output.status, AdapterStatus::Available),
+            "expected Available but got {:?}",
+            output.status
+        );
+        assert!(!output.warnings.is_empty());
+        assert!(output.findings.is_empty());
+    }
+
+    fn scan_with_effective_root_and_report(
+        host_root: Option<&Path>,
+        effective_root: bool,
+        report_text: &str,
+        command_result: Result<LynisCommandResult, String>,
+    ) -> LynisScanOutput {
+        let mut output = LynisScanOutput {
+            status: AdapterStatus::Skipped(t!("adapter.reason.host_not_scanned").into_owned()),
+            findings: Vec::new(),
+            warnings: Vec::new(),
+        };
+
+        let Some(host_root) = host_root else {
+            return output;
+        };
+
+        if host_root != Path::new("/") {
+            output.status =
+                AdapterStatus::Skipped(t!("adapter.reason.live_host_only").into_owned());
+            return output;
+        }
+
+        if !effective_root {
+            output.status =
+                AdapterStatus::Skipped(t!("app.adapter.lynis_root_required_skipped").into_owned());
+            return output;
+        }
+
+        output.status = AdapterStatus::Available;
+
+        let report = match parse_report(report_text) {
+            Ok(report) => report,
+            Err(error) => {
+                output.warnings.push(error);
+                return output;
+            }
+        };
+
+        match command_result {
+            Ok(command_result) => {
+                if !command_result.success {
+                    let detail = command_result
+                        .detail
+                        .unwrap_or_else(|| t!("app.server.not_available").into_owned());
+                    output.warnings.push(
+                        t!("app.adapter.lynis_non_zero_exit", detail = detail.as_str())
+                            .into_owned(),
+                    );
+                }
+            }
+            Err(error) => {
+                output.warnings.push(error);
+            }
+        }
+
+        output.findings = report_to_findings(&report, host_root, LynisMode::Full);
+        output
     }
 }

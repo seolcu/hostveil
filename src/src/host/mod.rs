@@ -72,6 +72,9 @@ impl HostScanner {
         findings.extend(scan_proc_hidepid(context));
         findings.extend(scan_mac_frameworks(context));
         findings.extend(scan_systemd_hardening(context));
+        findings.extend(scan_grub_hardening(context));
+        findings.extend(scan_shadow_hardening(context));
+        findings.extend(scan_tmp_hardening(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
@@ -771,6 +774,31 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
         ));
     }
 
+    if let Some(value) = read_sysctl(context, "proc/sys/kernel/modules_disabled")
+        && value.trim() == "0"
+    {
+        findings.push(host_finding(
+            "host.kernel.modules_disabled_not_set",
+            Severity::Medium,
+            &context.root.join("proc/sys/kernel/modules_disabled"),
+            HostFindingText {
+                title: t!("finding.host.kernel_modules_disabled_not_set.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_modules_disabled_not_set.description",
+                    path = context
+                        .root
+                        .join("proc/sys/kernel/modules_disabled")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_modules_disabled_not_set.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_modules_disabled_not_set.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("value"), String::from("0"))]),
+        ));
+    }
+
     findings
 }
 
@@ -997,8 +1025,23 @@ fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
     };
 
     let mounts = parse_proc_mounts(&text);
-    let Some(options) = mounts.get("/proc") else {
-        return findings;
+    let options = match mounts.get("/proc") {
+        Some(options) => options,
+        None => {
+            findings.push(host_finding(
+                "host.proc_hidepid_missing",
+                Severity::Medium,
+                &mounts_path,
+                HostFindingText {
+                    title: t!("finding.host.proc_hidepid_missing.title").into_owned(),
+                    description: t!("finding.host.proc_hidepid_missing.description").into_owned(),
+                    why_risky: t!("finding.host.proc_hidepid_missing.why").into_owned(),
+                    how_to_fix: t!("finding.host.proc_hidepid_missing.fix").into_owned(),
+                },
+                BTreeMap::new(),
+            ));
+            return findings;
+        }
     };
 
     let has_hidepid = options.iter().any(|opt| opt.starts_with("hidepid="));
@@ -1213,6 +1256,232 @@ fn strip_apt_comments(line: &str) -> &str {
     };
 
     line[..comment_index.unwrap_or(line.len())].trim()
+}
+
+fn scan_grub_hardening(context: &HostContext) -> Vec<Finding> {
+    let grub_paths = ["boot/grub/grub.cfg", "boot/grub2/grub.cfg"];
+
+    for relative in &grub_paths {
+        let Some(path) = resolve_existing_path(&context.root, relative) else {
+            continue;
+        };
+
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+
+        let lower = text.to_ascii_lowercase();
+        if lower.contains("password_pbkdf2")
+            || lower.contains("password")
+            || lower.contains("--unrestricted")
+        {
+            return Vec::new();
+        }
+
+        return vec![host_finding(
+            "host.grub_password_missing",
+            Severity::Medium,
+            &path,
+            HostFindingText {
+                title: t!("finding.host.grub_password_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.grub_password_missing.description",
+                    path = path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.grub_password_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.grub_password_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), path.display().to_string())]),
+        )];
+    }
+
+    Vec::new()
+}
+
+fn scan_shadow_hardening(context: &HostContext) -> Vec<Finding> {
+    let Some(path) = resolve_existing_path(&context.root, "etc/shadow") else {
+        return Vec::new();
+    };
+
+    let mut findings = Vec::new();
+
+    if let Ok(metadata) = fs::metadata(&path) {
+        let mode = metadata.permissions().mode() & 0o777;
+        if mode & 0o077 > 0o040 {
+            findings.push(host_finding(
+                "host.shadow_permissions_weak",
+                Severity::Medium,
+                &path,
+                HostFindingText {
+                    title: t!("finding.host.shadow_permissions_weak.title").into_owned(),
+                    description: t!(
+                        "finding.host.shadow_permissions_weak.description",
+                        path = path.display().to_string(),
+                        mode = format_permissions(mode)
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.shadow_permissions_weak.why").into_owned(),
+                    how_to_fix: t!("finding.host.shadow_permissions_weak.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), path.display().to_string()),
+                    (String::from("mode"), format_permissions(mode)),
+                ]),
+            ));
+        }
+    }
+
+    let Ok(text) = fs::read_to_string(&path) else {
+        return findings;
+    };
+
+    let mut weak_hash_algorithm = None;
+    let mut empty_password_found = false;
+
+    for line in text.lines() {
+        let stripped = line.trim();
+        if stripped.is_empty() || stripped.starts_with('#') {
+            continue;
+        }
+
+        let parts: Vec<&str> = stripped.split(':').collect();
+        if parts.len() < 2 {
+            continue;
+        }
+
+        let hash = parts[1];
+        if hash.is_empty() {
+            empty_password_found = true;
+            continue;
+        }
+
+        if hash.starts_with("*") || hash.starts_with("!") {
+            continue;
+        }
+
+        if hash.starts_with("$1$") && weak_hash_algorithm.is_none() {
+            weak_hash_algorithm = Some("MD5");
+        } else if hash.starts_with("$5$") && weak_hash_algorithm.is_none() {
+            weak_hash_algorithm = Some("SHA-256");
+        } else if hash.starts_with("$6$") || hash.starts_with("$y$") || hash.starts_with("$2") {
+            continue;
+        } else if weak_hash_algorithm.is_none() {
+            weak_hash_algorithm = Some("unknown/legacy");
+        }
+    }
+
+    if empty_password_found {
+        findings.push(host_finding(
+            "host.shadow_empty_password",
+            Severity::Critical,
+            &path,
+            HostFindingText {
+                title: t!("finding.host.shadow_empty_password.title").into_owned(),
+                description: t!(
+                    "finding.host.shadow_empty_password.description",
+                    path = path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.shadow_empty_password.why").into_owned(),
+                how_to_fix: t!("finding.host.shadow_empty_password.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), path.display().to_string())]),
+        ));
+    }
+
+    if let Some(algorithm) = weak_hash_algorithm {
+        findings.push(host_finding(
+            "host.shadow_weak_hash",
+            Severity::High,
+            &path,
+            HostFindingText {
+                title: t!("finding.host.shadow_weak_hash.title").into_owned(),
+                description: t!(
+                    "finding.host.shadow_weak_hash.description",
+                    path = path.display().to_string(),
+                    algorithm = algorithm
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.shadow_weak_hash.why").into_owned(),
+                how_to_fix: t!("finding.host.shadow_weak_hash.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("path"), path.display().to_string()),
+                (String::from("algorithm"), algorithm.to_owned()),
+            ]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_tmp_hardening(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    let mounts_path = context.root.join("proc/mounts");
+    let Ok(text) = fs::read_to_string(&mounts_path) else {
+        return findings;
+    };
+
+    let mut tmp_found = false;
+    let mut tmp_flags = Vec::new();
+
+    for line in text.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 4 {
+            continue;
+        }
+        if parts[1] == "/tmp" {
+            tmp_found = true;
+            tmp_flags = parts[3].split(',').map(str::to_owned).collect();
+            break;
+        }
+    }
+
+    if !tmp_found {
+        findings.push(host_finding(
+            "host.tmp_not_tmpfs",
+            Severity::Low,
+            &context.root.join("proc/mounts"),
+            HostFindingText {
+                title: t!("finding.host.tmp_not_tmpfs.title").into_owned(),
+                description: t!("finding.host.tmp_not_tmpfs.description").into_owned(),
+                why_risky: t!("finding.host.tmp_not_tmpfs.why").into_owned(),
+                how_to_fix: t!("finding.host.tmp_not_tmpfs.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
+        return findings;
+    }
+
+    let required_flags = ["noexec", "nosuid", "nodev"];
+    let missing: Vec<String> = required_flags
+        .iter()
+        .filter(|flag| !tmp_flags.iter().any(|f| f == **flag))
+        .map(|s| (*s).to_owned())
+        .collect();
+
+    if !missing.is_empty() {
+        findings.push(host_finding(
+            "host.tmp_tmpfs_flags_missing",
+            Severity::Low,
+            &context.root.join("proc/mounts"),
+            HostFindingText {
+                title: t!("finding.host.tmp_tmpfs_flags_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.tmp_tmpfs_flags_missing.description",
+                    flags = missing.join(", ")
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.tmp_tmpfs_flags_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.tmp_tmpfs_flags_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("flags"), missing.join(", "))]),
+        ));
+    }
+
+    findings
 }
 
 fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo) -> Vec<Finding> {
@@ -1988,13 +2257,7 @@ mod tests {
     #[test]
     fn host_scanner_detects_missing_proc_hidepid() {
         let root = temp_host_root("proc-hidepid");
-        write_file(
-            &root.join("proc/mounts"),
-            concat!(
-                "proc /proc proc rw,relatime 0 0\n",
-                "ext4 / ext4 rw,relatime 0 0\n",
-            ),
-        );
+        write_file(&root.join("proc/mounts"), "ext4 / ext4 rw,relatime 0 0\n");
         write_file(&root.join("etc/hostname"), "hidepid-test\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
         write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
@@ -2102,14 +2365,221 @@ mod tests {
             "0\n",
         );
         write_file(&root.join("proc/sys/user/max_user_namespaces"), "0\n");
+        write_file(&root.join("proc/sys/kernel/modules_disabled"), "1\n");
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
             "/usr/sbin/dnsmasq (enforce)\n",
+        );
+        write_file(
+            &root.join("boot/grub/grub.cfg"),
+            "set superusers=\"admin\"\npassword_pbkdf2 admin grub.pbkdf2...\n",
+        );
+        write_file(
+            &root.join("etc/shadow"),
+            "root:$6$rounds=5000$salt$hash:0:0:root:/root:/bin/bash\n",
+        );
+        fs::set_permissions(root.join("etc/shadow"), fs::Permissions::from_mode(0o640))
+            .expect("permissions should be set");
+        write_file(
+            &root.join("proc/mounts"),
+            concat!(
+                "proc /proc proc rw,relatime,hidepid=2 0 0\n",
+                "tmpfs /tmp tmpfs rw,nosuid,nodev,noexec,relatime 0 0\n",
+                "ext4 / ext4 rw,relatime 0 0\n",
+            ),
         );
 
         let findings = HostScanner.scan(&HostContext { root: root.clone() });
 
         assert!(findings.is_empty());
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_missing_grub_password() {
+        let root = temp_host_root("grub-missing");
+        write_file(
+            &root.join("boot/grub/grub.cfg"),
+            "set timeout=5\nmenuentry 'Linux' {\nlinux /vmlinuz\n}\n",
+        );
+        write_file(&root.join("etc/hostname"), "grub-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.grub_password_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_grub_when_password_present() {
+        let root = temp_host_root("grub-password");
+        write_file(
+            &root.join("boot/grub2/grub.cfg"),
+            "set superusers=\"admin\"\npassword_pbkdf2 admin grub.pbkdf2...\n",
+        );
+        write_file(&root.join("etc/hostname"), "grub-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.grub_password_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_weak_shadow_permissions() {
+        let root = temp_host_root("shadow-perms");
+        write_file(
+            &root.join("etc/shadow"),
+            "root:$6$rounds=5000$salt$hash:0:0:root:/root:/bin/bash\n",
+        );
+        fs::set_permissions(root.join("etc/shadow"), fs::Permissions::from_mode(0o644))
+            .expect("permissions should be set");
+        write_file(&root.join("etc/hostname"), "shadow-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.shadow_permissions_weak")
+        );
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.id != "host.shadow_weak_hash")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_weak_shadow_hashes() {
+        let root = temp_host_root("shadow-hash");
+        write_file(
+            &root.join("etc/shadow"),
+            "root:$1$salt$hash:0:0:root:/root:/bin/bash\n",
+        );
+        fs::set_permissions(root.join("etc/shadow"), fs::Permissions::from_mode(0o640))
+            .expect("permissions should be set");
+        write_file(&root.join("etc/hostname"), "shadow-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.shadow_weak_hash")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_empty_shadow_passwords() {
+        let root = temp_host_root("shadow-empty");
+        write_file(&root.join("etc/shadow"), "root::0:0:root:/root:/bin/bash\n");
+        fs::set_permissions(root.join("etc/shadow"), fs::Permissions::from_mode(0o640))
+            .expect("permissions should be set");
+        write_file(&root.join("etc/hostname"), "shadow-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.shadow_empty_password")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_modules_disabled_not_set() {
+        let root = temp_host_root("modules-disabled");
+        write_file(&root.join("proc/sys/kernel/modules_disabled"), "0\n");
+        write_file(&root.join("etc/hostname"), "modules-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.kernel.modules_disabled_not_set")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_tmp_not_tmpfs() {
+        let root = temp_host_root("tmp-not-tmpfs");
+        write_file(&root.join("proc/mounts"), "ext4 / ext4 rw,relatime 0 0\n");
+        write_file(&root.join("etc/hostname"), "tmp-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.tmp_not_tmpfs")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_tmp_missing_flags() {
+        let root = temp_host_root("tmp-flags");
+        write_file(
+            &root.join("proc/mounts"),
+            concat!(
+                "tmpfs /tmp tmpfs rw,nosuid,nodev,relatime 0 0\n",
+                "ext4 / ext4 rw,relatime 0 0\n",
+            ),
+        );
+        write_file(&root.join("etc/hostname"), "tmp-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.tmp_tmpfs_flags_missing")
+        );
+        assert_eq!(
+            findings
+                .iter()
+                .find(|f| f.id == "host.tmp_tmpfs_flags_missing")
+                .and_then(|f| f.evidence.get("flags")),
+            Some(&String::from("noexec"))
+        );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }

@@ -604,6 +604,177 @@ mod realistic_fixture_tests {
             ]
         );
     }
+
+    #[test]
+    fn grafana_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("grafana", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn grafana_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("grafana", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "grafana", Severity::Medium),
+                ("permissions.implicit_root", "grafana", Severity::Medium),
+                (
+                    "sensitive.default_credential",
+                    "grafana",
+                    Severity::Critical,
+                ),
+                ("service.grafana.admin_public", "grafana", Severity::High,),
+                (
+                    "service.grafana.auth_disabled",
+                    "grafana",
+                    Severity::Critical,
+                ),
+                (
+                    "service.grafana.anonymous_access",
+                    "grafana",
+                    Severity::High,
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn npm_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("npm", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn npm_vulnerable_fixture_produces_expected_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("npm", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "npm", Severity::Medium),
+                ("permissions.implicit_root", "npm", Severity::Medium),
+                ("service.npm.admin_public", "npm", Severity::High,),
+            ]
+        );
+    }
+
+    #[test]
+    fn authentik_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("authentik", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn authentik_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("authentik", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "authentik", Severity::Medium),
+                ("permissions.implicit_root", "authentik", Severity::Medium),
+                (
+                    "service.authentik.admin_public",
+                    "authentik",
+                    Severity::High,
+                ),
+                (
+                    "service.authentik.debug_enabled",
+                    "authentik",
+                    Severity::Medium,
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn paperless_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("paperless", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn paperless_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("paperless", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "paperless", Severity::Medium),
+                ("permissions.implicit_root", "paperless", Severity::Medium),
+                ("service.paperless.ui_public", "paperless", Severity::Medium,),
+                (
+                    "service.paperless.no_force_login",
+                    "paperless",
+                    Severity::Medium,
+                ),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]

@@ -11,10 +11,11 @@ pub enum ThemePreset {
     Monokai,
     Light,
     SolarizedLight,
+    System,
 }
 
 impl ThemePreset {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Ansi,
         Self::Catppuccin,
         Self::Nord,
@@ -24,6 +25,7 @@ impl ThemePreset {
         Self::Monokai,
         Self::Light,
         Self::SolarizedLight,
+        Self::System,
     ];
 
     pub const fn as_key(self) -> &'static str {
@@ -37,6 +39,7 @@ impl ThemePreset {
             Self::Monokai => "monokai",
             Self::Light => "light",
             Self::SolarizedLight => "solarized_light",
+            Self::System => "system",
         }
     }
 
@@ -51,6 +54,7 @@ impl ThemePreset {
             Self::Monokai => "Monokai",
             Self::Light => "Light",
             Self::SolarizedLight => "Solarized Light",
+            Self::System => "System",
         }
     }
 
@@ -70,7 +74,8 @@ impl ThemePreset {
             Self::Dracula => Self::Monokai,
             Self::Monokai => Self::Light,
             Self::Light => Self::SolarizedLight,
-            Self::SolarizedLight => Self::Ansi,
+            Self::SolarizedLight => Self::System,
+            Self::System => Self::Ansi,
         }
     }
 }
@@ -96,7 +101,7 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub const fn preset(preset: ThemePreset) -> Self {
+    pub fn preset(preset: ThemePreset) -> Self {
         match preset {
             ThemePreset::Ansi => Self::ansi(),
             ThemePreset::Catppuccin => Self::catppuccin(),
@@ -107,6 +112,21 @@ impl Theme {
             ThemePreset::Monokai => Self::monokai(),
             ThemePreset::Light => Self::light(),
             ThemePreset::SolarizedLight => Self::solarized_light(),
+            ThemePreset::System => Self::system(),
+        }
+    }
+
+    fn system() -> Self {
+        let bg_is_light = std::env::var("COLORFGBG")
+            .ok()
+            .and_then(|value| value.split(';').nth(1).map(str::to_owned))
+            .and_then(|bg| bg.parse::<u8>().ok())
+            .is_some_and(|bg| bg >= 7);
+
+        if bg_is_light {
+            Self::light()
+        } else {
+            Self::tokyo_night()
         }
     }
 

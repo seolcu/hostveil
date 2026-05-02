@@ -18,6 +18,10 @@ enum ServiceKind {
     Portainer,
     HomeAssistant,
     Pihole,
+    Grafana,
+    Npm,
+    Authentik,
+    Paperless,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -38,6 +42,10 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Portainer => findings.extend(scan_portainer_risk(service)),
             ServiceKind::HomeAssistant => findings.extend(scan_home_assistant_risk(service)),
             ServiceKind::Pihole => findings.extend(scan_pihole_risk(service)),
+            ServiceKind::Grafana => findings.extend(scan_grafana_risk(service)),
+            ServiceKind::Npm => findings.extend(scan_npm_risk(service)),
+            ServiceKind::Authentik => findings.extend(scan_authentik_risk(service)),
+            ServiceKind::Paperless => findings.extend(scan_paperless_risk(service)),
         }
     }
 
@@ -67,6 +75,16 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::HomeAssistant)
     } else if haystack.contains("pihole") || haystack.contains("pi-hole") {
         Some(ServiceKind::Pihole)
+    } else if haystack.contains("grafana") {
+        Some(ServiceKind::Grafana)
+    } else if haystack.contains("nginx-proxy-manager")
+        || haystack.contains("jc21/nginx-proxy-manager")
+    {
+        Some(ServiceKind::Npm)
+    } else if haystack.contains("authentik") {
+        Some(ServiceKind::Authentik)
+    } else if haystack.contains("paperless") {
+        Some(ServiceKind::Paperless)
     } else {
         None
     }
@@ -917,6 +935,227 @@ fn env_file_values(project: &ComposeProject, env_file: &str) -> BTreeMap<String,
     values
 }
 
+fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            port.container_port == "3000" && port.protocol == "tcp" && is_public_port(port)
+        })
+    {
+        findings.push(service_finding(
+            "service.grafana.admin_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.grafana.admin_public.title").into_owned(),
+                description: t!(
+                    "finding.grafana.admin_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.grafana.admin_public.why").into_owned(),
+                how_to_fix: t!("finding.grafana.admin_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    if env_truthy(service, "GF_AUTH_DISABLE_LOGIN_FORM") {
+        findings.push(service_finding(
+            "service.grafana.auth_disabled",
+            Axis::UnnecessaryExposure,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.grafana.auth_disabled.title").into_owned(),
+                description: t!(
+                    "finding.grafana.auth_disabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.grafana.auth_disabled.why").into_owned(),
+                how_to_fix: t!("finding.grafana.auth_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("GF_AUTH_DISABLE_LOGIN_FORM"),
+            )]),
+        ));
+    }
+
+    if env_truthy(service, "GF_AUTH_ANONYMOUS_ENABLED") {
+        findings.push(service_finding(
+            "service.grafana.anonymous_access",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.grafana.anonymous_access.title").into_owned(),
+                description: t!(
+                    "finding.grafana.anonymous_access.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.grafana.anonymous_access.why").into_owned(),
+                how_to_fix: t!("finding.grafana.anonymous_access.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("GF_AUTH_ANONYMOUS_ENABLED"),
+            )]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_npm_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "81" || port.container_port == "443")
+                && port.protocol == "tcp"
+                && is_public_port(port)
+        })
+    {
+        findings.push(service_finding(
+            "service.npm.admin_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.npm.admin_public.title").into_owned(),
+                description: t!(
+                    "finding.npm.admin_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.npm.admin_public.why").into_owned(),
+                how_to_fix: t!("finding.npm.admin_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_authentik_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            (port.container_port == "9000" || port.container_port == "9443")
+                && port.protocol == "tcp"
+                && is_public_port(port)
+        })
+    {
+        findings.push(service_finding(
+            "service.authentik.admin_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.authentik.admin_public.title").into_owned(),
+                description: t!(
+                    "finding.authentik.admin_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.authentik.admin_public.why").into_owned(),
+                how_to_fix: t!("finding.authentik.admin_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    if env_truthy(service, "AUTHENTIK_DEBUG") {
+        findings.push(service_finding(
+            "service.authentik.debug_enabled",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.authentik.debug_enabled.title").into_owned(),
+                description: t!(
+                    "finding.authentik.debug_enabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.authentik.debug_enabled.why").into_owned(),
+                how_to_fix: t!("finding.authentik.debug_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("AUTHENTIK_DEBUG"))]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_paperless_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if publicly_exposed
+        && let Some(port) = service.ports.iter().find(|port| {
+            port.container_port == "8000" && port.protocol == "tcp" && is_public_port(port)
+        })
+    {
+        findings.push(service_finding(
+            "service.paperless.ui_public",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.paperless.ui_public.title").into_owned(),
+                description: t!(
+                    "finding.paperless.ui_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.paperless.ui_public.why").into_owned(),
+                how_to_fix: t!("finding.paperless.ui_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    if !env_truthy(service, "PAPERLESS_FORCE_LOGIN") {
+        findings.push(service_finding(
+            "service.paperless.no_force_login",
+            Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.paperless.no_force_login.title").into_owned(),
+                description: t!(
+                    "finding.paperless.no_force_login.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.paperless.no_force_login.why").into_owned(),
+                how_to_fix: t!("finding.paperless.no_force_login.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("PAPERLESS_FORCE_LOGIN"),
+            )]),
+        ));
+    }
+
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -1213,6 +1452,126 @@ mod tests {
                 "service.pihole.admin_public",
                 "service.pihole.weak_password",
                 "service.pihole.dns_public",
+            ]
+        );
+    }
+
+    #[test]
+    fn grafana_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("grafana", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn grafana_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("grafana", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.grafana.admin_public",
+                "service.grafana.auth_disabled",
+                "service.grafana.anonymous_access",
+            ]
+        );
+    }
+
+    #[test]
+    fn npm_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("npm", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn npm_vulnerable_fixture_triggers_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("npm", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["service.npm.admin_public"]
+        );
+    }
+
+    #[test]
+    fn authentik_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("authentik", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn authentik_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("authentik", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.authentik.admin_public",
+                "service.authentik.debug_enabled",
+            ]
+        );
+    }
+
+    #[test]
+    fn paperless_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("paperless", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn paperless_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("paperless", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.paperless.ui_public",
+                "service.paperless.no_force_login",
             ]
         );
     }

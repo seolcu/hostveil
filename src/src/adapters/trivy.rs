@@ -16,8 +16,8 @@ pub struct TrivyScanOutput {
     pub warnings: Vec<String>,
 }
 
-pub fn scan(services: &[ServiceSummary]) -> TrivyScanOutput {
-    scan_with_commands(services, "trivy", "trivy", command::DEFAULT_ADAPTER_TIMEOUT)
+pub fn scan(services: &[ServiceSummary], timeout: Duration) -> TrivyScanOutput {
+    scan_with_commands(services, "trivy", "trivy", timeout)
 }
 
 fn scan_with_commands(
@@ -618,7 +618,7 @@ JSON
 
     #[test]
     fn skips_when_no_image_targets_are_available() {
-        let output = scan(&[]);
+        let output = scan(&[], command::DEFAULT_ADAPTER_TIMEOUT);
 
         assert_eq!(
             output.status,
