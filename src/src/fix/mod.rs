@@ -1,5 +1,3 @@
-pub mod host;
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;

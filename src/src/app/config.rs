@@ -445,11 +445,6 @@ impl AppConfig {
                     crate::i18n::tr_fix_requires_target(),
                 ));
             }
-            if self.host_root.is_some() {
-                return Err(AppError::InvalidArgumentCombination(
-                    crate::i18n::tr_fix_host_root_not_supported(),
-                ));
-            }
             if self.compose_path.is_some() {
                 return Err(AppError::InvalidArgumentCombination(
                     crate::i18n::tr_fix_compose_conflict(),

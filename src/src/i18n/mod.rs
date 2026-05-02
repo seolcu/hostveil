@@ -142,10 +142,6 @@ pub fn tr_fix_requires_target() -> String {
     t!("app.validation.fix_requires_target").into_owned()
 }
 
-pub fn tr_fix_host_root_not_supported() -> String {
-    t!("app.validation.fix_host_root_not_supported").into_owned()
-}
-
 pub fn tr_fix_compose_conflict() -> String {
     t!("app.validation.fix_compose_conflict").into_owned()
 }
