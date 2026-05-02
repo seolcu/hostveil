@@ -93,7 +93,7 @@ fn config_file_path() -> io::Result<PathBuf> {
     .ok_or_else(|| io::Error::other("failed to resolve a hostveil config directory"))
 }
 
-fn resolve_config_dir(
+pub fn resolve_config_dir(
     explicit_dir: Option<&str>,
     xdg_config_home: Option<&str>,
     home: Option<&str>,

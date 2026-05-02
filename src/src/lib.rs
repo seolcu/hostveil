@@ -10,6 +10,7 @@ pub mod discovery;
 pub mod domain;
 pub mod export;
 pub mod fix;
+pub mod history;
 pub mod host;
 pub mod i18n;
 pub mod rules;

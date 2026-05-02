@@ -2,8 +2,10 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
+use std::time::Duration;
 
 use crate::adapters;
+use crate::adapters::command;
 use crate::compose::{ComposeParseError, ComposeParser, ComposeProject};
 use crate::discovery::{
     DiscoveredComposeProject, DockerDiscoveryResult, discover_running_compose_projects,
@@ -34,7 +36,14 @@ pub enum AdapterScanEvent {
 
 pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
     let mut result = run_native(config)?;
-    apply_external_adapters(&mut result, config.adapter_selection);
+    apply_external_adapters(
+        &mut result,
+        config.adapter_selection,
+        config
+            .adapter_timeout
+            .unwrap_or(command::DEFAULT_ADAPTER_TIMEOUT),
+    );
+    record_history(&result);
     Ok(result)
 }
 
@@ -68,11 +77,16 @@ pub fn run_native(config: &AppConfig) -> Result<ScanResult, AppError> {
     Ok(result)
 }
 
-fn apply_external_adapters(result: &mut ScanResult, selection: AdapterSelection) {
+fn apply_external_adapters(
+    result: &mut ScanResult,
+    selection: AdapterSelection,
+    timeout: Duration,
+) {
     let update = scan_external_adapters(
         result.metadata.services.clone(),
         result.metadata.host_root.clone(),
         selection,
+        timeout,
     );
     apply_external_adapter_update(result, update);
 }
@@ -80,13 +94,15 @@ fn apply_external_adapters(result: &mut ScanResult, selection: AdapterSelection)
 pub fn prepare_background_adapter_scan(
     result: &mut ScanResult,
     selection: AdapterSelection,
+    timeout: Duration,
 ) -> Receiver<AdapterScanEvent> {
-    spawn_background_adapter_scan(result, selection)
+    spawn_background_adapter_scan(result, selection, timeout)
 }
 
 fn spawn_background_adapter_scan(
     result: &mut ScanResult,
     selection: AdapterSelection,
+    timeout: Duration,
 ) -> Receiver<AdapterScanEvent> {
     seed_adapter_statuses(result, selection);
 
@@ -94,7 +110,7 @@ fn spawn_background_adapter_scan(
     let host_root = result.metadata.host_root.clone();
     let (sender, receiver) = mpsc::channel();
 
-    spawn_adapter_workers(sender, services, host_root, selection);
+    spawn_adapter_workers(sender, services, host_root, selection, timeout);
 
     receiver
 }
@@ -104,6 +120,7 @@ fn spawn_adapter_workers(
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
     selection: AdapterSelection,
+    timeout: Duration,
 ) {
     if selection.is_enabled(ScanAdapter::Trivy) && has_image_targets(&services) {
         let sender = sender.clone();
@@ -111,6 +128,7 @@ fn spawn_adapter_workers(
         thread::spawn(move || {
             let _ = sender.send(AdapterScanEvent::Trivy(adapters::trivy::scan(
                 &trivy_services,
+                timeout,
             )));
         });
     }
@@ -118,7 +136,9 @@ fn spawn_adapter_workers(
     if selection.is_enabled(ScanAdapter::Dockle) && has_image_targets(&services) {
         let sender = sender.clone();
         thread::spawn(move || {
-            let _ = sender.send(AdapterScanEvent::Dockle(adapters::dockle::scan(&services)));
+            let _ = sender.send(AdapterScanEvent::Dockle(adapters::dockle::scan(
+                &services, timeout,
+            )));
         });
     }
 
@@ -199,14 +219,15 @@ fn scan_external_adapters(
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
     selection: AdapterSelection,
+    timeout: Duration,
 ) -> AdapterScanUpdate {
     let trivy_handle = selection.is_enabled(ScanAdapter::Trivy).then(|| {
         let trivy_services = services.clone();
-        thread::spawn(move || adapters::trivy::scan(&trivy_services))
+        thread::spawn(move || adapters::trivy::scan(&trivy_services, timeout))
     });
     let dockle_handle = selection.is_enabled(ScanAdapter::Dockle).then(|| {
         let dockle_services = services;
-        thread::spawn(move || adapters::dockle::scan(&dockle_services))
+        thread::spawn(move || adapters::dockle::scan(&dockle_services, timeout))
     });
     let lynis_handle = selection
         .is_enabled(ScanAdapter::Lynis)
@@ -672,6 +693,12 @@ fn apply_host_scan(host_root: PathBuf, result: &mut ScanResult) {
         .extend(HostScanner.scan_with_runtime(&context, &runtime_info));
 }
 
+fn record_history(scan_result: &ScanResult) {
+    let mut history = crate::history::load();
+    history.record(scan_result);
+    let _ = crate::history::save(&history);
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -681,6 +708,7 @@ mod tests {
     use std::sync::mpsc::TryRecvError;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use crate::adapters::command;
     use crate::discovery::{DiscoveredComposeProject, DiscoveredContainerService};
     use crate::domain::{
         AdapterStatus, Axis, DockerDiscoveryStatus, Finding, RemediationKind, ScanMode, Scope,
@@ -780,6 +808,7 @@ mod tests {
             compose_path: Some(compose_path.clone()),
             host_root: None,
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -814,6 +843,7 @@ mod tests {
             compose_path: Some(compose_path.clone()),
             host_root: None,
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -848,6 +878,7 @@ mod tests {
             compose_path: Some(compose_path.clone()),
             host_root: None,
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -889,6 +920,7 @@ mod tests {
             compose_path: None,
             host_root: Some(host_root.clone()),
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -922,6 +954,7 @@ mod tests {
             compose_path: Some(compose_path.clone()),
             host_root: None,
             adapter_selection: AdapterSelection::none(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -959,6 +992,7 @@ mod tests {
                 dockle: false,
                 lynis: false,
             },
+            command::DEFAULT_ADAPTER_TIMEOUT,
         );
         let disabled = t!("adapter.reason.disabled_by_selection", locale = "en").into_owned();
 
@@ -982,6 +1016,7 @@ mod tests {
             compose_path: Some(parser_fixture()),
             host_root: None,
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -1061,6 +1096,7 @@ mod tests {
             compose_path: Some(parser_fixture()),
             host_root: Some(host_root.clone()),
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -1622,7 +1658,11 @@ mod tests {
             image: Some(String::from("nginx:1.27.5")),
         });
 
-        let receiver = spawn_background_adapter_scan(&mut result, AdapterSelection::all());
+        let receiver = spawn_background_adapter_scan(
+            &mut result,
+            AdapterSelection::all(),
+            command::DEFAULT_ADAPTER_TIMEOUT,
+        );
 
         assert_eq!(
             result.metadata.adapters.get("trivy"),

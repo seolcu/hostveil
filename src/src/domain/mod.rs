@@ -31,6 +31,10 @@ impl Axis {
             Self::HostHardening => "host_hardening",
         }
     }
+
+    pub fn from_key(value: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|axis| axis.as_key() == value)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -52,6 +56,12 @@ impl Severity {
             Self::Medium => "medium",
             Self::Low => "low",
         }
+    }
+
+    pub fn from_key(value: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|severity| severity.as_key() == value)
     }
 }
 
