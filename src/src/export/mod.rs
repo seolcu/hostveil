@@ -5,6 +5,10 @@ use crate::domain::{Finding, ScanResult, ScoreReport};
 use crate::i18n;
 
 const JSON_SCHEMA_VERSION: &str = "0.13.0";
+const SARIF_SCHEMA_URI: &str = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
+const SARIF_VERSION: &str = "2.1.0";
+const TOOL_NAME: &str = "hostveil";
+const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Versioned JSON export wrapper.
 ///
@@ -54,6 +58,79 @@ pub fn scan_result_json_filtered(scan_result: &ScanResult, findings_only: bool) 
                 "}}\n"
             ),
             escape_json(&i18n::tr("app.error.json_export_failed"))
+        )
+    }) + "\n"
+}
+
+pub fn scan_result_sarif(scan_result: &ScanResult) -> String {
+    let mut results = Vec::new();
+
+    for finding in &scan_result.findings {
+        let level = match finding.severity {
+            crate::domain::Severity::Critical => "error",
+            crate::domain::Severity::High => "error",
+            crate::domain::Severity::Medium => "warning",
+            crate::domain::Severity::Low => "note",
+        };
+
+        let location_uri = if finding.subject.is_empty() {
+            String::from("unknown")
+        } else {
+            finding.subject.clone()
+        };
+
+        results.push(serde_json::json!({
+            "ruleId": finding.id,
+            "level": level,
+            "message": {
+                "text": finding.description
+            },
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": location_uri
+                    }
+                }
+            }],
+            "properties": {
+                "title": finding.title,
+                "severity": finding.severity.as_key(),
+                "axis": finding.axis.as_key(),
+                "scope": serde_json::to_value(finding.scope).unwrap_or_default(),
+                "source": serde_json::to_value(finding.source).unwrap_or_default(),
+                "remediation": serde_json::to_value(finding.remediation).unwrap_or_default(),
+                "whyRisky": finding.why_risky,
+                "howToFix": finding.how_to_fix,
+                "relatedService": finding.related_service,
+            }
+        }));
+    }
+
+    let report = serde_json::json!({
+        "$schema": SARIF_SCHEMA_URI,
+        "version": SARIF_VERSION,
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": TOOL_NAME,
+                    "version": TOOL_VERSION,
+                    "informationUri": "https://github.com/seolcu/hostveil"
+                }
+            },
+            "results": results,
+            "properties": {
+                "scoreReport": {
+                    "overall": scan_result.score_report.overall,
+                    "scanFocus": scan_result.score_report.scan_focus.iter().map(|a| a.as_key()).collect::<Vec<_>>(),
+                }
+            }
+        }]
+    });
+
+    to_string_pretty(&report).unwrap_or_else(|_| {
+        format!(
+            "{{\n  \"$schema\": \"{}\",\n  \"version\": \"2.1.0\",\n  \"runs\": []\n}}\n",
+            SARIF_SCHEMA_URI
         )
     }) + "\n"
 }
@@ -296,5 +373,123 @@ mod tests {
         assert_eq!(json["findings"].as_array().unwrap().len(), 1);
         assert!(!json.as_object().unwrap().contains_key("score_report"));
         assert!(!json.as_object().unwrap().contains_key("metadata"));
+    }
+
+    use super::scan_result_sarif;
+
+    #[test]
+    fn sarif_emits_valid_schema_and_version() {
+        let mut result = ScanResult::default();
+        result.findings.push(test_finding(
+            "test.finding",
+            Scope::Service,
+            Source::NativeCompose,
+            "web",
+            Some("web"),
+        ));
+
+        let sarif: Value =
+            serde_json::from_str(&scan_result_sarif(&result)).expect("SARIF should parse");
+
+        assert_eq!(sarif["version"], "2.1.0");
+        assert!(
+            sarif["$schema"]
+                .as_str()
+                .unwrap()
+                .contains("sarif-schema-2.1.0.json")
+        );
+        assert!(sarif["runs"].is_array());
+        assert_eq!(sarif["runs"].as_array().unwrap().len(), 1);
+
+        let run = &sarif["runs"][0];
+        assert_eq!(run["tool"]["driver"]["name"], "hostveil");
+        assert!(run["results"].is_array());
+        assert_eq!(run["results"].as_array().unwrap().len(), 1);
+
+        let result_item = &run["results"][0];
+        assert_eq!(result_item["ruleId"], "test.finding");
+        assert_eq!(result_item["level"], "error");
+        assert_eq!(
+            result_item["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "web"
+        );
+    }
+
+    #[test]
+    fn sarif_maps_severity_to_level_correctly() {
+        let severities = [
+            (crate::domain::Severity::Critical, "error"),
+            (crate::domain::Severity::High, "error"),
+            (crate::domain::Severity::Medium, "warning"),
+            (crate::domain::Severity::Low, "note"),
+        ];
+
+        for (severity, expected_level) in severities {
+            let mut result = ScanResult::default();
+            let mut finding = test_finding(
+                "test",
+                Scope::Service,
+                Source::NativeCompose,
+                "svc",
+                Some("svc"),
+            );
+            finding.severity = severity;
+            result.findings.push(finding);
+
+            let sarif: Value =
+                serde_json::from_str(&scan_result_sarif(&result)).expect("SARIF should parse");
+            assert_eq!(
+                sarif["runs"][0]["results"][0]["level"], expected_level,
+                "severity {severity:?} should map to level {expected_level}"
+            );
+        }
+    }
+
+    #[test]
+    fn sarif_includes_score_report_in_properties() {
+        let mut result = ScanResult::default();
+        result.findings.push(test_finding(
+            "test.finding",
+            Scope::Service,
+            Source::NativeCompose,
+            "web",
+            Some("web"),
+        ));
+        result.score_report.overall = 85;
+
+        let sarif: Value =
+            serde_json::from_str(&scan_result_sarif(&result)).expect("SARIF should parse");
+
+        let props = &sarif["runs"][0]["properties"]["scoreReport"];
+        assert_eq!(props["overall"], 85);
+        assert!(props["scanFocus"].is_array());
+    }
+
+    #[test]
+    fn sarif_empty_findings_produces_empty_results() {
+        let result = ScanResult::default();
+        let sarif: Value =
+            serde_json::from_str(&scan_result_sarif(&result)).expect("SARIF should parse");
+
+        let results = &sarif["runs"][0]["results"];
+        assert!(results.is_array());
+        assert_eq!(results.as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn sarif_empty_subject_uses_unknown_uri() {
+        let mut result = ScanResult::default();
+        let mut finding = test_finding("test.finding", Scope::Host, Source::NativeHost, "", None);
+        finding.subject = String::new();
+        result.findings.push(finding);
+
+        let sarif: Value =
+            serde_json::from_str(&scan_result_sarif(&result)).expect("SARIF should parse");
+
+        assert_eq!(
+            sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]
+                ["uri"],
+            "unknown"
+        );
     }
 }

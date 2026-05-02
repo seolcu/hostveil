@@ -157,6 +157,9 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 let adapter_updates = scan::prepare_background_adapter_scan(
                     &mut scan_result,
                     config.adapter_selection,
+                    config
+                        .adapter_timeout
+                        .unwrap_or(crate::adapters::command::DEFAULT_ADAPTER_TIMEOUT),
                 );
 
                 let action = tui::run(&mut scan_result, move |scan_result| {
@@ -193,6 +196,10 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 "{}",
                 export::scan_result_json_filtered(&scan_result, config.findings_only)
             );
+        }
+        OutputMode::Sarif => {
+            let scan_result = scan::run(&config)?;
+            print!("{}", export::scan_result_sarif(&scan_result));
         }
     }
 

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
 use super::AppError;
 use crate::fix::FixMode;
@@ -7,6 +8,7 @@ use crate::fix::FixMode;
 pub enum OutputMode {
     Tui,
     Json,
+    Sarif,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -150,6 +152,7 @@ pub struct AppConfig {
     pub compose_path: Option<PathBuf>,
     pub host_root: Option<PathBuf>,
     pub adapter_selection: AdapterSelection,
+    pub adapter_timeout: Option<Duration>,
     pub fix_mode: Option<FixMode>,
     pub fix_target_path: Option<PathBuf>,
     pub preview_changes: bool,
@@ -169,6 +172,7 @@ impl Default for AppConfig {
             compose_path: None,
             host_root: None,
             adapter_selection: AdapterSelection::all(),
+            adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
             preview_changes: false,
@@ -227,6 +231,7 @@ impl AppConfig {
         while let Some(argument) = args.next() {
             match argument.as_str() {
                 "--json" => config.output_mode = OutputMode::Json,
+                "--sarif" => config.output_mode = OutputMode::Sarif,
                 "-h" | "--help" => config.show_help = true,
                 "-V" | "--version" => config.show_version = true,
                 "--preview-changes" => config.preview_changes = true,
@@ -272,6 +277,29 @@ impl AppConfig {
                     }
                     config.adapter_selection = parse_adapter_selection(value)?;
                     adapter_selection_explicit = true;
+                }
+                "--adapter-timeout-secs" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--adapter-timeout-secs"))?;
+                    let secs = value.parse::<u64>().map_err(|_| {
+                        AppError::InvalidArgumentCombination(format!(
+                            "--adapter-timeout-secs must be a positive integer, got: {value}"
+                        ))
+                    })?;
+                    config.adapter_timeout = Some(Duration::from_secs(secs));
+                }
+                _ if argument.starts_with("--adapter-timeout-secs=") => {
+                    let value = argument.trim_start_matches("--adapter-timeout-secs=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--adapter-timeout-secs"));
+                    }
+                    let secs = value.parse::<u64>().map_err(|_| {
+                        AppError::InvalidArgumentCombination(format!(
+                            "--adapter-timeout-secs must be a positive integer, got: {value}"
+                        ))
+                    })?;
+                    config.adapter_timeout = Some(Duration::from_secs(secs));
                 }
                 "--quick-fix" => {
                     let value = args
@@ -453,7 +481,7 @@ impl AppConfig {
                     crate::i18n::tr_fix_compose_conflict(),
                 ));
             }
-            if self.output_mode == OutputMode::Json {
+            if matches!(self.output_mode, OutputMode::Json | OutputMode::Sarif) {
                 return Err(AppError::InvalidArgumentCombination(
                     crate::i18n::tr_fix_json_not_supported(),
                 ));
@@ -621,6 +649,27 @@ mod tests {
         let config = AppConfig::parse([String::from("--json")]).expect("config should parse");
 
         assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn parses_sarif_flag() {
+        let config = AppConfig::parse([String::from("--sarif")]).expect("config should parse");
+
+        assert_eq!(config.output_mode, OutputMode::Sarif);
+    }
+
+    #[test]
+    fn rejects_sarif_with_fix_mode() {
+        let error = AppConfig::parse([
+            String::from("--sarif"),
+            String::from("--quick-fix"),
+            String::from("/some/path"),
+        ])
+        .expect_err("sarif should not work with fix");
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
     }
 
     #[test]

@@ -18,6 +18,26 @@ app:
     usage: "Usage"
     lifecycle: "Lifecycle"
     options: "Options"
+    global: "Global"
+    show_help: "Show this help"
+    overview: "Overview screen"
+    findings: "Findings screen"
+    settings: "Open settings"
+    quit: "Quit"
+    overview_nav: "Overview"
+    move_focus: "Move focus between panels"
+    open_findings: "Open findings view"
+    host_findings: "Open host findings"
+    findings_nav: "Findings"
+    select: "Select finding"
+    scroll_detail: "Scroll detail"
+    focus_detail: "Focus detail panel"
+    focus_list: "Focus list panel"
+    cycle_filters: "Cycle filters (severity/source/remediation/scope/service)"
+    cycle_sort: "Cycle sort mode"
+    mouse: "Mouse"
+    scroll: "Scroll"
+    click: "Select / toggle"
     text: |
       hostveil
 
@@ -128,6 +148,12 @@ app:
     finding_detail: "Detail"
     finding_detail_active: "Detail [detail focus]"
     settings: "Settings"
+    help: "Keyboard Shortcuts"
+    search: "Search Findings"
+  search:
+    prompt: "Search findings by title, description, subject, or fix:"
+    placeholder: "Type to filter..."
+    hint: "Enter to apply  |  Esc to cancel"
   overview:
     score_caption: "Overall posture"
     findings_available: "%{count} finding(s) available. Open the findings view for details."
@@ -197,6 +223,9 @@ app:
     current_dir_fallback_failed: "Current-directory Compose fallback failed: %{error}"
   score:
     overall: "Overall"
+    trend_up: "↑ %{delta} from last scan"
+    trend_down: "↓ %{delta} from last scan"
+    trend_same: "no change from last scan"
   validation:
     auto_upgrade_mode_required: "choose one of enable or disable for auto-upgrade"
     fix_requires_target: "a compose target is required for fix operations"
@@ -607,6 +636,41 @@ finding:
       description: "%{path} is set to %{value}, allowing user namespace creation."
       why: "A positive max_user_namespaces limit allows unprivileged users to create namespaces. Restricting or disabling this reduces kernel attack surface on non-container hosts."
       fix: "Run 'sysctl -w user.max_user_namespaces=0' to disable user namespaces entirely, or set a small limit if specific unprivileged containers are required. Create /etc/sysctl.d/99-userns.conf to persist. Verify with 'sysctl user.max_user_namespaces'."
+    kernel_modules_disabled_not_set:
+      title: "Kernel module loading is not restricted"
+      description: "%{path} is set to 0, allowing unrestricted kernel module loading."
+      why: "Unrestricted module loading allows attackers with root or physical access to load arbitrary kernel code. Restricting it reduces the kernel attack surface and makes certain persistence techniques harder."
+      fix: "Run 'sysctl -w kernel.modules_disabled=1' to prevent new module loading. Create /etc/sysctl.d/99-modules.conf with 'kernel.modules_disabled = 1' to persist. Note: ensure all required modules are loaded before setting this, as it cannot be undone without a reboot."
+    grub_password_missing:
+      title: "GRUB bootloader lacks password protection"
+      description: "%{path} does not contain a GRUB password or unrestricted restriction."
+      why: "Without a GRUB password, anyone with physical or console access can edit boot parameters to bypass security controls, drop to a root shell, or disable SELinux/AppArmor at boot."
+      fix: "Set a GRUB password with 'grub-mkpasswd-pbkdf2', then add the hash to /etc/grub.d/40_custom and regenerate the config with 'update-grub' (Debian/Ubuntu) or 'grub2-mkconfig -o /boot/grub2/grub.cfg' (Fedora/RHEL)."
+    shadow_permissions_weak:
+      title: "/etc/shadow permissions are too permissive"
+      description: "%{path} has mode %{mode}, which is more permissive than 0640."
+      why: "/etc/shadow stores password hashes. If it is readable by non-root users, attackers can extract hashes for offline cracking."
+      fix: "Run 'chmod 640 %{path}' and 'chown root:shadow %{path}' (or root:root on distributions without a shadow group). Verify with 'ls -l %{path}'."
+    shadow_weak_hash:
+      title: "/etc/shadow contains weak password hashes"
+      description: "%{path} uses %{algorithm} for at least one account password hash."
+      why: "Weak hash algorithms like MD5 or unsalted hashes can be cracked orders of magnitude faster than modern algorithms such as SHA-512 or yescrypt."
+      fix: "Force password changes for affected accounts with 'passwd -e <username>'. Ensure PAM is configured to use a strong algorithm (e.g., SHA-512 or yescrypt). On Debian/Ubuntu, check /etc/pam.d/common-password; on RHEL/Fedora, check /etc/pam.d/password-auth and /etc/pam.d/system-auth."
+    shadow_empty_password:
+      title: "/etc/shadow contains empty password fields"
+      description: "%{path} has at least one account with an empty password field."
+      why: "An empty password field means the account can be logged into without any password, which is a trivial compromise vector."
+      fix: "Lock the affected accounts with 'passwd -l <username>' or set strong passwords immediately. Review /etc/passwd for unnecessary login accounts and disable or remove them."
+    tmp_not_tmpfs:
+      title: "/tmp is not mounted as tmpfs"
+      description: "/tmp is mounted on a persistent filesystem instead of tmpfs."
+      why: "A persistent /tmp can allow attackers to leave malicious files across reboots and may leak temporary data to other users. A tmpfs-backed /tmp is cleaned on reboot and is harder to abuse for persistence."
+      fix: "Add a tmpfs line to /etc/fstab: 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev,size=1G 0 0'. Then run 'systemctl daemon-reexec' and 'mount -a'. Verify with 'findmnt /tmp'."
+    tmp_tmpfs_flags_missing:
+      title: "/tmp tmpfs is missing hardening flags"
+      description: "The /tmp tmpfs mount is missing the following flags: %{flags}."
+      why: "Mount flags like noexec, nosuid, and nodev on /tmp prevent attackers from executing payloads, escalating privileges via setuid binaries, or creating special device files in a world-writable directory."
+      fix: "Add the missing flags to the /tmp line in /etc/fstab (e.g., 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev,size=1G 0 0'). Remount with 'mount -o remount,noexec,nosuid,nodev /tmp'. Verify with 'findmnt /tmp'."
     selinux_permissive:
       title: "SELinux is in permissive mode"
       description: "%{path} sets SELINUX to permissive."
@@ -786,6 +850,50 @@ finding:
       description: "%{service} publishes the DNS port on %{port} to a public interface."
       why: "Exposing DNS to the public internet can turn the host into an open resolver, enabling DNS amplification attacks and unauthorized use."
       fix: "Bind DNS port 53 to a LAN IP or localhost unless you intentionally run a public DNS resolver with rate limiting and logging."
+  grafana:
+    admin_public:
+      title: "Grafana admin interface is publicly exposed"
+      description: "%{service} exposes the Grafana admin UI on %{port}."
+      why: "A publicly reachable Grafana admin interface allows anyone to access monitoring dashboards and administrative settings."
+      fix: "Restrict Grafana to localhost or a trusted network, or place it behind a reverse proxy with authentication."
+    auth_disabled:
+      title: "Grafana authentication is disabled"
+      description: "%{service} disables the login form via GF_AUTH_DISABLE_LOGIN_FORM."
+      why: "Disabling Grafana authentication removes all access control, allowing anyone to view and modify dashboards and data sources."
+      fix: "Remove GF_AUTH_DISABLE_LOGIN_FORM or set it to false, and ensure GF_SECURITY_ADMIN_PASSWORD is set to a strong password."
+    anonymous_access:
+      title: "Grafana anonymous access is enabled"
+      description: "%{service} enables anonymous access via GF_AUTH_ANONYMOUS_ENABLED."
+      why: "Anonymous access allows unauthenticated users to view dashboards. Combined with public exposure, this leaks operational data."
+      fix: "Set GF_AUTH_ANONYMOUS_ENABLED to false unless anonymous viewing is intentional and the instance is not publicly exposed."
+  npm:
+    admin_public:
+      title: "NPM admin interface is publicly exposed"
+      description: "%{service} exposes the Nginx Proxy Manager admin UI on %{port}."
+      why: "A publicly reachable NPM admin interface allows anyone to manage reverse proxies, SSL certificates, and access rules."
+      fix: "Restrict NPM to localhost or a trusted network, or place it behind a VPN. Change the default admin credentials immediately."
+  authentik:
+    admin_public:
+      title: "Authentik interface is publicly exposed"
+      description: "%{service} exposes the Authentik UI on %{port}."
+      why: "A publicly reachable identity provider admin interface is a high-value target for attackers seeking to compromise authentication flows."
+      fix: "Restrict Authentik to localhost or a trusted network, or place it behind a reverse proxy with strong authentication."
+    debug_enabled:
+      title: "Authentik debug mode is enabled"
+      description: "%{service} sets AUTHENTIK_DEBUG, enabling verbose error output and debug endpoints."
+      why: "Debug mode can leak stack traces, configuration details, and internal paths that help attackers craft targeted attacks."
+      fix: "Remove AUTHENTIK_DEBUG or set it to false in production environments."
+  paperless:
+    ui_public:
+      title: "Paperless-ngx UI is publicly exposed"
+      description: "%{service} exposes the Paperless-ngx web interface on %{port}."
+      why: "A publicly reachable document management interface may expose sensitive scanned documents and metadata."
+      fix: "Restrict Paperless-ngx to localhost or a trusted network, or place it behind a reverse proxy with authentication."
+    no_force_login:
+      title: "Paperless-ngx does not force login"
+      description: "%{service} does not set PAPERLESS_FORCE_LOGIN, allowing anonymous access to documents."
+      why: "Without forced authentication, anyone who can reach the Paperless UI can browse and download documents."
+      fix: "Set PAPERLESS_FORCE_LOGIN to true and configure PAPERLESS_ADMIN_USER and PAPERLESS_ADMIN_PASSWORD."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

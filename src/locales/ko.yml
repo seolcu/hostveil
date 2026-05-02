@@ -18,6 +18,26 @@ app:
     usage: "사용법"
     options: "옵션"
     lifecycle: "수명주기"
+    global: "전역"
+    show_help: "도움말 표시"
+    overview: "개요 화면"
+    findings: "발견 사항 화면"
+    settings: "설정 열기"
+    quit: "종료"
+    overview_nav: "개요"
+    move_focus: "패널 간 포커스 이동"
+    open_findings: "발견 사항 보기 열기"
+    host_findings: "호스트 발견 사항 열기"
+    findings_nav: "발견 사항"
+    select: "발견 항목 선택"
+    scroll_detail: "상세 내용 스크롤"
+    focus_detail: "상세 패널 포커스"
+    focus_list: "리스트 패널 포커스"
+    cycle_filters: "필터 순환 (심각도/소스/조치/범위/서비스)"
+    cycle_sort: "정렬 모드 순환"
+    mouse: "마우스"
+    scroll: "스크롤"
+    click: "선택 / 토글"
     text: |
       hostveil
 
@@ -128,6 +148,12 @@ app:
     finding_detail: "상세"
     finding_detail_active: "상세 [상세 포커스]"
     settings: "설정"
+    help: "키보드 단축키"
+    search: "발견 항목 검색"
+  search:
+    prompt: "제목, 설명, 대상, 수정 방법으로 검색:"
+    placeholder: "필터링할 텍스트 입력..."
+    hint: "Enter 적용  |  Esc 취소"
   overview:
     score_caption: "전체 보안 상태"
     findings_available: "발견 항목 %{count}개가 있습니다. 상세 보기를 열어 확인하세요."
@@ -197,6 +223,9 @@ app:
     current_dir_fallback_failed: "현재 디렉터리 Compose fallback에 실패했습니다: %{error}"
   score:
     overall: "전체"
+    trend_up: "지난 스캔보다 %{delta}점 상승 ↑"
+    trend_down: "지난 스캔보다 %{delta}점 하띓"
+    trend_same: "지난 스캔과 동일"
   validation:
     auto_upgrade_mode_required: "auto-upgrade에는 enable 또는 disable 중 하나를 선택하세요"
     fix_requires_target: "fix 작업에는 compose 대상이 필요합니다"
@@ -607,6 +636,41 @@ finding:
       description: "%{path}가 %{value}로 설정되어 사용자 네임스페이스 생성이 허용됩니다."
       why: "양수 max_user_namespaces 제한은 비특권 사용자가 네임스페이스를 만들 수 있게 합니다. 이를 제한하거나 비활성화하면 비컨테이너 호스트의 커널 공격 표면이 줄어듭니다."
       fix: "'sysctl -w user.max_user_namespaces=0'로 사용자 네임스페이스를 완전히 비활성화하거나, 특정 비특권 컨테이너가 필요하면 작은 제한을 설정하세요. /etc/sysctl.d/99-userns.conf로 영구화하고 'sysctl user.max_user_namespaces'로 확인하세요."
+    kernel_modules_disabled_not_set:
+      title: "커널 모듈 로딩이 제한되지 않았습니다"
+      description: "%{path}가 0으로 설정되어 커널 모듈을 제한 없이 로드할 수 있습니다."
+      why: "제한 없는 모듈 로딩은 root나 물리적 접근 권한을 가진 공격자가 임의의 커널 코드를 로드할 수 있게 합니다. 이를 제한하면 커널 공격 표면이 줄어들고 특정 지속 기법을 어렵게 만듭니다."
+      fix: "'sysctl -w kernel.modules_disabled=1'로 새 모듈 로딩을 방지하세요. /etc/sysctl.d/99-modules.conf를 만들어 'kernel.modules_disabled = 1'를 추가하면 영구화됩니다. 참고: 설정 전에 필요한 모듈을 모두 로드해야 하며, 재부팅 없이는 되돌릴 수 없습니다."
+    grub_password_missing:
+      title: "GRUB 부트로더에 암호 보호가 없습니다"
+      description: "%{path}에 GRUB 암호나 unrestricted 제한이 없습니다."
+      why: "GRUB 암호가 없으면 물리적 또는 콘솔 접근 권한이 있는 누구나 부트 매개변수를 편집해 보안 제어를 우회하고, root 셸로 진입하거나, 부팅 시 SELinux/AppArmor를 비활성화할 수 있습니다."
+      fix: "'grub-mkpasswd-pbkdf2'로 GRUB 암호를 설정한 뒤 해시를 /etc/grub.d/40_custom에 추가하고, 'update-grub'(Debian/Ubuntu) 또는 'grub2-mkconfig -o /boot/grub2/grub.cfg'(Fedora/RHEL)로 설정을 재생성하세요."
+    shadow_permissions_weak:
+      title: "/etc/shadow 권한이 너무 개방적입니다"
+      description: "%{path}의 모드가 %{mode}로, 0640보다 개방적입니다."
+      why: "/etc/shadow는 비밀번호 해시를 저장합니다. root가 아닌 사용자에게 읽기 권한이 있으면 공격자가 해시를 추출해 오프라인 크래킹을 시도할 수 있습니다."
+      fix: "'chmod 640 %{path}'와 'chown root:shadow %{path}'(shadow 그룹이 없는 배포판은 root:root)를 실행하세요. 'ls -l %{path}'로 확인하세요."
+    shadow_weak_hash:
+      title: "/etc/shadow에 약한 비밀번호 해시가 포함되어 있습니다"
+      description: "%{path}에 최소 한 계정이 %{algorithm} 해시를 사용하고 있습니다."
+      why: "MD5나 unsalted 해시 같은 약한 알고리즘은 SHA-512나 yescrypt 같은 현대 알고리즘보다 수십 배 빠르게 크래킹될 수 있습니다."
+      fix: "'passwd -e <username>'으로 해당 계정의 비밀번호 변경을 강제하세요. PAM이 강력한 알고리즘을 사용하도록 구성되어 있는지 확인하세요. Debian/Ubuntu는 /etc/pam.d/common-password, RHEL/Fedora는 /etc/pam.d/password-auth와 /etc/pam.d/system-auth를 점검하세요."
+    shadow_empty_password:
+      title: "/etc/shadow에 빈 비밀번호 필드가 있습니다"
+      description: "%{path}에 최소 한 계정의 비밀번호 필드가 비어 있습니다."
+      why: "비어 있는 비밀번호 필드는 해당 계정에 비밀번호 없이 로그인할 수 있음을 의미하며, 이는 매우 쉬운 침해 경로입니다."
+      fix: "'passwd -l <username>'으로 해당 계정을 잠그거나 즉시 강력한 비밀번호를 설정하세요. /etc/passwd에서 불필요한 로그인 계정을 검토하고 비활성화 또는 삭제하세요."
+    tmp_not_tmpfs:
+      title: "/tmp가 tmpfs로 마운트되지 않았습니다"
+      description: "/tmp가 영구적인 파일시스템에 마운트되어 있어, 재부팅 후에도 데이터가 남습니다."
+      why: "영속적인 /tmp는 공격자가 악성 파일을 재부팅 후에도 남겨두고, 다른 사용자에게 임시 데이터를 유출할 수 있게 합니다. tmpfs 기반 /tmp는 재부팅 시 정리되고 지속성 남용을 어렵게 만듭니다."
+      fix: "/etc/fstab에 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev,size=1G 0 0' 줄을 추가하세요. 그런 다음 'systemctl daemon-reexec'와 'mount -a'를 실행하세요. 'findmnt /tmp'로 확인하세요."
+    tmp_tmpfs_flags_missing:
+      title: "/tmp tmpfs에 하드닝 플래그가 누락되었습니다"
+      description: "/tmp tmpfs 마운트에 다음 플래그가 없습니다: %{flags}."
+      why: "noexec, nosuid, nodev 같은 마운트 플래그는 /tmp에서 공격자가 페이로드를 실행하거나, setuid 바이너리로 권한을 상승시키거나, 특수 장치 파일을 만들 수 있는 것을 방지합니다."
+      fix: "/etc/fstab의 /tmp 줄에 누락된 플래그를 추가하세요(예: 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev,size=1G 0 0'). 'mount -o remount,noexec,nosuid,nodev /tmp'로 즉시 적용하세요. 'findmnt /tmp'로 확인하세요."
     selinux_permissive:
       title: "SELinux가 permissive 모드입니다"
       description: "%{path}가 SELINUX를 permissive로 설정했습니다."
@@ -786,6 +850,50 @@ finding:
       description: "%{service}가 DNS 포트를 %{port}에 공개 인터페이스에 게시했습니다."
       why: "DNS를 공개 인터넷에 노출하면 호스트가 오픈 리졸버가 되어 DNS 증폭 공격과 무단 사용을 유발할 수 있습니다."
       fix: "DNS 포트 53을 LAN IP 또는 localhost에 바인딩하세요. 의도적으로 공개 DNS 리졸버를 운영하지 않는 한 rate limiting과 로깅을 함께 적용하세요."
+  grafana:
+    admin_public:
+      title: "Grafana 관리 인터페이스가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Grafana 관리 UI를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 Grafana 관리 인터페이스는 누구나 모니터링 대시보드와 관리 설정에 접근할 수 있게 합니다."
+      fix: "Grafana를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+    auth_disabled:
+      title: "Grafana 인증이 비활성화되어 있습니다"
+      description: "%{service}가 GF_AUTH_DISABLE_LOGIN_FORM을 통해 로그인 폼을 비활성화했습니다."
+      why: "Grafana 인증을 비활성화하면 모든 접근 제어가 제거되어, 누구나 대시보드와 데이터 소스를 보고 수정할 수 있습니다."
+      fix: "GF_AUTH_DISABLE_LOGIN_FORM을 제거하거나 false로 설정하고, GF_SECURITY_ADMIN_PASSWORD를 강력한 비밀번호로 설정하세요."
+    anonymous_access:
+      title: "Grafana 익명 접근이 활성화되어 있습니다"
+      description: "%{service}가 GF_AUTH_ANONYMOUS_ENABLED를 통해 익명 접근을 활성화했습니다."
+      why: "익명 접근은 인증되지 않은 사용자가 대시보드를 볼 수 있게 합니다. 공개 노출과 결합하면 운영 데이터가 유출됩니다."
+      fix: "GF_AUTH_ANONYMOUS_ENABLED를 false로 설정하세요. 익명 조회가 의도적이고 인스턴스가 공개되지 않은 경우에만 예외로 허용하세요."
+  npm:
+    admin_public:
+      title: "NPM 관리 인터페이스가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Nginx Proxy Manager 관리 UI를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 NPM 관리 인터페이스는 누구나 리버스 프록시, SSL 인증서, 접근 규칙을 관리할 수 있게 합니다."
+      fix: "NPM을 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나 VPN 뒤에 배치하세요. 기본 관리자 자격 증명을 즉시 변경하세요."
+  authentik:
+    admin_public:
+      title: "Authentik 인터페이스가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Authentik UI를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 IdP 관리 인터페이스는 공격자가 인증 흐름을 침해하려는 주요 표적입니다."
+      fix: "Authentik을 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 강력한 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+    debug_enabled:
+      title: "Authentik 디버그 모드가 활성화되어 있습니다"
+      description: "%{service}가 AUTHENTIK_DEBUG를 설정하여 상세한 오류 출력과 디버그 엔드포인트를 활성화했습니다."
+      why: "디버그 모드는 스택 추적, 설정 세부 정보, 낮부 경로를 유출하여 공격자가 표적화된 공격을 구성하는 데 도움을 줄 수 있습니다."
+      fix: "프로덕션 환경에서 AUTHENTIK_DEBUG를 제거하거나 false로 설정하세요."
+  paperless:
+    ui_public:
+      title: "Paperless-ngx UI가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Paperless-ngx 웹 인터페이스를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 문서 관리 인터페이스는 민감한 스캔 문서와 메타데이터를 노출할 수 있습니다."
+      fix: "Paperless-ngx를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+    no_force_login:
+      title: "Paperless-ngx가 로그인을 강제하지 않습니다"
+      description: "%{service}가 PAPERLESS_FORCE_LOGIN을 설정하지 않아 익명 사용자가 문서에 접근할 수 있습니다."
+      why: "강제 인증이 없으면 Paperless UI에 접근할 수 있는 누구나 문서를 탐색하고 다운로드할 수 있습니다."
+      fix: "PAPERLESS_FORCE_LOGIN을 true로 설정하고 PAPERLESS_ADMIN_USER와 PAPERLESS_ADMIN_PASSWORD를 구성하세요."
 remediation:
   auto_fixable: "자동"
   manual: "수동"

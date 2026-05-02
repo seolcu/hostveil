@@ -177,6 +177,9 @@ struct AppState {
     hit_boxes: Vec<(Rect, HitTarget)>,
     screen: Screen,
     settings_open: bool,
+    help_open: bool,
+    search_open: bool,
+    search_query: String,
     settings_row: usize,
     findings_focus: FindingsFocus,
     overview_focus: OverviewFocus,
@@ -187,6 +190,7 @@ struct AppState {
     sorted_indices: Vec<usize>,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
+    scope_filter: Option<Scope>,
     remediation_filter: RemediationFilter,
     service_filter: Option<String>,
     sort_mode: FindingSortMode,
@@ -242,6 +246,9 @@ impl AppState {
             hit_boxes: Vec::new(),
             screen: Screen::Overview,
             settings_open: false,
+            help_open: false,
+            search_open: false,
+            search_query: String::new(),
             settings_row: 0,
             findings_focus: FindingsFocus::List,
             overview_focus: OverviewFocus::ServerStatus,
@@ -258,12 +265,15 @@ impl AppState {
                 scan_result,
                 severity_filter,
                 source_filter,
+                None,
                 remediation_filter,
                 service_filter.as_deref(),
                 sort_mode,
+                None,
             ),
             severity_filter,
             source_filter,
+            scope_filter: None,
             remediation_filter,
             service_filter: None,
             sort_mode,
@@ -397,9 +407,11 @@ impl AppState {
             scan_result,
             self.severity_filter,
             self.source_filter,
+            self.scope_filter,
             self.remediation_filter,
             self.service_filter.as_deref(),
             self.sort_mode,
+            Some(self.search_query.as_str()).filter(|q| !q.is_empty()),
         );
 
         if self.sorted_indices.is_empty() {
@@ -741,10 +753,10 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
                 if state.findings_focus == FindingsFocus::List {
                     state.select_next();
                 } else {
-                    state.scroll_detail_down(2);
+                    state.scroll_detail_down(3);
                 }
             } else {
-                state.scroll_overview_down(2);
+                state.scroll_overview_down(3);
             }
         }
         MouseEventKind::ScrollUp => {
@@ -754,10 +766,10 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
                 if state.findings_focus == FindingsFocus::List {
                     state.select_previous();
                 } else {
-                    state.scroll_detail_up(2);
+                    state.scroll_detail_up(3);
                 }
             } else {
-                state.scroll_overview_up(2);
+                state.scroll_overview_up(3);
             }
         }
         _ => {}
@@ -767,13 +779,27 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
 }
 
 fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> Option<TuiAction> {
+    if state.help_open {
+        if matches!(key.code, KeyCode::Esc | KeyCode::Char('?')) {
+            state.help_open = false;
+        }
+        return None;
+    }
+
+    if state.search_open {
+        return handle_search_key(state, scan_result, key);
+    }
+
     if state.settings_open {
         return handle_settings_key(state, key);
     }
 
-    if matches!(key.code, KeyCode::Char('?'))
-        || (matches!(key.code, KeyCode::Char(',')) && key.modifiers.contains(KeyModifiers::CONTROL))
-    {
+    if matches!(key.code, KeyCode::Char('?')) {
+        state.help_open = true;
+        return None;
+    }
+
+    if matches!(key.code, KeyCode::Char(',')) && key.modifiers.contains(KeyModifiers::CONTROL) {
         state.open_settings();
         return None;
     }
@@ -789,6 +815,11 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
         }
         KeyCode::Char('s') => {
             state.open_settings();
+            return None;
+        }
+        KeyCode::Char('/') => {
+            state.search_open = true;
+            state.search_query.clear();
             return None;
         }
         _ => {}
@@ -838,6 +869,35 @@ fn handle_settings_key(state: &mut AppState, key: KeyEvent) -> Option<TuiAction>
     }
 }
 
+fn handle_search_key(
+    state: &mut AppState,
+    scan_result: &ScanResult,
+    key: KeyEvent,
+) -> Option<TuiAction> {
+    match key.code {
+        KeyCode::Esc => {
+            state.search_open = false;
+            state.search_query.clear();
+            state.clamp_selection(scan_result);
+            None
+        }
+        KeyCode::Enter => {
+            state.search_open = false;
+            state.clamp_selection(scan_result);
+            None
+        }
+        KeyCode::Backspace => {
+            state.search_query.pop();
+            None
+        }
+        KeyCode::Char(c) => {
+            state.search_query.push(c);
+            None
+        }
+        _ => None,
+    }
+}
+
 fn handle_overview_key(
     state: &mut AppState,
     scan_result: &ScanResult,
@@ -846,14 +906,16 @@ fn handle_overview_key(
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => Some(TuiAction::Exit),
         KeyCode::Char('f') => {
-            scan_result
-                .metadata
-                .compose_file
-                .clone()
-                .map(|path| TuiAction::TriggerFix {
-                    compose_file: path,
-                    finding_id: None,
-                })
+            state.scope_filter = None;
+            state.screen = Screen::Findings;
+            state.clamp_selection(scan_result);
+            None
+        }
+        KeyCode::Char('h') => {
+            state.scope_filter = Some(Scope::Host);
+            state.screen = Screen::Findings;
+            state.clamp_selection(scan_result);
+            None
         }
         KeyCode::Char('L') => {
             state.cycle_layout();
@@ -983,6 +1045,14 @@ fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut 
 
     if state.settings_open {
         render_settings_modal(frame, state);
+    }
+
+    if state.help_open {
+        render_help_overlay(frame, state);
+    }
+
+    if state.search_open {
+        render_search_modal(frame, state);
     }
 }
 
@@ -1782,6 +1852,167 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     );
 }
 
+fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
+    let area = frame.area();
+    let modal = centered_rect(75, 70, area);
+    let modal = clamp_rect_width(modal, 90);
+    let theme = &state.theme;
+
+    {
+        let buffer = frame.buffer_mut();
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                if let Some(cell) = buffer.cell_mut((x, y)) {
+                    let style = cell.style();
+                    if let Some(bg) = style.bg {
+                        cell.set_style(style.bg(darken_color(bg, 0.55)));
+                    }
+                }
+            }
+        }
+    }
+    frame.render_widget(Clear, modal);
+
+    let block = Block::default()
+        .title(format!(" {} ", t!("app.panel.help").into_owned()))
+        .borders(Borders::ALL)
+        .border_style(theme.title)
+        .style(theme.surface);
+    let inner = block.inner(modal);
+    frame.render_widget(block, modal);
+
+    let shortcuts = vec![
+        (
+            t!("app.help.global").into_owned(),
+            vec![
+                ("?", t!("app.help.show_help").into_owned()),
+                ("1", t!("app.help.overview").into_owned()),
+                ("2", t!("app.help.findings").into_owned()),
+                ("s / Ctrl+,", t!("app.help.settings").into_owned()),
+                ("q / Esc", t!("app.help.quit").into_owned()),
+            ],
+        ),
+        (
+            t!("app.help.overview_nav").into_owned(),
+            vec![
+                ("↑ ↓ / k j", t!("app.help.move_focus").into_owned()),
+                ("Enter", t!("app.help.open_findings").into_owned()),
+                ("h", t!("app.help.host_findings").into_owned()),
+            ],
+        ),
+        (
+            t!("app.help.findings_nav").into_owned(),
+            vec![
+                ("↑ ↓ / k j", t!("app.help.select").into_owned()),
+                ("PgUp / PgDn", t!("app.help.scroll_detail").into_owned()),
+                ("Enter / →", t!("app.help.focus_detail").into_owned()),
+                ("← / Esc", t!("app.help.focus_list").into_owned()),
+                (
+                    "f / a / r / c / l",
+                    t!("app.help.cycle_filters").into_owned(),
+                ),
+                ("S", t!("app.help.cycle_sort").into_owned()),
+            ],
+        ),
+        (
+            t!("app.help.mouse").into_owned(),
+            vec![
+                ("Scroll", t!("app.help.scroll").into_owned()),
+                ("Click", t!("app.help.click").into_owned()),
+            ],
+        ),
+    ];
+
+    let mut lines = vec![Line::raw("")];
+    for (section_title, items) in shortcuts {
+        lines.push(Line::styled(format!("  {}", section_title), theme.title));
+        for (key, desc) in items {
+            lines.push(Line::from(vec![
+                Span::styled(format!("    {:14}", key), theme.highlight),
+                Span::styled(desc, theme.base),
+            ]));
+        }
+        lines.push(Line::raw(""));
+    }
+
+    let content = Text::from(lines);
+    frame.render_widget(
+        Paragraph::new(content)
+            .style(theme.surface)
+            .wrap(Wrap { trim: false })
+            .scroll((0, 0)),
+        inner,
+    );
+}
+
+fn render_search_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
+    let area = frame.area();
+    let modal = centered_rect(60, 20, area);
+    let modal = clamp_rect_width(modal, 80);
+    let theme = &state.theme;
+
+    {
+        let buffer = frame.buffer_mut();
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                if let Some(cell) = buffer.cell_mut((x, y)) {
+                    let style = cell.style();
+                    if let Some(bg) = style.bg {
+                        cell.set_style(style.bg(darken_color(bg, 0.55)));
+                    }
+                }
+            }
+        }
+    }
+    frame.render_widget(Clear, modal);
+
+    let block = Block::default()
+        .title(format!(" {} ", t!("app.panel.search").into_owned()))
+        .borders(Borders::ALL)
+        .border_style(theme.title)
+        .style(theme.surface);
+    let inner = block.inner(modal);
+    frame.render_widget(block, modal);
+
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(2),
+            Constraint::Length(1),
+        ])
+        .split(inner);
+
+    frame.render_widget(
+        Paragraph::new(t!("app.search.prompt").into_owned()).style(theme.muted),
+        layout[0],
+    );
+
+    let query_line = if state.search_query.is_empty() {
+        Line::styled(t!("app.search.placeholder").into_owned(), theme.muted)
+    } else {
+        Line::styled(state.search_query.clone(), theme.base)
+    };
+
+    frame.render_widget(
+        Paragraph::new(query_line)
+            .block(
+                Block::default()
+                    .borders(Borders::BOTTOM)
+                    .border_style(theme.border),
+            )
+            .style(theme.surface),
+        layout[1],
+    );
+
+    frame.render_widget(
+        Paragraph::new(t!("app.search.hint").into_owned())
+            .style(theme.muted)
+            .alignment(Alignment::Center),
+        layout[2],
+    );
+}
+
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -2033,8 +2264,12 @@ fn render_security_scores_panel(
         ));
         lines.push(Line::raw(String::new()));
     }
-    for (label, score, _) in score_rows(scan_result) {
-        lines.push(Line::raw(format!("{}: {}", label, score)));
+    for (label, score, is_overall) in score_rows(scan_result) {
+        let mut line = format!("{}: {}", label, score);
+        if is_overall && let Some(delta) = overall_score_delta() {
+            line.push_str(&format!(" ({})", delta));
+        }
+        lines.push(Line::raw(line));
     }
 
     let content = Text::from(lines);
@@ -2863,6 +3098,20 @@ fn fail2ban_detail(runtime: &HostRuntimeInfo) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(", "))
 }
 
+fn overall_score_delta() -> Option<String> {
+    let history = crate::history::load();
+    let previous = history.previous_overall()?;
+    let current = history.entries.last()?.overall;
+    let delta = current as i16 - previous as i16;
+    if delta > 0 {
+        Some(t!("app.score.trend_up", delta = delta).into_owned())
+    } else if delta < 0 {
+        Some(t!("app.score.trend_down", delta = -delta).into_owned())
+    } else {
+        Some(t!("app.score.trend_same").into_owned())
+    }
+}
+
 fn score_rows(scan_result: &ScanResult) -> Vec<(String, u8, bool)> {
     let mut rows = vec![(
         t!("app.score.overall").into_owned(),
@@ -3023,22 +3272,32 @@ fn result_group_label(finding: &Finding) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn visible_finding_indices(
     scan_result: &ScanResult,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
+    scope_filter: Option<Scope>,
     remediation_filter: RemediationFilter,
     service_filter: Option<&str>,
     sort_mode: FindingSortMode,
+    search_query: Option<&str>,
 ) -> Vec<usize> {
+    let query = search_query.unwrap_or("").to_lowercase();
     let mut indices = (0..scan_result.findings.len()).collect::<Vec<_>>();
     indices.retain(|index| {
         scan_result.findings.get(*index).is_some_and(|finding| {
             severity_filter.is_none_or(|severity| finding.severity == severity)
                 && source_filter.is_none_or(|source| finding.source == source)
+                && scope_filter.is_none_or(|scope| finding.scope == scope)
                 && remediation_filter_matches(finding.remediation, remediation_filter)
                 && service_filter
                     .is_none_or(|service| finding.related_service.as_deref() == Some(service))
+                && (query.is_empty()
+                    || finding.title.to_lowercase().contains(&query)
+                    || finding.description.to_lowercase().contains(&query)
+                    || finding.subject.to_lowercase().contains(&query)
+                    || finding.how_to_fix.to_lowercase().contains(&query))
         })
     });
     indices.sort_by(|left, right| {
