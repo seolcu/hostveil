@@ -165,6 +165,21 @@ The repository pins the shared Rust toolchain in `rust-toolchain.toml`.
 
 All user-facing strings must go through the i18n layer. Do not hardcode display strings in English or any other language directly. See `docs/adr/` for the chosen i18n approach.
 
+## Fix Verification Scenarios
+
+End-to-end remediation scenarios live in `tests/scenarios/<name>/`.
+
+Each scenario needs:
+- `docker-compose.yml` — the vulnerable input
+- `expected.yml` — the expected file after `--fix`
+- `expected-quick-fix.yml` (optional) — the expected file after `--quick-fix` when it differs from `--fix`
+
+Add a scenario when you introduce a new safe or guided Compose fix. Run the full suite with:
+
+```sh
+./scripts/verify-fixes.sh target/debug/hostveil
+```
+
 ## Code of Conduct
 
 Be respectful and constructive. Focus on the work.

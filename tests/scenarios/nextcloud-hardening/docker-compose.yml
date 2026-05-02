@@ -1,0 +1,9 @@
+services:
+  nextcloud:
+    image: nextcloud:31.0.0
+    user: "1000:1000"
+    ports:
+      - "8080:80"
+    environment:
+      OVERWRITEPROTOCOL: "http"
+      NEXTCLOUD_TRUSTED_DOMAINS: "cloud.example.com, *.example.com, 0.0.0.0"
