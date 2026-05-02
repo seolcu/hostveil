@@ -203,6 +203,7 @@ app:
     fix_compose_conflict: "use --quick-fix PATH or --fix PATH instead of combining them with --compose"
     fix_json_not_supported: "--json is not supported with fix operations"
     preview_yes_requires_fix_mode: "--preview-changes and --yes are only valid with --quick-fix or --fix"
+    findings_only_requires_json: "--findings-only is only valid with --json"
     fix_mode_conflict: "choose only one of --quick-fix or --fix"
     unsupported_locale: "unsupported locale: %{value}"
     duplicate_locale_override: "choose only one --locale override"

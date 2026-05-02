@@ -189,7 +189,10 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
         }
         OutputMode::Json => {
             let scan_result = scan::run(&config)?;
-            print!("{}", export::scan_result_json(&scan_result));
+            print!(
+                "{}",
+                export::scan_result_json_filtered(&scan_result, config.findings_only)
+            );
         }
     }
 

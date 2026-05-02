@@ -1,10 +1,51 @@
+use serde::Serialize;
 use serde_json::to_string_pretty;
 
-use crate::domain::ScanResult;
+use crate::domain::{Finding, ScanResult, ScoreReport};
 use crate::i18n;
 
+const JSON_SCHEMA_VERSION: &str = "0.13.0";
+
+/// Versioned JSON export wrapper.
+///
+/// This struct stabilizes the top-level schema so downstream consumers
+/// can rely on field presence even as internal `ScanResult` layout evolves.
+#[derive(Debug, Clone, Serialize)]
+struct JsonExport<'a> {
+    version: &'a str,
+    findings: &'a [Finding],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    score_report: Option<&'a ScoreReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<&'a crate::domain::ScanMetadata>,
+}
+
 pub fn scan_result_json(scan_result: &ScanResult) -> String {
-    to_string_pretty(scan_result).unwrap_or_else(|_| {
+    scan_result_json_filtered(scan_result, false)
+}
+
+/// Export scan result as JSON, optionally omitting metadata and scores.
+///
+/// When `findings_only` is true, only the `findings` array is included,
+/// producing a compact output suitable for piping into other tools.
+pub fn scan_result_json_filtered(scan_result: &ScanResult, findings_only: bool) -> String {
+    let export = if findings_only {
+        JsonExport {
+            version: JSON_SCHEMA_VERSION,
+            findings: &scan_result.findings,
+            score_report: None,
+            metadata: None,
+        }
+    } else {
+        JsonExport {
+            version: JSON_SCHEMA_VERSION,
+            findings: &scan_result.findings,
+            score_report: Some(&scan_result.score_report),
+            metadata: Some(&scan_result.metadata),
+        }
+    };
+
+    to_string_pretty(&export).unwrap_or_else(|_| {
         format!(
             concat!(
                 "{{\n",
@@ -31,7 +72,7 @@ mod tests {
 
     use serde_json::Value;
 
-    use super::scan_result_json;
+    use super::{scan_result_json, scan_result_json_filtered};
     use crate::domain::{
         AdapterStatus, Axis, DefensiveControlStatus, DiscoveredProjectSummary,
         DockerDiscoveryStatus, Finding, HostRuntimeInfo, RemediationKind, ScanMetadata, ScanMode,
@@ -224,5 +265,36 @@ mod tests {
         assert_eq!(json["findings"][0]["evidence"]["subject"], "web");
         assert!(json["score_report"]["axis_scores"].is_object());
         assert!(json["score_report"]["severity_counts"]["critical"].is_number());
+    }
+
+    #[test]
+    fn emits_versioned_schema() {
+        let result = ScanResult::default();
+        let json = parse_json(&result);
+
+        assert_eq!(json["version"].as_str().unwrap(), "0.13.0");
+        assert!(json["findings"].is_array());
+        assert!(json["score_report"].is_object());
+        assert!(json["metadata"].is_object());
+    }
+
+    #[test]
+    fn findings_only_omits_score_and_metadata() {
+        let mut result = ScanResult::default();
+        result.findings.push(test_finding(
+            "service.public_binding",
+            Scope::Service,
+            Source::NativeCompose,
+            "web",
+            Some("web"),
+        ));
+
+        let json: Value =
+            serde_json::from_str(&scan_result_json_filtered(&result, true)).expect("should parse");
+
+        assert_eq!(json["version"].as_str().unwrap(), "0.13.0");
+        assert_eq!(json["findings"].as_array().unwrap().len(), 1);
+        assert!(!json.as_object().unwrap().contains_key("score_report"));
+        assert!(!json.as_object().unwrap().contains_key("metadata"));
     }
 }

@@ -154,6 +154,10 @@ pub fn tr_preview_yes_requires_fix_mode() -> String {
     t!("app.validation.preview_yes_requires_fix_mode").into_owned()
 }
 
+pub fn tr_findings_only_requires_json() -> String {
+    t!("app.validation.findings_only_requires_json").into_owned()
+}
+
 pub fn tr_fix_mode_conflict() -> String {
     t!("app.validation.fix_mode_conflict").into_owned()
 }

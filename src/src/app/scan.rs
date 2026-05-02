@@ -784,6 +784,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -817,6 +818,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -850,6 +852,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -890,9 +893,10 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
-        let result = run(&config).expect("snapshot host scan should succeed");
+        let result = run(&config).expect("scan should succeed");
 
         let status = result
             .metadata
@@ -922,6 +926,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -981,6 +986,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run_native(&config).expect("scan should succeed");
@@ -1059,6 +1065,7 @@ mod tests {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         };
 
         let result = run_native(&config).expect("combined scan should succeed");

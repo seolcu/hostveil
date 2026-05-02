@@ -154,6 +154,7 @@ pub struct AppConfig {
     pub fix_target_path: Option<PathBuf>,
     pub preview_changes: bool,
     pub assume_yes: bool,
+    pub findings_only: bool,
 }
 
 impl Default for AppConfig {
@@ -172,6 +173,7 @@ impl Default for AppConfig {
             fix_target_path: None,
             preview_changes: false,
             assume_yes: false,
+            findings_only: false,
         }
     }
 }
@@ -229,6 +231,7 @@ impl AppConfig {
                 "-V" | "--version" => config.show_version = true,
                 "--preview-changes" => config.preview_changes = true,
                 "--yes" => config.assume_yes = true,
+                "--findings-only" => config.findings_only = true,
                 "--compose" => {
                     let value = args
                         .next()
@@ -461,6 +464,12 @@ impl AppConfig {
             ));
         }
 
+        if self.findings_only && self.output_mode != OutputMode::Json {
+            return Err(AppError::InvalidArgumentCombination(
+                crate::i18n::tr_findings_only_requires_json(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -612,6 +621,26 @@ mod tests {
         let config = AppConfig::parse([String::from("--json")]).expect("config should parse");
 
         assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn parses_findings_only_with_json() {
+        let config = AppConfig::parse([String::from("--json"), String::from("--findings-only")])
+            .expect("config should parse");
+
+        assert!(config.findings_only);
+        assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn rejects_findings_only_without_json() {
+        let error = AppConfig::parse([String::from("--findings-only")])
+            .expect_err("findings-only should require json");
+
+        assert!(matches!(
+            error,
+            super::AppError::InvalidArgumentCombination(_)
+        ));
     }
 
     #[test]
