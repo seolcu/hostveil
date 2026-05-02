@@ -814,6 +814,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -849,6 +850,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -884,6 +886,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -926,6 +929,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -960,6 +964,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -1022,6 +1027,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run_native(&config).expect("scan should succeed");
@@ -1102,6 +1108,7 @@ mod tests {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         };
 
         let result = run_native(&config).expect("combined scan should succeed");
