@@ -627,6 +627,11 @@ finding:
       description: "%{path}에 SELinux 또는 AppArmor 설치 마커가 없습니다."
       why: "강제 접근 제어 프레임워크는 기존 Unix 권한을 넘어 방어 깊이를 추가합니다. 이들이 없으면 침핵된 프로세스에 대한 제약이 줄어듭니다."
       fix: "Debian/Ubuntu는 'apt install apparmor apparmor-profiles'로, RHEL/Fedora는 SELinux를 활성화하세요('setenforce 1'). 설치 후 중요 컨테이너와 서비스가 제한된 프로필 하에서 실행되는지 확인하세요."
+    mount_flags_missing:
+      title: "민감한 마운트에 하드닝 플래그가 없습니다"
+      description: "%{mount_point}에 다음 플래그가 누락되었습니다: %{flags}."
+      why: "noexec, nosuid, nodev 같은 마운트 플래그는 해당 파티션에서 무엇을 실행하거나 권한을 상승시킬 수 있는지 제한합니다. 민감한 디렉터리에서 이들이 없으면 침해 시 영향 범위가 커집니다."
+      fix: "/etc/fstab에서 %{mount_point}에 누락된 플래그를 추가하세요(예: 'defaults,noexec,nosuid,nodev'). 'mount -o remount,noexec,nosuid,nodev %{mount_point}'로 즉시 적용하세요. 'findmnt %{mount_point}'나 'mount | grep %{mount_point}'로 확인하세요. /boot를 변경하기 전에 백업 부팅 매체를 준비하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"

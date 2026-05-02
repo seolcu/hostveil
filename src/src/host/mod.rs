@@ -68,6 +68,7 @@ impl HostScanner {
         findings.extend(scan_package_update_hardening(context));
         findings.extend(scan_kernel_hardening(context));
         findings.extend(scan_user_namespace_settings(context));
+        findings.extend(scan_mount_flags(context));
         findings.extend(scan_mac_frameworks(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
@@ -908,6 +909,80 @@ fn scan_package_update_hardening(context: &HostContext) -> Vec<Finding> {
     }
 
     findings
+}
+
+fn scan_mount_flags(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let mounts_path = context.root.join("proc/mounts");
+
+    let text = match fs::read_to_string(&mounts_path) {
+        Ok(text) => text,
+        Err(_) => return findings,
+    };
+
+    let mounts = parse_proc_mounts(&text);
+
+    let sensitive_mounts: [(&str, &[&str]); 4] = [
+        ("/tmp", &["noexec", "nosuid", "nodev"]),
+        ("/home", &["noexec", "nosuid", "nodev"]),
+        ("/var", &["noexec", "nosuid", "nodev"]),
+        ("/boot", &["noexec", "nosuid", "nodev"]),
+    ];
+
+    for (mount_point, expected_flags) in &sensitive_mounts {
+        let Some(options) = mounts.get(*mount_point) else {
+            continue;
+        };
+
+        let missing: Vec<&str> = expected_flags
+            .iter()
+            .filter(|flag| !options.iter().any(|opt| opt == **flag))
+            .copied()
+            .collect();
+
+        if missing.is_empty() {
+            continue;
+        }
+
+        findings.push(host_finding(
+            "host.mount_flags_missing",
+            Severity::Medium,
+            &mounts_path,
+            HostFindingText {
+                title: t!("finding.host.mount_flags_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.mount_flags_missing.description",
+                    mount_point = mount_point,
+                    flags = missing.join(", ")
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.mount_flags_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.mount_flags_missing.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("mount_point"), mount_point.to_string()),
+                (String::from("missing_flags"), missing.join(", ")),
+            ]),
+        ));
+    }
+
+    findings
+}
+
+fn parse_proc_mounts(text: &str) -> BTreeMap<String, Vec<String>> {
+    let mut mounts = BTreeMap::new();
+
+    for line in text.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 4 {
+            continue;
+        }
+        let mount_point = parts[1].to_owned();
+        let options: Vec<String> = parts[3].split(',').map(String::from).collect();
+        mounts.insert(mount_point, options);
+    }
+
+    mounts
 }
 
 fn detect_ufw_installed(root: &Path) -> bool {
@@ -1776,6 +1851,36 @@ mod tests {
             findings
                 .iter()
                 .any(|finding| finding.id == "host.mac_framework_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_missing_mount_flags() {
+        let root = temp_host_root("mount-flags");
+        write_file(
+            &root.join("proc/mounts"),
+            concat!(
+                "tmpfs /tmp tmpfs rw,relatime 0 0\n",
+                "ext4 /home ext4 rw,noexec,nosuid,nodev,relatime 0 0\n",
+                "ext4 /var ext4 rw,noexec,nosuid,nodev,relatime 0 0\n",
+            ),
+        );
+        write_file(&root.join("etc/hostname"), "mount-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        let mount_findings: Vec<_> = findings
+            .iter()
+            .filter(|f| f.id == "host.mount_flags_missing")
+            .collect();
+        assert_eq!(mount_findings.len(), 1);
+        assert_eq!(
+            mount_findings[0].evidence.get("mount_point"),
+            Some(&String::from("/tmp"))
         );
 
         fs::remove_dir_all(root).expect("temp root should be removed");

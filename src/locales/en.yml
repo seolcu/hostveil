@@ -627,6 +627,11 @@ finding:
       description: "%{path} does not show SELinux or AppArmor installation markers."
       why: "Mandatory access control frameworks add a layer of defense-in-depth beyond traditional Unix permissions. Their absence means fewer constraints on compromised processes."
       fix: "Install AppArmor ( Debian/Ubuntu: 'apt install apparmor apparmor-profiles' ) or SELinux ( RHEL/Fedora: usually preinstalled; enable with 'setenforce 1' ). Ensure critical containers and services run under confined profiles after installation."
+    mount_flags_missing:
+      title: "Sensitive mount lacks hardening flags"
+      description: "%{mount_point} is missing the following flags: %{flags}."
+      why: "Mount flags like noexec, nosuid, and nodev restrict what can run or escalate privileges from a partition. Their absence on sensitive directories increases blast radius from compromise."
+      fix: "Add the missing flags to /etc/fstab for %{mount_point} (e.g., 'defaults,noexec,nosuid,nodev'). Remount with 'mount -o remount,noexec,nosuid,nodev %{mount_point}'. Verify with 'findmnt %{mount_point}' or 'mount | grep %{mount_point}'. Ensure a backup boot medium is available before changing /boot."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"
