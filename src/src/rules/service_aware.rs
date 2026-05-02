@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use crate::compose::{ComposeProject, ComposeService};
-use crate::domain::{Axis, Finding, Severity};
+use crate::domain::{Axis, Finding, RemediationKind, Severity};
 
 use super::exposure::is_public_port;
-use super::{ServiceFindingText, service_finding};
+use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ServiceKind {
@@ -1182,7 +1182,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
     });
 
     if !has_password {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.postgres.password_missing",
             Axis::SensitiveData,
             Severity::Critical,
@@ -1198,6 +1198,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.postgres.password_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("POSTGRES_PASSWORD"))]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1228,7 +1229,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     if env_equals(service, "POSTGRES_HOST_AUTH_METHOD", "trust") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.postgres.trust_auth",
             Axis::SensitiveData,
             Severity::High,
@@ -1247,6 +1248,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("POSTGRES_HOST_AUTH_METHOD"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1263,7 +1265,7 @@ fn scan_mysql_risk(service: &ComposeService) -> Vec<Finding> {
     });
 
     if !has_root_password {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.mysql.password_missing",
             Axis::SensitiveData,
             Severity::Critical,
@@ -1282,6 +1284,7 @@ fn scan_mysql_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("MYSQL_ROOT_PASSWORD"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1329,7 +1332,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
             .contains("requirepass");
 
     if !has_password {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.redis.password_missing",
             Axis::SensitiveData,
             Severity::High,
@@ -1345,6 +1348,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.redis.password_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("REDIS_PASSWORD"))]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1375,7 +1379,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     if env_equals(service, "REDIS_PROTECTED_MODE", "no") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.redis.protected_mode_disabled",
             Axis::UnnecessaryExposure,
             Severity::High,
@@ -1394,6 +1398,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("REDIS_PROTECTED_MODE"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 

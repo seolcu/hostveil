@@ -10,6 +10,7 @@ pub enum OutputMode {
     Json,
     Sarif,
     Markdown,
+    Html,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -236,6 +237,7 @@ impl AppConfig {
                 "--json" => config.output_mode = OutputMode::Json,
                 "--sarif" => config.output_mode = OutputMode::Sarif,
                 "--markdown" => config.output_mode = OutputMode::Markdown,
+                "--html" => config.output_mode = OutputMode::Html,
                 "-h" | "--help" => config.show_help = true,
                 "-V" | "--version" => config.show_version = true,
                 "--preview-changes" => config.preview_changes = true,
@@ -675,6 +677,13 @@ mod tests {
         let config = AppConfig::parse([String::from("--json")]).expect("config should parse");
 
         assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn parses_html_flag() {
+        let config = AppConfig::parse([String::from("--html")]).expect("config should parse");
+
+        assert_eq!(config.output_mode, OutputMode::Html);
     }
 
     #[test]

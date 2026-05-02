@@ -232,6 +232,147 @@ fn axis_label(axis: crate::domain::Axis) -> String {
     }
 }
 
+pub fn scan_result_html(scan_result: &ScanResult) -> String {
+    let report = &scan_result.score_report;
+    let score_color = if report.overall >= 80 {
+        "#9ece6a"
+    } else if report.overall >= 50 {
+        "#e0af68"
+    } else {
+        "#f7768e"
+    };
+
+    let mut html = String::new();
+    html.push_str("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
+    html.push_str("<meta charset=\"utf-8\">\n");
+    html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+    html.push_str("<title>hostveil Security Scan Report</title>\n");
+    html.push_str("<style>\n");
+    html.push_str(":root{--bg:#1a1b26;--fg:#c0caf5;--border:#24283b;--accent:#7aa2f7;--green:#9ece6a;--yellow:#e0af68;--red:#f7768e;--muted:#565f89}\n");
+    html.push_str("*{box-sizing:border-box;margin:0;padding:0}\n");
+    html.push_str("body{font-family:system-ui,monospace;background:var(--bg);color:var(--fg);line-height:1.6;padding:2rem;max-width:960px;margin:0 auto}\n");
+    html.push_str("h1{color:var(--accent);margin-bottom:.5rem;font-size:1.5rem}\n");
+    html.push_str("h2{color:var(--accent);margin:2rem 0 .5rem;font-size:1.2rem;border-bottom:1px solid var(--border);padding-bottom:.25rem}\n");
+    html.push_str("h3{color:var(--fg);margin:1.5rem 0 .5rem;font-size:1rem}\n");
+    html.push_str(".score-badge{display:inline-block;font-size:2.5rem;font-weight:bold;padding:.5rem 1.5rem;border-radius:.5rem;margin:1rem 0}\n");
+    html.push_str(".meta{color:var(--muted);margin-bottom:1rem}\n");
+    html.push_str("table{width:100%;border-collapse:collapse;margin:.5rem 0 1.5rem}\n");
+    html.push_str(
+        "th,td{padding:.5rem .75rem;text-align:left;border-bottom:1px solid var(--border)}\n",
+    );
+    html.push_str("th{color:var(--muted);font-weight:600;font-size:.85rem}\n");
+    html.push_str("td{font-size:.9rem}\n");
+    html.push_str("tr:hover{background:rgba(122,162,247,.05)}\n");
+    html.push_str(".crit{color:var(--red)}\n.high{color:var(--yellow)}\n.medium{color:var(--muted)}\n.low{color:var(--fg)}\n");
+    html.push_str("footer{text-align:center;color:var(--muted);margin-top:3rem;font-size:.8rem;border-top:1px solid var(--border);padding-top:1rem}\n");
+    html.push_str("</style>\n</head>\n<body>\n");
+
+    html.push_str("<h1>hostveil Security Scan Report</h1>\n");
+    html.push_str(&format!(
+        "<p class=\"meta\">Services: {} &middot; Findings: {} &middot; v{}</p>\n",
+        scan_result.metadata.service_count,
+        scan_result.findings.len(),
+        env!("CARGO_PKG_VERSION"),
+    ));
+
+    html.push_str(&format!(
+        "<div class=\"score-badge\" style=\"background:{}22;color:{}\">{}<span style=\"font-size:1rem\">/100</span></div>\n",
+        score_color, score_color, report.overall,
+    ));
+
+    html.push_str("<h2>Score Breakdown</h2>\n<table>\n<tr><th>Axis</th><th>Score</th></tr>\n");
+    for axis in crate::domain::Axis::ALL {
+        if let Some(&score) = report.axis_scores.get(&axis) {
+            html.push_str(&format!(
+                "<tr><td>{}</td><td>{}</td></tr>\n",
+                html_axis_label(axis),
+                score,
+            ));
+        }
+    }
+    html.push_str("</table>\n");
+
+    let mut severity_groups: BTreeMap<&str, Vec<&Finding>> = BTreeMap::new();
+    for severity in crate::domain::Severity::ALL {
+        severity_groups.insert(severity.as_key(), Vec::new());
+    }
+    for finding in &scan_result.findings {
+        let key = finding.severity.as_key();
+        if let Some(group) = severity_groups.get_mut(key) {
+            group.push(finding);
+        }
+    }
+
+    html.push_str("<h2>Findings</h2>\n");
+    for severity in crate::domain::Severity::ALL {
+        let key = severity.as_key();
+        let group = &severity_groups[key];
+        if group.is_empty() {
+            continue;
+        }
+        let severity_class = match severity {
+            crate::domain::Severity::Critical => "crit",
+            crate::domain::Severity::High => "high",
+            crate::domain::Severity::Medium => "medium",
+            crate::domain::Severity::Low => "low",
+        };
+        html.push_str(&format!(
+            "<h3 class=\"{severity_class}\">{}</h3>\n<table>\n<tr><th>ID</th><th>Subject</th><th>Description</th></tr>\n",
+            html_severity_label(severity),
+        ));
+        for finding in group {
+            html.push_str(&format!(
+                "<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>\n",
+                finding.id,
+                html_escape(&finding.subject),
+                html_escape(&finding.title),
+            ));
+        }
+        html.push_str("</table>\n");
+    }
+
+    if !scan_result.metadata.warnings.is_empty() {
+        html.push_str("<h2>Warnings</h2>\n<ul>\n");
+        for warning in &scan_result.metadata.warnings {
+            html.push_str(&format!("<li>{}</li>\n", html_escape(warning)));
+        }
+        html.push_str("</ul>\n");
+    }
+
+    html.push_str(&format!(
+        "<footer>Generated by hostveil v{}</footer>\n</body>\n</html>\n",
+        env!("CARGO_PKG_VERSION")
+    ));
+
+    html
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+fn html_axis_label(axis: crate::domain::Axis) -> &'static str {
+    match axis {
+        crate::domain::Axis::SensitiveData => "Sensitive Data",
+        crate::domain::Axis::ExcessivePermissions => "Permissions",
+        crate::domain::Axis::UnnecessaryExposure => "Exposure",
+        crate::domain::Axis::UpdateSupplyChainRisk => "Supply Chain",
+        crate::domain::Axis::HostHardening => "Host Hardening",
+    }
+}
+
+fn html_severity_label(severity: crate::domain::Severity) -> String {
+    match severity {
+        crate::domain::Severity::Critical => "Critical".into(),
+        crate::domain::Severity::High => "High".into(),
+        crate::domain::Severity::Medium => "Medium".into(),
+        crate::domain::Severity::Low => "Low".into(),
+    }
+}
+
 fn escape_json(value: &str) -> String {
     value
         .replace('\\', "\\\\")
@@ -655,5 +796,60 @@ mod tests {
         let md = scan_result_markdown(&result);
         assert!(md.contains("foo\\|bar"));
         assert!(md.contains("test \\| title"));
+    }
+
+    use super::scan_result_html;
+
+    #[test]
+    fn html_includes_doctype_and_structure() {
+        let result = ScanResult::default();
+        let html = scan_result_html(&result);
+
+        assert!(html.contains("<!DOCTYPE html>"));
+        assert!(html.contains("<title>hostveil Security Scan Report</title>"));
+        assert!(html.contains("Score Breakdown"));
+        assert!(html.contains("Findings"));
+        assert!(html.contains("</html>"));
+    }
+
+    #[test]
+    fn html_shows_score_with_color() {
+        let mut result = ScanResult::default();
+        result.score_report.overall = 42;
+        let html = scan_result_html(&result);
+
+        assert!(html.contains("42"));
+        assert!(html.contains("/100"));
+        assert!(html.contains("#f7768e")); // red for low score
+    }
+
+    #[test]
+    fn html_escapes_special_characters() {
+        let mut result = ScanResult::default();
+        let mut finding = test_finding(
+            "test.escape",
+            Scope::Service,
+            Source::NativeCompose,
+            "<script>alert('xss')</script>",
+            Some("web"),
+        );
+        finding.title = "bad & stuff".into();
+        result.findings.push(finding);
+
+        let html = scan_result_html(&result);
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(!html.contains("bad & stuff"));
+        assert!(html.contains("bad &amp; stuff"));
+    }
+
+    #[test]
+    fn html_includes_warnings_section() {
+        let mut result = ScanResult::default();
+        result.metadata.warnings.push("test warning".into());
+        let html = scan_result_html(&result);
+
+        assert!(html.contains("Warnings"));
+        assert!(html.contains("test warning"));
     }
 }

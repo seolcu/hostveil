@@ -287,6 +287,76 @@ fn apply_safe_fixes(
                 }
             }
         }
+
+        if finding_ids.contains("service.postgres.password_missing")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_postgres_password(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_postgres_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.postgres.trust_auth")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_postgres_auth(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_postgres_auth",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.mysql.password_missing")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_mysql_password(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_mysql_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.redis.password_missing")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_redis_password(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_redis_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.redis.protected_mode_disabled")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_redis_protected_mode(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_redis_protected_mode",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
     }
 
     applied
@@ -535,6 +605,60 @@ fn apply_harden_implicit_root(service: &mut Mapping) -> bool {
     }
     service.insert(yaml_key("user"), Value::String(String::from("1000:1000")));
     true
+}
+
+fn harden_postgres_password(service: &mut Mapping) -> bool {
+    update_environment_value(
+        service,
+        "POSTGRES_PASSWORD",
+        "${POSTGRES_PASSWORD:?set a strong password}",
+        true,
+    )
+}
+
+fn harden_postgres_auth(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "POSTGRES_HOST_AUTH_METHOD") else {
+        return update_environment_value(
+            service,
+            "POSTGRES_HOST_AUTH_METHOD",
+            "scram-sha-256",
+            true,
+        );
+    };
+    if current.eq_ignore_ascii_case("trust") {
+        update_environment_value(service, "POSTGRES_HOST_AUTH_METHOD", "scram-sha-256", false)
+    } else {
+        false
+    }
+}
+
+fn harden_mysql_password(service: &mut Mapping) -> bool {
+    update_environment_value(
+        service,
+        "MYSQL_ROOT_PASSWORD",
+        "${MYSQL_ROOT_PASSWORD:?set a strong password}",
+        true,
+    )
+}
+
+fn harden_redis_password(service: &mut Mapping) -> bool {
+    update_environment_value(
+        service,
+        "REDIS_PASSWORD",
+        "${REDIS_PASSWORD:?set a strong password}",
+        true,
+    )
+}
+
+fn harden_redis_protected_mode(service: &mut Mapping) -> bool {
+    let Some(current) = environment_value(service, "REDIS_PROTECTED_MODE") else {
+        return update_environment_value(service, "REDIS_PROTECTED_MODE", "yes", true);
+    };
+    if current.eq_ignore_ascii_case("no") {
+        update_environment_value(service, "REDIS_PROTECTED_MODE", "yes", false)
+    } else {
+        false
+    }
 }
 
 fn rewrite_sensitive_mount_readonly(volume: &mut Value) -> Option<String> {

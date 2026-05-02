@@ -384,6 +384,11 @@ app:
     guided_nginx_stable: "%{service}: review and pin nginx to nginx:stable"
     guided_non_root_user: "%{service}: configure an explicit non-root user (1000:1000)"
     safe_mount_readonly: "%{service}: mount sensitive path %{path} as read-only"
+    safe_postgres_password: "%{service}: add POSTGRES_PASSWORD with placeholder"
+    safe_postgres_auth: "%{service}: set POSTGRES_HOST_AUTH_METHOD to scram-sha-256"
+    safe_mysql_password: "%{service}: add MYSQL_ROOT_PASSWORD with placeholder"
+    safe_redis_password: "%{service}: add REDIS_PASSWORD with placeholder"
+    safe_redis_protected_mode: "%{service}: set REDIS_PROTECTED_MODE to yes"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"

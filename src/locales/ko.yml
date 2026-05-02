@@ -384,6 +384,11 @@ app:
     guided_nginx_stable: "%{service}: nginx를 nginx:stable로 고정하도록 검토"
     guided_non_root_user: "%{service}: 명시적인 non-root 사용자(1000:1000) 구성"
     safe_mount_readonly: "%{service}: 민감한 경로 %{path}를 읽기 전용으로 마운트"
+    safe_postgres_password: "%{service}: POSTGRES_PASSWORD 자리 표시자 추가"
+    safe_postgres_auth: "%{service}: POSTGRES_HOST_AUTH_METHOD를 scram-sha-256으로 설정"
+    safe_mysql_password: "%{service}: MYSQL_ROOT_PASSWORD 자리 표시자 추가"
+    safe_redis_password: "%{service}: REDIS_PASSWORD 자리 표시자 추가"
+    safe_redis_protected_mode: "%{service}: REDIS_PROTECTED_MODE를 yes로 설정"
 axis:
   sensitive_data: "민감 데이터"
   permissions: "권한"
