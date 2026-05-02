@@ -597,6 +597,16 @@ finding:
       description: "%{path} is set to 1 and no local Docker socket was detected."
       why: "IP forwarding turns the host into a router. When it is enabled without a clear need such as Docker or a known routing role, it can expose internal traffic paths."
       fix: "Run 'sysctl -w net.ipv4.ip_forward=0' to apply immediately. Create /etc/sysctl.d/99-ip-forward.conf with 'net.ipv4.ip_forward = 0' to persist. If this host is intentionally a router, document the exception and ensure routing is restricted by firewall rules."
+    kernel_unprivileged_userns_clone_enabled:
+      title: "Unprivileged user namespaces are enabled"
+      description: "%{path} is set to 1, allowing unprivileged users to create new namespaces."
+      why: "User namespaces expand the kernel attack surface for privilege-escalation exploits. On hosts without a container runtime, unprivileged namespace creation is usually unnecessary."
+      fix: "Run 'sysctl -w kernel.unprivileged_userns_clone=0' to apply immediately. Create /etc/sysctl.d/99-userns.conf with 'kernel.unprivileged_userns_clone = 0' to persist. Verify with 'sysctl kernel.unprivileged_userns_clone'."
+    kernel_max_user_namespaces_enabled:
+      title: "User namespaces are not restricted"
+      description: "%{path} is set to %{value}, allowing user namespace creation."
+      why: "A positive max_user_namespaces limit allows unprivileged users to create namespaces. Restricting or disabling this reduces kernel attack surface on non-container hosts."
+      fix: "Run 'sysctl -w user.max_user_namespaces=0' to disable user namespaces entirely, or set a small limit if specific unprivileged containers are required. Create /etc/sysctl.d/99-userns.conf to persist. Verify with 'sysctl user.max_user_namespaces'."
     selinux_permissive:
       title: "SELinux is in permissive mode"
       description: "%{path} sets SELINUX to permissive."

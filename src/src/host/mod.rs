@@ -67,6 +67,7 @@ impl HostScanner {
         findings.extend(scan_firewall_hardening(context));
         findings.extend(scan_package_update_hardening(context));
         findings.extend(scan_kernel_hardening(context));
+        findings.extend(scan_user_namespace_settings(context));
         findings.extend(scan_mac_frameworks(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
@@ -764,6 +765,72 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_ip_forward_enabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("1"))]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_user_namespace_settings(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let docker_present = resolve_existing_path(&context.root, DOCKER_SOCKET_PATH).is_some();
+
+    if docker_present {
+        return findings;
+    }
+
+    if let Some(value) = read_sysctl(context, "proc/sys/kernel/unprivileged_userns_clone")
+        && value.trim() == "1"
+    {
+        findings.push(host_finding(
+            "host.kernel.unprivileged_userns_clone_enabled",
+            Severity::Medium,
+            &context
+                .root
+                .join("proc/sys/kernel/unprivileged_userns_clone"),
+            HostFindingText {
+                title: t!("finding.host.kernel_unprivileged_userns_clone_enabled.title")
+                    .into_owned(),
+                description: t!(
+                    "finding.host.kernel_unprivileged_userns_clone_enabled.description",
+                    path = context
+                        .root
+                        .join("proc/sys/kernel/unprivileged_userns_clone")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_unprivileged_userns_clone_enabled.why")
+                    .into_owned(),
+                how_to_fix: t!("finding.host.kernel_unprivileged_userns_clone_enabled.fix")
+                    .into_owned(),
+            },
+            BTreeMap::from([(String::from("value"), String::from("1"))]),
+        ));
+    }
+
+    if let Some(value) = read_sysctl(context, "proc/sys/user/max_user_namespaces")
+        && value.trim().parse::<u64>().unwrap_or(1) > 0
+    {
+        findings.push(host_finding(
+            "host.kernel.max_user_namespaces_enabled",
+            Severity::Low,
+            &context.root.join("proc/sys/user/max_user_namespaces"),
+            HostFindingText {
+                title: t!("finding.host.kernel_max_user_namespaces_enabled.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_max_user_namespaces_enabled.description",
+                    path = context
+                        .root
+                        .join("proc/sys/user/max_user_namespaces")
+                        .display()
+                        .to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_max_user_namespaces_enabled.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_max_user_namespaces_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("value"), value.trim().to_owned())]),
         ));
     }
 
@@ -1583,6 +1650,11 @@ mod tests {
             "0\n",
         );
         write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "1\n");
+        write_file(
+            &root.join("proc/sys/kernel/unprivileged_userns_clone"),
+            "1\n",
+        );
+        write_file(&root.join("proc/sys/user/max_user_namespaces"), "1000\n");
         write_file(&root.join("etc/hostname"), "sysctl-test\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
         write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
@@ -1599,6 +1671,8 @@ mod tests {
                 "host.kernel.syn_cookies_disabled",
                 "host.kernel.broadcast_ping_allowed",
                 "host.kernel.ip_forward_enabled",
+                "host.kernel.unprivileged_userns_clone_enabled",
+                "host.kernel.max_user_namespaces_enabled",
                 "host.mac_framework_missing",
                 "host.defensive_controls_missing",
             ]
@@ -1617,6 +1691,11 @@ mod tests {
             "1\n",
         );
         write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "0\n");
+        write_file(
+            &root.join("proc/sys/kernel/unprivileged_userns_clone"),
+            "0\n",
+        );
+        write_file(&root.join("proc/sys/user/max_user_namespaces"), "0\n");
         write_file(
             &root.join("etc/fail2ban/jail.local"),
             "[sshd]\nenabled = true\n",
@@ -1741,6 +1820,11 @@ mod tests {
             "1\n",
         );
         write_file(&root.join("proc/sys/net/ipv4/ip_forward"), "0\n");
+        write_file(
+            &root.join("proc/sys/kernel/unprivileged_userns_clone"),
+            "0\n",
+        );
+        write_file(&root.join("proc/sys/user/max_user_namespaces"), "0\n");
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
             "/usr/sbin/dnsmasq (enforce)\n",
