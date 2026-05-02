@@ -642,6 +642,11 @@ finding:
       description: "The /proc mount sets hidepid but not to a restrictive value."
       why: "hidepid=1 only hides process IDs from other users, while hidepid=2 additionally hides process metadata inside /proc/PID directories. A stronger setting reduces information leakage more effectively."
       fix: "Change the /proc mount option to 'hidepid=2' in /etc/fstab and remount with 'mount -o remount,hidepid=2 /proc'. Validate that monitoring and administration workflows still work before making the change permanent."
+    systemd_hardening_missing:
+      title: "Systemd service lacks hardening directives"
+      description: "%{service} is missing the following hardening markers: %{flags}."
+      why: "Systemd directives like NoNewPrivileges, ProtectSystem, ProtectHome, and PrivateTmp constrain service runtime and reduce blast radius if a service is compromised. Their absence leaves more host resources exposed."
+      fix: "Edit %{service} and add the missing directives under [Service]. Start with NoNewPrivileges=true and PrivateTmp=true, then test. Add ProtectSystem=strict and ProtectHome=true after validating the service still starts and functions correctly. Run 'systemctl daemon-reload && systemctl restart %{service}' after editing."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

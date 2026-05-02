@@ -642,6 +642,11 @@ finding:
       description: "/proc 마운트에 hidepid가 설정되어 있지만 제한적인 값은 아닙니다."
       why: "hidepid=1은 다른 사용자의 프로세스 ID만 숨기고, hidepid=2는 /proc/PID 디렉터리 낮의 프로세스 메타데이터도 추가로 숨깁니다. 더 강력한 설정이 정보 유출을 더 효과적으로 줄입니다."
       fix: "/etc/fstab의 /proc 마운트 옵션을 'hidepid=2'로 변경하고 'mount -o remount,hidepid=2 /proc'로 적용하세요. 변경을 영구화하기 전에 모니터링과 관리 워크플로가 정상 작동하는지 검증하세요."
+    systemd_hardening_missing:
+      title: "Systemd 서비스에 하드닝 지시문이 없습니다"
+      description: "%{service}에 다음 하드닝 마커가 누락되었습니다: %{flags}."
+      why: "NoNewPrivileges, ProtectSystem, ProtectHome, PrivateTmp 같은 Systemd 지시문은 서비스 런타임을 제한하고 서비스가 침핵되었을 때의 영향 범위를 줄입니다. 이들이 없으면 더 많은 호스트 리소스가 노출됩니다."
+      fix: "%{service}를 수정하여 [Service] 아래 누락된 지시문을 추가하세요. NoNewPrivileges=true와 PrivateTmp=true부터 시작하고 테스트하세요. ProtectSystem=strict와 ProtectHome=true는 서비스가 정상 시작하고 작동하는지 검증한 뒤 추가하세요. 수정 후 'systemctl daemon-reload && systemctl restart %{service}'를 실행하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"

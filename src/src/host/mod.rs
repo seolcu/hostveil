@@ -71,6 +71,7 @@ impl HostScanner {
         findings.extend(scan_mount_flags(context));
         findings.extend(scan_proc_hidepid(context));
         findings.extend(scan_mac_frameworks(context));
+        findings.extend(scan_systemd_hardening(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
@@ -1036,6 +1037,78 @@ fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
     findings
 }
 
+const SYSTEMD_SERVICE_DIRS: [&str; 2] = ["etc/systemd/system", "lib/systemd/system"];
+const SYSTEMD_HARDENING_MARKERS: [&str; 4] = [
+    "NoNewPrivileges",
+    "ProtectSystem",
+    "ProtectHome",
+    "PrivateTmp",
+];
+const SYSTEMD_HARDENING_SAMPLE_SERVICES: [&str; 4] = [
+    "sshd.service",
+    "docker.service",
+    "nginx.service",
+    "fail2ban.service",
+];
+
+fn scan_systemd_hardening(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    for service_name in SYSTEMD_HARDENING_SAMPLE_SERVICES {
+        let Some(path) = find_systemd_service_path(context, service_name) else {
+            continue;
+        };
+
+        let text = match fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(_) => continue,
+        };
+
+        let missing: Vec<&str> = SYSTEMD_HARDENING_MARKERS
+            .iter()
+            .filter(|marker| !text.contains(**marker))
+            .copied()
+            .collect();
+
+        if missing.is_empty() {
+            continue;
+        }
+
+        findings.push(host_finding(
+            "host.systemd_hardening_missing",
+            Severity::Low,
+            &path,
+            HostFindingText {
+                title: t!("finding.host.systemd_hardening_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.systemd_hardening_missing.description",
+                    service = service_name,
+                    flags = missing.join(", ")
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.systemd_hardening_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.systemd_hardening_missing.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("service"), service_name.to_owned()),
+                (String::from("missing_flags"), missing.join(", ")),
+            ]),
+        ));
+    }
+
+    findings
+}
+
+fn find_systemd_service_path(context: &HostContext, name: &str) -> Option<PathBuf> {
+    for dir in SYSTEMD_SERVICE_DIRS {
+        let candidate = context.root.join(dir).join(name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
 fn detect_ufw_installed(root: &Path) -> bool {
     UFW_INSTALL_MARKERS
         .iter()
@@ -1884,6 +1957,29 @@ mod tests {
             findings
                 .iter()
                 .any(|finding| finding.id == "host.apparmor_complain_mode")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_missing_systemd_hardening() {
+        let root = temp_host_root("systemd-hardening");
+        write_file(
+            &root.join("lib/systemd/system/sshd.service"),
+            "[Service]\nExecStart=/usr/sbin/sshd\n",
+        );
+        write_file(&root.join("etc/hostname"), "systemd-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.systemd_hardening_missing"
+                    && finding.evidence.get("service") == Some(&String::from("sshd.service")))
         );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
