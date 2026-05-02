@@ -266,7 +266,11 @@ mod realistic_fixture_tests {
 
         let findings = RuleEngine.scan(&project);
 
-        assert!(findings.is_empty());
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.id.starts_with("service.immich.") || f.id.starts_with("service.redis."))
+        );
     }
 
     #[test]
@@ -333,6 +337,7 @@ mod realistic_fixture_tests {
                     "immich-server",
                     Severity::Critical,
                 ),
+                ("service.redis.password_missing", "redis", Severity::High,),
             ]
         );
     }
@@ -775,6 +780,135 @@ mod realistic_fixture_tests {
             ]
         );
     }
+
+    #[test]
+    fn postgres_baseline_stays_clear_under_generic_rules() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("postgres", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.source == crate::domain::Source::NativeCompose
+                    && f.id.starts_with("service.postgres."))
+        );
+    }
+
+    #[test]
+    fn postgres_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("postgres", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "db", Severity::Medium),
+                ("permissions.implicit_root", "db", Severity::Medium),
+                (
+                    "service.postgres.password_missing",
+                    "db",
+                    Severity::Critical
+                ),
+                ("service.postgres.bind_public", "db", Severity::High),
+                ("service.postgres.trust_auth", "db", Severity::High),
+            ]
+        );
+    }
+
+    #[test]
+    fn mysql_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("mysql", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.source == crate::domain::Source::NativeCompose
+                    && f.id.starts_with("service.mysql."))
+        );
+    }
+
+    #[test]
+    fn mysql_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("mysql", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "db", Severity::Medium),
+                ("permissions.implicit_root", "db", Severity::Medium),
+                ("service.mysql.password_missing", "db", Severity::Critical),
+                ("service.mysql.bind_public", "db", Severity::High),
+            ]
+        );
+    }
+
+    #[test]
+    fn redis_baseline_stays_clear_under_generic_rules() {
+        let project = ComposeParser::parse_path_without_override(fixture("redis", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn redis_vulnerable_fixture_produces_expected_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("redis", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = RuleEngine.scan(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| (
+                    finding.id.as_str(),
+                    finding.related_service.as_deref().unwrap_or_default(),
+                    finding.severity,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("exposure.public_binding", "cache", Severity::Medium),
+                ("permissions.implicit_root", "cache", Severity::Medium),
+                ("service.redis.password_missing", "cache", Severity::High),
+                ("service.redis.bind_public", "cache", Severity::High),
+                (
+                    "service.redis.protected_mode_disabled",
+                    "cache",
+                    Severity::High
+                ),
+            ]
+        );
+    }
 }
 
 #[cfg(test)]
@@ -845,6 +979,11 @@ mod tests {
                     "service.vaultwarden.admin_surface_public",
                     "vaultwarden",
                     Severity::High,
+                ),
+                (
+                    "service.postgres.password_missing",
+                    "postgres",
+                    Severity::Critical,
                 ),
             ]
         );

@@ -22,6 +22,9 @@ enum ServiceKind {
     Npm,
     Authentik,
     Paperless,
+    Postgres,
+    Mysql,
+    Redis,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -46,6 +49,9 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Npm => findings.extend(scan_npm_risk(service)),
             ServiceKind::Authentik => findings.extend(scan_authentik_risk(service)),
             ServiceKind::Paperless => findings.extend(scan_paperless_risk(service)),
+            ServiceKind::Postgres => findings.extend(scan_postgres_risk(service)),
+            ServiceKind::Mysql => findings.extend(scan_mysql_risk(service)),
+            ServiceKind::Redis => findings.extend(scan_redis_risk(service)),
         }
     }
 
@@ -85,6 +91,12 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Authentik)
     } else if haystack.contains("paperless") {
         Some(ServiceKind::Paperless)
+    } else if haystack.contains("postgres") || haystack.contains("postgis") {
+        Some(ServiceKind::Postgres)
+    } else if haystack.contains("mysql") || haystack.contains("mariadb") {
+        Some(ServiceKind::Mysql)
+    } else if haystack.contains("redis") {
+        Some(ServiceKind::Redis)
     } else {
         None
     }
@@ -804,6 +816,10 @@ fn env_truthy(service: &ComposeService, key: &str) -> bool {
     })
 }
 
+fn env_equals(service: &ComposeService, key: &str, expected: &str) -> bool {
+    env_value(service, key).is_some_and(|value| value.eq_ignore_ascii_case(expected))
+}
+
 fn env_value<'a>(service: &'a ComposeService, key: &str) -> Option<&'a str> {
     service
         .environment
@@ -1156,6 +1172,234 @@ fn scan_paperless_risk(service: &ComposeService) -> Vec<Finding> {
     findings
 }
 
+fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    let has_password = service.environment.iter().any(|(k, v)| {
+        (k == "POSTGRES_PASSWORD" && v.as_deref().is_some_and(|v| !v.is_empty()))
+            || k == "POSTGRES_PASSWORD_FILE"
+    });
+
+    if !has_password {
+        findings.push(service_finding(
+            "service.postgres.password_missing",
+            Axis::SensitiveData,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.postgres.password_missing.title").into_owned(),
+                description: t!(
+                    "finding.postgres.password_missing.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.postgres.password_missing.why").into_owned(),
+                how_to_fix: t!("finding.postgres.password_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("POSTGRES_PASSWORD"))]),
+        ));
+    }
+
+    if publicly_exposed
+        && let Some(port) = service
+            .ports
+            .iter()
+            .find(|p| p.container_port == "5432" && p.protocol == "tcp" && is_public_port(p))
+    {
+        findings.push(service_finding(
+            "service.postgres.bind_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.postgres.bind_public.title").into_owned(),
+                description: t!(
+                    "finding.postgres.bind_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.postgres.bind_public.why").into_owned(),
+                how_to_fix: t!("finding.postgres.bind_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    if env_equals(service, "POSTGRES_HOST_AUTH_METHOD", "trust") {
+        findings.push(service_finding(
+            "service.postgres.trust_auth",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.postgres.trust_auth.title").into_owned(),
+                description: t!(
+                    "finding.postgres.trust_auth.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.postgres.trust_auth.why").into_owned(),
+                how_to_fix: t!("finding.postgres.trust_auth.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("POSTGRES_HOST_AUTH_METHOD"),
+            )]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_mysql_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    let has_root_password = service.environment.iter().any(|(k, v)| {
+        (k == "MYSQL_ROOT_PASSWORD" && v.as_deref().is_some_and(|v| !v.is_empty()))
+            || k == "MYSQL_ROOT_PASSWORD_FILE"
+    });
+
+    if !has_root_password {
+        findings.push(service_finding(
+            "service.mysql.password_missing",
+            Axis::SensitiveData,
+            Severity::Critical,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.mysql.password_missing.title").into_owned(),
+                description: t!(
+                    "finding.mysql.password_missing.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.mysql.password_missing.why").into_owned(),
+                how_to_fix: t!("finding.mysql.password_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("MYSQL_ROOT_PASSWORD"),
+            )]),
+        ));
+    }
+
+    if publicly_exposed
+        && let Some(port) = service
+            .ports
+            .iter()
+            .find(|p| p.container_port == "3306" && p.protocol == "tcp" && is_public_port(p))
+    {
+        findings.push(service_finding(
+            "service.mysql.bind_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.mysql.bind_public.title").into_owned(),
+                description: t!(
+                    "finding.mysql.bind_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.mysql.bind_public.why").into_owned(),
+                how_to_fix: t!("finding.mysql.bind_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    let has_password = service
+        .environment
+        .iter()
+        .any(|(k, v)| k == "REDIS_PASSWORD" && v.as_deref().is_some_and(|v| !v.is_empty()))
+        || service
+            .command
+            .as_deref()
+            .unwrap_or_default()
+            .contains("requirepass");
+
+    if !has_password {
+        findings.push(service_finding(
+            "service.redis.password_missing",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.redis.password_missing.title").into_owned(),
+                description: t!(
+                    "finding.redis.password_missing.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.redis.password_missing.why").into_owned(),
+                how_to_fix: t!("finding.redis.password_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("REDIS_PASSWORD"))]),
+        ));
+    }
+
+    if publicly_exposed
+        && let Some(port) = service
+            .ports
+            .iter()
+            .find(|p| p.container_port == "6379" && p.protocol == "tcp" && is_public_port(p))
+    {
+        findings.push(service_finding(
+            "service.redis.bind_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.redis.bind_public.title").into_owned(),
+                description: t!(
+                    "finding.redis.bind_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.redis.bind_public.why").into_owned(),
+                how_to_fix: t!("finding.redis.bind_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+        ));
+    }
+
+    if env_equals(service, "REDIS_PROTECTED_MODE", "no") {
+        findings.push(service_finding(
+            "service.redis.protected_mode_disabled",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.redis.protected_mode_disabled.title").into_owned(),
+                description: t!(
+                    "finding.redis.protected_mode_disabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.redis.protected_mode_disabled.why").into_owned(),
+                how_to_fix: t!("finding.redis.protected_mode_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("REDIS_PROTECTED_MODE"),
+            )]),
+        ));
+    }
+
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -1294,6 +1538,7 @@ mod tests {
             vec![
                 "service.immich.shared_secret_env_file",
                 "service.immich.default_db_password",
+                "service.redis.password_missing",
             ]
         );
     }
@@ -1572,6 +1817,99 @@ mod tests {
             vec![
                 "service.paperless.ui_public",
                 "service.paperless.no_force_login",
+            ]
+        );
+    }
+
+    #[test]
+    fn postgres_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("postgres", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn postgres_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("postgres", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.postgres.password_missing",
+                "service.postgres.bind_public",
+                "service.postgres.trust_auth",
+            ]
+        );
+    }
+
+    #[test]
+    fn mysql_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("mysql", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn mysql_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("mysql", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.mysql.password_missing",
+                "service.mysql.bind_public",
+            ]
+        );
+    }
+
+    #[test]
+    fn redis_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("redis", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn redis_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("redis", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.redis.password_missing",
+                "service.redis.bind_public",
+                "service.redis.protected_mode_disabled",
             ]
         );
     }

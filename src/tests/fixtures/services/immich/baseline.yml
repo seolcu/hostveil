@@ -22,6 +22,7 @@ services:
   redis:
     image: docker.io/valkey/valkey:9.0.0
     user: "1000:1000"
+    command: redis-server --requirepass immich-redis-password
     restart: always
 
   database:

@@ -1,0 +1,5 @@
+services:
+  db:
+    image: mysql:8.4.5
+    ports:
+      - "0.0.0.0:3306:3306"

@@ -158,6 +158,7 @@ pub struct AppConfig {
     pub preview_changes: bool,
     pub assume_yes: bool,
     pub findings_only: bool,
+    pub fail_on: Option<crate::domain::Severity>,
 }
 
 impl Default for AppConfig {
@@ -178,6 +179,7 @@ impl Default for AppConfig {
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
+            fail_on: None,
         }
     }
 }
@@ -277,6 +279,25 @@ impl AppConfig {
                     }
                     config.adapter_selection = parse_adapter_selection(value)?;
                     adapter_selection_explicit = true;
+                }
+                "--fail-on" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--fail-on"))?;
+                    config.fail_on = Some(crate::domain::Severity::from_key(&value)
+                        .ok_or_else(|| AppError::InvalidArgumentCombination(
+                            format!("--fail-on must be one of: critical, high, medium, low, got: {value}"))
+                        )?);
+                }
+                _ if argument.starts_with("--fail-on=") => {
+                    let value = argument.trim_start_matches("--fail-on=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--fail-on"));
+                    }
+                    config.fail_on = Some(crate::domain::Severity::from_key(value)
+                        .ok_or_else(|| AppError::InvalidArgumentCombination(
+                            format!("--fail-on must be one of: critical, high, medium, low, got: {value}"))
+                        )?);
                 }
                 "--adapter-timeout-secs" => {
                     let value = args

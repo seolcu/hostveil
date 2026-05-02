@@ -1,0 +1,5 @@
+services:
+  cache:
+    image: redis:7-alpine
+    user: "1000:1000"
+    command: redis-server --requirepass strong-password

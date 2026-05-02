@@ -86,6 +86,8 @@ app:
         --adapters가 없으면 HOSTVEIL_ADAPTERS로 같은 adapter 선택을 지정할 수 있습니다.
   version:
     text: "%{name} %{version}"
+  fail_on:
+    exceeded: "검사 임계값 초과: %{threshold} 이상 발견 항목 %{count}개"
   hint:
     quit: "q 또는 Esc를 눌러 종료"
     json: "현재 스캔 결과 구조를 확인하려면 --json을 사용하세요"
@@ -894,6 +896,49 @@ finding:
       description: "%{service}가 PAPERLESS_FORCE_LOGIN을 설정하지 않아 익명 사용자가 문서에 접근할 수 있습니다."
       why: "강제 인증이 없으면 Paperless UI에 접근할 수 있는 누구나 문서를 탐색하고 다운로드할 수 있습니다."
       fix: "PAPERLESS_FORCE_LOGIN을 true로 설정하고 PAPERLESS_ADMIN_USER와 PAPERLESS_ADMIN_PASSWORD를 구성하세요."
+    postgres:
+      password_missing:
+        title: "PostgreSQL에 비밀번호가 설정되지 않았습니다"
+        description: "%{service}가 POSTGRES_PASSWORD를 설정하지 않아 데이터베이스가 인증 없이 열려 있습니다."
+        why: "비밀번호 없는 PostgreSQL 인스턴스는 네트워크 접근 가능한 누구나 모든 데이터를 읽고 수정·삭제할 수 있게 합니다."
+        fix: "POSTGRES_PASSWORD를 강력하고 고유한 값으로 설정하고 정기적으로 교체하세요."
+      bind_public:
+        title: "PostgreSQL 포트가 공개 인터페이스에 노출되어 있습니다"
+        description: "%{service}가 PostgreSQL 포트를 %{port}에 공개 인터페이스로 노출하고 있습니다."
+        why: "데이터베이스 포트를 인터넷에 노출하면 무차별 대입 공격과 직접적인 데이터 유출이 가능합니다."
+        fix: "PostgreSQL 포트 5432를 localhost 또는 내부 Docker 네트워크로 바인딩하세요. 직접 접근 대신 애플리케이션 컨테이너를 통해 접근하세요."
+      trust_auth:
+        title: "PostgreSQL이 trust 인증 방식으로 설정되어 있습니다"
+        description: "%{service}가 POSTGRES_HOST_AUTH_METHOD를 trust로 설정하여 비밀번호 없는 접속을 허용합니다."
+        why: "Trust 인증은 비밀번호 확인을 완전히 우회하여 포트 접근 가능한 누구에게나 제한 없는 접근을 허용합니다."
+        fix: "POSTGRES_HOST_AUTH_METHOD를 trust 대신 scram-sha-256 또는 md5로 설정하세요."
+    mysql:
+      password_missing:
+        title: "MySQL에 root 비밀번호가 설정되지 않았습니다"
+        description: "%{service}가 MYSQL_ROOT_PASSWORD를 설정하지 않아 데이터베이스가 인증 없이 열려 있습니다."
+        why: "비밀번호 없는 MySQL root 계정은 네트워크 접근 가능한 누구나 모든 데이터를 읽고 수정·삭제할 수 있게 합니다."
+        fix: "MYSQL_ROOT_PASSWORD를 강력하고 고유한 값으로 설정하고 정기적으로 교체하세요."
+      bind_public:
+        title: "MySQL 포트가 공개 인터페이스에 노출되어 있습니다"
+        description: "%{service}가 MySQL 포트를 %{port}에 공개 인터페이스로 노출하고 있습니다."
+        why: "데이터베이스 포트를 인터넷에 노출하면 무차별 대입 공격과 직접적인 데이터 유출이 가능합니다."
+        fix: "MySQL 포트 3306을 localhost 또는 내부 Docker 네트워크로 바인딩하세요. 직접 접근 대신 애플리케이션 컨테이너를 통해 접근하세요."
+    redis:
+      password_missing:
+        title: "Redis에 비밀번호가 설정되지 않았습니다"
+        description: "%{service}가 REDIS_PASSWORD를 설정하지 않아 인증 없이 접근 가능합니다."
+        why: "보호되지 않은 Redis 인스턴스는 데이터 탈취, 캐시 변조, 악성 페이로드 공격 등에 악용될 수 있습니다."
+        fix: "compose 파일의 command 지시어에 redis-server --requirepass를 통해 비밀번호를 설정하세요."
+      bind_public:
+        title: "Redis 포트가 공개 인터페이스에 노출되어 있습니다"
+        description: "%{service}가 Redis 포트를 %{port}에 공개 인터페이스로 노출하고 있습니다."
+        why: "Redis를 인증 없이 인터넷에 노출하면 누구나 전체 데이터셋을 읽거나 쓰거나 삭제할 수 있습니다."
+        fix: "Redis 포트 6379를 localhost 또는 내부 Docker 네트워크로 바인딩하세요."
+      protected_mode_disabled:
+        title: "Redis protected mode가 비활성화되어 있습니다"
+        description: "%{service}가 REDIS_PROTECTED_MODE를 no로 설정하여 내장 안전장치를 비활성화했습니다."
+        why: "Protected mode는 비밀번호가 없을 때 Redis가 localhost 이외의 접속을 차단합니다. 비활성화하면 이 방어 수단이 사라집니다."
+        fix: "REDIS_PROTECTED_MODE=no를 제거하거나 yes로 설정하고 REDIS_PASSWORD로 비밀번호를 구성하세요."
 remediation:
   auto_fixable: "자동"
   manual: "수동"

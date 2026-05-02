@@ -42,8 +42,13 @@ fn main() -> ExitCode {
     match hostveil::app::run(app_args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
+            let is_threshold = matches!(error, hostveil::app::AppError::ThresholdExceeded { .. });
             eprintln!("{error}");
-            ExitCode::FAILURE
+            if is_threshold {
+                ExitCode::from(1)
+            } else {
+                ExitCode::FAILURE
+            }
         }
     }
 }

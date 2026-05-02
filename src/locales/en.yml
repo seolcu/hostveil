@@ -86,6 +86,8 @@ app:
         HOSTVEIL_ADAPTERS provides the same adapter selection when --adapters is not set.
   version:
     text: "%{name} %{version}"
+  fail_on:
+    exceeded: "Scan threshold exceeded: %{count} finding(s) at or above %{threshold}"
   hint:
     quit: "Press q or Esc to quit"
     json: "Use --json to inspect the current scan result structure"
@@ -894,6 +896,49 @@ finding:
       description: "%{service} does not set PAPERLESS_FORCE_LOGIN, allowing anonymous access to documents."
       why: "Without forced authentication, anyone who can reach the Paperless UI can browse and download documents."
       fix: "Set PAPERLESS_FORCE_LOGIN to true and configure PAPERLESS_ADMIN_USER and PAPERLESS_ADMIN_PASSWORD."
+    postgres:
+      password_missing:
+        title: "PostgreSQL has no password set"
+        description: "%{service} does not set POSTGRES_PASSWORD, leaving the database open with no authentication."
+        why: "A passwordless PostgreSQL instance allows anyone with network access to read, modify, or delete all data."
+        fix: "Set POSTGRES_PASSWORD to a strong, unique value and rotate it regularly."
+      bind_public:
+        title: "PostgreSQL port is exposed on a public interface"
+        description: "%{service} publishes the PostgreSQL port on %{port} to a public interface."
+        why: "Exposing the database port to the internet allows brute-force attacks and direct data exfiltration."
+        fix: "Bind PostgreSQL port 5432 to localhost or an internal Docker network. Access it via the application container, not directly."
+      trust_auth:
+        title: "PostgreSQL is configured with trust authentication"
+        description: "%{service} sets POSTGRES_HOST_AUTH_METHOD to trust, allowing passwordless connections."
+        why: "Trust authentication bypasses password checks entirely, granting unrestricted access to anyone who can reach the port."
+        fix: "Set POSTGRES_HOST_AUTH_METHOD to scram-sha-256 or md5 instead of trust."
+    mysql:
+      password_missing:
+        title: "MySQL has no root password set"
+        description: "%{service} does not set MYSQL_ROOT_PASSWORD, leaving the database open with no authentication."
+        why: "A passwordless MySQL root account allows anyone with network access to read, modify, or delete all data."
+        fix: "Set MYSQL_ROOT_PASSWORD to a strong, unique value and rotate it regularly."
+      bind_public:
+        title: "MySQL port is exposed on a public interface"
+        description: "%{service} publishes the MySQL port on %{port} to a public interface."
+        why: "Exposing the database port to the internet allows brute-force attacks and direct data exfiltration."
+        fix: "Bind MySQL port 3306 to localhost or an internal Docker network. Access it via the application container, not directly."
+    redis:
+      password_missing:
+        title: "Redis has no password set"
+        description: "%{service} does not set REDIS_PASSWORD, allowing unauthenticated access."
+        why: "An unprotected Redis instance can be used for data theft, cache poisoning, or as an attack vector via crafted payloads."
+        fix: "Set REDIS_PASSWORD to a strong, unique value via the command directive in your compose file."
+      bind_public:
+        title: "Redis port is exposed on a public interface"
+        description: "%{service} publishes the Redis port on %{port} to a public interface."
+        why: "Exposing Redis to the internet without authentication allows anyone to read, write, or flush the entire dataset."
+        fix: "Bind Redis port 6379 to localhost or an internal Docker network."
+      protected_mode_disabled:
+        title: "Redis protected mode is disabled"
+        description: "%{service} sets REDIS_PROTECTED_MODE to no, disabling a built-in safety net."
+        why: "Protected mode prevents Redis from accepting connections from non-localhost interfaces when no password is set. Disabling it removes this defense."
+        fix: "Remove REDIS_PROTECTED_MODE=no or set it to yes, and configure a password via REDIS_PASSWORD."
 remediation:
   auto_fixable: "AUTO"
   manual: "MANUAL"

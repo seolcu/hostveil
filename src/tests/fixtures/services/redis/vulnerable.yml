@@ -1,0 +1,7 @@
+services:
+  cache:
+    image: redis:7.4.7-alpine
+    ports:
+      - "0.0.0.0:6379:6379"
+    environment:
+      REDIS_PROTECTED_MODE: "no"

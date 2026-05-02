@@ -27,6 +27,7 @@ pub enum AppError {
     ComposeParse(ComposeParseError),
     Fix(FixError),
     Io(io::Error),
+    ThresholdExceeded { threshold: String, count: usize },
 }
 
 impl fmt::Display for AppError {
@@ -49,6 +50,13 @@ impl fmt::Display for AppError {
             Self::ComposeParse(error) => write!(f, "{}", i18n::tr_compose_parse_error(error)),
             Self::Fix(error) => write!(f, "{error}"),
             Self::Io(error) => write!(f, "{}", i18n::tr_io_error(&error.to_string())),
+            Self::ThresholdExceeded { threshold, count } => write!(
+                f,
+                "{}",
+                i18n::tr("app.fail_on.exceeded")
+                    .replace("%{threshold}", threshold)
+                    .replace("%{count}", &count.to_string())
+            ),
         }
     }
 }
@@ -196,14 +204,56 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 "{}",
                 export::scan_result_json_filtered(&scan_result, config.findings_only)
             );
+            if let Some(error) = check_threshold(&scan_result, config.fail_on) {
+                return Err(error);
+            }
         }
         OutputMode::Sarif => {
             let scan_result = scan::run(&config)?;
             print!("{}", export::scan_result_sarif(&scan_result));
+            if let Some(error) = check_threshold(&scan_result, config.fail_on) {
+                return Err(error);
+            }
         }
     }
 
     Ok(())
+}
+
+fn check_threshold(
+    scan_result: &crate::domain::ScanResult,
+    fail_on: Option<crate::domain::Severity>,
+) -> Option<AppError> {
+    let threshold = fail_on?;
+    let count = scan_result
+        .findings
+        .iter()
+        .filter(|f| severity_meets_threshold(f.severity, threshold))
+        .count();
+    if count > 0 {
+        Some(AppError::ThresholdExceeded {
+            threshold: threshold.as_key().to_owned(),
+            count,
+        })
+    } else {
+        None
+    }
+}
+
+fn severity_meets_threshold(
+    severity: crate::domain::Severity,
+    threshold: crate::domain::Severity,
+) -> bool {
+    use crate::domain::Severity;
+    match threshold {
+        Severity::Critical => severity == Severity::Critical,
+        Severity::High => matches!(severity, Severity::Critical | Severity::High),
+        Severity::Medium => matches!(
+            severity,
+            Severity::Critical | Severity::High | Severity::Medium
+        ),
+        Severity::Low => true,
+    }
 }
 
 fn is_interactive_terminal() -> bool {
