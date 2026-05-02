@@ -632,6 +632,16 @@ finding:
       description: "%{mount_point}에 다음 플래그가 누락되었습니다: %{flags}."
       why: "noexec, nosuid, nodev 같은 마운트 플래그는 해당 파티션에서 무엇을 실행하거나 권한을 상승시킬 수 있는지 제한합니다. 민감한 디렉터리에서 이들이 없으면 침해 시 영향 범위가 커집니다."
       fix: "/etc/fstab에서 %{mount_point}에 누락된 플래그를 추가하세요(예: 'defaults,noexec,nosuid,nodev'). 'mount -o remount,noexec,nosuid,nodev %{mount_point}'로 즉시 적용하세요. 'findmnt %{mount_point}'나 'mount | grep %{mount_point}'로 확인하세요. /boot를 변경하기 전에 백업 부팅 매체를 준비하세요."
+    proc_hidepid_missing:
+      title: "/proc에 hidepid가 설정되지 않았습니다"
+      description: "/proc 마운트에 hidepid 옵션이 없습니다."
+      why: "hidepid가 없으면 모든 로컬 사용자가 실행 중인 프로세스를 열거하고 명령줄을 수집하며 다른 사용자의 활동을 식별할 수 있습니다. 이는 운영 메타데이터를 유출하고 공격자가 시스템을 매핑하는 데 도움을 줍니다."
+      fix: "/etc/fstab의 /proc 줄에 'hidepid=2'를 추가하세요(예: 'proc /proc proc defaults,hidepid=2'). 'mount -o remount,hidepid=2 /proc'로 적용하세요. /proc 전체 접근에 의존하는 모니터링이나 관리 도구가 여전히 정상 작동하는지 확인하세요."
+    proc_hidepid_weak:
+      title: "/proc hidepid가 약한 값으로 설정되어 있습니다"
+      description: "/proc 마운트에 hidepid가 설정되어 있지만 제한적인 값은 아닙니다."
+      why: "hidepid=1은 다른 사용자의 프로세스 ID만 숨기고, hidepid=2는 /proc/PID 디렉터리 낮의 프로세스 메타데이터도 추가로 숨깁니다. 더 강력한 설정이 정보 유출을 더 효과적으로 줄입니다."
+      fix: "/etc/fstab의 /proc 마운트 옵션을 'hidepid=2'로 변경하고 'mount -o remount,hidepid=2 /proc'로 적용하세요. 변경을 영구화하기 전에 모니터링과 관리 워크플로가 정상 작동하는지 검증하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"

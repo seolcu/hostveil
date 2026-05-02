@@ -632,6 +632,16 @@ finding:
       description: "%{mount_point} is missing the following flags: %{flags}."
       why: "Mount flags like noexec, nosuid, and nodev restrict what can run or escalate privileges from a partition. Their absence on sensitive directories increases blast radius from compromise."
       fix: "Add the missing flags to /etc/fstab for %{mount_point} (e.g., 'defaults,noexec,nosuid,nodev'). Remount with 'mount -o remount,noexec,nosuid,nodev %{mount_point}'. Verify with 'findmnt %{mount_point}' or 'mount | grep %{mount_point}'. Ensure a backup boot medium is available before changing /boot."
+    proc_hidepid_missing:
+      title: "/proc is mounted without hidepid"
+      description: "The /proc mount does not set a hidepid option."
+      why: "Without hidepid, any local user can enumerate all running processes, gather command lines, and identify other users' activity. This leaks operational metadata and helps attackers map the system."
+      fix: "Add 'hidepid=2' to the /proc line in /etc/fstab (e.g., 'proc /proc proc defaults,hidepid=2'). Remount with 'mount -o remount,hidepid=2 /proc'. Ensure monitoring or management tools that rely on full /proc access still function correctly."
+    proc_hidepid_weak:
+      title: "/proc hidepid is set to a weak value"
+      description: "The /proc mount sets hidepid but not to a restrictive value."
+      why: "hidepid=1 only hides process IDs from other users, while hidepid=2 additionally hides process metadata inside /proc/PID directories. A stronger setting reduces information leakage more effectively."
+      fix: "Change the /proc mount option to 'hidepid=2' in /etc/fstab and remount with 'mount -o remount,hidepid=2 /proc'. Validate that monitoring and administration workflows still work before making the change permanent."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

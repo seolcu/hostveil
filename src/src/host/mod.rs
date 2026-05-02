@@ -69,6 +69,7 @@ impl HostScanner {
         findings.extend(scan_kernel_hardening(context));
         findings.extend(scan_user_namespace_settings(context));
         findings.extend(scan_mount_flags(context));
+        findings.extend(scan_proc_hidepid(context));
         findings.extend(scan_mac_frameworks(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
@@ -985,6 +986,56 @@ fn parse_proc_mounts(text: &str) -> BTreeMap<String, Vec<String>> {
     mounts
 }
 
+fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let mounts_path = context.root.join("proc/mounts");
+
+    let text = match fs::read_to_string(&mounts_path) {
+        Ok(text) => text,
+        Err(_) => return findings,
+    };
+
+    let mounts = parse_proc_mounts(&text);
+    let Some(options) = mounts.get("/proc") else {
+        return findings;
+    };
+
+    let has_hidepid = options.iter().any(|opt| opt.starts_with("hidepid="));
+    let hidepid_hardened = options
+        .iter()
+        .any(|opt| opt == "hidepid=2" || opt == "hidepid=1");
+
+    if !has_hidepid {
+        findings.push(host_finding(
+            "host.proc_hidepid_missing",
+            Severity::Medium,
+            &mounts_path,
+            HostFindingText {
+                title: t!("finding.host.proc_hidepid_missing.title").into_owned(),
+                description: t!("finding.host.proc_hidepid_missing.description").into_owned(),
+                why_risky: t!("finding.host.proc_hidepid_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.proc_hidepid_missing.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
+    } else if !hidepid_hardened {
+        findings.push(host_finding(
+            "host.proc_hidepid_weak",
+            Severity::Low,
+            &mounts_path,
+            HostFindingText {
+                title: t!("finding.host.proc_hidepid_weak.title").into_owned(),
+                description: t!("finding.host.proc_hidepid_weak.description").into_owned(),
+                why_risky: t!("finding.host.proc_hidepid_weak.why").into_owned(),
+                how_to_fix: t!("finding.host.proc_hidepid_weak.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
+    }
+
+    findings
+}
+
 fn detect_ufw_installed(root: &Path) -> bool {
     UFW_INSTALL_MARKERS
         .iter()
@@ -1833,6 +1884,31 @@ mod tests {
             findings
                 .iter()
                 .any(|finding| finding.id == "host.apparmor_complain_mode")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_missing_proc_hidepid() {
+        let root = temp_host_root("proc-hidepid");
+        write_file(
+            &root.join("proc/mounts"),
+            concat!(
+                "proc /proc proc rw,relatime 0 0\n",
+                "ext4 / ext4 rw,relatime 0 0\n",
+            ),
+        );
+        write_file(&root.join("etc/hostname"), "hidepid-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.proc_hidepid_missing")
         );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
