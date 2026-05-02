@@ -4167,6 +4167,29 @@ mod tests {
     }
 
     #[test]
+    fn findings_view_renders_long_how_to_fix_without_truncation() {
+        let mut result = sample_result();
+        result.findings[0].how_to_fix = String::from(
+            "Run 'sysctl -w kernel.unprivileged_userns_clone=0' to apply immediately. \
+Create /etc/sysctl.d/99-userns.conf with 'kernel.unprivileged_userns_clone = 0' to persist. \
+Verify with 'sysctl kernel.unprivileged_userns_clone'.",
+        );
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(80, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings view should render long fix text");
+
+        let content = buffer_to_string(terminal.backend());
+
+        assert!(content.contains("How to Fix"));
+        assert!(content.contains("99-userns.conf"));
+        assert!(content.contains("sysctl kernel.unprivileged_userns_clone"));
+    }
+
+    #[test]
     fn findings_view_renders_project_scope_from_shared_scan_result() {
         let result = mixed_scope_result();
         let mut state = AppState::new(&result);
