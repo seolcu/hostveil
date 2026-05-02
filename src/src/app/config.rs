@@ -9,6 +9,7 @@ pub enum OutputMode {
     Tui,
     Json,
     Sarif,
+    Markdown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -234,6 +235,7 @@ impl AppConfig {
             match argument.as_str() {
                 "--json" => config.output_mode = OutputMode::Json,
                 "--sarif" => config.output_mode = OutputMode::Sarif,
+                "--markdown" => config.output_mode = OutputMode::Markdown,
                 "-h" | "--help" => config.show_help = true,
                 "-V" | "--version" => config.show_version = true,
                 "--preview-changes" => config.preview_changes = true,
@@ -502,7 +504,10 @@ impl AppConfig {
                     crate::i18n::tr_fix_compose_conflict(),
                 ));
             }
-            if matches!(self.output_mode, OutputMode::Json | OutputMode::Sarif) {
+            if matches!(
+                self.output_mode,
+                OutputMode::Json | OutputMode::Sarif | OutputMode::Markdown
+            ) {
                 return Err(AppError::InvalidArgumentCombination(
                     crate::i18n::tr_fix_json_not_supported(),
                 ));
@@ -670,6 +675,13 @@ mod tests {
         let config = AppConfig::parse([String::from("--json")]).expect("config should parse");
 
         assert_eq!(config.output_mode, OutputMode::Json);
+    }
+
+    #[test]
+    fn parses_markdown_flag() {
+        let config = AppConfig::parse([String::from("--markdown")]).expect("config should parse");
+
+        assert_eq!(config.output_mode, OutputMode::Markdown);
     }
 
     #[test]

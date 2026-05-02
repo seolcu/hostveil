@@ -215,6 +215,13 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 return Err(error);
             }
         }
+        OutputMode::Markdown => {
+            let scan_result = scan::run(&config)?;
+            print!("{}", export::scan_result_markdown(&scan_result));
+            if let Some(error) = check_threshold(&scan_result, config.fail_on) {
+                return Err(error);
+            }
+        }
     }
 
     Ok(())
