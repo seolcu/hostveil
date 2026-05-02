@@ -389,6 +389,11 @@ app:
     safe_mysql_password: "%{service}: add MYSQL_ROOT_PASSWORD with placeholder"
     safe_redis_password: "%{service}: add REDIS_PASSWORD with placeholder"
     safe_redis_protected_mode: "%{service}: set REDIS_PROTECTED_MODE to yes"
+    safe_grafana_auth: "%{service}: enable Grafana basic auth and disable anonymous access"
+    safe_grafana_anonymous: "%{service}: disable Grafana anonymous access"
+    safe_authentik_debug: "%{service}: set AUTHENTIK_DEBUG to false"
+    safe_paperless_force_login: "%{service}: set PAPERLESS_FORCE_LOGIN to true"
+    safe_pihole_password: "%{service}: set WEBPASSWORD with placeholder"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"

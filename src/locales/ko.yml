@@ -389,6 +389,11 @@ app:
     safe_mysql_password: "%{service}: MYSQL_ROOT_PASSWORD 자리 표시자 추가"
     safe_redis_password: "%{service}: REDIS_PASSWORD 자리 표시자 추가"
     safe_redis_protected_mode: "%{service}: REDIS_PROTECTED_MODE를 yes로 설정"
+    safe_grafana_auth: "%{service}: Grafana 기본 인증 활성화 및 익명 접근 비활성화"
+    safe_grafana_anonymous: "%{service}: Grafana 익명 접근 비활성화"
+    safe_authentik_debug: "%{service}: AUTHENTIK_DEBUG를 false로 설정"
+    safe_paperless_force_login: "%{service}: PAPERLESS_FORCE_LOGIN을 true로 설정"
+    safe_pihole_password: "%{service}: WEBPASSWORD 자리 표시자 설정"
 axis:
   sensitive_data: "민감 데이터"
   permissions: "권한"

@@ -460,7 +460,7 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
 
     if let Some(webpassword) = env_value(service, "WEBPASSWORD") {
         if webpassword.is_empty() || is_weak_pihole_password(webpassword) {
-            findings.push(service_finding(
+            findings.push(service_finding_with_remediation(
                 "service.pihole.weak_password",
                 Axis::SensitiveData,
                 Severity::High,
@@ -476,10 +476,11 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
                     how_to_fix: t!("finding.pihole.weak_password.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
+                RemediationKind::Safe,
             ));
         }
     } else {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.pihole.no_password",
             Axis::SensitiveData,
             Severity::Critical,
@@ -495,6 +496,7 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.pihole.no_password.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -981,7 +983,7 @@ fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     if env_truthy(service, "GF_AUTH_DISABLE_LOGIN_FORM") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.grafana.auth_disabled",
             Axis::UnnecessaryExposure,
             Severity::Critical,
@@ -1000,11 +1002,12 @@ fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GF_AUTH_DISABLE_LOGIN_FORM"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 
     if env_truthy(service, "GF_AUTH_ANONYMOUS_ENABLED") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.grafana.anonymous_access",
             Axis::UnnecessaryExposure,
             Severity::High,
@@ -1023,6 +1026,7 @@ fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GF_AUTH_ANONYMOUS_ENABLED"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1095,7 +1099,7 @@ fn scan_authentik_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     if env_truthy(service, "AUTHENTIK_DEBUG") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.authentik.debug_enabled",
             Axis::UnnecessaryExposure,
             Severity::Medium,
@@ -1111,6 +1115,7 @@ fn scan_authentik_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.authentik.debug_enabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("AUTHENTIK_DEBUG"))]),
+            RemediationKind::Safe,
         ));
     }
 
@@ -1147,7 +1152,7 @@ fn scan_paperless_risk(service: &ComposeService) -> Vec<Finding> {
     }
 
     if !env_truthy(service, "PAPERLESS_FORCE_LOGIN") {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.paperless.no_force_login",
             Axis::UnnecessaryExposure,
             Severity::Medium,
@@ -1166,6 +1171,7 @@ fn scan_paperless_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("PAPERLESS_FORCE_LOGIN"),
             )]),
+            RemediationKind::Safe,
         ));
     }
 

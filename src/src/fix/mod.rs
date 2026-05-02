@@ -357,6 +357,74 @@ fn apply_safe_fixes(
                 .into_owned(),
             });
         }
+
+        if finding_ids.contains("service.grafana.auth_disabled")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_grafana_auth(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!("app.fix.safe_grafana_auth", service = service_name.as_str())
+                    .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.grafana.anonymous_access")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_grafana_anonymous(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_grafana_anonymous",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.authentik.debug_enabled")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_authentik_debug(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_authentik_debug",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("service.paperless.no_force_login")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_paperless_force_login(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_paperless_force_login",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if (finding_ids.contains("service.pihole.no_password")
+            || finding_ids.contains("service.pihole.weak_password"))
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && harden_pihole_password(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_pihole_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
     }
 
     applied
@@ -659,6 +727,37 @@ fn harden_redis_protected_mode(service: &mut Mapping) -> bool {
     } else {
         false
     }
+}
+
+fn harden_grafana_auth(service: &mut Mapping) -> bool {
+    let mut changed = false;
+    changed |= update_environment_value(service, "GF_AUTH_BASIC_ENABLED", "true", true);
+    changed |= update_environment_value(service, "GF_AUTH_ANONYMOUS_ENABLED", "false", true);
+    changed
+}
+
+fn harden_grafana_anonymous(service: &mut Mapping) -> bool {
+    update_environment_value(service, "GF_AUTH_ANONYMOUS_ENABLED", "false", false)
+}
+
+fn harden_authentik_debug(service: &mut Mapping) -> bool {
+    let Some(_current) = environment_value(service, "AUTHENTIK_DEBUG") else {
+        return false;
+    };
+    update_environment_value(service, "AUTHENTIK_DEBUG", "false", false)
+}
+
+fn harden_paperless_force_login(service: &mut Mapping) -> bool {
+    update_environment_value(service, "PAPERLESS_FORCE_LOGIN", "true", true)
+}
+
+fn harden_pihole_password(service: &mut Mapping) -> bool {
+    update_environment_value(
+        service,
+        "WEBPASSWORD",
+        "${WEBPASSWORD:?set a strong admin password}",
+        true,
+    )
 }
 
 fn rewrite_sensitive_mount_readonly(volume: &mut Value) -> Option<String> {

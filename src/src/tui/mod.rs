@@ -2270,6 +2270,9 @@ fn render_security_scores_panel(
             line.push_str(&format!(" ({})", delta));
         }
         lines.push(Line::raw(line));
+        if is_overall && let Some(spark) = score_sparkline() {
+            lines.push(Line::raw(format!("  {}", spark)));
+        }
     }
 
     let content = Text::from(lines);
@@ -3096,6 +3099,27 @@ fn fail2ban_detail(runtime: &HostRuntimeInfo) -> Option<String> {
     }
 
     (!parts.is_empty()).then(|| parts.join(", "))
+}
+
+fn score_sparkline() -> Option<String> {
+    let history = crate::history::load();
+    let entries = history.trend(6);
+    if entries.len() < 2 {
+        return None;
+    }
+    let chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+    let max = entries.iter().map(|e| e.overall).max().unwrap_or(100);
+    let min = entries.iter().map(|e| e.overall).min().unwrap_or(0);
+    let range = (max - min).max(1) as f32;
+    let spark: String = entries
+        .iter()
+        .map(|e| {
+            let idx =
+                ((e.overall - min) as f32 / range * (chars.len() - 1) as f32).round() as usize;
+            chars[idx.min(chars.len() - 1)]
+        })
+        .collect();
+    Some(spark)
 }
 
 fn overall_score_delta() -> Option<String> {
