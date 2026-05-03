@@ -608,6 +608,27 @@ finding:
       description: "The Docker daemon is running as root."
       why: "Rootless Docker reduces the attack surface by running the daemon as an unprivileged user. Running as root means a Docker daemon compromise can lead directly to full host root access."
       fix: "Consider migrating to Docker Rootless mode. See the official Docker documentation for rootless installation and migration steps. Note: this is a guided change, not an automatic fix."
+    docker_userns_remap_missing:
+      title: "Docker user namespace remapping is not configured"
+      description: "%{path} does not set userns-remap."
+      why: "Without user namespace remapping, container processes run with host UIDs, increasing the blast radius of a container breakout."
+      fix: "Add 'userns-remap': 'default' to %{path}, create the dockremap user/subuid/subgid mappings, then restart Docker."
+    docker_live_restore_disabled:
+      title: "Docker live-restore is not enabled"
+      description: "%{path} does not set live-restore to true."
+      why: "Without live-restore, all containers stop when the Docker daemon restarts, causing unnecessary downtime and potential data loss."
+      fix: "Add 'live-restore': true to %{path}, then restart Docker with 'systemctl restart docker'."
+    docker_log_driver_missing:
+      title: "Docker log driver is not explicitly configured"
+      description: "%{path} does not set an explicit log-driver."
+      why: "The default json-file log driver grows without bounds, which can exhaust disk space and make log analysis difficult."
+      fix: "Add 'log-driver': 'json-file' and 'log-opts': { 'max-size': '10m', 'max-file': '3' } to %{path}, or use a centralized log driver like 'local'."
+    docker_default_ulimits_missing:
+      title: "Docker default ulimits are not configured"
+      description: "%{path} does not set default-ulimits."
+      why: "Without default ulimits, a single misbehaving container can exhaust host file descriptors or spawn excessive processes."
+      fix: "Add 'default-ulimits': { 'nofile': { 'Name': 'nofile', 'Hard': 64000, 'Soft': 64000 } } to %{path}, then restart Docker."
+>>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
     fail2ban_not_enabled:
       title: "Fail2ban is installed but not active"
       description: "%{path} shows local Fail2ban markers, but no enabled service marker was detected."
