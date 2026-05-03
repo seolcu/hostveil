@@ -103,6 +103,7 @@ impl HostScanner {
         findings.extend(scan_firewall_hardening(context));
         findings.extend(scan_package_update_hardening(context));
         findings.extend(scan_kernel_hardening(context));
+        findings.extend(scan_secure_boot(context));
         findings.extend(scan_user_namespace_settings(context));
         findings.extend(scan_mount_flags(context));
         findings.extend(scan_proc_hidepid(context));
@@ -1269,6 +1270,54 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                     String::from("disabled")
                 },
             )]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_secure_boot(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    let efi_vars_path = context.root.join("sys/firmware/efi/efivars");
+    if !efi_vars_path.exists() {
+        return findings;
+    }
+
+    let secure_boot_path = resolve_existing_path(&context.root, "sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+
+    if secure_boot_path.is_none() {
+        return findings;
+    }
+
+    let secure_boot_path = secure_boot_path.unwrap();
+    let Ok(data) = fs::read(&secure_boot_path) else {
+        return findings;
+    };
+
+    // EFI variable format: 4 bytes attributes + 1 byte value
+    if data.len() < 5 {
+        return findings;
+    }
+
+    let secure_boot_enabled = data[4] == 1;
+
+    if !secure_boot_enabled {
+        findings.push(host_finding(
+            "host.secure_boot_disabled",
+            Severity::Low,
+            &secure_boot_path,
+            HostFindingText {
+                title: t!("finding.host.secure_boot_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.secure_boot_disabled.description",
+                    path = secure_boot_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.secure_boot_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.secure_boot_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), secure_boot_path.display().to_string())]),
         ));
     }
 
@@ -2857,6 +2906,50 @@ mod tests {
         let findings = HostScanner.scan(&HostContext { root: root.clone() });
 
         assert!(findings.is_empty());
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_secure_boot_disabled() {
+        let root = temp_host_root("secure-boot-disabled");
+        let sb_path = root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+        fs::create_dir_all(sb_path.parent().unwrap()).expect("parent should be created");
+        fs::write(&sb_path, [0x00, 0x00, 0x00, 0x00, 0x00]).expect("file should be written");
+        write_file(&root.join("etc/hostname"), "sb-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert_eq!(
+            findings.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
+            vec![
+                "host.secure_boot_disabled",
+                "host.mac_framework_missing",
+                "host.defensive_controls_missing",
+            ]
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_secure_boot_when_enabled() {
+        let root = temp_host_root("secure-boot-enabled");
+        let sb_path = root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+        fs::create_dir_all(sb_path.parent().unwrap()).expect("parent should be created");
+        fs::write(&sb_path, [0x00, 0x00, 0x00, 0x00, 0x01]).expect("file should be written");
+        write_file(&root.join("etc/hostname"), "sb-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert_eq!(
+            findings.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
+            vec!["host.mac_framework_missing", "host.defensive_controls_missing"]
+        );
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }

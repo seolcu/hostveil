@@ -719,6 +719,12 @@ finding:
       description: "%{path} is missing or set to N, allowing unsigned kernel modules to be loaded."
       why: "Without module signing enforcement, a compromised root account or attacker with physical access can load malicious kernel modules that bypass user-space security controls."
       fix: "Enable CONFIG_MODULE_SIG_FORCE in your kernel config and ensure the kernel command line includes 'module.sig_enforce=1'. On most distributions this requires rebuilding or installing a signed kernel package."
+    secure_boot_disabled:
+      title: "UEFI Secure Boot is disabled"
+      description: "%{path} indicates Secure Boot is not enabled."
+      why: "Secure Boot prevents unauthorized bootloaders and kernel images from loading. Without it, an attacker with physical access or a compromised bootloader can inject malicious code before the OS starts."
+      fix: "Enable Secure Boot in your system's UEFI firmware settings. Ensure your OS bootloader and kernel are signed with a trusted key."
+>>>>>>> a71fabf (feat(host): add Secure Boot status check)
     grub_password_missing:
       title: "GRUB bootloader lacks password protection"
       description: "%{path} does not contain a GRUB password or unrestricted restriction."
