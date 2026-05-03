@@ -713,7 +713,6 @@ fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
     }
 
     findings
->>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
 }
 
 fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
@@ -1196,6 +1195,39 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_modules_disabled_not_set.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("0"))]),
+        ));
+    }
+
+    let sig_enforce_path = "sys/module/module/parameters/sig_enforce";
+    let sig_enforce_value = read_sysctl(context, sig_enforce_path);
+    let sig_enforce_missing = sig_enforce_value.is_none();
+    let sig_enforce_disabled = sig_enforce_value.as_deref().is_some_and(|v| v.trim() == "N");
+
+    if sig_enforce_missing || sig_enforce_disabled {
+        findings.push(host_finding(
+            "host.kernel.module_signing_not_enforced",
+            Severity::Low,
+            &context.root.join(sig_enforce_path),
+            HostFindingText {
+                title: t!("finding.host.kernel_module_signing_not_enforced.title").into_owned(),
+                description: t!(
+                    "finding.host.kernel_module_signing_not_enforced.description",
+                    path = context.root.join(sig_enforce_path).display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.kernel_module_signing_not_enforced.why")
+                    .into_owned(),
+                how_to_fix: t!("finding.host.kernel_module_signing_not_enforced.fix")
+                    .into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("state"),
+                if sig_enforce_missing {
+                    String::from("missing")
+                } else {
+                    String::from("disabled")
+                },
+            )]),
         ));
     }
 
@@ -2682,7 +2714,7 @@ mod tests {
                 "host.docker_live_restore_disabled",
                 "host.docker_log_driver_missing",
                 "host.docker_default_ulimits_missing",
->>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
+                "host.kernel.module_signing_not_enforced",
                 "host.mac_framework_missing",
                 "host.defensive_controls_missing",
             ]
@@ -2729,6 +2761,7 @@ mod tests {
                 "host.kernel.syn_cookies_disabled",
                 "host.kernel.broadcast_ping_allowed",
                 "host.kernel.ip_forward_enabled",
+                "host.kernel.module_signing_not_enforced",
                 "host.kernel.unprivileged_userns_clone_enabled",
                 "host.kernel.max_user_namespaces_enabled",
                 "host.mac_framework_missing",
@@ -2766,6 +2799,10 @@ mod tests {
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
             "/usr/sbin/dnsmasq (enforce)\n",
+        );
+        write_file(
+            &root.join("sys/module/module/parameters/sig_enforce"),
+            "Y\n",
         );
         write_file(&root.join("etc/hostname"), "hardened\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
@@ -2957,6 +2994,10 @@ mod tests {
         );
         write_file(&root.join("proc/sys/user/max_user_namespaces"), "0\n");
         write_file(&root.join("proc/sys/kernel/modules_disabled"), "1\n");
+        write_file(
+            &root.join("sys/module/module/parameters/sig_enforce"),
+            "Y\n",
+        );
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
             "/usr/sbin/dnsmasq (enforce)\n",

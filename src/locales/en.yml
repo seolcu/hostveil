@@ -714,6 +714,11 @@ finding:
       description: "%{path} is set to 0, allowing unrestricted kernel module loading."
       why: "Unrestricted module loading allows attackers with root or physical access to load arbitrary kernel code. Restricting it reduces the kernel attack surface and makes certain persistence techniques harder."
       fix: "Run 'sysctl -w kernel.modules_disabled=1' to prevent new module loading. Create /etc/sysctl.d/99-modules.conf with 'kernel.modules_disabled = 1' to persist. Note: ensure all required modules are loaded before setting this, as it cannot be undone without a reboot."
+    kernel_module_signing_not_enforced:
+      title: "Kernel module signing is not enforced"
+      description: "%{path} is missing or set to N, allowing unsigned kernel modules to be loaded."
+      why: "Without module signing enforcement, a compromised root account or attacker with physical access can load malicious kernel modules that bypass user-space security controls."
+      fix: "Enable CONFIG_MODULE_SIG_FORCE in your kernel config and ensure the kernel command line includes 'module.sig_enforce=1'. On most distributions this requires rebuilding or installing a signed kernel package."
     grub_password_missing:
       title: "GRUB bootloader lacks password protection"
       description: "%{path} does not contain a GRUB password or unrestricted restriction."
