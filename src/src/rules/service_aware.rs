@@ -28,6 +28,9 @@ enum ServiceKind {
     Caddy,
     Gitlab,
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)}
+    UptimeKuma,
+}
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -57,6 +60,9 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Caddy => findings.extend(scan_caddy_risk(service)),
             ServiceKind::Gitlab => findings.extend(scan_gitlab_risk(service)),
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        }
+            ServiceKind::UptimeKuma => findings.extend(scan_uptime_kuma_risk(service)),
+        }
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
     }
 
     findings
@@ -106,6 +112,10 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
     } else if haystack.contains("gitlab") {
         Some(ServiceKind::Gitlab)
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)    } else {
+    } else if haystack.contains("uptime-kuma") || haystack.contains("uptimekuma") {
+        Some(ServiceKind::UptimeKuma)
+    } else {
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
         None
     }
 }
@@ -1501,6 +1511,30 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
             BTreeMap::from([(
                 String::from("variable"),
                 String::from("GITLAB_SIGNUP_ENABLED"),
+fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if env_truthy(service, "UPTIME_KUMA_DISABLE_AUTH") {
+        findings.push(service_finding_with_remediation(
+            "service.uptime_kuma.auth_disabled",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.uptime_kuma.auth_disabled.title").into_owned(),
+                description: t!(
+                    "finding.uptime_kuma.auth_disabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.uptime_kuma.auth_disabled.why").into_owned(),
+                how_to_fix: t!("finding.uptime_kuma.auth_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("UPTIME_KUMA_DISABLE_AUTH"),
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
             )]),
             RemediationKind::Safe,
         ));
@@ -1543,6 +1577,29 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
                 (String::from("variable"), String::from("EXTERNAL_URL")),
                 (String::from("url"), url.to_owned()),
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            ]),
+        && let Some(port) = service
+            .ports
+            .iter()
+            .find(|p| p.container_port == "3001" && p.protocol == "tcp" && is_public_port(p))
+    {
+        findings.push(service_finding(
+            "service.uptime_kuma.admin_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.uptime_kuma.admin_public.title").into_owned(),
+                description: t!(
+                    "finding.uptime_kuma.admin_public.description",
+                    service = service.name.as_str(),
+                    port = port.raw.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.uptime_kuma.admin_public.why").into_owned(),
+                how_to_fix: t!("finding.uptime_kuma.admin_public.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("port"), port.raw.clone())]),
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
         ));
     }
 
@@ -2069,6 +2126,11 @@ mod tests {
     fn gitlab_baseline_avoids_service_specific_findings() {
         let project = ComposeParser::parse_path_without_override(fixture("gitlab", "baseline.yml"))
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            .expect("project should parse");
+    fn uptime_kuma_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "baseline.yml"))
+                .expect("project should parse");
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
 
         let findings = scan_service_aware_risk(&project);
 
@@ -2083,6 +2145,11 @@ mod tests {
         let project =
             ComposeParser::parse_path_without_override(fixture("gitlab", "vulnerable.yml"))
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)                .expect("project should parse");
+    fn uptime_kuma_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "vulnerable.yml"))
+                .expect("project should parse");
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
 
         let findings = scan_service_aware_risk(&project);
 
@@ -2099,5 +2166,11 @@ mod tests {
                 "service.gitlab.insecure_external_url",
             ]
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        );
+            vec![
+                "service.uptime_kuma.auth_disabled",
+                "service.uptime_kuma.admin_public",
+            ]
+        );
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
     }
 }
