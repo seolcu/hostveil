@@ -944,6 +944,12 @@ finding:
       description: "%{service} exposes the Nginx Proxy Manager admin UI on %{port}."
       why: "A publicly reachable NPM admin interface allows anyone to manage reverse proxies, SSL certificates, and access rules."
       fix: "Restrict NPM to localhost or a trusted network, or place it behind a VPN. Change the default admin credentials immediately."
+  caddy:
+    admin_api_public:
+      title: "Caddy admin API is publicly exposed"
+      description: "%{service} sets CADDY_ADMIN to %{admin}, exposing the admin API."
+      why: "The Caddy admin API allows dynamic reconfiguration and can expose sensitive site data if reachable by untrusted clients."
+      fix: "Remove CADDY_ADMIN or set it to localhost:2019. If remote admin is required, use a Unix socket or restrict access with firewall rules and strong authentication."
   authentik:
     admin_public:
       title: "Authentik interface is publicly exposed"

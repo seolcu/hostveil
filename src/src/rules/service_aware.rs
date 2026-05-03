@@ -25,6 +25,7 @@ enum ServiceKind {
     Postgres,
     Mysql,
     Redis,
+    Caddy,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -52,6 +53,7 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Postgres => findings.extend(scan_postgres_risk(service)),
             ServiceKind::Mysql => findings.extend(scan_mysql_risk(service)),
             ServiceKind::Redis => findings.extend(scan_redis_risk(service)),
+            ServiceKind::Caddy => findings.extend(scan_caddy_risk(service)),
         }
     }
 
@@ -97,6 +99,8 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Mysql)
     } else if haystack.contains("redis") {
         Some(ServiceKind::Redis)
+    } else if haystack.contains("caddy") {
+        Some(ServiceKind::Caddy)
     } else {
         None
     }
@@ -1411,6 +1415,38 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
     findings
 }
 
+fn scan_caddy_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if let Some(admin) = env_value(service, "CADDY_ADMIN")
+        && (admin.contains("0.0.0.0") || admin == ":2019")
+    {
+        findings.push(service_finding(
+            "service.caddy.admin_api_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.caddy.admin_api_public.title").into_owned(),
+                description: t!(
+                    "finding.caddy.admin_api_public.description",
+                    service = service.name.as_str(),
+                    admin = admin
+                )
+                .into_owned(),
+                why_risky: t!("finding.caddy.admin_api_public.why").into_owned(),
+                how_to_fix: t!("finding.caddy.admin_api_public.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("CADDY_ADMIN")),
+                (String::from("admin"), admin.to_owned()),
+            ]),
+        ));
+    }
+
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -1922,6 +1958,33 @@ mod tests {
                 "service.redis.bind_public",
                 "service.redis.protected_mode_disabled",
             ]
+        );
+    }
+
+    #[test]
+    fn caddy_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("caddy", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn caddy_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("caddy", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["service.caddy.admin_api_public"]
         );
     }
 }
