@@ -608,6 +608,27 @@ finding:
       description: "Docker 데몬이 root 권한으로 실행 중입니다."
       why: "Rootless Docker는 데몬을 비특권 사용자로 실행해 공격 표면을 줄입니다. root로 실행하면 Docker 데몬 침해가 곧바로 호스트 root 접근으로 이어질 수 있습니다."
       fix: "Docker Rootless 모드 마이그레이션을 고려하세요. 공식 Docker 문서에서 rootless 설치 및 마이그레이션 단계를 참조하세요. 참고: 이는 가이드 변경이며 자동 수정은 아닙니다."
+    docker_userns_remap_missing:
+      title: "Docker 사용자 네임스페이스 재매핑이 구성되지 않았습니다"
+      description: "%{path}에 userns-remap이 설정되지 않았습니다."
+      why: "사용자 네임스페이스 재매핑 없이는 컨테이너 프로세스가 호스트 UID로 실행되어, 컨테이너 탈출 시 영향 범위가 커집니다."
+      fix: "%{path}에 'userns-remap': 'default'를 추가하고 dockremap 사용자/subuid/subgid 매핑을 생성한 뒤 Docker를 재시작하세요."
+    docker_live_restore_disabled:
+      title: "Docker live-restore이 활성화되지 않았습니다"
+      description: "%{path}에 live-restore이 true로 설정되지 않았습니다."
+      why: "live-restore 없이는 Docker 데몬 재시작 시 모든 컨테이너가 중단되어 불필요한 다운타임과 데이터 손실이 발생할 수 있습니다."
+      fix: "%{path}에 'live-restore': true를 추가한 뒤 'systemctl restart docker'를 실행하세요."
+    docker_log_driver_missing:
+      title: "Docker 로그 드라이버가 명시적으로 구성되지 않았습니다"
+      description: "%{path}에 명시적인 log-driver이 설정되지 않았습니다."
+      why: "기본 json-file 로그 드라이버는 무제한으로 증가하여 디스크 공간을 소진하고 로그 분석을 어렵게 합니다."
+      fix: "%{path}에 'log-driver': 'json-file'과 'log-opts': { 'max-size': '10m', 'max-file': '3' }를 추가하거나, 'local' 같은 중앙 집중식 로그 드라이버를 사용하세요."
+    docker_default_ulimits_missing:
+      title: "Docker 기본 ulimits가 구성되지 않았습니다"
+      description: "%{path}에 default-ulimits이 설정되지 않았습니다."
+      why: "기본 ulimits이 없으면 비정상적으로 동작하는 컨테이너 하나가 호스트의 파일 디스크립터를 소진하거나 과도한 프로세스를 생성할 수 있습니다."
+      fix: "%{path}에 'default-ulimits': { 'nofile': { 'Name': 'nofile', 'Hard': 64000, 'Soft': 64000 } }를 추가한 뒤 Docker를 재시작하세요."
+>>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
     fail2ban_not_enabled:
       title: "Fail2ban이 설치되어 있지만 활성 상태가 아닙니다"
       description: "%{path}에서 로컬 Fail2ban 흔적이 보이지만, 활성화된 서비스 표시는 감지되지 않았습니다."

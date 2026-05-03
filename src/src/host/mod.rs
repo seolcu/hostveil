@@ -99,6 +99,7 @@ impl HostScanner {
         let mut findings = Vec::new();
         findings.extend(scan_ssh_hardening(context));
         findings.extend(scan_docker_host_exposure(context));
+        findings.extend(scan_docker_daemon_hardening(context));
         findings.extend(scan_firewall_hardening(context));
         findings.extend(scan_package_update_hardening(context));
         findings.extend(scan_kernel_hardening(context));
@@ -626,6 +627,93 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
 fn docker_is_rootless() -> Option<bool> {
     let output = try_command(&["docker", "info"])?;
     Some(output.to_ascii_lowercase().contains("rootless"))
+fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if let Some(daemon_path) = resolve_existing_path(&context.root, DOCKER_DAEMON_CONFIG_PATH)
+        && let Ok(text) = fs::read_to_string(&daemon_path)
+        && let Ok(json) = serde_json::from_str::<JsonValue>(&text)
+    {
+
+    if !docker_daemon_userns_remapped(&json) {
+        findings.push(host_finding(
+            "host.docker_userns_remap_missing",
+            Severity::Medium,
+            &daemon_path,
+            HostFindingText {
+                title: t!("finding.host.docker_userns_remap_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.docker_userns_remap_missing.description",
+                    path = daemon_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.docker_userns_remap_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.docker_userns_remap_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+        ));
+    }
+
+    if !docker_daemon_live_restore_enabled(&json) {
+        findings.push(host_finding(
+            "host.docker_live_restore_disabled",
+            Severity::Medium,
+            &daemon_path,
+            HostFindingText {
+                title: t!("finding.host.docker_live_restore_disabled.title").into_owned(),
+                description: t!(
+                    "finding.host.docker_live_restore_disabled.description",
+                    path = daemon_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.docker_live_restore_disabled.why").into_owned(),
+                how_to_fix: t!("finding.host.docker_live_restore_disabled.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+        ));
+    }
+
+    if !docker_daemon_log_driver_configured(&json) {
+        findings.push(host_finding(
+            "host.docker_log_driver_missing",
+            Severity::Low,
+            &daemon_path,
+            HostFindingText {
+                title: t!("finding.host.docker_log_driver_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.docker_log_driver_missing.description",
+                    path = daemon_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.docker_log_driver_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.docker_log_driver_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+        ));
+    }
+
+    if !docker_daemon_default_ulimits_configured(&json) {
+        findings.push(host_finding(
+            "host.docker_default_ulimits_missing",
+            Severity::Low,
+            &daemon_path,
+            HostFindingText {
+                title: t!("finding.host.docker_default_ulimits_missing.title").into_owned(),
+                description: t!(
+                    "finding.host.docker_default_ulimits_missing.description",
+                    path = daemon_path.display().to_string()
+                )
+                .into_owned(),
+                why_risky: t!("finding.host.docker_default_ulimits_missing.why").into_owned(),
+                how_to_fix: t!("finding.host.docker_default_ulimits_missing.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+        ));
+    }
+    }
+
+    findings
+>>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
 }
 
 fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
@@ -2477,6 +2565,31 @@ fn docker_daemon_setting_state(document: &JsonValue, key: &str) -> String {
     }
 }
 
+fn docker_daemon_userns_remapped(document: &JsonValue) -> bool {
+    document
+        .get("userns-remap")
+        .and_then(|v| v.as_str())
+        .is_some_and(|v| !v.is_empty())
+}
+
+fn docker_daemon_live_restore_enabled(document: &JsonValue) -> bool {
+    document.get("live-restore").and_then(JsonValue::as_bool) == Some(true)
+}
+
+fn docker_daemon_log_driver_configured(document: &JsonValue) -> bool {
+    document
+        .get("log-driver")
+        .and_then(|v| v.as_str())
+        .is_some_and(|v| !v.is_empty())
+}
+
+fn docker_daemon_default_ulimits_configured(document: &JsonValue) -> bool {
+    document
+        .get("default-ulimits")
+        .and_then(JsonValue::as_object)
+        .is_some_and(|obj| !obj.is_empty())
+}
+
 fn host_is_public_tcp(value: &JsonValue) -> bool {
     let Some(host) = value.as_str() else {
         return false;
@@ -2565,6 +2678,11 @@ mod tests {
                 "host.docker_daemon_tcp_no_tlsverify",
                 "host.docker_daemon_iptables_disabled",
                 "host.no_firewall_detected",
+                "host.docker_userns_remap_missing",
+                "host.docker_live_restore_disabled",
+                "host.docker_log_driver_missing",
+                "host.docker_default_ulimits_missing",
+>>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
                 "host.mac_framework_missing",
                 "host.defensive_controls_missing",
             ]
@@ -2810,7 +2928,7 @@ mod tests {
         );
         write_file(
             &root.join(DOCKER_DAEMON_CONFIG_PATH),
-            r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"]}"#,
+            r#"{"hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"], "userns-remap": "default", "live-restore": true, "log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}, "default-ulimits": {"nofile": {"Name": "nofile", "Hard": 64000, "Soft": 64000}}}"#,
         );
         write_file(
             &root.join("etc/fail2ban/jail.local"),
