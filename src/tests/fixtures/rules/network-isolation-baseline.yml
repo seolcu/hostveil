@@ -1,0 +1,15 @@
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      - frontend
+  db:
+    image: postgres:15
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:

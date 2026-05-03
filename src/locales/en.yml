@@ -510,6 +510,17 @@ finding:
       description: "%{service} mounts the sensitive host path %{path}."
       why: "Mounting sensitive host paths can expose secrets, host control sockets, or broad filesystem access to the container."
       fix: "Remove the mount or replace it with a narrower path that exposes only the required data."
+  network:
+    default_bridge_used:
+      title: "Stack relies on the default bridge network"
+      description: "The compose file does not define any custom networks, so all services share the default bridge."
+      why: "The default bridge provides weak isolation between containers and lacks automatic DNS discovery, making service-to-service traffic harder to secure."
+      fix: "Define explicit custom networks in the compose file and assign services to them."
+    bridge_mode_public_ports:
+      title: "Service uses bridge mode with public ports"
+      description: "%{service} sets network_mode: bridge and publishes %{port} publicly."
+      why: "Explicit bridge mode with public ports keeps the service on the default bridge while exposing it externally, reducing network-layer isolation benefits."
+      fix: "Move the service to a custom network and bind the port to 127.0.0.1 unless direct external access is required."
   sensitive:
     inline_secret:
       title: "Service hardcodes a secret in environment"

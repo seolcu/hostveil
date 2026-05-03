@@ -1,4 +1,5 @@
 mod exposure;
+mod network;
 mod permissions;
 mod runtime;
 mod sensitive;
@@ -6,6 +7,7 @@ mod service_aware;
 mod updates;
 
 pub use exposure::{is_public_port, scan_exposure_risk};
+pub use network::scan_network_isolation;
 pub use permissions::{classify_sensitive_mount, scan_permission_risk};
 pub use runtime::scan_runtime_risk;
 pub use sensitive::scan_sensitive_data;
@@ -27,6 +29,7 @@ impl RuleEngine {
         findings.extend(scan_sensitive_data(project));
         findings.extend(scan_update_risk(project));
         findings.extend(scan_service_aware_risk(project));
+        findings.extend(scan_network_isolation(project));
         findings
     }
 }
@@ -154,6 +157,7 @@ mod realistic_fixture_tests {
                     "vaultwarden",
                     Severity::High,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -205,6 +209,7 @@ mod realistic_fixture_tests {
                     "jellyfin",
                     Severity::Low,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -258,6 +263,7 @@ mod realistic_fixture_tests {
                     "server",
                     Severity::High,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -341,6 +347,7 @@ mod realistic_fixture_tests {
                     Severity::Critical,
                 ),
                 ("service.redis.password_missing", "redis", Severity::High,),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -397,6 +404,7 @@ mod realistic_fixture_tests {
                     "nextcloud",
                     Severity::Critical,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -447,6 +455,7 @@ mod realistic_fixture_tests {
                     "traefik",
                     Severity::Medium,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -507,6 +516,7 @@ mod realistic_fixture_tests {
                     "portainer",
                     Severity::Critical,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -562,6 +572,7 @@ mod realistic_fixture_tests {
                     "homeassistant",
                     Severity::Low,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -609,6 +620,7 @@ mod realistic_fixture_tests {
                 ("service.pihole.admin_public", "pihole", Severity::High,),
                 ("service.pihole.weak_password", "pihole", Severity::High,),
                 ("service.pihole.dns_public", "pihole", Severity::Medium,),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -660,6 +672,7 @@ mod realistic_fixture_tests {
                     "grafana",
                     Severity::High,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -694,6 +707,7 @@ mod realistic_fixture_tests {
                 ("exposure.public_binding", "npm", Severity::Medium),
                 ("permissions.implicit_root", "npm", Severity::Medium),
                 ("service.npm.admin_public", "npm", Severity::High,),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -739,6 +753,7 @@ mod realistic_fixture_tests {
                     "authentik",
                     Severity::Medium,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -780,6 +795,7 @@ mod realistic_fixture_tests {
                     "paperless",
                     Severity::Medium,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -827,6 +843,7 @@ mod realistic_fixture_tests {
                 ),
                 ("service.postgres.bind_public", "db", Severity::High),
                 ("service.postgres.trust_auth", "db", Severity::High),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -868,6 +885,7 @@ mod realistic_fixture_tests {
                 ("permissions.implicit_root", "db", Severity::Medium),
                 ("service.mysql.password_missing", "db", Severity::Critical),
                 ("service.mysql.bind_public", "db", Severity::High),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -909,6 +927,7 @@ mod realistic_fixture_tests {
                     "cache",
                     Severity::High
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }
@@ -988,6 +1007,7 @@ mod tests {
                     "postgres",
                     Severity::Critical,
                 ),
+                ("network.default_bridge_used", "", Severity::Low),
             ]
         );
     }

@@ -114,6 +114,7 @@ impl ComposeParser {
                 .parent()
                 .map(Path::to_path_buf)
                 .unwrap_or_else(|| PathBuf::from(".")),
+            networks: merge_networks(&bundle),
         })
     }
 }
@@ -290,6 +291,28 @@ fn merge_services(bundle: &ComposeBundle) -> IndexMap<String, ComposeService> {
             (name, built)
         })
         .collect()
+}
+
+fn merge_networks(bundle: &ComposeBundle) -> Vec<String> {
+    let mut networks = Vec::new();
+
+    for (_, document) in service_sources(bundle) {
+        let Some(mapping) = document
+            .as_mapping()
+            .and_then(|m| mapping_get(m, "networks"))
+            .and_then(Value::as_mapping)
+        else {
+            continue;
+        };
+        for key in mapping.keys() {
+            let name = yaml_value_to_string(key);
+            if !networks.contains(&name) {
+                networks.push(name);
+            }
+        }
+    }
+
+    networks
 }
 
 fn service_sources(bundle: &ComposeBundle) -> Vec<(&Path, &Value)> {

@@ -47,6 +47,7 @@ pub struct ComposeProject {
     pub loaded_files: Vec<PathBuf>,
     pub services: IndexMap<String, ComposeService>,
     pub working_dir: PathBuf,
+    pub networks: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
