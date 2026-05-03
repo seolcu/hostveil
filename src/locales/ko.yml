@@ -764,6 +764,11 @@ finding:
       description: "%{path}에 complain 모드의 프로필이 하나 이상 존재합니다."
       why: "Complain 모드는 정책 위반을 기록하지만 차단하지 않아, 침핵된 서비스가 강화된 프로필이 거부할 행위를 여전히 수행할 수 있습니다."
       fix: "'aa-enforce /etc/apparmor.d/profile.name'로 테스트된 프로필을 enforce 모드로 전환하세요. /var/log/syslog나 journald에서 denial을 먼저 확인하고, 스테이징 환경에서 하나씩 적용하세요."
+    apparmor_profile_missing:
+      title: "%{service}의 AppArmor 프로필이 없습니다"
+      description: "%{path}에 %{service}에 대한 enforced 프로필이 없습니다."
+      why: "%{service}를 AppArmor 프로필 없이 실행하면 강제 접근 제어 계층이 제거되어, 침핵된 프로세스가 파일과 시스템 호출에 더 자유롭게 접근할 수 있습니다."
+      fix: "%{service}에 대한 AppArmor 프로필을 설치하거나 활성화하세요. Debian/Ubuntu에서는 'apparmor-profiles'나 배포판별 패키지(예: 'apparmor-profile-docker')를 확인하세요. 'apparmor_parser /etc/apparmor.d/profile.name'로 로드하고 'aa-status'로 확인하세요."
     mac_framework_missing:
       title: "강제 접근 제어 프레임워크가 감지되지 않았습니다"
       description: "%{path}에 SELinux 또는 AppArmor 설치 마커가 없습니다."
