@@ -301,11 +301,11 @@ hostveil release versions follow standard SemVer without suffixes: `X.Y.Z` for t
 - Create GitHub Releases only from annotated `vX.Y.Z` tags pushed from `main`
 - The release tag must match `src/Cargo.toml` and `Cargo.lock`
 
-v0.15.0 release highlights:
+v0.16.0 release highlights:
 
 - Five target audit axes fully implemented: Sensitive Data, Excessive Permissions, Unnecessary Exposure, Update/Supply Chain Risk, and Host Hardening
-- 18+ service-aware Compose security checks with auto-fix rules for Vaultwarden, Jellyfin, Nextcloud, Immich, Gitea, Traefik, Portainer, Home Assistant, Pi-hole, Grafana, PostgreSQL, MySQL, Redis, and more
-- Expanded native Linux host checks: SSH posture, Docker daemon exposure, kernel sysctl hardening (ASLR, SYN cookies, IP forwarding, modules, user namespaces), mount flags (noexec/nosuid/nodev), /proc hidepid, SELinux/AppArmor, systemd hardening, GRUB password, shadow permissions/hash algorithms, /tmp tmpfs
+- 21+ service-aware Compose security checks with auto-fix rules for Vaultwarden, Jellyfin, Nextcloud, Immich, Gitea, Traefik, Portainer, Home Assistant, Pi-hole, Grafana, Caddy, GitLab, Uptime Kuma, PostgreSQL, MySQL, Redis, and more
+- Expanded native Linux host checks: SSH posture (weak Kex/MAC/ciphers), Docker daemon exposure and hardening (userns-remap, live-restore, log-driver, ulimits), kernel sysctl hardening (ASLR, SYN cookies, IP forwarding, modules, user namespaces, module signing), mount flags (noexec/nosuid/nodev), /proc hidepid, SELinux/AppArmor, systemd hardening, GRUB password, shadow permissions/hash algorithms, /tmp tmpfs, UEFI Secure Boot, firewall state (UFW/firewalld/nftables), auto-update status (unattended-upgrades/dnf-automatic/yum-cron)
 - Multiple headless export formats: JSON (versioned schema), SARIF, Markdown, and HTML
 - CI exit codes with `--fail-on` severity threshold for automation pipelines
 - In-TUI findings search (`/`), help overlay (`?`), and score trend sparkline
