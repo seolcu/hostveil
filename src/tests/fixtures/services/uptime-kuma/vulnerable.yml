@@ -1,0 +1,7 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    environment:
+      UPTIME_KUMA_DISABLE_AUTH: "true"
+    ports:
+      - "3001:3001"

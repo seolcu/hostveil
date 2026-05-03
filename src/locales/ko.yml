@@ -972,6 +972,18 @@ finding:
       why: "GitLab을 HTTP로 제공하면 인증 토큰, 쿠키, 저장소 데이터가 가로채기 및 변조에 노출됩니다."
       fix: "EXTERNAL_URL을 HTTPS URL로 설정하고, 리버스 프록시나 GitLab 내장 Lets Encrypt 연동을 통해 TLS를 종료하세요."
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
+  uptime_kuma:
+    auth_disabled:
+      title: "Uptime Kuma 인증이 비활성화되어 있습니다"
+      description: "%{service}가 UPTIME_KUMA_DISABLE_AUTH를 설정하여 인증 없이 접근을 허용하고 있습니다."
+      why: "인증을 비활성화하면 누구나 모니터를 보고, 추가하거나 제거하며, 알림 설정에 접근할 수 있습니다."
+      fix: "UPTIME_KUMA_DISABLE_AUTH를 제거하고 Uptime Kuma UI를 통해 사용자 이름/비밀번호 인증을 구성하세요."
+    admin_public:
+      title: "Uptime Kuma 관리 인터페이스가 공개적으로 노출되어 있습니다"
+      description: "%{service}가 Uptime Kuma 대시보드를 %{port}에 노출하고 있습니다."
+      why: "공개적으로 접근 가능한 Uptime Kuma 대시보드는 낮부 인프라 토폴로지, 엔드포인트, 상태 정보를 공격자에게 노출합니다."
+      fix: "Uptime Kuma를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 강력한 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
   authentik:
     admin_public:
       title: "Authentik 인터페이스가 공개적으로 노출되어 있습니다"

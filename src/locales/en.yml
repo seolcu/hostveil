@@ -972,6 +972,18 @@ finding:
       why: "Serving GitLab over HTTP exposes authentication tokens, cookies, and repository data to interception and tampering."
       fix: "Set EXTERNAL_URL to an HTTPS URL and terminate TLS with a reverse proxy or GitLab's built-in Lets Encrypt integration."
 >>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
+  uptime_kuma:
+    auth_disabled:
+      title: "Uptime Kuma authentication is disabled"
+      description: "%{service} sets UPTIME_KUMA_DISABLE_AUTH, allowing unauthenticated access."
+      why: "Disabling authentication lets anyone view monitors, add or remove checks, and access notification settings."
+      fix: "Remove UPTIME_KUMA_DISABLE_AUTH and configure username/password authentication through the Uptime Kuma UI."
+    admin_public:
+      title: "Uptime Kuma admin interface is publicly exposed"
+      description: "%{service} exposes the Uptime Kuma dashboard on %{port}."
+      why: "A publicly reachable Uptime Kuma dashboard reveals internal infrastructure topology, endpoints, and health status to attackers."
+      fix: "Restrict Uptime Kuma to localhost or a trusted network, or place it behind a reverse proxy with strong authentication."
+>>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
   authentik:
     admin_public:
       title: "Authentik interface is publicly exposed"
