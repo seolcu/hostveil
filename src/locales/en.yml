@@ -723,6 +723,26 @@ finding:
       description: "%{service} is missing the following hardening markers: %{flags}."
       why: "Systemd directives like NoNewPrivileges, ProtectSystem, ProtectHome, and PrivateTmp constrain service runtime and reduce blast radius if a service is compromised. Their absence leaves more host resources exposed."
       fix: "Edit %{service} and add the missing directives under [Service]. Start with NoNewPrivileges=true and PrivateTmp=true, then test. Add ProtectSystem=strict and ProtectHome=true after validating the service still starts and functions correctly. Run 'systemctl daemon-reload && systemctl restart %{service}' after editing."
+    firewalld_installed_but_disabled:
+      title: "Firewalld is installed but disabled"
+      description: "Firewalld is present at %{path} but the service is not enabled."
+      why: "A host firewall helps narrow inbound exposure. Installing firewalld without enabling it leaves the host with no active firewall policy."
+      fix: "Enable firewalld with 'systemctl enable --now firewalld'. Configure necessary zones and services (e.g., 'firewall-cmd --permanent --add-service=ssh'), then reload with 'firewall-cmd --reload'. Verify with 'firewall-cmd --state'."
+    firewalld_default_zone_trusted:
+      title: "Firewalld default zone is trusted"
+      description: "%{path} sets DefaultZone to %{zone}."
+      why: "The trusted zone allows all traffic by default, which effectively disables firewall protection for incoming connections."
+      fix: "Change the default zone to 'public' or a more restrictive custom zone in %{path}, then run 'firewall-cmd --set-default-zone=public' and 'firewall-cmd --reload'. Review allowed services with 'firewall-cmd --list-services'."
+    nftables_installed_no_rules:
+      title: "nftables is installed but has no rules"
+      description: "nftables configuration at %{path} is empty."
+      why: "An empty nftables ruleset means no packet filtering is active, leaving the host exposed to unwanted traffic."
+      fix: "Define a basic nftables ruleset in %{path} (e.g., drop incoming traffic by default and allow established/related connections and necessary ports). Load it with 'nft -f %{path}' and enable the nftables service with 'systemctl enable --now nftables'."
+    no_firewall_detected:
+      title: "No host firewall was detected"
+      description: "No UFW, firewalld, or nftables installation markers were found."
+      why: "Without a host firewall, any service that accidentally binds to a public interface or port becomes immediately reachable, and lateral movement is harder to contain."
+      fix: "Install and enable a host firewall. On Debian/Ubuntu, use UFW ('apt install ufw'). On Fedora/RHEL/Rocky, use firewalld ('dnf install firewalld'). For advanced setups, configure nftables directly. Allow only necessary ports before enabling."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

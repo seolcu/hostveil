@@ -723,6 +723,26 @@ finding:
       description: "%{service}에 다음 하드닝 마커가 누락되었습니다: %{flags}."
       why: "NoNewPrivileges, ProtectSystem, ProtectHome, PrivateTmp 같은 Systemd 지시문은 서비스 런타임을 제한하고 서비스가 침핵되었을 때의 영향 범위를 줄입니다. 이들이 없으면 더 많은 호스트 리소스가 노출됩니다."
       fix: "%{service}를 수정하여 [Service] 아래 누락된 지시문을 추가하세요. NoNewPrivileges=true와 PrivateTmp=true부터 시작하고 테스트하세요. ProtectSystem=strict와 ProtectHome=true는 서비스가 정상 시작하고 작동하는지 검증한 뒤 추가하세요. 수정 후 'systemctl daemon-reload && systemctl restart %{service}'를 실행하세요."
+    firewalld_installed_but_disabled:
+      title: "Firewalld가 설치되어 있지만 비활성화되어 있습니다"
+      description: "Firewalld가 %{path}에 존재하지만 서비스가 활성화되지 않았습니다."
+      why: "호스트 방화벽은 인바운드 노출을 줄이는 데 도움이 됩니다. Firewalld를 설치만 하고 활성화하지 않으면 호스트에 활성 방화벽 정책이 없는 상태가 됩니다."
+      fix: "'systemctl enable --now firewalld'로 Firewalld를 활성화하세요. 필요한 zone과 service를 구성한 뒤(예: 'firewall-cmd --permanent --add-service=ssh'), 'firewall-cmd --reload'를 실행하세요. 'firewall-cmd --state'로 상태를 확인하세요."
+    firewalld_default_zone_trusted:
+      title: "Firewalld 기본 zone이 trusted입니다"
+      description: "%{path}가 DefaultZone을 %{zone}로 설정했습니다."
+      why: "trusted zone은 기본적으로 모든 트래픽을 허용하므로, 들어오는 연결에 대한 방화벽 보호가 사실상 비활성화됩니다."
+      fix: "%{path}에서 기본 zone을 'public'이나 더 제한적인 사용자 정의 zone으로 변경하세요. 그런 다음 'firewall-cmd --set-default-zone=public'과 'firewall-cmd --reload'를 실행하세요. 'firewall-cmd --list-services'로 허용된 서비스를 확인하세요."
+    nftables_installed_no_rules:
+      title: "nftables가 설치되어 있지만 규칙이 없습니다"
+      description: "%{path}의 nftables 설정이 비어 있습니다."
+      why: "빈 nftables 규칙 세트는 패킷 필터링이 활성화되지 않았음을 의미하므로, 호스트가 원치 않는 트래픽에 노출됩니다."
+      fix: "%{path}에 기본 nftables 규칙 세트를 정의하세요(예: 기본적으로 들어오는 트래픽을 차단하고 established/related 연결과 필요한 포트만 허용). 'nft -f %{path}'로 로드하고 'systemctl enable --now nftables'로 서비스를 활성화하세요."
+    no_firewall_detected:
+      title: "호스트 방화벽이 감지되지 않았습니다"
+      description: "UFW, Firewalld, nftables 설치 마커를 찾을 수 없습니다."
+      why: "호스트 방화벽이 없으면 실수로 공개 인터페이스나 포트에 바인딩된 서비스가 즉시 외부에서 접근 가능해지며, 횡적 이동을 제어하기 어렵습니다."
+      fix: "호스트 방화벽을 설치하고 활성화하세요. Debian/Ubuntu는 UFW('apt install ufw')를, Fedora/RHEL/Rocky는 Firewalld('dnf install firewalld')를 사용하세요. 고급 설정에는 nftables를 직접 구성하세요. 활성화 전에 필요한 포트만 허용하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"
