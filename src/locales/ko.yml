@@ -623,6 +623,26 @@ finding:
       description: "%{path}가 APT::Periodic::Update-Package-Lists를 비활성화합니다."
       why: "오래된 패키지 인덱스는 보안 패치 가시성을 지연시키고 자동 패치 기대를 약화시킬 수 있습니다."
       fix: "/etc/apt/apt.conf.d/20auto-upgrades에서 APT::Periodic::Update-Package-Lists를 1로 설정하거나, 'dpkg-reconfigure -plow unattended-upgrades'를 실행하세요. 'apt-config dump | grep Update-Package-Lists'로 확인하세요."
+    dnf_automatic_disabled:
+      title: "dnf-automatic 업데이트가 비활성화되어 있습니다"
+      description: "%{path}의 [commands]에서 apply_updates가 비활성화되어 있습니다."
+      why: "dnf-automatic이 없으면 Fedora/RHEL/Rocky 시스템이 수동 개입 전까지 보안 업데이트를 놓칠 수 있습니다."
+      fix: "dnf-automatic을 설치('dnf install dnf-automatic')하고 %{path}에서 apply_updates = yes로 설정한 뒤, 'systemctl enable --now dnf-automatic.timer'로 타이머를 활성화하세요. 'systemctl list-timers | grep dnf-automatic'으로 확인하세요."
+    dnf_automatic_timer_disabled:
+      title: "dnf-automatic 타이머가 활성화되지 않았습니다"
+      description: "%{path}는 존재하지만 dnf-automatic 타이머가 활성화되지 않았습니다."
+      why: "apply_updates가 구성되어 있어도 타이머가 활성화되어야 예약된 업데이트가 실행됩니다."
+      fix: "'systemctl enable --now dnf-automatic.timer'로 타이머를 활성화하세요. 'systemctl status dnf-automatic.timer'로 상태를 확인하세요."
+    yum_cron_disabled:
+      title: "yum-cron 업데이트가 비활성화되어 있습니다"
+      description: "%{path}의 [commands]에서 apply_updates가 비활성화되어 있습니다."
+      why: "yum-cron이 없으면 이전 RHEL 시스템이 수동 개입 전까지 보안 업데이트를 놓칠 수 있습니다."
+      fix: "yum-cron을 설치하고 %{path}에서 apply_updates = yes로 설정한 뒤, 'systemctl enable --now yum-cron'으로 서비스를 시작하세요."
+    yum_cron_service_disabled:
+      title: "yum-cron 서비스가 활성화되지 않았습니다"
+      description: "%{path}는 존재하지만 yum-cron 서비스가 활성화되지 않았습니다."
+      why: "apply_updates가 구성되어 있어도 서비스가 활성화되어야 예약된 업데이트가 실행됩니다."
+      fix: "'systemctl enable --now yum-cron'으로 서비스를 활성화하세요. 'systemctl status yum-cron'으로 상태를 확인하세요."
     kernel_aslr_disabled:
       title: "커널 ASLR이 비활성화되어 있습니다"
       description: "%{path}가 0으로 설정되어 주소 공간 배치 무작위화가 꺼져 있습니다."

@@ -623,6 +623,26 @@ finding:
       description: "%{path} disables APT::Periodic::Update-Package-Lists."
       why: "Outdated package indexes can delay security patch visibility and weaken automated patching expectations."
       fix: "Set APT::Periodic::Update-Package-Lists to 1 in /etc/apt/apt.conf.d/20auto-upgrades, or run 'dpkg-reconfigure -plow unattended-upgrades'. Verify with 'apt-config dump | grep Update-Package-Lists'."
+    dnf_automatic_disabled:
+      title: "dnf-automatic updates are disabled"
+      description: "%{path} has apply_updates disabled under [commands]."
+      why: "Without dnf-automatic, Fedora/RHEL/Rocky systems may miss security updates until manual intervention."
+      fix: "Install dnf-automatic ('dnf install dnf-automatic'), set apply_updates = yes in %{path}, and enable the timer with 'systemctl enable --now dnf-automatic.timer'. Verify with 'systemctl list-timers | grep dnf-automatic'."
+    dnf_automatic_timer_disabled:
+      title: "dnf-automatic timer is not enabled"
+      description: "%{path} exists but the dnf-automatic timer is not enabled."
+      why: "Even with apply_updates configured, the timer must be active for scheduled updates to run."
+      fix: "Enable the timer with 'systemctl enable --now dnf-automatic.timer'. Verify with 'systemctl status dnf-automatic.timer'."
+    yum_cron_disabled:
+      title: "yum-cron updates are disabled"
+      description: "%{path} has apply_updates disabled under [commands]."
+      why: "Without yum-cron, older RHEL systems may miss security updates until manual intervention."
+      fix: "Install yum-cron, set apply_updates = yes in %{path}, and start the service with 'systemctl enable --now yum-cron'."
+    yum_cron_service_disabled:
+      title: "yum-cron service is not enabled"
+      description: "%{path} exists but the yum-cron service is not enabled."
+      why: "Even with apply_updates configured, the service must be active for scheduled updates to run."
+      fix: "Enable the service with 'systemctl enable --now yum-cron'. Verify with 'systemctl status yum-cron'."
     kernel_aslr_disabled:
       title: "Kernel ASLR is disabled"
       description: "%{path} is set to 0, disabling address space layout randomization."
