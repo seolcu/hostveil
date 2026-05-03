@@ -53,3 +53,17 @@ jobs:
 
       - name: Run installer tests
         run: ./scripts/test-install-script.sh target/debug/hostveil
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate test coverage
+        run: cargo tarpaulin --workspace --out Html --out Lcov --output-dir coverage
+        continue-on-error: true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/

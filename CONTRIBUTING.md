@@ -105,9 +105,18 @@ Use this matrix to understand which gates run in CI versus tag-based release val
 
 | Context             | Workflow                                                  | Required checks                                                                                                                                                                                                                                                                                                 |
 | ------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Push / Pull Request | `.github/workflows/rust-ci.yml`                           | `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --workspace`, `./scripts/smoke-test.sh target/debug/hostveil`, `./scripts/test-install-script.sh target/debug/hostveil`                                                     |
+| Push / Pull Request | `.github/workflows/rust-ci.yml`                           | `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --workspace`, `./scripts/smoke-test.sh target/debug/hostveil`, `./scripts/test-install-script.sh target/debug/hostveil`, `cargo-tarpaulin` coverage report (artifact)          |
 | Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (validate job)       | tag-version match (`src/Cargo.toml`), `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --release --workspace`, `./scripts/smoke-test.sh target/release/hostveil`, `./scripts/test-install-script.sh target/release/hostveil` |
 | Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (build/release jobs) | cross-target release build (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), artifact packaging, `SHA256SUMS`, GitHub Release publish                                                                                                                                                                  |
+
+### Coverage Policy
+
+CI generates an HTML/Lcov coverage report on every push and pull request via `cargo-tarpaulin`. The report is uploaded as a build artifact named `coverage-report`.
+
+- Coverage measurement is informational for now. There is no hard threshold gate that blocks merges.
+- When adding new user-visible features or host checks, include tests that exercise the new code path. PR reviews will check whether the changed modules improved or regressed coverage.
+- If you notice a module with near-zero coverage, open a follow-up issue so it can be prioritized.
+- Coverage artifacts are kept per-workflow-run and can be downloaded from the GitHub Actions summary page.
 
 Locale note for shell-based smoke assertions:
 
