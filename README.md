@@ -301,13 +301,16 @@ hostveil release versions follow standard SemVer without suffixes: `X.Y.Z` for t
 - Create GitHub Releases only from annotated `vX.Y.Z` tags pushed from `main`
 - The release tag must match `src/Cargo.toml` and `Cargo.lock`
 
-v0.10.0 release highlights:
+v0.15.0 release highlights:
 
-- TUI layout presets are user-selectable and covered by a render matrix across representative terminal sizes
-- Visible TUI security content wraps instead of relying on ellipsis-style truncation
-- Overview and Findings panels support scrolling with visible scrollbars where content overflows
-- Settings modal exposes theme, layout, and locale controls through localized keyboard and mouse workflows
-- Tab navigation and precise mouse hit targets make Overview, Findings, and Settings more discoverable
+- Five target audit axes fully implemented: Sensitive Data, Excessive Permissions, Unnecessary Exposure, Update/Supply Chain Risk, and Host Hardening
+- 18+ service-aware Compose security checks with auto-fix rules for Vaultwarden, Jellyfin, Nextcloud, Immich, Gitea, Traefik, Portainer, Home Assistant, Pi-hole, Grafana, PostgreSQL, MySQL, Redis, and more
+- Expanded native Linux host checks: SSH posture, Docker daemon exposure, kernel sysctl hardening (ASLR, SYN cookies, IP forwarding, modules, user namespaces), mount flags (noexec/nosuid/nodev), /proc hidepid, SELinux/AppArmor, systemd hardening, GRUB password, shadow permissions/hash algorithms, /tmp tmpfs
+- Multiple headless export formats: JSON (versioned schema), SARIF, Markdown, and HTML
+- CI exit codes with `--fail-on` severity threshold for automation pipelines
+- In-TUI findings search (`/`), help overlay (`?`), and score trend sparkline
+- Auto-fix engine with preview-safe `--quick-fix` and guided `--fix` for Compose files, including service-specific hardening for nginx, databases, and popular self-hosted apps
+- Optional external scanner adapters (Trivy, Dockle, Lynis) with per-adapter timeout granularity and graceful degradation when missing
 
 Current release priorities:
 

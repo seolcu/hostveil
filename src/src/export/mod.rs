@@ -6,7 +6,7 @@ use serde_json::to_string_pretty;
 use crate::domain::{Finding, ScanResult, ScoreReport};
 use crate::i18n;
 
-const JSON_SCHEMA_VERSION: &str = "0.13.0";
+const JSON_SCHEMA_VERSION: &str = "0.15.0";
 const SARIF_SCHEMA_URI: &str = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
 const SARIF_VERSION: &str = "2.1.0";
 const TOOL_NAME: &str = "hostveil";
@@ -587,7 +587,7 @@ mod tests {
         let result = ScanResult::default();
         let json = parse_json(&result);
 
-        assert_eq!(json["version"].as_str().unwrap(), "0.13.0");
+        assert_eq!(json["version"].as_str().unwrap(), "0.15.0");
         assert!(json["findings"].is_array());
         assert!(json["score_report"].is_object());
         assert!(json["metadata"].is_object());
@@ -607,7 +607,7 @@ mod tests {
         let json: Value =
             serde_json::from_str(&scan_result_json_filtered(&result, true)).expect("should parse");
 
-        assert_eq!(json["version"].as_str().unwrap(), "0.13.0");
+        assert_eq!(json["version"].as_str().unwrap(), "0.15.0");
         assert_eq!(json["findings"].as_array().unwrap().len(), 1);
         assert!(!json.as_object().unwrap().contains_key("score_report"));
         assert!(!json.as_object().unwrap().contains_key("metadata"));
