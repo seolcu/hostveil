@@ -588,6 +588,11 @@ finding:
       description: "%{path}가 daemon.json에서 iptables를 false로 설정합니다."
       why: "Docker의 iptables 통합을 끄면 게시된 포트와 컨테이너 네트워킹이 운영자 예상과 다른 방식으로 노출될 수 있습니다."
       fix: "%{path}에서 'iptables': false를 제거하거나 true로 설정한 뒤 'systemctl restart docker'를 실행하세요. 호스트 방화벽(ufw/firewalld) 규칙이 Docker NAT와 충돌하지 않는지 확인하세요."
+    docker_not_rootless:
+      title: "Docker가 rootless 모드로 실행되지 않고 있습니다"
+      description: "Docker 데몬이 root 권한으로 실행 중입니다."
+      why: "Rootless Docker는 데몬을 비특권 사용자로 실행해 공격 표면을 줄입니다. root로 실행하면 Docker 데몬 침해가 곧바로 호스트 root 접근으로 이어질 수 있습니다."
+      fix: "Docker Rootless 모드 마이그레이션을 고려하세요. 공식 Docker 문서에서 rootless 설치 및 마이그레이션 단계를 참조하세요. 참고: 이는 가이드 변경이며 자동 수정은 아닙니다."
     fail2ban_not_enabled:
       title: "Fail2ban이 설치되어 있지만 활성 상태가 아닙니다"
       description: "%{path}에서 로컬 Fail2ban 흔적이 보이지만, 활성화된 서비스 표시는 감지되지 않았습니다."

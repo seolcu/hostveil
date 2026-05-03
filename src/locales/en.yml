@@ -588,6 +588,11 @@ finding:
       description: "%{path} sets iptables to false in daemon.json."
       why: "Disabling Docker's iptables integration can leave published ports and container networking exposed in ways the operator does not expect."
       fix: "Remove 'iptables': false from %{path} (or set it to true), then restart Docker with 'systemctl restart docker'. Ensure your host firewall (ufw/firewalld) rules do not conflict with Docker's NAT rules."
+    docker_not_rootless:
+      title: "Docker is not running in rootless mode"
+      description: "The Docker daemon is running as root."
+      why: "Rootless Docker reduces the attack surface by running the daemon as an unprivileged user. Running as root means a Docker daemon compromise can lead directly to full host root access."
+      fix: "Consider migrating to Docker Rootless mode. See the official Docker documentation for rootless installation and migration steps. Note: this is a guided change, not an automatic fix."
     fail2ban_not_enabled:
       title: "Fail2ban is installed but not active"
       description: "%{path} shows local Fail2ban markers, but no enabled service marker was detected."

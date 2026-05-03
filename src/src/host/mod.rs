@@ -488,7 +488,29 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
         }
     }
 
+    if is_live_root(&context.root)
+        && let Some(false) = docker_is_rootless()
+    {
+        findings.push(host_finding(
+            "host.docker_not_rootless",
+            Severity::Low,
+            &context.root.join(DOCKER_SOCKET_PATH),
+            HostFindingText {
+                title: t!("finding.host.docker_not_rootless.title").into_owned(),
+                description: t!("finding.host.docker_not_rootless.description").into_owned(),
+                why_risky: t!("finding.host.docker_not_rootless.why").into_owned(),
+                how_to_fix: t!("finding.host.docker_not_rootless.fix").into_owned(),
+            },
+            BTreeMap::new(),
+        ));
+    }
+
     findings
+}
+
+fn docker_is_rootless() -> Option<bool> {
+    let output = try_command(&["docker", "info"])?;
+    Some(output.to_ascii_lowercase().contains("rootless"))
 }
 
 fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
