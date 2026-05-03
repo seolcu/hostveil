@@ -950,6 +950,28 @@ finding:
       description: "%{service}가 CADDY_ADMIN을 %{admin}(으)로 설정하여 관리 API를 노출하고 있습니다."
       why: "Caddy 관리 API는 동적 재구성이 가능하며, 신뢰할 수 없는 클라이언트가 접근할 경우 민감한 사이트 데이터가 노출될 수 있습니다."
       fix: "CADDY_ADMIN을 제거하거나 localhost:2019로 설정하세요. 원격 관리가 필요한 경우 Unix 소켓을 사용하거나 방화벽 규칙과 강력한 인증으로 접근을 제한하세요."
+  gitlab:
+    root_password_env:
+      title: "GitLab 루트 비밀번호가 환경 변수로 설정되어 있습니다"
+      description: "%{service}가 GITLAB_ROOT_PASSWORD를 일반 환경 변수로 설정하고 있습니다."
+      why: "루트 비밀번호를 환경 변수에 저장하면 프로세스 목록, 컨테이너 검사, Compose 파일을 통해 노출될 수 있습니다."
+      fix: "비밀번호 파일이나 Docker Secrets를 사용하여 루트 비밀번호를 주입하세요."
+    shared_runners_registration_token_env:
+      title: "GitLab 공유 Runner 등록 토큰이 환경 변수로 노출되어 있습니다"
+      description: "%{service}가 GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN을 일반 환경 변수로 설정하고 있습니다."
+      why: "유출된 등록 토큰은 임의의 Runner가 GitLab 인스턴스에 등록하여 CI 작업을 가로챌 수 있게 합니다."
+      fix: "등록 토큰에 비밀 파일이나 Docker Secrets를 사용하고, 노출 가능성이 있다면 토큰을 회전하세요."
+    signups_enabled:
+      title: "GitLab 공개 가입이 활성화되어 있습니다"
+      description: "%{service}가 GITLAB_SIGNUP_ENABLED를 설정하여 누구나 계정을 생성할 수 있게 했습니다."
+      why: "셀프 호스팅 GitLab 인스턴스에서 열린 가입은 남용, 스팸, 비공개 저장소에 대한 무단 접근으로 이어질 수 있습니다."
+      fix: "가입을 비활성화하거나 승인된 도메인으로 제한하세요. 사용자 프로비저닝에는 외부 IdP를 사용하세요."
+    insecure_external_url:
+      title: "GitLab 외부 URL이 평문 HTTP를 사용합니다"
+      description: "%{service}가 EXTERNAL_URL을 %{url}(으)로 설정하여 암호화되지 않은 HTTP를 사용합니다."
+      why: "GitLab을 HTTP로 제공하면 인증 토큰, 쿠키, 저장소 데이터가 가로채기 및 변조에 노출됩니다."
+      fix: "EXTERNAL_URL을 HTTPS URL로 설정하고, 리버스 프록시나 GitLab 내장 Lets Encrypt 연동을 통해 TLS를 종료하세요."
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
   authentik:
     admin_public:
       title: "Authentik 인터페이스가 공개적으로 노출되어 있습니다"

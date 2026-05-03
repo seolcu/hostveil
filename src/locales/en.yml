@@ -950,6 +950,28 @@ finding:
       description: "%{service} sets CADDY_ADMIN to %{admin}, exposing the admin API."
       why: "The Caddy admin API allows dynamic reconfiguration and can expose sensitive site data if reachable by untrusted clients."
       fix: "Remove CADDY_ADMIN or set it to localhost:2019. If remote admin is required, use a Unix socket or restrict access with firewall rules and strong authentication."
+  gitlab:
+    root_password_env:
+      title: "GitLab root password is set via environment variable"
+      description: "%{service} sets GITLAB_ROOT_PASSWORD as a plain environment variable."
+      why: "Storing the root password in environment variables leaves it visible in process listings, container inspection, and compose files."
+      fix: "Use a secret file or Docker secrets to inject the root password instead of a plain environment variable."
+    shared_runners_registration_token_env:
+      title: "GitLab shared runner registration token is exposed via environment variable"
+      description: "%{service} sets GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN as a plain environment variable."
+      why: "A leaked registration token allows arbitrary runners to register with your GitLab instance and potentially intercept CI jobs."
+      fix: "Use a secret file or Docker secrets for the registration token, and rotate the token if it may have been exposed."
+    signups_enabled:
+      title: "GitLab public sign-ups are enabled"
+      description: "%{service} sets GITLAB_SIGNUP_ENABLED, allowing anyone to create an account."
+      why: "Open registration on a self-hosted GitLab instance can lead to abuse, spam, and unauthorized access to private repositories."
+      fix: "Disable sign-ups or restrict them to approved domains. Use an external identity provider for user provisioning."
+    insecure_external_url:
+      title: "GitLab external URL uses plain HTTP"
+      description: "%{service} sets EXTERNAL_URL to %{url}, which uses unencrypted HTTP."
+      why: "Serving GitLab over HTTP exposes authentication tokens, cookies, and repository data to interception and tampering."
+      fix: "Set EXTERNAL_URL to an HTTPS URL and terminate TLS with a reverse proxy or GitLab's built-in Lets Encrypt integration."
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
   authentik:
     admin_public:
       title: "Authentik interface is publicly exposed"

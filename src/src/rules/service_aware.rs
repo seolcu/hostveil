@@ -26,7 +26,8 @@ enum ServiceKind {
     Mysql,
     Redis,
     Caddy,
-}
+    Gitlab,
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)}
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -54,7 +55,8 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Mysql => findings.extend(scan_mysql_risk(service)),
             ServiceKind::Redis => findings.extend(scan_redis_risk(service)),
             ServiceKind::Caddy => findings.extend(scan_caddy_risk(service)),
-        }
+            ServiceKind::Gitlab => findings.extend(scan_gitlab_risk(service)),
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        }
     }
 
     findings
@@ -101,7 +103,9 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Redis)
     } else if haystack.contains("caddy") {
         Some(ServiceKind::Caddy)
-    } else {
+    } else if haystack.contains("gitlab") {
+        Some(ServiceKind::Gitlab)
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)    } else {
         None
     }
 }
@@ -1423,7 +1427,92 @@ fn scan_caddy_risk(service: &ComposeService) -> Vec<Finding> {
     {
         findings.push(service_finding(
             "service.caddy.admin_api_public",
+fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let publicly_exposed = service.ports.iter().any(is_public_port);
+
+    if env_value(service, "GITLAB_ROOT_PASSWORD").is_some() {
+        findings.push(service_finding_with_remediation(
+            "service.gitlab.root_password_env",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.gitlab.root_password_env.title").into_owned(),
+                description: t!(
+                    "finding.gitlab.root_password_env.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.gitlab.root_password_env.why").into_owned(),
+                how_to_fix: t!("finding.gitlab.root_password_env.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("GITLAB_ROOT_PASSWORD"),
+            )]),
+            RemediationKind::Safe,
+        ));
+    }
+
+    if env_value(service, "GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN").is_some() {
+        findings.push(service_finding_with_remediation(
+            "service.gitlab.shared_runners_registration_token_env",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.gitlab.shared_runners_registration_token_env.title")
+                    .into_owned(),
+                description: t!(
+                    "finding.gitlab.shared_runners_registration_token_env.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.gitlab.shared_runners_registration_token_env.why")
+                    .into_owned(),
+                how_to_fix: t!("finding.gitlab.shared_runners_registration_token_env.fix")
+                    .into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN"),
+            )]),
+            RemediationKind::Safe,
+        ));
+    }
+
+    if env_truthy(service, "GITLAB_SIGNUP_ENABLED") {
+        findings.push(service_finding_with_remediation(
+            "service.gitlab.signups_enabled",
             Axis::UnnecessaryExposure,
+            Severity::Medium,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.gitlab.signups_enabled.title").into_owned(),
+                description: t!(
+                    "finding.gitlab.signups_enabled.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.gitlab.signups_enabled.why").into_owned(),
+                how_to_fix: t!("finding.gitlab.signups_enabled.fix").into_owned(),
+            },
+            BTreeMap::from([(
+                String::from("variable"),
+                String::from("GITLAB_SIGNUP_ENABLED"),
+            )]),
+            RemediationKind::Safe,
+        ));
+    }
+
+    if publicly_exposed
+        && let Some(url) = env_value(service, "EXTERNAL_URL")
+        && url.starts_with("http://")
+    {
+        findings.push(service_finding(
+            "service.gitlab.insecure_external_url",
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            Axis::UnnecessaryExposure,
             Severity::High,
             &service.name,
             ServiceFindingText {
@@ -1440,7 +1529,20 @@ fn scan_caddy_risk(service: &ComposeService) -> Vec<Finding> {
             BTreeMap::from([
                 (String::from("variable"), String::from("CADDY_ADMIN")),
                 (String::from("admin"), admin.to_owned()),
-            ]),
+                title: t!("finding.gitlab.insecure_external_url.title").into_owned(),
+                description: t!(
+                    "finding.gitlab.insecure_external_url.description",
+                    service = service.name.as_str(),
+                    url = url
+                )
+                .into_owned(),
+                why_risky: t!("finding.gitlab.insecure_external_url.why").into_owned(),
+                how_to_fix: t!("finding.gitlab.insecure_external_url.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("EXTERNAL_URL")),
+                (String::from("url"), url.to_owned()),
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            ]),
         ));
     }
 
@@ -1964,7 +2066,9 @@ mod tests {
     #[test]
     fn caddy_baseline_avoids_service_specific_findings() {
         let project = ComposeParser::parse_path_without_override(fixture("caddy", "baseline.yml"))
-            .expect("project should parse");
+    fn gitlab_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("gitlab", "baseline.yml"))
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            .expect("project should parse");
 
         let findings = scan_service_aware_risk(&project);
 
@@ -1975,7 +2079,10 @@ mod tests {
     fn caddy_vulnerable_fixture_triggers_service_specific_findings() {
         let project =
             ComposeParser::parse_path_without_override(fixture("caddy", "vulnerable.yml"))
-                .expect("project should parse");
+    fn gitlab_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("gitlab", "vulnerable.yml"))
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)                .expect("project should parse");
 
         let findings = scan_service_aware_risk(&project);
 
@@ -1985,6 +2092,12 @@ mod tests {
                 .map(|finding| finding.id.as_str())
                 .collect::<Vec<_>>(),
             vec!["service.caddy.admin_api_public"]
-        );
+            vec![
+                "service.gitlab.root_password_env",
+                "service.gitlab.shared_runners_registration_token_env",
+                "service.gitlab.signups_enabled",
+                "service.gitlab.insecure_external_url",
+            ]
+>>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        );
     }
 }
