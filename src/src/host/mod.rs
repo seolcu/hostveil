@@ -7,6 +7,8 @@ use std::process::Command;
 use glob::glob;
 use serde_json::Value as JsonValue;
 
+mod fim;
+
 use crate::domain::{
     Axis, DefensiveControlStatus, Finding, HostRuntimeInfo, RemediationKind, Scope, Severity,
     Source,
@@ -112,6 +114,7 @@ impl HostScanner {
         findings.extend(scan_grub_hardening(context));
         findings.extend(scan_shadow_hardening(context));
         findings.extend(scan_tmp_hardening(context));
+        findings.extend(fim::scan_fim(context));
         findings.extend(scan_defensive_controls(context, runtime));
         findings
     }
@@ -144,7 +147,7 @@ struct Fail2BanLiveSummary {
     banned_ips: Option<usize>,
 }
 
-fn host_finding(
+pub(crate) fn host_finding(
     id: &str,
     severity: Severity,
     subject: &Path,
@@ -168,11 +171,11 @@ fn host_finding(
     }
 }
 
-struct HostFindingText {
-    title: String,
-    description: String,
-    why_risky: String,
-    how_to_fix: String,
+pub(crate) struct HostFindingText {
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) why_risky: String,
+    pub(crate) how_to_fix: String,
 }
 
 fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
@@ -2210,7 +2213,7 @@ fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo) -> 
     }
 }
 
-fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
+pub(crate) fn resolve_existing_path(root: &Path, relative: &str) -> Option<PathBuf> {
     let path = root.join(relative);
     path.exists().then_some(path)
 }
@@ -2808,6 +2811,7 @@ mod tests {
                 "host.no_firewall_detected",
                 "host.kernel.module_signing_not_enforced",
                 "host.mac_framework_missing",
+                "host.fim_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -2857,6 +2861,7 @@ mod tests {
                 "host.kernel.unprivileged_userns_clone_enabled",
                 "host.kernel.max_user_namespaces_enabled",
                 "host.mac_framework_missing",
+                "host.fim_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -2901,6 +2906,8 @@ mod tests {
             &root.join("sys/module/module/parameters/sig_enforce"),
             "Y\n",
         );
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("var/lib/aide/aide.db"), "");
         write_file(&root.join("etc/hostname"), "hardened\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
         write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
@@ -2932,6 +2939,7 @@ mod tests {
                 "host.kernel.module_signing_not_enforced",
                 "host.secure_boot_disabled",
                 "host.mac_framework_missing",
+                "host.fim_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -2958,6 +2966,7 @@ mod tests {
                 "host.no_firewall_detected",
                 "host.kernel.module_signing_not_enforced",
                 "host.mac_framework_missing",
+                "host.fim_missing",
                 "host.defensive_controls_missing",
             ]
         );
@@ -3162,6 +3171,8 @@ mod tests {
                 "/usr/sbin/sshd (enforce)\n",
             ),
         );
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("var/lib/aide/aide.db"), "");
         write_file(
             &root.join("boot/grub/grub.cfg"),
             "set superusers=\"admin\"\npassword_pbkdf2 admin grub.pbkdf2...\n",
@@ -4058,5 +4069,73 @@ mod tests {
             Some(false)
         );
         assert_eq!(parse_ini_bool_in_section(text, "commands", "missing"), None);
+    }
+
+    #[test]
+    fn host_scanner_warns_when_no_fim() {
+        let root = temp_host_root("no-fim");
+        write_file(&root.join("etc/hostname"), "no-fim\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_aide_not_initialized() {
+        let root = temp_host_root("aide-no-db");
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("etc/aide/aide.conf"), "");
+        write_file(&root.join("etc/hostname"), "aide-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.aide_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_aide_when_initialized() {
+        let root = temp_host_root("aide-ok");
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("var/lib/aide/aide.db"), "");
+        write_file(&root.join("etc/hostname"), "aide-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.aide_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
     }
 }

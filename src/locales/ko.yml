@@ -818,6 +818,21 @@ finding:
       description: "UFW, Firewalld, nftables 설치 마커를 찾을 수 없습니다."
       why: "호스트 방화벽이 없으면 실수로 공개 인터페이스나 포트에 바인딩된 서비스가 즉시 외부에서 접근 가능해지며, 횡적 이동을 제어하기 어렵습니다."
       fix: "호스트 방화벽을 설치하고 활성화하세요. Debian/Ubuntu는 UFW('apt install ufw')를, Fedora/RHEL/Rocky는 Firewalld('dnf install firewalld')를 사용하세요. 고급 설정에는 nftables를 직접 구성하세요. 활성화 전에 필요한 포트만 허용하세요."
+    fim_missing:
+      title: "파일 무결성 모니터링 도구가 감지되지 않았습니다"
+      description: "AIDE, Tripwire, Samhain, OSSEC 설치 마커를 찾을 수 없습니다."
+      why: "파일 무결성 모니터링이 없으면 침해 후 중요 시스템 파일의 무단 변경이 눈에 띄지 않아 탐지와 대응이 지연될 수 있습니다."
+      fix: "AIDE('apt install aide' 또는 'dnf install aide')나 Tripwire를 설치하고 데이터베이스를 초기화한 뒤, cron이나 systemd timer로 정기 검사를 예약하세요."
+    aide_not_initialized:
+      title: "AIDE가 설치되었으나 초기화되지 않았습니다"
+      description: "AIDE 설치 마커는 있지만 AIDE 데이터베이스가 존재하지 않습니다."
+      why: "초기화되지 않은 AIDE는 기준 데이터베이스가 없어 파일 변경을 탐지할 수 없습니다."
+      fix: "'aideinit'(Debian/Ubuntu) 또는 'aide --init'(Fedora/RHEL)으로 기준 데이터베이스를 생성한 뒤, 'aide --check'를 cron이나 systemd timer로 예약하세요."
+    tripwire_not_initialized:
+      title: "Tripwire가 설치되었으나 초기화되지 않았습니다"
+      description: "Tripwire 설치 마커는 있지만 Tripwire 데이터베이스가 존재하지 않습니다."
+      why: "초기화되지 않은 Tripwire는 정책 데이터베이스가 생성되지 않아 파일 변경을 탐지할 수 없습니다."
+      fix: "정책 파일을 구성한 뒤 'tripwire --init'으로 데이터베이스를 생성하고, 주기적 무결성 검사를 예약하세요."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden 가입이 계속 활성화되어 있습니다"

@@ -587,7 +587,7 @@ mod tests {
         let result = ScanResult::default();
         let json = parse_json(&result);
 
-        assert_eq!(json["version"].as_str().unwrap(), "0.15.0");
+        assert_eq!(json["version"].as_str().unwrap(), "0.16.0");
         assert!(json["findings"].is_array());
         assert!(json["score_report"].is_object());
         assert!(json["metadata"].is_object());
@@ -607,7 +607,7 @@ mod tests {
         let json: Value =
             serde_json::from_str(&scan_result_json_filtered(&result, true)).expect("should parse");
 
-        assert_eq!(json["version"].as_str().unwrap(), "0.15.0");
+        assert_eq!(json["version"].as_str().unwrap(), "0.16.0");
         assert_eq!(json["findings"].as_array().unwrap().len(), 1);
         assert!(!json.as_object().unwrap().contains_key("score_report"));
         assert!(!json.as_object().unwrap().contains_key("metadata"));

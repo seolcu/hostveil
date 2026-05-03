@@ -818,6 +818,21 @@ finding:
       description: "No UFW, firewalld, or nftables installation markers were found."
       why: "Without a host firewall, any service that accidentally binds to a public interface or port becomes immediately reachable, and lateral movement is harder to contain."
       fix: "Install and enable a host firewall. On Debian/Ubuntu, use UFW ('apt install ufw'). On Fedora/RHEL/Rocky, use firewalld ('dnf install firewalld'). For advanced setups, configure nftables directly. Allow only necessary ports before enabling."
+    fim_missing:
+      title: "No file integrity monitoring tool detected"
+      description: "No AIDE, Tripwire, Samhain, or OSSEC installation markers were found."
+      why: "Without file integrity monitoring, unauthorized changes to critical system files may go unnoticed after a compromise, delaying detection and incident response."
+      fix: "Install AIDE ('apt install aide' or 'dnf install aide') or Tripwire, initialize the database, and schedule regular checks via cron or systemd timer."
+    aide_not_initialized:
+      title: "AIDE is installed but not initialized"
+      description: "AIDE installation markers were found, but no AIDE database exists."
+      why: "An uninitialized AIDE installation cannot detect file changes because there is no baseline database to compare against."
+      fix: "Run 'aideinit' (Debian/Ubuntu) or 'aide --init' (Fedora/RHEL) to create the baseline database, then schedule 'aide --check' via cron or systemd timer."
+    tripwire_not_initialized:
+      title: "Tripwire is installed but not initialized"
+      description: "Tripwire installation markers were found, but no Tripwire database exists."
+      why: "An uninitialized Tripwire installation cannot detect file changes because the policy database has not been created."
+      fix: "Run 'tripwire --init' to create the database after configuring the policy file, then schedule periodic integrity checks."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"
