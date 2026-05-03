@@ -1,0 +1,10 @@
+services:
+  borg:
+    image: borgmatic/borgmatic:latest
+    container_name: borg
+    restart: unless-stopped
+    environment:
+      BORG_REPO: ssh://backup-server/repo
+      BORG_PASSPHRASE: hardcodedpassphrase123
+    volumes:
+      - ./data:/data:ro

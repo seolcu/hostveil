@@ -1064,6 +1064,36 @@ finding:
       description: "%{service}가 Uptime Kuma 대시보드를 %{port}에 노출하고 있습니다."
       why: "공개적으로 접근 가능한 Uptime Kuma 대시보드는 낮부 인프라 토폴로지, 엔드포인트, 상태 정보를 공격자에게 노출합니다."
       fix: "Uptime Kuma를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 강력한 인증이 적용된 리버스 프록시 뒤에 배치하세요."
+  duplicati:
+    hardcoded_webpassword:
+      title: "Duplicati 웹 UI 비밀번호가 환경 변수에 하드코딩되어 있습니다"
+      description: "%{service}가 WEBPASSWORD를 일반 환경 변수로 설정하고 있습니다."
+      why: "하드코딩된 웹 UI 비밀번호는 Compose 파일, 프로세스 목록, 컨테이너 검사를 통해 노출되어 유출되기 쉽습니다."
+      fix: "WEBPASSWORD를 Docker Secret 또는 외부 비밀 관리 도구로 옮기고 안전하게 참조하세요."
+    hardcoded_backup_credential:
+      title: "Duplicati 백업 자격 증명이 환경 변수에 하드코딩되어 있습니다"
+      description: "%{service}가 %{variable}를 일반 환경 변수로 설정하고 있습니다."
+      why: "클우드 백업 자격 증명을 환경 변수에 하드코딩하면 컨테이너나 Compose 파일을 조회할 수 있는 누구에게나 노출됩니다."
+      fix: "백업 자격 증명을 Docker Secret, 자격 증명 도우미, 또는 외부 비밀 관리 도구로 옮기세요."
+  restic:
+    hardcoded_password:
+      title: "Restic 저장소 비밀번호가 환경 변수에 하드코딩되어 있습니다"
+      description: "%{service}가 RESTIC_PASSWORD를 일반 환경 변수로 설정하고 있습니다."
+      why: "하드코딩된 Restic 비밀번호는 Compose 파일과 컨테이너 검사를 통해 노출됩니다. 접근 권한이 있는 누구나 백업을 복호화할 수 있습니다."
+      fix: "RESTIC_PASSWORD를 Docker Secret 또는 외부 비밀 관리 도구로 옮기고 안전하게 참조하세요."
+  borg:
+    hardcoded_passphrase:
+      title: "Borg 저장소 암호가 환경 변수에 하드코딩되어 있습니다"
+      description: "%{service}가 BORG_PASSPHRASE를 일반 환경 변수로 설정하고 있습니다."
+      why: "하드코딩된 Borg 암호는 Compose 파일과 컨테이너 검사를 통해 노출됩니다. 접근 권한이 있는 누구나 백업을 복호화할 수 있습니다."
+      fix: "BORG_PASSPHRASE를 Docker Secret 또는 외부 비밀 관리 도구로 옮기고 안전하게 참조하세요."
+  kopia:
+    hardcoded_password:
+      title: "Kopia 저장소 비밀번호가 환경 변수에 하드코딩되어 있습니다"
+      description: "%{service}가 KOPIA_PASSWORD를 일반 환경 변수로 설정하고 있습니다."
+      why: "하드코딩된 Kopia 비밀번호는 Compose 파일과 컨테이너 검사를 통해 노출됩니다. 접근 권한이 있는 누구나 스냅샷을 복호화할 수 있습니다."
+      fix: "KOPIA_PASSWORD를 Docker Secret 또는 외부 비밀 관리 도구로 옮기고 안전하게 참조하세요."
+
   authentik:
     admin_public:
       title: "Authentik 인터페이스가 공개적으로 노출되어 있습니다"

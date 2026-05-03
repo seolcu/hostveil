@@ -28,6 +28,10 @@ enum ServiceKind {
     Caddy,
     Gitlab,
     UptimeKuma,
+    Duplicati,
+    Restic,
+    Borg,
+    Kopia,
 }
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
@@ -58,6 +62,10 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Caddy => findings.extend(scan_caddy_risk(service)),
             ServiceKind::Gitlab => findings.extend(scan_gitlab_risk(service)),
             ServiceKind::UptimeKuma => findings.extend(scan_uptime_kuma_risk(service)),
+            ServiceKind::Duplicati => findings.extend(scan_duplicati_risk(service)),
+            ServiceKind::Restic => findings.extend(scan_restic_risk(service)),
+            ServiceKind::Borg => findings.extend(scan_borg_risk(service)),
+            ServiceKind::Kopia => findings.extend(scan_kopia_risk(service)),
         }
     }
 
@@ -109,6 +117,14 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Gitlab)
     } else if haystack.contains("uptime-kuma") || haystack.contains("uptimekuma") {
         Some(ServiceKind::UptimeKuma)
+    } else if haystack.contains("duplicati") {
+        Some(ServiceKind::Duplicati)
+    } else if haystack.contains("restic") {
+        Some(ServiceKind::Restic)
+    } else if haystack.contains("borg") {
+        Some(ServiceKind::Borg)
+    } else if haystack.contains("kopia") {
+        Some(ServiceKind::Kopia)
     } else {
         None
     }
@@ -1621,6 +1637,142 @@ fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
     findings
 }
 
+fn scan_duplicati_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if service.environment.contains_key("WEBPASSWORD") {
+        findings.push(service_finding(
+            "service.duplicati.hardcoded_webpassword",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.duplicati.hardcoded_webpassword.title").into_owned(),
+                description: t!(
+                    "finding.duplicati.hardcoded_webpassword.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.duplicati.hardcoded_webpassword.why").into_owned(),
+                how_to_fix: t!("finding.duplicati.hardcoded_webpassword.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
+        ));
+    }
+
+    let backup_credential_vars = [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "B2_ACCOUNT_ID",
+        "B2_ACCOUNT_KEY",
+        "AZURE_ACCOUNT_NAME",
+        "AZURE_ACCOUNT_KEY",
+    ];
+    for var in &backup_credential_vars {
+        if service.environment.contains_key(*var) {
+            findings.push(service_finding(
+                "service.duplicati.hardcoded_backup_credential",
+                Axis::SensitiveData,
+                Severity::High,
+                &service.name,
+                ServiceFindingText {
+                    title: t!("finding.duplicati.hardcoded_backup_credential.title").into_owned(),
+                    description: t!(
+                        "finding.duplicati.hardcoded_backup_credential.description",
+                        service = service.name.as_str(),
+                        variable = *var
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.duplicati.hardcoded_backup_credential.why").into_owned(),
+                    how_to_fix: t!("finding.duplicati.hardcoded_backup_credential.fix")
+                        .into_owned(),
+                },
+                BTreeMap::from([(String::from("variable"), (*var).to_owned())]),
+            ));
+        }
+    }
+
+    findings
+}
+
+fn scan_restic_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if service.environment.contains_key("RESTIC_PASSWORD") {
+        findings.push(service_finding(
+            "service.restic.hardcoded_password",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.restic.hardcoded_password.title").into_owned(),
+                description: t!(
+                    "finding.restic.hardcoded_password.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.restic.hardcoded_password.why").into_owned(),
+                how_to_fix: t!("finding.restic.hardcoded_password.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("RESTIC_PASSWORD"))]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_borg_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if service.environment.contains_key("BORG_PASSPHRASE") {
+        findings.push(service_finding(
+            "service.borg.hardcoded_passphrase",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.borg.hardcoded_passphrase.title").into_owned(),
+                description: t!(
+                    "finding.borg.hardcoded_passphrase.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.borg.hardcoded_passphrase.why").into_owned(),
+                how_to_fix: t!("finding.borg.hardcoded_passphrase.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("BORG_PASSPHRASE"))]),
+        ));
+    }
+
+    findings
+}
+
+fn scan_kopia_risk(service: &ComposeService) -> Vec<Finding> {
+    let mut findings = Vec::new();
+
+    if service.environment.contains_key("KOPIA_PASSWORD") {
+        findings.push(service_finding(
+            "service.kopia.hardcoded_password",
+            Axis::SensitiveData,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.kopia.hardcoded_password.title").into_owned(),
+                description: t!(
+                    "finding.kopia.hardcoded_password.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.kopia.hardcoded_password.why").into_owned(),
+                how_to_fix: t!("finding.kopia.hardcoded_password.fix").into_owned(),
+            },
+            BTreeMap::from([(String::from("variable"), String::from("KOPIA_PASSWORD"))]),
+        ));
+    }
+
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -2222,6 +2374,118 @@ mod tests {
                 "service.uptime_kuma.auth_disabled",
                 "service.uptime_kuma.admin_public",
             ]
+        );
+    }
+
+    #[test]
+    fn duplicati_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("duplicati", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn duplicati_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("duplicati", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "service.duplicati.hardcoded_webpassword",
+                "service.duplicati.hardcoded_backup_credential",
+                "service.duplicati.hardcoded_backup_credential",
+            ]
+        );
+    }
+
+    #[test]
+    fn restic_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("restic", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn restic_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("restic", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["service.restic.hardcoded_password",]
+        );
+    }
+
+    #[test]
+    fn borg_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("borg", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn borg_vulnerable_fixture_triggers_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("borg", "vulnerable.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["service.borg.hardcoded_passphrase",]
+        );
+    }
+
+    #[test]
+    fn kopia_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("kopia", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn kopia_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("kopia", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["service.kopia.hardcoded_password",]
         );
     }
 }

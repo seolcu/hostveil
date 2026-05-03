@@ -1,0 +1,17 @@
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    container_name: duplicati
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      WEBPASSWORD: hardcodedpassword123
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    volumes:
+      - ./config:/config
+      - ./backups:/backups
+      - /source:/source:ro
+    ports:
+      - 8200:8200

@@ -1064,6 +1064,35 @@ finding:
       description: "%{service} exposes the Uptime Kuma dashboard on %{port}."
       why: "A publicly reachable Uptime Kuma dashboard reveals internal infrastructure topology, endpoints, and health status to attackers."
       fix: "Restrict Uptime Kuma to localhost or a trusted network, or place it behind a reverse proxy with strong authentication."
+  duplicati:
+    hardcoded_webpassword:
+      title: "Duplicati web UI password is hardcoded in environment"
+      description: "%{service} sets WEBPASSWORD as a plain environment variable."
+      why: "A hardcoded web UI password is visible in the compose file, process listings, and container inspection, making it easier to leak."
+      fix: "Move WEBPASSWORD to a Docker secret or an external secret manager and reference it securely."
+    hardcoded_backup_credential:
+      title: "Duplicati backup credential is hardcoded in environment"
+      description: "%{service} sets %{variable} as a plain environment variable."
+      why: "Hardcoding cloud backup credentials in environment variables exposes them to anyone who can inspect the container or the compose file."
+      fix: "Move backup credentials to a Docker secret, a credential helper, or an external secret manager."
+  restic:
+    hardcoded_password:
+      title: "Restic repository password is hardcoded in environment"
+      description: "%{service} sets RESTIC_PASSWORD as a plain environment variable."
+      why: "A hardcoded Restic password is visible in the compose file and container inspection. Anyone with access can decrypt backups."
+      fix: "Move RESTIC_PASSWORD to a Docker secret or an external secret manager and reference it securely."
+  borg:
+    hardcoded_passphrase:
+      title: "Borg repository passphrase is hardcoded in environment"
+      description: "%{service} sets BORG_PASSPHRASE as a plain environment variable."
+      why: "A hardcoded Borg passphrase is visible in the compose file and container inspection. Anyone with access can decrypt backups."
+      fix: "Move BORG_PASSPHRASE to a Docker secret or an external secret manager and reference it securely."
+  kopia:
+    hardcoded_password:
+      title: "Kopia repository password is hardcoded in environment"
+      description: "%{service} sets KOPIA_PASSWORD as a plain environment variable."
+      why: "A hardcoded Kopia password is visible in the compose file and container inspection. Anyone with access can decrypt snapshots."
+      fix: "Move KOPIA_PASSWORD to a Docker secret or an external secret manager and reference it securely."
 
   authentik:
     admin_public:

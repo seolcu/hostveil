@@ -1,0 +1,15 @@
+services:
+  kopia:
+    image: kopia/kopia:latest
+    container_name: kopia
+    restart: unless-stopped
+    environment:
+      KOPIA_PASSWORD_FILE: /run/secrets/kopia-password
+    volumes:
+      - ./config:/app/config
+      - ./cache:/app/cache
+      - ./secrets:/run/secrets:ro
+    ports:
+      - 127.0.0.1:51515:51515
+    security_opt:
+      - no-new-privileges:true
