@@ -13,6 +13,18 @@ use crate::domain::{
 };
 
 const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
+const WEAK_KEX_ALGORITHMS: [&str; 2] =
+    ["diffie-hellman-group1-sha1", "diffie-hellman-group14-sha1"];
+const WEAK_MAC_ALGORITHMS: [&str; 4] =
+    ["hmac-md5", "hmac-md5-96", "hmac-sha1-96", "hmac-ripemd160"];
+const WEAK_CIPHER_ALGORITHMS: [&str; 6] = [
+    "arcfour",
+    "arcfour128",
+    "arcfour256",
+    "blowfish-cbc",
+    "3des-cbc",
+    "cast128-cbc",
+];
 const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
 const UFW_CONFIG_PATH: &str = "etc/ufw/ufw.conf";
@@ -366,7 +378,100 @@ fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
         ));
     }
 
+    if let Some(setting) = settings.get("kexalgorithms") {
+        let weak = find_weak_algorithms(&setting.value, &WEAK_KEX_ALGORITHMS);
+        if !weak.is_empty() {
+            let subject_path = &setting.source;
+            findings.push(host_finding(
+                "host.ssh_weak_kex",
+                Severity::High,
+                subject_path,
+                HostFindingText {
+                    title: t!("finding.host.ssh_weak_kex.title").into_owned(),
+                    description: t!(
+                        "finding.host.ssh_weak_kex.description",
+                        path = subject_path.display().to_string(),
+                        algorithms = weak.join(", ")
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.ssh_weak_kex.why").into_owned(),
+                    how_to_fix: t!("finding.host.ssh_weak_kex.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), subject_path.display().to_string()),
+                    (String::from("algorithms"), weak.join(", ")),
+                ]),
+            ));
+        }
+    }
+
+    if let Some(setting) = settings.get("macs") {
+        let weak = find_weak_algorithms(&setting.value, &WEAK_MAC_ALGORITHMS);
+        if !weak.is_empty() {
+            let subject_path = &setting.source;
+            findings.push(host_finding(
+                "host.ssh_weak_macs",
+                Severity::High,
+                subject_path,
+                HostFindingText {
+                    title: t!("finding.host.ssh_weak_macs.title").into_owned(),
+                    description: t!(
+                        "finding.host.ssh_weak_macs.description",
+                        path = subject_path.display().to_string(),
+                        algorithms = weak.join(", ")
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.ssh_weak_macs.why").into_owned(),
+                    how_to_fix: t!("finding.host.ssh_weak_macs.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), subject_path.display().to_string()),
+                    (String::from("algorithms"), weak.join(", ")),
+                ]),
+            ));
+        }
+    }
+
+    if let Some(setting) = settings.get("ciphers") {
+        let weak = find_weak_algorithms(&setting.value, &WEAK_CIPHER_ALGORITHMS);
+        if !weak.is_empty() {
+            let subject_path = &setting.source;
+            findings.push(host_finding(
+                "host.ssh_weak_ciphers",
+                Severity::High,
+                subject_path,
+                HostFindingText {
+                    title: t!("finding.host.ssh_weak_ciphers.title").into_owned(),
+                    description: t!(
+                        "finding.host.ssh_weak_ciphers.description",
+                        path = subject_path.display().to_string(),
+                        algorithms = weak.join(", ")
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.ssh_weak_ciphers.why").into_owned(),
+                    how_to_fix: t!("finding.host.ssh_weak_ciphers.fix").into_owned(),
+                },
+                BTreeMap::from([
+                    (String::from("path"), subject_path.display().to_string()),
+                    (String::from("algorithms"), weak.join(", ")),
+                ]),
+            ));
+        }
+    }
+
     findings
+}
+
+fn find_weak_algorithms(value: &str, weak_list: &[&str]) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|alg| {
+            let lower = alg.to_ascii_lowercase();
+            weak_list.contains(&lower.as_str())
+        })
+        .map(String::from)
+        .collect()
 }
 
 fn is_wildcard_listen_address(value: &str) -> bool {
@@ -3440,6 +3545,39 @@ mod tests {
             parse_ufw_default_input_policy("DEFAULT_INPUT_POLICY="),
             None
         );
+    }
+
+    #[test]
+    fn host_scanner_detects_weak_ssh_algorithms() {
+        let root = temp_host_root("ssh-weak-algos");
+        write_file(
+            &root.join(SSH_CONFIG_PATH),
+            concat!(
+                "KexAlgorithms diffie-hellman-group1-sha1,curve25519-sha256\n",
+                "MACs hmac-md5,hmac-sha2-512-etm@openssh.com\n",
+                "Ciphers arcfour,aes256-gcm@openssh.com\n",
+            ),
+        );
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ssh_weak_kex")
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ssh_weak_macs")
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.ssh_weak_ciphers")
+        );
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
     }
 
     #[test]
