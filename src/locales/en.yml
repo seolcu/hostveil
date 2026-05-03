@@ -557,6 +557,21 @@ finding:
       description: "%{path} enables X11Forwarding yes."
       why: "X11 forwarding widens SSH session attack surface and can leak display/session trust boundaries from client systems to remote hosts."
       fix: "Edit %{path}, set 'X11Forwarding no', run 'sshd -t', and reload the SSH service. If GUI access is required, consider a remote desktop solution or local X forwarding over a VPN instead."
+    ssh_weak_kex:
+      title: "SSH allows weak key-exchange algorithms"
+      description: "%{path} includes weak KexAlgorithms: %{algorithms}."
+      why: "Weak key-exchange algorithms such as diffie-hellman-group1-sha1 are vulnerable to Logjam-style attacks and downgrade attacks."
+      fix: "Edit %{path} and remove weak algorithms from KexAlgorithms. Prefer curve25519-sha256, ecdh-sha2-nistp521, or diffie-hellman-group-exchange-sha256. Run 'sshd -t' and reload the service."
+    ssh_weak_macs:
+      title: "SSH allows weak MAC algorithms"
+      description: "%{path} includes weak MACs: %{algorithms}."
+      why: "Weak MAC algorithms such as hmac-md5 do not provide adequate integrity protection for modern SSH sessions."
+      fix: "Edit %{path} and remove weak algorithms from MACs. Prefer hmac-sha2-512-etm@openssh.com or hmac-sha2-256-etm@openssh.com. Run 'sshd -t' and reload the service."
+    ssh_weak_ciphers:
+      title: "SSH allows weak ciphers"
+      description: "%{path} includes weak Ciphers: %{algorithms}."
+      why: "Weak ciphers such as arcfour and 3des-cbc are vulnerable to known cryptanalytic attacks and do not provide adequate confidentiality."
+      fix: "Edit %{path} and remove weak algorithms from Ciphers. Prefer chacha20-poly1305@openssh.com or aes256-gcm@openssh.com. Run 'sshd -t' and reload the service."
     ssh_listen_all:
       title: "SSH listens on all network interfaces"
       description: "%{path} binds SSH to all interfaces (ListenAddress %{values})."
