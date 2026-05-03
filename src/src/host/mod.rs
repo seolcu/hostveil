@@ -601,9 +601,12 @@ fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
 
     let apparmor_present =
         resolve_existing_path(&context.root, "sys/kernel/security/apparmor").is_some();
-    if apparmor_present
-        && let Some(mode) = read_sysctl(context, "sys/kernel/security/apparmor/profiles")
-        && mode.contains(" (complain)")
+    let apparmor_profiles = apparmor_present
+        .then(|| read_sysctl(context, "sys/kernel/security/apparmor/profiles"))
+        .flatten();
+
+    if let Some(ref profiles) = apparmor_profiles
+        && profiles.contains(" (complain)")
     {
         findings.push(host_finding(
             "host.apparmor_complain_mode",
@@ -625,6 +628,44 @@ fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
             },
             BTreeMap::new(),
         ));
+    }
+
+    if let Some(ref profiles) = apparmor_profiles {
+        let expected_services = [("docker", "docker"), ("nginx", "nginx"), ("sshd", "sshd")];
+        for (service, pattern) in expected_services {
+            let has_profile = profiles
+                .lines()
+                .any(|line| line.to_lowercase().contains(pattern));
+            if !has_profile {
+                findings.push(host_finding(
+                    &format!("host.apparmor_{service}_profile_missing"),
+                    Severity::Low,
+                    &context.root.join("sys/kernel/security/apparmor/profiles"),
+                    HostFindingText {
+                        title: t!(
+                            "finding.host.apparmor_profile_missing.title",
+                            service = service
+                        )
+                        .into_owned(),
+                        description: t!(
+                            "finding.host.apparmor_profile_missing.description",
+                            service = service,
+                            path = context
+                                .root
+                                .join("sys/kernel/security/apparmor/profiles")
+                                .display()
+                                .to_string()
+                        )
+                        .into_owned(),
+                        why_risky: t!("finding.host.apparmor_profile_missing.why")
+                            .into_owned(),
+                        how_to_fix: t!("finding.host.apparmor_profile_missing.fix")
+                            .into_owned(),
+                    },
+                    BTreeMap::from([(String::from("service"), String::from(service))]),
+                ));
+            }
+        }
     }
 
     if !selinux_installed && !apparmor_present {
@@ -2174,7 +2215,12 @@ mod tests {
         );
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
-            "/usr/sbin/dnsmasq (enforce)\n",
+            concat!(
+                "/usr/sbin/dnsmasq (enforce)\n",
+                "/usr/bin/dockerd (enforce)\n",
+                "/usr/sbin/nginx (enforce)\n",
+                "/usr/sbin/sshd (enforce)\n",
+            ),
         );
         write_file(&root.join("etc/hostname"), "hardened\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
@@ -2214,7 +2260,12 @@ mod tests {
         let root = temp_host_root("apparmor-complain");
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
-            "/usr/bin/man (complain)\n/usr/sbin/dnsmasq (enforce)\n",
+            concat!(
+                "/usr/sbin/dnsmasq (enforce)\n",
+                "/usr/bin/dockerd (complain)\n",
+                "/usr/sbin/nginx (enforce)\n",
+                "/usr/sbin/sshd (enforce)\n",
+            ),
         );
         write_file(&root.join("etc/hostname"), "apparmor-test\n");
         write_file(&root.join("proc/uptime"), "60.00 0.00\n");
@@ -2368,7 +2419,12 @@ mod tests {
         write_file(&root.join("proc/sys/kernel/modules_disabled"), "1\n");
         write_file(
             &root.join("sys/kernel/security/apparmor/profiles"),
-            "/usr/sbin/dnsmasq (enforce)\n",
+            concat!(
+                "/usr/sbin/dnsmasq (enforce)\n",
+                "/usr/bin/dockerd (enforce)\n",
+                "/usr/sbin/nginx (enforce)\n",
+                "/usr/sbin/sshd (enforce)\n",
+            ),
         );
         write_file(
             &root.join("boot/grub/grub.cfg"),

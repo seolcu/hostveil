@@ -698,6 +698,11 @@ finding:
       description: "%{path} shows one or more profiles in complain mode."
       why: "Complain mode logs policy violations but does not block them, so a compromised service can still perform actions that a hardened profile would deny."
       fix: "Use 'aa-enforce /etc/apparmor.d/profile.name' to switch a tested profile to enforce mode. Monitor /var/log/syslog or journald for denials first. Transition profiles one at a time in a staging environment before applying to production."
+    apparmor_profile_missing:
+      title: "AppArmor profile for %{service} is missing"
+      description: "%{path} does not contain an enforced profile for %{service}."
+      why: "Running %{service} without an AppArmor profile removes a layer of mandatory access control, allowing a compromised process more freedom to access files and system calls."
+      fix: "Install or enable an AppArmor profile for %{service}. On Debian/Ubuntu, check 'apparmor-profiles' or distribution-specific packages (e.g., 'apparmor-profile-docker'). Load with 'apparmor_parser /etc/apparmor.d/profile.name' and verify with 'aa-status'."
     mac_framework_missing:
       title: "No mandatory access control framework detected"
       description: "%{path} does not show SELinux or AppArmor installation markers."
