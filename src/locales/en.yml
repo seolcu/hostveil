@@ -628,7 +628,6 @@ finding:
       description: "%{path} does not set default-ulimits."
       why: "Without default ulimits, a single misbehaving container can exhaust host file descriptors or spawn excessive processes."
       fix: "Add 'default-ulimits': { 'nofile': { 'Name': 'nofile', 'Hard': 64000, 'Soft': 64000 } } to %{path}, then restart Docker."
->>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
     fail2ban_not_enabled:
       title: "Fail2ban is installed but not active"
       description: "%{path} shows local Fail2ban markers, but no enabled service marker was detected."
@@ -724,7 +723,6 @@ finding:
       description: "%{path} indicates Secure Boot is not enabled."
       why: "Secure Boot prevents unauthorized bootloaders and kernel images from loading. Without it, an attacker with physical access or a compromised bootloader can inject malicious code before the OS starts."
       fix: "Enable Secure Boot in your system's UEFI firmware settings. Ensure your OS bootloader and kernel are signed with a trusted key."
->>>>>>> a71fabf (feat(host): add Secure Boot status check)
     grub_password_missing:
       title: "GRUB bootloader lacks password protection"
       description: "%{path} does not contain a GRUB password or unrestricted restriction."
@@ -1008,7 +1006,6 @@ finding:
       description: "%{service} sets EXTERNAL_URL to %{url}, which uses unencrypted HTTP."
       why: "Serving GitLab over HTTP exposes authentication tokens, cookies, and repository data to interception and tampering."
       fix: "Set EXTERNAL_URL to an HTTPS URL and terminate TLS with a reverse proxy or GitLab's built-in Lets Encrypt integration."
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
   uptime_kuma:
     auth_disabled:
       title: "Uptime Kuma authentication is disabled"
@@ -1020,7 +1017,7 @@ finding:
       description: "%{service} exposes the Uptime Kuma dashboard on %{port}."
       why: "A publicly reachable Uptime Kuma dashboard reveals internal infrastructure topology, endpoints, and health status to attackers."
       fix: "Restrict Uptime Kuma to localhost or a trusted network, or place it behind a reverse proxy with strong authentication."
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
+
   authentik:
     admin_public:
       title: "Authentik interface is publicly exposed"

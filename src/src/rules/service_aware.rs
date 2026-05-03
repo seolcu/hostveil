@@ -27,10 +27,8 @@ enum ServiceKind {
     Redis,
     Caddy,
     Gitlab,
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)}
     UptimeKuma,
 }
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
 
 pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -59,10 +57,8 @@ pub fn scan_service_aware_risk(project: &ComposeProject) -> Vec<Finding> {
             ServiceKind::Redis => findings.extend(scan_redis_risk(service)),
             ServiceKind::Caddy => findings.extend(scan_caddy_risk(service)),
             ServiceKind::Gitlab => findings.extend(scan_gitlab_risk(service)),
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        }
             ServiceKind::UptimeKuma => findings.extend(scan_uptime_kuma_risk(service)),
         }
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
     }
 
     findings
@@ -111,11 +107,9 @@ fn detect_service_kind(service: &ComposeService) -> Option<ServiceKind> {
         Some(ServiceKind::Caddy)
     } else if haystack.contains("gitlab") {
         Some(ServiceKind::Gitlab)
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)    } else {
     } else if haystack.contains("uptime-kuma") || haystack.contains("uptimekuma") {
         Some(ServiceKind::UptimeKuma)
     } else {
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
         None
     }
 }
@@ -1437,6 +1431,30 @@ fn scan_caddy_risk(service: &ComposeService) -> Vec<Finding> {
     {
         findings.push(service_finding(
             "service.caddy.admin_api_public",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.caddy.admin_api_public.title").into_owned(),
+                description: t!(
+                    "finding.caddy.admin_api_public.description",
+                    service = service.name.as_str(),
+                    admin = admin
+                )
+                .into_owned(),
+                why_risky: t!("finding.caddy.admin_api_public.why").into_owned(),
+                how_to_fix: t!("finding.caddy.admin_api_public.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("CADDY_ADMIN")),
+                (String::from("admin"), admin.to_owned()),
+            ]),
+        ));
+    }
+
+    findings
+}
+
 fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let publicly_exposed = service.ports.iter().any(is_public_port);
@@ -1511,6 +1529,41 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
             BTreeMap::from([(
                 String::from("variable"),
                 String::from("GITLAB_SIGNUP_ENABLED"),
+            )]),
+            RemediationKind::Safe,
+        ));
+    }
+
+    if publicly_exposed
+        && let Some(url) = env_value(service, "EXTERNAL_URL")
+        && url.starts_with("http://")
+    {
+        findings.push(service_finding(
+            "service.gitlab.insecure_external_url",
+            Axis::UnnecessaryExposure,
+            Severity::High,
+            &service.name,
+            ServiceFindingText {
+                title: t!("finding.gitlab.insecure_external_url.title").into_owned(),
+                description: t!(
+                    "finding.gitlab.insecure_external_url.description",
+                    service = service.name.as_str(),
+                    url = url
+                )
+                .into_owned(),
+                why_risky: t!("finding.gitlab.insecure_external_url.why").into_owned(),
+                how_to_fix: t!("finding.gitlab.insecure_external_url.fix").into_owned(),
+            },
+            BTreeMap::from([
+                (String::from("variable"), String::from("EXTERNAL_URL")),
+                (String::from("url"), url.to_owned()),
+            ]),
+        ));
+    }
+
+    findings
+}
+
 fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
     let mut findings = Vec::new();
     let publicly_exposed = service.ports.iter().any(is_public_port);
@@ -1534,49 +1587,12 @@ fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
             BTreeMap::from([(
                 String::from("variable"),
                 String::from("UPTIME_KUMA_DISABLE_AUTH"),
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
             )]),
             RemediationKind::Safe,
         ));
     }
 
     if publicly_exposed
-        && let Some(url) = env_value(service, "EXTERNAL_URL")
-        && url.starts_with("http://")
-    {
-        findings.push(service_finding(
-            "service.gitlab.insecure_external_url",
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            Axis::UnnecessaryExposure,
-            Severity::High,
-            &service.name,
-            ServiceFindingText {
-                title: t!("finding.caddy.admin_api_public.title").into_owned(),
-                description: t!(
-                    "finding.caddy.admin_api_public.description",
-                    service = service.name.as_str(),
-                    admin = admin
-                )
-                .into_owned(),
-                why_risky: t!("finding.caddy.admin_api_public.why").into_owned(),
-                how_to_fix: t!("finding.caddy.admin_api_public.fix").into_owned(),
-            },
-            BTreeMap::from([
-                (String::from("variable"), String::from("CADDY_ADMIN")),
-                (String::from("admin"), admin.to_owned()),
-                title: t!("finding.gitlab.insecure_external_url.title").into_owned(),
-                description: t!(
-                    "finding.gitlab.insecure_external_url.description",
-                    service = service.name.as_str(),
-                    url = url
-                )
-                .into_owned(),
-                why_risky: t!("finding.gitlab.insecure_external_url.why").into_owned(),
-                how_to_fix: t!("finding.gitlab.insecure_external_url.fix").into_owned(),
-            },
-            BTreeMap::from([
-                (String::from("variable"), String::from("EXTERNAL_URL")),
-                (String::from("url"), url.to_owned()),
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            ]),
         && let Some(port) = service
             .ports
             .iter()
@@ -1599,7 +1615,6 @@ fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.uptime_kuma.admin_public.fix").into_owned(),
             },
             BTreeMap::from([(String::from("port"), port.raw.clone())]),
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
         ));
     }
 
@@ -2123,14 +2138,7 @@ mod tests {
     #[test]
     fn caddy_baseline_avoids_service_specific_findings() {
         let project = ComposeParser::parse_path_without_override(fixture("caddy", "baseline.yml"))
-    fn gitlab_baseline_avoids_service_specific_findings() {
-        let project = ComposeParser::parse_path_without_override(fixture("gitlab", "baseline.yml"))
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)            .expect("project should parse");
-    fn uptime_kuma_baseline_avoids_service_specific_findings() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "baseline.yml"))
-                .expect("project should parse");
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
+            .expect("project should parse");
 
         let findings = scan_service_aware_risk(&project);
 
@@ -2141,15 +2149,7 @@ mod tests {
     fn caddy_vulnerable_fixture_triggers_service_specific_findings() {
         let project =
             ComposeParser::parse_path_without_override(fixture("caddy", "vulnerable.yml"))
-    fn gitlab_vulnerable_fixture_triggers_service_specific_findings() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("gitlab", "vulnerable.yml"))
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)                .expect("project should parse");
-    fn uptime_kuma_vulnerable_fixture_triggers_service_specific_findings() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "vulnerable.yml"))
                 .expect("project should parse");
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
 
         let findings = scan_service_aware_risk(&project);
 
@@ -2159,18 +2159,69 @@ mod tests {
                 .map(|finding| finding.id.as_str())
                 .collect::<Vec<_>>(),
             vec!["service.caddy.admin_api_public"]
+        );
+    }
+
+    #[test]
+    fn gitlab_baseline_avoids_service_specific_findings() {
+        let project = ComposeParser::parse_path_without_override(fixture("gitlab", "baseline.yml"))
+            .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn gitlab_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("gitlab", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
             vec![
                 "service.gitlab.root_password_env",
                 "service.gitlab.shared_runners_registration_token_env",
                 "service.gitlab.signups_enabled",
                 "service.gitlab.insecure_external_url",
             ]
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)        );
+        );
+    }
+
+    #[test]
+    fn uptime_kuma_baseline_avoids_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "baseline.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn uptime_kuma_vulnerable_fixture_triggers_service_specific_findings() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("uptime-kuma", "vulnerable.yml"))
+                .expect("project should parse");
+
+        let findings = scan_service_aware_risk(&project);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.id.as_str())
+                .collect::<Vec<_>>(),
             vec![
                 "service.uptime_kuma.auth_disabled",
                 "service.uptime_kuma.admin_public",
             ]
         );
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
     }
 }

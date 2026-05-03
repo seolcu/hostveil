@@ -628,6 +628,8 @@ fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
 fn docker_is_rootless() -> Option<bool> {
     let output = try_command(&["docker", "info"])?;
     Some(output.to_ascii_lowercase().contains("rootless"))
+}
+
 fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
     let mut findings = Vec::new();
 
@@ -635,82 +637,81 @@ fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
         && let Ok(text) = fs::read_to_string(&daemon_path)
         && let Ok(json) = serde_json::from_str::<JsonValue>(&text)
     {
+        if !docker_daemon_userns_remapped(&json) {
+            findings.push(host_finding(
+                "host.docker_userns_remap_missing",
+                Severity::Medium,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_userns_remap_missing.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_userns_remap_missing.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_userns_remap_missing.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_userns_remap_missing.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+            ));
+        }
 
-    if !docker_daemon_userns_remapped(&json) {
-        findings.push(host_finding(
-            "host.docker_userns_remap_missing",
-            Severity::Medium,
-            &daemon_path,
-            HostFindingText {
-                title: t!("finding.host.docker_userns_remap_missing.title").into_owned(),
-                description: t!(
-                    "finding.host.docker_userns_remap_missing.description",
-                    path = daemon_path.display().to_string()
-                )
-                .into_owned(),
-                why_risky: t!("finding.host.docker_userns_remap_missing.why").into_owned(),
-                how_to_fix: t!("finding.host.docker_userns_remap_missing.fix").into_owned(),
-            },
-            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
-        ));
-    }
+        if !docker_daemon_live_restore_enabled(&json) {
+            findings.push(host_finding(
+                "host.docker_live_restore_disabled",
+                Severity::Medium,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_live_restore_disabled.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_live_restore_disabled.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_live_restore_disabled.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_live_restore_disabled.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+            ));
+        }
 
-    if !docker_daemon_live_restore_enabled(&json) {
-        findings.push(host_finding(
-            "host.docker_live_restore_disabled",
-            Severity::Medium,
-            &daemon_path,
-            HostFindingText {
-                title: t!("finding.host.docker_live_restore_disabled.title").into_owned(),
-                description: t!(
-                    "finding.host.docker_live_restore_disabled.description",
-                    path = daemon_path.display().to_string()
-                )
-                .into_owned(),
-                why_risky: t!("finding.host.docker_live_restore_disabled.why").into_owned(),
-                how_to_fix: t!("finding.host.docker_live_restore_disabled.fix").into_owned(),
-            },
-            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
-        ));
-    }
+        if !docker_daemon_log_driver_configured(&json) {
+            findings.push(host_finding(
+                "host.docker_log_driver_missing",
+                Severity::Low,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_log_driver_missing.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_log_driver_missing.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_log_driver_missing.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_log_driver_missing.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+            ));
+        }
 
-    if !docker_daemon_log_driver_configured(&json) {
-        findings.push(host_finding(
-            "host.docker_log_driver_missing",
-            Severity::Low,
-            &daemon_path,
-            HostFindingText {
-                title: t!("finding.host.docker_log_driver_missing.title").into_owned(),
-                description: t!(
-                    "finding.host.docker_log_driver_missing.description",
-                    path = daemon_path.display().to_string()
-                )
-                .into_owned(),
-                why_risky: t!("finding.host.docker_log_driver_missing.why").into_owned(),
-                how_to_fix: t!("finding.host.docker_log_driver_missing.fix").into_owned(),
-            },
-            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
-        ));
-    }
-
-    if !docker_daemon_default_ulimits_configured(&json) {
-        findings.push(host_finding(
-            "host.docker_default_ulimits_missing",
-            Severity::Low,
-            &daemon_path,
-            HostFindingText {
-                title: t!("finding.host.docker_default_ulimits_missing.title").into_owned(),
-                description: t!(
-                    "finding.host.docker_default_ulimits_missing.description",
-                    path = daemon_path.display().to_string()
-                )
-                .into_owned(),
-                why_risky: t!("finding.host.docker_default_ulimits_missing.why").into_owned(),
-                how_to_fix: t!("finding.host.docker_default_ulimits_missing.fix").into_owned(),
-            },
-            BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
-        ));
-    }
+        if !docker_daemon_default_ulimits_configured(&json) {
+            findings.push(host_finding(
+                "host.docker_default_ulimits_missing",
+                Severity::Low,
+                &daemon_path,
+                HostFindingText {
+                    title: t!("finding.host.docker_default_ulimits_missing.title").into_owned(),
+                    description: t!(
+                        "finding.host.docker_default_ulimits_missing.description",
+                        path = daemon_path.display().to_string()
+                    )
+                    .into_owned(),
+                    why_risky: t!("finding.host.docker_default_ulimits_missing.why").into_owned(),
+                    how_to_fix: t!("finding.host.docker_default_ulimits_missing.fix").into_owned(),
+                },
+                BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+            ));
+        }
     }
 
     findings
@@ -1057,10 +1058,8 @@ fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                                 .to_string()
                         )
                         .into_owned(),
-                        why_risky: t!("finding.host.apparmor_profile_missing.why")
-                            .into_owned(),
-                        how_to_fix: t!("finding.host.apparmor_profile_missing.fix")
-                            .into_owned(),
+                        why_risky: t!("finding.host.apparmor_profile_missing.why").into_owned(),
+                        how_to_fix: t!("finding.host.apparmor_profile_missing.fix").into_owned(),
                     },
                     BTreeMap::from([(String::from("service"), String::from(service))]),
                 ));
@@ -1243,7 +1242,9 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
     let sig_enforce_path = "sys/module/module/parameters/sig_enforce";
     let sig_enforce_value = read_sysctl(context, sig_enforce_path);
     let sig_enforce_missing = sig_enforce_value.is_none();
-    let sig_enforce_disabled = sig_enforce_value.as_deref().is_some_and(|v| v.trim() == "N");
+    let sig_enforce_disabled = sig_enforce_value
+        .as_deref()
+        .is_some_and(|v| v.trim() == "N");
 
     if sig_enforce_missing || sig_enforce_disabled {
         findings.push(host_finding(
@@ -1257,10 +1258,8 @@ fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                     path = context.root.join(sig_enforce_path).display().to_string()
                 )
                 .into_owned(),
-                why_risky: t!("finding.host.kernel_module_signing_not_enforced.why")
-                    .into_owned(),
-                how_to_fix: t!("finding.host.kernel_module_signing_not_enforced.fix")
-                    .into_owned(),
+                why_risky: t!("finding.host.kernel_module_signing_not_enforced.why").into_owned(),
+                how_to_fix: t!("finding.host.kernel_module_signing_not_enforced.fix").into_owned(),
             },
             BTreeMap::from([(
                 String::from("state"),
@@ -1284,7 +1283,10 @@ fn scan_secure_boot(context: &HostContext) -> Vec<Finding> {
         return findings;
     }
 
-    let secure_boot_path = resolve_existing_path(&context.root, "sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+    let secure_boot_path = resolve_existing_path(
+        &context.root,
+        "sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c",
+    );
 
     if secure_boot_path.is_none() {
         return findings;
@@ -2799,11 +2801,11 @@ mod tests {
                 "host.docker_daemon_tcp_public",
                 "host.docker_daemon_tcp_no_tlsverify",
                 "host.docker_daemon_iptables_disabled",
-                "host.no_firewall_detected",
                 "host.docker_userns_remap_missing",
                 "host.docker_live_restore_disabled",
                 "host.docker_log_driver_missing",
                 "host.docker_default_ulimits_missing",
+                "host.no_firewall_detected",
                 "host.kernel.module_signing_not_enforced",
                 "host.mac_framework_missing",
                 "host.defensive_controls_missing",
@@ -2913,7 +2915,8 @@ mod tests {
     #[test]
     fn host_scanner_detects_secure_boot_disabled() {
         let root = temp_host_root("secure-boot-disabled");
-        let sb_path = root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+        let sb_path =
+            root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
         fs::create_dir_all(sb_path.parent().unwrap()).expect("parent should be created");
         fs::write(&sb_path, [0x00, 0x00, 0x00, 0x00, 0x00]).expect("file should be written");
         write_file(&root.join("etc/hostname"), "sb-test\n");
@@ -2925,6 +2928,8 @@ mod tests {
         assert_eq!(
             findings.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
             vec![
+                "host.no_firewall_detected",
+                "host.kernel.module_signing_not_enforced",
                 "host.secure_boot_disabled",
                 "host.mac_framework_missing",
                 "host.defensive_controls_missing",
@@ -2937,7 +2942,8 @@ mod tests {
     #[test]
     fn host_scanner_skips_secure_boot_when_enabled() {
         let root = temp_host_root("secure-boot-enabled");
-        let sb_path = root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+        let sb_path =
+            root.join("sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c");
         fs::create_dir_all(sb_path.parent().unwrap()).expect("parent should be created");
         fs::write(&sb_path, [0x00, 0x00, 0x00, 0x00, 0x01]).expect("file should be written");
         write_file(&root.join("etc/hostname"), "sb-test\n");
@@ -2948,7 +2954,12 @@ mod tests {
 
         assert_eq!(
             findings.iter().map(|f| f.id.as_str()).collect::<Vec<_>>(),
-            vec!["host.mac_framework_missing", "host.defensive_controls_missing"]
+            vec![
+                "host.no_firewall_detected",
+                "host.kernel.module_signing_not_enforced",
+                "host.mac_framework_missing",
+                "host.defensive_controls_missing",
+            ]
         );
 
         fs::remove_dir_all(root).expect("temp root should be removed");

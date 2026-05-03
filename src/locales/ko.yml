@@ -628,7 +628,6 @@ finding:
       description: "%{path}에 default-ulimits이 설정되지 않았습니다."
       why: "기본 ulimits이 없으면 비정상적으로 동작하는 컨테이너 하나가 호스트의 파일 디스크립터를 소진하거나 과도한 프로세스를 생성할 수 있습니다."
       fix: "%{path}에 'default-ulimits': { 'nofile': { 'Name': 'nofile', 'Hard': 64000, 'Soft': 64000 } }를 추가한 뒤 Docker를 재시작하세요."
->>>>>>> 6337434 (feat(host): add Docker daemon hardening checks)
     fail2ban_not_enabled:
       title: "Fail2ban이 설치되어 있지만 활성 상태가 아닙니다"
       description: "%{path}에서 로컬 Fail2ban 흔적이 보이지만, 활성화된 서비스 표시는 감지되지 않았습니다."
@@ -724,7 +723,6 @@ finding:
       description: "%{path}에서 Secure Boot가 활성화되지 않았음을 나타냅니다."
       why: "Secure Boot는 신뢰할 수 없는 부트로더와 커널 이미지의 로드를 방지합니다. 이 기능이 없으면 물리적 접근 권한이 있거나 부트로더가 침해당한 공격자가 OS 시작 전에 악성 코드를 주입할 수 있습니다."
       fix: "시스템의 UEFI 펌웨어 설정에서 Secure Boot를 활성화하세요. OS 부트로더와 커널이 신뢰할 수 있는 키로 서명되어 있는지 확인하세요."
->>>>>>> a71fabf (feat(host): add Secure Boot status check)
     grub_password_missing:
       title: "GRUB 부트로더에 암호 보호가 없습니다"
       description: "%{path}에 GRUB 암호나 unrestricted 제한이 없습니다."
@@ -1008,7 +1006,6 @@ finding:
       description: "%{service}가 EXTERNAL_URL을 %{url}(으)로 설정하여 암호화되지 않은 HTTP를 사용합니다."
       why: "GitLab을 HTTP로 제공하면 인증 토큰, 쿠키, 저장소 데이터가 가로채기 및 변조에 노출됩니다."
       fix: "EXTERNAL_URL을 HTTPS URL로 설정하고, 리버스 프록시나 GitLab 내장 Lets Encrypt 연동을 통해 TLS를 종료하세요."
->>>>>>> b83de39 (feat(rules): add GitLab service-aware security checks)
   uptime_kuma:
     auth_disabled:
       title: "Uptime Kuma 인증이 비활성화되어 있습니다"
@@ -1020,7 +1017,6 @@ finding:
       description: "%{service}가 Uptime Kuma 대시보드를 %{port}에 노출하고 있습니다."
       why: "공개적으로 접근 가능한 Uptime Kuma 대시보드는 낮부 인프라 토폴로지, 엔드포인트, 상태 정보를 공격자에게 노출합니다."
       fix: "Uptime Kuma를 localhost 또는 신뢰할 수 있는 네트워크로 제한하거나, 강력한 인증이 적용된 리버스 프록시 뒤에 배치하세요."
->>>>>>> e749f6e (feat(rules): add Uptime Kuma service-aware security checks)
   authentik:
     admin_public:
       title: "Authentik 인터페이스가 공개적으로 노출되어 있습니다"
