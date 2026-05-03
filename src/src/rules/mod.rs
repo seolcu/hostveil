@@ -1,11 +1,13 @@
 mod exposure;
 mod permissions;
+mod runtime;
 mod sensitive;
 mod service_aware;
 mod updates;
 
 pub use exposure::{is_public_port, scan_exposure_risk};
 pub use permissions::{classify_sensitive_mount, scan_permission_risk};
+pub use runtime::scan_runtime_risk;
 pub use sensitive::scan_sensitive_data;
 pub use service_aware::scan_service_aware_risk;
 pub use updates::{scan_update_risk, split_image_reference};
@@ -21,6 +23,7 @@ impl RuleEngine {
         let mut findings = Vec::new();
         findings.extend(scan_exposure_risk(project));
         findings.extend(scan_permission_risk(project));
+        findings.extend(scan_runtime_risk(project));
         findings.extend(scan_sensitive_data(project));
         findings.extend(scan_update_risk(project));
         findings.extend(scan_service_aware_risk(project));

@@ -1,12 +1,14 @@
 services:
   pihole:
     image: pihole/pihole:2024.07
-    user: "1000:1000"
+    user: 1000:1000
     ports:
-      - "127.0.0.1:8080:80/tcp"
-      - "127.0.0.1:53:53/tcp"
-      - "127.0.0.1:53:53/udp"
+    - 127.0.0.1:8080:80/tcp
+    - 127.0.0.1:53:53/tcp
+    - 127.0.0.1:53:53/udp
     environment:
-      WEBPASSWORD: "${WEBPASSWORD}"
+      WEBPASSWORD: ${WEBPASSWORD}
     volumes:
-      - pihole_data:/etc/pihole
+    - pihole_data:/etc/pihole
+    security_opt:
+    - no-new-privileges:true

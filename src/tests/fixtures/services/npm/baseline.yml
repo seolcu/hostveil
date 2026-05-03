@@ -1,8 +1,10 @@
 services:
   npm:
     image: jc21/nginx-proxy-manager:2.11
-    user: "1000:1000"
+    user: 1000:1000
     ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:81:81"
-      - "127.0.0.1:443:443"
+    - 127.0.0.1:80:80
+    - 127.0.0.1:81:81
+    - 127.0.0.1:443:443
+    security_opt:
+    - no-new-privileges:true

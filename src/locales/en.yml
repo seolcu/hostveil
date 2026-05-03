@@ -833,6 +833,27 @@ finding:
       description: "Tripwire installation markers were found, but no Tripwire database exists."
       why: "An uninitialized Tripwire installation cannot detect file changes because the policy database has not been created."
       fix: "Run 'tripwire --init' to create the database after configuring the policy file, then schedule periodic integrity checks."
+  runtime:
+    seccomp_unconfined:
+      title: "Container disables seccomp"
+      description: "%{service} sets seccomp to unconfined, removing syscall filtering."
+      why: "Disabling seccomp removes a critical layer of runtime sandboxing, allowing the container to use any syscall and increasing the impact of a container breakout."
+      fix: "Remove seccomp:unconfined from security_opt. If the service needs specific syscalls, create a custom seccomp profile that allows only those syscalls instead of disabling filtering entirely."
+    seccomp_missing:
+      title: "Container does not use a custom seccomp profile"
+      description: "%{service} does not set an explicit seccomp profile."
+      why: "The default Docker seccomp profile blocks dangerous syscalls, but explicitly declaring a profile makes the security posture intentional and easier to audit."
+      fix: "Add an explicit seccomp profile to security_opt, or at least document that the default profile is acceptable for this service."
+    dangerous_capabilities:
+      title: "Container adds dangerous Linux capabilities"
+      description: "%{service} adds the following high-risk capabilities: %{capabilities}."
+      why: "Capabilities like NET_ADMIN, SYS_ADMIN, SYS_PTRACE, SYS_MODULE, and DAC_READ_SEARCH significantly expand what a compromised container can do on the host, often approaching privileged-mode risk."
+      fix: "Remove unnecessary capabilities from cap_add. If the service genuinely needs them, document the justification and restrict the container in other ways (AppArmor/SELinux, read-only rootfs, drop-all-then-add)."
+    no_new_privileges_disabled:
+      title: "Container allows privilege escalation"
+      description: "%{service} does not set no-new-privileges:true in security_opt."
+      why: "Without no-new-privileges, processes inside the container can gain additional capabilities through setuid binaries or file capabilities, increasing the blast radius of a compromise."
+      fix: "Add 'no-new-privileges:true' to security_opt in the compose file for this service."
   vaultwarden:
     signups_enabled:
       title: "Vaultwarden signups are left enabled"

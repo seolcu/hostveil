@@ -1,6 +1,8 @@
 services:
   db:
     image: mysql:8.4.5
-    user: "1000:1000"
+    user: 1000:1000
     environment:
-      MYSQL_ROOT_PASSWORD: "strong-password-here"
+      MYSQL_ROOT_PASSWORD: strong-password-here
+    security_opt:
+    - no-new-privileges:true

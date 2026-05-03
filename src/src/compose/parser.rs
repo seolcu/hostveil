@@ -130,6 +130,7 @@ struct ServiceAccumulator {
     privileged: bool,
     cap_add: Vec<String>,
     network_mode: Option<String>,
+    security_opt: Vec<String>,
     command: Option<String>,
     source_files: Vec<PathBuf>,
 }
@@ -172,6 +173,9 @@ impl ServiceAccumulator {
         if let Some(value) = mapping_get(source, "network_mode") {
             self.network_mode = coerce_string(value);
         }
+        if let Some(value) = mapping_get(source, "security_opt") {
+            self.security_opt.extend(coerce_string_list(value));
+        }
         if let Some(value) = mapping_get(source, "command") {
             self.command = Some(coerce_command(value));
         }
@@ -190,6 +194,7 @@ impl ServiceAccumulator {
             privileged: self.privileged,
             cap_add: self.cap_add,
             network_mode: self.network_mode,
+            security_opt: self.security_opt,
             command: self.command,
             source_files: self.source_files,
         }
