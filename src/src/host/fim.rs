@@ -123,3 +123,78 @@ fn is_samhain_installed(context: &HostContext) -> bool {
 fn is_ossec_installed(context: &HostContext) -> bool {
     resolve_existing_path(&context.root, OSSEC_DIR).is_some_and(|p| p.is_dir())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::host::HostScanner;
+    use crate::host::tests::{temp_host_root, write_file};
+
+    #[test]
+    fn host_scanner_warns_when_no_fim() {
+        let root = temp_host_root("no-fim");
+        write_file(&root.join("etc/hostname"), "no-fim\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_aide_not_initialized() {
+        let root = temp_host_root("aide-no-db");
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("etc/aide/aide.conf"), "");
+        write_file(&root.join("etc/hostname"), "aide-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.aide_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_aide_when_initialized() {
+        let root = temp_host_root("aide-ok");
+        write_file(&root.join("usr/bin/aide"), "");
+        write_file(&root.join("var/lib/aide/aide.db"), "");
+        write_file(&root.join("etc/hostname"), "aide-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.aide_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+}
