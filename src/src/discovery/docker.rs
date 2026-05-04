@@ -19,6 +19,7 @@ pub struct DiscoveredComposeProject {
     pub working_dir: Option<PathBuf>,
     pub services: Vec<DiscoveredContainerService>,
     pub source: &'static str,
+    pub config_files: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,6 +107,11 @@ pub fn parse_docker_ps_output(output: &str) -> Vec<DiscoveredComposeProject> {
                     working_dir: working_dir.clone(),
                     services: Vec::new(),
                     source: "docker",
+                    config_files: if config_files.is_empty() {
+                        None
+                    } else {
+                        Some(config_files.to_owned())
+                    },
                 });
 
         if project.compose_path.is_none() {
@@ -205,6 +211,7 @@ mod tests {
                 image: Some(String::from("ghcr.io/immich-app/immich-server:v2.1.0")),
             }],
             source: "docker",
+            config_files: Some(String::from("/srv/immich/docker-compose.yml")),
         };
 
         let summary = project_summary(&project);

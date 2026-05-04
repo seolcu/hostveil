@@ -400,6 +400,16 @@ fn apply_discovered_projects(
             .discovered_projects
             .push(project_summary(project));
 
+        if let Some(ref config_files) = project.config_files {
+            if config_files.contains(',') {
+                result.metadata.warnings.push(format!(
+                    "Project '{}' uses multiple compose files ({}); only the first file was parsed.",
+                    project.name,
+                    config_files
+                ));
+            }
+        }
+
         match load_discovered_project(project) {
             Ok((parsed, warning)) => {
                 if let Some(warning) = warning {
@@ -421,6 +431,8 @@ fn load_discovered_project(
     project: &DiscoveredComposeProject,
 ) -> Result<(ComposeProject, Option<String>), String> {
     let mut parsed = load_discovered_project_parsed(project)?;
+    let mut warnings = Vec::new();
+
     // If a service was defined with `build:` and no `image:`, the parser leaves
     // image as None. Try to backfill from the live container discovery data.
     for (service_name, service) in parsed.0.services.iter_mut() {
@@ -434,20 +446,50 @@ fn load_discovered_project(
             service.image = Some(discovered.clone());
         }
     }
+
     // If image is still None (e.g. container not running, or untagged image),
     // try resolving via docker compose config which knows the built image.
-    if parsed.0.services.values().any(|s| s.image.is_none())
-        && let Some(resolved) = resolve_images_from_compose_config(project)
-    {
-        for (service_name, service) in parsed.0.services.iter_mut() {
-            if service.image.is_none()
-                && let Some(image) = resolved.get(service_name)
-            {
-                service.image = Some(image.clone());
+    let services_without_image: Vec<String> = parsed
+        .0
+        .services
+        .iter()
+        .filter(|(_, s)| s.image.is_none())
+        .map(|(name, _)| name.clone())
+        .collect();
+
+    if !services_without_image.is_empty() {
+        match resolve_images_from_compose_config(project) {
+            Some(resolved) => {
+                for (service_name, service) in parsed.0.services.iter_mut() {
+                    if service.image.is_none()
+                        && let Some(image) = resolved.get(service_name)
+                    {
+                        service.image = Some(image.clone());
+                    }
+                }
+            }
+            None => {
+                warnings.push(format!(
+                    "Could not resolve images for services {} in project '{}'. Adapter coverage may be reduced.",
+                    services_without_image.join(", "),
+                    project.name
+                ));
             }
         }
     }
-    Ok(parsed)
+
+    let warning = if warnings.is_empty() {
+        parsed.1
+    } else {
+        let mut text = parsed.1.unwrap_or_default();
+        if !text.is_empty() {
+            text.push(' ');
+        }
+        text.push_str(&warnings.join(" "));
+        Some(text)
+    };
+
+    Ok((parsed.0, warning))
 }
 
 fn resolve_images_from_compose_config(
@@ -635,6 +677,10 @@ fn apply_current_dir_fallback_from(
                 .metadata
                 .warnings
                 .push(crate::i18n::tr_discovery_current_dir_fallback_used());
+            result.metadata.warnings.push(format!(
+                "Fallback directory: {}. Verify this is the intended compose project.",
+                current_dir.display()
+            ));
             scan_compose_project(&project, result);
             coverage.compose = true;
             Ok(())
@@ -1532,6 +1578,7 @@ mod tests {
                     image: Some(String::from("nginx:1.27.5")),
                 }],
                 source: "docker",
+                config_files: Some(temp_dir.join("deleted-compose.yml").to_string_lossy().to_string()),
             }],
             warnings: Vec::new(),
         };
@@ -1574,6 +1621,7 @@ mod tests {
                     image: Some(String::from("nginx:1.27.5")),
                 }],
                 source: "docker",
+                config_files: Some(compose_path.to_string_lossy().to_string()),
             }],
             warnings: Vec::new(),
         };
@@ -1623,6 +1671,7 @@ mod tests {
                     image: Some(String::from("nginx:1.27.5")),
                 }],
                 source: "docker",
+                config_files: None,
             }],
             warnings: vec![String::from("Docker returned stale Compose labels")],
         };
