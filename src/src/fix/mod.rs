@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_yaml::{Mapping, Sequence, Value};
@@ -94,7 +95,7 @@ pub fn apply(
 
     let backup_path = backup_path_for(&plan.compose_file);
     fs::copy(&plan.compose_file, &backup_path)?;
-    fs::write(&plan.compose_file, &plan.updated_text)?;
+    atomic_write_file(&plan.compose_file, &plan.updated_text)?;
     plan.backup_path = Some(backup_path);
     Ok(plan)
 }
@@ -1376,10 +1377,33 @@ fn diff_ops(before: &[String], after: &[String]) -> Vec<DiffOp> {
 }
 
 fn backup_path_for(path: &Path) -> PathBuf {
-    match path.extension().and_then(|value| value.to_str()) {
-        Some(extension) => path.with_extension(format!("{extension}.bak")),
-        None => path.with_extension("bak"),
+    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let backup_name = match path.file_stem().and_then(|s| s.to_str()) {
+        Some(stem) => match path.extension().and_then(|e| e.to_str()) {
+            Some(ext) => format!("{}-{}.bak.{}", stem, timestamp, ext),
+            None => format!("{}-{}.bak", stem, timestamp),
+        },
+        None => format!("docker-compose-{}.bak.yml", timestamp),
+    };
+    path.with_file_name(&backup_name)
+}
+
+fn atomic_write_file(path: &Path, content: &str) -> Result<(), FixError> {
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("docker-compose.yml");
+    let tmp_path = dir.join(format!(".{}.tmp", file_name));
+
+    {
+        let mut file = std::fs::File::create(&tmp_path)?;
+        file.write_all(content.as_bytes())?;
+        file.sync_all()?;
     }
+
+    std::fs::rename(&tmp_path, path)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1500,6 +1524,72 @@ mod tests {
         let env_text = fs::read_to_string(root.join("postgres.env"))
             .expect("copied env fixture should be readable");
         assert_eq!(env_text, "POSTGRES_PASSWORD=changeme\n");
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_creates_timestamped_backup() {
+        let root = temp_compose_dir("timestamped-backup");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        );
+
+        let plan = apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+        assert!(plan.changed());
+
+        let backup_path = plan.backup_path.expect("backup path should exist");
+        let backup_name = backup_path.file_name().unwrap().to_str().unwrap();
+        assert!(
+            backup_name.contains("docker-compose-"),
+            "backup name should contain timestamp: {}",
+            backup_name
+        );
+        assert!(
+            backup_name.ends_with(".bak.yml"),
+            "backup name should end with .bak.yml: {}",
+            backup_name
+        );
+        assert!(backup_path.exists(), "backup file should exist on disk");
+
+        let original_text = fs::read_to_string(&path).expect("file should be readable");
+        assert!(
+            original_text.contains("127.0.0.1:8080:80"),
+            "original file should contain the fixed content"
+        );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_uses_atomic_write() {
+        let root = temp_compose_dir("atomic-write");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx\n",
+                "    ports:\n",
+                "      - \"8080:80\"\n"
+            ),
+        );
+
+        let plan = apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+        assert!(plan.changed());
+
+        // The temp file should not remain after atomic rename
+        let tmp_path = root.join(".docker-compose.yml.tmp");
+        assert!(!tmp_path.exists(), "temp file should be removed after atomic rename");
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }
