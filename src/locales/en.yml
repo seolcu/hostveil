@@ -270,6 +270,8 @@ app:
     running_step: "Running: %{step}"
     verification_heading: "Verification"
     complete: "Setup complete. Re-run `hostveil setup` any time to adjust the installed tool set."
+    complete_with_manual_steps: "Setup steps finished. Some tools require manual installation—see guidance above."
+    manual_guidance_provided: "manual guidance provided"
     check_failed: "%{command} could not be verified: %{detail}"
     error:
       unsupported_os: "hostveil setup does not yet support automatic dependency installation on"

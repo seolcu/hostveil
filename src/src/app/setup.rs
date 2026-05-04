@@ -30,6 +30,7 @@ struct SetupPlan {
     distro: DistroInfo,
     tools: Vec<SetupTool>,
     steps: Vec<SetupStep>,
+    manual_tools: Vec<SetupTool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,7 @@ impl SetupPlan {
     ) -> Result<Self, AppError> {
         let mut package_set = Vec::new();
         let mut steps = Vec::new();
+        let mut manual_tools = Vec::new();
 
         for tool in &tools {
             if *tool == SetupTool::Trivy
@@ -62,6 +64,7 @@ impl SetupPlan {
 
             if !state.tool_is_installed(*tool) {
                 if *tool == SetupTool::Dockle {
+                    manual_tools.push(*tool);
                     steps.push(SetupStep::ManualInstall {
                         tool: tool.display_name(),
                         instruction: String::from(
@@ -89,11 +92,14 @@ impl SetupPlan {
                 }
             }
             DistroFamily::Unsupported => {
-                return Err(AppError::Io(io::Error::other(format!(
-                    "{} {}",
-                    t!("app.setup.error.unsupported_os").into_owned(),
-                    distro.pretty_name
-                ))));
+                if !package_set.is_empty() {
+                    return Err(AppError::Io(io::Error::other(format!(
+                        "{} {}",
+                        t!("app.setup.error.unsupported_os").into_owned(),
+                        distro.pretty_name
+                    ))));
+                }
+                // Allow manual-only tools on unsupported distros
             }
         }
 
@@ -105,6 +111,7 @@ impl SetupPlan {
             distro,
             tools,
             steps,
+            manual_tools,
         })
     }
 
@@ -454,6 +461,14 @@ fn print_verification(plan: &SetupPlan) {
     println!("{}", t!("app.setup.verification_heading").into_owned());
 
     for tool in &plan.tools {
+        if plan.manual_tools.contains(tool) {
+            println!(
+                "- {}: {}",
+                tool.display_name(),
+                t!("app.setup.manual_guidance_provided").into_owned()
+            );
+            continue;
+        }
         match tool {
             SetupTool::Lynis => print_command_check("lynis", &["--version"]),
             SetupTool::Trivy => print_command_check("trivy", &["--version"]),
@@ -466,7 +481,11 @@ fn print_verification(plan: &SetupPlan) {
     }
 
     println!();
-    println!("{}", t!("app.setup.complete").into_owned());
+    if plan.manual_tools.is_empty() {
+        println!("{}", t!("app.setup.complete").into_owned());
+    } else {
+        println!("{}", t!("app.setup.complete_with_manual_steps").into_owned());
+    }
 }
 
 fn print_command_check(program: &str, args: &[&str]) {
@@ -940,5 +959,71 @@ ID_LIKE="rhel centos fedora"
             AppError::InvalidArgumentCombination(message)
                 if message == crate::i18n::tr_setup_requires_terminal_or_explicit_tools()
         ));
+    }
+
+    #[test]
+    fn unsupported_distro_allows_manual_only_tools() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Unsupported,
+                pretty_name: String::from("Arch Linux"),
+            },
+            vec![SetupTool::Dockle],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("unsupported distro should allow manual-only tools");
+
+        assert_eq!(plan.manual_tools, vec![SetupTool::Dockle]);
+        assert_eq!(plan.steps.len(), 1);
+        assert!(matches!(
+            plan.steps[0],
+            SetupStep::ManualInstall { ref tool, .. } if tool == "Dockle"
+        ));
+    }
+
+    #[test]
+    fn unsupported_distro_rejects_auto_installable_tools() {
+        let result = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Unsupported,
+                pretty_name: String::from("Arch Linux"),
+            },
+            vec![SetupTool::Lynis],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn dockle_is_tracked_as_manual_tool() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            vec![SetupTool::Dockle, SetupTool::Lynis],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("plan should build");
+
+        assert_eq!(plan.manual_tools, vec![SetupTool::Dockle]);
+        assert!(plan.steps.iter().any(|s| matches!(
+            s,
+            SetupStep::ManualInstall { tool, .. } if tool == "Dockle"
+        )));
+        assert!(plan.steps.iter().any(|s| matches!(
+            s,
+            SetupStep::DnfInstall(pkgs) if pkgs.contains(&String::from("lynis"))
+        )));
     }
 }

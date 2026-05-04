@@ -270,6 +270,8 @@ app:
     running_step: "실행 중: %{step}"
     verification_heading: "검증"
     complete: "Setup이 완료되었습니다. 설치 도구를 조정하려면 언제든지 `hostveil setup`을 다시 실행하세요."
+    complete_with_manual_steps: "Setup 단계가 완료되었습니다. 일부 도구는 수동 설치가 필요합니다—위 안내를 참조하세요."
+    manual_guidance_provided: "수동 설치 안내 제공됨"
     check_failed: "%{command} 검증에 실패했습니다: %{detail}"
     error:
       unsupported_os: "hostveil setup은 아직 자동 의존성 설치를 지원하지 않습니다:"
