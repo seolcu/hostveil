@@ -113,7 +113,7 @@ fn build_fix_plan(
     let mut document = bundle.primary_document.clone();
     let safe_applied = apply_safe_fixes(&mut document, &findings_by_service);
     let guided_applied = if mode == FixMode::Fix {
-        apply_guided_fixes(&mut document, &findings_by_service)
+        apply_guided_fixes(&mut document, &findings_by_service, &bundle.primary_path)
     } else {
         Vec::new()
     };
@@ -434,6 +434,7 @@ fn apply_safe_fixes(
 fn apply_guided_fixes(
     document: &mut Value,
     findings_by_service: &BTreeMap<String, BTreeSet<String>>,
+    compose_path: &Path,
 ) -> Vec<FixProposal> {
     let Some(services) = services_mapping_mut(document) else {
         return Vec::new();
@@ -472,7 +473,7 @@ fn apply_guided_fixes(
 
         if finding_ids.contains("service.gitea.inline_security_secrets")
             && let Some(service) = service_mapping_mut(services, service_name)
-            && externalize_gitea_security_env(service)
+            && externalize_gitea_security_env(service, compose_path)
         {
             applied.push(FixProposal {
                 service: service_name.clone(),
@@ -611,17 +612,54 @@ fn apply_guided_privileged_low_port_fix(service: &mut Mapping) -> bool {
     true
 }
 
-fn externalize_gitea_security_env(service: &mut Mapping) -> bool {
+fn externalize_gitea_security_env(service: &mut Mapping, compose_path: &Path) -> bool {
     let mut changed = false;
     for key in [
         "GITEA__security__SECRET_KEY",
         "GITEA__security__INTERNAL_TOKEN",
     ] {
-        let placeholder = format!("${{{key}}}");
-        changed |= update_environment_value(service, key, &placeholder, false);
+        if let Ok(did_migrate) = migrate_env_to_file(compose_path, service, key) {
+            changed |= did_migrate;
+        }
+    }
+    changed
+}
+
+fn migrate_env_to_file(
+    compose_path: &Path,
+    service: &mut Mapping,
+    key: &str,
+) -> Result<bool, FixError> {
+    let Some(current_value) = environment_value(service, key) else {
+        return Ok(false);
+    };
+
+    // Skip if already a placeholder
+    if current_value.starts_with("${") && current_value.ends_with("}") {
+        return Ok(false);
     }
 
-    changed
+    let env_path = compose_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(".env");
+
+    let mut content = if env_path.exists() {
+        fs::read_to_string(&env_path)?
+    } else {
+        String::new()
+    };
+
+    let pattern = format!("{}=", key);
+    if !content.lines().any(|line| line.trim_start().starts_with(&pattern)) {
+        if !content.is_empty() && !content.ends_with('\n') {
+            content.push('\n');
+        }
+        content.push_str(&format!("{}={}\n", key, current_value));
+        atomic_write_file(&env_path, &content)?;
+    }
+
+    Ok(update_environment_value(service, key, &format!("${{{key}}}"), false))
 }
 
 fn harden_vaultwarden_domain(service: &mut Mapping) -> bool {
@@ -1761,6 +1799,87 @@ mod tests {
         assert!(
             plan.diff_preview
                 .contains("GITEA__security__INTERNAL_TOKEN=${GITEA__security__INTERNAL_TOKEN}")
+        );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_creates_env_file_for_gitea_externalized_secrets() {
+        let root = temp_compose_dir("apply-gitea-env");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  server:\n",
+                "    image: gitea/gitea:1.21.11\n",
+                "    ports:\n",
+                "      - \"3000:3000\"\n",
+                "      - \"2222:22\"\n",
+                "    environment:\n",
+                "      - GITEA__security__SECRET_KEY=secret123\n",
+                "      - GITEA__security__INTERNAL_TOKEN=token456\n"
+            ),
+        );
+
+        let plan = apply(&path, FixMode::Fix, None).expect("apply should succeed");
+        assert!(plan.changed());
+
+        let env_path = root.join(".env");
+        assert!(env_path.exists(), ".env file should be created");
+
+        let env_text = fs::read_to_string(&env_path).expect("env file should be readable");
+        assert!(
+            env_text.contains("GITEA__security__SECRET_KEY=secret123"),
+            "env file should contain migrated secret key"
+        );
+        assert!(
+            env_text.contains("GITEA__security__INTERNAL_TOKEN=token456"),
+            "env file should contain migrated internal token"
+        );
+
+        let compose_text = fs::read_to_string(&path).expect("compose file should be readable");
+        assert!(
+            compose_text.contains("GITEA__security__SECRET_KEY=${GITEA__security__SECRET_KEY}"),
+            "compose should reference placeholder"
+        );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_preserves_existing_env_file_entries_for_gitea() {
+        let root = temp_compose_dir("apply-gitea-env-preserve");
+        let path = root.join("docker-compose.yml");
+        let env_path = root.join(".env");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  server:\n",
+                "    image: gitea/gitea:1.21.11\n",
+                "    ports:\n",
+                "      - \"3000:3000\"\n",
+                "      - \"2222:22\"\n",
+                "    environment:\n",
+                "      - GITEA__security__SECRET_KEY=secret123\n",
+                "      - GITEA__security__INTERNAL_TOKEN=token456\n"
+            ),
+        );
+        fs::write(&env_path, "EXISTING_KEY=existing_value\n").expect("env file should be written");
+
+        let plan = apply(&path, FixMode::Fix, None).expect("apply should succeed");
+        assert!(plan.changed());
+
+        let env_text = fs::read_to_string(&env_path).expect("env file should be readable");
+        assert!(
+            env_text.contains("EXISTING_KEY=existing_value"),
+            "existing env entry should be preserved"
+        );
+        assert!(
+            env_text.contains("GITEA__security__SECRET_KEY=secret123"),
+            "new env entry should be appended"
         );
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
