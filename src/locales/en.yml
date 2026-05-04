@@ -40,7 +40,7 @@ app:
     cycle_filters: "Cycle filters (severity/source/remediation/service)"
     cycle_sort: "Cycle sort mode"
     reset_filters: "Reset filters and sort"
-    fix: "Trigger fix for selected finding"
+    fix: "Trigger fix for selected finding (when available)"
     back_overview: "Return to overview"
     mouse: "Mouse"
     scroll: "Scroll"

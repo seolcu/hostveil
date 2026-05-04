@@ -40,7 +40,7 @@ app:
     cycle_filters: "필터 순환 (심각도/소스/조치/서비스)"
     cycle_sort: "정렬 모드 순환"
     reset_filters: "필터 및 정렬 초기화"
-    fix: "선택 항목 수정 실행"
+    fix: "선택 항목 수정 실행 (가능한 경우)"
     back_overview: "개요로 돌아가기"
     mouse: "마우스"
     scroll: "스크롤"

@@ -181,7 +181,7 @@ pub fn scan_result_markdown(scan_result: &ScanResult) -> String {
             severity_label(severity),
             group.len()
         ));
-        output.push_str("| ID | Subject | Description |\n|---|---|---|\n");
+        output.push_str("| ID | Subject | Title |\n|---|---|---|\n");
         for finding in group {
             output.push_str(&format!(
                 "| `{}` | {} | {} |\n",
@@ -317,7 +317,7 @@ pub fn scan_result_html(scan_result: &ScanResult) -> String {
             crate::domain::Severity::Low => "low",
         };
         html.push_str(&format!(
-            "<h3 class=\"{severity_class}\">{}</h3>\n<table>\n<tr><th>ID</th><th>Subject</th><th>Description</th></tr>\n",
+            "<h3 class=\"{severity_class}\">{}</h3>\n<table>\n<tr><th>ID</th><th>Subject</th><th>Title</th></tr>\n",
             html_severity_label(severity),
         ));
         for finding in group {
