@@ -845,7 +845,7 @@ fn handle_settings_key(state: &mut AppState, key: KeyEvent) -> Option<TuiAction>
             state.settings_row = 2;
             None
         }
-        KeyCode::Esc | KeyCode::Enter => {
+        KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
             state.close_settings();
             None
         }
@@ -1888,16 +1888,18 @@ fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
                 ("?", t!("app.help.show_help").into_owned()),
                 ("1", t!("app.help.overview").into_owned()),
                 ("2", t!("app.help.findings").into_owned()),
-                ("s / Ctrl+,", t!("app.help.settings").into_owned()),
+                ("s / Ctrl,", t!("app.help.settings").into_owned()),
                 ("q / Esc", t!("app.help.quit").into_owned()),
             ],
         ),
         (
             t!("app.help.overview_nav").into_owned(),
             vec![
-                ("↑ ↓ / k j", t!("app.help.move_focus").into_owned()),
-                ("Enter", t!("app.help.open_findings").into_owned()),
+                ("Tab", t!("app.help.focus_next_panel").into_owned()),
+                ("↑ ↓ / k j", t!("app.help.scroll_panel").into_owned()),
+                ("Enter / l", t!("app.help.open_findings").into_owned()),
                 ("h", t!("app.help.host_findings").into_owned()),
+                ("L", t!("app.help.cycle_layout").into_owned()),
             ],
         ),
         (
@@ -1905,13 +1907,12 @@ fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
             vec![
                 ("↑ ↓ / k j", t!("app.help.select").into_owned()),
                 ("PgUp / PgDn", t!("app.help.scroll_detail").into_owned()),
-                ("Enter / →", t!("app.help.focus_detail").into_owned()),
-                ("← / Esc", t!("app.help.focus_list").into_owned()),
-                (
-                    "f / a / r / c / l",
-                    t!("app.help.cycle_filters").into_owned(),
-                ),
-                ("S", t!("app.help.cycle_sort").into_owned()),
+                ("Tab / ← / →", t!("app.help.switch_focus").into_owned()),
+                ("S / x / m / v", t!("app.help.cycle_filters").into_owned()),
+                ("o", t!("app.help.cycle_sort").into_owned()),
+                ("r", t!("app.help.reset_filters").into_owned()),
+                ("f", t!("app.help.fix").into_owned()),
+                ("q / Esc", t!("app.help.back_overview").into_owned()),
             ],
         ),
         (
@@ -2264,14 +2265,47 @@ fn render_security_scores_panel(
         ));
         lines.push(Line::raw(String::new()));
     }
+    let bar_width = (text_width / 3).max(8).min(14);
     for (label, score, is_overall) in score_rows(scan_result) {
-        let mut line = format!("{}: {}", label, score);
-        if is_overall && let Some(delta) = overall_score_delta() {
-            line.push_str(&format!(" ({})", delta));
-        }
-        lines.push(Line::raw(line));
+        let color = score_color_for_value(score, theme);
+        let grade = score_grade_label(score);
+        lines.push(Line::from(vec![
+            Span::raw(format!("{}: ", label)),
+            Span::styled(
+                format!("{}", score),
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("/100", theme.muted),
+            Span::raw(" "),
+            Span::styled(format!("[{}]", grade), Style::default().fg(color)),
+        ]));
+        let bar = score_bar(score, bar_width);
+        let bar_line = if is_overall {
+            if let Some(delta) = overall_score_delta() {
+                Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(bar, Style::default().fg(color)),
+                    Span::raw(" "),
+                    Span::styled(delta, theme.muted),
+                ])
+            } else {
+                Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(bar, Style::default().fg(color)),
+                ])
+            }
+        } else {
+            Line::from(vec![
+                Span::raw("  "),
+                Span::styled(bar, Style::default().fg(color)),
+            ])
+        };
+        lines.push(bar_line);
         if is_overall && let Some(spark) = score_sparkline() {
-            lines.push(Line::raw(format!("  {}", spark)));
+            lines.push(Line::styled(format!("  {}", spark), theme.muted));
+        }
+        if !is_overall {
+            lines.push(Line::raw(""));
         }
     }
 
@@ -2351,9 +2385,11 @@ fn overview_footer(theme: &Theme) -> Paragraph<'static> {
         Span::raw("  "),
         hint_span("Enter", t!("app.footer.findings").into_owned(), theme),
         Span::raw("  "),
+        hint_span("Tab", t!("app.footer.focus").into_owned(), theme),
+        Span::raw("  "),
         hint_span("s", t!("app.footer.settings").into_owned(), theme),
         Span::raw("  "),
-        hint_span("--json", t!("app.footer.json").into_owned(), theme),
+        hint_span("?", t!("app.footer.help").into_owned(), theme),
     ])))
     .alignment(Alignment::Left)
     .block(
@@ -3154,6 +3190,32 @@ fn score_rows(scan_result: &ScanResult) -> Vec<(String, u8, bool)> {
     }));
 
     rows
+}
+
+fn score_color_for_value(score: u8, theme: &Theme) -> ratatui::style::Color {
+    match score {
+        90..=100 => theme.safe,
+        70..=89 => theme.low,
+        50..=69 => theme.med,
+        30..=49 => theme.high,
+        _ => theme.crit,
+    }
+}
+
+fn score_grade_label(score: u8) -> String {
+    match score {
+        90..=100 => t!("app.score.grade_good").into_owned(),
+        70..=89 => t!("app.score.grade_fair").into_owned(),
+        50..=69 => t!("app.score.grade_poor").into_owned(),
+        30..=49 => t!("app.score.grade_bad").into_owned(),
+        _ => t!("app.score.grade_critical").into_owned(),
+    }
+}
+
+fn score_bar(score: u8, width: usize) -> String {
+    let filled = ((score as usize * width).max(1) / 100).min(width);
+    let empty = width.saturating_sub(filled);
+    format!("{}{}", "█".repeat(filled), "░".repeat(empty))
 }
 
 fn render_detail_scrollbar(
