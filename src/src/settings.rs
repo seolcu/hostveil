@@ -28,7 +28,11 @@ pub fn load() -> AppSettings {
             Ok(settings) => settings,
             Err(error) => {
                 #[cfg(debug_assertions)]
-                eprintln!("hostveil: failed to load settings from {}: {}", path.display(), error);
+                eprintln!(
+                    "hostveil: failed to load settings from {}: {}",
+                    path.display(),
+                    error
+                );
                 AppSettings::default()
             }
         },

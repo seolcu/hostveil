@@ -484,7 +484,10 @@ fn print_verification(plan: &SetupPlan) {
     if plan.manual_tools.is_empty() {
         println!("{}", t!("app.setup.complete").into_owned());
     } else {
-        println!("{}", t!("app.setup.complete_with_manual_steps").into_owned());
+        println!(
+            "{}",
+            t!("app.setup.complete_with_manual_steps").into_owned()
+        );
     }
 }
 

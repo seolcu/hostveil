@@ -651,7 +651,10 @@ fn migrate_env_to_file(
     };
 
     let pattern = format!("{}=", key);
-    if !content.lines().any(|line| line.trim_start().starts_with(&pattern)) {
+    if !content
+        .lines()
+        .any(|line| line.trim_start().starts_with(&pattern))
+    {
         if !content.is_empty() && !content.ends_with('\n') {
             content.push('\n');
         }
@@ -659,7 +662,12 @@ fn migrate_env_to_file(
         atomic_write_file(&env_path, &content)?;
     }
 
-    Ok(update_environment_value(service, key, &format!("${{{key}}}"), false))
+    Ok(update_environment_value(
+        service,
+        key,
+        &format!("${{{key}}}"),
+        false,
+    ))
 }
 
 fn harden_vaultwarden_domain(service: &mut Mapping) -> bool {
@@ -1627,7 +1635,10 @@ mod tests {
 
         // The temp file should not remain after atomic rename
         let tmp_path = root.join(".docker-compose.yml.tmp");
-        assert!(!tmp_path.exists(), "temp file should be removed after atomic rename");
+        assert!(
+            !tmp_path.exists(),
+            "temp file should be removed after atomic rename"
+        );
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

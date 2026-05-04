@@ -228,8 +228,10 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
 #[cfg(test)]
 mod tests {
     use crossterm::event::KeyCode;
+    use ratatui::backend::Backend;
 
-    use super::{FixReviewState, ReviewAction, apply_key_input, clamp_scroll};
+    use super::{FixReviewState, ReviewAction, apply_key_input, clamp_scroll, render};
+    use crate::fix::FixPlan;
 
     #[test]
     fn apply_key_input_handles_accept_and_cancel_shortcuts() {
@@ -299,5 +301,153 @@ mod tests {
         assert_eq!(clamp_scroll(50, 10, 4), 6);
         assert_eq!(clamp_scroll(4, 3, 10), 0);
         assert_eq!(clamp_scroll(u16::MAX, usize::MAX, 0), u16::MAX);
+    }
+
+    use crate::fix::FixProposal;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use std::path::PathBuf;
+
+    fn sample_plan(safe_count: usize, guided_count: usize) -> FixPlan {
+        let safe_applied: Vec<_> = (0..safe_count)
+            .map(|i| FixProposal {
+                service: format!("svc-{i}"),
+                summary: format!("safe fix {i}"),
+            })
+            .collect();
+        let guided_applied: Vec<_> = (0..guided_count)
+            .map(|i| FixProposal {
+                service: format!("svc-{i}"),
+                summary: format!("guided fix {i}"),
+            })
+            .collect();
+        FixPlan {
+            compose_file: PathBuf::from("/srv/demo/docker-compose.yml"),
+            diff_preview: if safe_count == 0 && guided_count == 0 {
+                String::new()
+            } else {
+                format!(
+                    "--- /srv/demo/docker-compose.yml\n+++ /srv/demo/docker-compose.yml\n@@ -1,3 +1,5 @@\n{}\n  web:\n    image: nginx:stable\n",
+                    if safe_count > 0 {
+                        "+    ports:\n+      - 127.0.0.1:8080:80"
+                    } else {
+                        ""
+                    }
+                )
+            },
+            updated_text: String::new(),
+            backup_path: None,
+            safe_applied,
+            guided_applied,
+        }
+    }
+
+    fn buffer_to_string(backend: &TestBackend) -> String {
+        let area = backend.size().expect("backend should have a size");
+        let buffer = backend.buffer();
+        let mut output = String::new();
+        for y in 0..area.height {
+            for x in 0..area.width {
+                output.push_str(buffer[(x, y)].symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn renders_safe_and_guided_summary() {
+        let plan = sample_plan(1, 1);
+        let mut state = FixReviewState { scroll: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state))
+            .expect("fix review should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("safe fix 0"),
+            "safe proposal should be visible"
+        );
+        assert!(
+            content.contains("guided fix 0"),
+            "guided proposal should be visible"
+        );
+        assert!(
+            content.contains("/srv/demo/docker-compose.yml"),
+            "compose file path should be visible"
+        );
+    }
+
+    #[test]
+    fn renders_diff_colors() {
+        let plan = sample_plan(1, 0);
+        let mut state = FixReviewState { scroll: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state))
+            .expect("fix review should render");
+
+        let buffer = terminal.backend().buffer();
+        let area = terminal
+            .backend()
+            .size()
+            .expect("backend should have a size");
+
+        // Find a cell containing '+' and assert it's green
+        let mut found_green = false;
+        let mut found_cyan = false;
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let cell = &buffer[(x, y)];
+                if cell.symbol() == "+" && cell.style().fg == Some(ratatui::style::Color::Green) {
+                    found_green = true;
+                }
+                if cell.symbol() == "@" && cell.style().fg == Some(ratatui::style::Color::Cyan) {
+                    found_cyan = true;
+                }
+            }
+        }
+        assert!(found_green, "diff addition lines should be colored green");
+        assert!(found_cyan, "diff hunk headers should be colored cyan");
+    }
+
+    #[test]
+    fn renders_hint_footer() {
+        let plan = sample_plan(1, 0);
+        let mut state = FixReviewState { scroll: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(120, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state))
+            .expect("fix review should render");
+
+        let content = buffer_to_string(terminal.backend());
+        // Hints widget has 3 rows total (1 inner row after borders), so only the first hint line is visible
+        assert!(
+            content.contains("Up/Down or PgUp/PgDn"),
+            "scroll hint should be visible: {}",
+            content
+        );
+        assert!(
+            content.contains("Hints"),
+            "hints panel title should be visible"
+        );
+    }
+
+    #[test]
+    fn empty_plan_renders_without_panic() {
+        let plan = sample_plan(0, 0);
+        let mut state = FixReviewState { scroll: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state))
+            .expect("empty fix review should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(content.contains("/srv/demo/docker-compose.yml"));
     }
 }

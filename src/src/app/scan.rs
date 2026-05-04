@@ -400,14 +400,13 @@ fn apply_discovered_projects(
             .discovered_projects
             .push(project_summary(project));
 
-        if let Some(ref config_files) = project.config_files {
-            if config_files.contains(',') {
-                result.metadata.warnings.push(format!(
-                    "Project '{}' uses multiple compose files ({}); only the first file was parsed.",
-                    project.name,
-                    config_files
-                ));
-            }
+        if let Some(ref config_files) = project.config_files
+            && config_files.contains(',')
+        {
+            result.metadata.warnings.push(format!(
+                "Project '{}' uses multiple compose files ({}); only the first file was parsed.",
+                project.name, config_files
+            ));
         }
 
         match load_discovered_project(project) {
@@ -1578,7 +1577,12 @@ mod tests {
                     image: Some(String::from("nginx:1.27.5")),
                 }],
                 source: "docker",
-                config_files: Some(temp_dir.join("deleted-compose.yml").to_string_lossy().to_string()),
+                config_files: Some(
+                    temp_dir
+                        .join("deleted-compose.yml")
+                        .to_string_lossy()
+                        .to_string(),
+                ),
             }],
             warnings: Vec::new(),
         };
