@@ -1089,7 +1089,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 // - Scan Results and Action Queue are full-height side-by-side
                 let left_column = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(12), Constraint::Length(10)])
+                    .constraints([
+                        Constraint::Min(10),
+                        Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
+                    ])
                     .split(columns[0]);
 
                 state.hit_boxes.push((
@@ -1144,7 +1147,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             } else {
                 let right_column = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(10), Constraint::Min(10)])
+                    .constraints([
+                        Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
+                        Constraint::Min(6),
+                    ])
                     .split(columns[2]);
 
                 state.hit_boxes.push((
@@ -1202,10 +1208,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             let rows = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(30),
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(30),
+                    Constraint::Min(5),
+                    Constraint::Min(7),
+                    Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
+                    Constraint::Min(5),
                 ])
                 .split(layout[1]);
 
@@ -1269,7 +1275,10 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 .split(columns[0]);
             let right = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Length(10), Constraint::Min(9)])
+                .constraints([
+                    Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
+                    Constraint::Min(6),
+                ])
                 .split(columns[1]);
 
             state.hit_boxes.push((
@@ -2253,61 +2262,8 @@ fn render_security_scores_panel(
         return;
     }
 
-    let text_width = inner.width.saturating_sub(2).max(16) as usize;
-    let mut lines = Vec::new();
-    if has_pending_adapters(scan_result) {
-        lines.push(Line::raw(
-            wrap_text_to_lines(&adapter_progress_label(scan_result, state.tick), text_width)
-                .join(" "),
-        ));
-        lines.push(Line::raw(
-            t!("app.overview.score_pending_detail").into_owned(),
-        ));
-        lines.push(Line::raw(String::new()));
-    }
-    let bar_width = (text_width / 3).max(8).min(14);
-    for (label, score, is_overall) in score_rows(scan_result) {
-        let color = score_color_for_value(score, theme);
-        let grade = score_grade_label(score);
-        lines.push(Line::from(vec![
-            Span::raw(format!("{}: ", label)),
-            Span::styled(
-                format!("{}", score),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("/100", theme.muted),
-            Span::raw(" "),
-            Span::styled(format!("[{}]", grade), Style::default().fg(color)),
-        ]));
-        let bar = score_bar(score, bar_width);
-        let bar_line = if is_overall {
-            if let Some(delta) = overall_score_delta() {
-                Line::from(vec![
-                    Span::raw("  "),
-                    Span::styled(bar, Style::default().fg(color)),
-                    Span::raw(" "),
-                    Span::styled(delta, theme.muted),
-                ])
-            } else {
-                Line::from(vec![
-                    Span::raw("  "),
-                    Span::styled(bar, Style::default().fg(color)),
-                ])
-            }
-        } else {
-            Line::from(vec![
-                Span::raw("  "),
-                Span::styled(bar, Style::default().fg(color)),
-            ])
-        };
-        lines.push(bar_line);
-        if is_overall && let Some(spark) = score_sparkline() {
-            lines.push(Line::styled(format!("  {}", spark), theme.muted));
-        }
-        if !is_overall {
-            lines.push(Line::raw(""));
-        }
-    }
+    let density = score_density_for_height(inner.height);
+    let lines = render_security_score_lines(scan_result, inner.width, density, theme, state.tick);
 
     let content = Text::from(lines);
     let content_height = estimated_wrapped_text_height(&content, inner.width);
@@ -3216,6 +3172,224 @@ fn score_bar(score: u8, width: usize) -> String {
     let filled = ((score as usize * width).max(1) / 100).min(width);
     let empty = width.saturating_sub(filled);
     format!("{}{}", "█".repeat(filled), "░".repeat(empty))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScoreDensity {
+    Minimal,
+    Compact,
+    Standard,
+    Spacious,
+}
+
+fn score_density_for_height(inner_height: u16) -> ScoreDensity {
+    match inner_height {
+        0..=3 => ScoreDensity::Minimal,
+        4..=6 => ScoreDensity::Compact,
+        7..=11 => ScoreDensity::Standard,
+        _ => ScoreDensity::Spacious,
+    }
+}
+
+fn score_panel_min_height(density: ScoreDensity) -> u16 {
+    match density {
+        ScoreDensity::Minimal => 2,
+        ScoreDensity::Compact => 4,
+        ScoreDensity::Standard => 7,
+        ScoreDensity::Spacious => 12,
+    }
+}
+
+fn axis_short_label(label: &str) -> String {
+    label.chars().take(4).collect()
+}
+
+fn render_security_score_lines(
+    scan_result: &ScanResult,
+    inner_width: u16,
+    density: ScoreDensity,
+    theme: &Theme,
+    tick: usize,
+) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    let text_width = inner_width.saturating_sub(2).max(16) as usize;
+
+    if has_pending_adapters(scan_result) {
+        match density {
+            ScoreDensity::Minimal | ScoreDensity::Compact => {
+                lines.push(Line::styled(
+                    adapter_progress_label(scan_result, tick),
+                    theme.muted,
+                ));
+            }
+            _ => {
+                lines.push(Line::raw(
+                    wrap_text_to_lines(&adapter_progress_label(scan_result, tick), text_width)
+                        .join(" "),
+                ));
+                lines.push(Line::raw(
+                    t!("app.overview.score_pending_detail").into_owned(),
+                ));
+                lines.push(Line::raw(String::new()));
+            }
+        }
+    }
+
+    let rows = score_rows(scan_result);
+    if rows.is_empty() {
+        return lines;
+    }
+
+    let bar_width = (text_width / 3).clamp(8, 14);
+
+    match density {
+        ScoreDensity::Spacious => {
+            for (label, score, is_overall) in &rows {
+                let color = score_color_for_value(*score, theme);
+                let grade = score_grade_label(*score);
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{}: ", label)),
+                    Span::styled(
+                        format!("{}", score),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled("/100", theme.muted),
+                    Span::raw(" "),
+                    Span::styled(format!("[{}]", grade), Style::default().fg(color)),
+                ]));
+                let bar = score_bar(*score, bar_width);
+                if *is_overall {
+                    if let Some(delta) = overall_score_delta() {
+                        lines.push(Line::from(vec![
+                            Span::raw("  "),
+                            Span::styled(bar, Style::default().fg(color)),
+                            Span::raw(" "),
+                            Span::styled(delta, theme.muted),
+                        ]));
+                    } else {
+                        lines.push(Line::from(vec![
+                            Span::raw("  "),
+                            Span::styled(bar, Style::default().fg(color)),
+                        ]));
+                    }
+                    if let Some(spark) = score_sparkline() {
+                        lines.push(Line::styled(format!("  {}", spark), theme.muted));
+                    }
+                } else {
+                    lines.push(Line::from(vec![
+                        Span::raw("  "),
+                        Span::styled(bar, Style::default().fg(color)),
+                    ]));
+                    lines.push(Line::raw(""));
+                }
+            }
+        }
+        ScoreDensity::Standard => {
+            for (label, score, is_overall) in &rows {
+                let color = score_color_for_value(*score, theme);
+                let grade = score_grade_label(*score);
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{}: ", label)),
+                    Span::styled(
+                        format!("{}", score),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled("/100", theme.muted),
+                    Span::raw(" "),
+                    Span::styled(format!("[{}]", grade), Style::default().fg(color)),
+                ]));
+                let bar = score_bar(*score, bar_width);
+                if *is_overall {
+                    if let Some(delta) = overall_score_delta() {
+                        lines.push(Line::from(vec![
+                            Span::raw("  "),
+                            Span::styled(bar, Style::default().fg(color)),
+                            Span::raw(" "),
+                            Span::styled(delta, theme.muted),
+                        ]));
+                    } else {
+                        lines.push(Line::from(vec![
+                            Span::raw("  "),
+                            Span::styled(bar, Style::default().fg(color)),
+                        ]));
+                    }
+                } else {
+                    lines.push(Line::from(vec![
+                        Span::raw("  "),
+                        Span::styled(bar, Style::default().fg(color)),
+                    ]));
+                }
+            }
+        }
+        ScoreDensity::Compact => {
+            // Overall on one line with delta
+            if let Some((label, score, _)) = rows.first() {
+                let color = score_color_for_value(*score, theme);
+                let grade = score_grade_label(*score);
+                let delta = overall_score_delta()
+                    .map(|d| format!(" {}", d))
+                    .unwrap_or_default();
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{}: ", label)),
+                    Span::styled(
+                        format!("{}", score),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled("/100", theme.muted),
+                    Span::raw(" "),
+                    Span::styled(format!("[{}]", grade), Style::default().fg(color)),
+                    Span::styled(delta, theme.muted),
+                ]));
+            }
+            // Axes in pairs with short labels
+            for chunk in rows.iter().skip(1).collect::<Vec<_>>().chunks(2) {
+                let mut spans = vec![Span::raw(" ")];
+                for (i, (label, score, _)) in chunk.iter().enumerate() {
+                    if i > 0 {
+                        spans.push(Span::raw("  "));
+                    }
+                    let color = score_color_for_value(*score, theme);
+                    let grade = score_grade_label(*score);
+                    let short = axis_short_label(label);
+                    spans.push(Span::styled(
+                        format!("{}:{}/100[{}]", short, score, grade),
+                        Style::default().fg(color),
+                    ));
+                }
+                lines.push(Line::from(spans));
+            }
+        }
+        ScoreDensity::Minimal => {
+            if let Some((label, score, _)) = rows.first() {
+                let color = score_color_for_value(*score, theme);
+                let grade = score_grade_label(*score);
+                let delta = overall_score_delta()
+                    .map(|d| format!(" {}", d))
+                    .unwrap_or_default();
+                let mut spans = vec![
+                    Span::raw(format!("{} ", label)),
+                    Span::styled(
+                        format!("{}", score),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(format!("[{}]", grade), Style::default().fg(color)),
+                    Span::styled(delta, theme.muted),
+                ];
+                for (axis_label, axis_score, _) in rows.iter().skip(1) {
+                    let c = score_color_for_value(*axis_score, theme);
+                    let short = axis_label.chars().take(1).collect::<String>();
+                    spans.push(Span::raw(" "));
+                    spans.push(Span::styled(
+                        format!("{}:{}", short, axis_score),
+                        Style::default().fg(c),
+                    ));
+                }
+                lines.push(Line::from(spans));
+            }
+        }
+    }
+
+    lines
 }
 
 fn render_detail_scrollbar(
