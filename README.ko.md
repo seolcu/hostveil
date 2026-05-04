@@ -7,14 +7,14 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Status: Early Development](https://img.shields.io/badge/status-early%20development-orange)](https://github.com/seolcu/hostveil)
 
-Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스터는 보안 상태를 확인하기 위해 Lynis, Trivy, Dockle, Docker Bench, Fail2ban 같은 도구를 각각 따로 설치하고 해석해야 합니다. hostveil은 이런 신호를 하나의 터미널 중심 워크플로로 통합하는 것을 목표로 합니다. 심각도 순으로 정렬된 점수화된 발견 사항, 셀프호스팅 맥락에 맞춘 설명, 그리고 구체적인 해결 가이드를 한 번에 제공합니다.
+Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스터는 보안 상태를 확인하기 위해 Lynis, Trivy, Dockle, Fail2ban 같은 도구를 각각 따로 설치하고 해석해야 합니다. hostveil은 이런 신호를 하나의 터미널 중심 워크플로로 통합하는 것을 목표로 합니다. 심각도 순으로 정렬된 점수화된 발견 사항, 셀프호스팅 맥락에 맞춘 설명, 그리고 구체적인 해결 가이드를 한 번에 제공합니다.
 
 ## 주요 기능
 
 - **보안 개요 대시보드** — 전체 보안 상태, 축별 점수, 그룹화된 조치 대기열, 어댑터 활동을 한 화면에 표시
 - **셀프호스팅 맥락 기반 기본 점검** — 각 서비스의 데이터 위치, Compose 구조, 운영 위험을 반영한 점검
 - **선택적 외부 스캐너 어댑터** — Trivy, Dockle, Lynis 같은 기존 도구 결과를 런타임 필수 의존성으로 강제하지 않고 통합
-- **보이는 백그라운드 진행 상태** — 실행 시 자동 업데이트 점검과 TUI 낸부 어댑터 로딩 상태를 숨기지 않고 표시
+- **보이는 백그라운드 진행 상태** — 실행 시 자동 업데이트 점검과 TUI 내부 어댑터 로딩 상태를 숨기지 않고 표시
 - **설정 모달** — TUI에서 키보드나 마우스로 테마, 레이아웃, 언어 설정을 변경 가능
 - **테마 프리셋** — 터미널 기본 ANSI와 Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, Solarized Light 프리셋을 TUI에서 전환 가능
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
@@ -67,7 +67,7 @@ hostveil uninstall
 hostveil
 ```
 
-Headless JSON 스캔 실행:
+터미널 없는 JSON 스캔 실행:
 
 ```sh
 hostveil --json
@@ -76,9 +76,9 @@ hostveil --host-root / --json
 hostveil --json --adapters none
 ```
 
-선택형 scanner adapter의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle`처럼 지정합니다.
+선택형 스캐너 어댑터의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle`처럼 지정합니다.
 
-터미널 호환성을 위해 기본 locale은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하세요. TUI에서는 설정(`s`)을 열어 언어를 전환하고 저장할 수 있습니다.
+터미널 호환성을 위해 기본 로케일은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하세요. TUI에서는 설정(`s`)을 열어 언어를 전환하고 저장할 수 있습니다.
 
 ## 사용법
 
