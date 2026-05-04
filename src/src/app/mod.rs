@@ -191,8 +191,12 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                         let filter_slice = filter.as_deref();
                         let preview_plan =
                             fix::preview(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
-                        if preview_plan.changed() && tui::run_fix_review(&preview_plan)? {
-                            fix::apply(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
+                        if preview_plan.changed() {
+                            if tui::run_fix_review(&preview_plan)? {
+                                fix::apply(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
+                            }
+                        } else {
+                            eprintln!("{}", t!("app.fix.none").into_owned());
                         }
                     }
                 }
@@ -437,7 +441,16 @@ mod tests {
         .expect("guided fix should apply without interactive review when --yes is set");
 
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
-        assert!(path.with_extension("yml.bak").exists());
+        let backup_exists = fs::read_dir(&root)
+            .expect("root dir should be readable")
+            .filter_map(|entry| entry.ok())
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| name.contains(".bak."))
+            });
+        assert!(backup_exists, "timestamped backup should exist");
         assert!(updated.contains("NET_BIND_SERVICE"));
         assert!(!updated.contains("privileged: true"));
 

@@ -397,6 +397,10 @@ app:
     guided_gitea_externalize_secrets: "%{service}: replace inline Gitea security secrets with environment placeholders"
     guided_nginx_stable: "%{service}: review and pin nginx to nginx:stable"
     guided_non_root_user: "%{service}: configure an explicit non-root user (1000:1000)"
+    status:
+      no_compose_target: "No Compose target available for fixes."
+      no_finding_selected: "Select a finding first to apply a fix."
+      no_service_fix: "Selected finding has no Compose-level fix."
     safe_mount_readonly: "%{service}: mount sensitive path %{path} as read-only"
     safe_postgres_password: "%{service}: add POSTGRES_PASSWORD with placeholder"
     safe_postgres_auth: "%{service}: set POSTGRES_HOST_AUTH_METHOD to scram-sha-256"

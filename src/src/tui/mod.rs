@@ -198,6 +198,8 @@ struct AppState {
     theme: Theme,
     theme_preset: ThemePreset,
     tick: usize,
+    status_message: Option<String>,
+    status_tick: usize,
 }
 
 impl AppState {
@@ -281,6 +283,22 @@ impl AppState {
             theme: Theme::preset(theme_preset),
             theme_preset,
             tick: 0,
+            status_message: None,
+            status_tick: 0,
+        }
+    }
+
+    fn set_status_message(&mut self, message: impl Into<String>) {
+        self.status_message = Some(message.into());
+        self.status_tick = self.tick;
+    }
+
+    fn clear_expired_status(&mut self) {
+        const STATUS_DURATION_TICKS: usize = 30; // ~3 seconds at 100ms poll
+        if self.status_message.is_some()
+            && self.tick.wrapping_sub(self.status_tick) >= STATUS_DURATION_TICKS
+        {
+            self.status_message = None;
         }
     }
 
@@ -644,6 +662,7 @@ enum FindingsLayoutMode {
     Narrow,
 }
 
+#[derive(Debug)]
 pub enum TuiAction {
     Exit,
     TriggerFix {
@@ -691,6 +710,7 @@ where
             state.clamp_selection(scan_result);
         }
         state.tick = state.tick.wrapping_add(1);
+        state.clear_expired_status();
 
         terminal.draw(|frame| render(frame, scan_result, state))?;
 
@@ -984,16 +1004,22 @@ fn handle_findings_key(
             None
         }
         KeyCode::Char('f') => {
-            scan_result
-                .metadata
-                .compose_file
-                .clone()
-                .map(|path| TuiAction::TriggerFix {
-                    compose_file: path,
-                    finding_id: state
-                        .selected_finding(scan_result)
-                        .map(|finding| finding.id.clone()),
-                })
+            let Some(compose_file) = scan_result.metadata.compose_file.clone() else {
+                state.set_status_message(t!("app.fix.status.no_compose_target").into_owned());
+                return None;
+            };
+            let Some(finding) = state.selected_finding(scan_result) else {
+                state.set_status_message(t!("app.fix.status.no_finding_selected").into_owned());
+                return None;
+            };
+            if finding.related_service.is_none() {
+                state.set_status_message(t!("app.fix.status.no_service_fix").into_owned());
+                return None;
+            }
+            Some(TuiAction::TriggerFix {
+                compose_file,
+                finding_id: Some(finding.id.clone()),
+            })
         }
         KeyCode::Tab => {
             state.toggle_focus();
@@ -2366,7 +2392,9 @@ fn findings_header(
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let filters = finding_filter_summary(state);
-    let status_text = if state.finding_count() == 0 {
+    let status_text = if let Some(ref msg) = state.status_message {
+        msg.clone()
+    } else if state.finding_count() == 0 {
         format!(
             "{} | {}",
             t!("app.finding.empty_status").into_owned(),
@@ -2392,11 +2420,16 @@ fn findings_header(
     };
 
     let title_text = t!("app.panel.findings_header").into_owned();
+    let status_style = if state.status_message.is_some() {
+        theme.highlight
+    } else {
+        theme.base
+    };
     let wrapped_status = wrap_text_to_lines(&status_text, inner_width).join(" ");
 
     Paragraph::new(Text::from(vec![
         Line::styled(title_text, theme.title),
-        Line::styled(wrapped_status, theme.base),
+        Line::styled(wrapped_status, status_style),
     ]))
     .style(theme.surface)
 }
@@ -2983,7 +3016,7 @@ fn remediation_lines(
         ));
     }
 
-    if auto_fixable_count > 0 {
+    if auto_fixable_count > 0 && scan_result.metadata.compose_file.is_some() {
         lines.push(Line::raw(""));
         lines.push(Line::styled(
             t!("app.hint.press_f_to_fix").into_owned(),
@@ -5067,5 +5100,138 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             }
         }
         None
+    }
+
+    #[test]
+    fn fix_key_without_compose_file_shows_status_message() {
+        let mut result = sample_result();
+        result.metadata.compose_file = None;
+        let mut state = AppState::new(&result);
+        state.open_findings();
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(
+            state.status_message,
+            Some(t!("app.fix.status.no_compose_target").into_owned())
+        );
+    }
+
+    #[test]
+    fn fix_key_on_host_finding_shows_status_message() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        // Select the host finding (ssh_root_login_enabled) which has no related_service
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "host.ssh_root_login_enabled")
+            })
+            .expect("host finding should exist");
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(
+            state.status_message,
+            Some(t!("app.fix.status.no_service_fix").into_owned())
+        );
+    }
+
+    #[test]
+    fn fix_key_on_valid_finding_returns_trigger_fix() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        // Select the first finding (adminer) which has related_service
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "exposure.admin_interface_public")
+            })
+            .expect("adminer finding should exist");
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        assert!(
+            matches!(
+                &action,
+                Some(TuiAction::TriggerFix {
+                    compose_file,
+                    finding_id: Some(id),
+                }) if compose_file.as_os_str() == "/srv/demo/docker-compose.yml" && id == "exposure.admin_interface_public"
+            ),
+            "expected TriggerFix with the selected finding id, got {:?}",
+            action
+        );
+    }
+
+    #[test]
+    fn fix_key_on_empty_visible_list_shows_status_message() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.sorted_indices.clear();
+        state.selected_index = 0;
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(
+            state.status_message,
+            Some(t!("app.fix.status.no_finding_selected").into_owned())
+        );
+    }
+
+    #[test]
+    fn findings_header_shows_status_message_when_set() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.set_status_message("Test status message".to_owned());
+
+        let mut terminal = Terminal::new(TestBackend::new(80, 4)).expect("terminal should build");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let paragraph = findings_header(
+                    &result,
+                    &state,
+                    area.width,
+                    FindingsLayoutMode::Stacked,
+                    &state.theme,
+                );
+                frame.render_widget(paragraph, area);
+            })
+            .expect("header should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(content.contains("Test status message"));
     }
 }
