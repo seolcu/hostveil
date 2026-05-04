@@ -412,6 +412,8 @@ app:
     safe_authentik_debug: "%{service}: set AUTHENTIK_DEBUG to false"
     safe_paperless_force_login: "%{service}: set PAPERLESS_FORCE_LOGIN to true"
     safe_pihole_password: "%{service}: set WEBPASSWORD with placeholder"
+    safe_seccomp_default: "%{service}: remove seccomp:unconfined and use the default profile"
+    safe_cap_drop_dangerous: "%{service}: remove dangerous capabilities from cap_add"
 axis:
   sensitive_data: "Sensitive Data"
   permissions: "Permissions"

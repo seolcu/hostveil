@@ -426,6 +426,34 @@ fn apply_safe_fixes(
                 .into_owned(),
             });
         }
+
+        if finding_ids.contains("runtime.seccomp_unconfined")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && remove_seccomp_unconfined(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_seccomp_default",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
+
+        if finding_ids.contains("runtime.dangerous_capabilities")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && remove_dangerous_capabilities(service)
+        {
+            applied.push(FixProposal {
+                service: service_name.clone(),
+                summary: t!(
+                    "app.fix.safe_cap_drop_dangerous",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+            });
+        }
     }
 
     applied
@@ -805,6 +833,66 @@ fn harden_pihole_password(service: &mut Mapping) -> bool {
         "${WEBPASSWORD:?set a strong admin password}",
         true,
     )
+}
+
+fn remove_seccomp_unconfined(service: &mut Mapping) -> bool {
+    let (changed, empty) = {
+        let Some(security_opt) = service.get_mut(yaml_key("security_opt")) else {
+            return false;
+        };
+        let Some(sequence) = security_opt.as_sequence_mut() else {
+            return false;
+        };
+
+        let before_len = sequence.len();
+        sequence.retain(|value| {
+            value
+                .as_str()
+                .map(|s| !s.to_ascii_lowercase().contains("seccomp:unconfined"))
+                .unwrap_or(true)
+        });
+        (sequence.len() < before_len, sequence.is_empty())
+    };
+
+    if empty {
+        service.remove(yaml_key("security_opt"));
+    }
+
+    changed
+}
+
+const DANGEROUS_CAPS: [&str; 5] = [
+    "NET_ADMIN",
+    "SYS_ADMIN",
+    "SYS_PTRACE",
+    "SYS_MODULE",
+    "DAC_READ_SEARCH",
+];
+
+fn remove_dangerous_capabilities(service: &mut Mapping) -> bool {
+    let (changed, empty) = {
+        let Some(cap_add) = service.get_mut(yaml_key("cap_add")) else {
+            return false;
+        };
+        let Some(sequence) = cap_add.as_sequence_mut() else {
+            return false;
+        };
+
+        let before_len = sequence.len();
+        sequence.retain(|value| {
+            value
+                .as_str()
+                .map(|s| !DANGEROUS_CAPS.iter().any(|d| d.eq_ignore_ascii_case(s)))
+                .unwrap_or(true)
+        });
+        (sequence.len() < before_len, sequence.is_empty())
+    };
+
+    if empty {
+        service.remove(yaml_key("cap_add"));
+    }
+
+    changed
 }
 
 fn rewrite_sensitive_mount_readonly(volume: &mut Value) -> Option<String> {
@@ -2246,6 +2334,86 @@ mod tests {
                 .contains("/var/run/docker.sock:/var/run/docker.sock:ro")
         );
         assert!(plan.diff_preview.contains("read_only: true"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_safe_fix_for_seccomp_unconfined() {
+        let root = temp_compose_dir("safe-seccomp");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:stable\n",
+                "    security_opt:\n",
+                "      - seccomp:unconfined\n",
+                "      - no-new-privileges:true\n"
+            ),
+        );
+
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 1);
+        assert!(plan.updated_text.contains("no-new-privileges:true"));
+        assert!(!plan.updated_text.contains("seccomp:unconfined"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn previews_safe_fix_for_dangerous_capabilities() {
+        let root = temp_compose_dir("safe-cap-drop");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:stable\n",
+                "    cap_add:\n",
+                "      - NET_ADMIN\n",
+                "      - SYS_PTRACE\n",
+                "      - NET_BIND_SERVICE\n"
+            ),
+        );
+
+        let plan =
+            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+
+        assert_eq!(plan.safe_applied.len(), 1);
+        assert!(plan.updated_text.contains("NET_BIND_SERVICE"));
+        assert!(!plan.updated_text.contains("NET_ADMIN"));
+        assert!(!plan.updated_text.contains("SYS_PTRACE"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_safe_fix_removes_empty_security_opt_and_cap_add() {
+        let root = temp_compose_dir("safe-remove-empty");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx:stable\n",
+                "    security_opt:\n",
+                "      - seccomp:unconfined\n",
+                "    cap_add:\n",
+                "      - NET_ADMIN\n"
+            ),
+        );
+
+        apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+
+        let updated = fs::read_to_string(&path).expect("compose should be readable");
+        assert!(!updated.contains("security_opt"));
+        assert!(!updated.contains("cap_add"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

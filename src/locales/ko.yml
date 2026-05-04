@@ -412,6 +412,8 @@ app:
     safe_authentik_debug: "%{service}: AUTHENTIK_DEBUG를 false로 설정"
     safe_paperless_force_login: "%{service}: PAPERLESS_FORCE_LOGIN을 true로 설정"
     safe_pihole_password: "%{service}: WEBPASSWORD 자리 표시자 설정"
+    safe_seccomp_default: "%{service}: seccomp:unconfined 제거하고 기본 프로필 사용"
+    safe_cap_drop_dangerous: "%{service}: cap_add에서 위험한 capability 제거"
 axis:
   sensitive_data: "민감 데이터"
   permissions: "권한"
