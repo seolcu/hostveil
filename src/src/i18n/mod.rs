@@ -61,6 +61,17 @@ pub fn cycle_persisted_locale() -> io::Result<&'static str> {
     Ok(next)
 }
 
+pub fn cycle_persisted_locale_backward() -> io::Result<&'static str> {
+    let next = match &*rust_i18n::locale() {
+        "en" => "ko",
+        _ => "en",
+    };
+
+    rust_i18n::set_locale(next);
+    settings::persist_locale(next)?;
+    Ok(next)
+}
+
 fn resolve_preferred_locale(
     cli_locale: Option<&str>,
     configured_locale: Option<&str>,

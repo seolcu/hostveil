@@ -275,7 +275,7 @@ impl AppState {
             source_filter,
             scope_filter: None,
             remediation_filter,
-            service_filter: None,
+            service_filter,
             sort_mode,
             layout_preset,
             theme: Theme::preset(theme_preset),
@@ -334,7 +334,7 @@ impl AppState {
             }
             SettingsRow::Layout => self.cycle_layout_backward(),
             SettingsRow::Locale => {
-                let _ = i18n::cycle_persisted_locale();
+                let _ = i18n::cycle_persisted_locale_backward();
             }
         }
     }

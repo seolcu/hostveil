@@ -23,10 +23,21 @@ pub struct AppSettings {
 }
 
 pub fn load() -> AppSettings {
-    config_file_path()
-        .ok()
-        .and_then(|path| load_from_path(&path).ok())
-        .unwrap_or_default()
+    match config_file_path() {
+        Ok(path) => match load_from_path(&path) {
+            Ok(settings) => settings,
+            Err(error) => {
+                #[cfg(debug_assertions)]
+                eprintln!("hostveil: failed to load settings from {}: {}", path.display(), error);
+                AppSettings::default()
+            }
+        },
+        Err(error) => {
+            #[cfg(debug_assertions)]
+            eprintln!("hostveil: failed to resolve config directory: {}", error);
+            AppSettings::default()
+        }
+    }
 }
 
 pub fn persist_locale(locale: &str) -> io::Result<()> {
@@ -201,5 +212,33 @@ mod tests {
 
         fs::remove_dir_all(path.parent().expect("config dir should exist"))
             .expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn load_from_path_returns_default_for_malformed_json() {
+        let path = temp_settings_path("malformed");
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("parent dir should be created");
+        }
+        fs::write(&path, "not json at all").expect("write should succeed");
+
+        let loaded = load_from_path(&path);
+        assert!(loaded.is_err(), "malformed JSON should produce an error");
+
+        fs::remove_dir_all(path.parent().expect("config dir should exist"))
+            .expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn load_from_path_returns_default_for_missing_file() {
+        let path = temp_settings_path("missing");
+
+        let loaded = load_from_path(&path);
+        assert!(loaded.is_err(), "missing file should produce an error");
+
+        // clean up parent dir if it was created
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir_all(parent);
+        }
     }
 }
