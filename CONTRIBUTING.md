@@ -170,6 +170,48 @@ cargo run -- --json --host-root /
 
 The repository pins the shared Rust toolchain in `rust-toolchain.toml`.
 
+### Development Containers and Labs
+
+The repository provides containerized environments for safe testing without polluting the host or requiring host-level sudo.
+
+**`compose.dev.yml`** — Multi-distro lab:
+
+- `dev` service: Rust development container with writable workspace
+- Distro labs (`fedora-lab`, `rocky-lab`, `ubuntu-lab`, `debian-lab`): systemd-based containers for testing `hostveil setup` and host scans across distributions
+
+Managed via `scripts/dev-env.sh`:
+
+```sh
+# Start dev container
+./scripts/dev-env.sh up dev
+./scripts/dev-env.sh shell dev
+
+# Start a distro lab
+./scripts/dev-env.sh up fedora-lab
+./scripts/dev-env.sh setup ubuntu-lab lynis,trivy
+./scripts/dev-env.sh scan rocky-lab
+./scripts/dev-env.sh down
+```
+
+**`docker-compose.lab.yml`** — Web TUI observation:
+
+- `lab` service: ttyd-based container exposing hostveil TUI on `http://localhost:7681`
+- `vulnerable-service`: nginx with intentional misconfigurations for scanning
+
+**Self-hosting lab** — managed by `scripts/self-hosting-lab.sh`:
+
+```sh
+# Start a realistic self-hosting lab with intentionally vulnerable services
+./scripts/self-hosting-lab.sh up
+./scripts/self-hosting-lab.sh shell
+./scripts/self-hosting-lab.sh check
+./scripts/self-hosting-lab.sh reset
+```
+
+The lab stack spins up misconfigured Vaultwarden, Jellyfin, Gitea, Nextcloud, PostgreSQL, and nginx services so Compose parsing, scoring, fix previews, and TUI behavior can be exercised without copying development builds to a real server.
+
+For safety, the helper script rewrites public port bindings to `127.0.0.1` before starting the lab services. The original Compose file keeps literal `0.0.0.0` bindings so hostveil still reports them as findings.
+
 ## i18n
 
 All user-facing strings must go through the i18n layer. Do not hardcode display strings in English or any other language directly. See `docs/adr/` for the chosen i18n approach.
@@ -188,6 +230,48 @@ Add a scenario when you introduce a new safe or guided Compose fix. Run the full
 ```sh
 ./scripts/verify-fixes.sh target/debug/hostveil
 ```
+
+## Project Status and Roadmap
+
+hostveil is in active early development. The implementation is planned in two phases:
+
+1. **Python CLI prototype** — completed reference for the Compose parser, core rules, scoring, and safe fix flows
+2. **Rust TUI** — active implementation of the real product
+
+### Rust V1 Direction
+
+- **Linux-first runtime** — the product officially targets Linux self-hosted servers; Windows contributors should use WSL for development
+- **Integration-first** — hostveil should combine native Compose and host checks with optional scanner results instead of reimplementing every existing tool
+- **TUI-first with JSON export** — the main experience is interactive, but a small headless JSON path exists for automation and regression tests
+- **Host checks are first-class** — SSH and other host-hardening signals belong in the same product, not in a separate side tool
+- **Safe remediation stays narrow in v1** — automatic writes remain limited to Compose-focused changes with clear review boundaries
+
+### Current Implementation Status
+
+- Cargo workspace initialized at the repository root
+- Active Rust crate scaffolded under `src/`
+- Pinned stable toolchain via `rust-toolchain.toml`
+- `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
+- Responsive overview and findings layouts with persisted Adaptive, Wide, Balanced, Compact, and Focus presets
+- Scrollable overview/finding panels, tabbed navigation, and mouse hit targets mirror keyboard workflows
+- Explicit locale controls available through `--locale`, `HOSTVEIL_LOCALE`, and the in-TUI Settings modal (`s`)
+- Persisted TUI theme presets with ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light palettes
+- Generalized Rust scan result model and minimal JSON export path working
+- Compose parser ported with override merging and normalization parity tests
+- Native Compose rule engine and scoring model ported with Rust fixture tests
+- Native Linux host checks added for SSH posture, Docker host exposure, kernel sysctl hardening, SELinux/AppArmor status, and defensive-control telemetry via `--host-root`
+- Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
+- Per-adapter background progress surfaced in the TUI while external coverage is still loading
+- Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
+- Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
+- No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
+- Service-aware Compose checks expanded to Traefik, Portainer, Home Assistant, Pi-hole, Grafana, Caddy, GitLab, Uptime Kuma, PostgreSQL, MySQL, Redis, Duplicati, Restic, Borg, and Kopia in addition to Vaultwarden, Jellyfin, Gitea, Immich, and Nextcloud
+
+### Deferred from Current Early-Release Scope
+
+- Additional optional adapters beyond Trivy, Lynis, and Dockle
+- Package-manager distribution such as apt, dnf, Homebrew, or AUR
+- Stable scoring-weight guarantees across future releases
 
 ## Code of Conduct
 
