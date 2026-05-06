@@ -44,23 +44,35 @@ hostveil/
 
 The project provides containerized environments for safe testing without polluting the host or requiring host-level sudo.
 
+Official Docker entrypoint: `scripts/lab.sh`
+
+- `scripts/lab.sh dev ...` — Rust development shell and generic workspace commands
+- `scripts/lab.sh host ...` — multi-distro setup and host scan validation
+- `scripts/lab.sh selfhost ...` — self-hosting lab, ttyd shell, and TUI UX validation
+- Keep `scripts/dev-env.sh`, `scripts/self-hosting-lab.sh`, and `scripts/tui-ux-check.sh` working as compatibility paths when editing Docker workflow code.
+
 ### `compose.dev.yml` — Multi-distro lab
 
 - `dev` service: Rust development container with writable workspace
 - Distro labs (`fedora-lab`, `rocky-lab`, `ubuntu-lab`, `debian-lab`): systemd-based containers for testing `hostveil setup` and host scans across distributions
-- Managed via `scripts/dev-env.sh`:
-  - `scripts/dev-env.sh up dev` — start dev container
-  - `scripts/dev-env.sh shell dev` — enter dev container shell
-  - `scripts/dev-env.sh up fedora-lab` — start a distro lab
-  - `scripts/dev-env.sh setup ubuntu-lab lynis,trivy` — run setup in a lab
-  - `scripts/dev-env.sh scan rocky-lab` — run a JSON scan in a lab
-  - `scripts/dev-env.sh down` — tear everything down
+- Primary commands:
+  - `scripts/lab.sh dev up`
+  - `scripts/lab.sh dev shell`
+  - `scripts/lab.sh host up fedora-lab`
+  - `scripts/lab.sh host setup ubuntu-lab lynis,trivy`
+  - `scripts/lab.sh host scan rocky-lab`
+  - `scripts/lab.sh host down`
 
 ### `docker-compose.lab.yml` — Web TUI observation
 
 - `lab` service: ttyd-based container exposing hostveil TUI on `http://localhost:7681`
 - `vulnerable-service`: nginx with intentional misconfigurations for scanning
 - Build artifacts are persisted in the `lab-target` volume so you can build inside the container despite the read-only source mount
+- Primary commands:
+  - `scripts/lab.sh selfhost up`
+  - `scripts/lab.sh selfhost shell`
+  - `scripts/lab.sh selfhost check`
+  - `scripts/lab.sh selfhost ux`
 
 ### Test scripts (CI-facing)
 

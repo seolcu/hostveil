@@ -71,37 +71,40 @@ HOSTVEIL_LOCALE=ko cargo run -- --help
 cargo run -- --locale ko --quick-fix proto/tests/fixtures/parser/docker-compose.yml --preview-changes
 ```
 
-Container-based development and installer validation:
+Container-based development and validation:
 
 ```sh
-# Start a realistic self-hosting lab with intentionally vulnerable services
-./scripts/self-hosting-lab.sh up
+# Daily development
+./scripts/lab.sh dev up
+./scripts/lab.sh dev shell
 
-# Enter the lab container and run hostveil directly
-./scripts/self-hosting-lab.sh shell
+# Cross-distro host validation
+./scripts/lab.sh host up fedora-lab ubuntu-lab debian-lab rocky-lab
+./scripts/lab.sh host setup fedora-lab lynis,trivy,fail2ban
+./scripts/lab.sh host setup ubuntu-lab lynis,trivy
+./scripts/lab.sh host scan rocky-lab
 
-# Quick smoke check
-./scripts/self-hosting-lab.sh check
-
-# Tear everything down including volumes
-./scripts/self-hosting-lab.sh reset
-
-# Start the normal Rust dev container
-./scripts/dev-env.sh up dev
-./scripts/dev-env.sh shell dev
-
-# Bring up distro-specific labs for setup validation
-./scripts/dev-env.sh up fedora-lab ubuntu-lab debian-lab rocky-lab
-
-# Exercise optional-tool setup inside a lab instead of on the host
-./scripts/dev-env.sh setup fedora-lab lynis,trivy,fail2ban
-./scripts/dev-env.sh setup ubuntu-lab lynis,trivy
-
-# Run a host-root scan against the lab container itself
-./scripts/dev-env.sh scan rocky-lab
+# Self-hosting Compose and TUI validation
+./scripts/lab.sh selfhost up
+./scripts/lab.sh selfhost shell
+./scripts/lab.sh selfhost check
+./scripts/lab.sh selfhost ux
+./scripts/lab.sh selfhost ux navigation fix
+./scripts/lab.sh selfhost reset
 ```
 
-The lab stack lives in `compose.dev.yml` and currently covers:
+Docker workflows are organized by task:
+
+- `scripts/lab.sh dev`: normal Rust development shell
+- `scripts/lab.sh host`: Fedora, Rocky, Ubuntu, and Debian systemd labs for `setup` and host scans
+- `scripts/lab.sh selfhost`: intentionally vulnerable self-hosting stack plus TUI UX validation
+
+The underlying Compose files stay split on purpose:
+
+- `compose.dev.yml` backs `dev` and `host`
+- `docker-compose.lab.yml` plus `docker/lab/self-hosting-stack.yml` back `selfhost`
+
+`compose.dev.yml` currently covers:
 
 - `dev`: normal Rust development shell
 - `fedora-lab`: Fedora + systemd + dnf validation
@@ -109,11 +112,13 @@ The lab stack lives in `compose.dev.yml` and currently covers:
 - `ubuntu-lab`: Ubuntu + systemd + apt validation
 - `debian-lab`: Debian + systemd + apt validation
 
-The lab images share a generic `docker/labs/systemd-lab.Dockerfile`, so adding more distro services later should be a compose-level change instead of a full redesign.
+The distro lab images share a generic `docker/labs/systemd-lab.Dockerfile`, so adding more services later should stay a compose-level change.
 
-The self-hosting lab is managed by `scripts/self-hosting-lab.sh`. The runner lives in `docker-compose.lab.yml`, while the intentionally vulnerable target stack lives in `docker/lab/self-hosting-stack.yml`. It spins up misconfigured Vaultwarden, Jellyfin, Gitea, Nextcloud, PostgreSQL, and nginx services so Compose parsing, scoring, fix previews, and TUI behavior can be exercised without copying development builds to a real server.
+The self-hosting lab behind `scripts/lab.sh selfhost ...` uses `docker-compose.lab.yml` for the runner and `docker/lab/self-hosting-stack.yml` for the intentionally vulnerable target stack. It spins up misconfigured Vaultwarden, Jellyfin, Gitea, Nextcloud, PostgreSQL, and nginx services so Compose parsing, scoring, fix previews, and TUI behavior can be exercised without copying development builds to a real server.
 
 For safety, the helper script rewrites public port bindings to `127.0.0.1` before starting the lab services. The original Compose file keeps literal `0.0.0.0` bindings so hostveil still reports them as findings.
+
+For end-to-end TUI verification, `scripts/lab.sh selfhost ux` uses the same lab environment plus host-side `tmux` automation to replay keyboard scenarios, capture rendered panes, and verify fix application results. `scripts/tui-ux-check.sh` remains available as a compatibility path. Artifacts are stored in `target/tui-ux/` and include plain-text captures, ANSI captures, before/after JSON scans, and fix diffs for the scenarios that modify Compose files.
 
 Recent validation coverage for the live install and scan flows includes:
 
