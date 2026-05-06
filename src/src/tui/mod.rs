@@ -4015,6 +4015,22 @@ mod tests {
     }
 
     #[test]
+    fn tab_shortcut_two_switches_to_findings_from_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        let action = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('2'), crossterm::event::KeyModifiers::NONE),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(state.screen, Screen::Findings);
+        assert_eq!(state.findings_focus, FindingsFocus::List);
+    }
+
+    #[test]
     fn findings_navigation_moves_selection_and_scrolls_detail() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -4047,6 +4063,38 @@ mod tests {
             KeyEvent::new(KeyCode::Esc, crossterm::event::KeyModifiers::NONE),
         );
         assert_eq!(state.screen, Screen::Overview);
+    }
+
+    #[test]
+    fn findings_fix_shortcut_triggers_fix_for_selected_finding() {
+        let mut result = sample_result();
+        result.metadata.compose_file = Some(std::path::PathBuf::from("/tmp/demo-compose.yml"));
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let expected_id = state
+            .selected_finding(&result)
+            .map(|finding| finding.id.clone());
+
+        let action = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('f'), crossterm::event::KeyModifiers::NONE),
+        );
+
+        match action {
+            Some(TuiAction::TriggerFix {
+                compose_file,
+                finding_id,
+            }) => {
+                assert_eq!(
+                    compose_file,
+                    std::path::PathBuf::from("/tmp/demo-compose.yml")
+                );
+                assert_eq!(finding_id, expected_id);
+            }
+            Some(TuiAction::Exit) => panic!("unexpected exit action"),
+            None => panic!("expected fix action"),
+        }
     }
 
     #[test]

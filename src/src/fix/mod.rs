@@ -116,8 +116,14 @@ fn build_fix_plan(
     } else {
         Vec::new()
     };
+    let changed_services = safe_applied
+        .iter()
+        .chain(guided_applied.iter())
+        .map(|proposal| proposal.service.clone())
+        .collect::<BTreeSet<_>>();
 
-    let updated_text = render_document_like_original(&bundle.primary_text, &document)?;
+    let updated_text =
+        render_document_like_original(&bundle.primary_text, &document, &changed_services)?;
     let diff_preview = if safe_applied.is_empty() && guided_applied.is_empty() {
         String::new()
     } else {
@@ -139,9 +145,140 @@ fn build_fix_plan(
 fn render_document_like_original(
     original_text: &str,
     document: &Value,
+    changed_services: &BTreeSet<String>,
 ) -> Result<String, FixError> {
     let rendered = dump_document(document)?;
-    Ok(merge_original_formatting(original_text, &rendered))
+    let merged = splice_changed_service_blocks(original_text, &rendered, changed_services)
+        .unwrap_or_else(|| merge_original_formatting(original_text, &rendered));
+    if serde_yaml::from_str::<Value>(&merged).is_ok() {
+        Ok(merged)
+    } else {
+        Ok(rendered)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ServiceBlockRange {
+    start: usize,
+    end: usize,
+}
+
+fn splice_changed_service_blocks(
+    original_text: &str,
+    rendered_text: &str,
+    changed_services: &BTreeSet<String>,
+) -> Option<String> {
+    if changed_services.is_empty() {
+        return Some(original_text.to_owned());
+    }
+
+    let original_lines = original_text.lines().map(str::to_owned).collect::<Vec<_>>();
+    let rendered_lines = rendered_text.lines().map(str::to_owned).collect::<Vec<_>>();
+    let original_blocks = service_block_ranges(&original_lines)?;
+    let rendered_blocks = service_block_ranges(&rendered_lines)?;
+    let mut output_lines = original_lines.clone();
+
+    let mut replacements = Vec::new();
+    for service_name in changed_services {
+        let original_range = original_blocks.get(service_name)?;
+        let rendered_range = rendered_blocks.get(service_name)?;
+
+        let original_block = original_lines[original_range.start..original_range.end].join("\n");
+        let rendered_block = rendered_lines[rendered_range.start..rendered_range.end].join("\n");
+        let merged_block = merge_original_formatting(&original_block, &rendered_block);
+        let replacement_lines = if block_is_parseable(service_name, &merged_block) {
+            merged_block.lines().map(str::to_owned).collect::<Vec<_>>()
+        } else {
+            rendered_block
+                .lines()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        };
+
+        replacements.push((original_range.start, original_range.end, replacement_lines));
+    }
+
+    replacements.sort_by_key(|right| std::cmp::Reverse(right.0));
+    for (start, end, replacement_lines) in replacements {
+        output_lines.splice(start..end, replacement_lines);
+    }
+
+    let mut output = output_lines.join("\n");
+    if original_text.ends_with('\n') || rendered_text.ends_with('\n') {
+        output.push('\n');
+    }
+    Some(output)
+}
+
+fn service_block_ranges(lines: &[String]) -> Option<BTreeMap<String, ServiceBlockRange>> {
+    let services_index = lines
+        .iter()
+        .position(|line| line.trim() == "services:" && line_indent(line) == 0)?;
+    let mut ranges = BTreeMap::new();
+    let mut current_name = None::<String>;
+    let mut current_start = 0_usize;
+
+    for (index, line) in lines.iter().enumerate().skip(services_index + 1) {
+        let trimmed = line.trim();
+        let indent = line_indent(line);
+
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        if indent == 0 {
+            if let Some(name) = current_name.take() {
+                ranges.insert(
+                    name,
+                    ServiceBlockRange {
+                        start: current_start,
+                        end: index,
+                    },
+                );
+            }
+            break;
+        }
+
+        if indent == 2 && !trimmed.starts_with("- ") && trimmed.ends_with(':') {
+            if let Some(name) = current_name.replace(trimmed.trim_end_matches(':').to_owned()) {
+                ranges.insert(
+                    name,
+                    ServiceBlockRange {
+                        start: current_start,
+                        end: index,
+                    },
+                );
+            }
+            current_start = index;
+        }
+    }
+
+    if let Some(name) = current_name {
+        ranges.insert(
+            name,
+            ServiceBlockRange {
+                start: current_start,
+                end: lines.len(),
+            },
+        );
+    }
+
+    Some(ranges)
+}
+
+fn line_indent(line: &str) -> usize {
+    line.len() - line.trim_start().len()
+}
+
+fn block_is_parseable(service_name: &str, block: &str) -> bool {
+    let wrapped = format!("services:\n{block}\n");
+    match serde_yaml::from_str::<Value>(&wrapped) {
+        Ok(Value::Mapping(root)) => root
+            .get(yaml_key("services"))
+            .and_then(Value::as_mapping)
+            .is_some_and(|services| services.contains_key(yaml_key(service_name))),
+        _ => false,
+    }
 }
 
 fn findings_by_service(
@@ -1552,6 +1689,41 @@ mod tests {
         assert_eq!(plan.guided_applied.len(), 2); // privileged + implicit_root
         assert!(plan.diff_preview.contains("cap_add"));
         assert!(plan.diff_preview.contains("NET_BIND_SERVICE"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn apply_guided_privileged_fix_keeps_lab_stack_yaml_parseable() {
+        let root = temp_compose_dir("guided-lab-parseable");
+        let path = root.join("docker-compose.yml");
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../docker/lab/self-hosting-stack.yml")
+            .canonicalize()
+            .expect("lab stack fixture should exist");
+        fs::copy(&source, &path).expect("lab stack fixture should be copied");
+
+        let finding_ids = [String::from("permissions.privileged")];
+        let plan = apply(&path, FixMode::Fix, Some(&finding_ids)).expect("guided fix should apply");
+        let updated = fs::read_to_string(&path).expect("updated compose should be readable");
+
+        assert!(plan.guided_applied.iter().any(|proposal| {
+            proposal.summary.contains(
+                "replace privileged mode with a minimal NET_BIND_SERVICE capability review",
+            )
+        }));
+        assert!(serde_yaml::from_str::<serde_yaml::Value>(&updated).is_ok());
+        assert!(!updated.contains("privileged: true"));
+        assert!(updated.contains("cap_add:"));
+        assert!(updated.contains("NET_BIND_SERVICE"));
+        assert!(updated.contains("      - \"127.0.0.1:8081:80\""));
+        assert!(updated.contains("      - \"0.0.0.0:3012:3012\""));
+        assert!(updated.contains("      - jellyfin-config:/config"));
+        assert!(updated.contains("      - nextcloud-db:/var/lib/postgresql/data"));
+        assert!(updated.contains("  vaultwarden-data:\n"));
+        assert!(!updated.contains("vaultwarden-data: null"));
+        assert!(!updated.contains("jellyfin-config: null"));
+        assert!(!updated.contains("nextcloud-db: null"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }
