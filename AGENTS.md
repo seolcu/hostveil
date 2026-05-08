@@ -35,6 +35,7 @@ hostveil is a lightweight TUI security dashboard for Linux self-hosted environme
 - `README.md` and `README.ko.md` are user-facing: installation, quick start, usage, limitations.
 - Developer details (build, labs, release policy, roadmap) belong in `CONTRIBUTING.md`.
 - When editing one README, keep the other structurally aligned.
+- Docker workflow docs should prefer the task-based `scripts/lab.sh` entrypoint; keep older script names working as compatibility paths.
 
 ## GitHub Issues & Milestones
 
