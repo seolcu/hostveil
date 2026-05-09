@@ -91,6 +91,16 @@ hostveil --host-root / --json
 hostveil --json --adapters none
 ```
 
+공유용 또는 자동화용 터미널 없는 리포트 생성:
+
+```sh
+hostveil --markdown
+hostveil --html
+hostveil --sarif
+```
+
+Markdown과 HTML은 사람이 읽는 공유용에, JSON과 SARIF는 자동화와 후속 도구 연동에 적합합니다.
+
 선택형 스캐너 어댑터의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle`처럼 지정합니다.
 
 터미널 호환성을 위해 기본 로케일은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하세요. TUI에서는 설정(`s`)을 열어 언어를 전환하고 저장할 수 있습니다.
