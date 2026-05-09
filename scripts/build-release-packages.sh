@@ -52,6 +52,19 @@ require_tool() {
   }
 }
 
+resolve_output_dir() {
+  local output_dir="$1"
+
+  case "$output_dir" in
+    /*)
+      printf '%s\n' "$output_dir"
+      ;;
+    *)
+      printf '%s\n' "$ROOT_DIR/$output_dir"
+      ;;
+  esac
+}
+
 version_from_cargo() {
   sed -n 's/^version = "\([^"]*\)"$/\1/p' "$CRATE_DIR/Cargo.toml" | head -n 1
 }
@@ -73,6 +86,7 @@ stage_built_binary() {
 TARGET_TRIPLE="${TARGET_TRIPLE:-$(detect_default_target)}"
 require_arg "target triple" "$TARGET_TRIPLE"
 require_tool cargo
+OUTPUT_DIR="$(resolve_output_dir "$OUTPUT_DIR")"
 
 VERSION="$(version_from_cargo)"
 require_arg "Cargo version" "$VERSION"
