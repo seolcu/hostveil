@@ -174,43 +174,51 @@ The repository pins the shared Rust toolchain in `rust-toolchain.toml`.
 
 The repository provides containerized environments for safe testing without polluting the host or requiring host-level sudo.
 
+Official Docker entrypoint: `scripts/lab.sh`
+
+- `scripts/lab.sh dev ...` — Rust development shell and generic workspace commands
+- `scripts/lab.sh host ...` — multi-distro setup and host scan validation
+- `scripts/lab.sh selfhost ...` — self-hosting lab, ttyd shell, and TUI UX validation
+- `scripts/dev-env.sh`, `scripts/self-hosting-lab.sh`, and `scripts/tui-ux-check.sh` remain supported as compatibility paths
+
 **`compose.dev.yml`** — Multi-distro lab:
 
 - `dev` service: Rust development container with writable workspace
 - Distro labs (`fedora-lab`, `rocky-lab`, `ubuntu-lab`, `debian-lab`): systemd-based containers for testing `hostveil setup` and host scans across distributions
 
-Managed via `scripts/dev-env.sh`:
+Primary commands:
 
 ```sh
-# Start dev container
-./scripts/dev-env.sh up dev
-./scripts/dev-env.sh shell dev
-
-# Start a distro lab
-./scripts/dev-env.sh up fedora-lab
-./scripts/dev-env.sh setup ubuntu-lab lynis,trivy
-./scripts/dev-env.sh scan rocky-lab
-./scripts/dev-env.sh down
+./scripts/lab.sh dev up
+./scripts/lab.sh dev shell
+./scripts/lab.sh host up fedora-lab
+./scripts/lab.sh host setup ubuntu-lab lynis,trivy
+./scripts/lab.sh host scan rocky-lab
+./scripts/lab.sh host down
 ```
 
 **`docker-compose.lab.yml`** — Web TUI observation:
 
 - `lab` service: ttyd-based container exposing hostveil TUI on `http://localhost:7681`
 - `vulnerable-service`: nginx with intentional misconfigurations for scanning
+- Build artifacts are persisted in the `lab-target` volume so you can build inside the container despite the read-only source mount
 
-**Self-hosting lab** — managed by `scripts/self-hosting-lab.sh`:
+**Self-hosting lab** — primary entrypoint `scripts/lab.sh selfhost`:
 
 ```sh
 # Start a realistic self-hosting lab with intentionally vulnerable services
-./scripts/self-hosting-lab.sh up
-./scripts/self-hosting-lab.sh shell
-./scripts/self-hosting-lab.sh check
-./scripts/self-hosting-lab.sh reset
+./scripts/lab.sh selfhost up
+./scripts/lab.sh selfhost shell
+./scripts/lab.sh selfhost check
+./scripts/lab.sh selfhost ux
+./scripts/lab.sh selfhost reset
 ```
 
 The lab stack spins up misconfigured Vaultwarden, Jellyfin, Gitea, Nextcloud, PostgreSQL, and nginx services so Compose parsing, scoring, fix previews, and TUI behavior can be exercised without copying development builds to a real server.
 
 For safety, the helper script rewrites public port bindings to `127.0.0.1` before starting the lab services. The original Compose file keeps literal `0.0.0.0` bindings so hostveil still reports them as findings.
+
+For end-to-end TUI verification, `scripts/lab.sh selfhost ux` uses the same lab environment plus host-side `tmux` automation to replay keyboard scenarios, capture rendered panes, and verify fix application results. Artifacts are stored in `target/tui-ux/`.
 
 ## i18n
 

@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::io;
+use std::path::Path;
 use std::time::Duration;
 
 use crossterm::event::{
@@ -662,6 +663,21 @@ enum FindingsLayoutMode {
     Narrow,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FixAvailability {
+    Available,
+    NoComposeTarget,
+    NoFindingSelected,
+    NoServiceFix,
+    ManualOnly,
+}
+
+impl FixAvailability {
+    fn is_fixable(self) -> bool {
+        matches!(self, Self::Available)
+    }
+}
+
 #[derive(Debug)]
 pub enum TuiAction {
     Exit,
@@ -1004,18 +1020,22 @@ fn handle_findings_key(
             None
         }
         KeyCode::Char('f') => {
-            let Some(compose_file) = scan_result.metadata.compose_file.clone() else {
-                state.set_status_message(t!("app.fix.status.no_compose_target").into_owned());
-                return None;
-            };
-            let Some(finding) = state.selected_finding(scan_result) else {
-                state.set_status_message(t!("app.fix.status.no_finding_selected").into_owned());
-                return None;
-            };
-            if finding.related_service.is_none() {
-                state.set_status_message(t!("app.fix.status.no_service_fix").into_owned());
+            let availability = fix_availability(
+                scan_result.metadata.compose_file.as_deref(),
+                state.selected_finding(scan_result),
+            );
+            if !availability.is_fixable() {
+                state.set_status_message(fix_unavailable_message(availability));
                 return None;
             }
+            let compose_file = scan_result
+                .metadata
+                .compose_file
+                .clone()
+                .expect("fixability check should guarantee a compose file");
+            let finding = state
+                .selected_finding(scan_result)
+                .expect("fixability check should guarantee a selected finding");
             Some(TuiAction::TriggerFix {
                 compose_file,
                 finding_id: Some(finding.id.clone()),
@@ -1579,7 +1599,7 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         state,
     );
     frame.render_widget(
-        findings_footer(state.findings_focus, layout[3].width, mode, &state.theme),
+        findings_footer(scan_result, state, layout[3].width, mode, &state.theme),
         layout[3],
     );
 }
@@ -2383,6 +2403,33 @@ fn overview_footer(theme: &Theme) -> Paragraph<'static> {
     .style(theme.surface)
 }
 
+fn fix_availability(compose_file: Option<&Path>, finding: Option<&Finding>) -> FixAvailability {
+    if compose_file.is_none() {
+        return FixAvailability::NoComposeTarget;
+    }
+    let Some(finding) = finding else {
+        return FixAvailability::NoFindingSelected;
+    };
+    if finding.related_service.is_none() {
+        return FixAvailability::NoServiceFix;
+    }
+
+    match finding.remediation {
+        RemediationKind::Safe | RemediationKind::Guided => FixAvailability::Available,
+        RemediationKind::None => FixAvailability::ManualOnly,
+    }
+}
+
+fn fix_unavailable_message(availability: FixAvailability) -> String {
+    match availability {
+        FixAvailability::Available => t!("app.hint.fix_available").into_owned(),
+        FixAvailability::NoComposeTarget => t!("app.fix.status.no_compose_target").into_owned(),
+        FixAvailability::NoFindingSelected => t!("app.fix.status.no_finding_selected").into_owned(),
+        FixAvailability::NoServiceFix => t!("app.fix.status.no_service_fix").into_owned(),
+        FixAvailability::ManualOnly => t!("app.fix.status.no_fix_available").into_owned(),
+    }
+}
+
 fn findings_header(
     _scan_result: &ScanResult,
     state: &AppState,
@@ -2435,13 +2482,14 @@ fn findings_header(
 }
 
 fn findings_footer(
-    focus: FindingsFocus,
+    scan_result: &ScanResult,
+    state: &AppState,
     available_width: u16,
     mode: FindingsLayoutMode,
     theme: &Theme,
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
-    let movement = match focus {
+    let movement = match state.findings_focus {
         FindingsFocus::List if mode == FindingsLayoutMode::Narrow => {
             t!("app.hint.list_move_compact").into_owned()
         }
@@ -2456,10 +2504,38 @@ fn findings_footer(
     } else {
         t!("app.hint.finding_controls").into_owned()
     };
+    let availability = fix_availability(
+        scan_result.metadata.compose_file.as_deref(),
+        state.selected_finding(scan_result),
+    );
+    let fix_hint = if availability.is_fixable() {
+        t!("app.hint.fix_available").into_owned()
+    } else {
+        match availability {
+            FixAvailability::Available => unreachable!("handled above"),
+            FixAvailability::NoComposeTarget => {
+                t!("app.hint.fix_unavailable_no_compose").into_owned()
+            }
+            FixAvailability::NoFindingSelected => {
+                t!("app.hint.fix_unavailable_no_finding").into_owned()
+            }
+            FixAvailability::NoServiceFix => t!("app.hint.fix_unavailable_no_service").into_owned(),
+            FixAvailability::ManualOnly => t!("app.hint.fix_unavailable_manual").into_owned(),
+        }
+    };
+    let fix_style = if availability.is_fixable() {
+        Style::default().fg(theme.safe).add_modifier(Modifier::BOLD)
+    } else {
+        theme.muted
+    };
 
     Paragraph::new(Text::from(vec![
         Line::raw(wrap_text_to_lines(&movement, inner_width).join(" ")),
         Line::raw(wrap_text_to_lines(&controls, inner_width).join(" ")),
+        Line::styled(
+            wrap_text_to_lines(&fix_hint, inner_width).join(" "),
+            fix_style,
+        ),
     ]))
     .block(
         Block::default()
@@ -5092,6 +5168,13 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             .unwrap_or(ratatui::style::Color::Reset)
     }
 
+    fn buffer_fg(backend: &TestBackend, x: u16, y: u16) -> ratatui::style::Color {
+        backend.buffer()[(x, y)]
+            .style()
+            .fg
+            .unwrap_or(ratatui::style::Color::Reset)
+    }
+
     fn find_rendered_position(rendered: &str, needle: &str) -> Option<(usize, usize)> {
         for (y, line) in rendered.lines().enumerate() {
             if let Some(byte_index) = line.find(needle) {
@@ -5149,6 +5232,36 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         assert_eq!(
             state.status_message,
             Some(t!("app.fix.status.no_service_fix").into_owned())
+        );
+    }
+
+    #[test]
+    fn fix_key_on_manual_service_finding_shows_status_message() {
+        let mut result = sample_result();
+        result.findings[0].remediation = RemediationKind::None;
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "exposure.admin_interface_public")
+            })
+            .expect("manual service finding should exist");
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(
+            state.status_message,
+            Some(t!("app.fix.status.no_fix_available").into_owned())
         );
     }
 
@@ -5233,5 +5346,92 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
 
         let content = buffer_to_string(terminal.backend());
         assert!(content.contains("Test status message"));
+    }
+
+    #[test]
+    fn findings_footer_shows_available_fix_hint_with_safe_color() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "exposure.admin_interface_public")
+            })
+            .expect("fixable finding should exist");
+
+        let mut terminal = Terminal::new(TestBackend::new(100, 5)).expect("terminal should build");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let paragraph = findings_footer(
+                    &result,
+                    &state,
+                    area.width,
+                    FindingsLayoutMode::Stacked,
+                    &state.theme,
+                );
+                frame.render_widget(paragraph, area);
+            })
+            .expect("footer should render");
+
+        let content = buffer_to_string(terminal.backend());
+        let (x, y) = find_rendered_position(&content, "f fix selected finding")
+            .expect("fix hint should render");
+
+        assert_eq!(
+            buffer_fg(terminal.backend(), x as u16, y as u16),
+            state.theme.safe
+        );
+    }
+
+    #[test]
+    fn findings_footer_shows_unavailable_fix_hint_with_muted_color() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "host.ssh_root_login_enabled")
+            })
+            .expect("host finding should exist");
+
+        let mut terminal = Terminal::new(TestBackend::new(100, 5)).expect("terminal should build");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let paragraph = findings_footer(
+                    &result,
+                    &state,
+                    area.width,
+                    FindingsLayoutMode::Stacked,
+                    &state.theme,
+                );
+                frame.render_widget(paragraph, area);
+            })
+            .expect("footer should render");
+
+        let content = buffer_to_string(terminal.backend());
+        let needle = "f unavailable: selected finding has no Compose fix";
+        let (x, y) =
+            find_rendered_position(&content, needle).expect("unavailable hint should render");
+
+        assert_eq!(
+            buffer_fg(terminal.backend(), x as u16, y as u16),
+            state
+                .theme
+                .muted
+                .fg
+                .expect("muted style should define a foreground color")
+        );
     }
 }
