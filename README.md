@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 
 The installer selects the correct architecture (`x86_64` or `aarch64`) and installs to `~/.local/bin` or `/usr/local/bin`. After installation, use the `hostveil` command directly.
 
-If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, and Fail2Ban right away.
+If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, Dockle, and Fail2Ban right away.
 
 Run the setup flow again later:
 
@@ -125,7 +125,7 @@ hostveil runs without optional dependencies, but coverage improves when they are
 |------|------|---------|
 | Lynis | Host security audit | `hostveil setup` or system package manager |
 | Trivy | Image vulnerability scan | `hostveil setup` or system package manager |
-| Dockle | Image best-practice scan | Manual install (see `hostveil setup` guidance) |
+| Dockle | Image best-practice scan | `hostveil setup` on supported Linux targets, manual fallback otherwise |
 | Fail2Ban | Intrusion prevention | `hostveil setup` or system package manager |
 
 Use `--adapters none` to skip all external scanners, or `--adapters trivy,dockle` to run a subset.
