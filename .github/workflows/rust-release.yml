@@ -67,8 +67,8 @@ jobs:
       - name: Run installer tests
         run: ./scripts/test-install-script.sh target/release/hostveil
 
-  build:
-    name: build ${{ matrix.target }}
+  build-deb-and-tarballs:
+    name: build tarball/deb ${{ matrix.target }}
     needs: validate
     runs-on: ubuntu-latest
     strategy:
@@ -103,7 +103,7 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
 
       - name: Install package build tools
-        run: cargo install cargo-deb cargo-generate-rpm
+        run: cargo install cargo-deb
 
       - name: Package release archive
         run: |
@@ -112,22 +112,52 @@ jobs:
           cp README.md LICENSE dist/package/
           tar -C dist/package -czf dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz hostveil README.md LICENSE
 
-      - name: Build release packages
-        run: |
-          ./scripts/build-release-packages.sh "${{ matrix.target }}" dist
+      - name: Build Debian release packages
+        run: ./scripts/build-release-packages.sh "${{ matrix.target }}" dist deb
 
       - name: Upload packaged archive
         uses: actions/upload-artifact@v7
         with:
-          name: hostveil-${{ matrix.target }}
+          name: hostveil-deb-${{ matrix.target }}
           path: |
             dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
             dist/*.deb
-            dist/*.rpm
+
+  build-rpm:
+    name: build rpm ${{ matrix.arch }}
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+          - arch: aarch64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Rocky baseline RPM packages
+        run: ./scripts/build-rpm-release.sh "${{ matrix.arch }}" dist
+
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: hostveil-rpm-${{ matrix.arch }}
+          path: dist/*.rpm
 
   checksums:
     name: generate checksums
-    needs: build
+    needs:
+      - build-deb-and-tarballs
+      - build-rpm
     runs-on: ubuntu-latest
 
     steps:
@@ -182,10 +212,12 @@ jobs:
             sudo apt install ./hostveil_<version>_amd64.deb
             ```
 
-            Fedora-family users can install the release `.rpm` asset with:
+            Fedora-family and Rocky/RHEL 9-class users can install the release `.rpm` asset with:
             ```sh
             sudo dnf install ./hostveil-<version>-1.x86_64.rpm
             ```
+
+            RPM packages are built on a Rocky Linux 9 compatible baseline.
 
             Optional dependency setup after install:
             ```sh
