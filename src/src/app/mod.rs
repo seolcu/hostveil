@@ -4,6 +4,7 @@ mod setup;
 
 pub use config::{AdapterSelection, AppConfig, OutputMode, ScanAdapter, SetupConfig, SetupTool};
 
+use std::env;
 use std::fmt;
 use std::io::{self, Write};
 
@@ -22,12 +23,19 @@ pub enum AppError {
     MissingArgumentValue(&'static str),
     InvalidArgumentCombination(String),
     LifecycleCommandRequiresInstalledWrapper(&'static str),
+    LifecycleCommandRequiresPackageManager {
+        command: &'static str,
+        install_kind: PackageInstallKind,
+    },
     TuiRequiresTerminal,
     FixRequiresTerminal,
     ComposeParse(ComposeParseError),
     Fix(FixError),
     Io(io::Error),
-    ThresholdExceeded { threshold: String, count: usize },
+    ThresholdExceeded {
+        threshold: String,
+        count: usize,
+    },
 }
 
 impl fmt::Display for AppError {
@@ -44,6 +52,14 @@ impl fmt::Display for AppError {
                 f,
                 "{}",
                 i18n::tr_lifecycle_command_requires_installed_wrapper(command)
+            ),
+            Self::LifecycleCommandRequiresPackageManager {
+                command,
+                install_kind,
+            } => write!(
+                f,
+                "{}",
+                i18n::tr_lifecycle_command_requires_package_manager(command, install_kind.as_key())
             ),
             Self::TuiRequiresTerminal => write!(f, "{}", i18n::tr_tui_requires_terminal()),
             Self::FixRequiresTerminal => write!(f, "{}", i18n::tr_fix_requires_terminal()),
@@ -81,6 +97,29 @@ impl From<FixError> for AppError {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageInstallKind {
+    Deb,
+    Rpm,
+}
+
+impl PackageInstallKind {
+    fn from_env() -> Option<Self> {
+        match env::var("HOSTVEIL_PACKAGE_INSTALL_KIND").ok()?.as_str() {
+            "deb" => Some(Self::Deb),
+            "rpm" => Some(Self::Rpm),
+            _ => None,
+        }
+    }
+
+    fn as_key(self) -> &'static str {
+        match self {
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+        }
+    }
+}
+
 pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     let config = AppConfig::parse(args)?;
     crate::i18n::initialize_locale(config.locale_override.as_deref());
@@ -103,6 +142,12 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
     }
 
     if let Some(command) = config.lifecycle_command {
+        if let Some(install_kind) = PackageInstallKind::from_env() {
+            return Err(AppError::LifecycleCommandRequiresPackageManager {
+                command: command.name(),
+                install_kind,
+            });
+        }
         return Err(AppError::LifecycleCommandRequiresInstalledWrapper(
             command.name(),
         ));
@@ -372,9 +417,10 @@ fn print_fix_result(plan: &fix::FixPlan) {
 mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
+    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppError, run};
+    use super::{AppError, PackageInstallKind, run};
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -387,6 +433,11 @@ mod tests {
         ));
         fs::create_dir_all(&path).expect("temp dir should exist");
         path
+    }
+
+    fn package_mode_env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     fn write_compose(path: &Path, content: &str) {
@@ -505,5 +556,96 @@ mod tests {
         let rendered = error.to_string();
         assert!(rendered.contains("installed hostveil wrapper"));
         assert!(rendered.contains("hostveil auto-upgrade"));
+    }
+
+    #[test]
+    fn package_install_upgrade_uses_package_guidance_for_deb() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::set_var("HOSTVEIL_PACKAGE_INSTALL_KIND", "deb");
+        }
+
+        let error = run([String::from("--locale=en"), String::from("upgrade")])
+            .expect_err("package installs should return package-specific upgrade guidance");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresPackageManager {
+                command: "upgrade",
+                install_kind: PackageInstallKind::Deb
+            }
+        ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("Debian package"));
+        assert!(rendered.contains("sudo apt install ./hostveil_<version>_amd64.deb"));
+
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
+    }
+
+    #[test]
+    fn package_install_uninstall_uses_package_guidance_for_rpm() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::set_var("HOSTVEIL_PACKAGE_INSTALL_KIND", "rpm");
+        }
+
+        let error = run([String::from("--locale=en"), String::from("uninstall")])
+            .expect_err("package installs should return package-specific uninstall guidance");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresPackageManager {
+                command: "uninstall",
+                install_kind: PackageInstallKind::Rpm
+            }
+        ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("RPM package"));
+        assert!(rendered.contains("sudo dnf remove hostveil"));
+
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
+    }
+
+    #[test]
+    fn package_install_auto_upgrade_reports_package_lifecycle_limit() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::set_var("HOSTVEIL_PACKAGE_INSTALL_KIND", "deb");
+        }
+
+        let error = run([
+            String::from("--locale=en"),
+            String::from("auto-upgrade"),
+            String::from("disable"),
+        ])
+        .expect_err("package installs should reject launch-time auto-upgrade");
+
+        assert!(matches!(
+            error,
+            AppError::LifecycleCommandRequiresPackageManager {
+                command: "auto-upgrade",
+                install_kind: PackageInstallKind::Deb
+            }
+        ));
+
+        let rendered = error.to_string();
+        assert!(rendered.contains("do not support launch-time auto-upgrade"));
+        assert!(rendered.contains("GitHub Releases"));
+
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
     }
 }

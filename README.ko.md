@@ -22,7 +22,7 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 
 ## 설치
 
-hostveil은 GitHub Releases를 통해 Linux 바이너리로 배포됩니다.
+hostveil은 GitHub Releases를 통해 Linux tarball과 패키지 자산으로 배포됩니다.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
@@ -31,6 +31,15 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 설치 스크립트가 올바른 아키텍처(`x86_64` 또는 `aarch64`)를 선택하고 `~/.local/bin` 또는 `/usr/local/bin`에 설치합니다. 설치 후에는 `hostveil` 명령을 직접 사용합니다.
 
 터미널이 가능하면 설치 직후 `hostveil setup`으로 넘어가 Lynis, Trivy, Dockle, Fail2Ban 같은 추천 도구를 바로 설치하고 기본 설정까지 진행할 수 있습니다.
+
+Debian/Fedora 계열 사용자는 패키지 자산으로도 설치할 수 있습니다:
+
+```sh
+sudo apt install ./hostveil_<version>_amd64.deb
+sudo dnf install ./hostveil-<version>-1.x86_64.rpm
+```
+
+패키지 설치는 hostveil의 실행 시 자동 업데이트 흐름 대신 시스템 패키지 관리자를 사용해 업그레이드와 제거를 처리합니다.
 
 나중에 다시 setup을 실행하려면:
 
@@ -44,6 +53,8 @@ hostveil setup
 hostveil upgrade
 ```
 
+패키지 설치에서는 `hostveil upgrade` 대신 새 릴리스 패키지를 내려받아 `apt` 또는 `dnf`로 다시 설치하세요.
+
 자동 업데이트를 끄거나 다시 켜기:
 
 ```sh
@@ -51,13 +62,17 @@ hostveil auto-upgrade disable
 hostveil auto-upgrade enable
 ```
 
+패키지 설치는 실행 시 자동 업데이트를 지원하지 않습니다.
+
 완전히 제거:
 
 ```sh
 hostveil uninstall
 ```
 
-> **참고:** 라이프사이클 명령(`upgrade`, `uninstall`, `auto-upgrade`)은 설치된 래퍼 경로에서만 상태를 변경합니다. 설치되지 않은 개발 바이너리를 직접 실행하면 설치 상태를 바꾸지 않고 안내 메시지를 반환합니다.
+패키지 설치는 `sudo apt remove hostveil` 또는 `sudo dnf remove hostveil`처럼 시스템 패키지 관리자로 제거하세요.
+
+> **참고:** 라이프사이클 명령(`upgrade`, `uninstall`, `auto-upgrade`)은 설치 방식에 따라 동작이 다릅니다. `install.sh` 설치는 번들 래퍼를 사용하고, 패키지 설치는 패키지 관리자 안내를 반환합니다.
 
 ## 빠른 시작
 
