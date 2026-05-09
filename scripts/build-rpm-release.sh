@@ -83,6 +83,7 @@ relative_to_root() {
 }
 
 TARGET_ARCH="${TARGET_ARCH:-$(detect_default_arch)}"
+HOST_ARCH="$(detect_default_arch)"
 OUTPUT_DIR="$(resolve_output_dir "$OUTPUT_DIR")"
 require_arg "target architecture" "$TARGET_ARCH"
 require_tool docker
@@ -94,21 +95,42 @@ RPM_TARGET_DIR_REL="target/rocky-rpm/${RPM_ARCH}"
 
 mkdir -p "$OUTPUT_DIR"
 
-docker buildx build \
-  --load \
-  --platform "$DOCKER_PLATFORM" \
-  -t "$IMAGE_TAG" \
-  -f "$ROOT_DIR/docker/release/rpm-builder.Dockerfile" \
-  "$ROOT_DIR"
+if [[ "$HOST_ARCH" == "$TARGET_ARCH" ]]; then
+  docker build \
+    -t "$IMAGE_TAG" \
+    -f "$ROOT_DIR/docker/release/rpm-builder.Dockerfile" \
+    "$ROOT_DIR"
 
-docker run --rm \
-  --platform "$DOCKER_PLATFORM" \
-  --user "$(id -u):$(id -g)" \
-  -e HOME=/tmp \
-  -e CARGO_TARGET_DIR="/workspace/${RPM_TARGET_DIR_REL}" \
-  -v "$ROOT_DIR:/workspace" \
-  -w /workspace \
-  "$IMAGE_TAG" \
-  bash -lc "rm -rf \"/workspace/${RPM_TARGET_DIR_REL}\" && cargo build --release --workspace --target \"$TARGET_TRIPLE\" && ./scripts/build-release-packages.sh \"$TARGET_TRIPLE\" \"$OUTPUT_DIR_REL\" rpm"
+  docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -e CARGO_TARGET_DIR="/workspace/${RPM_TARGET_DIR_REL}" \
+    -v "$ROOT_DIR:/workspace" \
+    -w /workspace \
+    "$IMAGE_TAG" \
+    bash -lc "rm -rf \"/workspace/${RPM_TARGET_DIR_REL}\" && cargo build --release --workspace --target \"$TARGET_TRIPLE\" && ./scripts/build-release-packages.sh \"$TARGET_TRIPLE\" \"$OUTPUT_DIR_REL\" rpm"
+else
+  docker buildx version >/dev/null 2>&1 || {
+    printf 'error: docker buildx is required for cross-architecture RPM builds (%s host -> %s target)\n' "$HOST_ARCH" "$TARGET_ARCH" >&2
+    exit 1
+  }
+
+  docker buildx build \
+    --load \
+    --platform "$DOCKER_PLATFORM" \
+    -t "$IMAGE_TAG" \
+    -f "$ROOT_DIR/docker/release/rpm-builder.Dockerfile" \
+    "$ROOT_DIR"
+
+  docker run --rm \
+    --platform "$DOCKER_PLATFORM" \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -e CARGO_TARGET_DIR="/workspace/${RPM_TARGET_DIR_REL}" \
+    -v "$ROOT_DIR:/workspace" \
+    -w /workspace \
+    "$IMAGE_TAG" \
+    bash -lc "rm -rf \"/workspace/${RPM_TARGET_DIR_REL}\" && cargo build --release --workspace --target \"$TARGET_TRIPLE\" && ./scripts/build-release-packages.sh \"$TARGET_TRIPLE\" \"$OUTPUT_DIR_REL\" rpm"
+fi
 
 printf 'Built Rocky 9-compatible RPM assets in %s\n' "$OUTPUT_DIR"

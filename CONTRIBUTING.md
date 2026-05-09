@@ -107,7 +107,7 @@ Use this matrix to understand which gates run in CI versus tag-based release val
 | ------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Push / Pull Request | `.github/workflows/rust-ci.yml`                           | `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --workspace`, `./scripts/smoke-test.sh target/debug/hostveil`, `./scripts/test-install-script.sh target/debug/hostveil`, `cargo-tarpaulin` coverage report (artifact)          |
 | Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (validate job)       | tag-version match (`src/Cargo.toml`), `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo build --release --workspace`, `./scripts/smoke-test.sh target/release/hostveil`, `./scripts/test-install-script.sh target/release/hostveil` |
-| Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (build/release jobs) | cross-target release build (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), artifact packaging, `SHA256SUMS`, GitHub Release publish                                                                                                                                                                  |
+| Tag push (`vX.Y.Z`) | `.github/workflows/rust-release.yml` (build/release jobs) | cross-target tarball / `.deb` builds (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), Rocky 9-based RPM packaging (`x86_64` on `ubuntu-latest`, `aarch64` on `ubuntu-24.04-arm`), `SHA256SUMS`, GitHub Release publish                                                                           |
 
 ### Coverage Policy
 
@@ -273,12 +273,13 @@ hostveil is in active early development. The implementation is planned in two ph
 - Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
 - Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
+- GitHub Releases now publish tarballs, `.deb` packages, and Rocky 9-compatible `.rpm` packages for both `x86_64` and `aarch64`
 - Service-aware Compose checks expanded to Traefik, Portainer, Home Assistant, Pi-hole, Grafana, Caddy, GitLab, Uptime Kuma, PostgreSQL, MySQL, Redis, Duplicati, Restic, Borg, and Kopia in addition to Vaultwarden, Jellyfin, Gitea, Immich, and Nextcloud
 
 ### Deferred from Current Early-Release Scope
 
 - Additional optional adapters beyond Trivy, Lynis, and Dockle
-- Package-manager distribution such as apt, dnf, Homebrew, or AUR
+- Package-repository hosting such as apt/dnf repositories, Homebrew, or AUR
 - Stable scoring-weight guarantees across future releases
 
 ## Code of Conduct
