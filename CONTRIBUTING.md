@@ -254,6 +254,14 @@ hostveil is in active early development. The implementation is planned in two ph
 - **Host checks are first-class** — SSH and other host-hardening signals belong in the same product, not in a separate side tool
 - **Safe remediation stays narrow in v1** — automatic writes remain limited to Compose-focused changes with clear review boundaries
 
+### Pre-Presentation Design Freeze
+
+The May 13 capstone design review is treated as an architecture freeze point.
+
+- Before the presentation, feature work is paused unless it is required to resolve a design mismatch, a release/install reliability problem, or a gap between the accepted design and the shipped implementation.
+- The pre-presentation freeze focuses on locking the unified scan result contract, the Compose-only remediation boundary, and the wrapper-install versus package-install lifecycle split.
+- Presentation-facing architecture notes should live in ADRs, milestone issues, and PR descriptions rather than in additional user-facing documents.
+
 ### Current Implementation Status
 
 - Cargo workspace initialized at the repository root
