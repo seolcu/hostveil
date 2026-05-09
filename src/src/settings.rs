@@ -23,25 +23,7 @@ pub struct AppSettings {
 }
 
 pub fn load() -> AppSettings {
-    match config_file_path() {
-        Ok(path) => match load_from_path(&path) {
-            Ok(settings) => settings,
-            Err(error) => {
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "hostveil: failed to load settings from {}: {}",
-                    path.display(),
-                    error
-                );
-                AppSettings::default()
-            }
-        },
-        Err(error) => {
-            #[cfg(debug_assertions)]
-            eprintln!("hostveil: failed to resolve config directory: {}", error);
-            AppSettings::default()
-        }
-    }
+    load_with_path_result(config_file_path())
 }
 
 pub fn persist_locale(locale: &str) -> io::Result<()> {
@@ -88,6 +70,29 @@ fn load_from_path(path: &Path) -> io::Result<AppSettings> {
     serde_json::from_str(&text).map_err(|error| io::Error::other(error.to_string()))
 }
 
+fn load_with_path_result(path_result: io::Result<PathBuf>) -> AppSettings {
+    match path_result {
+        Ok(path) => match load_from_path(&path) {
+            Ok(settings) => settings,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => AppSettings::default(),
+            Err(error) => {
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "hostveil: failed to load settings from {}: {}",
+                    path.display(),
+                    error
+                );
+                AppSettings::default()
+            }
+        },
+        Err(error) => {
+            #[cfg(debug_assertions)]
+            eprintln!("hostveil: failed to resolve config directory: {}", error);
+            AppSettings::default()
+        }
+    }
+}
+
 fn save_to_path(path: &Path, settings: &AppSettings) -> io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -132,10 +137,16 @@ pub fn resolve_config_dir(
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::io;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppSettings, load_from_path, resolve_config_dir, save_to_path};
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    use super::{
+        AppSettings, load_from_path, load_with_path_result, resolve_config_dir, save_to_path,
+    };
 
     fn temp_settings_path(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -244,5 +255,67 @@ mod tests {
         if let Some(parent) = path.parent() {
             let _ = fs::remove_dir_all(parent);
         }
+    }
+
+    #[test]
+    fn load_returns_default_for_missing_file_without_error() {
+        let path = temp_settings_path("load-missing-default");
+
+        let loaded = load_with_path_result(Ok(path));
+        assert_eq!(loaded, AppSettings::default());
+    }
+
+    #[test]
+    fn load_returns_default_for_malformed_json() {
+        let path = temp_settings_path("load-malformed-default");
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("parent dir should be created");
+        }
+        fs::write(&path, "not json at all").expect("write should succeed");
+
+        let loaded = load_with_path_result(Ok(path.clone()));
+        assert_eq!(loaded, AppSettings::default());
+
+        fs::remove_dir_all(path.parent().expect("config dir should exist"))
+            .expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn load_returns_default_for_path_resolution_failure() {
+        let loaded = load_with_path_result(Err(io::Error::other("boom")));
+        assert_eq!(loaded, AppSettings::default());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_to_path_returns_error_for_unwritable_dir() {
+        let root = std::env::temp_dir().join(format!(
+            "hostveil-settings-unwritable-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should move forward")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).expect("temp dir should be created");
+        let path = root.join("config.json");
+        let settings = AppSettings {
+            locale: Some(String::from("en")),
+            ..Default::default()
+        };
+
+        let original_permissions = fs::metadata(&root)
+            .expect("dir metadata should exist")
+            .permissions();
+        let mut read_only_permissions = original_permissions.clone();
+        read_only_permissions.set_mode(0o555);
+        fs::set_permissions(&root, read_only_permissions).expect("dir should become read-only");
+
+        let result = save_to_path(&path, &settings);
+
+        fs::set_permissions(&root, original_permissions).expect("dir permissions should restore");
+        fs::remove_dir_all(&root).expect("temp dir should be removed");
+
+        assert!(result.is_err(), "save should fail for unwritable dir");
     }
 }

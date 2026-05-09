@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::io;
+use std::io::{self, ErrorKind};
 use std::path::Path;
 use std::time::Duration;
 
@@ -204,10 +204,27 @@ struct AppState {
 }
 
 impl AppState {
+    fn handle_persist_error(&mut self, setting_label: String, error: io::Error) {
+        if error.kind() == ErrorKind::NotFound {
+            return;
+        }
+
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "hostveil: failed to persist {} settings: {}",
+            setting_label, error
+        );
+        self.set_status_message(
+            t!("app.settings.persist_failed", setting = setting_label).into_owned(),
+        );
+    }
+
     fn cycle_theme(&mut self) {
         self.theme_preset = self.theme_preset.next();
         self.theme = Theme::preset(self.theme_preset);
-        persist_theme_choice(self.theme_preset.as_key());
+        if let Err(error) = persist_theme_choice(self.theme_preset.as_key()) {
+            self.handle_persist_error(t!("app.settings.theme").into_owned(), error);
+        }
     }
 
     fn new(scan_result: &ScanResult) -> Self {
@@ -305,12 +322,16 @@ impl AppState {
 
     fn cycle_layout(&mut self) {
         self.layout_preset = self.layout_preset.next();
-        persist_layout_choice(self.layout_preset.as_key());
+        if let Err(error) = persist_layout_choice(self.layout_preset.as_key()) {
+            self.handle_persist_error(t!("app.settings.layout").into_owned(), error);
+        }
     }
 
     fn cycle_layout_backward(&mut self) {
         self.layout_preset = self.layout_preset.previous();
-        persist_layout_choice(self.layout_preset.as_key());
+        if let Err(error) = persist_layout_choice(self.layout_preset.as_key()) {
+            self.handle_persist_error(t!("app.settings.layout").into_owned(), error);
+        }
     }
 
     fn open_settings(&mut self) {
@@ -339,7 +360,9 @@ impl AppState {
             SettingsRow::Theme => self.cycle_theme(),
             SettingsRow::Layout => self.cycle_layout(),
             SettingsRow::Locale => {
-                let _ = i18n::cycle_persisted_locale();
+                if let Err(error) = i18n::cycle_persisted_locale() {
+                    self.handle_persist_error(t!("app.settings.locale").into_owned(), error);
+                }
             }
         }
     }
@@ -353,7 +376,9 @@ impl AppState {
             }
             SettingsRow::Layout => self.cycle_layout_backward(),
             SettingsRow::Locale => {
-                let _ = i18n::cycle_persisted_locale_backward();
+                if let Err(error) = i18n::cycle_persisted_locale_backward() {
+                    self.handle_persist_error(t!("app.settings.locale").into_owned(), error);
+                }
             }
         }
     }
@@ -603,9 +628,9 @@ impl AppState {
         }
     }
 
-    fn persist_findings_view(&self) {
+    fn persist_findings_view(&mut self) {
         #[cfg(not(test))]
-        let _ = settings::persist_findings_view(
+        if let Err(error) = settings::persist_findings_view(
             self.severity_filter.map(|s| s.as_key()),
             self.source_filter.map(|s| s.as_key()),
             self.service_filter.as_deref(),
@@ -621,22 +646,30 @@ impl AppState {
                 FindingSortMode::Source => "source",
                 FindingSortMode::Subject => "subject",
             }),
-        );
+        ) {
+            self.handle_persist_error(t!("app.settings.findings_view").into_owned(), error);
+        }
     }
 }
 
-fn persist_theme_choice(theme: &str) {
+fn persist_theme_choice(theme: &str) -> io::Result<()> {
     #[cfg(not(test))]
-    let _ = settings::persist_theme(theme);
+    return settings::persist_theme(theme);
     #[cfg(test)]
-    let _ = theme;
+    {
+        let _ = theme;
+        Ok(())
+    }
 }
 
-fn persist_layout_choice(layout: &str) {
+fn persist_layout_choice(layout: &str) -> io::Result<()> {
     #[cfg(not(test))]
-    let _ = settings::persist_layout(layout);
+    return settings::persist_layout(layout);
     #[cfg(test)]
-    let _ = layout;
+    {
+        let _ = layout;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -5433,5 +5466,34 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
                 .fg
                 .expect("muted style should define a foreground color")
         );
+    }
+
+    #[test]
+    fn persist_error_sets_status_message() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        state.handle_persist_error(
+            String::from("Theme"),
+            io::Error::new(io::ErrorKind::PermissionDenied, "nope"),
+        );
+
+        assert_eq!(
+            state.status_message,
+            Some(t!("app.settings.persist_failed", setting = "Theme").into_owned())
+        );
+    }
+
+    #[test]
+    fn persist_not_found_error_is_ignored() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        state.handle_persist_error(
+            String::from("Theme"),
+            io::Error::new(io::ErrorKind::NotFound, "missing"),
+        );
+
+        assert_eq!(state.status_message, None);
     }
 }
