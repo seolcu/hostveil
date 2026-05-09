@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CRATE_DIR="$ROOT_DIR/src"
 TARGET_TRIPLE="${1:-}"
 OUTPUT_DIR="${2:-$ROOT_DIR/target/package-assets}"
+PACKAGE_SET="${3:-all}"
 
 require_arg() {
   local name="$1"
@@ -65,14 +66,34 @@ resolve_output_dir() {
   esac
 }
 
+validate_package_set() {
+  case "$1" in
+    all|deb|rpm) ;;
+    *)
+      printf 'error: unsupported package set: %s\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+}
+
 version_from_cargo() {
   sed -n 's/^version = "\([^"]*\)"$/\1/p' "$CRATE_DIR/Cargo.toml" | head -n 1
 }
 
 stage_built_binary() {
   local target_triple="$1"
+  local target_root="${CARGO_TARGET_DIR:-$ROOT_DIR/target}"
   local root_binary="$ROOT_DIR/target/$target_triple/release/hostveil"
   local crate_binary="$CRATE_DIR/target/$target_triple/release/hostveil"
+
+  if [[ -n "${CARGO_TARGET_DIR:-}" ]]; then
+    root_binary="$target_root/$target_triple/release/hostveil"
+    [[ -x "$root_binary" ]] || {
+      printf 'error: release binary is missing for %s: %s\n' "$target_triple" "$root_binary" >&2
+      exit 1
+    }
+    return
+  fi
 
   [[ -x "$root_binary" ]] || {
     printf 'error: release binary is missing for %s: %s\n' "$target_triple" "$root_binary" >&2
@@ -87,6 +108,7 @@ TARGET_TRIPLE="${TARGET_TRIPLE:-$(detect_default_target)}"
 require_arg "target triple" "$TARGET_TRIPLE"
 require_tool cargo
 OUTPUT_DIR="$(resolve_output_dir "$OUTPUT_DIR")"
+validate_package_set "$PACKAGE_SET"
 
 VERSION="$(version_from_cargo)"
 require_arg "Cargo version" "$VERSION"
@@ -96,8 +118,13 @@ mkdir -p "$OUTPUT_DIR"
 stage_built_binary "$TARGET_TRIPLE"
 
 pushd "$CRATE_DIR" >/dev/null
-cargo deb --no-build --target "$TARGET_TRIPLE" --output "$OUTPUT_DIR/hostveil_${VERSION}_${DEB_ARCH}.deb"
-cargo generate-rpm --target "$TARGET_TRIPLE" -o "$OUTPUT_DIR/hostveil-${VERSION}-1.${RPM_ARCH}.rpm"
+if [[ "$PACKAGE_SET" == "all" || "$PACKAGE_SET" == "deb" ]]; then
+  cargo deb --no-build --target "$TARGET_TRIPLE" --output "$OUTPUT_DIR/hostveil_${VERSION}_${DEB_ARCH}.deb"
+fi
+
+if [[ "$PACKAGE_SET" == "all" || "$PACKAGE_SET" == "rpm" ]]; then
+  cargo generate-rpm --target "$TARGET_TRIPLE" -o "$OUTPUT_DIR/hostveil-${VERSION}-1.${RPM_ARCH}.rpm"
+fi
 popd >/dev/null
 
 printf 'Built package assets in %s\n' "$OUTPUT_DIR"

@@ -32,14 +32,14 @@ The installer selects the correct architecture (`x86_64` or `aarch64`) and insta
 
 If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, Dockle, and Fail2Ban right away.
 
-Package installs are also available for Debian/Fedora-family users:
+Package installs are also available for Debian users and for Fedora-family or Rocky/RHEL 9-class users:
 
 ```sh
 sudo apt install ./hostveil_<version>_amd64.deb
 sudo dnf install ./hostveil-<version>-1.x86_64.rpm
 ```
 
-Package installs use your system package manager for upgrades and removal instead of hostveil's launch-time auto-upgrade flow.
+RPM packages are built on a Rocky Linux 9 compatible baseline. Package installs use your system package manager for upgrades and removal instead of hostveil's launch-time auto-upgrade flow.
 
 Run the setup flow again later:
 

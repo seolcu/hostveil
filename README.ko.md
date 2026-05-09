@@ -32,14 +32,14 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 
 터미널이 가능하면 설치 직후 `hostveil setup`으로 넘어가 Lynis, Trivy, Dockle, Fail2Ban 같은 추천 도구를 바로 설치하고 기본 설정까지 진행할 수 있습니다.
 
-Debian/Fedora 계열 사용자는 패키지 자산으로도 설치할 수 있습니다:
+Debian 계열 사용자와 Fedora 또는 Rocky/RHEL 9 계열 사용자는 패키지 자산으로도 설치할 수 있습니다:
 
 ```sh
 sudo apt install ./hostveil_<version>_amd64.deb
 sudo dnf install ./hostveil-<version>-1.x86_64.rpm
 ```
 
-패키지 설치는 hostveil의 실행 시 자동 업데이트 흐름 대신 시스템 패키지 관리자를 사용해 업그레이드와 제거를 처리합니다.
+RPM 패키지는 Rocky Linux 9 호환 기준선에서 빌드됩니다. 패키지 설치는 hostveil의 실행 시 자동 업데이트 흐름 대신 시스템 패키지 관리자를 사용해 업그레이드와 제거를 처리합니다.
 
 나중에 다시 setup을 실행하려면:
 
