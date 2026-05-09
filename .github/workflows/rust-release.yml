@@ -232,5 +232,7 @@ jobs:
             - Linux only
           files: |
             dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS
             dist/install.sh

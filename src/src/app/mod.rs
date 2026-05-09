@@ -510,6 +510,13 @@ mod tests {
 
     #[test]
     fn installed_lifecycle_command_requires_wrapper_context() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
+
         let error = run([String::from("--locale=en"), String::from("upgrade")])
             .expect_err("direct binary lifecycle commands should fail clearly");
 
@@ -526,6 +533,13 @@ mod tests {
 
     #[test]
     fn uninstall_lifecycle_command_requires_wrapper_context() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
+
         let error = run([String::from("--locale=en"), String::from("uninstall")])
             .expect_err("direct binary uninstall should fail clearly");
 
@@ -541,6 +555,13 @@ mod tests {
 
     #[test]
     fn auto_upgrade_lifecycle_command_requires_wrapper_context() {
+        let _guard = package_mode_env_lock()
+            .lock()
+            .expect("package mode env lock should be available");
+        unsafe {
+            std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
+        }
+
         let error = run([
             String::from("--locale=en"),
             String::from("auto-upgrade"),
