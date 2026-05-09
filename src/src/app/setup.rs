@@ -1,16 +1,21 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use dialoguer::{MultiSelect, theme::ColorfulTheme};
+use serde::Deserialize;
 
 use super::{AppError, SetupConfig, SetupTool};
 
 const OS_RELEASE_PATH: &str = "/etc/os-release";
+const DOCKLE_RELEASE_API_URL: &str =
+    "https://api.github.com/repos/goodwithtech/dockle/releases/latest";
+const DOCKLE_RELEASES_PAGE_URL: &str = "https://github.com/goodwithtech/dockle/releases";
 const TRIVY_APT_KEY_URL: &str = "https://aquasecurity.github.io/trivy-repo/deb/public.key";
 const TRIVY_APT_KEYRING_PATH: &str = "/etc/apt/keyrings/trivy.gpg";
 const TRIVY_APT_SOURCE_PATH: &str = "/etc/apt/sources.list.d/trivy.list";
@@ -33,6 +38,46 @@ struct SetupPlan {
     manual_tools: Vec<SetupTool>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CpuArchitecture {
+    X86_64,
+    Aarch64,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DocklePackageFormat {
+    Deb,
+    Rpm,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DockleInstallRequest {
+    package_format: DocklePackageFormat,
+    architecture: CpuArchitecture,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DockleInstallTarget {
+    version: String,
+    package_name: String,
+    package_url: String,
+    checksum_url: String,
+    package_format: DocklePackageFormat,
+}
+
+#[derive(Debug, Deserialize)]
+struct DockleReleaseResponse {
+    tag_name: String,
+    assets: Vec<DockleReleaseAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DockleReleaseAsset {
+    name: String,
+    browser_download_url: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SetupState {
     installed_tools: BTreeSet<SetupTool>,
@@ -42,11 +87,12 @@ struct SetupState {
 impl SetupPlan {
     fn new(distro: DistroInfo, tools: Vec<SetupTool>) -> Result<Self, AppError> {
         let state = SetupState::detect(&tools);
-        Self::new_with_state(distro, tools, &state)
+        Self::new_with_state(distro, detect_architecture(), tools, &state)
     }
 
     fn new_with_state(
         distro: DistroInfo,
+        architecture: CpuArchitecture,
         tools: Vec<SetupTool>,
         state: &SetupState,
     ) -> Result<Self, AppError> {
@@ -64,13 +110,16 @@ impl SetupPlan {
 
             if !state.tool_is_installed(*tool) {
                 if *tool == SetupTool::Dockle {
-                    manual_tools.push(*tool);
-                    steps.push(SetupStep::ManualInstall {
-                        tool: tool.display_name(),
-                        instruction: String::from(
-                            "Install from https://github.com/goodwithtech/dockle/releases",
-                        ),
-                    });
+                    match dockle_install_request(distro.family, architecture) {
+                        Some(request) => steps.push(SetupStep::InstallDocklePackage(request)),
+                        None => {
+                            manual_tools.push(*tool);
+                            steps.push(SetupStep::ManualInstall {
+                                tool: tool.display_name(),
+                                instruction: String::from(DOCKLE_RELEASES_PAGE_URL),
+                            });
+                        }
+                    }
                 } else {
                     package_set.push(tool.package_name().to_owned());
                 }
@@ -146,6 +195,7 @@ enum SetupStep {
     AptInstall(Vec<String>),
     ConfigureTrivyAptRepo,
     ConfigureFail2BanBaseline,
+    InstallDocklePackage(DockleInstallRequest),
     ManualInstall { tool: String, instruction: String },
 }
 
@@ -271,6 +321,18 @@ fn recommended_tools() -> Vec<SetupTool> {
         .collect()
 }
 
+fn detect_architecture() -> CpuArchitecture {
+    parse_architecture(env::consts::ARCH)
+}
+
+fn parse_architecture(value: &str) -> CpuArchitecture {
+    match value {
+        "x86_64" => CpuArchitecture::X86_64,
+        "aarch64" => CpuArchitecture::Aarch64,
+        _ => CpuArchitecture::Unsupported,
+    }
+}
+
 fn detect_distro() -> Result<DistroInfo, AppError> {
     let text = fs::read_to_string(OS_RELEASE_PATH)?;
     Ok(parse_os_release(&text))
@@ -381,6 +443,9 @@ fn execute_plan(plan: &SetupPlan) -> Result<(), AppError> {
             SetupStep::ConfigureFail2BanBaseline => {
                 configure_fail2ban_baseline()?;
             }
+            SetupStep::InstallDocklePackage(request) => {
+                install_dockle_package(*request)?;
+            }
             SetupStep::ManualInstall { tool, instruction } => {
                 println!(
                     "{}",
@@ -396,6 +461,209 @@ fn execute_plan(plan: &SetupPlan) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+fn dockle_install_request(
+    distro_family: DistroFamily,
+    architecture: CpuArchitecture,
+) -> Option<DockleInstallRequest> {
+    let package_format = match distro_family {
+        DistroFamily::Debian => DocklePackageFormat::Deb,
+        DistroFamily::Fedora => DocklePackageFormat::Rpm,
+        DistroFamily::Unsupported => return None,
+    };
+
+    match architecture {
+        CpuArchitecture::X86_64 | CpuArchitecture::Aarch64 => Some(DockleInstallRequest {
+            package_format,
+            architecture,
+        }),
+        CpuArchitecture::Unsupported => None,
+    }
+}
+
+fn install_dockle_package(request: DockleInstallRequest) -> Result<(), AppError> {
+    let release = resolve_latest_dockle_release()?;
+    let target = select_dockle_install_target(&release, request)?;
+
+    let package_path = temp_named_path("dockle-package", &target.package_name);
+    let checksum_path = temp_named_path(
+        "dockle-checksums",
+        &dockle_checksums_asset_name(&target.version),
+    );
+
+    download_to_path(&target.package_url, &package_path)?;
+    download_to_path(&target.checksum_url, &checksum_path)?;
+
+    let cleanup_result = (|| -> Result<(), AppError> {
+        let checksums_text = fs::read_to_string(&checksum_path)?;
+        let expected_checksum = parse_dockle_checksums(&checksums_text)
+            .get(&target.package_name)
+            .cloned()
+            .ok_or_else(|| {
+                AppError::Io(io::Error::other(format!(
+                    "checksum for {} was not found in {}",
+                    target.package_name,
+                    checksum_path.display()
+                )))
+            })?;
+        verify_file_sha256(&package_path, &expected_checksum)?;
+        install_local_dockle_package(&package_path, target.package_format)
+    })();
+
+    let _ = fs::remove_file(&package_path);
+    let _ = fs::remove_file(&checksum_path);
+    cleanup_result
+}
+
+fn resolve_latest_dockle_release() -> Result<DockleReleaseResponse, AppError> {
+    let api_url = env::var("HOSTVEIL_DOCKLE_RELEASE_API_URL")
+        .unwrap_or_else(|_| String::from(DOCKLE_RELEASE_API_URL));
+    let bytes = capture_command_bytes(
+        "curl",
+        &[
+            "-fsSL",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "User-Agent: hostveil-setup",
+            api_url.as_str(),
+        ],
+    )?;
+    serde_json::from_slice(&bytes)
+        .map_err(|error| AppError::Io(io::Error::other(error.to_string())))
+}
+
+fn select_dockle_install_target(
+    release: &DockleReleaseResponse,
+    request: DockleInstallRequest,
+) -> Result<DockleInstallTarget, AppError> {
+    let version = release
+        .tag_name
+        .strip_prefix('v')
+        .unwrap_or(release.tag_name.as_str())
+        .to_owned();
+    let package_name = dockle_package_asset_name(&version, request)?;
+    let checksum_name = dockle_checksums_asset_name(&version);
+
+    let package_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == package_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| {
+            AppError::Io(io::Error::other(format!(
+                "latest Dockle release is missing expected asset {package_name}"
+            )))
+        })?;
+    let checksum_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == checksum_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| {
+            AppError::Io(io::Error::other(format!(
+                "latest Dockle release is missing expected asset {checksum_name}"
+            )))
+        })?;
+
+    Ok(DockleInstallTarget {
+        version,
+        package_name,
+        package_url,
+        checksum_url,
+        package_format: request.package_format,
+    })
+}
+
+fn dockle_package_asset_name(
+    version: &str,
+    request: DockleInstallRequest,
+) -> Result<String, AppError> {
+    let arch = match request.architecture {
+        CpuArchitecture::X86_64 => "Linux-64bit",
+        CpuArchitecture::Aarch64 => "Linux-ARM64",
+        CpuArchitecture::Unsupported => {
+            return Err(AppError::Io(io::Error::other(
+                "Dockle package asset mapping is unavailable for this CPU architecture",
+            )));
+        }
+    };
+    let extension = match request.package_format {
+        DocklePackageFormat::Deb => "deb",
+        DocklePackageFormat::Rpm => "rpm",
+    };
+
+    Ok(format!("dockle_{version}_{arch}.{extension}"))
+}
+
+fn dockle_checksums_asset_name(version: &str) -> String {
+    format!("dockle_{version}_checksums.txt")
+}
+
+fn parse_dockle_checksums(text: &str) -> BTreeMap<String, String> {
+    text.lines()
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            let checksum = parts.next()?;
+            let filename = parts.next()?;
+            Some((filename.to_owned(), checksum.to_owned()))
+        })
+        .collect()
+}
+
+fn download_to_path(url: &str, path: &Path) -> Result<(), AppError> {
+    let path_text = path
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+    run_command("curl", &["-fsSL", "-o", path_text, url])
+        .map(|_| ())
+        .map_err(|error| AppError::Io(io::Error::other(error)))
+}
+
+fn verify_file_sha256(path: &Path, expected_checksum: &str) -> Result<(), AppError> {
+    let actual_checksum = sha256sum(path)?;
+    if actual_checksum.eq_ignore_ascii_case(expected_checksum) {
+        Ok(())
+    } else {
+        Err(AppError::Io(io::Error::other(format!(
+            "checksum mismatch for {}: expected {}, got {}",
+            path.display(),
+            expected_checksum,
+            actual_checksum
+        ))))
+    }
+}
+
+fn sha256sum(path: &Path) -> Result<String, AppError> {
+    let path_text = path
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+    let output = run_command("sha256sum", &[path_text])
+        .map_err(|error| AppError::Io(io::Error::other(error)))?;
+    output
+        .split_whitespace()
+        .next()
+        .map(str::to_owned)
+        .ok_or_else(|| AppError::Io(io::Error::other("sha256sum did not return a checksum")))
+}
+
+fn install_local_dockle_package(
+    package_path: &Path,
+    package_format: DocklePackageFormat,
+) -> Result<(), AppError> {
+    let path_text = package_path
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+
+    match package_format {
+        DocklePackageFormat::Deb => {
+            run_privileged_command("apt-get", &["install", "-y", path_text]).map(|_| ())
+        }
+        DocklePackageFormat::Rpm => {
+            run_privileged_command("dnf", &["install", "-y", path_text]).map(|_| ())
+        }
+    }
 }
 
 fn configure_trivy_apt_repo() -> Result<(), AppError> {
@@ -741,12 +1009,23 @@ fn temp_path(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("hostveil-{prefix}-{}-{nanos}", std::process::id()))
 }
 
+fn temp_named_path(prefix: &str, file_name: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time should move forward")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "hostveil-{prefix}-{}-{nanos}-{file_name}",
+        std::process::id()
+    ))
+}
+
 impl SetupTool {
     fn recommended(self) -> bool {
-        // Dockle requires manual installation from GitHub releases, so it is
-        // not pre-selected by default. The other three are available from
-        // standard package repositories.
-        matches!(self, Self::Lynis | Self::Trivy | Self::Fail2Ban)
+        matches!(
+            self,
+            Self::Lynis | Self::Trivy | Self::Dockle | Self::Fail2Ban
+        )
     }
 
     fn package_name(self) -> &'static str {
@@ -796,6 +1075,7 @@ impl SetupStep {
             .into_owned(),
             Self::ConfigureTrivyAptRepo => t!("app.setup.step.trivy_repo").into_owned(),
             Self::ConfigureFail2BanBaseline => t!("app.setup.step.fail2ban_baseline").into_owned(),
+            Self::InstallDocklePackage(_) => t!("app.setup.step.dockle_package").into_owned(),
             Self::ManualInstall { tool, .. } => {
                 t!("app.setup.step.manual_install", tool = tool.as_str()).into_owned()
             }
@@ -868,6 +1148,7 @@ ID_LIKE="rhel centos fedora"
                 family: DistroFamily::Fedora,
                 pretty_name: String::from("Fedora Linux 43"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban],
             &SetupState {
                 installed_tools: BTreeSet::new(),
@@ -896,6 +1177,7 @@ ID_LIKE="rhel centos fedora"
                 family: DistroFamily::Debian,
                 pretty_name: String::from("Ubuntu 24.04.4 LTS"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Trivy, SetupTool::Fail2Ban],
             &SetupState {
                 installed_tools: BTreeSet::new(),
@@ -929,6 +1211,7 @@ ID_LIKE="rhel centos fedora"
                 family: DistroFamily::Fedora,
                 pretty_name: String::from("Fedora Linux 43"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban],
             &SetupState {
                 installed_tools: [SetupTool::Lynis, SetupTool::Trivy, SetupTool::Fail2Ban]
@@ -971,6 +1254,7 @@ ID_LIKE="rhel centos fedora"
                 family: DistroFamily::Unsupported,
                 pretty_name: String::from("Arch Linux"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Dockle],
             &SetupState {
                 installed_tools: BTreeSet::new(),
@@ -994,6 +1278,7 @@ ID_LIKE="rhel centos fedora"
                 family: DistroFamily::Unsupported,
                 pretty_name: String::from("Arch Linux"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Lynis],
             &SetupState {
                 installed_tools: BTreeSet::new(),
@@ -1005,12 +1290,59 @@ ID_LIKE="rhel centos fedora"
     }
 
     #[test]
-    fn dockle_is_tracked_as_manual_tool() {
+    fn parses_supported_architectures() {
+        assert_eq!(parse_architecture("x86_64"), CpuArchitecture::X86_64);
+        assert_eq!(parse_architecture("aarch64"), CpuArchitecture::Aarch64);
+        assert_eq!(parse_architecture("armv7l"), CpuArchitecture::Unsupported);
+    }
+
+    #[test]
+    fn dockle_is_recommended_by_default() {
+        assert_eq!(
+            recommended_tools(),
+            vec![
+                SetupTool::Lynis,
+                SetupTool::Trivy,
+                SetupTool::Dockle,
+                SetupTool::Fail2Ban
+            ]
+        );
+    }
+
+    #[test]
+    fn builds_debian_plan_with_dockle_install_step() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Debian,
+                pretty_name: String::from("Ubuntu 24.04.4 LTS"),
+            },
+            CpuArchitecture::Aarch64,
+            vec![SetupTool::Dockle],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("debian dockle plan should build");
+
+        assert!(plan.manual_tools.is_empty());
+        assert_eq!(
+            plan.steps,
+            vec![SetupStep::InstallDocklePackage(DockleInstallRequest {
+                package_format: DocklePackageFormat::Deb,
+                architecture: CpuArchitecture::Aarch64,
+            })]
+        );
+    }
+
+    #[test]
+    fn builds_fedora_plan_with_dockle_install_step() {
         let plan = SetupPlan::new_with_state(
             DistroInfo {
                 family: DistroFamily::Fedora,
                 pretty_name: String::from("Fedora Linux 43"),
             },
+            CpuArchitecture::X86_64,
             vec![SetupTool::Dockle, SetupTool::Lynis],
             &SetupState {
                 installed_tools: BTreeSet::new(),
@@ -1019,14 +1351,134 @@ ID_LIKE="rhel centos fedora"
         )
         .expect("plan should build");
 
-        assert_eq!(plan.manual_tools, vec![SetupTool::Dockle]);
+        assert!(plan.manual_tools.is_empty());
         assert!(plan.steps.iter().any(|s| matches!(
             s,
-            SetupStep::ManualInstall { tool, .. } if tool == "Dockle"
+            SetupStep::InstallDocklePackage(DockleInstallRequest {
+                package_format: DocklePackageFormat::Rpm,
+                architecture: CpuArchitecture::X86_64,
+            })
         )));
         assert!(plan.steps.iter().any(|s| matches!(
             s,
             SetupStep::DnfInstall(pkgs) if pkgs.contains(&String::from("lynis"))
         )));
+    }
+
+    #[test]
+    fn unsupported_architecture_falls_back_to_manual_dockle_guidance() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            CpuArchitecture::Unsupported,
+            vec![SetupTool::Dockle],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("unsupported arch should keep manual dockle guidance");
+
+        assert_eq!(plan.manual_tools, vec![SetupTool::Dockle]);
+        assert!(matches!(
+            plan.steps[0],
+            SetupStep::ManualInstall { ref tool, .. } if tool == "Dockle"
+        ));
+    }
+
+    #[test]
+    fn chooses_expected_debian_dockle_asset_names() {
+        let name = dockle_package_asset_name(
+            "0.4.15",
+            DockleInstallRequest {
+                package_format: DocklePackageFormat::Deb,
+                architecture: CpuArchitecture::X86_64,
+            },
+        )
+        .expect("asset name should resolve");
+        let arm64_name = dockle_package_asset_name(
+            "0.4.15",
+            DockleInstallRequest {
+                package_format: DocklePackageFormat::Deb,
+                architecture: CpuArchitecture::Aarch64,
+            },
+        )
+        .expect("arm64 asset name should resolve");
+
+        assert_eq!(name, "dockle_0.4.15_Linux-64bit.deb");
+        assert_eq!(arm64_name, "dockle_0.4.15_Linux-ARM64.deb");
+    }
+
+    #[test]
+    fn chooses_expected_fedora_dockle_asset_names() {
+        let name = dockle_package_asset_name(
+            "0.4.15",
+            DockleInstallRequest {
+                package_format: DocklePackageFormat::Rpm,
+                architecture: CpuArchitecture::X86_64,
+            },
+        )
+        .expect("asset name should resolve");
+        let arm64_name = dockle_package_asset_name(
+            "0.4.15",
+            DockleInstallRequest {
+                package_format: DocklePackageFormat::Rpm,
+                architecture: CpuArchitecture::Aarch64,
+            },
+        )
+        .expect("arm64 asset name should resolve");
+
+        assert_eq!(name, "dockle_0.4.15_Linux-64bit.rpm");
+        assert_eq!(arm64_name, "dockle_0.4.15_Linux-ARM64.rpm");
+    }
+
+    #[test]
+    fn parses_dockle_checksums_file() {
+        let checksums = parse_dockle_checksums(
+            "abc123  dockle_0.4.15_Linux-64bit.deb\n\
+             def456  dockle_0.4.15_Linux-ARM64.rpm\n",
+        );
+
+        assert_eq!(
+            checksums.get("dockle_0.4.15_Linux-64bit.deb"),
+            Some(&String::from("abc123"))
+        );
+        assert_eq!(
+            checksums.get("dockle_0.4.15_Linux-ARM64.rpm"),
+            Some(&String::from("def456"))
+        );
+    }
+
+    #[test]
+    fn selects_dockle_assets_from_release_metadata() {
+        let release = DockleReleaseResponse {
+            tag_name: String::from("v0.4.15"),
+            assets: vec![
+                DockleReleaseAsset {
+                    name: String::from("dockle_0.4.15_Linux-64bit.deb"),
+                    browser_download_url: String::from("https://example.test/dockle.deb"),
+                },
+                DockleReleaseAsset {
+                    name: String::from("dockle_0.4.15_checksums.txt"),
+                    browser_download_url: String::from("https://example.test/checksums.txt"),
+                },
+            ],
+        };
+
+        let target = select_dockle_install_target(
+            &release,
+            DockleInstallRequest {
+                package_format: DocklePackageFormat::Deb,
+                architecture: CpuArchitecture::X86_64,
+            },
+        )
+        .expect("release metadata should resolve install target");
+
+        assert_eq!(target.version, "0.4.15");
+        assert_eq!(target.package_name, "dockle_0.4.15_Linux-64bit.deb");
+        assert_eq!(target.package_url, "https://example.test/dockle.deb");
+        assert_eq!(target.checksum_url, "https://example.test/checksums.txt");
     }
 }
