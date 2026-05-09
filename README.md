@@ -91,6 +91,16 @@ hostveil --host-root / --json
 hostveil --json --adapters none
 ```
 
+Generate a shareable or automation-friendly headless report:
+
+```sh
+hostveil --markdown
+hostveil --html
+hostveil --sarif
+```
+
+Use Markdown or HTML for human-readable sharing, and JSON or SARIF for automation and downstream tooling.
+
 Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle`.
 
 Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for Korean. In the TUI, open Settings (`s`) to switch locale and persist it.
