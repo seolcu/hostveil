@@ -22,7 +22,7 @@ Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typicall
 
 ## Installation
 
-hostveil is distributed as a Linux binary through GitHub Releases.
+hostveil is distributed through GitHub Releases as Linux tarballs and package assets.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
@@ -31,6 +31,15 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 The installer selects the correct architecture (`x86_64` or `aarch64`) and installs to `~/.local/bin` or `/usr/local/bin`. After installation, use the `hostveil` command directly.
 
 If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, Dockle, and Fail2Ban right away.
+
+Package installs are also available for Debian/Fedora-family users:
+
+```sh
+sudo apt install ./hostveil_<version>_amd64.deb
+sudo dnf install ./hostveil-<version>-1.x86_64.rpm
+```
+
+Package installs use your system package manager for upgrades and removal instead of hostveil's launch-time auto-upgrade flow.
 
 Run the setup flow again later:
 
@@ -44,6 +53,8 @@ Upgrade an existing installation:
 hostveil upgrade
 ```
 
+For package installs, download a newer release package and install it with `apt` or `dnf` instead of using `hostveil upgrade`.
+
 Disable or re-enable automatic upgrades:
 
 ```sh
@@ -51,13 +62,17 @@ hostveil auto-upgrade disable
 hostveil auto-upgrade enable
 ```
 
+Package installs do not support launch-time auto-upgrade.
+
 Uninstall cleanly:
 
 ```sh
 hostveil uninstall
 ```
 
-> **Note:** Lifecycle commands (`upgrade`, `uninstall`, `auto-upgrade`) work only through the installed wrapper. If you run a development binary directly, these commands return guidance instead of mutating install state.
+For package installs, remove hostveil with your system package manager, for example `sudo apt remove hostveil` or `sudo dnf remove hostveil`.
+
+> **Note:** Lifecycle commands (`upgrade`, `uninstall`, `auto-upgrade`) behave differently by install mode. `install.sh` installs use the bundled wrapper, while package installs return package-manager guidance.
 
 ## Quick Start
 

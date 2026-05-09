@@ -6,9 +6,14 @@ fn main() -> ExitCode {
     let bin_args: Vec<String> = args.into_iter().skip(1).collect();
 
     let is_user_mode = bin_args.iter().any(|arg| arg == "--user-mode");
+    let is_lifecycle = matches!(
+        bin_args.first().map(String::as_str),
+        Some("upgrade" | "uninstall" | "auto-upgrade")
+    );
     let is_passive = bin_args
         .iter()
-        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V");
+        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
+        || is_lifecycle;
 
     if !is_user_mode
         && !is_passive

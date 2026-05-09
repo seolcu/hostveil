@@ -213,6 +213,21 @@ pub fn tr_lifecycle_command_requires_installed_wrapper(command: &str) -> String 
     .into_owned()
 }
 
+pub fn tr_lifecycle_command_requires_package_manager(command: &str, install_kind: &str) -> String {
+    match (command, install_kind) {
+        ("upgrade", "deb") => t!("app.error.package_install_upgrade_deb").into_owned(),
+        ("upgrade", "rpm") => t!("app.error.package_install_upgrade_rpm").into_owned(),
+        ("uninstall", "deb") => t!("app.error.package_install_uninstall_deb").into_owned(),
+        ("uninstall", "rpm") => t!("app.error.package_install_uninstall_rpm").into_owned(),
+        ("auto-upgrade", _) => t!("app.error.package_install_auto_upgrade").into_owned(),
+        _ => t!(
+            "app.error.lifecycle_requires_installed_wrapper",
+            command = command
+        )
+        .into_owned(),
+    }
+}
+
 pub fn tr_compose_parse_error(error: &ComposeParseError) -> String {
     match error {
         ComposeParseError::ComposePathMissing { path } => t!(
@@ -460,7 +475,8 @@ mod tests {
     use super::{
         locale_override_from_args, normalize_locale_tag, resolve_preferred_locale, tr,
         tr_compose_parse_error, tr_fix_requires_terminal, tr_invalid_argument_combination,
-        tr_io_error, tr_lifecycle_command_requires_installed_wrapper, tr_missing_argument_value,
+        tr_io_error, tr_lifecycle_command_requires_installed_wrapper,
+        tr_lifecycle_command_requires_package_manager, tr_missing_argument_value,
         tr_status_compose_and_host_loaded, tr_status_compose_loaded, tr_status_host_loaded,
         tr_summary_finding_count, tr_summary_host_root, tr_summary_overall_score,
         tr_summary_service_count, tr_tui_requires_terminal, tr_unknown_argument, tr_version,
@@ -561,6 +577,22 @@ mod tests {
         assert_eq!(
             tr_lifecycle_command_requires_installed_wrapper("upgrade"),
             "upgrade is only available through the installed hostveil wrapper. Install first with: curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash, then run: hostveil upgrade"
+        );
+    }
+
+    #[test]
+    fn formats_package_lifecycle_upgrade_guidance_for_deb() {
+        assert_eq!(
+            tr_lifecycle_command_requires_package_manager("upgrade", "deb"),
+            "hostveil was installed from a Debian package. Download a newer .deb from GitHub Releases and install it with: sudo apt install ./hostveil_<version>_amd64.deb"
+        );
+    }
+
+    #[test]
+    fn formats_package_lifecycle_uninstall_guidance_for_rpm() {
+        assert_eq!(
+            tr_lifecycle_command_requires_package_manager("uninstall", "rpm"),
+            "hostveil was installed from an RPM package. Remove it with: sudo dnf remove hostveil"
         );
     }
 
@@ -678,6 +710,10 @@ mod tests {
         assert_eq!(
             t!("app.hint.quit", locale = "ko").into_owned(),
             "q 또는 Esc를 눌러 종료"
+        );
+        assert_eq!(
+            t!("app.error.package_install_auto_upgrade", locale = "ko").into_owned(),
+            "패키지로 설치한 hostveil은 실행 시 자동 업데이트를 지원하지 않습니다. GitHub Releases에서 새 패키지를 받아 시스템 패키지 관리자로 업데이트하세요."
         );
     }
 

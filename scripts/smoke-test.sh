@@ -64,6 +64,22 @@ set -e
 printf '%s\n' "$UPGRADE_OUTPUT" | grep -q 'installed hostveil wrapper'
 
 set +e
+PACKAGE_UPGRADE_OUTPUT="$(HOSTVEIL_PACKAGE_INSTALL_KIND=deb $BINARY_PATH upgrade 2>&1 >/dev/null)"
+PACKAGE_UPGRADE_STATUS=$?
+set -e
+
+[[ $PACKAGE_UPGRADE_STATUS -ne 0 ]]
+printf '%s\n' "$PACKAGE_UPGRADE_OUTPUT" | grep -q 'Debian package'
+
+set +e
+PACKAGE_AUTO_UPGRADE_OUTPUT="$(HOSTVEIL_PACKAGE_INSTALL_KIND=rpm $BINARY_PATH auto-upgrade disable 2>&1 >/dev/null)"
+PACKAGE_AUTO_UPGRADE_STATUS=$?
+set -e
+
+[[ $PACKAGE_AUTO_UPGRADE_STATUS -ne 0 ]]
+printf '%s\n' "$PACKAGE_AUTO_UPGRADE_OUTPUT" | grep -q 'do not support launch-time auto-upgrade'
+
+set +e
 BARE_OUTPUT="$($BINARY_PATH --user-mode 2>&1 >/dev/null)"
 BARE_STATUS=$?
 set -e

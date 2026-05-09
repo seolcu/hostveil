@@ -54,6 +54,15 @@ jobs:
       - name: Run installer tests
         run: ./scripts/test-install-script.sh target/debug/hostveil
 
+      - name: Install package build tools
+        run: cargo install cargo-deb cargo-generate-rpm
+
+      - name: Build release binary for package validation
+        run: cargo build --release --workspace --target x86_64-unknown-linux-gnu
+
+      - name: Build release packages
+        run: ./scripts/build-release-packages.sh x86_64-unknown-linux-gnu
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 

@@ -28,8 +28,21 @@ extended-description = """\
 Hostveil is a lightweight security dashboard for Linux self-hosted environments.
 """
 depends = "$auto"
+revision = "1"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/hostveil", "usr/libexec/hostveil/hostveil", "755"],
+    ["packaging/hostveil-package-wrapper-deb.sh", "usr/bin/hostveil", "755"],
+    ["../README.md", "usr/share/doc/hostveil/README.md", "644"],
+    ["../LICENSE", "usr/share/doc/hostveil/LICENSE", "644"],
+]
 
 [package.metadata.generate-rpm]
+release = "1"
 assets = [
-    { source = "target/release/hostveil", dest = "/usr/bin/hostveil", mode = "755" },
+    { source = "target/release/hostveil", dest = "/usr/libexec/hostveil/hostveil", mode = "755" },
+    { source = "packaging/hostveil-package-wrapper-rpm.sh", dest = "/usr/bin/hostveil", mode = "755" },
+    { source = "../README.md", dest = "/usr/share/doc/hostveil/README.md", mode = "644", doc = true },
+    { source = "../LICENSE", dest = "/usr/share/doc/hostveil/LICENSE", mode = "644", doc = true },
 ]

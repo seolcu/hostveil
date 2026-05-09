@@ -102,6 +102,9 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
 
+      - name: Install package build tools
+        run: cargo install cargo-deb cargo-generate-rpm
+
       - name: Package release archive
         run: |
           mkdir -p dist/package
@@ -109,11 +112,18 @@ jobs:
           cp README.md LICENSE dist/package/
           tar -C dist/package -czf dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz hostveil README.md LICENSE
 
+      - name: Build release packages
+        run: |
+          ./scripts/build-release-packages.sh "${{ matrix.target }}" dist
+
       - name: Upload packaged archive
         uses: actions/upload-artifact@v7
         with:
           name: hostveil-${{ matrix.target }}
-          path: dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+          path: |
+            dist/hostveil-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+            dist/*.deb
+            dist/*.rpm
 
   checksums:
     name: generate checksums
@@ -128,7 +138,7 @@ jobs:
           merge-multiple: true
 
       - name: Generate checksums
-        run: (cd dist && sha256sum *.tar.gz > SHA256SUMS)
+        run: (cd dist && sha256sum *.tar.gz *.deb *.rpm > SHA256SUMS)
 
       - name: Upload checksums
         uses: actions/upload-artifact@v7
@@ -166,6 +176,17 @@ jobs:
 
             After the first install, use the installed `hostveil` command for lifecycle actions.
 
+            ## Package installs
+            Debian-family users can install the release `.deb` asset with:
+            ```sh
+            sudo apt install ./hostveil_<version>_amd64.deb
+            ```
+
+            Fedora-family users can install the release `.rpm` asset with:
+            ```sh
+            sudo dnf install ./hostveil-<version>-1.x86_64.rpm
+            ```
+
             Optional dependency setup after install:
             ```sh
             hostveil setup
@@ -191,10 +212,14 @@ jobs:
             hostveil auto-upgrade enable
             ```
 
+            Package installs do not support launch-time auto-upgrade; update them by installing a newer release package.
+
             ## Uninstall
             ```sh
             hostveil uninstall
             ```
+
+            For package installs, remove hostveil with your system package manager instead.
 
             ## Optional dependencies
             - Docker improves live Compose discovery when it is available.
@@ -207,5 +232,7 @@ jobs:
             - Linux only
           files: |
             dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS
             dist/install.sh
