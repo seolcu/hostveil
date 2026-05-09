@@ -262,6 +262,15 @@ The May 13 capstone design review is treated as an architecture freeze point.
 - The pre-presentation freeze focuses on locking the unified scan result contract, the Compose-only remediation boundary, and the wrapper-install versus package-install lifecycle split.
 - Presentation-facing architecture notes should live in ADRs, milestone issues, and PR descriptions rather than in additional user-facing documents.
 
+### Design Review Checklist
+
+Use the accepted ADRs below as the presentation baseline before opening post-review feature work:
+
+- ADR 0006: Core Scan Result and Adapter Contract
+- ADR 0007: Compose-Only Remediation Boundary
+- ADR 0008: Distribution and Install Modes
+- GitHub milestone: `Design Freeze - 2026-05-13`
+
 ### Current Implementation Status
 
 - Cargo workspace initialized at the repository root
