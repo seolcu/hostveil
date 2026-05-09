@@ -147,6 +147,21 @@ Use `--adapters none` to skip all external scanners, or `--adapters trivy,dockle
 - **Optional adapters are optional** — missing external tools reduce coverage but do not block scans
 - **Compose remediation only** — automatic fixes are limited to Compose files; host-level changes require manual action
 
+## Developer / Lab Workflows
+
+For containerized development and validation, use the task-based `scripts/lab.sh` entrypoint:
+
+```sh
+./scripts/lab.sh dev up
+./scripts/lab.sh dev shell
+./scripts/lab.sh host up ubuntu-lab
+./scripts/lab.sh host scan rocky-lab
+./scripts/lab.sh selfhost up
+./scripts/lab.sh selfhost ux
+```
+
+Legacy helper scripts such as `scripts/dev-env.sh` and `scripts/self-hosting-lab.sh` remain available as compatibility paths. Full contributor workflow details stay in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, git workflow, and release information.
