@@ -711,6 +711,87 @@ impl FixAvailability {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum HostFindingCategory {
+    Ssh,
+    DockerHost,
+    Firewall,
+    Updates,
+    Kernel,
+    Mac,
+    Filesystem,
+    Fim,
+    Defenses,
+    Other,
+}
+
+impl HostFindingCategory {
+    fn from_finding_id(id: &str) -> Self {
+        if id.starts_with("host.ssh_") {
+            Self::Ssh
+        } else if id.starts_with("host.docker_") {
+            Self::DockerHost
+        } else if id == "host.no_firewall_detected"
+            || id.starts_with("host.ufw_")
+            || id.starts_with("host.firewalld_")
+            || id.starts_with("host.nftables_")
+        {
+            Self::Firewall
+        } else if id.starts_with("host.apt_")
+            || id.starts_with("host.dnf_")
+            || id.starts_with("host.yum_")
+        {
+            Self::Updates
+        } else if id.starts_with("host.kernel.") || id == "host.secure_boot_disabled" {
+            Self::Kernel
+        } else if id.starts_with("host.selinux_")
+            || id.starts_with("host.apparmor_")
+            || id == "host.mac_framework_missing"
+        {
+            Self::Mac
+        } else if id == "host.mount_flags_missing"
+            || id.starts_with("host.proc_")
+            || id.starts_with("host.systemd_")
+            || id.starts_with("host.grub_")
+            || id.starts_with("host.shadow_")
+            || id.starts_with("host.tmp_")
+        {
+            Self::Filesystem
+        } else if id.starts_with("host.fim_")
+            || id.starts_with("host.aide_")
+            || id.starts_with("host.tripwire_")
+        {
+            Self::Fim
+        } else if id == "host.fail2ban_not_enabled" || id == "host.defensive_controls_missing" {
+            Self::Defenses
+        } else {
+            Self::Other
+        }
+    }
+
+    fn label(self) -> String {
+        match self {
+            Self::Ssh => t!("app.host_category.ssh").into_owned(),
+            Self::DockerHost => t!("app.host_category.docker_host").into_owned(),
+            Self::Firewall => t!("app.host_category.firewall").into_owned(),
+            Self::Updates => t!("app.host_category.updates").into_owned(),
+            Self::Kernel => t!("app.host_category.kernel").into_owned(),
+            Self::Mac => t!("app.host_category.mac").into_owned(),
+            Self::Filesystem => t!("app.host_category.filesystem").into_owned(),
+            Self::Fim => t!("app.host_category.fim").into_owned(),
+            Self::Defenses => t!("app.host_category.defenses").into_owned(),
+            Self::Other => t!("app.host_category.other").into_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct HostCategorySummary {
+    category: HostFindingCategory,
+    count: usize,
+    highest_severity: Severity,
+}
+
 #[derive(Debug)]
 pub enum TuiAction {
     Exit,
@@ -2472,7 +2553,7 @@ fn findings_header(
 ) -> Paragraph<'static> {
     let inner_width = available_width.saturating_sub(2).max(16) as usize;
     let filters = finding_filter_summary(state);
-    let status_text = if let Some(ref msg) = state.status_message {
+    let mut status_text = if let Some(ref msg) = state.status_message {
         msg.clone()
     } else if state.finding_count() == 0 {
         format!(
@@ -2498,6 +2579,9 @@ fn findings_header(
             filters,
         )
     };
+    if state.scope_filter == Some(Scope::Host) {
+        status_text = format!("{} | {}", t!("app.finding.host_scope_status"), status_text);
+    }
 
     let title_text = t!("app.panel.findings_header").into_owned();
     let status_style = if state.status_message.is_some() {
@@ -2561,23 +2645,30 @@ fn findings_footer(
     } else {
         theme.muted
     };
+    let host_scope_hint = (state.scope_filter == Some(Scope::Host))
+        .then(|| wrap_text_to_lines(&t!("app.hint.host_scope_active"), inner_width).join(" "));
 
-    Paragraph::new(Text::from(vec![
+    let mut lines = vec![
         Line::raw(wrap_text_to_lines(&movement, inner_width).join(" ")),
         Line::raw(wrap_text_to_lines(&controls, inner_width).join(" ")),
         Line::styled(
             wrap_text_to_lines(&fix_hint, inner_width).join(" "),
             fix_style,
         ),
-    ]))
-    .block(
-        Block::default()
-            .borders(Borders::TOP)
-            .border_style(theme.border)
-            .style(theme.surface),
-    )
-    .style(theme.surface)
-    .wrap(Wrap { trim: true })
+    ];
+    if let Some(host_scope_hint) = host_scope_hint {
+        lines.push(Line::styled(host_scope_hint, theme.muted));
+    }
+
+    Paragraph::new(Text::from(lines))
+        .block(
+            Block::default()
+                .borders(Borders::TOP)
+                .border_style(theme.border)
+                .style(theme.surface),
+        )
+        .style(theme.surface)
+        .wrap(Wrap { trim: true })
 }
 
 fn findings_list_items(
@@ -3010,7 +3101,7 @@ fn remediation_lines(
 ) -> Vec<Line<'static>> {
     let mut fixable_by_service = BTreeMap::<String, usize>::new();
     let mut manual_by_service = BTreeMap::<String, usize>::new();
-    let mut host_manual_count = 0;
+    let mut host_manual_by_category = BTreeMap::<HostFindingCategory, HostCategorySummary>::new();
 
     for finding in &scan_result.findings {
         match finding.remediation {
@@ -3022,15 +3113,42 @@ fn remediation_lines(
             crate::domain::RemediationKind::None => {
                 if let Some(service) = &finding.related_service {
                     *manual_by_service.entry(service.clone()).or_default() += 1;
+                } else if finding.scope == Scope::Host {
+                    let category = HostFindingCategory::from_finding_id(&finding.id);
+                    let entry =
+                        host_manual_by_category
+                            .entry(category)
+                            .or_insert(HostCategorySummary {
+                                category,
+                                count: 0,
+                                highest_severity: finding.severity,
+                            });
+                    entry.count += 1;
+                    if severity_rank(finding.severity) < severity_rank(entry.highest_severity) {
+                        entry.highest_severity = finding.severity;
+                    }
                 } else {
-                    host_manual_count += 1;
+                    *manual_by_service
+                        .entry(finding.subject.clone())
+                        .or_default() += 1;
                 }
             }
         }
     }
 
     let auto_fixable_count: usize = fixable_by_service.values().sum();
+    let host_manual_count: usize = host_manual_by_category
+        .values()
+        .map(|summary| summary.count)
+        .sum();
     let manual_count: usize = manual_by_service.values().sum::<usize>() + host_manual_count;
+    let mut host_manual_summaries = host_manual_by_category.into_values().collect::<Vec<_>>();
+    host_manual_summaries.sort_by(|left, right| {
+        severity_rank(left.highest_severity)
+            .cmp(&severity_rank(right.highest_severity))
+            .then_with(|| right.count.cmp(&left.count))
+            .then_with(|| left.category.label().cmp(&right.category.label()))
+    });
 
     let mut lines = Vec::new();
     let text_width = available_width.saturating_sub(4).max(24) as usize;
@@ -3087,14 +3205,15 @@ fn remediation_lines(
             ]));
         }
 
-        if host_manual_count > 0 {
+        for summary in host_manual_summaries {
+            let category_label = summary.category.label();
             lines.push(Line::from(vec![
                 Span::raw("  • "),
                 Span::styled(
-                    t!("scope.host").into_owned(),
+                    format!("{} / {}", t!("scope.host"), category_label),
                     theme.base.add_modifier(Modifier::BOLD),
                 ),
-                Span::raw(format!(": {}", host_manual_count)),
+                Span::raw(format!(": {}", summary.count)),
             ]));
         }
     }
@@ -4324,6 +4443,79 @@ mod tests {
         result
     }
 
+    fn host_triage_result() -> ScanResult {
+        let mut result = sample_result();
+        result.findings = vec![
+            Finding {
+                id: String::from("host.ssh_root_login_enabled"),
+                axis: Axis::HostHardening,
+                severity: Severity::High,
+                scope: Scope::Host,
+                source: Source::NativeHost,
+                subject: String::from("/etc/ssh/sshd_config"),
+                related_service: None,
+                title: String::from("SSH root login is enabled"),
+                description: String::from("/etc/ssh/sshd_config allows root login."),
+                why_risky: String::from("Attackers can target a direct root login."),
+                how_to_fix: String::from("Set PermitRootLogin no."),
+                evidence: BTreeMap::new(),
+                remediation: RemediationKind::None,
+            },
+            Finding {
+                id: String::from("host.firewalld_disabled"),
+                axis: Axis::HostHardening,
+                severity: Severity::Critical,
+                scope: Scope::Host,
+                source: Source::NativeHost,
+                subject: String::from("firewalld"),
+                related_service: None,
+                title: String::from("firewalld is disabled"),
+                description: String::from("The system firewall is disabled."),
+                why_risky: String::from("Inbound traffic is less constrained."),
+                how_to_fix: String::from("Enable and configure firewalld."),
+                evidence: BTreeMap::new(),
+                remediation: RemediationKind::None,
+            },
+            Finding {
+                id: String::from("host.nftables_missing"),
+                axis: Axis::HostHardening,
+                severity: Severity::High,
+                scope: Scope::Host,
+                source: Source::NativeHost,
+                subject: String::from("nftables"),
+                related_service: None,
+                title: String::from("nftables rules are missing"),
+                description: String::from("No nftables rules were detected."),
+                why_risky: String::from("Network paths remain under-protected."),
+                how_to_fix: String::from("Define a baseline nftables policy."),
+                evidence: BTreeMap::new(),
+                remediation: RemediationKind::None,
+            },
+            Finding {
+                id: String::from("host.kernel.aslr_disabled"),
+                axis: Axis::HostHardening,
+                severity: Severity::Medium,
+                scope: Scope::Host,
+                source: Source::NativeHost,
+                subject: String::from("kernel.randomize_va_space"),
+                related_service: None,
+                title: String::from("ASLR is disabled"),
+                description: String::from("Address space layout randomization is disabled."),
+                why_risky: String::from("Exploit reliability improves without ASLR."),
+                how_to_fix: String::from("Set kernel.randomize_va_space to 2."),
+                evidence: BTreeMap::new(),
+                remediation: RemediationKind::None,
+            },
+        ];
+        result.score_report.severity_counts = BTreeMap::from([
+            (Severity::Critical, 1),
+            (Severity::High, 2),
+            (Severity::Medium, 1),
+            (Severity::Low, 0),
+        ]);
+        result
+    }
+
     fn no_findings_result() -> ScanResult {
         let mut result = sample_result();
         result.findings.clear();
@@ -4390,6 +4582,27 @@ mod tests {
         assert!(action.is_none());
         assert_eq!(state.screen, Screen::Findings);
         assert_eq!(state.findings_focus, FindingsFocus::List);
+    }
+
+    #[test]
+    fn overview_host_shortcut_opens_host_filtered_findings() {
+        let result = mixed_scope_result();
+        let mut state = AppState::new(&result);
+
+        let action = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('h'), crossterm::event::KeyModifiers::NONE),
+        );
+
+        assert!(action.is_none());
+        assert_eq!(state.screen, Screen::Findings);
+        assert_eq!(state.scope_filter, Some(Scope::Host));
+        assert!(
+            state
+                .selected_finding(&result)
+                .is_some_and(|finding| finding.scope == Scope::Host)
+        );
     }
 
     #[test]
@@ -4600,6 +4813,53 @@ mod tests {
             .join("\n");
         assert!(text.contains("AUTO"));
         assert!(text.contains("MANUAL"));
+    }
+
+    #[test]
+    fn overview_action_queue_groups_host_findings_by_category() {
+        let lines = remediation_lines(&host_triage_result(), 80, &Theme::preset(ThemePreset::Ansi));
+
+        let text: String = lines
+            .iter()
+            .map(line_to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(text.contains("Host / Firewall: 2"));
+        assert!(text.contains("Host / SSH: 1"));
+        assert!(text.contains("Host / Kernel: 1"));
+        assert!(!text.contains("Host: 4"));
+    }
+
+    #[test]
+    fn overview_action_queue_orders_host_categories_by_severity_then_count() {
+        let lines = remediation_lines(&host_triage_result(), 80, &Theme::preset(ThemePreset::Ansi));
+
+        let text: String = lines
+            .iter()
+            .map(line_to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let firewall_index = text.find("Host / Firewall: 2").expect("firewall summary");
+        let ssh_index = text.find("Host / SSH: 1").expect("ssh summary");
+        let kernel_index = text.find("Host / Kernel: 1").expect("kernel summary");
+
+        assert!(firewall_index < ssh_index);
+        assert!(ssh_index < kernel_index);
+    }
+
+    #[test]
+    fn overview_action_queue_hint_mentions_host_areas() {
+        let lines = remediation_lines(&host_triage_result(), 80, &Theme::preset(ThemePreset::Ansi));
+
+        let text: String = lines
+            .iter()
+            .map(line_to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(text.contains("service and host area"));
     }
 
     #[test]
@@ -5382,6 +5642,32 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
     }
 
     #[test]
+    fn findings_header_shows_host_triage_context_for_host_filter() {
+        let result = host_triage_result();
+        let mut state = AppState::new(&result);
+        state.scope_filter = Some(Scope::Host);
+        state.open_findings();
+
+        let mut terminal = Terminal::new(TestBackend::new(80, 4)).expect("terminal should build");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let paragraph = findings_header(
+                    &result,
+                    &state,
+                    area.width,
+                    FindingsLayoutMode::Stacked,
+                    &state.theme,
+                );
+                frame.render_widget(paragraph, area);
+            })
+            .expect("header should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(content.contains("Host triage mode"));
+    }
+
+    #[test]
     fn findings_footer_shows_available_fix_hint_with_safe_color() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -5457,6 +5743,43 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         let needle = "f unavailable: selected finding has no Compose fix";
         let (x, y) =
             find_rendered_position(&content, needle).expect("unavailable hint should render");
+
+        assert_eq!(
+            buffer_fg(terminal.backend(), x as u16, y as u16),
+            state
+                .theme
+                .muted
+                .fg
+                .expect("muted style should define a foreground color")
+        );
+    }
+
+    #[test]
+    fn findings_footer_shows_host_scope_hint_with_muted_color() {
+        let result = host_triage_result();
+        let mut state = AppState::new(&result);
+        state.scope_filter = Some(Scope::Host);
+        state.open_findings();
+
+        let mut terminal = Terminal::new(TestBackend::new(100, 6)).expect("terminal should build");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let paragraph = findings_footer(
+                    &result,
+                    &state,
+                    area.width,
+                    FindingsLayoutMode::Stacked,
+                    &state.theme,
+                );
+                frame.render_widget(paragraph, area);
+            })
+            .expect("footer should render");
+
+        let content = buffer_to_string(terminal.backend());
+        let needle = "Host-only view: review manual host findings by area from the overview, then inspect evidence here.";
+        let (x, y) =
+            find_rendered_position(&content, needle).expect("host scope hint should render");
 
         assert_eq!(
             buffer_fg(terminal.backend(), x as u16, y as u16),
