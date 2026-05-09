@@ -133,10 +133,12 @@ app:
     theme: "테마"
     layout: "레이아웃"
     locale: "언어"
+    findings_view: "Findings 화면"
     category_appearance: "표시"
     category_behavior: "동작"
     category_localization: "언어"
     hint: "Up/Down 선택, Left/Right 변경, Enter/Esc/q 닫기"
+    persist_failed: "%{setting} 설정을 저장하지 못했습니다."
   panel:
     status: "상태"
     hints: "힌트"
