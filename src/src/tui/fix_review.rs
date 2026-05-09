@@ -540,8 +540,8 @@ mod tests {
     use ratatui::backend::Backend;
 
     use super::{
-        render_choice_prompt, render_secret_prompt, ChoicePromptState, FixReviewState,
-        ReviewAction, SecretPromptState, apply_key_input, clamp_scroll, render,
+        ChoicePromptState, FixReviewState, ReviewAction, SecretPromptState, apply_key_input,
+        clamp_scroll, render, render_choice_prompt, render_secret_prompt,
     };
     use crate::fix::{FixPlan, ReviewChoiceOption};
 

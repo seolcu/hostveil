@@ -25,6 +25,7 @@ pub struct AdapterScanUpdate {
     trivy: adapters::trivy::TrivyScanOutput,
     lynis: adapters::lynis::LynisScanOutput,
     dockle: adapters::dockle::DockleScanOutput,
+    gitleaks: adapters::gitleaks::GitleaksScanOutput,
 }
 
 #[derive(Debug)]
@@ -32,6 +33,7 @@ pub enum AdapterScanEvent {
     Trivy(adapters::trivy::TrivyScanOutput),
     Lynis(adapters::lynis::LynisScanOutput),
     Dockle(adapters::dockle::DockleScanOutput),
+    Gitleaks(adapters::gitleaks::GitleaksScanOutput),
 }
 
 pub fn run(config: &AppConfig) -> Result<ScanResult, AppError> {
@@ -85,6 +87,8 @@ fn apply_external_adapters(
     let update = scan_external_adapters(
         result.metadata.services.clone(),
         result.metadata.host_root.clone(),
+        result.metadata.compose_root.clone(),
+        result.metadata.loaded_files.clone(),
         selection,
         timeout,
     );
@@ -108,9 +112,19 @@ fn spawn_background_adapter_scan(
 
     let services = result.metadata.services.clone();
     let host_root = result.metadata.host_root.clone();
+    let compose_root = result.metadata.compose_root.clone();
+    let loaded_files = result.metadata.loaded_files.clone();
     let (sender, receiver) = mpsc::channel();
 
-    spawn_adapter_workers(sender, services, host_root, selection, timeout);
+    spawn_adapter_workers(
+        sender,
+        services,
+        host_root,
+        compose_root,
+        loaded_files,
+        selection,
+        timeout,
+    );
 
     receiver
 }
@@ -119,6 +133,8 @@ fn spawn_adapter_workers(
     sender: Sender<AdapterScanEvent>,
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
+    compose_root: Option<PathBuf>,
+    loaded_files: Vec<PathBuf>,
     selection: AdapterSelection,
     timeout: Duration,
 ) {
@@ -145,8 +161,20 @@ fn spawn_adapter_workers(
     if selection.is_enabled(ScanAdapter::Lynis)
         && let Some(path) = host_root.filter(|path| path == Path::new("/"))
     {
+        let sender = sender.clone();
         thread::spawn(move || {
             let _ = sender.send(AdapterScanEvent::Lynis(adapters::lynis::scan(Some(&path))));
+        });
+    }
+
+    if selection.is_enabled(ScanAdapter::Gitleaks) && compose_root.is_some() {
+        let sender = sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(AdapterScanEvent::Gitleaks(adapters::gitleaks::scan(
+                compose_root.as_deref(),
+                &loaded_files,
+                timeout,
+            )));
         });
     }
 }
@@ -177,6 +205,14 @@ pub fn apply_external_adapter_event(result: &mut ScanResult, event: AdapterScanE
             result.metadata.warnings.extend(output.warnings);
             result.findings.extend(output.findings);
         }
+        AdapterScanEvent::Gitleaks(output) => {
+            result
+                .metadata
+                .adapters
+                .insert(String::from("gitleaks"), output.status.clone());
+            result.metadata.warnings.extend(output.warnings);
+            result.findings.extend(output.findings);
+        }
     }
 
     result.score_report =
@@ -188,6 +224,7 @@ pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterSca
         trivy,
         lynis,
         dockle,
+        gitleaks,
     } = update;
 
     result
@@ -211,6 +248,13 @@ pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterSca
     result.metadata.warnings.extend(dockle.warnings);
     result.findings.extend(dockle.findings);
 
+    result
+        .metadata
+        .adapters
+        .insert(String::from("gitleaks"), gitleaks.status);
+    result.metadata.warnings.extend(gitleaks.warnings);
+    result.findings.extend(gitleaks.findings);
+
     result.score_report =
         scoring::build_score_report_with_coverage(&result.findings, coverage_from_result(result));
 }
@@ -218,6 +262,8 @@ pub fn apply_external_adapter_update(result: &mut ScanResult, update: AdapterSca
 fn scan_external_adapters(
     services: Vec<ServiceSummary>,
     host_root: Option<PathBuf>,
+    compose_root: Option<PathBuf>,
+    loaded_files: Vec<PathBuf>,
     selection: AdapterSelection,
     timeout: Duration,
 ) -> AdapterScanUpdate {
@@ -232,6 +278,12 @@ fn scan_external_adapters(
     let lynis_handle = selection
         .is_enabled(ScanAdapter::Lynis)
         .then(|| thread::spawn(move || adapters::lynis::scan(host_root.as_deref())));
+    let gitleaks_handle = selection.is_enabled(ScanAdapter::Gitleaks).then(|| {
+        let loaded_files = loaded_files;
+        thread::spawn(move || {
+            adapters::gitleaks::scan(compose_root.as_deref(), &loaded_files, timeout)
+        })
+    });
 
     AdapterScanUpdate {
         trivy: trivy_handle.map_or_else(disabled_trivy_output, |handle| {
@@ -242,6 +294,9 @@ fn scan_external_adapters(
         }),
         dockle: dockle_handle.map_or_else(disabled_dockle_output, |handle| {
             handle.join().unwrap_or_else(|_| failed_dockle_output())
+        }),
+        gitleaks: gitleaks_handle.map_or_else(disabled_gitleaks_output, |handle| {
+            handle.join().unwrap_or_else(|_| failed_gitleaks_output())
         }),
     }
 }
@@ -286,6 +341,18 @@ fn seed_adapter_statuses(result: &mut ScanResult, selection: AdapterSelection) {
         .metadata
         .adapters
         .insert(String::from("lynis"), lynis_status);
+
+    let gitleaks_status = if !selection.is_enabled(ScanAdapter::Gitleaks) {
+        AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned())
+    } else if result.metadata.compose_root.is_some() {
+        AdapterStatus::Pending
+    } else {
+        AdapterStatus::Skipped(t!("adapter.reason.no_project_root").into_owned())
+    };
+    result
+        .metadata
+        .adapters
+        .insert(String::from("gitleaks"), gitleaks_status);
 }
 
 fn has_image_targets(services: &[ServiceSummary]) -> bool {
@@ -339,6 +406,22 @@ fn failed_dockle_output() -> adapters::dockle::DockleScanOutput {
 
 fn disabled_dockle_output() -> adapters::dockle::DockleScanOutput {
     adapters::dockle::DockleScanOutput {
+        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn failed_gitleaks_output() -> adapters::gitleaks::GitleaksScanOutput {
+    adapters::gitleaks::GitleaksScanOutput {
+        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Gitleaks")),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
+}
+
+fn disabled_gitleaks_output() -> adapters::gitleaks::GitleaksScanOutput {
+    adapters::gitleaks::GitleaksScanOutput {
         status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
         findings: Vec::new(),
         warnings: Vec::new(),
@@ -1042,10 +1125,13 @@ mod tests {
         let update = scan_external_adapters(
             Vec::new(),
             None,
+            None,
+            Vec::new(),
             AdapterSelection {
                 trivy: true,
                 dockle: false,
                 lynis: false,
+                gitleaks: false,
             },
             command::DEFAULT_ADAPTER_TIMEOUT,
         );
@@ -1056,7 +1142,11 @@ mod tests {
             update.dockle.status,
             AdapterStatus::Skipped(disabled.clone())
         );
-        assert_eq!(update.lynis.status, AdapterStatus::Skipped(disabled));
+        assert_eq!(
+            update.lynis.status,
+            AdapterStatus::Skipped(disabled.clone())
+        );
+        assert_eq!(update.gitleaks.status, AdapterStatus::Skipped(disabled));
     }
 
     #[test]
@@ -1246,6 +1336,7 @@ mod tests {
             image: Some(String::from("nginx:1.27.5")),
         });
         result.metadata.host_root = Some(PathBuf::from("/"));
+        result.metadata.compose_root = Some(PathBuf::from("/srv/demo"));
 
         seed_adapter_statuses(&mut result, AdapterSelection::all());
         apply_external_adapter_update(
@@ -1290,6 +1381,19 @@ mod tests {
                     )],
                     warnings: Vec::new(),
                 },
+                gitleaks: crate::adapters::gitleaks::GitleaksScanOutput {
+                    status: AdapterStatus::Available,
+                    findings: vec![test_finding(
+                        "gitleaks.project_secret_leak.scripts_bootstrap_sh",
+                        Axis::SensitiveData,
+                        Severity::High,
+                        Scope::Project,
+                        Source::Gitleaks,
+                        "scripts/bootstrap.sh",
+                        None,
+                    )],
+                    warnings: Vec::new(),
+                },
             },
         );
 
@@ -1325,6 +1429,11 @@ mod tests {
                 .iter()
                 .any(|finding| finding.scope == Scope::Image && finding.source == Source::Dockle)
         );
+        assert!(
+            result.findings.iter().any(
+                |finding| finding.scope == Scope::Project && finding.source == Source::Gitleaks
+            )
+        );
         assert_eq!(
             result.metadata.adapters.get("trivy"),
             Some(&AdapterStatus::Available)
@@ -1337,6 +1446,10 @@ mod tests {
             result.metadata.adapters.get("dockle"),
             Some(&AdapterStatus::Available)
         );
+        assert_eq!(
+            result.metadata.adapters.get("gitleaks"),
+            Some(&AdapterStatus::Available)
+        );
     }
 
     #[test]
@@ -1347,6 +1460,7 @@ mod tests {
             name: String::from("web"),
             image: Some(String::from("nginx:1.27.5")),
         });
+        result.metadata.compose_root = Some(PathBuf::from("/srv/demo"));
 
         seed_adapter_statuses(&mut result, AdapterSelection::all());
         apply_external_adapter_update(
@@ -1367,6 +1481,11 @@ mod tests {
                     findings: Vec::new(),
                     warnings: vec![String::from("dockle intentionally skipped")],
                 },
+                gitleaks: crate::adapters::gitleaks::GitleaksScanOutput {
+                    status: AdapterStatus::Failed(String::from("report parse failed")),
+                    findings: Vec::new(),
+                    warnings: vec![String::from("gitleaks JSON malformed")],
+                },
             },
         );
 
@@ -1381,6 +1500,10 @@ mod tests {
         assert_eq!(
             result.metadata.adapters.get("dockle"),
             Some(&AdapterStatus::Skipped(String::from("no image targets")))
+        );
+        assert_eq!(
+            result.metadata.adapters.get("gitleaks"),
+            Some(&AdapterStatus::Failed(String::from("report parse failed")))
         );
         assert!(
             result
@@ -1402,6 +1525,13 @@ mod tests {
                 .warnings
                 .iter()
                 .any(|warning| warning.contains("dockle intentionally skipped"))
+        );
+        assert!(
+            result
+                .metadata
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("gitleaks JSON malformed"))
         );
     }
 
@@ -1814,6 +1944,7 @@ mod tests {
                 trivy: true,
                 dockle: false,
                 lynis: false,
+                gitleaks: false,
             },
         );
 
@@ -1828,6 +1959,11 @@ mod tests {
         ));
         assert!(matches!(
             result.metadata.adapters.get("lynis"),
+            Some(AdapterStatus::Skipped(detail))
+                if detail == &t!("adapter.reason.disabled_by_selection", locale = "en").into_owned()
+        ));
+        assert!(matches!(
+            result.metadata.adapters.get("gitleaks"),
             Some(AdapterStatus::Skipped(detail))
                 if detail == &t!("adapter.reason.disabled_by_selection", locale = "en").into_owned()
         ));
@@ -1849,6 +1985,10 @@ mod tests {
         ));
         assert!(matches!(
             result.metadata.adapters.get("dockle"),
+            Some(AdapterStatus::Skipped(_))
+        ));
+        assert!(matches!(
+            result.metadata.adapters.get("gitleaks"),
             Some(AdapterStatus::Skipped(_))
         ));
     }

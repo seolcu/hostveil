@@ -77,7 +77,7 @@ app:
       Options:
         --compose PATH    override live discovery with a specific Compose file or directory
         --host-root PATH  override the default live host root (/) with a Linux root or snapshot
-        --adapters LIST   choose optional scanners: all, none, or comma-separated trivy,dockle,lynis
+        --adapters LIST   choose optional scanners: all, none, or comma-separated trivy,dockle,lynis,gitleaks
         --tool NAME       select a setup tool explicitly for hostveil setup (repeatable)
         --tools LIST      comma-separated setup tool list for unattended setup runs
         --auto-fix PATH   preview or apply automatic Compose-only fixes for a specific file or directory
@@ -313,6 +313,7 @@ app:
       trivy_repo: "Add the upstream Trivy APT repository"
       fail2ban_baseline: "Write a managed Fail2Ban sshd baseline and enable the service"
       dockle_package: "Install Dockle from the latest upstream Linux package"
+      gitleaks_binary: "Install Gitleaks from the latest upstream Linux tarball"
       manual_install: "Manual install required for %{tool}"
     tool:
       lynis:
@@ -324,6 +325,9 @@ app:
       dockle:
         name: "Dockle"
         prompt: "Dockle: image best-practice and CIS benchmark checks"
+      gitleaks:
+        name: "Gitleaks"
+        prompt: "Gitleaks: project secret leak scanning"
       fail2ban:
         name: "Fail2Ban"
         prompt: "Fail2Ban: basic intrusion-prevention for SSH"
@@ -530,6 +534,7 @@ source:
   trivy: "Trivy"
   lynis: "Lynis"
   dockle: "Dockle"
+  gitleaks: "Gitleaks"
 adapter:
   pending: "pending"
   loading: "loading"
@@ -539,6 +544,7 @@ adapter:
   failed: "failed: %{detail}"
   reason:
     no_image_targets: "no image targets were discovered"
+    no_project_root: "no project root is available for directory scanning"
     host_not_scanned: "host scanning was not requested"
     live_host_only: "a live host scan rooted at / is required"
     disabled_by_selection: "disabled by adapter selection"
@@ -566,6 +572,12 @@ finding:
       description: "%{image} triggered %{count} best-practice or hardening check(s) in Dockle."
       why: "Dockle findings often indicate image-layer hardening gaps that increase exploitability or weaken runtime isolation in self-hosted deployments."
       fix: "Review the Dockle checkpoint IDs, update the Dockerfile or base image accordingly, and rescan until high-impact findings are addressed."
+  gitleaks:
+    project_secret_leak:
+      title: "Project files appear to contain leaked secrets"
+      description: "Gitleaks reported %{count} potential secret leak(s) in %{path}."
+      why: "Secrets left in project-adjacent scripts, backup files, or notes can expose live credentials outside the Compose configuration paths that hostveil already scans natively."
+      fix: "Remove the plaintext secret material from the file, rotate any exposed credentials, and move long-lived secrets into a safer secret-management path before rescanning."
   updates:
     latest:
       title: "Image uses the latest tag"

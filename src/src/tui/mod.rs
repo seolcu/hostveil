@@ -520,7 +520,8 @@ impl AppState {
             Some(Source::NativeHost) => Some(Source::Trivy),
             Some(Source::Trivy) => Some(Source::Lynis),
             Some(Source::Lynis) => Some(Source::Dockle),
-            Some(Source::Dockle) => None,
+            Some(Source::Dockle) => Some(Source::Gitleaks),
+            Some(Source::Gitleaks) => None,
         };
         self.selected_index = 0;
         self.detail_scroll = 0;
@@ -604,6 +605,7 @@ impl AppState {
             "trivy" => Some(Source::Trivy),
             "lynis" => Some(Source::Lynis),
             "dockle" => Some(Source::Dockle),
+            "gitleaks" => Some(Source::Gitleaks),
             _ => None,
         }
     }
@@ -3986,6 +3988,7 @@ fn adapter_name_label(name: &str) -> String {
         "lynis" => source_label(Source::Lynis),
         "trivy" => source_label(Source::Trivy),
         "dockle" => source_label(Source::Dockle),
+        "gitleaks" => source_label(Source::Gitleaks),
         _ => name.to_owned(),
     }
 }
@@ -4204,6 +4207,7 @@ fn source_label(source: Source) -> String {
         Source::Trivy => t!("source.trivy").into_owned(),
         Source::Lynis => t!("source.lynis").into_owned(),
         Source::Dockle => t!("source.dockle").into_owned(),
+        Source::Gitleaks => t!("source.gitleaks").into_owned(),
     }
 }
 
@@ -4396,6 +4400,7 @@ mod tests {
                 adapters: BTreeMap::from([
                     (String::from("lynis"), AdapterStatus::Available),
                     (String::from("trivy"), AdapterStatus::Missing),
+                    (String::from("gitleaks"), AdapterStatus::Available),
                 ]),
             },
         }
@@ -4751,6 +4756,20 @@ mod tests {
     }
 
     #[test]
+    fn source_filter_cycle_includes_gitleaks() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        for _ in 0..6 {
+            state.cycle_source_filter();
+        }
+        assert_eq!(state.source_filter, Some(Source::Gitleaks));
+
+        state.cycle_source_filter();
+        assert_eq!(state.source_filter, None);
+    }
+
+    #[test]
     fn findings_controls_can_filter_by_severity() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -4883,6 +4902,7 @@ mod tests {
         assert!(content.contains("Adapters"));
         assert!(content.contains("Lynis: available"));
         assert!(content.contains("Trivy: missing"));
+        assert!(content.contains("Gitleaks: available"));
     }
 
     #[test]

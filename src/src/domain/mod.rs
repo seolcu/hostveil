@@ -82,6 +82,7 @@ pub enum Source {
     Trivy,
     Lynis,
     Dockle,
+    Gitleaks,
 }
 
 impl Source {
@@ -92,6 +93,7 @@ impl Source {
             Self::Trivy => "trivy",
             Self::Lynis => "lynis",
             Self::Dockle => "dockle",
+            Self::Gitleaks => "gitleaks",
         }
     }
 }

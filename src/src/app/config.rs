@@ -18,16 +18,18 @@ pub enum ScanAdapter {
     Trivy,
     Dockle,
     Lynis,
+    Gitleaks,
 }
 
 impl ScanAdapter {
-    pub const ALL: [Self; 3] = [Self::Trivy, Self::Dockle, Self::Lynis];
+    pub const ALL: [Self; 4] = [Self::Trivy, Self::Dockle, Self::Lynis, Self::Gitleaks];
 
     pub fn from_arg(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "trivy" => Some(Self::Trivy),
             "dockle" => Some(Self::Dockle),
             "lynis" => Some(Self::Lynis),
+            "gitleaks" => Some(Self::Gitleaks),
             _ => None,
         }
     }
@@ -37,6 +39,7 @@ impl ScanAdapter {
             Self::Trivy => "trivy",
             Self::Dockle => "dockle",
             Self::Lynis => "lynis",
+            Self::Gitleaks => "gitleaks",
         }
     }
 }
@@ -46,6 +49,7 @@ pub struct AdapterSelection {
     pub trivy: bool,
     pub dockle: bool,
     pub lynis: bool,
+    pub gitleaks: bool,
 }
 
 impl AdapterSelection {
@@ -54,6 +58,7 @@ impl AdapterSelection {
             trivy: true,
             dockle: true,
             lynis: true,
+            gitleaks: true,
         }
     }
 
@@ -62,6 +67,7 @@ impl AdapterSelection {
             trivy: false,
             dockle: false,
             lynis: false,
+            gitleaks: false,
         }
     }
 
@@ -70,6 +76,7 @@ impl AdapterSelection {
             ScanAdapter::Trivy => self.trivy,
             ScanAdapter::Dockle => self.dockle,
             ScanAdapter::Lynis => self.lynis,
+            ScanAdapter::Gitleaks => self.gitleaks,
         }
     }
 
@@ -78,6 +85,7 @@ impl AdapterSelection {
             ScanAdapter::Trivy => self.trivy = true,
             ScanAdapter::Dockle => self.dockle = true,
             ScanAdapter::Lynis => self.lynis = true,
+            ScanAdapter::Gitleaks => self.gitleaks = true,
         }
     }
 }
@@ -111,17 +119,25 @@ pub enum SetupTool {
     Lynis,
     Trivy,
     Dockle,
+    Gitleaks,
     Fail2Ban,
 }
 
 impl SetupTool {
-    pub const ALL: [Self; 4] = [Self::Lynis, Self::Trivy, Self::Dockle, Self::Fail2Ban];
+    pub const ALL: [Self; 5] = [
+        Self::Lynis,
+        Self::Trivy,
+        Self::Dockle,
+        Self::Gitleaks,
+        Self::Fail2Ban,
+    ];
 
     pub fn from_arg(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "lynis" => Some(Self::Lynis),
             "trivy" => Some(Self::Trivy),
             "dockle" => Some(Self::Dockle),
+            "gitleaks" => Some(Self::Gitleaks),
             "fail2ban" => Some(Self::Fail2Ban),
             _ => None,
         }
@@ -132,6 +148,7 @@ impl SetupTool {
             Self::Lynis => "lynis",
             Self::Trivy => "trivy",
             Self::Dockle => "dockle",
+            Self::Gitleaks => "gitleaks",
             Self::Fail2Ban => "fail2ban",
         }
     }
@@ -994,16 +1011,34 @@ mod tests {
         assert!(config.adapter_selection.trivy);
         assert!(config.adapter_selection.dockle);
         assert!(!config.adapter_selection.lynis);
+        assert!(!config.adapter_selection.gitleaks);
+    }
+
+    #[test]
+    fn parses_gitleaks_adapter_selection() {
+        let config = AppConfig::parse([
+            String::from("--adapters"),
+            String::from("trivy,gitleaks"),
+            String::from("--json"),
+        ])
+        .expect("config should parse");
+
+        assert!(config.adapter_selection.trivy);
+        assert!(!config.adapter_selection.dockle);
+        assert!(!config.adapter_selection.lynis);
+        assert!(config.adapter_selection.gitleaks);
     }
 
     #[test]
     fn adapter_selection_uses_env_fallback() {
-        let config = AppConfig::parse_with_adapter_env([String::from("--json")], Some("lynis"))
-            .expect("config should parse");
+        let config =
+            AppConfig::parse_with_adapter_env([String::from("--json")], Some("lynis,gitleaks"))
+                .expect("config should parse");
 
         assert!(!config.adapter_selection.trivy);
         assert!(!config.adapter_selection.dockle);
         assert!(config.adapter_selection.lynis);
+        assert!(config.adapter_selection.gitleaks);
     }
 
     #[test]
@@ -1017,6 +1052,7 @@ mod tests {
         assert!(config.adapter_selection.trivy);
         assert!(!config.adapter_selection.dockle);
         assert!(!config.adapter_selection.lynis);
+        assert!(!config.adapter_selection.gitleaks);
     }
 
     #[test]
