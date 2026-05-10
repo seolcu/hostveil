@@ -231,9 +231,9 @@ End-to-end remediation scenarios live in `tests/scenarios/<name>/`.
 Each scenario needs:
 - `docker-compose.yml` — the vulnerable input
 - `expected.yml` — the expected file after `--fix`
-- `expected-quick-fix.yml` (optional) — the expected file after `--quick-fix` when it differs from `--fix`
+- `expected-auto-fix.yml` (optional) — the expected file after `--auto-fix` when it differs from `--fix`
 
-Add a scenario when you introduce a new safe or guided Compose fix. Run the full suite with:
+Add a scenario when you introduce a new automatic or review-required Compose fix. Run the full suite with:
 
 ```sh
 ./scripts/verify-fixes.sh target/debug/hostveil
@@ -243,7 +243,7 @@ Add a scenario when you introduce a new safe or guided Compose fix. Run the full
 
 hostveil is in active early development. The implementation is planned in two phases:
 
-1. **Python CLI prototype** — completed reference for the Compose parser, core rules, scoring, and safe fix flows
+1. **Python CLI prototype** — completed reference for the Compose parser, core rules, scoring, and early Compose fix flows
 2. **Rust TUI** — active implementation of the real product
 
 ### Rust V1 Direction
@@ -252,24 +252,7 @@ hostveil is in active early development. The implementation is planned in two ph
 - **Integration-first** — hostveil should combine native Compose and host checks with optional scanner results instead of reimplementing every existing tool
 - **TUI-first with JSON export** — the main experience is interactive, but a small headless JSON path exists for automation and regression tests
 - **Host checks are first-class** — SSH and other host-hardening signals belong in the same product, not in a separate side tool
-- **Safe remediation stays narrow in v1** — automatic writes remain limited to Compose-focused changes with clear review boundaries
-
-### Pre-Presentation Design Freeze
-
-The May 13 capstone design review is treated as an architecture freeze point.
-
-- Before the presentation, feature work is paused unless it is required to resolve a design mismatch, a release/install reliability problem, or a gap between the accepted design and the shipped implementation.
-- The pre-presentation freeze focuses on locking the unified scan result contract, the Compose-only remediation boundary, and the wrapper-install versus package-install lifecycle split.
-- Presentation-facing architecture notes should live in ADRs, milestone issues, and PR descriptions rather than in additional user-facing documents.
-
-### Design Review Checklist
-
-Use the accepted ADRs below as the presentation baseline before opening post-review feature work:
-
-- ADR 0006: Core Scan Result and Adapter Contract
-- ADR 0007: Compose-Only Remediation Boundary
-- ADR 0008: Distribution and Install Modes
-- GitHub milestone: `Design Freeze - 2026-05-13`
+- **Compose remediation stays narrow in v1** — automatic writes remain limited to Compose-focused changes with clear review boundaries
 
 ### Current Implementation Status
 
@@ -288,7 +271,7 @@ Use the accepted ADRs below as the presentation baseline before opening post-rev
 - Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
 - Per-adapter background progress surfaced in the TUI while external coverage is still loading
 - Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
-- Initial Rust Compose remediation flow added for previewable `--quick-fix` and `--fix` operations with backup-safe writes
+- Initial Rust Compose remediation flow added for previewable `--auto-fix` and `--fix` operations with backup-safe writes
 - No-arg live scan now defaults to host scanning plus Docker-based Compose auto-discovery, with current-directory Compose fallback
 - GitHub Releases now publish tarballs, `.deb` packages, and Rocky 9-compatible `.rpm` packages for both `x86_64` and `aarch64`
 - Service-aware Compose checks expanded to Traefik, Portainer, Home Assistant, Pi-hole, Grafana, Caddy, GitLab, Uptime Kuma, PostgreSQL, MySQL, Redis, Duplicati, Restic, Borg, and Kopia in addition to Vaultwarden, Jellyfin, Gitea, Immich, and Nextcloud

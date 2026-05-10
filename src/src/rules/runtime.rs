@@ -52,7 +52,7 @@ fn scan_seccomp(service: &ComposeService) -> Vec<Finding> {
                 String::from("security_opt"),
                 String::from("seccomp:unconfined"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -91,7 +91,7 @@ fn scan_capabilities(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.runtime.dangerous_capabilities.fix").into_owned(),
             },
             BTreeMap::from([(String::from("capabilities"), dangerous.join(", "))]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -124,7 +124,7 @@ fn scan_no_new_privileges(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.runtime.no_new_privileges_disabled.fix").into_owned(),
             },
             BTreeMap::new(),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 

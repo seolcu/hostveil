@@ -153,12 +153,53 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
         ));
     }
 
+    if config.quick_fix_alias_used {
+        eprintln!("{}", t!("app.warning.quick_fix_deprecated").into_owned());
+    }
+
     if let Some(mode) = config.fix_mode {
         let compose_path = config.fix_target_path.as_ref().ok_or_else(|| {
             AppError::InvalidArgumentCombination(crate::i18n::tr_fix_requires_target())
         })?;
 
-        let preview_plan = fix::preview(compose_path, mode, None)?;
+        let preview_plan = match fix::preview(compose_path, mode, None) {
+            Ok(plan) => plan,
+            Err(FixError::ReviewRequired(_))
+                if mode == crate::fix::FixMode::Fix && config.assume_yes =>
+            {
+                return Err(AppError::InvalidArgumentCombination(
+                    t!("app.validation.review_required_for_fix_yes").into_owned(),
+                ));
+            }
+            Err(FixError::ReviewRequired(_)) if mode == crate::fix::FixMode::Fix => {
+                if !is_interactive_terminal() {
+                    return Err(AppError::FixRequiresTerminal);
+                }
+                let Some(result) = tui::run_interactive_fix_flow(
+                    compose_path,
+                    mode,
+                    None,
+                    !config.preview_changes,
+                )?
+                else {
+                    print!("{}", t!("app.fix.cancelled").into_owned());
+                    return Ok(());
+                };
+
+                if config.preview_changes {
+                    print_fix_review(&result.plan);
+                    println!();
+                    print!("{}", t!("app.fix.preview_only").into_owned());
+                    return Ok(());
+                }
+
+                let applied_plan =
+                    fix::apply_with_resolutions(compose_path, mode, None, &result.resolutions)?;
+                print_fix_result(&applied_plan);
+                return Ok(());
+            }
+            Err(error) => return Err(error.into()),
+        };
         if config.preview_changes {
             print_fix_review(&preview_plan);
             println!();
@@ -234,12 +275,24 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                     } => {
                         let filter = finding_id.map(|id| vec![id]);
                         let filter_slice = filter.as_deref();
-                        let preview_plan =
-                            fix::preview(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
-                        if preview_plan.changed() {
-                            if tui::run_fix_review(&preview_plan)? {
-                                fix::apply(&compose_file, crate::fix::FixMode::Fix, filter_slice)?;
-                            }
+                        let Some(result) = tui::run_interactive_fix_flow(
+                            &compose_file,
+                            crate::fix::FixMode::Fix,
+                            filter_slice,
+                            true,
+                        )?
+                        else {
+                            eprintln!("{}", t!("app.fix.cancelled").into_owned());
+                            continue;
+                        };
+
+                        if result.plan.changed() {
+                            fix::apply_with_resolutions(
+                                &compose_file,
+                                crate::fix::FixMode::Fix,
+                                filter_slice,
+                                &result.resolutions,
+                            )?;
                         } else {
                             eprintln!("{}", t!("app.fix.none").into_owned());
                         }
@@ -336,8 +389,8 @@ fn confirm_fix(
     mode: crate::fix::FixMode,
 ) -> Result<bool, AppError> {
     let prompt = match mode {
-        crate::fix::FixMode::QuickFix => t!(
-            "app.fix.confirm_quick",
+        crate::fix::FixMode::AutoFix => t!(
+            "app.fix.confirm_auto",
             path = compose_path.display().to_string()
         )
         .into_owned(),
@@ -369,16 +422,16 @@ fn print_fix_review(plan: &fix::FixPlan) {
         .into_owned()
     );
 
-    if !plan.safe_applied.is_empty() {
+    if !plan.auto_applied.is_empty() {
         println!(
             "{}",
-            t!("app.fix.safe_plan", count = plan.safe_applied.len()).into_owned()
+            t!("app.fix.auto_plan", count = plan.auto_applied.len()).into_owned()
         );
     }
-    if !plan.guided_applied.is_empty() {
+    if !plan.review_applied.is_empty() {
         println!(
             "{}",
-            t!("app.fix.guided_plan", count = plan.guided_applied.len()).into_owned()
+            t!("app.fix.review_plan", count = plan.review_applied.len()).into_owned()
         );
     }
 
@@ -399,13 +452,13 @@ fn print_fix_result(plan: &fix::FixPlan) {
         );
     }
 
-    for applied in &plan.safe_applied {
+    for applied in &plan.auto_applied {
         println!(
             "{}",
             t!("app.fix.applied", summary = applied.summary.as_str()).into_owned()
         );
     }
-    for applied in &plan.guided_applied {
+    for applied in &plan.review_applied {
         println!(
             "{}",
             t!("app.fix.applied", summary = applied.summary.as_str()).into_owned()
@@ -461,7 +514,7 @@ mod tests {
         );
 
         let error = run([String::from("--fix"), path.display().to_string()])
-            .expect_err("non-interactive guided fix should require terminal review");
+            .expect_err("non-interactive fix should require terminal review");
 
         assert!(matches!(error, AppError::FixRequiresTerminal));
 
@@ -469,7 +522,7 @@ mod tests {
     }
 
     #[test]
-    fn fix_with_yes_applies_guided_changes_without_terminal() {
+    fn auto_fix_with_yes_applies_auto_changes_without_terminal() {
         let root = temp_compose_dir("fix-yes");
         let path = root.join("docker-compose.yml");
         write_compose(
@@ -485,11 +538,11 @@ mod tests {
         );
 
         run([
-            String::from("--fix"),
+            String::from("--auto-fix"),
             path.display().to_string(),
             String::from("--yes"),
         ])
-        .expect("guided fix should apply without interactive review when --yes is set");
+        .expect("auto fix should apply without interactive review when --yes is set");
 
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
         let backup_exists = fs::read_dir(&root)
@@ -504,6 +557,27 @@ mod tests {
         assert!(backup_exists, "timestamped backup should exist");
         assert!(updated.contains("NET_BIND_SERVICE"));
         assert!(!updated.contains("privileged: true"));
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn fix_with_yes_rejects_review_required_changes() {
+        let root = temp_compose_dir("fix-yes-review");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!("services:\n", "  postgres:\n", "    image: postgres\n"),
+        );
+
+        let error = run([
+            String::from("--fix"),
+            path.display().to_string(),
+            String::from("--yes"),
+        ])
+        .expect_err("review-required fix should fail with --yes");
+
+        assert!(matches!(error, AppError::InvalidArgumentCombination(_)));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

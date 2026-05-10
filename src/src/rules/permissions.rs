@@ -32,7 +32,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                 },
                 BTreeMap::new(),
                 if supports_guided_privileged_fix(service) {
-                    RemediationKind::Guided
+                    RemediationKind::Auto
                 } else {
                     RemediationKind::None
                 },
@@ -56,7 +56,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                     how_to_fix: t!("finding.permissions.implicit_root.fix").into_owned(),
                 },
                 BTreeMap::new(),
-                RemediationKind::Guided,
+                RemediationKind::Auto,
             )),
             Some(user) if ROOT_USERS.contains(&user.trim().to_lowercase().as_str()) => {
                 findings.push(service_finding(
@@ -126,7 +126,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                     how_to_fix: t!("finding.permissions.sensitive_mount.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), sensitive_path.to_owned())]),
-                RemediationKind::Safe,
+                RemediationKind::Auto,
             ));
         }
     }
@@ -286,7 +286,7 @@ mod tests {
             .find(|finding| finding.id == "permissions.privileged")
             .expect("privileged finding should exist");
 
-        assert_eq!(finding.remediation, crate::domain::RemediationKind::Guided);
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Auto);
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }

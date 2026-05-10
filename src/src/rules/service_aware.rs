@@ -344,7 +344,7 @@ fn scan_gitea_risk(service: &ComposeService) -> Vec<Finding> {
         ],
     );
     if !security_keys.is_empty() {
-        findings.push(service_finding(
+        findings.push(service_finding_with_remediation(
             "service.gitea.inline_security_secrets",
             Axis::SensitiveData,
             Severity::High,
@@ -361,6 +361,7 @@ fn scan_gitea_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.gitea.inline_security_secrets.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variables"), security_keys.join(","))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -504,7 +505,7 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
                     how_to_fix: t!("finding.pihole.weak_password.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
-                RemediationKind::Safe,
+                RemediationKind::Review,
             ));
         }
     } else {
@@ -524,7 +525,7 @@ fn scan_pihole_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.pihole.no_password.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("WEBPASSWORD"))]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -879,8 +880,20 @@ fn writable_media_mount(service: &ComposeService) -> Option<&str> {
 
 fn inline_env_keys(service: &ComposeService, keys: &[&str]) -> Vec<String> {
     keys.iter()
-        .filter_map(|key| env_value(service, key).map(|_| (*key).to_owned()))
+        .filter_map(|key| {
+            let value = env_value(service, key)?;
+            if is_interpolated_env_reference(value) {
+                None
+            } else {
+                Some((*key).to_owned())
+            }
+        })
         .collect()
+}
+
+fn is_interpolated_env_reference(value: &str) -> bool {
+    let trimmed = value.trim();
+    trimmed.starts_with("${") && trimmed.ends_with('}')
 }
 
 fn contains_wildcard_trusted_domain(value: &str) -> bool {
@@ -1030,7 +1043,7 @@ fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GF_AUTH_DISABLE_LOGIN_FORM"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -1054,7 +1067,7 @@ fn scan_grafana_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GF_AUTH_ANONYMOUS_ENABLED"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -1143,7 +1156,7 @@ fn scan_authentik_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.authentik.debug_enabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("AUTHENTIK_DEBUG"))]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1199,7 +1212,7 @@ fn scan_paperless_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("PAPERLESS_FORCE_LOGIN"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -1232,7 +1245,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.postgres.password_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("POSTGRES_PASSWORD"))]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1282,7 +1295,7 @@ fn scan_postgres_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("POSTGRES_HOST_AUTH_METHOD"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -1318,7 +1331,7 @@ fn scan_mysql_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("MYSQL_ROOT_PASSWORD"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1382,7 +1395,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
                 how_to_fix: t!("finding.redis.password_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("variable"), String::from("REDIS_PASSWORD"))]),
-            RemediationKind::Safe,
+            RemediationKind::Review,
         ));
     }
 
@@ -1432,7 +1445,7 @@ fn scan_redis_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("REDIS_PROTECTED_MODE"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1495,7 +1508,7 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GITLAB_ROOT_PASSWORD"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1522,7 +1535,7 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1546,7 +1559,7 @@ fn scan_gitlab_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("GITLAB_SIGNUP_ENABLED"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 
@@ -1604,7 +1617,7 @@ fn scan_uptime_kuma_risk(service: &ComposeService) -> Vec<Finding> {
                 String::from("variable"),
                 String::from("UPTIME_KUMA_DISABLE_AUTH"),
             )]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
     }
 

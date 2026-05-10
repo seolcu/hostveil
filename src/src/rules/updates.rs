@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::compose::ComposeProject;
 use crate::domain::{Axis, Finding, RemediationKind, Severity};
 
-use super::{ServiceFindingText, service_finding, service_finding_with_remediation};
+use super::{ServiceFindingText, service_finding_with_remediation};
 
 pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -36,12 +36,12 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                     (String::from("repository"), repository.clone()),
                 ]),
                 if is_safe_nginx_repository(&repository) {
-                    RemediationKind::Safe
+                    RemediationKind::Auto
                 } else {
                     RemediationKind::None
                 },
             )),
-            Some("latest") => findings.push(service_finding(
+            Some("latest") => findings.push(service_finding_with_remediation(
                 "updates.latest_tag",
                 Axis::UpdateSupplyChainRisk,
                 Severity::High,
@@ -62,8 +62,13 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                     (String::from("repository"), repository.clone()),
                     (String::from("tag"), String::from("latest")),
                 ]),
+                if is_safe_nginx_repository(&repository) {
+                    RemediationKind::Auto
+                } else {
+                    RemediationKind::None
+                },
             )),
-            Some(tag) if is_major_only_tag(tag) => findings.push(service_finding(
+            Some(tag) if is_major_only_tag(tag) => findings.push(service_finding_with_remediation(
                 "updates.major_only_tag",
                 Axis::UpdateSupplyChainRisk,
                 Severity::Low,
@@ -84,6 +89,11 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                     (String::from("repository"), repository.clone()),
                     (String::from("tag"), tag.to_owned()),
                 ]),
+                if is_safe_nginx_repository(&repository) {
+                    RemediationKind::Auto
+                } else {
+                    RemediationKind::None
+                },
             )),
             Some(_) => {}
         }
@@ -193,6 +203,6 @@ mod tests {
             .find(|finding| finding.related_service.as_deref() == Some("no_tag"))
             .expect("missing tag finding should exist");
 
-        assert_eq!(finding.remediation, crate::domain::RemediationKind::Safe);
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Auto);
     }
 }

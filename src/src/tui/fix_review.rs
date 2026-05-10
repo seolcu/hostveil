@@ -1,4 +1,6 @@
 use std::io;
+use std::io::Read;
+use std::path::Path;
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::execute;
@@ -13,7 +15,13 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use rust_i18n::t;
 
-use crate::fix::FixPlan;
+use crate::fix::{self, FixMode, FixPlan, FixResolutionMap, ReviewRequest, ReviewResolution};
+
+#[derive(Debug, Clone)]
+pub struct InteractiveFixResult {
+    pub plan: FixPlan,
+    pub resolutions: FixResolutionMap,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FixReviewState {
@@ -25,6 +33,50 @@ enum ReviewAction {
     Continue,
     Cancel,
     Accept,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChoicePromptState {
+    selected: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SecretPromptState {
+    input: String,
+    masked: bool,
+}
+
+pub fn run_interactive_fix_flow(
+    compose_path: &Path,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+    confirm_apply: bool,
+) -> Result<Option<InteractiveFixResult>, fix::FixError> {
+    let mut resolutions = FixResolutionMap::new();
+
+    loop {
+        match fix::preview_with_resolutions(compose_path, mode, only_findings, &resolutions) {
+            Ok(plan) => {
+                if confirm_apply && plan.changed() && !run_fix_review(&plan)? {
+                    return Ok(None);
+                }
+                return Ok(Some(InteractiveFixResult { plan, resolutions }));
+            }
+            Err(fix::FixError::ReviewRequired(requests)) => {
+                for request in requests {
+                    let resolution = match &request {
+                        ReviewRequest::Choice { .. } => run_choice_prompt(&request)?,
+                        ReviewRequest::SecretInput { .. } => run_secret_prompt(&request)?,
+                    };
+                    let Some(resolution) = resolution else {
+                        return Ok(None);
+                    };
+                    resolutions.insert(request.finding_id().to_owned(), resolution);
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 pub fn run_fix_review(plan: &FixPlan) -> io::Result<bool> {
@@ -67,6 +119,117 @@ fn run_event_loop(
     }
 }
 
+fn run_choice_prompt(request: &ReviewRequest) -> io::Result<Option<ReviewResolution>> {
+    let ReviewRequest::Choice {
+        title,
+        description,
+        options,
+        ..
+    } = request
+    else {
+        return Ok(None);
+    };
+
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    let mut state = ChoicePromptState { selected: 0 };
+
+    let result = loop {
+        terminal.draw(|frame| render_choice_prompt(frame, title, description, options, &state))?;
+        match event::read()? {
+            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => break Ok(None),
+                KeyCode::Up | KeyCode::Char('k') => {
+                    state.selected = state.selected.saturating_sub(1);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    state.selected = (state.selected + 1).min(options.len().saturating_sub(1));
+                }
+                KeyCode::Enter => {
+                    break Ok(Some(ReviewResolution::Choice(
+                        options[state.selected].key.clone(),
+                    )));
+                }
+                _ => {}
+            },
+            Event::Resize(_, _) => {}
+            _ => {}
+        }
+    };
+
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
+    result
+}
+
+fn run_secret_prompt(request: &ReviewRequest) -> io::Result<Option<ReviewResolution>> {
+    let ReviewRequest::SecretInput {
+        title,
+        description,
+        suggested_value,
+        ..
+    } = request
+    else {
+        return Ok(None);
+    };
+
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    let mut state = SecretPromptState {
+        input: suggested_value.clone(),
+        masked: true,
+    };
+
+    let result = loop {
+        terminal.draw(|frame| render_secret_prompt(frame, title, description, &state))?;
+        match event::read()? {
+            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => break Ok(None),
+                KeyCode::Backspace => {
+                    state.input.pop();
+                }
+                KeyCode::Tab => {
+                    state.masked = !state.masked;
+                }
+                KeyCode::Enter if !state.input.trim().is_empty() => {
+                    break Ok(Some(ReviewResolution::SecretValue(state.input.clone())));
+                }
+                KeyCode::Char('r')
+                    if key
+                        .modifiers
+                        .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                {
+                    state.input = generate_secret_value();
+                }
+                KeyCode::Char(c)
+                    if !key
+                        .modifiers
+                        .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                {
+                    state.input.push(c);
+                }
+                _ => {}
+            },
+            Event::Resize(_, _) => {}
+            _ => {}
+        }
+    };
+
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
+    result
+}
+
 fn apply_key_input(state: &mut FixReviewState, code: KeyCode) -> ReviewAction {
     match code {
         KeyCode::Char('q') | KeyCode::Esc => ReviewAction::Cancel,
@@ -98,6 +261,24 @@ fn clamp_scroll(scroll: u16, diff_lines: usize, diff_height: u16) -> u16 {
     scroll.min(max_scroll)
 }
 
+fn generate_secret_value() -> String {
+    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+    const SECRET_LENGTH: usize = 24;
+
+    let mut bytes = [0_u8; SECRET_LENGTH];
+    if std::fs::File::open("/dev/urandom")
+        .and_then(|mut file| file.read_exact(&mut bytes))
+        .is_err()
+    {
+        bytes.copy_from_slice(b"hostveil-review-secret!!");
+    }
+
+    bytes
+        .iter()
+        .map(|byte| ALPHABET[*byte as usize % ALPHABET.len()] as char)
+        .collect()
+}
+
 fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewState) {
     let diff_lines = plan.diff_preview.lines().count();
 
@@ -111,18 +292,18 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
         Span::raw(plan.compose_file.display().to_string()),
     ]));
 
-    if !plan.safe_applied.is_empty() {
+    if !plan.auto_applied.is_empty() {
         summary.push(Line::raw(""));
         summary.push(Line::from(vec![
             Span::styled(
-                format!("[{}] ", t!("remediation.safe").into_owned()),
+                format!("[{}] ", t!("remediation.auto").into_owned()),
                 Style::default()
                     .fg(Color::Green)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::raw(t!("app.fix.safe_plan", count = plan.safe_applied.len()).into_owned()),
+            Span::raw(t!("app.fix.auto_plan", count = plan.auto_applied.len()).into_owned()),
         ]));
-        for proposal in &plan.safe_applied {
+        for proposal in &plan.auto_applied {
             summary.push(Line::from(vec![
                 Span::raw("  • "),
                 Span::styled(
@@ -135,18 +316,18 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
         }
     }
 
-    if !plan.guided_applied.is_empty() {
+    if !plan.review_applied.is_empty() {
         summary.push(Line::raw(""));
         summary.push(Line::from(vec![
             Span::styled(
-                format!("[{}] ", t!("remediation.guided").into_owned()),
+                format!("[{}] ", t!("remediation.review").into_owned()),
                 Style::default()
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::raw(t!("app.fix.guided_plan", count = plan.guided_applied.len()).into_owned()),
+            Span::raw(t!("app.fix.review_plan", count = plan.review_applied.len()).into_owned()),
         ]));
-        for proposal in &plan.guided_applied {
+        for proposal in &plan.review_applied {
             summary.push(Line::from(vec![
                 Span::raw("  • "),
                 Span::styled(
@@ -225,13 +406,144 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
     frame.render_widget(hints_widget, chunks[2]);
 }
 
+fn render_choice_prompt(
+    frame: &mut ratatui::Frame<'_>,
+    title: &str,
+    description: &str,
+    options: &[crate::fix::ReviewChoiceOption],
+    state: &ChoicePromptState,
+) {
+    let area = frame.area();
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5),
+            Constraint::Min(8),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new(Text::from(vec![
+        Line::styled(
+            title.to_owned(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
+        Line::raw(""),
+        Line::raw(description.to_owned()),
+    ]))
+    .wrap(Wrap { trim: true })
+    .block(
+        Block::default()
+            .title(t!("app.panel.fix_review").into_owned())
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(header, chunks[0]);
+
+    let mut lines = Vec::new();
+    for (index, option) in options.iter().enumerate() {
+        let selected = index == state.selected;
+        let style = if selected {
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+        lines.push(Line::styled(format!("> {}", option.label), style));
+        lines.push(Line::raw(format!("  {}", option.description)));
+        lines.push(Line::raw(""));
+    }
+
+    let options_widget = Paragraph::new(Text::from(lines))
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .title(t!("app.fix.review_options").into_owned())
+                .borders(Borders::ALL),
+        );
+    frame.render_widget(options_widget, chunks[1]);
+
+    let hints = Paragraph::new(Text::from(vec![
+        Line::raw(t!("app.hint.review_choice_move").into_owned()),
+        Line::raw(t!("app.hint.review_choice_accept").into_owned()),
+        Line::raw(t!("app.hint.review_choice_cancel").into_owned()),
+    ]))
+    .wrap(Wrap { trim: true })
+    .block(Block::default().borders(Borders::ALL));
+    frame.render_widget(hints, chunks[2]);
+}
+
+fn render_secret_prompt(
+    frame: &mut ratatui::Frame<'_>,
+    title: &str,
+    description: &str,
+    state: &SecretPromptState,
+) {
+    let area = frame.area();
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(4),
+        ])
+        .split(area);
+
+    let header = Paragraph::new(Text::from(vec![
+        Line::styled(
+            title.to_owned(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
+        Line::raw(""),
+        Line::raw(description.to_owned()),
+    ]))
+    .wrap(Wrap { trim: true })
+    .block(
+        Block::default()
+            .title(t!("app.panel.fix_review").into_owned())
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(header, chunks[0]);
+
+    let visible_value = if state.masked {
+        "*".repeat(state.input.chars().count())
+    } else {
+        state.input.clone()
+    };
+    let input_widget = Paragraph::new(Text::from(vec![
+        Line::styled(visible_value, Style::default().fg(Color::Yellow)),
+        Line::raw(""),
+        Line::raw(t!("app.fix.review_secret_mask_toggle").into_owned()),
+    ]))
+    .wrap(Wrap { trim: false })
+    .block(
+        Block::default()
+            .title(t!("app.fix.review_secret_value").into_owned())
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(input_widget, chunks[1]);
+
+    let hints = Paragraph::new(Text::from(vec![
+        Line::raw(t!("app.hint.review_secret_accept").into_owned()),
+        Line::raw(t!("app.hint.review_secret_regenerate").into_owned()),
+        Line::raw(t!("app.hint.review_secret_cancel").into_owned()),
+    ]))
+    .wrap(Wrap { trim: true })
+    .block(Block::default().borders(Borders::ALL));
+    frame.render_widget(hints, chunks[2]);
+}
+
 #[cfg(test)]
 mod tests {
     use crossterm::event::KeyCode;
     use ratatui::backend::Backend;
 
-    use super::{FixReviewState, ReviewAction, apply_key_input, clamp_scroll, render};
-    use crate::fix::FixPlan;
+    use super::{
+        render_choice_prompt, render_secret_prompt, ChoicePromptState, FixReviewState,
+        ReviewAction, SecretPromptState, apply_key_input, clamp_scroll, render,
+    };
+    use crate::fix::{FixPlan, ReviewChoiceOption};
 
     #[test]
     fn apply_key_input_handles_accept_and_cancel_shortcuts() {
@@ -308,27 +620,29 @@ mod tests {
     use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
-    fn sample_plan(safe_count: usize, guided_count: usize) -> FixPlan {
-        let safe_applied: Vec<_> = (0..safe_count)
+    fn sample_plan(auto_count: usize, review_count: usize) -> FixPlan {
+        let auto_applied: Vec<_> = (0..auto_count)
             .map(|i| FixProposal {
                 service: format!("svc-{i}"),
-                summary: format!("safe fix {i}"),
+                summary: format!("auto fix {i}"),
+                remediation: crate::domain::RemediationKind::Auto,
             })
             .collect();
-        let guided_applied: Vec<_> = (0..guided_count)
+        let review_applied: Vec<_> = (0..review_count)
             .map(|i| FixProposal {
                 service: format!("svc-{i}"),
-                summary: format!("guided fix {i}"),
+                summary: format!("review fix {i}"),
+                remediation: crate::domain::RemediationKind::Review,
             })
             .collect();
         FixPlan {
             compose_file: PathBuf::from("/srv/demo/docker-compose.yml"),
-            diff_preview: if safe_count == 0 && guided_count == 0 {
+            diff_preview: if auto_count == 0 && review_count == 0 {
                 String::new()
             } else {
                 format!(
                     "--- /srv/demo/docker-compose.yml\n+++ /srv/demo/docker-compose.yml\n@@ -1,3 +1,5 @@\n{}\n  web:\n    image: nginx:stable\n",
-                    if safe_count > 0 {
+                    if auto_count > 0 {
                         "+    ports:\n+      - 127.0.0.1:8080:80"
                     } else {
                         ""
@@ -337,8 +651,8 @@ mod tests {
             },
             updated_text: String::new(),
             backup_path: None,
-            safe_applied,
-            guided_applied,
+            auto_applied,
+            review_applied,
         }
     }
 
@@ -356,7 +670,7 @@ mod tests {
     }
 
     #[test]
-    fn renders_safe_and_guided_summary() {
+    fn renders_auto_and_review_summary() {
         let plan = sample_plan(1, 1);
         let mut state = FixReviewState { scroll: 0 };
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
@@ -367,12 +681,12 @@ mod tests {
 
         let content = buffer_to_string(terminal.backend());
         assert!(
-            content.contains("safe fix 0"),
-            "safe proposal should be visible"
+            content.contains("auto fix 0"),
+            "auto proposal should be visible"
         );
         assert!(
-            content.contains("guided fix 0"),
-            "guided proposal should be visible"
+            content.contains("review fix 0"),
+            "review proposal should be visible"
         );
         assert!(
             content.contains("/srv/demo/docker-compose.yml"),
@@ -449,5 +763,155 @@ mod tests {
 
         let content = buffer_to_string(terminal.backend());
         assert!(content.contains("/srv/demo/docker-compose.yml"));
+    }
+
+    fn find_cell_with_symbol(backend: &TestBackend, symbol: &str) -> Option<ratatui::buffer::Cell> {
+        let area = backend.size().expect("backend should have a size");
+        let buffer = backend.buffer();
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let cell = &buffer[(x, y)];
+                if cell.symbol() == symbol {
+                    return Some(cell.clone());
+                }
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn renders_choice_prompt_with_highlighted_option() {
+        let options = vec![
+            ReviewChoiceOption {
+                key: String::from("opt-a"),
+                label: String::from("Option A"),
+                description: String::from("First option"),
+            },
+            ReviewChoiceOption {
+                key: String::from("opt-b"),
+                label: String::from("Option B"),
+                description: String::from("Second option"),
+            },
+        ];
+        let state = ChoicePromptState { selected: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_choice_prompt(
+                    frame,
+                    "Choose a review path",
+                    "Select how to proceed.",
+                    &options,
+                    &state,
+                )
+            })
+            .expect("choice prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Choose a review path"),
+            "title should be visible"
+        );
+        assert!(
+            content.contains("Select how to proceed."),
+            "description should be visible"
+        );
+        assert!(
+            content.contains("Option A"),
+            "option label should be visible"
+        );
+        assert!(
+            content.contains("First option"),
+            "option description should be visible"
+        );
+
+        // The selected option row starts with "> Option A" and should be highlighted
+        let cell = find_cell_with_symbol(terminal.backend(), ">")
+            .expect("> symbol should be present for selected option");
+        assert_eq!(
+            cell.style().fg,
+            Some(ratatui::style::Color::Black),
+            "highlighted option should have black foreground"
+        );
+        assert_eq!(
+            cell.style().bg,
+            Some(ratatui::style::Color::Cyan),
+            "highlighted option should have cyan background"
+        );
+        assert!(
+            cell.style()
+                .add_modifier
+                .contains(ratatui::style::Modifier::BOLD),
+            "highlighted option should be bold"
+        );
+    }
+
+    #[test]
+    fn renders_secret_prompt_with_masked_value() {
+        let state = SecretPromptState {
+            input: String::from("secret123"),
+            masked: true,
+        };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_secret_prompt(
+                    frame,
+                    "Provide a secret value",
+                    "Enter a secure value.",
+                    &state,
+                )
+            })
+            .expect("secret prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Provide a secret value"),
+            "title should be visible"
+        );
+        assert!(
+            content.contains("Enter a secure value."),
+            "description should be visible"
+        );
+        assert!(
+            content.contains("*********"),
+            "masked value should show asterisks"
+        );
+        assert!(
+            !content.contains("secret123"),
+            "raw secret should not be visible when masked"
+        );
+    }
+
+    #[test]
+    fn renders_secret_prompt_with_unmasked_value() {
+        let state = SecretPromptState {
+            input: String::from("visible-value"),
+            masked: false,
+        };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_secret_prompt(
+                    frame,
+                    "Provide a secret value",
+                    "Enter a secure value.",
+                    &state,
+                )
+            })
+            .expect("secret prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("visible-value"),
+            "unmasked value should be visible"
+        );
+        assert!(
+            !content.contains("*************"),
+            "asterisks should not appear when unmasked"
+        );
     }
 }
