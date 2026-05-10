@@ -539,8 +539,11 @@ mod tests {
     use crossterm::event::KeyCode;
     use ratatui::backend::Backend;
 
-    use super::{FixReviewState, ReviewAction, apply_key_input, clamp_scroll, render};
-    use crate::fix::FixPlan;
+    use super::{
+        render_choice_prompt, render_secret_prompt, ChoicePromptState, FixReviewState,
+        ReviewAction, SecretPromptState, apply_key_input, clamp_scroll, render,
+    };
+    use crate::fix::{FixPlan, ReviewChoiceOption};
 
     #[test]
     fn apply_key_input_handles_accept_and_cancel_shortcuts() {
@@ -760,5 +763,155 @@ mod tests {
 
         let content = buffer_to_string(terminal.backend());
         assert!(content.contains("/srv/demo/docker-compose.yml"));
+    }
+
+    fn find_cell_with_symbol(backend: &TestBackend, symbol: &str) -> Option<ratatui::buffer::Cell> {
+        let area = backend.size().expect("backend should have a size");
+        let buffer = backend.buffer();
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let cell = &buffer[(x, y)];
+                if cell.symbol() == symbol {
+                    return Some(cell.clone());
+                }
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn renders_choice_prompt_with_highlighted_option() {
+        let options = vec![
+            ReviewChoiceOption {
+                key: String::from("opt-a"),
+                label: String::from("Option A"),
+                description: String::from("First option"),
+            },
+            ReviewChoiceOption {
+                key: String::from("opt-b"),
+                label: String::from("Option B"),
+                description: String::from("Second option"),
+            },
+        ];
+        let state = ChoicePromptState { selected: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_choice_prompt(
+                    frame,
+                    "Choose a review path",
+                    "Select how to proceed.",
+                    &options,
+                    &state,
+                )
+            })
+            .expect("choice prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Choose a review path"),
+            "title should be visible"
+        );
+        assert!(
+            content.contains("Select how to proceed."),
+            "description should be visible"
+        );
+        assert!(
+            content.contains("Option A"),
+            "option label should be visible"
+        );
+        assert!(
+            content.contains("First option"),
+            "option description should be visible"
+        );
+
+        // The selected option row starts with "> Option A" and should be highlighted
+        let cell = find_cell_with_symbol(terminal.backend(), ">")
+            .expect("> symbol should be present for selected option");
+        assert_eq!(
+            cell.style().fg,
+            Some(ratatui::style::Color::Black),
+            "highlighted option should have black foreground"
+        );
+        assert_eq!(
+            cell.style().bg,
+            Some(ratatui::style::Color::Cyan),
+            "highlighted option should have cyan background"
+        );
+        assert!(
+            cell.style()
+                .add_modifier
+                .contains(ratatui::style::Modifier::BOLD),
+            "highlighted option should be bold"
+        );
+    }
+
+    #[test]
+    fn renders_secret_prompt_with_masked_value() {
+        let state = SecretPromptState {
+            input: String::from("secret123"),
+            masked: true,
+        };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_secret_prompt(
+                    frame,
+                    "Provide a secret value",
+                    "Enter a secure value.",
+                    &state,
+                )
+            })
+            .expect("secret prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Provide a secret value"),
+            "title should be visible"
+        );
+        assert!(
+            content.contains("Enter a secure value."),
+            "description should be visible"
+        );
+        assert!(
+            content.contains("*********"),
+            "masked value should show asterisks"
+        );
+        assert!(
+            !content.contains("secret123"),
+            "raw secret should not be visible when masked"
+        );
+    }
+
+    #[test]
+    fn renders_secret_prompt_with_unmasked_value() {
+        let state = SecretPromptState {
+            input: String::from("visible-value"),
+            masked: false,
+        };
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| {
+                render_secret_prompt(
+                    frame,
+                    "Provide a secret value",
+                    "Enter a secure value.",
+                    &state,
+                )
+            })
+            .expect("secret prompt should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("visible-value"),
+            "unmasked value should be visible"
+        );
+        assert!(
+            !content.contains("*************"),
+            "asterisks should not appear when unmasked"
+        );
     }
 }
