@@ -1,6 +1,6 @@
 use ratatui::style::{Color, Style};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ThemePreset {
     Ansi,
     Catppuccin,
@@ -365,5 +365,133 @@ impl Theme {
             guided: Color::Rgb(181, 137, 0),
             manual: Color::Rgb(38, 139, 210),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ratatui::style::Color;
+    use super::{Theme, ThemePreset};
+
+    #[test]
+    fn all_presets_have_distinct_keys() {
+        let mut keys = std::collections::HashSet::new();
+        for preset in ThemePreset::ALL {
+            let key = preset.as_key();
+            assert!(
+                keys.insert(key),
+                "duplicate theme key: {key}"
+            );
+        }
+        assert_eq!(keys.len(), ThemePreset::ALL.len());
+    }
+
+    #[test]
+    fn all_presets_have_labels() {
+        for preset in ThemePreset::ALL {
+            let label = preset.label();
+            assert!(!label.is_empty(), "theme preset {preset:?} has empty label");
+        }
+    }
+
+    #[test]
+    fn all_presets_can_be_constructed() {
+        for preset in ThemePreset::ALL {
+            let theme = Theme::preset(preset);
+            // System preset resolves to light/tokyo_night, so preset field
+            // may differ, but it should never panic and should define colors
+            if preset != ThemePreset::System {
+                assert_eq!(theme.preset, preset);
+            }
+            assert!(!matches!(theme.crit, Color::Reset));
+        }
+    }
+
+    #[test]
+    fn preset_roundtrip_from_key() {
+        for preset in ThemePreset::ALL {
+            let key = preset.as_key();
+            let recovered = ThemePreset::from_key(key);
+            assert_eq!(
+                recovered,
+                Some(preset),
+                "preset {preset:?} should roundtrip through key '{key}'"
+            );
+        }
+    }
+
+    #[test]
+    fn next_cycles_through_all_presets() {
+        let start = ThemePreset::Ansi;
+        let mut current = start;
+        let mut visited = std::collections::HashSet::new();
+
+        loop {
+            visited.insert(current);
+            current = current.next();
+            if current == start {
+                break;
+            }
+        }
+
+        assert_eq!(
+            visited.len(),
+            ThemePreset::ALL.len(),
+            "next() should cycle through all presets"
+        );
+    }
+
+    #[test]
+    fn theme_from_key_is_case_insensitive() {
+        assert_eq!(ThemePreset::from_key("ANSI"), Some(ThemePreset::Ansi));
+        assert_eq!(ThemePreset::from_key("Tokyo_Night"), Some(ThemePreset::TokyoNight));
+        assert_eq!(ThemePreset::from_key("GRUVBOX"), Some(ThemePreset::Gruvbox));
+    }
+
+    #[test]
+    fn theme_from_key_returns_none_for_unknown() {
+        assert_eq!(ThemePreset::from_key("unknown_theme"), None);
+        assert_eq!(ThemePreset::from_key(""), None);
+    }
+
+    #[test]
+    fn each_preset_defines_all_colors() {
+        for preset in ThemePreset::ALL {
+            let theme = Theme::preset(preset);
+            // All color fields should be defined (not Reset for crit/high/med/low)
+            assert!(
+                !matches!(theme.crit, Color::Reset),
+                "preset {preset:?} should define crit color"
+            );
+            assert!(
+                !matches!(theme.high, Color::Reset),
+                "preset {preset:?} should define high color"
+            );
+            assert!(
+                !matches!(theme.med, Color::Reset),
+                "preset {preset:?} should define med color"
+            );
+            assert!(
+                !matches!(theme.low, Color::Reset),
+                "preset {preset:?} should define low color"
+            );
+            assert!(
+                !matches!(theme.safe, Color::Reset),
+                "preset {preset:?} should define safe color"
+            );
+            assert!(
+                !matches!(theme.manual, Color::Reset),
+                "preset {preset:?} should define manual color"
+            );
+        }
+    }
+
+    #[test]
+    fn system_preset_does_not_panic() {
+        // System preset reads COLORFGBG env and resolves to light or tokyo_night
+        let theme = Theme::preset(ThemePreset::System);
+        // It resolves to another preset, not System itself
+        assert_ne!(theme.preset, ThemePreset::System);
+        assert!(!matches!(theme.crit, Color::Reset));
     }
 }
