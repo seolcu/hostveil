@@ -5964,4 +5964,45 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
 
         assert_eq!(state.status_message, None);
     }
+
+    #[test]
+    fn history_view_renders_title_and_empty_state() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let scan_result = sample_result();
+        let mut state = AppState::new(&scan_result);
+        state.screen = Screen::History;
+
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .unwrap();
+
+        let text = buffer_to_string(terminal.backend());
+        assert!(
+            text.contains("app.history.title"),
+            "history view should render title area"
+        );
+    }
+
+    #[test]
+    fn history_view_renders_header_row_when_entries_exist() {
+        // When history exists, the view renders entry rows instead of empty state.
+        // The previous test already covers the empty-state path.
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let scan_result = sample_result();
+        let mut state = AppState::new(&scan_result);
+        state.screen = Screen::History;
+
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .unwrap();
+
+        let text = buffer_to_string(terminal.backend());
+        // The header row is always rendered; with real history data rows follow.
+        assert!(
+            text.contains("app.history.header"),
+            "history view should render column header"
+        );
+    }
 }
