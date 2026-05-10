@@ -572,6 +572,7 @@ mod realistic_fixture_tests {
                     "homeassistant",
                     Severity::Low,
                 ),
+                ("network.host_mode", "homeassistant", Severity::High,),
                 ("network.default_bridge_used", "", Severity::Low),
             ]
         );

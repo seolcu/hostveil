@@ -647,6 +647,11 @@ finding:
       description: "%{service} sets network_mode: bridge and publishes %{port} publicly."
       why: "Explicit bridge mode with public ports keeps the service on the default bridge while exposing it externally, reducing network-layer isolation benefits."
       fix: "Move the service to a custom network and bind the port to 127.0.0.1 unless direct external access is required."
+    host_mode:
+      title: "Service uses host network mode"
+      description: "%{service} sets network_mode: host, sharing the host's network stack."
+      why: "Host network mode removes all network isolation between the container and the host, allowing the container to bind to any host port and access the host's network interfaces directly."
+      fix: "Use a custom bridge network with explicit port mappings instead of host network mode."
   sensitive:
     inline_secret:
       title: "Service hardcodes a secret in environment"

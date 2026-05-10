@@ -44,10 +44,34 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
                 });
             }
         }
+
+        // Host network mode shares the host's network stack
+        if service.network_mode.as_deref() == Some("host") {
+            findings.push(Finding {
+                id: "network.host_mode".to_owned(),
+                axis: Axis::UnnecessaryExposure,
+                severity: Severity::High,
+                scope: Scope::Service,
+                source: Source::NativeCompose,
+                subject: service.name.clone(),
+                related_service: Some(service.name.clone()),
+                title: t!("finding.network.host_mode.title").into_owned(),
+                description: t!(
+                    "finding.network.host_mode.description",
+                    service = service.name.as_str()
+                )
+                .into_owned(),
+                why_risky: t!("finding.network.host_mode.why").into_owned(),
+                how_to_fix: t!("finding.network.host_mode.fix").into_owned(),
+                evidence: BTreeMap::new(),
+                remediation: RemediationKind::None,
+            });
+        }
     }
 
     let has_exposed_service = project.services.values().any(|service| {
         service.network_mode.as_deref() == Some("bridge")
+            || service.network_mode.as_deref() == Some("host")
             || service.ports.iter().any(is_public_port)
     });
 
@@ -107,14 +131,7 @@ mod tests {
 
         let findings = scan_network_isolation(&project);
 
-        assert_eq!(findings.len(), 2);
-
-        let default_bridge = findings
-            .iter()
-            .find(|f| f.id == "network.default_bridge_used")
-            .expect("default bridge finding should exist");
-        assert_eq!(default_bridge.severity, Severity::Low);
-        assert_eq!(default_bridge.scope, Scope::Project);
+        assert_eq!(findings.len(), 2); // bridge_public + host_mode (custom networks exist, no default_bridge)
 
         let bridge_public = findings
             .iter()
@@ -123,5 +140,28 @@ mod tests {
         assert_eq!(bridge_public.severity, Severity::Medium);
         assert_eq!(bridge_public.scope, Scope::Service);
         assert_eq!(bridge_public.related_service.as_deref(), Some("db"));
+
+        let host_mode = findings
+            .iter()
+            .find(|f| f.id == "network.host_mode")
+            .expect("host mode finding should exist");
+        assert_eq!(host_mode.severity, Severity::High);
+        assert_eq!(host_mode.scope, Scope::Service);
+        assert_eq!(host_mode.related_service.as_deref(), Some("privileged"));
+    }
+
+    #[test]
+    fn host_mode_service_finding() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("network-host-mode.yml"))
+                .expect("project should parse");
+        let findings = scan_network_isolation(&project);
+        // host_mode + default_bridge_used (because app has no custom networks)
+        assert_eq!(findings.len(), 2);
+        let host_mode = findings
+            .iter()
+            .find(|f| f.id == "network.host_mode")
+            .expect("host mode finding should exist");
+        assert_eq!(host_mode.severity, Severity::High);
     }
 }

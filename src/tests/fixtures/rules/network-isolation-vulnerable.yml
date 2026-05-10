@@ -8,3 +8,16 @@ services:
     network_mode: bridge
     ports:
       - "5432:5432"
+  privileged:
+    image: alpine:latest
+    network_mode: host
+    ports:
+      - "8080:8080"
+
+networks:
+  frontend:
+    driver: bridge
+    internal: false
+  backend:
+    driver: bridge
+    internal: true
