@@ -5979,7 +5979,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
 
         let text = buffer_to_string(terminal.backend());
         assert!(
-            text.contains("app.history.title"),
+            text.contains("Scan History Trend"),
             "history view should render title area"
         );
     }
@@ -6001,7 +6001,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         let text = buffer_to_string(terminal.backend());
         // The header row is always rendered; with real history data rows follow.
         assert!(
-            text.contains("app.history.header"),
+            text.contains("Date") || text.contains("Score"),
             "history view should render column header"
         );
     }

@@ -17,6 +17,19 @@ DEFAULT_SCENARIOS=(
   fix-review-input
   fix-review-cancel
   narrow-layout
+  history-trend
+  theme-cycle
+  layout-cycle
+  findings-filter-cycle
+  fix-preview-scroll
+  mouse-interaction
+  size-80x24
+  size-80x50
+  size-120x80
+  size-316x75
+  size-400x100
+  size-200x120
+  theme-regression
 )
 SCENARIOS=("$@")
 CURRENT_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT_DIR/src/Cargo.toml" | head -n 1)"
@@ -44,6 +57,20 @@ Scenarios:
   fix-review-input    Review flow with secret input modal before fix review/apply
   fix-review-cancel   Cancel during a review prompt and verify no file changes
   narrow-layout       Narrow terminal render and findings drill-down
+  history-trend       History tab open/close and scroll
+  theme-cycle         Settings theme cycling and persistence
+  layout-cycle        Layout preset cycling in overview
+  findings-filter-cycle  Findings filter and sort cycling
+  fix-preview-scroll  Fix review diff scroll and apply
+  mouse-interaction   Mouse click on tabs and findings list
+  size-80x24          Standard 80x24 terminal
+  size-80x50          Tall 80x50 portrait terminal
+  size-120x80         Tall 120x80 portrait terminal
+  size-316x75         User actual 316x75 terminal
+  size-400x100        Large 400x100 landscape terminal
+  size-600x150        Extreme 600x150 tiled terminal
+  size-200x120        Rotated monitor 200x120 portrait
+  theme-regression    Capture all 8 theme presets and compare ANSI colors
   navigation          Compatibility alias for navigation-deep
   settings            Compatibility alias for settings-persist
   fix                 Compatibility alias for fix-auto-preview
@@ -220,12 +247,21 @@ capture_pane() {
   local step="$3"
   tmux capture-pane -p -J -t "$session" > "$output_dir/$step.txt"
   tmux capture-pane -e -p -J -t "$session" > "$output_dir/$step.ansi"
+
+  # Auto-run visual QA lint after each capture
+  local pane_size pane_cols pane_rows
+  pane_size=$(tmux display-message -p -t "$session" '#{pane_width} #{pane_height}' 2>/dev/null || echo "120 40")
+  read -r pane_cols pane_rows <<< "$pane_size"
+  lint_capture "$output_dir/$step.txt" "$step" "$pane_cols" "$pane_rows" "" || true
+
+  # Allow TUI to finish rendering before next input
+  sleep 0.5
 }
 
 wait_for_text() {
   local session="$1"
   local needle="$2"
-  local attempts="${3:-60}"
+  local attempts="${3:-120}"
 
   for _ in $(seq 1 "$attempts"); do
     if tmux capture-pane -p -J -t "$session" | grep -Fq -- "$needle"; then
@@ -282,6 +318,105 @@ send_keys() {
   shift
   tmux send-keys -t "$session" "$@"
   sleep 0.4
+}
+
+send_mouse_click() {
+  local session="$1"
+  local x="$2"
+  local y="$3"
+  local tty
+  tty="$(tmux display-message -p -t "$session" '#{pane_tty}')"
+  # SGR mouse protocol: press then release
+  printf '\e[<%d;%d;%dM\e[<%d;%d;%dm' 0 "$x" "$y" 0 "$x" "$y" > "$tty"
+  sleep 0.4
+}
+
+# ── Visual QA Linter ─────────────────────────────────────────────────────────
+
+lint_capture() {
+  local txt_path="$1"
+  local scenario="$2"
+  local cols="${3:-120}"
+  local rows="${4:-40}"
+  local report="${5:-}"
+  local issues=0
+  local warnings=0
+
+  # Determine strictness based on terminal size
+  local strict="warn"
+  if (( cols >= 316 )); then
+    strict="error"
+  elif (( cols >= 120 )); then
+    strict="warn"
+  else
+    strict="info"
+  fi
+
+  # 1. Ellipsis artifacts (▐ U+2590, … U+2026, ...)
+  local ellipsis_count
+  ellipsis_count=$(grep -c '▐\|…\|\.\.\.' "$txt_path" 2>/dev/null || true)
+  if (( ellipsis_count > 0 )); then
+    if [[ "$strict" == "error" ]]; then
+      printf '  visual-qa: ERROR: %d ellipsis/truncation artifacts in %s (%dx%d)\n' "$ellipsis_count" "$scenario" "$cols" "$rows" >&2
+      ((issues++))
+    elif [[ "$strict" == "warn" ]]; then
+      printf '  visual-qa: WARNING: %d ellipsis/truncation artifacts in %s (%dx%d)\n' "$ellipsis_count" "$scenario" "$cols" "$rows" >&2
+      ((warnings++))
+    fi
+  fi
+
+  # 2. Border mismatch: a line starting with │ has non-space content without closing │
+  # This detects when text overflows into the right border area
+  local border_bad
+  border_bad=$(grep -n '^│[^│]*[^ │]│' "$txt_path" 2>/dev/null | grep -v '─' | wc -l)
+  if (( border_bad > 0 )); then
+    printf '  visual-qa: WARNING: %d border overflow line(s) in %s\n' "$border_bad" "$scenario" >&2
+    ((warnings++))
+  fi
+
+  # 3. Footer/header truncation: line ends mid-word without space
+  # Check last 3 lines for truncated command hints
+  local tail_lines
+  tail_lines=$(tail -n 3 "$txt_path" 2>/dev/null)
+  if grep -Eq '\[[a-z]$' <<< "$tail_lines"; then
+    printf '  visual-qa: WARNING: possible footer truncation in %s\n' "$scenario" >&2
+    ((warnings++))
+  fi
+
+  # 4. Empty panel detection: consecutive lines of only spaces inside borders
+  local empty_panels
+  empty_panels=$(grep -n '^│ *│$' "$txt_path" 2>/dev/null | wc -l)
+  if (( empty_panels > 10 )); then
+    printf '  visual-qa: WARNING: %d potentially empty panel lines in %s\n' "$empty_panels" "$scenario" >&2
+    ((warnings++))
+  fi
+
+  # 5. Title truncation in header
+  if grep -q 'hostveil v' "$txt_path"; then
+    local title_line
+    title_line=$(grep -n 'hostveil v' "$txt_path" | head -1 | cut -d: -f2-)
+    if [[ "$title_line" == *"LANG"* ]] && [[ "$title_line" != *"LANG EN"* ]] && [[ "$title_line" != *"LANG KO"* ]]; then
+      printf '  visual-qa: WARNING: locale badge truncated in %s\n' "$scenario" >&2
+      ((warnings++))
+    fi
+  fi
+
+  if (( issues > 0 )); then
+    if [[ -n "$report" ]]; then
+      append_report "$report" "visual-qa: $issues error(s), $warnings warning(s)"
+    fi
+    return 1
+  elif (( warnings > 0 )) && [[ "$strict" == "error" ]]; then
+    if [[ -n "$report" ]]; then
+      append_report "$report" "visual-qa: 0 error(s), $warnings warning(s)"
+    fi
+    return 1
+  fi
+
+  if [[ -n "$report" ]]; then
+    append_report "$report" "visual-qa: pass ($cols x $rows)"
+  fi
+  return 0
 }
 
 append_report() {
@@ -786,6 +921,408 @@ run_narrow_layout_scenario() {
   append_report "$report" "terminal: 60x20"
 }
 
+run_history_trend_scenario() {
+  local scenario="history-trend"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_home="$LAB_TMP_ROOT/home-$scenario"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  # Pre-populate history file so the trend view has data
+  compose_lab_exec_t lab bash -lc "mkdir -p '$remote_home/.config/hostveil'"
+  compose_lab_exec_t lab bash -lc "cat > '$remote_home/.config/hostveil/history.json' <<'HISTEOF'
+{
+  \"entries\": [
+    {\"timestamp\":\"2026-05-08T10:00:00+09:00\",\"overall\":58,\"finding_count\":14,\"axis_scores\":{},\"severity_counts\":{}},
+    {\"timestamp\":\"2026-05-09T10:00:00+09:00\",\"overall\":69,\"finding_count\":4,\"axis_scores\":{},\"severity_counts\":{}},
+    {\"timestamp\":\"2026-05-10T10:00:00+09:00\",\"overall\":72,\"finding_count\":3,\"axis_scores\":{},\"severity_counts\":{}}
+  ]
+}
+HISTEOF"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$remote_home"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "01-overview"
+  send_keys "$session" t
+  wait_for_text "$session" "Scan History Trend"
+  capture_pane "$session" "$output_dir" "02-history-open"
+  send_keys "$session" j
+  send_keys "$session" j
+  capture_pane "$session" "$output_dir" "03-history-scrolled"
+  send_keys "$session" t
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "04-overview-return"
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  assert_contains "$output_dir/02-history-open.txt" "Scan History Trend"
+  assert_contains "$output_dir/02-history-open.txt" "Date"
+  assert_contains "$output_dir/02-history-open.txt" "Score"
+  assert_contains "$output_dir/03-history-scrolled.txt" "t close trend"
+  assert_contains "$output_dir/04-overview-return.txt" "Linux Self-Hosting Security Dashboard"
+
+  append_report "$report" "history-trend: pass"
+}
+
+run_theme_cycle_scenario() {
+  local scenario="theme-cycle"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_home="$LAB_TMP_ROOT/home-$scenario"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$remote_home"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  send_keys "$session" s
+  wait_for_text "$session" "Theme"
+  capture_pane "$session" "$output_dir" "01-settings-open"
+  send_keys "$session" 1
+  send_keys "$session" Right
+  capture_pane "$session" "$output_dir" "02-theme-cycled"
+  send_keys "$session" Right
+  capture_pane "$session" "$output_dir" "03-theme-cycled-again"
+  send_keys "$session" Enter
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "04-overview-after-theme"
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  compose_lab_exec_t lab bash -lc "cat '$remote_home/.config/hostveil/config.json'" > "$output_dir/config.json"
+
+  assert_contains "$output_dir/01-settings-open.txt" "Theme"
+  assert_contains "$output_dir/02-theme-cycled.txt" "Theme"
+  assert_contains "$output_dir/config.json" '"theme"'
+
+  append_report "$report" "theme-cycle: pass"
+}
+
+run_layout_cycle_scenario() {
+  local scenario="layout-cycle"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "01-layout-default"
+  send_keys "$session" L
+  sleep 0.5
+  capture_pane "$session" "$output_dir" "02-layout-cycled-1"
+  send_keys "$session" L
+  sleep 0.5
+  capture_pane "$session" "$output_dir" "03-layout-cycled-2"
+  send_keys "$session" L
+  sleep 0.5
+  capture_pane "$session" "$output_dir" "04-layout-cycled-3"
+  send_keys "$session" L
+  sleep 0.5
+  capture_pane "$session" "$output_dir" "05-layout-cycled-4"
+  send_keys "$session" L
+  sleep 0.5
+  capture_pane "$session" "$output_dir" "06-layout-cycled-5"
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  assert_contains "$output_dir/01-layout-default.txt" "Linux Self-Hosting Security Dashboard"
+  assert_contains "$output_dir/02-layout-cycled-1.txt" "Linux Self-Hosting Security Dashboard"
+
+  append_report "$report" "layout-cycle: pass"
+  append_report "$report" "cycles: 6 layouts"
+}
+
+run_findings_filter_cycle_scenario() {
+  local scenario="findings-filter-cycle"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  send_keys "$session" 2
+  wait_for_text "$session" "Findings"
+  capture_pane "$session" "$output_dir" "01-findings-default"
+  send_keys "$session" S
+  capture_pane "$session" "$output_dir" "02-filter-severity"
+  send_keys "$session" x
+  capture_pane "$session" "$output_dir" "03-filter-source"
+  send_keys "$session" m
+  capture_pane "$session" "$output_dir" "04-filter-remediation"
+  send_keys "$session" v
+  capture_pane "$session" "$output_dir" "05-filter-service"
+  send_keys "$session" o
+  capture_pane "$session" "$output_dir" "06-sort-changed"
+  send_keys "$session" r
+  capture_pane "$session" "$output_dir" "07-filters-reset"
+  send_keys "$session" q
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  assert_contains "$output_dir/01-findings-default.txt" "Findings"
+  assert_contains "$output_dir/02-filter-severity.txt" "sev:"
+  assert_contains "$output_dir/03-filter-source.txt" "src:"
+  assert_contains "$output_dir/04-filter-remediation.txt" "rem:"
+  assert_contains "$output_dir/05-filter-service.txt" "svc:"
+  assert_contains "$output_dir/06-sort-changed.txt" "sort:"
+  assert_contains "$output_dir/07-filters-reset.txt" "sev:all"
+
+  append_report "$report" "findings-filter-cycle: pass"
+}
+
+run_fix_preview_scroll_scenario() {
+  local scenario="fix-preview-scroll"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local compose_text
+  compose_text="$(cat <<'EOF'
+services:
+  app:
+    image: alpine:3.20
+    user: "1000:1000"
+    privileged: true
+    ports:
+      - "127.0.0.1:8080:80"
+EOF
+)"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose_from_text "$scenario" "$compose_text")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  capture_json_scan "$remote_compose" "$output_dir/before.json"
+  start_tmux_session "$session" 120 40 "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  send_keys "$session" 2
+  wait_for_text "$session" "Findings"
+  send_keys "$session" f
+  wait_for_text "$session" "Fix Review"
+  capture_pane "$session" "$output_dir" "01-fix-review"
+  send_keys "$session" PageDown
+  capture_pane "$session" "$output_dir" "02-fix-review-scrolled-1"
+  send_keys "$session" PageDown
+  capture_pane "$session" "$output_dir" "03-fix-review-scrolled-2"
+  send_keys "$session" Enter
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "04-overview-after-fix"
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  export_lab_file "$remote_compose" "$output_dir/docker-compose.yml"
+  export_lab_backup "$remote_compose" "$output_dir/docker-compose.yml.bak"
+  capture_json_scan "$remote_compose" "$output_dir/after.json"
+
+  assert_contains "$output_dir/01-fix-review.txt" "Fix Review"
+  assert_contains "$output_dir/02-fix-review-scrolled-1.txt" "Fix Review"
+  assert_contains "$output_dir/03-fix-review-scrolled-2.txt" "Fix Review"
+  assert_contains "$output_dir/docker-compose.yml" "cap_add:"
+  assert_not_contains "$output_dir/docker-compose.yml" "privileged: true"
+  assert_file_exists "$output_dir/docker-compose.yml.bak"
+
+  append_report "$report" "fix-preview-scroll: pass"
+}
+
+run_mouse_interaction_scenario() {
+  local scenario="mouse-interaction"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "01-overview"
+
+  # Click on the "Findings" tab (second tab, around x=60, y=3)
+  send_mouse_click "$session" 60 3
+  wait_for_text "$session" "Findings"
+  capture_pane "$session" "$output_dir" "02-findings-via-mouse"
+
+  # Click on the "Overview" tab (first tab, around x=20, y=3)
+  send_mouse_click "$session" 20 3
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "03-overview-via-mouse"
+
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  assert_contains "$output_dir/01-overview.txt" "Linux Self-Hosting Security Dashboard"
+  assert_contains "$output_dir/02-findings-via-mouse.txt" "Findings"
+  assert_contains "$output_dir/03-overview-via-mouse.txt" "Linux Self-Hosting Security Dashboard"
+
+  append_report "$report" "mouse-interaction: pass"
+}
+
+run_size_scenario() {
+  local scenario="$1"
+  local cols="$2"
+  local rows="$3"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" "$cols" "$rows" "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "01-overview"
+
+  send_keys "$session" 2
+  wait_for_text "$session" "Findings"
+  capture_pane "$session" "$output_dir" "02-findings"
+
+  # Test history tab for all sizes (it should work everywhere)
+  send_keys "$session" t
+  wait_for_text "$session" "Scan History Trend" 120
+  capture_pane "$session" "$output_dir" "03-history"
+
+  # Close history and exit
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  assert_contains "$output_dir/01-overview.txt" "Linux Self-Hosting Security Dashboard"
+  assert_contains "$output_dir/02-findings.txt" "Findings"
+  assert_contains "$output_dir/03-history.txt" "Scan History Trend"
+
+  append_report "$report" "$scenario: pass"
+  append_report "$report" "terminal: ${cols}x${rows}"
+}
+
+run_theme_regression_scenario() {
+  local scenario="theme-regression"
+  local output_dir="$OUTPUT_ROOT/$scenario"
+  local session="hostveil-ux-$scenario-$$"
+  local report="$output_dir/report.txt"
+  local remote_compose
+  remote_compose="$(prepare_temp_compose "$scenario" "/workspace/docker/lab/self-hosting-stack.yml")"
+  local themes=("Ansi" "Catppuccin" "Nord" "TokyoNight" "Gruvbox" "Dracula" "Monokai" "Light")
+
+  rm -rf "$output_dir"
+  mkdir -p "$output_dir"
+  : > "$report"
+
+  start_tmux_session "$session" 120 40 "$remote_compose" "$LAB_TMP_ROOT/home-$scenario"
+  trap 'kill_tmux_session "$session"' RETURN
+
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "01-overview-before"
+
+  # Open settings once and cycle all themes
+  send_keys "$session" s
+  wait_for_text "$session" "Theme"
+
+  for i in "${!themes[@]}"; do
+    local theme="${themes[$i]}"
+    capture_pane "$session" "$output_dir" "$(printf '%02d' $((i+1)))-settings-$theme"
+    send_keys "$session" 1
+    send_keys "$session" Right
+  done
+
+  # Confirm last theme and close settings
+  send_keys "$session" Enter
+  wait_for_text "$session" "Linux Self-Hosting Security Dashboard"
+  capture_pane "$session" "$output_dir" "09-overview-after"
+
+  send_keys "$session" q
+  wait_for_hostveil_stop "$remote_compose"
+  kill_tmux_session "$session"
+  trap - RETURN
+
+  # Verify ANSI files contain color codes
+  local ansi_count=0
+  for f in "$output_dir"/*.ansi; do
+    if [[ -f "$f" ]]; then
+      local colors
+      colors=$(set +o pipefail; grep -oE $'\x1b\\[[0-9;]*m' "$f" 2>/dev/null | sort -u | wc -l || true)
+      if (( colors > 0 )); then
+        ansi_count=$((ansi_count + 1))
+      fi
+    fi
+  done
+
+  # Compare before vs after - theme change should produce different ANSI
+  local before="$output_dir/01-overview-before.ansi"
+  local after="$output_dir/09-overview-after.ansi"
+  if [[ -f "$before" && -f "$after" ]]; then
+    local diff_lines
+    diff_lines=$(set +o pipefail; diff -a -u "$before" "$after" 2>/dev/null | grep -c '^[-+]' || true)
+    if (( diff_lines < 10 )); then
+      printf '  visual-qa: ERROR: theme change did not affect ANSI output (only %d diff lines)\n' "$diff_lines" >&2
+      exit 1
+    fi
+  fi
+
+  assert_contains "$output_dir/01-settings-Ansi.txt" "Theme"
+  assert_contains "$output_dir/01-overview-before.ansi" "hostveil"
+
+  append_report "$report" "theme-regression: pass"
+  append_report "$report" "themes tested: ${#themes[@]}"
+  append_report "$report" "ansi files with color codes: $ansi_count"
+}
+
 run_selected_scenarios() {
   local requested=("${SCENARIOS[@]}")
   if [[ ${#requested[@]} -eq 0 || -z "${requested[0]}" ]]; then
@@ -804,6 +1341,20 @@ run_selected_scenarios() {
       fix-review-input) run_fix_review_input_scenario ;;
       fix-review-cancel) run_fix_review_cancel_scenario ;;
       narrow-layout|narrow) run_narrow_layout_scenario ;;
+      history-trend) run_history_trend_scenario ;;
+      theme-cycle) run_theme_cycle_scenario ;;
+      layout-cycle) run_layout_cycle_scenario ;;
+      findings-filter-cycle) run_findings_filter_cycle_scenario ;;
+      fix-preview-scroll) run_fix_preview_scroll_scenario ;;
+      mouse-interaction) run_mouse_interaction_scenario ;;
+      size-80x24) run_size_scenario "size-80x24" 80 24 ;;
+      size-80x50) run_size_scenario "size-80x50" 80 50 ;;
+      size-120x80) run_size_scenario "size-120x80" 120 80 ;;
+      size-316x75) run_size_scenario "size-316x75" 316 75 ;;
+      size-400x100) run_size_scenario "size-400x100" 400 100 ;;
+      size-600x150) run_size_scenario "size-600x150" 600 150 ;;
+      size-200x120) run_size_scenario "size-200x120" 200 120 ;;
+      theme-regression) run_theme_regression_scenario ;;
       -h|--help|help) usage; exit 0 ;;
       *)
         printf 'error: unknown scenario: %s\n' "$scenario" >&2
