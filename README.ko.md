@@ -18,7 +18,7 @@ Jellyfin, Nextcloud, Vaultwarden, Gitea, Immich 등을 운영하는 셀프호스
 - **설정 모달** — TUI에서 키보드나 마우스로 테마, 레이아웃, 언어 설정을 변경 가능
 - **테마 프리셋** — 터미널 기본 ANSI와 Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, Solarized Light 프리셋을 TUI에서 전환 가능
 - **실행 가능한 가이드** — 모든 발견 사항에 포함: 무엇인지, 왜 위험한지, 어떻게 수정하는지
-- **Compose 중심 수정 흐름** — `quick-fix`와 `fix`는 미리보기와 백업이 가능한 Compose 변경에 집중
+- **Compose 중심 수정 흐름** — `auto-fix`와 `fix`는 미리보기와 백업이 가능한 Compose 변경에 집중
 
 ## 설치
 
@@ -134,12 +134,15 @@ Markdown과 HTML은 사람이 읽는 공유용에, JSON과 SARIF는 자동화와
 파일을 쓰기 전에 Compose 수정 계획을 미리 볼 수 있습니다:
 
 ```sh
-hostveil --quick-fix path/to/docker-compose.yml --preview-changes
+hostveil --auto-fix path/to/docker-compose.yml --preview-changes
 hostveil --fix path/to/docker-compose.yml --preview-changes
 ```
 
-- `--quick-fix`는 안전한 변경을 자동으로 적용합니다
-- `--fix`는 안전한 수정과 검토가 필요한 guided 수정을 함께 처리합니다
+- `--auto-fix`는 추가 입력 없이 hostveil이 끝까지 처리할 수 있는 변경을 적용합니다
+- `--fix`는 자동 변경과 함께, 선택이나 입력이 필요한 검토형 변경까지 처리합니다
+- `Auto`는 diff를 검토한 뒤 `f`로 바로 끝까지 진행할 수 있는 수정입니다
+- `Review`는 `f`로 진행할 수는 있지만 최종 patch를 만들기 전에 사용자의 선택이나 입력이 필요한 수정입니다
+- `None`은 호스트 수준 하드닝, 물리 조치, 외부 인프라 변경처럼 hostveil이 실제로 대신 처리할 수 없는 경우만 남깁니다
 - 둘 다 쓰기 전에 백업을 생성합니다
 
 ## 선택형 도구

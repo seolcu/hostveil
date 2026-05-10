@@ -552,7 +552,7 @@ mod tests {
     fn formats_fix_requires_terminal_message() {
         assert_eq!(
             tr_fix_requires_terminal(),
-            "guided Compose fixes require a terminal review; use --preview-changes to inspect the diff non-interactively"
+            "review-required Compose fixes need an interactive terminal; use --preview-changes to inspect the diff non-interactively"
         );
     }
 
@@ -724,12 +724,12 @@ mod tests {
             "치명"
         );
         assert_eq!(
-            t!("app.finding.remediation_badge.guided", locale = "ko").into_owned(),
-            "가이드"
+            t!("app.finding.remediation_badge.review", locale = "ko").into_owned(),
+            "검토"
         );
         assert_eq!(
-            t!("app.finding.remediation_badge_compact.safe", locale = "ko").into_owned(),
-            "안"
+            t!("app.finding.remediation_badge_compact.auto", locale = "ko").into_owned(),
+            "자"
         );
     }
 

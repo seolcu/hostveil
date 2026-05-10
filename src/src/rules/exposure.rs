@@ -57,7 +57,7 @@ pub fn scan_exposure_risk(project: &ComposeProject) -> Vec<Finding> {
                     first_public.container_port.clone(),
                 ),
             ]),
-            RemediationKind::Safe,
+            RemediationKind::Auto,
         ));
 
         if matches_known_service(
@@ -198,6 +198,6 @@ mod tests {
             .find(|finding| finding.id == "exposure.public_binding")
             .expect("public binding finding should exist");
 
-        assert_eq!(finding.remediation, crate::domain::RemediationKind::Safe);
+        assert_eq!(finding.remediation, crate::domain::RemediationKind::Auto);
     }
 }

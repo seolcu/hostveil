@@ -5,7 +5,7 @@
 
 ## Context
 
-By the May 13 design review, hostveil ships through more than one delivery path:
+hostveil ships through more than one delivery path:
 
 - wrapper-managed install through `scripts/install.sh`
 - direct release assets through tarballs
@@ -54,7 +54,7 @@ RPM packages are built on a Rocky Linux 9 / RHEL 9 compatible baseline and are i
 - Avoids conflicting ownership between hostveil's wrapper lifecycle and the system package manager.
 - Gives users a simple quick-install flow while still providing first-class distro package assets.
 - Keeps package behavior honest: package installs should not pretend they can safely self-upgrade outside the package manager.
-- Makes the release pipeline explainable during the design review because install mode, lifecycle semantics, and release packaging strategy are aligned.
+- Keeps install mode, lifecycle semantics, and release packaging strategy aligned.
 
 ## Consequences
 

@@ -37,7 +37,7 @@ Examples:
   scripts/lab.sh host scan rocky-lab
   scripts/lab.sh selfhost up
   scripts/lab.sh selfhost shell
-  scripts/lab.sh selfhost ux fix
+  scripts/lab.sh selfhost ux fix-auto-preview
 EOF
 }
 
@@ -99,7 +99,7 @@ Examples:
   scripts/lab.sh selfhost shell
   scripts/lab.sh selfhost check
   scripts/lab.sh selfhost ux
-  scripts/lab.sh selfhost ux navigation fix
+  scripts/lab.sh selfhost ux navigation-deep fix-review-input
 EOF
 }
 

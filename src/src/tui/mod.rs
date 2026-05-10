@@ -32,7 +32,7 @@ use crate::settings;
 mod fix_review;
 mod theme;
 
-pub use fix_review::run_fix_review;
+pub use fix_review::{run_fix_review, run_interactive_fix_flow};
 pub use theme::{Theme, ThemePreset};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,8 +158,8 @@ enum FindingSortMode {
 enum RemediationFilter {
     All,
     Fixable,
-    Safe,
-    Guided,
+    Auto,
+    Review,
     Manual,
 }
 
@@ -566,9 +566,9 @@ impl AppState {
     fn cycle_remediation_filter(&mut self) {
         self.remediation_filter = match self.remediation_filter {
             RemediationFilter::All => RemediationFilter::Fixable,
-            RemediationFilter::Fixable => RemediationFilter::Safe,
-            RemediationFilter::Safe => RemediationFilter::Guided,
-            RemediationFilter::Guided => RemediationFilter::Manual,
+            RemediationFilter::Fixable => RemediationFilter::Auto,
+            RemediationFilter::Auto => RemediationFilter::Review,
+            RemediationFilter::Review => RemediationFilter::Manual,
             RemediationFilter::Manual => RemediationFilter::All,
         };
         self.selected_index = 0;
@@ -612,8 +612,8 @@ impl AppState {
         match value {
             "all" => Some(RemediationFilter::All),
             "fixable" => Some(RemediationFilter::Fixable),
-            "safe" => Some(RemediationFilter::Safe),
-            "guided" => Some(RemediationFilter::Guided),
+            "safe" | "auto" => Some(RemediationFilter::Auto),
+            "guided" | "review" => Some(RemediationFilter::Review),
             "manual" => Some(RemediationFilter::Manual),
             _ => None,
         }
@@ -637,8 +637,8 @@ impl AppState {
             Some(match self.remediation_filter {
                 RemediationFilter::All => "all",
                 RemediationFilter::Fixable => "fixable",
-                RemediationFilter::Safe => "safe",
-                RemediationFilter::Guided => "guided",
+                RemediationFilter::Auto => "auto",
+                RemediationFilter::Review => "review",
                 RemediationFilter::Manual => "manual",
             }),
             Some(match self.sort_mode {
@@ -2529,7 +2529,7 @@ fn fix_availability(compose_file: Option<&Path>, finding: Option<&Finding>) -> F
     }
 
     match finding.remediation {
-        RemediationKind::Safe | RemediationKind::Guided => FixAvailability::Available,
+        RemediationKind::Auto | RemediationKind::Review => FixAvailability::Available,
         RemediationKind::None => FixAvailability::ManualOnly,
     }
 }
@@ -3105,7 +3105,7 @@ fn remediation_lines(
 
     for finding in &scan_result.findings {
         match finding.remediation {
-            crate::domain::RemediationKind::Safe | crate::domain::RemediationKind::Guided => {
+            crate::domain::RemediationKind::Auto | crate::domain::RemediationKind::Review => {
                 if let Some(service) = &finding.related_service {
                     *fixable_by_service.entry(service.clone()).or_default() += 1;
                 }
@@ -3164,7 +3164,7 @@ fn remediation_lines(
         lines.push(Line::from(vec![
             Span::styled(
                 format!("[{}] ", t!("remediation.auto_fixable").into_owned()),
-                remediation_style(RemediationKind::Safe, theme).add_modifier(Modifier::BOLD),
+                remediation_style(RemediationKind::Auto, theme).add_modifier(Modifier::BOLD),
             ),
             Span::raw(
                 t!(
@@ -3861,8 +3861,8 @@ fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationF
     match filter {
         RemediationFilter::All => true,
         RemediationFilter::Fixable => remediation != RemediationKind::None,
-        RemediationFilter::Safe => remediation == RemediationKind::Safe,
-        RemediationFilter::Guided => remediation == RemediationKind::Guided,
+        RemediationFilter::Auto => remediation == RemediationKind::Auto,
+        RemediationFilter::Review => remediation == RemediationKind::Review,
         RemediationFilter::Manual => remediation == RemediationKind::None,
     }
 }
@@ -3905,8 +3905,8 @@ fn remediation_filter_label(filter: RemediationFilter) -> String {
     match filter {
         RemediationFilter::All => t!("app.finding.filter_all").into_owned(),
         RemediationFilter::Fixable => t!("app.finding.filter_fixable").into_owned(),
-        RemediationFilter::Safe => t!("app.finding.filter_safe").into_owned(),
-        RemediationFilter::Guided => t!("app.finding.filter_guided").into_owned(),
+        RemediationFilter::Auto => t!("app.finding.filter_auto").into_owned(),
+        RemediationFilter::Review => t!("app.finding.filter_review").into_owned(),
         RemediationFilter::Manual => t!("app.finding.filter_manual").into_owned(),
     }
 }
@@ -4218,16 +4218,16 @@ fn scope_label(scope: Scope) -> String {
 
 fn remediation_badge_text(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Safe => t!("app.finding.remediation_badge.safe").into_owned(),
-        RemediationKind::Guided => t!("app.finding.remediation_badge.guided").into_owned(),
+        RemediationKind::Auto => t!("app.finding.remediation_badge.auto").into_owned(),
+        RemediationKind::Review => t!("app.finding.remediation_badge.review").into_owned(),
         RemediationKind::None => t!("app.finding.remediation_badge.manual").into_owned(),
     }
 }
 
 fn remediation_badge_compact(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Safe => t!("app.finding.remediation_badge_compact.safe").into_owned(),
-        RemediationKind::Guided => t!("app.finding.remediation_badge_compact.guided").into_owned(),
+        RemediationKind::Auto => t!("app.finding.remediation_badge_compact.auto").into_owned(),
+        RemediationKind::Review => t!("app.finding.remediation_badge_compact.review").into_owned(),
         RemediationKind::None => t!("app.finding.remediation_badge_compact.manual").into_owned(),
     }
 }
@@ -4243,8 +4243,8 @@ fn severity_style(severity: Severity, theme: &Theme) -> Style {
 
 fn remediation_style(remediation: RemediationKind, theme: &Theme) -> Style {
     Style::default().fg(match remediation {
-        RemediationKind::Safe => theme.safe,
-        RemediationKind::Guided => theme.guided,
+        RemediationKind::Auto => theme.safe,
+        RemediationKind::Review => theme.guided,
         RemediationKind::None => theme.manual,
     })
 }
@@ -4282,7 +4282,7 @@ mod tests {
                     ),
                     how_to_fix: String::from("Put the admin interface behind a private network."),
                     evidence: BTreeMap::from([(String::from("port"), String::from("8080:8080"))]),
-                    remediation: RemediationKind::Guided,
+                    remediation: RemediationKind::Review,
                 },
                 Finding {
                     id: String::from("host.ssh_root_login_enabled"),
@@ -4315,7 +4315,7 @@ mod tests {
                     why_risky: String::from("Moving tags hurt reproducibility."),
                     how_to_fix: String::from("Pin the image to a specific version."),
                     evidence: BTreeMap::new(),
-                    remediation: RemediationKind::Safe,
+                    remediation: RemediationKind::Auto,
                 },
             ],
             score_report: ScoreReport {
@@ -4719,7 +4719,7 @@ mod tests {
             KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
         );
         state.clamp_selection(&result);
-        assert_eq!(state.remediation_filter, RemediationFilter::Safe);
+        assert_eq!(state.remediation_filter, RemediationFilter::Auto);
         assert_eq!(state.finding_count(), 1);
 
         handle_key(
@@ -4728,7 +4728,7 @@ mod tests {
             KeyEvent::new(KeyCode::Char('m'), crossterm::event::KeyModifiers::NONE),
         );
         state.clamp_selection(&result);
-        assert_eq!(state.remediation_filter, RemediationFilter::Guided);
+        assert_eq!(state.remediation_filter, RemediationFilter::Review);
         assert_eq!(state.finding_count(), 1);
 
         handle_key(
@@ -5080,9 +5080,9 @@ mod tests {
 
         assert!(content.contains("Findings [list focus]"));
         assert!(content.contains("Detail"));
-        assert!(content.contains("[GUIDED]"));
+        assert!(content.contains("[REVIEW]"));
         assert!(content.contains("Admin interface is exposed publicly"));
-        assert!(content.contains("Native Compose | Service | adminer | GUIDED"));
+        assert!(content.contains("Native Compose | Service | adminer | REVIEW"));
         assert!(content.contains("rem:all"));
         assert!(content.contains("adminer"));
     }
@@ -5171,8 +5171,8 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
 
         let content = buffer_to_string(terminal.backend());
 
-        assert!(content.contains("[CRIT][G] Admin interface is exposed publicly - adminer"));
-        assert!(content.contains("Critical | Native Compose | adminer | GUIDED"));
+        assert!(content.contains("[CRIT][R] Admin interface is exposed publicly - adminer"));
+        assert!(content.contains("Critical | Native Compose | adminer | REVIEW"));
         assert!(content.contains("S sev | x src | v svc | m rem | o sort"));
         assert!(!content.contains("PageUp/PageDown"));
     }

@@ -157,6 +157,7 @@ pub struct AppConfig {
     pub adapter_timeout: Option<Duration>,
     pub fix_mode: Option<FixMode>,
     pub fix_target_path: Option<PathBuf>,
+    pub quick_fix_alias_used: bool,
     pub preview_changes: bool,
     pub assume_yes: bool,
     pub findings_only: bool,
@@ -178,6 +179,7 @@ impl Default for AppConfig {
             adapter_timeout: None,
             fix_mode: None,
             fix_target_path: None,
+            quick_fix_alias_used: false,
             preview_changes: false,
             assume_yes: false,
             findings_only: false,
@@ -326,18 +328,28 @@ impl AppConfig {
                     })?;
                     config.adapter_timeout = Some(Duration::from_secs(secs));
                 }
-                "--quick-fix" => {
+                "--auto-fix" | "--quick-fix" => {
                     let value = args
                         .next()
-                        .ok_or(AppError::MissingArgumentValue("--quick-fix"))?;
-                    config.set_fix_target(FixMode::QuickFix, PathBuf::from(value))?;
-                }
-                _ if argument.starts_with("--quick-fix=") => {
-                    let value = argument.trim_start_matches("--quick-fix=");
-                    if value.is_empty() {
-                        return Err(AppError::MissingArgumentValue("--quick-fix"));
+                        .ok_or(AppError::MissingArgumentValue("--auto-fix"))?;
+                    if argument == "--quick-fix" {
+                        config.quick_fix_alias_used = true;
                     }
-                    config.set_fix_target(FixMode::QuickFix, PathBuf::from(value))?;
+                    config.set_fix_target(FixMode::AutoFix, PathBuf::from(value))?;
+                }
+                _ if argument.starts_with("--auto-fix=")
+                    || argument.starts_with("--quick-fix=") =>
+                {
+                    let value = argument
+                        .trim_start_matches("--auto-fix=")
+                        .trim_start_matches("--quick-fix=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--auto-fix"));
+                    }
+                    if argument.starts_with("--quick-fix=") {
+                        config.quick_fix_alias_used = true;
+                    }
+                    config.set_fix_target(FixMode::AutoFix, PathBuf::from(value))?;
                 }
                 "--fix" => {
                     let value = args.next().ok_or(AppError::MissingArgumentValue("--fix"))?;
@@ -821,15 +833,15 @@ mod tests {
     }
 
     #[test]
-    fn parses_quick_fix_mode() {
+    fn parses_auto_fix_mode() {
         let config = AppConfig::parse([
-            String::from("--quick-fix"),
+            String::from("--auto-fix"),
             String::from("docker-compose.yml"),
             String::from("--preview-changes"),
         ])
         .expect("config should parse");
 
-        assert_eq!(config.fix_mode, Some(FixMode::QuickFix));
+        assert_eq!(config.fix_mode, Some(FixMode::AutoFix));
         assert_eq!(
             config.fix_target_path.as_deref(),
             Some(std::path::Path::new("docker-compose.yml"))
@@ -853,7 +865,7 @@ mod tests {
     #[test]
     fn rejects_json_with_fix_mode() {
         let error = AppConfig::parse([
-            String::from("--quick-fix"),
+            String::from("--auto-fix"),
             String::from("docker-compose.yml"),
             String::from("--json"),
         ])

@@ -18,7 +18,7 @@ Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typicall
 - **Settings Modal** — change theme, layout, and locale from the TUI with keyboard or mouse controls
 - **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light presets are available from the TUI
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
-- **Compose-focused Remediation** — `quick-fix` and `fix` stay focused on previewable, backup-safe Compose changes
+- **Compose-focused Remediation** — `auto-fix` and `fix` stay focused on previewable, backup-safe Compose changes
 
 ## Installation
 
@@ -134,12 +134,15 @@ Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` o
 Preview Compose remediation before writing files:
 
 ```sh
-hostveil --quick-fix path/to/docker-compose.yml --preview-changes
+hostveil --auto-fix path/to/docker-compose.yml --preview-changes
 hostveil --fix path/to/docker-compose.yml --preview-changes
 ```
 
-- `--quick-fix` applies safe changes automatically
-- `--fix` combines safe fixes with review-required guided changes
+- `--auto-fix` applies changes that hostveil can complete end-to-end without extra input
+- `--fix` combines automatic changes with review-required changes that may ask you to choose an option or provide a value
+- `Auto` means `f` can carry the change all the way through after the diff review
+- `Review` means `f` can still drive the remediation flow, but hostveil needs your choice or input before it can build the final patch
+- `None` is reserved for findings hostveil cannot realistically change for you, such as host-level hardening or physical/infrastructure actions
 - Both create backups before writing
 
 ## Optional Tools

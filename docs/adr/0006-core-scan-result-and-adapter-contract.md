@@ -7,9 +7,9 @@
 
 hostveil combines findings from native Compose analysis, native host checks, and optional external adapters inside one TUI-first product.
 
-That creates a presentation and maintenance risk: if each scanner keeps its own result shape, every output path would need scanner-specific branching and the architecture would expand every time a new adapter is added.
+That creates a maintenance risk: if each scanner keeps its own result shape, every output path would need scanner-specific branching and the architecture would expand every time a new adapter is added.
 
-By the May 13 capstone design review, the product already depends on one shared findings pipeline for:
+The current product already depends on one shared findings pipeline for:
 
 - TUI overview and findings views
 - JSON export
@@ -17,7 +17,7 @@ By the May 13 capstone design review, the product already depends on one shared 
 - scan history recording
 - future report surfaces that reuse the Rust result model
 
-The contract needs to be frozen before the design review so later adapter work extends the existing model instead of redefining it.
+The contract should stay fixed so later adapter work extends the existing model instead of redefining it.
 
 ## Decision
 
@@ -50,7 +50,7 @@ The shared taxonomy is fixed around the existing Rust domain model:
 - `Axis`: Sensitive Data, Excessive Permissions, Unnecessary Exposure, Update / Supply Chain Risk, Host Hardening
 - `Scope`: Service, Image, Host, Project
 - `Source`: Native Compose, Native Host, Trivy, Lynis, Dockle
-- `RemediationKind`: None, Safe, Guided
+- `RemediationKind`: None, Auto, Review
 
 Optional adapters are treated as coverage extenders, not as separate result systems.
 
@@ -65,11 +65,10 @@ host findings, Compose findings, and image findings stay in one shared findings 
 - Keeps the TUI, JSON export, scoring, and history paths aligned on one contract.
 - Lets new adapters extend coverage without forcing UI, export, or scoring redesign.
 - Makes host and Compose findings comparable inside one action queue and findings view.
-- Preserves the existing Rust implementation shape instead of introducing scanner-specific forks right before the design review.
+- Preserves the existing Rust implementation shape instead of introducing scanner-specific forks.
 
 ## Consequences
 
 - New adapters must normalize into the shared domain model before they reach product surfaces.
 - Changes to `ScanResult`, `Finding`, or the shared taxonomy are architectural changes and should be treated as ADR-level decisions.
 - The score report remains coverage-aware because all findings, regardless of source, feed one scoring pipeline.
-- Presentation materials can describe one result architecture instead of separate native-versus-adapter subsystems.

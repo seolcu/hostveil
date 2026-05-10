@@ -53,7 +53,7 @@ app:
         hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
-        hostveil --quick-fix PATH [--preview-changes] [--yes]
+        hostveil --auto-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
         hostveil upgrade [--version TAG]
         hostveil uninstall
@@ -80,8 +80,8 @@ app:
         --adapters LIST   선택형 스캐너를 고릅니다: all, none 또는 쉼표 구분 trivy,dockle,lynis
         --tool NAME       hostveil setup에서 설치 도구를 명시적으로 선택합니다(반복 가능)
         --tools LIST      무인 setup 실행용 쉼표 구분 도구 목록입니다
-        --quick-fix PATH  특정 파일 또는 디렉터리에 안전한 Compose 전용 수정을 미리보기 또는 적용합니다
-        --fix PATH        특정 파일 또는 디렉터리에 안전/가이드 Compose 변경을 미리보기 또는 적용합니다
+        --auto-fix PATH   특정 파일 또는 디렉터리에 자동 Compose 전용 수정을 미리보기 또는 적용합니다
+        --fix PATH        특정 파일 또는 디렉터리에 자동/검토 필요 Compose 변경을 미리보기 또는 적용합니다
         --preview-changes 파일을 쓰지 않고 예정된 diff를 표시합니다
         --yes             대화형 확인 없이 검토한 변경을 적용합니다
         --locale LANG     이번 실행에 사용할 언어를 명시합니다 (지원: en, ko)
@@ -95,6 +95,8 @@ app:
     text: "%{name} %{version}"
   fail_on:
     exceeded: "검사 임계값 초과: %{threshold} 이상 발견 항목 %{count}개"
+  warning:
+    quick_fix_deprecated: "경고: --quick-fix는 deprecated 되었으며 이후 릴리스에서 제거될 예정입니다. 대신 --auto-fix를 사용하세요"
   hint:
     quit: "q 또는 Esc를 눌러 종료"
     press_f_to_fix: "f를 눌러 자동 조치 적용"
@@ -118,6 +120,12 @@ app:
     fix_review_scroll: "Up/Down 또는 PgUp/PgDn으로 diff를 스크롤합니다"
     fix_review_apply: "y 또는 Enter를 눌러 검토한 변경을 적용합니다"
     fix_review_cancel: "q 또는 Esc를 눌러 취소합니다"
+    review_choice_move: "Up/Down 또는 j/k로 선택지를 이동합니다"
+    review_choice_accept: "Enter로 강조된 선택지를 확정합니다"
+    review_choice_cancel: "q 또는 Esc를 눌러 취소합니다"
+    review_secret_accept: "Enter로 현재 비밀값을 확정합니다"
+    review_secret_regenerate: "Ctrl-R로 새 강한 값을 생성합니다"
+    review_secret_cancel: "q 또는 Esc를 눌러 취소합니다"
   footer:
     quit: "종료"
     findings: "발견 항목 열기"
@@ -262,11 +270,12 @@ app:
   validation:
     auto_upgrade_mode_required: "auto-upgrade에는 enable 또는 disable 중 하나를 선택하세요"
     fix_requires_target: "fix 작업에는 compose 대상이 필요합니다"
-    fix_compose_conflict: "--compose와 함께 쓰지 말고 --quick-fix PATH 또는 --fix PATH를 사용하세요"
+    fix_compose_conflict: "--compose와 함께 쓰지 말고 --auto-fix PATH 또는 --fix PATH를 사용하세요"
     fix_json_not_supported: "fix 작업에서는 --json을 사용할 수 없습니다"
-    preview_yes_requires_fix_mode: "--preview-changes와 --yes는 --quick-fix 또는 --fix와 함께 사용할 때만 유효합니다"
+    preview_yes_requires_fix_mode: "--preview-changes와 --yes는 --auto-fix 또는 --fix와 함께 사용할 때만 유효합니다"
     findings_only_requires_json: "--findings-only는 --json과 함께 사용할 때만 유효합니다"
-    fix_mode_conflict: "--quick-fix와 --fix 중 하나만 선택하세요"
+    fix_mode_conflict: "--auto-fix/--quick-fix와 --fix 중 하나만 선택하세요"
+    review_required_for_fix_yes: "--fix --yes는 사용자 입력이 필요한 검토 변경이 있으면 계속할 수 없습니다"
     unsupported_locale: "지원하지 않는 언어입니다: %{value}"
     duplicate_locale_override: "--locale override는 하나만 선택하세요"
     unsupported_setup_tool: "지원하지 않는 setup 도구입니다: %{value}"
@@ -337,9 +346,11 @@ app:
     host_root_path_missing: "host-root 경로가 존재하지 않습니다: %{path}"
     io: "애플리케이션 오류: %{message}"
     fix_serialize: "업데이트된 compose 파일 직렬화에 실패했습니다: %{message}"
+    fix_review_required: "검토가 필요한 Compose 수정은 계획을 만들기 전에 대화형 입력이 필요합니다"
+    fix_invalid_review_resolution: "잘못된 검토 응답입니다: %{message}"
     json_export_failed: "현재 스캔 결과 직렬화에 실패했습니다"
     tui_requires_terminal: "대화형 TUI는 터미널이 필요합니다. 비대화형 실행에는 --json을 사용하세요"
-    fix_requires_terminal: "guided Compose 수정은 터미널 검토가 필요합니다. 비대화형에서는 --preview-changes로 diff를 확인하세요"
+    fix_requires_terminal: "검토가 필요한 Compose 수정은 대화형 터미널이 필요합니다. 비대화형에서는 --preview-changes로 diff를 확인하세요"
     missing_translation: "번역 키를 찾지 못했습니다: %{key}"
   finding:
     header: "발견 항목 상세"
@@ -366,6 +377,8 @@ app:
     filter_fixable: "수정 가능"
     filter_safe: "안전"
     filter_guided: "가이드"
+    filter_auto: "자동"
+    filter_review: "검토"
     filter_manual: "수동"
     sort_severity: "심각도"
     sort_source: "소스"
@@ -378,10 +391,14 @@ app:
     remediation_badge:
       safe: "안전"
       guided: "가이드"
+      auto: "자동"
+      review: "검토"
       manual: "수동"
     remediation_badge_compact:
       safe: "안"
       guided: "가"
+      auto: "자"
+      review: "검"
       manual: "수"
   result:
     host_group: "호스트"
@@ -420,12 +437,26 @@ app:
     file: "Compose 파일: %{path}"
     safe_plan: "안전한 변경 %{count}개를 검토할 수 있습니다."
     guided_plan: "가이드 변경 %{count}개를 검토할 수 있습니다."
+    auto_plan: "자동 변경 %{count}개를 검토할 수 있습니다."
+    review_plan: "검토가 필요한 변경 %{count}개를 검토할 수 있습니다."
     preview_only: "미리보기 전용: 파일은 수정되지 않았습니다."
     cancelled: "파일을 쓰지 않고 취소했습니다."
     backup: "백업 생성: %{path}"
     applied: "적용됨: %{summary}"
     confirm_quick: "%{path}에 안전한 Compose 변경을 적용할까요? [y/N]: "
+    confirm_auto: "%{path}에 자동 Compose 변경을 적용할까요? [y/N]: "
     confirm_all: "%{path}에 검토한 Compose 변경을 적용할까요? [y/N]: "
+    review_choice_title: "검토 경로 선택"
+    review_secret_title: "비밀값 입력"
+    review_secret_description: "%{service}의 %{variable} 값으로 사용할 비밀값을 선택하거나 수정하세요. hostveil은 이 값을 보고서나 상태 메시지에 출력하지 않습니다."
+    review_options: "선택지"
+    review_secret_value: "비밀값"
+    review_secret_mask_toggle: "Tab으로 마스킹을 전환하고 Ctrl-R로 새 값을 생성합니다."
+    review_gitea_choice_description: "%{service}의 inline Gitea 보안 시크릿을 어떻게 외부화할지 선택하세요."
+    review_gitea_choice_project_env: "프로젝트 .env 파일 사용"
+    review_gitea_choice_project_env_detail: ".env에 시크릿 키를 쓰고 inline 값을 ${VAR} 플레이스홀더로 바꿉니다."
+    review_gitea_choice_service_env_file: "전용 .env.gitea 파일 사용"
+    review_gitea_choice_service_env_file_detail: ".env.gitea를 만들고 inline 값을 제거한 뒤 env_file: .env.gitea를 추가합니다."
     safe_bind_localhost: "%{service}: 공개 포트 %{port}를 127.0.0.1에 바인딩"
     safe_nginx_stable: "%{service}: nginx를 nginx:stable로 고정"
     safe_vaultwarden_domain_https: "%{service}: DOMAIN을 https:// URL로 전환"
@@ -437,6 +468,28 @@ app:
     guided_gitea_externalize_secrets: "%{service}: Gitea 보안 시크릿의 inline 값을 환경 변수 플레이스홀더로 교체"
     guided_nginx_stable: "%{service}: nginx를 nginx:stable로 고정하도록 검토"
     guided_non_root_user: "%{service}: 명시적인 non-root 사용자(1000:1000) 구성"
+    auto_bind_localhost: "%{service}: 공개 포트 %{port}를 127.0.0.1에 바인딩"
+    auto_nginx_stable: "%{service}: nginx를 nginx:stable로 고정"
+    auto_vaultwarden_domain_https: "%{service}: DOMAIN을 https:// URL로 전환"
+    auto_jellyfin_published_url_https: "%{service}: JELLYFIN_PublishedServerUrl을 https:// URL로 전환"
+    auto_nextcloud_overwriteprotocol_https: "%{service}: OVERWRITEPROTOCOL을 https로 설정"
+    auto_nextcloud_trusted_domains_wildcard: "%{service}: NEXTCLOUD_TRUSTED_DOMAINS에서 와일드카드 항목 제거"
+    auto_privileged_cap_add: "%{service}: privileged 모드를 NET_BIND_SERVICE 방식으로 대체"
+    auto_postgres_auth: "%{service}: PostgreSQL host auth를 scram-sha-256으로 설정"
+    auto_redis_protected_mode: "%{service}: REDIS_PROTECTED_MODE를 활성화"
+    auto_grafana_auth: "%{service}: Grafana 인증을 활성화하고 anonymous mode를 비활성화"
+    auto_grafana_anonymous: "%{service}: Grafana 익명 접근 비활성화"
+    auto_authentik_debug: "%{service}: AUTHENTIK_DEBUG 비활성화"
+    auto_paperless_force_login: "%{service}: PAPERLESS_FORCE_LOGIN 활성화"
+    auto_seccomp_default: "%{service}: seccomp:unconfined 제거"
+    auto_cap_drop_dangerous: "%{service}: cap_add의 위험 capability 제거"
+    auto_vaultwarden_signups: "%{service}: SIGNUPS_ALLOWED를 false로 설정"
+    auto_non_root_user: "%{service}: 명시적인 non-root 사용자(1000:1000) 구성"
+    review_gitea_externalize_secrets: "%{service}: 선택한 경로로 Gitea 보안 시크릿 외부화"
+    review_postgres_password: "%{service}: 선택한 비밀값으로 POSTGRES_PASSWORD 외부화"
+    review_mysql_password: "%{service}: 선택한 비밀값으로 MYSQL_ROOT_PASSWORD 외부화"
+    review_redis_password: "%{service}: 선택한 비밀값으로 REDIS_PASSWORD 외부화"
+    review_pihole_password: "%{service}: 선택한 비밀값으로 WEBPASSWORD 외부화"
     status:
       no_compose_target: "수정할 Compose 대상이 없습니다."
       no_finding_selected: "수정을 적용하려면 먼저 finding을 선택하세요."
@@ -1222,6 +1275,8 @@ finding:
         fix: "REDIS_PROTECTED_MODE=no를 제거하거나 yes로 설정하고 REDIS_PASSWORD로 비밀번호를 구성하세요."
 remediation:
   auto_fixable: "자동"
+  auto: "자동"
+  review: "검토"
   manual: "수동"
 test:
   fallback_probe: "English fallback probe"

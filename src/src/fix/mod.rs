@@ -2,24 +2,33 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
 use std::io;
+use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_yaml::{Mapping, Sequence, Value};
 
 use crate::compose::{ComposeParseError, ComposeParser};
+use crate::domain::RemediationKind;
 use crate::rules::RuleEngine;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixMode {
-    QuickFix,
+    AutoFix,
     Fix,
+}
+
+impl FixMode {
+    fn includes_review(self) -> bool {
+        matches!(self, Self::Fix)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FixProposal {
     pub service: String,
     pub summary: String,
+    pub remediation: RemediationKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -28,21 +37,65 @@ pub struct FixPlan {
     pub diff_preview: String,
     pub updated_text: String,
     pub backup_path: Option<PathBuf>,
-    pub safe_applied: Vec<FixProposal>,
-    pub guided_applied: Vec<FixProposal>,
+    pub auto_applied: Vec<FixProposal>,
+    pub review_applied: Vec<FixProposal>,
 }
 
 impl FixPlan {
     pub fn changed(&self) -> bool {
-        !(self.safe_applied.is_empty() && self.guided_applied.is_empty())
+        !(self.auto_applied.is_empty() && self.review_applied.is_empty())
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewChoiceOption {
+    pub key: String,
+    pub label: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReviewRequest {
+    Choice {
+        finding_id: String,
+        service: String,
+        title: String,
+        description: String,
+        options: Vec<ReviewChoiceOption>,
+    },
+    SecretInput {
+        finding_id: String,
+        service: String,
+        variable: String,
+        title: String,
+        description: String,
+        suggested_value: String,
+    },
+}
+
+impl ReviewRequest {
+    pub fn finding_id(&self) -> &str {
+        match self {
+            Self::Choice { finding_id, .. } | Self::SecretInput { finding_id, .. } => finding_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReviewResolution {
+    Choice(String),
+    SecretValue(String),
+}
+
+pub type FixResolutionMap = BTreeMap<String, ReviewResolution>;
 
 #[derive(Debug)]
 pub enum FixError {
     ComposeParse(ComposeParseError),
     Io(io::Error),
     Serialize(String),
+    ReviewRequired(Vec<ReviewRequest>),
+    InvalidReviewResolution(String),
 }
 
 impl fmt::Display for FixError {
@@ -56,6 +109,18 @@ impl fmt::Display for FixError {
                 f,
                 "{}",
                 t!("app.error.fix_serialize", message = message.as_str()).into_owned()
+            ),
+            Self::ReviewRequired(_) => {
+                write!(f, "{}", t!("app.error.fix_review_required").into_owned())
+            }
+            Self::InvalidReviewResolution(message) => write!(
+                f,
+                "{}",
+                t!(
+                    "app.error.fix_invalid_review_resolution",
+                    message = message.as_str()
+                )
+                .into_owned()
             ),
         }
     }
@@ -80,7 +145,7 @@ pub fn preview(
     mode: FixMode,
     only_findings: Option<&[String]>,
 ) -> Result<FixPlan, FixError> {
-    build_fix_plan(path.as_ref(), mode, only_findings)
+    preview_with_resolutions(path, mode, only_findings, &FixResolutionMap::new())
 }
 
 pub fn apply(
@@ -88,7 +153,25 @@ pub fn apply(
     mode: FixMode,
     only_findings: Option<&[String]>,
 ) -> Result<FixPlan, FixError> {
-    let mut plan = build_fix_plan(path.as_ref(), mode, only_findings)?;
+    apply_with_resolutions(path, mode, only_findings, &FixResolutionMap::new())
+}
+
+pub fn preview_with_resolutions(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+    resolutions: &FixResolutionMap,
+) -> Result<FixPlan, FixError> {
+    build_fix_plan(path.as_ref(), mode, only_findings, resolutions)
+}
+
+pub fn apply_with_resolutions(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+    resolutions: &FixResolutionMap,
+) -> Result<FixPlan, FixError> {
+    let mut plan = build_fix_plan(path.as_ref(), mode, only_findings, resolutions)?;
     if !plan.changed() {
         return Ok(plan);
     }
@@ -104,6 +187,7 @@ fn build_fix_plan(
     path: &Path,
     mode: FixMode,
     only_findings: Option<&[String]>,
+    resolutions: &FixResolutionMap,
 ) -> Result<FixPlan, FixError> {
     let bundle = ComposeParser::load_bundle(path.to_path_buf(), false)?;
     let project = ComposeParser::parse_path_without_override(path.to_path_buf())?;
@@ -111,21 +195,38 @@ fn build_fix_plan(
     let findings_by_service = findings_by_service(&findings, only_findings);
 
     let mut document = bundle.primary_document.clone();
-    let safe_applied = apply_safe_fixes(&mut document, &findings_by_service);
-    let guided_applied = if mode == FixMode::Fix {
-        apply_guided_fixes(&mut document, &findings_by_service, &bundle.primary_path)
+    let mut review_requests = Vec::new();
+    let auto_applied = apply_auto_fixes(
+        &mut document,
+        &findings_by_service,
+        &bundle.primary_path,
+        resolutions,
+        &mut review_requests,
+    );
+    let review_applied = if mode.includes_review() {
+        apply_review_fixes(
+            &mut document,
+            &findings_by_service,
+            &bundle.primary_path,
+            resolutions,
+            &mut review_requests,
+        )
     } else {
         Vec::new()
     };
-    let changed_services = safe_applied
+    if !review_requests.is_empty() {
+        return Err(FixError::ReviewRequired(review_requests));
+    }
+
+    let changed_services = auto_applied
         .iter()
-        .chain(guided_applied.iter())
+        .chain(review_applied.iter())
         .map(|proposal| proposal.service.clone())
         .collect::<BTreeSet<_>>();
 
     let updated_text =
         render_document_like_original(&bundle.primary_text, &document, &changed_services)?;
-    let diff_preview = if safe_applied.is_empty() && guided_applied.is_empty() {
+    let diff_preview = if auto_applied.is_empty() && review_applied.is_empty() {
         String::new()
     } else {
         build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
@@ -136,8 +237,8 @@ fn build_fix_plan(
         diff_preview,
         updated_text,
         backup_path: None,
-        safe_applied,
-        guided_applied,
+        auto_applied,
+        review_applied,
     };
 
     Ok(plan)
@@ -307,9 +408,12 @@ fn findings_by_service(
     grouped
 }
 
-fn apply_safe_fixes(
+fn apply_auto_fixes(
     document: &mut Value,
     findings_by_service: &BTreeMap<String, BTreeSet<String>>,
+    _compose_path: &Path,
+    _resolutions: &FixResolutionMap,
+    _review_requests: &mut Vec<ReviewRequest>,
 ) -> Vec<FixProposal> {
     let Some(services) = services_mapping_mut(document) else {
         return Vec::new();
@@ -328,63 +432,67 @@ fn apply_safe_fixes(
             && image != stable_image
         {
             service.insert(yaml_key("image"), Value::String(stable_image));
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!("app.fix.safe_nginx_stable", service = service_name.as_str())
-                    .into_owned(),
-            });
+            applied.push(fix_proposal(
+                service_name,
+                t!("app.fix.auto_nginx_stable", service = service_name.as_str()).into_owned(),
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.vaultwarden.insecure_domain")
             && harden_vaultwarden_domain(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_vaultwarden_domain_https",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_vaultwarden_domain_https",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.jellyfin.insecure_published_url")
             && harden_jellyfin_published_url(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_jellyfin_published_url_https",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_jellyfin_published_url_https",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.nextcloud.insecure_overwriteprotocol")
             && harden_nextcloud_overwriteprotocol(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_nextcloud_overwriteprotocol_https",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_nextcloud_overwriteprotocol_https",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.nextcloud.wildcard_trusted_domains")
             && harden_nextcloud_trusted_domains(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_nextcloud_trusted_domains_wildcard",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_nextcloud_trusted_domains_wildcard",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("exposure.public_binding")
@@ -395,15 +503,16 @@ fn apply_safe_fixes(
                 let Some(before) = rewrite_public_port(port) else {
                     continue;
                 };
-                applied.push(FixProposal {
-                    service: service_name.clone(),
-                    summary: t!(
-                        "app.fix.safe_bind_localhost",
+                applied.push(fix_proposal(
+                    service_name,
+                    t!(
+                        "app.fix.auto_bind_localhost",
                         service = service_name.as_str(),
                         port = before.as_str()
                     )
                     .into_owned(),
-                });
+                    RemediationKind::Auto,
+                ));
             }
         }
 
@@ -413,193 +522,191 @@ fn apply_safe_fixes(
         {
             for volume in sequence.iter_mut() {
                 if let Some(path) = rewrite_sensitive_mount_readonly(volume) {
-                    applied.push(FixProposal {
-                        service: service_name.clone(),
-                        summary: t!(
-                            "app.fix.safe_mount_readonly",
+                    applied.push(fix_proposal(
+                        service_name,
+                        t!(
+                            "app.fix.auto_mount_readonly",
                             service = service_name.as_str(),
                             path = path.as_str()
                         )
                         .into_owned(),
-                    });
+                        RemediationKind::Auto,
+                    ));
                 }
             }
         }
 
-        if finding_ids.contains("service.postgres.password_missing")
+        if finding_ids.contains("permissions.privileged")
             && let Some(service) = service_mapping_mut(services, service_name)
-            && harden_postgres_password(service)
+            && apply_privileged_low_port_fix(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_postgres_password",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_privileged_cap_add",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.postgres.trust_auth")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_postgres_auth(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_postgres_auth",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_postgres_auth",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
-        }
-
-        if finding_ids.contains("service.mysql.password_missing")
-            && let Some(service) = service_mapping_mut(services, service_name)
-            && harden_mysql_password(service)
-        {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_mysql_password",
-                    service = service_name.as_str()
-                )
-                .into_owned(),
-            });
-        }
-
-        if finding_ids.contains("service.redis.password_missing")
-            && let Some(service) = service_mapping_mut(services, service_name)
-            && harden_redis_password(service)
-        {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_redis_password",
-                    service = service_name.as_str()
-                )
-                .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.redis.protected_mode_disabled")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_redis_protected_mode(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_redis_protected_mode",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_redis_protected_mode",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.grafana.auth_disabled")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_grafana_auth(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!("app.fix.safe_grafana_auth", service = service_name.as_str())
-                    .into_owned(),
-            });
+            applied.push(fix_proposal(
+                service_name,
+                t!("app.fix.auto_grafana_auth", service = service_name.as_str()).into_owned(),
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.grafana.anonymous_access")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_grafana_anonymous(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_grafana_anonymous",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_grafana_anonymous",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.authentik.debug_enabled")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_authentik_debug(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_authentik_debug",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_authentik_debug",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("service.paperless.no_force_login")
             && let Some(service) = service_mapping_mut(services, service_name)
             && harden_paperless_force_login(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_paperless_force_login",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_paperless_force_login",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
-        }
-
-        if (finding_ids.contains("service.pihole.no_password")
-            || finding_ids.contains("service.pihole.weak_password"))
-            && let Some(service) = service_mapping_mut(services, service_name)
-            && harden_pihole_password(service)
-        {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_pihole_password",
-                    service = service_name.as_str()
-                )
-                .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("runtime.seccomp_unconfined")
             && let Some(service) = service_mapping_mut(services, service_name)
             && remove_seccomp_unconfined(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_seccomp_default",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_seccomp_default",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
         }
 
         if finding_ids.contains("runtime.dangerous_capabilities")
             && let Some(service) = service_mapping_mut(services, service_name)
             && remove_dangerous_capabilities(service)
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.safe_cap_drop_dangerous",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_cap_drop_dangerous",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Auto,
+            ));
+        }
+
+        if finding_ids.contains("service.vaultwarden.signups_enabled")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && update_environment_value(service, "SIGNUPS_ALLOWED", "false", false)
+        {
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_vaultwarden_signups",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+                RemediationKind::Auto,
+            ));
+        }
+
+        if finding_ids.contains("permissions.implicit_root")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && apply_harden_implicit_root(service)
+        {
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.auto_non_root_user",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+                RemediationKind::Auto,
+            ));
         }
     }
 
     applied
 }
 
-fn apply_guided_fixes(
+fn apply_review_fixes(
     document: &mut Value,
     findings_by_service: &BTreeMap<String, BTreeSet<String>>,
     compose_path: &Path,
+    resolutions: &FixResolutionMap,
+    review_requests: &mut Vec<ReviewRequest>,
 ) -> Vec<FixProposal> {
     let Some(services) = services_mapping_mut(document) else {
         return Vec::new();
@@ -608,77 +715,138 @@ fn apply_guided_fixes(
     let mut applied = Vec::new();
 
     for (service_name, finding_ids) in findings_by_service {
-        if finding_ids.contains("permissions.privileged")
+        if finding_ids.contains("service.postgres.password_missing")
             && let Some(service) = service_mapping_mut(services, service_name)
-            && apply_guided_privileged_low_port_fix(service)
+            && let Some(secret) = resolve_secret_review_value(
+                service_name,
+                "service.postgres.password_missing",
+                "POSTGRES_PASSWORD",
+                resolutions,
+                review_requests,
+            )
+            && externalize_secret_to_env_file(
+                compose_path,
+                service,
+                "POSTGRES_PASSWORD",
+                secret.as_str(),
+                true,
+            )
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.guided_privileged_cap_add",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.review_postgres_password",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Review,
+            ));
         }
 
-        if finding_ids.contains("service.vaultwarden.signups_enabled")
+        if finding_ids.contains("service.mysql.password_missing")
             && let Some(service) = service_mapping_mut(services, service_name)
-            && update_environment_value(service, "SIGNUPS_ALLOWED", "false", false)
+            && let Some(secret) = resolve_secret_review_value(
+                service_name,
+                "service.mysql.password_missing",
+                "MYSQL_ROOT_PASSWORD",
+                resolutions,
+                review_requests,
+            )
+            && externalize_secret_to_env_file(
+                compose_path,
+                service,
+                "MYSQL_ROOT_PASSWORD",
+                secret.as_str(),
+                true,
+            )
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.guided_vaultwarden_signups",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.review_mysql_password",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
+                RemediationKind::Review,
+            ));
+        }
+
+        if finding_ids.contains("service.redis.password_missing")
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && let Some(secret) = resolve_secret_review_value(
+                service_name,
+                "service.redis.password_missing",
+                "REDIS_PASSWORD",
+                resolutions,
+                review_requests,
+            )
+            && externalize_secret_to_env_file(
+                compose_path,
+                service,
+                "REDIS_PASSWORD",
+                secret.as_str(),
+                true,
+            )
+        {
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.review_redis_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+                RemediationKind::Review,
+            ));
+        }
+
+        if (finding_ids.contains("service.pihole.no_password")
+            || finding_ids.contains("service.pihole.weak_password"))
+            && let Some(service) = service_mapping_mut(services, service_name)
+            && let Some(secret) = resolve_secret_review_value(
+                service_name,
+                if finding_ids.contains("service.pihole.no_password") {
+                    "service.pihole.no_password"
+                } else {
+                    "service.pihole.weak_password"
+                },
+                "WEBPASSWORD",
+                resolutions,
+                review_requests,
+            )
+            && externalize_secret_to_env_file(
+                compose_path,
+                service,
+                "WEBPASSWORD",
+                secret.as_str(),
+                true,
+            )
+        {
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.review_pihole_password",
+                    service = service_name.as_str()
+                )
+                .into_owned(),
+                RemediationKind::Review,
+            ));
         }
 
         if finding_ids.contains("service.gitea.inline_security_secrets")
             && let Some(service) = service_mapping_mut(services, service_name)
-            && externalize_gitea_security_env(service, compose_path)
+            && let Some(choice) =
+                resolve_gitea_secret_choice(service_name, resolutions, review_requests)
+            && apply_gitea_secret_review(service, compose_path, choice.as_str())
         {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.guided_gitea_externalize_secrets",
+            applied.push(fix_proposal(
+                service_name,
+                t!(
+                    "app.fix.review_gitea_externalize_secrets",
                     service = service_name.as_str()
                 )
                 .into_owned(),
-            });
-        }
-
-        if finding_ids.contains("updates.latest_tag")
-            && let Some(service) = service_mapping_mut(services, service_name)
-            && let Some(image) = image_string(service)
-            && let Some(stable_image) = stable_nginx_image_for_findings(&image, finding_ids)
-            && image != stable_image
-        {
-            service.insert(yaml_key("image"), Value::String(stable_image));
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.guided_nginx_stable",
-                    service = service_name.as_str()
-                )
-                .into_owned(),
-            });
-        }
-
-        if finding_ids.contains("permissions.implicit_root")
-            && let Some(service) = service_mapping_mut(services, service_name)
-            && apply_harden_implicit_root(service)
-        {
-            applied.push(FixProposal {
-                service: service_name.clone(),
-                summary: t!(
-                    "app.fix.guided_non_root_user",
-                    service = service_name.as_str()
-                )
-                .into_owned(),
-            });
+                RemediationKind::Review,
+            ));
         }
     }
 
@@ -697,6 +865,14 @@ fn service_mapping_mut<'a>(
     service_name: &str,
 ) -> Option<&'a mut Mapping> {
     services.get_mut(yaml_key(service_name))?.as_mapping_mut()
+}
+
+fn fix_proposal(service: &str, summary: String, remediation: RemediationKind) -> FixProposal {
+    FixProposal {
+        service: service.to_owned(),
+        summary,
+        remediation,
+    }
 }
 
 fn yaml_key(key: &str) -> Value {
@@ -741,7 +917,7 @@ fn is_major_only_tag(tag: &str) -> bool {
             .all(|character| character.is_ascii_digit())
 }
 
-fn apply_guided_privileged_low_port_fix(service: &mut Mapping) -> bool {
+fn apply_privileged_low_port_fix(service: &mut Mapping) -> bool {
     let Some(privileged) = service.get(yaml_key("privileged")) else {
         return false;
     };
@@ -790,6 +966,125 @@ fn externalize_gitea_security_env(service: &mut Mapping, compose_path: &Path) ->
     changed
 }
 
+fn apply_gitea_secret_review(service: &mut Mapping, compose_path: &Path, choice: &str) -> bool {
+    match choice {
+        "project_env" => externalize_gitea_security_env(service, compose_path),
+        "service_env_file" => externalize_gitea_security_env_file(service, compose_path),
+        _ => false,
+    }
+}
+
+fn resolve_gitea_secret_choice(
+    service_name: &str,
+    resolutions: &FixResolutionMap,
+    review_requests: &mut Vec<ReviewRequest>,
+) -> Option<String> {
+    let finding_id = "service.gitea.inline_security_secrets";
+    match resolutions.get(finding_id) {
+        Some(ReviewResolution::Choice(choice)) => Some(choice.clone()),
+        Some(_) => {
+            review_requests.push(ReviewRequest::Choice {
+                finding_id: finding_id.to_owned(),
+                service: service_name.to_owned(),
+                title: t!("app.fix.review_choice_title").into_owned(),
+                description: t!(
+                    "app.fix.review_gitea_choice_description",
+                    service = service_name
+                )
+                .into_owned(),
+                options: vec![
+                    ReviewChoiceOption {
+                        key: String::from("project_env"),
+                        label: t!("app.fix.review_gitea_choice_project_env").into_owned(),
+                        description: t!("app.fix.review_gitea_choice_project_env_detail")
+                            .into_owned(),
+                    },
+                    ReviewChoiceOption {
+                        key: String::from("service_env_file"),
+                        label: t!("app.fix.review_gitea_choice_service_env_file").into_owned(),
+                        description: t!("app.fix.review_gitea_choice_service_env_file_detail")
+                            .into_owned(),
+                    },
+                ],
+            });
+            None
+        }
+        None => {
+            review_requests.push(ReviewRequest::Choice {
+                finding_id: finding_id.to_owned(),
+                service: service_name.to_owned(),
+                title: t!("app.fix.review_choice_title").into_owned(),
+                description: t!(
+                    "app.fix.review_gitea_choice_description",
+                    service = service_name
+                )
+                .into_owned(),
+                options: vec![
+                    ReviewChoiceOption {
+                        key: String::from("project_env"),
+                        label: t!("app.fix.review_gitea_choice_project_env").into_owned(),
+                        description: t!("app.fix.review_gitea_choice_project_env_detail")
+                            .into_owned(),
+                    },
+                    ReviewChoiceOption {
+                        key: String::from("service_env_file"),
+                        label: t!("app.fix.review_gitea_choice_service_env_file").into_owned(),
+                        description: t!("app.fix.review_gitea_choice_service_env_file_detail")
+                            .into_owned(),
+                    },
+                ],
+            });
+            None
+        }
+    }
+}
+
+fn resolve_secret_review_value(
+    service_name: &str,
+    finding_id: &str,
+    variable: &str,
+    resolutions: &FixResolutionMap,
+    review_requests: &mut Vec<ReviewRequest>,
+) -> Option<String> {
+    match resolutions.get(finding_id) {
+        Some(ReviewResolution::SecretValue(value)) if !value.trim().is_empty() => {
+            Some(value.clone())
+        }
+        Some(_) => {
+            review_requests.push(ReviewRequest::SecretInput {
+                finding_id: finding_id.to_owned(),
+                service: service_name.to_owned(),
+                variable: variable.to_owned(),
+                title: t!("app.fix.review_secret_title").into_owned(),
+                description: t!(
+                    "app.fix.review_secret_description",
+                    service = service_name,
+                    variable = variable
+                )
+                .into_owned(),
+                suggested_value: generate_secret_value(),
+            });
+            None
+        }
+        None => {
+            review_requests.push(ReviewRequest::SecretInput {
+                finding_id: finding_id.to_owned(),
+                service: service_name.to_owned(),
+                variable: variable.to_owned(),
+                title: t!("app.fix.review_secret_title").into_owned(),
+                description: t!(
+                    "app.fix.review_secret_description",
+                    service = service_name,
+                    variable = variable
+                )
+                .into_owned(),
+                suggested_value: generate_secret_value(),
+            });
+            None
+        }
+    }
+}
+
 fn migrate_env_to_file(
     compose_path: &Path,
     service: &mut Mapping,
@@ -833,6 +1128,163 @@ fn migrate_env_to_file(
         &format!("${{{key}}}"),
         false,
     ))
+}
+
+fn externalize_gitea_security_env_file(service: &mut Mapping, compose_path: &Path) -> bool {
+    let env_path = compose_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(".env.gitea");
+
+    let mut changed = false;
+    for key in [
+        "GITEA__security__SECRET_KEY",
+        "GITEA__security__INTERNAL_TOKEN",
+    ] {
+        let Some(current_value) = environment_value(service, key) else {
+            continue;
+        };
+        if current_value.starts_with("${") && current_value.ends_with('}') {
+            continue;
+        }
+        if write_or_update_env_entry(&env_path, key, &current_value).is_ok() {
+            changed |= remove_environment_key(service, key);
+        }
+    }
+
+    if changed {
+        let relative = env_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or(".env.gitea");
+        changed |= ensure_env_file_entry(service, relative);
+    }
+
+    changed
+}
+
+fn externalize_secret_to_env_file(
+    compose_path: &Path,
+    service: &mut Mapping,
+    key: &str,
+    secret_value: &str,
+    insert_if_missing: bool,
+) -> bool {
+    let env_path = compose_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(".env");
+    if write_or_update_env_entry(&env_path, key, secret_value).is_err() {
+        return false;
+    }
+    update_environment_value(service, key, &format!("${{{key}}}"), insert_if_missing)
+}
+
+fn write_or_update_env_entry(path: &Path, key: &str, value: &str) -> io::Result<()> {
+    let mut content = if path.exists() {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
+
+    let mut replaced = false;
+    let mut lines = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some((entry_key, _)) = trimmed.split_once('=')
+            && entry_key.trim() == key
+        {
+            lines.push(format!("{key}={value}"));
+            replaced = true;
+        } else {
+            lines.push(line.to_owned());
+        }
+    }
+
+    if !replaced {
+        lines.push(format!("{key}={value}"));
+    }
+
+    content = lines.join("\n");
+    if !content.is_empty() {
+        content.push('\n');
+    }
+    atomic_write_file(path, &content).map_err(|error| match error {
+        FixError::Io(io_error) => io_error,
+        other => io::Error::other(other.to_string()),
+    })
+}
+
+fn generate_secret_value() -> String {
+    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+    const SECRET_LENGTH: usize = 24;
+
+    let mut bytes = [0_u8; SECRET_LENGTH];
+    if fs::File::open("/dev/urandom")
+        .and_then(|mut file| file.read_exact(&mut bytes))
+        .is_err()
+    {
+        bytes.copy_from_slice(b"hostveil-review-secret!!");
+    }
+
+    bytes
+        .iter()
+        .map(|byte| ALPHABET[*byte as usize % ALPHABET.len()] as char)
+        .collect()
+}
+
+fn ensure_env_file_entry(service: &mut Mapping, value: &str) -> bool {
+    match service.get_mut(yaml_key("env_file")) {
+        Some(Value::String(current)) => {
+            if current.trim() == value {
+                false
+            } else {
+                let existing = current.trim().to_owned();
+                service.insert(
+                    yaml_key("env_file"),
+                    Value::Sequence(vec![
+                        Value::String(existing),
+                        Value::String(value.to_owned()),
+                    ]),
+                );
+                true
+            }
+        }
+        Some(Value::Sequence(sequence)) => {
+            if sequence.iter().any(|item| item.as_str() == Some(value)) {
+                false
+            } else {
+                sequence.push(Value::String(value.to_owned()));
+                true
+            }
+        }
+        Some(_) => false,
+        None => {
+            service.insert(yaml_key("env_file"), Value::String(value.to_owned()));
+            true
+        }
+    }
+}
+
+fn remove_environment_key(service: &mut Mapping, key: &str) -> bool {
+    let Some(environment) = service.get_mut(yaml_key("environment")) else {
+        return false;
+    };
+
+    match environment {
+        Value::Mapping(mapping) => mapping.remove(yaml_key(key)).is_some(),
+        Value::Sequence(sequence) => {
+            let before = sequence.len();
+            sequence.retain(|item| {
+                item.as_str()
+                    .and_then(|entry| entry.split_once('='))
+                    .map(|(entry_key, _)| entry_key.trim() != key)
+                    .unwrap_or(true)
+            });
+            before != sequence.len()
+        }
+        _ => false,
+    }
 }
 
 fn harden_vaultwarden_domain(service: &mut Mapping) -> bool {
@@ -887,15 +1339,6 @@ fn apply_harden_implicit_root(service: &mut Mapping) -> bool {
     true
 }
 
-fn harden_postgres_password(service: &mut Mapping) -> bool {
-    update_environment_value(
-        service,
-        "POSTGRES_PASSWORD",
-        "${POSTGRES_PASSWORD:?set a strong password}",
-        true,
-    )
-}
-
 fn harden_postgres_auth(service: &mut Mapping) -> bool {
     let Some(current) = environment_value(service, "POSTGRES_HOST_AUTH_METHOD") else {
         return update_environment_value(
@@ -910,24 +1353,6 @@ fn harden_postgres_auth(service: &mut Mapping) -> bool {
     } else {
         false
     }
-}
-
-fn harden_mysql_password(service: &mut Mapping) -> bool {
-    update_environment_value(
-        service,
-        "MYSQL_ROOT_PASSWORD",
-        "${MYSQL_ROOT_PASSWORD:?set a strong password}",
-        true,
-    )
-}
-
-fn harden_redis_password(service: &mut Mapping) -> bool {
-    update_environment_value(
-        service,
-        "REDIS_PASSWORD",
-        "${REDIS_PASSWORD:?set a strong password}",
-        true,
-    )
 }
 
 fn harden_redis_protected_mode(service: &mut Mapping) -> bool {
@@ -961,15 +1386,6 @@ fn harden_authentik_debug(service: &mut Mapping) -> bool {
 
 fn harden_paperless_force_login(service: &mut Mapping) -> bool {
     update_environment_value(service, "PAPERLESS_FORCE_LOGIN", "true", true)
-}
-
-fn harden_pihole_password(service: &mut Mapping) -> bool {
-    update_environment_value(
-        service,
-        "WEBPASSWORD",
-        "${WEBPASSWORD:?set a strong admin password}",
-        true,
-    )
 }
 
 fn remove_seccomp_unconfined(service: &mut Mapping) -> bool {
@@ -1160,6 +1576,16 @@ fn update_environment_value(
     value: &str,
     insert_if_missing: bool,
 ) -> bool {
+    if service.get(yaml_key("environment")).is_none() {
+        if !insert_if_missing {
+            return false;
+        }
+        let mut mapping = Mapping::new();
+        mapping.insert(yaml_key(key), environment_scalar_value(value));
+        service.insert(yaml_key("environment"), Value::Mapping(mapping));
+        return true;
+    }
+
     let Some(environment) = service.get_mut(yaml_key("environment")) else {
         return false;
     };
@@ -1679,11 +2105,15 @@ fn atomic_write_file(path: &Path, content: &str) -> Result<(), FixError> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{FixMode, apply, merge_original_formatting, preview};
+    use super::{
+        FixMode, FixResolutionMap, ReviewResolution, apply, apply_with_resolutions,
+        merge_original_formatting, preview, preview_with_resolutions,
+    };
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -1723,17 +2153,32 @@ mod tests {
         compose_path
     }
 
+    fn review_resolution_choice(key: &str) -> FixResolutionMap {
+        BTreeMap::from([(
+            String::from("service.gitea.inline_security_secrets"),
+            ReviewResolution::Choice(String::from(key)),
+        )])
+    }
+
+    fn review_resolution_secret(finding_id: &str, secret: &str) -> FixResolutionMap {
+        BTreeMap::from([(
+            String::from(finding_id),
+            ReviewResolution::SecretValue(String::from(secret)),
+        )])
+    }
+
     #[test]
     fn previews_quick_fix_changes_for_mixed_stack_fixture() {
         let path = fixture("mixed-stack");
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 2);
-        assert!(plan.guided_applied.is_empty());
+        assert!(!plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
         assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
+        assert!(plan.diff_preview.contains("user: \"1000:1000\""));
     }
 
     #[test]
@@ -1741,10 +2186,10 @@ mod tests {
         let path = fixture("hardened-stack.yml");
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert!(plan.safe_applied.is_empty());
-        assert!(plan.guided_applied.is_empty());
+        assert!(plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.is_empty());
     }
 
@@ -1752,12 +2197,20 @@ mod tests {
     fn previews_fix_changes_for_mixed_stack_fixture() {
         let path = fixture("mixed-stack");
 
-        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
+        let plan = preview_with_resolutions(
+            &path,
+            FixMode::Fix,
+            None,
+            &review_resolution_secret("service.postgres.password_missing", "generated-secret"),
+        )
+        .expect("fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 2);
-        assert_eq!(plan.guided_applied.len(), 1); // implicit_root for postgres
+        assert_eq!(plan.auto_applied.len(), 3);
+        assert_eq!(plan.review_applied.len(), 1);
         assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
         assert!(plan.diff_preview.contains("127.0.0.1:8081:8080"));
+        assert!(plan.diff_preview.contains("user: \"1000:1000\""));
+        assert!(plan.diff_preview.contains("${POSTGRES_PASSWORD}"));
     }
 
     #[test]
@@ -1766,8 +2219,8 @@ mod tests {
 
         let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
-        assert!(plan.safe_applied.is_empty());
-        assert!(plan.guided_applied.is_empty());
+        assert!(plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.is_empty());
     }
 
@@ -1780,16 +2233,16 @@ mod tests {
             .to_path_buf();
 
         let first =
-            apply(&compose_path, FixMode::QuickFix, None).expect("first apply should succeed");
+            apply(&compose_path, FixMode::AutoFix, None).expect("first apply should succeed");
         let second =
-            apply(&compose_path, FixMode::QuickFix, None).expect("second apply should succeed");
+            apply(&compose_path, FixMode::AutoFix, None).expect("second apply should succeed");
 
         assert!(first.changed());
-        assert_eq!(first.safe_applied.len(), 2);
+        assert!(!first.auto_applied.is_empty());
         assert!(first.backup_path.is_some());
 
-        assert!(second.safe_applied.is_empty());
-        assert!(second.guided_applied.is_empty());
+        assert!(second.auto_applied.is_empty());
+        assert!(second.review_applied.is_empty());
         assert!(second.backup_path.is_none());
 
         let env_text = fs::read_to_string(root.join("postgres.env"))
@@ -1809,12 +2262,13 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"8080:80\"\n"
             ),
         );
 
-        let plan = apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+        let plan = apply(&path, FixMode::AutoFix, None).expect("apply should succeed");
         assert!(plan.changed());
 
         let backup_path = plan.backup_path.expect("backup path should exist");
@@ -1855,7 +2309,7 @@ mod tests {
             ),
         );
 
-        let plan = apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+        let plan = apply(&path, FixMode::AutoFix, None).expect("apply should succeed");
         assert!(plan.changed());
 
         // The temp file should not remain after atomic rename
@@ -1884,10 +2338,10 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 2);
-        assert!(plan.guided_applied.is_empty());
+        assert!(!plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.contains("127.0.0.1:8080:80"));
         assert!(plan.diff_preview.contains("nginx:stable"));
 
@@ -1904,6 +2358,7 @@ mod tests {
                 "services:\n",
                 "  app:\n",
                 "    image: alpine:3.20\n",
+                "    user: \"1000:1000\"\n",
                 "    privileged: true\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8080:80\"\n"
@@ -1912,8 +2367,8 @@ mod tests {
 
         let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
-        assert!(plan.safe_applied.is_empty());
-        assert_eq!(plan.guided_applied.len(), 2); // privileged + implicit_root
+        assert_eq!(plan.auto_applied.len(), 1);
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.contains("cap_add"));
         assert!(plan.diff_preview.contains("NET_BIND_SERVICE"));
 
@@ -1930,16 +2385,17 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx:latest\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8080:80\"\n"
             ),
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 1);
-        assert!(plan.guided_applied.is_empty());
+        assert_eq!(plan.auto_applied.len(), 1);
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.contains("nginx:stable"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
@@ -1955,16 +2411,17 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"9090:90/udp\"\n"
             ),
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 2);
-        assert!(plan.guided_applied.is_empty());
+        assert_eq!(plan.auto_applied.len(), 2);
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.contains("\"127.0.0.1:9090:90/udp\""));
         assert!(plan.diff_preview.contains("nginx:stable"));
 
@@ -1982,7 +2439,8 @@ mod tests {
                 "  vaultwarden:\n",
                 "    image: vaultwarden/server:1.30.1\n",
                 "    ports:\n",
-                "      - \"8080:80\"\n",
+                "      - \"127.0.0.1:8080:80\"\n",
+                "    user: \"1000:1000\"\n",
                 "    environment:\n",
                 "      SIGNUPS_ALLOWED: true\n"
             ),
@@ -1990,9 +2448,10 @@ mod tests {
 
         let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
 
-        assert_eq!(plan.guided_applied.len(), 2); // signups_enabled + implicit_root
+        assert_eq!(plan.auto_applied.len(), 1);
+        assert!(plan.review_applied.is_empty());
         assert!(
-            plan.guided_applied
+            plan.auto_applied
                 .iter()
                 .any(|proposal| proposal.summary.contains("SIGNUPS_ALLOWED"))
         );
@@ -2011,6 +2470,7 @@ mod tests {
                 "services:\n",
                 "  server:\n",
                 "    image: gitea/gitea:1.21.11\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"3000:3000\"\n",
                 "      - \"2222:22\"\n",
@@ -2020,11 +2480,14 @@ mod tests {
             ),
         );
 
-        let plan = preview(&path, FixMode::Fix, None).expect("fix preview should succeed");
+        let resolutions = review_resolution_choice("project_env");
+        let plan = preview_with_resolutions(&path, FixMode::Fix, None, &resolutions)
+            .expect("fix preview should succeed");
 
-        assert_eq!(plan.guided_applied.len(), 2); // gitea secrets + implicit_root
+        assert!(!plan.auto_applied.is_empty());
+        assert_eq!(plan.review_applied.len(), 1);
         assert!(
-            plan.guided_applied
+            plan.review_applied
                 .iter()
                 .any(|proposal| proposal.summary.contains("Gitea"))
         );
@@ -2059,7 +2522,13 @@ mod tests {
             ),
         );
 
-        let plan = apply(&path, FixMode::Fix, None).expect("apply should succeed");
+        let plan = apply_with_resolutions(
+            &path,
+            FixMode::Fix,
+            None,
+            &review_resolution_choice("project_env"),
+        )
+        .expect("apply should succeed");
         assert!(plan.changed());
 
         let env_path = root.join(".env");
@@ -2105,7 +2574,13 @@ mod tests {
         );
         fs::write(&env_path, "EXISTING_KEY=existing_value\n").expect("env file should be written");
 
-        let plan = apply(&path, FixMode::Fix, None).expect("apply should succeed");
+        let plan = apply_with_resolutions(
+            &path,
+            FixMode::Fix,
+            None,
+            &review_resolution_choice("project_env"),
+        )
+        .expect("apply should succeed");
         assert!(plan.changed());
 
         let env_text = fs::read_to_string(&env_path).expect("env file should be readable");
@@ -2132,14 +2607,11 @@ mod tests {
         fs::copy(&source, &path).expect("lab stack fixture should be copied");
 
         let finding_ids = [String::from("permissions.privileged")];
-        let plan = apply(&path, FixMode::Fix, Some(&finding_ids)).expect("guided fix should apply");
+        let plan = apply(&path, FixMode::Fix, Some(&finding_ids)).expect("fix should apply");
         let updated = fs::read_to_string(&path).expect("updated compose should be readable");
 
-        assert!(plan.guided_applied.iter().any(|proposal| {
-            proposal.summary.contains(
-                "replace privileged mode with a minimal NET_BIND_SERVICE capability review",
-            )
-        }));
+        assert!(!plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(serde_yaml::from_str::<serde_yaml::Value>(&updated).is_ok());
         assert!(!updated.contains("privileged: true"));
         assert!(updated.contains("cap_add:"));
@@ -2166,18 +2638,21 @@ mod tests {
                 "services:\n",
                 "  vaultwarden:\n",
                 "    image: vaultwarden/server:1.30.1\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"8080:80\"\n",
                 "    environment:\n",
                 "      DOMAIN: http://vault.example.com\n",
                 "  jellyfin:\n",
                 "    image: jellyfin/jellyfin:10.9.11\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"8096:8096\"\n",
                 "    environment:\n",
                 "      JELLYFIN_PublishedServerUrl: http://media.example.com\n",
                 "  nextcloud:\n",
                 "    image: nextcloud:31.0.0\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"8081:80\"\n",
                 "    environment:\n",
@@ -2187,10 +2662,10 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 7);
-        assert!(plan.guided_applied.is_empty());
+        assert_eq!(plan.auto_applied.len(), 7);
+        assert!(plan.review_applied.is_empty());
         assert!(
             plan.diff_preview
                 .contains("DOMAIN: https://vault.example.com")
@@ -2218,18 +2693,21 @@ mod tests {
                 "services:\n",
                 "  vaultwarden:\n",
                 "    image: vaultwarden/server:1.30.1\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8080:80\"\n",
                 "    environment:\n",
                 "      DOMAIN: https://vault.example.com\n",
                 "  jellyfin:\n",
                 "    image: jellyfin/jellyfin:10.9.11\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8096:8096\"\n",
                 "    environment:\n",
                 "      JELLYFIN_PublishedServerUrl: https://media.example.com\n",
                 "  nextcloud:\n",
                 "    image: nextcloud:31.0.0\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8081:80\"\n",
                 "    environment:\n",
@@ -2239,10 +2717,10 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert!(plan.safe_applied.is_empty());
-        assert!(plan.guided_applied.is_empty());
+        assert!(plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.is_empty());
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
@@ -2258,6 +2736,7 @@ mod tests {
                 "services:\n",
                 "  nextcloud:\n",
                 "    image: nextcloud:31.0.0\n",
+                "    user: \"1000:1000\"\n",
                 "    ports:\n",
                 "      - \"127.0.0.1:8081:80\"\n",
                 "    environment:\n",
@@ -2266,10 +2745,10 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert!(plan.safe_applied.is_empty());
-        assert!(plan.guided_applied.is_empty());
+        assert!(plan.auto_applied.is_empty());
+        assert!(plan.review_applied.is_empty());
         assert!(plan.diff_preview.is_empty());
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
@@ -2305,13 +2784,13 @@ mod tests {
             ),
         );
 
-        let first = apply(&path, FixMode::QuickFix, None).expect("first apply should succeed");
-        let second = apply(&path, FixMode::QuickFix, None).expect("second apply should succeed");
+        let first = apply(&path, FixMode::AutoFix, None).expect("first apply should succeed");
+        let second = apply(&path, FixMode::AutoFix, None).expect("second apply should succeed");
 
         assert!(first.changed());
         assert!(first.backup_path.is_some());
-        assert!(second.safe_applied.is_empty());
-        assert!(second.guided_applied.is_empty());
+        assert!(second.auto_applied.is_empty());
+        assert!(second.review_applied.is_empty());
         assert!(second.backup_path.is_none());
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
@@ -2332,7 +2811,7 @@ mod tests {
             ),
         );
 
-        let plan = apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
+        let plan = apply(&path, FixMode::AutoFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(plan.backup_path.is_some());
@@ -2367,7 +2846,7 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
         assert!(!plan.diff_preview.contains("-      - PUID=1000"));
         assert!(!plan.diff_preview.contains("+    - PUID=1000"));
         assert!(
@@ -2375,7 +2854,7 @@ mod tests {
                 .contains("+      - \"127.0.0.1:8096:8096\"")
         );
 
-        apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
+        apply(&path, FixMode::AutoFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(updated.contains("      - PUID=1000"));
@@ -2404,7 +2883,7 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
         assert!(plan.diff_preview.contains("OVERWRITEPROTOCOL: 'https'"));
         assert!(
@@ -2412,7 +2891,7 @@ mod tests {
                 .contains("NEXTCLOUD_TRUSTED_DOMAINS: 'cloud.example.com'")
         );
 
-        apply(&path, FixMode::QuickFix, None).expect("quick-fix apply should succeed");
+        apply(&path, FixMode::AutoFix, None).expect("quick-fix apply should succeed");
         let updated = fs::read_to_string(&path).expect("compose file should be readable");
 
         assert!(updated.contains("      OVERWRITEPROTOCOL: 'https'"));
@@ -2471,8 +2950,8 @@ mod tests {
         let plan = preview(&path, FixMode::Fix, only_latest_tag.as_deref())
             .expect("preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 1);
-        assert_eq!(plan.guided_applied.len(), 0);
+        assert_eq!(plan.auto_applied.len(), 1);
+        assert_eq!(plan.review_applied.len(), 0);
         assert!(plan.diff_preview.contains("image: nginx:stable"));
         assert!(!plan.diff_preview.contains("privileged: false"));
     }
@@ -2487,6 +2966,7 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx:stable\n",
+                "    user: \"1000:1000\"\n",
                 "    volumes:\n",
                 "      - /etc/shadow:/etc/shadow\n",
                 "      - /var/run/docker.sock:/var/run/docker.sock:rw\n",
@@ -2497,9 +2977,9 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 3);
+        assert_eq!(plan.auto_applied.len(), 3);
         assert!(plan.diff_preview.contains("/etc/shadow:/etc/shadow:ro"));
         assert!(
             plan.diff_preview
@@ -2520,6 +3000,7 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx:stable\n",
+                "    user: \"1000:1000\"\n",
                 "    security_opt:\n",
                 "      - seccomp:unconfined\n",
                 "      - no-new-privileges:true\n"
@@ -2527,9 +3008,9 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 1);
+        assert_eq!(plan.auto_applied.len(), 1);
         assert!(plan.updated_text.contains("no-new-privileges:true"));
         assert!(!plan.updated_text.contains("seccomp:unconfined"));
 
@@ -2546,6 +3027,7 @@ mod tests {
                 "services:\n",
                 "  web:\n",
                 "    image: nginx:stable\n",
+                "    user: \"1000:1000\"\n",
                 "    cap_add:\n",
                 "      - NET_ADMIN\n",
                 "      - SYS_PTRACE\n",
@@ -2554,9 +3036,9 @@ mod tests {
         );
 
         let plan =
-            preview(&path, FixMode::QuickFix, None).expect("quick-fix preview should succeed");
+            preview(&path, FixMode::AutoFix, None).expect("quick-fix preview should succeed");
 
-        assert_eq!(plan.safe_applied.len(), 1);
+        assert_eq!(plan.auto_applied.len(), 1);
         assert!(plan.updated_text.contains("NET_BIND_SERVICE"));
         assert!(!plan.updated_text.contains("NET_ADMIN"));
         assert!(!plan.updated_text.contains("SYS_PTRACE"));
@@ -2581,7 +3063,7 @@ mod tests {
             ),
         );
 
-        apply(&path, FixMode::QuickFix, None).expect("apply should succeed");
+        apply(&path, FixMode::AutoFix, None).expect("apply should succeed");
 
         let updated = fs::read_to_string(&path).expect("compose should be readable");
         assert!(!updated.contains("security_opt"));

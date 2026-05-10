@@ -53,7 +53,7 @@ app:
         hostveil --json
         hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
-        hostveil --quick-fix PATH [--preview-changes] [--yes]
+        hostveil --auto-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
         hostveil upgrade [--version TAG]
         hostveil uninstall
@@ -80,8 +80,8 @@ app:
         --adapters LIST   choose optional scanners: all, none, or comma-separated trivy,dockle,lynis
         --tool NAME       select a setup tool explicitly for hostveil setup (repeatable)
         --tools LIST      comma-separated setup tool list for unattended setup runs
-        --quick-fix PATH  preview or apply safe Compose-only fixes for a specific file or directory
-        --fix PATH        preview or apply safe and guided Compose review changes for a specific file or directory
+        --auto-fix PATH   preview or apply automatic Compose-only fixes for a specific file or directory
+        --fix PATH        preview or apply automatic and review-required Compose fixes for a specific file or directory
         --preview-changes show the planned diff without writing any files
         --yes             apply the reviewed changes without an interactive confirmation prompt
         --locale LANG     use an explicit locale for this run (supported: en, ko)
@@ -95,6 +95,8 @@ app:
     text: "%{name} %{version}"
   fail_on:
     exceeded: "Scan threshold exceeded: %{count} finding(s) at or above %{threshold}"
+  warning:
+    quick_fix_deprecated: "warning: --quick-fix is deprecated and will be removed in a future release; use --auto-fix instead"
   hint:
     quit: "Press q or Esc to quit"
     press_f_to_fix: "Press f to apply auto-fixes"
@@ -118,6 +120,12 @@ app:
     fix_review_scroll: "Use Up/Down or PgUp/PgDn to scroll the diff"
     fix_review_apply: "Press y or Enter to apply the reviewed changes"
     fix_review_cancel: "Press q or Esc to cancel"
+    review_choice_move: "Use Up/Down or j/k to move between options"
+    review_choice_accept: "Press Enter to select the highlighted option"
+    review_choice_cancel: "Press q or Esc to cancel"
+    review_secret_accept: "Press Enter to accept the current secret value"
+    review_secret_regenerate: "Press Ctrl-R to generate a new strong value"
+    review_secret_cancel: "Press q or Esc to cancel"
   footer:
     quit: "quit"
     findings: "open findings"
@@ -262,11 +270,12 @@ app:
   validation:
     auto_upgrade_mode_required: "choose one of enable or disable for auto-upgrade"
     fix_requires_target: "a compose target is required for fix operations"
-    fix_compose_conflict: "use --quick-fix PATH or --fix PATH instead of combining them with --compose"
+    fix_compose_conflict: "use --auto-fix PATH or --fix PATH instead of combining them with --compose"
     fix_json_not_supported: "--json is not supported with fix operations"
-    preview_yes_requires_fix_mode: "--preview-changes and --yes are only valid with --quick-fix or --fix"
+    preview_yes_requires_fix_mode: "--preview-changes and --yes are only valid with --auto-fix or --fix"
     findings_only_requires_json: "--findings-only is only valid with --json"
-    fix_mode_conflict: "choose only one of --quick-fix or --fix"
+    fix_mode_conflict: "choose only one of --auto-fix/--quick-fix or --fix"
+    review_required_for_fix_yes: "--fix --yes cannot continue when review-required input is needed"
     unsupported_locale: "unsupported locale: %{value}"
     duplicate_locale_override: "choose only one --locale override"
     unsupported_setup_tool: "unsupported setup tool: %{value}"
@@ -337,9 +346,11 @@ app:
     host_root_path_missing: "host-root path does not exist: %{path}"
     io: "application error: %{message}"
     fix_serialize: "failed to serialize the updated compose file: %{message}"
+    fix_review_required: "review-required Compose fixes need interactive input before a plan can be built"
+    fix_invalid_review_resolution: "invalid review resolution: %{message}"
     json_export_failed: "failed to serialize the current scan result"
     tui_requires_terminal: "the interactive TUI requires a terminal; use --json for non-interactive runs"
-    fix_requires_terminal: "guided Compose fixes require a terminal review; use --preview-changes to inspect the diff non-interactively"
+    fix_requires_terminal: "review-required Compose fixes need an interactive terminal; use --preview-changes to inspect the diff non-interactively"
     missing_translation: "missing translation for key: %{key}"
   finding:
     header: "Findings Detail"
@@ -366,6 +377,8 @@ app:
     filter_fixable: "fixable"
     filter_safe: "safe"
     filter_guided: "guided"
+    filter_auto: "auto"
+    filter_review: "review"
     filter_manual: "manual"
     sort_severity: "severity"
     sort_source: "source"
@@ -378,10 +391,14 @@ app:
     remediation_badge:
       safe: "SAFE"
       guided: "GUIDED"
+      auto: "AUTO"
+      review: "REVIEW"
       manual: "MANUAL"
     remediation_badge_compact:
       safe: "S"
       guided: "G"
+      auto: "A"
+      review: "R"
       manual: "M"
   result:
     host_group: "Host"
@@ -420,12 +437,26 @@ app:
     file: "Compose file: %{path}"
     safe_plan: "%{count} safe change(s) are ready to review."
     guided_plan: "%{count} guided change(s) are ready to review."
+    auto_plan: "%{count} automatic change(s) are ready to review."
+    review_plan: "%{count} review-required change(s) are ready to review."
     preview_only: "Preview only: no files were modified."
     cancelled: "Cancelled without writing changes."
     backup: "Created backup: %{path}"
     applied: "Applied: %{summary}"
     confirm_quick: "Apply the safe Compose changes to %{path}? [y/N]: "
+    confirm_auto: "Apply the automatic Compose changes to %{path}? [y/N]: "
     confirm_all: "Apply the reviewed Compose changes to %{path}? [y/N]: "
+    review_choice_title: "Choose a review path"
+    review_secret_title: "Provide a secret value"
+    review_secret_description: "Choose or edit the value for %{variable} in %{service}. hostveil will not print the secret in reports or status output."
+    review_options: "Options"
+    review_secret_value: "Secret value"
+    review_secret_mask_toggle: "Tab toggles masking. Ctrl-R generates a new value."
+    review_gitea_choice_description: "Choose how %{service} should externalize the inline Gitea security secrets."
+    review_gitea_choice_project_env: "Use the project .env file"
+    review_gitea_choice_project_env_detail: "Write the secret keys into .env and replace inline values with ${VAR} placeholders."
+    review_gitea_choice_service_env_file: "Use a dedicated .env.gitea file"
+    review_gitea_choice_service_env_file_detail: "Create .env.gitea, remove inline values, and add env_file: .env.gitea for the service."
     safe_bind_localhost: "%{service}: bind the published port %{port} to 127.0.0.1"
     safe_nginx_stable: "%{service}: pin nginx to nginx:stable"
     safe_vaultwarden_domain_https: "%{service}: switch DOMAIN to https://"
@@ -437,6 +468,28 @@ app:
     guided_gitea_externalize_secrets: "%{service}: replace inline Gitea security secrets with environment placeholders"
     guided_nginx_stable: "%{service}: review and pin nginx to nginx:stable"
     guided_non_root_user: "%{service}: configure an explicit non-root user (1000:1000)"
+    auto_bind_localhost: "%{service}: bind the published port %{port} to 127.0.0.1"
+    auto_nginx_stable: "%{service}: pin nginx to nginx:stable"
+    auto_vaultwarden_domain_https: "%{service}: switch DOMAIN to https://"
+    auto_jellyfin_published_url_https: "%{service}: switch JELLYFIN_PublishedServerUrl to https://"
+    auto_nextcloud_overwriteprotocol_https: "%{service}: set OVERWRITEPROTOCOL to https"
+    auto_nextcloud_trusted_domains_wildcard: "%{service}: remove wildcard entries from NEXTCLOUD_TRUSTED_DOMAINS"
+    auto_privileged_cap_add: "%{service}: replace privileged mode with NET_BIND_SERVICE"
+    auto_postgres_auth: "%{service}: set PostgreSQL host auth to scram-sha-256"
+    auto_redis_protected_mode: "%{service}: enable REDIS_PROTECTED_MODE"
+    auto_grafana_auth: "%{service}: enable Grafana auth and disable anonymous mode"
+    auto_grafana_anonymous: "%{service}: disable Grafana anonymous access"
+    auto_authentik_debug: "%{service}: disable AUTHENTIK_DEBUG"
+    auto_paperless_force_login: "%{service}: enable PAPERLESS_FORCE_LOGIN"
+    auto_seccomp_default: "%{service}: remove seccomp:unconfined"
+    auto_cap_drop_dangerous: "%{service}: remove dangerous capabilities from cap_add"
+    auto_vaultwarden_signups: "%{service}: set SIGNUPS_ALLOWED to false"
+    auto_non_root_user: "%{service}: configure an explicit non-root user (1000:1000)"
+    review_gitea_externalize_secrets: "%{service}: externalize Gitea security secrets using the selected path"
+    review_postgres_password: "%{service}: externalize POSTGRES_PASSWORD using the chosen secret"
+    review_mysql_password: "%{service}: externalize MYSQL_ROOT_PASSWORD using the chosen secret"
+    review_redis_password: "%{service}: externalize REDIS_PASSWORD using the chosen secret"
+    review_pihole_password: "%{service}: externalize WEBPASSWORD using the chosen secret"
     status:
       no_compose_target: "No Compose target available for fixes."
       no_finding_selected: "Select a finding first to apply a fix."
@@ -1222,6 +1275,8 @@ finding:
         fix: "Remove REDIS_PROTECTED_MODE=no or set it to yes, and configure a password via REDIS_PASSWORD."
 remediation:
   auto_fixable: "AUTO"
+  auto: "AUTO"
+  review: "REVIEW"
   manual: "MANUAL"
 test:
   fallback_probe: "English fallback probe"
