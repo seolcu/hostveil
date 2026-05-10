@@ -126,6 +126,10 @@ app:
     review_secret_accept: "Enter로 현재 비밀값을 확정합니다"
     review_secret_regenerate: "Ctrl-R로 새 강한 값을 생성합니다"
     review_secret_cancel: "q 또는 Esc를 눌러 취소합니다"
+    history_title: "스캔 이력 추세"
+    history_empty: "아직 스캔 이력이 없습니다. 스캔을 실행하면 이력이 쌓입니다."
+    history_header: "날짜         점수   발견 항목  추세"
+    history_footer: "t 추세 닫기 | j/k 또는 ↑/↓ 스크롤 | q 또는 Esc 종료"
   footer:
     quit: "종료"
     findings: "발견 항목 열기"
@@ -137,6 +141,7 @@ app:
   tab:
     overview: "개요"
     findings: "발견 항목"
+    history: "이력"
     settings: "설정"
   settings:
     theme: "테마"

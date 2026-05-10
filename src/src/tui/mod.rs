@@ -39,6 +39,7 @@ pub use theme::{Theme, ThemePreset};
 enum Screen {
     Overview,
     Findings,
+    History,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -167,6 +168,7 @@ enum RemediationFilter {
 enum HitTarget {
     TabOverview,
     TabFindings,
+    TabHistory,
     FindingList(usize),
     FindingsDetail,
     OverviewPanel(OverviewFocus),
@@ -188,6 +190,7 @@ struct AppState {
     detail_scroll: u16,
     findings_list_scroll: u16,
     overview_scroll: BTreeMap<OverviewFocus, u16>,
+    history_scroll: u16,
     sorted_indices: Vec<usize>,
     severity_filter: Option<Severity>,
     source_filter: Option<Source>,
@@ -281,6 +284,7 @@ impl AppState {
                 (OverviewFocus::SecurityScores, 0),
                 (OverviewFocus::FixPaths, 0),
             ]),
+            history_scroll: 0,
             sorted_indices: visible_finding_indices(
                 scan_result,
                 severity_filter,
@@ -405,6 +409,16 @@ impl AppState {
         self.findings_focus = FindingsFocus::List;
         self.detail_scroll = 0;
         self.findings_list_scroll = 0;
+    }
+
+    fn open_history(&mut self) {
+        self.screen = Screen::History;
+        self.history_scroll = 0;
+    }
+
+    fn close_history(&mut self) {
+        self.screen = Screen::Overview;
+        self.history_scroll = 0;
     }
 
     fn select_next(&mut self) {
@@ -882,6 +896,7 @@ fn handle_mouse(state: &mut AppState, scan_result: &ScanResult, mouse: MouseEven
                 match target {
                     HitTarget::TabOverview => state.return_to_overview(),
                     HitTarget::TabFindings => state.open_findings(),
+                    HitTarget::TabHistory => state.open_history(),
                     HitTarget::FindingList(index) => {
                         state.focus_list();
                         state.selected_index = index;
@@ -980,6 +995,7 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
     match state.screen {
         Screen::Overview => handle_overview_key(state, scan_result, key),
         Screen::Findings => handle_findings_key(state, scan_result, key),
+        Screen::History => handle_history_key(state, key),
     }
 }
 
@@ -1073,6 +1089,10 @@ fn handle_overview_key(
             state.cycle_layout();
             None
         }
+        KeyCode::Char('t') => {
+            state.open_history();
+            None
+        }
         KeyCode::Tab => {
             state.focus_next_overview_panel();
             None
@@ -1129,6 +1149,10 @@ fn handle_findings_key(
         }
         KeyCode::Char('o') => {
             state.cycle_sort_mode();
+            None
+        }
+        KeyCode::Char('t') => {
+            state.open_history();
             None
         }
         KeyCode::Char('r') => {
@@ -1195,6 +1219,33 @@ fn handle_findings_key(
     }
 }
 
+fn handle_history_key(state: &mut AppState, key: KeyEvent) -> Option<TuiAction> {
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => Some(TuiAction::Exit),
+        KeyCode::Char('t') | KeyCode::Char('o') => {
+            state.close_history();
+            None
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            state.history_scroll = state.history_scroll.saturating_add(1);
+            None
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            state.history_scroll = state.history_scroll.saturating_sub(1);
+            None
+        }
+        KeyCode::PageDown => {
+            state.history_scroll = state.history_scroll.saturating_add(8);
+            None
+        }
+        KeyCode::PageUp => {
+            state.history_scroll = state.history_scroll.saturating_sub(8);
+            None
+        }
+        _ => None,
+    }
+}
+
 fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
     state.hit_boxes.clear();
     state.clamp_selection(scan_result);
@@ -1203,6 +1254,7 @@ fn render(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut 
     match state.screen {
         Screen::Overview => render_overview(frame, scan_result, state),
         Screen::Findings => render_findings(frame, scan_result, state),
+        Screen::History => render_history(frame, state),
     }
 
     if state.settings_open {
@@ -1838,6 +1890,73 @@ fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode 
     }
 }
 
+fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(4),
+            Constraint::Min(8),
+            Constraint::Length(3),
+        ])
+        .split(frame.area());
+
+    header_banner(frame, state, layout[0]);
+
+    let history = crate::history::load();
+    let entries = history.trend(20);
+
+    let content = if entries.is_empty() {
+        Paragraph::new(t!("app.history.empty").into_owned())
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true })
+    } else {
+        let mut lines = vec![Line::from(
+            t!("app.history.header").into_owned(),
+        )];
+        for entry in entries {
+            let timestamp = &entry.timestamp[..entry.timestamp.find('T').unwrap_or(19)];
+            let overall = entry.overall;
+            let finding_count = entry.finding_count;
+            let bar = trend_bar(overall);
+            lines.push(Line::from(vec![
+                Span::raw(format!("{:<12}", timestamp)),
+                Span::raw(format!(" Overall: {:>3}", overall)),
+                Span::raw(format!(" Findings: {:>3}  ", finding_count)),
+                Span::styled(bar, Style::default().fg(trend_color(overall))),
+            ]));
+        }
+        Paragraph::new(lines).wrap(Wrap { trim: true })
+    };
+
+    frame.render_widget(
+        content.block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(t!("app.history.title").into_owned()),
+        ),
+        layout[1],
+    );
+
+    let help = Paragraph::new(t!("app.history.footer").into_owned())
+        .style(state.theme.muted);
+    frame.render_widget(help, layout[2]);
+}
+
+fn trend_bar(score: u8) -> String {
+    let filled = (score as usize) / 5;
+    let empty = 20_usize.saturating_sub(filled);
+    format!("{}{}", "█".repeat(filled), "░".repeat(empty))
+}
+
+fn trend_color(score: u8) -> ratatui::style::Color {
+    use ratatui::style::Color;
+    match score {
+        0..=40 => Color::Red,
+        41..=70 => Color::Yellow,
+        _ => Color::Green,
+    }
+}
+
 fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rect) {
     let theme = &state.theme;
     let chunks = Layout::default()
@@ -1886,6 +2005,12 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
             HitTarget::TabFindings,
             t!("app.tab.findings").into_owned(),
             "2",
+        ),
+        (
+            Screen::History,
+            HitTarget::TabHistory,
+            t!("app.tab.history").into_owned(),
+            "3",
         ),
     ];
 

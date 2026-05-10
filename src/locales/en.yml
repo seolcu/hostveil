@@ -125,6 +125,10 @@ app:
     review_choice_cancel: "Press q or Esc to cancel"
     review_secret_accept: "Press Enter to accept the current secret value"
     review_secret_regenerate: "Press Ctrl-R to generate a new strong value"
+    history_title: "Scan History Trend"
+    history_empty: "No scan history available yet. Run a scan to build history."
+    history_header: "Date         Score  Findings  Trend"
+    history_footer: "t close trend | j/k or ↑/↓ scroll | q or Esc quit"
     review_secret_cancel: "Press q or Esc to cancel"
   footer:
     quit: "quit"
@@ -137,6 +141,7 @@ app:
   tab:
     overview: "Overview"
     findings: "Findings"
+    history: "History"
     settings: "Settings"
   settings:
     theme: "Theme"
