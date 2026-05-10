@@ -268,7 +268,7 @@ hostveil is in active early development. The implementation is planned in two ph
 - Compose parser ported with override merging and normalization parity tests
 - Native Compose rule engine and scoring model ported with Rust fixture tests
 - Native Linux host checks added for SSH posture, Docker host exposure, kernel sysctl hardening, SELinux/AppArmor status, and defensive-control telemetry via `--host-root`
-- Optional Trivy, Dockle, and Lynis adapters integrated into the shared findings pipeline
+- Optional Trivy, Dockle, Lynis, and Gitleaks adapters integrated into the shared findings pipeline
 - Per-adapter background progress surfaced in the TUI while external coverage is still loading
 - Non-root live host scans skip Lynis instead of invoking desktop authorization prompts
 - Initial Rust Compose remediation flow added for previewable `--auto-fix` and `--fix` operations with backup-safe writes
@@ -278,7 +278,7 @@ hostveil is in active early development. The implementation is planned in two ph
 
 ### Deferred from Current Early-Release Scope
 
-- Additional optional adapters beyond Trivy, Lynis, and Dockle
+- Additional optional adapters beyond Trivy, Lynis, Dockle, and Gitleaks
 - Package-repository hosting such as apt/dnf repositories, Homebrew, or AUR
 - Stable scoring-weight guarantees across future releases
 

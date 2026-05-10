@@ -7,13 +7,13 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Status: Early Development](https://img.shields.io/badge/status-early%20development-orange)](https://github.com/seolcu/hostveil)
 
-Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typically need to run and interpret several separate security tools — Lynis, Trivy, Dockle, Fail2ban, and more — with results scattered across all of them. hostveil is intended to consolidate those signals into one terminal-first workflow: scored findings, prioritized by severity, explained in self-hosting terms, and paired with concrete fix guidance.
+Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typically need to run and interpret several separate security tools — Lynis, Trivy, Dockle, Gitleaks, Fail2ban, and more — with results scattered across all of them. hostveil is intended to consolidate those signals into one terminal-first workflow: scored findings, prioritized by severity, explained in self-hosting terms, and paired with concrete fix guidance.
 
 ## Features
 
 - **Security Overview Dashboard** — responsive overview with overall posture, per-axis breakdown, grouped action queue, adapter activity, and selectable layouts
 - **Native Self-hosting-aware Checks** — checks tailored to each service's known data locations, Compose structure, and operational risk
-- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, and Lynis are supported as optional adapters)
+- **Optional External Scanner Adapters** — integrate existing tools without making them mandatory at runtime (Trivy, Dockle, Lynis, and Gitleaks are supported as optional adapters)
 - **Visible Background Progress** — launch-time auto-upgrade checks and in-TUI adapter loading surface status instead of appearing frozen
 - **Settings Modal** — change theme, layout, and locale from the TUI with keyboard or mouse controls
 - **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light presets are available from the TUI
@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/instal
 
 The installer selects the correct architecture (`x86_64` or `aarch64`) and installs to `~/.local/bin` or `/usr/local/bin`. After installation, use the `hostveil` command directly.
 
-If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, Dockle, and Fail2Ban right away.
+If a terminal is available, the installer can hand off to `hostveil setup` so you can install recommended optional tools such as Lynis, Trivy, Dockle, Gitleaks, and Fail2Ban right away.
 
 Package installs are also available for Debian users and for Fedora-family or Rocky/RHEL 9-class users:
 
@@ -101,7 +101,7 @@ hostveil --sarif
 
 Use Markdown or HTML for human-readable sharing, and JSON or SARIF for automation and downstream tooling.
 
-Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle`.
+Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle,gitleaks`.
 
 Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for Korean. In the TUI, open Settings (`s`) to switch locale and persist it.
 
@@ -154,9 +154,10 @@ hostveil runs without optional dependencies, but coverage improves when they are
 | Lynis | Host security audit | `hostveil setup` or system package manager |
 | Trivy | Image vulnerability scan | `hostveil setup` or system package manager |
 | Dockle | Image best-practice scan | `hostveil setup` on supported Linux targets, manual fallback otherwise |
+| Gitleaks | Project secret leak scan | `hostveil setup` on supported Linux `x86_64` / `aarch64`, manual fallback otherwise |
 | Fail2Ban | Intrusion prevention | `hostveil setup` or system package manager |
 
-Use `--adapters none` to skip all external scanners, or `--adapters trivy,dockle` to run a subset.
+Use `--adapters none` to skip all external scanners, or `--adapters trivy,dockle,gitleaks` to run a subset.
 
 ## Target Audit Axes
 

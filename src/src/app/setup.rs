@@ -16,6 +16,9 @@ const OS_RELEASE_PATH: &str = "/etc/os-release";
 const DOCKLE_RELEASE_API_URL: &str =
     "https://api.github.com/repos/goodwithtech/dockle/releases/latest";
 const DOCKLE_RELEASES_PAGE_URL: &str = "https://github.com/goodwithtech/dockle/releases";
+const GITLEAKS_RELEASE_API_URL: &str =
+    "https://api.github.com/repos/gitleaks/gitleaks/releases/latest";
+const GITLEAKS_RELEASES_PAGE_URL: &str = "https://github.com/gitleaks/gitleaks/releases";
 const TRIVY_APT_KEY_URL: &str = "https://aquasecurity.github.io/trivy-repo/deb/public.key";
 const TRIVY_APT_KEYRING_PATH: &str = "/etc/apt/keyrings/trivy.gpg";
 const TRIVY_APT_SOURCE_PATH: &str = "/etc/apt/sources.list.d/trivy.list";
@@ -57,6 +60,11 @@ struct DockleInstallRequest {
     architecture: CpuArchitecture,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GitleaksInstallRequest {
+    architecture: CpuArchitecture,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DockleInstallTarget {
     version: String,
@@ -66,10 +74,30 @@ struct DockleInstallTarget {
     package_format: DocklePackageFormat,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GitleaksInstallTarget {
+    version: String,
+    archive_name: String,
+    archive_url: String,
+    checksum_url: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct DockleReleaseResponse {
     tag_name: String,
     assets: Vec<DockleReleaseAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitleaksReleaseResponse {
+    tag_name: String,
+    assets: Vec<GitleaksReleaseAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitleaksReleaseAsset {
+    name: String,
+    browser_download_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -117,6 +145,17 @@ impl SetupPlan {
                             steps.push(SetupStep::ManualInstall {
                                 tool: tool.display_name(),
                                 instruction: String::from(DOCKLE_RELEASES_PAGE_URL),
+                            });
+                        }
+                    }
+                } else if *tool == SetupTool::Gitleaks {
+                    match gitleaks_install_request(architecture) {
+                        Some(request) => steps.push(SetupStep::InstallGitleaksBinary(request)),
+                        None => {
+                            manual_tools.push(*tool);
+                            steps.push(SetupStep::ManualInstall {
+                                tool: tool.display_name(),
+                                instruction: String::from(GITLEAKS_RELEASES_PAGE_URL),
                             });
                         }
                     }
@@ -196,6 +235,7 @@ enum SetupStep {
     ConfigureTrivyAptRepo,
     ConfigureFail2BanBaseline,
     InstallDocklePackage(DockleInstallRequest),
+    InstallGitleaksBinary(GitleaksInstallRequest),
     ManualInstall { tool: String, instruction: String },
 }
 
@@ -446,6 +486,9 @@ fn execute_plan(plan: &SetupPlan) -> Result<(), AppError> {
             SetupStep::InstallDocklePackage(request) => {
                 install_dockle_package(*request)?;
             }
+            SetupStep::InstallGitleaksBinary(request) => {
+                install_gitleaks_binary(*request)?;
+            }
             SetupStep::ManualInstall { tool, instruction } => {
                 println!(
                     "{}",
@@ -478,6 +521,15 @@ fn dockle_install_request(
             package_format,
             architecture,
         }),
+        CpuArchitecture::Unsupported => None,
+    }
+}
+
+fn gitleaks_install_request(architecture: CpuArchitecture) -> Option<GitleaksInstallRequest> {
+    match architecture {
+        CpuArchitecture::X86_64 | CpuArchitecture::Aarch64 => {
+            Some(GitleaksInstallRequest { architecture })
+        }
         CpuArchitecture::Unsupported => None,
     }
 }
@@ -516,9 +568,64 @@ fn install_dockle_package(request: DockleInstallRequest) -> Result<(), AppError>
     cleanup_result
 }
 
+fn install_gitleaks_binary(request: GitleaksInstallRequest) -> Result<(), AppError> {
+    let release = resolve_latest_gitleaks_release()?;
+    let target = select_gitleaks_install_target(&release, request)?;
+
+    let archive_path = temp_named_path("gitleaks-archive", &target.archive_name);
+    let checksum_path = temp_named_path(
+        "gitleaks-checksums",
+        &gitleaks_checksums_asset_name(&target.version),
+    );
+    let extract_dir = temp_path("gitleaks-extract");
+
+    download_to_path(&target.archive_url, &archive_path)?;
+    download_to_path(&target.checksum_url, &checksum_path)?;
+
+    let cleanup_result = (|| -> Result<(), AppError> {
+        let checksums_text = fs::read_to_string(&checksum_path)?;
+        let expected_checksum = parse_gitleaks_checksums(&checksums_text)
+            .get(&target.archive_name)
+            .cloned()
+            .ok_or_else(|| {
+                AppError::Io(io::Error::other(format!(
+                    "checksum for {} was not found in {}",
+                    target.archive_name,
+                    checksum_path.display()
+                )))
+            })?;
+        verify_file_sha256(&archive_path, &expected_checksum)?;
+        extract_gitleaks_archive(&archive_path, &extract_dir)?;
+        install_extracted_gitleaks_binary(&extract_dir)
+    })();
+
+    let _ = fs::remove_file(&archive_path);
+    let _ = fs::remove_file(&checksum_path);
+    let _ = fs::remove_dir_all(&extract_dir);
+    cleanup_result
+}
+
 fn resolve_latest_dockle_release() -> Result<DockleReleaseResponse, AppError> {
     let api_url = env::var("HOSTVEIL_DOCKLE_RELEASE_API_URL")
         .unwrap_or_else(|_| String::from(DOCKLE_RELEASE_API_URL));
+    let bytes = capture_command_bytes(
+        "curl",
+        &[
+            "-fsSL",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "User-Agent: hostveil-setup",
+            api_url.as_str(),
+        ],
+    )?;
+    serde_json::from_slice(&bytes)
+        .map_err(|error| AppError::Io(io::Error::other(error.to_string())))
+}
+
+fn resolve_latest_gitleaks_release() -> Result<GitleaksReleaseResponse, AppError> {
+    let api_url = env::var("HOSTVEIL_GITLEAKS_RELEASE_API_URL")
+        .unwrap_or_else(|_| String::from(GITLEAKS_RELEASE_API_URL));
     let bytes = capture_command_bytes(
         "curl",
         &[
@@ -576,6 +683,47 @@ fn select_dockle_install_target(
     })
 }
 
+fn select_gitleaks_install_target(
+    release: &GitleaksReleaseResponse,
+    request: GitleaksInstallRequest,
+) -> Result<GitleaksInstallTarget, AppError> {
+    let version = release
+        .tag_name
+        .strip_prefix('v')
+        .unwrap_or(release.tag_name.as_str())
+        .to_owned();
+    let archive_name = gitleaks_archive_asset_name(&version, request)?;
+    let checksum_name = gitleaks_checksums_asset_name(&version);
+
+    let archive_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == archive_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| {
+            AppError::Io(io::Error::other(format!(
+                "latest Gitleaks release is missing expected asset {archive_name}"
+            )))
+        })?;
+    let checksum_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == checksum_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| {
+            AppError::Io(io::Error::other(format!(
+                "latest Gitleaks release is missing expected asset {checksum_name}"
+            )))
+        })?;
+
+    Ok(GitleaksInstallTarget {
+        version,
+        archive_name,
+        archive_url,
+        checksum_url,
+    })
+}
+
 fn dockle_package_asset_name(
     version: &str,
     request: DockleInstallRequest,
@@ -601,12 +749,44 @@ fn dockle_checksums_asset_name(version: &str) -> String {
     format!("dockle_{version}_checksums.txt")
 }
 
+fn gitleaks_archive_asset_name(
+    version: &str,
+    request: GitleaksInstallRequest,
+) -> Result<String, AppError> {
+    let arch = match request.architecture {
+        CpuArchitecture::X86_64 => "linux_x64",
+        CpuArchitecture::Aarch64 => "linux_arm64",
+        CpuArchitecture::Unsupported => {
+            return Err(AppError::Io(io::Error::other(
+                "Gitleaks asset mapping is unavailable for this CPU architecture",
+            )));
+        }
+    };
+
+    Ok(format!("gitleaks_{version}_{arch}.tar.gz"))
+}
+
+fn gitleaks_checksums_asset_name(version: &str) -> String {
+    format!("gitleaks_{version}_checksums.txt")
+}
+
 fn parse_dockle_checksums(text: &str) -> BTreeMap<String, String> {
     text.lines()
         .filter_map(|line| {
             let mut parts = line.split_whitespace();
             let checksum = parts.next()?;
             let filename = parts.next()?;
+            Some((filename.to_owned(), checksum.to_owned()))
+        })
+        .collect()
+}
+
+fn parse_gitleaks_checksums(text: &str) -> BTreeMap<String, String> {
+    text.lines()
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            let checksum = parts.next()?;
+            let filename = parts.next()?.trim_start_matches('*');
             Some((filename.to_owned(), checksum.to_owned()))
         })
         .collect()
@@ -664,6 +844,31 @@ fn install_local_dockle_package(
             run_privileged_command("dnf", &["install", "-y", path_text]).map(|_| ())
         }
     }
+}
+
+fn extract_gitleaks_archive(archive_path: &Path, extract_dir: &Path) -> Result<(), AppError> {
+    fs::create_dir_all(extract_dir)?;
+    let archive_text = archive_path
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+    let extract_text = extract_dir
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+    run_command("tar", &["-xzf", archive_text, "-C", extract_text])
+        .map(|_| ())
+        .map_err(|error| AppError::Io(io::Error::other(error)))
+}
+
+fn install_extracted_gitleaks_binary(extract_dir: &Path) -> Result<(), AppError> {
+    let binary_path = extract_dir.join("gitleaks");
+    let binary_text = binary_path
+        .to_str()
+        .ok_or_else(|| AppError::Io(io::Error::other("temporary path is not valid UTF-8")))?;
+    run_privileged_command(
+        "install",
+        &["-m", "0755", binary_text, "/usr/local/bin/gitleaks"],
+    )?;
+    Ok(())
 }
 
 fn configure_trivy_apt_repo() -> Result<(), AppError> {
@@ -741,6 +946,7 @@ fn print_verification(plan: &SetupPlan) {
             SetupTool::Lynis => print_command_check("lynis", &["--version"]),
             SetupTool::Trivy => print_command_check("trivy", &["--version"]),
             SetupTool::Dockle => print_command_check("dockle", &["--version"]),
+            SetupTool::Gitleaks => print_command_check("gitleaks", &["version"]),
             SetupTool::Fail2Ban => {
                 print_command_check("systemctl", &["is-enabled", "fail2ban"]);
                 print_command_check("systemctl", &["is-active", "fail2ban"]);
@@ -1024,7 +1230,7 @@ impl SetupTool {
     fn recommended(self) -> bool {
         matches!(
             self,
-            Self::Lynis | Self::Trivy | Self::Dockle | Self::Fail2Ban
+            Self::Lynis | Self::Trivy | Self::Dockle | Self::Gitleaks | Self::Fail2Ban
         )
     }
 
@@ -1037,6 +1243,7 @@ impl SetupTool {
             Self::Lynis => "lynis",
             Self::Trivy => "trivy",
             Self::Dockle => "dockle",
+            Self::Gitleaks => "gitleaks",
             Self::Fail2Ban => "fail2ban-client",
         }
     }
@@ -1046,6 +1253,7 @@ impl SetupTool {
             Self::Lynis => t!("app.setup.tool.lynis.name").into_owned(),
             Self::Trivy => t!("app.setup.tool.trivy.name").into_owned(),
             Self::Dockle => t!("app.setup.tool.dockle.name").into_owned(),
+            Self::Gitleaks => t!("app.setup.tool.gitleaks.name").into_owned(),
             Self::Fail2Ban => t!("app.setup.tool.fail2ban.name").into_owned(),
         }
     }
@@ -1055,6 +1263,7 @@ impl SetupTool {
             Self::Lynis => t!("app.setup.tool.lynis.prompt").into_owned(),
             Self::Trivy => t!("app.setup.tool.trivy.prompt").into_owned(),
             Self::Dockle => t!("app.setup.tool.dockle.prompt").into_owned(),
+            Self::Gitleaks => t!("app.setup.tool.gitleaks.prompt").into_owned(),
             Self::Fail2Ban => t!("app.setup.tool.fail2ban.prompt").into_owned(),
         }
     }
@@ -1076,6 +1285,7 @@ impl SetupStep {
             Self::ConfigureTrivyAptRepo => t!("app.setup.step.trivy_repo").into_owned(),
             Self::ConfigureFail2BanBaseline => t!("app.setup.step.fail2ban_baseline").into_owned(),
             Self::InstallDocklePackage(_) => t!("app.setup.step.dockle_package").into_owned(),
+            Self::InstallGitleaksBinary(_) => t!("app.setup.step.gitleaks_binary").into_owned(),
             Self::ManualInstall { tool, .. } => {
                 t!("app.setup.step.manual_install", tool = tool.as_str()).into_owned()
             }
@@ -1272,6 +1482,31 @@ ID_LIKE="rhel centos fedora"
     }
 
     #[test]
+    fn unsupported_distro_allows_gitleaks_binary_install() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Unsupported,
+                pretty_name: String::from("Arch Linux"),
+            },
+            CpuArchitecture::X86_64,
+            vec![SetupTool::Gitleaks],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("unsupported distro should still allow generic gitleaks install");
+
+        assert!(plan.manual_tools.is_empty());
+        assert_eq!(
+            plan.steps,
+            vec![SetupStep::InstallGitleaksBinary(GitleaksInstallRequest {
+                architecture: CpuArchitecture::X86_64,
+            })]
+        );
+    }
+
+    #[test]
     fn unsupported_distro_rejects_auto_installable_tools() {
         let result = SetupPlan::new_with_state(
             DistroInfo {
@@ -1304,6 +1539,7 @@ ID_LIKE="rhel centos fedora"
                 SetupTool::Lynis,
                 SetupTool::Trivy,
                 SetupTool::Dockle,
+                SetupTool::Gitleaks,
                 SetupTool::Fail2Ban
             ]
         );
@@ -1389,6 +1625,54 @@ ID_LIKE="rhel centos fedora"
     }
 
     #[test]
+    fn builds_generic_gitleaks_install_step() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Debian,
+                pretty_name: String::from("Ubuntu 24.04.4 LTS"),
+            },
+            CpuArchitecture::Aarch64,
+            vec![SetupTool::Gitleaks],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("gitleaks plan should build");
+
+        assert!(plan.manual_tools.is_empty());
+        assert_eq!(
+            plan.steps,
+            vec![SetupStep::InstallGitleaksBinary(GitleaksInstallRequest {
+                architecture: CpuArchitecture::Aarch64,
+            })]
+        );
+    }
+
+    #[test]
+    fn unsupported_architecture_falls_back_to_manual_gitleaks_guidance() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Unsupported,
+                pretty_name: String::from("Arch Linux"),
+            },
+            CpuArchitecture::Unsupported,
+            vec![SetupTool::Gitleaks],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("unsupported arch should keep manual gitleaks guidance");
+
+        assert_eq!(plan.manual_tools, vec![SetupTool::Gitleaks]);
+        assert!(matches!(
+            plan.steps[0],
+            SetupStep::ManualInstall { ref tool, .. } if tool == "Gitleaks"
+        ));
+    }
+
+    #[test]
     fn chooses_expected_debian_dockle_asset_names() {
         let name = dockle_package_asset_name(
             "0.4.15",
@@ -1452,6 +1736,44 @@ ID_LIKE="rhel centos fedora"
     }
 
     #[test]
+    fn chooses_expected_gitleaks_asset_names() {
+        let x64 = gitleaks_archive_asset_name(
+            "8.30.1",
+            GitleaksInstallRequest {
+                architecture: CpuArchitecture::X86_64,
+            },
+        )
+        .expect("x64 asset name should resolve");
+        let arm64 = gitleaks_archive_asset_name(
+            "8.30.1",
+            GitleaksInstallRequest {
+                architecture: CpuArchitecture::Aarch64,
+            },
+        )
+        .expect("arm64 asset name should resolve");
+
+        assert_eq!(x64, "gitleaks_8.30.1_linux_x64.tar.gz");
+        assert_eq!(arm64, "gitleaks_8.30.1_linux_arm64.tar.gz");
+    }
+
+    #[test]
+    fn parses_gitleaks_checksums_file() {
+        let checksums = parse_gitleaks_checksums(
+            "abc123 *gitleaks_8.30.1_linux_x64.tar.gz\n\
+             def456 *gitleaks_8.30.1_linux_arm64.tar.gz\n",
+        );
+
+        assert_eq!(
+            checksums.get("gitleaks_8.30.1_linux_x64.tar.gz"),
+            Some(&String::from("abc123"))
+        );
+        assert_eq!(
+            checksums.get("gitleaks_8.30.1_linux_arm64.tar.gz"),
+            Some(&String::from("def456"))
+        );
+    }
+
+    #[test]
     fn selects_dockle_assets_from_release_metadata() {
         let release = DockleReleaseResponse {
             tag_name: String::from("v0.4.15"),
@@ -1479,6 +1801,36 @@ ID_LIKE="rhel centos fedora"
         assert_eq!(target.version, "0.4.15");
         assert_eq!(target.package_name, "dockle_0.4.15_Linux-64bit.deb");
         assert_eq!(target.package_url, "https://example.test/dockle.deb");
+        assert_eq!(target.checksum_url, "https://example.test/checksums.txt");
+    }
+
+    #[test]
+    fn selects_gitleaks_assets_from_release_metadata() {
+        let release = GitleaksReleaseResponse {
+            tag_name: String::from("v8.30.1"),
+            assets: vec![
+                GitleaksReleaseAsset {
+                    name: String::from("gitleaks_8.30.1_linux_x64.tar.gz"),
+                    browser_download_url: String::from("https://example.test/gitleaks.tar.gz"),
+                },
+                GitleaksReleaseAsset {
+                    name: String::from("gitleaks_8.30.1_checksums.txt"),
+                    browser_download_url: String::from("https://example.test/checksums.txt"),
+                },
+            ],
+        };
+
+        let target = select_gitleaks_install_target(
+            &release,
+            GitleaksInstallRequest {
+                architecture: CpuArchitecture::X86_64,
+            },
+        )
+        .expect("release metadata should resolve install target");
+
+        assert_eq!(target.version, "8.30.1");
+        assert_eq!(target.archive_name, "gitleaks_8.30.1_linux_x64.tar.gz");
+        assert_eq!(target.archive_url, "https://example.test/gitleaks.tar.gz");
         assert_eq!(target.checksum_url, "https://example.test/checksums.txt");
     }
 }
