@@ -51,7 +51,7 @@ app:
       Usage:
         hostveil
         hostveil --json
-        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
+        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json] [--findings-only]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
         hostveil --auto-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
@@ -86,6 +86,7 @@ app:
         --yes             apply the reviewed changes without an interactive confirmation prompt
         --locale LANG     use an explicit locale for this run (supported: en, ko)
         --json            emit scan result JSON instead of launching the TUI
+        --findings-only   emit only the findings array when used with --json
         -V, --version     show version information
         -h, --help        show this help message
 
@@ -354,6 +355,7 @@ app:
     compose_missing_services: "no services were found in %{path}"
     compose_io: "failed to read %{path}: %{message}"
     host_root_path_missing: "host-root path does not exist: %{path}"
+    privilege_escalation_failed: "Failed to elevate privileges: %{error}"
     io: "application error: %{message}"
     fix_serialize: "failed to serialize the updated compose file: %{message}"
     fix_review_required: "review-required Compose fixes need interactive input before a plan can be built"

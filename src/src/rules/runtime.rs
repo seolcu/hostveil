@@ -158,10 +158,15 @@ mod tests {
 
     #[test]
     fn detects_seccomp_unconfined() {
-        let project = parse("services:\n  app:\n    image: alpine\n    security_opt:\n      - seccomp:unconfined\n");
+        let project = parse(
+            "services:\n  app:\n    image: alpine\n    security_opt:\n      - seccomp:unconfined\n",
+        );
         let findings = scan_runtime_risk(&project);
         assert_eq!(findings.len(), 2); // seccomp + no_new_privs
-        let seccomp = findings.iter().find(|f| f.id == "runtime.seccomp_unconfined").unwrap();
+        let seccomp = findings
+            .iter()
+            .find(|f| f.id == "runtime.seccomp_unconfined")
+            .unwrap();
         assert_eq!(seccomp.severity, Severity::High);
         assert_eq!(seccomp.axis, Axis::ExcessivePermissions);
         assert_eq!(seccomp.remediation, RemediationKind::Auto);
@@ -169,9 +174,14 @@ mod tests {
 
     #[test]
     fn detects_dangerous_capabilities() {
-        let project = parse("services:\n  app:\n    image: alpine\n    cap_add:\n      - NET_ADMIN\n      - SYS_PTRACE\n");
+        let project = parse(
+            "services:\n  app:\n    image: alpine\n    cap_add:\n      - NET_ADMIN\n      - SYS_PTRACE\n",
+        );
         let findings = scan_runtime_risk(&project);
-        let caps = findings.iter().find(|f| f.id == "runtime.dangerous_capabilities").unwrap();
+        let caps = findings
+            .iter()
+            .find(|f| f.id == "runtime.dangerous_capabilities")
+            .unwrap();
         assert_eq!(caps.severity, Severity::High);
         assert!(caps.evidence.contains_key("capabilities"));
     }
@@ -180,7 +190,10 @@ mod tests {
     fn detects_missing_no_new_privileges() {
         let project = parse("services:\n  app:\n    image: alpine\n");
         let findings = scan_runtime_risk(&project);
-        let no_new = findings.iter().find(|f| f.id == "runtime.no_new_privileges_disabled").unwrap();
+        let no_new = findings
+            .iter()
+            .find(|f| f.id == "runtime.no_new_privileges_disabled")
+            .unwrap();
         assert_eq!(no_new.severity, Severity::Low);
         assert_eq!(no_new.axis, Axis::ExcessivePermissions);
         assert_eq!(no_new.remediation, RemediationKind::Auto);
@@ -188,22 +201,32 @@ mod tests {
 
     #[test]
     fn skips_no_new_privileges_when_set() {
-        let project = parse("services:\n  app:\n    image: alpine\n    security_opt:\n      - no-new-privileges:true\n");
+        let project = parse(
+            "services:\n  app:\n    image: alpine\n    security_opt:\n      - no-new-privileges:true\n",
+        );
         let findings = scan_runtime_risk(&project);
-        assert!(!findings.iter().any(|f| f.id == "runtime.no_new_privileges_disabled"));
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.id == "runtime.no_new_privileges_disabled")
+        );
     }
 
     #[test]
     fn skips_no_new_privileges_when_privileged() {
         let project = parse("services:\n  app:\n    image: alpine\n    privileged: true\n");
         let findings = scan_runtime_risk(&project);
-        assert!(!findings.iter().any(|f| f.id == "runtime.no_new_privileges_disabled"));
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.id == "runtime.no_new_privileges_disabled")
+        );
     }
 
     #[test]
     fn hardened_service_stays_clear() {
         let project = parse(
-            "services:\n  app:\n    image: alpine\n    security_opt:\n      - no-new-privileges:true\n      - seccomp:default\n"
+            "services:\n  app:\n    image: alpine\n    security_opt:\n      - no-new-privileges:true\n      - seccomp:default\n",
         );
         let findings = scan_runtime_risk(&project);
         assert!(findings.is_empty());

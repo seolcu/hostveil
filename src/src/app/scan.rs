@@ -1183,7 +1183,7 @@ mod tests {
         assert!(result.findings.len() >= 4);
         assert_eq!(
             result.score_report.axis_scores[&crate::domain::Axis::ExcessivePermissions],
-            10
+            5
         );
     }
 

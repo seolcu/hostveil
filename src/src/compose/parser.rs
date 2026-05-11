@@ -822,4 +822,107 @@ mod tests {
         assert_eq!(detect_mount_type(Some("./data")), "bind");
         assert_eq!(detect_mount_type(Some("named-volume")), "volume");
     }
+
+    #[test]
+    fn display_compose_parse_error() {
+        let err = ComposeParseError::ComposePathMissing {
+            path: PathBuf::from("/missing"),
+        };
+        assert!(err.to_string().contains("/missing"));
+
+        let err = ComposeParseError::ComposeFileNotFound {
+            path: PathBuf::from("/empty"),
+        };
+        assert!(err.to_string().contains("/empty"));
+
+        let err = ComposeParseError::MalformedYaml {
+            path: PathBuf::from("/bad"),
+            message: String::from("oops"),
+        };
+        assert!(err.to_string().contains("oops"));
+
+        let err = ComposeParseError::MissingServices {
+            path: PathBuf::from("/noservices"),
+        };
+        assert!(err.to_string().contains("/noservices"));
+
+        let err = ComposeParseError::Io {
+            path: PathBuf::from("/io"),
+            message: String::from("denied"),
+        };
+        assert!(err.to_string().contains("denied"));
+    }
+
+    #[test]
+    fn parse_directory_without_compose_file() {
+        let root = temp_compose_dir("no-compose");
+        let err = ComposeParser::parse_path(&root).unwrap_err();
+        assert!(matches!(err, ComposeParseError::ComposeFileNotFound { .. }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn parse_null_yaml_returns_empty_project() {
+        let root = temp_compose_dir("null-yaml");
+        let path = root.join("docker-compose.yml");
+        fs::write(&path, "null\n").unwrap();
+        let err = ComposeParser::parse_path(&path).unwrap_err();
+        assert!(matches!(err, ComposeParseError::MissingServices { .. }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn parse_unreadable_file_returns_io_error() {
+        let root = temp_compose_dir("unreadable");
+        let path = root.join("docker-compose.yml");
+        fs::write(&path, "services:\n  web:\n    image: nginx\n").unwrap();
+
+        // Skip when running as root because root can read chmod 000 files.
+        let uid_output = std::process::Command::new("id")
+            .arg("-u")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok());
+        if uid_output.as_deref() == Some("0\n") {
+            fs::remove_dir_all(root).unwrap();
+            return;
+        }
+
+        let mut perms = fs::metadata(&path).unwrap().permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut perms, 0o000);
+        fs::set_permissions(&path, perms).unwrap();
+
+        let err = ComposeParser::parse_path(&path).unwrap_err();
+        assert!(matches!(err, ComposeParseError::Io { .. }));
+
+        let mut perms = fs::metadata(&path).unwrap().permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut perms, 0o644);
+        fs::set_permissions(&path, perms).unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn parse_non_mapping_yaml_fails() {
+        let root = temp_compose_dir("non-mapping");
+        let path = root.join("docker-compose.yml");
+        fs::write(&path, "- item1\n- item2\n").unwrap();
+        let err = ComposeParser::parse_path(&path).unwrap_err();
+        assert!(matches!(err, ComposeParseError::MalformedYaml { .. }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn parse_skips_non_mapping_service_value() {
+        let root = temp_compose_dir("bad-service");
+        let path = root.join("docker-compose.yml");
+        fs::write(
+            &path,
+            "services:\n  web: \"not a mapping\"\n  app:\n    image: alpine\n",
+        )
+        .unwrap();
+        let project = ComposeParser::parse_path(&path).unwrap();
+        assert_eq!(project.services.len(), 1);
+        assert!(project.services.contains_key("app"));
+        fs::remove_dir_all(root).unwrap();
+    }
 }

@@ -1910,9 +1910,7 @@ fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true })
     } else {
-        let mut lines = vec![Line::from(
-            t!("app.history.header").into_owned(),
-        )];
+        let mut lines = vec![Line::from(t!("app.history.header").into_owned())];
         for entry in entries {
             let timestamp = &entry.timestamp[..entry.timestamp.find('T').unwrap_or(19)];
             let overall = entry.overall;
@@ -1937,8 +1935,7 @@ fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
         layout[1],
     );
 
-    let help = Paragraph::new(t!("app.history.footer").into_owned())
-        .style(state.theme.muted);
+    let help = Paragraph::new(t!("app.history.footer").into_owned()).style(state.theme.muted);
     frame.render_widget(help, layout[2]);
 }
 

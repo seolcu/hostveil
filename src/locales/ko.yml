@@ -51,7 +51,7 @@ app:
       사용법:
         hostveil
         hostveil --json
-        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json]
+        hostveil [--compose PATH] [--host-root PATH] [--adapters LIST] [--json] [--findings-only]
         hostveil setup [--tool NAME]... [--tools LIST] [--yes]
         hostveil --auto-fix PATH [--preview-changes] [--yes]
         hostveil --fix PATH [--preview-changes] [--yes]
@@ -86,6 +86,7 @@ app:
         --yes             대화형 확인 없이 검토한 변경을 적용합니다
         --locale LANG     이번 실행에 사용할 언어를 명시합니다 (지원: en, ko)
         --json            TUI 대신 스캔 결과 JSON을 출력합니다
+        --findings-only   --json과 함께 사용할 때 findings 배염만 출력합니다
         -V, --version     버전 정보를 표시합니다
         -h, --help        이 도움말을 표시합니다
 
@@ -354,6 +355,7 @@ app:
     compose_missing_services: "%{path}에서 서비스를 찾지 못했습니다"
     compose_io: "%{path} 읽기에 실패했습니다: %{message}"
     host_root_path_missing: "host-root 경로가 존재하지 않습니다: %{path}"
+    privilege_escalation_failed: "권한 상승에 실패했습니다: %{error}"
     io: "애플리케이션 오류: %{message}"
     fix_serialize: "업데이트된 compose 파일 직렬화에 실패했습니다: %{message}"
     fix_review_required: "검토가 필요한 Compose 수정은 계획을 만들기 전에 대화형 입력이 필요합니다"

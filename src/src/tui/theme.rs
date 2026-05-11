@@ -370,18 +370,15 @@ impl Theme {
 
 #[cfg(test)]
 mod tests {
-    use ratatui::style::Color;
     use super::{Theme, ThemePreset};
+    use ratatui::style::Color;
 
     #[test]
     fn all_presets_have_distinct_keys() {
         let mut keys = std::collections::HashSet::new();
         for preset in ThemePreset::ALL {
             let key = preset.as_key();
-            assert!(
-                keys.insert(key),
-                "duplicate theme key: {key}"
-            );
+            assert!(keys.insert(key), "duplicate theme key: {key}");
         }
         assert_eq!(keys.len(), ThemePreset::ALL.len());
     }
@@ -444,7 +441,10 @@ mod tests {
     #[test]
     fn theme_from_key_is_case_insensitive() {
         assert_eq!(ThemePreset::from_key("ANSI"), Some(ThemePreset::Ansi));
-        assert_eq!(ThemePreset::from_key("Tokyo_Night"), Some(ThemePreset::TokyoNight));
+        assert_eq!(
+            ThemePreset::from_key("Tokyo_Night"),
+            Some(ThemePreset::TokyoNight)
+        );
         assert_eq!(ThemePreset::from_key("GRUVBOX"), Some(ThemePreset::Gruvbox));
     }
 

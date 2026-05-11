@@ -152,9 +152,8 @@ mod tests {
 
     #[test]
     fn host_mode_service_finding() {
-        let project =
-            ComposeParser::parse_path_without_override(fixture("network-host-mode.yml"))
-                .expect("project should parse");
+        let project = ComposeParser::parse_path_without_override(fixture("network-host-mode.yml"))
+            .expect("project should parse");
         let findings = scan_network_isolation(&project);
         // host_mode + default_bridge_used (because app has no custom networks)
         assert_eq!(findings.len(), 2);

@@ -2111,9 +2111,11 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        FixMode, FixResolutionMap, ReviewResolution, apply, apply_with_resolutions,
-        merge_original_formatting, preview, preview_with_resolutions,
+        FixError, FixMode, FixResolutionMap, ReviewChoiceOption, ReviewRequest, ReviewResolution,
+        apply, apply_with_resolutions, merge_original_formatting, preview,
+        preview_with_resolutions,
     };
+    use crate::compose::ComposeParseError;
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -3070,5 +3072,67 @@ mod tests {
         assert!(!updated.contains("cap_add"));
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn review_request_finding_id() {
+        let req = ReviewRequest::Choice {
+            finding_id: String::from("test.choice"),
+            service: String::from("web"),
+            title: String::from("T"),
+            description: String::from("D"),
+            options: vec![ReviewChoiceOption {
+                key: String::from("a"),
+                label: String::from("A"),
+                description: String::from("AD"),
+            }],
+        };
+        assert_eq!(req.finding_id(), "test.choice");
+
+        let req = ReviewRequest::SecretInput {
+            finding_id: String::from("test.secret"),
+            service: String::from("db"),
+            variable: String::from("PASS"),
+            title: String::from("T"),
+            description: String::from("D"),
+            suggested_value: String::from("x"),
+        };
+        assert_eq!(req.finding_id(), "test.secret");
+    }
+
+    #[test]
+    fn display_fix_error() {
+        let err = FixError::ComposeParse(ComposeParseError::MissingServices {
+            path: PathBuf::from("/p"),
+        });
+        assert!(!err.to_string().is_empty());
+
+        let err = FixError::Io(std::io::Error::other("oops"));
+        assert!(err.to_string().contains("oops"));
+
+        let err = FixError::Serialize(String::from("bad yaml"));
+        assert!(err.to_string().contains("bad yaml"));
+
+        let err = FixError::ReviewRequired(vec![]);
+        assert!(!err.to_string().is_empty());
+
+        let err = FixError::InvalidReviewResolution(String::from("unknown"));
+        assert!(err.to_string().contains("unknown"));
+    }
+
+    #[test]
+    fn fix_error_from_compose_parse() {
+        let compose_err = ComposeParseError::MissingServices {
+            path: PathBuf::from("/p"),
+        };
+        let fix_err: FixError = compose_err.into();
+        assert!(matches!(fix_err, FixError::ComposeParse(_)));
+    }
+
+    #[test]
+    fn fix_error_from_io() {
+        let io_err = std::io::Error::other("oops");
+        let fix_err: FixError = io_err.into();
+        assert!(matches!(fix_err, FixError::Io(_)));
     }
 }

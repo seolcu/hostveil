@@ -466,6 +466,10 @@ pub fn tr_host_root_path_missing(path: &str) -> String {
     t!("app.error.host_root_path_missing", path = path).into_owned()
 }
 
+pub fn tr_privilege_escalation_failed(error: &str) -> String {
+    t!("app.error.privilege_escalation_failed", error = error).into_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;

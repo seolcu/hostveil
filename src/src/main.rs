@@ -1,39 +1,17 @@
 use std::os::unix::process::CommandExt;
-use std::process::{Command, ExitCode};
+use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let bin_args: Vec<String> = args.into_iter().skip(1).collect();
 
-    let is_user_mode = bin_args.iter().any(|arg| arg == "--user-mode");
-    let is_lifecycle = matches!(
-        bin_args.first().map(String::as_str),
-        Some("upgrade" | "uninstall" | "auto-upgrade")
-    );
-    let is_passive = bin_args
-        .iter()
-        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
-        || is_lifecycle;
-
-    if !is_user_mode
-        && !is_passive
-        && let Ok(output) = Command::new("id").arg("-u").output()
-        && let Ok(uid_str) = String::from_utf8(output.stdout)
-        && uid_str.trim() != "0"
-    {
-        let exe = std::env::current_exe().unwrap_or_else(|_| "hostveil".into());
-        let mut cmd = Command::new("sudo");
-        cmd.arg(exe);
-        // Pass HOSTVEIL_LOCALE as an explicit CLI argument so it survives
-        // sudo's default env_reset policy.
-        let has_locale_flag = bin_args.iter().any(|a| a.starts_with("--locale"));
-        if !has_locale_flag && let Ok(hostveil_locale) = std::env::var("HOSTVEIL_LOCALE") {
-            cmd.arg("--locale");
-            cmd.arg(&hostveil_locale);
-        }
-        cmd.args(&bin_args);
+    let exe = std::env::current_exe().unwrap_or_else(|_| "hostveil".into());
+    if let Some(mut cmd) = hostveil::app::build_privilege_escalation_cmd(&bin_args, &exe) {
         let err = cmd.exec();
-        eprintln!("Failed to elevate privileges: {err}");
+        eprintln!(
+            "{}",
+            hostveil::i18n::tr_privilege_escalation_failed(&err.to_string())
+        );
         return ExitCode::FAILURE;
     }
 

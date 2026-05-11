@@ -140,6 +140,11 @@ mod realistic_fixture_tests {
                     Severity::High,
                 ),
                 ("permissions.implicit_root", "vaultwarden", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "vaultwarden",
+                    Severity::Low
+                ),
                 ("sensitive.inline_secret", "vaultwarden", Severity::High),
                 ("updates.latest_tag", "vaultwarden", Severity::High),
                 (
@@ -193,6 +198,11 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "jellyfin", Severity::Medium),
                 ("permissions.implicit_root", "jellyfin", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "jellyfin",
+                    Severity::Low
+                ),
                 ("updates.no_tag", "jellyfin", Severity::Medium),
                 (
                     "service.jellyfin.insecure_published_url",
@@ -246,6 +256,12 @@ mod realistic_fixture_tests {
                 ("exposure.reverse_proxy_expected", "server", Severity::High),
                 ("permissions.implicit_root", "server", Severity::Medium),
                 ("permissions.implicit_root", "db", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "server",
+                    Severity::Low
+                ),
+                ("runtime.no_new_privileges_disabled", "db", Severity::Low),
                 ("sensitive.default_credential", "server", Severity::Critical),
                 ("sensitive.inline_secret", "server", Severity::High),
                 ("sensitive.inline_secret", "server", Severity::High),
@@ -319,6 +335,22 @@ mod realistic_fixture_tests {
                 ("permissions.implicit_root", "redis", Severity::Medium),
                 ("permissions.implicit_root", "database", Severity::Medium),
                 (
+                    "runtime.no_new_privileges_disabled",
+                    "immich-server",
+                    Severity::Low
+                ),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "immich-machine-learning",
+                    Severity::Low
+                ),
+                ("runtime.no_new_privileges_disabled", "redis", Severity::Low),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "database",
+                    Severity::Low
+                ),
+                (
                     "sensitive.env_file_plaintext",
                     "immich-server",
                     Severity::High
@@ -384,6 +416,11 @@ mod realistic_fixture_tests {
                 ("exposure.public_binding", "nextcloud", Severity::Medium),
                 ("permissions.implicit_root", "nextcloud", Severity::Medium),
                 (
+                    "runtime.no_new_privileges_disabled",
+                    "nextcloud",
+                    Severity::Low
+                ),
+                (
                     "sensitive.default_credential",
                     "nextcloud",
                     Severity::Critical,
@@ -446,6 +483,11 @@ mod realistic_fixture_tests {
                 ),
                 ("permissions.implicit_root", "traefik", Severity::Medium),
                 (
+                    "runtime.no_new_privileges_disabled",
+                    "traefik",
+                    Severity::Low
+                ),
+                (
                     "service.traefik.insecure_api_enabled",
                     "traefik",
                     Severity::High,
@@ -500,6 +542,11 @@ mod realistic_fixture_tests {
                     "permissions.sensitive_mount",
                     "portainer",
                     Severity::Critical,
+                ),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "portainer",
+                    Severity::Low
                 ),
                 (
                     "service.portainer.admin_ui_public",
@@ -557,6 +604,11 @@ mod realistic_fixture_tests {
                     Severity::Medium
                 ),
                 ("permissions.host_network", "homeassistant", Severity::High,),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "homeassistant",
+                    Severity::Low
+                ),
                 (
                     "service.homeassistant.ui_public",
                     "homeassistant",
@@ -617,6 +669,11 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "pihole", Severity::Medium),
                 ("permissions.implicit_root", "pihole", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "pihole",
+                    Severity::Low
+                ),
                 ("sensitive.default_credential", "pihole", Severity::Critical,),
                 ("service.pihole.admin_public", "pihole", Severity::High,),
                 ("service.pihole.weak_password", "pihole", Severity::High,),
@@ -657,6 +714,11 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "grafana", Severity::Medium),
                 ("permissions.implicit_root", "grafana", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "grafana",
+                    Severity::Low
+                ),
                 (
                     "sensitive.default_credential",
                     "grafana",
@@ -707,6 +769,7 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "npm", Severity::Medium),
                 ("permissions.implicit_root", "npm", Severity::Medium),
+                ("runtime.no_new_privileges_disabled", "npm", Severity::Low),
                 ("service.npm.admin_public", "npm", Severity::High,),
                 ("network.default_bridge_used", "", Severity::Low),
             ]
@@ -744,6 +807,11 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "authentik", Severity::Medium),
                 ("permissions.implicit_root", "authentik", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "authentik",
+                    Severity::Low
+                ),
                 (
                     "service.authentik.admin_public",
                     "authentik",
@@ -790,6 +858,11 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "paperless", Severity::Medium),
                 ("permissions.implicit_root", "paperless", Severity::Medium),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "paperless",
+                    Severity::Low
+                ),
                 ("service.paperless.ui_public", "paperless", Severity::Medium,),
                 (
                     "service.paperless.no_force_login",
@@ -837,6 +910,7 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "db", Severity::Medium),
                 ("permissions.implicit_root", "db", Severity::Medium),
+                ("runtime.no_new_privileges_disabled", "db", Severity::Low),
                 (
                     "service.postgres.password_missing",
                     "db",
@@ -884,6 +958,7 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "db", Severity::Medium),
                 ("permissions.implicit_root", "db", Severity::Medium),
+                ("runtime.no_new_privileges_disabled", "db", Severity::Low),
                 ("service.mysql.password_missing", "db", Severity::Critical),
                 ("service.mysql.bind_public", "db", Severity::High),
                 ("network.default_bridge_used", "", Severity::Low),
@@ -921,6 +996,7 @@ mod realistic_fixture_tests {
             vec![
                 ("exposure.public_binding", "cache", Severity::Medium),
                 ("permissions.implicit_root", "cache", Severity::Medium),
+                ("runtime.no_new_privileges_disabled", "cache", Severity::Low),
                 ("service.redis.password_missing", "cache", Severity::High),
                 ("service.redis.bind_public", "cache", Severity::High),
                 (
@@ -993,6 +1069,21 @@ mod tests {
                 ("permissions.root_user", "adminer", Severity::High),
                 ("permissions.implicit_root", "postgres", Severity::Medium,),
                 ("permissions.privileged", "backup", Severity::Critical),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "vaultwarden",
+                    Severity::Low
+                ),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "adminer",
+                    Severity::Low
+                ),
+                (
+                    "runtime.no_new_privileges_disabled",
+                    "postgres",
+                    Severity::Low
+                ),
                 ("sensitive.inline_secret", "vaultwarden", Severity::High),
                 ("sensitive.env_file_plaintext", "postgres", Severity::High,),
                 ("updates.latest_tag", "vaultwarden", Severity::High),

@@ -89,6 +89,7 @@ hostveil --json
 hostveil --compose path/to/docker-compose.yml --json
 hostveil --host-root / --json
 hostveil --json --adapters none
+hostveil --json --findings-only
 ```
 
 Generate a shareable or automation-friendly headless report:
@@ -101,6 +102,8 @@ hostveil --sarif
 
 Use Markdown or HTML for human-readable sharing, and JSON or SARIF for automation and downstream tooling.
 
+Use `--findings-only` with `--json` to emit only the findings array for lightweight downstream processing.
+
 Optional scanner adapters default to `all`. Use `--adapters none` for native-only scans, or choose a subset such as `--adapters trivy,dockle,gitleaks`.
 
 Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` or `HOSTVEIL_LOCALE=ko hostveil ...` for Korean. In the TUI, open Settings (`s`) to switch locale and persist it.
@@ -111,6 +114,7 @@ Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` o
 
 - `Enter` — open Findings from the overview
 - `s` — open Settings (theme, layout, locale)
+- `t` — open History trend view
 - `?` — show help overlay
 - `Tab` — cycle focus between overview panels
 - `L` — cycle layout preset
@@ -121,6 +125,7 @@ Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` o
 - **Security Scores** — overall posture score and per-axis breakdown (Sensitive Data, Permissions, Exposure, Updates, Host Hardening)
 - **Scan Results** — summary of findings by service, severity counts, and adapter status
 - **Action Queue** — grouped next-step summary by service or host scope, separating auto-fixable and manual items
+- **History** — score and finding-count trends across recent scans (press `t` from the overview)
 - While adapters are still running, the score panel shows progress and keeps the native baseline visible
 
 ### Findings View

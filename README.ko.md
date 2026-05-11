@@ -89,6 +89,7 @@ hostveil --json
 hostveil --compose path/to/docker-compose.yml --json
 hostveil --host-root / --json
 hostveil --json --adapters none
+hostveil --json --findings-only
 ```
 
 공유용 또는 자동화용 터미널 없는 리포트 생성:
@@ -101,6 +102,8 @@ hostveil --sarif
 
 Markdown과 HTML은 사람이 읽는 공유용에, JSON과 SARIF는 자동화와 후속 도구 연동에 적합합니다.
 
+`--json`과 함께 `--findings-only`를 사용하면 가벼운 후속 처리를 위해 findings 배염만 출력합니다.
+
 선택형 스캐너 어댑터의 기본값은 `all`입니다. 기본 점검만 빠르게 실행하려면 `--adapters none`을 쓰고, 일부만 실행하려면 `--adapters trivy,dockle,gitleaks`처럼 지정합니다.
 
 터미널 호환성을 위해 기본 로케일은 항상 영어입니다. 한국어로 명시적으로 바꾸려면 `hostveil --locale ko ...` 또는 `HOSTVEIL_LOCALE=ko hostveil ...`를 사용하세요. TUI에서는 설정(`s`)을 열어 언어를 전환하고 저장할 수 있습니다.
@@ -111,6 +114,7 @@ Markdown과 HTML은 사람이 읽는 공유용에, JSON과 SARIF는 자동화와
 
 - `Enter` — 개요에서 Findings 화면 열기
 - `s` — 설정 열기(테마/레이아웃/언어)
+- `t` — 스캔 이력 추세 화면 열기
 - `?` — 도움말 오버레이 표시
 - `Tab` — 개요 패널 간 포커스 이동
 - `L` — 레이아웃 프리셋 전환
@@ -121,6 +125,7 @@ Markdown과 HTML은 사람이 읽는 공유용에, JSON과 SARIF는 자동화와
 - **Security Scores** — 전체 점수와 축별 점수(민감 정보, 권한, 노출, 업데이트, 호스트 하드닝)
 - **Scan Results** — 서비스별 findings 요약, 심각도 개수, 어댑터 상태
 - **Action Queue** — 서비스 또는 호스트 단위로 묶은 다음 조치 요약, 자동 수정 가능 항목과 수동 수정 항목 구분
+- **History** — 최근 스캔의 점수와 발견 항목 개수 추세(개요에서 `t` 키)
 - 어댑터가 아직 실행 중이면 점수 패널에서 진행 상태와 네이티브 기준 점수를 분리해 보여줍니다
 
 ### Findings 화면

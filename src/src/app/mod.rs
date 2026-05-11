@@ -466,6 +466,59 @@ fn print_fix_result(plan: &fix::FixPlan) {
     }
 }
 
+/// Check if privilege escalation is needed and build the sudo command.
+/// Returns `None` if no escalation is needed (already root, passive mode, or user mode).
+#[cfg(unix)]
+pub fn build_privilege_escalation_cmd(
+    bin_args: &[String],
+    current_exe: &std::path::Path,
+) -> Option<std::process::Command> {
+    let is_user_mode = bin_args.iter().any(|arg| arg == "--user-mode");
+    let is_lifecycle = matches!(
+        bin_args.first().map(String::as_str),
+        Some("upgrade" | "uninstall" | "auto-upgrade")
+    );
+    let is_passive = bin_args
+        .iter()
+        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
+        || is_lifecycle;
+
+    if is_user_mode || is_passive {
+        return None;
+    }
+
+    let uid = std::process::Command::new("id")
+        .arg("-u")
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|s| s.trim().to_owned())?;
+
+    if uid == "0" {
+        return None;
+    }
+
+    let mut cmd = std::process::Command::new("sudo");
+    cmd.arg(current_exe);
+
+    let has_locale_flag = bin_args.iter().any(|a| a.starts_with("--locale"));
+    if !has_locale_flag && let Ok(hostveil_locale) = std::env::var("HOSTVEIL_LOCALE") {
+        cmd.arg("--locale");
+        cmd.arg(&hostveil_locale);
+    }
+
+    cmd.args(bin_args);
+    Some(cmd)
+}
+
+#[cfg(not(unix))]
+pub fn build_privilege_escalation_cmd(
+    _bin_args: &[String],
+    _current_exe: &std::path::Path,
+) -> Option<std::process::Command> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -473,7 +526,7 @@ mod tests {
     use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppError, PackageInstallKind, run};
+    use super::{AppError, PackageInstallKind, build_privilege_escalation_cmd, run};
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -742,5 +795,41 @@ mod tests {
         unsafe {
             std::env::remove_var("HOSTVEIL_PACKAGE_INSTALL_KIND");
         }
+    }
+
+    #[test]
+    fn privilege_escalation_skips_user_mode() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("--user-mode")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_skips_help() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("--help")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_skips_version() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("--version")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_skips_lifecycle() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("upgrade")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
     }
 }
