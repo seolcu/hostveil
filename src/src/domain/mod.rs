@@ -240,3 +240,96 @@ pub struct ScanResult {
     pub score_report: ScoreReport,
     pub metadata: ScanMetadata,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn axis_roundtrip_from_key() {
+        for axis in Axis::ALL {
+            assert_eq!(Axis::from_key(axis.as_key()), Some(axis));
+        }
+    }
+
+    #[test]
+    fn axis_from_key_returns_none_for_unknown() {
+        assert_eq!(Axis::from_key("unknown"), None);
+    }
+
+    #[test]
+    fn severity_roundtrip_from_key() {
+        for severity in Severity::ALL {
+            assert_eq!(Severity::from_key(severity.as_key()), Some(severity));
+        }
+    }
+
+    #[test]
+    fn severity_from_key_returns_none_for_unknown() {
+        assert_eq!(Severity::from_key("info"), None);
+    }
+
+    #[test]
+    fn severity_all_variants_have_distinct_keys() {
+        let mut keys = std::collections::HashSet::new();
+        for severity in Severity::ALL {
+            assert!(keys.insert(severity.as_key()));
+        }
+        assert_eq!(keys.len(), Severity::ALL.len());
+    }
+
+    #[test]
+    fn finding_constructed_with_minimal_fields() {
+        let finding = Finding {
+            id: String::from("test.finding"),
+            axis: Axis::ExcessivePermissions,
+            severity: Severity::High,
+            scope: Scope::Service,
+            source: Source::NativeCompose,
+            subject: String::from("svc"),
+            related_service: None,
+            title: String::from("title"),
+            description: String::from("desc"),
+            why_risky: String::from("why"),
+            how_to_fix: String::from("fix"),
+            evidence: BTreeMap::new(),
+            remediation: RemediationKind::Auto,
+        };
+        assert_eq!(finding.id, "test.finding");
+        assert_eq!(finding.axis, Axis::ExcessivePermissions);
+        assert_eq!(finding.severity, Severity::High);
+        assert_eq!(finding.remediation, RemediationKind::Auto);
+    }
+
+    #[test]
+    fn scan_result_default_is_empty() {
+        let result = ScanResult::default();
+        assert!(result.findings.is_empty());
+        assert_eq!(result.score_report.overall, 100);
+    }
+
+    #[test]
+    fn remediation_kind_all_variants() {
+        let _ = RemediationKind::None;
+        let _ = RemediationKind::Auto;
+        let _ = RemediationKind::Review;
+    }
+
+    #[test]
+    fn scope_all_variants() {
+        let _ = Scope::Service;
+        let _ = Scope::Image;
+        let _ = Scope::Host;
+        let _ = Scope::Project;
+    }
+
+    #[test]
+    fn source_all_variants() {
+        let _ = Source::NativeCompose;
+        let _ = Source::NativeHost;
+        let _ = Source::Trivy;
+        let _ = Source::Dockle;
+        let _ = Source::Lynis;
+        let _ = Source::Gitleaks;
+    }
+}

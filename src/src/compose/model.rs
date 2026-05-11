@@ -67,3 +67,65 @@ impl ComposeBundle {
         files
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn port_binding_default() {
+        let port = PortBinding::default();
+        assert!(port.raw.is_empty());
+        assert!(port.host_ip.is_none());
+        assert!(port.host_port.is_none());
+        assert!(port.container_port.is_empty());
+        assert!(port.protocol.is_empty());
+        assert!(!port.short_syntax);
+    }
+
+    #[test]
+    fn volume_mount_default() {
+        let vol = VolumeMount::default();
+        assert!(vol.raw.is_empty());
+        assert!(vol.source.is_none());
+        assert!(vol.target.is_none());
+        assert!(vol.mode.is_none());
+        assert!(vol.mount_type.is_empty());
+    }
+
+    #[test]
+    fn compose_service_default() {
+        let svc = ComposeService::default();
+        assert!(svc.name.is_empty());
+        assert!(svc.image.is_none());
+        assert!(svc.ports.is_empty());
+        assert!(svc.volumes.is_empty());
+        assert!(svc.environment.is_empty());
+        assert!(!svc.privileged);
+        assert!(svc.cap_add.is_empty());
+        assert!(svc.security_opt.is_empty());
+    }
+
+    #[test]
+    fn compose_project_default() {
+        let proj = ComposeProject::default();
+        assert!(proj.primary_file.as_os_str().is_empty());
+        assert!(proj.services.is_empty());
+        assert!(proj.networks.is_empty());
+    }
+
+    #[test]
+    fn compose_bundle_loaded_files() {
+        let bundle = ComposeBundle {
+            primary_path: PathBuf::from("/a/docker-compose.yml"),
+            override_paths: vec![PathBuf::from("/a/docker-compose.override.yml")],
+            primary_document: Value::Null,
+            override_documents: vec![Value::Null],
+            primary_text: String::new(),
+        };
+        let files = bundle.loaded_files();
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0], PathBuf::from("/a/docker-compose.yml"));
+        assert_eq!(files[1], PathBuf::from("/a/docker-compose.override.yml"));
+    }
+}
