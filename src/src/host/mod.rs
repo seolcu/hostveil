@@ -606,4 +606,37 @@ mod tests {
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }
+
+    #[test]
+    fn host_finding_constructs_finding_correctly() {
+        let evidence = BTreeMap::from([("key".to_string(), "val".to_string())]);
+        let text = HostFindingText {
+            title: "Test Title".to_string(),
+            description: "Test Description".to_string(),
+            why_risky: "Test Risk".to_string(),
+            how_to_fix: "Test Fix".to_string(),
+        };
+        let finding = host_finding(
+            "test.id",
+            Severity::High,
+            Path::new("/etc/test.conf"),
+            text,
+            evidence.clone(),
+            RemediationKind::Manual,
+        );
+
+        assert_eq!(finding.id, "test.id");
+        assert_eq!(finding.axis, Axis::HostHardening);
+        assert_eq!(finding.scope, Scope::Host);
+        assert_eq!(finding.source, Source::NativeHost);
+        assert_eq!(finding.severity, Severity::High);
+        assert_eq!(finding.related_service, None);
+        assert_eq!(finding.subject, "/etc/test.conf");
+        assert_eq!(finding.title, "Test Title");
+        assert_eq!(finding.description, "Test Description");
+        assert_eq!(finding.why_risky, "Test Risk");
+        assert_eq!(finding.how_to_fix, "Test Fix");
+        assert_eq!(finding.evidence, evidence);
+        assert_eq!(finding.remediation, RemediationKind::Manual);
+    }
 }

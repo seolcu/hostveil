@@ -4753,6 +4753,54 @@ mod tests {
     }
 
     #[test]
+    fn findings_left_and_right_keys_switch_focus() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        assert_eq!(state.findings_focus, FindingsFocus::List);
+
+        // Right key should focus detail
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        assert_eq!(state.findings_focus, FindingsFocus::Detail);
+
+        // Left key should focus back to list
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+        );
+        assert_eq!(state.findings_focus, FindingsFocus::List);
+
+        // 'l' should focus detail
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.findings_focus, FindingsFocus::Detail);
+
+        // 'h' should focus list
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.findings_focus, FindingsFocus::List);
+
+        // Enter should also focus detail
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert_eq!(state.findings_focus, FindingsFocus::Detail);
+    }
+
+    #[test]
     fn findings_controls_cycle_filters_and_sort_modes() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -7634,5 +7682,109 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
                 variant
             );
         }
+    }
+
+    #[test]
+    fn mouse_scroll_down_on_overview_scrolls_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        let initial_scroll = state.active_overview_scroll();
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 10,
+                row: 10,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.active_overview_scroll(),
+            initial_scroll + 3,
+            "ScrollDown should scroll overview by 3 lines"
+        );
+    }
+
+    #[test]
+    fn mouse_scroll_up_on_overview_scrolls_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        state.scroll_overview_down(10);
+        let initial_scroll = state.active_overview_scroll();
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 10,
+                row: 10,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.active_overview_scroll(),
+            initial_scroll.saturating_sub(3),
+            "ScrollUp should scroll overview by 3 lines"
+        );
+    }
+
+    #[test]
+    fn mouse_scroll_down_on_findings_list_selects_next_finding() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.findings_focus = FindingsFocus::List;
+        let initial = state.selected_index;
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 10,
+                row: 10,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.selected_index,
+            initial + 1,
+            "ScrollDown on findings list should select next finding"
+        );
+    }
+
+    #[test]
+    fn mouse_scroll_up_on_findings_list_selects_previous_finding() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.findings_focus = FindingsFocus::List;
+        state.selected_index = 2;
+        let initial = state.selected_index;
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 10,
+                row: 10,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.selected_index,
+            initial.saturating_sub(1),
+            "ScrollUp on findings list should select previous finding"
+        );
     }
 }

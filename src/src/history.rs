@@ -260,4 +260,34 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn load_returns_default_for_corrupted_json() {
+        let dir = std::env::temp_dir().join("hostveil-history-corrupted");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("history.json");
+        fs::write(&path, "this is not valid json").expect("write corrupted file");
+
+        let result = load_from_path(&path);
+        assert!(result.is_err(), "corrupted JSON should produce an error");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_handles_partial_history_json() {
+        let dir = std::env::temp_dir().join("hostveil-history-partial");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("history.json");
+        fs::write(&path, "{\"entries\": [{\"timestamp\": \"2024-01-01\"}]}")
+            .expect("write partial history");
+
+        let result = load_from_path(&path);
+        assert!(
+            result.is_err(),
+            "partial history JSON should produce an error"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

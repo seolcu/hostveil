@@ -871,6 +871,28 @@ EOF
         assert!(output.findings.is_empty());
     }
 
+    #[test]
+    fn metadata_only_report_produces_no_findings() {
+        let report_text = "lynis_tests_done=42\nhardening_index=70\n";
+
+        let output = scan_with_effective_root_and_report(
+            Some(Path::new("/")),
+            true,
+            report_text,
+            Ok(LynisCommandResult {
+                success: true,
+                detail: None,
+            }),
+        );
+
+        assert!(matches!(output.status, AdapterStatus::Available));
+        assert!(
+            output.findings.is_empty(),
+            "metadata-only report should produce no findings"
+        );
+        assert_eq!(output.warnings.len(), 0);
+    }
+
     fn scan_with_effective_root_and_report(
         host_root: Option<&Path>,
         effective_root: bool,

@@ -909,4 +909,102 @@ mod tests {
             assert!(cmd.is_some());
         }
     }
+
+    #[test]
+    fn preview_flag_does_not_apply_changes() {
+        let root = temp_compose_dir("preview-only");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  app:\n",
+                "    image: alpine:3.20\n",
+                "    privileged: true\n",
+            ),
+        );
+
+        run([
+            String::from("--auto-fix"),
+            path.display().to_string(),
+            String::from("--preview-changes"),
+        ])
+        .expect("preview should succeed");
+
+        // File should NOT have been modified (no backup, no changes)
+        let content = fs::read_to_string(&path).expect("compose file should be readable");
+        assert!(
+            content.contains("privileged: true"),
+            "preview should not modify compose file"
+        );
+        let backup_exists = fs::read_dir(&root)
+            .expect("root dir should be readable")
+            .filter_map(|entry| entry.ok())
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| name.contains(".bak."))
+            });
+        assert!(!backup_exists, "preview should not create backup");
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
+
+    #[test]
+    fn fix_requires_target_path() {
+        let error = run([
+            String::from("--fix"),
+            String::from("/nonexistent/hostveil/compose.yml"),
+        ])
+        .expect_err("--fix with nonexistent path should error");
+
+        assert!(
+            matches!(
+                error,
+                AppError::Fix(..) | AppError::InvalidArgumentCombination(..)
+            ),
+            "expected Fix or InvalidArgumentCombination error, got {:?}",
+            error
+        );
+    }
+
+    #[test]
+    fn auto_fix_without_yes_cancels_without_changes() {
+        let root = temp_compose_dir("auto-fix-no-yes");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  app:\n",
+                "    image: alpine:3.20\n",
+                "    privileged: true\n",
+            ),
+        );
+
+        // Without --yes, auto-fix prints the preview, asks for confirmation,
+        // gets N (no TTY) and cancels — no changes written.
+        run([String::from("--auto-fix"), path.display().to_string()])
+            .expect("auto-fix without --yes should gracefully cancel (Ok)");
+
+        let content = fs::read_to_string(&path).expect("compose file should be readable");
+        assert!(
+            content.contains("privileged: true"),
+            "file should remain unchanged when cancelled"
+        );
+        // Verify no backup was created
+        let backup_exists = fs::read_dir(&root)
+            .expect("root dir should be readable")
+            .filter_map(|entry| entry.ok())
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| name.contains(".bak."))
+            });
+        assert!(!backup_exists, "cancelled fix should not create backup");
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
 }
