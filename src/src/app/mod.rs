@@ -179,6 +179,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                     compose_path,
                     mode,
                     None,
+                    &[],
                     !config.preview_changes,
                 )?
                 else {
@@ -272,6 +273,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                     tui::TuiAction::TriggerFix {
                         compose_file,
                         finding_id,
+                        adapter_findings,
                     } => {
                         let filter = finding_id.map(|id| vec![id]);
                         let filter_slice = filter.as_deref();
@@ -279,6 +281,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                             &compose_file,
                             crate::fix::FixMode::Fix,
                             filter_slice,
+                            &adapter_findings,
                             true,
                         )?
                         else {
@@ -287,10 +290,11 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                         };
 
                         if result.plan.changed() {
-                            fix::apply_with_resolutions(
+                            fix::apply_with_external(
                                 &compose_file,
                                 crate::fix::FixMode::Fix,
                                 filter_slice,
+                                &adapter_findings,
                                 &result.resolutions,
                             )?;
                         } else {
@@ -831,5 +835,78 @@ mod tests {
             std::path::Path::new("/bin/hostveil"),
         );
         assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_skips_lifecycle_uninstall() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("uninstall")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_skips_lifecycle_auto_upgrade() {
+        let cmd = build_privilege_escalation_cmd(
+            &[String::from("auto-upgrade"), String::from("disable")],
+            std::path::Path::new("/bin/hostveil"),
+        );
+        assert!(cmd.is_none());
+    }
+
+    #[test]
+    fn privilege_escalation_returns_some_for_setup() {
+        #[cfg(unix)]
+        {
+            let cmd = build_privilege_escalation_cmd(
+                &[String::from("setup")],
+                std::path::Path::new("/bin/hostveil"),
+            );
+            assert!(cmd.is_some());
+        }
+    }
+
+    #[test]
+    fn privilege_escalation_returns_some_for_scan() {
+        #[cfg(unix)]
+        {
+            let cmd = build_privilege_escalation_cmd(
+                &[String::from("--json")],
+                std::path::Path::new("/bin/hostveil"),
+            );
+            assert!(cmd.is_some());
+        }
+    }
+
+    #[test]
+    fn privilege_escalation_returns_some_for_compose_file_scan() {
+        #[cfg(unix)]
+        {
+            let cmd = build_privilege_escalation_cmd(
+                &[
+                    String::from("--compose"),
+                    String::from("docker-compose.yml"),
+                ],
+                std::path::Path::new("/bin/hostveil"),
+            );
+            assert!(cmd.is_some());
+        }
+    }
+
+    #[test]
+    fn privilege_escalation_returns_some_for_fix_preview() {
+        #[cfg(unix)]
+        {
+            let cmd = build_privilege_escalation_cmd(
+                &[
+                    String::from("--fix"),
+                    String::from("docker-compose.yml"),
+                    String::from("--preview-changes"),
+                ],
+                std::path::Path::new("/bin/hostveil"),
+            );
+            assert!(cmd.is_some());
+        }
     }
 }

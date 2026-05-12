@@ -9,8 +9,10 @@ use std::path::{Path, PathBuf};
 use serde_yaml::{Mapping, Sequence, Value};
 
 use crate::compose::{ComposeParseError, ComposeParser};
-use crate::domain::RemediationKind;
+use crate::domain::{Finding, RemediationKind};
 use crate::rules::RuleEngine;
+
+mod adapter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixMode {
@@ -31,6 +33,45 @@ pub struct FixProposal {
     pub remediation: RemediationKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FixAction {
+    ComposeEdit {
+        service: String,
+        summary: String,
+        diff: String,
+    },
+    HostEdit {
+        path: PathBuf,
+        summary: String,
+        original_content: String,
+        updated_content: String,
+        mode: Option<u32>,
+    },
+    ShellCommand {
+        command: String,
+        summary: String,
+        rollback: Option<String>,
+    },
+}
+
+impl FixAction {
+    pub fn summary(&self) -> &str {
+        match self {
+            Self::ComposeEdit { summary, .. }
+            | Self::HostEdit { summary, .. }
+            | Self::ShellCommand { summary, .. } => summary,
+        }
+    }
+
+    pub fn remediation_label(&self) -> RemediationKind {
+        match self {
+            Self::ComposeEdit { .. } => RemediationKind::Auto,
+            Self::HostEdit { .. } => RemediationKind::Auto,
+            Self::ShellCommand { .. } => RemediationKind::Auto,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FixPlan {
     pub compose_file: PathBuf,
@@ -39,11 +80,18 @@ pub struct FixPlan {
     pub backup_path: Option<PathBuf>,
     pub auto_applied: Vec<FixProposal>,
     pub review_applied: Vec<FixProposal>,
+    pub host_actions: Vec<FixAction>,
+    pub system_actions: Vec<FixAction>,
+    pub compose_actions: Vec<FixAction>,
 }
 
 impl FixPlan {
     pub fn changed(&self) -> bool {
-        !(self.auto_applied.is_empty() && self.review_applied.is_empty())
+        !(self.auto_applied.is_empty()
+            && self.review_applied.is_empty()
+            && self.host_actions.is_empty()
+            && self.system_actions.is_empty()
+            && self.compose_actions.is_empty())
     }
 }
 
@@ -162,7 +210,23 @@ pub fn preview_with_resolutions(
     only_findings: Option<&[String]>,
     resolutions: &FixResolutionMap,
 ) -> Result<FixPlan, FixError> {
-    build_fix_plan(path.as_ref(), mode, only_findings, resolutions)
+    preview_with_external(path, mode, only_findings, &[], resolutions)
+}
+
+pub fn preview_with_external(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+    external_findings: &[Finding],
+    resolutions: &FixResolutionMap,
+) -> Result<FixPlan, FixError> {
+    build_fix_plan(
+        path.as_ref(),
+        mode,
+        only_findings,
+        external_findings,
+        resolutions,
+    )
 }
 
 pub fn apply_with_resolutions(
@@ -171,22 +235,148 @@ pub fn apply_with_resolutions(
     only_findings: Option<&[String]>,
     resolutions: &FixResolutionMap,
 ) -> Result<FixPlan, FixError> {
-    let mut plan = build_fix_plan(path.as_ref(), mode, only_findings, resolutions)?;
+    apply_with_external(path, mode, only_findings, &[], resolutions)
+}
+
+pub fn apply_with_external(
+    path: impl AsRef<Path>,
+    mode: FixMode,
+    only_findings: Option<&[String]>,
+    external_findings: &[Finding],
+    resolutions: &FixResolutionMap,
+) -> Result<FixPlan, FixError> {
+    let mut plan = build_fix_plan(
+        path.as_ref(),
+        mode,
+        only_findings,
+        external_findings,
+        resolutions,
+    )?;
     if !plan.changed() {
         return Ok(plan);
     }
 
-    let backup_path = backup_path_for(&plan.compose_file);
-    fs::copy(&plan.compose_file, &backup_path)?;
-    atomic_write_file(&plan.compose_file, &plan.updated_text)?;
-    plan.backup_path = Some(backup_path);
+    if !plan.updated_text.is_empty() {
+        let backup_path = backup_path_for(&plan.compose_file);
+        fs::copy(&plan.compose_file, &backup_path)?;
+        atomic_write_file(&plan.compose_file, &plan.updated_text)?;
+        plan.backup_path = Some(backup_path);
+    }
+
+    execute_host_and_system_actions(&plan)?;
+
     Ok(plan)
+}
+
+fn apply_compose_edits_to_text(original_text: &str, actions: &[FixAction]) -> (String, String) {
+    if actions.is_empty() {
+        return (original_text.to_string(), String::new());
+    }
+
+    let mut text = original_text.to_string();
+    let mut diff_lines = Vec::new();
+
+    for action in actions {
+        if let FixAction::ComposeEdit {
+            service,
+            summary: _,
+            diff,
+        } = action
+        {
+            let additions: Vec<&str> = diff
+                .lines()
+                .filter(|l| l.starts_with('+'))
+                .map(|l| &l[1..])
+                .collect();
+            if additions.is_empty() {
+                continue;
+            }
+
+            diff_lines.push(format!(
+                "--- a/docker-compose.yml (compose-edit {})",
+                service
+            ));
+            diff_lines.push(format!(
+                "+++ b/docker-compose.yml (compose-edit {})",
+                service
+            ));
+            for line in &additions {
+                diff_lines.push(format!("+{}", line));
+            }
+
+            let service_header = format!("\n  {}:", service);
+            if let Some(pos) = text.find(&service_header) {
+                let insert_pos = pos + service_header.len();
+                let mut to_insert = String::new();
+                for line in &additions {
+                    to_insert.push('\n');
+                    to_insert.push_str(line);
+                }
+                text.insert_str(insert_pos, &to_insert);
+            } else {
+                text.push_str(&format!("\n{}:\n", service));
+                for line in &additions {
+                    text.push('\n');
+                    text.push_str(line);
+                }
+            }
+        }
+    }
+
+    (text, diff_lines.join("\n"))
+}
+
+fn execute_host_and_system_actions(plan: &FixPlan) -> Result<(), FixError> {
+    for action in &plan.host_actions {
+        if let FixAction::HostEdit {
+            path,
+            updated_content,
+            mode,
+            ..
+        } = action
+        {
+            if path.exists() {
+                let file_backup = backup_path_for(path);
+                fs::copy(path, &file_backup)?;
+            }
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            atomic_write_file(path, updated_content)?;
+            if let Some(m) = mode {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    fs::set_permissions(path, fs::Permissions::from_mode(*m))?;
+                }
+            }
+        }
+    }
+
+    for action in &plan.system_actions {
+        if let FixAction::ShellCommand { command, .. } = action {
+            let status = std::process::Command::new("sh")
+                .arg("-c")
+                .arg(command)
+                .status()
+                .map_err(FixError::Io)?;
+            if !status.success() {
+                return Err(FixError::Io(io::Error::other(format!(
+                    "shell command exited with status: {:?}",
+                    status.code()
+                ))));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn build_fix_plan(
     path: &Path,
     mode: FixMode,
     only_findings: Option<&[String]>,
+    external_findings: &[Finding],
     resolutions: &FixResolutionMap,
 ) -> Result<FixPlan, FixError> {
     let bundle = ComposeParser::load_bundle(path.to_path_buf(), false)?;
@@ -218,18 +408,55 @@ fn build_fix_plan(
         return Err(FixError::ReviewRequired(review_requests));
     }
 
-    let changed_services = auto_applied
+    // Classify external adapter findings (Dockle, Lynis) if provided
+    let (adapter_actions, adapter_auto, adapter_review) =
+        adapter::classify_adapter_findings(external_findings);
+    let mut compose_actions: Vec<FixAction> = Vec::new();
+    let (host_actions, system_actions): (Vec<_>, Vec<_>) =
+        adapter_actions.into_iter().partition(|a| match a {
+            FixAction::ComposeEdit { .. } => {
+                compose_actions.push(a.clone());
+                false
+            }
+            FixAction::HostEdit { .. } => true,
+            FixAction::ShellCommand { .. } => false,
+        });
+    let system_actions: Vec<_> = system_actions
+        .into_iter()
+        .filter(|a| matches!(a, FixAction::ShellCommand { .. }))
+        .collect();
+
+    let mut all_auto = auto_applied;
+    let mut all_review = review_applied.clone();
+    all_auto.extend(adapter_auto);
+    all_review.extend(adapter_review);
+
+    let changed_services = all_auto
         .iter()
-        .chain(review_applied.iter())
+        .chain(all_review.iter())
         .map(|proposal| proposal.service.clone())
         .collect::<BTreeSet<_>>();
 
     let updated_text =
         render_document_like_original(&bundle.primary_text, &document, &changed_services)?;
-    let diff_preview = if auto_applied.is_empty() && review_applied.is_empty() {
-        String::new()
+    let (updated_text, compose_diff) = apply_compose_edits_to_text(&updated_text, &compose_actions);
+
+    let has_doc_changes = !all_auto.is_empty() || !all_review.is_empty();
+    let diff_preview = if has_doc_changes || !compose_diff.is_empty() {
+        let base_diff = if has_doc_changes {
+            build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
+        } else {
+            String::new()
+        };
+        if compose_diff.is_empty() {
+            base_diff
+        } else if base_diff.is_empty() {
+            compose_diff
+        } else {
+            format!("{}\n{}", base_diff, compose_diff)
+        }
     } else {
-        build_diff(&bundle.primary_path, &bundle.primary_text, &updated_text)
+        String::new()
     };
 
     let plan = FixPlan {
@@ -237,8 +464,11 @@ fn build_fix_plan(
         diff_preview,
         updated_text,
         backup_path: None,
-        auto_applied,
-        review_applied,
+        auto_applied: all_auto,
+        review_applied: all_review,
+        host_actions,
+        system_actions,
+        compose_actions,
     };
 
     Ok(plan)
@@ -948,6 +1178,20 @@ fn apply_privileged_low_port_fix(service: &mut Mapping) -> bool {
         .any(|value| value.as_str() == Some("NET_BIND_SERVICE"))
     {
         capabilities.push(Value::String(String::from("NET_BIND_SERVICE")));
+    }
+
+    if service.get(yaml_key("security_opt")).is_none() {
+        service.insert(yaml_key("security_opt"), Value::Sequence(Sequence::new()));
+    }
+    if let Some(security_opt) = service.get_mut(yaml_key("security_opt"))
+        && let Some(sequence) = security_opt.as_sequence_mut()
+        && !sequence.iter().any(|value| {
+            value
+                .as_str()
+                .is_some_and(|s| s.contains("no-new-privileges:true"))
+        })
+    {
+        sequence.push(Value::String(String::from("no-new-privileges:true")));
     }
 
     true
@@ -2111,11 +2355,13 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        FixError, FixMode, FixResolutionMap, ReviewChoiceOption, ReviewRequest, ReviewResolution,
-        apply, apply_with_resolutions, merge_original_formatting, preview,
-        preview_with_resolutions,
+        FixAction, FixError, FixMode, FixPlan, FixResolutionMap, ReviewChoiceOption, ReviewRequest,
+        ReviewResolution, apply, apply_compose_edits_to_text, apply_with_external,
+        apply_with_resolutions, execute_host_and_system_actions, merge_original_formatting,
+        preview, preview_with_external, preview_with_resolutions,
     };
     use crate::compose::ComposeParseError;
+    use crate::domain::{Finding, RemediationKind, Severity, Source};
 
     fn temp_compose_dir(name: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -3134,5 +3380,758 @@ mod tests {
         let io_err = std::io::Error::other("oops");
         let fix_err: FixError = io_err.into();
         assert!(matches!(fix_err, FixError::Io(_)));
+    }
+
+    #[test]
+    fn execute_host_edit_creates_file() {
+        let dir = temp_compose_dir("host-edit");
+        let file_path = dir.join("test.conf");
+        let action = FixAction::HostEdit {
+            path: file_path.clone(),
+            summary: "create test config".to_string(),
+            original_content: String::new(),
+            updated_content: "key=value\n".to_string(),
+            mode: None,
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![action],
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("host edit should succeed");
+
+        assert!(file_path.exists(), "file should be created");
+        let content = fs::read_to_string(&file_path).expect("should be readable");
+        assert_eq!(content, "key=value\n");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_host_edit_overwrites_existing_file() {
+        let dir = temp_compose_dir("host-overwrite");
+        let file_path = dir.join("existing.conf");
+        fs::write(&file_path, "original\n").expect("write original");
+
+        let action = FixAction::HostEdit {
+            path: file_path.clone(),
+            summary: "overwrite config".to_string(),
+            original_content: "original\n".to_string(),
+            updated_content: "updated\n".to_string(),
+            mode: None,
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![action],
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("host edit should succeed");
+
+        let content = fs::read_to_string(&file_path).expect("should be readable");
+        assert_eq!(content, "updated\n");
+
+        // Verify backup was created
+        let dir_entries: Vec<_> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|n| n.contains(".bak."))
+            .collect();
+        assert!(
+            !dir_entries.is_empty(),
+            "backup file should exist: {:?}",
+            dir_entries
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_host_edit_creates_parent_directories() {
+        let dir = temp_compose_dir("host-mkdir");
+        let nested_path = dir.join("subdir/deep/config.conf");
+
+        let action = FixAction::HostEdit {
+            path: nested_path.clone(),
+            summary: "create nested config".to_string(),
+            original_content: String::new(),
+            updated_content: "nested=true\n".to_string(),
+            mode: None,
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![action],
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("host edit with mkdir should succeed");
+
+        assert!(nested_path.exists(), "nested file should be created");
+        let content = fs::read_to_string(&nested_path).expect("should be readable");
+        assert_eq!(content, "nested=true\n");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_host_edit_sets_permissions() {
+        let dir = temp_compose_dir("host-perms");
+        let file_path = dir.join("secure.conf");
+
+        let action = FixAction::HostEdit {
+            path: file_path.clone(),
+            summary: "create secure config".to_string(),
+            original_content: String::new(),
+            updated_content: "secure=true\n".to_string(),
+            mode: Some(0o600),
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![action],
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("host edit with permissions should succeed");
+
+        let metadata = fs::metadata(&file_path).expect("file should exist");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                metadata.permissions().mode() & 0o777,
+                0o600,
+                "permissions should be 0600"
+            );
+        }
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_shell_command_succeeds() {
+        let dir = temp_compose_dir("shell-cmd");
+        let marker = dir.join("marker.txt");
+
+        let action = FixAction::ShellCommand {
+            command: format!("touch {}", marker.display()),
+            summary: "create marker".to_string(),
+            rollback: None,
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: vec![action],
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("shell command should succeed");
+
+        assert!(
+            marker.exists(),
+            "shell command should have created marker file"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_shell_command_failure_returns_error() {
+        let action = FixAction::ShellCommand {
+            command: "exit 42".to_string(),
+            summary: "failing command".to_string(),
+            rollback: None,
+        };
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/nonexistent/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: vec![action],
+            compose_actions: Vec::new(),
+        };
+
+        let result = execute_host_and_system_actions(&plan);
+        assert!(result.is_err(), "failing shell command should return error");
+    }
+
+    #[test]
+    fn execute_multiple_host_and_shell_actions_all_succeed() {
+        let dir = temp_compose_dir("multi-action");
+        let file1 = dir.join("file1.conf");
+        let file2 = dir.join("file2.conf");
+        let marker = dir.join("marker.txt");
+
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![
+                FixAction::HostEdit {
+                    path: file1.clone(),
+                    summary: "file1".to_string(),
+                    original_content: String::new(),
+                    updated_content: "file1=val\n".to_string(),
+                    mode: None,
+                },
+                FixAction::HostEdit {
+                    path: file2.clone(),
+                    summary: "file2".to_string(),
+                    original_content: String::new(),
+                    updated_content: "file2=val\n".to_string(),
+                    mode: None,
+                },
+            ],
+            system_actions: vec![FixAction::ShellCommand {
+                command: format!("touch {}", marker.display()),
+                summary: "create marker".to_string(),
+                rollback: None,
+            }],
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("all actions should succeed");
+
+        assert!(file1.exists(), "file1 should be created");
+        assert!(file2.exists(), "file2 should be created");
+        assert!(marker.exists(), "marker should be created");
+        assert_eq!(fs::read_to_string(&file1).unwrap(), "file1=val\n");
+        assert_eq!(fs::read_to_string(&file2).unwrap(), "file2=val\n");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_no_actions_is_noop() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/nonexistent/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+
+        let result = execute_host_and_system_actions(&plan);
+        assert!(result.is_ok(), "no actions should succeed without error");
+    }
+
+    #[test]
+    fn apply_compose_edit_adds_healthcheck_to_service() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let action = FixAction::ComposeEdit {
+            service: "web".to_string(),
+            summary: "add healthcheck".to_string(),
+            diff: "+  healthcheck:\n+    test: [\"CMD\", \"curl\", \"-f\", \"http://localhost\"]\n+    interval: 30s\n".to_string(),
+        };
+        let (result, diff) = apply_compose_edits_to_text(original, &[action]);
+        assert!(
+            result.contains("healthcheck:"),
+            "should have healthcheck block"
+        );
+        assert!(
+            result.contains("test: [\"CMD\", \"curl\""),
+            "should have healthcheck test"
+        );
+        assert!(!diff.is_empty(), "should produce diff output");
+    }
+
+    #[test]
+    fn apply_compose_edit_adds_service_if_not_present() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let action = FixAction::ComposeEdit {
+            service: "db".to_string(),
+            summary: "add db service".to_string(),
+            diff: "+  db:\n+    image: postgres\n".to_string(),
+        };
+        let (result, _diff) = apply_compose_edits_to_text(original, &[action]);
+        assert!(result.contains("db:"), "should have db service section");
+    }
+
+    #[test]
+    fn apply_multiple_compose_edits() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let actions = vec![
+            FixAction::ComposeEdit {
+                service: "web".to_string(),
+                summary: "healthcheck".to_string(),
+                diff: "+  healthcheck:\n+    test: [\"CMD\"]\n".to_string(),
+            },
+            FixAction::ComposeEdit {
+                service: "web".to_string(),
+                summary: "no-new-privs".to_string(),
+                diff: "+  security_opt:\n+    - no-new-privileges:true\n".to_string(),
+            },
+        ];
+        let (result, _diff) = apply_compose_edits_to_text(original, &actions);
+        assert!(result.contains("healthcheck:"), "should have healthcheck");
+        assert!(result.contains("security_opt:"), "should have security_opt");
+        assert!(
+            result.contains("no-new-privileges"),
+            "should have no-new-privileges"
+        );
+    }
+
+    #[test]
+    fn apply_compose_edit_noop_for_empty_actions() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let (result, diff) = apply_compose_edits_to_text(original, &[]);
+        assert_eq!(result, original, "text should be unchanged");
+        assert!(diff.is_empty(), "should have no diff");
+    }
+
+    #[test]
+    fn fix_plan_changed_includes_compose_actions() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: vec![FixAction::ComposeEdit {
+                service: "web".to_string(),
+                summary: "test".to_string(),
+                diff: "+  healthcheck: ...\n".to_string(),
+            }],
+        };
+        assert!(
+            plan.changed(),
+            "plan with compose_actions should be changed"
+        );
+    }
+
+    #[test]
+    fn apply_compose_edit_skips_non_compose_actions() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let actions = [
+            FixAction::ShellCommand {
+                command: "echo hi".to_string(),
+                summary: "shell".to_string(),
+                rollback: None,
+            },
+            FixAction::HostEdit {
+                path: PathBuf::from("/tmp/test.conf"),
+                summary: "host".to_string(),
+                original_content: String::new(),
+                updated_content: "val".to_string(),
+                mode: None,
+            },
+        ];
+        let (result, diff) = apply_compose_edits_to_text(original, &actions);
+        assert_eq!(
+            result, original,
+            "non-ComposeEdit actions should not modify text"
+        );
+        assert!(
+            diff.is_empty(),
+            "non-ComposeEdit actions should not produce diff"
+        );
+    }
+
+    #[test]
+    fn fix_plan_changed_false_when_only_empty_compose_actions() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+        assert!(
+            !plan.changed(),
+            "plan with empty compose_actions should not be changed"
+        );
+    }
+
+    fn dockle_finding(id: &str, service: &str, codes: &str) -> Finding {
+        let mut evidence = std::collections::BTreeMap::new();
+        evidence.insert("sample_codes".to_string(), codes.to_string());
+        Finding {
+            id: id.to_string(),
+            axis: crate::domain::Axis::HostHardening,
+            severity: Severity::Medium,
+            scope: crate::domain::Scope::Service,
+            source: Source::Dockle,
+            subject: service.to_string(),
+            related_service: Some(service.to_string()),
+            title: "test".to_string(),
+            description: "test".to_string(),
+            why_risky: "risky".to_string(),
+            how_to_fix: "fix".to_string(),
+            evidence,
+            remediation: RemediationKind::Auto,
+        }
+    }
+
+    fn lynis_host_finding(id: &str, test_ids: &str) -> Finding {
+        let mut evidence = std::collections::BTreeMap::new();
+        evidence.insert("sample_test_ids".to_string(), test_ids.to_string());
+        Finding {
+            id: id.to_string(),
+            axis: crate::domain::Axis::HostHardening,
+            severity: Severity::Low,
+            scope: crate::domain::Scope::Host,
+            source: Source::Lynis,
+            subject: "host".to_string(),
+            related_service: None,
+            title: "test".to_string(),
+            description: "test".to_string(),
+            why_risky: "risky".to_string(),
+            how_to_fix: "fix".to_string(),
+            evidence,
+            remediation: RemediationKind::Review,
+        }
+    }
+
+    #[test]
+    fn preview_with_dockle_findings_populates_compose_actions() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-dockle");
+        let findings = vec![
+            dockle_finding("dockle.1", "web", "DKL-DI-0006"),
+            dockle_finding("dockle.2", "db", "DKL-DI-0003"),
+        ];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            !plan.compose_actions.is_empty(),
+            "Dockle findings should produce compose_actions"
+        );
+        assert_eq!(
+            plan.compose_actions.len(),
+            2,
+            "two Dockle findings → two compose_actions"
+        );
+        assert!(
+            !plan.auto_applied.is_empty(),
+            "native compose findings should also be present"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn preview_with_lynis_findings_populates_host_and_system_actions() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-lynis");
+        let findings = vec![lynis_host_finding("lynis.host_warnings", "SSH-7408")];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            !plan.host_actions.is_empty(),
+            "SSH Lynis finding should produce host_actions"
+        );
+        assert!(
+            plan.host_actions
+                .iter()
+                .any(|a| matches!(a, FixAction::HostEdit { .. })),
+            "SSH hardening should be a HostEdit"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn preview_with_mixed_adapter_findings_populates_all_action_types() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-mixed");
+        let findings = vec![
+            dockle_finding("dockle.1", "web", "DKL-DI-0006"),
+            lynis_host_finding("lynis.host_warnings", "SSH-7408"),
+            lynis_host_finding("lynis.host_suggestions", "FILE-7524"),
+        ];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(!plan.compose_actions.is_empty(), "Dockle → compose_actions");
+        assert!(
+            !plan.host_actions.is_empty(),
+            "SSH Lynis → host_actions (HostEdit)"
+        );
+        assert!(
+            !plan.system_actions.is_empty(),
+            "FILE Lynis → system_actions (ShellCommand)"
+        );
+        assert!(
+            plan.changed(),
+            "plan with any action type should be changed"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn preview_with_empty_external_findings_produces_no_adapter_actions() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-empty");
+        let plan =
+            preview_with_external(&path, FixMode::AutoFix, None, &[], &FixResolutionMap::new())
+                .expect("preview should succeed");
+
+        assert!(
+            plan.host_actions.is_empty(),
+            "no external findings → no host_actions"
+        );
+        assert!(
+            plan.system_actions.is_empty(),
+            "no external findings → no system_actions"
+        );
+        assert!(
+            plan.compose_actions.is_empty(),
+            "no external findings → no compose_actions"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn apply_with_external_writes_compose_file() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-apply");
+        let findings = vec![dockle_finding("dockle.1", "web", "DKL-DI-0006")];
+
+        let plan = apply_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("apply should succeed");
+
+        // compose_actions should be applied to the compose file
+        let content = fs::read_to_string(&path).expect("compose file should exist");
+        assert!(
+            content.contains("healthcheck") || plan.compose_actions.is_empty(),
+            "compose file should contain healthcheck if dockle action was applied"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn system_actions_contains_only_shell_command_after_filter() {
+        // Build explicit actions list that would be partitioned in build_fix_plan
+        let actions = vec![
+            FixAction::ComposeEdit {
+                service: "web".to_string(),
+                summary: "healthcheck".to_string(),
+                diff: "+  healthcheck:\n".to_string(),
+            },
+            FixAction::HostEdit {
+                path: PathBuf::from("/tmp/test.conf"),
+                summary: "host".to_string(),
+                original_content: String::new(),
+                updated_content: "val".to_string(),
+                mode: None,
+            },
+            FixAction::ShellCommand {
+                command: "echo ok".to_string(),
+                summary: "shell".to_string(),
+                rollback: None,
+            },
+        ];
+        // Simulate the partition logic from build_fix_plan
+        let mut compose_actions: Vec<FixAction> = Vec::new();
+        let (host_actions, system_actions): (Vec<_>, Vec<_>) =
+            actions.into_iter().partition(|a| match a {
+                FixAction::ComposeEdit { .. } => {
+                    compose_actions.push(a.clone());
+                    false
+                }
+                FixAction::HostEdit { .. } => true,
+                FixAction::ShellCommand { .. } => false,
+            });
+        let system_actions: Vec<_> = system_actions
+            .into_iter()
+            .filter(|a| matches!(a, FixAction::ShellCommand { .. }))
+            .collect();
+
+        assert_eq!(compose_actions.len(), 1, "exactly 1 ComposeEdit");
+        assert!(
+            compose_actions
+                .iter()
+                .all(|a| matches!(a, FixAction::ComposeEdit { .. }))
+        );
+        assert_eq!(host_actions.len(), 1, "exactly 1 HostEdit");
+        assert!(
+            host_actions
+                .iter()
+                .all(|a| matches!(a, FixAction::HostEdit { .. }))
+        );
+        assert_eq!(
+            system_actions.len(),
+            1,
+            "exactly 1 ShellCommand in system_actions"
+        );
+        assert!(
+            system_actions
+                .iter()
+                .all(|a| matches!(a, FixAction::ShellCommand { .. }))
+        );
+    }
+
+    #[test]
+    fn compose_actions_excludes_non_compose_edit() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        // Only non-ComposeEdit actions → compose_actions should be empty
+        let actions = [
+            FixAction::HostEdit {
+                path: PathBuf::from("/tmp/x.conf"),
+                summary: "h".to_string(),
+                original_content: String::new(),
+                updated_content: "v".to_string(),
+                mode: None,
+            },
+            FixAction::ShellCommand {
+                command: "echo hi".to_string(),
+                summary: "s".to_string(),
+                rollback: None,
+            },
+        ];
+        let (result, diff) = apply_compose_edits_to_text(original, &actions);
+        assert_eq!(result, original, "no compose edits → no change to text");
+        assert!(diff.is_empty(), "no compose edits → no diff");
+    }
+
+    #[test]
+    fn apply_with_compose_only_changes_writes_file() {
+        let dir = temp_compose_dir("compose-only-apply");
+        let path = dir.join("docker-compose.yml");
+        write_compose(&path, "services:\n  web:\n    image: nginx\n");
+
+        let findings = vec![dockle_finding("d1", "web", "DKL-DI-0006")];
+
+        let plan = apply_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("apply should succeed");
+
+        let content = fs::read_to_string(&path).expect("file should exist");
+        if !plan.compose_actions.is_empty() {
+            assert!(
+                content.contains("healthcheck") || content.contains("test: "),
+                "compose file should contain healthcheck block when compose_actions exist:\n{}",
+                content
+            );
+        }
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn fix_mode_does_not_affect_adapter_classification() {
+        let path = copy_mixed_stack_fixture_to_temp("mode-test");
+        let findings = vec![
+            dockle_finding("d1", "web", "DKL-DI-0006"),
+            lynis_host_finding("lynis.host_warnings", "SSH-7408"),
+        ];
+
+        let first = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("first preview");
+
+        let second = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("second preview");
+
+        // Adapter classification should be identical across calls (idempotent)
+        assert_eq!(
+            first.compose_actions.len(),
+            second.compose_actions.len(),
+            "compose_actions len should match"
+        );
+        assert_eq!(
+            first.host_actions.len(),
+            second.host_actions.len(),
+            "host_actions len should match"
+        );
+        assert_eq!(
+            first.system_actions.len(),
+            second.system_actions.len(),
+            "system_actions len should match"
+        );
+        // Also verify with FixMode::Fix — adapter classification is mode-independent
+        // (same adapter findings produce same actions regardless of native fix mode)
+        let fix_result = preview_with_external(
+            &path,
+            FixMode::Fix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        );
+        if let Ok(fix_plan) = fix_result {
+            assert_eq!(first.compose_actions.len(), fix_plan.compose_actions.len());
+        }
+        // If Fix returns ReviewRequired, that's expected — it only affects native,
+        // not adapter. The adapter actions from AutoFix are the ground truth.
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
     }
 }

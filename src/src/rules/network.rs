@@ -155,12 +155,40 @@ mod tests {
         let project = ComposeParser::parse_path_without_override(fixture("network-host-mode.yml"))
             .expect("project should parse");
         let findings = scan_network_isolation(&project);
-        // host_mode + default_bridge_used (because app has no custom networks)
         assert_eq!(findings.len(), 2);
         let host_mode = findings
             .iter()
             .find(|f| f.id == "network.host_mode")
             .expect("host mode finding should exist");
         assert_eq!(host_mode.severity, Severity::High);
+    }
+
+    #[test]
+    fn default_bridge_has_project_scope_and_low_severity() {
+        let project = ComposeParser::parse_path_without_override(fixture("network-host-mode.yml"))
+            .expect("project should parse");
+        let findings = scan_network_isolation(&project);
+        let default_bridge = findings
+            .iter()
+            .find(|f| f.id == "network.default_bridge_used")
+            .expect("default bridge finding should exist");
+        assert_eq!(default_bridge.severity, Severity::Low);
+        assert_eq!(default_bridge.scope, crate::domain::Scope::Project);
+    }
+
+    #[test]
+    fn all_network_findings_have_none_remediation() {
+        let project =
+            ComposeParser::parse_path_without_override(fixture("network-isolation-vulnerable.yml"))
+                .expect("project should parse");
+        let findings = scan_network_isolation(&project);
+        for finding in &findings {
+            assert_eq!(
+                finding.remediation,
+                crate::domain::RemediationKind::None,
+                "finding {} should have None remediation",
+                finding.id
+            );
+        }
     }
 }

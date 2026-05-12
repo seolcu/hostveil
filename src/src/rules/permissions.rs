@@ -290,4 +290,56 @@ mod tests {
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }
+
+    #[test]
+    fn classify_sensitive_mount_identifies_docker_socket() {
+        let mount = crate::compose::model::VolumeMount {
+            raw: String::new(),
+            source: Some("/var/run/docker.sock".to_string()),
+            target: Some("/var/run/docker.sock".to_string()),
+            mode: None,
+            mount_type: "bind".to_string(),
+        };
+        match classify_sensitive_mount(&mount) {
+            Some(label) => assert!(label.contains("docker"), "expected docker-related label"),
+            None => panic!("docker socket should be classified as sensitive"),
+        }
+    }
+
+    #[test]
+    fn classify_sensitive_mount_return_some_for_bind_etc() {
+        let mount = crate::compose::model::VolumeMount {
+            raw: String::new(),
+            source: Some("/etc".to_string()),
+            target: Some("/etc".to_string()),
+            mode: Some("ro".to_string()),
+            mount_type: "bind".to_string(),
+        };
+        let label = classify_sensitive_mount(&mount);
+        assert!(label.is_some(), "/etc bind mount should be classified");
+    }
+
+    #[test]
+    fn root_user_detects_numeric_zero_uid() {
+        let root = temp_compose_dir("root-zero");
+        let path = root.join("docker-compose.yml");
+        fs::write(
+            &path,
+            concat!(
+                "services:\n",
+                "  web:\n",
+                "    image: nginx\n",
+                "    user: \"0\"\n"
+            ),
+        )
+        .expect("fixture should be written");
+        let project =
+            ComposeParser::parse_path_without_override(&path).expect("project should parse");
+        let findings = scan_permission_risk(&project);
+        assert!(
+            findings.iter().any(|f| f.id == "permissions.root_user"),
+            "user '0' should trigger root_user finding"
+        );
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
 }

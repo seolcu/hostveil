@@ -759,4 +759,324 @@ mod tests {
 
         assert_eq!(en_keys, ko_keys, "locale keys must stay in sync");
     }
+
+    #[test]
+    fn tr_privilege_escalation_failed_returns_non_empty() {
+        let result = super::tr_privilege_escalation_failed("permission denied");
+        assert!(!result.is_empty());
+        assert!(result.contains("permission denied"));
+    }
+
+    #[test]
+    fn tr_adapter_command_no_error_detail_returns_non_empty() {
+        let result = super::tr_adapter_command_no_error_detail();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_adapter_command_timed_out_returns_non_empty() {
+        let result = super::tr_adapter_command_timed_out(30);
+        assert!(!result.is_empty());
+        assert!(result.contains("30"));
+    }
+
+    #[test]
+    fn tr_adapter_report_parse_failed_returns_non_empty() {
+        let result = super::tr_adapter_report_parse_failed("lynis");
+        assert!(!result.is_empty());
+        assert!(result.contains("lynis"));
+    }
+
+    #[test]
+    fn tr_adapter_scan_thread_panicked_returns_non_empty() {
+        let result = super::tr_adapter_scan_thread_panicked("trivy");
+        assert!(!result.is_empty());
+        assert!(result.contains("trivy"));
+    }
+
+    #[test]
+    fn tr_unsupported_locale_returns_non_empty() {
+        let result = super::tr_unsupported_locale("fr");
+        assert!(!result.is_empty());
+        assert!(result.contains("fr"));
+    }
+
+    #[test]
+    fn tr_duplicate_locale_override_returns_non_empty() {
+        let result = super::tr_duplicate_locale_override();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_unsupported_setup_tool_returns_non_empty() {
+        let result = super::tr_unsupported_setup_tool("vim");
+        assert!(!result.is_empty());
+        assert!(result.contains("vim"));
+    }
+
+    #[test]
+    fn tr_setup_tools_required_returns_non_empty() {
+        let result = super::tr_setup_tools_required();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_unsupported_adapter_returns_non_empty() {
+        let result = super::tr_unsupported_adapter("custom");
+        assert!(!result.is_empty());
+        assert!(result.contains("custom"));
+    }
+
+    #[test]
+    fn tr_adapter_selection_required_returns_non_empty() {
+        let result = super::tr_adapter_selection_required();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_adapter_selection_keyword_conflict_returns_non_empty() {
+        let result = super::tr_adapter_selection_keyword_conflict();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_adapters_require_scan_mode_returns_non_empty() {
+        let result = super::tr_adapters_require_scan_mode();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_fix_requires_target_returns_non_empty() {
+        let result = super::tr_fix_requires_target();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_fix_compose_conflict_returns_non_empty() {
+        let result = super::tr_fix_compose_conflict();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_fix_json_not_supported_returns_non_empty() {
+        let result = super::tr_fix_json_not_supported();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_preview_yes_requires_fix_mode_returns_non_empty() {
+        let result = super::tr_preview_yes_requires_fix_mode();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_findings_only_requires_json_returns_non_empty() {
+        let result = super::tr_findings_only_requires_json();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_fix_mode_conflict_returns_non_empty() {
+        let result = super::tr_fix_mode_conflict();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_auto_upgrade_mode_required_returns_non_empty() {
+        let result = super::tr_auto_upgrade_mode_required();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_docker_cli_missing_fallback_returns_non_empty() {
+        let result = super::tr_discovery_docker_cli_missing_fallback();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_docker_failed_fallback_returns_non_empty() {
+        let result = super::tr_discovery_docker_failed_fallback();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_no_projects_current_dir_returns_non_empty() {
+        let result = super::tr_discovery_no_projects_current_dir();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_current_dir_fallback_used_returns_non_empty() {
+        let result = super::tr_discovery_current_dir_fallback_used();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_host_root_path_missing_returns_non_empty() {
+        let result = super::tr_host_root_path_missing("/missing");
+        assert!(!result.is_empty());
+        assert!(result.contains("/missing"));
+    }
+
+    #[test]
+    fn tr_setup_sudo_missing_returns_non_empty() {
+        let result = super::tr_setup_sudo_missing();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_setup_sudo_needs_terminal_returns_non_empty() {
+        let result = super::tr_setup_sudo_needs_terminal();
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_setup_sudo_credentials_failed_returns_non_empty() {
+        let result = super::tr_setup_sudo_credentials_failed("error");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_adapter_scan_failed_returns_non_empty() {
+        let result = super::tr_adapter_scan_failed("trivy", "nginx:latest", "exit 1");
+        assert!(!result.is_empty());
+        assert!(result.contains("trivy"));
+        assert!(result.contains("nginx:latest"));
+    }
+
+    #[test]
+    fn tr_adapter_json_parse_failed_returns_non_empty() {
+        let result = super::tr_adapter_json_parse_failed("dockle", "invalid json");
+        assert!(!result.is_empty());
+        assert!(result.contains("dockle"));
+    }
+
+    #[test]
+    fn tr_discovery_docker_failed_detail_returns_non_empty() {
+        let result = super::tr_discovery_docker_failed_detail("connection refused");
+        assert!(!result.is_empty());
+        assert!(result.contains("connection refused"));
+    }
+
+    #[test]
+    fn tr_discovery_recovered_missing_compose_path_returns_non_empty() {
+        let result = super::tr_discovery_recovered_missing_compose_path(
+            "myproject",
+            "/srv/docker-compose.yml",
+            "/srv",
+        );
+        assert!(!result.is_empty());
+        assert!(result.contains("myproject"));
+    }
+
+    #[test]
+    fn tr_discovery_missing_compose_path_and_fallback_failed_returns_non_empty() {
+        let result = super::tr_discovery_missing_compose_path_and_fallback_failed(
+            "myproject",
+            "/srv/docker-compose.yml",
+            "/srv",
+            "not found",
+        );
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_missing_compose_path_returns_non_empty() {
+        let result =
+            super::tr_discovery_missing_compose_path("myproject", "/srv/docker-compose.yml");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_parse_failed_returns_non_empty() {
+        let result = super::tr_discovery_parse_failed("myproject", "yaml error");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_no_compose_file_in_working_dir_returns_non_empty() {
+        let result = super::tr_discovery_no_compose_file_in_working_dir("myproject", "/srv");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_parse_failed_in_working_dir_returns_non_empty() {
+        let result =
+            super::tr_discovery_parse_failed_in_working_dir("myproject", "/srv", "yaml error");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_no_usable_compose_path_returns_non_empty() {
+        let result = super::tr_discovery_no_usable_compose_path("myproject");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_discovery_current_dir_fallback_failed_returns_non_empty() {
+        let result = super::tr_discovery_current_dir_fallback_failed("permission denied");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_summary_compose_file_returns_non_empty() {
+        let result = super::tr_summary_compose_file("/srv/docker-compose.yml");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_summary_compose_root_returns_non_empty() {
+        let result = super::tr_summary_compose_root("/srv");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tr_summary_loaded_files_returns_non_empty() {
+        let result = super::tr_summary_loaded_files(3);
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn normalize_locale_tag_handles_underscore_variant() {
+        assert_eq!(normalize_locale_tag("ko_KR"), Some("ko"));
+        assert_eq!(normalize_locale_tag("en_US"), Some("en"));
+    }
+
+    #[test]
+    fn normalize_locale_tag_strips_modifier() {
+        assert_eq!(normalize_locale_tag("ko_KR@modifier"), Some("ko"));
+        assert_eq!(normalize_locale_tag("en_US@euro"), Some("en"));
+    }
+
+    #[test]
+    fn normalize_locale_tag_strips_codeset() {
+        assert_eq!(normalize_locale_tag("ko_KR.UTF-8"), Some("ko"));
+        assert_eq!(normalize_locale_tag("en_US.ISO-8859-1"), Some("en"));
+    }
+
+    #[test]
+    fn normalize_locale_tag_returns_none_for_unsupported() {
+        assert_eq!(normalize_locale_tag("fr_FR"), None);
+        assert_eq!(normalize_locale_tag("de_DE"), None);
+        assert_eq!(normalize_locale_tag("ja_JP"), None);
+    }
+
+    #[test]
+    fn locale_override_parser_returns_none_without_locale_flag() {
+        assert_eq!(locale_override_from_args(&[String::from("--json")]), None);
+        assert_eq!(locale_override_from_args(&[]), None);
+    }
+
+    #[test]
+    fn locale_override_parser_handles_unsupported_value() {
+        assert_eq!(
+            locale_override_from_args(&[String::from("--locale=fr")]),
+            None
+        );
+    }
+
+    #[test]
+    fn locale_override_parser_handles_locale_without_value() {
+        assert_eq!(locale_override_from_args(&[String::from("--locale")]), None);
+    }
 }

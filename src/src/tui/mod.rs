@@ -15,12 +15,14 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Margin, Rect};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
-    Block, Borders, Clear, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation,
-    ScrollbarState, Wrap,
+    Block, Borders, Clear, List, ListItem, ListState, Padding, Paragraph, Scrollbar,
+    ScrollbarOrientation, ScrollbarState, Wrap,
 };
+
+use self::component::Component;
 
 use crate::domain::{
     AdapterStatus, Axis, DefensiveControlStatus, DockerDiscoveryStatus, Finding, HostRuntimeInfo,
@@ -29,11 +31,12 @@ use crate::domain::{
 use crate::i18n;
 use crate::settings;
 
+mod component;
 mod fix_review;
 mod theme;
 
 pub use fix_review::{run_fix_review, run_interactive_fix_flow};
-pub use theme::{Theme, ThemePreset};
+pub use theme::{Theme, ThemePreset, panel_borders};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Screen {
@@ -134,11 +137,12 @@ enum SettingsRow {
     Theme,
     Layout,
     Locale,
+    UiBorders,
 }
 
 impl SettingsRow {
-    fn all() -> [Self; 3] {
-        [Self::Theme, Self::Layout, Self::Locale]
+    fn all() -> [Self; 4] {
+        [Self::Theme, Self::Layout, Self::Locale, Self::UiBorders]
     }
 }
 
@@ -199,6 +203,7 @@ struct AppState {
     service_filter: Option<String>,
     sort_mode: FindingSortMode,
     layout_preset: LayoutPreset,
+    borders_enabled: bool,
     theme: Theme,
     theme_preset: ThemePreset,
     tick: usize,
@@ -224,7 +229,9 @@ impl AppState {
 
     fn cycle_theme(&mut self) {
         self.theme_preset = self.theme_preset.next();
-        self.theme = Theme::preset(self.theme_preset);
+        let mut new_theme = Theme::preset(self.theme_preset);
+        new_theme.borders_enabled = self.borders_enabled;
+        self.theme = new_theme;
         if let Err(error) = persist_theme_choice(self.theme_preset.as_key()) {
             self.handle_persist_error(t!("app.settings.theme").into_owned(), error);
         }
@@ -264,6 +271,7 @@ impl AppState {
             .as_deref()
             .and_then(LayoutPreset::from_key)
             .unwrap_or(LayoutPreset::Adaptive);
+        let borders_enabled = settings.ui_borders.unwrap_or(false);
 
         Self {
             hit_boxes: Vec::new(),
@@ -302,7 +310,12 @@ impl AppState {
             service_filter,
             sort_mode,
             layout_preset,
-            theme: Theme::preset(theme_preset),
+            borders_enabled,
+            theme: {
+                let mut t = Theme::preset(theme_preset);
+                t.borders_enabled = borders_enabled;
+                t
+            },
             theme_preset,
             tick: 0,
             status_message: None,
@@ -338,6 +351,14 @@ impl AppState {
         }
     }
 
+    fn cycle_borders(&mut self) {
+        self.borders_enabled = !self.borders_enabled;
+        self.theme.borders_enabled = self.borders_enabled;
+        if let Err(error) = settings::persist_ui_borders(self.borders_enabled) {
+            self.handle_persist_error(t!("app.settings.ui_borders").into_owned(), error);
+        }
+    }
+
     fn open_settings(&mut self) {
         self.settings_open = true;
     }
@@ -368,6 +389,7 @@ impl AppState {
                     self.handle_persist_error(t!("app.settings.locale").into_owned(), error);
                 }
             }
+            SettingsRow::UiBorders => self.cycle_borders(),
         }
     }
 
@@ -384,6 +406,7 @@ impl AppState {
                     self.handle_persist_error(t!("app.settings.locale").into_owned(), error);
                 }
             }
+            SettingsRow::UiBorders => self.cycle_borders(),
         }
     }
 
@@ -814,6 +837,7 @@ pub enum TuiAction {
     TriggerFix {
         compose_file: std::path::PathBuf,
         finding_id: Option<String>,
+        adapter_findings: Vec<Finding>,
     },
 }
 
@@ -973,11 +997,15 @@ fn handle_key(state: &mut AppState, scan_result: &ScanResult, key: KeyEvent) -> 
 
     match key.code {
         KeyCode::Char('1') => {
-            state.screen = Screen::Overview;
+            state.return_to_overview();
             return None;
         }
         KeyCode::Char('2') => {
-            state.screen = Screen::Findings;
+            state.open_findings();
+            return None;
+        }
+        KeyCode::Char('3') => {
+            state.open_history();
             return None;
         }
         KeyCode::Char('s') => {
@@ -1176,9 +1204,16 @@ fn handle_findings_key(
             let finding = state
                 .selected_finding(scan_result)
                 .expect("fixability check should guarantee a selected finding");
+            let adapter_findings: Vec<Finding> = scan_result
+                .findings
+                .iter()
+                .filter(|f| matches!(f.source, Source::Dockle | Source::Lynis))
+                .cloned()
+                .collect();
             Some(TuiAction::TriggerFix {
                 compose_file,
                 finding_id: Some(finding.id.clone()),
+                adapter_findings,
             })
         }
         KeyCode::Tab => {
@@ -1277,8 +1312,9 @@ fn render_surface_background(frame: &mut ratatui::Frame<'_>, theme: &Theme) {
 fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, state: &mut AppState) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
-            Constraint::Length(4),
+            Constraint::Length(2),
             Constraint::Min(12),
             Constraint::Length(2),
         ])
@@ -1290,6 +1326,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         OverviewLayoutMode::Wide => {
             let columns = Layout::default()
                 .direction(Direction::Horizontal)
+                .spacing(1)
                 .constraints([
                     Constraint::Percentage(31),
                     Constraint::Percentage(33),
@@ -1303,6 +1340,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
                 // - Scan Results and Action Queue are full-height side-by-side
                 let left_column = Layout::default()
                     .direction(Direction::Vertical)
+                    .spacing(1)
                     .constraints([
                         Constraint::Min(10),
                         Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
@@ -1361,6 +1399,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             } else {
                 let right_column = Layout::default()
                     .direction(Direction::Vertical)
+                    .spacing(1)
                     .constraints([
                         Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
                         Constraint::Min(6),
@@ -1421,6 +1460,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         OverviewLayoutMode::Tall => {
             let rows = Layout::default()
                 .direction(Direction::Vertical)
+                .spacing(1)
                 .constraints([
                     Constraint::Min(5),
                     Constraint::Min(7),
@@ -1481,14 +1521,17 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         OverviewLayoutMode::Compact => {
             let columns = Layout::default()
                 .direction(Direction::Horizontal)
+                .spacing(1)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(layout[1]);
             let left = Layout::default()
                 .direction(Direction::Vertical)
+                .spacing(1)
                 .constraints([Constraint::Percentage(48), Constraint::Percentage(52)])
                 .split(columns[0]);
             let right = Layout::default()
                 .direction(Direction::Vertical)
+                .spacing(1)
                 .constraints([
                     Constraint::Min(score_panel_min_height(ScoreDensity::Standard)),
                     Constraint::Min(6),
@@ -1547,6 +1590,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         OverviewLayoutMode::Narrow => {
             let rows = Layout::default()
                 .direction(Direction::Vertical)
+                .spacing(1)
                 .constraints([
                     Constraint::Percentage(26),
                     Constraint::Percentage(26),
@@ -1607,6 +1651,7 @@ fn render_overview(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         OverviewLayoutMode::Focus => {
             let columns = Layout::default()
                 .direction(Direction::Horizontal)
+                .spacing(1)
                 .constraints([Constraint::Percentage(48), Constraint::Percentage(52)])
                 .split(layout[1]);
             render_security_scores_panel(
@@ -1635,8 +1680,9 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let mode = findings_layout_mode(frame.area(), state.layout_preset);
     let layout = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
-            Constraint::Length(4),
+            Constraint::Length(2),
             Constraint::Length(2),
             Constraint::Min(8),
             Constraint::Length(3),
@@ -1653,18 +1699,22 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     let content = match mode {
         FindingsLayoutMode::SideBySide => Layout::default()
             .direction(Direction::Horizontal)
+            .spacing(1)
             .constraints([Constraint::Percentage(44), Constraint::Percentage(56)])
             .split(layout[2]),
         FindingsLayoutMode::Stacked => Layout::default()
             .direction(Direction::Vertical)
+            .spacing(1)
             .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
             .split(layout[2]),
         FindingsLayoutMode::Narrow => Layout::default()
             .direction(Direction::Vertical)
+            .spacing(1)
             .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
             .split(layout[2]),
         FindingsLayoutMode::CompactList => Layout::default()
             .direction(Direction::Horizontal)
+            .spacing(1)
             .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
             .split(layout[2]),
     };
@@ -1709,29 +1759,36 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
             .collect::<Vec<_>>()
     };
 
+    let list_bg = if state.findings_focus == FindingsFocus::List {
+        state.theme.focus_bg
+    } else {
+        state.theme.panel_bg
+    };
+    let detail_bg = if state.findings_focus == FindingsFocus::Detail {
+        state.theme.focus_bg
+    } else {
+        state.theme.panel_bg_alt
+    };
+
     let list = List::new(visible_items)
-        .style(state.theme.surface)
+        .style(list_bg)
         .block(
             Block::default()
                 .title(findings_list_title(state.findings_focus))
-                .borders(Borders::ALL)
-                .style(state.theme.surface)
-                .border_style(focus_border_style(
-                    state.findings_focus == FindingsFocus::List,
-                    &state.theme,
-                )),
+                .borders(panel_borders(&state.theme))
+                .border_style(state.theme.border)
+                .style(list_bg)
+                .padding(Padding::horizontal(1)),
         )
         .highlight_symbol("> ")
         .highlight_style(state.theme.highlight);
 
     let detail_block = Block::default()
         .title(findings_detail_title(state.findings_focus))
-        .borders(Borders::ALL)
-        .style(state.theme.surface)
-        .border_style(focus_border_style(
-            state.findings_focus == FindingsFocus::Detail,
-            &state.theme,
-        ));
+        .borders(panel_borders(&state.theme))
+        .border_style(state.theme.border)
+        .style(detail_bg)
+        .padding(Padding::horizontal(1));
     let detail_inner = detail_block.inner(content[1]);
     let detail_text =
         finding_detail_text(scan_result, state, detail_inner.width, mode, &state.theme);
@@ -1893,8 +1950,9 @@ fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode 
 fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
-            Constraint::Length(4),
+            Constraint::Length(2),
             Constraint::Min(8),
             Constraint::Length(3),
         ])
@@ -1906,9 +1964,7 @@ fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let entries = history.trend(20);
 
     let content = if entries.is_empty() {
-        Paragraph::new(t!("app.history.empty").into_owned())
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: true })
+        Text::from(t!("app.history.empty").into_owned())
     } else {
         let mut lines = vec![Line::from(t!("app.history.header").into_owned())];
         for entry in entries {
@@ -1923,17 +1979,13 @@ fn render_history(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
                 Span::styled(bar, Style::default().fg(trend_color(overall))),
             ]));
         }
-        Paragraph::new(lines).wrap(Wrap { trim: true })
+        Text::from(lines)
     };
 
-    frame.render_widget(
-        content.block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(t!("app.history.title").into_owned()),
-        ),
-        layout[1],
-    );
+    let is_history_tab = matches!(state.screen, Screen::History);
+    let panel = component::Panel::new(t!("app.history.title").into_owned(), content)
+        .focused(is_history_tab);
+    panel.render(frame, layout[1], &state.theme);
 
     let help = Paragraph::new(t!("app.history.footer").into_owned()).style(state.theme.muted);
     frame.render_widget(help, layout[2]);
@@ -1958,7 +2010,7 @@ fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rec
     let theme = &state.theme;
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(3)])
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
         .split(area);
 
     let title_spans = vec![
@@ -1984,11 +2036,6 @@ fn header_banner(frame: &mut ratatui::Frame<'_>, state: &mut AppState, area: Rec
 
 fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState) {
     let theme = &state.theme;
-    let constraints = [Constraint::Min(20), Constraint::Min(20), Constraint::Min(1)];
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(constraints)
-        .split(area);
 
     let tabs = [
         (
@@ -2011,30 +2058,76 @@ fn render_tabs(frame: &mut ratatui::Frame<'_>, area: Rect, state: &mut AppState)
         ),
     ];
 
+    let mut spans: Vec<Span> = Vec::new();
     for (i, (screen, target, label, key)) in tabs.iter().enumerate() {
         let is_active = state.screen == *screen;
         let style = if is_active {
-            theme.highlight.add_modifier(Modifier::BOLD)
+            theme
+                .tab_active
+                .bg(theme
+                    .highlight
+                    .bg
+                    .unwrap_or(theme.surface.bg.unwrap_or(Color::Reset)))
+                .add_modifier(Modifier::BOLD)
         } else {
-            theme.base
+            theme.tab_inactive
         };
 
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(if is_active { theme.title } else { theme.border });
+        if i > 0 {
+            spans.push(Span::styled(" ", theme.muted));
+        }
+        spans.push(Span::styled(format!(" {key} {label} "), style));
 
-        state.hit_boxes.push((chunks[i], target.clone()));
-
-        frame.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled(format!("[{}] ", key), theme.muted),
-                Span::styled(label.clone(), style),
-            ]))
-            .alignment(Alignment::Center)
-            .block(block),
-            chunks[i],
-        );
+        let label_width = 6 + label.len() as u16;
+        let start_x = area.x
+            + if i == 0 {
+                0
+            } else {
+                let prev_width: u16 = tabs[..i]
+                    .iter()
+                    .map(|(_, _, l, _)| 6 + l.len() as u16)
+                    .sum::<u16>()
+                    + (i as u16);
+                prev_width
+            };
+        let tab_rect = Rect {
+            x: area.x + start_x,
+            y: area.y,
+            width: label_width.min(area.width.saturating_sub(start_x)),
+            height: 1,
+        };
+        state.hit_boxes.push((tab_rect, target.clone()));
     }
+
+    let line = Line::from(spans);
+    frame.render_widget(Paragraph::new(line).alignment(Alignment::Center), area);
+}
+
+fn render_modal_backdrop(frame: &mut ratatui::Frame<'_>, area: Rect, _theme: &Theme) {
+    {
+        let buffer = frame.buffer_mut();
+        for y in area.y..area.y + area.height {
+            for x in area.x..area.x + area.width {
+                if let Some(cell) = buffer.cell_mut((x, y)) {
+                    let style = cell.style();
+                    if let Some(bg) = style.bg {
+                        cell.set_style(style.bg(darken_color(bg, 0.55)));
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn render_modal_frame(frame: &mut ratatui::Frame<'_>, modal: Rect, theme: &Theme) -> Rect {
+    frame.render_widget(Clear, modal);
+    let block = Block::default()
+        .borders(panel_borders(theme))
+        .border_style(theme.modal_border)
+        .style(theme.modal_bg);
+    let inner = block.inner(modal);
+    frame.render_widget(block, modal);
+    inner
 }
 
 fn darken_color(color: ratatui::style::Color, factor: f32) -> ratatui::style::Color {
@@ -2055,32 +2148,12 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
 
     let theme = &state.theme;
 
-    // Dim the background behind the modal by darkening each cell's bg colour
-    {
-        let buffer = frame.buffer_mut();
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                if let Some(cell) = buffer.cell_mut((x, y)) {
-                    let style = cell.style();
-                    if let Some(bg) = style.bg {
-                        cell.set_style(style.bg(darken_color(bg, 0.55)));
-                    }
-                }
-            }
-        }
-    }
-    frame.render_widget(Clear, modal);
-
-    let block = Block::default()
-        .title(format!(" {} ", t!("app.panel.settings")))
-        .borders(Borders::ALL)
-        .border_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(modal);
-    frame.render_widget(block, modal);
+    render_modal_backdrop(frame, area, theme);
+    let inner = render_modal_frame(frame, modal, theme);
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
             Constraint::Length(1), // Spacer
             Constraint::Min(1),    // Settings
@@ -2089,6 +2162,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
         .split(inner);
 
     let current_locale = i18n::current_locale();
+    let border_label = if state.borders_enabled {
+        t!("app.settings.ui_borders_on").into_owned()
+    } else {
+        t!("app.settings.ui_borders_off").into_owned()
+    };
     let rows = [
         (
             SettingsRow::Theme,
@@ -2104,6 +2182,11 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
             SettingsRow::Locale,
             t!("app.settings.locale").into_owned(),
             current_locale.as_str(),
+        ),
+        (
+            SettingsRow::UiBorders,
+            t!("app.settings.ui_borders").into_owned(),
+            &border_label,
         ),
     ];
 
@@ -2151,28 +2234,8 @@ fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let modal = clamp_rect_width(modal, 90);
     let theme = &state.theme;
 
-    {
-        let buffer = frame.buffer_mut();
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                if let Some(cell) = buffer.cell_mut((x, y)) {
-                    let style = cell.style();
-                    if let Some(bg) = style.bg {
-                        cell.set_style(style.bg(darken_color(bg, 0.55)));
-                    }
-                }
-            }
-        }
-    }
-    frame.render_widget(Clear, modal);
-
-    let block = Block::default()
-        .title(format!(" {} ", t!("app.panel.help").into_owned()))
-        .borders(Borders::ALL)
-        .border_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(modal);
-    frame.render_widget(block, modal);
+    render_modal_backdrop(frame, area, theme);
+    let inner = render_modal_frame(frame, modal, theme);
 
     let shortcuts = vec![
         (
@@ -2182,6 +2245,7 @@ fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
                 ("1", t!("app.help.overview").into_owned()),
                 ("2", t!("app.help.findings").into_owned()),
                 ("s / Ctrl,", t!("app.help.settings").into_owned()),
+                ("/", t!("app.help.search").into_owned()),
                 ("q / Esc", t!("app.help.quit").into_owned()),
             ],
         ),
@@ -2245,31 +2309,12 @@ fn render_search_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let modal = clamp_rect_width(modal, 80);
     let theme = &state.theme;
 
-    {
-        let buffer = frame.buffer_mut();
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                if let Some(cell) = buffer.cell_mut((x, y)) {
-                    let style = cell.style();
-                    if let Some(bg) = style.bg {
-                        cell.set_style(style.bg(darken_color(bg, 0.55)));
-                    }
-                }
-            }
-        }
-    }
-    frame.render_widget(Clear, modal);
-
-    let block = Block::default()
-        .title(format!(" {} ", t!("app.panel.search").into_owned()))
-        .borders(Borders::ALL)
-        .border_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(modal);
-    frame.render_widget(block, modal);
+    render_modal_backdrop(frame, area, theme);
+    let inner = render_modal_frame(frame, modal, theme);
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
             Constraint::Length(1),
             Constraint::Length(2),
@@ -2348,20 +2393,7 @@ fn render_server_status_panel(
     theme: &Theme,
     is_focused: bool,
 ) {
-    let block = Block::default()
-        .title(t!("app.panel.server_status").into_owned())
-        .borders(Borders::ALL)
-        .border_style(if is_focused {
-            theme.title
-        } else {
-            theme.border
-        })
-        .title_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    if inner.width == 0 || inner.height == 0 {
+    if area.width == 0 || area.height == 0 {
         return;
     }
 
@@ -2393,11 +2425,11 @@ fn render_server_status_panel(
         ),
     ];
     lines.push(Line::raw(String::new()));
-    lines.extend(server_service_lines(scan_result, inner.width, theme));
+    lines.extend(server_service_lines(scan_result, area.width, theme));
 
     let content = Text::from(lines);
-    let content_height = estimated_wrapped_text_height(&content, inner.width);
-    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let content_height = estimated_wrapped_text_height(&content, area.width);
+    let max_scroll = content_height.saturating_sub(area.height as usize);
     let scroll = state
         .overview_scroll
         .get(&OverviewFocus::ServerStatus)
@@ -2405,14 +2437,11 @@ fn render_server_status_panel(
         .unwrap_or(0)
         .min(max_scroll.min(u16::MAX as usize) as u16);
 
-    frame.render_widget(
-        Paragraph::new(content)
-            .style(theme.surface)
-            .wrap(Wrap { trim: false })
-            .scroll((scroll, 0)),
-        inner,
-    );
-    render_scrollbar(frame, area, content_height, inner.height, scroll);
+    let panel = component::Panel::new(t!("app.panel.server_status").into_owned(), content)
+        .focused(is_focused)
+        .with_scroll(scroll as usize);
+    panel.render(frame, area, theme);
+    render_scrollbar(frame, area, content_height, area.height, scroll);
 }
 
 fn render_scan_results_panel(
@@ -2423,26 +2452,13 @@ fn render_scan_results_panel(
     theme: &Theme,
     is_focused: bool,
 ) {
-    let block = Block::default()
-        .title(t!("app.panel.scan_results").into_owned())
-        .borders(Borders::ALL)
-        .border_style(if is_focused {
-            theme.title
-        } else {
-            theme.border
-        })
-        .title_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    if inner.width == 0 || inner.height == 0 {
+    if area.width == 0 || area.height == 0 {
         return;
     }
 
-    let mut lines = result_summary_lines(scan_result, inner.width, theme);
+    let mut lines = result_summary_lines(scan_result, area.width, theme);
     lines.push(Line::raw(String::new()));
-    lines.extend(severity_total_lines(scan_result, inner.width, theme));
+    lines.extend(severity_total_lines(scan_result, area.width, theme));
     lines.push(Line::raw(String::new()));
     if scan_result.findings.is_empty() {
         lines.push(Line::styled(
@@ -2481,7 +2497,7 @@ fn render_scan_results_panel(
         }
     }
 
-    let adapter_lines = adapter_summary_lines(scan_result, inner.width, state, theme);
+    let adapter_lines = adapter_summary_lines(scan_result, area.width, state, theme);
     if !adapter_lines.is_empty() {
         lines.push(Line::raw(String::new()));
         lines.extend(adapter_lines);
@@ -2494,7 +2510,7 @@ fn render_scan_results_panel(
             Style::default().fg(theme.med).add_modifier(Modifier::BOLD),
         ));
         for warning in scan_result.metadata.warnings.iter().take(3) {
-            let warning_width = inner.width.saturating_sub(4).max(20) as usize;
+            let warning_width = area.width.saturating_sub(4).max(20) as usize;
             for wrapped in wrap_text_to_lines(warning, warning_width) {
                 lines.push(Line::raw(format!("- {}", wrapped)));
             }
@@ -2502,8 +2518,8 @@ fn render_scan_results_panel(
     }
 
     let content = Text::from(lines);
-    let content_height = estimated_wrapped_text_height(&content, inner.width);
-    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let content_height = estimated_wrapped_text_height(&content, area.width);
+    let max_scroll = content_height.saturating_sub(area.height as usize);
     let scroll = state
         .overview_scroll
         .get(&OverviewFocus::ScanResults)
@@ -2511,14 +2527,12 @@ fn render_scan_results_panel(
         .unwrap_or(0)
         .min(max_scroll.min(u16::MAX as usize) as u16);
 
-    frame.render_widget(
-        Paragraph::new(content)
-            .style(theme.surface)
-            .wrap(Wrap { trim: false })
-            .scroll((scroll, 0)),
-        inner,
-    );
-    render_scrollbar(frame, area, content_height, inner.height, scroll);
+    let panel = component::Panel::new(t!("app.panel.scan_results").into_owned(), content)
+        .focused(is_focused)
+        .alt_bg(true)
+        .with_scroll(scroll as usize);
+    panel.render(frame, area, theme);
+    render_scrollbar(frame, area, content_height, area.height, scroll);
 }
 
 fn render_security_scores_panel(
@@ -2529,29 +2543,16 @@ fn render_security_scores_panel(
     theme: &Theme,
     is_focused: bool,
 ) {
-    let block = Block::default()
-        .title(t!("app.panel.security_scores").into_owned())
-        .borders(Borders::ALL)
-        .border_style(if is_focused {
-            theme.title
-        } else {
-            theme.border
-        })
-        .title_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    if inner.width == 0 || inner.height == 0 {
+    if area.width == 0 || area.height == 0 {
         return;
     }
 
-    let density = score_density_for_height(inner.height);
-    let lines = render_security_score_lines(scan_result, inner.width, density, theme, state.tick);
+    let density = score_density_for_height(area.height);
+    let lines = render_security_score_lines(scan_result, area.width, density, theme, state.tick);
 
     let content = Text::from(lines);
-    let content_height = estimated_wrapped_text_height(&content, inner.width);
-    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let content_height = estimated_wrapped_text_height(&content, area.width);
+    let max_scroll = content_height.saturating_sub(area.height as usize);
     let scroll = state
         .overview_scroll
         .get(&OverviewFocus::SecurityScores)
@@ -2559,14 +2560,11 @@ fn render_security_scores_panel(
         .unwrap_or(0)
         .min(max_scroll.min(u16::MAX as usize) as u16);
 
-    frame.render_widget(
-        Paragraph::new(content)
-            .style(theme.surface)
-            .wrap(Wrap { trim: false })
-            .scroll((scroll, 0)),
-        inner,
-    );
-    render_scrollbar(frame, area, content_height, inner.height, scroll);
+    let panel = component::Panel::new(t!("app.panel.security_scores").into_owned(), content)
+        .focused(is_focused)
+        .with_scroll(scroll as usize);
+    panel.render(frame, area, theme);
+    render_scrollbar(frame, area, content_height, area.height, scroll);
 }
 
 fn render_fix_paths_panel(
@@ -2577,31 +2575,18 @@ fn render_fix_paths_panel(
     theme: &Theme,
     is_focused: bool,
 ) {
-    let block = Block::default()
-        .title(t!("app.panel.action_queue"))
-        .borders(Borders::ALL)
-        .border_style(if is_focused {
-            theme.title
-        } else {
-            theme.border
-        })
-        .title_style(theme.title)
-        .style(theme.surface);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    if inner.width == 0 || inner.height == 0 {
+    if area.width == 0 || area.height == 0 {
         return;
     }
 
-    let mut lines = remediation_lines(scan_result, inner.width, theme);
+    let mut lines = remediation_lines(scan_result, area.width, theme);
     if lines.is_empty() {
         lines.push(Line::raw(t!("app.fix.none").into_owned()));
     }
 
     let content = Text::from(lines);
-    let content_height = estimated_wrapped_text_height(&content, inner.width);
-    let max_scroll = content_height.saturating_sub(inner.height as usize);
+    let content_height = estimated_wrapped_text_height(&content, area.width);
+    let max_scroll = content_height.saturating_sub(area.height as usize);
     let scroll = state
         .overview_scroll
         .get(&OverviewFocus::FixPaths)
@@ -2609,14 +2594,12 @@ fn render_fix_paths_panel(
         .unwrap_or(0)
         .min(max_scroll.min(u16::MAX as usize) as u16);
 
-    frame.render_widget(
-        Paragraph::new(content)
-            .style(theme.surface)
-            .wrap(Wrap { trim: false })
-            .scroll((scroll, 0)),
-        inner,
-    );
-    render_scrollbar(frame, area, content_height, inner.height, scroll);
+    let panel = component::Panel::new(t!("app.panel.action_queue").into_owned(), content)
+        .focused(is_focused)
+        .alt_bg(true)
+        .with_scroll(scroll as usize);
+    panel.render(frame, area, theme);
+    render_scrollbar(frame, area, content_height, area.height, scroll);
 }
 
 fn overview_footer(theme: &Theme) -> Paragraph<'static> {
@@ -4250,10 +4233,6 @@ fn current_locale_badge() -> String {
     format!("LANG {}", i18n::current_locale().to_ascii_uppercase())
 }
 
-fn focus_border_style(active: bool, theme: &Theme) -> Style {
-    if active { theme.title } else { theme.border }
-}
-
 fn hint_span(key: &str, label: String, theme: &Theme) -> Span<'static> {
     Span::styled(format!("[{key}] {label}"), theme.title)
 }
@@ -5154,8 +5133,7 @@ mod tests {
         let themed_footer_bg = buffer_bg(themed_terminal.backend(), 10, 23);
 
         assert_ne!(themed_body_bg, ratatui::style::Color::Reset);
-        // Footer now intentionally shares the surface background for visual consistency.
-        assert_eq!(themed_footer_bg, themed_body_bg);
+        assert_ne!(themed_footer_bg, ratatui::style::Color::Reset);
 
         let mut ansi_state = AppState::new(&result);
         ansi_state.theme_preset = ThemePreset::Ansi;
@@ -5167,9 +5145,12 @@ mod tests {
             .draw(|frame| render(frame, &result, &mut ansi_state))
             .expect("ansi overview should render");
 
-        assert_eq!(
-            buffer_bg(ansi_terminal.backend(), 10, 10),
-            ratatui::style::Color::Reset
+        // ANSI now uses subtle panel backgrounds instead of borders.
+        let ansi_body_bg = buffer_bg(ansi_terminal.backend(), 10, 10);
+        assert_ne!(
+            ansi_body_bg,
+            ratatui::style::Color::Reset,
+            "ANSI theme should still apply panel backgrounds"
         );
     }
 
@@ -5507,13 +5488,12 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             .bg
             .expect("highlight should define a background colour");
 
-        // Scan the top banner area where tabs live (y 1..4, x 0..50 covers the
-        // first tab) and assert at least one cell carries the highlight bg.
+        // Scan the top banner area where tabs live and assert at least one cell carries the highlight bg.
         let backend = terminal.backend();
         let buffer = backend.buffer();
         let mut found = false;
-        for y in 1..4 {
-            for x in 0..50 {
+        for y in 0..5 {
+            for x in 0..100 {
                 if buffer[(x, y)].style().bg == Some(expected_bg) {
                     found = true;
                     break;
@@ -5729,6 +5709,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
                 Some(TuiAction::TriggerFix {
                     compose_file,
                     finding_id: Some(id),
+                    ..
                 }) if compose_file.as_os_str() == "/srv/demo/docker-compose.yml" && id == "exposure.admin_interface_public"
             ),
             "expected TriggerFix with the selected finding id, got {:?}",
@@ -5984,7 +5965,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
     #[test]
     fn history_view_renders_header_row_when_entries_exist() {
         // When history exists, the view renders entry rows instead of empty state.
-        // The previous test already covers the empty-state path.
+        // The previous test also covers the empty-state path.
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
         let scan_result = sample_result();
@@ -5996,10 +5977,1000 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             .unwrap();
 
         let text = buffer_to_string(terminal.backend());
-        // The header row is always rendered; with real history data rows follow.
         assert!(
             text.contains("Date") || text.contains("Score"),
             "history view should render column header"
+        );
+    }
+
+    #[test]
+    fn overview_panels_use_borderless_rendering() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        // Borderless panels should not render Unicode box-drawing characters
+        // that `Borders::ALL` would produce (┌, ┐, └, ┘, │, ─).
+        assert!(
+            !content.contains('┌'),
+            "borderless panels should not use top-left corner character"
+        );
+        assert!(
+            !content.contains('┐'),
+            "borderless panels should not use top-right corner character"
+        );
+        assert!(
+            !content.contains('└'),
+            "borderless panels should not use bottom-left corner character"
+        );
+        assert!(
+            !content.contains('┘'),
+            "borderless panels should not use bottom-right corner character"
+        );
+        assert!(
+            !content.contains("│"),
+            "borderless panels should not use vertical border character"
+        );
+    }
+
+    #[test]
+    fn overview_panels_render_borders_when_enabled() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.borders_enabled = true;
+        state.theme.borders_enabled = true;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let content = buffer_to_string(terminal.backend());
+
+        // When borders are enabled, panels should render Unicode box-drawing characters
+        assert!(
+            content.contains('┌'),
+            "bordered panels should show top-left corner character"
+        );
+        assert!(
+            content.contains('┐'),
+            "bordered panels should show top-right corner character"
+        );
+        assert!(
+            content.contains("│"),
+            "bordered panels should show vertical border character"
+        );
+    }
+
+    #[test]
+    fn overview_panels_apply_distinct_background_colors() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.theme_preset = ThemePreset::TokyoNight;
+        state.theme = Theme::preset(ThemePreset::TokyoNight);
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let buffer = terminal.backend().buffer();
+        let area = terminal.backend().size().unwrap();
+
+        // Collect distinct background colors used in the content area
+        let mut bg_colors = std::collections::HashSet::new();
+        for y in 2..area.height.saturating_sub(2) {
+            for x in 0..area.width {
+                if let Some(bg) = buffer[(x, y)].style().bg {
+                    bg_colors.insert(bg);
+                }
+            }
+        }
+
+        // Borderless design should use at least 2 distinct panel backgrounds
+        // (panel_bg and panel_bg_alt) plus the surface background.
+        assert!(
+            bg_colors.len() >= 2,
+            "borderless panels should use at least 2 distinct background colors, found {}: {:?}",
+            bg_colors.len(),
+            bg_colors
+        );
+    }
+
+    #[test]
+    fn focused_panel_uses_focus_background_color() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.theme_preset = ThemePreset::TokyoNight;
+        state.theme = Theme::preset(ThemePreset::TokyoNight);
+        state.overview_focus = OverviewFocus::ServerStatus;
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview should render");
+
+        let expected_focus_bg = state
+            .theme
+            .focus_bg
+            .bg
+            .expect("focus_bg should define a background");
+
+        let buffer = terminal.backend().buffer();
+
+        // The Server Status panel is in the top-left area, so scan that region
+        // for the focus background color.
+        let mut found_focus_bg = false;
+        for y in 2..12 {
+            for x in 0..38 {
+                if buffer[(x, y)].style().bg == Some(expected_focus_bg) {
+                    found_focus_bg = true;
+                    break;
+                }
+            }
+            if found_focus_bg {
+                break;
+            }
+        }
+
+        assert!(
+            found_focus_bg,
+            "focused panel should use theme.focus_bg background"
+        );
+    }
+
+    #[test]
+    fn borders_toggle_via_settings_affects_render_immediately() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let scan_result = &result;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+
+        // Step 1: render initial borderless state, verify no borders
+        terminal
+            .draw(|frame| render(frame, scan_result, &mut state))
+            .expect("initial render");
+        let content_before = buffer_to_string(terminal.backend());
+        assert!(
+            !content_before.contains('┌'),
+            "default state should be borderless"
+        );
+
+        // Step 2: user presses 's' to open settings
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Char('s'), crossterm::event::KeyModifiers::NONE),
+        );
+        assert!(state.settings_open, "settings should be open after 's'");
+
+        // Step 3: user navigates down to UI Borders row (row 3)
+        // Starting at row 0 (Theme), press Down 3 times
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                scan_result,
+                KeyEvent::new(KeyCode::Down, crossterm::event::KeyModifiers::NONE),
+            );
+        }
+        assert_eq!(
+            state.settings_row, 3,
+            "settings should be on UI Borders row (3)"
+        );
+
+        // Step 4: user presses Right to toggle borders ON
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Right, crossterm::event::KeyModifiers::NONE),
+        );
+        assert!(state.borders_enabled, "borders should now be enabled");
+        assert!(
+            state.theme.borders_enabled,
+            "theme.borders_enabled should also be updated"
+        );
+
+        // Step 5: user presses Esc to close settings
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Esc, crossterm::event::KeyModifiers::NONE),
+        );
+        assert!(!state.settings_open, "settings should be closed");
+
+        // Step 6: re-render and verify borders now appear
+        terminal
+            .draw(|frame| render(frame, scan_result, &mut state))
+            .expect("render after toggle");
+        let content_after = buffer_to_string(terminal.backend());
+        assert!(
+            content_after.contains('┌'),
+            "bordered panels should show top-left corner after toggle"
+        );
+        assert!(
+            content_after.contains('│'),
+            "bordered panels should show vertical border after toggle"
+        );
+
+        // Step 7: toggle back OFF via settings
+        state.settings_row = 0;
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Char('s'), crossterm::event::KeyModifiers::NONE),
+        );
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                scan_result,
+                KeyEvent::new(KeyCode::Down, crossterm::event::KeyModifiers::NONE),
+            );
+        }
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Right, crossterm::event::KeyModifiers::NONE),
+        );
+        handle_key(
+            &mut state,
+            scan_result,
+            KeyEvent::new(KeyCode::Esc, crossterm::event::KeyModifiers::NONE),
+        );
+
+        terminal
+            .draw(|frame| render(frame, scan_result, &mut state))
+            .expect("render after toggle back");
+        let content_final = buffer_to_string(terminal.backend());
+        assert!(
+            !content_final.contains('┌'),
+            "panels should be borderless again after toggle off"
+        );
+    }
+
+    #[test]
+    fn history_panel_is_borderless_by_default() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("history render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            !content.contains('┌'),
+            "history panel should not show border chars when borders_enabled=false"
+        );
+        assert!(
+            !content.contains('│'),
+            "history panel should not show vertical borders when borders_enabled=false"
+        );
+    }
+
+    #[test]
+    fn history_panel_shows_borders_when_enabled() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.borders_enabled = true;
+        state.theme.borders_enabled = true;
+        state.screen = Screen::History;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("history render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains('┌'),
+            "history panel should show border chars when borders_enabled=true"
+        );
+    }
+
+    #[test]
+    fn history_navigation_scrolls_with_arrow_keys() {
+        let result = sample_result();
+        // Create history entries via temp file
+        let mut history = crate::history::ScanHistory::default();
+        history.record(&result);
+        let mut result2 = result.clone();
+        result2.score_report.overall = 42;
+        history.record(&result2);
+        let dir = std::env::temp_dir().join("hostveil-tui-test-history-nav");
+        let _ = std::fs::create_dir_all(&dir);
+        let history_path = dir.join("history.json");
+        std::fs::write(&history_path, serde_json::to_string(&history).unwrap()).unwrap();
+        // SAFETY: test-only env var scoped to this test
+        unsafe { std::env::set_var("HOSTVEIL_CONFIG_DIR", dir.to_str().unwrap()) };
+
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 1, "Down should increment scroll");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 0, "Up should decrement scroll");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 8, "PageDown should scroll 8 lines");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 0, "PageUp should scroll back");
+
+        // SAFETY: test cleanup
+        unsafe { std::env::remove_var("HOSTVEIL_CONFIG_DIR") };
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn history_back_returns_to_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Overview,
+            "'t' from history should go to overview"
+        );
+    }
+
+    #[test]
+    fn tab_3_from_overview_opens_history() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        state.history_scroll = 42;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::History,
+            "Key '3' should switch to history screen"
+        );
+        assert_eq!(
+            state.history_scroll, 0,
+            "'3' should reset scroll via open_history"
+        );
+    }
+
+    #[test]
+    fn tab_2_from_overview_opens_findings() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        state.detail_scroll = 99;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Findings,
+            "Key '2' should switch to findings"
+        );
+        assert_eq!(
+            state.detail_scroll, 0,
+            "'2' should reset scroll via open_findings"
+        );
+    }
+
+    #[test]
+    fn tab_1_from_findings_returns_to_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Findings;
+        state.detail_scroll = 99;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Overview,
+            "Key '1' should return to overview"
+        );
+        assert_eq!(
+            state.detail_scroll, 0,
+            "'1' should reset scroll via return_to_overview"
+        );
+    }
+
+    #[test]
+    fn history_tab_uses_correct_background() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("history render");
+
+        let buffer = terminal.backend().buffer();
+        // History tab is focused, so panel should use focus_bg background
+        let panel_cell_style = buffer[(1, 3)].style();
+        let expected_bg = state.theme.focus_bg.bg.unwrap_or(Color::Reset);
+        assert_eq!(
+            panel_cell_style.bg,
+            Some(expected_bg),
+            "focused history panel should use focus_bg background"
+        );
+    }
+
+    #[test]
+    fn history_renders_trend_bars_with_correct_colors() {
+        let result = sample_result();
+        // Inject history with entries having different scores
+        let mut history = crate::history::ScanHistory::default();
+        let mut r1 = result.clone();
+        r1.score_report.overall = 30;
+        history.record(&r1);
+        let mut r2 = result.clone();
+        r2.score_report.overall = 55;
+        history.record(&r2);
+        let mut r3 = result.clone();
+        r3.score_report.overall = 85;
+        history.record(&r3);
+
+        let dir = std::env::temp_dir().join("hostveil-tui-test-trend-colors");
+        let _ = std::fs::create_dir_all(&dir);
+        let history_path = dir.join("history.json");
+        std::fs::write(&history_path, serde_json::to_string(&history).unwrap()).unwrap();
+        // SAFETY: test-only env var scoped to this test
+        unsafe { std::env::set_var("HOSTVEIL_CONFIG_DIR", dir.to_str().unwrap()) };
+
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("history render");
+
+        let text = buffer_to_string(terminal.backend());
+        assert!(
+            text.contains('█'),
+            "history should render filled trend bar blocks"
+        );
+        assert!(
+            text.contains('░'),
+            "history should render empty trend bar blocks"
+        );
+
+        // SAFETY: test cleanup
+        unsafe { std::env::remove_var("HOSTVEIL_CONFIG_DIR") };
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn borders_toggle_via_settings_affects_history_render_immediately() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        // Step 1: navigate to history, verify borderless
+        state.screen = Screen::History;
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("render history (borderless)");
+        let before = buffer_to_string(terminal.backend());
+        assert!(!before.contains('┌'), "history should start borderless");
+
+        // Step 2: open settings, toggle borders ON, close
+        state.screen = Screen::Overview;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE),
+        );
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        assert!(state.borders_enabled, "borders should be enabled");
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+
+        // Step 3: go to history, verify borders appear immediately
+        state.screen = Screen::History;
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("render history (bordered)");
+        let after = buffer_to_string(terminal.backend());
+        assert!(
+            after.contains('┌'),
+            "history should show borders after toggle"
+        );
+
+        // Step 4: toggle back OFF via settings
+        state.screen = Screen::Overview;
+        state.settings_row = 0;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE),
+        );
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        assert!(!state.borders_enabled, "borders should be disabled");
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+
+        // Step 5: verify history is borderless again
+        state.screen = Screen::History;
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("render history (borderless again)");
+        let final_content = buffer_to_string(terminal.backend());
+        assert!(
+            !final_content.contains('┌'),
+            "history should be borderless again"
+        );
+    }
+
+    #[test]
+    fn settings_modal_history_scroll_resets_on_enter() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        state.history_scroll = 15;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.screen, Screen::History);
+        assert_eq!(
+            state.history_scroll, 0,
+            "history_scroll should reset via open_history"
+        );
+
+        // Back to overview via 't' in history, then reopen via 't' in overview
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Overview,
+            "'t' in history should go back to overview"
+        );
+        state.history_scroll = 10;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::History,
+            "'t' in overview should re-open history"
+        );
+        assert_eq!(
+            state.history_scroll, 0,
+            "history_scroll should reset on re-entering history"
+        );
+    }
+
+    #[test]
+    fn search_modal_opens_with_slash_key() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Findings;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE),
+        );
+        assert!(state.search_open, "search should open with '/'");
+        assert!(
+            state.search_query.is_empty(),
+            "search query should start empty"
+        );
+    }
+
+    #[test]
+    fn search_modal_esc_closes_and_clears_query() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.search_open = true;
+        state.search_query.push_str("nginx");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+        assert!(!state.search_open, "Esc should close search");
+        assert!(state.search_query.is_empty(), "Esc should clear query");
+    }
+
+    #[test]
+    fn search_modal_enter_closes_and_clamps_selection() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.search_open = true;
+        state.search_query.push_str("exposure");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert!(!state.search_open, "Enter should close search");
+    }
+
+    #[test]
+    fn search_modal_backspace_removes_last_char() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.search_open = true;
+        state.search_query.push_str("abc");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+        );
+        assert_eq!(state.search_query.as_str(), "ab");
+    }
+
+    #[test]
+    fn search_modal_typing_appends_char() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.search_open = true;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.search_query.as_str(), "n");
+    }
+
+    #[test]
+    fn modal_borders_respect_borders_toggle() {
+        let scan_result = sample_result();
+        let mut state = AppState::new(&scan_result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        // Step 1: default (borders off) → modal should not show borders
+        state.settings_open = true;
+        terminal
+            .draw(|frame| render_settings_modal(frame, &mut state))
+            .expect("settings modal render (borderless)");
+        let before = buffer_to_string(terminal.backend());
+        assert!(
+            !before.contains('┌'),
+            "modal should be borderless when borders_enabled is false"
+        );
+        state.settings_open = false;
+
+        // Step 2: enable borders
+        handle_key(
+            &mut state,
+            &scan_result,
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE),
+        );
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &scan_result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        handle_key(
+            &mut state,
+            &scan_result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        assert!(state.borders_enabled, "borders should be enabled");
+
+        // Verify settings_closed and then reopen to apply new theme
+        state.settings_open = false;
+        handle_key(
+            &mut state,
+            &scan_result,
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE),
+        );
+        terminal
+            .draw(|frame| render_settings_modal(frame, &mut state))
+            .expect("settings modal render (bordered)");
+        let after = buffer_to_string(terminal.backend());
+        assert!(
+            after.contains('┌'),
+            "modal should show borders when borders_enabled is true"
+        );
+        state.settings_open = false;
+
+        // Step 3: restore default
+        state.settings_row = 0;
+        handle_key(
+            &mut state,
+            &scan_result,
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE),
+        );
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &scan_result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        handle_key(
+            &mut state,
+            &scan_result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+    }
+
+    #[test]
+    fn help_overlay_renders_search_key() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(90, 30)).expect("terminal");
+
+        state.help_open = true;
+        terminal
+            .draw(|frame| render_help_overlay(frame, &mut state))
+            .expect("help overlay render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Search findings"),
+            "help should list search shortcut with description"
+        );
+    }
+
+    #[test]
+    fn render_tabs_shows_all_tab_labels() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 1);
+                render_tabs(frame, area, &mut state);
+            })
+            .expect("tabs render");
+
+        let text = buffer_to_string(terminal.backend());
+        assert!(text.contains("1"), "tab should show key '1'");
+        assert!(text.contains("2"), "tab should show key '2'");
+        assert!(text.contains("3"), "tab should show key '3'");
+    }
+
+    #[test]
+    fn render_tabs_highlights_active_tab() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Findings;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 1);
+                render_tabs(frame, area, &mut state);
+            })
+            .expect("tabs render");
+
+        // The active tab (Findings/2) should have background from highlight
+        // In TokyoNight theme, highlight bg is Rgb(65, 72, 100)
+        let expected = Some(ratatui::style::Color::Rgb(65, 72, 100));
+        let buffer = terminal.backend().buffer();
+        let mut found_active = false;
+        let area = terminal.backend().size().unwrap();
+        for y in 0..area.height {
+            for x in 0..area.width {
+                if buffer[(x, y)].symbol().contains("2") && buffer[(x, y)].style().bg == expected {
+                    found_active = true;
+                }
+            }
+        }
+        assert!(
+            found_active,
+            "active tab '2' should have highlight background"
+        );
+    }
+
+    #[test]
+    fn border_toggle_maintains_tab_bar_borderless() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        // Tab bar should always be borderless regardless of borders_enabled
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 1);
+                render_tabs(frame, area, &mut state);
+            })
+            .expect("tabs render (borderless by default)");
+        let before = buffer_to_string(terminal.backend());
+        assert!(!before.contains('│'), "tab bar should not show borders");
+
+        // Enable borders
+        state.borders_enabled = true;
+        state.theme.borders_enabled = true;
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 1);
+                render_tabs(frame, area, &mut state);
+            })
+            .expect("tabs render (borders enabled)");
+        let after = buffer_to_string(terminal.backend());
+        assert!(
+            !after.contains('│'),
+            "tab bar should remain borderless even when borders enabled"
+        );
+    }
+
+    #[test]
+    fn mouse_click_tab_history_opens_history() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview render");
+
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::TabHistory))
+            .expect("TabHistory hit box should exist")
+            .clone();
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.screen,
+            Screen::History,
+            "clicking history tab should switch to History"
+        );
+    }
+
+    #[test]
+    fn mouse_click_tab_overview_returns_to_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Findings;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings render");
+
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::TabOverview))
+            .expect("TabOverview hit box should exist")
+            .clone();
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.screen,
+            Screen::Overview,
+            "clicking overview tab should go to Overview"
+        );
+    }
+
+    #[test]
+    fn mouse_click_tab_findings_opens_findings() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview render");
+
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::TabFindings))
+            .expect("TabFindings hit box should exist")
+            .clone();
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.screen,
+            Screen::Findings,
+            "clicking findings tab should open Findings"
         );
     }
 }

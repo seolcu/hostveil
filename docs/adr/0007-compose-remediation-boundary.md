@@ -1,46 +1,64 @@
-# ADR 0007: Compose-Only Remediation Boundary
+# ADR 0007: Remediation Boundary (Expanded for Adapter Findings)
 
-**Date:** 2026-05-09
-**Status:** Accepted
+**Date:** 2026-05-09 (initial), 2026-05-12 (expanded)
+**Status:** Accepted (updated)
 
 ## Context
 
 hostveil is a security dashboard for self-hosted operators, but its remediation features write configuration back to real systems.
 
-That creates a safety problem: automatic fixes are valuable only when they stay reviewable, reversible, and narrowly scoped. The shipped Rust product already limits automatic writes to Docker Compose files and treats host findings as manual triage items.
+That creates a safety problem: automatic fixes are valuable only when they stay reviewable, reversible, and narrowly scoped. The initial v1 release limited writes to Docker Compose files and treated host findings as manual triage items.
+
+As usage grew, operators running external scanners (Dockle, Lynis) asked for remediation paths that matched those scanners' recommendations. Rather than requiring operators to context-switch between tools, the fix engine was expanded to handle scanner-specific fix actions through a structured action taxonomy.
 
 ## Decision
 
-Rust v1 remediation stays Compose-focused only.
+The fix engine supports three action types, each with distinct safety properties:
 
-- `--auto-fix` applies automatic Compose changes only.
-- `--fix` applies automatic Compose changes plus review-required Compose changes.
-- Host findings remain detect-and-guide only.
-- hostveil does not perform host-level auto-remediation in v1.
+- **`ComposeEdit`** — edits to a Docker Compose YAML file (same safety model as v1: preview → backup → atomic write).
+- **`HostEdit`** — edits to a host configuration file (e.g., `/etc/ssh/sshd_config`, `/etc/sysctl.d/99-hardening.conf`). Operator review required via `Review` remediation kind.
+- **`ShellCommand`** — execution of a shell command (e.g., `chmod`, `ufw`, `lynis audit`). Non-interactive; output is logged.
 
-The active remediation kinds stay fixed to the shared domain model:
+The three kinds map to remediation workflows:
 
-- `None`: informational/manual guidance only
-- `Auto`: Compose edits hostveil can complete end-to-end after the diff review
-- `Review`: Compose edits hostveil can drive, but only after the operator chooses an option or provides an input value
+- `Auto`: changes hostveil can complete end-to-end after the diff review
+- `Review`: changes hostveil can drive, but only after the operator confirms
 
-The implementation boundary is also fixed:
+Implementation boundaries:
 
-- remediation plans are built from findings tied to a Compose file
-- writes target the Compose document, not host configuration files
-- preview comes before apply
-- apply creates a backup before writing
-- reviewability of the diff preview is a first-class product constraint
+- Adapter findings (Dockle, Lynis) reach the fix engine through the `external_findings` pipeline, separate from native Compose rule findings.
+- `preview_with_external` / `apply_with_external` accept adapter findings alongside native findings.
+- `ComposeEdit` actions from adapters are merged into the Compose document alongside native edits.
+- `HostEdit` actions create backup copies of target files before writing.
+- `ShellCommand` actions execute via `sh -c` and report exit status.
+- Preview comes before apply for all action types.
+- Compose file writes create a timestamped backup. Host file edits also create backups.
+
+### Adapter-to-Action Mapping
+
+| Source | Finding Evidence | FixAction | Remediation |
+|--------|-----------------|-----------|-------------|
+| Dockle DKL-DI-0006 | `sample_codes` | ComposeEdit (HEALTHCHECK) | Auto |
+| Dockle DKL-DI-0003 | `sample_codes` | ComposeEdit (no-new-privileges) | Auto |
+| Dockle DKL-DI-0005 | `sample_codes` | ComposeEdit (user directive) | Review |
+| Dockle DKL-DI-0001 | `sample_codes` | ComposeEdit (cap_drop) | Review |
+| Lynis SSH-7408/7411 | `sample_test_ids` | HostEdit (sshd_config) | Review |
+| Lynis KRNL-5820 | `sample_test_ids` | HostEdit (sysctl) | Review |
+| Lynis FILE-7524/7530 | `sample_test_ids` | ShellCommand (permissions) | Auto |
+| Lynis (fallback) | any | ShellCommand (lynis audit) | Review |
 
 ## Why
 
-- Keeps automatic writes within a file format the product already parses, normalizes, and tests thoroughly.
-- Avoids mutating live host posture such as SSH, firewall, kernel, or MAC settings without explicit operator review outside the tool.
-- Preserves the current TUI and CLI semantics, where host findings may explain what to change but do not claim `f` or `--fix` can safely do it for the operator.
+- Allows operators to remediate scanner findings without leaving hostveil.
+- Keeps write safety through preview, backup, and review gates.
+- Avoids mutating live host posture without explicit operator review for high-risk changes (`HostEdit` is always `Review`).
+- Maintains the existing TUI and CLI semantics where `f` and `--fix` trigger the same pipeline.
+- Preserves the original Compose-only safety model for changes that do not involve external adapters.
 
 ## Consequences
 
-- New remediation work should begin by asking whether the change still fits the Compose-only boundary; if not, it is a deliberate architecture expansion.
-- Host findings must continue surfacing actionable guidance through `how_to_fix` and TUI context instead of through automatic writes.
-- Fix UX work may improve previewing, filtering, and validation without changing the host-versus-Compose boundary.
-- Any future host auto-remediation proposal requires a new ADR because it would change the product's safety model, not just add another fix rule.
+- New adapter integrations (e.g., Trivy, Gitleaks) should add `classify_*` functions in `src/src/fix/adapter.rs`.
+- Host findings with explicit scanner test IDs can now produce `HostEdit` or `ShellCommand` actions.
+- The `FixPlan` struct carries `compose_actions`, `host_actions`, and `system_actions` as separate vectors.
+- The fix review TUI (`fix_review.rs`) displays all three action types with color-coded labels.
+- Any future expansion to new action types (e.g., `DockerfileEdit`, `KubernetesPatch`) requires a new ADR.
