@@ -409,8 +409,19 @@ fn build_fix_plan(
     }
 
     // Classify external adapter findings (Dockle, Lynis, NativeHost) if provided
+    // Filter to only_findings scope so that pressing 'f' on a single finding
+    // does not pull in all unrelated external findings.
+    let scoped_external: Vec<Finding> = if let Some(ids) = only_findings {
+        external_findings
+            .iter()
+            .filter(|f| ids.contains(&f.id))
+            .cloned()
+            .collect()
+    } else {
+        external_findings.to_vec()
+    };
     let (adapter_actions, adapter_auto, adapter_review) =
-        adapter::classify_adapter_findings(external_findings);
+        adapter::classify_adapter_findings(&scoped_external);
     let mut compose_actions: Vec<FixAction> = Vec::new();
     let (host_actions, system_actions): (Vec<_>, Vec<_>) =
         adapter_actions.into_iter().partition(|a| match a {
