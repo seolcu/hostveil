@@ -1007,4 +1007,36 @@ mod tests {
 
         fs::remove_dir_all(root).expect("temp dir should be removed");
     }
+
+    #[test]
+    fn fix_preview_without_yes_shows_review_and_does_not_apply() {
+        // --fix without --yes needs TTY for review, but with --preview-changes it
+        // should just print the review and exit before requiring TTY.
+        let root = temp_compose_dir("fix-preview-only");
+        let path = root.join("docker-compose.yml");
+        write_compose(
+            &path,
+            concat!(
+                "services:\n",
+                "  app:\n",
+                "    image: alpine:3.20\n",
+                "    privileged: true\n",
+            ),
+        );
+
+        run([
+            String::from("--fix"),
+            path.display().to_string(),
+            String::from("--preview-changes"),
+        ])
+        .expect("--fix --preview-changes should succeed without TTY");
+
+        let content = fs::read_to_string(&path).expect("compose file should be readable");
+        assert!(
+            content.contains("privileged: true"),
+            "preview should not modify compose file"
+        );
+
+        fs::remove_dir_all(root).expect("temp dir should be removed");
+    }
 }

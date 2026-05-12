@@ -963,4 +963,19 @@ mod tests {
     fn detect_mount_type_handles_relative_with_dotdot() {
         assert_eq!(detect_mount_type(Some("../shared")), "bind");
     }
+
+    #[test]
+    fn parse_path_accepts_yaml_extension() {
+        let root = temp_compose_dir("yaml-ext");
+        let path = root.join("docker-compose.yaml");
+        std::fs::write(
+            &path,
+            "services:\n  web:\n    image: nginx\n",
+        )
+        .expect("write .yaml compose");
+        let project = ComposeParser::parse_path(&path).expect("should parse .yaml file");
+        assert_eq!(project.services.len(), 1);
+        assert!(project.services.contains_key("web"));
+        fs::remove_dir_all(root).unwrap();
+    }
 }
