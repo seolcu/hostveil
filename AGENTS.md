@@ -31,6 +31,9 @@ hostveil is a lightweight TUI security dashboard for Linux self-hosted environme
 - Reuse helper functions `buffer_to_string`, `buffer_bg`, etc. from `src/tui/mod.rs` tests.
 - When changing key bindings, update the help text, footer, and render tests together.
 - Overview layout must show core information without scrolling in the default state. Use density-aware rendering (`ScoreDensity` modes) and `Min`-based constraints rather than fixed `Length()` values.
+- **NEVER set `fg` on `Theme.highlight`**. In ratatui 0.29, `List.highlight_style.fg` applies at the cell level and completely overrides any span-level foreground colors. `Line::styled` or `Span::styled` are insufficient to preserve text colors on selected items when `highlight.fg` is set. The highlight background alone is sufficient for visual distinction.
+- **Every finding-list render change must include a `TestBackend` test that asserts `Cell::fg` matches the expected severity color on a selected row.** The `selected_finding_preserves_severity_foreground_color` test in `src/tui/mod.rs` is the reference implementation.
+- **Every keybinding change must include an E2E test that keystroke-simulates the key and asserts on both returned `TuiAction` and `state.screen`.** The `f_key_on_findings_does_not_change_screen_to_overview` test is the reference implementation.
 
 ## QA Testing Charter (Behavioral E2E Coverage)
 
@@ -52,7 +55,7 @@ Testing priority order (highest first):
 
 ## Test Count Baseline
 
-- **Workspace tests**: 719+ (lib: 719, main: 0, doc: 0)
+- **Workspace tests**: 721+ (lib: 721, main: 0, doc: 0)
 - **Target coverage**: Adding tests is preferred over modifying existing ones. Each new feature or fix must add at minimum one behavioral E2E test that simulates real user interaction.
 
 ## Documentation Rules
