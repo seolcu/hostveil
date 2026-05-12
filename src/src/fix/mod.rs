@@ -2366,8 +2366,8 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        FixAction, FixError, FixMode, FixPlan, FixResolutionMap, ReviewChoiceOption, ReviewRequest,
-        ReviewResolution, apply, apply_compose_edits_to_text, apply_with_external,
+        FixAction, FixError, FixMode, FixPlan, FixProposal, FixResolutionMap, ReviewChoiceOption,
+        ReviewRequest, ReviewResolution, apply, apply_compose_edits_to_text, apply_with_external,
         apply_with_resolutions, execute_host_and_system_actions, merge_original_formatting,
         preview, preview_with_external, preview_with_resolutions,
     };
@@ -3746,6 +3746,46 @@ mod tests {
             plan.changed(),
             "plan with compose_actions should be changed"
         );
+    }
+
+    #[test]
+    fn fix_plan_changed_includes_auto_applied() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: vec![FixProposal {
+                service: "web".to_string(),
+                summary: "auto fix".to_string(),
+                remediation: RemediationKind::Auto,
+            }],
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+        assert!(plan.changed(), "plan with auto_applied should be changed");
+    }
+
+    #[test]
+    fn fix_plan_changed_includes_review_applied() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: vec![FixProposal {
+                service: "db".to_string(),
+                summary: "review fix".to_string(),
+                remediation: RemediationKind::Review,
+            }],
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+        assert!(plan.changed(), "plan with review_applied should be changed");
     }
 
     #[test]
