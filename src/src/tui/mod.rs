@@ -1204,16 +1204,21 @@ fn handle_findings_key(
             let finding = state
                 .selected_finding(scan_result)
                 .expect("fixability check should guarantee a selected finding");
-            let adapter_findings: Vec<Finding> = scan_result
+            let external_findings: Vec<Finding> = scan_result
                 .findings
                 .iter()
-                .filter(|f| matches!(f.source, Source::Dockle | Source::Lynis))
+                .filter(|f| {
+                    matches!(
+                        f.source,
+                        Source::Dockle | Source::Lynis | Source::NativeHost
+                    )
+                })
                 .cloned()
                 .collect();
             Some(TuiAction::TriggerFix {
                 compose_file,
                 finding_id: Some(finding.id.clone()),
-                adapter_findings,
+                adapter_findings: external_findings,
             })
         }
         KeyCode::Tab => {

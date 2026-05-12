@@ -40,7 +40,7 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
                                 .unwrap_or_else(|| String::from("0.0.0.0")),
                         ),
                     ]),
-                    remediation: RemediationKind::Manual,
+                    remediation: RemediationKind::Review,
                 });
             }
         }
@@ -89,7 +89,7 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
             why_risky: t!("finding.network.default_bridge_used.why").into_owned(),
             how_to_fix: t!("finding.network.default_bridge_used.fix").into_owned(),
             evidence: BTreeMap::new(),
-            remediation: RemediationKind::Manual,
+            remediation: RemediationKind::Auto,
         });
     }
 
@@ -177,17 +177,21 @@ mod tests {
     }
 
     #[test]
-    fn all_network_findings_have_none_remediation() {
+    fn network_findings_have_expected_remediation() {
         let project =
             ComposeParser::parse_path_without_override(fixture("network-isolation-vulnerable.yml"))
                 .expect("project should parse");
         let findings = scan_network_isolation(&project);
         for finding in &findings {
+            let expected = match finding.id.as_str() {
+                "network.host_mode" => crate::domain::RemediationKind::Manual,
+                "network.default_bridge_used" => crate::domain::RemediationKind::Auto,
+                _ => crate::domain::RemediationKind::Review,
+            };
             assert_eq!(
-                finding.remediation,
-                crate::domain::RemediationKind::Manual,
-                "finding {} should have Manual remediation",
-                finding.id
+                finding.remediation, expected,
+                "finding {} should have {:?} remediation",
+                finding.id, expected
             );
         }
     }

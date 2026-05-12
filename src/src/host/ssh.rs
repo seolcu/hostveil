@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use glob::glob;
 
 use super::{HostContext, HostFindingText, host_finding, resolve_existing_path};
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 pub(crate) const SSH_CONFIG_PATH: &str = "etc/ssh/sshd_config";
 const WEAK_KEX_ALGORITHMS: [&str; 2] =
@@ -56,6 +56,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), subject_path.display().to_string()),
                 (String::from("value"), value.to_owned()),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -78,6 +79,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_password_auth.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -100,6 +102,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_empty_passwords.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -122,6 +125,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_pubkey_auth.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -144,6 +148,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_user_environment.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -166,6 +171,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_x11_forwarding.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -201,6 +207,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), subject_path.display().to_string()),
                     (String::from("values"), values),
                 ]),
+                RemediationKind::Review,
             ));
         }
     } else {
@@ -220,6 +227,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.ssh_listen_all.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), subject_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -246,6 +254,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), subject_path.display().to_string()),
                     (String::from("algorithms"), weak.join(", ")),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }
@@ -273,6 +282,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), subject_path.display().to_string()),
                     (String::from("algorithms"), weak.join(", ")),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }
@@ -300,6 +310,7 @@ pub fn scan_ssh_hardening(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), subject_path.display().to_string()),
                     (String::from("algorithms"), weak.join(", ")),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }

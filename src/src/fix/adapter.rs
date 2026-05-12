@@ -23,6 +23,10 @@ pub fn classify_adapter_findings(
                 let result = classify_lynis_finding(finding);
                 handle_result(result, &mut actions, &mut auto_applied, &mut review_applied);
             }
+            Source::NativeHost => {
+                let result = classify_native_host_finding(finding);
+                handle_result(result, &mut actions, &mut auto_applied, &mut review_applied);
+            }
             _ => {}
         }
     }
@@ -228,6 +232,472 @@ fn classify_lynis_finding(finding: &Finding) -> Option<(FixAction, FixProposal)>
                 },
                 FixProposal {
                     service: String::from("host"),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn classify_native_host_finding(finding: &Finding) -> Option<(FixAction, FixProposal)> {
+    let summary_text = |desc: &str| -> String { format!("Host hardening: {}", desc) };
+
+    match finding.id.as_str() {
+        // SSH hardening - safe sed edits with config validation
+        "host.ssh_x11_forwarding_enabled" => {
+            let summary = summary_text("disable SSH X11 forwarding");
+            let command = String::from(
+                "sed -i 's/^X11Forwarding.*/X11Forwarding no/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.ssh_root_login_enabled" => {
+            let summary = summary_text("disable SSH root login");
+            let command = String::from(
+                "sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.ssh_password_auth_enabled" => {
+            let summary = summary_text("disable SSH password authentication");
+            let command = String::from(
+                "sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.ssh_empty_passwords_enabled" => {
+            let summary = summary_text("disable SSH empty passwords");
+            let command = String::from(
+                "sed -i 's/^PermitEmptyPasswords.*/PermitEmptyPasswords no/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.ssh_pubkey_auth_disabled" => {
+            let summary = summary_text("enable SSH public key authentication");
+            let command = String::from(
+                "sed -i 's/^PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.ssh_user_environment_enabled" => {
+            let summary = summary_text("disable SSH user environment");
+            let command = String::from(
+                "sed -i 's/^PermitUserEnvironment.*/PermitUserEnvironment no/' /etc/ssh/sshd_config && sshd -t && systemctl reload sshd",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // tmpfs
+        "host.tmp_not_tmpfs" => {
+            let summary = summary_text("mount /tmp as tmpfs");
+            let command = String::from(
+                "systemctl enable tmp.mount 2>/dev/null; if [ -f /usr/lib/systemd/system/tmp.mount ]; then systemctl start tmp.mount; else echo 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0' >> /etc/fstab && mount /tmp; fi",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.tmp_tmpfs_flags_missing" => {
+            let summary = summary_text("add hardening flags to /tmp mount");
+            let command = String::from(
+                "mount -o remount,noexec,nosuid,nodev /tmp 2>/dev/null; sed -i 's|^tmpfs /tmp tmpfs .*|tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0|' /etc/fstab",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // proc hidepid
+        "host.proc_hidepid_missing" | "host.proc_hidepid_weak" => {
+            let summary = summary_text("enable proc hidepid=2");
+            let command = String::from(
+                "grep -q '/proc' /etc/fstab && sed -i 's|^proc .*/proc.*|proc /proc proc defaults,hidepid=2 0 0|' /etc/fstab || echo 'proc /proc proc defaults,hidepid=2 0 0' >> /etc/fstab; mount -o remount,hidepid=2 /proc 2>/dev/null",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // Kernel hardening via sysctl
+        "host.kernel.syn_cookies_disabled" => {
+            let summary = summary_text("enable TCP SYN cookies");
+            let command = String::from(
+                "sysctl -w net.ipv4.tcp_syncookies=1 && echo 'net.ipv4.tcp_syncookies = 1' > /etc/sysctl.d/99-hostveil.conf",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.kernel.aslr_disabled" => {
+            let summary = summary_text("enable kernel ASLR");
+            let command = String::from(
+                "sysctl -w kernel.randomize_va_space=2 && echo 'kernel.randomize_va_space = 2' > /etc/sysctl.d/99-hostveil.conf",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.kernel.modules_disabled_not_set" => {
+            let summary = summary_text("restrict kernel module loading");
+            let command = String::from(
+                "echo 'kernel.modules_disabled = 1' > /etc/sysctl.d/99-hostveil-modules.conf && sysctl -w kernel.modules_disabled=1 2>/dev/null || true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // Docker hardening
+        "host.docker_socket_world_writable" | "host.docker_socket_world_readable" => {
+            let summary = summary_text("restrict Docker socket permissions");
+            let command = String::from(
+                "chmod 0660 /var/run/docker.sock 2>/dev/null; chmod 0660 /run/docker.sock 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.docker_userns_remap_missing" => {
+            let summary = summary_text("enable Docker user namespace remapping");
+            let command = String::from(
+                "grep -q 'userns-remap' /etc/docker/daemon.json 2>/dev/null || (echo '{\"userns-remap\": \"default\"}' > /etc/docker/daemon.json && systemctl restart docker)",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.docker_live_restore_disabled" => {
+            let summary = summary_text("enable Docker live-restore");
+            let command = String::from(
+                "grep -q 'live-restore' /etc/docker/daemon.json 2>/dev/null || (echo '{\"live-restore\": true}' > /etc/docker/daemon.json && systemctl reload docker)",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // Firewall
+        "host.ufw_installed_but_disabled" => {
+            let summary = summary_text("enable UFW firewall");
+            let command = String::from(
+                "ufw --force enable && ufw default deny incoming && ufw default allow outgoing && ufw allow ssh",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.firewalld_installed_but_disabled" => {
+            let summary = summary_text("enable firewalld");
+            let command = String::from(
+                "systemctl enable firewalld && systemctl start firewalld && firewall-cmd --set-default-zone=public 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // SELinux/AppArmor
+        "host.selinux_permissive" | "host.selinux_disabled" => {
+            let summary = summary_text("enforce SELinux");
+            let command = String::from(
+                "setenforce 1 2>/dev/null; sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.apparmor_complain_mode" => {
+            let summary = summary_text("enforce all AppArmor profiles");
+            let command = String::from(
+                "aa-enforce /etc/apparmor.d/* 2>/dev/null; systemctl reload apparmor 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // Auto-updates
+        "host.apt_unattended_upgrades_disabled" => {
+            let summary = summary_text("enable unattended upgrades");
+            let command = String::from(
+                "DEBIAN_FRONTEND=noninteractive apt-get install -y unattended-upgrades 2>/dev/null; systemctl enable unattended-upgrades 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.apt_package_lists_auto_update_disabled" => {
+            let summary = summary_text("enable automatic package list updates");
+            let command = String::from(
+                "sed -i 's/APT::Periodic::Update-Package-Lists.*\"0\"/APT::Periodic::Update-Package-Lists \"1\"/' /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.fail2ban_not_enabled" => {
+            let summary = summary_text("enable fail2ban");
+            let command = String::from(
+                "systemctl enable fail2ban && systemctl start fail2ban 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // File permissions
+        "host.shadow_permissions_weak" => {
+            let summary = summary_text("restrict /etc/shadow permissions");
+            let command = String::from("chmod 0000 /etc/shadow 2>/dev/null; true");
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        // Docker daemon hardening
+        "host.docker_daemon_iptables_disabled" => {
+            let summary = summary_text("enable Docker iptables integration");
+            let command = String::from(
+                "grep -q 'iptables' /etc/docker/daemon.json 2>/dev/null || (echo '{\"iptables\": true}' > /etc/docker/daemon.json && systemctl restart docker)",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
+                    summary,
+                    remediation: RemediationKind::Review,
+                },
+            ))
+        }
+        "host.docker_daemon_tcp_public" => {
+            let summary = summary_text("disable Docker TCP socket");
+            let command = String::from(
+                "sed -i 's/-H tcp:\\/\\/.*//g' /lib/systemd/system/docker.service 2>/dev/null; sed -i 's/-H tcp:\\/\\/.*//g' /etc/systemd/system/docker.service 2>/dev/null; systemctl daemon-reload && systemctl restart docker 2>/dev/null; true",
+            );
+            Some((
+                FixAction::ShellCommand {
+                    command: command.clone(),
+                    summary: summary.clone(),
+                    rollback: None,
+                },
+                FixProposal {
+                    service: "host".to_owned(),
                     summary,
                     remediation: RemediationKind::Review,
                 },

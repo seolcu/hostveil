@@ -8,7 +8,7 @@ use super::{
     HostContext, HostFindingText, format_permissions, host_finding, is_live_root,
     resolve_existing_path, try_command,
 };
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 pub(crate) const DOCKER_DAEMON_CONFIG_PATH: &str = "etc/docker/daemon.json";
 pub(crate) const DOCKER_SOCKET_PATH: &str = "var/run/docker.sock";
@@ -40,6 +40,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), socket_path.display().to_string()),
                     (String::from("mode"), format_permissions(mode)),
                 ]),
+                RemediationKind::Review,
             ));
         } else if mode & 0o004 != 0 {
             findings.push(host_finding(
@@ -61,6 +62,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), socket_path.display().to_string()),
                     (String::from("mode"), format_permissions(mode)),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }
@@ -85,6 +87,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.docker_daemon_tcp_public.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+                RemediationKind::Review,
             ));
 
             if !daemon_tlsverify_enabled(&json) {
@@ -111,6 +114,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                             docker_daemon_setting_state(&json, "tlsverify"),
                         ),
                     ]),
+                    RemediationKind::Review,
                 ));
             }
         }
@@ -134,6 +138,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), daemon_path.display().to_string()),
                     (String::from("iptables"), String::from("false")),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }
@@ -152,6 +157,7 @@ pub fn scan_docker_host_exposure(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.docker_not_rootless.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Manual,
         ));
     }
 
@@ -186,6 +192,7 @@ pub fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.docker_userns_remap_missing.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+                RemediationKind::Review,
             ));
         }
 
@@ -205,6 +212,7 @@ pub fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.docker_live_restore_disabled.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+                RemediationKind::Review,
             ));
         }
 
@@ -224,6 +232,7 @@ pub fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.docker_log_driver_missing.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+                RemediationKind::Review,
             ));
         }
 
@@ -243,6 +252,7 @@ pub fn scan_docker_daemon_hardening(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.docker_default_ulimits_missing.fix").into_owned(),
                 },
                 BTreeMap::from([(String::from("path"), daemon_path.display().to_string())]),
+                RemediationKind::Review,
             ));
         }
     }

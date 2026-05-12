@@ -6,7 +6,7 @@ use super::{
     HostContext, HostFindingText, host_finding, parse_ini_bool, parse_ini_key_value,
     resolve_existing_path, strip_ini_comments,
 };
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 const UFW_CONFIG_PATH: &str = "etc/ufw/ufw.conf";
 const UFW_DEFAULT_POLICY_PATH: &str = "etc/default/ufw";
@@ -54,6 +54,7 @@ pub fn scan_firewall_hardening(context: &HostContext) -> Vec<Finding> {
             how_to_fix: t!("finding.host.no_firewall_detected.fix").into_owned(),
         },
         BTreeMap::new(),
+        RemediationKind::Manual,
     ));
 
     findings
@@ -85,6 +86,7 @@ fn scan_ufw_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("enabled"), String::from("no")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -112,6 +114,7 @@ fn scan_ufw_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), defaults_path.display().to_string()),
                 (String::from("policy"), policy),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -160,6 +163,7 @@ fn scan_firewalld_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("enabled"), String::from("no")),
             ]),
+            RemediationKind::Review,
         ));
         return findings;
     }
@@ -188,6 +192,7 @@ fn scan_firewalld_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("zone"), zone),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -244,6 +249,7 @@ fn scan_nftables_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.nftables_installed_no_rules.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), conf_path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 

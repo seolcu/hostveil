@@ -510,6 +510,8 @@ app:
     review_mysql_password: "%{service}: externalize MYSQL_ROOT_PASSWORD using the chosen secret"
     review_redis_password: "%{service}: externalize REDIS_PASSWORD using the chosen secret"
     review_pihole_password: "%{service}: externalize WEBPASSWORD using the chosen secret"
+    review_pin_image_tag: "%{service}: remove :latest tag from %{image} (pin to a specific version)"
+    auto_default_bridge: "project: add named custom network (hostveil) to avoid default bridge"
     status:
       no_compose_target: "No Compose target available for fixes."
       no_finding_selected: "Select a finding first to apply a fix."

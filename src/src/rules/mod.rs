@@ -56,7 +56,7 @@ fn service_finding(
         service_name,
         text,
         evidence,
-        RemediationKind::Manual,
+        RemediationKind::Review,
     )
 }
 

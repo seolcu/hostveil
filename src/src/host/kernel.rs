@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::{HostContext, HostFindingText, host_finding, read_sysctl, resolve_existing_path};
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -28,6 +28,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_aslr_disabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("0"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -53,6 +54,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_syn_cookies_disabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("0"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -80,6 +82,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_broadcast_ping_allowed.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("0"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -107,6 +110,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_ip_forward_enabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("1"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -132,6 +136,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_modules_disabled_not_set.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("0"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -165,6 +170,7 @@ pub fn scan_kernel_hardening(context: &HostContext) -> Vec<Finding> {
                     String::from("disabled")
                 },
             )]),
+            RemediationKind::Review,
         ));
     }
 
@@ -215,6 +221,7 @@ pub fn scan_secure_boot(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.secure_boot_disabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), secure_boot_path.display().to_string())]),
+            RemediationKind::Manual,
         ));
     }
 
@@ -256,6 +263,7 @@ pub fn scan_user_namespace_settings(context: &HostContext) -> Vec<Finding> {
                     .into_owned(),
             },
             BTreeMap::from([(String::from("value"), String::from("1"))]),
+            RemediationKind::Review,
         ));
     }
 
@@ -281,6 +289,7 @@ pub fn scan_user_namespace_settings(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.kernel_max_user_namespaces_enabled.fix").into_owned(),
             },
             BTreeMap::from([(String::from("value"), value.trim().to_owned())]),
+            RemediationKind::Review,
         ));
     }
 

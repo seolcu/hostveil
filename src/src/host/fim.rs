@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 use crate::host::{HostContext, HostFindingText, host_finding, resolve_existing_path};
 
 const AIDE_BINARIES: [&str; 2] = ["usr/bin/aide", "usr/sbin/aide"];
@@ -39,6 +39,7 @@ pub fn scan_fim(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.fim_missing.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Manual,
         ));
         return findings;
     }
@@ -57,6 +58,7 @@ pub fn scan_fim(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.aide_not_initialized.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
     }
 
@@ -74,6 +76,7 @@ pub fn scan_fim(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.tripwire_not_initialized.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
     }
 

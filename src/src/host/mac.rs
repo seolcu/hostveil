@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use super::{HostContext, HostFindingText, host_finding, read_sysctl, resolve_existing_path};
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -34,6 +34,7 @@ pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                         how_to_fix: t!("finding.host.selinux_permissive.fix").into_owned(),
                     },
                     BTreeMap::from([(String::from("mode"), String::from("permissive"))]),
+                    RemediationKind::Review,
                 ));
             }
             Some("disabled") | None => {
@@ -56,6 +57,7 @@ pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                         how_to_fix: t!("finding.host.selinux_disabled.fix").into_owned(),
                     },
                     BTreeMap::from([(String::from("mode"), String::from("disabled"))]),
+                    RemediationKind::Review,
                 ));
             }
             _ => {}
@@ -90,6 +92,7 @@ pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.apparmor_complain_mode.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
     }
 
@@ -124,6 +127,7 @@ pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                         how_to_fix: t!("finding.host.apparmor_profile_missing.fix").into_owned(),
                     },
                     BTreeMap::from([(String::from("service"), String::from(service))]),
+                    RemediationKind::Review,
                 ));
             }
         }
@@ -145,6 +149,7 @@ pub fn scan_mac_frameworks(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.mac_framework_missing.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Manual,
         ));
     }
 

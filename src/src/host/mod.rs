@@ -70,6 +70,7 @@ pub(crate) fn host_finding(
     subject: &Path,
     text: HostFindingText,
     evidence: BTreeMap<String, String>,
+    remediation: RemediationKind,
 ) -> Finding {
     Finding {
         id: id.to_owned(),
@@ -84,7 +85,7 @@ pub(crate) fn host_finding(
         why_risky: text.why_risky,
         how_to_fix: text.how_to_fix,
         evidence,
-        remediation: RemediationKind::Manual,
+        remediation,
     }
 }
 

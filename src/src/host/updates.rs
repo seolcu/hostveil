@@ -5,7 +5,7 @@ use super::{
     HostContext, HostFindingText, host_finding, parse_apt_periodic_bool, parse_ini_bool_in_section,
     resolve_existing_path,
 };
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 const APT_AUTO_UPGRADES_CONFIG_PATH: &str = "etc/apt/apt.conf.d/20auto-upgrades";
 const DNF_AUTOMATIC_CONF_PATH: &str = "etc/dnf/automatic.conf";
@@ -60,6 +60,7 @@ fn scan_apt_auto_upgrades(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("unattended_upgrade"), String::from("disabled")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -87,6 +88,7 @@ fn scan_apt_auto_upgrades(context: &HostContext) -> Vec<Finding> {
                     String::from("disabled"),
                 ),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -125,6 +127,7 @@ fn scan_dnf_auto_updates(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("apply_updates"), String::from("disabled")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -150,6 +153,7 @@ fn scan_dnf_auto_updates(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("timer"), String::from("disabled")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -188,6 +192,7 @@ fn scan_yum_cron(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("apply_updates"), String::from("disabled")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -213,6 +218,7 @@ fn scan_yum_cron(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), config_path.display().to_string()),
                 (String::from("service"), String::from("disabled")),
             ]),
+            RemediationKind::Review,
         ));
     }
 

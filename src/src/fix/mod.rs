@@ -408,7 +408,7 @@ fn build_fix_plan(
         return Err(FixError::ReviewRequired(review_requests));
     }
 
-    // Classify external adapter findings (Dockle, Lynis) if provided
+    // Classify external adapter findings (Dockle, Lynis, NativeHost) if provided
     let (adapter_actions, adapter_auto, adapter_review) =
         adapter::classify_adapter_findings(external_findings);
     let mut compose_actions: Vec<FixAction> = Vec::new();

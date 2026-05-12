@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use super::{
     HostContext, HostFindingText, host_finding, is_live_root, resolve_existing_path, try_command,
 };
-use crate::domain::{DefensiveControlStatus, Finding, HostRuntimeInfo, Severity};
+use crate::domain::{DefensiveControlStatus, Finding, HostRuntimeInfo, RemediationKind, Severity};
 
 const FAIL2BAN_INSTALL_MARKERS: [&str; 6] = [
     "etc/fail2ban",
@@ -68,6 +68,7 @@ pub fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo)
                 (String::from("path"), context.root.display().to_string()),
                 (String::from("control"), String::from("fail2ban")),
             ]),
+            RemediationKind::Review,
         )],
         DefensiveControlStatus::NotDetected => vec![host_finding(
             "host.defensive_controls_missing",
@@ -87,6 +88,7 @@ pub fn scan_defensive_controls(context: &HostContext, runtime: &HostRuntimeInfo)
                 (String::from("path"), context.root.display().to_string()),
                 (String::from("checked_controls"), String::from("fail2ban")),
             ]),
+            RemediationKind::Manual,
         )],
     }
 }

@@ -4,7 +4,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use super::{HostContext, HostFindingText, host_finding, parse_proc_mounts, resolve_existing_path};
-use crate::domain::{Finding, Severity};
+use crate::domain::{Finding, RemediationKind, Severity};
 
 const SYSTEMD_SERVICE_DIRS: [&str; 2] = ["etc/systemd/system", "lib/systemd/system"];
 const SYSTEMD_HARDENING_MARKERS: [&str; 4] = [
@@ -72,6 +72,7 @@ pub fn scan_mount_flags(context: &HostContext) -> Vec<Finding> {
                 (String::from("mount_point"), mount_point.to_string()),
                 (String::from("missing_flags"), missing.join(", ")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -102,6 +103,7 @@ pub fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
                     how_to_fix: t!("finding.host.proc_hidepid_missing.fix").into_owned(),
                 },
                 BTreeMap::new(),
+                RemediationKind::Review,
             ));
             return findings;
         }
@@ -124,6 +126,7 @@ pub fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.proc_hidepid_missing.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
     } else if !hidepid_hardened {
         findings.push(host_finding(
@@ -137,6 +140,7 @@ pub fn scan_proc_hidepid(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.proc_hidepid_weak.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
     }
 
@@ -185,6 +189,7 @@ pub fn scan_systemd_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("service"), service_name.to_owned()),
                 (String::from("missing_flags"), missing.join(", ")),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -236,6 +241,7 @@ pub fn scan_grub_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.grub_password_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), path.display().to_string())]),
+            RemediationKind::Review,
         )];
     }
 
@@ -271,6 +277,7 @@ pub fn scan_shadow_hardening(context: &HostContext) -> Vec<Finding> {
                     (String::from("path"), path.display().to_string()),
                     (String::from("mode"), super::format_permissions(mode)),
                 ]),
+                RemediationKind::Review,
             ));
         }
     }
@@ -330,6 +337,7 @@ pub fn scan_shadow_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.shadow_empty_password.fix").into_owned(),
             },
             BTreeMap::from([(String::from("path"), path.display().to_string())]),
+            RemediationKind::Review,
         ));
     }
 
@@ -353,6 +361,7 @@ pub fn scan_shadow_hardening(context: &HostContext) -> Vec<Finding> {
                 (String::from("path"), path.display().to_string()),
                 (String::from("algorithm"), algorithm.to_owned()),
             ]),
+            RemediationKind::Review,
         ));
     }
 
@@ -394,6 +403,7 @@ pub fn scan_tmp_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.tmp_not_tmpfs.fix").into_owned(),
             },
             BTreeMap::new(),
+            RemediationKind::Review,
         ));
         return findings;
     }
@@ -421,6 +431,7 @@ pub fn scan_tmp_hardening(context: &HostContext) -> Vec<Finding> {
                 how_to_fix: t!("finding.host.tmp_tmpfs_flags_missing.fix").into_owned(),
             },
             BTreeMap::from([(String::from("flags"), missing.join(", "))]),
+            RemediationKind::Review,
         ));
     }
 
