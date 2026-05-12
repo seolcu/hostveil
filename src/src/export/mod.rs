@@ -1083,4 +1083,30 @@ mod tests {
         assert!(html.contains("<h2>점수 상세</h2>"));
         assert!(html.contains("<h2>발견 항목</h2>"));
     }
+
+    #[test]
+    fn markdown_lists_findings_and_severity() {
+        rust_i18n::set_locale("en");
+        let mut result = ScanResult::default();
+        result.findings.push(Finding {
+            id: "test.id".to_string(),
+            axis: Axis::HostHardening,
+            severity: Severity::High,
+            scope: Scope::Host,
+            source: Source::NativeHost,
+            subject: "host".to_string(),
+            related_service: None,
+            title: "Test Finding".to_string(),
+            description: "Description text".to_string(),
+            why_risky: "It is risky".to_string(),
+            how_to_fix: "Fix it".to_string(),
+            evidence: BTreeMap::new(),
+            remediation: RemediationKind::Review,
+        });
+        let md = scan_result_markdown_for_locale(&result, "en");
+
+        assert!(md.contains("Test Finding"), "missing finding title");
+        assert!(md.contains("High"), "missing severity label");
+        assert!(md.contains("host"), "missing subject");
+    }
 }

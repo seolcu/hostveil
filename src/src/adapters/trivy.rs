@@ -704,4 +704,37 @@ exit 0
         let status = detect_trivy_with_command("true");
         assert_eq!(status, TrivyAvailability::Available);
     }
+
+    #[test]
+    fn malformed_trivy_json_output_gives_failed_status() {
+        rust_i18n::set_locale("en");
+
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'trivy test\n'
+  exit 0
+fi
+printf 'not valid json at all'
+exit 0
+"#,
+        );
+        let command = command.display().to_string();
+        let services = vec![ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("web:1")),
+        }];
+
+        let output = scan_with_commands(&services, &command, &command, Duration::from_secs(5));
+
+        assert!(
+            matches!(output.status, AdapterStatus::Failed(ref msg) if msg.contains("JSON")),
+            "expected Failed with JSON parse message, got {:?}",
+            output.status
+        );
+        assert!(output.findings.is_empty());
+
+        let _ = fs::remove_file(command);
+    }
 }

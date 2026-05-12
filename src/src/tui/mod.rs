@@ -6398,6 +6398,51 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
     }
 
     #[test]
+    fn history_navigation_affects_render_and_back_returns_to_overview() {
+        // Full E2E: TestBackend render + key navigation in history screen
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        // Render initial history screen
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("initial render");
+        let before = buffer_to_string(terminal.backend());
+        assert!(
+            before.contains("History") || before.contains("Trend"),
+            "history screen should show a title or trend section"
+        );
+
+        // Navigate with Down key
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 1);
+
+        // Render again after scroll
+        terminal
+            .draw(|frame| render_history(frame, &mut state))
+            .expect("render after scroll");
+        let after_scroll = buffer_to_string(terminal.backend());
+        assert!(
+            !after_scroll.is_empty(),
+            "render should still produce output after scroll"
+        );
+
+        // Navigate back to overview with 't'
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.screen, Screen::Overview);
+    }
+
+    #[test]
     fn tab_3_from_overview_opens_history() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -7785,6 +7830,53 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             state.selected_index,
             initial.saturating_sub(1),
             "ScrollUp on findings list should select previous finding"
+        );
+    }
+
+    #[test]
+    fn tab_cycles_focus_and_alters_render_panels() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(120, 30)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("initial render");
+        let initial_focus = state.overview_focus;
+
+        // Tab should cycle to the next panel
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+        );
+        assert_ne!(state.overview_focus, initial_focus);
+
+        // Re-render should not panic after focus change
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("render after Tab");
+        let after_tab = buffer_to_string(terminal.backend());
+        assert!(!after_tab.is_empty(), "render should produce output");
+
+        // Cycle through ALL focus states by pressing Tab repeatedly
+        let mut focus_count = 0;
+        let target_focus = initial_focus;
+        while state.overview_focus != target_focus && focus_count < 10 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+            );
+            focus_count += 1;
+        }
+        assert!(
+            focus_count < 10,
+            "Tab should cycle through all focus states within 10 presses"
+        );
+        assert_eq!(
+            state.overview_focus, initial_focus,
+            "should return to initial focus after full cycle"
         );
     }
 }

@@ -648,4 +648,43 @@ exit 0
 
         let _ = fs::remove_file(command);
     }
+
+    #[test]
+    fn dockle_non_zero_exit_with_stdout_uses_stdout_for_error() {
+        rust_i18n::set_locale("en");
+
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+  printf 'dockle test\n'
+  exit 0
+fi
+printf 'error in stdout not stderr'
+exit 1
+"#,
+        );
+        let command = command.display().to_string();
+        let services = vec![ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("web:1")),
+        }];
+
+        let output = scan_with_commands(&services, &command, &command, Duration::from_secs(5));
+
+        assert!(
+            matches!(output.status, AdapterStatus::Failed(_)),
+            "expected Failed for non-zero exit, got {:?}",
+            output.status
+        );
+        assert!(output.findings.is_empty());
+        assert_eq!(output.warnings.len(), 1);
+        // Warning should mention the stdout-derived error detail
+        assert!(
+            output.warnings[0].contains("error in stdout"),
+            "warning should contain stdout text: {}",
+            output.warnings[0]
+        );
+
+        let _ = fs::remove_file(command);
+    }
 }
