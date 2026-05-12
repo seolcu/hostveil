@@ -4801,6 +4801,38 @@ mod tests {
     }
 
     #[test]
+    fn findings_focus_renders_different_panel_styles() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal");
+
+        // List-focused render
+        state.findings_focus = FindingsFocus::List;
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("list focus");
+        let list_focus = buffer_to_string(terminal.backend());
+
+        // Detail-focused render
+        state.findings_focus = FindingsFocus::Detail;
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("detail focus");
+        let detail_focus = buffer_to_string(terminal.backend());
+
+        // Both renders should be different (detail has "Detail" heading)
+        assert!(
+            detail_focus.contains("Detail"),
+            "detail focus should show detail panel heading"
+        );
+        assert!(
+            list_focus.contains("Remediation") || list_focus.contains("Service"),
+            "list focus should show finding summary info"
+        );
+    }
+
+    #[test]
     fn findings_controls_cycle_filters_and_sort_modes() {
         let result = sample_result();
         let mut state = AppState::new(&result);

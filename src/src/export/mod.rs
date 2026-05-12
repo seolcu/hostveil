@@ -894,6 +894,19 @@ mod tests {
     }
 
     #[test]
+    fn sarif_empty_findings_has_no_results() {
+        let sarif: serde_json::Value =
+            serde_json::from_str(&scan_result_sarif(&ScanResult::default()))
+                .expect("empty SARIF should parse");
+        let results = &sarif["runs"][0]["results"];
+        assert!(results.is_array(), "results should be an array");
+        assert!(
+            results.as_array().unwrap().is_empty(),
+            "empty findings = no results"
+        );
+    }
+
+    #[test]
     fn sarif_includes_score_report_in_properties() {
         let mut result = ScanResult::default();
         result.findings.push(test_finding(
