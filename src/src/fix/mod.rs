@@ -4512,4 +4512,31 @@ mod tests {
         assert!(auto.is_empty());
         assert!(review.is_empty());
     }
+
+    #[test]
+    fn compose_edit_with_empty_diff_produces_no_change() {
+        let original = "services:\n  web:\n    image: nginx\n";
+        let action = FixAction::ComposeEdit {
+            service: "web".to_string(),
+            summary: "empty edit".to_string(),
+            diff: String::new(),
+        };
+        let (result, diff) = apply_compose_edits_to_text(original, &[action]);
+        assert_eq!(result, original, "empty diff should not change text");
+        assert!(diff.is_empty(), "empty diff should not produce diff output");
+    }
+
+    #[test]
+    fn compose_edit_with_only_minus_lines_is_noop() {
+        // Lines starting with '-' in the diff are ignored (not additions)
+        let original = "services:\n  web:\n    image: nginx\n";
+        let action = FixAction::ComposeEdit {
+            service: "web".to_string(),
+            summary: "removal-only".to_string(),
+            diff: "-  old_config: true\n-  removed: yes\n".to_string(),
+        };
+        let (result, diff) = apply_compose_edits_to_text(original, &[action]);
+        assert_eq!(result, original, "minus-only diff should not change text");
+        assert!(diff.is_empty(), "minus-only diff should not produce output");
+    }
 }

@@ -7879,4 +7879,60 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             "should return to initial focus after full cycle"
         );
     }
+
+    #[test]
+    fn overview_scroll_does_not_underflow_at_zero() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        assert_eq!(state.active_overview_scroll(), 0);
+
+        // Scrolling up at zero should stay at zero
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+        );
+        assert_eq!(state.active_overview_scroll(), 0);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.active_overview_scroll(), 0);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
+        );
+        assert_eq!(state.active_overview_scroll(), 0);
+    }
+
+    #[test]
+    fn settings_row_wraps_around_on_overflow() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        // Navigate past the last row — should wrap to 0
+        for _ in 0..10 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        assert!(
+            state.settings_row < 4,
+            "Down should wrap around, got {}",
+            state.settings_row
+        );
+
+        // Up from row 0 should clamp at 0 (no wrap)
+        state.settings_row = 0;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 0, "Up from row 0 should stay at 0");
+    }
 }

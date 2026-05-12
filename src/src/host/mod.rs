@@ -639,4 +639,29 @@ mod tests {
         assert_eq!(finding.evidence, evidence);
         assert_eq!(finding.remediation, RemediationKind::Manual);
     }
+
+    #[test]
+    fn try_command_returns_output_for_success() {
+        let result = try_command(&["echo", "hello world"]);
+        assert_eq!(result, Some("hello world".to_string()));
+    }
+
+    #[test]
+    fn try_command_returns_none_for_failure() {
+        let result = try_command(&["false"]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn try_command_returns_none_for_empty_output() {
+        // 'true' exits 0 but produces no stdout
+        let result = try_command(&["true"]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn try_command_returns_none_for_nonexistent_program() {
+        let result = try_command(&["hostveil-nonexistent-binary"]);
+        assert_eq!(result, None);
+    }
 }

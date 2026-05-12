@@ -687,4 +687,53 @@ exit 1
 
         let _ = fs::remove_file(command);
     }
+
+    #[test]
+    fn dockle_non_zero_exit_with_stderr_uses_stderr() {
+        rust_i18n::set_locale("en");
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then printf 'dockle test\n'; exit 0; fi
+>&2 printf 'stderr error\nto use'
+exit 1
+"#,
+        );
+        let cmd = command.display().to_string();
+        let services = vec![ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("web:1")),
+        }];
+        let output = scan_with_commands(&services, &cmd, &cmd, Duration::from_secs(5));
+        assert!(matches!(output.status, AdapterStatus::Failed(_)));
+        assert_eq!(output.warnings.len(), 1);
+        assert!(
+            output.warnings[0].contains("stderr error"),
+            "should capture stderr"
+        );
+        let _ = fs::remove_file(command);
+    }
+
+    #[test]
+    fn dockle_empty_report_after_filtering_produces_no_findings() {
+        rust_i18n::set_locale("en");
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then printf 'dockle test\n'; exit 0; fi
+printf '{"details":[{"code":"CIS-DI-0001","level":"PASS"}]}'
+exit 0
+"#,
+        );
+        let cmd = command.display().to_string();
+        let services = vec![ServiceSummary {
+            name: String::from("web"),
+            image: Some(String::from("web:1")),
+        }];
+        let output = scan_with_commands(&services, &cmd, &cmd, Duration::from_secs(5));
+        assert_eq!(output.status, AdapterStatus::Available);
+        assert!(
+            output.findings.is_empty(),
+            "PASS-only report should produce no findings"
+        );
+        let _ = fs::remove_file(command);
+    }
 }

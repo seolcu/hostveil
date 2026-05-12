@@ -584,4 +584,17 @@ mod tests {
         let status = detect_gitleaks_with_command("true", Duration::from_secs(1));
         assert_eq!(status, GitleaksAvailability::Available);
     }
+
+    #[test]
+    fn gitleaks_args_include_exit_code_zero() {
+        let args = gitleaks_dir_args(Path::new("/path"), Duration::from_secs(120));
+        assert!(args.contains(&String::from("--exit-code=0")));
+    }
+
+    #[test]
+    fn gitleaks_args_include_report_json_stdout() {
+        let args = gitleaks_dir_args(Path::new("/path"), Duration::from_secs(120));
+        assert!(args.contains(&String::from("--report-format=json")));
+        assert!(args.contains(&String::from("--report-path=-")));
+    }
 }
