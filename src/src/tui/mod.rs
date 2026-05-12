@@ -5316,6 +5316,23 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
     }
 
     #[test]
+    fn findings_view_renders_empty_state() {
+        let result = no_findings_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("empty findings should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("0") || content.contains("No"),
+            "empty findings should show count: {}",
+            content
+        );
+    }
+
+    #[test]
     fn findings_view_clamps_detail_scroll_after_resize_like_render() {
         let result = sample_result();
         let mut state = AppState::new(&result);

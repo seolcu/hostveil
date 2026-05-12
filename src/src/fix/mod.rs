@@ -4579,4 +4579,36 @@ mod tests {
         assert_eq!(result, original, "minus-only diff should not change text");
         assert!(diff.is_empty(), "minus-only diff should not produce output");
     }
+
+    #[test]
+    fn preview_with_native_host_does_not_execute_any_command() {
+        let dir = temp_compose_dir("preview-native-only");
+        let compose_path = dir.join("docker-compose.yml");
+        write_compose(
+            &compose_path,
+            "services:\n  web:\n    image: nginx:stable\n",
+        );
+        let findings = vec![native_host_finding("host.ssh_root_login_enabled")];
+
+        let plan = preview_with_external(
+            &compose_path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            !plan.system_actions.is_empty(),
+            "NativeHost should produce system_actions"
+        );
+        assert!(
+            plan.system_actions[0]
+                .summary()
+                .contains("disable SSH root login"),
+            "should be the root login action"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
 }
