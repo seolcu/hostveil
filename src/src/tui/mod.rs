@@ -4891,6 +4891,71 @@ mod tests {
     }
 
     #[test]
+    fn findings_severity_filter_affects_rendered_count() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal");
+
+        // Render with no filter (All severities)
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("unfiltered render");
+        let before = buffer_to_string(terminal.backend());
+
+        // Filter to Critical only
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('S'), KeyModifiers::SHIFT),
+        );
+        state.clamp_selection(&result);
+        assert_eq!(state.severity_filter, Some(Severity::Critical));
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("critical-only render");
+        let after = buffer_to_string(terminal.backend());
+
+        // The filtered render should have fewer findings lines
+        assert_ne!(
+            before, after,
+            "severity filter should change rendered output"
+        );
+    }
+
+    #[test]
+    fn findings_source_filter_affects_rendered_count() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("unfiltered render");
+
+        // Filter to NativeCompose only
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.source_filter, Some(Source::NativeCompose));
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("filtered render");
+        let content = buffer_to_string(terminal.backend());
+
+        // Should show "NativeCompose" or the finding count decreased
+        assert!(
+            state.finding_count() < result.findings.len() || content.contains("NativeCompose"),
+            "source filter should reduce finding count or show filter label"
+        );
+    }
+
+    #[test]
     fn findings_controls_cycle_remediation_filter_states() {
         let result = sample_result();
         let mut state = AppState::new(&result);
@@ -7119,6 +7184,167 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             state.screen,
             Screen::Findings,
             "clicking findings tab should open Findings"
+        );
+    }
+
+    #[test]
+    fn mouse_click_on_finding_list_selects_finding() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings render");
+
+        // Find the first FindingList hitbox
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::FindingList(0)))
+            .expect("first FindingList hitbox should exist")
+            .clone();
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.selected_index, 0,
+            "clicking first finding list item should select index 0"
+        );
+        assert_eq!(
+            state.findings_focus,
+            FindingsFocus::List,
+            "clicking finding list should focus list"
+        );
+    }
+
+    #[test]
+    fn mouse_click_settings_row_adjusts_setting() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_settings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("settings render");
+
+        let initial_theme = state.theme_preset;
+
+        // Find the first SettingsRow (Theme) hitbox
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::SettingsRow(0)))
+            .expect("Theme SettingsRow hitbox should exist")
+            .clone();
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(state.settings_row, 0, "clicking Theme row should select it");
+        assert_ne!(
+            state.theme_preset, initial_theme,
+            "clicking Theme row should cycle theme"
+        );
+    }
+
+    #[test]
+    fn mouse_click_on_detail_panel_focuses_detail() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings render");
+
+        // Find FindingsDetail hitbox
+        let (rect, _) = state
+            .hit_boxes
+            .iter()
+            .find(|(_, target)| matches!(target, HitTarget::FindingsDetail))
+            .expect("FindingsDetail hitbox should exist")
+            .clone();
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.findings_focus,
+            FindingsFocus::Detail,
+            "clicking detail panel should focus detail"
+        );
+    }
+
+    #[test]
+    fn mouse_click_on_overview_panel_focuses_panel() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+        let mut terminal = Terminal::new(TestBackend::new(120, 30)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("overview render");
+
+        let initial_focus = state.overview_focus;
+
+        // Click on the next panel (different from initial)
+        let (rect, target) = state
+            .hit_boxes
+            .iter()
+            .find(
+                |(_, target)| matches!(target, HitTarget::OverviewPanel(f) if *f != initial_focus),
+            )
+            .expect("overview panel hitbox should exist")
+            .clone();
+
+        let HitTarget::OverviewPanel(expected_focus) = target else {
+            panic!("wrong target")
+        };
+
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x,
+                row: rect.y,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(
+            state.overview_focus, expected_focus,
+            "clicking overview panel should focus it"
         );
     }
 

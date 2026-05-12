@@ -616,6 +616,24 @@ exit 0
     }
 
     #[test]
+    fn dockle_detect_with_stderr_captures_stderr() {
+        rust_i18n::set_locale("en");
+        let command = temp_command(
+            r#"#!/usr/bin/env bash
+>&2 printf 'dockle version mismatch'
+exit 1
+"#,
+        );
+        let status = detect_dockle_with_command(command.display().to_string().as_str());
+        assert!(
+            matches!(&status, DockleAvailability::Failed(msg) if msg.contains("version mismatch")),
+            "stderr should be captured: {:?}",
+            status
+        );
+        let _ = fs::remove_file(command);
+    }
+
+    #[test]
     fn malformed_dockle_json_output_gives_failed_status() {
         rust_i18n::set_locale("en");
 
