@@ -948,4 +948,19 @@ mod tests {
         assert!(project.services.contains_key("app"));
         fs::remove_dir_all(root).unwrap();
     }
+
+    #[test]
+    fn detect_mount_type_handles_tilde_path() {
+        assert_eq!(detect_mount_type(Some("~/data")), "bind");
+    }
+
+    #[test]
+    fn detect_mount_type_handles_absolute_path() {
+        assert_eq!(detect_mount_type(Some("/srv/data")), "bind");
+    }
+
+    #[test]
+    fn detect_mount_type_handles_relative_with_dotdot() {
+        assert_eq!(detect_mount_type(Some("../shared")), "bind");
+    }
 }

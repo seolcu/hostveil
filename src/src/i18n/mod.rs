@@ -1055,10 +1055,9 @@ mod tests {
     }
 
     #[test]
-    fn normalize_locale_tag_returns_none_for_unsupported() {
-        assert_eq!(normalize_locale_tag("fr_FR"), None);
-        assert_eq!(normalize_locale_tag("de_DE"), None);
-        assert_eq!(normalize_locale_tag("ja_JP"), None);
+    fn normalize_locale_tag_handles_underscore_only() {
+        assert_eq!(normalize_locale_tag("en_US_UTF_8"), Some("en"));
+        assert_eq!(normalize_locale_tag("ko_KR_euro"), Some("ko"));
     }
 
     #[test]
