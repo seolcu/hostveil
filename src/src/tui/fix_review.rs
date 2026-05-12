@@ -425,10 +425,7 @@ fn render(
                 ]));
                 summary.push(Line::from(vec![
                     Span::raw("    "),
-                    Span::styled(
-                        format!("$ {}", command),
-                        Style::default().fg(Color::Cyan),
-                    ),
+                    Span::styled(format!("$ {}", command), Style::default().fg(Color::Cyan)),
                 ]));
             }
         }
