@@ -183,8 +183,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(88, 91, 112)),
             title: Style::new().fg(Color::Rgb(137, 180, 250)),
             muted: Style::new().fg(Color::Rgb(127, 132, 156)),
-            highlight: Style::new()
-                .bg(Color::Rgb(70, 71, 95)),
+            highlight: Style::new().bg(Color::Rgb(70, 71, 95)),
             tab_active: Style::new()
                 .fg(Color::Rgb(137, 180, 250))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -219,8 +218,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(76, 86, 106)),
             title: Style::new().fg(Color::Rgb(136, 192, 208)),
             muted: Style::new().fg(Color::Rgb(143, 188, 187)),
-            highlight: Style::new()
-                .bg(Color::Rgb(82, 91, 110)),
+            highlight: Style::new().bg(Color::Rgb(82, 91, 110)),
             tab_active: Style::new()
                 .fg(Color::Rgb(136, 192, 208))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -255,8 +253,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(68, 76, 113)),
             title: Style::new().fg(Color::Rgb(122, 162, 247)),
             muted: Style::new().fg(Color::Rgb(125, 135, 185)),
-            highlight: Style::new()
-                .bg(Color::Rgb(65, 72, 100)),
+            highlight: Style::new().bg(Color::Rgb(65, 72, 100)),
             tab_active: Style::new()
                 .fg(Color::Rgb(122, 162, 247))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -291,8 +288,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(102, 92, 84)),
             title: Style::new().fg(Color::Rgb(131, 165, 152)),
             muted: Style::new().fg(Color::Rgb(168, 153, 132)),
-            highlight: Style::new()
-                .bg(Color::Rgb(85, 80, 77)),
+            highlight: Style::new().bg(Color::Rgb(85, 80, 77)),
             tab_active: Style::new()
                 .fg(Color::Rgb(131, 165, 152))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -327,8 +323,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(98, 114, 164)),
             title: Style::new().fg(Color::Rgb(139, 233, 253)),
             muted: Style::new().fg(Color::Rgb(98, 114, 164)),
-            highlight: Style::new()
-                .bg(Color::Rgb(90, 93, 115)),
+            highlight: Style::new().bg(Color::Rgb(90, 93, 115)),
             tab_active: Style::new()
                 .fg(Color::Rgb(139, 233, 253))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -363,8 +358,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(117, 113, 94)),
             title: Style::new().fg(Color::Rgb(102, 217, 239)),
             muted: Style::new().fg(Color::Rgb(117, 113, 94)),
-            highlight: Style::new()
-                .bg(Color::Rgb(95, 94, 82)),
+            highlight: Style::new().bg(Color::Rgb(95, 94, 82)),
             tab_active: Style::new()
                 .fg(Color::Rgb(102, 217, 239))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -399,8 +393,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(180, 180, 180)),
             title: Style::new().fg(Color::Rgb(0, 102, 204)),
             muted: Style::new().fg(Color::Rgb(136, 136, 136)),
-            highlight: Style::new()
-                .bg(Color::Rgb(200, 200, 200)),
+            highlight: Style::new().bg(Color::Rgb(200, 200, 200)),
             tab_active: Style::new()
                 .fg(Color::Rgb(0, 102, 204))
                 .add_modifier(ratatui::style::Modifier::BOLD),
@@ -435,8 +428,7 @@ impl Theme {
             border: Style::new().fg(Color::Rgb(147, 161, 161)),
             title: Style::new().fg(Color::Rgb(38, 139, 210)),
             muted: Style::new().fg(Color::Rgb(147, 161, 161)),
-            highlight: Style::new()
-                .bg(Color::Rgb(220, 214, 195)),
+            highlight: Style::new().bg(Color::Rgb(220, 214, 195)),
             tab_active: Style::new()
                 .fg(Color::Rgb(38, 139, 210))
                 .add_modifier(ratatui::style::Modifier::BOLD),
