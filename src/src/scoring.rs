@@ -367,4 +367,41 @@ mod tests {
         assert_eq!(report.axis_scores[&Axis::HostHardening], 65);
         assert!(!report.axis_scores.contains_key(&Axis::SensitiveData));
     }
+
+    #[test]
+    fn coverage_both_enabled_uses_all_axes() {
+        let findings = [
+            finding(Axis::SensitiveData, Severity::Critical, "secret"),
+            finding(Axis::ExcessivePermissions, Severity::High, "mode"),
+            finding(Axis::HostHardening, Severity::Medium, "ssh"),
+        ];
+        let report = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: true,
+                host_hardening: true,
+            },
+        );
+        assert!(report.axis_scores.contains_key(&Axis::SensitiveData));
+        assert!(report.axis_scores.contains_key(&Axis::ExcessivePermissions));
+        assert!(report.axis_scores.contains_key(&Axis::HostHardening));
+        assert_eq!(report.axis_scores.len(), 5); // All 4 compose + 1 host
+    }
+
+    #[test]
+    fn coverage_all_disabled_returns_empty_scores() {
+        let findings = [finding(Axis::SensitiveData, Severity::Critical, "secret")];
+        let report = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: false,
+                host_hardening: false,
+            },
+        );
+        assert!(
+            report.axis_scores.is_empty(),
+            "no coverage = no axis scores"
+        );
+        assert_eq!(report.overall, 100, "no axes = perfect score");
+    }
 }

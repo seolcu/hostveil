@@ -1079,4 +1079,11 @@ mod tests {
     fn locale_override_parser_handles_locale_without_value() {
         assert_eq!(locale_override_from_args(&[String::from("--locale")]), None);
     }
+
+    #[test]
+    fn tr_fix_requires_terminal_returns_non_empty() {
+        let result = super::tr_fix_requires_terminal();
+        assert!(!result.is_empty());
+        assert!(result.contains("terminal") || result.contains("TTY"));
+    }
 }

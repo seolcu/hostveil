@@ -290,4 +290,15 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn history_trims_to_max_entries() {
+        let mut history = ScanHistory::default();
+        let total = MAX_HISTORY_ENTRIES + 5;
+        for _ in 0..total {
+            history.record(&dummy_scan_result(50, 1));
+        }
+        assert_eq!(history.entries.len(), MAX_HISTORY_ENTRIES);
+        assert_eq!(history.previous_overall(), Some(50));
+    }
 }

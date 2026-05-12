@@ -333,4 +333,18 @@ mod tests {
         let _ = Source::Lynis;
         let _ = Source::Gitleaks;
     }
+
+    #[test]
+    fn severity_from_key_roundtrip() {
+        for s in Severity::ALL {
+            assert_eq!(Severity::from_key(s.as_key()), Some(s));
+        }
+    }
+
+    #[test]
+    fn axis_from_key_roundtrip() {
+        for a in Axis::ALL {
+            assert_eq!(Axis::from_key(a.as_key()), Some(a));
+        }
+    }
 }
