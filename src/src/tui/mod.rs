@@ -6979,4 +6979,91 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             "clicking findings tab should open Findings"
         );
     }
+
+    #[test]
+    fn selected_finding_preserves_severity_foreground_color() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.selected_index = 0; // Critical finding (adminer, severity = Critical)
+
+        let mut terminal = Terminal::new(TestBackend::new(100, 24)).expect("terminal should build");
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("findings should render");
+
+        let buffer = terminal.backend().buffer();
+        let area = terminal.backend().size().unwrap();
+
+        // The selected item starts with "> " highlight symbol at column 1 (after padding).
+        let mut selected_row = None;
+        for y in 0..area.height {
+            if buffer[(1, y)].symbol() == ">" && buffer[(2, y)].symbol() == " " {
+                selected_row = Some(y);
+                break;
+            }
+        }
+        let row = selected_row.expect("selected item with '> ' prefix should be visible");
+
+        // The title text should have a non-Reset foreground color (severity color),
+        // AND it should NOT be the same as the highlight background color (which
+        // would make it invisible). With the fix, highlight has no fg, so span
+        // styles' fg wins.
+        let severity_fg = state.theme.crit; // for Critical finding
+        let mut found_severity_fg = false;
+        for x in 3..area.width.min(80) {
+            let cell = &buffer[(x, row)];
+            let fg = cell.style().fg;
+            let ch = cell.symbol();
+            if ch != " " && fg == Some(severity_fg) {
+                found_severity_fg = true;
+                break;
+            }
+        }
+        assert!(
+            found_severity_fg,
+            "selected finding title text must carry severity foreground color ({:?})",
+            severity_fg
+        );
+    }
+
+    #[test]
+    fn f_key_on_findings_does_not_change_screen_to_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        assert_eq!(state.screen, Screen::Findings);
+
+        // Select a finding with related_service and Auto/Review remediation
+        state.selected_index = state
+            .sorted_indices
+            .iter()
+            .position(|index| {
+                result
+                    .findings
+                    .get(*index)
+                    .is_some_and(|f| f.id == "exposure.admin_interface_public")
+            })
+            .expect("adminer finding should exist");
+
+        let action = handle_findings_key(
+            &mut state,
+            &result,
+            crossterm::event::KeyEvent::from(crossterm::event::KeyCode::Char('f')),
+        );
+
+        // The f key should return TriggerFix (exiting the TUI), NOT change screen
+        assert!(
+            matches!(action, Some(TuiAction::TriggerFix { .. })),
+            "f key on fixable finding should return TriggerFix"
+        );
+        // Screen should still be Findings — if TriggerFix is returned, the event
+        // loop exits and the fix flow starts in a separate terminal. But the state
+        // itself should not be mutated to Overview.
+        assert_eq!(
+            state.screen,
+            Screen::Findings,
+            "f key should not set screen back to Overview; it returns TriggerFix instead"
+        );
+    }
 }
