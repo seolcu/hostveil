@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to hostveil!
 
+This document is developer-facing. End-user installation, quick-start, and usage guidance belongs in `README.md` / `README.ko.md`. AI-specific workflow rules belong in `AGENTS.md`.
+
 ## Git Workflow
 
 We use **GitHub Flow**:
@@ -252,12 +254,16 @@ hostveil is in active early development. The implementation is planned in two ph
 - **Integration-first** — hostveil should combine native Compose and host checks with optional scanner results instead of reimplementing every existing tool
 - **TUI-first with JSON export** — the main experience is interactive, but a small headless JSON path exists for automation and regression tests
 - **Host checks are first-class** — SSH and other host-hardening signals belong in the same product, not in a separate side tool
-- **Compose remediation stays narrow in v1** — automatic writes remain limited to Compose-focused changes with clear review boundaries
+- **Reviewed remediation stays safety-first in v1** — automatic and reviewed changes remain previewable and backup-safe, while adapter-driven host edits and shell commands must stay explicit, auditable, and bounded by the fix engine contract
 
 ### Current Implementation Status
 
 - Cargo workspace initialized at the repository root
-- Active Rust crate scaffolded under `src/`
+- Active Rust crate implemented under `src/`
+- Adapter fix engine supports `ComposeEdit`, `HostEdit`, and `ShellCommand` action variants through `preview_with_external` / `apply_with_external`
+- Dockle and Lynis findings can now reach the remediation flow through the shared `ScanResult` pipeline
+- Overview panels and History screen use the shared `Panel` component, and modal overlays share common backdrop/frame helpers
+- 700+ behavioral and render tests protect TUI state transitions, fix execution, adapter classification, and rules coverage
 - Pinned stable toolchain via `rust-toolchain.toml`
 - `ratatui` + `crossterm` TUI wired and localized through `rust-i18n`
 - Responsive overview and findings layouts with persisted Adaptive, Wide, Balanced, Compact, and Focus presets

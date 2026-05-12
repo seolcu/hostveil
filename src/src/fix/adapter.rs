@@ -10,7 +10,7 @@ pub fn classify_adapter_findings(
     let mut review_applied = Vec::new();
 
     for finding in findings {
-        if finding.remediation == RemediationKind::None {
+        if finding.remediation == RemediationKind::Manual {
             continue;
         }
 
@@ -364,11 +364,11 @@ mod tests {
     }
 
     #[test]
-    fn dockle_remediation_none_skipped() {
+    fn dockle_remediation_manual_skipped() {
         let finding = make_finding(
             "dockle.skipped",
             Source::Dockle,
-            RemediationKind::None,
+            RemediationKind::Manual,
             Some("web"),
             Some("DKL-DI-0006"),
         );
@@ -679,7 +679,7 @@ mod tests {
         let finding = make_finding(
             "trivy.image_vulnerabilities.nginx",
             Source::Trivy,
-            RemediationKind::None,
+            RemediationKind::Manual,
             Some("web"),
             None,
         );

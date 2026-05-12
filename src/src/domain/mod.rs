@@ -101,7 +101,8 @@ impl Source {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RemediationKind {
-    None,
+    #[serde(alias = "none")]
+    Manual,
     #[serde(alias = "safe")]
     Auto,
     #[serde(alias = "guided")]
@@ -310,7 +311,7 @@ mod tests {
 
     #[test]
     fn remediation_kind_all_variants() {
-        let _ = RemediationKind::None;
+        let _ = RemediationKind::Manual;
         let _ = RemediationKind::Auto;
         let _ = RemediationKind::Review;
     }

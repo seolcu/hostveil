@@ -36,14 +36,16 @@ At the same time, the project still needs a clear v1 boundary. Trying to replace
    - Update / Supply Chain Risk
    - Host Hardening
 
-6. **Native remediation stays intentionally narrow in v1.**
-   - Safe automatic writes remain limited to Compose-focused changes that can be previewed, backed up, and reviewed clearly.
-   - Host configuration changes are detect-and-guide in v1, not auto-applied.
+6. **Native remediation stays intentionally safety-first in v1.**
+   - Compose remediation remains the default path for automatic fixes.
+   - Adapter-driven host-level actions are allowed when they fit the fix engine contract: previewable where applicable, backup-safe where files are written, explicit in review UI, and bounded to well-understood actions such as `HostEdit` and `ShellCommand`.
+   - hostveil still does not try to replace every host hardening task with automation; unsupported or high-risk changes remain guidance-only.
 
 ## Consequences
 
-- The Rust implementation should start with a generalized findings model rather than a Compose-service-only model.
+- The Rust implementation should use a generalized findings model rather than a Compose-service-only model.
 - TUI and JSON export should consume the same scan result structure.
-- Optional adapters such as Trivy can be added without making them installation blockers.
+- Optional adapters such as Trivy, Dockle, Lynis, and Gitleaks can be added without making them installation blockers.
+- Any new remediation-capable adapter must document its action boundary through the ADR set and the fix engine contract.
 - CI and release workflows should focus on Linux artifacts first.
 - Documentation should steer Windows contributors toward WSL and should not promise native Windows runtime support.

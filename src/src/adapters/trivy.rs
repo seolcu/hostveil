@@ -357,7 +357,7 @@ fn summary_to_finding(summary: &TrivyImageSummary, services: &[ServiceSummary]) 
         why_risky: t!("finding.trivy.image_vulnerabilities.why").into_owned(),
         how_to_fix: t!("finding.trivy.image_vulnerabilities.fix").into_owned(),
         evidence,
-        remediation: RemediationKind::None,
+        remediation: RemediationKind::Manual,
     }
 }
 

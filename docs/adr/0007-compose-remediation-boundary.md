@@ -21,6 +21,7 @@ The fix engine supports three action types, each with distinct safety properties
 
 The three kinds map to remediation workflows:
 
+- `Manual`: changes hostveil intentionally leaves to the operator because they are outside the supported automation boundary or require external steps
 - `Auto`: changes hostveil can complete end-to-end after the diff review
 - `Review`: changes hostveil can drive, but only after the operator confirms
 

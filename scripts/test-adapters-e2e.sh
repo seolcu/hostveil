@@ -96,8 +96,8 @@ YAML
 
     JSON_OUTPUT=$("$BINARY_PATH" --json --compose "$compose_file" --adapters dockle 2>&1) || true
 
-    if echo "$JSON_OUTPUT" | grep -q '"remediation": "none"'; then
-        echo "  OK: dockle findings present with remediation=none"
+    if echo "$JSON_OUTPUT" | grep -q '"remediation": "manual"'; then
+        echo "  OK: dockle findings present with remediation=manual"
     else
         echo "  WARN: expected dockle findings not found in output"
     fi

@@ -245,7 +245,7 @@ fn aggregated_to_finding(summary: AggregatedFileFinding) -> Finding {
             (String::from("rule_ids"), rule_ids.join(",")),
             (String::from("lines"), lines.join(",")),
         ]),
-        remediation: RemediationKind::None,
+        remediation: RemediationKind::Manual,
     }
 }
 

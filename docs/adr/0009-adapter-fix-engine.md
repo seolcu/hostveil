@@ -58,7 +58,7 @@ The partition logic in `build_fix_plan`:
    - `ComposeEdit` → `compose_actions` (applied to compose document text)
    - `HostEdit` → `host_actions` (file writes with backup)
    - `ShellCommand` → `system_actions` (shell execution)
-3. `adapter_auto` / `adapter_review` proposals are merged with native proposals for display.
+3. `adapter_auto` / `adapter_review` proposals are merged with native proposals for display, while `RemediationKind::Manual` findings are intentionally skipped by the execution pipeline.
 
 ### Action Execution
 

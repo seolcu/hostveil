@@ -50,7 +50,7 @@ The shared taxonomy is fixed around the existing Rust domain model:
 - `Axis`: Sensitive Data, Excessive Permissions, Unnecessary Exposure, Update / Supply Chain Risk, Host Hardening
 - `Scope`: Service, Image, Host, Project
 - `Source`: Native Compose, Native Host, Trivy, Lynis, Dockle
-- `RemediationKind`: None, Auto, Review
+- `RemediationKind`: Manual, Auto, Review
 
 Optional adapters are treated as coverage extenders, not as separate result systems.
 
