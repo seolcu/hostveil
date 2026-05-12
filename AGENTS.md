@@ -55,7 +55,7 @@ Testing priority order (highest first):
 
 ## Test Count Baseline
 
-- **Workspace tests**: 785+ (lib: 785, main: 0, doc: 0)
+- **Workspace tests**: 798+ (lib: 798, main: 0, doc: 0)
 - **Target coverage**: Adding tests is preferred over modifying existing ones. Each new feature or fix must add at minimum one behavioral E2E test that simulates real user interaction.
 
 ## Documentation Rules

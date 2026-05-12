@@ -404,4 +404,22 @@ mod tests {
         );
         assert_eq!(report.overall, 100, "no axes = perfect score");
     }
+
+    #[test]
+    fn single_low_penalty_is_seven() {
+        let findings = [finding(Axis::HostHardening, Severity::Low, "weak_ssh")];
+        let report = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: false,
+                host_hardening: true,
+            },
+        );
+        assert_eq!(report.overall, 95, "Low penalty should be 5");
+        assert_eq!(
+            report.severity_deductions[&Severity::Low],
+            5,
+            "Low severity maps to 5 point deduction"
+        );
+    }
 }
