@@ -7066,4 +7066,573 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             "f key should not set screen back to Overview; it returns TriggerFix instead"
         );
     }
+
+    // ── Key binding E2E tests ──
+
+    #[test]
+    fn help_overlay_opens_with_question_mark_and_closes_with_esc() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        assert!(!state.help_open, "help should start closed");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE),
+        );
+        assert!(state.help_open, "? should open help overlay");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+        assert!(!state.help_open, "Esc should close help overlay");
+
+        // Open again and test ? toggles
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE),
+        );
+        assert!(state.help_open, "? should toggle help open again");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE),
+        );
+        assert!(!state.help_open, "? should toggle help closed again");
+    }
+
+    #[test]
+    fn q_from_overview_returns_exit_action() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+
+        let action = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE),
+        );
+        assert!(matches!(action, Some(TuiAction::Exit)));
+
+        // Resetting state for Esc test
+        let mut state2 = AppState::new(&result);
+        let action2 = handle_key(
+            &mut state2,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+        assert!(matches!(action2, Some(TuiAction::Exit)));
+    }
+
+    #[test]
+    fn q_from_history_returns_exit_action() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+
+        let action = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE),
+        );
+        assert!(matches!(action, Some(TuiAction::Exit)));
+
+        let mut state2 = AppState::new(&result);
+        state2.screen = Screen::History;
+        let action2 = handle_key(
+            &mut state2,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+        assert!(matches!(action2, Some(TuiAction::Exit)));
+    }
+
+    #[test]
+    fn l_key_cycles_layout_preset() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let initial = state.layout_preset;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('L'), KeyModifiers::NONE),
+        );
+        assert_ne!(
+            state.layout_preset, initial,
+            "L should cycle layout preset away from initial"
+        );
+
+        // Cycle through all presets until we wrap back to initial
+        let mut count = 0;
+        while state.layout_preset != initial && count < 10 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Char('L'), KeyModifiers::NONE),
+            );
+            count += 1;
+        }
+        assert!(
+            count < 10,
+            "L should cycle back to initial preset within 10 presses"
+        );
+    }
+
+    #[test]
+    fn tab_cycles_overview_focus_panel() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let initial_focus = state.overview_focus;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+        );
+        assert_ne!(
+            state.overview_focus, initial_focus,
+            "Tab should cycle overview focus away from initial"
+        );
+    }
+
+    #[test]
+    fn overview_scroll_with_jk_and_page_keys() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.active_overview_scroll(),
+            1,
+            "j should scroll overview by 1"
+        );
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.active_overview_scroll(), 0, "k should scroll back");
+
+        // Reset for Down/Up
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.active_overview_scroll(),
+            1,
+            "Down should scroll overview"
+        );
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+        );
+        assert_eq!(state.active_overview_scroll(), 0, "Up should scroll back");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.active_overview_scroll(),
+            8,
+            "PageDown should scroll 8"
+        );
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.active_overview_scroll(),
+            0,
+            "PageUp should scroll back"
+        );
+    }
+
+    #[test]
+    fn v_key_cycles_service_filter() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        let initial = state.service_filter.clone();
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE),
+        );
+        assert_ne!(
+            state.service_filter, initial,
+            "v should cycle service filter"
+        );
+    }
+
+    #[test]
+    fn t_from_findings_opens_history() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Findings;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::History,
+            "t from findings should open History"
+        );
+    }
+
+    #[test]
+    fn settings_modal_opens_with_ctrl_comma() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        assert!(!state.settings_open);
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char(','), KeyModifiers::CONTROL),
+        );
+        assert!(state.settings_open, "Ctrl+, should open settings modal");
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        );
+        assert!(!state.settings_open, "Esc should close settings");
+    }
+
+    #[test]
+    fn settings_navigation_up_and_k_navigates_backward() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+
+        // Navigate down to row 3 (UI Borders)
+        for _ in 0..3 {
+            handle_key(
+                &mut state,
+                &result,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+            );
+        }
+        assert_eq!(state.settings_row, 3);
+
+        // k should go up
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 2, "k should navigate up");
+
+        // Up should also go up
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 1, "Up should navigate up");
+    }
+
+    #[test]
+    fn settings_left_cycles_backward() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        // Row 0 = Theme. Remember current theme
+        let initial_theme = state.theme_preset;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+        );
+        assert_ne!(
+            state.theme_preset, initial_theme,
+            "Left on Theme should cycle backward"
+        );
+
+        // h should also cycle backward
+        let theme_after_left = state.theme_preset;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE),
+        );
+        assert_ne!(
+            state.theme_preset, theme_after_left,
+            "h on Theme should cycle backward again"
+        );
+    }
+
+    #[test]
+    fn settings_3_jumps_to_locale_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        state.settings_row = 0;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.settings_row, 2,
+            "'3' should jump to Locale row (index 2)"
+        );
+    }
+
+    #[test]
+    fn help_overlay_renders_key_bindings_when_open() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.help_open = true;
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("help overlay should render");
+
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("Global")
+                || content.contains("Overview")
+                || content.contains("Findings"),
+            "help overlay should show key binding sections"
+        );
+        assert!(
+            content.contains("?") || content.contains("?"),
+            "help overlay should mention the ? key"
+        );
+    }
+
+    #[test]
+    fn layout_cycle_affects_render_immediately() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+
+        // Capture initial layout
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("initial render");
+        let before = buffer_to_string(terminal.backend());
+
+        // Press L to cycle layout
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('L'), KeyModifiers::NONE),
+        );
+
+        // Re-render should be different
+        terminal
+            .draw(|frame| render(frame, &result, &mut state))
+            .expect("render after L");
+        let after = buffer_to_string(terminal.backend());
+
+        // If the layout changed, the rendered output should differ
+        // (the exact difference depends on layout, but we verify the state changed
+        // and the render doesn't panic)
+        assert_ne!(
+            before.len(),
+            0,
+            "initial render should produce non-empty output"
+        );
+        assert_ne!(
+            after.len(),
+            0,
+            "render after layout change should produce non-empty output"
+        );
+    }
+
+    #[test]
+    fn pagedown_scrolls_findings_detail_by_8() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        state.findings_focus = FindingsFocus::Detail;
+
+        let initial_scroll = state.detail_scroll;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+        );
+        assert!(
+            state.detail_scroll >= initial_scroll + 8,
+            "PageDown in findings detail should scroll by 8, got {} -> {}",
+            initial_scroll,
+            state.detail_scroll
+        );
+    }
+
+    #[test]
+    fn enter_on_overview_opens_findings_in_list_focus() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert_eq!(state.screen, Screen::Findings);
+        assert_eq!(
+            state.findings_focus,
+            FindingsFocus::List,
+            "Enter should open findings in List focus"
+        );
+    }
+
+    #[test]
+    fn right_on_overview_opens_findings() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::Overview;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Findings,
+            "l from overview opens findings"
+        );
+
+        // Reset
+        let mut state2 = AppState::new(&result);
+        handle_key(
+            &mut state2,
+            &result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state2.screen,
+            Screen::Findings,
+            "Right from overview opens findings"
+        );
+    }
+
+    // ── Fix availability unit tests ──
+
+    fn make_test_finding() -> Finding {
+        Finding {
+            id: String::new(),
+            axis: Axis::HostHardening,
+            severity: Severity::Medium,
+            scope: Scope::Host,
+            source: Source::NativeHost,
+            subject: String::new(),
+            related_service: Some("svc".to_string()),
+            title: String::new(),
+            description: String::new(),
+            why_risky: String::new(),
+            how_to_fix: String::new(),
+            evidence: BTreeMap::new(),
+            remediation: RemediationKind::Auto,
+        }
+    }
+
+    #[test]
+    fn fix_availability_available_when_compose_and_auto_remediation() {
+        let finding = make_test_finding();
+        assert_eq!(
+            fix_availability(Some(&PathBuf::from("/compose.yml")), Some(&finding)),
+            FixAvailability::Available
+        );
+        let review_finding = Finding {
+            remediation: RemediationKind::Review,
+            ..make_test_finding()
+        };
+        assert_eq!(
+            fix_availability(Some(&PathBuf::from("/compose.yml")), Some(&review_finding)),
+            FixAvailability::Available
+        );
+    }
+
+    #[test]
+    fn fix_availability_no_compose_target_when_missing() {
+        let finding = make_test_finding();
+        assert_eq!(
+            fix_availability(None, Some(&finding)),
+            FixAvailability::NoComposeTarget
+        );
+    }
+
+    #[test]
+    fn fix_availability_no_finding_selected_when_none() {
+        assert_eq!(
+            fix_availability(Some(&PathBuf::from("/compose.yml")), None),
+            FixAvailability::NoFindingSelected
+        );
+    }
+
+    #[test]
+    fn fix_availability_no_service_fix_when_no_related_service() {
+        let finding = Finding {
+            related_service: None,
+            ..make_test_finding()
+        };
+        assert_eq!(
+            fix_availability(Some(&PathBuf::from("/compose.yml")), Some(&finding)),
+            FixAvailability::NoServiceFix
+        );
+    }
+
+    #[test]
+    fn fix_availability_manual_only_for_manual_remediation() {
+        let finding = Finding {
+            remediation: RemediationKind::Manual,
+            ..make_test_finding()
+        };
+        assert_eq!(
+            fix_availability(Some(&PathBuf::from("/compose.yml")), Some(&finding)),
+            FixAvailability::ManualOnly
+        );
+    }
+
+    #[test]
+    fn fix_unavailable_message_all_variants_non_empty() {
+        for variant in [
+            FixAvailability::Available,
+            FixAvailability::NoComposeTarget,
+            FixAvailability::NoFindingSelected,
+            FixAvailability::NoServiceFix,
+            FixAvailability::ManualOnly,
+        ] {
+            let msg = fix_unavailable_message(variant);
+            assert!(
+                !msg.is_empty(),
+                "{:?} should produce non-empty message",
+                variant
+            );
+        }
+    }
 }

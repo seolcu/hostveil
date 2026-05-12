@@ -325,4 +325,103 @@ mod tests {
 
         assert!(result.is_err(), "save should fail for unwritable dir");
     }
+
+    #[test]
+    fn persist_theme_updates_and_roundtrips() {
+        let path = temp_settings_path("persist-theme");
+        let settings = AppSettings {
+            theme: Some(String::from("monokai")),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings).expect("save should succeed");
+
+        let loaded = load_from_path(&path).expect("load should succeed");
+        assert_eq!(loaded.theme.as_deref(), Some("monokai"));
+
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn persist_locale_updates_and_roundtrips() {
+        let path = temp_settings_path("persist-locale");
+        let settings = AppSettings {
+            locale: Some(String::from("ko")),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings).expect("save should succeed");
+
+        let loaded = load_from_path(&path).expect("load should succeed");
+        assert_eq!(loaded.locale.as_deref(), Some("ko"));
+
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn persist_ui_borders_roundtrips() {
+        let path = temp_settings_path("persist-borders");
+        let settings = AppSettings {
+            ui_borders: Some(true),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings).expect("save should succeed");
+
+        let loaded = load_from_path(&path).expect("load should succeed");
+        assert_eq!(loaded.ui_borders, Some(true));
+
+        // Toggle off
+        let settings_off = AppSettings {
+            ui_borders: Some(false),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings_off).expect("save should succeed");
+        let loaded_off = load_from_path(&path).expect("load should succeed");
+        assert_eq!(loaded_off.ui_borders, Some(false));
+
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn persist_findings_view_roundtrips() {
+        let path = temp_settings_path("persist-findings-view");
+        let settings = AppSettings {
+            severity_filter: Some(String::from("critical")),
+            source_filter: Some(String::from("dockle")),
+            service_filter: Some(String::from("web")),
+            remediation_filter: Some(String::from("auto")),
+            sort_mode: Some(String::from("severity")),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings).expect("save should succeed");
+
+        let loaded = load_from_path(&path).expect("load should succeed");
+        assert_eq!(loaded.severity_filter.as_deref(), Some("critical"));
+        assert_eq!(loaded.source_filter.as_deref(), Some("dockle"));
+        assert_eq!(loaded.service_filter.as_deref(), Some("web"));
+        assert_eq!(loaded.remediation_filter.as_deref(), Some("auto"));
+        assert_eq!(loaded.sort_mode.as_deref(), Some("severity"));
+
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn persist_empty_findings_view_clears_all_filters() {
+        let path = temp_settings_path("persist-findings-clear");
+        let settings = AppSettings {
+            severity_filter: Some(String::from("high")),
+            source_filter: Some(String::from("lynis")),
+            ..Default::default()
+        };
+        save_to_path(&path, &settings).expect("save should succeed");
+
+        // Now save with all None — should clear
+        let cleared = AppSettings::default();
+        save_to_path(&path, &cleared).expect("save should succeed");
+
+        let loaded = load_from_path(&path).expect("load should succeed");
+        assert!(loaded.severity_filter.is_none());
+        assert!(loaded.source_filter.is_none());
+        assert!(loaded.service_filter.is_none());
+
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
 }

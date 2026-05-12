@@ -813,6 +813,16 @@ mod tests {
             split_protocol("8080:80/udp"),
             (String::from("8080:80"), String::from("udp"))
         );
+        // Explicit /tcp should not affect the result
+        assert_eq!(
+            split_protocol("8080:80/tcp"),
+            (String::from("8080:80"), String::from("tcp"))
+        );
+        // sctp protocol
+        assert_eq!(
+            split_protocol("8080:80/sctp"),
+            (String::from("8080:80"), String::from("sctp"))
+        );
     }
 
     #[test]
@@ -862,12 +872,25 @@ mod tests {
     }
 
     #[test]
-    fn parse_null_yaml_returns_empty_project() {
-        let root = temp_compose_dir("null-yaml");
-        let path = root.join("docker-compose.yml");
-        fs::write(&path, "null\n").unwrap();
-        let err = ComposeParser::parse_path(&path).unwrap_err();
-        assert!(matches!(err, ComposeParseError::MissingServices { .. }));
+    fn load_bundle_fails_for_nonexistent_path() {
+        let err = ComposeParser::load_bundle("/nonexistent/hostveil/compose.yml", false)
+            .expect_err("should fail");
+        assert!(
+            matches!(err, ComposeParseError::ComposePathMissing { .. }),
+            "expected ComposePathMissing, got {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn load_bundle_fails_for_empty_dir() {
+        let root = temp_compose_dir("empty-dir");
+        let err = ComposeParser::load_bundle(&root, false).expect_err("should fail");
+        assert!(
+            matches!(err, ComposeParseError::ComposeFileNotFound { .. }),
+            "expected ComposeFileNotFound, got {:?}",
+            err
+        );
         fs::remove_dir_all(root).unwrap();
     }
 

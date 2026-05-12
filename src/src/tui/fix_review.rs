@@ -1133,4 +1133,264 @@ mod tests {
             "compose action service should be visible"
         );
     }
+
+    #[test]
+    fn renders_host_edit_section() {
+        let mut plan = sample_plan(0, 0);
+        plan.host_actions = vec![crate::fix::FixAction::HostEdit {
+            path: PathBuf::from("/etc/ssh/sshd_config"),
+            summary: "disable root login".to_string(),
+            original_content: String::new(),
+            updated_content: "PermitRootLogin no\n".to_string(),
+            mode: None,
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with host edit should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("[HOST EDIT]"),
+            "host edit section should have [HOST EDIT] label"
+        );
+        assert!(
+            content.contains("disable root login"),
+            "host edit summary should be visible"
+        );
+        assert!(
+            content.contains("sshd_config"),
+            "host edit path should be visible"
+        );
+    }
+
+    #[test]
+    fn renders_system_actions_section() {
+        let mut plan = sample_plan(0, 0);
+        plan.system_actions = vec![crate::fix::FixAction::ShellCommand {
+            command: "systemctl enable fail2ban".to_string(),
+            summary: "enable fail2ban".to_string(),
+            rollback: None,
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with system actions should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("[SHELL]"),
+            "system actions section should have [SHELL] label"
+        );
+        assert!(
+            content.contains("enable fail2ban"),
+            "shell action summary should be visible"
+        );
+        assert!(
+            content.contains("systemctl enable fail2ban"),
+            "shell command should be visible"
+        );
+    }
+
+    #[test]
+    fn renders_all_action_sections_simultaneously() {
+        let mut plan = sample_plan(1, 1);
+        plan.host_actions = vec![crate::fix::FixAction::HostEdit {
+            path: PathBuf::from("/etc/ssh/sshd_config"),
+            summary: "disable root login".to_string(),
+            original_content: String::new(),
+            updated_content: "PermitRootLogin no\n".to_string(),
+            mode: None,
+        }];
+        plan.system_actions = vec![crate::fix::FixAction::ShellCommand {
+            command: "systemctl enable fail2ban".to_string(),
+            summary: "enable fail2ban".to_string(),
+            rollback: None,
+        }];
+        plan.compose_actions = vec![crate::fix::FixAction::ComposeEdit {
+            service: "web".to_string(),
+            summary: "add healthcheck".to_string(),
+            diff: "+  healthcheck:\n".to_string(),
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(120, 30)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with all sections should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("[HOST EDIT]"),
+            "host edit section should appear"
+        );
+        assert!(
+            content.contains("[SHELL]"),
+            "system actions section should appear"
+        );
+        assert!(
+            content.contains("[COMPOSE]"),
+            "compose actions section should appear"
+        );
+        assert!(content.contains("[AUTO]"), "auto section should appear");
+        assert!(content.contains("[REVIEW]"), "review section should appear");
+        assert!(content.contains("disable root login"), "host edit summary");
+        assert!(content.contains("enable fail2ban"), "shell summary");
+        assert!(content.contains("add healthcheck"), "compose summary");
+    }
+
+    #[test]
+    fn host_edit_section_shows_yellow_label_color() {
+        let mut plan = sample_plan(0, 0);
+        plan.host_actions = vec![crate::fix::FixAction::HostEdit {
+            path: PathBuf::from("/tmp/test.conf"),
+            summary: "test config".to_string(),
+            original_content: String::new(),
+            updated_content: "val".to_string(),
+            mode: None,
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with host edit should render");
+        let buffer = terminal.backend().buffer();
+        let area = terminal.backend().size().expect("size");
+        // "[HOST EDIT]" label is rendered with Yellow fg.
+        // Find a cell with `[` that has Yellow foreground near "HOST EDIT".
+        let mut found = false;
+        for y in 0..area.height {
+            for x in 0..area.width.saturating_sub(10) {
+                let snippet: String = (0..11).map(|dx| buffer[(x + dx, y)].symbol()).collect();
+                if snippet == "[HOST EDIT]" {
+                    // The entire span should be Yellow; check the `[` cell
+                    if buffer[(x, y)].style().fg == Some(ratatui::style::Color::Yellow) {
+                        found = true;
+                    }
+                }
+            }
+        }
+        assert!(found, "[HOST EDIT] label should be rendered in Yellow");
+    }
+
+    #[test]
+    fn shell_section_shows_magenta_label_color() {
+        let mut plan = sample_plan(0, 0);
+        plan.system_actions = vec![crate::fix::FixAction::ShellCommand {
+            command: "echo test".to_string(),
+            summary: "test shell".to_string(),
+            rollback: None,
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with system actions should render");
+        let buffer = terminal.backend().buffer();
+        let area = terminal.backend().size().expect("size");
+        let mut found = false;
+        for y in 0..area.height {
+            for x in 0..area.width.saturating_sub(7) {
+                let snippet: String = (0..8).map(|dx| buffer[(x + dx, y)].symbol()).collect();
+                if snippet == "[SHELL] "
+                    && buffer[(x, y)].style().fg == Some(ratatui::style::Color::Magenta)
+                {
+                    found = true;
+                }
+            }
+        }
+        assert!(found, "[SHELL] label should be rendered in Magenta");
+    }
+
+    // ── run_interactive_fix_flow integration tests (non-TTY path) ──
+
+    #[test]
+    fn run_interactive_fix_flow_returns_plan_without_tty_when_confirm_is_false() {
+        let dir = std::env::temp_dir().join(format!("hostveil-fix-flow-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).ok();
+        let compose_path = dir.join("docker-compose.yml");
+        std::fs::write(
+            &compose_path,
+            "services:\n  web:\n    image: nginx:latest\n    ports:\n      - \"80:80\"\n",
+        )
+        .expect("write compose");
+
+        let native_finding = crate::domain::Finding {
+            id: "host.ssh_root_login_enabled".to_string(),
+            axis: crate::domain::Axis::HostHardening,
+            severity: crate::domain::Severity::Medium,
+            scope: crate::domain::Scope::Host,
+            source: crate::domain::Source::NativeHost,
+            subject: "host".to_string(),
+            related_service: None,
+            title: "test".to_string(),
+            description: "test".to_string(),
+            why_risky: "risky".to_string(),
+            how_to_fix: "fix".to_string(),
+            evidence: std::collections::BTreeMap::new(),
+            remediation: crate::domain::RemediationKind::Review,
+        };
+        let external = vec![native_finding];
+
+        let result = super::run_interactive_fix_flow(
+            &compose_path,
+            crate::fix::FixMode::AutoFix,
+            None,
+            &external,
+            false,
+        )
+        .expect("fix flow should succeed");
+
+        let result = result.expect("should return Some result");
+        assert!(
+            !result.plan.system_actions.is_empty(),
+            "NativeHost finding should produce system_actions"
+        );
+        assert!(
+            result.plan.system_actions[0]
+                .summary()
+                .contains("disable SSH root login"),
+            "should be the root login action"
+        );
+        assert!(
+            result.plan.changed(),
+            "plan with system_actions should be changed"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn run_interactive_fix_flow_returns_empty_for_no_changes() {
+        let dir =
+            std::env::temp_dir().join(format!("hostveil-fix-flow-empty-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).ok();
+        let compose_path = dir.join("docker-compose.yml");
+        // Hardened compose — no native fixes needed
+        std::fs::write(
+            &compose_path,
+            "services:\n  web:\n    image: nginx:stable\n    ports:\n      - \"127.0.0.1:8080:80\"\n",
+        )
+        .expect("write compose");
+
+        let result = super::run_interactive_fix_flow(
+            &compose_path,
+            crate::fix::FixMode::AutoFix,
+            None,
+            &[], // no external findings
+            false,
+        )
+        .expect("fix flow should succeed");
+
+        let result = result.expect("should return Some result");
+        // No external findings → no adapter actions regardless of native changes
+        assert!(result.plan.system_actions.is_empty());
+        assert!(result.plan.host_actions.is_empty());
+        assert!(result.plan.compose_actions.is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

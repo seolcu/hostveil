@@ -124,11 +124,6 @@ fn classify_lynis_finding(finding: &Finding) -> Option<(FixAction, FixProposal)>
         .get("sample_test_ids")
         .map(|s| s.as_str())
         .unwrap_or("");
-    let _sample_solutions = finding
-        .evidence
-        .get("sample_solutions")
-        .map(|s| s.as_str())
-        .unwrap_or("");
 
     match id {
         "lynis.host_warnings" | "lynis.host_suggestions" => {
@@ -1157,5 +1152,238 @@ mod tests {
         assert!(actions.is_empty());
         assert!(auto.is_empty());
         assert!(review.is_empty());
+    }
+
+    // ── NativeHost finding classification tests ──
+
+    fn native_host_finding(id: &str) -> Finding {
+        let evidence = BTreeMap::new();
+        Finding {
+            id: id.to_string(),
+            title: format!("test finding {}", id),
+            description: "test description".to_string(),
+            why_risky: "risky".to_string(),
+            how_to_fix: "test fix".to_string(),
+            severity: Severity::Medium,
+            source: Source::NativeHost,
+            remediation: RemediationKind::Review,
+            related_service: None,
+            evidence,
+            axis: crate::domain::Axis::HostHardening,
+            scope: crate::domain::Scope::Host,
+            subject: format!("test-{}", id),
+        }
+    }
+
+    /// All single-ID match arms in `classify_native_host_finding` produce a
+    /// `ShellCommand` action with a non-empty command and a non-empty summary.
+    /// Dual-ID arms (proc_hidepid, docker_socket, selinux) are tested separately.
+    const SINGLE_ID_NATIVE_HOST_FINDINGS: &[&str] = &[
+        // SSH
+        "host.ssh_x11_forwarding_enabled",
+        "host.ssh_root_login_enabled",
+        "host.ssh_password_auth_enabled",
+        "host.ssh_empty_passwords_enabled",
+        "host.ssh_pubkey_auth_disabled",
+        "host.ssh_user_environment_enabled",
+        // tmpfs
+        "host.tmp_not_tmpfs",
+        "host.tmp_tmpfs_flags_missing",
+        // Kernel
+        "host.kernel.syn_cookies_disabled",
+        "host.kernel.aslr_disabled",
+        "host.kernel.modules_disabled_not_set",
+        // Docker
+        "host.docker_userns_remap_missing",
+        "host.docker_live_restore_disabled",
+        // Firewall
+        "host.ufw_installed_but_disabled",
+        "host.firewalld_installed_but_disabled",
+        // AppArmor
+        "host.apparmor_complain_mode",
+        // Auto-updates
+        "host.apt_unattended_upgrades_disabled",
+        "host.apt_package_lists_auto_update_disabled",
+        // fail2ban
+        "host.fail2ban_not_enabled",
+        // File permissions
+        "host.shadow_permissions_weak",
+        // Docker daemon
+        "host.docker_daemon_iptables_disabled",
+        "host.docker_daemon_tcp_public",
+    ];
+
+    #[test]
+    fn native_host_all_single_id_findings_map_to_shell_command_review() {
+        for id in SINGLE_ID_NATIVE_HOST_FINDINGS {
+            let finding = native_host_finding(id);
+            let (actions, auto, review) = classify_adapter_findings(&[finding]);
+            assert_eq!(
+                actions.len(),
+                1,
+                "{} should produce 1 action, got {}",
+                id,
+                actions.len()
+            );
+            assert!(
+                matches!(&actions[0], FixAction::ShellCommand { .. }),
+                "{} should map to ShellCommand",
+                id
+            );
+            assert!(
+                !actions[0].summary().is_empty(),
+                "{} should have non-empty summary",
+                id
+            );
+            assert!(auto.is_empty(), "{} should have 0 auto proposals", id);
+            assert_eq!(
+                review.len(),
+                1,
+                "{} should produce 1 review proposal, got {}",
+                id,
+                review.len()
+            );
+            assert_eq!(
+                review[0].remediation,
+                RemediationKind::Review,
+                "{} proposal should be Review",
+                id
+            );
+            // Verify command field is non-empty
+            if let FixAction::ShellCommand { command, .. } = &actions[0] {
+                assert!(!command.is_empty(), "{} should have non-empty command", id);
+                assert!(
+                    command.contains("sh")
+                        || command.contains("sed")
+                        || command.contains("sysctl")
+                        || command.contains("chmod")
+                        || command.contains("systemctl")
+                        || command.contains("ufw")
+                        || command.contains("setenforce")
+                        || command.contains("aa-enforce")
+                        || command.contains("apt-get")
+                        || command.contains("grep"),
+                    "{} command looks plausible: {}",
+                    id,
+                    command
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn native_host_proc_hidepid_both_ids_map_to_shell_command() {
+        for id in ["host.proc_hidepid_missing", "host.proc_hidepid_weak"] {
+            let finding = native_host_finding(id);
+            let (actions, auto, review) = classify_adapter_findings(&[finding]);
+            assert_eq!(actions.len(), 1, "{} should map to ShellCommand", id);
+            assert!(
+                matches!(&actions[0], FixAction::ShellCommand { .. }),
+                "{} should be ShellCommand",
+                id
+            );
+            assert!(auto.is_empty());
+            assert_eq!(review.len(), 1);
+            assert!(actions[0].summary().contains("proc hidepid"));
+        }
+    }
+
+    #[test]
+    fn native_host_docker_socket_both_ids_map_to_shell_command() {
+        for id in [
+            "host.docker_socket_world_writable",
+            "host.docker_socket_world_readable",
+        ] {
+            let finding = native_host_finding(id);
+            let (actions, auto, review) = classify_adapter_findings(&[finding]);
+            assert_eq!(actions.len(), 1, "{} should map to ShellCommand", id);
+            assert!(
+                matches!(&actions[0], FixAction::ShellCommand { .. }),
+                "{} should be ShellCommand",
+                id
+            );
+            assert!(auto.is_empty());
+            assert_eq!(review.len(), 1);
+            assert!(actions[0].summary().contains("Docker socket"));
+        }
+    }
+
+    #[test]
+    fn native_host_selinux_both_ids_map_to_shell_command() {
+        for id in ["host.selinux_permissive", "host.selinux_disabled"] {
+            let finding = native_host_finding(id);
+            let (actions, auto, review) = classify_adapter_findings(&[finding]);
+            assert_eq!(actions.len(), 1, "{} should map to ShellCommand", id);
+            assert!(
+                matches!(&actions[0], FixAction::ShellCommand { .. }),
+                "{} should be ShellCommand",
+                id
+            );
+            assert!(auto.is_empty());
+            assert_eq!(review.len(), 1);
+            assert!(actions[0].summary().contains("SELinux"));
+        }
+    }
+
+    #[test]
+    fn native_host_unknown_id_returns_none() {
+        let finding = native_host_finding("host.nonexistent_check");
+        let (actions, auto, review) = classify_adapter_findings(&[finding]);
+        assert!(actions.is_empty());
+        assert!(auto.is_empty());
+        assert!(review.is_empty());
+    }
+
+    #[test]
+    fn native_host_manual_remediation_skipped() {
+        let mut finding = native_host_finding("host.ssh_root_login_enabled");
+        finding.remediation = RemediationKind::Manual;
+        let (actions, auto, review) = classify_adapter_findings(&[finding]);
+        assert!(actions.is_empty());
+        assert!(auto.is_empty());
+        assert!(review.is_empty());
+    }
+
+    #[test]
+    fn native_host_findings_are_classified_independently() {
+        let f1 = native_host_finding("host.ssh_x11_forwarding_enabled");
+        let f2 = native_host_finding("host.docker_socket_world_writable");
+        let f3 = native_host_finding("host.kernel.aslr_disabled");
+        let f4 = native_host_finding("host.fail2ban_not_enabled");
+
+        // Each individually
+        for f in [&f1, &f2, &f3, &f4] {
+            assert_eq!(
+                classify_adapter_findings(std::slice::from_ref(f)).0.len(),
+                1,
+                "each native host finding should produce 1 action"
+            );
+        }
+
+        // All together
+        let findings = vec![f1, f2, f3, f4];
+        let (actions, auto, review) = classify_adapter_findings(&findings);
+        assert_eq!(
+            actions.len(),
+            4,
+            "4 findings → 4 actions, got {}",
+            actions.len()
+        );
+        assert!(auto.is_empty(), "all NativeHost should be review");
+        assert_eq!(review.len(), 4, "4 findings → 4 review proposals");
+    }
+
+    #[test]
+    fn native_host_summary_starts_with_host_hardening() {
+        for id in SINGLE_ID_NATIVE_HOST_FINDINGS {
+            let finding = native_host_finding(id);
+            let (actions, ..) = classify_adapter_findings(&[finding]);
+            assert!(
+                actions[0].summary().starts_with("Host hardening:"),
+                "{} summary should start with 'Host hardening:', got: {}",
+                id,
+                actions[0].summary()
+            );
+        }
     }
 }

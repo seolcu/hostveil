@@ -3795,6 +3795,64 @@ mod tests {
         );
     }
 
+    #[test]
+    fn fix_plan_changed_includes_host_actions() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![FixAction::HostEdit {
+                path: PathBuf::from("/etc/ssh/sshd_config"),
+                summary: "test".to_string(),
+                original_content: String::new(),
+                updated_content: "val".to_string(),
+                mode: None,
+            }],
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+        assert!(plan.changed(), "plan with host_actions should be changed");
+    }
+
+    #[test]
+    fn fix_plan_changed_includes_system_actions() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: vec![FixAction::ShellCommand {
+                command: "echo ok".to_string(),
+                summary: "test".to_string(),
+                rollback: None,
+            }],
+            compose_actions: Vec::new(),
+        };
+        assert!(plan.changed(), "plan with system_actions should be changed");
+    }
+
+    #[test]
+    fn fix_plan_changed_false_when_all_fields_empty() {
+        let plan = FixPlan {
+            compose_file: PathBuf::from("/p/compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
+        };
+        assert!(!plan.changed(), "empty plan should not be changed");
+    }
+
     fn dockle_finding(id: &str, service: &str, codes: &str) -> Finding {
         let mut evidence = std::collections::BTreeMap::new();
         evidence.insert("sample_codes".to_string(), codes.to_string());
@@ -4144,5 +4202,314 @@ mod tests {
         // If Fix returns ReviewRequired, that's expected — it only affects native,
         // not adapter. The adapter actions from AutoFix are the ground truth.
         fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    // ── Execute host + system action combination tests ──
+
+    #[test]
+    fn execute_shell_command_with_rollback_does_not_error() {
+        let dir = temp_compose_dir("rollback");
+        let action = FixAction::ShellCommand {
+            command: "echo rollback-test".to_string(),
+            summary: "test rollback presence".to_string(),
+            rollback: Some("echo undo".to_string()),
+        };
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: Vec::new(),
+            system_actions: vec![action],
+            compose_actions: Vec::new(),
+        };
+
+        let result = execute_host_and_system_actions(&plan);
+        assert!(result.is_ok(), "ShellCommand with rollback should succeed");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_partial_failure_after_host_edit_returns_error() {
+        let dir = temp_compose_dir("partial-fail");
+        let host_file = dir.join("partial.conf");
+
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![FixAction::HostEdit {
+                path: host_file.clone(),
+                summary: "created before failure".to_string(),
+                original_content: String::new(),
+                updated_content: "survived\n".to_string(),
+                mode: None,
+            }],
+            system_actions: vec![FixAction::ShellCommand {
+                command: "exit 42".to_string(),
+                summary: "this will fail".to_string(),
+                rollback: None,
+            }],
+            compose_actions: Vec::new(),
+        };
+
+        let result = execute_host_and_system_actions(&plan);
+        assert!(result.is_err(), "partial failure should return error");
+
+        // HostEdit changes are committed even on partial failure (no rollback for HostEdit)
+        assert!(
+            host_file.exists(),
+            "HostEdit file should exist despite ShellCommand failure"
+        );
+        let content = fs::read_to_string(&host_file).expect("should be readable");
+        assert_eq!(content, "survived\n");
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn execute_host_edit_with_mode_and_shell_command_succeeds() {
+        let dir = temp_compose_dir("mode-and-shell");
+        let host_file = dir.join("secure.conf");
+
+        let plan = FixPlan {
+            compose_file: dir.join("docker-compose.yml"),
+            diff_preview: String::new(),
+            updated_text: String::new(),
+            backup_path: None,
+            auto_applied: Vec::new(),
+            review_applied: Vec::new(),
+            host_actions: vec![FixAction::HostEdit {
+                path: host_file.clone(),
+                summary: "secure file".to_string(),
+                original_content: String::new(),
+                updated_content: "secure=true\n".to_string(),
+                mode: Some(0o600),
+            }],
+            system_actions: vec![FixAction::ShellCommand {
+                command: format!("touch {}", dir.join("done.txt").display()),
+                summary: "marker after host edit".to_string(),
+                rollback: None,
+            }],
+            compose_actions: Vec::new(),
+        };
+
+        execute_host_and_system_actions(&plan).expect("mode + shell should succeed");
+
+        assert!(host_file.exists(), "host file should exist");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let meta = fs::metadata(&host_file).expect("file metadata");
+            assert_eq!(
+                meta.permissions().mode() & 0o777,
+                0o600,
+                "host file should have mode 0600"
+            );
+        }
+        assert!(
+            dir.join("done.txt").exists(),
+            "shell command marker should exist"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── NativeHost adapter pipeline tests ──
+
+    fn native_host_finding(id: &str) -> Finding {
+        Finding {
+            id: id.to_string(),
+            axis: crate::domain::Axis::HostHardening,
+            severity: Severity::Medium,
+            scope: crate::domain::Scope::Host,
+            source: Source::NativeHost,
+            subject: "host".to_string(),
+            related_service: None,
+            title: "test native host".to_string(),
+            description: "test".to_string(),
+            why_risky: "risky".to_string(),
+            how_to_fix: "fix".to_string(),
+            evidence: std::collections::BTreeMap::new(),
+            remediation: RemediationKind::Review,
+        }
+    }
+
+    #[test]
+    fn preview_with_native_host_findings_populates_system_actions() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-native");
+        let findings = vec![
+            native_host_finding("host.ssh_root_login_enabled"),
+            native_host_finding("host.fail2ban_not_enabled"),
+        ];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            !plan.system_actions.is_empty(),
+            "NativeHost should produce system_actions"
+        );
+        assert_eq!(
+            plan.system_actions.len(),
+            2,
+            "2 NativeHost findings → 2 system_actions"
+        );
+        assert!(
+            plan.system_actions
+                .iter()
+                .all(|a| matches!(a, FixAction::ShellCommand { .. })),
+            "all system_actions should be ShellCommand"
+        );
+        assert!(
+            plan.host_actions.is_empty(),
+            "NativeHost should not produce host_actions"
+        );
+        assert!(
+            plan.compose_actions.is_empty(),
+            "NativeHost should not produce compose_actions"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn preview_with_native_and_dockle_populates_all_action_types() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-native-dockle");
+        let findings = vec![
+            native_host_finding("host.ssh_root_login_enabled"),
+            dockle_finding("dockle.1", "web", "DKL-DI-0006"),
+        ];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            None,
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            !plan.system_actions.is_empty(),
+            "NativeHost → system_actions"
+        );
+        assert!(!plan.compose_actions.is_empty(), "Dockle → compose_actions");
+        assert!(
+            plan.host_actions.is_empty(),
+            "no host_actions in this combo"
+        );
+        assert!(plan.changed(), "plan with mixed types should be changed");
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    // ── only_findings scoping for adapter findings ──
+
+    #[test]
+    fn preview_with_only_findings_scopes_adapter_findings() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-scoped");
+        let findings = vec![
+            dockle_finding("dockle.1", "web", "DKL-DI-0006"),
+            dockle_finding("dockle.2", "db", "DKL-DI-0003"),
+            native_host_finding("host.ssh_root_login_enabled"),
+        ];
+        let only = vec![
+            "dockle.1".to_string(),
+            "host.ssh_root_login_enabled".to_string(),
+        ];
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            Some(&only),
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        // dockle.1 matches → compose_actions
+        assert_eq!(
+            plan.compose_actions.len(),
+            1,
+            "only dockle.1 should produce 1 compose action"
+        );
+        assert!(
+            plan.compose_actions[0].summary().contains("healthcheck")
+                || plan.compose_actions[0].summary().contains("HEALTHCHECK"),
+            "should be the healthcheck action"
+        );
+
+        // dockle.2 filtered OUT → no second compose action
+        // host.ssh_root_login_enabled matches → system_actions
+        assert_eq!(
+            plan.system_actions.len(),
+            1,
+            "only root-login should produce 1 system action"
+        );
+        assert!(
+            plan.system_actions[0]
+                .summary()
+                .contains("disable SSH root login"),
+            "should be the root login action"
+        );
+
+        assert!(plan.host_actions.is_empty(), "no host_actions expected");
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    #[test]
+    fn preview_with_empty_only_findings_excludes_all_adapter_findings() {
+        let path = copy_mixed_stack_fixture_to_temp("pipeline-scoped-empty");
+        let findings = vec![
+            dockle_finding("dockle.1", "web", "DKL-DI-0006"),
+            native_host_finding("host.fail2ban_not_enabled"),
+        ];
+        let only: Vec<String> = Vec::new();
+
+        let plan = preview_with_external(
+            &path,
+            FixMode::AutoFix,
+            Some(&only),
+            &findings,
+            &FixResolutionMap::new(),
+        )
+        .expect("preview should succeed");
+
+        assert!(
+            plan.compose_actions.is_empty(),
+            "empty only_findings → no compose_actions"
+        );
+        assert!(
+            plan.system_actions.is_empty(),
+            "empty only_findings → no system_actions"
+        );
+        assert!(
+            plan.host_actions.is_empty(),
+            "empty only_findings → no host_actions"
+        );
+        fs::remove_dir_all(path.parent().expect("has parent")).ok();
+    }
+
+    // ── Dockle unknown-code fallback ──
+
+    #[test]
+    fn dockle_unknown_code_fallback_is_none() {
+        let finding = dockle_finding("dockle.unknown", "web", "CIS-DI-0001");
+        let (actions, auto, review) = super::adapter::classify_adapter_findings(&[finding]);
+        assert!(
+            actions.is_empty(),
+            "unmapped code should produce no actions"
+        );
+        assert!(auto.is_empty());
+        assert!(review.is_empty());
     }
 }
