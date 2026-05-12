@@ -18,7 +18,7 @@ Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typicall
 - **Settings Modal** — change theme, layout, and locale from the TUI with keyboard or mouse controls
 - **Theme Presets** — terminal-default ANSI plus Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, and Solarized Light presets are available from the TUI
 - **Actionable Guidance** — every finding includes: what it is, why it matters, how to fix it
-- **Compose-focused Remediation** — `auto-fix` and `fix` stay focused on previewable, backup-safe Compose changes
+- **Guided Remediation Workflow** — previewable, backup-safe Compose changes plus reviewed host-level actions from supported adapters
 
 ## Installation
 
@@ -112,12 +112,15 @@ Locale defaults to English for terminal safety. Use `hostveil --locale ko ...` o
 
 ### TUI Controls
 
+- `1` / `2` / `3` — switch between Overview, Findings, and History
 - `Enter` — open Findings from the overview
 - `s` — open Settings (theme, layout, locale)
 - `t` — open History trend view
+- `/` — open findings search
 - `?` — show help overlay
 - `Tab` — cycle focus between overview panels
 - `L` — cycle layout preset
+- Mouse — click tabs, findings rows, and settings rows
 - `q` or `Esc` — quit or go back
 
 ### Overview
@@ -147,7 +150,7 @@ hostveil --fix path/to/docker-compose.yml --preview-changes
 - `--fix` combines automatic changes with review-required changes that may ask you to choose an option or provide a value
 - `Auto` means `f` can carry the change all the way through after the diff review
 - `Review` means `f` can still drive the remediation flow, but hostveil needs your choice or input before it can build the final patch
-- `None` is reserved for findings hostveil cannot realistically change for you, such as host-level hardening or physical/infrastructure actions
+- `Manual` is reserved for findings hostveil cannot realistically change for you, such as physical or external infrastructure actions
 - Both create backups before writing
 
 ## Optional Tools
@@ -174,31 +177,9 @@ Use `--adapters none` to skip all external scanners, or `--adapters trivy,dockle
 | Update/supply chain risk | `latest` image tags, missing version pins, outdated images |
 | Host hardening | SSH posture, Docker host exposure, firewall, defensive controls |
 
-## Current Limitations
-
-- **Linux only** — official runtime support is Linux; Windows users should use WSL
-- **Early development** — the project is on the `0.Y.Z` line; scoring weights and behavior may shift between releases
-- **Optional adapters are optional** — missing external tools reduce coverage but do not block scans
-- **Compose remediation only** — automatic fixes are limited to Compose files; host-level changes require manual action
-
-## Developer / Lab Workflows
-
-For containerized development and validation, use the task-based `scripts/lab.sh` entrypoint:
-
-```sh
-./scripts/lab.sh dev up
-./scripts/lab.sh dev shell
-./scripts/lab.sh host up ubuntu-lab
-./scripts/lab.sh host scan rocky-lab
-./scripts/lab.sh selfhost up
-./scripts/lab.sh selfhost ux
-```
-
-Legacy helper scripts such as `scripts/dev-env.sh` and `scripts/self-hosting-lab.sh` remain available as compatibility paths. Full contributor workflow details stay in [CONTRIBUTING.md](CONTRIBUTING.md).
-
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, git workflow, and release information.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, lab workflows, git workflow, testing, and release information.
 
 ## License
 

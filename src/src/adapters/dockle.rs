@@ -318,10 +318,10 @@ fn summary_to_finding(summary: &DockleImageSummary, services: &[ServiceSummary])
             {
                 RemediationKind::Review
             } else {
-                RemediationKind::None
+                RemediationKind::Manual
             }
         } else {
-            RemediationKind::None
+            RemediationKind::Manual
         },
     }
 }

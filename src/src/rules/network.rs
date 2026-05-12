@@ -40,7 +40,7 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
                                 .unwrap_or_else(|| String::from("0.0.0.0")),
                         ),
                     ]),
-                    remediation: RemediationKind::None,
+                    remediation: RemediationKind::Manual,
                 });
             }
         }
@@ -64,7 +64,7 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
                 why_risky: t!("finding.network.host_mode.why").into_owned(),
                 how_to_fix: t!("finding.network.host_mode.fix").into_owned(),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             });
         }
     }
@@ -89,7 +89,7 @@ pub fn scan_network_isolation(project: &ComposeProject) -> Vec<Finding> {
             why_risky: t!("finding.network.default_bridge_used.why").into_owned(),
             how_to_fix: t!("finding.network.default_bridge_used.fix").into_owned(),
             evidence: BTreeMap::new(),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Manual,
         });
     }
 
@@ -185,8 +185,8 @@ mod tests {
         for finding in &findings {
             assert_eq!(
                 finding.remediation,
-                crate::domain::RemediationKind::None,
-                "finding {} should have None remediation",
+                crate::domain::RemediationKind::Manual,
+                "finding {} should have Manual remediation",
                 finding.id
             );
         }

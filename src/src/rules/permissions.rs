@@ -34,7 +34,7 @@ pub fn scan_permission_risk(project: &ComposeProject) -> Vec<Finding> {
                 if supports_guided_privileged_fix(service) {
                     RemediationKind::Auto
                 } else {
-                    RemediationKind::None
+                    RemediationKind::Manual
                 },
             ));
         }

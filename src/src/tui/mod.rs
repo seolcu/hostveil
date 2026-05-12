@@ -2643,7 +2643,7 @@ fn fix_availability(compose_file: Option<&Path>, finding: Option<&Finding>) -> F
 
     match finding.remediation {
         RemediationKind::Auto | RemediationKind::Review => FixAvailability::Available,
-        RemediationKind::None => FixAvailability::ManualOnly,
+        RemediationKind::Manual => FixAvailability::ManualOnly,
     }
 }
 
@@ -3223,7 +3223,7 @@ fn remediation_lines(
                     *fixable_by_service.entry(service.clone()).or_default() += 1;
                 }
             }
-            crate::domain::RemediationKind::None => {
+            crate::domain::RemediationKind::Manual => {
                 if let Some(service) = &finding.related_service {
                     *manual_by_service.entry(service.clone()).or_default() += 1;
                 } else if finding.scope == Scope::Host {
@@ -3305,7 +3305,7 @@ fn remediation_lines(
         lines.push(Line::from(vec![
             Span::styled(
                 format!("[{}] ", t!("remediation.manual").into_owned()),
-                remediation_style(RemediationKind::None, theme).add_modifier(Modifier::BOLD),
+                remediation_style(RemediationKind::Manual, theme).add_modifier(Modifier::BOLD),
             ),
             Span::raw(t!("app.result.manual_summary", count = manual_count).into_owned()),
         ]));
@@ -3973,10 +3973,10 @@ fn compare_findings(left: &Finding, right: &Finding, sort_mode: FindingSortMode)
 fn remediation_filter_matches(remediation: RemediationKind, filter: RemediationFilter) -> bool {
     match filter {
         RemediationFilter::All => true,
-        RemediationFilter::Fixable => remediation != RemediationKind::None,
+        RemediationFilter::Fixable => remediation != RemediationKind::Manual,
         RemediationFilter::Auto => remediation == RemediationKind::Auto,
         RemediationFilter::Review => remediation == RemediationKind::Review,
-        RemediationFilter::Manual => remediation == RemediationKind::None,
+        RemediationFilter::Manual => remediation == RemediationKind::Manual,
     }
 }
 
@@ -4331,7 +4331,7 @@ fn remediation_badge_text(remediation: RemediationKind) -> String {
     match remediation {
         RemediationKind::Auto => t!("app.finding.remediation_badge.auto").into_owned(),
         RemediationKind::Review => t!("app.finding.remediation_badge.review").into_owned(),
-        RemediationKind::None => t!("app.finding.remediation_badge.manual").into_owned(),
+        RemediationKind::Manual => t!("app.finding.remediation_badge.manual").into_owned(),
     }
 }
 
@@ -4339,7 +4339,7 @@ fn remediation_badge_compact(remediation: RemediationKind) -> String {
     match remediation {
         RemediationKind::Auto => t!("app.finding.remediation_badge_compact.auto").into_owned(),
         RemediationKind::Review => t!("app.finding.remediation_badge_compact.review").into_owned(),
-        RemediationKind::None => t!("app.finding.remediation_badge_compact.manual").into_owned(),
+        RemediationKind::Manual => t!("app.finding.remediation_badge_compact.manual").into_owned(),
     }
 }
 
@@ -4356,7 +4356,7 @@ fn remediation_style(remediation: RemediationKind, theme: &Theme) -> Style {
     Style::default().fg(match remediation {
         RemediationKind::Auto => theme.safe,
         RemediationKind::Review => theme.guided,
-        RemediationKind::None => theme.manual,
+        RemediationKind::Manual => theme.manual,
     })
 }
 
@@ -4411,7 +4411,7 @@ mod tests {
                         String::from("path"),
                         String::from("/etc/ssh/sshd_config"),
                     )]),
-                    remediation: RemediationKind::None,
+                    remediation: RemediationKind::Manual,
                 },
                 Finding {
                     id: String::from("updates.latest_tag"),
@@ -4528,7 +4528,7 @@ mod tests {
             why_risky: String::from("Known CVEs increase the chance of compromise."),
             how_to_fix: String::from("Pin and rebuild with a patched image."),
             evidence: BTreeMap::from([(String::from("image"), String::from("adminer:latest"))]),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Manual,
         });
         result.findings.push(Finding {
             id: String::from("project.compose_bundle_loaded"),
@@ -4550,7 +4550,7 @@ mod tests {
                 String::from("compose_file"),
                 String::from("/srv/demo/docker-compose.yml"),
             )]),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Manual,
         });
         result
     }
@@ -4571,7 +4571,7 @@ mod tests {
                 why_risky: String::from("Attackers can target a direct root login."),
                 how_to_fix: String::from("Set PermitRootLogin no."),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             },
             Finding {
                 id: String::from("host.firewalld_disabled"),
@@ -4586,7 +4586,7 @@ mod tests {
                 why_risky: String::from("Inbound traffic is less constrained."),
                 how_to_fix: String::from("Enable and configure firewalld."),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             },
             Finding {
                 id: String::from("host.nftables_missing"),
@@ -4601,7 +4601,7 @@ mod tests {
                 why_risky: String::from("Network paths remain under-protected."),
                 how_to_fix: String::from("Define a baseline nftables policy."),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             },
             Finding {
                 id: String::from("host.kernel.aslr_disabled"),
@@ -4616,7 +4616,7 @@ mod tests {
                 why_risky: String::from("Exploit reliability improves without ASLR."),
                 how_to_fix: String::from("Set kernel.randomize_va_space to 2."),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             },
         ];
         result.score_report.severity_counts = BTreeMap::from([
@@ -5659,7 +5659,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
     #[test]
     fn fix_key_on_manual_service_finding_shows_status_message() {
         let mut result = sample_result();
-        result.findings[0].remediation = RemediationKind::None;
+        result.findings[0].remediation = RemediationKind::Manual;
         let mut state = AppState::new(&result);
         state.open_findings();
         state.selected_index = state

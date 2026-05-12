@@ -38,7 +38,7 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                 if is_safe_nginx_repository(&repository) {
                     RemediationKind::Auto
                 } else {
-                    RemediationKind::None
+                    RemediationKind::Manual
                 },
             )),
             Some("latest") => findings.push(service_finding_with_remediation(
@@ -65,7 +65,7 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                 if is_safe_nginx_repository(&repository) {
                     RemediationKind::Auto
                 } else {
-                    RemediationKind::None
+                    RemediationKind::Manual
                 },
             )),
             Some(tag) if is_major_only_tag(tag) => findings.push(service_finding_with_remediation(
@@ -92,7 +92,7 @@ pub fn scan_update_risk(project: &ComposeProject) -> Vec<Finding> {
                 if is_safe_nginx_repository(&repository) {
                     RemediationKind::Auto
                 } else {
-                    RemediationKind::None
+                    RemediationKind::Manual
                 },
             )),
             Some(_) => {}

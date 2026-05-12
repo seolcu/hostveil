@@ -84,7 +84,7 @@ pub(crate) fn host_finding(
         why_risky: text.why_risky,
         how_to_fix: text.how_to_fix,
         evidence,
-        remediation: RemediationKind::None,
+        remediation: RemediationKind::Manual,
     }
 }
 

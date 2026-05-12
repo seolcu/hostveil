@@ -194,7 +194,7 @@ mod tests {
                 why_risky: String::from("why"),
                 how_to_fix: String::from("fix"),
                 evidence: BTreeMap::new(),
-                remediation: RemediationKind::None,
+                remediation: RemediationKind::Manual,
             });
         }
         result

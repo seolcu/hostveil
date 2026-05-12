@@ -38,7 +38,7 @@ Testing priority order (highest first):
 
 1. **Fix engine pipeline**: Every `FixAction` variant (`ComposeEdit`, `HostEdit`, `ShellCommand`) must have unit tests that verify actual execution (file creation, content, permissions, shell command success/failure). The `execute_host_and_system_actions` function must be tested with all action combinations.
 
-2. **Adapter classification coverage**: Every adapter (Dockle, Lynis) must have tests verifying each finding-to-`FixAction` mapping. Test both `Auto` and `Review` remediation paths, `None` skip behavior, unknown ID fallback, and unknown source filtering. The `multiple_findings_are_classified_independently` test must be kept up to date.
+2. **Adapter classification coverage**: Every adapter (Dockle, Lynis) must have tests verifying each finding-to-`FixAction` mapping. Test both `Auto` and `Review` remediation paths, `Manual` skip behavior, unknown ID fallback, and unknown source filtering. The `multiple_findings_are_classified_independently` test must be kept up to date.
 
 3. **External finding pipeline**: Adapter findings (Dockle, Lynis) from `ScanResult` must reach the fix engine. When a user presses `f` on an adapter finding, the `TuiAction::TriggerFix` must include `adapter_findings`. The `preview_with_external` / `apply_with_external` functions receive and classify these findings. Test that `host_actions` and `system_actions` in `FixPlan` are populated when adapter findings are present.
 

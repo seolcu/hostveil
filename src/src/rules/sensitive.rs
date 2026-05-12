@@ -237,15 +237,15 @@ mod tests {
     }
 
     #[test]
-    fn all_findings_have_remediation_none() {
+    fn all_findings_have_manual_remediation() {
         let project = ComposeParser::parse_path_without_override(fixture_root())
             .expect("project should parse");
         let findings = scan_sensitive_data(&project);
         for finding in &findings {
             assert_eq!(
                 finding.remediation,
-                crate::domain::RemediationKind::None,
-                "finding {} should have None remediation",
+                crate::domain::RemediationKind::Manual,
+                "finding {} should have Manual remediation",
                 finding.id
             );
         }

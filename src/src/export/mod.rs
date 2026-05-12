@@ -624,7 +624,7 @@ mod tests {
             why_risky: String::from("Synthetic risk explanation"),
             how_to_fix: String::from("Synthetic remediation guidance"),
             evidence: BTreeMap::from([(String::from("subject"), subject.to_owned())]),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Manual,
         }
     }
 
