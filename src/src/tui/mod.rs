@@ -2119,9 +2119,15 @@ fn render_modal_backdrop(frame: &mut ratatui::Frame<'_>, area: Rect, _theme: &Th
     }
 }
 
-fn render_modal_frame(frame: &mut ratatui::Frame<'_>, modal: Rect, theme: &Theme) -> Rect {
+fn render_modal_frame(
+    frame: &mut ratatui::Frame<'_>,
+    modal: Rect,
+    title: &str,
+    theme: &Theme,
+) -> Rect {
     frame.render_widget(Clear, modal);
     let block = Block::default()
+        .title(format!(" {} ", title))
         .borders(panel_borders(theme))
         .border_style(theme.modal_border)
         .style(theme.modal_bg);
@@ -2149,7 +2155,7 @@ fn render_settings_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let theme = &state.theme;
 
     render_modal_backdrop(frame, area, theme);
-    let inner = render_modal_frame(frame, modal, theme);
+    let inner = render_modal_frame(frame, modal, &t!("app.panel.settings"), theme);
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
@@ -2235,7 +2241,7 @@ fn render_help_overlay(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let theme = &state.theme;
 
     render_modal_backdrop(frame, area, theme);
-    let inner = render_modal_frame(frame, modal, theme);
+    let inner = render_modal_frame(frame, modal, &t!("app.panel.help"), theme);
 
     let shortcuts = vec![
         (
@@ -2310,7 +2316,7 @@ fn render_search_modal(frame: &mut ratatui::Frame<'_>, state: &mut AppState) {
     let theme = &state.theme;
 
     render_modal_backdrop(frame, area, theme);
-    let inner = render_modal_frame(frame, modal, theme);
+    let inner = render_modal_frame(frame, modal, &t!("app.panel.search"), theme);
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
