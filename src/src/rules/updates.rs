@@ -197,12 +197,51 @@ mod tests {
     fn marks_nginx_missing_tag_as_safe_remediation() {
         let project =
             ComposeParser::parse_path_without_override(fixture()).expect("project should parse");
-
         let finding = scan_update_risk(&project)
             .into_iter()
             .find(|finding| finding.related_service.as_deref() == Some("no_tag"))
             .expect("missing tag finding should exist");
-
         assert_eq!(finding.remediation, crate::domain::RemediationKind::Auto);
+    }
+
+    #[test]
+    fn split_image_reference_handles_full_tag() {
+        let (repo, tag) = split_image_reference("nginx:1.27");
+        assert_eq!(repo, "nginx");
+        assert_eq!(tag.as_deref(), Some("1.27"));
+    }
+
+    #[test]
+    fn split_image_reference_handles_no_tag() {
+        let (repo, tag) = split_image_reference("alpine");
+        assert_eq!(repo, "alpine");
+        assert_eq!(tag, None);
+    }
+
+    #[test]
+    fn split_image_reference_handles_registry_url() {
+        let (repo, tag) = split_image_reference("docker.io/library/nginx:stable");
+        assert_eq!(repo, "docker.io/library/nginx");
+        assert_eq!(tag.as_deref(), Some("stable"));
+    }
+
+    #[test]
+    fn is_major_only_tag_rejects_minor_version() {
+        assert!(!is_major_only_tag("1.27"));
+        assert!(!is_major_only_tag("1.27.5"));
+    }
+
+    #[test]
+    fn is_major_only_tag_accepts_single_version() {
+        assert!(is_major_only_tag("7"));
+        assert!(is_major_only_tag("v7"));
+    }
+
+    #[test]
+    fn is_safe_nginx_repository_accepts_common_forms() {
+        assert!(is_safe_nginx_repository("nginx"));
+        assert!(is_safe_nginx_repository("library/nginx"));
+        assert!(is_safe_nginx_repository("docker.io/library/nginx"));
+        assert!(!is_safe_nginx_repository("myrepo/nginx"));
     }
 }

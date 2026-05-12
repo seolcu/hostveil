@@ -354,6 +354,17 @@ fn prompt_yes_no_default_yes(prompt: &str) -> Result<bool, AppError> {
     }
 }
 
+#[cfg(test)]
+fn prompt_yes_no_default_yes_from_reader<R: io::BufRead>(reader: &mut R) -> Result<bool, AppError> {
+    let mut answer = String::new();
+    reader.read_line(&mut answer)?;
+    match answer.trim().to_ascii_lowercase().as_str() {
+        "" | "y" | "yes" => Ok(true),
+        "n" | "no" => Ok(false),
+        _ => Ok(true),
+    }
+}
+
 fn recommended_tools() -> Vec<SetupTool> {
     SetupTool::ALL
         .into_iter()
@@ -1832,5 +1843,323 @@ ID_LIKE="rhel centos fedora"
         assert_eq!(target.archive_name, "gitleaks_8.30.1_linux_x64.tar.gz");
         assert_eq!(target.archive_url, "https://example.test/gitleaks.tar.gz");
         assert_eq!(target.checksum_url, "https://example.test/checksums.txt");
+    }
+
+    #[test]
+    fn setup_step_summaries_all_variants() {
+        let dnf = SetupStep::DnfInstall(vec![String::from("lynis"), String::from("trivy")]);
+        assert!(dnf.summary().contains("lynis"));
+        assert!(dnf.summary().contains("trivy"));
+
+        let apt = SetupStep::AptInstall(vec![String::from("fail2ban")]);
+        assert!(apt.summary().contains("fail2ban"));
+
+        let trivy = SetupStep::ConfigureTrivyAptRepo;
+        assert!(!trivy.summary().is_empty());
+
+        let f2b = SetupStep::ConfigureFail2BanBaseline;
+        assert!(!f2b.summary().is_empty());
+
+        let dockle = SetupStep::InstallDocklePackage(DockleInstallRequest {
+            package_format: DocklePackageFormat::Deb,
+            architecture: CpuArchitecture::X86_64,
+        });
+        assert!(!dockle.summary().is_empty());
+
+        let gitleaks = SetupStep::InstallGitleaksBinary(GitleaksInstallRequest {
+            architecture: CpuArchitecture::Aarch64,
+        });
+        assert!(!gitleaks.summary().is_empty());
+
+        let manual = SetupStep::ManualInstall {
+            tool: String::from("Dockle"),
+            instruction: String::from("https://example.com"),
+        };
+        assert!(manual.summary().contains("Dockle"));
+    }
+
+    #[test]
+    fn requires_privileges_returns_true_when_steps_exist() {
+        let plan = SetupPlan {
+            distro: DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            tools: vec![SetupTool::Lynis],
+            steps: vec![SetupStep::DnfInstall(vec![String::from("lynis")])],
+            manual_tools: vec![],
+        };
+        assert!(plan.requires_privileges());
+    }
+
+    #[test]
+    fn requires_privileges_returns_false_when_no_steps() {
+        let plan = SetupPlan {
+            distro: DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            tools: vec![],
+            steps: vec![],
+            manual_tools: vec![],
+        };
+        assert!(!plan.requires_privileges());
+    }
+
+    #[test]
+    fn setup_state_tool_is_installed() {
+        let state = SetupState {
+            installed_tools: [SetupTool::Lynis, SetupTool::Trivy].into_iter().collect(),
+            fail2ban_baseline_ready: false,
+        };
+        assert!(state.tool_is_installed(SetupTool::Lynis));
+        assert!(state.tool_is_installed(SetupTool::Trivy));
+        assert!(!state.tool_is_installed(SetupTool::Dockle));
+        assert!(!state.tool_is_installed(SetupTool::Gitleaks));
+        assert!(!state.tool_is_installed(SetupTool::Fail2Ban));
+    }
+
+    #[test]
+    fn dockle_install_request_returns_none_for_unsupported_distro() {
+        assert!(
+            dockle_install_request(DistroFamily::Unsupported, CpuArchitecture::X86_64).is_none()
+        );
+    }
+
+    #[test]
+    fn dockle_install_request_returns_none_for_unsupported_arch() {
+        assert!(
+            dockle_install_request(DistroFamily::Debian, CpuArchitecture::Unsupported).is_none()
+        );
+    }
+
+    #[test]
+    fn dockle_install_request_returns_some_for_debian_x86_64() {
+        let req = dockle_install_request(DistroFamily::Debian, CpuArchitecture::X86_64)
+            .expect("should resolve");
+        assert!(matches!(req.package_format, DocklePackageFormat::Deb));
+        assert_eq!(req.architecture, CpuArchitecture::X86_64);
+    }
+
+    #[test]
+    fn dockle_install_request_returns_some_for_fedora_aarch64() {
+        let req = dockle_install_request(DistroFamily::Fedora, CpuArchitecture::Aarch64)
+            .expect("should resolve");
+        assert!(matches!(req.package_format, DocklePackageFormat::Rpm));
+        assert_eq!(req.architecture, CpuArchitecture::Aarch64);
+    }
+
+    #[test]
+    fn gitleaks_install_request_returns_none_for_unsupported_arch() {
+        assert!(gitleaks_install_request(CpuArchitecture::Unsupported).is_none());
+    }
+
+    #[test]
+    fn gitleaks_install_request_returns_some_for_x86_64() {
+        let req = gitleaks_install_request(CpuArchitecture::X86_64).expect("should resolve");
+        assert_eq!(req.architecture, CpuArchitecture::X86_64);
+    }
+
+    #[test]
+    fn gitleaks_install_request_returns_some_for_aarch64() {
+        let req = gitleaks_install_request(CpuArchitecture::Aarch64).expect("should resolve");
+        assert_eq!(req.architecture, CpuArchitecture::Aarch64);
+    }
+
+    #[test]
+    fn setup_tool_recommended_flags() {
+        assert!(SetupTool::Lynis.recommended());
+        assert!(SetupTool::Trivy.recommended());
+        assert!(SetupTool::Dockle.recommended());
+        assert!(SetupTool::Gitleaks.recommended());
+        assert!(SetupTool::Fail2Ban.recommended());
+    }
+
+    #[test]
+    fn setup_tool_display_names_are_non_empty() {
+        for tool in SetupTool::ALL {
+            assert!(!tool.display_name().is_empty(), "display_name for {tool:?}");
+        }
+    }
+
+    #[test]
+    fn setup_tool_prompt_labels_are_non_empty() {
+        for tool in SetupTool::ALL {
+            assert!(!tool.prompt_label().is_empty(), "prompt_label for {tool:?}");
+        }
+    }
+
+    #[test]
+    fn setup_tool_cli_names_match_package_names() {
+        for tool in SetupTool::ALL {
+            assert_eq!(tool.package_name(), tool.cli_name());
+        }
+    }
+
+    #[test]
+    fn parse_os_release_handles_empty_input() {
+        let distro = parse_os_release("");
+        assert_eq!(distro.family, DistroFamily::Unsupported);
+        assert_eq!(distro.pretty_name, "Linux");
+    }
+
+    #[test]
+    fn parse_os_release_handles_malformed_input() {
+        let distro = parse_os_release("not a valid os-release file");
+        assert_eq!(distro.family, DistroFamily::Unsupported);
+    }
+
+    #[test]
+    fn parse_os_release_handles_missing_id() {
+        let distro = parse_os_release("PRETTY_NAME=\"Some Linux\"\n");
+        assert_eq!(distro.family, DistroFamily::Unsupported);
+        assert_eq!(distro.pretty_name, "Some Linux");
+    }
+
+    #[test]
+    fn parse_os_release_parses_centos_as_fedora_family() {
+        let distro = parse_os_release(
+            r#"
+PRETTY_NAME="CentOS Stream 9"
+ID="centos"
+ID_LIKE="rhel fedora"
+"#,
+        );
+        assert_eq!(distro.family, DistroFamily::Fedora);
+    }
+
+    #[test]
+    fn parse_os_release_parses_rhel_as_fedora_family() {
+        let distro = parse_os_release(
+            r#"
+PRETTY_NAME="Red Hat Enterprise Linux 9.4"
+ID="rhel"
+ID_LIKE="fedora"
+"#,
+        );
+        assert_eq!(distro.family, DistroFamily::Fedora);
+    }
+
+    #[test]
+    fn normalize_file_content_strips_trailing_newlines() {
+        assert_eq!(normalize_file_content("hello\n\n\n"), "hello");
+        assert_eq!(normalize_file_content("hello"), "hello");
+        assert_eq!(normalize_file_content(""), "");
+    }
+
+    #[test]
+    fn prompt_yes_no_default_yes_accepts_empty() {
+        let mut input = std::io::Cursor::new("\n");
+        let result = prompt_yes_no_default_yes_from_reader(&mut input);
+        assert!(result.expect("should parse"));
+    }
+
+    #[test]
+    fn prompt_yes_no_default_yes_accepts_yes() {
+        let mut input = std::io::Cursor::new("yes\n");
+        let result = prompt_yes_no_default_yes_from_reader(&mut input);
+        assert!(result.expect("should parse"));
+    }
+
+    #[test]
+    fn prompt_yes_no_default_yes_accepts_no() {
+        let mut input = std::io::Cursor::new("no\n");
+        let result = prompt_yes_no_default_yes_from_reader(&mut input);
+        assert!(!result.expect("should parse"));
+    }
+
+    #[test]
+    fn prompt_yes_no_default_yes_accepts_y() {
+        let mut input = std::io::Cursor::new("y\n");
+        let result = prompt_yes_no_default_yes_from_reader(&mut input);
+        assert!(result.expect("should parse"));
+    }
+
+    #[test]
+    fn prompt_yes_no_default_yes_accepts_n() {
+        let mut input = std::io::Cursor::new("n\n");
+        let result = prompt_yes_no_default_yes_from_reader(&mut input);
+        assert!(!result.expect("should parse"));
+    }
+
+    #[test]
+    fn resolve_requested_tools_with_terminal_returns_selected_tools() {
+        let config = SetupConfig {
+            selected_tools: Some(vec![SetupTool::Lynis, SetupTool::Trivy]),
+            assume_yes: false,
+        };
+        let tools = resolve_requested_tools_with_terminal(&config, false).expect("should resolve");
+        assert_eq!(tools, vec![SetupTool::Lynis, SetupTool::Trivy]);
+    }
+
+    #[test]
+    fn resolve_requested_tools_with_terminal_returns_recommended_on_assume_yes() {
+        let config = SetupConfig {
+            selected_tools: None,
+            assume_yes: true,
+        };
+        let tools = resolve_requested_tools_with_terminal(&config, false).expect("should resolve");
+        assert_eq!(tools, recommended_tools());
+    }
+
+    #[test]
+    fn resolve_requested_tools_with_terminal_errors_without_terminal_or_selection() {
+        let config = SetupConfig {
+            selected_tools: None,
+            assume_yes: false,
+        };
+        let result = resolve_requested_tools_with_terminal(&config, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn builds_debian_plan_with_partial_tools_installed() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Debian,
+                pretty_name: String::from("Ubuntu 24.04.4 LTS"),
+            },
+            CpuArchitecture::X86_64,
+            vec![SetupTool::Lynis, SetupTool::Trivy],
+            &SetupState {
+                installed_tools: [SetupTool::Lynis].into_iter().collect(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("debian plan should build");
+
+        assert!(
+            plan.steps
+                .iter()
+                .any(|s| matches!(s, SetupStep::ConfigureTrivyAptRepo))
+        );
+        assert!(plan.steps.iter().any(|s| matches!(
+            s,
+            SetupStep::AptInstall(pkgs) if pkgs.contains(&String::from("trivy"))
+        )));
+    }
+
+    #[test]
+    fn builds_fedora_plan_with_gitleaks_step() {
+        let plan = SetupPlan::new_with_state(
+            DistroInfo {
+                family: DistroFamily::Fedora,
+                pretty_name: String::from("Fedora Linux 43"),
+            },
+            CpuArchitecture::X86_64,
+            vec![SetupTool::Gitleaks],
+            &SetupState {
+                installed_tools: BTreeSet::new(),
+                fail2ban_baseline_ready: false,
+            },
+        )
+        .expect("fedora gitleaks plan should build");
+
+        assert_eq!(
+            plan.steps,
+            vec![SetupStep::InstallGitleaksBinary(GitleaksInstallRequest {
+                architecture: CpuArchitecture::X86_64,
+            })]
+        );
     }
 }

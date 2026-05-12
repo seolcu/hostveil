@@ -303,7 +303,26 @@ fn summary_to_finding(summary: &DockleImageSummary, services: &[ServiceSummary])
         why_risky: t!("finding.dockle.image_best_practice.why").into_owned(),
         how_to_fix: t!("finding.dockle.image_best_practice.fix").into_owned(),
         evidence,
-        remediation: RemediationKind::None,
+        remediation: if summary.total > 0 {
+            // Dockle findings with known compose-level mitigations
+            if summary
+                .sample_codes
+                .iter()
+                .any(|code| code == "DKL-DI-0003" || code == "DKL-DI-0006")
+            {
+                RemediationKind::Auto
+            } else if summary
+                .sample_codes
+                .iter()
+                .any(|code| code == "DKL-DI-0001" || code == "DKL-DI-0005")
+            {
+                RemediationKind::Review
+            } else {
+                RemediationKind::None
+            }
+        } else {
+            RemediationKind::None
+        },
     }
 }
 

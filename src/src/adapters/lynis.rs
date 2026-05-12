@@ -477,7 +477,7 @@ fn report_to_findings(report: &LynisReport, host_root: &Path, mode: LynisMode) -
             why_risky: t!("finding.lynis.host_warnings.why").into_owned(),
             how_to_fix: t!("finding.lynis.host_warnings.fix").into_owned(),
             evidence: entry_evidence(&report.warnings, report, mode, "warnings_total"),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Review,
         });
     }
 
@@ -501,7 +501,7 @@ fn report_to_findings(report: &LynisReport, host_root: &Path, mode: LynisMode) -
             why_risky: t!("finding.lynis.host_suggestions.why").into_owned(),
             how_to_fix: t!("finding.lynis.host_suggestions.fix").into_owned(),
             evidence: entry_evidence(&report.suggestions, report, mode, "suggestions_total"),
-            remediation: RemediationKind::None,
+            remediation: RemediationKind::Review,
         });
     }
 
@@ -566,7 +566,10 @@ fn entry_evidence(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Mutex, OnceLock};
+
+    static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     fn test_guard() -> std::sync::MutexGuard<'static, ()> {
         static GUARD: OnceLock<Mutex<()>> = OnceLock::new();
@@ -731,7 +734,8 @@ mod tests {
     #[test]
     fn retries_after_removing_stale_pid_lock() {
         let _guard = test_guard();
-        let test_dir = env::temp_dir().join("hostveil-lynis-retry-test");
+        let id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let test_dir = env::temp_dir().join(format!("hostveil-lynis-retry-test-{id}"));
         let _ = fs::remove_dir_all(&test_dir);
         fs::create_dir_all(&test_dir).expect("test dir should be created");
 

@@ -12,10 +12,14 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Padding, Paragraph, Wrap};
 use rust_i18n::t;
 
-use crate::fix::{self, FixMode, FixPlan, FixResolutionMap, ReviewRequest, ReviewResolution};
+use crate::domain::Finding;
+use crate::fix::{
+    self, FixAction, FixMode, FixPlan, FixResolutionMap, ReviewRequest, ReviewResolution,
+};
+use crate::tui::theme::{Theme, ThemePreset, panel_borders};
 
 #[derive(Debug, Clone)]
 pub struct InteractiveFixResult {
@@ -50,12 +54,19 @@ pub fn run_interactive_fix_flow(
     compose_path: &Path,
     mode: FixMode,
     only_findings: Option<&[String]>,
+    external_findings: &[Finding],
     confirm_apply: bool,
 ) -> Result<Option<InteractiveFixResult>, fix::FixError> {
     let mut resolutions = FixResolutionMap::new();
 
     loop {
-        match fix::preview_with_resolutions(compose_path, mode, only_findings, &resolutions) {
+        match fix::preview_with_external(
+            compose_path,
+            mode,
+            only_findings,
+            external_findings,
+            &resolutions,
+        ) {
             Ok(plan) => {
                 if confirm_apply && plan.changed() && !run_fix_review(&plan)? {
                     return Ok(None);
@@ -88,7 +99,15 @@ pub fn run_fix_review(plan: &FixPlan) -> io::Result<bool> {
     let mut terminal = Terminal::new(backend)?;
     let mut state = FixReviewState { scroll: 0 };
 
-    let result = run_event_loop(&mut terminal, plan, &mut state);
+    let settings = crate::settings::load();
+    let preset = settings
+        .theme
+        .as_deref()
+        .and_then(ThemePreset::from_key)
+        .unwrap_or(ThemePreset::TokyoNight);
+    let theme = Theme::preset(preset);
+
+    let result = run_event_loop(&mut terminal, plan, &mut state, &theme);
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -101,9 +120,10 @@ fn run_event_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     plan: &FixPlan,
     state: &mut FixReviewState,
+    theme: &Theme,
 ) -> io::Result<bool> {
     loop {
-        terminal.draw(|frame| render(frame, plan, state))?;
+        terminal.draw(|frame| render(frame, plan, state, theme))?;
 
         match event::read()? {
             Event::Key(key) if key.kind == KeyEventKind::Press => {
@@ -279,7 +299,12 @@ fn generate_secret_value() -> String {
         .collect()
 }
 
-fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewState) {
+fn render(
+    frame: &mut ratatui::Frame<'_>,
+    plan: &FixPlan,
+    state: &mut FixReviewState,
+    theme: &Theme,
+) {
     let diff_lines = plan.diff_preview.lines().count();
 
     let mut summary = Vec::<Line>::new();
@@ -340,23 +365,133 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
         }
     }
 
+    if !plan.host_actions.is_empty() {
+        summary.push(Line::raw(""));
+        summary.push(Line::from(vec![
+            Span::styled(
+                " [HOST EDIT] ",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(t!("app.fix.host_edit_plan", count = plan.host_actions.len()).into_owned()),
+        ]));
+        for action in &plan.host_actions {
+            if let FixAction::HostEdit {
+                path,
+                summary: action_summary,
+                ..
+            } = action
+            {
+                summary.push(Line::from(vec![
+                    Span::raw("  • "),
+                    Span::styled(
+                        path.display().to_string(),
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(": "),
+                    Span::raw(action_summary),
+                ]));
+            }
+        }
+    }
+
+    if !plan.system_actions.is_empty() {
+        summary.push(Line::raw(""));
+        summary.push(Line::from(vec![
+            Span::styled(
+                " [SHELL] ",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(t!("app.fix.shell_plan", count = plan.system_actions.len()).into_owned()),
+        ]));
+        for action in &plan.system_actions {
+            if let FixAction::ShellCommand {
+                command,
+                summary: action_summary,
+                ..
+            } = action
+            {
+                summary.push(Line::from(vec![
+                    Span::raw("  • "),
+                    Span::styled(
+                        t!("app.fix.shell_label").into_owned(),
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(": "),
+                    Span::raw(action_summary),
+                ]));
+                let cmd_preview: String = command.chars().take(60).collect();
+                summary.push(Line::from(vec![
+                    Span::raw("    "),
+                    Span::styled(cmd_preview, Style::default().fg(Color::DarkGray)),
+                ]));
+            }
+        }
+    }
+
+    if !plan.compose_actions.is_empty() {
+        summary.push(Line::raw(""));
+        summary.push(Line::from(vec![
+            Span::styled(
+                " [COMPOSE] ",
+                Style::default()
+                    .fg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(
+                t!(
+                    "app.fix.compose_edit_plan",
+                    count = plan.compose_actions.len()
+                )
+                .into_owned(),
+            ),
+        ]));
+        for action in &plan.compose_actions {
+            if let FixAction::ComposeEdit {
+                service,
+                summary: action_summary,
+                ..
+            } = action
+            {
+                summary.push(Line::from(vec![
+                    Span::raw("  • "),
+                    Span::styled(service, Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": "),
+                    Span::raw(action_summary),
+                ]));
+            }
+        }
+    }
+
     let summary_lines_count = summary.len();
+
     let summary_widget = Paragraph::new(Text::from(summary))
         .wrap(Wrap { trim: true })
+        .style(theme.panel_bg)
         .block(
             Block::default()
-                .title(t!("app.panel.fix_review").into_owned())
-                .borders(Borders::ALL),
+                .title(Line::from(t!("app.panel.fix_review").into_owned()).style(theme.title))
+                .borders(panel_borders(theme))
+                .border_style(theme.border)
+                .style(theme.panel_bg)
+                .padding(Padding::horizontal(1)),
         );
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
+        .spacing(1)
         .constraints([
             Constraint::Length((summary_lines_count as u16 + 2).clamp(5, 15)),
             Constraint::Min(5),
             Constraint::Length(3),
         ])
         .split(frame.area());
+
+    // Fill surface background behind panels
+    frame.render_widget(Block::default().style(theme.surface), frame.area());
 
     frame.render_widget(summary_widget, chunks[0]);
 
@@ -384,10 +519,14 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
     let diff_widget = Paragraph::new(diff_text)
         .scroll((state.scroll, 0))
         .wrap(Wrap { trim: false })
+        .style(theme.panel_bg)
         .block(
             Block::default()
-                .title(t!("app.panel.fix_diff").into_owned())
-                .borders(Borders::ALL),
+                .title(Line::from(t!("app.panel.fix_diff").into_owned()).style(theme.title))
+                .borders(panel_borders(theme))
+                .border_style(theme.border)
+                .style(theme.panel_bg)
+                .padding(Padding::horizontal(1)),
         );
     frame.render_widget(diff_widget, chunks[1]);
 
@@ -398,10 +537,14 @@ fn render(frame: &mut ratatui::Frame<'_>, plan: &FixPlan, state: &mut FixReviewS
     ];
     let hints_widget = Paragraph::new(Text::from(hints))
         .wrap(Wrap { trim: true })
+        .style(theme.panel_bg)
         .block(
             Block::default()
-                .borders(Borders::ALL)
-                .title(t!("app.panel.hints").into_owned()),
+                .title(Line::from(t!("app.panel.hints").into_owned()).style(theme.title))
+                .borders(panel_borders(theme))
+                .border_style(theme.border)
+                .style(theme.panel_bg)
+                .padding(Padding::horizontal(1)),
         );
     frame.render_widget(hints_widget, chunks[2]);
 }
@@ -423,6 +566,11 @@ fn render_choice_prompt(
         ])
         .split(area);
 
+    let panel_bg = Style::default().bg(Color::Rgb(28, 28, 38));
+    let title_style = Style::default()
+        .fg(Color::Rgb(122, 162, 247))
+        .add_modifier(Modifier::BOLD);
+
     let header = Paragraph::new(Text::from(vec![
         Line::styled(
             title.to_owned(),
@@ -432,10 +580,13 @@ fn render_choice_prompt(
         Line::raw(description.to_owned()),
     ]))
     .wrap(Wrap { trim: true })
+    .style(panel_bg)
     .block(
         Block::default()
-            .title(t!("app.panel.fix_review").into_owned())
-            .borders(Borders::ALL),
+            .title(Line::from(t!("app.panel.fix_review").into_owned()).style(title_style))
+            .borders(Borders::NONE)
+            .style(panel_bg)
+            .padding(Padding::horizontal(1)),
     );
     frame.render_widget(header, chunks[0]);
 
@@ -457,10 +608,13 @@ fn render_choice_prompt(
 
     let options_widget = Paragraph::new(Text::from(lines))
         .wrap(Wrap { trim: true })
+        .style(panel_bg)
         .block(
             Block::default()
-                .title(t!("app.fix.review_options").into_owned())
-                .borders(Borders::ALL),
+                .title(Line::from(t!("app.fix.review_options").into_owned()).style(title_style))
+                .borders(Borders::NONE)
+                .style(panel_bg)
+                .padding(Padding::horizontal(1)),
         );
     frame.render_widget(options_widget, chunks[1]);
 
@@ -470,7 +624,13 @@ fn render_choice_prompt(
         Line::raw(t!("app.hint.review_choice_cancel").into_owned()),
     ]))
     .wrap(Wrap { trim: true })
-    .block(Block::default().borders(Borders::ALL));
+    .style(panel_bg)
+    .block(
+        Block::default()
+            .borders(Borders::NONE)
+            .style(panel_bg)
+            .padding(Padding::horizontal(1)),
+    );
     frame.render_widget(hints, chunks[2]);
 }
 
@@ -490,6 +650,11 @@ fn render_secret_prompt(
         ])
         .split(area);
 
+    let panel_bg = Style::default().bg(Color::Rgb(28, 28, 38));
+    let title_style = Style::default()
+        .fg(Color::Rgb(122, 162, 247))
+        .add_modifier(Modifier::BOLD);
+
     let header = Paragraph::new(Text::from(vec![
         Line::styled(
             title.to_owned(),
@@ -499,10 +664,13 @@ fn render_secret_prompt(
         Line::raw(description.to_owned()),
     ]))
     .wrap(Wrap { trim: true })
+    .style(panel_bg)
     .block(
         Block::default()
-            .title(t!("app.panel.fix_review").into_owned())
-            .borders(Borders::ALL),
+            .title(Line::from(t!("app.panel.fix_review").into_owned()).style(title_style))
+            .borders(Borders::NONE)
+            .style(panel_bg)
+            .padding(Padding::horizontal(1)),
     );
     frame.render_widget(header, chunks[0]);
 
@@ -517,10 +685,13 @@ fn render_secret_prompt(
         Line::raw(t!("app.fix.review_secret_mask_toggle").into_owned()),
     ]))
     .wrap(Wrap { trim: false })
+    .style(panel_bg)
     .block(
         Block::default()
-            .title(t!("app.fix.review_secret_value").into_owned())
-            .borders(Borders::ALL),
+            .title(Line::from(t!("app.fix.review_secret_value").into_owned()).style(title_style))
+            .borders(Borders::NONE)
+            .style(panel_bg)
+            .padding(Padding::horizontal(1)),
     );
     frame.render_widget(input_widget, chunks[1]);
 
@@ -530,7 +701,13 @@ fn render_secret_prompt(
         Line::raw(t!("app.hint.review_secret_cancel").into_owned()),
     ]))
     .wrap(Wrap { trim: true })
-    .block(Block::default().borders(Borders::ALL));
+    .style(panel_bg)
+    .block(
+        Block::default()
+            .borders(Borders::NONE)
+            .style(panel_bg)
+            .padding(Padding::horizontal(1)),
+    );
     frame.render_widget(hints, chunks[2]);
 }
 
@@ -544,6 +721,7 @@ mod tests {
         clamp_scroll, render, render_choice_prompt, render_secret_prompt,
     };
     use crate::fix::{FixPlan, ReviewChoiceOption};
+    use crate::tui::theme::{Theme, ThemePreset};
 
     #[test]
     fn apply_key_input_handles_accept_and_cancel_shortcuts() {
@@ -653,7 +831,14 @@ mod tests {
             backup_path: None,
             auto_applied,
             review_applied,
+            host_actions: Vec::new(),
+            system_actions: Vec::new(),
+            compose_actions: Vec::new(),
         }
+    }
+
+    fn sample_theme() -> Theme {
+        Theme::preset(ThemePreset::TokyoNight)
     }
 
     fn buffer_to_string(backend: &TestBackend) -> String {
@@ -675,8 +860,9 @@ mod tests {
         let mut state = FixReviewState { scroll: 0 };
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
 
+        let theme = sample_theme();
         terminal
-            .draw(|frame| render(frame, &plan, &mut state))
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
             .expect("fix review should render");
 
         let content = buffer_to_string(terminal.backend());
@@ -700,8 +886,9 @@ mod tests {
         let mut state = FixReviewState { scroll: 0 };
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
 
+        let theme = sample_theme();
         terminal
-            .draw(|frame| render(frame, &plan, &mut state))
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
             .expect("fix review should render");
 
         let buffer = terminal.backend().buffer();
@@ -734,8 +921,9 @@ mod tests {
         let mut state = FixReviewState { scroll: 0 };
         let mut terminal = Terminal::new(TestBackend::new(120, 24)).expect("terminal should build");
 
+        let theme = sample_theme();
         terminal
-            .draw(|frame| render(frame, &plan, &mut state))
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
             .expect("fix review should render");
 
         let content = buffer_to_string(terminal.backend());
@@ -757,8 +945,9 @@ mod tests {
         let mut state = FixReviewState { scroll: 0 };
         let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
 
+        let theme = sample_theme();
         terminal
-            .draw(|frame| render(frame, &plan, &mut state))
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
             .expect("empty fix review should render");
 
         let content = buffer_to_string(terminal.backend());
@@ -912,6 +1101,35 @@ mod tests {
         assert!(
             !content.contains("*************"),
             "asterisks should not appear when unmasked"
+        );
+    }
+
+    #[test]
+    fn renders_compose_actions_when_present() {
+        let mut plan = sample_plan(0, 0);
+        plan.compose_actions = vec![crate::fix::FixAction::ComposeEdit {
+            service: "web".to_string(),
+            summary: "add healthcheck".to_string(),
+            diff: "+  healthcheck:\n+    test: [\"CMD\"]\n".to_string(),
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("fix review with compose actions should render");
+        let content = buffer_to_string(terminal.backend());
+        assert!(
+            content.contains("[COMPOSE]"),
+            "compose actions section should have [COMPOSE] label"
+        );
+        assert!(
+            content.contains("add healthcheck"),
+            "compose action summary should be visible"
+        );
+        assert!(
+            content.contains("web"),
+            "compose action service should be visible"
         );
     }
 }

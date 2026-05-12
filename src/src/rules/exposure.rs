@@ -192,12 +192,59 @@ mod tests {
     fn marks_public_binding_as_safe_remediation() {
         let project =
             ComposeParser::parse_path_without_override(fixture()).expect("project should parse");
-
         let finding = scan_exposure_risk(&project)
             .into_iter()
             .find(|finding| finding.id == "exposure.public_binding")
             .expect("public binding finding should exist");
-
         assert_eq!(finding.remediation, crate::domain::RemediationKind::Auto);
+    }
+
+    #[test]
+    fn is_public_port_matches_implicit_all_interfaces() {
+        let port = crate::compose::model::PortBinding {
+            raw: String::new(),
+            host_ip: None,
+            host_port: Some("8080".to_string()),
+            container_port: "80".to_string(),
+            protocol: "tcp".to_string(),
+            short_syntax: false,
+        };
+        assert!(is_public_port(&port));
+    }
+
+    #[test]
+    fn is_public_port_skips_localhost_ipv6() {
+        let port = crate::compose::model::PortBinding {
+            raw: String::new(),
+            host_ip: Some("::1".to_string()),
+            host_port: Some("8080".to_string()),
+            container_port: "80".to_string(),
+            protocol: "tcp".to_string(),
+            short_syntax: false,
+        };
+        assert!(!is_public_port(&port));
+    }
+
+    #[test]
+    fn is_public_port_matches_ipv6_wildcard() {
+        let port = crate::compose::model::PortBinding {
+            raw: String::new(),
+            host_ip: Some("::".to_string()),
+            host_port: Some("8080".to_string()),
+            container_port: "80".to_string(),
+            protocol: "tcp".to_string(),
+            short_syntax: false,
+        };
+        assert!(is_public_port(&port));
+    }
+
+    #[test]
+    fn admin_interface_hints_include_all_services() {
+        let hints = crate::rules::exposure::ADMIN_SERVICE_HINTS;
+        assert!(hints.contains(&"adminer"));
+        assert!(hints.contains(&"pgadmin"));
+        assert!(hints.contains(&"phpmyadmin"));
+        assert!(hints.contains(&"portainer"));
+        assert!(hints.contains(&"traefik"));
     }
 }

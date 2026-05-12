@@ -21,6 +21,8 @@ hostveil is a lightweight TUI security dashboard for Linux self-hosted environme
 - **Do not commit `.env` files or any file containing credentials.**
 - **Do not create new documentation files speculatively.** Update existing ones. Keep `README.md` and `README.ko.md` structures in sync.
 - **Do not make architectural changes without checking `docs/adr/` first.**
+- **After any architectural change, update the relevant ADR or create a new one.** Unmodified ADRs that contradict the codebase are treated as bugs.
+- **Verify behavior, not just code.** After implementing a change, verify it works by running the relevant test or binary. Do not assume code compiles or works because it looks correct. Add TestBackend render tests for TUI changes that assert actual buffer cell content (colors, text, glyphs).
 
 ## TUI / Visual QA Rules
 
@@ -29,6 +31,29 @@ hostveil is a lightweight TUI security dashboard for Linux self-hosted environme
 - Reuse helper functions `buffer_to_string`, `buffer_bg`, etc. from `src/tui/mod.rs` tests.
 - When changing key bindings, update the help text, footer, and render tests together.
 - Overview layout must show core information without scrolling in the default state. Use density-aware rendering (`ScoreDensity` modes) and `Min`-based constraints rather than fixed `Length()` values.
+
+## QA Testing Charter (Behavioral E2E Coverage)
+
+Testing priority order (highest first):
+
+1. **Fix engine pipeline**: Every `FixAction` variant (`ComposeEdit`, `HostEdit`, `ShellCommand`) must have unit tests that verify actual execution (file creation, content, permissions, shell command success/failure). The `execute_host_and_system_actions` function must be tested with all action combinations.
+
+2. **Adapter classification coverage**: Every adapter (Dockle, Lynis) must have tests verifying each finding-to-`FixAction` mapping. Test both `Auto` and `Review` remediation paths, `None` skip behavior, unknown ID fallback, and unknown source filtering. The `multiple_findings_are_classified_independently` test must be kept up to date.
+
+3. **External finding pipeline**: Adapter findings (Dockle, Lynis) from `ScanResult` must reach the fix engine. When a user presses `f` on an adapter finding, the `TuiAction::TriggerFix` must include `adapter_findings`. The `preview_with_external` / `apply_with_external` functions receive and classify these findings. Test that `host_actions` and `system_actions` in `FixPlan` are populated when adapter findings are present.
+
+4. **E2E user-flow tests**: Use `TestBackend` with keystroke simulation (`KeyCode` arrays) to verify full user flows: settings toggle → UI reflects immediately, tab navigation, scroll behavior, border toggle → all panels update. Each flow test must assert on both state changes and buffer content.
+
+5. **Fix review UI**: Every plan section (auto, review, host edit, shell command) must be rendered in `fix_review.rs`. Test that `host_actions` and `system_actions` summaries appear in the rendered output when present.
+
+6. **Regression guard**: Run `cargo test --workspace` (must pass all 719+ tests) and `cargo clippy -D warnings` before every commit. Run `scripts/smoke-test.sh` and `scripts/test-install-script.sh` for release-impacting changes.
+
+7. **CI mode in E2E scripts**: `CI_MODE=1 scripts/test-adapters-e2e.sh` must fail if required adapter binaries are missing, preventing silent skips in CI environments.
+
+## Test Count Baseline
+
+- **Workspace tests**: 719+ (lib: 719, main: 0, doc: 0)
+- **Target coverage**: Adding tests is preferred over modifying existing ones. Each new feature or fix must add at minimum one behavioral E2E test that simulates real user interaction.
 
 ## Documentation Rules
 

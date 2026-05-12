@@ -15,6 +15,7 @@ pub struct AppSettings {
     pub locale: Option<String>,
     pub theme: Option<String>,
     pub layout: Option<String>,
+    pub ui_borders: Option<bool>,
     pub severity_filter: Option<String>,
     pub source_filter: Option<String>,
     pub service_filter: Option<String>,
@@ -41,6 +42,12 @@ pub fn persist_theme(theme: &str) -> io::Result<()> {
 pub fn persist_layout(layout: &str) -> io::Result<()> {
     let mut settings = load();
     settings.layout = Some(layout.to_owned());
+    save(&settings)
+}
+
+pub fn persist_ui_borders(enabled: bool) -> io::Result<()> {
+    let mut settings = load();
+    settings.ui_borders = Some(enabled);
     save(&settings)
 }
 

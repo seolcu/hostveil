@@ -197,4 +197,179 @@ mod tests {
 
         std::fs::remove_dir_all(root).expect("temp root should be removed");
     }
+
+    #[test]
+    fn host_scanner_detects_tripwire_not_initialized() {
+        let root = temp_host_root("tripwire-no-db");
+        write_file(&root.join("usr/sbin/tripwire"), "");
+        write_file(&root.join("etc/tripwire/tw.cfg"), "");
+        write_file(&root.join("etc/hostname"), "tripwire-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.tripwire_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_tripwire_when_initialized() {
+        let root = temp_host_root("tripwire-ok");
+        write_file(&root.join("usr/sbin/tripwire"), "");
+        write_file(&root.join("etc/tripwire/tw.cfg"), "");
+        std::fs::create_dir_all(root.join("var/lib/tripwire"))
+            .expect("tripwire db dir should be created");
+        write_file(&root.join("var/lib/tripwire/host.twd"), "");
+        write_file(&root.join("etc/hostname"), "tripwire-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.tripwire_not_initialized")
+        );
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_fim_when_samhain_present() {
+        let root = temp_host_root("samhain-ok");
+        write_file(&root.join("usr/sbin/samhain"), "");
+        write_file(&root.join("etc/hostname"), "samhain-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_skips_fim_when_ossec_present() {
+        let root = temp_host_root("ossec-ok");
+        std::fs::create_dir_all(root.join("var/ossec")).expect("ossec dir should be created");
+        write_file(&root.join("etc/hostname"), "ossec-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_aide_via_config_only() {
+        let root = temp_host_root("aide-conf-only");
+        write_file(&root.join("etc/aide/aide.conf"), "");
+        write_file(&root.join("etc/hostname"), "aide-conf-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.aide_not_initialized")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_tripwire_via_config_only() {
+        let root = temp_host_root("tripwire-conf-only");
+        write_file(&root.join("etc/tripwire/tw.cfg"), "");
+        write_file(&root.join("etc/hostname"), "tripwire-conf-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.id == "host.tripwire_not_initialized")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn host_scanner_detects_samhain_via_config_only() {
+        let root = temp_host_root("samhain-conf-only");
+        write_file(&root.join("etc/samhain/samhainrc"), "");
+        write_file(&root.join("etc/hostname"), "samhain-conf-test\n");
+        write_file(&root.join("proc/uptime"), "60.00 0.00\n");
+        write_file(&root.join("proc/loadavg"), "0.10 0.20 0.30 1/100 123\n");
+
+        let findings = HostScanner.scan(&HostContext { root: root.clone() });
+
+        assert!(
+            !findings
+                .iter()
+                .any(|finding| finding.id == "host.fim_missing")
+        );
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn aide_db_exists_checks_both_paths() {
+        let root = temp_host_root("aide-db-paths");
+        let ctx = HostContext { root: root.clone() };
+
+        assert!(!aide_db_exists(&ctx));
+
+        write_file(&root.join("var/lib/aide/aide.db"), "");
+        assert!(aide_db_exists(&ctx));
+
+        std::fs::remove_file(root.join("var/lib/aide/aide.db")).expect("db file should be removed");
+        write_file(&root.join("var/lib/aide/aide.db.new"), "");
+        assert!(aide_db_exists(&ctx));
+
+        std::fs::remove_dir_all(root).expect("temp root should be removed");
+    }
 }

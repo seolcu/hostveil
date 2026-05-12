@@ -411,4 +411,177 @@ mod tests {
         );
         assert_eq!(output.status, AdapterStatus::Missing);
     }
+
+    #[test]
+    fn empty_findings_list_produces_no_findings() {
+        let findings = entries_to_findings(vec![], Path::new("/srv/demo"), &[]);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn findings_from_compose_file_are_filtered_out() {
+        let entries = vec![
+            GitleaksFinding {
+                rule_id: String::from("github-pat"),
+                start_line: 1,
+                file: PathBuf::from("/srv/demo/docker-compose.yml"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("aws-key"),
+                start_line: 2,
+                file: PathBuf::from("/srv/demo/src/main.rs"),
+            },
+        ];
+
+        let findings = entries_to_findings(
+            entries,
+            Path::new("/srv/demo"),
+            &[PathBuf::from("/srv/demo/docker-compose.yml")],
+        );
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].subject, "src/main.rs");
+    }
+
+    #[test]
+    fn findings_from_env_files_are_filtered_out() {
+        let entries = vec![
+            GitleaksFinding {
+                rule_id: String::from("generic-secret"),
+                start_line: 1,
+                file: PathBuf::from("/srv/demo/.env"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("generic-secret"),
+                start_line: 2,
+                file: PathBuf::from("/srv/demo/.env.local"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("generic-secret"),
+                start_line: 3,
+                file: PathBuf::from("/srv/demo/.env.production"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("aws-key"),
+                start_line: 4,
+                file: PathBuf::from("/srv/demo/config.yml"),
+            },
+        ];
+
+        let findings = entries_to_findings(entries, Path::new("/srv/demo"), &[]);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].subject, "config.yml");
+    }
+
+    #[test]
+    fn multiple_findings_same_file_are_aggregated() {
+        let entries = vec![
+            GitleaksFinding {
+                rule_id: String::from("github-pat"),
+                start_line: 10,
+                file: PathBuf::from("/srv/demo/notes.txt"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("aws-key"),
+                start_line: 20,
+                file: PathBuf::from("/srv/demo/notes.txt"),
+            },
+            GitleaksFinding {
+                rule_id: String::from("github-pat"),
+                start_line: 30,
+                file: PathBuf::from("/srv/demo/notes.txt"),
+            },
+        ];
+
+        let findings = entries_to_findings(entries, Path::new("/srv/demo"), &[]);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(
+            findings[0].evidence.get("match_count"),
+            Some(&String::from("3"))
+        );
+        assert_eq!(
+            findings[0].evidence.get("rule_ids"),
+            Some(&String::from("aws-key,github-pat"))
+        );
+        assert_eq!(
+            findings[0].evidence.get("lines"),
+            Some(&String::from("10,20,30"))
+        );
+    }
+
+    #[test]
+    fn finding_severity_is_high() {
+        let entries = vec![GitleaksFinding {
+            rule_id: String::from("github-pat"),
+            start_line: 1,
+            file: PathBuf::from("/srv/demo/secret.txt"),
+        }];
+
+        let findings = entries_to_findings(entries, Path::new("/srv/demo"), &[]);
+        assert_eq!(findings[0].severity, Severity::High);
+    }
+
+    #[test]
+    fn finding_subject_is_relative_to_project_root() {
+        let entries = vec![GitleaksFinding {
+            rule_id: String::from("generic-api-key"),
+            start_line: 5,
+            file: PathBuf::from("/srv/demo/src/config/keys.rs"),
+        }];
+
+        let findings = entries_to_findings(entries, Path::new("/srv/demo"), &[]);
+        assert_eq!(findings[0].subject, "src/config/keys.rs");
+    }
+
+    #[test]
+    fn finding_evidence_contains_rule_ids() {
+        let entries = vec![GitleaksFinding {
+            rule_id: String::from("github-pat"),
+            start_line: 1,
+            file: PathBuf::from("/srv/demo/secret.txt"),
+        }];
+
+        let findings = entries_to_findings(entries, Path::new("/srv/demo"), &[]);
+        assert_eq!(
+            findings[0].evidence.get("rule_ids"),
+            Some(&String::from("github-pat"))
+        );
+    }
+
+    #[test]
+    fn gitleaks_command_includes_timeout() {
+        let args = gitleaks_dir_args(Path::new("/tmp/project"), Duration::from_secs(120));
+        assert!(args.contains(&String::from("120")));
+    }
+
+    #[test]
+    fn gitleaks_command_sets_zero_exit_code() {
+        let args = gitleaks_dir_args(Path::new("/tmp/project"), Duration::from_secs(10));
+        assert!(args.contains(&String::from("--exit-code=0")));
+    }
+
+    #[test]
+    fn gitleaks_command_sets_error_log_level() {
+        let args = gitleaks_dir_args(Path::new("/tmp/project"), Duration::from_secs(10));
+        assert!(args.contains(&String::from("--log-level=error")));
+    }
+
+    #[test]
+    fn detect_gitleaks_reports_missing_for_unknown_binary() {
+        let status =
+            detect_gitleaks_with_command("hostveil-nonexistent-gitleaks", Duration::from_secs(1));
+        assert_eq!(status, GitleaksAvailability::Missing);
+    }
+
+    #[test]
+    fn detect_gitleaks_reports_failed_for_non_zero_command() {
+        let status = detect_gitleaks_with_command("false", Duration::from_secs(1));
+        assert!(matches!(status, GitleaksAvailability::Failed(_)));
+    }
+
+    #[test]
+    fn detect_gitleaks_reports_available_for_true_command() {
+        let status = detect_gitleaks_with_command("true", Duration::from_secs(1));
+        assert_eq!(status, GitleaksAvailability::Available);
+    }
 }

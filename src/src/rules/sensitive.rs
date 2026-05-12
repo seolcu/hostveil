@@ -205,13 +205,49 @@ mod tests {
     fn skips_interpolated_and_secret_file_values() {
         let project = ComposeParser::parse_path_without_override(fixture_root())
             .expect("project should parse");
-
         let findings = scan_sensitive_data(&project);
-
         assert!(
             findings
                 .iter()
                 .all(|finding| finding.related_service.as_deref() != Some("safe"))
         );
+    }
+
+    #[test]
+    fn is_secret_key_matches_known_keywords() {
+        assert!(is_secret_key("password"));
+        assert!(is_secret_key("PASSWORD"));
+        assert!(is_secret_key("passwd"));
+        assert!(is_secret_key("api_key"));
+        assert!(is_secret_key("private_key"));
+        assert!(is_secret_key("my_secret"));
+        assert!(is_secret_key("access_key"));
+        assert!(is_secret_key("auth_token"));
+        assert!(!is_secret_key("hostname"));
+        assert!(!is_secret_key("port"));
+    }
+
+    #[test]
+    fn is_interpolated_detects_placeholder_syntax() {
+        assert!(is_interpolated("${VAR}"));
+        assert!(is_interpolated("${DB_PASSWORD}"));
+        assert!(!is_interpolated("prefix-${VAR}-suffix"));
+        assert!(!is_interpolated("plaintext_value"));
+        assert!(!is_interpolated(""));
+    }
+
+    #[test]
+    fn all_findings_have_remediation_none() {
+        let project = ComposeParser::parse_path_without_override(fixture_root())
+            .expect("project should parse");
+        let findings = scan_sensitive_data(&project);
+        for finding in &findings {
+            assert_eq!(
+                finding.remediation,
+                crate::domain::RemediationKind::None,
+                "finding {} should have None remediation",
+                finding.id
+            );
+        }
     }
 }
