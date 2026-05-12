@@ -423,10 +423,12 @@ fn render(
                     Span::raw(": "),
                     Span::raw(action_summary),
                 ]));
-                let cmd_preview: String = command.chars().take(60).collect();
                 summary.push(Line::from(vec![
                     Span::raw("    "),
-                    Span::styled(cmd_preview, Style::default().fg(Color::DarkGray)),
+                    Span::styled(
+                        format!("$ {}", command),
+                        Style::default().fg(Color::Cyan),
+                    ),
                 ]));
             }
         }
@@ -468,6 +470,8 @@ fn render(
 
     let summary_lines_count = summary.len();
 
+    let footer_height = if theme.borders_enabled { 5 } else { 3 };
+
     let summary_widget = Paragraph::new(Text::from(summary))
         .wrap(Wrap { trim: true })
         .style(theme.panel_bg)
@@ -484,9 +488,9 @@ fn render(
         .direction(Direction::Vertical)
         .spacing(1)
         .constraints([
-            Constraint::Length((summary_lines_count as u16 + 2).clamp(5, 15)),
+            Constraint::Length((summary_lines_count as u16 + 2).clamp(5, 20)),
             Constraint::Min(5),
-            Constraint::Length(3),
+            Constraint::Length(footer_height),
         ])
         .split(frame.area());
 

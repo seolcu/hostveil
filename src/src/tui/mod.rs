@@ -1101,12 +1101,6 @@ fn handle_overview_key(
 ) -> Option<TuiAction> {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => Some(TuiAction::Exit),
-        KeyCode::Char('f') => {
-            state.scope_filter = None;
-            state.screen = Screen::Findings;
-            state.clamp_selection(scan_result);
-            None
-        }
         KeyCode::Char('h') => {
             state.scope_filter = Some(Scope::Host);
             state.screen = Screen::Findings;
@@ -2831,18 +2825,19 @@ fn findings_list_items(
 
             let mut lines = Vec::new();
             let style = severity_style(finding.severity, theme).add_modifier(Modifier::BOLD);
+            let muted = theme.muted;
             for (i, line) in title_lines.iter().enumerate() {
                 if i == 0 {
                     lines.push(Line::styled(line.clone(), style));
                 } else {
-                    lines.push(Line::raw(format!("  {}", line)));
+                    lines.push(Line::styled(format!("  {}", line), style));
                 }
             }
 
             match mode {
                 FindingsLayoutMode::Narrow => {
                     let subtitle = format!("[{}] {}", remediation_compact, compact_subject);
-                    lines.push(Line::raw(format!("  {}", subtitle)));
+                    lines.push(Line::styled(format!("  {}", subtitle), muted));
                 }
                 FindingsLayoutMode::Stacked => {
                     let subtitle = format!(
@@ -2852,7 +2847,7 @@ fn findings_list_items(
                         remediation_badge
                     );
                     for sub_line in wrap_text_to_lines(&subtitle, inner_width) {
-                        lines.push(Line::raw(format!("  {}", sub_line)));
+                        lines.push(Line::styled(format!("  {}", sub_line), muted));
                     }
                 }
                 FindingsLayoutMode::SideBySide | FindingsLayoutMode::CompactList => {
@@ -2864,7 +2859,7 @@ fn findings_list_items(
                         remediation_badge
                     );
                     for sub_line in wrap_text_to_lines(&subtitle, inner_width) {
-                        lines.push(Line::raw(format!("  {}", sub_line)));
+                        lines.push(Line::styled(format!("  {}", sub_line), muted));
                     }
                 }
             }
