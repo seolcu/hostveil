@@ -4708,6 +4708,20 @@ mod tests {
     }
 
     #[test]
+    fn backup_path_for_hidden_file() {
+        let p = backup_path_for(Path::new("/srv/.docker-compose.yml"));
+        let name = p.file_name().unwrap().to_str().unwrap().to_string();
+        assert!(
+            name.starts_with(".docker-compose-"),
+            "expected .docker-compose- prefix, got {name}"
+        );
+        assert!(
+            name.ends_with(".bak.yml"),
+            "expected .bak.yml suffix, got {name}"
+        );
+    }
+
+    #[test]
     fn fix_mode_includes_review_values() {
         use FixMode::*;
         assert!(

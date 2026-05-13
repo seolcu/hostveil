@@ -8476,4 +8476,86 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             "ScrollUp on row 0 should saturate at 0"
         );
     }
+
+    #[test]
+    fn non_left_mouse_buttons_are_noop() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Right),
+                column: 0,
+                row: 0,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Middle),
+                column: 0,
+                row: 0,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Left),
+                column: 0,
+                row: 0,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+    }
+
+    #[test]
+    fn search_backspace_on_empty_is_noop() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.search_open = true;
+        state.search_query.clear();
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+        );
+        assert!(
+            state.search_query.is_empty(),
+            "Backspace on empty should stay empty"
+        );
+    }
+
+    #[test]
+    fn tui_severity_rank_all_variants() {
+        assert_eq!(super::severity_rank(Severity::Critical), 0);
+        assert_eq!(super::severity_rank(Severity::High), 1);
+        assert_eq!(super::severity_rank(Severity::Medium), 2);
+        assert_eq!(super::severity_rank(Severity::Low), 3);
+    }
+
+    #[test]
+    fn f_key_on_non_fixable_shows_status_message() {
+        let mut result = sample_result();
+        result.metadata.compose_file = None;
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        assert!(
+            state.status_message.is_none(),
+            "should start with no status message"
+        );
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('f'), KeyModifiers::NONE),
+        );
+        assert!(
+            state.status_message.is_some(),
+            "f on non-fixable finding should set status message"
+        );
+    }
 }

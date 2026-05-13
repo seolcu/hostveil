@@ -1122,4 +1122,33 @@ mod tests {
                 if message == crate::i18n::tr_duplicate_locale_override()
         ));
     }
+
+    #[test]
+    fn rejects_invalid_fail_on_value() {
+        let error = AppConfig::parse([String::from("--fail-on=extreme")])
+            .expect_err("invalid --fail-on should be rejected");
+
+        assert!(
+            matches!(
+                error,
+                super::AppError::InvalidArgumentCombination(ref msg) if msg.starts_with("--fail-on must be one of:")
+            ),
+            "expected InvalidArgumentCombination for invalid fail-on, got {:?}",
+            error
+        );
+    }
+
+    #[test]
+    fn parses_valid_fail_on_severity() {
+        let config = AppConfig::parse([String::from("--fail-on=high")])
+            .expect("--fail-on=high should parse");
+        assert_eq!(config.fail_on, Some(crate::domain::Severity::High));
+    }
+
+    #[test]
+    fn host_root_accepts_valid_path() {
+        let config = AppConfig::parse([String::from("--host-root=/srv/host")])
+            .expect("--host-root should parse");
+        assert!(config.host_root.is_some());
+    }
 }

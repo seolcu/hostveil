@@ -1164,4 +1164,11 @@ mod tests {
             "unsupported locale should fallback to english output"
         );
     }
+
+    #[test]
+    fn json_filtered_export_handles_empty_result() {
+        let json = scan_result_json_filtered(&ScanResult::default(), false);
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("JSON should parse");
+        assert!(parsed["findings"].as_array().unwrap().is_empty());
+    }
 }

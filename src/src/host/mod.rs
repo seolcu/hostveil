@@ -664,4 +664,25 @@ mod tests {
         let result = try_command(&["hostveil-nonexistent-binary"]);
         assert_eq!(result, None);
     }
+
+    #[test]
+    fn try_command_returns_none_for_permission_denied() {
+        // /etc/shadow exists but is not executable
+        let result = try_command(&["/etc/shadow"]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn try_command_returns_none_for_whitespace_only_output() {
+        let result = try_command(&["printf", "   \n"]);
+        assert_eq!(result, None, "whitespace-only stdout should return None");
+    }
+
+    #[test]
+    fn is_live_root_returns_false_for_nonexistent_path() {
+        assert!(
+            !is_live_root(Path::new("/nonexistent-hostveil-test-path")),
+            "nonexistent path should not be considered root"
+        );
+    }
 }

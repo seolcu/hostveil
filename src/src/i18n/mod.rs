@@ -1058,6 +1058,8 @@ mod tests {
     fn normalize_locale_tag_handles_underscore_only() {
         assert_eq!(normalize_locale_tag("en_US_UTF_8"), Some("en"));
         assert_eq!(normalize_locale_tag("ko_KR_euro"), Some("ko"));
+        assert_eq!(normalize_locale_tag(""), None);
+        assert_eq!(normalize_locale_tag("  "), None);
     }
 
     #[test]

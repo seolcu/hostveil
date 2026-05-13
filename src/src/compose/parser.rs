@@ -826,6 +826,12 @@ mod tests {
     }
 
     #[test]
+    fn split_protocol_edge_cases() {
+        assert_eq!(split_protocol(""), (String::new(), String::from("tcp")));
+        assert_eq!(split_protocol("/udp"), (String::new(), String::from("udp")));
+    }
+
+    #[test]
     fn detect_mount_type_matches_prototype_behavior() {
         assert_eq!(detect_mount_type(None), "anonymous");
         assert_eq!(detect_mount_type(Some("")), "anonymous");
