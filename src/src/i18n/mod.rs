@@ -1085,4 +1085,16 @@ mod tests {
         assert!(!result.is_empty());
         assert!(result.contains("terminal") || result.contains("TTY"));
     }
+
+    #[test]
+    fn tr_panel_keys_return_non_empty() {
+        assert!(!super::tr("app.panel.status").is_empty());
+        assert!(!super::tr("app.panel.hints").is_empty());
+        assert!(!super::tr("app.panel.next_steps").is_empty());
+        assert!(!super::tr("app.panel.next_step_one").is_empty());
+        assert!(!super::tr("app.panel.next_step_two").is_empty());
+        assert!(!super::tr("app.panel.next_step_three").is_empty());
+        assert!(!super::tr("app.summary.title").is_empty());
+        assert!(!super::tr("app.summary.none").is_empty());
+    }
 }

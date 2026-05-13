@@ -301,4 +301,33 @@ mod tests {
         assert_eq!(history.entries.len(), MAX_HISTORY_ENTRIES);
         assert_eq!(history.previous_overall(), Some(50));
     }
+
+    #[test]
+    fn empty_history_trend_returns_zero() {
+        let history = ScanHistory::default();
+        assert_eq!(
+            history.trend(0).len(),
+            0,
+            "trend(0) from empty history should be empty"
+        );
+        assert_eq!(
+            history.trend(5).len(),
+            0,
+            "trend(5) on empty history should be empty"
+        );
+    }
+
+    #[test]
+    fn load_swallows_corrupted_json_and_returns_default() {
+        let dir = std::env::temp_dir().join("hostveil-load-corrupt");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("history.json");
+        std::fs::write(&path, "corrupted").expect("write corrupted");
+        let loaded = load_from_path(&path);
+        assert!(
+            loaded.is_err(),
+            "load_from_path should error on corrupted JSON"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

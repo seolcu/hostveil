@@ -422,4 +422,39 @@ mod tests {
             "Low severity maps to 5 point deduction"
         );
     }
+
+    #[test]
+    fn severity_penalty_maps_correctly() {
+        assert_eq!(severity_penalty(Severity::Critical), 75);
+        assert_eq!(severity_penalty(Severity::High), 35);
+        assert_eq!(severity_penalty(Severity::Medium), 15);
+        assert_eq!(severity_penalty(Severity::Low), 5);
+    }
+
+    #[test]
+    fn score_caps_at_zero_with_exactly_100_penalty() {
+        let findings = [
+            finding(Axis::HostHardening, Severity::High, "high_1"),
+            finding(Axis::HostHardening, Severity::High, "high_2"),
+            finding(Axis::HostHardening, Severity::High, "high_3"),
+            finding(Axis::HostHardening, Severity::High, "high_4"),
+            finding(Axis::HostHardening, Severity::High, "high_5"),
+            finding(Axis::HostHardening, Severity::High, "high_6"),
+            finding(Axis::HostHardening, Severity::High, "high_7"),
+            finding(Axis::HostHardening, Severity::High, "high_8"),
+            finding(Axis::HostHardening, Severity::High, "high_9"),
+            finding(Axis::HostHardening, Severity::High, "high_10"),
+        ];
+        let report = build_score_report_with_coverage(
+            &findings,
+            Coverage {
+                compose: false,
+                host_hardening: true,
+            },
+        );
+        assert_eq!(
+            report.overall, 0,
+            "10 High findings = 100 penalty, score should be 0"
+        );
+    }
 }

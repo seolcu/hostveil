@@ -975,4 +975,20 @@ mod tests {
         assert!(project.services.contains_key("web"));
         fs::remove_dir_all(root).unwrap();
     }
+
+    #[test]
+    fn load_bundle_succeeds_with_valid_compose() {
+        let dir = std::env::temp_dir().join("hostveil-compose-load-bundle-override-nonexistent");
+        let _ = std::fs::create_dir_all(&dir);
+        let compose_path = dir.join("compose.yml");
+        std::fs::write(&compose_path, "services:\n  web:\n    image: nginx\n")
+            .expect("write compose");
+        let result = ComposeParser::load_bundle(&compose_path, false);
+        assert!(
+            result.is_ok(),
+            "load_bundle with valid compose should succeed: {:?}",
+            result
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

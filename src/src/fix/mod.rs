@@ -2368,8 +2368,8 @@ mod tests {
     use super::{
         FixAction, FixError, FixMode, FixPlan, FixProposal, FixResolutionMap, ReviewChoiceOption,
         ReviewRequest, ReviewResolution, apply, apply_compose_edits_to_text, apply_with_external,
-        apply_with_resolutions, execute_host_and_system_actions, merge_original_formatting,
-        preview, preview_with_external, preview_with_resolutions,
+        apply_with_resolutions, backup_path_for, execute_host_and_system_actions,
+        merge_original_formatting, preview, preview_with_external, preview_with_resolutions,
     };
     use crate::compose::ComposeParseError;
     use crate::domain::{Finding, RemediationKind, Severity, Source};
@@ -4643,5 +4643,77 @@ mod tests {
             "preview should either have a diff or be a no-op"
         );
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn merge_original_formatting_extra_lines_in_after() {
+        let before = "services:\n  web:\n    image: nginx\n";
+        let after = "services:\n  web:\n    image: nginx\n    ports:\n      - \"80:80\"\n";
+        let merged = merge_original_formatting(before, after);
+        assert!(merged.contains("    ports:\n"));
+        assert!(merged.contains("      - \"80:80\""));
+    }
+
+    #[test]
+    fn merge_original_formatting_empty_before() {
+        let merged = merge_original_formatting("", "services:\n  web:\n    image: nginx\n");
+        assert_eq!(merged, "services:\n  web:\n    image: nginx\n");
+    }
+
+    #[test]
+    fn merge_original_formatting_lines_removed_in_after() {
+        let before = "services:\n  web:\n    image: nginx\n    ports:\n      - \"80:80\"\n";
+        let after = "services:\n  web:\n    image: nginx\n";
+        let merged = merge_original_formatting(before, after);
+        assert_eq!(merged, "services:\n  web:\n    image: nginx\n");
+    }
+
+    #[test]
+    fn backup_path_for_no_extension() {
+        let p = backup_path_for(Path::new("/tmp/compose"));
+        let name = p.file_name().unwrap().to_str().unwrap().to_string();
+        assert!(
+            name.starts_with("compose-"),
+            "expected compose- prefix, got {name}"
+        );
+        assert!(name.ends_with(".bak"), "expected .bak suffix, got {name}");
+    }
+
+    #[test]
+    fn backup_path_for_multiple_dots() {
+        let p = backup_path_for(Path::new("/tmp/compose.foo.bar.yml"));
+        let name = p.file_name().unwrap().to_str().unwrap().to_string();
+        assert!(
+            name.starts_with("compose.foo.bar-"),
+            "expected compose.foo.bar- prefix, got {name}"
+        );
+        assert!(
+            name.ends_with(".bak.yml"),
+            "expected .bak.yml suffix, got {name}"
+        );
+    }
+
+    #[test]
+    fn backup_path_for_root_path() {
+        let p = backup_path_for(Path::new("/"));
+        let name = p.file_name().unwrap().to_str().unwrap().to_string();
+        assert!(
+            name.starts_with("docker-compose-"),
+            "expected docker-compose- prefix, got {name}"
+        );
+        assert!(
+            name.ends_with(".bak.yml"),
+            "expected .bak.yml suffix, got {name}"
+        );
+    }
+
+    #[test]
+    fn fix_mode_includes_review_values() {
+        use FixMode::*;
+        assert!(
+            !AutoFix.includes_review(),
+            "AutoFix should not include review"
+        );
+        assert!(Fix.includes_review(), "Fix should include review");
     }
 }

@@ -424,4 +424,11 @@ mod tests {
 
         fs::remove_dir_all(path.parent().expect("has parent")).ok();
     }
+
+    #[test]
+    fn resolve_config_dir_returns_none_for_empty_strings() {
+        assert_eq!(resolve_config_dir(Some(""), None, None), None);
+        assert_eq!(resolve_config_dir(Some("  "), None, None), None);
+        assert!(resolve_config_dir(Some("valid"), None, None).is_some());
+    }
 }

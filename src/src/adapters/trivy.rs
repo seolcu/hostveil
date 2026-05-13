@@ -737,4 +737,28 @@ exit 0
 
         let _ = fs::remove_file(command);
     }
+
+    #[test]
+    fn parse_trivy_severity_unknown_value_returns_none() {
+        assert_eq!(parse_trivy_severity("UNKNOWN"), None);
+        assert_eq!(parse_trivy_severity("NONE"), None);
+        assert_eq!(parse_trivy_severity("INFO"), None);
+        assert_eq!(parse_trivy_severity(""), None);
+    }
+
+    #[test]
+    fn parse_trivy_severity_case_insensitive() {
+        assert_eq!(parse_trivy_severity("critical"), Some(Severity::Critical));
+        assert_eq!(parse_trivy_severity("CRITICAL"), Some(Severity::Critical));
+        assert_eq!(parse_trivy_severity("Critical"), Some(Severity::Critical));
+        assert_eq!(parse_trivy_severity("  HIGH  "), Some(Severity::High));
+    }
+
+    #[test]
+    fn trivy_severity_rank_all_variants() {
+        assert_eq!(severity_rank(Severity::Critical), 0);
+        assert_eq!(severity_rank(Severity::High), 1);
+        assert_eq!(severity_rank(Severity::Medium), 2);
+        assert_eq!(severity_rank(Severity::Low), 3);
+    }
 }

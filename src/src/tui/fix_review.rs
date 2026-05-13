@@ -1393,4 +1393,38 @@ mod tests {
 
         std::fs::remove_dir_all(&dir).ok();
     }
+
+    #[test]
+    fn host_edit_section_uses_yellow_foreground() {
+        let mut plan = sample_plan(0, 0);
+        plan.host_actions = vec![crate::fix::FixAction::HostEdit {
+            path: PathBuf::from("/etc/test.conf"),
+            summary: "test change".to_string(),
+            original_content: String::new(),
+            updated_content: "key = value\n".to_string(),
+            mode: None,
+        }];
+        let mut state = FixReviewState { scroll: 0 };
+        let theme = sample_theme();
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        terminal
+            .draw(|frame| render(frame, &plan, &mut state, &theme))
+            .expect("render host edit");
+        let buffer = terminal.backend().buffer();
+        let area = terminal.backend().size().expect("size");
+        // At least one cell in the HOST EDIT section should have Yellow fg
+        let mut has_yellow_host_edit = false;
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let cell = &buffer[(x, y)];
+                if cell.style().fg == Some(ratatui::style::Color::Yellow) {
+                    has_yellow_host_edit = true;
+                }
+            }
+        }
+        assert!(
+            has_yellow_host_edit,
+            "[HOST EDIT] should have some cells with Yellow fg"
+        );
+    }
 }

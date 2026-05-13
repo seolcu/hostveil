@@ -597,7 +597,7 @@ mod tests {
 
     use serde_json::Value;
 
-    use super::{scan_result_json, scan_result_json_filtered};
+    use super::{scan_result_html, scan_result_json, scan_result_json_filtered};
     use crate::domain::{
         AdapterStatus, Axis, DefensiveControlStatus, DiscoveredProjectSummary,
         DockerDiscoveryStatus, Finding, HostRuntimeInfo, RemediationKind, ScanMetadata, ScanMode,
@@ -1121,5 +1121,47 @@ mod tests {
         assert!(md.contains("Test Finding"), "missing finding title");
         assert!(md.contains("High"), "missing severity label");
         assert!(md.contains("host"), "missing subject");
+    }
+
+    #[test]
+    fn empty_findings_json_outputs_empty_array() {
+        let result = ScanResult::default();
+        let json: serde_json::Value =
+            serde_json::from_str(&scan_result_json(&result)).expect("should parse");
+        assert_eq!(json["findings"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn empty_findings_html_outputs_empty_table() {
+        let result = ScanResult::default();
+        let html = scan_result_html(&result);
+        assert!(html.contains("<table>"), "HTML should contain table");
+        assert!(html.contains("</table>"), "HTML should have closing table");
+    }
+
+    #[test]
+    fn markdown_fallback_locale_uses_english() {
+        let mut result = ScanResult::default();
+        result.findings.push(Finding {
+            id: "test.id".to_string(),
+            axis: Axis::HostHardening,
+            severity: Severity::High,
+            scope: Scope::Host,
+            source: Source::NativeHost,
+            subject: "host".to_string(),
+            related_service: None,
+            title: "Test Finding".to_string(),
+            description: "Description text".to_string(),
+            why_risky: "It is risky".to_string(),
+            how_to_fix: "Fix it".to_string(),
+            evidence: BTreeMap::new(),
+            remediation: RemediationKind::Review,
+        });
+        let fallback = scan_result_markdown_for_locale(&result, "unsupported");
+        let english = scan_result_markdown_for_locale(&result, "en");
+        assert_eq!(
+            fallback, english,
+            "unsupported locale should fallback to english output"
+        );
     }
 }

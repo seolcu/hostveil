@@ -8293,4 +8293,187 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         );
         assert_eq!(state.settings_row, 0, "Up from row 0 should stay at 0");
     }
+
+    #[test]
+    fn enter_on_empty_findings_list_does_not_panic() {
+        let mut result = sample_result();
+        result.findings.clear();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+        );
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE),
+        );
+    }
+
+    #[test]
+    fn history_scroll_pagedown_at_zero_does_not_underflow() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        let _ = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history_scroll, 0, "PageUp at 0 should stay at 0");
+    }
+
+    #[test]
+    fn history_scroll_at_max_then_pagedown_stays_at_max() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+        state.history_scroll = u16::MAX;
+        let _ = handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.history_scroll,
+            u16::MAX,
+            "PageDown at MAX should saturate at MAX"
+        );
+    }
+
+    #[test]
+    fn mouse_scroll_down_on_settings_cycles_next_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_settings();
+        state.settings_row = 1;
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 1,
+                row: 1,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+        assert_eq!(
+            state.settings_row, 2,
+            "ScrollDown should call settings_next_row"
+        );
+    }
+
+    #[test]
+    fn mouse_scroll_up_on_settings_cycles_prev_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_settings();
+        state.settings_row = 2;
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 1,
+                row: 1,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+        assert_eq!(
+            state.settings_row, 1,
+            "ScrollUp should call settings_prev_row"
+        );
+    }
+
+    #[test]
+    fn settings_1_key_jumps_to_theme_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 0);
+    }
+
+    #[test]
+    fn settings_2_key_jumps_to_locale_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_row = 5;
+        state.settings_open = true;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 1);
+    }
+
+    #[test]
+    fn settings_3_key_jumps_to_layout_row() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE),
+        );
+        assert_eq!(state.settings_row, 2);
+    }
+
+    #[test]
+    fn overview_h_key_goes_to_findings_with_host_scope() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Findings,
+            "'h' from overview should go to findings"
+        );
+        assert_eq!(
+            state.scope_filter,
+            Some(Scope::Host),
+            "'h' should set scope_filter to Host"
+        );
+    }
+
+    #[test]
+    fn settings_scrollup_at_row_zero_saturates_at_zero() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.settings_open = true;
+        state.settings_row = 0;
+        // ScrollUp calls settings_prev_row which wraps
+        handle_mouse(
+            &mut state,
+            &result,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 1,
+                row: 1,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+        // settings_prev_row uses saturating_sub — row 0 stays at 0
+        assert_eq!(
+            state.settings_row, 0,
+            "ScrollUp on row 0 should saturate at 0"
+        );
+    }
 }
