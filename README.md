@@ -5,7 +5,7 @@
 > Lightweight, integrated security dashboard for Linux self-hosted environments centered on Docker Compose.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Status: Early Development](https://img.shields.io/badge/status-early%20development-orange)](https://github.com/seolcu/hostveil)
+[![Status: Beta](https://img.shields.io/badge/status-beta-yellowgreen)](https://github.com/seolcu/hostveil)
 
 Self-hosters running Jellyfin, Nextcloud, Vaultwarden, Gitea, or Immich typically need to run and interpret several separate security tools — Lynis, Trivy, Dockle, Gitleaks, Fail2ban, and more — with results scattered across all of them. hostveil is intended to consolidate those signals into one terminal-first workflow: scored findings, prioritized by severity, explained in self-hosting terms, and paired with concrete fix guidance.
 
