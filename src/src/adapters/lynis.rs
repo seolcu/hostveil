@@ -893,6 +893,77 @@ EOF
         assert_eq!(output.warnings.len(), 0);
     }
 
+    #[test]
+    fn warnings_only_report_produces_findings() {
+        let report_text = concat!(
+            "hostname=test-host\n",
+            "hardening_index=60\n",
+            "warning[]=AUTH-9286|SSH weak config|detail|solution\n",
+        );
+
+        let output = scan_with_effective_root_and_report(
+            Some(Path::new("/")),
+            true,
+            report_text,
+            Ok(LynisCommandResult {
+                success: true,
+                detail: None,
+            }),
+        );
+
+        assert!(matches!(output.status, AdapterStatus::Available));
+        assert!(
+            !output.findings.is_empty(),
+            "warnings should produce findings"
+        );
+    }
+
+    #[test]
+    fn suggestions_only_report_produces_findings() {
+        let report_text = concat!(
+            "hostname=test\n",
+            "hardening_index=55\n",
+            "suggestion[]=KRNL-5820|Enable kernel hardening|solution\n",
+        );
+
+        let output = scan_with_effective_root_and_report(
+            Some(Path::new("/")),
+            true,
+            report_text,
+            Ok(LynisCommandResult {
+                success: true,
+                detail: None,
+            }),
+        );
+
+        assert!(matches!(output.status, AdapterStatus::Available));
+        assert!(
+            !output.findings.is_empty(),
+            "suggestions should produce findings"
+        );
+    }
+
+    #[test]
+    fn lynis_non_zero_exit_adds_warning() {
+        let report_text = "hostname=test\n";
+
+        let output = scan_with_effective_root_and_report(
+            Some(Path::new("/")),
+            true,
+            report_text,
+            Ok(LynisCommandResult {
+                success: false,
+                detail: Some(String::from("scan failed with code 1")),
+            }),
+        );
+
+        assert!(matches!(output.status, AdapterStatus::Available));
+        assert!(
+            output.warnings.iter().any(|w| w.contains("scan failed")),
+            "warning should mention scan failure"
+        );
+    }
+
     fn scan_with_effective_root_and_report(
         host_root: Option<&Path>,
         effective_root: bool,

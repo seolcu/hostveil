@@ -5047,6 +5047,89 @@ mod tests {
     }
 
     #[test]
+    fn findings_reset_key_restores_defaults() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.open_findings();
+
+        // Apply several filters
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('S'), KeyModifiers::SHIFT),
+        );
+        state.clamp_selection(&result);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+
+        // Verify filters are non-default
+        assert_ne!(state.severity_filter, None);
+        assert_ne!(state.source_filter, None);
+        assert_ne!(state.sort_mode, FindingSortMode::Severity);
+
+        // Reset with 'r'
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::NONE),
+        );
+        state.clamp_selection(&result);
+
+        assert_eq!(state.severity_filter, None);
+        assert_eq!(state.source_filter, None);
+        assert_eq!(state.service_filter, None);
+        assert_eq!(state.sort_mode, FindingSortMode::Severity);
+    }
+
+    #[test]
+    fn history_o_key_returns_to_overview() {
+        let result = sample_result();
+        let mut state = AppState::new(&result);
+        state.screen = Screen::History;
+
+        handle_key(
+            &mut state,
+            &result,
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state.screen,
+            Screen::Overview,
+            "'o' from history should go to overview"
+        );
+
+        // Also verify 't' works (existing test)
+        let mut state2 = AppState::new(&result);
+        state2.screen = Screen::History;
+        handle_key(
+            &mut state2,
+            &result,
+            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE),
+        );
+        assert_eq!(
+            state2.screen,
+            Screen::Overview,
+            "'t' from history should go to overview"
+        );
+    }
+
+    #[test]
     fn overview_renders_mockup_like_sections_in_80x24() {
         let result = sample_result();
         let mut state = AppState::new(&result);
