@@ -42,7 +42,7 @@ hostveil/
 
 ## Current Implementation Status (v1.0.0-rewrite)
 
-### ✅ Completed (M1-M3)
+### ✅ Completed (M1-M5)
 
 | Module | Lines | Key Files |
 |--------|-------|-----------|
@@ -56,6 +56,11 @@ hostveil/
 | CLI | ~100 | flag-based argument parsing |
 | Discovery | ~100 | Docker compose file detection, host runtime info |
 | Scanner | ~100 | Orchestration + scoring |
+| TUI App | ~500 | Bubbletea app, 3 screens (overview/findings/history), settings modal |
+| TUI Overview | ~260 | Score card, severity, axis bars, action queue, host info |
+| TUI Findings | ~350 | Filtered list, detail panel, search, 6 filter types, 3 sort modes |
+| TUI History | ~120 | Axis score bars, severity summary, warnings |
+| TUI Settings | ~120 | Theme selector, modal overlay |
 
 ### 🚨 DEFERRED — DO NOT FORGET
 
