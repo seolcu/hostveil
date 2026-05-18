@@ -64,8 +64,7 @@ hostveil/
 | TUI Help | ~100 | Keyboard shortcut reference overlay |
 | TUI Toast | ~80 | Auto-dismissing notification component |
 | TUI StatusBar | ~80 | Index/count/filter status bar |
-| Web Server | ~100 | net/http + HTMX SPA, 5 routes |
-| Web Templates | ~300 | Overview, Findings, History, Settings - inline CSS |
+| Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
 ### 🚨 DEFERRED — DO NOT FORGET
 
