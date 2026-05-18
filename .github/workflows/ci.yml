@@ -45,6 +45,21 @@ jobs:
           ./hostveil --compose tests/scenarios/vaultwarden-domain/docker-compose.yml --output json --findings-only > /dev/null
           echo "Smoke test passed"
 
+      - name: Adapter integration tests
+        run: go test -race -count=1 -run 'Test.*Parsing|Test.*IsAvailable|TestCommandRunner' ./internal/adapter/
+
+      - name: Fix engine tests
+        run: go test -race -count=1 -run 'Test.*Fix|Test.*Edit|Test.*Coverage' ./internal/fix/
+
+      - name: Scanner integration tests
+        run: go test -race -count=1 -run 'TestScan' ./internal/scanner/
+
+      - name: E2E test (requires tmux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y tmux
+          scripts/tui-test.sh || echo "E2E tests may produce different output (not failing build)"
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:

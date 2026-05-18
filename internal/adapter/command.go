@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"time"
 )
@@ -22,36 +23,29 @@ func RunCommand(name string, args ...string) Result {
 func RunCommandWithTimeout(timeout time.Duration, name string, args ...string) Result {
 	var stdout, stderr bytes.Buffer
 
-	cmd := exec.Command(name, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	done := make(chan Result, 1)
+	err := cmd.Run()
+	exitCode := 0
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			err = CommandTimeoutError{Name: name, Timeout: timeout}
+		}
+	}
 
-	go func() {
-		err := cmd.Run()
-		exitCode := 0
-		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				exitCode = exitErr.ExitCode()
-			}
-		}
-		done <- Result{
-			Stdout:   stdout.String(),
-			Stderr:   stderr.String(),
-			ExitCode: exitCode,
-			Err:      err,
-		}
-	}()
-
-	select {
-	case result := <-done:
-		return result
-	case <-time.After(timeout):
-		cmd.Process.Kill()
-		return Result{
-			Err:   CommandTimeoutError{Name: name, Timeout: timeout},
-		}
+	return Result{
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
+		ExitCode: exitCode,
+		Err:      err,
 	}
 }
 

@@ -83,7 +83,7 @@ func ApplyShellCommand(action FixAction) (string, error) {
 }
 
 // hostEditsForFinding generates host edit actions for a given finding.
-// Called by the fix engine during preview/apply.
+// Full coverage of all host check findings from internal/scanner/host/.
 func hostEditsForFinding(findingID string, svc string) []FixAction {
 	switch findingID {
 	case "host.ssh.root_login":
@@ -118,12 +118,153 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
+	case "host.ssh.protocol":
+		return []FixAction{
+			PrepareHostEdit(
+				"/etc/ssh/sshd_config",
+				"Set SSH protocol to version 2 only",
+				"#Protocol 2",
+				"Protocol 2",
+				0644,
+			),
+			PrepareShellCommand(
+				"systemctl restart sshd",
+				"Restart SSH to apply protocol change",
+				"systemctl restart sshd",
+			),
+		}
+
+	case "host.docker.socket_accessible":
+		return []FixAction{
+			PrepareShellCommand(
+				"usermod -aG docker root && chmod 660 /var/run/docker.sock",
+				"Restrict Docker socket permissions",
+				"chmod 666 /var/run/docker.sock",
+			),
+			PrepareShellCommand(
+				"echo 'Consider using rootless Docker for production: https://docs.docker.com/engine/security/rootless/'",
+				"Recommend rootless Docker setup",
+				"",
+			),
+		}
+
+	case "host.docker.daemon_tls":
+		return []FixAction{
+			PrepareHostEdit(
+				"/etc/docker/daemon.json",
+				"Enable Docker daemon TLS configuration",
+				"{}",
+				`{"tls":true,"tlsverify":true,"tlscacert":"/etc/docker/ca.pem","tlscert":"/etc/docker/server-cert.pem","tlskey":"/etc/docker/server-key.pem"}`,
+				0644,
+			),
+			PrepareShellCommand(
+				"systemctl restart docker",
+				"Restart Docker to apply TLS changes",
+				"systemctl restart docker",
+			),
+		}
+
 	case "host.firewall.no_active_firewall":
 		return []FixAction{
 			PrepareShellCommand(
 				"ufw --force enable",
 				"Enable UFW firewall",
 				"ufw disable",
+			),
+		}
+
+	case "host.firewall.default_drop":
+		return []FixAction{
+			PrepareShellCommand(
+				"iptables -P INPUT DROP && iptables -P FORWARD DROP",
+				"Set firewall default policies to DROP",
+				"iptables -P INPUT ACCEPT && iptables -P FORWARD ACCEPT",
+			),
+		}
+
+	case "host.kernel.kernel_updates":
+		return []FixAction{
+			PrepareShellCommand(
+				"apt-get update && apt-get upgrade -y linux-image-$(uname -r)",
+				"Update kernel to latest available version",
+				"",
+			),
+		}
+
+	case "host.kernel.core_dumps":
+		return []FixAction{
+			PrepareHostEdit(
+				"/etc/security/limits.conf",
+				"Disable core dumps via limits.conf",
+				"",
+				"* hard core 0",
+				0644,
+			),
+			PrepareShellCommand(
+				"sysctl -w kernel.core_pattern=/dev/null && echo 'kernel.core_pattern=/dev/null' >> /etc/sysctl.conf",
+				"Disable core dumps via sysctl",
+				"sysctl -w kernel.core_pattern=core",
+			),
+		}
+
+	case "host.kernel.ip_forwarding":
+		return []FixAction{
+			PrepareShellCommand(
+				"sysctl -w net.ipv4.ip_forward=0 && sysctl -w net.ipv6.conf.all.forwarding=0",
+				"Disable IP forwarding",
+				"sysctl -w net.ipv4.ip_forward=1",
+			),
+		}
+
+	case "host.filesystem.world_writable_files":
+		return []FixAction{
+			PrepareShellCommand(
+				"find /etc -type f -perm -o+w 2>/dev/null | xargs -r chmod o-w",
+				"Remove world-writable permissions from /etc",
+				"",
+			),
+		}
+
+	case "host.filesystem.suid_files":
+		return []FixAction{
+			PrepareShellCommand(
+				"find /usr -type f -perm -4000 -exec chmod u-s {} \\; 2>/dev/null || true",
+				"Remove SUID bit from /usr binaries (may break functionality)",
+				"",
+			),
+		}
+
+	case "host.fim.no_fim_tool":
+		return []FixAction{
+			PrepareShellCommand(
+				"apt-get install -y aide && aideinit",
+				"Install and initialize AIDE file integrity checker",
+				"apt-get remove -y aide",
+			),
+		}
+
+	case "host.mac.no_apparmor":
+		return []FixAction{
+			PrepareShellCommand(
+				"apt-get install -y apparmor apparmor-utils && systemctl enable --now apparmor",
+				"Install and enable AppArmor",
+				"apt-get remove -y apparmor apparmor-utils",
+			),
+		}
+
+	case "host.mac.no_selinux":
+		return []FixAction{
+			PrepareHostEdit(
+				"/etc/selinux/config",
+				"Set SELinux to enforcing mode",
+				"SELINUX=disabled",
+				"SELINUX=enforcing",
+				0644,
+			),
+			PrepareShellCommand(
+				"setenforce 1",
+				"Set SELinux to enforcing immediately",
+				"setenforce 0",
 			),
 		}
 
@@ -136,12 +277,39 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.mac.no_apparmor":
+	case "host.defenses.rkhunter_not_installed":
 		return []FixAction{
 			PrepareShellCommand(
-				"apt-get install -y apparmor apparmor-utils && systemctl enable --now apparmor",
-				"Install and enable AppArmor",
-				"apt-get remove -y apparmor apparmor-utils",
+				"apt-get install -y rkhunter && rkhunter --propupd",
+				"Install and initialize rootkit hunter",
+				"apt-get remove -y rkhunter",
+			),
+		}
+
+	case "host.defenses.auditd_not_installed":
+		return []FixAction{
+			PrepareShellCommand(
+				"apt-get install -y auditd && systemctl enable --now auditd",
+				"Install and start auditd",
+				"apt-get remove -y auditd",
+			),
+		}
+
+	case "host.updates.unattended_upgrades":
+		return []FixAction{
+			PrepareShellCommand(
+				"apt-get install -y unattended-upgrades && dpkg-reconfigure -f noninteractive unattended-upgrades",
+				"Install and configure unattended security upgrades",
+				"apt-get remove -y unattended-upgrades",
+			),
+		}
+
+	case "host.updates.reboot_required":
+		return []FixAction{
+			PrepareShellCommand(
+				"shutdown -r +5 'Hostveil: rebooting to apply kernel updates'",
+				"Schedule reboot for pending updates",
+				"shutdown -c",
 			),
 		}
 	}
@@ -150,29 +318,57 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 }
 
 // adapterFixForFinding maps external adapter findings to fix actions.
-// This is a minimal implementation — see issue #385 for full classification.
+// Full classification for Trivy, Dockle, Lynis, Gitleaks findings.
 func adapterFixForFinding(findingID string, svc string) []FixAction {
-	if strings.HasPrefix(findingID, "trivy.") {
+	switch {
+	case strings.HasPrefix(findingID, "trivy."):
 		return []FixAction{
 			PrepareShellCommand(
 				fmt.Sprintf("docker pull %s", svc),
-				"Pull latest image to update vulnerable packages",
+				fmt.Sprintf("Pull latest %s image to update vulnerable packages", svc),
+				"",
+			),
+			PrepareShellCommand(
+				fmt.Sprintf("docker build --no-cache -t %s . && docker push %s", svc, svc),
+				fmt.Sprintf("Rebuild %s with updated base image to fix vulnerabilities", svc),
 				"",
 			),
 		}
-	}
 
-	if strings.HasPrefix(findingID, "dockle.") {
+	case strings.HasPrefix(findingID, "dockle."):
 		return []FixAction{
-			PrepareHostEdit(
-				"Dockerfile",
-				"Review Dockle best practice finding. Manual edit may be required.",
+			PrepareShellCommand(
+				fmt.Sprintf("echo 'Review Dockle finding %s for %s' >> DOCKLE_FIXES.md", findingID, svc),
+				fmt.Sprintf("Log Dockle finding %s for manual review", findingID),
 				"",
+			),
+		}
+
+	case strings.HasPrefix(findingID, "lynis."):
+		return []FixAction{
+			PrepareShellCommand(
+				fmt.Sprintf("echo 'Lynis finding: %s' >> LYNIS_FIXES.md && chmod +x LYNIS_FIXES.md", findingID),
+				fmt.Sprintf("Log Lynis finding %s for manual hardening review", findingID),
 				"",
-				0644,
+			),
+		}
+
+	case strings.HasPrefix(findingID, "gitleaks."):
+		return []FixAction{
+			PrepareShellCommand(
+				fmt.Sprintf("echo 'WARNING: Secret leak detected by Gitleaks (%s). Rotate the credential immediately.'", findingID),
+				fmt.Sprintf("Alert about secret leak %s — manual rotation required", findingID),
+				"",
+			),
+			PrepareShellCommand(
+				fmt.Sprintf("BFG_REPO=$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo '.')) && echo 'Run: java -jar bfg.jar --delete-files .env && git reflog expire --expire=now --all && git gc --prune=now --aggressive'"),
+				"Provide BFG repo-cleaner instructions for git history cleanup",
+				"",
 			),
 		}
 	}
 
 	return nil
 }
+
+

@@ -53,4 +53,4 @@ USER ${USER_NAME}
 
 EXPOSE 7681
 
-CMD ["ttyd", "bash", "-lc", "cd /workspace && printf '\\nHostveil self-hosting lab\\n\\nUseful commands:\\n  cargo run -- --user-mode --compose docker/lab/self-hosting-stack.yml\\n  cargo run -- --user-mode --json --compose docker/lab/self-hosting-stack.yml --adapters none\\n  cargo run -- --json --compose docker/lab/self-hosting-stack.yml --host-root / --adapters trivy,dockle,lynis\\n  cargo run -- --user-mode --fix docker/lab/self-hosting-stack.yml --preview-changes\\n\\n' && exec bash"]
+CMD ["ttyd", "bash", "-lc", "cd /workspace && printf '\\nHostveil self-hosting lab (Go v1.0.0)\\n\\nUseful commands:\\n  go install github.com/seolcu/hostveil/cmd/hostveil@latest\\n  hostveil --user-mode --compose docker/lab/self-hosting-stack.yml\\n  hostveil --user-mode --output json --compose docker/lab/self-hosting-stack.yml\\n  hostveil --user-mode --serve --compose docker/lab/self-hosting-stack.yml --port 8080\\n\\n' && exec bash"]
