@@ -1719,22 +1719,61 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
     };
 
     let mut list_state = ListState::default();
-    let viewport_items = content[0].height.saturating_sub(2).max(1) as usize;
-    let max_list_scroll = state.finding_count().saturating_sub(viewport_items);
+    let text_width = (content[0].width.saturating_sub(2).max(16)) as usize;
+    let available_rows = (content[0].height.saturating_sub(2).max(1)) as usize;
+
+    let max_list_scroll = {
+        let mut rows = 0;
+        let mut count = 0;
+        for i in (0..state.finding_count()).rev() {
+            let Some(finding) = state
+                .sorted_indices
+                .get(i)
+                .and_then(|&idx| scan_result.findings.get(idx))
+            else {
+                break;
+            };
+            let h = finding_list_item_line_count(finding, text_width, mode).max(1);
+            if rows + h > available_rows {
+                break;
+            }
+            rows += h;
+            count += 1;
+        }
+        state.finding_count().saturating_sub(count)
+    };
+
     let mut list_scroll = state
         .findings_list_scroll
         .min(max_list_scroll.min(u16::MAX as usize) as u16);
+
     if state.finding_count() > 0 {
         let selected = state.selected_index.min(state.finding_count() - 1);
         let selected_scroll = selected as u16;
+        let viewport_items = count_visible_findings(
+            &scan_result.findings,
+            &state.sorted_indices,
+            list_scroll as usize,
+            available_rows,
+            text_width,
+            mode,
+        );
         if selected_scroll < list_scroll {
             list_scroll = selected_scroll;
-        } else if selected >= list_scroll as usize + viewport_items {
+        } else if selected >= (list_scroll as usize) + viewport_items {
             list_scroll = (selected + 1 - viewport_items).min(max_list_scroll) as u16;
         }
         state.findings_list_scroll = list_scroll;
     }
     let start = list_scroll as usize;
+    let viewport_items = count_visible_findings(
+        &scan_result.findings,
+        &state.sorted_indices,
+        start,
+        available_rows,
+        text_width,
+        mode,
+    );
     let end = (start + viewport_items).min(state.finding_count());
 
     if state.finding_count() > 0 {
@@ -1807,12 +1846,27 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         .push((content[1], HitTarget::FindingsDetail));
 
     frame.render_stateful_widget(list, content[0], &mut list_state);
+    let total_list_rows = total_findings_rows(
+        &scan_result.findings,
+        &state.sorted_indices,
+        text_width,
+        mode,
+    );
+    let list_scroll_rows: usize = (0..(start))
+        .filter_map(|i| {
+            state
+                .sorted_indices
+                .get(i)
+                .and_then(|&idx| scan_result.findings.get(idx))
+        })
+        .map(|f| finding_list_item_line_count(f, text_width, mode).max(1))
+        .sum();
     render_scrollbar(
         frame,
         content[0],
-        state.finding_count(),
-        viewport_items as u16,
-        list_scroll,
+        total_list_rows,
+        available_rows as u16,
+        list_scroll_rows as u16,
     );
     frame.render_widget(detail, content[1]);
     render_detail_scrollbar(
@@ -1921,11 +1975,9 @@ fn overview_layout_mode(area: Rect, preset: LayoutPreset) -> OverviewLayoutMode 
 
 fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode {
     match preset {
-        // Auto now mirrors the "Balanced" layout intent (stacked) while still
-        // falling back to the narrow layout for small terminals.
         LayoutPreset::Adaptive => {
             if area.width >= 72 && area.height >= 18 {
-                FindingsLayoutMode::Stacked
+                FindingsLayoutMode::SideBySide
             } else {
                 FindingsLayoutMode::Narrow
             }
@@ -1940,7 +1992,7 @@ fn findings_layout_mode(area: Rect, preset: LayoutPreset) -> FindingsLayoutMode 
             }
         }
         LayoutPreset::Wide => FindingsLayoutMode::SideBySide,
-        LayoutPreset::Balanced => FindingsLayoutMode::Stacked,
+        LayoutPreset::Balanced => FindingsLayoutMode::SideBySide,
         LayoutPreset::Compact => FindingsLayoutMode::Narrow,
         LayoutPreset::Focus => FindingsLayoutMode::CompactList,
     }
@@ -2919,6 +2971,43 @@ fn finding_list_item_line_count(
     wrap_text_to_lines(&title, inner_width).len() + wrap_text_to_lines(&subtitle, inner_width).len()
 }
 
+fn count_visible_findings(
+    findings: &[Finding],
+    sorted_indices: &[usize],
+    start: usize,
+    available_rows: usize,
+    text_width: usize,
+    mode: FindingsLayoutMode,
+) -> usize {
+    let mut rows = 0;
+    let mut count = 0;
+    for i in start..sorted_indices.len() {
+        let Some(finding) = sorted_indices.get(i).and_then(|&idx| findings.get(idx)) else {
+            break;
+        };
+        let h = finding_list_item_line_count(finding, text_width, mode).max(1);
+        if rows + h > available_rows {
+            break;
+        }
+        rows += h;
+        count += 1;
+    }
+    count.max(1)
+}
+
+fn total_findings_rows(
+    findings: &[Finding],
+    sorted_indices: &[usize],
+    text_width: usize,
+    mode: FindingsLayoutMode,
+) -> usize {
+    sorted_indices
+        .iter()
+        .filter_map(|&idx| findings.get(idx))
+        .map(|f| finding_list_item_line_count(f, text_width, mode).max(1))
+        .sum()
+}
+
 fn finding_detail_text(
     scan_result: &ScanResult,
     state: &AppState,
@@ -3467,27 +3556,6 @@ fn fail2ban_detail(runtime: &HostRuntimeInfo) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(", "))
 }
 
-fn score_sparkline() -> Option<String> {
-    let history = crate::history::load();
-    let entries = history.trend(6);
-    if entries.len() < 2 {
-        return None;
-    }
-    let chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-    let max = entries.iter().map(|e| e.overall).max().unwrap_or(100);
-    let min = entries.iter().map(|e| e.overall).min().unwrap_or(0);
-    let range = (max - min).max(1) as f32;
-    let spark: String = entries
-        .iter()
-        .map(|e| {
-            let idx =
-                ((e.overall - min) as f32 / range * (chars.len() - 1) as f32).round() as usize;
-            chars[idx.min(chars.len() - 1)]
-        })
-        .collect();
-    Some(spark)
-}
-
 fn overall_score_delta() -> Option<String> {
     let history = crate::history::load();
     let previous = history.previous_overall()?;
@@ -3645,9 +3713,6 @@ fn render_security_score_lines(
                             Span::raw("  "),
                             Span::styled(bar, Style::default().fg(color)),
                         ]));
-                    }
-                    if let Some(spark) = score_sparkline() {
-                        lines.push(Line::styled(format!("  {}", spark), theme.muted));
                     }
                 } else {
                     lines.push(Line::from(vec![
@@ -5427,7 +5492,7 @@ mod tests {
         let result = sample_result();
         let mut state = AppState::new(&result);
         state.open_findings();
-        let mut terminal = Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+        let mut terminal = Terminal::new(TestBackend::new(100, 30)).expect("terminal should build");
 
         terminal
             .draw(|frame| render(frame, &result, &mut state))
@@ -5454,7 +5519,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         );
         let mut state = AppState::new(&result);
         state.open_findings();
-        let mut terminal = Terminal::new(TestBackend::new(80, 40)).expect("terminal should build");
+        let mut terminal = Terminal::new(TestBackend::new(120, 40)).expect("terminal should build");
 
         terminal
             .draw(|frame| render(frame, &result, &mut state))
@@ -5567,7 +5632,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
         let mut findings_state = AppState::new(&result);
         findings_state.open_findings();
         let mut findings_terminal =
-            Terminal::new(TestBackend::new(80, 24)).expect("terminal should build");
+            Terminal::new(TestBackend::new(140, 24)).expect("terminal should build");
 
         findings_terminal
             .draw(|frame| render(frame, &result, &mut findings_state))
