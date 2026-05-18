@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
+	"github.com/seolcu/hostveil/internal/fix"
 )
 
 var resetSeq = regexp.MustCompile(`\x1b\[0m`)
@@ -132,7 +133,19 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case s == "f" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
 			f := m.findings.list[m.findings.selected]
 			if f.IsFixable() {
-				m.currentScreen = screenFindings
+				if m.findings.showFixPreview {
+					m.findings.showFixPreview = false
+					m.findings.showDetail = true
+				} else {
+					if m.scanResult.Metadata.ComposeFile != "" {
+						engine := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
+						m.findings.fixPreviewContent = engine.PreviewFinding(f)
+						m.findings.showFixPreview = true
+					} else {
+						m.findings.fixPreviewContent = "No compose file available for fix preview."
+						m.findings.showFixPreview = true
+					}
+				}
 			}
 		default:
 			if m.currentScreen == screenFindings {
@@ -149,19 +162,21 @@ func (m *appModel) View() string {
 		return "Loading..."
 	}
 
-	header := m.renderHeader()
+	t := m.effectiveTheme()
+
+	header := m.renderHeader(t)
 
 	var body string
 	switch m.currentScreen {
 	case screenOverview:
-		body = m.renderOverview()
+		body = m.overview.render(m.scanResult, t, m.width, m.height-4)
 	case screenFindings:
-		body = m.renderFindings()
+		body = m.findings.render(t, m.width, m.height-4)
 	case screenHistory:
-		body = m.renderHistory()
+		body = m.history.render(m.scanResult, t, m.width, m.height-4)
 	}
 
-	footer := m.renderFooter()
+	footer := m.renderFooter(t)
 
 	// Pad body so footer stays at terminal bottom
 	totalLines := strings.Count(header, "\n") + 1 + strings.Count(body, "\n") + 1 + strings.Count(footer, "\n") + 1
@@ -173,25 +188,18 @@ func (m *appModel) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
 
 	// Wrap entire render in background color, pad each line to full width
-	view := applyBackground(content, m.theme.Background, m.width, m.height)
+	view := applyBackground(content, t.Background, m.width, m.height)
 
-	// Overlays
+	// Overlays — place centered on the background-filled canvas
+	// We do NOT use lipgloss.Place here because its whitespace padding lacks
+	// background styling, causing black bars around modals. Instead we
+	// replace canvas lines manually with explicit background sequences.
 	if m.help.show {
-		overlay := m.help.Render(m.theme, m.width, m.height)
-		view = lipgloss.Place(m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			overlay,
-			lipgloss.WithWhitespaceChars(" "),
-		)
-		view = applyBackground(view, m.theme.Background, m.width, m.height)
+		overlay := m.help.Render(t, m.width, m.height)
+		view = placeOverlayOnBackground(view, overlay, t.Background, m.width, m.height)
 	} else if m.settings.IsOpen() {
-		overlay := m.settings.Render(m.theme, m.width, m.height)
-		view = lipgloss.Place(m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			overlay,
-			lipgloss.WithWhitespaceChars(" "),
-		)
-		view = applyBackground(view, m.theme.Background, m.width, m.height)
+		overlay := m.settings.Render(t, m.width, m.height)
+		view = placeOverlayOnBackground(view, overlay, t.Background, m.width, m.height)
 	}
 
 	return view
@@ -224,6 +232,51 @@ func applyBackground(content string, bgColor string, width, height int) string {
 	return bgSeq + full + "\x1b[49m"
 }
 
+// placeOverlayOnBackground centers overlay content on a background-filled canvas.
+// Unlike lipgloss.Place, it applies background sequences to EVERY character
+// position, preventing black bars from appearing around modal dialogs.
+func placeOverlayOnBackground(canvas string, overlay string, bgColor string, width, height int) string {
+	overlayLines := strings.Split(strings.TrimSuffix(overlay, "\n"), "\n")
+	canvasLines := strings.Split(canvas, "\n")
+
+	startY := (height - len(overlayLines)) / 2
+	if startY < 0 {
+		startY = 0
+	}
+
+	r, g, b := parseHex(bgColor)
+	bgSeq := fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+
+	for i, ol := range overlayLines {
+		yi := startY + i
+		if yi >= len(canvasLines) {
+			break
+		}
+		olWidth := lipgloss.Width(ol)
+		startX := (width - olWidth) / 2
+		if startX < 0 {
+			startX = 0
+		}
+		rightLen := width - startX - olWidth
+		if rightLen < 0 {
+			rightLen = 0
+		}
+
+		leftPad := ""
+		if startX > 0 {
+			leftPad = bgSeq + strings.Repeat(" ", startX)
+		}
+		rightPad := ""
+		if rightLen > 0 {
+			rightPad = bgSeq + strings.Repeat(" ", rightLen)
+		}
+
+		canvasLines[yi] = leftPad + ol + rightPad
+	}
+
+	return strings.Join(canvasLines, "\n")
+}
+
 func parseHex(hex string) (int, int, int) {
 	hex = strings.TrimPrefix(hex, "#")
 	if len(hex) != 6 {
@@ -235,50 +288,50 @@ func parseHex(hex string) (int, int, int) {
 	return int(r), int(g), int(b)
 }
 
-func (m *appModel) renderHeader() string {
+func (m *appModel) effectiveTheme() Theme {
+	t := m.theme
+	if !m.settings.ShowBorders() {
+		t.Border = t.Background
+	}
+	return t
+}
+
+func (m *appModel) renderHeader(t Theme) string {
 	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(m.theme.Text)).
+		Foreground(lipgloss.Color(t.Text)).
 		Bold(true).
 		Render("hostveil")
 
 	score := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(m.theme.Accent)).
+		Foreground(lipgloss.Color(t.Accent)).
 		Render(fmtScore(m.scanResult))
 
 	headerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color(m.theme.Surface)).
+		Background(lipgloss.Color(t.Surface)).
 		BorderBottom(true).
-		BorderForeground(lipgloss.Color(m.theme.Border)).
+		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 2).
 		Width(m.width)
 
 	return headerStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", score))
 }
 
-func (m *appModel) renderFooter() string {
+func (m *appModel) renderFooter(t Theme) string {
 	nav := " [1] Overview  [2] Findings  [3] History "
 	hint := " [?] Help  [q] Quit "
+	if m.width < 80 {
+		nav = " [1] Ovw  [2] Fnd  [3] Hist "
+		hint = " [?] [q] "
+	}
 
 	style := lipgloss.NewStyle().
-		Background(lipgloss.Color(m.theme.Surface)).
+		Background(lipgloss.Color(t.Surface)).
 		BorderTop(true).
-		BorderForeground(lipgloss.Color(m.theme.Border)).
+		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 2).
 		Width(m.width)
 
 	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, hint))
-}
-
-func (m *appModel) renderOverview() string {
-	return m.overview.render(m.scanResult, m.theme, m.width, m.height-4)
-}
-
-func (m *appModel) renderFindings() string {
-	return m.findings.render(m.theme, m.width, m.height-4)
-}
-
-func (m *appModel) renderHistory() string {
-	return m.history.render(m.scanResult, m.theme, m.width, m.height-4)
 }
 
 func fmtScore(r *domain.ScanResult) string {

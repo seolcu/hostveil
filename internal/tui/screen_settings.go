@@ -9,6 +9,7 @@ import (
 const (
 	settingTheme = iota
 	settingBorders
+	settingCount
 )
 
 type settingsModel struct {
@@ -30,6 +31,7 @@ func (m *settingsModel) Toggle() {
 }
 
 func (m *settingsModel) IsOpen() bool { return m.open }
+func (m *settingsModel) ShowBorders() bool { return m.showBorders }
 
 func (m *settingsModel) Update(msg string) {
 	if !m.open {
@@ -38,23 +40,27 @@ func (m *settingsModel) Update(msg string) {
 	switch msg {
 	case "j", "down":
 		m.selection++
-		if m.selection > settingBorders {
-			m.selection = settingBorders
+		if m.selection >= settingCount {
+			m.selection = settingCount - 1
 		}
 	case "k", "up":
 		m.selection--
-		if m.selection < settingTheme {
-			m.selection = settingTheme
+		if m.selection < 0 {
+			m.selection = 0
 		}
 	case "l", "right":
 		switch m.selection {
 		case settingTheme:
 			m.cycleTheme()
+		case settingBorders:
+			m.showBorders = !m.showBorders
 		}
 	case "h", "left":
 		switch m.selection {
 		case settingTheme:
 			m.cycleTheme()
+		case settingBorders:
+			m.showBorders = !m.showBorders
 		}
 	case "esc", "q":
 		m.open = false
@@ -111,8 +117,12 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 
 	content := title + "\n\n"
 	content += fmt.Sprintf(" %s %s: %s\n", cursor(settingTheme), highlight(settingTheme, "Theme"), m.themeName)
-	content += fmt.Sprintf(" %s %s: %v\n", cursor(settingBorders), highlight(settingBorders, "Borders"), m.showBorders)
-	content += "\n↑/↓ navigate  Esc close"
+	bordersVal := "Off"
+	if m.showBorders {
+		bordersVal = "On"
+	}
+	content += fmt.Sprintf(" %s %s: %s\n", cursor(settingBorders), highlight(settingBorders, "Borders"), bordersVal)
+	content += "\n↑/↓ navigate  ←/→ toggle  Esc close"
 
 	return dialogStyle.Render(content)
 }

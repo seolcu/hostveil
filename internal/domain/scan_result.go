@@ -50,15 +50,16 @@ type HostRuntimeInfo struct {
 }
 
 type ScanMetadata struct {
-	ScanMode    ScanMode
-	ComposeFile string
-	HostRoot    string
-	Services    []ServiceSummary
-	Warnings    []string
-	Adapters    []AdapterInfo
-	HostRuntime *HostRuntimeInfo
-	StartedAt   time.Time
-	Duration    time.Duration
+	ScanMode     ScanMode
+	ComposeFile  string
+	HostRoot     string
+	Services     []ServiceSummary
+	Warnings     []string
+	InfoMessages []string
+	Adapters     []AdapterInfo
+	HostRuntime  *HostRuntimeInfo
+	StartedAt    time.Time
+	Duration     time.Duration
 }
 
 type ScanResult struct {

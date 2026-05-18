@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -254,7 +255,33 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 		addRow("Uptime", info.Uptime)
 	}
 	if info.LoadAverage != "" {
-		addRow("Load", info.LoadAverage)
+		loadStr := info.LoadAverage
+		loadLevel := ""
+		fields := strings.Fields(loadStr)
+		if len(fields) > 0 {
+			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
+				switch {
+				case v > 2.0:
+					loadLevel = " (High)"
+				case v > 1.0:
+					loadLevel = " (Medium)"
+				default:
+					loadLevel = ""
+				}
+			}
+		}
+		// Show only 1/5/15m averages, drop process/thread counts
+		shortLoad := ""
+		for i, f := range fields {
+			if i >= 3 {
+				break
+			}
+			if i > 0 {
+				shortLoad += " "
+			}
+			shortLoad += f
+		}
+		addRow("Load", shortLoad+loadLevel)
 	}
 
 	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, strings.Join(rows, "\n")))
@@ -268,10 +295,11 @@ func (m *overviewModel) renderMetaCard(r *domain.ScanResult, theme Theme, width 
 		Padding(0, 1)
 
 	svcs := len(r.Metadata.Services)
+	infos := len(r.Metadata.InfoMessages)
 	warns := len(r.Metadata.Warnings)
 
-	content := fmt.Sprintf("Services: %d\nWarnings: %d\nFindings: %d",
-		svcs, warns, r.TotalFindings())
+	content := fmt.Sprintf("Services: %d\nWarnings: %d\nInfo: %d\nFindings: %d",
+		svcs, warns, infos, r.TotalFindings())
 
 	return style.Render(content)
 }

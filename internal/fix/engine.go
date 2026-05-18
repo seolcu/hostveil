@@ -247,3 +247,97 @@ func (e *Engine) generateDiff(plan *FixPlan) string {
 	}
 	return strings.Join(parts, "\n")
 }
+
+// PreviewFinding returns a finding-specific diff preview with YAML context.
+func (e *Engine) PreviewFinding(finding domain.Finding) string {
+	data, err := os.ReadFile(e.ComposeFile)
+	if err != nil {
+		return fmt.Sprintf("Cannot read compose file: %v", err)
+	}
+
+	cf, err := compose.ParseFile(e.ComposeFile)
+	if err != nil {
+		return fmt.Sprintf("Cannot parse compose file: %v", err)
+	}
+
+	svc := finding.Service
+	if _, ok := cf.Services[svc]; !ok {
+		return fmt.Sprintf("Service %q not found in compose file", svc)
+	}
+
+	proposal := e.fixForFinding(finding, cf, svc)
+	if proposal == nil {
+		return "No automated fix available for this finding."
+	}
+
+	snippet := extractServiceSnippet(string(data), svc, 3)
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Service: %s\n", svc))
+	b.WriteString(fmt.Sprintf("Fix: %s\n\n", proposal.Summary))
+	if snippet != "" {
+		b.WriteString("--- current config ---\n")
+		b.WriteString(snippet)
+		b.WriteString("\n---\n")
+	}
+	b.WriteString(fmt.Sprintf("→ %s\n", proposal.Summary))
+	if proposal.Remediation == "auto" {
+		b.WriteString("Status: Can be applied automatically\n")
+	} else {
+		b.WriteString("Status: Manual review recommended\n")
+	}
+	b.WriteString("\nPress f to toggle preview, Enter to return to detail")
+
+	return b.String()
+}
+
+// extractServiceSnippet extracts a service's YAML block with surrounding context lines.
+func extractServiceSnippet(content, serviceName string, context int) string {
+	lines := strings.Split(content, "\n")
+
+	servicesIdx := -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "services:" {
+			servicesIdx = i
+			break
+		}
+	}
+	if servicesIdx < 0 {
+		return ""
+	}
+
+	serviceStart := -1
+	serviceEnd := len(lines)
+
+	for i := servicesIdx + 1; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		indent := len(lines[i]) - len(strings.TrimLeft(lines[i], " "))
+		if indent == 2 && strings.Contains(lines[i], ":") {
+			name := strings.TrimSpace(strings.SplitN(lines[i], ":", 2)[0])
+			if name == serviceName {
+				serviceStart = i
+			} else if serviceStart >= 0 {
+				serviceEnd = i
+				break
+			}
+		}
+	}
+
+	if serviceStart < 0 {
+		return ""
+	}
+
+	start := serviceStart - context
+	if start < 0 {
+		start = 0
+	}
+	end := serviceEnd + context
+	if end > len(lines) {
+		end = len(lines)
+	}
+
+	return strings.Join(lines[start:end], "\n")
+}

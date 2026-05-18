@@ -7,12 +7,13 @@ import (
 )
 
 type jsonOutput struct {
-	Version     string            `json:"version"`
-	Overall     uint8             `json:"overall_score"`
-	Findings    []jsonFinding     `json:"findings,omitempty"`
-	Severity    map[string]int    `json:"severity_counts"`
-	AxisScores  map[string]uint8  `json:"axis_scores"`
-	Warnings    []string          `json:"warnings,omitempty"`
+	Version      string            `json:"version"`
+	Overall      uint8             `json:"overall_score"`
+	Findings     []jsonFinding     `json:"findings,omitempty"`
+	Severity     map[string]int    `json:"severity_counts"`
+	AxisScores   map[string]uint8  `json:"axis_scores"`
+	Warnings     []string          `json:"warnings,omitempty"`
+	InfoMessages []string          `json:"info_messages,omitempty"`
 }
 
 type jsonFinding struct {
@@ -70,12 +71,13 @@ func JSON(r *domain.ScanResult, findingsOnly bool) (string, error) {
 	}
 
 	output := jsonOutput{
-		Version:    "1.0.0",
-		Overall:    r.ScoreReport.Overall,
-		Findings:   findings,
-		Severity:   sev,
-		AxisScores: axis,
-		Warnings:   r.Metadata.Warnings,
+		Version:      "1.0.0",
+		Overall:      r.ScoreReport.Overall,
+		Findings:     findings,
+		Severity:     sev,
+		AxisScores:   axis,
+		Warnings:     r.Metadata.Warnings,
+		InfoMessages: r.Metadata.InfoMessages,
 	}
 
 	data, err := json.MarshalIndent(output, "", "  ")

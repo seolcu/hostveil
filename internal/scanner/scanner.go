@@ -69,7 +69,7 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 	switch disc.Status {
 	case discovery.DockerAvailable:
 		for _, p := range disc.Projects {
-			result.Metadata.Warnings = append(result.Metadata.Warnings,
+			result.Metadata.InfoMessages = append(result.Metadata.InfoMessages,
 				"Discovered project: "+p.Name+" at "+p.ComposePath)
 		}
 	case discovery.DockerMissing:

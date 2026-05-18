@@ -18,10 +18,12 @@ const (
 )
 
 type Toast struct {
-	message   string
-	toastType Type
-	visible   bool
-	expiresAt time.Time
+	message       string
+	toastType     Type
+	visible       bool
+	startedAt     time.Time
+	totalDuration time.Duration
+	expiresAt     time.Time
 }
 
 func NewToast() *Toast {
@@ -32,6 +34,8 @@ func (t *Toast) Show(msg string, typ Type, duration time.Duration) tea.Cmd {
 	t.message = msg
 	t.toastType = typ
 	t.visible = true
+	t.startedAt = time.Now()
+	t.totalDuration = duration
 	t.expiresAt = time.Now().Add(duration)
 	return tea.Tick(duration, func(_ time.Time) tea.Msg {
 		return expiredMsg{}
@@ -62,6 +66,22 @@ func (t *Toast) Render(bg, fg, card string, width int) string {
 		color = "#f7768e"
 	}
 
+	// Timeout countdown indicator
+	remaining := ""
+	if t.totalDuration > 0 {
+		elapsed := time.Since(t.startedAt)
+		left := t.totalDuration - elapsed
+		if left < 0 {
+			left = 0
+		}
+		secs := int(left.Seconds())
+		if secs > 0 {
+			remaining = fmt.Sprintf(" %ds", secs)
+		}
+	}
+
+	msg := t.message + remaining
+
 	style := lipgloss.NewStyle().
 		Background(lipgloss.Color(card)).
 		Foreground(lipgloss.Color(color)).
@@ -70,5 +90,5 @@ func (t *Toast) Render(bg, fg, card string, width int) string {
 		Padding(0, 2).
 		MaxWidth(width)
 
-	return style.Render(fmt.Sprintf(" %s ", t.message))
+	return style.Render(fmt.Sprintf(" %s ", msg))
 }

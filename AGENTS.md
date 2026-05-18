@@ -58,13 +58,13 @@ hostveil/
 | CLI | ~100 | flag-based argument parsing |
 | Discovery | ~100 | Docker compose file detection, host runtime info |
 | Scanner | ~100 | Orchestration + scoring |
-| TUI App | ~500 | Bubbletea app, 3 screens (overview/findings/history), settings modal |
-| TUI Overview | ~260 | Score card, severity, axis bars, action queue, host info |
-| TUI Findings | ~350 | Filtered list, detail panel, search, 6 filter types, 3 sort modes |
-| TUI History | ~120 | Axis score bars, severity summary, warnings |
-| TUI Settings | ~120 | Theme selector, modal overlay |
-| TUI Help | ~100 | Keyboard shortcut reference overlay |
-| TUI Toast | ~80 | Auto-dismissing notification component |
+| TUI App | ~550 | Bubbletea app, 3 screens (overview/findings/history), settings modal, fix preview integration |
+| TUI Overview | ~280 | Score card, severity, axis bars, action queue, host info, truncated load averages |
+| TUI Findings | ~450 | Filtered list with index numbers, detail panel with section separators, fix preview (press f), search, 6 filter types, 3 sort modes, host triage empty state |
+| TUI History | ~130 | Axis score bars, severity summary, warnings, grouped info messages |
+| TUI Settings | ~130 | Theme selector, modal overlay, borders toggle |
+| TUI Help | ~100 | Keyboard shortcut reference overlay (width 64) |
+| TUI Toast | ~90 | Auto-dismissing notification with countdown indicator |
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
@@ -114,6 +114,11 @@ Run: `go test -race -count=1 ./...`
 - **Footer anchored to bottom**: body padded with newlines to fill terminal height, footer always at last line
 - **Responsive 3-column layout**: width ≥100 → 3 columns, 60-99 → 2 columns, <60 → 1 column
 - **Component architecture**: screen models (overview/findings/history) are self-contained Bubbletea models
+- **Fix Preview**: Press `f` on a fixable finding to toggle between detail view and fix preview. Preview shows the service's YAML block from the compose file with 3 lines of surrounding context, plus the proposed change summary. Uses `extractServiceSnippet()` for YAML block extraction and `PreviewFinding()` on the fix engine.
+- **Findings list index numbers**: Each finding prefixed with ` 1.`, ` 2.` for easy reference. HCI motivation: users can verbally reference "finding #3" during code review.
+- **Detail panel separators**: `───` line divides metadata (ID/Severity/Axis/Source/Scope/Service) from content sections (Description/Risk/Fix/Evidence). Separator defined once in the render method.
+- **Search/filter disambiguation**: Search text shown with `|` separator from filter chips. Filter state shows `N/M no filters` when clean.
+- **Info message grouping**: "Discovered project" messages grouped into single summary line to reduce noise. Non-project messages shown individually.
 
 ### Service-Aware Rules Design
 Instead of 2,504 lines of Rust if-else chains (`service_aware.rs`), Go version uses data-driven tables:
@@ -166,16 +171,23 @@ All keys confirmed working through agent-browser → ttyd → Bubbletea:
 | `?` | Toggle Help overlay | ✅ |
 | `S` | Toggle Settings modal | ✅ |
 | `right` | Navigate Settings theme selector | ✅ |
+| `f` | Toggle fix preview (on fixable findings) | ✅ |
 
-### Visual QA Results (11 screenshots, all screens)
+### Visual QA Results (20 screenshots, all screens)
 
-Captured and inspected: overview, findings list, findings detail, severity filter, history, help, settings, theme change, host triage, narrow viewport (720px).
+Captured and inspected (20 screenshots): overview, findings list, findings detail + fix preview, severity filter, empty filter, history, help, settings, theme change (before/after), host triage, narrow viewport, search mode/results, sort modes (source/title), multi-filter, theme toast, overview after theme.
 
 - No obvious rendering breakage found
 - Background colors apply correctly after ANSI reset
 - Borders and panel alignment intact
 - Theme changes apply immediately
 - Responsive layout works at narrow viewport
+- Fix preview shows service YAML block with 3-line context
+- Index numbers (` 1.`, ` 2.`) present on findings list
+- Detail panel has `───` section separators
+- Info messages grouped: "Discovered N project(s): a, b, c"
+- Load averages truncated to 1/5/15m values only
+- Toast shows `%ds` countdown indicator
 - **Note**: ttyd page shows browser scrollbar (container height mismatch, cosmetic only — TUI itself is fine)
 
 ### Bundled Skill: `hostveil-browser-tui-qa`
@@ -238,6 +250,8 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - `AGENTS.md` — this file
 - `internal/web/server.go` — ttyd launcher (50 lines, port fallback + font config)
 - `internal/tui/app.go` — Bubbletea root model, background rendering, footer anchoring
+- `internal/tui/screen_findings.go` — Index numbers, detail separators, fix preview render, search/filter UX
+- `internal/fix/engine.go` — Fix engine with `PreviewFinding()` for per-finding YAML context diff
 - `internal/scanner/rules/service_aware.go` — data-driven rule design pattern
 - `tests/scenarios/` — compose file test fixtures from v0.29
 - `scripts/lab.sh` — Docker lab (v0.29 compatible)

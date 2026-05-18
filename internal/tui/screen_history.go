@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -60,6 +61,30 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 				lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(sev.String()),
 				count,
 			)
+		}
+	}
+
+	// Info messages (summarized)
+	if len(r.Metadata.InfoMessages) > 0 {
+		content += "\nInfo:\n"
+		var projects []string
+		var otherMsgs []string
+		for _, msg := range r.Metadata.InfoMessages {
+			trimmed := strings.TrimPrefix(msg, "Discovered project: ")
+			if trimmed != msg {
+				parts := strings.SplitN(trimmed, " at ", 2)
+				if len(parts) >= 1 && parts[0] != "" {
+					projects = append(projects, parts[0])
+				}
+			} else {
+				otherMsgs = append(otherMsgs, msg)
+			}
+		}
+		if len(projects) > 0 {
+			content += fmt.Sprintf("  ℹ Discovered %d project(s): %s\n", len(projects), strings.Join(projects, ", "))
+		}
+		for _, msg := range otherMsgs {
+			content += fmt.Sprintf("  ℹ %s\n", msg)
 		}
 	}
 

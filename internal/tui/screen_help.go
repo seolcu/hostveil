@@ -17,7 +17,7 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 		return ""
 	}
 
-	dialogWidth := 50
+	dialogWidth := 64
 	if dialogWidth > width-4 {
 		dialogWidth = width - 4
 	}
@@ -65,7 +65,7 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 			Foreground(lipgloss.Color(theme.Accent)).
 			Render(sec.title) + "\n"
 		for _, kv := range sec.keys {
-			content += fmt.Sprintf("  %-18s %s\n", kv[0], kv[1])
+			content += fmt.Sprintf("  %-20s %s\n", kv[0], kv[1])
 		}
 		content += "\n"
 	}

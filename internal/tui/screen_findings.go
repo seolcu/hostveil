@@ -19,17 +19,19 @@ type findingsModel struct {
 	detailVP   viewport.Model
 
 	// Filters
-	severityFilter   string // "", "critical", "high", "medium", "low"
-	sourceFilter     string
-	scopeFilter      string
-	serviceFilter    string
+	severityFilter    string // "", "critical", "high", "medium", "low"
+	sourceFilter      string
+	scopeFilter       string
+	serviceFilter     string
 	remediationFilter string
-	sortMode         string // "severity", "source", "title"
+	sortMode          string // "severity", "source", "title"
 
-	searchQuery    string
-	showSearch     bool
-	showDetail     bool
-	hostTriageMode bool
+	searchQuery      string
+	showSearch       bool
+	showDetail       bool
+	showFixPreview   bool
+	fixPreviewContent string
+	hostTriageMode   bool
 }
 
 func newFindingsModel(findings []domain.Finding) *findingsModel {
@@ -186,6 +188,8 @@ func (m *findingsModel) resetFilters() {
 	m.searchQuery = ""
 	m.showSearch = false
 	m.selected = 0
+	m.showFixPreview = false
+	m.fixPreviewContent = ""
 	m.applyFilters()
 }
 
@@ -241,7 +245,16 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	listContent.WriteString(filterBar + "\n")
 
 	if len(m.list) == 0 {
-		listContent.WriteString("  No findings match current filters.")
+		if m.hostTriageMode {
+			listContent.WriteString("  No host-level findings detected.")
+			listContent.WriteString("\n  All findings from this scan are service-level.")
+			listContent.WriteString("\n  Press R to clear filters")
+		} else {
+			listContent.WriteString("  No findings match current filters.")
+			if len(m.all) > 0 {
+				listContent.WriteString("\n  Press R to clear all filters")
+			}
+		}
 	} else {
 		for i, f := range m.list {
 			cursor := " "
@@ -250,8 +263,9 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			}
 
 			color := f.Severity.Color()
-			title := truncateStr(f.Title, listWidth-20)
-			line := fmt.Sprintf("%s [%s] %s  %s", cursor, strings.ToUpper(f.Severity.String()), title, f.Service)
+			idxStr := fmt.Sprintf("%2d.", i+1)
+			title := truncateStr(f.Title, listWidth-26)
+			line := fmt.Sprintf("%s %s [%s] %s  %s", cursor, idxStr, strings.ToUpper(f.Severity.String()), title, f.Service)
 
 			style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 			if i == m.selected {
@@ -262,7 +276,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		}
 	}
 
-	// Detail panel
+	// Detail panel or fix preview
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
 
@@ -277,23 +291,33 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			Foreground(lipgloss.Color(f.Severity.Color())).
 			Bold(true)
 
-		detail := headerStyle.Render(f.Title) + "\n\n"
-		detail += fmt.Sprintf("ID: %s\n", f.ID)
-		detail += fmt.Sprintf("Severity: %s | Axis: %s\n", strings.ToUpper(f.Severity.String()), f.Axis.Label())
-		detail += fmt.Sprintf("Source: %s | Scope: %s\n", f.Source.String(), f.Scope.String())
-		if f.Service != "" {
-			detail += fmt.Sprintf("Service: %s\n", f.Service)
-		}
-		detail += fmt.Sprintf("Fix: %s\n\n", f.Remediation.Label())
-		detail += fmt.Sprintf("Description:\n%s\n\n", f.Description)
-		detail += fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky)
-		if f.HowToFix != "" {
-			detail += fmt.Sprintf("How to fix:\n%s\n\n", f.HowToFix)
-		}
-		if len(f.Evidence) > 0 {
-			detail += "Evidence:\n"
-			for k, v := range f.Evidence {
-				detail += fmt.Sprintf("  %s: %s\n", k, v)
+		var detail string
+		if m.showFixPreview && m.fixPreviewContent != "" {
+			detail = m.fixPreviewContent
+		} else {
+			sep := "\n" + strings.Repeat("─", 30) + "\n\n"
+			detail = headerStyle.Render(f.Title) + "\n\n"
+			detail += fmt.Sprintf("ID: %s\n", f.ID)
+			detail += fmt.Sprintf("Severity: %s | Axis: %s\n", strings.ToUpper(f.Severity.String()), f.Axis.Label())
+			detail += fmt.Sprintf("Source: %s | Scope: %s\n", f.Source.String(), f.Scope.String())
+			if f.Service != "" {
+				detail += fmt.Sprintf("Service: %s\n", f.Service)
+			}
+			detail += fmt.Sprintf("Fix: %s", f.Remediation.Label())
+			if f.IsFixable() {
+				detail += "  (press f for preview)"
+			}
+			detail += sep
+			detail += fmt.Sprintf("Description:\n%s\n\n", f.Description)
+			detail += fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky)
+			if f.HowToFix != "" {
+				detail += fmt.Sprintf("How to fix:\n%s\n\n", f.HowToFix)
+			}
+			if len(f.Evidence) > 0 {
+				detail += "Evidence:\n"
+				for k, v := range f.Evidence {
+					detail += fmt.Sprintf("  %s: %s\n", k, v)
+				}
 			}
 		}
 
@@ -313,33 +337,57 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 }
 
 func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
-	activeFilters := ""
+	var filterTokens []string
 	if m.severityFilter != "" {
-		activeFilters += fmt.Sprintf(" sev:%s", m.severityFilter)
+		filterTokens = append(filterTokens, fmt.Sprintf("sev:%s", m.severityFilter))
 	}
 	if m.sourceFilter != "" {
-		activeFilters += fmt.Sprintf(" src:%s", m.sourceFilter)
+		filterTokens = append(filterTokens, fmt.Sprintf("src:%s", m.sourceFilter))
 	}
 	if m.scopeFilter != "" {
-		activeFilters += fmt.Sprintf(" scp:%s", m.scopeFilter)
+		filterTokens = append(filterTokens, fmt.Sprintf("scp:%s", m.scopeFilter))
 	}
 	if m.serviceFilter != "" {
-		activeFilters += fmt.Sprintf(" svc:%s", m.serviceFilter)
+		filterTokens = append(filterTokens, fmt.Sprintf("svc:%s", m.serviceFilter))
 	}
 	if m.remediationFilter != "" {
-		activeFilters += fmt.Sprintf(" rem:%s", m.remediationFilter)
+		filterTokens = append(filterTokens, fmt.Sprintf("rem:%s", m.remediationFilter))
 	}
 	if m.sortMode != "" && m.sortMode != "severity" {
-		activeFilters += fmt.Sprintf(" sort:%s", m.sortMode)
+		filterTokens = append(filterTokens, fmt.Sprintf("sort:%s↑", m.sortMode))
 	}
 
 	filterInfo := fmt.Sprintf("%d/%d", len(m.list), len(m.all))
-	if activeFilters != "" {
-		filterInfo += activeFilters
+	if len(filterTokens) > 0 {
+		filterLine := strings.Join(filterTokens, " ")
+		prefixLen := len(filterInfo) + 1
+		indent := 6
+		if prefixLen+len(filterLine) > width {
+			// Wrap to next line with indent
+			filterInfo += "\n" + strings.Repeat(" ", indent) + filterLine
+		} else {
+			filterInfo += " " + filterLine
+		}
+	} else {
+		filterInfo += " no filters"
 	}
 
 	if m.showSearch {
-		filterInfo += fmt.Sprintf("  search: %s█", m.searchQuery)
+		if m.searchQuery == "" {
+			searchLine := "search: Type to search, Esc to cancel"
+			if len(filterInfo)+len(searchLine)+7 > width {
+				filterInfo += "\n" + strings.Repeat(" ", 6) + searchLine
+			} else {
+				filterInfo += " | " + searchLine
+			}
+		} else {
+			searchLine := fmt.Sprintf("search: %s█", m.searchQuery)
+			if len(filterInfo)+len(searchLine)+7 > width {
+				filterInfo += "\n" + strings.Repeat(" ", 6) + searchLine
+			} else {
+				filterInfo += " | " + searchLine
+			}
+		}
 	}
 
 	style := lipgloss.NewStyle().
