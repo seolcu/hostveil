@@ -1,0 +1,80 @@
+# GoReleaser configuration for hostveil
+# See https://goreleaser.com for details
+
+version: 2
+project_name: hostveil
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: hostveil
+    main: ./cmd/hostveil/
+    binary: hostveil
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: binary
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format: binary
+    files:
+      - none*
+
+nfpms:
+  - id: deb
+    package_name: hostveil
+    file_name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Arch }}
+    vendor: hostveil
+    homepage: https://github.com/seolcu/hostveil
+    maintainer: Gyuwon Seol <seolcu0112@proton.me>
+    description: Linux self-hosting security dashboard
+    license: GPL-3.0
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/libexec/hostveil
+    contents:
+      - src: packaging/wrapper.sh
+        dst: /usr/bin/hostveil
+        type: file
+    overrides:
+      deb:
+        contents:
+          - src: packaging/hostveil-package-wrapper-deb.sh
+            dst: /usr/bin/hostveil
+            type: file
+      rpm:
+        contents:
+          - src: packaging/hostveil-package-wrapper-rpm.sh
+            dst: /usr/bin/hostveil
+            type: file
+
+release:
+  github:
+    owner: seolcu
+    name: hostveil
+  name_template: "v{{.Version}}"
+  header: |
+    ## hostveil {{.Version}}
+
+    Linux self-hosting security dashboard.
+
+    ### Installation
+
+    ```sh
+    curl -fsSL https://github.com/seolcu/hostveil/releases/download/v{{.Version}}/hostveil_{{.Version}}_linux_amd64 -o /usr/local/bin/hostveil
+    chmod +x /usr/local/bin/hostveil
+    ```
