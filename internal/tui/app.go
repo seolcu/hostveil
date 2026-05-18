@@ -30,6 +30,7 @@ type appModel struct {
 
 	theme       Theme
 	overview    *overviewModel
+	findings    *findingsModel
 }
 
 type keyMap struct {
@@ -40,7 +41,6 @@ type keyMap struct {
 	Enter    key.Binding
 	Tab      key.Binding
 	Quit     key.Binding
-	Help     key.Binding
 	Filter   key.Binding
 	Search   key.Binding
 	Fix      key.Binding
@@ -56,7 +56,6 @@ func defaultKeyMap() keyMap {
 		Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 		Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
 		Quit:     key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "quit")),
-		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Filter:   key.NewBinding(key.WithKeys("s", "x", "m", "v", "o"), key.WithHelp("s/x/m/v/o", "filter")),
 		Search:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		Fix:      key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
@@ -72,6 +71,7 @@ func NewApp(result *domain.ScanResult) *appModel {
 		keys:          defaultKeyMap(),
 		theme:         DefaultTheme(),
 		overview:      &overviewModel{},
+		findings:      newFindingsModel(result.Findings),
 	}
 }
 
@@ -90,7 +90,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		case key.Matches(msg, m.keys.Help):
+		case msg.String() == "?":
 			m.help.ShowAll = !m.help.ShowAll
 		case key.Matches(msg, key.NewBinding(key.WithKeys("1"))):
 			m.currentScreen = screenOverview
@@ -98,6 +98,12 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = screenFindings
 		case key.Matches(msg, key.NewBinding(key.WithKeys("3"))):
 			m.currentScreen = screenHistory
+		case msg.String() == "?":
+			m.help.ShowAll = !m.help.ShowAll
+		default:
+			if m.currentScreen == screenFindings {
+				m.findings.Update(msg)
+			}
 		}
 	}
 
@@ -164,7 +170,7 @@ func (m *appModel) renderOverview() string {
 }
 
 func (m *appModel) renderFindings() string {
-	return renderFindingsPanel(m.scanResult, m.theme, m.width, m.height-4)
+	return m.findings.render(m.theme, m.width, m.height-4)
 }
 
 func (m *appModel) renderHistory() string {
