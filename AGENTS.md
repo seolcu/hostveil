@@ -61,6 +61,8 @@ hostveil/
 | TUI Findings | ~350 | Filtered list, detail panel, search, 6 filter types, 3 sort modes |
 | TUI History | ~120 | Axis score bars, severity summary, warnings |
 | TUI Settings | ~120 | Theme selector, modal overlay |
+| Web Server | ~100 | net/http + HTMX SPA, 4 routes |
+| Web Templates | ~250 | Overview, Findings, History - inline CSS |
 
 ### 🚨 DEFERRED — DO NOT FORGET
 
