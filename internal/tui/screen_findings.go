@@ -26,9 +26,10 @@ type findingsModel struct {
 	remediationFilter string
 	sortMode         string // "severity", "source", "title"
 
-	searchQuery string
-	showSearch  bool
-	showDetail  bool
+	searchQuery    string
+	showSearch     bool
+	showDetail     bool
+	hostTriageMode bool
 }
 
 func newFindingsModel(findings []domain.Finding) *findingsModel {
@@ -120,7 +121,7 @@ func (m *findingsModel) Update(msg tea.Msg) {
 			m.cycleFilter("severity")
 		case "x":
 			m.cycleFilter("source")
-		case "z":
+		case "c":
 			m.cycleFilter("scope")
 		case "v":
 			m.cycleFilter("service")
@@ -128,7 +129,7 @@ func (m *findingsModel) Update(msg tea.Msg) {
 			m.cycleFilter("remediation")
 		case "o":
 			m.cycleSort()
-		case "r":
+		case "R":
 			m.resetFilters()
 		case "/":
 			m.showSearch = !m.showSearch

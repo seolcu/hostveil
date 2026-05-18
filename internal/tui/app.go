@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -24,44 +23,37 @@ type appModel struct {
 	height        int
 	scanResult    *domain.ScanResult
 	tick          int
-	help          help.Model
 	keys          keyMap
-	focus         int // which panel is focused
 
-	theme       Theme
-	overview    *overviewModel
-	findings    *findingsModel
-	history     *historyModel
-	settings    *settingsModel
+	theme    Theme
+	overview *overviewModel
+	findings *findingsModel
+	history  *historyModel
+	settings *settingsModel
+	help     *helpModel
 }
 
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	Left     key.Binding
-	Right    key.Binding
-	Enter    key.Binding
-	Tab      key.Binding
-	Quit     key.Binding
-	Filter   key.Binding
-	Search   key.Binding
-	Fix      key.Binding
-	Settings key.Binding
+	Up     key.Binding
+	Down   key.Binding
+	Left   key.Binding
+	Right  key.Binding
+	Enter  key.Binding
+	Tab    key.Binding
+	Quit   key.Binding
+	Filter key.Binding
 }
 
 func defaultKeyMap() keyMap {
 	return keyMap{
-		Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-		Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-		Left:     key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "back")),
-		Right:    key.NewBinding(key.WithKeys("right", "l", "enter"), key.WithHelp("→/l", "select")),
-		Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-		Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
-		Quit:     key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "quit")),
-		Filter:   key.NewBinding(key.WithKeys("s", "x", "m", "v", "o"), key.WithHelp("s/x/m/v/o", "filter")),
-		Search:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
-		Fix:      key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
-		Settings: key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "settings")),
+		Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+		Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+		Left:   key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "back")),
+		Right:  key.NewBinding(key.WithKeys("right", "l", "enter"), key.WithHelp("→/l", "select")),
+		Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+		Tab:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
+		Quit:   key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "quit")),
+		Filter: key.NewBinding(key.WithKeys("s", "x", "z", "m", "v", "o"), key.WithHelp("s/x/z/m/v/o", "filter")),
 	}
 }
 
@@ -69,13 +61,13 @@ func NewApp(result *domain.ScanResult) *appModel {
 	return &appModel{
 		currentScreen: screenOverview,
 		scanResult:    result,
-		help:          help.New(),
 		keys:          defaultKeyMap(),
 		theme:         DefaultTheme(),
 		overview:      &overviewModel{},
 		findings:      newFindingsModel(result.Findings),
 		history:       &historyModel{},
 		settings:      newSettingsModel(),
+		help:          &helpModel{},
 	}
 }
 
@@ -88,32 +80,56 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.help.Width = msg.Width
 
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Quit):
-			return m, tea.Quit
-		case msg.String() == "?":
-			m.help.ShowAll = !m.help.ShowAll
-		case key.Matches(msg, key.NewBinding(key.WithKeys("1"))):
-			m.currentScreen = screenOverview
-		case key.Matches(msg, key.NewBinding(key.WithKeys("2"))):
-			m.currentScreen = screenFindings
-		case key.Matches(msg, key.NewBinding(key.WithKeys("3"))):
-			m.currentScreen = screenHistory
-		case msg.String() == "?":
-			m.help.ShowAll = !m.help.ShowAll
-		case msg.String() == "S":
-			m.settings.Toggle()
-		default:
-			if m.settings.IsOpen() {
+		s := msg.String()
+
+		// Global overlays take priority
+		if m.help.show {
+			if s == "?" || s == "esc" || s == "q" {
+				m.help.Toggle()
+			}
+			return m, nil
+		}
+		if m.settings.IsOpen() {
+			if s == "S" || s == "esc" || s == "q" {
+				m.settings.Toggle()
+			} else {
 				oldTheme := m.settings.themeName
-				m.settings.Update(msg.String())
+				m.settings.Update(s)
 				if m.settings.themeName != oldTheme {
 					m.theme = GetTheme(m.settings.themeName)
 				}
-			} else if m.currentScreen == screenFindings {
+			}
+			return m, nil
+		}
+
+		switch {
+		case key.Matches(msg, m.keys.Quit) && !m.settings.IsOpen():
+			return m, tea.Quit
+		case s == "?":
+			m.help.Toggle()
+		case s == "1":
+			m.currentScreen = screenOverview
+		case s == "2":
+			m.currentScreen = screenFindings
+		case s == "3":
+			m.currentScreen = screenHistory
+		case s == "S":
+			m.settings.Toggle()
+		case s == "h" && m.currentScreen == screenOverview:
+			// Host triage: switch to findings filtered to host scope
+			m.currentScreen = screenFindings
+			m.findings.hostTriageMode = true
+			m.findings.scopeFilter = "host"
+			m.findings.applyFilters()
+		case s == "f" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
+			f := m.findings.list[m.findings.selected]
+			if f.IsFixable() {
+				m.currentScreen = screenFindings
+			}
+		default:
+			if m.currentScreen == screenFindings {
 				m.findings.Update(msg)
 			}
 		}
@@ -140,16 +156,18 @@ func (m *appModel) View() string {
 	}
 
 	footer := m.renderFooter()
-
 	view := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
 
-	// Overlay for settings modal
-	if m.settings.IsOpen() {
+	// Overlays
+	if m.help.show {
+		overlay := m.help.Render(m.theme, m.width, m.height)
+		view = lipgloss.Place(m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			overlay,
+			lipgloss.WithWhitespaceChars(" "),
+		)
+	} else if m.settings.IsOpen() {
 		overlay := m.settings.Render(m.theme, m.width, m.height)
-		x := (m.width - 40) / 2
-		if x < 0 {
-			x = 0
-		}
 		view = lipgloss.Place(m.width, m.height,
 			lipgloss.Center, lipgloss.Center,
 			overlay,
@@ -182,7 +200,7 @@ func (m *appModel) renderHeader() string {
 
 func (m *appModel) renderFooter() string {
 	nav := " [1] Overview  [2] Findings  [3] History "
-	help := " [?] Help  [q] Quit "
+	hint := " [?] Help  [q] Quit "
 
 	style := lipgloss.NewStyle().
 		BorderTop(true).
@@ -190,7 +208,7 @@ func (m *appModel) renderFooter() string {
 		Padding(0, 2).
 		Width(m.width)
 
-	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, help))
+	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, hint))
 }
 
 func (m *appModel) renderOverview() string {
