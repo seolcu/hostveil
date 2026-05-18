@@ -4,6 +4,9 @@ mod setup;
 
 pub use config::{AdapterSelection, AppConfig, OutputMode, ScanAdapter, SetupConfig, SetupTool};
 
+#[cfg(feature = "web")]
+pub use config::WebConfig;
+
 use std::env;
 use std::fmt;
 use std::io::{self, Write};
@@ -16,6 +19,9 @@ use crate::export;
 use crate::fix::{self, FixError};
 use crate::i18n;
 use crate::tui;
+
+#[cfg(feature = "web")]
+use crate::web;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -335,6 +341,11 @@ pub fn run(args: impl IntoIterator<Item = String>) -> Result<(), AppError> {
                 return Err(error);
             }
         }
+        #[cfg(feature = "web")]
+        OutputMode::Web => {
+            let scan_result = scan::run(&config)?;
+            web::serve(scan_result, &config.web)?;
+        }
     }
 
     Ok(())
@@ -477,17 +488,26 @@ pub fn build_privilege_escalation_cmd(
     bin_args: &[String],
     current_exe: &std::path::Path,
 ) -> Option<std::process::Command> {
-    let is_user_mode = bin_args.iter().any(|arg| arg == "--user-mode");
-    let is_lifecycle = matches!(
-        bin_args.first().map(String::as_str),
-        Some("upgrade" | "uninstall" | "auto-upgrade")
-    );
-    let is_passive = bin_args
+    if bin_args.iter().any(|arg| arg == "--user-mode") {
+        return None;
+    }
+
+    if bin_args
         .iter()
         .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
-        || is_lifecycle;
+    {
+        return None;
+    }
 
-    if is_user_mode || is_passive {
+    if matches!(
+        bin_args.first().map(String::as_str),
+        Some("upgrade" | "uninstall" | "auto-upgrade")
+    ) {
+        return None;
+    }
+
+    #[cfg(feature = "web")]
+    if bin_args.iter().any(|arg| arg == "--serve") {
         return None;
     }
 

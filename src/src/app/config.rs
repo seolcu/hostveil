@@ -11,6 +11,27 @@ pub enum OutputMode {
     Sarif,
     Markdown,
     Html,
+    #[cfg(feature = "web")]
+    Web,
+}
+
+#[cfg(feature = "web")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub host: String,
+}
+
+#[cfg(feature = "web")]
+impl Default for WebConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            port: 8080,
+            host: String::from("127.0.0.1"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -179,6 +200,8 @@ pub struct AppConfig {
     pub assume_yes: bool,
     pub findings_only: bool,
     pub fail_on: Option<crate::domain::Severity>,
+    #[cfg(feature = "web")]
+    pub web: WebConfig,
 }
 
 impl Default for AppConfig {
@@ -201,6 +224,8 @@ impl Default for AppConfig {
             assume_yes: false,
             findings_only: false,
             fail_on: None,
+            #[cfg(feature = "web")]
+            web: WebConfig::default(),
         }
     }
 }
@@ -378,6 +403,49 @@ impl AppConfig {
                         return Err(AppError::MissingArgumentValue("--fix"));
                     }
                     config.set_fix_target(FixMode::Fix, PathBuf::from(value))?;
+                }
+                #[cfg(feature = "web")]
+                "--serve" => {
+                    config.output_mode = OutputMode::Web;
+                    config.web.enabled = true;
+                }
+                #[cfg(feature = "web")]
+                "--port" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--port"))?;
+                    config.web.port = value.parse::<u16>().map_err(|_| {
+                        AppError::InvalidArgumentCombination(format!(
+                            "--port must be a valid port number, got: {value}"
+                        ))
+                    })?;
+                }
+                #[cfg(feature = "web")]
+                _ if argument.starts_with("--port=") => {
+                    let value = argument.trim_start_matches("--port=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--port"));
+                    }
+                    config.web.port = value.parse::<u16>().map_err(|_| {
+                        AppError::InvalidArgumentCombination(format!(
+                            "--port must be a valid port number, got: {value}"
+                        ))
+                    })?;
+                }
+                #[cfg(feature = "web")]
+                "--host" => {
+                    let value = args
+                        .next()
+                        .ok_or(AppError::MissingArgumentValue("--host"))?;
+                    config.web.host = value;
+                }
+                #[cfg(feature = "web")]
+                _ if argument.starts_with("--host=") => {
+                    let value = argument.trim_start_matches("--host=");
+                    if value.is_empty() {
+                        return Err(AppError::MissingArgumentValue("--host"));
+                    }
+                    config.web.host = String::from(value);
                 }
                 _ => return Err(AppError::UnknownArgument(argument)),
             }

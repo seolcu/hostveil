@@ -940,10 +940,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -977,10 +974,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -1014,10 +1008,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -1058,10 +1049,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -1094,10 +1082,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run(&config).expect("scan should succeed");
@@ -1165,10 +1150,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run_native(&config).expect("scan should succeed");
@@ -1247,10 +1229,7 @@ mod tests {
             fix_mode: None,
             fix_target_path: None,
             quick_fix_alias_used: false,
-            preview_changes: false,
-            assume_yes: false,
-            findings_only: false,
-            fail_on: None,
+            ..Default::default()
         };
 
         let result = run_native(&config).expect("combined scan should succeed");

@@ -17,3 +17,6 @@ pub mod rules;
 pub mod scoring;
 pub mod settings;
 pub mod tui;
+
+#[cfg(feature = "web")]
+pub mod web;
