@@ -1,0 +1,47 @@
+{{define "settings.html"}}
+<div class="card">
+  <div class="card-title">Settings</div>
+  <div style="margin-bottom:16px">
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">CSS Theme</label>
+    <select id="theme-select" class="filter" style="width:100%" onchange="applyTheme(this.value)">
+      <option value="tokyo-night">Tokyo Night</option>
+      <option value="dracula">Dracula</option>
+      <option value="nord">Nord</option>
+      <option value="catppuccin">Catppuccin</option>
+      <option value="gruvbox">Gruvbox</option>
+    </select>
+  </div>
+  <div style="font-size:12px;color:var(--muted)">Theme selection persists in browser localStorage.</div>
+</div>
+<script>
+function applyTheme(theme) {
+  var themes = {
+    'tokyo-night': { bg: '#0f0f14', surface: '#16161e', card: '#1a1b26', hover: '#24283b', border: '#2f3348', text: '#a9b1d6', muted: '#565f89', accent: '#7aa2f7' },
+    'dracula': { bg: '#1a1b2e', surface: '#21222c', card: '#282a36', hover: '#343746', border: '#44475a', text: '#f8f8f2', muted: '#6272a4', accent: '#bd93f9' },
+    'nord': { bg: '#2e3440', surface: '#3b4252', card: '#434c5e', hover: '#4c566a', border: '#4c566a', text: '#e5e9f0', muted: '#81a1c1', accent: '#88c0d0' },
+    'catppuccin': { bg: '#1e1e2e', surface: '#181825', card: '#242436', hover: '#2a2a3e', border: '#45475a', text: '#cdd6f4', muted: '#a6adc8', accent: '#89b4fa' },
+    'gruvbox': { bg: '#282828', surface: '#1d2021', card: '#32302f', hover: '#3c3836', border: '#504945', text: '#ebdbb2', muted: '#a89984', accent: '#83a598' }
+  };
+  var t = themes[theme] || themes['tokyo-night'];
+  var root = document.documentElement.style;
+  root.setProperty('--bg', t.bg);
+  root.setProperty('--surface', t.surface);
+  root.setProperty('--card', t.card);
+  root.setProperty('--hover', t.hover);
+  root.setProperty('--border', t.border);
+  root.setProperty('--text', t.text);
+  root.setProperty('--muted', t.muted);
+  root.setProperty('--accent', t.accent);
+  try { localStorage.setItem('hostveil-theme', theme); } catch(e) {}
+}
+
+// Restore theme on load
+try {
+  var saved = localStorage.getItem('hostveil-theme');
+  if (saved) {
+    document.getElementById('theme-select').value = saved;
+    applyTheme(saved);
+  }
+} catch(e) {}
+</script>
+{{end}}
