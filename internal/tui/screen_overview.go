@@ -17,22 +17,51 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return "Terminal too narrow for overview"
 	}
 
-	colWidth := (width - 4) / 2
+	switch {
+	case width >= 100:
+		// 3-column layout: Score/Severity | Axis/Host | Action/Meta
+		colWidth := (width - 6) / 3
+		scoreCard := m.renderScoreCard(r, theme, colWidth)
+		severityCard := m.renderSeverityCard(r, theme, colWidth)
+		actionCard := m.renderActionCard(r, theme, colWidth)
+		axisCard := m.renderAxisCard(r, theme, colWidth)
+		hostCard := m.renderHostCard(r, theme, colWidth)
+		metaCard := m.renderMetaCard(r, theme, colWidth)
 
-	// Left column
-	scoreCard := m.renderScoreCard(r, theme, colWidth)
-	severityCard := m.renderSeverityCard(r, theme, colWidth)
-	actionCard := m.renderActionCard(r, theme, colWidth)
+		left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard)
+		middle := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard)
+		right := lipgloss.JoinVertical(lipgloss.Top, actionCard, metaCard)
 
-	// Right column
-	axisCard := m.renderAxisCard(r, theme, colWidth)
-	hostCard := m.renderHostCard(r, theme, colWidth)
-	metaCard := m.renderMetaCard(r, theme, colWidth)
+		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", middle, "  ", right)
 
-	left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard, actionCard)
-	right := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard, metaCard)
+	case width >= 60:
+		// 2-column layout
+		colWidth := (width - 4) / 2
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+		scoreCard := m.renderScoreCard(r, theme, colWidth)
+		severityCard := m.renderSeverityCard(r, theme, colWidth)
+		actionCard := m.renderActionCard(r, theme, colWidth)
+		axisCard := m.renderAxisCard(r, theme, colWidth)
+		hostCard := m.renderHostCard(r, theme, colWidth)
+		metaCard := m.renderMetaCard(r, theme, colWidth)
+
+		left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard, actionCard)
+		right := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard, metaCard)
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+
+	default:
+		// 1-column layout (stacked)
+		colWidth := width - 2
+		return lipgloss.JoinVertical(lipgloss.Top,
+			m.renderScoreCard(r, theme, colWidth),
+			m.renderSeverityCard(r, theme, colWidth),
+			m.renderAxisCard(r, theme, colWidth),
+			m.renderActionCard(r, theme, colWidth),
+			m.renderHostCard(r, theme, colWidth),
+			m.renderMetaCard(r, theme, colWidth),
+		)
+	}
 }
 
 func (m *overviewModel) renderScoreCard(r *domain.ScanResult, theme Theme, width int) string {

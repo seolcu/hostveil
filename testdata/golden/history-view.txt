@@ -1,11 +1,17 @@
+  hostveil   Score: 16 (Critical)  |  6 findings
+ Scan History
+ Score: 16 (Critical)  |  Findings: 6  |  Services: 1
+
+ Axis Scores:
+   Sensitive Data         [██████████████████████████████████████████████████████████████████████████████]
  100
-   Excessive Permissions  [███████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+   Excessive Permissions  [███████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
  40
-   Unnecessary Exposure   [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+   Unnecessary Exposure   [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
  0
-   Update & Supply Chain  [████████████████████████████████████████████████]
+   Update & Supply Chain  [██████████████████████████████████████████████████████████████████████████████]
  100
-   Host Hardening         [████████████████████████████████████████████████]
+   Host Hardening         [██████████████████████████████████████████████████████████████████████████████]
  100
 
  Findings:
@@ -14,11 +20,9 @@
    low: 3
 
  Warnings:
-   ⚠ Discovered project: parser at ./proto/tests/fixtures/parser/docker-
+   ⚠ Discovered project: parser at ./proto/tests/fixtures/parser/docker-compose.yml
+   ⚠ Discovered project: parser at /home/seolcu/문서/코드/hostveil/proto/tests/fixtures/parser/docker-
  compose.yml
-   ⚠ Discovered project: parser at
- /home/seolcu/문서/코드/hostveil/proto/tests/fixtures/parser/docker-compose.yml
-   ⚠ Discovered project: s-forensicai at /home/seolcu/문서/코드/s-
- forensicai/compose.yaml
+   ⚠ Discovered project: s-forensicai at /home/seolcu/문서/코드/s-forensicai/compose.yaml
 
    [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit

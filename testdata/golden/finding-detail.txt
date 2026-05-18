@@ -1,24 +1,28 @@
-vaultwarden                             │ service
-  [LOW] Stack relies on the…            │ Service: vaultwarden
-vaultwarden                             │ Fix: Review Required
-  [HIGH] Vaultwarden domain …           │
-vaultwarden                             │ Description:
-                                        │ vaultwarden publishes 8080:80 on a
-                                        │ publicly reachable host interface.
-                                        │
-                                        │ Why it's risky:
-                                        │ Public bindings increase the attack
-                                        │ surface. Services should bind to
-                                        │ localhost when a reverse proxy handles
-                                        │ external traffic.
-                                        │
-                                        │ How to fix:
-                                        │ Bind the port to 127.0.0.1:
-                                        │   ports:
-                                        │     - "127.0.0.1:8080:80"
-                                        │
-                                        │ Evidence:
-                                        │   port: 8080:80
-                                        │
-                                        ╰───────────────────────────────────────
+6/6                                                    ╭──────────────────────────────────────────────────────
+> [MEDIUM] Service is published on a public i…         │ Service is published on a public interface
+vaultwarden                                            │
+  [HIGH] Service should sit behind a revers…           │ ID: exposure.public_binding
+vaultwarden                                            │ Severity: MEDIUM | Axis: Unnecessary Exposure
+  [LOW] Container allows privilege escalat…            │ Source: native_compose | Scope: service
+vaultwarden                                            │ Service: vaultwarden
+  [LOW] Container root filesystem is writa…            │ Fix: Review Required
+vaultwarden                                            │
+  [LOW] Stack relies on the default bridge…            │ Description:
+vaultwarden                                            │ vaultwarden publishes 8080:80 on a publicly reachable
+  [HIGH] Vaultwarden domain is configured f…           │ host interface.
+vaultwarden                                            │
+                                                       │ Why it's risky:
+                                                       │ Public bindings increase the attack surface. Services
+                                                       │ should bind to localhost when a reverse proxy handles
+                                                       │ external traffic.
+                                                       │
+                                                       │ How to fix:
+                                                       │ Bind the port to 127.0.0.1:
+                                                       │   ports:
+                                                       │     - "127.0.0.1:8080:80"
+                                                       │
+                                                       │ Evidence:
+                                                       │   port: 8080:80
+                                                       │
+                                                       ╰──────────────────────────────────────────────────────
    [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit
