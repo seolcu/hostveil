@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -9,6 +11,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
 )
+
+var resetSeq = regexp.MustCompile(`\x1b\[0m`)
+var bgResetSeq = regexp.MustCompile(`\x1b\[49m`)
 
 type screen int
 
@@ -165,7 +170,10 @@ func (m *appModel) View() string {
 		body += strings.Repeat("\n", availableLines-totalLines)
 	}
 
-	view := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
+	content := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
+
+	// Wrap entire render in background color, pad each line to full width
+	view := applyBackground(content, m.theme.Background, m.width, m.height)
 
 	// Overlays
 	if m.help.show {
@@ -175,6 +183,7 @@ func (m *appModel) View() string {
 			overlay,
 			lipgloss.WithWhitespaceChars(" "),
 		)
+		view = applyBackground(view, m.theme.Background, m.width, m.height)
 	} else if m.settings.IsOpen() {
 		overlay := m.settings.Render(m.theme, m.width, m.height)
 		view = lipgloss.Place(m.width, m.height,
@@ -182,9 +191,48 @@ func (m *appModel) View() string {
 			overlay,
 			lipgloss.WithWhitespaceChars(" "),
 		)
+		view = applyBackground(view, m.theme.Background, m.width, m.height)
 	}
 
 	return view
+}
+
+func applyBackground(content string, bgColor string, width, height int) string {
+	// Pad lines to fill terminal dimensions
+	lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
+	for i := 0; i < height-len(lines); i++ {
+		lines = append(lines, "")
+	}
+	for i, line := range lines {
+		if len(line) < width {
+			lines[i] = line + strings.Repeat(" ", width-len(line))
+		}
+	}
+	full := strings.Join(lines, "\n")
+
+	// Parse hex color to RGB
+	r, g, b := parseHex(bgColor)
+	bgSeq := fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+
+	// Re-apply theme background after every reset or background-reset sequence.
+	// lipgloss internally emits ESC[0m and ESC[49m between styled regions,
+	// which would reveal the terminal's default background. We interpose our
+	// own background color to keep the entire canvas filled.
+	full = resetSeq.ReplaceAllString(full, "\x1b[0m"+bgSeq)
+	full = bgResetSeq.ReplaceAllString(full, bgSeq)
+
+	return bgSeq + full + "\x1b[49m"
+}
+
+func parseHex(hex string) (int, int, int) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) != 6 {
+		return 0, 0, 0
+	}
+	r, _ := strconv.ParseInt(hex[0:2], 16, 32)
+	g, _ := strconv.ParseInt(hex[2:4], 16, 32)
+	b, _ := strconv.ParseInt(hex[4:6], 16, 32)
+	return int(r), int(g), int(b)
 }
 
 func (m *appModel) renderHeader() string {

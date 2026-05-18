@@ -1,5 +1,5 @@
-[48;2;22;22;30m  [1m[38;2;169;177;214mhostveil[0m   [38;2;121;162;247mScore: 16 (Critical)  |  6 findings[39m[48;2;22;22;30m
-[38;2;86;95;137m[49m0/6 scp:host[39m
+[48;2;22;22;30m  [1m[38;2;169;177;214mhostveil[0m[48;2;15;15;20m   [38;2;121;162;247mScore: 16 (Critical)  |  6 findings[39m[48;2;22;22;30m
+[38;2;86;95;137m[48;2;15;15;20m0/6 scp:host[39m
   No findings match current filters.
 
 
