@@ -1,101 +1,54 @@
 package web
 
 import (
-	"embed"
 	"fmt"
-	"html/template"
-	"log"
-	"net/http"
+	"os"
+	"os/exec"
+	"strconv"
 
-	"github.com/seolcu/hostveil/internal/domain"
-	"github.com/seolcu/hostveil/internal/export"
+	"github.com/seolcu/hostveil/internal/config"
 )
 
-//go:embed template/*.html
-var templateFS embed.FS
-
-type Server struct {
-	result *domain.ScanResult
-	tmpl   *template.Template
-	addr   string
-}
-
-func NewServer(result *domain.ScanResult, host string, port int) *Server {
-	tmpl := template.Must(template.ParseFS(templateFS, "template/*.html"))
-	return &Server{
-		result: result,
-		tmpl:   tmpl,
-		addr:   fmt.Sprintf("%s:%d", host, port),
-	}
-}
-
-func (s *Server) Start() error {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /", s.handleIndex)
-	mux.HandleFunc("GET /overview", s.handleOverview)
-	mux.HandleFunc("GET /findings", s.handleFindings)
-	mux.HandleFunc("GET /history", s.handleHistory)
-	mux.HandleFunc("GET /settings", s.handleSettings)
-	mux.HandleFunc("GET /api/overview", s.handleAPIOverview)
-	mux.HandleFunc("GET /api/findings", s.handleAPIFindings)
-
-	log.Printf("Web server starting on http://%s", s.addr)
-	return http.ListenAndServe(s.addr, mux)
-}
-
-func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "index.html", nil)
-}
-
-func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "overview.html", s.result)
-}
-
-func (s *Server) handleFindings(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		Result   *domain.ScanResult
-		Severity string
-		Source   string
-	}{
-		Result:   s.result,
-		Severity: r.URL.Query().Get("severity"),
-		Source:   r.URL.Query().Get("source"),
-	}
-	s.render(w, "findings.html", data)
-}
-
-func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "settings.html", nil)
-}
-
-func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "history.html", s.result)
-}
-
-func (s *Server) handleAPIOverview(w http.ResponseWriter, r *http.Request) {
-	json, err := export.JSON(s.result, false)
+func Serve(cfg *config.Config) error {
+	ttyd, err := exec.LookPath("ttyd")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("ttyd not found. Install:\n" +
+			"  brew install ttyd          # macOS\n" +
+			"  sudo apt install ttyd       # Debian/Ubuntu\n" +
+			"  sudo dnf install ttyd       # Fedora\n" +
+			"  go install github.com/tsl0922/ttyd@latest")
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(json))
-}
 
-func (s *Server) handleAPIFindings(w http.ResponseWriter, r *http.Request) {
-	json, err := export.JSON(s.result, false)
+	self, err := os.Executable()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("get executable path: %w", err)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(json))
-}
 
-func (s *Server) render(w http.ResponseWriter, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.tmpl.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	port := strconv.Itoa(cfg.Port)
+	host := cfg.Host
+
+	// Build the command ttyd will run: hostveil with original args minus --serve
+	childArgs := []string{self}
+	if cfg.ComposePath != "" {
+		childArgs = append(childArgs, "--compose", cfg.ComposePath)
 	}
+	if cfg.HostRoot != "" {
+		childArgs = append(childArgs, "--host-root", cfg.HostRoot)
+	}
+	childArgs = append(childArgs, "--user-mode")
+
+	// ttyd arguments
+	ttydArgs := []string{"-p", port}
+	if host != "127.0.0.1" {
+		ttydArgs = append(ttydArgs, "-i", host)
+	}
+	ttydArgs = append(ttydArgs, childArgs...)
+
+	fmt.Printf("Hostveil web interface running on http://%s:%s/\n", host, port)
+	fmt.Println("The TUI is streamed to your browser via ttyd (WebSocket terminal).")
+
+	cmd := exec.Command(ttyd, ttydArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
