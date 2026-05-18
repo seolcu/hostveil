@@ -84,6 +84,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 	}
 
 	dialogStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color(theme.Surface)).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Width(dialogWidth).

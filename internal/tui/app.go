@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -156,6 +157,14 @@ func (m *appModel) View() string {
 	}
 
 	footer := m.renderFooter()
+
+	// Pad body so footer stays at terminal bottom
+	totalLines := strings.Count(header, "\n") + 1 + strings.Count(body, "\n") + 1 + strings.Count(footer, "\n") + 1
+	availableLines := m.height
+	if totalLines < availableLines {
+		body += strings.Repeat("\n", availableLines-totalLines)
+	}
+
 	view := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
 
 	// Overlays
@@ -188,14 +197,14 @@ func (m *appModel) renderHeader() string {
 		Foreground(lipgloss.Color(m.theme.Accent)).
 		Render(fmtScore(m.scanResult))
 
-	header := lipgloss.NewStyle().
+	headerStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color(m.theme.Surface)).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(m.theme.Border)).
 		Padding(0, 2).
-		Width(m.width).
-		Render(lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", score))
+		Width(m.width)
 
-	return header
+	return headerStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", score))
 }
 
 func (m *appModel) renderFooter() string {
@@ -203,6 +212,7 @@ func (m *appModel) renderFooter() string {
 	hint := " [?] Help  [q] Quit "
 
 	style := lipgloss.NewStyle().
+		Background(lipgloss.Color(m.theme.Surface)).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(m.theme.Border)).
 		Padding(0, 2).

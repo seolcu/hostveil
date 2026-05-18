@@ -1,23 +1,23 @@
-  hostveil   Score: 16 (Critical)  |  6 findings
- Scan History
+[48;2;22;22;30m  [1m[38;2;169;177;214mhostveil[0m   [38;2;121;162;247mScore: 16 (Critical)  |  6 findings[39m[48;2;22;22;30m
+[49m [1m[38;2;169;177;214mScan History[0m
  Score: 16 (Critical)  |  Findings: 6  |  Services: 1
 
  Axis Scores:
-   Sensitive Data         [██████████████████████████████████████████████████████████████████████████████]
+   Sensitive Data         [38;2;115;218;202m[██████████████████████████████████████████████████████████████████████████████][39m
  100
-   Excessive Permissions  [███████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+   Excessive Permissions  [38;2;247;118;142m[███████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░][39m
  40
-   Unnecessary Exposure   [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+   Unnecessary Exposure   [38;2;247;118;142m[░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░][39m
  0
-   Update & Supply Chain  [██████████████████████████████████████████████████████████████████████████████]
+   Update & Supply Chain  [38;2;115;218;202m[██████████████████████████████████████████████████████████████████████████████][39m
  100
-   Host Hardening         [██████████████████████████████████████████████████████████████████████████████]
+   Host Hardening         [38;2;115;218;202m[██████████████████████████████████████████████████████████████████████████████][39m
  100
 
  Findings:
-   high: 2
-   medium: 1
-   low: 3
+   [38;2;255;158;100mhigh[39m: 2
+   [38;2;224;175;104mmedium[39m: 1
+   [38;2;158;206;105mlow[39m: 3
 
  Warnings:
    ⚠ Discovered project: parser at ./proto/tests/fixtures/parser/docker-compose.yml
@@ -25,4 +25,4 @@
  compose.yml
    ⚠ Discovered project: s-forensicai at /home/seolcu/문서/코드/s-forensicai/compose.yaml
 
-   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit
+[48;2;22;22;30m   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit

@@ -1,7 +1,6 @@
-  hostveil   Score: 16 (Critical)  |  6 findings
-0/6 sev:critical
+[48;2;22;22;30m  [1m[38;2;169;177;214mhostveil[0m   [38;2;121;162;247mScore: 16 (Critical)  |  6 findings[39m[48;2;22;22;30m
+[38;2;86;95;137m[49m0/6 sev:critical[39m
   No findings match current filters.
-   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit
 
 
 
@@ -26,3 +25,4 @@
 
 
 
+[48;2;22;22;30m   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit

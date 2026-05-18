@@ -29,7 +29,7 @@ start_app() {
 }
 
 capture() {
-  tmux capture-pane -t "$SESSION" -p
+  tmux capture-pane -t "$SESSION" -p -e
 }
 
 send_key() {

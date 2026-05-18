@@ -1,13 +1,11 @@
-  hostveil   Score: 16 (Critical)  |  6 findings
-6/6
-> [MEDIUM] Service is published on a public interface  vaultwarden
-  [HIGH] Service should sit behind a reverse proxy  vaultwarden
-  [LOW] Container allows privilege escalation  vaultwarden
-  [LOW] Container root filesystem is writable  vaultwarden
-  [LOW] Stack relies on the default bridge network  vaultwarden
-  [HIGH] Vaultwarden domain is configured for public HTTP  vaultwarden
-
-   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit
+[48;2;22;22;30m  [1m[38;2;169;177;214mhostveil[0m   [38;2;121;162;247mScore: 16 (Critical)  |  6 findings[39m[48;2;22;22;30m
+[38;2;86;95;137m[49m6/6[39m
+[1m[38;2;224;175;104m> [MEDIUM] Service is published on a public interface  vaultwarden[0m
+[38;2;255;158;100m  [HIGH] Service should sit behind a reverse proxy  vaultwarden[39m
+[38;2;158;206;105m  [LOW] Container allows privilege escalation  vaultwarden[39m
+[38;2;158;206;105m  [LOW] Container root filesystem is writable  vaultwarden[39m
+[38;2;158;206;105m  [LOW] Stack relies on the default bridge network  vaultwarden[39m
+[38;2;255;158;100m  [HIGH] Vaultwarden domain is configured for public HTTP  vaultwarden[39m
 
 
 
@@ -26,3 +24,5 @@
 
 
 
+
+[48;2;22;22;30m   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit
