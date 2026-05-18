@@ -8,10 +8,11 @@ Keep this concise — it is not a substitute for README or docs. It covers what 
 hostveil is a lightweight TUI security dashboard for Linux self-hosted environments centered on Docker Compose deployments.
 
 - Python prototype lives in `proto/` — frozen reference; do not modify unless explicitly asked
-- Rust product lives in `src/` — all new product work defaults here
+- Rust product crate at `src/Cargo.toml` with sources in `src/src/` (workspace root `Cargo.toml`, `members = ["src"]`, resolver "3")
 - Runtime target: Linux only; Windows contributors should use WSL
-- TUI stack: `ratatui` + `crossterm` (see `docs/adr/0003-tui-framework.md`)
-- i18n: `rust-i18n` with English default (see `docs/adr/0004-i18n-library.md`)
+- TUI stack: `ratatui 0.29` + `crossterm 0.29` (see `docs/adr/0003-tui-framework.md`)
+- i18n: `rust-i18n 3` (crate `rust_i18n`, locale files `src/locales/en.yml` / `ko.yml`, fallback English) (see `docs/adr/0004-i18n-library.md`)
+- Rust edition 2024 (pinned stable toolchain via `rust-toolchain.toml`)
 
 ## Non-Negotiable Rules
 
@@ -28,11 +29,11 @@ hostveil is a lightweight TUI security dashboard for Linux self-hosted environme
 
 - TUI changes must include automated `TestBackend` render tests that inspect buffer cells.
 - When changing styles, colours, or layout, assert on actual `Cell::style().fg` / `Cell::style().bg` values.
-- Reuse helper functions `buffer_to_string`, `buffer_bg`, etc. from `src/tui/mod.rs` tests.
+- Reuse helper functions `buffer_to_string`, `buffer_bg`, etc. (defined in `src/src/tui/mod.rs` tests, also duplicated in `src/src/tui/fix_review.rs`).
 - When changing key bindings, update the help text, footer, and render tests together.
 - Overview layout must show core information without scrolling in the default state. Use density-aware rendering (`ScoreDensity` modes) and `Min`-based constraints rather than fixed `Length()` values.
 - **NEVER set `fg` on `Theme.highlight`**. In ratatui 0.29, `List.highlight_style.fg` applies at the cell level and completely overrides any span-level foreground colors. `Line::styled` or `Span::styled` are insufficient to preserve text colors on selected items when `highlight.fg` is set. The highlight background alone is sufficient for visual distinction.
-- **Every finding-list render change must include a `TestBackend` test that asserts `Cell::fg` matches the expected severity color on a selected row.** The `selected_finding_preserves_severity_foreground_color` test in `src/tui/mod.rs` is the reference implementation.
+- **Every finding-list render change must include a `TestBackend` test that asserts `Cell::fg` matches the expected severity color on a selected row.** The `selected_finding_preserves_severity_foreground_color` test in `src/src/tui/mod.rs` is the reference implementation.
 - **Every keybinding change must include an E2E test that keystroke-simulates the key and asserts on both returned `TuiAction` and `state.screen`.** The `f_key_on_findings_does_not_change_screen_to_overview` test is the reference implementation.
 
 ## QA Testing Charter (Behavioral E2E Coverage)
@@ -41,7 +42,7 @@ Testing priority order (highest first):
 
 1. **Fix engine pipeline**: Every `FixAction` variant (`ComposeEdit`, `HostEdit`, `ShellCommand`) must have unit tests that verify actual execution (file creation, content, permissions, shell command success/failure). The `execute_host_and_system_actions` function must be tested with all action combinations.
 
-2. **Adapter classification coverage**: Every adapter (Dockle, Lynis) must have tests verifying each finding-to-`FixAction` mapping. Test both `Auto` and `Review` remediation paths, `Manual` skip behavior, unknown ID fallback, and unknown source filtering. The `multiple_findings_are_classified_independently` test must be kept up to date.
+2. **Adapter classification coverage**: Every adapter (Dockle, Lynis) must have tests verifying each finding-to-`FixAction` mapping. Test both `Auto` and `Review` remediation paths, `Manual` skip behavior, unknown ID fallback, and unknown source filtering. The `multiple_findings_are_classified_independently` test in `src/src/fix/adapter.rs` must be kept up to date.
 
 3. **External finding pipeline**: Adapter findings (Dockle, Lynis) from `ScanResult` must reach the fix engine. When a user presses `f` on an adapter finding, the `TuiAction::TriggerFix` must include `adapter_findings`. The `preview_with_external` / `apply_with_external` functions receive and classify these findings. Test that `host_actions` and `system_actions` in `FixPlan` are populated when adapter findings are present.
 
@@ -49,9 +50,11 @@ Testing priority order (highest first):
 
 5. **Fix review UI**: Every plan section (auto, review, host edit, shell command) must be rendered in `fix_review.rs`. Test that `host_actions` and `system_actions` summaries appear in the rendered output when present.
 
-6. **Regression guard**: Run `cargo test --workspace` (must pass all 719+ tests) and `cargo clippy -D warnings` before every commit. Run `scripts/smoke-test.sh` and `scripts/test-install-script.sh` for release-impacting changes.
+6. **Regression guard**: Run `cargo test --workspace` (must pass all 883+ tests) and `cargo clippy -D warnings` before every commit. Run `scripts/smoke-test.sh` and `scripts/test-install-script.sh` for release-impacting changes.
 
-7. **CI mode in E2E scripts**: `CI_MODE=1 scripts/test-adapters-e2e.sh` must fail if required adapter binaries are missing, preventing silent skips in CI environments.
+7. **Fix scenario tests**: Add scenarios to `tests/scenarios/<name>/` with `docker-compose.yml` + `expected.yml`. Run with `./scripts/verify-fixes.sh target/debug/hostveil`.
+
+8. **CI mode in E2E scripts**: `CI_MODE=1 scripts/test-adapters-e2e.sh` must fail if required adapter binaries are missing, preventing silent skips in CI environments.
 
 ## Test Count Baseline
 
@@ -94,7 +97,6 @@ Testing priority order (highest first):
 ## What NOT To Do
 
 - Do not modify `proto/` unless explicitly asked.
-- Do not bypass the i18n layer.
 - Do not commit `Cargo.lock` changes in feature PRs unless the PR is a dedicated release bump.
 - Do not push directly to `main`.
 
