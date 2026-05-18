@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use axum::extract::State;
 use axum::response::Html;
+use rust_i18n::t;
 
 use crate::domain::{AdapterStatus, Axis, Severity};
 use crate::web::state::AppState;
@@ -31,7 +32,7 @@ pub async fn overview_page(State(state): State<AppState>) -> Html<String> {
 
     // Score + Severity counts
     html.push_str(&format!(
-r#"<div class="grid grid-3" style="margin-bottom:24px">
+        r#"<div class="grid grid-3" style="margin-bottom:24px">
   <div class="card" style="text-align:center">
     <div class="score-circle {score_class}">{score}</div>
     <div class="score-label">{}</div>
@@ -49,71 +50,94 @@ r#"<div class="grid grid-3" style="margin-bottom:24px">
   </div>
 </div>
 "#,
-        "Overall Score",
-        "Findings by Severity",
+        t!("web.overview.overall_score"),
+        t!("web.overview.findings_by_severity"),
         severity_rows(severity_counts),
-        "Total Findings",
+        t!("web.overview.total_findings"),
         total_findings,
-        format_args!("across {} services", services.len()),
+        t!("web.overview.across_services", n = services.len()),
     ));
 
     // Axis scores
-    html.push_str(&format!(r#"
+    html.push_str(&format!(
+        r#"
 <div class="card" style="margin-bottom:24px">
-  <div class="card-title">Axis Scores</div>
-{}
+  <div class="card-title">{}</div>
+ {}
 </div>
 "#,
+        t!("web.overview.axis_scores"),
         axis_score_rows(axis_scores),
     ));
 
     // Warnings
     if !warnings.is_empty() {
-        html.push_str(&format!(r#"
+        html.push_str(&format!(
+            r#"
 <div class="card" style="margin-bottom:24px;border-color:var(--medium)">
-  <div class="card-title" style="color:var(--medium)">&#9888; Warnings ({})</div>
-{}
+  <div class="card-title" style="color:var(--medium)">&#9888; {}</div>
+ {}
 </div>
 "#,
-            warnings.len(),
-            warnings.iter().map(|w| format!(r#"<div style="padding:4px 0;font-size:13px;color:var(--medium)">{w}</div>"#)).collect::<String>(),
+            t!("web.overview.warnings_count", n = warnings.len()),
+            warnings
+                .iter()
+                .map(|w| format!(
+                    r#"<div style="padding:4px 0;font-size:13px;color:var(--medium)">{w}</div>"#
+                ))
+                .collect::<String>(),
         ));
     }
 
     // Adapter statuses
     if !adapters.is_empty() {
-        html.push_str(&format!(r#"
+        html.push_str(&format!(
+            r#"
 <div class="card" style="margin-bottom:24px">
-  <div class="card-title">Adapter Status</div>
+  <div class="card-title">{}</div>
   <table class="findings-table">
-    <thead><tr><th>Adapter</th><th>Status</th></tr></thead>
+    <thead><tr><th>{}</th><th>{}</th></tr></thead>
     <tbody>
-{}
+ {}
     </tbody>
   </table>
 </div>
 "#,
+            t!("web.overview.adapter_status"),
+            t!("web.overview.table_adapter"),
+            t!("web.overview.table_status"),
             adapter_rows(adapters),
         ));
     }
 
     // Services
     if !services.is_empty() {
-        html.push_str(&format!(r#"
+        html.push_str(&format!(
+            r#"
 <div class="card">
-  <div class="card-title">Services</div>
+  <div class="card-title">{}</div>
   <table class="findings-table">
-    <thead><tr><th>Service</th><th>Image</th></tr></thead>
+    <thead><tr><th>{}</th><th>{}</th></tr></thead>
     <tbody>
-{}
+ {}
     </tbody>
   </table>
 </div>
 "#,
-            services.iter().map(|s| format!(r#"<tr><td>{}</td><td style="color:var(--text-secondary)">{}</td></tr>"#,
-                html_escape(&s.name),
-                s.image.as_deref().map(html_escape).unwrap_or_else(|| String::from("—")),
-            )).collect::<String>(),
+            t!("web.overview.services"),
+            t!("web.overview.table_service"),
+            t!("web.overview.table_image"),
+            services
+                .iter()
+                .map(|s| format!(
+                    r#"<tr><td>{}</td><td style="color:var(--text-secondary)">{}</td></tr>"#,
+                    html_escape(&s.name),
+                    s.image
+                        .as_deref()
+                        .map(html_escape)
+                        .unwrap_or_else(|| String::from("—")),
+                ))
+                .collect::<String>(),
         ));
     }
 
@@ -123,10 +147,22 @@ r#"<div class="grid grid-3" style="margin-bottom:24px">
 fn severity_rows(counts: &BTreeMap<Severity, usize>) -> String {
     let mut rows = String::new();
     for (severity, count) in [
-        (Severity::Critical, counts.get(&Severity::Critical).copied().unwrap_or(0)),
-        (Severity::High, counts.get(&Severity::High).copied().unwrap_or(0)),
-        (Severity::Medium, counts.get(&Severity::Medium).copied().unwrap_or(0)),
-        (Severity::Low, counts.get(&Severity::Low).copied().unwrap_or(0)),
+        (
+            Severity::Critical,
+            counts.get(&Severity::Critical).copied().unwrap_or(0),
+        ),
+        (
+            Severity::High,
+            counts.get(&Severity::High).copied().unwrap_or(0),
+        ),
+        (
+            Severity::Medium,
+            counts.get(&Severity::Medium).copied().unwrap_or(0),
+        ),
+        (
+            Severity::Low,
+            counts.get(&Severity::Low).copied().unwrap_or(0),
+        ),
     ] {
         let cls = severity.as_key();
         rows.push_str(&format!(r#"<div style="display:flex;justify-content:space-between;align-items:center"><span><span class="severity-dot dot-{cls}"></span> {sev}</span><span style="font-weight:600;color:var(--text-bright)">{count}</span></div>"#,
@@ -154,13 +190,13 @@ fn axis_score_rows(scores: &BTreeMap<Axis, u8>) -> String {
     rows
 }
 
-fn axis_label(axis: Axis) -> &'static str {
+fn axis_label(axis: Axis) -> String {
     match axis {
-        Axis::SensitiveData => "Sensitive Data",
-        Axis::ExcessivePermissions => "Excessive Permissions",
-        Axis::UnnecessaryExposure => "Unnecessary Exposure",
-        Axis::UpdateSupplyChainRisk => "Update & Supply Chain",
-        Axis::HostHardening => "Host Hardening",
+        Axis::SensitiveData => t!("web.axis.sensitive_data").into_owned(),
+        Axis::ExcessivePermissions => t!("web.axis.excessive_permissions").into_owned(),
+        Axis::UnnecessaryExposure => t!("web.axis.unnecessary_exposure").into_owned(),
+        Axis::UpdateSupplyChainRisk => t!("web.axis.update_supply_chain").into_owned(),
+        Axis::HostHardening => t!("web.axis.host_hardening").into_owned(),
     }
 }
 
@@ -176,11 +212,15 @@ fn adapter_status_class(status: &AdapterStatus) -> &'static str {
 
 fn adapter_status_label(status: &AdapterStatus) -> String {
     match status {
-        AdapterStatus::Available => String::from("Available"),
-        AdapterStatus::Pending => String::from("Pending"),
-        AdapterStatus::Missing => String::from("Missing"),
-        AdapterStatus::Skipped(reason) => format!("Skipped: {reason}"),
-        AdapterStatus::Failed(detail) => format!("Failed: {detail}"),
+        AdapterStatus::Available => t!("web.adapter.available").into_owned(),
+        AdapterStatus::Pending => t!("web.adapter.pending").into_owned(),
+        AdapterStatus::Missing => t!("web.adapter.missing").into_owned(),
+        AdapterStatus::Skipped(reason) => {
+            t!("web.adapter.skipped_reason", reason = reason).into_owned()
+        }
+        AdapterStatus::Failed(detail) => {
+            t!("web.adapter.failed_detail", detail = detail).into_owned()
+        }
     }
 }
 

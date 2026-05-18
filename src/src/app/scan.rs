@@ -364,69 +364,50 @@ fn has_image_targets(services: &[ServiceSummary]) -> bool {
     })
 }
 
-fn failed_trivy_output() -> adapters::trivy::TrivyScanOutput {
-    adapters::trivy::TrivyScanOutput {
-        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Trivy")),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
+macro_rules! adapter_out_failed {
+    ($fn_name:ident, $mod:ident, $Type:ident, $name:literal) => {
+        fn $fn_name() -> $crate::adapters::$mod::$Type {
+            $crate::adapters::$mod::$Type {
+                status: AdapterStatus::Failed($crate::i18n::tr_adapter_scan_thread_panicked($name)),
+                findings: Vec::new(),
+                warnings: Vec::new(),
+            }
+        }
+    };
 }
 
-fn disabled_trivy_output() -> adapters::trivy::TrivyScanOutput {
-    adapters::trivy::TrivyScanOutput {
-        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
+macro_rules! adapter_out_disabled {
+    ($fn_name:ident, $mod:ident, $Type:ident, $name:literal) => {
+        fn $fn_name() -> $crate::adapters::$mod::$Type {
+            $crate::adapters::$mod::$Type {
+                status: AdapterStatus::Skipped(
+                    t!("adapter.reason.disabled_by_selection").into_owned(),
+                ),
+                findings: Vec::new(),
+                warnings: Vec::new(),
+            }
+        }
+    };
 }
 
-fn failed_lynis_output() -> adapters::lynis::LynisScanOutput {
-    adapters::lynis::LynisScanOutput {
-        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Lynis")),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
-
-fn disabled_lynis_output() -> adapters::lynis::LynisScanOutput {
-    adapters::lynis::LynisScanOutput {
-        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
-
-fn failed_dockle_output() -> adapters::dockle::DockleScanOutput {
-    adapters::dockle::DockleScanOutput {
-        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Dockle")),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
-
-fn disabled_dockle_output() -> adapters::dockle::DockleScanOutput {
-    adapters::dockle::DockleScanOutput {
-        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
-
-fn failed_gitleaks_output() -> adapters::gitleaks::GitleaksScanOutput {
-    adapters::gitleaks::GitleaksScanOutput {
-        status: AdapterStatus::Failed(crate::i18n::tr_adapter_scan_thread_panicked("Gitleaks")),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
-
-fn disabled_gitleaks_output() -> adapters::gitleaks::GitleaksScanOutput {
-    adapters::gitleaks::GitleaksScanOutput {
-        status: AdapterStatus::Skipped(t!("adapter.reason.disabled_by_selection").into_owned()),
-        findings: Vec::new(),
-        warnings: Vec::new(),
-    }
-}
+adapter_out_failed!(failed_trivy_output, trivy, TrivyScanOutput, "Trivy");
+adapter_out_disabled!(disabled_trivy_output, trivy, TrivyScanOutput, "Trivy");
+adapter_out_failed!(failed_lynis_output, lynis, LynisScanOutput, "Lynis");
+adapter_out_disabled!(disabled_lynis_output, lynis, LynisScanOutput, "Lynis");
+adapter_out_failed!(failed_dockle_output, dockle, DockleScanOutput, "Dockle");
+adapter_out_disabled!(disabled_dockle_output, dockle, DockleScanOutput, "Dockle");
+adapter_out_failed!(
+    failed_gitleaks_output,
+    gitleaks,
+    GitleaksScanOutput,
+    "Gitleaks"
+);
+adapter_out_disabled!(
+    disabled_gitleaks_output,
+    gitleaks,
+    GitleaksScanOutput,
+    "Gitleaks"
+);
 
 fn coverage_from_result(result: &ScanResult) -> scoring::Coverage {
     scoring::Coverage {

@@ -1,13 +1,13 @@
 #![cfg(feature = "web")]
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::Deserialize;
 
 use crate::settings;
 use crate::web::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct SettingsUpdate {
     pub locale: Option<String>,
     pub theme: Option<String>,
@@ -32,19 +32,22 @@ pub async fn update_settings(
     let mut current = state.settings.write().expect("lock poisoned");
 
     if let Some(locale) = update.locale
-        && !locale.is_empty() && locale != current.locale.as_deref().unwrap_or("")
+        && !locale.is_empty()
+        && locale != current.locale.as_deref().unwrap_or("")
     {
         current.locale = Some(locale.clone());
         let _ = settings::persist_locale(&locale);
     }
     if let Some(theme) = update.theme
-        && !theme.is_empty() && theme != current.theme.as_deref().unwrap_or("")
+        && !theme.is_empty()
+        && theme != current.theme.as_deref().unwrap_or("")
     {
         current.theme = Some(theme.clone());
         let _ = settings::persist_theme(&theme);
     }
     if let Some(layout) = update.layout
-        && !layout.is_empty() && layout != current.layout.as_deref().unwrap_or("")
+        && !layout.is_empty()
+        && layout != current.layout.as_deref().unwrap_or("")
     {
         current.layout = Some(layout.clone());
         let _ = settings::persist_layout(&layout);

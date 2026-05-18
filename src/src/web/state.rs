@@ -18,3 +18,7 @@ impl AppState {
         }
     }
 }
+
+pub fn error_json(msg: impl std::fmt::Display) -> serde_json::Value {
+    serde_json::json!({"status": "error", "error": msg.to_string()})
+}

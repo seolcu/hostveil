@@ -794,6 +794,7 @@ mod tests {
         assert_eq!(clamp_scroll(u16::MAX, usize::MAX, 0), u16::MAX);
     }
 
+    use super::super::tests::buffer_to_string;
     use crate::fix::FixProposal;
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
@@ -840,19 +841,6 @@ mod tests {
 
     fn sample_theme() -> Theme {
         Theme::preset(ThemePreset::TokyoNight)
-    }
-
-    fn buffer_to_string(backend: &TestBackend) -> String {
-        let area = backend.size().expect("backend should have a size");
-        let buffer = backend.buffer();
-        let mut output = String::new();
-        for y in 0..area.height {
-            for x in 0..area.width {
-                output.push_str(buffer[(x, y)].symbol());
-            }
-            output.push('\n');
-        }
-        output
     }
 
     #[test]

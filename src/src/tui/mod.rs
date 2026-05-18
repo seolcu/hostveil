@@ -5877,7 +5877,7 @@ Verify with 'sysctl kernel.unprivileged_userns_clone'.",
             .collect::<String>()
     }
 
-    fn buffer_to_string(backend: &TestBackend) -> String {
+    pub(super) fn buffer_to_string(backend: &TestBackend) -> String {
         let area = backend.size().expect("backend should have a size");
         let buffer = backend.buffer();
         let mut output = String::new();

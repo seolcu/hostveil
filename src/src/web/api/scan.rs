@@ -1,11 +1,10 @@
 #![cfg(feature = "web")]
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 
-use crate::app::scan;
+use crate::app::{self, AdapterSelection, AppConfig, OutputMode};
 use crate::web::state::AppState;
-use crate::app::{AdapterSelection, AppConfig, OutputMode};
 
 pub async fn rescan(State(state): State<AppState>) -> Json<serde_json::Value> {
     let config = {
@@ -23,7 +22,7 @@ pub async fn rescan(State(state): State<AppState>) -> Json<serde_json::Value> {
         config
     };
 
-    match scan::run(&config) {
+    match app::scan::run(&config) {
         Ok(new_result) => {
             let mut scan_result = state.scan_result.write().expect("lock poisoned");
             *scan_result = new_result;

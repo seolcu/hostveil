@@ -85,10 +85,10 @@ fn detect_gitleaks_with_command(command_name: &str, timeout: Duration) -> Gitlea
             } else {
                 stdout.trim().to_owned()
             };
-            GitleaksAvailability::Failed(truncate(&detail, 200))
+            GitleaksAvailability::Failed(command::truncate(&detail, 200))
         }
         Err(error) if error.is_not_found() => GitleaksAvailability::Missing,
-        Err(error) => GitleaksAvailability::Failed(truncate(&error.detail(), 200)),
+        Err(error) => GitleaksAvailability::Failed(command::truncate(&error.detail(), 200)),
     }
 }
 
@@ -111,7 +111,7 @@ fn scan_dir_with_command(
         } else {
             stdout.trim().to_owned()
         };
-        return Err(truncate(&detail, 240));
+        return Err(command::truncate(&detail, 240));
     }
 
     serde_json::from_slice(&output.stdout)
@@ -264,16 +264,6 @@ fn slug(value: &str) -> String {
     }
 
     slug.trim_matches('_').to_owned()
-}
-
-fn truncate(value: &str, max_chars: usize) -> String {
-    let mut chars = value.chars();
-    let truncated = chars.by_ref().take(max_chars).collect::<String>();
-    if chars.next().is_some() {
-        format!("{truncated}...")
-    } else {
-        truncated
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

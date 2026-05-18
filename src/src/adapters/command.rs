@@ -1,7 +1,10 @@
+use std::collections::BTreeSet;
 use std::io::{self, Read};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
+
+use crate::domain::{AdapterStatus, ServiceSummary};
 
 pub const DEFAULT_ADAPTER_TIMEOUT: Duration = Duration::from_secs(300);
 
@@ -127,6 +130,44 @@ fn read_pipe<R: Read>(pipe: Option<R>) -> Vec<u8> {
     let mut output = Vec::new();
     let _ = pipe.read_to_end(&mut output);
     output
+}
+
+pub fn dedup_images(services: &[ServiceSummary]) -> Vec<String> {
+    let mut images = BTreeSet::new();
+    for service in services {
+        if let Some(image) = &service.image {
+            let trimmed = image.trim();
+            if !trimmed.is_empty() {
+                images.insert(trimmed.to_owned());
+            }
+        }
+    }
+
+    images.into_iter().collect()
+}
+
+pub fn finalize_status_after_image_scans(
+    status: &mut AdapterStatus,
+    successful_scans: usize,
+    first_scan_error: Option<String>,
+) {
+    if successful_scans == 0
+        && let Some(error) = first_scan_error
+    {
+        *status = AdapterStatus::Failed(error);
+    }
+}
+
+/// Truncate a string to at most `max_len` characters, appending "..." if
+/// truncation occurred.
+pub fn truncate(value: &str, max_len: usize) -> String {
+    let mut chars = value.chars();
+    let truncated: String = chars.by_ref().take(max_len).collect();
+    if chars.next().is_some() {
+        format!("{truncated}...")
+    } else {
+        truncated
+    }
 }
 
 #[cfg(test)]
