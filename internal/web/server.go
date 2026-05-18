@@ -48,7 +48,7 @@ func Serve(cfg *config.Config) error {
 	childArgs = append(childArgs, "--user-mode")
 
 	// ttyd arguments
-	ttydArgs := []string{"-p", portStr, "-W", "-t", "fontFamily=JetBrainsMono Nerd Font"}
+	ttydArgs := []string{"-p", portStr, "-W", "-t", "fontFamily=JetBrainsMono Nerd Font,JetBrainsMono,Fira Code,Consolas,monospace"}
 	if host != "127.0.0.1" {
 		ttydArgs = append(ttydArgs, "-i", host)
 	}
