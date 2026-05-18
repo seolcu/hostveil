@@ -1,9 +1,0 @@
-services:
-  db:
-    image: postgres:17.6-alpine
-    user: 1000:1000
-    environment:
-      POSTGRES_PASSWORD: strong-password-here
-      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
-    security_opt:
-    - no-new-privileges:true

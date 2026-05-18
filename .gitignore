@@ -1,37 +1,5 @@
-# Rust
+hostveil
+hostveil-*
 /target/
-/src/target/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.venv/
-venv/
-env/
-ENV/
-dist/
-build/
-*.egg-info/
-.eggs/
-*.egg
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Editor
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
+*.db
 .DS_Store
-Thumbs.db
-
-# Environment (never commit secrets)
-.env
-.env.local
-.env.*.local
-!proto/tests/fixtures/rules/sensitive-risk/.env

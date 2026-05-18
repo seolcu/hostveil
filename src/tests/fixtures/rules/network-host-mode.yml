@@ -1,4 +1,0 @@
-services:
-  app:
-    image: alpine
-    network_mode: host

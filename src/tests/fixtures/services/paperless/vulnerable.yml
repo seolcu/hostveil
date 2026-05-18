@@ -1,7 +1,0 @@
-services:
-  paperless:
-    image: ghcr.io/paperless-ngx/paperless-ngx:2.10
-    ports:
-      - "8000:8000"
-    environment:
-      PAPERLESS_FORCE_LOGIN: "false"

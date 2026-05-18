@@ -1,9 +1,0 @@
-services:
-  authentik:
-    image: ghcr.io/goauthentik/server:2024.6
-    ports:
-      - "9000:9000"
-      - "9443:9443"
-    environment:
-      AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
-      AUTHENTIK_DEBUG: "true"
