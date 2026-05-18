@@ -1,0 +1,24 @@
+              │    Enter or l         Open detail                │
+              │    h or ←             Back to list               │
+              │    q or Esc           Quit / Close               │
+              │                                                  │
+              │  Filters                                         │
+              │    s                  Cycle severity filter      │
+              │    x                  Cycle source filter        │
+              │    c                  Cycle scope filter         │
+              │    v                  Cycle service filter       │
+              │    m                  Cycle remediation filter   │
+              │    o                  Cycle sort mode            │
+              │    R                  Reset all filters          │
+              │                                                  │
+              │  Actions                                         │
+              │    /                  Search findings            │
+              │    f                  Trigger fix (when          │
+              │  available)                                      │
+              │    h                  Host triage (Overview)     │
+              │    S                  Settings modal             │
+              │    ?                  Toggle this help           │
+              │                                                  │
+              │  Press ? or Esc to close                         │
+              │                                                  │
+              ╰──────────────────────────────────────────────────╯

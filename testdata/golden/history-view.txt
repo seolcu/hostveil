@@ -1,0 +1,24 @@
+ 100
+   Excessive Permissions  [███████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+ 40
+   Unnecessary Exposure   [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
+ 0
+   Update & Supply Chain  [████████████████████████████████████████████████]
+ 100
+   Host Hardening         [████████████████████████████████████████████████]
+ 100
+
+ Findings:
+   high: 2
+   medium: 1
+   low: 3
+
+ Warnings:
+   ⚠ Discovered project: parser at ./proto/tests/fixtures/parser/docker-
+ compose.yml
+   ⚠ Discovered project: parser at
+ /home/seolcu/문서/코드/hostveil/proto/tests/fixtures/parser/docker-compose.yml
+   ⚠ Discovered project: s-forensicai at /home/seolcu/문서/코드/s-
+ forensicai/compose.yaml
+
+   [1] Overview  [2] Findings  [3] History  [?] Help  [q] Quit

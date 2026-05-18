@@ -19,9 +19,12 @@ trap cleanup EXIT
 
 mkdir -p "$GOLDEN_DIR"
 
+# Fix terminal size for reproducible golden files
+export TERM=xterm-256color
+
 start_app() {
   cleanup
-  tmux new-session -d -s "$SESSION" "$HOSTVEIL --compose $COMPOSE 2>/dev/null; bash"
+  tmux new-session -d -x 80 -y 24 -s "$SESSION" "$HOSTVEIL --compose $COMPOSE 2>/dev/null; bash"
   sleep 2
 }
 

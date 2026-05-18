@@ -54,11 +54,11 @@ jobs:
       - name: Scanner integration tests
         run: go test -race -count=1 -run 'TestScan' ./internal/scanner/
 
-      - name: E2E test (requires tmux)
+      - name: E2E screen test (tmux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get -qq update && sudo apt-get -qq install -y tmux
-          scripts/tui-test.sh || echo "E2E tests may produce different output (not failing build)"
+          scripts/tui-test.sh
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
