@@ -7,25 +7,69 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-func renderHistoryPanel(r *domain.ScanResult, theme Theme, width, height int) string {
+type historyModel struct {
+	scroll int
+}
+
+func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
+	if width < 40 {
+		return "Terminal too narrow"
+	}
+
 	style := lipgloss.NewStyle().
 		Width(width).
 		Padding(0, 1)
 
-	out := "History\n\n"
+	title := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color(theme.Text)).
+		Render("Scan History")
 
-	out += fmt.Sprintf("Current Score: %d (%s)\n", r.ScoreReport.Overall, r.ScoreReport.Grade())
-	out += fmt.Sprintf("Total Findings: %d\n", r.TotalFindings())
-	out += fmt.Sprintf("Services: %d\n\n", len(r.Metadata.Services))
+	info := fmt.Sprintf("Score: %d (%s)  |  Findings: %d  |  Services: %d",
+		r.ScoreReport.Overall, r.ScoreReport.Grade(),
+		r.TotalFindings(), len(r.Metadata.Services))
 
-	out += "Axis Scores:\n"
+	content := title + "\n" + info + "\n\n"
+
+	// Axis scores with bars
+	content += "Axis Scores:\n"
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
-		bar := RenderBar(score, 20)
-		out += fmt.Sprintf("  %-25s %3d %s\n", axis.Label(), score, bar)
+		barColor := theme.Success
+		if score < 80 {
+			barColor = theme.Medium
+		}
+		if score < 50 {
+			barColor = theme.Critical
+		}
+
+		label := fmt.Sprintf("%-22s", axis.Label())
+		bar := RenderBar(score, width-len(label)-10)
+
+		styledBar := lipgloss.NewStyle().Foreground(lipgloss.Color(barColor)).Render(bar)
+		content += fmt.Sprintf("  %s %s %3d\n", label, styledBar, score)
 	}
 
-	return style.Render(out)
+	// Severity summary
+	content += "\nFindings:\n"
+	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
+		count := r.FindingsBySeverity(sev)
+		if count > 0 {
+			color := sev.Color()
+			content += fmt.Sprintf("  %s: %d\n",
+				lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(sev.String()),
+				count,
+			)
+		}
+	}
+
+	// Warnings
+	if len(r.Metadata.Warnings) > 0 {
+		content += "\nWarnings:\n"
+		for _, w := range r.Metadata.Warnings {
+			content += fmt.Sprintf("  ⚠ %s\n", w)
+		}
+	}
+
+	return style.Render(content)
 }
-
-

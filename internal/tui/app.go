@@ -31,6 +31,8 @@ type appModel struct {
 	theme       Theme
 	overview    *overviewModel
 	findings    *findingsModel
+	history     *historyModel
+	settings    *settingsModel
 }
 
 type keyMap struct {
@@ -72,6 +74,8 @@ func NewApp(result *domain.ScanResult) *appModel {
 		theme:         DefaultTheme(),
 		overview:      &overviewModel{},
 		findings:      newFindingsModel(result.Findings),
+		history:       &historyModel{},
+		settings:      newSettingsModel(),
 	}
 }
 
@@ -100,8 +104,16 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = screenHistory
 		case msg.String() == "?":
 			m.help.ShowAll = !m.help.ShowAll
+		case msg.String() == "S":
+			m.settings.Toggle()
 		default:
-			if m.currentScreen == screenFindings {
+			if m.settings.IsOpen() {
+				oldTheme := m.settings.themeName
+				m.settings.Update(msg.String())
+				if m.settings.themeName != oldTheme {
+					m.theme = GetTheme(m.settings.themeName)
+				}
+			} else if m.currentScreen == screenFindings {
 				m.findings.Update(msg)
 			}
 		}
@@ -129,7 +141,23 @@ func (m *appModel) View() string {
 
 	footer := m.renderFooter()
 
-	return lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
+	view := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
+
+	// Overlay for settings modal
+	if m.settings.IsOpen() {
+		overlay := m.settings.Render(m.theme, m.width, m.height)
+		x := (m.width - 40) / 2
+		if x < 0 {
+			x = 0
+		}
+		view = lipgloss.Place(m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			overlay,
+			lipgloss.WithWhitespaceChars(" "),
+		)
+	}
+
+	return view
 }
 
 func (m *appModel) renderHeader() string {
@@ -174,7 +202,7 @@ func (m *appModel) renderFindings() string {
 }
 
 func (m *appModel) renderHistory() string {
-	return renderHistoryPanel(m.scanResult, m.theme, m.width, m.height-4)
+	return m.history.render(m.scanResult, m.theme, m.width, m.height-4)
 }
 
 func fmtScore(r *domain.ScanResult) string {
