@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
+use axum::Router;
 use axum::extract::State;
 use axum::response::Html;
 use axum::routing::{get, post};
-use axum::Router;
+use rust_i18n::t;
 
 use super::api;
 use super::pages;
@@ -32,10 +33,7 @@ pub fn build_router(state: AppState) -> Router {
 async fn index_html(State(state): State<AppState>) -> Html<String> {
     let mut template = include_str!("index.html").to_string();
     let content = pages::overview::overview_page(State(state)).await;
-    template = template.replace(
-        "<div id=\"content-placeholder\"></div>",
-        &content.0,
-    );
+    template = template.replace("<div id=\"content-placeholder\"></div>", &content.0);
     Html(template)
 }
 
@@ -50,8 +48,8 @@ pub async fn run_server(state: AppState, host: &str, port: u16) -> Result<(), St
         .await
         .map_err(|e| format!("Failed to bind: {e}"))?;
 
-    eprintln!("Hostveil web interface running on http://{addr}/");
-    eprintln!("Press Ctrl+C to stop.");
+    eprintln!("{}", t!("web.server.running", addr = addr.to_string()));
+    eprintln!("{}", t!("web.server.stop"));
 
     axum::serve(listener, router)
         .await

@@ -9,8 +9,8 @@ pub(crate) mod pages;
 pub use server::run_server;
 pub use state::AppState;
 
-use crate::domain::ScanResult;
 use crate::app::WebConfig;
+use crate::domain::ScanResult;
 
 pub fn serve(scan_result: ScanResult, config: &WebConfig) -> Result<(), crate::app::AppError> {
     let state = AppState::new(scan_result);
@@ -18,13 +18,12 @@ pub fn serve(scan_result: ScanResult, config: &WebConfig) -> Result<(), crate::a
     let host = config.host.clone();
     let port = config.port;
 
-    let rt = tokio::runtime::Runtime::new().map_err(|e| {
-        crate::app::AppError::Io(std::io::Error::other(e.to_string()))
-    })?;
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| crate::app::AppError::Io(std::io::Error::other(e.to_string())))?;
 
     rt.block_on(async {
-        run_server(state, &host, port).await.map_err(|e| {
-            crate::app::AppError::Io(std::io::Error::other(e))
-        })
+        run_server(state, &host, port)
+            .await
+            .map_err(|e| crate::app::AppError::Io(std::io::Error::other(e)))
     })
 }

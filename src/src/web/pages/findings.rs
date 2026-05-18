@@ -2,6 +2,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::response::Html;
+use rust_i18n::t;
 use serde::Deserialize;
 
 use crate::domain::{Finding, RemediationKind, Severity, Source};
@@ -62,9 +63,22 @@ pub async fn findings_page(
         "<select style=\"background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;outline:none;cursor:pointer\" \
          hx-get=\"/findings\" hx-target=\"{target}\" hx-push-url=\"true\" name=\"severity\">"
     ));
-    html.push_str(&format!("<option value=\"\" {s}>All Severities</option>", s = sev_selected("")));
-    for (val, label) in [("critical", "Critical"), ("high", "High"), ("medium", "Medium"), ("low", "Low")] {
-        html.push_str(&format!("<option value=\"{val}\" {sel}>{label}</option>", sel = sev_selected(val)));
+    html.push_str(&format!(
+        "<option value=\"\" {s}>{}</option>",
+        t!("web.findings.all_severities"),
+        s = sev_selected("")
+    ));
+    let severity_options = [
+        ("critical", t!("severity.critical")),
+        ("high", t!("severity.high")),
+        ("medium", t!("severity.medium")),
+        ("low", t!("severity.low")),
+    ];
+    for (val, label) in &severity_options {
+        html.push_str(&format!(
+            "<option value=\"{val}\" {sel}>{label}</option>",
+            sel = sev_selected(val)
+        ));
     }
     html.push_str("</select>");
 
@@ -73,9 +87,24 @@ pub async fn findings_page(
         "<select style=\"background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;outline:none;cursor:pointer\" \
          hx-get=\"/findings\" hx-target=\"{target}\" hx-push-url=\"true\" name=\"source\">"
     ));
-    html.push_str(&format!("<option value=\"\" {s}>All Sources</option>", s = src_selected("")));
-    for (val, label) in [("native_compose", "Native Compose"), ("native_host", "Native Host"), ("trivy", "Trivy"), ("dockle", "Dockle"), ("lynis", "Lynis"), ("gitleaks", "Gitleaks")] {
-        html.push_str(&format!("<option value=\"{val}\" {sel}>{label}</option>", sel = src_selected(val)));
+    html.push_str(&format!(
+        "<option value=\"\" {s}>{}</option>",
+        t!("web.findings.all_sources"),
+        s = src_selected("")
+    ));
+    let source_options = [
+        ("native_compose", t!("source.native_compose")),
+        ("native_host", t!("source.native_host")),
+        ("trivy", t!("source.trivy")),
+        ("dockle", t!("source.dockle")),
+        ("lynis", t!("source.lynis")),
+        ("gitleaks", t!("source.gitleaks")),
+    ];
+    for (val, label) in &source_options {
+        html.push_str(&format!(
+            "<option value=\"{val}\" {sel}>{label}</option>",
+            sel = src_selected(val)
+        ));
     }
     html.push_str("</select>");
 
@@ -84,22 +113,29 @@ pub async fn findings_page(
     html.push_str("<div style=\"position:relative;flex:1;max-width:300px\">");
     html.push_str(&format!(
         "<input style=\"background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;width:100%;outline:none\" \
-         type=\"search\" placeholder=\"Search findings...\" name=\"search\" value=\"{escaped_search}\" \
-         hx-get=\"/findings\" hx-trigger=\"keyup changed delay:300ms\" hx-target=\"{target}\" hx-push-url=\"true\">"
+         type=\"search\" placeholder=\"{}\" name=\"search\" value=\"{escaped_search}\" \
+         hx-get=\"/findings\" hx-trigger=\"keyup changed delay:300ms\" hx-target=\"{target}\" hx-push-url=\"true\">",
+        t!("web.findings.search_placeholder"),
     ));
     html.push_str("</div></div></div>");
 
     // Findings table
     html.push_str(&format!("<div id=\"{target}\">"));
     html.push_str("<table class=\"findings-table\">");
-    html.push_str(
+    html.push_str(&format!(
         "<thead><tr>\
-         <th>Severity</th><th>Title</th><th>Axis</th><th>Source</th><th>Service</th><th>Fix</th>\
-         </tr></thead><tbody>"
-    );
+         <th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th>\
+         </tr></thead><tbody>",
+        t!("web.findings.table_severity"),
+        t!("web.findings.table_title"),
+        t!("web.findings.table_axis"),
+        t!("web.findings.table_source"),
+        t!("web.findings.table_service"),
+        t!("web.findings.table_fix"),
+    ));
 
     if findings.is_empty() {
-        html.push_str("<tr><td colspan=\"6\" style=\"text-align:center;padding:40px;color:var(--text-secondary)\">No findings match the current filters.</td></tr>");
+        html.push_str(&format!("<tr><td colspan=\"6\" style=\"text-align:center;padding:40px;color:var(--text-secondary)\">{}</td></tr>", t!("web.findings.empty")));
     } else {
         for finding in &findings {
             let sev = finding.severity.as_key();
@@ -107,15 +143,27 @@ pub async fn findings_page(
             let axis = finding.axis.as_key();
             let id = html_escape(&finding.id);
             let title = html_escape(&finding.title);
-            let service = finding.related_service.as_deref().map(html_escape).unwrap_or_else(|| String::from("&mdash;"));
+            let service = finding
+                .related_service
+                .as_deref()
+                .map(html_escape)
+                .unwrap_or_else(|| String::from("&mdash;"));
             let fix_badge = fix_badge(finding.remediation);
 
-            html.push_str(&format!("<tr style=\"cursor:pointer\" onclick=\"window.location.href='/findings/{id}'\">"));
+            html.push_str(&format!(
+                "<tr style=\"cursor:pointer\" onclick=\"window.location.href='/findings/{id}'\">"
+            ));
             html.push_str(&format!("<td><span class=\"severity-badge {sev}\"><span class=\"severity-dot dot-{sev}\"></span>{sev}</span></td>"));
             html.push_str(&format!("<td style=\"max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">{title}</td>"));
-            html.push_str(&format!("<td style=\"color:var(--text-secondary)\">{axis}</td>"));
-            html.push_str(&format!("<td style=\"color:var(--text-secondary)\">{src}</td>"));
-            html.push_str(&format!("<td style=\"color:var(--text-secondary)\">{service}</td>"));
+            html.push_str(&format!(
+                "<td style=\"color:var(--text-secondary)\">{axis}</td>"
+            ));
+            html.push_str(&format!(
+                "<td style=\"color:var(--text-secondary)\">{src}</td>"
+            ));
+            html.push_str(&format!(
+                "<td style=\"color:var(--text-secondary)\">{service}</td>"
+            ));
             html.push_str(&format!("<td>{fix_badge}</td>"));
             html.push_str("</tr>");
         }
@@ -126,10 +174,7 @@ pub async fn findings_page(
     Html(html)
 }
 
-pub async fn finding_detail(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Html<String> {
+pub async fn finding_detail(State(state): State<AppState>, Path(id): Path<String>) -> Html<String> {
     let scan_result = state.scan_result.read().expect("lock poisoned");
 
     let finding = match scan_result.findings.iter().find(|f| f.id == id) {
@@ -137,9 +182,12 @@ pub async fn finding_detail(
         None => {
             return Html(format!(
                 "<div style=\"text-align:center;padding:40px;color:var(--text-secondary)\">\
-                 <h2>Finding Not Found</h2>\
-                 <p style=\"margin-top:8px\">No finding with ID: {id}</p>\
-                 <a href=\"/findings\" style=\"color:var(--accent)\">Back to findings</a></div>"
+                 <h2>{}</h2>\
+                 <p style=\"margin-top:8px\">{}</p>\
+                 <a href=\"/findings\" style=\"color:var(--accent)\">{}</a></div>",
+                t!("web.findings.not_found"),
+                t!("web.findings.not_found_id", id = id),
+                t!("web.findings.back_to_findings"),
             ));
         }
     };
@@ -155,8 +203,10 @@ fn render_finding_detail(finding: &Finding) -> String {
     let sev = finding.severity.as_key();
     let axis = finding.axis.as_key();
     let source = finding.source.as_key();
-    let service = finding.related_service.as_deref()
-        .map(|s| format!("Service: {}", html_escape(s)))
+    let service = finding
+        .related_service
+        .as_deref()
+        .map(|s| format!("{} {}", t!("web.findings.service_label"), html_escape(s)))
         .unwrap_or_default();
     let desc = html_escape(&finding.description);
     let why_risky = html_escape(&finding.why_risky);
@@ -166,7 +216,7 @@ fn render_finding_detail(finding: &Finding) -> String {
     let mut html = String::new();
 
     // Back link
-    html.push_str("<div style=\"margin-bottom:16px\"><a href=\"/findings\" style=\"color:var(--accent);font-size:13px\">&larr; Back to findings</a></div>");
+    html.push_str(&format!("<div style=\"margin-bottom:16px\"><a href=\"/findings\" style=\"color:var(--accent);font-size:13px\">&larr; {}</a></div>", t!("web.findings.back_to_findings")));
 
     // Header card
     html.push_str("<div class=\"card\" style=\"margin-bottom:20px\">");
@@ -182,26 +232,33 @@ fn render_finding_detail(finding: &Finding) -> String {
     // Description + Why Risky
     html.push_str(&format!(
         "<div class=\"grid grid-2\" style=\"margin-bottom:20px\">\
-         <div class=\"card\"><div class=\"card-title\">Description</div>\
+         <div class=\"card\"><div class=\"card-title\">{}</div>\
          <p style=\"font-size:13px;line-height:1.6\">{desc}</p></div>\
-         <div class=\"card\"><div class=\"card-title\">Why It is Risky</div>\
-         <p style=\"font-size:13px;line-height:1.6\">{why_risky}</p></div></div>"
+         <div class=\"card\"><div class=\"card-title\">{}</div>\
+         <p style=\"font-size:13px;line-height:1.6\">{why_risky}</p></div></div>",
+        t!("web.findings.description"),
+        t!("web.findings.why_risky"),
     ));
 
     // How to Fix
     if !finding.how_to_fix.is_empty() {
         html.push_str(&format!(
             "<div class=\"card\" style=\"margin-bottom:20px;border-color:var(--accent)\">\
-             <div class=\"card-title\" style=\"color:var(--accent)\">How to Fix</div>\
+             <div class=\"card-title\" style=\"color:var(--accent)\">{}</div>\
              <p style=\"font-size:13px;line-height:1.6\">{how_to_fix}</p>\
-             <div style=\"margin-top:12px\"><span style=\"font-size:12px;color:var(--text-secondary)\">Remediation: </span>\
-             <span class=\"severity-badge\" style=\"background:color-mix(in srgb, var(--accent) 15%, transparent);color:var(--accent)\">{remediation}</span></div></div>"
+             <div style=\"margin-top:12px\"><span style=\"font-size:12px;color:var(--text-secondary)\">{}</span>\
+             <span class=\"severity-badge\" style=\"background:color-mix(in srgb, var(--accent) 15%, transparent);color:var(--accent)\">{remediation}</span></div></div>",
+            t!("web.findings.how_to_fix"),
+            t!("web.findings.remediation_label"),
         ));
     }
 
     // Evidence
     if !finding.evidence.is_empty() {
-        html.push_str("<div class=\"card\"><div class=\"card-title\">Evidence</div>");
+        html.push_str(&format!(
+            "<div class=\"card\"><div class=\"card-title\">{}</div>",
+            t!("web.findings.evidence")
+        ));
         for (key, value) in &finding.evidence {
             let k = html_escape(key);
             let v = html_escape(value);
@@ -220,7 +277,8 @@ fn render_finding_detail(finding: &Finding) -> String {
     );
     if is_fixable && finding.related_service.is_some() {
         html.push_str(&format!(
-            "<div style=\"margin-top:20px;text-align:right\"><a href=\"/fix/{id_esc}\" class=\"btn btn-primary\">Apply Fix</a></div>"
+            "<div style=\"margin-top:20px;text-align:right\"><a href=\"/fix/{id_esc}\" class=\"btn btn-primary\">{}</a></div>",
+            t!("web.findings.apply_fix"),
         ));
     }
 
@@ -241,16 +299,25 @@ fn parse_source(s: &str) -> Option<Source> {
 
 fn fix_badge(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Auto => "<span style=\"color:var(--success);font-size:12px\">Auto</span>".to_owned(),
-        RemediationKind::Review => "<span style=\"color:var(--accent);font-size:12px\">Review</span>".to_owned(),
-        RemediationKind::Manual => "<span style=\"color:var(--text-secondary);font-size:12px\">Manual</span>".to_owned(),
+        RemediationKind::Auto => format!(
+            "<span style=\"color:var(--success);font-size:12px\">{}</span>",
+            t!("web.remediation.auto")
+        ),
+        RemediationKind::Review => format!(
+            "<span style=\"color:var(--accent);font-size:12px\">{}</span>",
+            t!("web.remediation.review")
+        ),
+        RemediationKind::Manual => format!(
+            "<span style=\"color:var(--text-secondary);font-size:12px\">{}</span>",
+            t!("web.remediation.manual")
+        ),
     }
 }
 
 fn remediation_label(remediation: RemediationKind) -> String {
     match remediation {
-        RemediationKind::Auto => String::from("Auto (safe)"),
-        RemediationKind::Review => String::from("Review (guided)"),
-        RemediationKind::Manual => String::from("Manual"),
+        RemediationKind::Auto => t!("web.remediation.auto_safe").into_owned(),
+        RemediationKind::Review => t!("web.remediation.review_guided").into_owned(),
+        RemediationKind::Manual => t!("web.remediation.manual").into_owned(),
     }
 }

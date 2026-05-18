@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::process::Command;
 use std::time::Duration;
 
@@ -34,7 +34,7 @@ fn scan_with_commands(
     let mut successful_scans = 0_usize;
     let mut first_scan_error: Option<String> = None;
 
-    let images = dedup_images(services);
+    let images = command::dedup_images(services);
     if images.is_empty() {
         output.status = AdapterStatus::Skipped(t!("adapter.reason.no_image_targets").into_owned());
         return output;
@@ -72,21 +72,13 @@ fn scan_with_commands(
         }
     }
 
-    finalize_status_after_image_scans(&mut output, successful_scans, first_scan_error);
+    command::finalize_status_after_image_scans(
+        &mut output.status,
+        successful_scans,
+        first_scan_error,
+    );
 
     output
-}
-
-fn finalize_status_after_image_scans(
-    output: &mut TrivyScanOutput,
-    successful_scans: usize,
-    first_scan_error: Option<String>,
-) {
-    if successful_scans == 0
-        && let Some(error) = first_scan_error
-    {
-        output.status = AdapterStatus::Failed(error);
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,25 +105,11 @@ fn detect_trivy_with_command_and_timeout(
         Ok(output) if output.status.success() => TrivyAvailability::Available,
         Ok(output) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            TrivyAvailability::Failed(truncate(stderr.trim(), 200))
+            TrivyAvailability::Failed(command::truncate(stderr.trim(), 200))
         }
         Err(error) if error.is_not_found() => TrivyAvailability::Missing,
-        Err(error) => TrivyAvailability::Failed(truncate(&error.detail(), 200)),
+        Err(error) => TrivyAvailability::Failed(command::truncate(&error.detail(), 200)),
     }
-}
-
-fn dedup_images(services: &[ServiceSummary]) -> Vec<String> {
-    let mut images = BTreeSet::new();
-    for service in services {
-        if let Some(image) = &service.image {
-            let trimmed = image.trim();
-            if !trimmed.is_empty() {
-                images.insert(trimmed.to_owned());
-            }
-        }
-    }
-
-    images.into_iter().collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,7 +164,7 @@ fn scan_image_with_command(
             stdout.trim().to_owned()
         };
 
-        return Err(truncate(&detail, 240));
+        return Err(command::truncate(&detail, 240));
     }
 
     let report: TrivyReport = serde_json::from_slice(&output.stdout)
@@ -401,15 +379,8 @@ fn slug(value: &str) -> String {
     if trimmed.is_empty() {
         String::from("image")
     } else {
-        truncate(trimmed, 60)
+        command::truncate(trimmed, 60)
     }
-}
-
-fn truncate(value: &str, max_len: usize) -> String {
-    if value.len() <= max_len {
-        return value.to_owned();
-    }
-    value.chars().take(max_len).collect()
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -534,8 +505,8 @@ mod tests {
             warnings: Vec::new(),
         };
 
-        finalize_status_after_image_scans(
-            &mut output,
+        command::finalize_status_after_image_scans(
+            &mut output.status,
             1,
             Some(String::from("registry denied access")),
         );
@@ -551,8 +522,8 @@ mod tests {
             warnings: Vec::new(),
         };
 
-        finalize_status_after_image_scans(
-            &mut output,
+        command::finalize_status_after_image_scans(
+            &mut output.status,
             0,
             Some(String::from("registry denied access")),
         );

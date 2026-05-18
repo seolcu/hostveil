@@ -1,7 +1,7 @@
 #![cfg(feature = "web")]
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 
 use crate::web::state::AppState;
 
@@ -10,12 +10,16 @@ pub async fn overview_json(State(state): State<AppState>) -> Json<serde_json::Va
 
     let total_findings = scan_result.findings.len();
 
-    let severity_counts: serde_json::Map<String, serde_json::Value> = scan_result.score_report.severity_counts
+    let severity_counts: serde_json::Map<String, serde_json::Value> = scan_result
+        .score_report
+        .severity_counts
         .iter()
         .map(|(k, v)| (k.as_key().to_owned(), serde_json::json!(v)))
         .collect();
 
-    let axis_scores: serde_json::Map<String, serde_json::Value> = scan_result.score_report.axis_scores
+    let axis_scores: serde_json::Map<String, serde_json::Value> = scan_result
+        .score_report
+        .axis_scores
         .iter()
         .map(|(k, v)| (k.as_key().to_owned(), serde_json::json!(v)))
         .collect();

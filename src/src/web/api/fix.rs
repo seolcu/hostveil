@@ -2,15 +2,15 @@
 
 use std::path::Path;
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::Deserialize;
 
 use crate::domain::RemediationKind;
 use crate::fix::{self, FixAction, FixMode, FixProposal};
-use crate::web::state::AppState;
+use crate::web::state::{self as web_state, AppState};
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct FixRequest {
     finding_id: Option<String>,
     compose_file: Option<String>,
@@ -38,7 +38,11 @@ fn proposal_to_json(p: &FixProposal) -> serde_json::Value {
 
 fn action_to_json(a: &FixAction) -> serde_json::Value {
     match a {
-        FixAction::ComposeEdit { service, summary, diff } => {
+        FixAction::ComposeEdit {
+            service,
+            summary,
+            diff,
+        } => {
             serde_json::json!({
                 "type": "compose_edit",
                 "service": service,
@@ -46,7 +50,13 @@ fn action_to_json(a: &FixAction) -> serde_json::Value {
                 "diff": diff,
             })
         }
-        FixAction::HostEdit { path, summary, original_content, updated_content, mode } => {
+        FixAction::HostEdit {
+            path,
+            summary,
+            original_content,
+            updated_content,
+            mode,
+        } => {
             serde_json::json!({
                 "type": "host_edit",
                 "path": path_to_str(path),
@@ -56,7 +66,11 @@ fn action_to_json(a: &FixAction) -> serde_json::Value {
                 "mode": mode,
             })
         }
-        FixAction::ShellCommand { command, summary, rollback } => {
+        FixAction::ShellCommand {
+            command,
+            summary,
+            rollback,
+        } => {
             serde_json::json!({
                 "type": "shell_command",
                 "command": command,
@@ -80,7 +94,11 @@ fn get_compose_file(state: &AppState, req: &FixRequest) -> Option<String> {
         return Some(path.clone());
     }
     let scan_result = state.scan_result.read().expect("lock poisoned");
-    scan_result.metadata.compose_file.as_ref().map(|p| path_to_str(p))
+    scan_result
+        .metadata
+        .compose_file
+        .as_ref()
+        .map(|p| path_to_str(p))
 }
 
 pub async fn fix_preview(
@@ -89,7 +107,7 @@ pub async fn fix_preview(
 ) -> Json<serde_json::Value> {
     let compose_file = match get_compose_file(&state, &req) {
         Some(p) => p,
-        None => return Json(serde_json::json!({"error": "No compose file available"})),
+        None => return Json(web_state::error_json("No compose file available")),
     };
 
     let only = req.finding_id.as_ref().map(|id| vec![id.clone()]);
@@ -97,6 +115,7 @@ pub async fn fix_preview(
 
     match fix::preview(&compose_file, FixMode::Fix, only_slice) {
         Ok(plan) => Json(serde_json::json!({
+            "status": "ok",
             "compose_file": path_to_str(&plan.compose_file),
             "diff_preview": plan.diff_preview,
             "auto_applied": proposals_to_json(&plan.auto_applied),
@@ -106,7 +125,7 @@ pub async fn fix_preview(
             "compose_actions": actions_to_json(&plan.compose_actions),
             "changed": plan.changed(),
         })),
-        Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+        Err(e) => Json(web_state::error_json(e)),
     }
 }
 
@@ -116,7 +135,7 @@ pub async fn fix_apply(
 ) -> Json<serde_json::Value> {
     let compose_file = match get_compose_file(&state, &req) {
         Some(p) => p,
-        None => return Json(serde_json::json!({"error": "No compose file available"})),
+        None => return Json(web_state::error_json("No compose file available")),
     };
 
     let only = req.finding_id.as_ref().map(|id| vec![id.clone()]);
@@ -129,6 +148,6 @@ pub async fn fix_apply(
             "auto_applied": plan.auto_applied.len(),
             "review_applied": plan.review_applied.len(),
         })),
-        Err(e) => Json(serde_json::json!({"status": "error", "error": e.to_string()})),
+        Err(e) => Json(web_state::error_json(e)),
     }
 }
