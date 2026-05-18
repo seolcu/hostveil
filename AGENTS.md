@@ -12,9 +12,10 @@ Branch: `v1.0.0-rewrite` (never merged to main, `main` still has the Rust versio
 - **Language**: Go 1.24+
 - **TUI**: `charmbracelet/bubbletea`, `bubbles`, `lipgloss`, `glamour`, `huh`
 - **YAML**: `goccy/go-yaml` (NOT `gopkg.in/yaml.v3` — it's archived)
-- **Web**: Go `net/http` + `html/template` + HTMX (no JS framework)
+- **Web**: `ttyd` — streams the actual Bubbletea TUI to browser via WebSocket (no custom HTML/JS/CSS)
 - **Build**: `go build`, no CGO needed
 - **Cross-compile**: `GOOS=linux GOARCH=arm64 go build` (native, no toolchain needed)
+- **Browser screenshot**: `agent-browser` (not vhs — Chrome process management is unreliable)
 
 ## Project Structure
 
@@ -31,8 +32,9 @@ hostveil/
 │   ├── fix/                          # Fix engine (preview/apply compose edits)
 │   ├── discovery/                    # Docker project discovery, host runtime info
 │   ├── export/                       # JSON, SARIF, Markdown, HTML
+│   ├── web/                          # ttyd launcher (50 lines): finds ttyd, starts with --serve
 │   └── config/                       # CLI argument parsing
-├── web/static/                       # Web SPA shell (HTMX + inline CSS)
+├── web/static/                       # (removed — ttyd replaces all HTML templates)
 ├── scripts/
 │   ├── lab.sh                        # Docker lab (from v0.29, works as-is)
 │   └── install.sh                    # Install script (TBD for v1.0.0)
@@ -40,9 +42,9 @@ hostveil/
 └── tests/scenarios/                  # Test compose files (from v0.29, reused)
 ```
 
-## Current Implementation Status (v1.0.0-rewrite)
+## Current Implementation Status
 
-### ✅ Completed (M1-M7)
+### ✅ Completed (M1-M7, 57/62 issues closed)
 
 | Module | Lines | Key Files |
 |--------|-------|-----------|
@@ -66,42 +68,29 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### 🚨 DEFERRED — DO NOT FORGET
+### 🚨 OPEN ISSUES (5 remaining) — DO NOT FORGET
 
-These items were intentionally deferred during M1-M3. Must be addressed before v1.0.0 release:
+These items were deferred. Must be addressed before v1.0.0 release:
 
-| Issue | What | Reason Deferred | Mark |
-|-------|------|-----------------|------|
-| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal stub done; full coverage needs M5+ | 🟡 |
+| Issue | What | Reason | Mark |
+|-------|------|--------|------|
+| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal done; full host fix list needs completion | 🟡 |
 | **#385** | Fix Engine — Adapter Finding Classification | Stub only; full mapping deferred | 🟡 |
 | **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
-| **#393** | Install Script + Packaging (.goreleaser.yaml, install.sh) | Not started | 🔴 |
+| **#420** | TUI E2E Test Scenarios | Basic tmux script exists, needs expansion | 🔴 |
+| **#422** | Docker Lab 유지보수 | scripts/lab.sh from v0.29 needs Go migration | 🔴 |
 
-These items were intentionally deferred during M1-M3. Must be addressed before v1.0.0 release:
+## Tests (28 tests, 5 files)
 
-| Issue | What | Reason Deferred | Mark |
-|-------|------|-----------------|------|
-| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal stub done; full coverage needs M5+ | 🟡 |
-| **#385** | Fix Engine — Adapter Finding Classification | Stub only; full mapping deferred | 🟡 |
-| **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
-| **#393** | Install Script + Packaging (.goreleaser.yaml, install.sh) | Not started | 🔴 |
+| File | Tests | Coverage |
+|------|-------|----------|
+| `internal/adapter/adapter_test.go` | 9 | Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
+| `internal/compose/parser_test.go` | 3 | Port/volume/env parsing, error handling, empty file |
+| `internal/fix/actions_test.go` | 6 | HostEdit/ShellCmd creation, 20 host finding coverage, 4 adapter classification |
+| `internal/scanner/rules/engine_test.go` | 6 | Core rules + service-aware (Vaultwarden, Postgres/Redis) |
+| `internal/scanner/scanner_test.go` | 4 | Scan run, empty config, finding detection, score calculation |
 
-### ⚠️ Known Quality Gaps
-
-| Area | Issue |
-|------|-------|
-| Scoring | Simplified formula (`count * severity * 5`) — missing axis_weights, severity_deductions from v0.29 |
-| Fix apply | YAML content manipulation is in-memory only; actual file writes not fully tested |
-| Lynis adapter | Finding ID generation uses fragile string manipulation |
-
-### ❌ Removed from v0.29
-
-| Feature | Reason |
-|---------|--------|
-| i18n (rust_i18n, 2,942 LOC YAML) | CJK breaks monospace, not worth complexity |
-| LLM Integration | v1.1+ feature, was experimental |
-| Web feature in Rust | Rewritten in Go with simplified scope |
-| TUI in Rust | Rewritten in Go with Bubbletea |
+Run: `go test -race -count=1 ./...`
 
 ## Design Decisions
 
@@ -111,6 +100,20 @@ These items were intentionally deferred during M1-M3. Must be addressed before v
 - **Build speed**: ~1s vs ~3min for Rust
 - **AI-friendly**: Simple syntax, no ownership/lifetime complexity
 - **Testing**: Easy golden file testing for TUI (`View()` returns string)
+
+### Why ttyd instead of custom Web UI
+- Single binary + ttyd = pixel-identical TUI in the browser
+- No HTML templates, no CSS, no JS framework to maintain
+- Full keyboard/mouse support via xterm.js WebSocket
+- Font configured via `-t fontFamily=JetBrainsMono Nerd Font,Fira Code,Consolas,monospace`
+- Port auto-fallback: `findPort()` probes busy ports, increments until free
+
+### TUI Design (OpenCode-inspired)
+- **Full background coverage**: `applyBackground()` intercepts ANSI reset codes (`ESC[0m`, `ESC[49m`)
+  and re-applies the theme Background color, preventing terminal default background from showing
+- **Footer anchored to bottom**: body padded with newlines to fill terminal height, footer always at last line
+- **Responsive 3-column layout**: width ≥100 → 3 columns, 60-99 → 2 columns, <60 → 1 column
+- **Component architecture**: screen models (overview/findings/history) are self-contained Bubbletea models
 
 ### Service-Aware Rules Design
 Instead of 2,504 lines of Rust if-else chains (`service_aware.rs`), Go version uses data-driven tables:
@@ -124,8 +127,36 @@ Single `ScanResult` type flows through all modules:
 ```
 Scanner.Run() → ScanResult → Export (JSON/SARIF/MD/HTML)
                            → TUI (Bubbletea)
-                           → Web Server (future)
+                           → Web Server (ttyd)
 ```
+
+## Browser Screenshots (for AI visual review)
+
+Use agent-browser (NOT vhs — Chrome process management proved unreliable):
+
+```bash
+# Start ttyd
+./hostveil --serve
+
+# In another terminal, use agent-browser to capture
+agent-browser open http://127.0.0.1:PORT/
+agent-browser screenshot overview.png
+```
+
+## Web Server
+
+```bash
+# Start (auto-finds free port if 8080 is busy)
+./hostveil --serve
+
+# With options
+./hostveil --serve --port 9090 --compose tests/...
+```
+
+Flags:
+- `--serve` — start ttyd web terminal
+- `--port N` — default 8080, auto-increments if busy
+- `--host ADDR` — bind address (default 127.0.0.1)
 
 ## Test & Build
 
@@ -156,14 +187,18 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 ## Key References
 
 - `AGENTS.md` — this file
+- `internal/web/server.go` — ttyd launcher (50 lines, port fallback + font config)
+- `internal/tui/app.go` — Bubbletea root model, background rendering, footer anchoring
 - `internal/scanner/rules/service_aware.go` — data-driven rule design pattern
 - `tests/scenarios/` — compose file test fixtures from v0.29
 - `scripts/lab.sh` — Docker lab (v0.29 compatible)
+- OpenCode TUI reference: https://github.com/anomalyco/opencode (SolidJS + OpenTUI patterns)
 
 ## What NOT To Do
 
 - Do not use `gopkg.in/yaml.v3` (archived, use `goccy/go-yaml`)
 - Do not re-add i18n or LLM (explicitly removed for v1.0.0)
 - Do not import Rust code or attempt to reuse it
-- Do not add TUI before M4 (Bubbletea skeleton first, screens later)
+- Do not use vhs for screenshots (unreliable Chrome process management)
+- Do not add custom HTML/JS/CSS for web UI (ttyd handles it all)
 - Do not assume Docker is available (adapters should fail gracefully)
