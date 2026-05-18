@@ -11,6 +11,35 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
+// MinimalAdapterFix returns fix actions for external adapter findings.
+// Full implementation tracked in issue #385.
+func MinimalAdapterFix(findings []domain.Finding) []FixAction {
+	var actions []FixAction
+	for _, f := range findings {
+		actions = append(actions, adapterFixForFinding(f.ID, f.Service)...)
+	}
+	return actions
+}
+
+// MinimalHostFix returns host edit / shell command actions for applicable findings.
+// Full implementation tracked in issue #384.
+func MinimalHostFix(findings []domain.Finding) *FixPlan {
+	plan := &FixPlan{}
+	for _, f := range findings {
+		actions := hostEditsForFinding(f.ID, f.Service)
+		for _, a := range actions {
+			switch a.Type {
+			case ActionHostEdit:
+				plan.HostEdits = append(plan.HostEdits, a)
+			case ActionShellCommand:
+				plan.ShellCmds = append(plan.ShellCmds, a)
+			}
+			plan.Actions = append(plan.Actions, a)
+		}
+	}
+	return plan
+}
+
 type Engine struct {
 	ComposeFile string
 	Findings    []domain.Finding
