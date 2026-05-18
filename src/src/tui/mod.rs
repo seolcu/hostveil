@@ -1726,7 +1726,11 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         let mut rows = 0;
         let mut count = 0;
         for i in (0..state.finding_count()).rev() {
-            let Some(finding) = state.sorted_indices.get(i).and_then(|&idx| scan_result.findings.get(idx)) else {
+            let Some(finding) = state
+                .sorted_indices
+                .get(i)
+                .and_then(|&idx| scan_result.findings.get(idx))
+            else {
                 break;
             };
             let h = finding_list_item_line_count(finding, text_width, mode).max(1);
@@ -1849,7 +1853,12 @@ fn render_findings(frame: &mut ratatui::Frame<'_>, scan_result: &ScanResult, sta
         mode,
     );
     let list_scroll_rows: usize = (0..(start))
-        .filter_map(|i| state.sorted_indices.get(i).and_then(|&idx| scan_result.findings.get(idx)))
+        .filter_map(|i| {
+            state
+                .sorted_indices
+                .get(i)
+                .and_then(|&idx| scan_result.findings.get(idx))
+        })
         .map(|f| finding_list_item_line_count(f, text_width, mode).max(1))
         .sum();
     render_scrollbar(
@@ -2992,7 +3001,9 @@ fn total_findings_rows(
     text_width: usize,
     mode: FindingsLayoutMode,
 ) -> usize {
-    sorted_indices.iter().filter_map(|&idx| findings.get(idx))
+    sorted_indices
+        .iter()
+        .filter_map(|&idx| findings.get(idx))
         .map(|f| finding_list_item_line_count(f, text_width, mode).max(1))
         .sum()
 }
@@ -3545,27 +3556,6 @@ fn fail2ban_detail(runtime: &HostRuntimeInfo) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join(", "))
 }
 
-fn score_sparkline() -> Option<String> {
-    let history = crate::history::load();
-    let entries = history.trend(6);
-    if entries.len() < 2 {
-        return None;
-    }
-    let chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-    let max = entries.iter().map(|e| e.overall).max().unwrap_or(100);
-    let min = entries.iter().map(|e| e.overall).min().unwrap_or(0);
-    let range = (max - min).max(1) as f32;
-    let spark: String = entries
-        .iter()
-        .map(|e| {
-            let idx =
-                ((e.overall - min) as f32 / range * (chars.len() - 1) as f32).round() as usize;
-            chars[idx.min(chars.len() - 1)]
-        })
-        .collect();
-    Some(spark)
-}
-
 fn overall_score_delta() -> Option<String> {
     let history = crate::history::load();
     let previous = history.previous_overall()?;
@@ -3723,9 +3713,6 @@ fn render_security_score_lines(
                             Span::raw("  "),
                             Span::styled(bar, Style::default().fg(color)),
                         ]));
-                    }
-                    if let Some(spark) = score_sparkline() {
-                        lines.push(Line::styled(format!("  {}", spark), theme.muted));
                     }
                 } else {
                     lines.push(Line::from(vec![
