@@ -96,6 +96,75 @@ func TestRuleEngineFindsLatestTag(t *testing.T) {
 	}
 }
 
+func TestServiceAwareFindsVaultwardenIssues(t *testing.T) {
+	cf := &compose.ComposeFile{
+		Services: map[string]compose.Service{
+			"vaultwarden": {
+				Image: "vaultwarden/server:latest",
+				Ports: []compose.Port{{Published: 80, Target: 80, HostIP: "0.0.0.0"}},
+				Environment: map[string]string{
+					"DOMAIN":           "http://vault.example.com",
+					"SIGNUPS_ALLOWED":  "true",
+					"ADMIN_TOKEN":      "lab-admin-token",
+				},
+			},
+		},
+	}
+
+	engine := NewEngine()
+	findings := engine.Scan(cf)
+
+	ids := make(map[string]bool)
+	for _, f := range findings {
+		ids[f.ID] = true
+	}
+
+	if !ids["service.vaultwarden.insecure_domain"] {
+		t.Error("expected service.vaultwarden.insecure_domain")
+	}
+	if !ids["service.vaultwarden.signups_allowed"] {
+		t.Error("expected service.vaultwarden.signups_allowed")
+	}
+	if !ids["service.vaultwarden.admin_token"] {
+		t.Error("expected service.vaultwarden.admin_token")
+	}
+}
+
+func TestServiceAwareDetectsPostgresAndRedis(t *testing.T) {
+	cf := &compose.ComposeFile{
+		Services: map[string]compose.Service{
+			"db": {
+				Image: "postgres:16",
+				Environment: map[string]string{
+					"POSTGRES_PASSWORD": "postgres",
+				},
+			},
+			"cache": {
+				Image: "redis:7",
+				Ports: []compose.Port{{Published: 6379, Target: 6379}},
+			},
+		},
+	}
+
+	engine := NewEngine()
+	findings := engine.Scan(cf)
+
+	ids := make(map[string]bool)
+	for _, f := range findings {
+		ids[f.ID] = true
+	}
+
+	if !ids["service.postgres.default_password"] {
+		t.Error("expected service.postgres.default_password")
+	}
+	if !ids["service.redis.no_password"] {
+		t.Error("expected service.redis.no_password")
+	}
+	if !ids["service.redis.public_bind"] {
+		t.Error("expected service.redis.public_bind")
+	}
+}
+
 func TestRuleEngineFindsDefaultBridgeNetwork(t *testing.T) {
 	cf := &compose.ComposeFile{
 		Services: map[string]compose.Service{

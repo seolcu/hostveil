@@ -30,6 +30,7 @@ func NewEngine() *RuleEngine {
 			&SensitiveRule{},
 			&UpdatesRule{},
 			&NetworkRule{},
+			&ServiceAwareRule{},
 		},
 	}
 }
