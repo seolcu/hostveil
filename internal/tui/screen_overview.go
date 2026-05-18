@@ -2,47 +2,269 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-func renderOverviewPanel(r *domain.ScanResult, theme Theme, width, height int) string {
-	score := r.ScoreReport.Overall
-	grade := r.ScoreReport.Grade()
-	total := r.TotalFindings()
-
-	scoreStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Accent)).
-		Bold(true).
-		Width(width / 3).
-		Align(lipgloss.Center).
-		Padding(1)
-
-	scoreBlock := scoreStyle.Render(fmt.Sprintf("Score: %d\n%s\n", score, grade))
-
-	sevStyle := lipgloss.NewStyle().
-		Width(width / 3).
-		Padding(0, 1)
-
-	sevBlock := sevStyle.Render(formatSeverityCounts(r))
-
-	infoStyle := lipgloss.NewStyle().
-		Width(width / 3).
-		Padding(0, 1)
-
-	infoBlock := infoStyle.Render(fmt.Sprintf("%d findings\n%d services", total, len(r.Metadata.Services)))
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, scoreBlock, sevBlock, infoBlock)
+type overviewModel struct {
+	scroll int
 }
 
-func formatSeverityCounts(r *domain.ScanResult) string {
-	out := ""
+func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
+	if width < 40 {
+		return "Terminal too narrow for overview"
+	}
+
+	colWidth := (width - 4) / 2
+
+	// Left column
+	scoreCard := m.renderScoreCard(r, theme, colWidth)
+	severityCard := m.renderSeverityCard(r, theme, colWidth)
+	actionCard := m.renderActionCard(r, theme, colWidth)
+
+	// Right column
+	axisCard := m.renderAxisCard(r, theme, colWidth)
+	hostCard := m.renderHostCard(r, theme, colWidth)
+	metaCard := m.renderMetaCard(r, theme, colWidth)
+
+	left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard, actionCard)
+	right := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard, metaCard)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+}
+
+func (m *overviewModel) renderScoreCard(r *domain.ScanResult, theme Theme, width int) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+
+	scoreStyle := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(1).
+		Align(lipgloss.Center)
+
+	gradeColor := theme.Success
+	if score < 80 {
+		gradeColor = theme.Medium
+	}
+	if score < 50 {
+		gradeColor = theme.Critical
+	}
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("%d", score)),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Overall Score"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
+	)
+
+	// Mini bar
+	bar := RenderBar(uint8(score), width-6)
+	content = lipgloss.JoinVertical(lipgloss.Center, content, bar)
+
+	return scoreStyle.Render(content)
+}
+
+func (m *overviewModel) renderSeverityCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Findings by Severity")
+
+	var rows []string
 	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
 		count := r.FindingsBySeverity(sev)
-		if count > 0 {
-			out += fmt.Sprintf("%s: %d\n", sev.String(), count)
+		color := sev.Color()
+
+		label := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(color)).
+			Width(10).
+			Render(strings.ToUpper(sev.String()))
+
+		num := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(color)).
+			Width(4).
+			Align(lipgloss.Right).
+			Render(fmt.Sprintf("%d", count))
+
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, num))
+	}
+
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		lipgloss.JoinVertical(lipgloss.Left, rows...),
+	))
+}
+
+func (m *overviewModel) renderActionCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	autoCount := 0
+	reviewCount := 0
+	manualCount := 0
+	hostCount := 0
+
+	for _, f := range r.Findings {
+		switch f.Remediation {
+		case domain.RemediationAuto:
+			autoCount++
+		case domain.RemediationReview:
+			reviewCount++
+		case domain.RemediationManual:
+			manualCount++
+		}
+		if f.Scope == domain.ScopeHost {
+			hostCount++
 		}
 	}
-	return out
+
+	title := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Action Queue")
+
+	items := []struct {
+		label string
+		count int
+		color string
+	}{
+		{"Auto-fix", autoCount, theme.Success},
+		{"Review", reviewCount, theme.Accent},
+		{"Manual", manualCount, theme.TextMuted},
+		{"Host", hostCount, theme.Medium},
+	}
+
+	var rows []string
+	for _, item := range items {
+		l := lipgloss.NewStyle().Foreground(lipgloss.Color(item.color)).Width(12).Render(item.label)
+		n := lipgloss.NewStyle().Bold(true).Width(4).Align(lipgloss.Right).Render(fmt.Sprintf("%d", item.count))
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, l, n))
+	}
+
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinVertical(lipgloss.Left, rows...)))
+}
+
+func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Axis Scores")
+
+	var rows []string
+	for _, axis := range domain.AllAxes() {
+		score := r.ScoreReport.AxisScores[axis]
+		barColor := theme.Success
+		if score < 80 {
+			barColor = theme.Medium
+		}
+		if score < 50 {
+			barColor = theme.Critical
+		}
+
+		label := lipgloss.NewStyle().
+			Width(22).
+			Render(axis.Label())
+
+		bar := renderColoredBar(score, width-30, barColor)
+
+		scoreNum := lipgloss.NewStyle().
+			Width(4).
+			Align(lipgloss.Right).
+			Render(fmt.Sprintf("%d", score))
+
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, bar, scoreNum))
+	}
+
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinVertical(lipgloss.Left, rows...)))
+}
+
+func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Host Info")
+
+	info := r.Metadata.HostRuntime
+	if info == nil {
+		return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, "No host data"))
+	}
+
+	var rows []string
+	addRow := func(k, v string) {
+		rows = append(rows, fmt.Sprintf("%-14s %s", k+":", v))
+	}
+
+	if info.Hostname != "" {
+		addRow("Hostname", info.Hostname)
+	}
+	if info.DockerVersion != "" {
+		addRow("Docker", info.DockerVersion)
+	}
+	if info.Uptime != "" {
+		addRow("Uptime", info.Uptime)
+	}
+	if info.LoadAverage != "" {
+		addRow("Load", info.LoadAverage)
+	}
+
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, strings.Join(rows, "\n")))
+}
+
+func (m *overviewModel) renderMetaCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	svcs := len(r.Metadata.Services)
+	warns := len(r.Metadata.Warnings)
+
+	content := fmt.Sprintf("Services: %d\nWarnings: %d\nFindings: %d",
+		svcs, warns, r.TotalFindings())
+
+	return style.Render(content)
+}
+
+func RenderBar(score uint8, width int) string {
+	if width < 2 {
+		return ""
+	}
+	filled := int(score) * width / 100
+	bar := "["
+	for i := 0; i < width; i++ {
+		if i < filled {
+			bar += "█"
+		} else {
+			bar += "░"
+		}
+	}
+	bar += "]"
+	return bar
+}
+
+func renderColoredBar(score uint8, width int, color string) string {
+	bar := RenderBar(score, width)
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(bar)
 }

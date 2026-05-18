@@ -26,8 +26,10 @@ type appModel struct {
 	tick          int
 	help          help.Model
 	keys          keyMap
+	focus         int // which panel is focused
 
-	theme Theme
+	theme       Theme
+	overview    *overviewModel
 }
 
 type keyMap struct {
@@ -69,6 +71,7 @@ func NewApp(result *domain.ScanResult) *appModel {
 		help:          help.New(),
 		keys:          defaultKeyMap(),
 		theme:         DefaultTheme(),
+		overview:      &overviewModel{},
 	}
 }
 
@@ -157,7 +160,7 @@ func (m *appModel) renderFooter() string {
 }
 
 func (m *appModel) renderOverview() string {
-	return renderOverviewPanel(m.scanResult, m.theme, m.width, m.height-4)
+	return m.overview.render(m.scanResult, m.theme, m.width, m.height-4)
 }
 
 func (m *appModel) renderFindings() string {

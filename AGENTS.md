@@ -57,14 +57,24 @@ hostveil/
 | Discovery | ~100 | Docker compose file detection, host runtime info |
 | Scanner | ~100 | Orchestration + scoring |
 
-### ⚠️ Known Missing Items
+### 🚨 DEFERRED — DO NOT FORGET
 
-| Issue | What | Priority |
-|-------|------|----------|
-| #384 | Fix Engine — Host Edits & Shell Commands (only compose edits work) | Medium |
-| #385 | Fix Engine — Adapter Finding Classification (external adapter → fix action mapping) | Low |
-| #386 | Adapter Integration Tests (mock adapters) | Low |
-| #393 | Install Script + Packaging (.goreleaser.yaml, install.sh) | Low |
+These items were intentionally deferred during M1-M3. Must be addressed before v1.0.0 release:
+
+| Issue | What | Reason Deferred | Mark |
+|-------|------|-----------------|------|
+| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal stub done; full coverage needs M5+ | 🟡 |
+| **#385** | Fix Engine — Adapter Finding Classification | Stub only; full mapping deferred | 🟡 |
+| **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
+| **#393** | Install Script + Packaging (.goreleaser.yaml, install.sh) | Not started | 🔴 |
+
+### ⚠️ Known Quality Gaps
+
+| Area | Issue |
+|------|-------|
+| Scoring | Simplified formula (`count * severity * 5`) — missing axis_weights, severity_deductions from v0.29 |
+| Fix apply | YAML content manipulation is in-memory only; actual file writes not fully tested |
+| Lynis adapter | Finding ID generation uses fragile string manipulation |
 
 ### ❌ Removed from v0.29
 

@@ -21,22 +21,11 @@ func renderHistoryPanel(r *domain.ScanResult, theme Theme, width, height int) st
 	out += "Axis Scores:\n"
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
-		bar := renderBar(score, 20)
+		bar := RenderBar(score, 20)
 		out += fmt.Sprintf("  %-25s %3d %s\n", axis.Label(), score, bar)
 	}
 
 	return style.Render(out)
 }
 
-func renderBar(score uint8, width int) string {
-	filled := int(score) * width / 100
-	bar := ""
-	for i := 0; i < width; i++ {
-		if i < filled {
-			bar += "█"
-		} else {
-			bar += "░"
-		}
-	}
-	return bar
-}
+
