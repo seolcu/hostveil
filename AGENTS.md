@@ -135,13 +135,62 @@ Scanner.Run() → ScanResult → Export (JSON/SARIF/MD/HTML)
 Use agent-browser (NOT vhs — Chrome process management proved unreliable):
 
 ```bash
-# Start ttyd
-./hostveil --serve
+# Start ttyd (detached to survive shell timeouts)
+setsid -f ./hostveil --serve --port 8080 --compose tests/scenarios/vaultwarden-domain/docker-compose.yml > /tmp/hostveil-serve.log 2>&1
+sleep 3
 
-# In another terminal, use agent-browser to capture
-agent-browser open http://127.0.0.1:PORT/
+# Parse actual URL from log (port may fallback from 8080)
+URL=$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' /tmp/hostveil-serve.log | tail -n 1)
+
+# Connect and focus terminal input
+agent-browser open "$URL"
+agent-browser set viewport 1280 720
+agent-browser wait 2500
+agent-browser snapshot -i
+agent-browser click @e1
+
+# Capture screenshots
 agent-browser screenshot overview.png
 ```
+
+### Verified TUI Keyboard Navigation (via ttyd)
+
+All keys confirmed working through agent-browser → ttyd → Bubbletea:
+
+| Key | Action | Verified |
+|-----|--------|----------|
+| `1/2/3` | Switch screens (Overview/Findings/History) | ✅ |
+| `Enter` / `l` | Open finding detail panel | ✅ |
+| `h` / `←` | Back to list / host triage | ✅ |
+| `s` | Cycle severity filter | ✅ |
+| `?` | Toggle Help overlay | ✅ |
+| `S` | Toggle Settings modal | ✅ |
+| `right` | Navigate Settings theme selector | ✅ |
+
+### Visual QA Results (11 screenshots, all screens)
+
+Captured and inspected: overview, findings list, findings detail, severity filter, history, help, settings, theme change, host triage, narrow viewport (720px).
+
+- No obvious rendering breakage found
+- Background colors apply correctly after ANSI reset
+- Borders and panel alignment intact
+- Theme changes apply immediately
+- Responsive layout works at narrow viewport
+- **Note**: ttyd page shows browser scrollbar (container height mismatch, cosmetic only — TUI itself is fine)
+
+### Bundled Skill: `hostveil-browser-tui-qa`
+
+Automated screenshot capture skill at `.agents/skills/hostveil-browser-tui-qa/`:
+
+```bash
+.agents/skills/hostveil-browser-tui-qa/scripts/capture-hostveil-tui.sh
+```
+
+- Builds hostveil, starts --serve, parses fallback URL, drives TUI via agent-browser
+- Captures 11 screenshots across all states
+- Cleans up background processes on exit
+- Validated end-to-end: script runs successfully and produces correct screenshots
+- Added to git with `git add -f` (`.agents/` is ignored by default)
 
 ## Web Server
 
@@ -192,6 +241,7 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - `internal/scanner/rules/service_aware.go` — data-driven rule design pattern
 - `tests/scenarios/` — compose file test fixtures from v0.29
 - `scripts/lab.sh` — Docker lab (v0.29 compatible)
+- `.agents/skills/hostveil-browser-tui-qa/` — automated TUI screenshot QA skill
 - OpenCode TUI reference: https://github.com/anomalyco/opencode (SolidJS + OpenTUI patterns)
 
 ## What NOT To Do
