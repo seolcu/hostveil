@@ -73,6 +73,15 @@ These items were intentionally deferred during M1-M3. Must be addressed before v
 | **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
 | **#393** | Install Script + Packaging (.goreleaser.yaml, install.sh) | Not started | 🔴 |
 
+These items were intentionally deferred during M1-M3. Must be addressed before v1.0.0 release:
+
+| Issue | What | Reason Deferred | Mark |
+|-------|------|-----------------|------|
+| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal stub done; full coverage needs M5+ | 🟡 |
+| **#385** | Fix Engine — Adapter Finding Classification | Stub only; full mapping deferred | 🟡 |
+| **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
+| **#393** | Install Script + Packaging (.goreleaser.yaml, install.sh) | Not started | 🔴 |
+
 ### ⚠️ Known Quality Gaps
 
 | Area | Issue |

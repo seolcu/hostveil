@@ -1,0 +1,26 @@
+{{define "history.html"}}
+<div class="grid grid-3">
+  <div class="card" style="text-align:center">
+    <div style="font-size:28px;font-weight:800;color:var(--accent)">{{.ScoreReport.Overall}}</div>
+    <div style="font-size:12px;color:var(--muted)">Current Score</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:28px;font-weight:800;color:var(--high)">{{len .Findings}}</div>
+    <div style="font-size:12px;color:var(--muted)">Findings</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:28px;font-weight:800;color:var(--text)">{{len .Metadata.Services}}</div>
+    <div style="font-size:12px;color:var(--muted)">Services</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Axis Scores</div>
+  <table style="width:100%;font-size:13px">
+    <tr><th style="text-align:left;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Axis</th><th style="text-align:right;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Score</th></tr>
+    {{range $axis, $score := .ScoreReport.AxisScores}}
+    <tr><td style="padding:6px 0">{{$axis}}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:{{if ge $score 80}}var(--success){{else if ge $score 50}}var(--medium){{else}}var(--critical){{end}}">{{$score}}</td></tr>
+    {{end}}
+  </table>
+</div>
+{{end}}

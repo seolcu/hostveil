@@ -6,6 +6,15 @@ type ScoreReport struct {
 	SeverityCounts   map[Severity]int
 }
 
+func (s *ScoreReport) CountForSeverity(key string) int {
+	for sev, count := range s.SeverityCounts {
+		if sev.String() == key {
+			return count
+		}
+	}
+	return 0
+}
+
 func (s *ScoreReport) Grade() string {
 	switch {
 	case s.Overall >= 90:

@@ -1,0 +1,56 @@
+{{define "overview.html"}}
+<div class="grid grid-3">
+  <div class="card" style="text-align:center">
+    {{$g := "Good"}}{{if lt .ScoreReport.Overall 70}}{{$g = "Fair"}}{{end}}
+    {{if lt .ScoreReport.Overall 50}}{{$g = "Poor"}}{{end}}
+    {{if lt .ScoreReport.Overall 30}}{{$g = "Bad"}}{{end}}
+    {{if lt .ScoreReport.Overall 20}}{{$g = "Critical"}}{{end}}
+    <div style="font-size:48px;font-weight:800;color:var(--accent)">{{.ScoreReport.Overall}}</div>
+    <div style="font-size:12px;color:var(--muted)">{{$g}}</div>
+    <div style="font-size:13px;margin-top:8px">Overall Score</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Findings by Severity</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--critical)">●</span> Critical</span><span style="font-weight:600">{{.ScoreReport.CountForSeverity "critical"}}</span></div>
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--high)">●</span> High</span><span style="font-weight:600">{{.ScoreReport.CountForSeverity "high"}}</span></div>
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--medium)">●</span> Medium</span><span style="font-weight:600">{{.ScoreReport.CountForSeverity "medium"}}</span></div>
+      <div style="display:flex;justify-content:space-between"><span><span style="color:var(--low)">●</span> Low</span><span style="font-weight:600">{{.ScoreReport.CountForSeverity "low"}}</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Summary</div>
+    <div style="font-size:24px;font-weight:800">{{len .Findings}}</div>
+    <div style="font-size:12px;color:var(--muted)">findings</div>
+    <div style="margin-top:8px;font-size:13px">{{len .Metadata.Services}} services</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Axis Scores</div>
+  <table style="width:100%;font-size:13px">
+    <tr><th style="text-align:left;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Axis</th><th style="text-align:right;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Score</th></tr>
+    {{range $axis, $score := .ScoreReport.AxisScores}}
+    <tr><td style="padding:6px 0">{{$axis}}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:{{if ge $score 80}}var(--success){{else if ge $score 50}}var(--medium){{else}}var(--critical){{end}}">{{$score}}</td></tr>
+    {{end}}
+  </table>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">Services</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr><th style="text-align:left;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Name</th><th style="text-align:left;padding:6px 0;color:var(--muted);font-size:11px;text-transform:uppercase">Image</th></tr>
+      {{range .Metadata.Services}}
+      <tr><td style="padding:4px 0">{{.Name}}</td><td style="padding:4px 0;color:var(--muted)">{{.Image}}</td></tr>
+      {{end}}
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Warnings</div>
+    {{if .Metadata.Warnings}}
+    {{range .Metadata.Warnings}}<div style="font-size:13px;color:var(--medium);padding:2px 0">⚠ {{.}}</div>{{end}}
+    {{else}}<div style="font-size:13px;color:var(--muted)">No warnings</div>{{end}}
+  </div>
+</div>
+{{end}}
