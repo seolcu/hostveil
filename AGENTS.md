@@ -120,6 +120,69 @@ Run: `go test -race -count=1 ./...`
 - **Search/filter disambiguation**: Search text shown with `|` separator from filter chips. Filter state shows `N/M no filters` when clean.
 - **Info message grouping**: "Discovered project" messages grouped into single summary line to reduce noise. Non-project messages shown individually.
 
+## HCI/UI/UX Design Principles (필수 준수)
+
+Terminal UI라고 해서 UI/UX 원칙을 무시하면 안 됨. 아래 원칙은 **모든 TUI 디자인에 반드시 적용**해야 함.
+
+### Nielsen's 10 Usability Heuristics (적용 요약)
+
+1. **Visibility of System Status**: 사용자는 항상 현재 상태를 알아야 함. 필터/검색/로딩 상태를 명확히 표시.
+2. **Match Between System and Real World**: 내부 약어(`sev:`, `scp:`) 대신 자연어 사용. 사용자 관점의 용어 선택.
+3. **User Control and Freedom**: 모든 동작에 되돌리기(undo)와 취소(esc) 제공. 실수로 필터 걸었을 때 R로 초기화.
+4. **Consistency and Standards**: 같은 의미의 정보는 같은 위치/스타일로. 단축키 일관성 유지.
+5. **Error Prevention**: 오류가 발생하기 전에 막을 수 있는 UI. 예: 빈 화면에서 명확한 액션 안내.
+6. **Recognition Rather than Recall**: 정보를 기억하지 않아도 인식할 수 있게. 검색어 하이라이트, 필터 칩 등.
+7. **Flexibility and Efficiency of Use**: 단축키 지원, 숙련자와 초보자 모두를 위한 인터페이스.
+8. **Aesthetic and Minimalist Design**: **불필요한 정보는 모두 제거**. 공백 낭비 금지. 정보 밀도 최적화.
+9. **Help Users Recognize, Diagnose, and Recover from Errors**: 오류 메시지를 일반 언어로 표시. 해결책 제시.
+10. **Help and Documentation**: `?` 키로 도움말 접근. 명확하고 간결하게.
+
+### Gestalt 원칙 (시각적 그룹화)
+
+| 원칙 | 설명 | 적용 |
+|------|------|------|
+| **Law of Common Region** | 경계선으로 그룹화 | 모든 패널에 박스 테두리 필수 (Borders 항상 ON) |
+| **Law of Proximity** | 가까운 요소는 같은 그룹 | 관련 정보 간 간격 최소화, 무관한 정보 간 간격 확보 |
+| **Law of Similarity** | 비슷한 요소는 같은 기능 | 같은 종류의 데이터는 같은 색상/스타일 사용 |
+| **Law of Prägnanz** | 가장 단순한 형태로 인식 | 복잡한 레이아웃보다 단순한 정렬이 가독성 향상 |
+| **Law of Uniform Connectedness** | 연결된 요소는 관련됨 | 색상 연결, 정렬 통일로 정보 관계 표현 |
+
+### 인지 심리학 법칙
+
+| 법칙 | 내용 | 적용 |
+|------|------|------|
+| **Fitts's Law** | 타겟이 크고 가까울수록 빠름 | 버튼/바/인덱스 충분히 크게, 빈 공간에 기능 배치 |
+| **Hick's Law** | 선택지가 많을수록 결정 시간 증가 | 필터 옵션 순차 공개, 한 번에 5-7개 옵션 제한 |
+| **Miller's Law** | 작업기억 7±2 항목 | 한 화면에 정보 과다 배치 금지, 청킹 필요 |
+| **Cognitive Load** | 인지 부하 최소화 | 불필요한 메타데이터 제거, 레이블 간결하게 |
+| **Aesthetic-Usability Effect** | 아름다운 UI는 더 사용하기 쉽다고 인식 | 정렬, 여백, 색상 통일성으로 신뢰감 형성 |
+| **Tesler's Law** | 복잡성은 보존됨 (이전 불가) | 복잡한 로직은 시스템이 처리, 사용자에게는 단순하게 |
+| **Jakob's Law** | 사용자는 다른 사이트에 익숙함 | 업계 표준 단축키/레이아웃 따르기 |
+
+### TUI 디자인 수칙 (hostveil 전용)
+
+- **박스 테두리는 항상 ON** (RoundedBorder, Surface 배경색과 Border 색상 구분)
+- **Padding 최소화**: 상하 0, 좌우 1-2 (화면 공간 절약)
+- **정보 밀도 극대화**: 빈 화면 95% 금지. 빈 상태는 중앙에 아이콘+메시지 배치
+- **색상만으로 정보 전달 금지**: 심각성은 색상 + 텍스트 + 아이콘 조합
+- **필터 상태는 헤더에 자연어로**: `sev:critical` 대신 `Severity: Critical`
+- **검색어 하이라이트**: 일치하는 부분 역상 또는 밑줄 표시
+- **Fix Preview는 Diff 형식**: `- old` / `+ new` 명확히 구분
+- **스크롤 필요 시 하단 표시기**: `▼ 3 more lines` 안내
+- **반응형 레이아웃**: 80+|2열, 60-79|1.5열, <60|1열 세로 스크롤
+
+### Good UI vs Bad UI 예시
+
+| Good UI | Bad UI |
+|---------|--------|
+| 구분선/테두리로 정보 그룹화 (Common Region) | 테두리 없이 빈 공간만으로 구분 시도 |
+| 정보 밀도 60-80% (화면 공간 효율 사용) | 정보 밀도 <40% (공백 낭비) |
+| 빈 화면 중앙에 아이콘 + 자연어 메시지 + 액션 안내 | 빈 화면 왼쪽 상단에 기술적 메시지만 표시 |
+| Diff 형식으로 변경 전후 비교 | 현재 상태만 표시하고 변경점 불명확 |
+| 검색어 하이라이트로 일치 항목 강조 | 검색어 입력만 있고 결과에서 강조 없음 |
+| 필터 상태 자연어 표시 (Severity: Critical) | `sev:critical` 약어 남발 |
+| 섹션 구분선 굵게 (═ 또는 ██████) | 구분선 너무 얇아서 인지 불가 |
+
 ### Service-Aware Rules Design
 Instead of 2,504 lines of Rust if-else chains (`service_aware.rs`), Go version uses data-driven tables:
 - `ServiceKind` enum (iota)
@@ -192,17 +255,16 @@ Captured and inspected (20 screenshots): overview, findings list, findings detai
 
 ### Bundled Skill: `hostveil-browser-tui-qa`
 
-Automated screenshot capture skill at `.agents/skills/hostveil-browser-tui-qa/`:
+AI agent-driven TUI visual QA skill at `.agents/skills/hostveil-browser-tui-qa/`.
 
-```bash
-.agents/skills/hostveil-browser-tui-qa/scripts/capture-hostveil-tui.sh
-```
+No fixed script — the agent runs an **iterative Observe–Explore loop**:
+1. Builds hostveil, starts `--serve`, parses fallback URL
+2. Connects agent-browser, dynamically navigates the TUI via keyboard
+3. Captures a screenshot (≤20 total budget) → inspects the PNG → decides next move based on what was seen
+4. Repeats until all screens and states are thoroughly covered across 3+ viewport sizes
+5. Produces a structured QA report with the iteration decision trail
 
-- Builds hostveil, starts --serve, parses fallback URL, drives TUI via agent-browser
-- Captures 11 screenshots across all states
-- Cleans up background processes on exit
-- Validated end-to-end: script runs successfully and produces correct screenshots
-- Added to git with `git add -f` (`.agents/` is ignored by default)
+See `SKILL.md` for the full methodology, loop mechanics, adaptive branching guide, and visual inspection checklist.
 
 ## Web Server
 
@@ -255,7 +317,7 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - `internal/scanner/rules/service_aware.go` — data-driven rule design pattern
 - `tests/scenarios/` — compose file test fixtures from v0.29
 - `scripts/lab.sh` — Docker lab (v0.29 compatible)
-- `.agents/skills/hostveil-browser-tui-qa/` — automated TUI screenshot QA skill
+- `.agents/skills/hostveil-browser-tui-qa/` — AI-driven TUI visual QA skill (no fixed script)
 - OpenCode TUI reference: https://github.com/anomalyco/opencode (SolidJS + OpenTUI patterns)
 
 ## What NOT To Do

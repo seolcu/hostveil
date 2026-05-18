@@ -17,23 +17,15 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		return "Terminal too narrow"
 	}
 
-	style := lipgloss.NewStyle().
-		Width(width).
-		Padding(0, 1)
+	content := ""
 
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(theme.Text)).
-		Render("Scan History")
-
+	// Score summary line
 	info := fmt.Sprintf("Score: %d (%s)  |  Findings: %d  |  Services: %d",
 		r.ScoreReport.Overall, r.ScoreReport.Grade(),
 		r.TotalFindings(), len(r.Metadata.Services))
+	content += info + "\n\n"
 
-	content := title + "\n" + info + "\n\n"
-
-	// Axis scores with bars
-	content += "Axis Scores:\n"
+	// Axis scores with compact bars
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
 		barColor := theme.Success
@@ -44,37 +36,50 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 			barColor = theme.Critical
 		}
 
-		label := fmt.Sprintf("%-22s", axis.Label())
-		bar := RenderBar(score, width-len(label)-10)
+		labelWidth := 22
+		barWidth := width - labelWidth - 14
+		if barWidth < 4 {
+			barWidth = 4
+		}
+		barWidth = barWidth * 3 / 5
 
-		styledBar := lipgloss.NewStyle().Foreground(lipgloss.Color(barColor)).Render(bar)
-		content += fmt.Sprintf("  %s %s %3d\n", label, styledBar, score)
+		label := fmt.Sprintf("%-22s", axis.Label())
+		bar := renderColoredBar(score, barWidth, barColor)
+		scoreStr := fmt.Sprintf(" %3d", score)
+
+		content += fmt.Sprintf("  %s %s%s\n", label, bar, scoreStr)
 	}
 
-	// Severity summary
-	content += "\nFindings:\n"
+	// Severity summary inline
+	sevParts := []string{}
 	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
 		count := r.FindingsBySeverity(sev)
 		if count > 0 {
-			color := sev.Color()
-			content += fmt.Sprintf("  %s: %d\n",
-				lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(sev.String()),
-				count,
+			col := sev.Color()
+			sevParts = append(sevParts,
+				lipgloss.NewStyle().Foreground(lipgloss.Color(col)).Render(fmt.Sprintf("%s: %d", sev.String(), count)),
 			)
 		}
 	}
+	if len(sevParts) > 0 {
+		content += "\nFindings: " + strings.Join(sevParts, "  ") + "\n"
+	}
 
-	// Info messages (summarized)
+	// Info messages (grouped)
 	if len(r.Metadata.InfoMessages) > 0 {
 		content += "\nInfo:\n"
 		var projects []string
 		var otherMsgs []string
+		seenProjects := make(map[string]bool)
 		for _, msg := range r.Metadata.InfoMessages {
 			trimmed := strings.TrimPrefix(msg, "Discovered project: ")
 			if trimmed != msg {
 				parts := strings.SplitN(trimmed, " at ", 2)
 				if len(parts) >= 1 && parts[0] != "" {
-					projects = append(projects, parts[0])
+					if !seenProjects[parts[0]] {
+						projects = append(projects, parts[0])
+						seenProjects[parts[0]] = true
+					}
 				}
 			} else {
 				otherMsgs = append(otherMsgs, msg)
@@ -95,6 +100,10 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 			content += fmt.Sprintf("  ⚠ %s\n", w)
 		}
 	}
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Padding(0, 1)
 
 	return style.Render(content)
 }

@@ -289,11 +289,7 @@ func parseHex(hex string) (int, int, int) {
 }
 
 func (m *appModel) effectiveTheme() Theme {
-	t := m.theme
-	if !m.settings.ShowBorders() {
-		t.Border = t.Background
-	}
-	return t
+	return m.theme
 }
 
 func (m *appModel) renderHeader(t Theme) string {
@@ -310,7 +306,7 @@ func (m *appModel) renderHeader(t Theme) string {
 		Background(lipgloss.Color(t.Surface)).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 2).
+		Padding(0, 1).
 		Width(m.width)
 
 	return headerStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", score))
@@ -328,7 +324,7 @@ func (m *appModel) renderFooter(t Theme) string {
 		Background(lipgloss.Color(t.Surface)).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 2).
+		Padding(0, 1).
 		Width(m.width)
 
 	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, hint))

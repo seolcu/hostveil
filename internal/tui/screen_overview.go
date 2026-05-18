@@ -13,6 +13,21 @@ type overviewModel struct {
 	scroll int
 }
 
+func severityIcon(sev domain.Severity) string {
+	switch sev {
+	case domain.SeverityCritical:
+		return "■"
+	case domain.SeverityHigh:
+		return "◆"
+	case domain.SeverityMedium:
+		return "●"
+	case domain.SeverityLow:
+		return "▸"
+	default:
+		return "·"
+	}
+}
+
 func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
 	if width < 40 {
 		return "Terminal too narrow for overview"
@@ -20,7 +35,6 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 
 	switch {
 	case width >= 100:
-		// 3-column layout: Score/Severity | Axis/Host | Action/Meta
 		colWidth := (width - 6) / 3
 		scoreCard := m.renderScoreCard(r, theme, colWidth)
 		severityCard := m.renderSeverityCard(r, theme, colWidth)
@@ -36,9 +50,7 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", middle, "  ", right)
 
 	case width >= 60:
-		// 2-column layout
-		colWidth := (width - 4) / 2
-
+		colWidth := (width - 2) / 2
 		scoreCard := m.renderScoreCard(r, theme, colWidth)
 		severityCard := m.renderSeverityCard(r, theme, colWidth)
 		actionCard := m.renderActionCard(r, theme, colWidth)
@@ -52,7 +64,6 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
 
 	default:
-		// 1-column layout (stacked)
 		colWidth := width - 2
 		return lipgloss.JoinVertical(lipgloss.Top,
 			m.renderScoreCard(r, theme, colWidth),
@@ -73,7 +84,7 @@ func (m *overviewModel) renderScoreCard(r *domain.ScanResult, theme Theme, width
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(1).
+		Padding(0, 1).
 		Align(lipgloss.Center)
 
 	gradeColor := theme.Success
@@ -84,15 +95,16 @@ func (m *overviewModel) renderScoreCard(r *domain.ScanResult, theme Theme, width
 		gradeColor = theme.Critical
 	}
 
-	content := lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("%d", score)),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Overall Score"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
-	)
+	bar := renderColoredBar(uint8(score), (width-8)/2, gradeColor)
 
-	// Mini bar
-	bar := RenderBar(uint8(score), width-6)
-	content = lipgloss.JoinVertical(lipgloss.Center, content, bar)
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.JoinHorizontal(lipgloss.Center,
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("%d", score)),
+			"  ",
+			lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
+		),
+		bar,
+	)
 
 	return scoreStyle.Render(content)
 }
@@ -104,34 +116,31 @@ func (m *overviewModel) renderSeverityCard(r *domain.ScanResult, theme Theme, wi
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
 
-	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Findings by Severity")
-
 	var rows []string
 	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
 		count := r.FindingsBySeverity(sev)
+		icon := severityIcon(sev)
 		color := sev.Color()
 
 		label := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(color)).
-			Width(10).
-			Render(strings.ToUpper(sev.String()))
+			Render(fmt.Sprintf("%s %s", icon, strings.ToUpper(sev.String())))
+
+		spacer := width - lipgloss.Width(label) - 5
+		if spacer < 1 {
+			spacer = 1
+		}
 
 		num := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color(color)).
-			Width(4).
 			Align(lipgloss.Right).
 			Render(fmt.Sprintf("%d", count))
 
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, num))
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, strings.Repeat(" ", spacer), num))
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left,
-		title,
-		lipgloss.JoinVertical(lipgloss.Left, rows...),
-	))
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (m *overviewModel) renderActionCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -160,10 +169,6 @@ func (m *overviewModel) renderActionCard(r *domain.ScanResult, theme Theme, widt
 		}
 	}
 
-	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Action Queue")
-
 	items := []struct {
 		label string
 		count int
@@ -177,12 +182,16 @@ func (m *overviewModel) renderActionCard(r *domain.ScanResult, theme Theme, widt
 
 	var rows []string
 	for _, item := range items {
-		l := lipgloss.NewStyle().Foreground(lipgloss.Color(item.color)).Width(12).Render(item.label)
-		n := lipgloss.NewStyle().Bold(true).Width(4).Align(lipgloss.Right).Render(fmt.Sprintf("%d", item.count))
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, l, n))
+		l := lipgloss.NewStyle().Foreground(lipgloss.Color(item.color)).Render(item.label)
+		spacer := width - lipgloss.Width(l) - 5
+		if spacer < 1 {
+			spacer = 1
+		}
+		n := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(item.color)).Align(lipgloss.Right).Render(fmt.Sprintf("%d", item.count))
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, l, strings.Repeat(" ", spacer), n))
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinVertical(lipgloss.Left, rows...)))
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -191,10 +200,6 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
-
-	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Axis Scores")
 
 	var rows []string
 	for _, axis := range domain.AllAxes() {
@@ -207,21 +212,29 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 			barColor = theme.Critical
 		}
 
+		labelWidth := 22
+		barWidth := width - labelWidth - 8
+		if barWidth < 4 {
+			barWidth = 4
+		}
+		// Reduce bar width by 40% to save space
+		barWidth = barWidth * 3 / 5
+
 		label := lipgloss.NewStyle().
-			Width(22).
+			Width(labelWidth).
 			Render(axis.Label())
 
-		bar := renderColoredBar(score, width-30, barColor)
+		bar := renderColoredBar(score, barWidth, barColor)
 
 		scoreNum := lipgloss.NewStyle().
 			Width(4).
 			Align(lipgloss.Right).
 			Render(fmt.Sprintf("%d", score))
 
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, bar, scoreNum))
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, " ", bar, " ", scoreNum))
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinVertical(lipgloss.Left, rows...)))
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -231,18 +244,14 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
 
-	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Host Info")
-
 	info := r.Metadata.HostRuntime
 	if info == nil {
-		return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, "No host data"))
+		return style.Render("No host data")
 	}
 
 	var rows []string
 	addRow := func(k, v string) {
-		rows = append(rows, fmt.Sprintf("%-14s %s", k+":", v))
+		rows = append(rows, fmt.Sprintf("%-12s %s", k+":", v))
 	}
 
 	if info.Hostname != "" {
@@ -256,21 +265,7 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 	}
 	if info.LoadAverage != "" {
 		loadStr := info.LoadAverage
-		loadLevel := ""
 		fields := strings.Fields(loadStr)
-		if len(fields) > 0 {
-			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
-				switch {
-				case v > 2.0:
-					loadLevel = " (High)"
-				case v > 1.0:
-					loadLevel = " (Medium)"
-				default:
-					loadLevel = ""
-				}
-			}
-		}
-		// Show only 1/5/15m averages, drop process/thread counts
 		shortLoad := ""
 		for i, f := range fields {
 			if i >= 3 {
@@ -281,10 +276,20 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 			}
 			shortLoad += f
 		}
-		addRow("Load", shortLoad+loadLevel)
+		if len(fields) > 0 {
+			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
+				switch {
+				case v > 2.0:
+					shortLoad += " ↑"
+				case v > 1.0:
+					shortLoad += " →"
+				}
+			}
+		}
+		addRow("Load", shortLoad)
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, title, strings.Join(rows, "\n")))
+	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (m *overviewModel) renderMetaCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -294,14 +299,18 @@ func (m *overviewModel) renderMetaCard(r *domain.ScanResult, theme Theme, width 
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
 
-	svcs := len(r.Metadata.Services)
-	infos := len(r.Metadata.InfoMessages)
-	warns := len(r.Metadata.Warnings)
+	parts := []string{
+		fmt.Sprintf("Services: %d", len(r.Metadata.Services)),
+		fmt.Sprintf("Findings: %d", r.TotalFindings()),
+	}
+	if len(r.Metadata.Warnings) > 0 {
+		parts = append(parts, fmt.Sprintf("Warnings: %d", len(r.Metadata.Warnings)))
+	}
+	if len(r.Metadata.InfoMessages) > 0 {
+		parts = append(parts, fmt.Sprintf("Info: %d", len(r.Metadata.InfoMessages)))
+	}
 
-	content := fmt.Sprintf("Services: %d\nWarnings: %d\nInfo: %d\nFindings: %d",
-		svcs, warns, infos, r.TotalFindings())
-
-	return style.Render(content)
+	return style.Render(strings.Join(parts, "  |  "))
 }
 
 func RenderBar(score uint8, width int) string {

@@ -2,27 +2,25 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
 const (
 	settingTheme = iota
-	settingBorders
 	settingCount
 )
 
 type settingsModel struct {
-	open        bool
-	selection   int
-	themeName   string
-	showBorders bool
+	open      bool
+	selection int
+	themeName string
 }
 
 func newSettingsModel() *settingsModel {
 	return &settingsModel{
-		themeName:   "tokyo-night",
-		showBorders: false,
+		themeName: "tokyo-night",
 	}
 }
 
@@ -31,7 +29,6 @@ func (m *settingsModel) Toggle() {
 }
 
 func (m *settingsModel) IsOpen() bool { return m.open }
-func (m *settingsModel) ShowBorders() bool { return m.showBorders }
 
 func (m *settingsModel) Update(msg string) {
 	if !m.open {
@@ -49,19 +46,9 @@ func (m *settingsModel) Update(msg string) {
 			m.selection = 0
 		}
 	case "l", "right":
-		switch m.selection {
-		case settingTheme:
-			m.cycleTheme()
-		case settingBorders:
-			m.showBorders = !m.showBorders
-		}
+		m.cycleTheme()
 	case "h", "left":
-		switch m.selection {
-		case settingTheme:
-			m.cycleTheme()
-		case settingBorders:
-			m.showBorders = !m.showBorders
-		}
+		m.cycleTheme()
 	case "esc", "q":
 		m.open = false
 	}
@@ -84,9 +71,12 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		return ""
 	}
 
-	dialogWidth := 40
+	dialogWidth := 44
 	if dialogWidth > width-4 {
 		dialogWidth = width - 4
+	}
+	if dialogWidth < 36 {
+		dialogWidth = 36
 	}
 
 	dialogStyle := lipgloss.NewStyle().
@@ -97,32 +87,44 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		Padding(1, 2).
 		Align(lipgloss.Left)
 
-	title := lipgloss.NewStyle().
+	content := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(theme.Text)).
-		Render("Settings")
+		Render("Settings") + "\n\n"
 
-	cursor := func(i int) string {
-		if i == m.selection {
-			return ">"
-		}
-		return " "
-	}
-	highlight := func(i int, s string) string {
-		if i == m.selection {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render(s)
-		}
-		return s
-	}
+	// Theme selector
+	content += lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Theme:") + "\n"
 
-	content := title + "\n\n"
-	content += fmt.Sprintf(" %s %s: %s\n", cursor(settingTheme), highlight(settingTheme, "Theme"), m.themeName)
-	bordersVal := "Off"
-	if m.showBorders {
-		bordersVal = "On"
+	themes := ThemeNames()
+	var themeRow []string
+	for _, t := range themes {
+		th := GetTheme(t)
+		isSelected := t == m.themeName
+		dot := "○"
+		if isSelected {
+			dot = "●"
+		}
+		entry := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(th.Accent)).
+			Render(fmt.Sprintf("%s %s", dot, t))
+		if isSelected {
+			entry = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(th.Accent)).
+				Bold(true).
+				Render(fmt.Sprintf("%s %s", dot, t))
+		}
+		themeRow = append(themeRow, entry)
 	}
-	content += fmt.Sprintf(" %s %s: %s\n", cursor(settingBorders), highlight(settingBorders, "Borders"), bordersVal)
-	content += "\n↑/↓ navigate  ←/→ toggle  Esc close"
+	content += "  " + strings.Join(themeRow, "  ") + "\n\n"
+
+	sep := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Border)).Render(strings.Repeat("─", dialogWidth-6))
+	content += sep + "\n"
+
+	content += lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("←/→ cycle theme  |  Esc close")
 
 	return dialogStyle.Render(content)
 }

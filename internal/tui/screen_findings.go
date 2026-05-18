@@ -19,12 +19,12 @@ type findingsModel struct {
 	detailVP   viewport.Model
 
 	// Filters
-	severityFilter    string // "", "critical", "high", "medium", "low"
+	severityFilter    string
 	sourceFilter      string
 	scopeFilter       string
 	serviceFilter     string
 	remediationFilter string
-	sortMode          string // "severity", "source", "title"
+	sortMode          string
 
 	searchQuery      string
 	showSearch       bool
@@ -188,6 +188,7 @@ func (m *findingsModel) resetFilters() {
 	m.searchQuery = ""
 	m.showSearch = false
 	m.selected = 0
+	m.hostTriageMode = false
 	m.showFixPreview = false
 	m.fixPreviewContent = ""
 	m.applyFilters()
@@ -225,16 +226,34 @@ func formatFindingDetail(f *domain.Finding) string {
 	return b.String()
 }
 
+func highlightText(s, query string) string {
+	if query == "" {
+		return s
+	}
+	q := strings.ToLower(query)
+	lower := strings.ToLower(s)
+	var result strings.Builder
+	start := 0
+	for {
+		idx := strings.Index(lower[start:], q)
+		if idx == -1 {
+			result.WriteString(s[start:])
+			break
+		}
+		result.WriteString(s[start : start+idx])
+		result.WriteString("\x1b[7m" + s[start+idx:start+idx+len(q)] + "\x1b[27m")
+		start = start + idx + len(q)
+	}
+	return result.String()
+}
+
 func (m *findingsModel) render(theme Theme, width, height int) string {
 	if width < 40 {
 		return "Terminal too narrow"
 	}
 
-	// Filter status bar
 	filterBar := m.renderFilterBar(theme, width)
-	m.applyFilters()
 
-	// List
 	listWidth := width
 	if m.showDetail {
 		listWidth = width / 2
@@ -245,16 +264,26 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	listContent.WriteString(filterBar + "\n")
 
 	if len(m.list) == 0 {
+		// Centered empty state
+		msg := "No findings match current filters."
 		if m.hostTriageMode {
-			listContent.WriteString("  No host-level findings detected.")
-			listContent.WriteString("\n  All findings from this scan are service-level.")
-			listContent.WriteString("\n  Press R to clear filters")
-		} else {
-			listContent.WriteString("  No findings match current filters.")
-			if len(m.all) > 0 {
-				listContent.WriteString("\n  Press R to clear all filters")
-			}
+			msg = "No host-level findings detected.\nAll findings from this scan are service-level."
+		} else if len(m.all) == 0 {
+			msg = "No findings detected."
 		}
+		help := "Press R to clear all filters"
+
+		padding := strings.Repeat("\n", (listHeight-6)/2)
+		centerMsg := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(msg)
+		centerHelp := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(help)
+
+		listContent.WriteString(padding)
+		listContent.WriteString(lipgloss.PlaceHorizontal(listWidth, lipgloss.Center, centerMsg) + "\n")
+		listContent.WriteString(lipgloss.PlaceHorizontal(listWidth, lipgloss.Center, centerHelp))
 	} else {
 		for i, f := range m.list {
 			cursor := " "
@@ -263,27 +292,35 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			}
 
 			color := f.Severity.Color()
+			icon := severityIcon(f.Severity)
 			idxStr := fmt.Sprintf("%2d.", i+1)
-			title := truncateStr(f.Title, listWidth-26)
-			line := fmt.Sprintf("%s %s [%s] %s  %s", cursor, idxStr, strings.ToUpper(f.Severity.String()), title, f.Service)
+			sevLabel := fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()))
+
+			// Highlight search match
+			title := f.Title
+			if m.searchQuery != "" {
+				title = highlightText(title, m.searchQuery)
+			}
+			title = truncateStr(title, listWidth-36)
+
+			line := fmt.Sprintf("%s %s %s %s  %s", cursor, idxStr, sevLabel, title, f.Service)
 
 			style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 			if i == m.selected {
-				style = style.Bold(true)
+				style = style.Bold(true).Background(lipgloss.Color(theme.Surface))
 			}
 
 			listContent.WriteString(style.Render(line) + "\n")
 		}
 	}
 
-	// Detail panel or fix preview
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
 
 		detailStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(theme.Border)).
-			Width(width / 2).
+			Width(listWidth).
 			Padding(0, 1).
 			Height(listHeight)
 
@@ -291,25 +328,45 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			Foreground(lipgloss.Color(f.Severity.Color())).
 			Bold(true)
 
-		var detail string
+		detail := ""
 		if m.showFixPreview && m.fixPreviewContent != "" {
-			detail = m.fixPreviewContent
-		} else {
-			sep := "\n" + strings.Repeat("─", 30) + "\n\n"
-			detail = headerStyle.Render(f.Title) + "\n\n"
-			detail += fmt.Sprintf("ID: %s\n", f.ID)
-			detail += fmt.Sprintf("Severity: %s | Axis: %s\n", strings.ToUpper(f.Severity.String()), f.Axis.Label())
-			detail += fmt.Sprintf("Source: %s | Scope: %s\n", f.Source.String(), f.Scope.String())
-			if f.Service != "" {
-				detail += fmt.Sprintf("Service: %s\n", f.Service)
-			}
-			detail += fmt.Sprintf("Fix: %s", f.Remediation.Label())
-			if f.IsFixable() {
-				detail += "  (press f for preview)"
-			}
+			sep := "\n" + strings.Repeat("─", listWidth-4) + "\n"
+			detail = headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
+			detail += fmt.Sprintf("Current setup:\n")
+			detail += m.fixPreviewContent
 			detail += sep
-			detail += fmt.Sprintf("Description:\n%s\n\n", f.Description)
-			detail += fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky)
+			detail += "\nPress f to toggle preview / detail view"
+		} else {
+			sep := "\n" + strings.Repeat("─", listWidth-4) + "\n"
+			detail = headerStyle.Render(f.Title) + "\n\n"
+
+			// Metadata in 2-column layout
+			metaLeft := fmt.Sprintf("ID: %s\nSeverity: %s\nAxis: %s\nScope: %s\n",
+				f.ID,
+				lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(strings.ToUpper(f.Severity.String())),
+				f.Axis.Label(),
+				f.Scope.String())
+			metaRight := fmt.Sprintf("Source: %s\nService: %s\nFix: %s",
+				f.Source.String(),
+				f.Service,
+				f.Remediation.Label())
+			if f.IsFixable() {
+				metaRight += " (press f)"
+			}
+			metaLeftStyle := lipgloss.NewStyle().Width(listWidth / 2)
+			metaRightStyle := lipgloss.NewStyle().Width(listWidth / 2)
+			detail += lipgloss.JoinHorizontal(lipgloss.Top,
+				metaLeftStyle.Render(metaLeft),
+				metaRightStyle.Render(metaRight),
+			)
+
+			detail += sep
+			if f.Description != "" {
+				detail += fmt.Sprintf("Description:\n%s\n\n", f.Description)
+			}
+			if f.WhyRisky != "" {
+				detail += fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky)
+			}
 			if f.HowToFix != "" {
 				detail += fmt.Sprintf("How to fix:\n%s\n\n", f.HowToFix)
 			}
@@ -322,7 +379,6 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		}
 
 		detailPanel := detailStyle.Render(detail)
-
 		listStyle := lipgloss.NewStyle().
 			Width(listWidth).
 			Height(listHeight)
@@ -336,57 +392,91 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	return listContent.String()
 }
 
+func naturalSeverity(s string) string {
+	switch s {
+	case "critical":
+		return "Critical"
+	case "high":
+		return "High"
+	case "medium":
+		return "Medium"
+	case "low":
+		return "Low"
+	}
+	return s
+}
+
+func naturalSource(s string) string {
+	switch s {
+	case "native_compose":
+		return "Compose"
+	case "native_host":
+		return "Host"
+	}
+	return s
+}
+
+func naturalScope(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func naturalRemediation(s string) string {
+	switch s {
+	case "auto":
+		return "Auto"
+	case "review":
+		return "Review"
+	case "manual":
+		return "Manual"
+	}
+	return s
+}
+
 func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
-	var filterTokens []string
+	var tokens []string
 	if m.severityFilter != "" {
-		filterTokens = append(filterTokens, fmt.Sprintf("sev:%s", m.severityFilter))
+		tokens = append(tokens, fmt.Sprintf("Severity: %s", naturalSeverity(m.severityFilter)))
 	}
 	if m.sourceFilter != "" {
-		filterTokens = append(filterTokens, fmt.Sprintf("src:%s", m.sourceFilter))
+		tokens = append(tokens, fmt.Sprintf("Source: %s", naturalSource(m.sourceFilter)))
 	}
 	if m.scopeFilter != "" {
-		filterTokens = append(filterTokens, fmt.Sprintf("scp:%s", m.scopeFilter))
+		tokens = append(tokens, fmt.Sprintf("Scope: %s", naturalScope(m.scopeFilter)))
 	}
 	if m.serviceFilter != "" {
-		filterTokens = append(filterTokens, fmt.Sprintf("svc:%s", m.serviceFilter))
+		tokens = append(tokens, fmt.Sprintf("Service: %s", m.serviceFilter))
 	}
 	if m.remediationFilter != "" {
-		filterTokens = append(filterTokens, fmt.Sprintf("rem:%s", m.remediationFilter))
+		tokens = append(tokens, fmt.Sprintf("Fix: %s", naturalRemediation(m.remediationFilter)))
 	}
 	if m.sortMode != "" && m.sortMode != "severity" {
-		filterTokens = append(filterTokens, fmt.Sprintf("sort:%s↑", m.sortMode))
+		tokens = append(tokens, fmt.Sprintf("Sort: %s ↑", m.sortMode))
 	}
 
-	filterInfo := fmt.Sprintf("%d/%d", len(m.list), len(m.all))
-	if len(filterTokens) > 0 {
-		filterLine := strings.Join(filterTokens, " ")
-		prefixLen := len(filterInfo) + 1
-		indent := 6
-		if prefixLen+len(filterLine) > width {
-			// Wrap to next line with indent
-			filterInfo += "\n" + strings.Repeat(" ", indent) + filterLine
+	info := fmt.Sprintf("%d/%d", len(m.list), len(m.all))
+	if len(tokens) > 0 {
+		filterLine := strings.Join(tokens, " | ")
+		if len(info)+len(filterLine)+7 > width {
+			info += "\n" + strings.Repeat(" ", 6) + filterLine
 		} else {
-			filterInfo += " " + filterLine
+			info += "  " + filterLine
 		}
 	} else {
-		filterInfo += " no filters"
+		info += "  no filters"
 	}
 
 	if m.showSearch {
-		if m.searchQuery == "" {
-			searchLine := "search: Type to search, Esc to cancel"
-			if len(filterInfo)+len(searchLine)+7 > width {
-				filterInfo += "\n" + strings.Repeat(" ", 6) + searchLine
-			} else {
-				filterInfo += " | " + searchLine
-			}
+		s := "search: Type to search, Esc to cancel"
+		if m.searchQuery != "" {
+			s = fmt.Sprintf("search: %s█", m.searchQuery)
+		}
+		if len(info)+len(s)+7 > width {
+			info += "\n" + strings.Repeat(" ", 6) + s
 		} else {
-			searchLine := fmt.Sprintf("search: %s█", m.searchQuery)
-			if len(filterInfo)+len(searchLine)+7 > width {
-				filterInfo += "\n" + strings.Repeat(" ", 6) + searchLine
-			} else {
-				filterInfo += " | " + searchLine
-			}
+			info += " | " + s
 		}
 	}
 
@@ -394,7 +484,7 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 		Foreground(lipgloss.Color(theme.TextMuted)).
 		Width(width)
 
-	return style.Render(filterInfo)
+	return style.Render(info)
 }
 
 func truncateStr(s string, n int) string {

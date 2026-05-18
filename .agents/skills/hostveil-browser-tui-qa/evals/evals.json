@@ -3,21 +3,18 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Run hostveil with --serve, use agent-browser to open the browser terminal, drive the TUI through overview/findings/history/help/settings, capture screenshots, and tell me if anything looks broken.",
-      "expected_output": "Starts hostveil --serve, parses the actual fallback URL, captures a diverse screenshot set, reads the images, and reports visual findings rather than only listing files.",
-      "files": []
+      "prompt": "Run hostveil with --serve using the vaultwarden compose fixture, use agent-browser to connect, explore the TUI across 3+ viewport sizes (wide/medium/narrow), capture screenshots of overview/findings/history/help/settings, and report visual findings.",
+      "expected_output": "Plans viewport sizes that exercise all responsive layout breakpoints, dynamically navigates the TUI with keyboard input, captures screenshots at meaningful states (including search, filters, fix preview, detail panel), inspects each PNG visually, and produces a QA report with concrete observations rather than just listing files."
     },
     {
       "id": 2,
-      "prompt": "Can you visually QA the hostveil TUI in browser mode? Please include a narrow viewport responsive screenshot and check whether the theme switch applies.",
-      "expected_output": "Uses --serve plus agent-browser, captures normal and narrow viewport screenshots, changes theme through Settings, confirms keyboard input worked, and notes any scrollbars or layout issues.",
-      "files": []
+      "prompt": "Visually QA the hostveil TUI in browser mode. Include a narrow viewport responsive test and check whether theme switching applies correctly across all screens.",
+      "expected_output": "Uses --serve + agent-browser, tests at least 3 viewport sizes, cycles through at least 2 themes, captures 10-15 screenshots including overview after theme change, checks background color continuity, border integrity, and responsive layout transitions."
     },
     {
       "id": 3,
-      "prompt": "Use the vaultwarden compose fixture and collect browser screenshots of the hostveil findings list, detail panel, filters, help modal, and settings modal.",
-      "expected_output": "Runs against tests/scenarios/vaultwarden-domain/docker-compose.yml, focuses the ttyd terminal input, navigates with documented keys, saves named screenshots, inspects them, and cleans up background processes.",
-      "files": []
+      "prompt": "Use agent-browser to perform a comprehensive visual QA of hostveil's TUI. Cover: findings search, fix preview, multi-filter state, host triage empty state, and sort mode changes. Check all modals (help, settings) and verify responsive layout at narrow and minimal viewports.",
+      "expected_output": "Starts --serve, connects agent-browser, navigates to each specified state using documented keyboard shortcuts, captures screenshots, reads each image to verify rendering correctness (no background gaps, clipped text, broken borders, modal centering, etc.), and presents a structured findings report."
     }
   ]
 }
