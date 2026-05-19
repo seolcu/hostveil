@@ -40,7 +40,20 @@ URL=$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' /tmp/hostveil-serve.log | tail -n 1
 echo "$URL"
 ```
 
-### 3. Connect agent-browser
+### 3. Create screenshot output directory
+
+Create a timestamped subdirectory under `screenshots/` to organize this session's captures:
+
+```bash
+mkdir -p screenshots
+SHOT_DIR="screenshots/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$SHOT_DIR"
+echo "Screenshots will be saved to $SHOT_DIR"
+```
+
+Use `"$SHOT_DIR"` as the target directory for all `agent-browser screenshot` commands in this session.
+
+### 4. Connect agent-browser
 
 ```bash
 agent-browser open "$URL"
@@ -62,6 +75,12 @@ The ref (`@e1`) is invalidated after navigation or viewport changes — re-run `
 Use `agent-browser press <key>` to send keystrokes. Bubbletea responds to single-character keys.
 
 Wait **500–700 ms** between key presses and **800–1200 ms** after viewport changes (the terminal needs to reflow).
+
+All screenshots must be saved with the full path `"$SHOT_DIR"`:
+
+```bash
+agent-browser screenshot "$SHOT_DIR/overview.png"
+```
 
 ## Phase 2: Iterative Observe–Explore Loop
 
@@ -269,15 +288,16 @@ kill <PID>    # kill only test processes, not root-owned ttyd sessions
 
 ## Report Format
 
-Present a concise, concrete report. Include the **iterative decisions** made during QA — show why each screenshot was taken and what the inspection revealed.
+Present a concise, concrete report. Include the **iterative decisions** made during QA — show why each screenshot was taken and what the inspection revealed. Reference the timestamped output directory.
 
 ```markdown
-Captured N screenshots in `hostveil-screenshots/`.
+Captured N screenshots in `screenshots/<timestamp>/`.
 
 Setup:
 - Built at <commit>
 - Started on <URL> (port fallback if any)
 - agent-browser connected and keyboard input confirmed
+- Screenshot output: `$SHOT_DIR`
 
 Viewport coverage: 1400×800, 640×480, 400×300, ...
 

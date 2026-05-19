@@ -3,3 +3,4 @@ hostveil-*
 /target/
 *.db
 .DS_Store
+/screenshots/

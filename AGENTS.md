@@ -250,8 +250,11 @@ agent-browser wait 2500
 agent-browser snapshot -i
 agent-browser click @e1
 
-# Capture screenshots
-agent-browser screenshot overview.png
+# Create timestamped output directory and capture
+mkdir -p screenshots
+SHOT_DIR="screenshots/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$SHOT_DIR"
+agent-browser screenshot "$SHOT_DIR/overview.png"
 ```
 
 ### Verified TUI Keyboard Navigation (via ttyd)
