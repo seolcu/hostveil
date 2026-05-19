@@ -56,39 +56,50 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return "Terminal too narrow"
 	}
 
-	// Mini mode for very narrow terminals
-	if width < 40 {
+	if width < miniWidth {
 		return m.renderMiniDashboard(r, theme, width)
 	}
 
-	// Summary line
 	summary := m.renderSummaryLine(r, theme, width)
 
-	// Responsive card layout
 	switch {
-	case width >= 100:
-		colWidth := (width - 6) / 3
-		nextActions := m.renderNextActionsCard(r, theme, colWidth)
-		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
-		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
-		hostCard := m.renderHostCard(r, theme, colWidth)
+	case width >= wideWidth:
+		col3 := (width - 6) / 3
+		col2 := (width - 2) / 2
+		full := width - 2
 
-		left := nextActions
-		middle := lipgloss.JoinVertical(lipgloss.Top, riskByArea, hostCard)
-		right := affectedSvcs
+		nextActions := m.renderNextActionsCard(r, theme, col3)
+		riskByArea := m.renderRiskByAreaCard(r, theme, col3)
+		affectedSvcs := m.renderAffectedServicesCard(r, theme, col3)
+		fixQueue := m.renderFixQueueCard(r, theme, col2)
+		scanCtx := m.renderScanContextCard(r, theme, col2)
+		rec := m.renderRecommendationCard(r, theme, full)
 
-		return summary + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", middle, "  ", right)
+		top := lipgloss.JoinHorizontal(lipgloss.Top, nextActions, "  ", riskByArea, "  ", affectedSvcs)
+		middle := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
 
-	case width >= 60:
-		colWidth := (width - 2) / 2
-		nextActions := m.renderNextActionsCard(r, theme, colWidth)
-		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
-		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
-		hostCard := m.renderHostCard(r, theme, colWidth)
+		body := lipgloss.JoinVertical(lipgloss.Top, top, "", middle, "", rec)
+		return summary + "\n" + body
+
+	case width >= mediumWidth:
+		col2 := (width - 2) / 2
+		full := width - 2
+
+		nextActions := m.renderNextActionsCard(r, theme, col2)
+		riskByArea := m.renderRiskByAreaCard(r, theme, col2)
+		affectedSvcs := m.renderAffectedServicesCard(r, theme, col2)
+		hostCard := m.renderHostCard(r, theme, col2)
+		fixQueue := m.renderFixQueueCard(r, theme, col2)
+		scanCtx := m.renderScanContextCard(r, theme, col2)
+		rec := m.renderRecommendationCard(r, theme, full)
 
 		left := lipgloss.JoinVertical(lipgloss.Top, nextActions, affectedSvcs)
 		right := lipgloss.JoinVertical(lipgloss.Top, riskByArea, hostCard)
-		return summary + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+		topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+		bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
+
+		body := lipgloss.JoinVertical(lipgloss.Top, topRow, "", bottomRow, "", rec)
+		return summary + "\n" + body
 
 	default:
 		colWidth := width - 2
@@ -96,7 +107,11 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
 		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
 		hostCard := m.renderHostCard(r, theme, colWidth)
-		return summary + "\n" + lipgloss.JoinVertical(lipgloss.Top, nextActions, riskByArea, affectedSvcs, hostCard)
+		fixQueue := m.renderFixQueueCard(r, theme, colWidth)
+		scanCtx := m.renderScanContextCard(r, theme, colWidth)
+		rec := m.renderRecommendationCard(r, theme, colWidth)
+		body := lipgloss.JoinVertical(lipgloss.Top, nextActions, riskByArea, affectedSvcs, hostCard, fixQueue, scanCtx, rec)
+		return summary + "\n" + body
 	}
 }
 
@@ -444,4 +459,190 @@ func RenderBar(score uint8, width int) string {
 func renderColoredBar(score uint8, width int, color string) string {
 	bar := RenderBar(score, width)
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(bar)
+}
+
+func (m *overviewModel) renderFixQueueCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Fix queue")
+	var rows []string
+
+	autoCount := 0
+	reviewCount := 0
+	manualCount := 0
+	var firstFixable *domain.Finding
+	for _, f := range r.Findings {
+		switch f.Remediation {
+		case domain.RemediationAuto:
+			autoCount++
+			if firstFixable == nil {
+				firstFixable = &f
+			}
+		case domain.RemediationReview:
+			reviewCount++
+			if firstFixable == nil {
+				firstFixable = &f
+			}
+		case domain.RemediationManual:
+			manualCount++
+		}
+	}
+
+	total := autoCount + reviewCount + manualCount
+	if total == 0 {
+		rows = append(rows, "  No fixable findings")
+	} else {
+		var parts []string
+		if autoCount > 0 {
+			parts = append(parts, fmt.Sprintf("%d auto", autoCount))
+		}
+		if reviewCount > 0 {
+			parts = append(parts, fmt.Sprintf("%d review", reviewCount))
+		}
+		if manualCount > 0 {
+			parts = append(parts, fmt.Sprintf("%d manual", manualCount))
+		}
+		rows = append(rows, fmt.Sprintf("  %s can be previewed", strings.Join(parts, "  ·  ")))
+
+		if firstFixable != nil {
+			rows = append(rows, "  Press 2 → p to preview the first fix")
+		}
+	}
+
+	return style.Render(title + "\n" + strings.Join(rows, "\n"))
+}
+
+func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Scan context")
+	var rows []string
+	addRow := func(k, v string) {
+		rows = append(rows, fmt.Sprintf("%-12s %s", k+":", v))
+	}
+
+	// Host info
+	info := r.Metadata.HostRuntime
+	if info != nil {
+		if info.Hostname != "" {
+			addRow("Hostname", info.Hostname)
+		}
+		if info.DockerVersion != "" {
+			addRow("Docker", info.DockerVersion)
+		}
+		if info.Uptime != "" {
+			addRow("Uptime", info.Uptime)
+		}
+		if info.LoadAverage != "" {
+			loadStr := info.LoadAverage
+			fields := strings.Fields(loadStr)
+			shortLoad := ""
+			for i, f := range fields {
+				if i >= 3 {
+					break
+				}
+				if i > 0 {
+					shortLoad += " "
+				}
+				shortLoad += f
+			}
+			if len(fields) > 0 {
+				if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
+					switch {
+					case v > 2.0:
+						shortLoad += " ↑"
+					case v > 1.0:
+						shortLoad += " →"
+					}
+				}
+			}
+			addRow("Load", shortLoad)
+		}
+	}
+
+	// Scan context
+	if len(r.Metadata.Services) > 0 {
+		if len(r.Metadata.Services) == 1 {
+			addRow("Service", r.Metadata.Services[0].Name)
+		} else {
+			names := make([]string, len(r.Metadata.Services))
+			for i, s := range r.Metadata.Services {
+				names[i] = s.Name
+			}
+			addRow("Services", fmt.Sprintf("%d (%s)", len(r.Metadata.Services), strings.Join(names, ", ")))
+		}
+	}
+	if r.Metadata.ComposeFile != "" {
+		addRow("Compose", r.Metadata.ComposeFile)
+	}
+	if len(r.Metadata.Adapters) > 0 {
+		names := make([]string, len(r.Metadata.Adapters))
+		for i, a := range r.Metadata.Adapters {
+			names[i] = a.Name
+		}
+		addRow("Adapters", strings.Join(names, ", "))
+	}
+
+	if len(rows) == 0 {
+		rows = append(rows, "  No scan context available")
+	}
+
+	return style.Render(title + "\n" + lipgloss.JoinVertical(lipgloss.Left, rows...))
+}
+
+func (m *overviewModel) renderRecommendationCard(r *domain.ScanResult, theme Theme, width int) string {
+	if len(r.Findings) == 0 {
+		return ""
+	}
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Recommendation")
+	var desc string
+
+	lowestScore := uint8(100)
+	lowestAxis := ""
+	for _, axis := range domain.AllAxes() {
+		score := r.ScoreReport.AxisScores[axis]
+		if score < lowestScore {
+			lowestScore = score
+			lowestAxis = axis.Label()
+		}
+	}
+
+	grade := r.ScoreReport.Grade()
+	if lowestScore >= 80 {
+		desc = "Overall security posture is Good. Maintain current practices."
+	} else {
+		desc = fmt.Sprintf("Overall risk is %s because %s score is %d.",
+			grade, strings.ToLower(lowestAxis), lowestScore)
+
+		lowLabel := strings.ToLower(lowestAxis)
+		switch {
+		case strings.Contains(lowLabel, "exposure"):
+			desc += " Start with public bindings and reverse proxy configuration first."
+		case strings.Contains(lowLabel, "sensitive"):
+			desc += " Review secrets management, env variables, and data volume permissions."
+		case strings.Contains(lowLabel, "permission"):
+			desc += " Audit file permissions, drop capabilities, and restrict privilege escalation."
+		case strings.Contains(lowLabel, "supply"):
+			desc += " Pin image versions and enable automatic security updates."
+		case strings.Contains(lowLabel, "host"):
+			desc += " Harden the host: SSH config, firewall rules, kernel parameters, and defenses."
+		}
+	}
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	return style.Render(title + "\n" + desc)
 }

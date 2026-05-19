@@ -19,8 +19,12 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 	}
 
 	dialogWidth := width - 8
-	if dialogWidth > 72 {
-		dialogWidth = 72
+	maxWidth := 72
+	if width >= wideWidth {
+		maxWidth = 84
+	}
+	if dialogWidth > maxWidth {
+		dialogWidth = maxWidth
 	}
 	if dialogWidth < 40 {
 		dialogWidth = 40
@@ -54,7 +58,7 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 	}
 
 	content += renderSection("Navigation", [][2]string{
-		{"1 / 2 / 3", "Switch screens (Dashboard / Findings / Report)"},
+		{"1 / 2 / 3", "Overview, Findings, Report"},
 		{"↑ / ↓ or j / k", "Navigate list"},
 		{"Enter or → or l", "Open finding detail panel"},
 		{"← or h", "Back to list"},
@@ -71,8 +75,13 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 		{"h (Dashboard)", "Host triage (filter to host scope)"},
 	})
 
-	content += renderSection("General", [][2]string{
+	content += renderSection("Report", [][2]string{
+		{"j / k", "Select export format"},
+		{"Enter", "Export to file"},
 		{"s", "Settings modal"},
+	})
+
+	content += renderSection("General", [][2]string{
 		{"?", "Toggle this help"},
 		{"Esc", "Close panel / cancel"},
 		{"q", "Quit"},

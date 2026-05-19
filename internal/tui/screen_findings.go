@@ -413,16 +413,19 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		return "Terminal too narrow"
 	}
 
-	// Mini mode
-	if width < 40 {
+	if width < miniWidth {
 		return m.renderMiniFindings(theme, width)
 	}
 
 	filterBar := m.renderFilterBar(theme, width)
 
 	listWidth := width
+	previewWidth := 0
 	if m.showDetail {
 		listWidth = width / 2
+	} else if width >= wideWidth && len(m.list) > 0 {
+		listWidth = width * 2 / 3
+		previewWidth = width - listWidth - 1
 	}
 	listHeight := height - 2
 
@@ -489,8 +492,8 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			listContent.WriteString(style.Render(line) + "\n")
 		}
 
-		// Fill remaining space with hints when detail not shown
-		if !m.showDetail && len(m.list) > 0 {
+		// Fill remaining space with hints (only when no preview/detail panel)
+		if !m.showDetail && previewWidth == 0 && len(m.list) > 0 {
 			remaining := listHeight - len(m.list) - 1
 			if remaining > 3 {
 				sepLine := "\n" + strings.Repeat("─", listWidth)
@@ -541,18 +544,34 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			detail = headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
 			detail += fmt.Sprintf("Current setup:\n")
 			detail += m.fixPreviewContent
-			// Backup path
 			if m.fixBackupPath != "" {
 				detail += fmt.Sprintf("\nBackup: %s\n", m.fixBackupPath)
 			}
-			detail += "\nRisk: Review changes before applying.\n"
-			detail += "  p close preview  ·  a apply  ·  r rescan"
+			detail += "\n───  Decision  ───\n"
+			switch f.Remediation {
+			case domain.RemediationAuto:
+				detail += "This change can be applied automatically.\n"
+			case domain.RemediationReview:
+				detail += "This change requires review before applying.\n"
+			default:
+				detail += "This change must be applied manually.\n"
+			}
+			if m.fixBackupPath != "" {
+				detail += fmt.Sprintf("Backup will be created: %s\n", m.fixBackupPath)
+			} else {
+				detail += "No backup path available.\n"
+			}
+			detail += "\n"
+			detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("[p] Close preview") + "\n"
+			if f.Remediation != domain.RemediationManual {
+				detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Success)).Render("[a] Apply fix") + "\n"
+			}
+			detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.TextMuted)).Render("[r] Rescan after manual change")
 			detail += sep
 		} else {
 			sep := "\n" + strings.Repeat("═", listWidth-4) + "\n"
 			detail = headerStyle.Render(f.Title) + "\n\n"
 
-			// Severity + Remediation
 			sevRem := fmt.Sprintf("%s · %s",
 				lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(strings.ToUpper(f.Severity.String())),
 				f.Remediation.Label())
@@ -575,14 +594,33 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 				detail += fmt.Sprintf("Recommended fix:\n%s\n\n", f.HowToFix)
 			}
 			if f.IsFixable() {
-				prompt := "p preview fix"
-				detail += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render(prompt) + "\n"
+				detail += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render("p preview fix") + "\n"
 			}
 
-			// Metadata at bottom
 			detail += sep
 			detail += fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
 				f.ID, f.Source.String(), f.Scope.String(), f.Service)
+
+			// Actions section
+			detail += "\n\n───  Actions  ───\n"
+			if f.IsFixable() {
+				detail += "p  Preview fix\n"
+				if f.Source == domain.SourceNativeCompose {
+					detail += "a  Apply after preview\n"
+				}
+			}
+			detail += "r  Rescan\n"
+			detail += "Esc  Back to list"
+
+			// Related findings (same service)
+			related := m.relatedFindings(&f)
+			if len(related) > 0 {
+				detail += "\n\n───  Related findings  ───\n"
+				for _, rf := range related {
+					icon := severityIcon(rf.Severity)
+					detail += fmt.Sprintf("  %s %s\n", icon, rf.Title)
+				}
+			}
 		}
 
 		detailPanel := detailStyle.Render(detail)
@@ -596,7 +634,19 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		)
 	}
 
-	// Filter panel overlay — centered in available space
+	// Wide layout preview panel (no detail panel open)
+	if previewWidth > 0 && m.selected < len(m.list) {
+		previewPanel := m.renderWidePreviewPanel(theme, previewWidth, listHeight)
+		listStyle := lipgloss.NewStyle().
+			Width(listWidth).
+			Height(listHeight)
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			listStyle.Render(listContent.String()),
+			previewPanel,
+		)
+	}
+
+	// Filter panel overlay
 	if m.showFilterPanel && !m.showDetail {
 		panel := m.renderFilterPanel(theme, listWidth, listHeight)
 		panelLines := strings.Count(panel, "\n") + 1
@@ -608,6 +658,108 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	}
 
 	return listContent.String()
+}
+
+func (m *findingsModel) renderWidePreviewPanel(theme Theme, width, height int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	if m.selected >= len(m.list) {
+		emptyText := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("No finding selected")
+		return style.Render(emptyText)
+	}
+
+	f := m.list[m.selected]
+
+	var b strings.Builder
+
+	sevColor := f.Severity.Color()
+	sevStr := strings.ToUpper(f.Severity.String())
+	sevTag := lipgloss.NewStyle().Foreground(lipgloss.Color(sevColor)).Bold(true).Render(sevStr)
+	remLabel := f.Remediation.Label()
+	remColor := remediationColor(f.Remediation, theme)
+	remTag := lipgloss.NewStyle().Foreground(lipgloss.Color(remColor)).Render(remLabel)
+	b.WriteString(fmt.Sprintf("%s  ·  %s\n\n", sevTag, remTag))
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text))
+	b.WriteString(titleStyle.Render(f.Title) + "\n\n")
+
+	if len(f.Evidence) > 0 {
+		b.WriteString("Evidence:\n")
+		count := 0
+		for k, v := range f.Evidence {
+			if count >= 2 {
+				break
+			}
+			b.WriteString(fmt.Sprintf("  %s: %s\n", k, v))
+			count++
+		}
+		if len(f.Evidence) > 2 {
+			b.WriteString(fmt.Sprintf("  … and %d more\n", len(f.Evidence)-2))
+		}
+		b.WriteString("\n")
+	}
+
+	if f.HowToFix != "" {
+		b.WriteString("Recommended:\n")
+		truncatedFix := truncateStr(f.HowToFix, width-6)
+		b.WriteString("  " + truncatedFix + "\n\n")
+	}
+
+	hint := "Enter full detail"
+	if f.IsFixable() {
+		hint = "p preview fix  ·  " + hint
+	}
+	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))
+	b.WriteString(hintStyle.Render(hint))
+
+	return style.Render(b.String())
+}
+
+func (m *findingsModel) relatedFindings(f *domain.Finding) []domain.Finding {
+	svc := f.Service
+	if svc == "" {
+		return nil
+	}
+
+	type scoredFindings struct {
+		finding domain.Finding
+		score   int
+	}
+	var candidates []scoredFindings
+	for _, other := range m.all {
+		if other.Service != svc || other.ID == f.ID {
+			continue
+		}
+		s := 0
+		if other.Axis == f.Axis {
+			s += 2
+		}
+		if other.Remediation == f.Remediation {
+			s++
+		}
+		candidates = append(candidates, scoredFindings{other, s})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].score != candidates[j].score {
+			return candidates[i].score > candidates[j].score
+		}
+		return candidates[i].finding.Severity < candidates[j].finding.Severity
+	})
+
+	var related []domain.Finding
+	for i, c := range candidates {
+		if i >= 3 {
+			break
+		}
+		related = append(related, c.finding)
+	}
+	return related
 }
 
 func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {

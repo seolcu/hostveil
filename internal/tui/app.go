@@ -29,6 +29,13 @@ const (
 	screenReport
 )
 
+// Responsive layout width thresholds
+const (
+	wideWidth   = 120
+	mediumWidth = 80
+	miniWidth   = 40
+)
+
 type appModel struct {
 	currentScreen screen
 	width         int
@@ -125,12 +132,6 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.settings.Toggle()
 				return m, nil
 			}
-			if s == "enter" {
-				format := m.settings.CurrentExportFormat()
-				msg := doExport(m.scanResult, format)
-				m.settings.Toggle()
-				return m, m.showToast(msg)
-			}
 			oldTheme := m.settings.themeName
 			m.settings.Update(s)
 			if m.settings.themeName != oldTheme {
@@ -153,7 +154,12 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case s == "s" && m.currentScreen != screenFindings:
 			m.settings.Toggle()
 		case s == "r" || s == "R":
-			m.findings.resetFilters()
+			if m.currentScreen == screenFindings {
+				m.findings.resetFilters()
+			}
+			if m.currentScreen == screenReport {
+				m.history.exportCursor = 0
+			}
 		case s == "h" && m.currentScreen == screenDashboard:
 			// Host triage: switch to findings filtered to host scope
 			m.currentScreen = screenFindings
@@ -188,10 +194,11 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					return m, m.showToast(fmt.Sprintf("Apply failed: %v", err))
 				}
-				msg := fmt.Sprintf("Applied %d fixes. Backup: %s",
-					len(plan.AutoApplied)+len(plan.ReviewNeeded), plan.BackupPath)
+				n := len(plan.AutoApplied) + len(plan.ReviewNeeded)
+				msg := fmt.Sprintf("Applied %d fixes. Backup: %s. Press 2 to rescan.",
+					n, plan.BackupPath)
 				if plan.BackupPath == "" {
-					msg = fmt.Sprintf("Applied %d fixes.", len(plan.AutoApplied)+len(plan.ReviewNeeded))
+					msg = fmt.Sprintf("Applied %d fixes. Press 2 to rescan.", n)
 				}
 				m.findings.showFixPreview = false
 				m.findings.showDetail = false
@@ -200,6 +207,13 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			if m.currentScreen == screenFindings {
 				m.findings.Update(msg)
+			} else if m.currentScreen == screenReport {
+				if s == "enter" {
+					format := reportExportFormats[m.history.exportCursor].name
+					toastMsg := doExport(m.scanResult, format)
+					return m, m.showToast(toastMsg)
+				}
+				m.history.Update(msg)
 			}
 		}
 	}

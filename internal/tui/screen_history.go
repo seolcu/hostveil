@@ -4,12 +4,47 @@ import (
 	"fmt"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
 type historyModel struct {
-	scroll int
+	scroll       int
+	exportCursor int
+}
+
+type exportFormatItem struct {
+	name string
+	desc string
+}
+
+var reportExportFormats = []exportFormatItem{
+	{"json", "Machine-readable output"},
+	{"sarif", "GitHub code scanning / security tools"},
+	{"markdown", "Human-readable report"},
+	{"html", "Shareable dashboard"},
+}
+
+func (m *historyModel) Update(msg tea.Msg) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		s := msg.String()
+		switch s {
+		case "j", "down":
+			m.exportCursor++
+			if m.exportCursor >= len(reportExportFormats) {
+				m.exportCursor = 0
+			}
+		case "k", "up":
+			m.exportCursor--
+			if m.exportCursor < 0 {
+				m.exportCursor = len(reportExportFormats) - 1
+			}
+		case "r":
+			m.exportCursor = 0
+		}
+	}
 }
 
 func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
@@ -17,7 +52,7 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		return "Terminal too narrow"
 	}
 
-	if width < 40 {
+	if width < miniWidth {
 		return m.renderMiniReport(r, theme, width)
 	}
 
@@ -111,17 +146,31 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		card2 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, sevRows...))
 	}
 
-	// Card 3: Export options
+	// Card 3: Export options (selectable)
 	var exportRows []string
 	exportTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("Export report")
 	exportRows = append(exportRows, exportTitle)
 	exportRows = append(exportRows, "")
-	exportFmts := []string{"JSON", "SARIF", "Markdown", "HTML"}
-	for _, f := range exportFmts {
-		exportRows = append(exportRows, fmt.Sprintf("  · %s", f))
+
+	for i, ef := range reportExportFormats {
+		cursor := " "
+		if i == m.exportCursor {
+			cursor = ">"
+		}
+		formatName := strings.ToUpper(ef.name[:1]) + ef.name[1:]
+		nameStr := lipgloss.NewStyle().
+			Bold(i == m.exportCursor).
+			Foreground(lipgloss.Color(theme.TextBright)).
+			Render(formatName)
+		descStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(ef.desc)
+		exportRows = append(exportRows, fmt.Sprintf("  %s %s  %s", cursor, nameStr, descStr))
 	}
 	exportRows = append(exportRows, "")
-	exportRows = append(exportRows, "  Press s to open Settings for export")
+	exportRows = append(exportRows, "  "+lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Enter export  ·  j/k select  ·  s settings"))
 	card3 := "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, exportRows...))
 
 	// Card 4: Info messages and warnings
@@ -189,7 +238,7 @@ func (m *historyModel) renderMiniReport(r *domain.ScanResult, theme Theme, width
 		" · ",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
 	)
-	line3 := fmt.Sprintf("%d findings  |  s Settings for export", findings)
+	line3 := fmt.Sprintf("%d findings  |  Enter export  |  s Settings", findings)
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
 	return style.Render(line1 + "\n" + line2 + "\n" + line3)

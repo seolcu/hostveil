@@ -7,18 +7,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const (
-	settingTheme = iota
-	settingCount
-)
-
-var exportFormats = []string{"json", "sarif", "markdown", "html"}
-
 type settingsModel struct {
-	open          bool
-	themeName     string
-	adapterNames  []string
-	exportFormat  int // index into exportFormats
+	open         bool
+	themeName    string
+	adapterNames []string
 }
 
 func newSettingsModel() *settingsModel {
@@ -33,17 +25,9 @@ func (m *settingsModel) SetAdapters(names []string) {
 
 func (m *settingsModel) Toggle() {
 	m.open = !m.open
-	m.exportFormat = 0
 }
 
 func (m *settingsModel) IsOpen() bool { return m.open }
-
-func (m *settingsModel) CurrentExportFormat() string {
-	if m.exportFormat >= 0 && m.exportFormat < len(exportFormats) {
-		return exportFormats[m.exportFormat]
-	}
-	return "json"
-}
 
 func (m *settingsModel) Update(msg string) {
 	if !m.open {
@@ -58,8 +42,6 @@ func (m *settingsModel) Update(msg string) {
 		m.cycleTheme(1)
 	case "h", "left":
 		m.cycleTheme(-1)
-	case "e":
-		m.exportFormat = (m.exportFormat + 1) % len(exportFormats)
 	case "esc", "q":
 		m.open = false
 	}
@@ -164,25 +146,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 	}
 	content += "\n"
 
-	sep := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Border)).Render(strings.Repeat("─", dialogWidth-6))
-	content += sep + "\n"
-
-	// Export section
-	content += lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Accent)).
-		Render("Export Report:") + "\n"
-	fmtName := exportFormats[m.exportFormat]
-	fmtUpper := strings.ToUpper(fmtName[:1]) + fmtName[1:]
-	content += "  " + lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Text)).
-		Render(fmt.Sprintf("Format: %s", fmtUpper)) + "\n"
-	content += "  " + lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("e cycle format  |  enter export to file") + "\n"
 	content += "\n"
-
-	sep2 := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Border)).Render(strings.Repeat("─", dialogWidth-6))
-	content += sep2 + "\n"
 
 	content += lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
