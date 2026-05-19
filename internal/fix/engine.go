@@ -271,24 +271,130 @@ func (e *Engine) PreviewFinding(finding domain.Finding) string {
 	}
 
 	snippet := extractServiceSnippet(string(data), svc, 3)
+	diff := previewSnippetDiff(snippet, finding)
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Service: %s\n", svc))
 	b.WriteString(fmt.Sprintf("Fix: %s\n\n", proposal.Summary))
-	if snippet != "" {
-		b.WriteString("--- current config ---\n")
-		b.WriteString(snippet)
+	if diff != "" {
+		b.WriteString("--- proposed diff ---\n")
+		b.WriteString(diff)
+		b.WriteString("\n---\n")
+	} else if snippet != "" {
+		b.WriteString("--- current context ---\n")
+		b.WriteString(prefixLines(snippet, "  "))
 		b.WriteString("\n---\n")
 	}
-	b.WriteString(fmt.Sprintf("→ %s\n", proposal.Summary))
+	b.WriteString(fmt.Sprintf("Summary: %s\n", proposal.Summary))
 	if proposal.Remediation == "auto" {
 		b.WriteString("Status: Can be applied automatically\n")
 	} else {
 		b.WriteString("Status: Manual review recommended\n")
 	}
-	b.WriteString("\nPress f to toggle preview, Enter to return to detail")
-
 	return b.String()
+}
+
+func previewSnippetDiff(snippet string, finding domain.Finding) string {
+	if snippet == "" {
+		return ""
+	}
+	updated := snippet
+	switch finding.ID {
+	case "exposure.public_binding":
+		updated = addLoopbackBinding(snippet)
+	case "runtime.no_new_privileges_disabled":
+		updated = addServiceLine(snippet, "    security_opt:\n      - no-new-privileges:true")
+	case "runtime.writable_rootfs":
+		updated = addServiceLine(snippet, "    read_only: true")
+	case "network.default_bridge_used":
+		updated = addServiceLine(snippet, "    networks:\n      - hostveil")
+	case "service.vaultwarden.insecure_domain":
+		updated = strings.ReplaceAll(snippet, "http://", "https://")
+	}
+	if updated == snippet {
+		return ""
+	}
+	return simpleLineDiff(snippet, updated)
+}
+
+func addLoopbackBinding(snippet string) string {
+	lines := strings.Split(snippet, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "-") || strings.Contains(trimmed, "127.0.0.1:") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "-"))
+		quote := ""
+		if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+			quote = `"`
+			value = strings.Trim(value, `"`)
+		}
+		if strings.Count(value, ":") == 1 {
+			updated := "127.0.0.1:" + value
+			lines[i] = strings.Replace(line, strings.TrimSpace(strings.TrimPrefix(trimmed, "-")), quote+updated+quote, 1)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func addServiceLine(snippet, addition string) string {
+	lines := strings.Split(snippet, "\n")
+	insertAt := len(lines)
+	serviceStart := -1
+	for i := range lines {
+		trimmed := strings.TrimSpace(lines[i])
+		indent := len(lines[i]) - len(strings.TrimLeft(lines[i], " "))
+		if serviceStart < 0 && indent == 2 && strings.HasSuffix(trimmed, ":") {
+			serviceStart = i
+			continue
+		}
+		if serviceStart >= 0 && i > serviceStart && indent <= 2 && trimmed != "" {
+			insertAt = i
+			break
+		}
+	}
+	lines = append(lines[:insertAt], append(strings.Split(addition, "\n"), lines[insertAt:]...)...)
+	return strings.Join(lines, "\n")
+}
+
+func simpleLineDiff(before, after string) string {
+	oldLines := strings.Split(before, "\n")
+	newLines := strings.Split(after, "\n")
+	var b strings.Builder
+	max := len(oldLines)
+	if len(newLines) > max {
+		max = len(newLines)
+	}
+	for i := 0; i < max; i++ {
+		var oldLine, newLine string
+		if i < len(oldLines) {
+			oldLine = oldLines[i]
+		}
+		if i < len(newLines) {
+			newLine = newLines[i]
+		}
+		switch {
+		case i >= len(oldLines):
+			b.WriteString("+ " + newLine + "\n")
+		case i >= len(newLines):
+			b.WriteString("- " + oldLine + "\n")
+		case oldLine != newLine:
+			b.WriteString("- " + oldLine + "\n")
+			b.WriteString("+ " + newLine + "\n")
+		default:
+			b.WriteString("  " + oldLine + "\n")
+		}
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func prefixLines(s, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 // extractServiceSnippet extracts a service's YAML block with surrounding context lines.

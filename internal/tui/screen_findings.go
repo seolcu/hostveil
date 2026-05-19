@@ -12,11 +12,11 @@ import (
 )
 
 type findingsModel struct {
-	list       []domain.Finding
-	all        []domain.Finding
-	selected   int
-	scroll     int
-	detailVP   viewport.Model
+	list     []domain.Finding
+	all      []domain.Finding
+	selected int
+	scroll   int
+	detailVP viewport.Model
 
 	// Filters
 	severityFilter    string
@@ -26,12 +26,12 @@ type findingsModel struct {
 	remediationFilter string
 	sortMode          string
 
-	searchQuery      string
-	showSearch       bool
-	showDetail       bool
-	showFixPreview   bool
+	searchQuery       string
+	showSearch        bool
+	showDetail        bool
+	showFixPreview    bool
 	fixPreviewContent string
-	hostTriageMode   bool
+	hostTriageMode    bool
 }
 
 func newFindingsModel(findings []domain.Finding) *findingsModel {
@@ -91,6 +91,30 @@ func (m *findingsModel) applyFilters() {
 func (m *findingsModel) Update(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.showSearch {
+			s := msg.String()
+			switch s {
+			case "esc":
+				m.showSearch = false
+				m.searchQuery = ""
+				m.applyFilters()
+			case "enter":
+				m.showSearch = false
+			case "backspace":
+				if len(m.searchQuery) > 0 {
+					runes := []rune(m.searchQuery)
+					m.searchQuery = string(runes[:len(runes)-1])
+					m.applyFilters()
+				}
+			default:
+				if len(msg.Runes) > 0 {
+					m.searchQuery += string(msg.Runes)
+					m.applyFilters()
+				}
+			}
+			return
+		}
+
 		switch msg.String() {
 		case "j", "down":
 			if m.showDetail {
@@ -134,19 +158,7 @@ func (m *findingsModel) Update(msg tea.Msg) {
 		case "R":
 			m.resetFilters()
 		case "/":
-			m.showSearch = !m.showSearch
-			if !m.showSearch {
-				m.searchQuery = ""
-				m.applyFilters()
-			}
-		}
-		if m.showSearch && msg.String() != "/" && msg.String() != "esc" {
-			if msg.String() == "backspace" && len(m.searchQuery) > 0 {
-				m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
-			} else if len(msg.String()) == 1 && msg.String() >= " " {
-				m.searchQuery += msg.String()
-			}
-			m.applyFilters()
+			m.showSearch = true
 		}
 		if msg.String() == "esc" {
 			m.showSearch = false
@@ -258,22 +270,28 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	if m.showDetail {
 		listWidth = width / 2
 	}
-	listHeight := height - 3
+	listHeight := height - 2
 
 	var listContent strings.Builder
 	listContent.WriteString(filterBar + "\n")
 
 	if len(m.list) == 0 {
-		// Centered empty state
+		// Centered empty state with icon
+		icon := "·"
 		msg := "No findings match current filters."
 		if m.hostTriageMode {
-			msg = "No host-level findings detected.\nAll findings from this scan are service-level."
+			icon = "○"
+			msg = "No host-level findings detected.\nAll host findings from this scan are service-level."
 		} else if len(m.all) == 0 {
+			icon = "·"
 			msg = "No findings detected."
 		}
 		help := "Press R to clear all filters"
 
 		padding := strings.Repeat("\n", (listHeight-6)/2)
+		iconStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Border)).
+			Render(icon)
 		centerMsg := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.TextMuted)).
 			Render(msg)
@@ -282,6 +300,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			Render(help)
 
 		listContent.WriteString(padding)
+		listContent.WriteString(lipgloss.PlaceHorizontal(listWidth, lipgloss.Center, iconStyle) + "\n\n")
 		listContent.WriteString(lipgloss.PlaceHorizontal(listWidth, lipgloss.Center, centerMsg) + "\n")
 		listContent.WriteString(lipgloss.PlaceHorizontal(listWidth, lipgloss.Center, centerHelp))
 	} else {
@@ -303,7 +322,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			}
 			title = truncateStr(title, listWidth-36)
 
-			line := fmt.Sprintf("%s %s %s %s  %s", cursor, idxStr, sevLabel, title, f.Service)
+			line := fmt.Sprintf("%s  %s  %s %s  %s", cursor, idxStr, sevLabel, title, f.Service)
 
 			style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 			if i == m.selected {
@@ -330,14 +349,13 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 
 		detail := ""
 		if m.showFixPreview && m.fixPreviewContent != "" {
-			sep := "\n" + strings.Repeat("─", listWidth-4) + "\n"
+			sep := "\n" + strings.Repeat("═", listWidth-4) + "\n"
 			detail = headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
 			detail += fmt.Sprintf("Current setup:\n")
 			detail += m.fixPreviewContent
 			detail += sep
-			detail += "\nPress f to toggle preview / detail view"
 		} else {
-			sep := "\n" + strings.Repeat("─", listWidth-4) + "\n"
+			sep := "\n" + strings.Repeat("═", listWidth-4) + "\n"
 			detail = headerStyle.Render(f.Title) + "\n\n"
 
 			// Metadata in 2-column layout

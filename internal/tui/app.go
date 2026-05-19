@@ -65,6 +65,13 @@ func defaultKeyMap() keyMap {
 }
 
 func NewApp(result *domain.ScanResult) *appModel {
+	settings := newSettingsModel()
+	adapterNames := make([]string, len(result.Metadata.Adapters))
+	for i, a := range result.Metadata.Adapters {
+		adapterNames[i] = a.Name
+	}
+	settings.SetAdapters(adapterNames)
+
 	return &appModel{
 		currentScreen: screenOverview,
 		scanResult:    result,
@@ -73,7 +80,7 @@ func NewApp(result *domain.ScanResult) *appModel {
 		overview:      &overviewModel{},
 		findings:      newFindingsModel(result.Findings),
 		history:       &historyModel{},
-		settings:      newSettingsModel(),
+		settings:      settings,
 		help:          &helpModel{},
 	}
 }
@@ -196,9 +203,11 @@ func (m *appModel) View() string {
 	// replace canvas lines manually with explicit background sequences.
 	if m.help.show {
 		overlay := m.help.Render(t, m.width, m.height)
+		overlay = fixContentBg(overlay, t.Surface)
 		view = placeOverlayOnBackground(view, overlay, t.Background, m.width, m.height)
 	} else if m.settings.IsOpen() {
 		overlay := m.settings.Render(t, m.width, m.height)
+		overlay = fixContentBg(overlay, t.Surface)
 		view = placeOverlayOnBackground(view, overlay, t.Background, m.width, m.height)
 	}
 
@@ -212,15 +221,18 @@ func applyBackground(content string, bgColor string, width, height int) string {
 		lines = append(lines, "")
 	}
 	for i, line := range lines {
-		if len(line) < width {
-			lines[i] = line + strings.Repeat(" ", width-len(line))
+		lineWidth := lipgloss.Width(line)
+		if lineWidth < width {
+			lines[i] = line + strings.Repeat(" ", width-lineWidth)
 		}
 	}
-	full := strings.Join(lines, "\n")
-
 	// Parse hex color to RGB
 	r, g, b := parseHex(bgColor)
 	bgSeq := fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+	for i, line := range lines {
+		lines[i] = bgSeq + line
+	}
+	full := strings.Join(lines, "\n")
 
 	// Re-apply theme background after every reset or background-reset sequence.
 	// lipgloss internally emits ESC[0m and ESC[49m between styled regions,
@@ -229,7 +241,17 @@ func applyBackground(content string, bgColor string, width, height int) string {
 	full = resetSeq.ReplaceAllString(full, "\x1b[0m"+bgSeq)
 	full = bgResetSeq.ReplaceAllString(full, bgSeq)
 
-	return bgSeq + full + "\x1b[49m"
+	return full + "\x1b[49m"
+}
+
+// fixContentBg re-applies a background color after every ANSI reset within
+// content, preventing terminal default background from showing through.
+func fixContentBg(content, bgColor string) string {
+	r, g, b := parseHex(bgColor)
+	bgSeq := fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+	content = resetSeq.ReplaceAllString(content, "\x1b[0m"+bgSeq)
+	content = bgResetSeq.ReplaceAllString(content, bgSeq)
+	return content
 }
 
 // placeOverlayOnBackground centers overlay content on a background-filled canvas.
@@ -303,7 +325,6 @@ func (m *appModel) renderHeader(t Theme) string {
 		Render(fmtScore(m.scanResult))
 
 	headerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color(t.Surface)).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 1).
@@ -321,7 +342,6 @@ func (m *appModel) renderFooter(t Theme) string {
 	}
 
 	style := lipgloss.NewStyle().
-		Background(lipgloss.Color(t.Surface)).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 1).

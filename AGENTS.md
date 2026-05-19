@@ -21,7 +21,7 @@ Branch: `v1.0.0-rewrite` (never merged to main, `main` still has the Rust versio
 
 ```
 hostveil/
-├── cmd/hostveil/main.go              # Entry point
+├── cmd/hostveil/main.go              # Entry point (no flags needed, auto-discovers everything)
 ├── internal/
 │   ├── domain/                       # Core types (Finding, Severity, Axis, etc.)
 │   ├── compose/                      # docker-compose.yml parser
@@ -29,18 +29,35 @@ hostveil/
 │   │   ├── rules/                    # Rule engine + 6 core rules + service-aware
 │   │   └── host/                     # 9 host check modules
 │   ├── adapter/                      # External scanner wrappers (Trivy, Dockle, Lynis, Gitleaks)
+│   │   └── detect.go                 # PATH-based auto-detection (installed = auto-run)
 │   ├── fix/                          # Fix engine (preview/apply compose edits)
-│   ├── discovery/                    # Docker project discovery, host runtime info
+│   ├── discovery/
+│   │   └── docker.go                 # Walk up from pwd, find compose.yml files
 │   ├── export/                       # JSON, SARIF, Markdown, HTML
-│   ├── web/                          # ttyd launcher (50 lines): finds ttyd, starts with --serve
-│   └── config/                       # CLI argument parsing
-├── web/static/                       # (removed — ttyd replaces all HTML templates)
+│   ├── web/                          # ttyd launcher: finds ttyd, starts with --serve
+│   └── config/                       # CLI argument parsing (4 flags: --serve, --port, --host, --user-mode)
 ├── scripts/
-│   ├── lab.sh                        # Docker lab (from v0.29, works as-is)
-│   └── install.sh                    # Install script (TBD for v1.0.0)
+│   └── lab.sh                        # Docker lab management (up/down/shell/run/serve)
+├── docker/
+│   └── lab/
+│       ├── Dockerfile                # Go 1.24 + ttyd + Trivy + Dockle + Lynis + Gitleaks
+│       ├── compose.yml               # Scanner container (--serve: http://localhost:8080/)
+│       ├── vaultwarden/compose.yml   # Target service (individual)
+│       ├── jellyfin/compose.yml      # Target service (individual)
+│       ├── gitea/compose.yml         # Target service (individual)
+│       ├── nextcloud/compose.yml     # Target service (individual)
+│       ├── nginx/compose.yml         # Target service (individual)
+│       └── self-hosting-stack.yml    # All targets combined (--compose reference)
 ├── Makefile
-└── tests/scenarios/                  # Test compose files (from v0.29, reused)
+└── tests/scenarios/                  # Test compose files (7 fixtures)
 ```
+
+## Design Philosophy
+
+- **`hostveil` — no flags needed**. Auto-discovers compose files by walking up from pwd.
+- **Root by default**. `--user-mode` to restrict. Scanner + adapters need Docker/host access.
+- **Installed adapter = auto-run**. Adapter tools found in PATH are detected and run automatically.
+- **All flags removed**. `--compose`, `--output`, `--fix`, `--host-root` etc. all gone. Everything happens inside the TUI.
 
 ## Current Implementation Status
 
@@ -107,6 +124,14 @@ Run: `go test -race -count=1 ./...`
 - Full keyboard/mouse support via xterm.js WebSocket
 - Font configured via `-t fontFamily=JetBrainsMono Nerd Font,Fira Code,Consolas,monospace`
 - Port auto-fallback: `findPort()` probes busy ports, increments until free
+
+### Design Decisions (v1.0.0)
+
+- **No `--compose` flag**: hostveil auto-discovers compose files by walking up from the current directory (like `git`). No explicit path needed.
+- **No `--output` flag**: All output modes (JSON, SARIF, Markdown, HTML) are accessible from within the TUI. The CLI only has `hostveil`.
+- **No `--fix` flag**: Fix operations happen inside the TUI via the fix preview/apply flow.
+- **Adapters auto-detect**: If Trivy/Dockle/Lynis/Gitleaks is in PATH, it runs automatically. No `--adapter` flag needed.
+- **Root by default**: `hostveil` assumes root access for host checks and Docker operations. Use `--user-mode` to run as non-root.
 
 ### TUI Design (OpenCode-inspired)
 - **Full background coverage**: `applyBackground()` intercepts ANSI reset codes (`ESC[0m`, `ESC[49m`)
@@ -266,20 +291,41 @@ No fixed script — the agent runs an **iterative Observe–Explore loop**:
 
 See `SKILL.md` for the full methodology, loop mechanics, adaptive branching guide, and visual inspection checklist.
 
-## Web Server
+## Docker Lab
 
 ```bash
-# Start (auto-finds free port if 8080 is busy)
-./hostveil --serve
+# Start the full self-hosting lab
+./scripts/lab.sh up
 
-# With options
-./hostveil --serve --port 9090 --compose tests/...
+# Run hostveil inside the lab (auto-discovers all services)
+./scripts/lab.sh run
+
+# Start hostveil --serve for browser QA
+./scripts/lab.sh serve
+
+# Enter the lab container
+./scripts/lab.sh shell
+
+# Stop everything
+./scripts/lab.sh down
 ```
 
-Flags:
-- `--serve` — start ttyd web terminal
-- `--port N` — default 8080, auto-increments if busy
-- `--host ADDR` — bind address (default 127.0.0.1)
+The lab automatically discovers all compose files under `docker/lab/*/compose.yml`.
+Services can also be managed individually:
+
+```bash
+docker compose -f docker/lab/vaultwarden/compose.yml up -d
+```
+
+## Browser Screenshots
+
+Use agent-browser for visual QA:
+
+```bash
+./scripts/lab.sh up
+./scripts/lab.sh serve
+# agent-browser open http://127.0.0.1:8080/
+```
 
 ## Test & Build
 
@@ -289,11 +335,8 @@ go vet ./...            # Lint
 go test -race ./...     # Test with race detector
 go build -o hostveil ./cmd/hostveil/  # Build binary
 
-# Run with real compose file
-./hostveil --compose tests/scenarios/vaultwarden-domain/docker-compose.yml
-
-# JSON output
-./hostveil --compose ... --output json
+# Run with specific test compose file (auto-security)
+cd tests/scenarios/vaultwarden-domain && ../../hostveil
 
 # Cross-compile
 GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
@@ -328,3 +371,25 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - Do not use vhs for screenshots (unreliable Chrome process management)
 - Do not add custom HTML/JS/CSS for web UI (ttyd handles it all)
 - Do not assume Docker is available (adapters should fail gracefully)
+
+## TUI QA Known Issues & Fixes
+
+### Docker lab vs direct run theme color difference
+- Cause: `scripts/lab.sh` only forwarded `TERM`, not `COLORTERM`.
+- Fix: Pass both `TERM=${TERM:-xterm-256color}` and `COLORTERM=${COLORTERM:-truecolor}` in `docker compose exec -e`.
+- `internal/web/server.go`: Set `cmd.Env` with both vars for ttyd child process.
+
+### Theme change causes background banding in overlays
+- Cause: `applyBackground()` used `len(line)` which counts ANSI bytes, not visible width. `placeOverlayOnBackground` relied on leading `bgSeq` only.
+- Fix: Use `lipgloss.Width(line)` for padding. Prepend `bgSeq` to every individual line in `applyBackground()` so ANSI-interleaved line breaks retain background.
+
+### Fix preview not showing -/+ diff
+- Cause: `PreviewFinding()` only showed current YAML snippet + summary, not a diff.
+- Fix: Added `previewSnippetDiff()` which applies fix transforms (`addLoopbackBinding`, `addServiceLine`, `simpleLineDiff`) and renders `- old` / `+ new` format. Covers `exposure.public_binding`, `runtime.*`, `network.*`, `service.vaultwarden.*`.
+
+### Search mode key conflict with detail toggle
+- Cause: `/` toggled `showSearch` but consumed keystrokes after the main switch, so Enter and other keys would fire both search and detail actions.
+- Fix: Search mode is now handled as an early return in `Update()` before the main key switch. `msg.Runes` used instead of `msg.String()` for reliable character capture. `Enter` commits, `Esc` cancels.
+
+### ttyd browser scrollbar
+- `-t scrollback=0` added to ttyd args, but the browser page scrollbar is a function of ttyd's default HTML/CSS — eliminating it entirely requires custom index.html, which violates the "no custom HTML/JS/CSS" rule.

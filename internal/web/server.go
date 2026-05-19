@@ -37,18 +37,16 @@ func Serve(cfg *config.Config) error {
 		host = "127.0.0.1"
 	}
 
-	// Build the command ttyd will run: hostveil with original args minus --serve
-	childArgs := []string{self}
-	if cfg.ComposePath != "" {
-		childArgs = append(childArgs, "--compose", cfg.ComposePath)
-	}
-	if cfg.HostRoot != "" {
-		childArgs = append(childArgs, "--host-root", cfg.HostRoot)
-	}
-	childArgs = append(childArgs, "--user-mode")
+	// Build the command ttyd will run: hostveil in user-mode (auto-discovers compose files)
+	childArgs := []string{self, "--user-mode"}
 
 	// ttyd arguments
-	ttydArgs := []string{"-p", portStr, "-W", "-t", "fontFamily=JetBrainsMono Nerd Font,JetBrainsMono,Fira Code,Consolas,monospace"}
+	ttydArgs := []string{
+		"-p", portStr,
+		"-W",
+		"-t", "fontFamily=JetBrainsMono Nerd Font,JetBrainsMono,Fira Code,Consolas,monospace",
+		"-t", "scrollback=0",
+	}
 	if host != "127.0.0.1" {
 		ttydArgs = append(ttydArgs, "-i", host)
 	}
@@ -58,6 +56,7 @@ func Serve(cfg *config.Config) error {
 	fmt.Println("The TUI is streamed to your browser via ttyd (WebSocket terminal).")
 
 	cmd := exec.Command(ttyd, ttydArgs...)
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
