@@ -31,7 +31,26 @@ type findingsModel struct {
 	showDetail        bool
 	showFixPreview    bool
 	fixPreviewContent string
+	fixBackupPath     string
 	hostTriageMode    bool
+	showFilterPanel   bool
+	filterCursor      int
+
+	uniqueServices []string
+}
+
+type filterRow struct {
+	label    string
+	value    string
+	options  []string
+}
+
+var filterPanelRows = []filterRow{
+	{label: "Severity", options: []string{"all", "critical", "high", "medium", "low"}},
+	{label: "Service", options: nil},
+	{label: "Scope", options: []string{"all", "service", "host", "image", "project"}},
+	{label: "Fix", options: []string{"all", "auto", "review", "manual"}},
+	{label: "Source", options: []string{"all", "native_compose", "native_host", "trivy", "dockle", "lynis", "gitleaks"}},
 }
 
 func newFindingsModel(findings []domain.Finding) *findingsModel {
@@ -39,8 +58,27 @@ func newFindingsModel(findings []domain.Finding) *findingsModel {
 		all:      findings,
 		selected: 0,
 	}
+	m.collectUniqueServices()
 	m.applyFilters()
 	return m
+}
+
+func (m *findingsModel) collectUniqueServices() {
+	seen := make(map[string]bool)
+	for _, f := range m.all {
+		if f.Service != "" && !seen[f.Service] {
+			seen[f.Service] = true
+			m.uniqueServices = append(m.uniqueServices, f.Service)
+		}
+	}
+	sort.Strings(m.uniqueServices)
+	// Update filter panel services
+	for i := range filterPanelRows {
+		if filterPanelRows[i].label == "Service" {
+			filterPanelRows[i].options = append([]string{"all"}, m.uniqueServices...)
+			break
+		}
+	}
 }
 
 func (m *findingsModel) applyFilters() {
@@ -73,13 +111,25 @@ func (m *findingsModel) applyFilters() {
 
 	switch m.sortMode {
 	case "severity":
+		sort.Slice(m.list, func(i, j int) bool {
+			if m.list[i].Severity != m.list[j].Severity {
+				return m.list[i].Severity < m.list[j].Severity
+			}
+			return m.list[i].Title < m.list[j].Title
+		})
 	case "source":
 		sort.Slice(m.list, func(i, j int) bool {
-			return m.list[i].Source.String() < m.list[j].Source.String()
+			if m.list[i].Source.String() != m.list[j].Source.String() {
+				return m.list[i].Source.String() < m.list[j].Source.String()
+			}
+			return m.list[i].Severity < m.list[j].Severity
 		})
 	case "title":
 		sort.Slice(m.list, func(i, j int) bool {
-			return m.list[i].Title < m.list[j].Title
+			if m.list[i].Title != m.list[j].Title {
+				return m.list[i].Title < m.list[j].Title
+			}
+			return m.list[i].Severity < m.list[j].Severity
 		})
 	}
 
@@ -91,8 +141,10 @@ func (m *findingsModel) applyFilters() {
 func (m *findingsModel) Update(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		s := msg.String()
+
+		// Search mode takes priority
 		if m.showSearch {
-			s := msg.String()
 			switch s {
 			case "esc":
 				m.showSearch = false
@@ -115,7 +167,33 @@ func (m *findingsModel) Update(msg tea.Msg) {
 			return
 		}
 
-		switch msg.String() {
+		// Filter panel mode
+		if m.showFilterPanel {
+			switch s {
+			case "f", "esc":
+				m.showFilterPanel = false
+			case "j", "down":
+				m.filterCursor++
+				if m.filterCursor >= len(filterPanelRows) {
+					m.filterCursor = 0
+				}
+			case "k", "up":
+				m.filterCursor--
+				if m.filterCursor < 0 {
+					m.filterCursor = len(filterPanelRows) - 1
+				}
+			case "l", "right", "enter":
+				m.cycleFilterValue(1)
+			case "h", "left":
+				m.cycleFilterValue(-1)
+			case "r":
+				m.resetFilters()
+				m.showFilterPanel = false
+			}
+			return
+		}
+
+		switch s {
 		case "j", "down":
 			if m.showDetail {
 				m.detailVP.LineDown(1)
@@ -144,43 +222,84 @@ func (m *findingsModel) Update(msg tea.Msg) {
 		case "h", "left":
 			m.showDetail = false
 		case "s":
-			m.cycleFilter("severity")
-		case "x":
-			m.cycleFilter("source")
-		case "c":
-			m.cycleFilter("scope")
-		case "v":
-			m.cycleFilter("service")
-		case "m":
-			m.cycleFilter("remediation")
-		case "o":
 			m.cycleSort()
-		case "R":
-			m.resetFilters()
+		case "f":
+			if !m.showDetail {
+				m.showFilterPanel = true
+				m.filterCursor = 0
+			}
 		case "/":
 			m.showSearch = true
-		}
-		if msg.String() == "esc" {
+		case "esc":
 			m.showSearch = false
 			m.showDetail = false
+			m.showFilterPanel = false
 			m.searchQuery = ""
 			m.applyFilters()
 		}
 	}
 }
 
-func (m *findingsModel) cycleFilter(filter string) {
-	switch filter {
-	case "severity":
-		m.severityFilter = nextCycle(m.severityFilter, []string{"", "critical", "high", "medium", "low"})
-	case "source":
-		m.sourceFilter = nextCycle(m.sourceFilter, []string{"", "native_compose", "native_host", "trivy", "dockle", "lynis", "gitleaks"})
-	case "scope":
-		m.scopeFilter = nextCycle(m.scopeFilter, []string{"", "service", "image", "host", "project"})
-	case "service":
-		m.serviceFilter = nextCycle(m.serviceFilter, []string{"", "unique_services_from_data"})
-	case "remediation":
-		m.remediationFilter = nextCycle(m.remediationFilter, []string{"", "auto", "review", "manual"})
+func (m *findingsModel) cycleFilterValue(dir int) {
+	if m.filterCursor >= len(filterPanelRows) {
+		return
+	}
+	row := &filterPanelRows[m.filterCursor]
+	if len(row.options) <= 1 {
+		return
+	}
+
+	current := row.value
+	if current == "" {
+		current = row.options[0]
+	}
+
+	idx := -1
+	for i, o := range row.options {
+		if o == current {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		idx = 0
+	}
+
+	newIdx := (idx + dir + len(row.options)) % len(row.options)
+	row.value = row.options[newIdx]
+
+	// Apply the filter value
+	switch row.label {
+	case "Severity":
+		if row.value == "all" {
+			m.severityFilter = ""
+		} else {
+			m.severityFilter = row.value
+		}
+	case "Service":
+		if row.value == "all" {
+			m.serviceFilter = ""
+		} else {
+			m.serviceFilter = row.value
+		}
+	case "Scope":
+		if row.value == "all" {
+			m.scopeFilter = ""
+		} else {
+			m.scopeFilter = row.value
+		}
+	case "Fix":
+		if row.value == "all" {
+			m.remediationFilter = ""
+		} else {
+			m.remediationFilter = row.value
+		}
+	case "Source":
+		if row.value == "all" {
+			m.sourceFilter = ""
+		} else {
+			m.sourceFilter = row.value
+		}
 	}
 	m.applyFilters()
 }
@@ -203,6 +322,12 @@ func (m *findingsModel) resetFilters() {
 	m.hostTriageMode = false
 	m.showFixPreview = false
 	m.fixPreviewContent = ""
+	m.fixBackupPath = ""
+	m.showFilterPanel = false
+	// Reset filter panel row values
+	for i := range filterPanelRows {
+		filterPanelRows[i].value = ""
+	}
 	m.applyFilters()
 }
 
@@ -217,23 +342,47 @@ func nextCycle(current string, options []string) string {
 
 func formatFindingDetail(f *domain.Finding) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("ID: %s\n", f.ID))
-	b.WriteString(fmt.Sprintf("Severity: %s\n", strings.ToUpper(f.Severity.String())))
-	b.WriteString(fmt.Sprintf("Axis: %s\n", f.Axis.Label()))
-	b.WriteString(fmt.Sprintf("Scope: %s\n", f.Scope.String()))
-	b.WriteString(fmt.Sprintf("Source: %s\n", f.Source.String()))
-	b.WriteString(fmt.Sprintf("Service: %s\n", f.Service))
-	b.WriteString(fmt.Sprintf("Remediation: %s\n\n", f.Remediation.Label()))
-	b.WriteString(fmt.Sprintf("Description:\n%s\n\n", f.Description))
-	b.WriteString(fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky))
-	b.WriteString(fmt.Sprintf("How to fix:\n%s\n\n", f.HowToFix))
 
+	// Title
+	b.WriteString(fmt.Sprintf("%s\n\n", f.Title))
+
+	// Severity + Remediation
+	sevRem := fmt.Sprintf("%s · %s",
+		strings.ToUpper(f.Severity.String()),
+		f.Remediation.Label())
+	b.WriteString(fmt.Sprintf("%s\n\n", sevRem))
+
+	// Description (Impact)
+	if f.Description != "" {
+		b.WriteString("Impact:\n")
+		b.WriteString(f.Description + "\n\n")
+	}
+
+	// Why it's risky
+	if f.WhyRisky != "" {
+		b.WriteString("Why it matters:\n")
+		b.WriteString(f.WhyRisky + "\n\n")
+	}
+
+	// Evidence
 	if len(f.Evidence) > 0 {
 		b.WriteString("Evidence:\n")
 		for k, v := range f.Evidence {
 			b.WriteString(fmt.Sprintf("  %s: %s\n", k, v))
 		}
+		b.WriteString("\n")
 	}
+
+	// Recommended fix
+	if f.HowToFix != "" {
+		b.WriteString("Recommended fix:\n")
+		b.WriteString(f.HowToFix + "\n\n")
+	}
+
+	// Metadata (bottom)
+	b.WriteString("───  Metadata  ───\n")
+	b.WriteString(fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s\n",
+		f.ID, f.Source.String(), f.Scope.String()))
 
 	return b.String()
 }
@@ -260,8 +409,13 @@ func highlightText(s, query string) string {
 }
 
 func (m *findingsModel) render(theme Theme, width, height int) string {
-	if width < 40 {
+	if width < 20 {
 		return "Terminal too narrow"
+	}
+
+	// Mini mode
+	if width < 40 {
+		return m.renderMiniFindings(theme, width)
 	}
 
 	filterBar := m.renderFilterBar(theme, width)
@@ -276,7 +430,6 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	listContent.WriteString(filterBar + "\n")
 
 	if len(m.list) == 0 {
-		// Centered empty state with icon
 		icon := "·"
 		msg := "No findings match current filters."
 		if m.hostTriageMode {
@@ -286,7 +439,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			icon = "·"
 			msg = "No findings detected."
 		}
-		help := "Press R to clear all filters"
+		help := "Press r to clear all filters"
 
 		padding := strings.Repeat("\n", (listHeight-6)/2)
 		iconStyle := lipgloss.NewStyle().
@@ -315,7 +468,6 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			idxStr := fmt.Sprintf("%2d.", i+1)
 			sevLabel := fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()))
 
-			// Highlight search match
 			title := f.Title
 			if m.searchQuery != "" {
 				titleMatch := strings.Contains(strings.ToLower(f.Title), strings.ToLower(m.searchQuery))
@@ -337,14 +489,13 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			listContent.WriteString(style.Render(line) + "\n")
 		}
 
-		// Fill remaining vertical space with severity summary when detail is not shown
+		// Fill remaining space with hints when detail not shown
 		if !m.showDetail && len(m.list) > 0 {
 			remaining := listHeight - len(m.list) - 1
 			if remaining > 3 {
 				sepLine := "\n" + strings.Repeat("─", listWidth)
 				listContent.WriteString(sepLine + "\n")
 
-				// Severity counts line
 				var sevParts []string
 				for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
 					count := 0
@@ -364,8 +515,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 					listContent.WriteString("  " + strings.Join(sevParts, "  ") + "\n")
 				}
 
-				// Keyboard hints
-				hint := "Enter/l detail  |  / search  |  s filter  |  R reset"
+				hint := "Enter/l detail  |  / search  |  f filter  |  s sort  |  r reset"
 				listContent.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render(hint) + "\n")
 			}
 		}
@@ -391,47 +541,48 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			detail = headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
 			detail += fmt.Sprintf("Current setup:\n")
 			detail += m.fixPreviewContent
+			// Backup path
+			if m.fixBackupPath != "" {
+				detail += fmt.Sprintf("\nBackup: %s\n", m.fixBackupPath)
+			}
+			detail += "\nRisk: Review changes before applying.\n"
+			detail += "  p close preview  ·  a apply  ·  r rescan"
 			detail += sep
 		} else {
 			sep := "\n" + strings.Repeat("═", listWidth-4) + "\n"
 			detail = headerStyle.Render(f.Title) + "\n\n"
 
-			// Metadata in 2-column layout
-			metaLeft := fmt.Sprintf("ID: %s\nSeverity: %s\nAxis: %s\nScope: %s\n",
-				f.ID,
+			// Severity + Remediation
+			sevRem := fmt.Sprintf("%s · %s",
 				lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(strings.ToUpper(f.Severity.String())),
-				f.Axis.Label(),
-				f.Scope.String())
-			metaRight := fmt.Sprintf("Source: %s\nService: %s\nFix: %s",
-				f.Source.String(),
-				f.Service,
 				f.Remediation.Label())
-			if f.IsFixable() {
-				metaRight += " (press f)"
-			}
-			metaLeftStyle := lipgloss.NewStyle().Width(listWidth / 2)
-			metaRightStyle := lipgloss.NewStyle().Width(listWidth / 2)
-			detail += lipgloss.JoinHorizontal(lipgloss.Top,
-				metaLeftStyle.Render(metaLeft),
-				metaRightStyle.Render(metaRight),
-			)
+			detail += sevRem + "\n\n"
 
-			detail += sep
 			if f.Description != "" {
-				detail += fmt.Sprintf("Description:\n%s\n\n", f.Description)
+				detail += fmt.Sprintf("Impact:\n%s\n\n", f.Description)
 			}
 			if f.WhyRisky != "" {
-				detail += fmt.Sprintf("Why it's risky:\n%s\n\n", f.WhyRisky)
-			}
-			if f.HowToFix != "" {
-				detail += fmt.Sprintf("How to fix:\n%s\n\n", f.HowToFix)
+				detail += fmt.Sprintf("Why it matters:\n%s\n\n", f.WhyRisky)
 			}
 			if len(f.Evidence) > 0 {
 				detail += "Evidence:\n"
 				for k, v := range f.Evidence {
 					detail += fmt.Sprintf("  %s: %s\n", k, v)
 				}
+				detail += "\n"
 			}
+			if f.HowToFix != "" {
+				detail += fmt.Sprintf("Recommended fix:\n%s\n\n", f.HowToFix)
+			}
+			if f.IsFixable() {
+				prompt := "p preview fix"
+				detail += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render(prompt) + "\n"
+			}
+
+			// Metadata at bottom
+			detail += sep
+			detail += fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
+				f.ID, f.Source.String(), f.Scope.String(), f.Service)
 		}
 
 		detailPanel := detailStyle.Render(detail)
@@ -445,7 +596,114 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		)
 	}
 
+	// Filter panel overlay — centered in available space
+	if m.showFilterPanel && !m.showDetail {
+		panel := m.renderFilterPanel(theme, listWidth, listHeight)
+		panelLines := strings.Count(panel, "\n") + 1
+		padTop := (listHeight - panelLines) / 2
+		if padTop < 0 {
+			padTop = 0
+		}
+		return strings.Repeat("\n", padTop) + panel
+	}
+
 	return listContent.String()
+}
+
+func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Findings: %d/%d\n", len(m.list), len(m.all)))
+
+	maxShow := 3
+	if len(m.list) < maxShow {
+		maxShow = len(m.list)
+	}
+	for i := 0; i < maxShow; i++ {
+		f := m.list[i]
+		icon := severityIcon(f.Severity)
+		title := truncateStr(f.Title, width-10)
+		b.WriteString(fmt.Sprintf("%s %s\n", icon, title))
+	}
+
+	if len(m.list) > maxShow {
+		b.WriteString(fmt.Sprintf("… and %d more\n", len(m.list)-maxShow))
+	}
+
+	b.WriteString("/ search  ·  f filters  ·  ? help  ·  q quit")
+	return b.String()
+}
+
+func (m *findingsModel) renderFilterPanel(theme Theme, panelWidth, panelHeight int) string {
+	// Calculate dialog dimensions
+	dialogWidth := 44
+	if dialogWidth > panelWidth-4 {
+		dialogWidth = panelWidth - 4
+	}
+	if dialogWidth < 36 {
+		dialogWidth = 36
+	}
+
+	dialogStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color(theme.Surface)).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Width(dialogWidth).
+		Padding(1, 2)
+
+	var content strings.Builder
+	content.WriteString(lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color(theme.Text)).
+		Render("Filters") + "\n\n")
+
+	for i, row := range filterPanelRows {
+		cursor := " "
+		if i == m.filterCursor {
+			cursor = "❯"
+		}
+
+		label := lipgloss.NewStyle().
+			Width(12).
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(row.label + ":")
+
+		val := row.value
+		if val == "" {
+			val = "all"
+		}
+		valDisplay := naturalFilterValue(row.label, val)
+		valStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextBright))
+		if i == m.filterCursor {
+			valStyle = valStyle.Bold(true).Background(lipgloss.Color(theme.Card))
+		}
+
+		content.WriteString(fmt.Sprintf("%s %s %s\n", cursor, label, valStyle.Render(valDisplay)))
+	}
+
+	content.WriteString("\n")
+	content.WriteString(lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("j/k move  ·  ←/→ cycle  ·  f/esc close  ·  r reset"))
+
+	return dialogStyle.Render(content.String())
+}
+
+func naturalFilterValue(label, value string) string {
+	switch {
+	case value == "all":
+		return "All"
+	case label == "Severity":
+		return naturalSeverity(value)
+	case label == "Source":
+		return naturalSource(value)
+	case label == "Scope":
+		return naturalScope(value)
+	case label == "Fix":
+		return naturalRemediation(value)
+	default:
+		return value
+	}
 }
 
 func naturalSeverity(s string) string {
@@ -515,7 +773,7 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 	info := fmt.Sprintf("%d/%d findings", len(m.list), len(m.all))
 	if len(tokens) > 0 {
 		filterLine := strings.Join(tokens, " | ")
-		if len(info)+len(filterLine)+7 > width {
+		if lipgloss.Width(info)+lipgloss.Width(filterLine)+7 > width {
 			info += "\n" + strings.Repeat(" ", 6) + filterLine
 		} else {
 			info += "  |  " + filterLine
@@ -527,7 +785,7 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 		if m.searchQuery != "" {
 			s = fmt.Sprintf("search: %s█", m.searchQuery)
 		}
-		if len(info)+len(s)+7 > width {
+		if lipgloss.Width(info)+lipgloss.Width(s)+7 > width {
 			info += "\n" + strings.Repeat(" ", 6) + s
 		} else {
 			info += " | " + s

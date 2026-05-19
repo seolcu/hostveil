@@ -54,34 +54,32 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 	}
 
 	content += renderSection("Navigation", [][2]string{
-		{"1 / 2 / 3", "Switch screens (Overview / Findings / History)"},
+		{"1 / 2 / 3", "Switch screens (Dashboard / Findings / Report)"},
 		{"↑ / ↓ or j / k", "Navigate list"},
 		{"Enter or → or l", "Open finding detail panel"},
 		{"← or h", "Back to list"},
-		{"q or Esc", "Quit"},
+		{"q", "Quit"},
 	})
 
-	content += renderSection("Filters", [][2]string{
-		{"s", "Cycle severity filter (all → critical → high → …)"},
-		{"x", "Cycle source filter"},
-		{"c", "Cycle scope filter"},
-		{"v", "Cycle service filter"},
-		{"m", "Cycle remediation filter"},
-		{"o", "Cycle sort mode (severity → source → title)"},
-		{"R", "Reset all filters"},
-	})
-
-	content += renderSection("Actions", [][2]string{
+	content += renderSection("Findings", [][2]string{
 		{"/", "Search findings"},
-		{"f", "Toggle fix preview (on fixable findings)"},
-		{"h (Overview)", "Host triage (filter to host scope)"},
-		{"S", "Settings modal"},
+		{"f", "Open filter panel"},
+		{"s", "Cycle sort (severity → source → title)"},
+		{"r", "Reset all filters"},
+		{"p", "Toggle fix preview (on fixable findings)"},
+		{"a", "Apply fix (from fix preview)"},
+		{"h (Dashboard)", "Host triage (filter to host scope)"},
+	})
+
+	content += renderSection("General", [][2]string{
+		{"s", "Settings modal"},
 		{"?", "Toggle this help"},
+		{"Esc", "Close panel / cancel"},
+		{"q", "Quit"},
 	})
 
 	content += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Press ? or Esc to close")
 
-	// Count estimated visible lines (border 2 top + 2 bottom + padding 2 = 6 overhead)
 	contentLines := strings.Count(content, "\n") + 1
 	totalLines := contentLines + 6
 	maxLines := height - 2

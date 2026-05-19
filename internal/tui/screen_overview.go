@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -28,180 +29,234 @@ func severityIcon(sev domain.Severity) string {
 	}
 }
 
+func remediationLabel(r domain.RemediationKind) string {
+	switch r {
+	case domain.RemediationAuto:
+		return "Auto-fix"
+	case domain.RemediationReview:
+		return "Review"
+	default:
+		return "Manual"
+	}
+}
+
+func remediationColor(r domain.RemediationKind, theme Theme) string {
+	switch r {
+	case domain.RemediationAuto:
+		return theme.Success
+	case domain.RemediationReview:
+		return theme.Accent
+	default:
+		return theme.TextMuted
+	}
+}
+
 func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
-	if width < 40 {
-		return "Terminal too narrow for overview"
+	if width < 20 {
+		return "Terminal too narrow"
 	}
 
+	// Mini mode for very narrow terminals
+	if width < 40 {
+		return m.renderMiniDashboard(r, theme, width)
+	}
+
+	// Summary line
+	summary := m.renderSummaryLine(r, theme, width)
+
+	// Responsive card layout
 	switch {
 	case width >= 100:
 		colWidth := (width - 6) / 3
-		scoreCard := m.renderScoreCard(r, theme, colWidth)
-		severityCard := m.renderSeverityCard(r, theme, colWidth)
-		actionCard := m.renderActionCard(r, theme, colWidth)
-		axisCard := m.renderAxisCard(r, theme, colWidth)
+		nextActions := m.renderNextActionsCard(r, theme, colWidth)
+		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
+		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
 		hostCard := m.renderHostCard(r, theme, colWidth)
-		metaCard := m.renderMetaCard(r, theme, colWidth)
 
-		left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard)
-		middle := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard)
-		right := lipgloss.JoinVertical(lipgloss.Top, actionCard, metaCard)
+		left := nextActions
+		middle := lipgloss.JoinVertical(lipgloss.Top, riskByArea, hostCard)
+		right := affectedSvcs
 
-		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", middle, "  ", right)
+		return summary + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", middle, "  ", right)
 
 	case width >= 60:
 		colWidth := (width - 2) / 2
-		scoreCard := m.renderScoreCard(r, theme, colWidth)
-		severityCard := m.renderSeverityCard(r, theme, colWidth)
-		actionCard := m.renderActionCard(r, theme, colWidth)
-		axisCard := m.renderAxisCard(r, theme, colWidth)
+		nextActions := m.renderNextActionsCard(r, theme, colWidth)
+		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
+		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
 		hostCard := m.renderHostCard(r, theme, colWidth)
-		metaCard := m.renderMetaCard(r, theme, colWidth)
 
-		left := lipgloss.JoinVertical(lipgloss.Top, scoreCard, severityCard, actionCard)
-		right := lipgloss.JoinVertical(lipgloss.Top, axisCard, hostCard, metaCard)
-
-		return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+		left := lipgloss.JoinVertical(lipgloss.Top, nextActions, affectedSvcs)
+		right := lipgloss.JoinVertical(lipgloss.Top, riskByArea, hostCard)
+		return summary + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
 
 	default:
 		colWidth := width - 2
-		return lipgloss.JoinVertical(lipgloss.Top,
-			m.renderScoreCard(r, theme, colWidth),
-			m.renderSeverityCard(r, theme, colWidth),
-			m.renderAxisCard(r, theme, colWidth),
-			m.renderActionCard(r, theme, colWidth),
-			m.renderHostCard(r, theme, colWidth),
-			m.renderMetaCard(r, theme, colWidth),
-		)
+		nextActions := m.renderNextActionsCard(r, theme, colWidth)
+		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
+		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
+		hostCard := m.renderHostCard(r, theme, colWidth)
+		return summary + "\n" + lipgloss.JoinVertical(lipgloss.Top, nextActions, riskByArea, affectedSvcs, hostCard)
 	}
 }
 
-func (m *overviewModel) renderScoreCard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *overviewModel) renderMiniDashboard(r *domain.ScanResult, theme Theme, width int) string {
 	score := r.ScoreReport.Overall
 	grade := r.ScoreReport.Grade()
+	findings := r.TotalFindings()
+	svcCount := len(r.Metadata.Services)
 
-	scoreStyle := lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1).
-		Align(lipgloss.Center)
-
-	gradeColor := theme.Success
-	if score < 80 {
+	gradeColor := theme.Critical
+	if score >= 50 {
 		gradeColor = theme.Medium
 	}
-	if score < 50 {
-		gradeColor = theme.Critical
+	if score >= 80 {
+		gradeColor = theme.Success
 	}
 
-	bar := renderColoredBar(uint8(score), (width-8)/2, gradeColor)
-
-	content := lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Center,
-			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("%d", score)),
-			"  ",
-			lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
-		),
-		bar,
+	line1 := lipgloss.NewStyle().Bold(true).Render("hostveil")
+	line2 := lipgloss.JoinHorizontal(lipgloss.Center,
+		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100)),
+		" · ",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
 	)
+	line3 := fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount))
+	line4 := "Press 2 findings · ? help · q quit"
 
-	return scoreStyle.Render(content)
+	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
+	return style.Render(line1 + "\n" + line2 + "\n" + line3 + "\n" + line4)
 }
 
-func (m *overviewModel) renderSeverityCard(r *domain.ScanResult, theme Theme, width int) string {
-	style := lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
-	var rows []string
-	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
-		count := r.FindingsBySeverity(sev)
-		icon := severityIcon(sev)
-		color := sev.Color()
-
-		label := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(color)).
-			Render(fmt.Sprintf("%s %s", icon, strings.ToUpper(sev.String())))
-
-		spacer := width - lipgloss.Width(label) - 5
-		if spacer < 1 {
-			spacer = 1
-		}
-
-		num := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(color)).
-			Align(lipgloss.Right).
-			Render(fmt.Sprintf("%d", count))
-
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, strings.Repeat(" ", spacer), num))
-	}
-
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
-}
-
-func (m *overviewModel) renderActionCard(r *domain.ScanResult, theme Theme, width int) string {
-	style := lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
+func (m *overviewModel) renderSummaryLine(r *domain.ScanResult, theme Theme, width int) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	findings := r.TotalFindings()
+	svcCount := len(r.Metadata.Services)
 
 	autoCount := 0
-	reviewCount := 0
-	manualCount := 0
-	hostCount := 0
-
 	for _, f := range r.Findings {
-		switch f.Remediation {
-		case domain.RemediationAuto:
+		if f.Remediation == domain.RemediationAuto {
 			autoCount++
-		case domain.RemediationReview:
-			reviewCount++
-		case domain.RemediationManual:
-			manualCount++
-		}
-		if f.Scope == domain.ScopeHost {
-			hostCount++
 		}
 	}
 
-	items := []struct {
-		label string
-		count int
-		color string
-	}{
-		{"Auto-fix", autoCount, theme.Success},
-		{"Review", reviewCount, theme.Accent},
-		{"Manual", manualCount, theme.TextMuted},
-		{"Host", hostCount, theme.Medium},
+	gradeColor := theme.Critical
+	if score >= 50 {
+		gradeColor = theme.Medium
+	}
+	if score >= 80 {
+		gradeColor = theme.Success
 	}
 
-	var rows []string
-	for _, item := range items {
-		l := lipgloss.NewStyle().Foreground(lipgloss.Color(item.color)).Render(item.label)
-		spacer := width - lipgloss.Width(l) - 5
-		if spacer < 1 {
-			spacer = 1
-		}
-		n := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(item.color)).Align(lipgloss.Right).Render(fmt.Sprintf("%d", item.count))
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, l, strings.Repeat(" ", spacer), n))
+	scoreStr := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100", score))
+	riskStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Risk: %s", grade))
+
+	parts := []string{
+		scoreStr,
+		riskStr,
+		fmt.Sprintf("%d findings", findings),
+		fmt.Sprintf("%d %s", svcCount, pluralize("service", svcCount)),
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	if autoCount > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render(fmt.Sprintf("%d auto-fixable", autoCount)))
+	}
+
+	line := strings.Join(parts, "  ·  ")
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Padding(0, 1)
+
+	return style.Render(line)
 }
 
-func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width int) string {
+func pluralize(s string, n int) string {
+	if n == 1 {
+		return s
+	}
+	return s + "s"
+}
+
+func (m *overviewModel) renderNextActionsCard(r *domain.ScanResult, theme Theme, width int) string {
 	style := lipgloss.NewStyle().
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
 
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Next actions")
 	var rows []string
+
+	// Sort findings: severity order (Critical > High > Medium > Low), then remediation (Auto > Review > Manual)
+	sorted := make([]domain.Finding, len(r.Findings))
+	copy(sorted, r.Findings)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].Severity != sorted[j].Severity {
+			return sorted[i].Severity < sorted[j].Severity
+		}
+		return sorted[i].Remediation < sorted[j].Remediation
+	})
+
+	maxActions := 3
+	if width < 60 {
+		maxActions = 2
+	}
+
+	count := 0
+	for _, f := range sorted {
+		if count >= maxActions {
+			break
+		}
+		sevColor := f.Severity.Color()
+		icon := severityIcon(f.Severity)
+		sevLabel := strings.ToUpper(f.Severity.String()[:4])
+		sevTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(sevColor)).
+			Render(fmt.Sprintf("%s %s", icon, sevLabel))
+
+		remLabel := remediationLabel(f.Remediation)
+		remColor := remediationColor(f.Remediation, theme)
+		remTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(remColor)).
+			Render(remLabel)
+
+		svc := f.Service
+		if svc == "" {
+			svc = "-"
+		}
+		svcTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(svc)
+
+		titleLine := f.Title
+		maxTitle := width - len(sevLabel) - len(svc) - 12
+		if maxTitle < 20 {
+			maxTitle = 20
+		}
+		titleLine = truncateStr(titleLine, maxTitle)
+
+		rows = append(rows, fmt.Sprintf("  %s  %s  %s  %s", sevTag, svcTag, titleLine, remTag))
+		count++
+	}
+
+	if len(rows) == 0 {
+		rows = append(rows, "  No findings to act on")
+	}
+
+	return style.Render(title + "\n" + strings.Join(rows, "\n"))
+}
+
+func (m *overviewModel) renderRiskByAreaCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Risk by area")
+	var rows []string
+
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
 		barColor := theme.Success
@@ -220,11 +275,9 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 		if barWidth < 4 {
 			barWidth = 4
 		}
-		// Reduce bar width by 40% to save space
 		barWidth = barWidth * 3 / 5
 
 		labelText := axis.Label()
-		// Abbreviate labels for narrow viewports
 		if width < 35 {
 			switch labelText {
 			case "Excessive Permissions":
@@ -234,7 +287,7 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 			case "Update & Supply Chain":
 				labelText = "Supply Chain"
 			case "Sensitive Data":
-				labelText = "Sensitive\nData"
+				labelText = "Sensitive"
 			}
 		}
 		label := lipgloss.NewStyle().
@@ -251,7 +304,69 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, " ", bar, " ", scoreNum))
 	}
 
-	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return style.Render(title + "\n" + lipgloss.JoinVertical(lipgloss.Left, rows...))
+}
+
+func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme Theme, width int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Affected services")
+	var rows []string
+
+	// Group by service
+	type svcInfo struct {
+		name        string
+		findings    int
+		fixable     int
+	}
+	svcMap := make(map[string]*svcInfo)
+	var svcOrder []string
+	for _, f := range r.Findings {
+		svc := f.Service
+		if svc == "" {
+			svc = "(project)"
+		}
+		if _, ok := svcMap[svc]; !ok {
+			svcMap[svc] = &svcInfo{name: svc}
+			svcOrder = append(svcOrder, svc)
+		}
+		svcMap[svc].findings++
+		if f.IsFixable() {
+			svcMap[svc].fixable++
+		}
+	}
+
+	for _, name := range svcOrder {
+		info := svcMap[name]
+		svcLabel := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Accent)).
+			Render(name)
+
+		countStr := fmt.Sprintf("%d findings", info.findings)
+		if info.fixable > 0 {
+			countStr += fmt.Sprintf("  (%d fixable)", info.fixable)
+		}
+		countLabel := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(countStr)
+
+		spacer := width - lipgloss.Width(svcLabel) - lipgloss.Width(countStr) - 8
+		if spacer < 1 {
+			spacer = 1
+		}
+
+		rows = append(rows, fmt.Sprintf("  %s%s%s", svcLabel, strings.Repeat(" ", spacer), countLabel))
+	}
+
+	if len(rows) == 0 {
+		rows = append(rows, "  No services affected")
+	}
+
+	return style.Render(title + "\n" + strings.Join(rows, "\n"))
 }
 
 func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -307,27 +422,6 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 	}
 
 	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
-}
-
-func (m *overviewModel) renderMetaCard(r *domain.ScanResult, theme Theme, width int) string {
-	style := lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
-	parts := []string{
-		fmt.Sprintf("Services: %d", len(r.Metadata.Services)),
-		fmt.Sprintf("Findings: %d", r.TotalFindings()),
-	}
-	if len(r.Metadata.Warnings) > 0 {
-		parts = append(parts, fmt.Sprintf("Warnings: %d", len(r.Metadata.Warnings)))
-	}
-	if len(r.Metadata.InfoMessages) > 0 {
-		parts = append(parts, fmt.Sprintf("Info: %d", len(r.Metadata.InfoMessages)))
-	}
-
-	return style.Render(strings.Join(parts, "  |  "))
 }
 
 func RenderBar(score uint8, width int) string {

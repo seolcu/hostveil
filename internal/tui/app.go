@@ -15,17 +15,8 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/export"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/tui/component"
 )
-
-type toastExpiredMsg struct {
-	msg string
-}
-
-func toastCmd(msg string, duration time.Duration) tea.Cmd {
-	return tea.Tick(duration, func(t time.Time) tea.Msg {
-		return toastExpiredMsg{msg: msg}
-	})
-}
 
 var resetSeq = regexp.MustCompile(`\x1b\[0m`)
 var bgResetSeq = regexp.MustCompile(`\x1b\[49m`)
@@ -33,9 +24,9 @@ var bgResetSeq = regexp.MustCompile(`\x1b\[49m`)
 type screen int
 
 const (
-	screenOverview screen = iota
+	screenDashboard screen = iota
 	screenFindings
-	screenHistory
+	screenReport
 )
 
 type appModel struct {
@@ -53,8 +44,7 @@ type appModel struct {
 	settings    *settingsModel
 	help        *helpModel
 
-	toastMessage string
-	toastVisible bool
+	toast   *component.Toast
 }
 
 type keyMap struct {
@@ -76,8 +66,8 @@ func defaultKeyMap() keyMap {
 		Right:  key.NewBinding(key.WithKeys("right", "l", "enter"), key.WithHelp("→/l", "select")),
 		Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 		Tab:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
-		Quit:   key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q/esc", "quit")),
-		Filter: key.NewBinding(key.WithKeys("s", "x", "z", "m", "v", "o"), key.WithHelp("s/x/z/m/v/o", "filter")),
+		Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		Filter: key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "reset filters")),
 	}
 }
 
@@ -90,7 +80,7 @@ func NewApp(result *domain.ScanResult) *appModel {
 	settings.SetAdapters(adapterNames)
 
 	return &appModel{
-		currentScreen: screenOverview,
+		currentScreen: screenDashboard,
 		scanResult:    result,
 		keys:          defaultKeyMap(),
 		theme:         DefaultTheme(),
@@ -99,6 +89,7 @@ func NewApp(result *domain.ScanResult) *appModel {
 		history:       &historyModel{},
 		settings:      settings,
 		help:          &helpModel{},
+		toast:         component.NewToast(),
 	}
 }
 
@@ -106,12 +97,8 @@ func (m *appModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *appModel) showToast(msg string) {
-	m.toastMessage = msg
-	m.toastVisible = true
-	time.AfterFunc(3*time.Second, func() {
-		m.toastVisible = false
-	})
+func (m *appModel) showToast(msg string) tea.Cmd {
+	return m.toast.Show(msg, component.Success, 3*time.Second)
 }
 
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -120,33 +107,34 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case toastExpiredMsg:
-		m.toastVisible = false
+	case component.ExpiredMsg:
+		m.toast.Update(msg)
 
 	case tea.KeyMsg:
 		s := msg.String()
 
-		// Global overlays take priority
+		// Global overlays
 		if m.help.show {
-			if s == "?" || s == "esc" || s == "q" {
+			if s == "?" || s == "esc" {
 				m.help.Toggle()
+				return m, nil
 			}
-			return m, nil
 		}
 		if m.settings.IsOpen() {
-			if s == "S" || s == "esc" || s == "q" {
+			if s == "s" || s == "esc" {
 				m.settings.Toggle()
-			} else if s == "e" {
+				return m, nil
+			}
+			if s == "enter" {
 				format := m.settings.CurrentExportFormat()
 				msg := doExport(m.scanResult, format)
 				m.settings.Toggle()
-				m.showToast(msg)
-			} else {
-				oldTheme := m.settings.themeName
-				m.settings.Update(s)
-				if m.settings.themeName != oldTheme {
-					m.theme = GetTheme(m.settings.themeName)
-				}
+				return m, m.showToast(msg)
+			}
+			oldTheme := m.settings.themeName
+			m.settings.Update(s)
+			if m.settings.themeName != oldTheme {
+				m.theme = GetTheme(m.settings.themeName)
 			}
 			return m, nil
 		}
@@ -157,20 +145,22 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case s == "?":
 			m.help.Toggle()
 		case s == "1":
-			m.currentScreen = screenOverview
+			m.currentScreen = screenDashboard
 		case s == "2":
 			m.currentScreen = screenFindings
 		case s == "3":
-			m.currentScreen = screenHistory
-		case s == "S":
+			m.currentScreen = screenReport
+		case s == "s" && m.currentScreen != screenFindings:
 			m.settings.Toggle()
-		case s == "h" && m.currentScreen == screenOverview:
+		case s == "r" || s == "R":
+			m.findings.resetFilters()
+		case s == "h" && m.currentScreen == screenDashboard:
 			// Host triage: switch to findings filtered to host scope
 			m.currentScreen = screenFindings
 			m.findings.hostTriageMode = true
 			m.findings.scopeFilter = "host"
 			m.findings.applyFilters()
-		case s == "f" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
+		case s == "p" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
 			f := m.findings.list[m.findings.selected]
 			if f.IsFixable() {
 				if m.findings.showFixPreview {
@@ -181,7 +171,31 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.scanResult.Metadata.ComposeFile,
 						m.scanResult.Findings)
 					m.findings.showFixPreview = true
+					// Compute backup path for preview
+					if f.Source == domain.SourceNativeCompose && m.scanResult.Metadata.ComposeFile != "" {
+						eng := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
+						if plan, err := eng.Preview(); err == nil {
+							m.findings.fixBackupPath = plan.BackupPath
+						}
+					}
 				}
+			}
+		case s == "a" && m.currentScreen == screenFindings && m.findings.showFixPreview && m.findings.selected < len(m.findings.list):
+			f := m.findings.list[m.findings.selected]
+			if f.Source == domain.SourceNativeCompose && m.scanResult.Metadata.ComposeFile != "" {
+				eng := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
+				plan, err := eng.Apply()
+				if err != nil {
+					return m, m.showToast(fmt.Sprintf("Apply failed: %v", err))
+				}
+				msg := fmt.Sprintf("Applied %d fixes. Backup: %s",
+					len(plan.AutoApplied)+len(plan.ReviewNeeded), plan.BackupPath)
+				if plan.BackupPath == "" {
+					msg = fmt.Sprintf("Applied %d fixes.", len(plan.AutoApplied)+len(plan.ReviewNeeded))
+				}
+				m.findings.showFixPreview = false
+				m.findings.showDetail = false
+				return m, m.showToast(msg)
 			}
 		default:
 			if m.currentScreen == screenFindings {
@@ -204,27 +218,19 @@ func (m *appModel) View() string {
 
 	var body string
 	switch m.currentScreen {
-	case screenOverview:
+	case screenDashboard:
 		body = m.overview.render(m.scanResult, t, m.width, m.height-4)
 	case screenFindings:
 		body = m.findings.render(t, m.width, m.height-4)
-	case screenHistory:
+	case screenReport:
 		body = m.history.render(m.scanResult, t, m.width, m.height-4)
 	}
 
 	footer := m.renderFooter(t)
 
-	// Render toast notification if visible
-	toastLine := ""
-	if m.toastVisible && m.toastMessage != "" {
-		toastStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(t.Success)).
-			Background(lipgloss.Color(t.Surface)).
-			Padding(0, 1)
-		toastLine = toastStyle.Render(m.toastMessage)
-		if m.width > 0 && lipgloss.Width(toastLine) > m.width {
-			toastLine = toastStyle.Render(truncateStr(m.toastMessage, m.width-4))
-		}
+	toastLine := m.toast.Render(t.Background, t.Success, t.Surface, m.width)
+	if toastLine != "" && m.width > 0 && lipgloss.Width(toastLine) > m.width {
+		toastLine = truncateStr(toastLine, m.width-4)
 	}
 
 	// Pad body so footer stays at terminal bottom
@@ -383,11 +389,11 @@ func (m *appModel) renderHeader(t Theme) string {
 }
 
 func (m *appModel) renderFooter(t Theme) string {
-	nav := " [1] Overview  [2] Findings  [3] History "
-	hint := " [?] Help  [q] Quit "
+	nav := " [1] Dashboard  [2] Findings  [3] Report "
+	hint := " [?] Help  [s] Settings  [q] Quit "
 	if m.width < 80 {
-		nav = " [1] Ovw  [2] Fnd  [3] Hist "
-		hint = " [?] [q] "
+		nav = " [1] Dsh  [2] Fnd  [3] Rpt "
+		hint = " [?] [s] [q] "
 	}
 
 	style := lipgloss.NewStyle().

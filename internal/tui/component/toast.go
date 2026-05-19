@@ -38,15 +38,15 @@ func (t *Toast) Show(msg string, typ Type, duration time.Duration) tea.Cmd {
 	t.totalDuration = duration
 	t.expiresAt = time.Now().Add(duration)
 	return tea.Tick(duration, func(_ time.Time) tea.Msg {
-		return expiredMsg{}
+		return ExpiredMsg{}
 	})
 }
 
-type expiredMsg struct{}
+type ExpiredMsg struct{}
 
 func (t *Toast) Update(msg tea.Msg) {
 	switch msg.(type) {
-	case expiredMsg:
+	case ExpiredMsg:
 		t.visible = false
 	}
 }

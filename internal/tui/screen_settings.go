@@ -58,7 +58,7 @@ func (m *settingsModel) Update(msg string) {
 		m.cycleTheme(1)
 	case "h", "left":
 		m.cycleTheme(-1)
-	case "E":
+	case "e":
 		m.exportFormat = (m.exportFormat + 1) % len(exportFormats)
 	case "esc", "q":
 		m.open = false
@@ -178,7 +178,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		Render(fmt.Sprintf("Format: %s", fmtUpper)) + "\n"
 	content += "  " + lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("E cycle format  |  e export to file") + "\n"
+		Render("e cycle format  |  enter export to file") + "\n"
 	content += "\n"
 
 	sep2 := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Border)).Render(strings.Repeat("─", dialogWidth-6))

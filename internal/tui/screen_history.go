@@ -13,8 +13,12 @@ type historyModel struct {
 }
 
 func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
-	if width < 40 {
+	if width < 20 {
 		return "Terminal too narrow"
+	}
+
+	if width < 40 {
+		return m.renderMiniReport(r, theme, width)
 	}
 
 	cardStyle := lipgloss.NewStyle().
@@ -25,8 +29,12 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 
 	cardWidth := width - 4
 
-	// Card 1: Score summary + Axis bars
+	// Card 1: Current scan summary
 	var axisRows []string
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Current scan summary")
+	axisRows = append(axisRows, title)
+	axisRows = append(axisRows, "")
 
 	info := fmt.Sprintf("Score: %d (%s)  |  Findings: %d  |  Services: %d",
 		r.ScoreReport.Overall, r.ScoreReport.Grade(),
@@ -103,7 +111,20 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		card2 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, sevRows...))
 	}
 
-	// Info messages (grouped)
+	// Card 3: Export options
+	var exportRows []string
+	exportTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("Export report")
+	exportRows = append(exportRows, exportTitle)
+	exportRows = append(exportRows, "")
+	exportFmts := []string{"JSON", "SARIF", "Markdown", "HTML"}
+	for _, f := range exportFmts {
+		exportRows = append(exportRows, fmt.Sprintf("  · %s", f))
+	}
+	exportRows = append(exportRows, "")
+	exportRows = append(exportRows, "  Press s to open Settings for export")
+	card3 := "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, exportRows...))
+
+	// Card 4: Info messages and warnings
 	infoLines := []string{}
 	if len(r.Metadata.InfoMessages) > 0 {
 		var projects []string
@@ -130,25 +151,46 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 			infoLines = append(infoLines, fmt.Sprintf("  ℹ %s", msg))
 		}
 	}
-
-	// Warnings
 	if len(r.Metadata.Warnings) > 0 {
 		for _, w := range r.Metadata.Warnings {
 			infoLines = append(infoLines, fmt.Sprintf("  ⚠ %s", w))
 		}
 	}
-
-	// Card 3: Info + Warnings (if any)
-	card3 := ""
+	card4 := ""
 	if len(infoLines) > 0 {
-		card3 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, infoLines...))
+		card4 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, infoLines...))
 	}
 
-	content := card1 + card2 + card3
+	content := card1 + card2 + card3 + card4
 
 	style := lipgloss.NewStyle().
 		Width(width).
 		Padding(0, 1)
 
 	return style.Render(content)
+}
+
+func (m *historyModel) renderMiniReport(r *domain.ScanResult, theme Theme, width int) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	findings := r.TotalFindings()
+
+	gradeColor := theme.Critical
+	if score >= 50 {
+		gradeColor = theme.Medium
+	}
+	if score >= 80 {
+		gradeColor = theme.Success
+	}
+
+	line1 := lipgloss.NewStyle().Bold(true).Render("Report")
+	line2 := lipgloss.JoinHorizontal(lipgloss.Center,
+		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100)),
+		" · ",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
+	)
+	line3 := fmt.Sprintf("%d findings  |  s Settings for export", findings)
+
+	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
+	return style.Render(line1 + "\n" + line2 + "\n" + line3)
 }
