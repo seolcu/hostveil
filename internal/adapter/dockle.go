@@ -87,7 +87,7 @@ func parseDockleOutput(output, image string) ([]domain.Finding, error) {
 			WhyRisky:    "Docker image best practice violation detected by Dockle.",
 			HowToFix:    "Review the Dockle finding and follow the recommended fix for code " + d.Code + ". See https://github.com/goodwithtech/dockle",
 			Evidence:    evidence,
-			Remediation: domain.RemediationManual,
+			Remediation: domain.RemediationReview,
 		})
 	}
 

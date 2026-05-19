@@ -2,16 +2,30 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
+	"github.com/seolcu/hostveil/internal/export"
 	"github.com/seolcu/hostveil/internal/fix"
 )
+
+type toastExpiredMsg struct {
+	msg string
+}
+
+func toastCmd(msg string, duration time.Duration) tea.Cmd {
+	return tea.Tick(duration, func(t time.Time) tea.Msg {
+		return toastExpiredMsg{msg: msg}
+	})
+}
 
 var resetSeq = regexp.MustCompile(`\x1b\[0m`)
 var bgResetSeq = regexp.MustCompile(`\x1b\[49m`)
@@ -32,12 +46,15 @@ type appModel struct {
 	tick          int
 	keys          keyMap
 
-	theme    Theme
-	overview *overviewModel
-	findings *findingsModel
-	history  *historyModel
-	settings *settingsModel
-	help     *helpModel
+	theme       Theme
+	overview    *overviewModel
+	findings    *findingsModel
+	history     *historyModel
+	settings    *settingsModel
+	help        *helpModel
+
+	toastMessage string
+	toastVisible bool
 }
 
 type keyMap struct {
@@ -89,11 +106,22 @@ func (m *appModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *appModel) showToast(msg string) {
+	m.toastMessage = msg
+	m.toastVisible = true
+	time.AfterFunc(3*time.Second, func() {
+		m.toastVisible = false
+	})
+}
+
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
+	case toastExpiredMsg:
+		m.toastVisible = false
 
 	case tea.KeyMsg:
 		s := msg.String()
@@ -108,6 +136,11 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.settings.IsOpen() {
 			if s == "S" || s == "esc" || s == "q" {
 				m.settings.Toggle()
+			} else if s == "e" {
+				format := m.settings.CurrentExportFormat()
+				msg := doExport(m.scanResult, format)
+				m.settings.Toggle()
+				m.showToast(msg)
 			} else {
 				oldTheme := m.settings.themeName
 				m.settings.Update(s)
@@ -144,14 +177,10 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.findings.showFixPreview = false
 					m.findings.showDetail = true
 				} else {
-					if m.scanResult.Metadata.ComposeFile != "" {
-						engine := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
-						m.findings.fixPreviewContent = engine.PreviewFinding(f)
-						m.findings.showFixPreview = true
-					} else {
-						m.findings.fixPreviewContent = "No compose file available for fix preview."
-						m.findings.showFixPreview = true
-					}
+					m.findings.fixPreviewContent = fix.PreviewAnyFinding(f,
+						m.scanResult.Metadata.ComposeFile,
+						m.scanResult.Findings)
+					m.findings.showFixPreview = true
 				}
 			}
 		default:
@@ -185,14 +214,34 @@ func (m *appModel) View() string {
 
 	footer := m.renderFooter(t)
 
+	// Render toast notification if visible
+	toastLine := ""
+	if m.toastVisible && m.toastMessage != "" {
+		toastStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Success)).
+			Background(lipgloss.Color(t.Surface)).
+			Padding(0, 1)
+		toastLine = toastStyle.Render(m.toastMessage)
+		if m.width > 0 && lipgloss.Width(toastLine) > m.width {
+			toastLine = toastStyle.Render(truncateStr(m.toastMessage, m.width-4))
+		}
+	}
+
 	// Pad body so footer stays at terminal bottom
-	totalLines := strings.Count(header, "\n") + 1 + strings.Count(body, "\n") + 1 + strings.Count(footer, "\n") + 1
+	toastExtra := 0
+	if toastLine != "" {
+		toastExtra = 1
+	}
+	totalLines := strings.Count(header, "\n") + 1 + strings.Count(body, "\n") + 1 + strings.Count(footer, "\n") + 1 + toastExtra
 	availableLines := m.height
 	if totalLines < availableLines {
 		body += strings.Repeat("\n", availableLines-totalLines)
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
+	if toastLine != "" {
+		content += "\n" + toastLine
+	}
 
 	// Wrap entire render in background color, pad each line to full width
 	view := applyBackground(content, t.Background, m.width, m.height)
@@ -352,4 +401,33 @@ func (m *appModel) renderFooter(t Theme) string {
 
 func fmtScore(r *domain.ScanResult) string {
 	return fmt.Sprintf("Score: %d (%s)  |  %d findings", r.ScoreReport.Overall, r.ScoreReport.Grade(), r.TotalFindings())
+}
+
+func doExport(r *domain.ScanResult, format string) string {
+	var data string
+	var err error
+	switch format {
+	case "json":
+		data, err = export.JSON(r, false)
+	case "sarif":
+		data, err = export.SARIF(r)
+	case "markdown":
+		data = export.Markdown(r)
+	case "html":
+		data, err = export.HTML(r)
+	}
+	if err != nil {
+		return fmt.Sprintf("Export failed: %v", err)
+	}
+
+	ts := time.Now().Format("20060102_150405")
+	filename := fmt.Sprintf("hostveil_report_%s.%s", ts, format)
+	outPath, err := filepath.Abs(filename)
+	if err != nil {
+		outPath = filename
+	}
+	if err := os.WriteFile(outPath, []byte(data), 0644); err != nil {
+		return fmt.Sprintf("Export write failed: %v", err)
+	}
+	return fmt.Sprintf("Exported %s report to %s", strings.ToUpper(format), outPath)
 }

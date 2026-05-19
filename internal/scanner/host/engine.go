@@ -48,6 +48,6 @@ func hostFinding(id string, axis domain.Axis, sev domain.Severity, subject, titl
 		WhyRisky:    why,
 		HowToFix:    fix,
 		Evidence:    make(map[string]string),
-		Remediation: domain.RemediationManual,
+		Remediation: domain.RemediationReview,
 	}
 }

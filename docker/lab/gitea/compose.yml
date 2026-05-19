@@ -1,0 +1,23 @@
+services:
+  gitea:
+    image: gitea/gitea:latest
+    container_name: hostveil-lab-gitea
+    restart: unless-stopped
+    privileged: true
+    environment:
+      USER_UID: "0"
+      USER_GID: "0"
+      GITEA__server__ROOT_URL: http://git.lab.local:3000/
+    volumes:
+      - gitea-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - lab-net
+
+volumes:
+  gitea-data:
+
+networks:
+  lab-net:
+    name: hostveil-lab
+    external: true

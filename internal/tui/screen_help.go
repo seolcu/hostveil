@@ -81,5 +81,16 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 
 	content += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Press ? or Esc to close")
 
+	// Count estimated visible lines (border 2 top + 2 bottom + padding 2 = 6 overhead)
+	contentLines := strings.Count(content, "\n") + 1
+	totalLines := contentLines + 6
+	maxLines := height - 2
+	if totalLines > maxLines {
+		hidden := totalLines - maxLines
+		content += "\n\n" + lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Medium)).
+			Render(fmt.Sprintf("▼ %d line(s) hidden — resize terminal", hidden))
+	}
+
 	return dialogStyle.Render(content)
 }

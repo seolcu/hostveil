@@ -1,0 +1,15 @@
+services:
+  exposed-nginx:
+    image: nginx:stable
+    container_name: hostveil-lab-exposed-nginx
+    restart: unless-stopped
+    volumes:
+      - /etc/shadow:/mnt/shadow:ro
+    user: "1000:1000"
+    networks:
+      - lab-net
+
+networks:
+  lab-net:
+    name: hostveil-lab
+    external: true

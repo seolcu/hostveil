@@ -51,7 +51,7 @@ func parseLynisOutput(output string) ([]domain.Finding, error) {
 				Description: line,
 				WhyRisky:    "Lynis security audit identified a hardening opportunity.",
 				HowToFix:    "Review the Lynis suggestion and apply the recommended hardening measure.",
-				Remediation: domain.RemediationManual,
+				Remediation: domain.RemediationReview,
 			})
 		}
 	}

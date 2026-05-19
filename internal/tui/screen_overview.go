@@ -213,6 +213,9 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 		}
 
 		labelWidth := 22
+		if width < 35 {
+			labelWidth = 12
+		}
 		barWidth := width - labelWidth - 8
 		if barWidth < 4 {
 			barWidth = 4
@@ -220,9 +223,23 @@ func (m *overviewModel) renderAxisCard(r *domain.ScanResult, theme Theme, width 
 		// Reduce bar width by 40% to save space
 		barWidth = barWidth * 3 / 5
 
+		labelText := axis.Label()
+		// Abbreviate labels for narrow viewports
+		if width < 35 {
+			switch labelText {
+			case "Excessive Permissions":
+				labelText = "Permissions"
+			case "Unnecessary Exposure":
+				labelText = "Exposure"
+			case "Update & Supply Chain":
+				labelText = "Supply Chain"
+			case "Sensitive Data":
+				labelText = "Sensitive\nData"
+			}
+		}
 		label := lipgloss.NewStyle().
 			Width(labelWidth).
-			Render(axis.Label())
+			Render(labelText)
 
 		bar := renderColoredBar(score, barWidth, barColor)
 

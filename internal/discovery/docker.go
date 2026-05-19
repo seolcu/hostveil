@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,90 +17,62 @@ const (
 )
 
 type Project struct {
-	Name          string
-	ComposePath   string
-	ServiceCount  int
+	Name        string
+	ComposePath string
 }
 
 type Result struct {
-	Status    DockerStatus
-	Projects  []Project
-	Err       string
+	Status   DockerStatus
+	Projects []Project
+	Err      string
 }
 
-func Discover() Result {
-	// Check if Docker is available
+// Discover finds compose files by walking up from the current directory.
+// If userMode is true, Docker socket access and host checks are skipped.
+func Discover(userMode bool) Result {
+	status := DockerAvailable
+
+	// Check Docker availability
 	if _, err := exec.LookPath("docker"); err != nil {
-		return Result{Status: DockerMissing}
-	}
-
-	// Test Docker access
-	cmd := exec.Command("docker", "info", "--format", "{{.ServerVersion}}")
-	if err := cmd.Run(); err != nil {
-		return Result{Status: DockerPermissionDenied, Err: err.Error()}
-	}
-
-	// Discover compose files recursively from common locations
-	var projects []Project
-	locations := []string{".", "/home", "/opt", "/srv", "/docker"}
-
-	for _, loc := range locations {
-		found, err := findComposeFiles(loc)
-		if err == nil {
-			projects = append(projects, found...)
+		status = DockerMissing
+	} else if !userMode {
+		cmd := exec.Command("docker", "info", "--format", "{{.ServerVersion}}")
+		if err := cmd.Run(); err != nil {
+			status = DockerPermissionDenied
 		}
+	}
+
+	// Walk up from current directory looking for compose files
+	var projects []Project
+	seen := make(map[string]bool)
+	dir, _ := os.Getwd()
+
+	for {
+		for _, name := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
+			path := filepath.Join(dir, name)
+			if _, err := os.Stat(path); err == nil && !seen[path] {
+				seen[path] = true
+				projects = append(projects, Project{
+					Name:        filepath.Base(dir),
+					ComposePath: path,
+				})
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	if len(projects) > 20 {
+		projects = projects[:20]
 	}
 
 	return Result{
-		Status:   DockerAvailable,
+		Status:   status,
 		Projects: projects,
 	}
-}
-
-func findComposeFiles(root string) ([]Project, error) {
-	var projects []Project
-
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if strings.HasPrefix(entry.Name(), ".") {
-			continue
-		}
-
-		dir := root + "/" + entry.Name()
-		composePath := ""
-		for _, name := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
-			if _, err := os.Stat(dir + "/" + name); err == nil {
-				composePath = dir + "/" + name
-				break
-			}
-		}
-
-		if composePath != "" {
-			projects = append(projects, Project{
-				Name:         entry.Name(),
-				ComposePath:  composePath,
-			})
-		}
-
-		// Recurse one level
-		if len(projects) == 0 {
-			sub, _ := findComposeFiles(dir)
-			projects = append(projects, sub...)
-		}
-	}
-
-	if len(projects) > 10 {
-		projects = projects[:10]
-	}
-
-	return projects, nil
 }
 
 func GetHostRuntime(root string) map[string]string {
@@ -107,6 +80,10 @@ func GetHostRuntime(root string) map[string]string {
 
 	if h, err := os.Hostname(); err == nil {
 		info["hostname"] = h
+	}
+
+	if root == "" {
+		root = "/"
 	}
 
 	if data, err := os.ReadFile(root + "/proc/loadavg"); err == nil {
@@ -120,12 +97,10 @@ func GetHostRuntime(root string) map[string]string {
 		}
 	}
 
-	// Docker version
 	if out, err := exec.Command("docker", "version", "--format", "{{.Server.Version}}").Output(); err == nil {
 		info["docker_version"] = strings.TrimSpace(string(out))
 	}
 
-	// Fail2ban
 	if _, err := os.Stat(root + "/etc/fail2ban"); err == nil {
 		info["fail2ban"] = "Installed"
 		if out, err := exec.Command("fail2ban-client", "status").Output(); err == nil {

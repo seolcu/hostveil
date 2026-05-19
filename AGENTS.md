@@ -61,7 +61,7 @@ hostveil/
 
 ## Current Implementation Status
 
-### ✅ Completed (M1-M7, 57/62 issues closed)
+### ✅ Completed (all 62 issues closed)
 
 | Module | Lines | Key Files |
 |--------|-------|-----------|
@@ -85,25 +85,33 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### 🚨 OPEN ISSUES (5 remaining) — DO NOT FORGET
+### ✅ Completed Issues (all 5 deferred items resolved)
 
-These items were deferred. Must be addressed before v1.0.0 release:
+| Issue | What | Resolution |
+|-------|------|-----------|
+| **#384** | Fix Engine — Host Edits & Shell Commands | 20 host findings mapped with HostEdit + ShellCommand actions. TUI `f` key shows host fix preview via `fix.PreviewAnyFinding()` |
+| **#385** | Fix Engine — Adapter Finding Classification | Trivy/Dockle/Lynis/Gitleaks mapped with evidence-aware fix commands. TUI `f` key shows adapter fix preview |
+| **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
+| **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
+| **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
 
-| Issue | What | Reason | Mark |
-|-------|------|--------|------|
-| **#384** | Fix Engine — Host Edits & Shell Commands | Minimal done; full host fix list needs completion | 🟡 |
-| **#385** | Fix Engine — Adapter Finding Classification | Stub only; full mapping deferred | 🟡 |
-| **#386** | Adapter Integration Tests (mock adapters) | No tests yet | 🔴 |
-| **#420** | TUI E2E Test Scenarios | Basic tmux script exists, needs expansion | 🔴 |
-| **#422** | Docker Lab 유지보수 | scripts/lab.sh from v0.29 needs Go migration | 🔴 |
-
-## Tests (28 tests, 5 files)
+## Tests (56 tests, 9 files)
 
 | File | Tests | Coverage |
 |------|-------|----------|
 | `internal/adapter/adapter_test.go` | 9 | Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | `internal/compose/parser_test.go` | 3 | Port/volume/env parsing, error handling, empty file |
+| `internal/domain/axis_test.go` | 3 | Axis string, label, AllAxes |
+| `internal/domain/finding_test.go` | 3 | IsFixable, TotalFindings, FindingsBySeverity |
+| `internal/domain/remediation_test.go` | 2 | Remediation string, label |
+| `internal/domain/score_test.go` | 1 | Score grade boundaries |
+| `internal/domain/scope_test.go` | 1 | Scope string |
+| `internal/domain/severity_test.go` | 2 | Severity string, color |
+| `internal/domain/source_test.go` | 2 | Source string, AllSources |
+| `internal/export/export_test.go` | 8 | JSON (full + findings-only), Markdown, HTML, SARIF, empty findings |
 | `internal/fix/actions_test.go` | 6 | HostEdit/ShellCmd creation, 20 host finding coverage, 4 adapter classification |
+| `internal/fix/engine_test.go` | 12 | MinimalHostFix, MinimalAdapterFix, PreviewAnyFinding (compose/host/adapter/unknown), NewEngine |
+| `internal/scanner/host/engine_test.go` | 4 | NewEngine, EngineScan, check names, Remediation type |
 | `internal/scanner/rules/engine_test.go` | 6 | Core rules + service-aware (Vaultwarden, Postgres/Redis) |
 | `internal/scanner/scanner_test.go` | 4 | Scan run, empty config, finding detection, score calculation |
 

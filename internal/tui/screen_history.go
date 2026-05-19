@@ -17,15 +17,24 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		return "Terminal too narrow"
 	}
 
-	content := ""
+	cardStyle := lipgloss.NewStyle().
+		Width(width - 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
 
-	// Score summary line
+	cardWidth := width - 4
+
+	// Card 1: Score summary + Axis bars
+	var axisRows []string
+
 	info := fmt.Sprintf("Score: %d (%s)  |  Findings: %d  |  Services: %d",
 		r.ScoreReport.Overall, r.ScoreReport.Grade(),
 		r.TotalFindings(), len(r.Metadata.Services))
-	content += info + "\n\n"
+	axisRows = append(axisRows, info)
 
-	// Axis scores with compact bars
+	axisRows = append(axisRows, "")
+
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
 		barColor := theme.Success
@@ -37,20 +46,45 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		}
 
 		labelWidth := 22
-		barWidth := width - labelWidth - 14
+		if cardWidth < 35 {
+			labelWidth = 12
+		}
+		barWidth := cardWidth - labelWidth - 14
 		if barWidth < 4 {
 			barWidth = 4
 		}
 		barWidth = barWidth * 3 / 5
 
-		label := fmt.Sprintf("%-22s", axis.Label())
-		bar := renderColoredBar(score, barWidth, barColor)
-		scoreStr := fmt.Sprintf(" %3d", score)
+		labelText := axis.Label()
+		if cardWidth < 35 {
+			switch labelText {
+			case "Excessive Permissions":
+				labelText = "Permissions"
+			case "Unnecessary Exposure":
+				labelText = "Exposure"
+			case "Update & Supply Chain":
+				labelText = "Supply Chain"
+			case "Sensitive Data":
+				labelText = "Sensitive"
+			}
+		}
 
-		content += fmt.Sprintf("  %s %s%s\n", label, bar, scoreStr)
+		label := lipgloss.NewStyle().
+			Width(labelWidth).
+			Render(labelText)
+		bar := renderColoredBar(score, barWidth, barColor)
+		scoreStr := lipgloss.NewStyle().
+			Width(4).
+			Align(lipgloss.Right).
+			Render(fmt.Sprintf("%d", score))
+
+		axisRows = append(axisRows, fmt.Sprintf("  %s %s %s", label, bar, scoreStr))
 	}
 
-	// Severity summary inline
+	card1 := cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, axisRows...))
+
+	// Card 2: Severity summary
+	var sevRows []string
 	sevParts := []string{}
 	for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
 		count := r.FindingsBySeverity(sev)
@@ -62,12 +96,16 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 		}
 	}
 	if len(sevParts) > 0 {
-		content += "\nFindings: " + strings.Join(sevParts, "  ") + "\n"
+		sevRows = append(sevRows, "  "+strings.Join(sevParts, "  "))
+	}
+	card2 := ""
+	if len(sevRows) > 0 {
+		card2 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, sevRows...))
 	}
 
 	// Info messages (grouped)
+	infoLines := []string{}
 	if len(r.Metadata.InfoMessages) > 0 {
-		content += "\nInfo:\n"
 		var projects []string
 		var otherMsgs []string
 		seenProjects := make(map[string]bool)
@@ -86,20 +124,27 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 			}
 		}
 		if len(projects) > 0 {
-			content += fmt.Sprintf("  ℹ Discovered %d project(s): %s\n", len(projects), strings.Join(projects, ", "))
+			infoLines = append(infoLines, fmt.Sprintf("  ℹ Discovered %d project(s): %s", len(projects), strings.Join(projects, ", ")))
 		}
 		for _, msg := range otherMsgs {
-			content += fmt.Sprintf("  ℹ %s\n", msg)
+			infoLines = append(infoLines, fmt.Sprintf("  ℹ %s", msg))
 		}
 	}
 
 	// Warnings
 	if len(r.Metadata.Warnings) > 0 {
-		content += "\nWarnings:\n"
 		for _, w := range r.Metadata.Warnings {
-			content += fmt.Sprintf("  ⚠ %s\n", w)
+			infoLines = append(infoLines, fmt.Sprintf("  ⚠ %s", w))
 		}
 	}
+
+	// Card 3: Info + Warnings (if any)
+	card3 := ""
+	if len(infoLines) > 0 {
+		card3 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, infoLines...))
+	}
+
+	content := card1 + card2 + card3
 
 	style := lipgloss.NewStyle().
 		Width(width).

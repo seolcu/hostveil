@@ -318,7 +318,12 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			// Highlight search match
 			title := f.Title
 			if m.searchQuery != "" {
-				title = highlightText(title, m.searchQuery)
+				titleMatch := strings.Contains(strings.ToLower(f.Title), strings.ToLower(m.searchQuery))
+				if titleMatch {
+					title = highlightText(title, m.searchQuery)
+				} else if strings.Contains(strings.ToLower(f.Description), strings.ToLower(m.searchQuery)) {
+					title += "…"
+				}
 			}
 			title = truncateStr(title, listWidth-36)
 
@@ -330,6 +335,39 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 			}
 
 			listContent.WriteString(style.Render(line) + "\n")
+		}
+
+		// Fill remaining vertical space with severity summary when detail is not shown
+		if !m.showDetail && len(m.list) > 0 {
+			remaining := listHeight - len(m.list) - 1
+			if remaining > 3 {
+				sepLine := "\n" + strings.Repeat("─", listWidth)
+				listContent.WriteString(sepLine + "\n")
+
+				// Severity counts line
+				var sevParts []string
+				for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
+					count := 0
+					for _, f := range m.list {
+						if f.Severity == sev {
+							count++
+						}
+					}
+					if count > 0 {
+						col := sev.Color()
+						sevParts = append(sevParts,
+							lipgloss.NewStyle().Foreground(lipgloss.Color(col)).Render(fmt.Sprintf("%s: %d", strings.ToUpper(sev.String()), count)),
+						)
+					}
+				}
+				if len(sevParts) > 0 {
+					listContent.WriteString("  " + strings.Join(sevParts, "  ") + "\n")
+				}
+
+				// Keyboard hints
+				hint := "Enter/l detail  |  / search  |  s filter  |  R reset"
+				listContent.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render(hint) + "\n")
+			}
 		}
 	}
 
@@ -474,16 +512,14 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 		tokens = append(tokens, fmt.Sprintf("Sort: %s ↑", m.sortMode))
 	}
 
-	info := fmt.Sprintf("%d/%d", len(m.list), len(m.all))
+	info := fmt.Sprintf("%d/%d findings", len(m.list), len(m.all))
 	if len(tokens) > 0 {
 		filterLine := strings.Join(tokens, " | ")
 		if len(info)+len(filterLine)+7 > width {
 			info += "\n" + strings.Repeat(" ", 6) + filterLine
 		} else {
-			info += "  " + filterLine
+			info += "  |  " + filterLine
 		}
-	} else {
-		info += "  no filters"
 	}
 
 	if m.showSearch {

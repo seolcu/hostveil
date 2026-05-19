@@ -1,0 +1,23 @@
+services:
+  lab:
+    build:
+      context: ../..
+      dockerfile: docker/lab/Dockerfile
+    ports:
+      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:9091:9091"
+      - "127.0.0.1:7681:7681"
+    volumes:
+      - ../..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    privileged: true
+    init: true
+    stdin_open: true
+    tty: true
+    networks:
+      - lab-net
+
+networks:
+  lab-net:
+    name: hostveil-lab
+    driver: bridge

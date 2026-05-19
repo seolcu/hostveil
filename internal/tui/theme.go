@@ -118,11 +118,13 @@ var themes = map[string]func() Theme{
 	"gruvbox":     GruvboxTheme,
 }
 
+// themeOrder defines the display order for themes
+var themeOrder = []string{"tokyo-night", "dracula", "nord", "catppuccin", "gruvbox"}
+
 func ThemeNames() []string {
-	names := make([]string, 0, len(themes))
-	for n := range themes {
-		names = append(names, n)
-	}
+	// Return a copy to prevent modification
+	names := make([]string, len(themeOrder))
+	copy(names, themeOrder)
 	return names
 }
 

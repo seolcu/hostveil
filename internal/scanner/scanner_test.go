@@ -8,8 +8,8 @@ import (
 
 func TestScanWithComposeFile(t *testing.T) {
 	result, err := Run(Config{
-		ComposePath: "../../tests/scenarios/vaultwarden-domain/docker-compose.yml",
-		UserMode:    true,
+		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -41,8 +41,8 @@ func TestScanWithEmptyConfig(t *testing.T) {
 
 func TestScanFindsExposureFinding(t *testing.T) {
 	result, err := Run(Config{
-		ComposePath: "../../tests/scenarios/vaultwarden-domain/docker-compose.yml",
-		UserMode:    true,
+		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -63,14 +63,13 @@ func TestScanFindsExposureFinding(t *testing.T) {
 
 func TestScoreCalculation(t *testing.T) {
 	result, err := Run(Config{
-		ComposePath: "../../tests/scenarios/vaultwarden-domain/docker-compose.yml",
-		UserMode:    true,
+		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 
-	// All axes should have scores
 	for _, axis := range allAxes() {
 		_, ok := result.ScoreReport.AxisScores[axis]
 		if !ok {

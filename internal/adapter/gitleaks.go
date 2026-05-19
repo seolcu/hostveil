@@ -84,7 +84,7 @@ func parseGitleaksOutput(output, path string) ([]domain.Finding, error) {
 			WhyRisky:    "Hardcoded secrets in source code can be discovered in CI logs, version control history, and backups.",
 			HowToFix:    "Remove the secret from source code, rotate the credential, and use environment variables or a secrets manager.",
 			Evidence:    evidence,
-			Remediation: domain.RemediationManual,
+			Remediation: domain.RemediationReview,
 		})
 	}
 

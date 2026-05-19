@@ -2,6 +2,8 @@ package fix
 
 import (
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func TestPrepareHostEdit(t *testing.T) {
@@ -62,20 +64,20 @@ func TestHostEditsForFindingCoverage(t *testing.T) {
 
 func TestAdapterFixForFindingCoverage(t *testing.T) {
 	cases := []struct {
-		id      string
+		finding domain.Finding
 		expects int
 	}{
-		{"trivy.CVE-2024-0001", 2},
-		{"dockle.CIS-DI-0001", 1},
-		{"lynis.some_test", 1},
-		{"gitleaks.aws-key", 2},
-		{"unknown.finding", 0},
+		{domain.Finding{ID: "trivy.CVE-2024-0001", Service: "test:latest", Evidence: map[string]string{"package": "curl@7.0", "fixed_version": "7.1"}}, 3},
+		{domain.Finding{ID: "dockle.CIS-DI-0001", Service: "test:latest"}, 2},
+		{domain.Finding{ID: "lynis.some_test", Service: "test:latest"}, 2},
+		{domain.Finding{ID: "gitleaks.aws-key", Service: "test:latest", Evidence: map[string]string{"file": ".env"}}, 3},
+		{domain.Finding{ID: "unknown.finding", Service: "test:latest"}, 0},
 	}
 
 	for _, c := range cases {
-		actions := adapterFixForFinding(c.id, "test:latest")
+		actions := adapterFixForFinding(c.finding)
 		if len(actions) != c.expects {
-			t.Errorf("adapterFixForFinding(%q) expected %d actions, got %d", c.id, c.expects, len(actions))
+			t.Errorf("adapterFixForFinding(%q) expected %d actions, got %d", c.finding.ID, c.expects, len(actions))
 		}
 	}
 }
@@ -88,7 +90,7 @@ func TestHostEditsForFindingReturnsNilForUnknown(t *testing.T) {
 }
 
 func TestAdapterFixForFindingReturnsNilForUnknown(t *testing.T) {
-	actions := adapterFixForFinding("unknown.finding", "test")
+	actions := adapterFixForFinding(domain.Finding{ID: "unknown.finding", Service: "test"})
 	if len(actions) != 0 {
 		t.Errorf("expected 0 actions for unknown, got %d", len(actions))
 	}

@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 // HostEdit defines a file edit on the host system.
@@ -318,57 +320,105 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 }
 
 // adapterFixForFinding maps external adapter findings to fix actions.
-// Full classification for Trivy, Dockle, Lynis, Gitleaks findings.
-func adapterFixForFinding(findingID string, svc string) []FixAction {
+func adapterFixForFinding(finding domain.Finding) []FixAction {
+	id := finding.ID
+	svc := finding.Service
+
 	switch {
-	case strings.HasPrefix(findingID, "trivy."):
-		return []FixAction{
+	case strings.HasPrefix(id, "trivy."):
+		actions := []FixAction{
 			PrepareShellCommand(
 				fmt.Sprintf("docker pull %s", svc),
 				fmt.Sprintf("Pull latest %s image to update vulnerable packages", svc),
 				"",
 			),
+		}
+		if pkg, ok := finding.Evidence["package"]; ok {
+			if fixed, ok := finding.Evidence["fixed_version"]; ok {
+				actions = append(actions, PrepareShellCommand(
+					fmt.Sprintf("echo 'Update %s to version %s or later and rebuild the image'", pkg, fixed),
+					fmt.Sprintf("Specific package fix: %s → %s", pkg, fixed),
+					"",
+				))
+			}
+		}
+		actions = append(actions, PrepareShellCommand(
+			fmt.Sprintf("docker build --no-cache -t %s . && docker push %s", svc, svc),
+			fmt.Sprintf("Rebuild %s with updated base image to fix vulnerabilities", svc),
+			"",
+		))
+		return actions
+
+	case strings.HasPrefix(id, "dockle."):
+		code := strings.TrimPrefix(id, "dockle.")
+		return []FixAction{
 			PrepareShellCommand(
-				fmt.Sprintf("docker build --no-cache -t %s . && docker push %s", svc, svc),
-				fmt.Sprintf("Rebuild %s with updated base image to fix vulnerabilities", svc),
+				fmt.Sprintf("echo 'Dockle CIS %s: review Dockerfile best practices for %s' >> DOCKLE_FIXES.md", code, svc),
+				fmt.Sprintf("Log Dockle CIS %s finding for %s", code, svc),
+				"",
+			),
+			PrepareShellCommand(
+				getDockleFixCommand(code, svc),
+				fmt.Sprintf("Apply Dockle CIS %s fix for %s", code, svc),
 				"",
 			),
 		}
 
-	case strings.HasPrefix(findingID, "dockle."):
+	case strings.HasPrefix(id, "lynis."):
 		return []FixAction{
 			PrepareShellCommand(
-				fmt.Sprintf("echo 'Review Dockle finding %s for %s' >> DOCKLE_FIXES.md", findingID, svc),
-				fmt.Sprintf("Log Dockle finding %s for manual review", findingID),
+				fmt.Sprintf("echo 'Lynis hardening: review %s' >> LYNIS_FIXES.md", finding.Title),
+				fmt.Sprintf("Log Lynis finding for manual hardening review"),
+				"",
+			),
+			PrepareShellCommand(
+				fmt.Sprintf("lynis --check %s", strings.TrimPrefix(id, "lynis.")),
+				"Re-run Lynis for this specific check after applying fixes",
 				"",
 			),
 		}
 
-	case strings.HasPrefix(findingID, "lynis."):
-		return []FixAction{
+	case strings.HasPrefix(id, "gitleaks."):
+		actions := []FixAction{
 			PrepareShellCommand(
-				fmt.Sprintf("echo 'Lynis finding: %s' >> LYNIS_FIXES.md && chmod +x LYNIS_FIXES.md", findingID),
-				fmt.Sprintf("Log Lynis finding %s for manual hardening review", findingID),
+				fmt.Sprintf("echo 'WARNING: Secret leak detected by Gitleaks (%s). Rotate the credential immediately.'", id),
+				fmt.Sprintf("Alert about secret leak %s — manual rotation required", id),
 				"",
 			),
 		}
-
-	case strings.HasPrefix(findingID, "gitleaks."):
-		return []FixAction{
-			PrepareShellCommand(
-				fmt.Sprintf("echo 'WARNING: Secret leak detected by Gitleaks (%s). Rotate the credential immediately.'", findingID),
-				fmt.Sprintf("Alert about secret leak %s — manual rotation required", findingID),
+		if file, ok := finding.Evidence["file"]; ok {
+			actions = append(actions, PrepareShellCommand(
+				fmt.Sprintf("echo 'Remove secret from %s, add to .gitignore, and rotate the credential'", file),
+				fmt.Sprintf("Remove leaked secret from %s", file),
 				"",
-			),
-			PrepareShellCommand(
-				fmt.Sprintf("BFG_REPO=$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo '.')) && echo 'Run: java -jar bfg.jar --delete-files .env && git reflog expire --expire=now --all && git gc --prune=now --aggressive'"),
-				"Provide BFG repo-cleaner instructions for git history cleanup",
-				"",
-			),
+			))
 		}
+		actions = append(actions, PrepareShellCommand(
+			fmt.Sprintf("BFG_REPO=$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo '.')) && echo 'Run: java -jar bfg.jar --delete-files .env && git reflog expire --expire=now --all && git gc --prune=now --aggressive'"),
+			"Provide BFG repo-cleaner instructions for git history cleanup",
+			"",
+		))
+		return actions
 	}
 
 	return nil
+}
+
+func getDockleFixCommand(code, svc string) string {
+	switch code {
+	case "CIS-DI-0001":
+		return fmt.Sprintf("echo 'USER instruction missing. Add: USER nobody' to Dockerfile for %s", svc)
+	case "CIS-DI-0005":
+		return fmt.Sprintf("echo 'Enable Docker content trust: export DOCKER_CONTENT_TRUST=1' before building %s", svc)
+	case "CIS-DI-0006":
+		return fmt.Sprintf("echo 'Add HEALTHCHECK instruction to Dockerfile for %s'", svc)
+	case "CIS-DI-0007":
+		return fmt.Sprintf("echo 'Remove sudo from %s Dockerfile. Use gosu or su-exec instead.'", svc)
+	case "CIS-DI-0008":
+		return fmt.Sprintf("echo 'Set USER instruction in %s Dockerfile to non-root user'", svc)
+	default:
+		return fmt.Sprintf("echo 'Review Dockle CIS finding for %s and apply recommended fix' >> DOCKLE_FIXES.md", svc)
+	}
 }
 
 

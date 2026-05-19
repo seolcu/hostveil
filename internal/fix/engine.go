@@ -12,17 +12,15 @@ import (
 )
 
 // MinimalAdapterFix returns fix actions for external adapter findings.
-// Full implementation tracked in issue #385.
 func MinimalAdapterFix(findings []domain.Finding) []FixAction {
 	var actions []FixAction
 	for _, f := range findings {
-		actions = append(actions, adapterFixForFinding(f.ID, f.Service)...)
+		actions = append(actions, adapterFixForFinding(f)...)
 	}
 	return actions
 }
 
 // MinimalHostFix returns host edit / shell command actions for applicable findings.
-// Full implementation tracked in issue #384.
 func MinimalHostFix(findings []domain.Finding) *FixPlan {
 	plan := &FixPlan{}
 	for _, f := range findings {
@@ -395,6 +393,86 @@ func prefixLines(s, prefix string) string {
 		lines[i] = prefix + line
 	}
 	return strings.Join(lines, "\n")
+}
+
+// PreviewAnyFinding returns a fix preview for any finding type.
+// Dispatches to the appropriate preview based on finding source.
+func PreviewAnyFinding(finding domain.Finding, composeFile string, allFindings []domain.Finding) string {
+	switch finding.Source {
+	case domain.SourceNativeCompose:
+		if composeFile == "" {
+			return "No compose file available for fix preview."
+		}
+		engine := NewEngine(composeFile, allFindings)
+		return engine.PreviewFinding(finding)
+	case domain.SourceNativeHost:
+		return formatHostFixPreview(finding)
+	default:
+		return formatAdapterFixPreview(finding)
+	}
+}
+
+func formatHostFixPreview(finding domain.Finding) string {
+	actions := hostEditsForFinding(finding.ID, finding.Service)
+	if len(actions) == 0 {
+		return "No automated host fix available for this finding."
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Fix for: %s\n", finding.ID))
+	b.WriteString(fmt.Sprintf("Service: %s\n\n", finding.Service))
+
+	for _, a := range actions {
+		switch a.Type {
+		case ActionHostEdit:
+			b.WriteString("─── Host Edit ───\n")
+			b.WriteString(fmt.Sprintf("File: %s\n", a.Path))
+			b.WriteString(fmt.Sprintf("Change: %s\n", a.Summary))
+			if a.Content != "" || a.Diff != "" {
+				b.WriteString(fmt.Sprintf("  - %s\n", a.Content))
+				b.WriteString(fmt.Sprintf("  + %s\n", a.Diff))
+			}
+			b.WriteString("\n")
+		case ActionShellCommand:
+			b.WriteString("─── Shell Command ───\n")
+			b.WriteString(fmt.Sprintf("$ %s\n", a.Command))
+			b.WriteString(fmt.Sprintf("Purpose: %s\n", a.Summary))
+			if a.Rollback != "" {
+				b.WriteString(fmt.Sprintf("Rollback: %s\n", a.Rollback))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("Status: Manual review recommended before applying\n")
+	return b.String()
+}
+
+func formatAdapterFixPreview(finding domain.Finding) string {
+	actions := adapterFixForFinding(finding)
+	if len(actions) == 0 {
+		return "No automated fix available for this adapter finding."
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Fix for: %s\n", finding.ID))
+	b.WriteString(fmt.Sprintf("Service: %s\n\n", finding.Service))
+
+	for _, a := range actions {
+		switch a.Type {
+		case ActionShellCommand:
+			b.WriteString("─── Shell Command ───\n")
+			b.WriteString(fmt.Sprintf("$ %s\n", a.Command))
+			b.WriteString(fmt.Sprintf("Purpose: %s\n", a.Summary))
+			if a.Rollback != "" {
+				b.WriteString(fmt.Sprintf("Rollback: %s\n", a.Rollback))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("Status: Manual review recommended\n")
+	return b.String()
 }
 
 // extractServiceSnippet extracts a service's YAML block with surrounding context lines.

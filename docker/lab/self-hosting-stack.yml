@@ -13,6 +13,8 @@ services:
     volumes:
       - vaultwarden-data:/data
       - /etc/shadow:/host/shadow:ro
+    networks:
+      - lab-net
 
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -28,6 +30,8 @@ services:
       - jellyfin-config:/config
       - jellyfin-cache:/cache
       - ./docker/lab/media:/media
+    networks:
+      - lab-net
 
   gitea:
     image: gitea/gitea:latest
@@ -44,6 +48,8 @@ services:
     volumes:
       - gitea-data:/data
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - lab-net
 
   nextcloud:
     image: nextcloud:latest
@@ -60,6 +66,8 @@ services:
       POSTGRES_PASSWORD: nextcloud
     volumes:
       - nextcloud-data:/var/www/html
+    networks:
+      - lab-net
 
   nextcloud-db:
     image: postgres:latest
@@ -71,6 +79,8 @@ services:
       POSTGRES_PASSWORD: nextcloud
     volumes:
       - nextcloud-db:/var/lib/postgresql/data
+    networks:
+      - lab-net
 
   exposed-nginx:
     image: nginx:stable
@@ -81,6 +91,8 @@ services:
     volumes:
       - /etc/shadow:/mnt/shadow:ro
     user: 1000:1000
+    networks:
+      - lab-net
 
 volumes:
   vaultwarden-data:
@@ -89,3 +101,8 @@ volumes:
   gitea-data:
   nextcloud-data:
   nextcloud-db:
+
+networks:
+  lab-net:
+    name: hostveil-lab
+    driver: bridge
