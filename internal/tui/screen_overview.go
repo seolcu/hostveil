@@ -270,9 +270,9 @@ func (m *overviewModel) renderNextStepsCard(theme Theme, width int) string {
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Next steps")
 
 	steps := []string{
-		"  • Press 3 to export a report.",
-		"  • Press 2 to review findings in detail.",
+		"  • Press 3 to export a clean report.",
 		"  • Place a docker-compose.yml file in the current directory for service scanning.",
+		"  • Rescan after adding or changing services.",
 	}
 
 	return style.Render(title + "\n" + strings.Join(steps, "\n"))
@@ -281,35 +281,55 @@ func (m *overviewModel) renderNextStepsCard(theme Theme, width int) string {
 // ─── UltraWide Clean Dashboard (≥180x45, 0 findings) ────────────────────────
 
 func (m *overviewModel) renderUltraWideCleanDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
+	}
+
+	statusH := 1
+	heroH := 7
+	mainGridH := 13
+	secondaryGridH := 12
+	tertiaryGridH := 13
+	workflowH := 6
+	gap := 1
+
+	used := statusH + heroH + mainGridH + secondaryGridH + tertiaryGridH + workflowH + gap*5
+	remaining := bodyHeight - used
+	if remaining > 0 {
+		tertiaryGridH += remaining / 2
+		workflowH += remaining - remaining/2
+	}
+
 	col4 := (width - 9) / 4
 	col2 := (width - 3) / 2
 	full := width - 2
-	gap := 3
 
-	// Row 1: Hero card (fills ~8 rows)
-	hero := m.renderAllClearHeroCard(theme, full, 8)
+	statusLine := m.renderStatusLineClean(r, theme)
+	hero := m.renderAllClearHeroCard(theme, full, heroH)
 
-	// Row 2: 4-column grid
 	scanCov := m.renderScanCoverageCard(r, theme, col4)
 	areaHealth := m.renderAreaHealthCardScore(r, theme, col4)
 	runtime := m.renderRuntimeCard(r, theme, col4)
 	adapters := m.renderAdaptersCard(r, theme, col4)
-	grid4 := joinColumns([]string{scanCov, areaHealth, runtime, adapters}, []int{col4, col4, col4, col4}, gap)
+	grid4 := joinColumns([]string{scanCov, areaHealth, runtime, adapters}, []int{col4, col4, col4, col4}, 3)
+	grid4 = fillHeight(grid4, mainGridH)
 
-	// Row 3: 2-column grid — next steps + meaning
 	nextSteps := m.renderRecommendedNextStepsCard(r, theme, col2)
 	meaning := m.renderWhatThisResultMeansCard(r, theme, col2)
 	grid2a := lipgloss.JoinHorizontal(lipgloss.Top, nextSteps, "  ", meaning)
+	grid2a = fillHeight(grid2a, secondaryGridH)
 
-	// Row 4: 2-column grid — report preview + scan notes
 	reportPrev := m.renderReportPreviewCard(theme, col2)
 	scanNotes := m.renderRecentScanNotesCard(r, theme, col2)
 	grid2b := lipgloss.JoinHorizontal(lipgloss.Top, reportPrev, "  ", scanNotes)
+	grid2b = fillHeight(grid2b, tertiaryGridH)
 
-	// Row 5: Workflow timeline strip
 	timeline := m.renderWorkflowTimelineCardClean(theme, full)
+	timeline = fillHeight(timeline, workflowH)
 
 	return joinRows(
+		statusLine,
 		hero,
 		"",
 		grid4,
@@ -320,6 +340,20 @@ func (m *overviewModel) renderUltraWideCleanDashboard(r *domain.ScanResult, them
 		"",
 		timeline,
 	)
+}
+
+func (m *overviewModel) renderStatusLineClean(r *domain.ScanResult, theme Theme) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	gradeColor := theme.Success
+	if score < 80 {
+		gradeColor = theme.Medium
+	}
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100 · Risk: %s", score, grade))
+	findings := r.TotalFindings()
+	svcs := len(r.Metadata.Services)
+	return fmt.Sprintf("  %s · %d findings · %d services · %d auto-fixable",
+		scoreStr, findings, svcs, 0)
 }
 
 func (m *overviewModel) renderAllClearHeroCard(theme Theme, width, height int) string {
@@ -475,26 +509,51 @@ func (m *overviewModel) renderWorkflowTimelineCardClean(theme Theme, width int) 
 // ─── UltraWide Risk Dashboard (≥180x45, findings > 0) ──────────────────────
 
 func (m *overviewModel) renderUltraWideRiskDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
+	}
+
+	statusH := 1
+	heroH := 7
+	mainGridH := 13
+	secondaryGridH := 12
+	tertiaryGridH := 13
+	workflowH := 6
+	gap := 1
+
+	used := statusH + heroH + mainGridH + secondaryGridH + tertiaryGridH + workflowH + gap*5
+	remaining := bodyHeight - used
+	if remaining > 0 {
+		tertiaryGridH += remaining / 2
+		workflowH += remaining - remaining/2
+	}
+
 	col4 := (width - 9) / 4
 	col2 := (width - 3) / 2
 	full := width - 2
-	gap := 3
 
-	hero := m.renderRiskSummaryHeroCard(r, theme, full, 8)
+	statusLine := m.renderStatusLineRisk(r, theme)
+	hero := m.renderRiskSummaryHeroCard(r, theme, full, heroH)
 
-	grid4 := m.renderUltraWideRiskGrid4(r, theme, col4, gap)
+	grid4 := m.renderUltraWideRiskGrid4(r, theme, col4, 3)
+	grid4 = fillHeight(grid4, mainGridH)
 
 	workflow := m.renderRiskWorkflowCard(r, theme, col2)
 	whyScore := m.renderWhyScoreLowCard(r, theme, col2)
 	grid2a := lipgloss.JoinHorizontal(lipgloss.Top, workflow, "  ", whyScore)
+	grid2a = fillHeight(grid2a, secondaryGridH)
 
 	selectedPrev := m.renderSelectedPreviewCard(r, theme, col2)
 	scanCtx := m.renderScanContextCard(r, theme, col2)
 	grid2b := lipgloss.JoinHorizontal(lipgloss.Top, selectedPrev, "  ", scanCtx)
+	grid2b = fillHeight(grid2b, tertiaryGridH)
 
 	timeline := m.renderWorkflowTimelineCardRisk(theme, full)
+	timeline = fillHeight(timeline, workflowH)
 
 	return joinRows(
+		statusLine,
 		hero,
 		"",
 		grid4,
@@ -505,6 +564,31 @@ func (m *overviewModel) renderUltraWideRiskDashboard(r *domain.ScanResult, theme
 		"",
 		timeline,
 	)
+}
+
+func (m *overviewModel) renderStatusLineRisk(r *domain.ScanResult, theme Theme) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	gradeColor := theme.Critical
+	if score >= 50 {
+		gradeColor = theme.Medium
+	}
+	if score >= 80 {
+		gradeColor = theme.Success
+	}
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100 · Risk: %s", score, grade))
+	findings := r.TotalFindings()
+	svcs := len(r.Metadata.Services)
+
+	autoCount := 0
+	for _, f := range r.Findings {
+		if f.Remediation == domain.RemediationAuto {
+			autoCount++
+		}
+	}
+
+	return fmt.Sprintf("  %s · %d findings · %d %s · %d auto-fixable",
+		scoreStr, findings, svcs, pluralize("service", svcs), autoCount)
 }
 
 func (m *overviewModel) renderUltraWideRiskGrid4(r *domain.ScanResult, theme Theme, colWidth, gap int) string {

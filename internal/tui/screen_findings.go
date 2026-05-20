@@ -487,6 +487,10 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 }
 
 func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) string {
+	if len(m.all) == 0 {
+		return m.renderCleanFindingsUltraWide(theme, width, height)
+	}
+
 	filterBar := m.renderFilterBar(theme, width)
 
 	listWidth := width * 2 / 5
@@ -544,6 +548,99 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 		bottomCards,
 		fixGuidance,
 	)
+}
+
+func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height int) string {
+	filterBar := m.renderFilterBar(theme, width)
+
+	col2 := (width - 3) / 2
+	full := width - 2
+
+	left := m.renderCleanFindingsPanel(theme, col2, 0)
+	right := m.renderCleanScanMeaningPanel(theme, col2, 0)
+	topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+
+	covCard := m.renderCleanScanCoverageCard(theme, col2)
+	stepsCard := m.renderCleanNextStepsCard(theme, col2)
+	bottomCards := lipgloss.JoinHorizontal(lipgloss.Top, covCard, "  ", stepsCard)
+
+	guidance := m.renderCleanScanGuidanceStrip(theme, full)
+
+	return joinRows(
+		filterBar,
+		topRow,
+		"",
+		bottomCards,
+		guidance,
+	)
+}
+
+func (m *findingsModel) renderCleanFindingsPanel(theme Theme, width, height int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Padding(0, 1)
+
+	icon := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Success)).
+		Bold(true).
+		Render("✓ No findings detected")
+
+	msg := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Your current scan passed all enabled checks.")
+
+	hint := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Accent)).
+		Render("Press 3 to export a clean report.")
+
+	return style.Render(icon + "\n\n" + msg + "\n\n" + hint)
+}
+
+func (m *findingsModel) renderCleanScanMeaningPanel(theme Theme, width, height int) string {
+	var lines []string
+	lines = append(lines, "  All enabled checks passed.")
+	lines = append(lines, "")
+	lines = append(lines, "  "+lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("This means Hostveil did not detect any issues in the checks that actually ran."))
+	lines = append(lines, "")
+	lines = append(lines, "  "+lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("If no Compose services were discovered, service-level checks may not have been evaluated."))
+
+	return renderCard("Clean scan meaning", strings.Join(lines, "\n"), theme, width, height)
+}
+
+func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, width int) string {
+	var lines []string
+	addLine := func(k, v string) {
+		lines = append(lines, fmt.Sprintf("  %-20s %s", k+":", v))
+	}
+	addLine("Services scanned", "none")
+	addLine("Compose file", "not found")
+	addLine("Host checks", "enabled")
+	addLine("Image checks", "available")
+	addLine("Secret checks", "available")
+
+	return renderCard("Scan coverage", strings.Join(lines, "\n"), theme, width, 0)
+}
+
+func (m *findingsModel) renderCleanNextStepsCard(theme Theme, width int) string {
+	steps := []string{
+		"1. Press 3 to export a clean report.",
+		"2. Add docker-compose.yml to scan service exposure and permissions.",
+		"3. Run Hostveil again after adding or changing services.",
+	}
+	joined := "  " + strings.Join(steps, "\n  ")
+	return renderCard("Next steps", joined, theme, width, 0)
+}
+
+func (m *findingsModel) renderCleanScanGuidanceStrip(theme Theme, width int) string {
+	text := "No findings were detected. Keep reports for audit/history, and rescan after configuration or Docker changes."
+	return renderCard("Clean scan guidance", "  "+text, theme, width, 0)
 }
 
 func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int) string {

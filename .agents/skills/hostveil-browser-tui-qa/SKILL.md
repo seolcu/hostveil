@@ -40,14 +40,13 @@ binary built in step 1 is available at `/workspace/hostveil`.
 ### 3. Start hostveil --serve inside the lab container (detached)
 
 ```bash
-rm -f /tmp/hostveil-serve.log
-setsid -f docker compose -f docker/lab/compose.yml exec -d -e TERM -e COLORTERM lab bash -c 'cd /workspace && ./hostveil --serve --port 9090' > /tmp/hostveil-serve.log 2>&1
+./scripts/lab.sh serve-detached
 sleep 3
 ```
 
 The lab compose maps `127.0.0.1:9090:9090`, so the ttyd web UI is available on
-the host at port 9090. Unlike direct execution (which auto-fallsback on busy
-ports), the Docker port mapping is fixed, so the URL is always:
+the host at port 9090. This detached runner also automatically cleans up any
+previously stuck hostveil processes in the lab.
 
 ```bash
 URL="http://127.0.0.1:9090/"

@@ -419,7 +419,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	exportRows = append(exportRows, "")
 	exportRows = append(exportRows, "  "+lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Enter export  ·  j/k select  ·  s settings"))
+		Render("Enter export · j/k select · s settings"))
 	card3 := "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, exportRows...))
 
 	// Card 4: Info messages and warnings
@@ -490,9 +490,9 @@ func (m *historyModel) renderMiniReport(r *domain.ScanResult, theme Theme, width
 
 	var line3 string
 	if findings == 0 {
-		line3 = "All clear  |  Enter export  |  s Settings"
+		line3 = "Enter export · s settings"
 	} else {
-		line3 = fmt.Sprintf("%d findings  |  Enter export  |  s Settings", findings)
+		line3 = fmt.Sprintf("%d findings · Enter export · s settings", findings)
 	}
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)

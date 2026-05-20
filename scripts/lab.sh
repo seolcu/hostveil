@@ -9,11 +9,12 @@ usage() {
 Hostveil self-hosting lab environment.
 
 Usage:
-  lab.sh up       Start lab (scanner + all target services)
-  lab.sh down     Stop all lab services
-  lab.sh shell    Enter lab container
-  lab.sh run      Run hostveil inside lab (auto-discovers compose files)
-  lab.sh serve    Run hostveil --serve (http://localhost:9090/) for browser QA
+  lab.sh up             Start lab (scanner + all target services)
+  lab.sh down           Stop all lab services
+  lab.sh shell          Enter lab container
+  lab.sh run            Run hostveil inside lab (auto-discovers compose files)
+  lab.sh serve          Run hostveil --serve (http://localhost:9090/) for browser QA
+  lab.sh serve-detached Run hostveil --serve in detached mode inside the lab
 
 Services can also be started individually:
   docker compose -f docker/lab/vaultwarden/compose.yml up -d
@@ -75,6 +76,13 @@ cmd_serve() {
     'cd /workspace && go run ./cmd/hostveil/ --serve --port 9090'
 }
 
+cmd_serve_detached() {
+  docker compose -f "$LAB_COMPOSE" exec lab bash -c 'pkill -f "hostveil --serve" || true'
+  docker compose -f "$LAB_COMPOSE" exec -d -e TERM=${TERM:-xterm-256color} -e COLORTERM=${COLORTERM:-truecolor} lab bash -c \
+    'cd /workspace && go run ./cmd/hostveil/ --serve --port 9090 > /tmp/hostveil-serve.log 2>&1'
+  echo "Detached hostveil --serve is running on http://127.0.0.1:9090/"
+}
+
 main() {
   ensure_docker
   case "${1:-help}" in
@@ -83,6 +91,7 @@ main() {
     shell) cmd_shell ;;
     run)   cmd_run ;;
     serve) cmd_serve ;;
+    serve-detached) cmd_serve_detached ;;
     help|-h|--help) usage ;;
     *)     echo "unknown command: $1"; usage; exit 1 ;;
   esac

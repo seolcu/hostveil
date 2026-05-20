@@ -531,28 +531,32 @@ func (m *appModel) renderHeader(t Theme) string {
 }
 
 func (m *appModel) renderFooter(t Theme) string {
-	lm := layoutMode(m.width, m.height)
-
-	var nav, hint string
-	switch {
-	case lm == LayoutUltraWide || lm == LayoutWide:
-		nav = " [1] Dashboard    [2] Findings    [3] Report "
-		hint = " [?] Help    [s] Settings    [q] Quit "
-	case lm == LayoutMedium || lm == LayoutCompact:
-		nav = " [1] Dsh   [2] Fnd   [3] Rpt "
-		hint = " [?] Help   [s] Set   [q] Quit "
-	default:
-		nav = " [1] Dsh  [2] Fnd  [3] Rpt "
-		hint = " [?] [s] [q] "
-	}
-
-	style := lipgloss.NewStyle().
+	layoutStyle := lipgloss.NewStyle().
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 1).
 		Width(m.width)
 
-	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, hint))
+	available := m.width - 2
+	content := m.footerContent(available)
+	return layoutStyle.Render(content)
+}
+
+func (m *appModel) footerContent(available int) string {
+	candidates := []string{
+		"[1] Dashboard    [2] Findings    [3] Report    [?] Help    [s] Settings    [q] Quit",
+		"[1] Dsh   [2] Fnd   [3] Rpt   [?] Help   [s] Set   [q] Quit",
+		"[1]Dsh [2]Fnd [3]Rpt [?]Help [s]Set [q]Quit",
+		"[1]D [2]F [3]R [?] [s] [q]",
+		"1D 2F 3R ? s q",
+	}
+
+	for _, c := range candidates {
+		if lipgloss.Width(c) <= available {
+			return c
+		}
+	}
+	return candidates[len(candidates)-1]
 }
 
 func (m *appModel) renderFallbackState(t Theme, width, height int) string {

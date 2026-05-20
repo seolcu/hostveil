@@ -236,14 +236,12 @@ Scanner.Run() → ScanResult → Export (JSON/SARIF/MD/HTML)
 Use agent-browser (NOT vhs — Chrome process management proved unreliable):
 
 ```bash
-# Start ttyd (detached to survive shell timeouts)
-setsid -f ./hostveil --serve --port 8080 --compose tests/scenarios/vaultwarden-domain/docker-compose.yml > /tmp/hostveil-serve.log 2>&1
+# Clean up any previous session and start ttyd inside the lab
+./scripts/lab.sh serve-detached
 sleep 3
 
-# Parse actual URL from log (port may fallback from 8080)
-URL=$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' /tmp/hostveil-serve.log | tail -n 1)
-
 # Connect and focus terminal input
+URL="http://127.0.0.1:9090/"
 agent-browser open "$URL"
 agent-browser set viewport 1280 720
 agent-browser wait 2500
