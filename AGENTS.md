@@ -86,13 +86,14 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 71 issues closed)
+### ✅ Completed Issues (all 72 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
 | **#384** | Fix Engine — Host Edits & Shell Commands | 20 host findings mapped with HostEdit + ShellCommand actions. TUI `f` key shows host fix preview via `fix.PreviewAnyFinding()` |
 | **#385** | Fix Engine — Adapter Finding Classification | Trivy/Dockle/Lynis/Gitleaks mapped with evidence-aware fix commands. TUI `f` key shows adapter fix preview |
 | **#446** | TUI/UX Panel border clipping 근본 수정 | `Rect` 타입, `splitColumns`, `renderCardBounded` 도입. `assertDisplayWidthLTE` debug mode 활성화. 6개 화면 column split 통일. `bodyWidth = m.width` + overflow truncation으로 오른쪽 공백 제거 |
+| **#449** | Narrow dashboard gray overlay artifact | `truncateWidth`를 display-width-aware로 재작성. ANSI escape sequence visible width 제외, `lipgloss.Width(r)`로 문자별 display width 계산 |
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
