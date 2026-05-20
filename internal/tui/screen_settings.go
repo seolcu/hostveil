@@ -105,21 +105,51 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)))
 	addLine("")
 
-	// Theme selector (2-column grid)
+	// Theme selector (responsive 1/2-column grid)
 	addLine("Theme:",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
 	themes := ThemeNames()
-	colWidth := (dialogWidth - 6) / 2
-	for i := 0; i < len(themes); i += 2 {
-		var rowEntries []string
-		for j := 0; j < 2; j++ {
-			idx := i + j
-			if idx >= len(themes) {
-				rowEntries = append(rowEntries, strings.Repeat(" ", colWidth))
-				continue
+	indent := "  "
+	twoCol := innerW >= 34
+
+	if twoCol {
+		colWidth := (innerW - len(indent)) / 2
+		for i := 0; i < len(themes); i += 2 {
+			var rowEntries []string
+			for j := 0; j < 2; j++ {
+				idx := i + j
+				if idx >= len(themes) {
+					rowEntries = append(rowEntries, strings.Repeat(" ", colWidth))
+					continue
+				}
+				t := themes[idx]
+				th := GetTheme(t)
+				isSelected := t == m.themeName
+				dot := "○"
+				prefix := " "
+				if isSelected {
+					dot = "●"
+					prefix = "❯"
+				}
+				label := fmt.Sprintf("%s%s %s", prefix, dot, t)
+				if lipgloss.Width(label) > colWidth {
+					label = truncateWidth(label, colWidth)
+				}
+				entry := lipgloss.NewStyle().
+					Foreground(lipgloss.Color(th.Accent)).
+					Background(lipgloss.Color(theme.Surface)).
+					Width(colWidth)
+				if isSelected {
+					entry = entry.Bold(true)
+				}
+				rowEntries = append(rowEntries, entry.Render(label))
 			}
-			t := themes[idx]
+			row := indent + lipgloss.JoinHorizontal(lipgloss.Center, rowEntries...)
+			contentParts = append(contentParts, surfaceBg.Width(innerW).Render(row))
+		}
+	} else {
+		for _, t := range themes {
 			th := GetTheme(t)
 			isSelected := t == m.themeName
 			dot := "○"
@@ -128,23 +158,16 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 				dot = "●"
 				prefix = "❯"
 			}
+			label := fmt.Sprintf("%s%s %s", prefix, dot, t)
 			entry := lipgloss.NewStyle().
 				Foreground(lipgloss.Color(th.Accent)).
 				Background(lipgloss.Color(theme.Surface)).
-				Width(colWidth).
-				Render(fmt.Sprintf("%s%s %s", prefix, dot, t))
+				Width(innerW - len(indent))
 			if isSelected {
-				entry = lipgloss.NewStyle().
-					Foreground(lipgloss.Color(th.Accent)).
-					Bold(true).
-					Background(lipgloss.Color(theme.Surface)).
-					Width(colWidth).
-					Render(fmt.Sprintf("%s%s %s", prefix, dot, t))
+				entry = entry.Bold(true)
 			}
-			rowEntries = append(rowEntries, entry)
+			contentParts = append(contentParts, surfaceBg.Width(innerW).Render(indent+entry.Render(label)))
 		}
-		row := "  " + lipgloss.JoinHorizontal(lipgloss.Center, rowEntries...)
-		contentParts = append(contentParts, surfaceBg.Width(innerW).Render(row))
 	}
 
 	addLine("")
@@ -165,8 +188,13 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 
 	addLine("")
 
-	addLine("j/k or ←/→ change theme  |  Esc close",
-		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
+	if twoCol {
+		addLine("j/k or ←/→ change theme  |  Esc close",
+			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
+	} else {
+		addLine("j/k change · Esc close",
+			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
+	}
 
 	return dialogStyle.Render(strings.Join(contentParts, "\n"))
 }
