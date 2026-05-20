@@ -63,6 +63,7 @@ hostveil/
 
 ### ✅ Completed (all 62 issues closed)
 
+| Layout System | ~550 | `layout.go` — `Rect`, `splitColumns`, `renderCardBounded`, `joinColumns`, `contentArea` |
 | Module | Lines | Key Files |
 |--------|-------|-----------|
 | Domain | ~300 | `finding.go`, `severity.go`, `axis.go`, `scope.go`, `source.go`, `remediation.go`, `score.go`, `scan_result.go` |
@@ -85,12 +86,13 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 70 issues closed)
+### ✅ Completed Issues (all 71 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
 | **#384** | Fix Engine — Host Edits & Shell Commands | 20 host findings mapped with HostEdit + ShellCommand actions. TUI `f` key shows host fix preview via `fix.PreviewAnyFinding()` |
 | **#385** | Fix Engine — Adapter Finding Classification | Trivy/Dockle/Lynis/Gitleaks mapped with evidence-aware fix commands. TUI `f` key shows adapter fix preview |
+| **#446** | TUI/UX Panel border clipping 근본 수정 | `Rect` 타입, `splitColumns`, `renderCardBounded` 도입. `assertDisplayWidthLTE` debug mode 활성화. 6개 화면 column split 통일. `bodyWidth = m.width` + overflow truncation으로 오른쪽 공백 제거 |
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
@@ -380,6 +382,7 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 
 - `AGENTS.md` — this file
 - `internal/web/server.go` — ttyd launcher (port 9090 forced, `killPort()` to free busy port, font config)
+- `internal/tui/layout.go` — Layout primitives: `Rect`, `contentArea`, `splitColumns`, `renderCardBounded`, `joinColumns`
 - `internal/tui/app.go` — Bubbletea root model, background rendering, footer anchoring
 - `internal/tui/screen_findings.go` — Index numbers, detail separators, fix preview render, search/filter UX
 - `internal/fix/engine.go` — Fix engine with `PreviewFinding()` for per-finding YAML context diff
@@ -419,3 +422,8 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 
 ### ttyd browser scrollbar
 - `-t scrollback=0` added to ttyd args, but the browser page scrollbar is a function of ttyd's default HTML/CSS — eliminating it entirely requires custom index.html, which violates the "no custom HTML/JS/CSS" rule.
+
+### Layout layout/column overflow (#446)
+- **Problem**: Multi-column layouts overflowed terminal width because column split formulas like `(width-2)/2` didn't subtract gap first. `assertDisplayWidthLTE` was a no-op (`_ = fmt.Sprintf`). No `Rect` type meant inner/outer width was easily confused. Right borders clipped at terminal edge.
+- **Fix**: Added `Rect` type (`W` = outer width including borders), `splitColumns(totalW, n, gap)` (subtracts gap before distribution), `renderCardBounded(title, body, theme, Rect)` (exact outer-width control), and `joinColumns` overflow truncation. `assertDisplayWidthLTE` activates under `HOSTVEIL_TUI_DEBUG_LAYOUT=1`. `bodyWidth = m.width` (no safe margin — `splitColumns` + `joinColumns` truncation prevents overflow).
+- **Key files**: `internal/tui/layout.go` (primitives), `app.go` (bodyWidth), `screen_overview.go`, `screen_findings.go`, `screen_history.go` (migrated to `splitColumns` + `renderCardBounded`).
