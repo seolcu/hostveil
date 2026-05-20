@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 74 issues closed)
+### ✅ Completed Issues (all 75 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -96,6 +96,7 @@ hostveil/
 | **#449** | Narrow dashboard gray overlay artifact | `truncateWidth`를 display-width-aware로 재작성. ANSI escape sequence visible width 제외, `lipgloss.Width(r)`로 문자별 display width 계산 |
 | **#448** | Settings modal option grid wrapping | colWidth indent 반영, innerW < 34에서 1-column 전환, option label truncate 처리 |
 | **#441** | Settings modal background gap | Padding(1,2)→(0,2)로 변경, top/bottom padding explicit line으로 대체, border 안쪽 전체 Surface background 보장 |
+| **#447** | Findings 화면 3-row inspector redesign | List panel bordered + title, 3-row layout (list+detail / filter+context / guidance), Context compact when no service |
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
@@ -445,3 +446,8 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - **Problem**: Settings modal showed a thin background gap between border and modal body. Cause: `dialogStyle.Padding(1, 2)` created top/bottom padding rows via lipgloss, but `Background(theme.Surface)` didn't fully cover these padding rows, letting the canvas background show through.
 - **Fix**: Changed `Padding(1, 2)` to `Padding(0, 2)`. Replaced lipgloss-generated vertical padding with explicit content lines using `surfaceBg.Width(innerW).Render("")` at the start and end of contentParts, ensuring every character inside the border has explicit Surface background.
 - **Key file**: `internal/tui/screen_settings.go:78-83, 102-103, 201-202` — dialogStyle padding change + explicit padding lines.
+
+### Findings screen 3-row inspector redesign (#447)
+- **Problem**: Findings list had no border, list/detail height mismatch, no-service-context took a full card, filter state always verbose.
+- **Fix**: List panel wrapped in `renderCardBounded` with `Findings N/N` title. Layout restructured to 3 rows: top (list+detail via `joinColumns`), middle (filter+context cards), bottom (full-width guidance). No-service-context shows compact inline (`Scope: host · No service context · Source: ...`). Filter state shows `All filters clear` when all default.
+- **Key files**: `internal/tui/screen_findings.go` — `render()` (lines 416-488), `renderUltraWideFindings()`, `renderRelatedFindingsCard()`, `renderFilterStateCard()`.
