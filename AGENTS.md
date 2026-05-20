@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 72 issues closed)
+### ✅ Completed Issues (all 73 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -94,6 +94,7 @@ hostveil/
 | **#385** | Fix Engine — Adapter Finding Classification | Trivy/Dockle/Lynis/Gitleaks mapped with evidence-aware fix commands. TUI `f` key shows adapter fix preview |
 | **#446** | TUI/UX Panel border clipping 근본 수정 | `Rect` 타입, `splitColumns`, `renderCardBounded` 도입. `assertDisplayWidthLTE` debug mode 활성화. 6개 화면 column split 통일. `bodyWidth = m.width` + overflow truncation으로 오른쪽 공백 제거 |
 | **#449** | Narrow dashboard gray overlay artifact | `truncateWidth`를 display-width-aware로 재작성. ANSI escape sequence visible width 제외, `lipgloss.Width(r)`로 문자별 display width 계산 |
+| **#448** | Settings modal option grid wrapping | colWidth indent 반영, innerW < 34에서 1-column 전환, option label truncate 처리 |
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
@@ -433,3 +434,8 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - **Problem**: At medium/narrow viewports (80×24 and below), the hero card's recommendation line showed a gray bar (`█████████`) overlaid on text. Cause: `truncateWidth()` counted raw runes (including ANSI escape sequences) instead of visible display width. When a styled (ANSI-colored) line exceeded `contentW`, truncation by rune count produced malformed ANSI sequences, causing lipgloss's `Width()` padding to create visible background artifacts.
 - **Fix**: Rewrote `truncateWidth()` to iterate runes while tracking visible display width via `lipgloss.Width(r)`. ANSI escape sequences (`\x1b[...m` and similar) are skipped in the width count, ensuring correct truncation position and proper ANSI sequence integrity.
 - **Key file**: `internal/tui/layout.go:200` — `truncateWidth()` function.
+
+### Settings modal option grid wrapping (#448)
+- **Problem**: In narrow terminals, `tokyo-night` split into two lines (`tokyo-\nnight`). Cause: `colWidth = innerW / 2` didn't subtract the 2-space indent, so the rendered row (`"  " + entry1 + entry2`) overflowed `innerW`. lipgloss overflow caused label wrapping.
+- **Fix**: `colWidth = (innerW - indent) / 2` accounts for indent. When `innerW < 34`, switches to 1-column stacked layout. Option labels truncated with `truncateWidth()` when they exceed column width. Narrow hint text adapts: `"j/k change · Esc close"`.
+- **Key file**: `internal/tui/screen_settings.go:108-171` — theme section render logic.
