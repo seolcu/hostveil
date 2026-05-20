@@ -29,6 +29,21 @@ func severityIcon(sev domain.Severity) string {
 	}
 }
 
+func severityShortLabel(sev domain.Severity) string {
+	switch sev {
+	case domain.SeverityCritical:
+		return "CRIT"
+	case domain.SeverityHigh:
+		return "HIGH"
+	case domain.SeverityMedium:
+		return "MED"
+	case domain.SeverityLow:
+		return "LOW"
+	default:
+		return strings.ToUpper(sev.String())
+	}
+}
+
 func remediationLabel(r domain.RemediationKind) string {
 	switch r {
 	case domain.RemediationAuto:
@@ -71,108 +86,126 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 	}
 	if lm == LayoutWide {
 		if r.TotalFindings() == 0 {
-			return m.renderWideCleanDashboard(r, theme, width)
+			return m.renderWideCleanDashboard(r, theme, width, height)
 		}
 		return m.renderWideRiskDashboard(r, theme, width, height)
 	}
 
-	// Medium, Compact — use existing width-based logic (no summary line, header covers it)
+	// Medium, Compact — height-budget layout
 	if r.TotalFindings() == 0 {
 		return m.renderCleanScanDashboard(r, theme, width, height)
 	}
 
-	switch {
-	case width >= wideWidth:
-		col3 := (width - 6) / 3
-		col2 := (width - 2) / 2
-		full := width - 2
-
-		nextActions := m.renderNextActionsCard(r, theme, col3)
-		riskByArea := m.renderRiskByAreaCard(r, theme, col3)
-		affectedSvcs := m.renderAffectedServicesCard(r, theme, col3)
-		fixQueue := m.renderFixQueueCard(r, theme, col2)
-		scanCtx := m.renderScanContextCard(r, theme, col2)
-		rec := m.renderRecommendationCard(r, theme, full)
-
-		top := lipgloss.JoinHorizontal(lipgloss.Top, nextActions, "  ", riskByArea, "  ", affectedSvcs)
-		middle := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
-
-		body := lipgloss.JoinVertical(lipgloss.Top, top, "", middle, "", rec)
-		return body
-
-	case width >= mediumWidth:
-		col2 := (width - 2) / 2
-		full := width - 2
-
-		nextActions := m.renderNextActionsCard(r, theme, col2)
-		riskByArea := m.renderRiskByAreaCard(r, theme, col2)
-		affectedSvcs := m.renderAffectedServicesCard(r, theme, col2)
-		hostCard := m.renderHostCard(r, theme, col2)
-		fixQueue := m.renderFixQueueCard(r, theme, col2)
-		scanCtx := m.renderScanContextCard(r, theme, col2)
-		rec := m.renderRecommendationCard(r, theme, full)
-
-		left := lipgloss.JoinVertical(lipgloss.Top, nextActions, affectedSvcs)
-		right := lipgloss.JoinVertical(lipgloss.Top, riskByArea, hostCard)
-		topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
-		bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
-
-		body := lipgloss.JoinVertical(lipgloss.Top, topRow, "", bottomRow, "", rec)
-		return body
-
-	default:
-		colWidth := width - 2
-		nextActions := m.renderNextActionsCard(r, theme, colWidth)
-		riskByArea := m.renderRiskByAreaCard(r, theme, colWidth)
-		affectedSvcs := m.renderAffectedServicesCard(r, theme, colWidth)
-		hostCard := m.renderHostCard(r, theme, colWidth)
-		fixQueue := m.renderFixQueueCard(r, theme, colWidth)
-		scanCtx := m.renderScanContextCard(r, theme, colWidth)
-		rec := m.renderRecommendationCard(r, theme, colWidth)
-		body := lipgloss.JoinVertical(lipgloss.Top, nextActions, riskByArea, affectedSvcs, hostCard, fixQueue, scanCtx, rec)
-		return body
-	}
+	return m.renderMediumRiskDashboard(r, theme, width, height)
 }
 
 // ─── Clean scan (0 findings) dashboard ─────────────────────────────────────
 
 func (m *overviewModel) renderCleanScanDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
-	// No summary line — header covers the info
-
-	switch {
-	case width >= wideWidth:
-		col3 := (width - 6) / 3
-		full := width - 2
-
-		allClear := m.renderAllClearCard(theme, col3)
-		scanCov := m.renderScanCoverageCard(r, theme, col3)
-		runtimeAd := m.renderRuntimeAdaptersCard(r, theme, col3)
-		nextSteps := m.renderNextStepsCard(theme, full)
-
-		top := lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov, "  ", runtimeAd)
-		return lipgloss.JoinVertical(lipgloss.Top, top, "", nextSteps)
-
-	case width >= mediumWidth:
-		col2 := (width - 2) / 2
-		full := width - 2
-
-		allClear := m.renderAllClearCard(theme, col2)
-		scanCov := m.renderScanCoverageCard(r, theme, col2)
-		runtimeAd := m.renderRuntimeAdaptersCard(r, theme, col2)
-		nextSteps := m.renderNextStepsCard(theme, full)
-
-		topRow := lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov)
-
-		return lipgloss.JoinVertical(lipgloss.Top, topRow, "", runtimeAd, "", nextSteps)
-
-	default:
-		colWidth := width - 2
-		allClear := m.renderAllClearCard(theme, colWidth)
-		scanCov := m.renderScanCoverageCard(r, theme, colWidth)
-		runtimeAd := m.renderRuntimeAdaptersCard(r, theme, colWidth)
-		nextSteps := m.renderNextStepsCard(theme, colWidth)
-		return lipgloss.JoinVertical(lipgloss.Top, allClear, "", scanCov, "", runtimeAd, "", nextSteps)
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
 	}
+
+	budget := dashboardHeightBudget(bodyHeight, LayoutMedium)
+
+	used := budget.HeroH + budget.MainH + budget.WorkflowH + budget.GapH*2
+	remaining := bodyHeight - used
+	gap := budget.GapH
+	if remaining > 0 {
+		extraGap := clamp(remaining/2, 0, 1)
+		gap += extraGap
+	}
+	_ = remaining
+
+	full := width - 2
+
+	// Hero: All clear + coverage limitation
+	hero := m.renderAllClearHeroCard(theme, full, budget.HeroH)
+
+	// Main: Area health + scan coverage side by side
+	col2 := (width - 2) / 2
+	areaHealth := m.renderAreaHealthCardScore(r, theme, col2, LayoutMedium)
+	scanCov := m.renderScanCoverageCard(r, theme, col2)
+	mainContent := lipgloss.JoinHorizontal(lipgloss.Top, areaHealth, "  ", scanCov)
+	mainContent = fillHeight(mainContent, budget.MainH)
+
+	// Bottom: next steps / workflow
+	nextSteps := m.renderNextStepsCard(theme, full)
+	nextSteps = fillHeight(nextSteps, budget.WorkflowH)
+
+	return joinRows(
+		hero,
+		"",
+		mainContent,
+		"",
+		nextSteps,
+	)
+}
+
+func (m *overviewModel) renderMediumRiskDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
+	}
+
+	budget := dashboardHeightBudget(bodyHeight, LayoutMedium)
+
+	used := budget.HeroH + budget.MainH + budget.WorkflowH + budget.GapH*2
+	remaining := bodyHeight - used
+	gap := budget.GapH
+	if remaining > 0 {
+		extraGap := clamp(remaining/2, 0, 1)
+		gap += extraGap
+	}
+	_ = remaining
+
+	full := width - 2
+
+	// Hero: Risk summary
+	hero := m.renderRiskSummaryHeroCard(r, theme, full, budget.HeroH)
+
+	// Main: Next actions + Risk by area side by side (or stacked if narrow)
+	var mainContent string
+	col2 := (width - 2) / 2
+	if width >= mediumWidth {
+		nextActions := m.renderNextActionsCard(r, theme, col2)
+		riskByArea := m.renderRiskByAreaCard(r, theme, col2)
+		mainContent = lipgloss.JoinHorizontal(lipgloss.Top, nextActions, "  ", riskByArea)
+	} else {
+		colWidth := width - 2
+		mainContent = m.renderNextActionsCard(r, theme, colWidth) + "\n\n" + m.renderRiskByAreaCard(r, theme, colWidth)
+	}
+	mainContent = fillHeight(mainContent, budget.MainH)
+
+	// Bottom: workflow hint
+	workflow := m.renderWorkflowHintCard(r, theme, full)
+	workflow = fillHeight(workflow, budget.WorkflowH)
+
+	return joinRows(
+		hero,
+		"",
+		mainContent,
+		"",
+		workflow,
+	)
+}
+
+func (m *overviewModel) renderWorkflowHintCard(r *domain.ScanResult, theme Theme, width int) string {
+	if r.TotalFindings() == 0 {
+		return renderCard("Next steps", "  Press 3 to export a clean report.", theme, width, 0)
+	}
+	steps := []string{
+		"1. Press 2 to open Findings.",
+		"2. Select the findings with the most critical severity first.",
+		"3. Preview available fixes (press p), then apply safe changes.",
+		"4. Rescan and export a report.",
+	}
+	var numbered []string
+	for _, s := range steps {
+		numbered = append(numbered, "  "+s)
+	}
+	return renderCard("Workflow hint", strings.Join(numbered, "\n"), theme, width, 0)
 }
 
 func (m *overviewModel) renderAllClearCard(theme Theme, width int) string {
@@ -189,7 +222,7 @@ func (m *overviewModel) renderAllClearCard(theme Theme, width int) string {
 
 	msg := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("No findings detected across enabled checks.\nYour current configuration passed this Hostveil scan.")
+		Render("No findings detected in enabled checks.\nYour current scan passed the checks that actually ran.")
 
 	return style.Render(icon + "\n" + msg)
 }
@@ -273,6 +306,7 @@ func (m *overviewModel) renderNextStepsCard(theme Theme, width int) string {
 		"  • Press 3 to export a clean report.",
 		"  • Place a docker-compose.yml file in the current directory for service scanning.",
 		"  • Rescan after adding or changing services.",
+		"  • Review Host Hardening recommendations even in clean scans.",
 	}
 
 	return style.Render(title + "\n" + strings.Join(steps, "\n"))
@@ -286,47 +320,45 @@ func (m *overviewModel) renderUltraWideCleanDashboard(r *domain.ScanResult, them
 		bodyHeight = 10
 	}
 
-	statusH := 1
-	heroH := 7
-	mainGridH := 13
-	secondaryGridH := 12
-	tertiaryGridH := 13
-	workflowH := 6
-	gap := 1
+	budget := dashboardHeightBudget(bodyHeight, LayoutUltraWide)
 
-	used := statusH + heroH + mainGridH + secondaryGridH + tertiaryGridH + workflowH + gap*5
+	// Distribute remaining height into gaps only, not single sections
+	used := budget.StatusH + budget.HeroH + budget.MainH + budget.SecondaryH + budget.TertiaryH + budget.WorkflowH + budget.GapH*5
 	remaining := bodyHeight - used
+	gap := budget.GapH
 	if remaining > 0 {
-		tertiaryGridH += remaining / 2
-		workflowH += remaining - remaining/2
+		extraGap := clamp(remaining/6, 0, 2)
+		gap += extraGap
+		remaining -= extraGap * 5
 	}
+	_ = remaining // absorbed by fillHeight passthrough
 
 	col4 := (width - 9) / 4
 	col2 := (width - 3) / 2
 	full := width - 2
 
 	statusLine := m.renderStatusLineClean(r, theme)
-	hero := m.renderAllClearHeroCard(theme, full, heroH)
+	hero := m.renderAllClearHeroCard(theme, full, budget.HeroH)
 
 	scanCov := m.renderScanCoverageCard(r, theme, col4)
-	areaHealth := m.renderAreaHealthCardScore(r, theme, col4)
+	areaHealth := m.renderAreaHealthCardScore(r, theme, col4, LayoutUltraWide)
 	runtime := m.renderRuntimeCard(r, theme, col4)
 	adapters := m.renderAdaptersCard(r, theme, col4)
 	grid4 := joinColumns([]string{scanCov, areaHealth, runtime, adapters}, []int{col4, col4, col4, col4}, 3)
-	grid4 = fillHeight(grid4, mainGridH)
+	grid4 = fillHeight(grid4, budget.MainH)
 
 	nextSteps := m.renderRecommendedNextStepsCard(r, theme, col2)
 	meaning := m.renderWhatThisResultMeansCard(r, theme, col2)
 	grid2a := lipgloss.JoinHorizontal(lipgloss.Top, nextSteps, "  ", meaning)
-	grid2a = fillHeight(grid2a, secondaryGridH)
+	grid2a = fillHeight(grid2a, budget.SecondaryH)
 
 	reportPrev := m.renderReportPreviewCard(theme, col2)
 	scanNotes := m.renderRecentScanNotesCard(r, theme, col2)
 	grid2b := lipgloss.JoinHorizontal(lipgloss.Top, reportPrev, "  ", scanNotes)
-	grid2b = fillHeight(grid2b, tertiaryGridH)
+	grid2b = fillHeight(grid2b, budget.TertiaryH)
 
 	timeline := m.renderWorkflowTimelineCardClean(theme, full)
-	timeline = fillHeight(timeline, workflowH)
+	timeline = fillHeight(timeline, budget.WorkflowH)
 
 	return joinRows(
 		statusLine,
@@ -364,53 +396,18 @@ func (m *overviewModel) renderAllClearHeroCard(theme Theme, width, height int) s
 
 	msg := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Text)).
-		Render("No findings detected across enabled checks.\nYour current configuration passed this Hostveil scan.")
+		Render("No findings detected in enabled checks.\nYour current scan passed the checks that actually ran.")
 
 	interp := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Interpretation\nNo service-level risks were found. However, no Compose services were discovered, so service coverage is currently limited.")
+		Render("Interpretation\nNo Compose services were discovered, so service-level checks were limited.\nAdd docker-compose.yml to evaluate public bindings, privileges, and filesystem risks.")
 
 	body := icon + "\n" + msg + "\n\n" + interp
 	return renderCard("", body, theme, width, height)
 }
 
-func (m *overviewModel) renderAreaHealthCardScore(r *domain.ScanResult, theme Theme, width int) string {
-	var rows []string
-	for _, axis := range domain.AllAxes() {
-		score := r.ScoreReport.AxisScores[axis]
-		label := axis.Label()
-		scoreColor := theme.Success
-		if score < 80 {
-			scoreColor = theme.Medium
-		}
-		if score < 50 {
-			scoreColor = theme.Critical
-		}
-		gradeStr := "Good"
-		if score < 80 {
-			gradeStr = "Risk"
-		}
-		if score < 50 {
-			gradeStr = "Critical"
-		}
-
-		barW := width - len(label) - 18
-		if barW < 4 {
-			barW = 4
-		}
-		bar := renderBar(score, barW, scoreColor)
-		scoreTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Width(4).
-			Align(lipgloss.Right).
-			Render(fmt.Sprintf("%d", score))
-		gradeTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Render(gradeStr)
-
-		rows = append(rows, fmt.Sprintf("  %s %s %s %s", label, bar, scoreTag, gradeTag))
-	}
-	return renderCard("Area health", strings.Join(rows, "\n"), theme, width, 0)
+func (m *overviewModel) renderAreaHealthCardScore(r *domain.ScanResult, theme Theme, width int, mode LayoutMode) string {
+	return renderCard("Area health", strings.Join(renderAreaHealthBars(r, width, mode, theme), "\n"), theme, width, 0)
 }
 
 func (m *overviewModel) renderRuntimeCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -430,7 +427,7 @@ func (m *overviewModel) renderRuntimeCard(r *domain.ScanResult, theme Theme, wid
 			addRow("Uptime", info.Uptime)
 		}
 		if info.LoadAverage != "" {
-			addRow("Load avg", info.LoadAverage)
+			addRow("Load avg", formatLoadAvg(info.LoadAverage, false))
 		}
 	}
 	return renderCard("Runtime", strings.Join(rows, "\n"), theme, width, 0)
@@ -454,6 +451,7 @@ func (m *overviewModel) renderRecommendedNextStepsCard(r *domain.ScanResult, the
 		"2. Press 3 to export a clean report.",
 		"3. Keep host checks enabled after Docker or OS updates.",
 		"4. Run again after adding or changing self-hosted services.",
+		"5. Review Host Hardening recommendations even in clean scans.",
 	}
 	var numbered []string
 	for _, s := range steps {
@@ -464,9 +462,9 @@ func (m *overviewModel) renderRecommendedNextStepsCard(r *domain.ScanResult, the
 
 func (m *overviewModel) renderWhatThisResultMeansCard(r *domain.ScanResult, theme Theme, width int) string {
 	text := `  This is a clean result for the checks that actually ran.
-  Because no services were discovered, Hostveil could not evaluate
-  service-specific risks such as public bindings, container privileges,
-  writable root filesystems, or default bridge network usage.`
+  Because no Compose services were discovered, service-level checks
+  (public bindings, container privileges, filesystem risks) were limited.
+  Add docker-compose.yml and rescan for full coverage.`
 	return renderCard("What this result means", text, theme, width, 0)
 }
 
@@ -514,43 +512,40 @@ func (m *overviewModel) renderUltraWideRiskDashboard(r *domain.ScanResult, theme
 		bodyHeight = 10
 	}
 
-	statusH := 1
-	heroH := 7
-	mainGridH := 13
-	secondaryGridH := 12
-	tertiaryGridH := 13
-	workflowH := 6
-	gap := 1
+	budget := dashboardHeightBudget(bodyHeight, LayoutUltraWide)
 
-	used := statusH + heroH + mainGridH + secondaryGridH + tertiaryGridH + workflowH + gap*5
+	used := budget.StatusH + budget.HeroH + budget.MainH + budget.SecondaryH + budget.TertiaryH + budget.WorkflowH + budget.GapH*5
 	remaining := bodyHeight - used
+	gap := budget.GapH
 	if remaining > 0 {
-		tertiaryGridH += remaining / 2
-		workflowH += remaining - remaining/2
+		extraGap := clamp(remaining/6, 0, 2)
+		gap += extraGap
+		remaining -= extraGap * 5
 	}
+	_ = remaining
 
 	col4 := (width - 9) / 4
 	col2 := (width - 3) / 2
 	full := width - 2
 
 	statusLine := m.renderStatusLineRisk(r, theme)
-	hero := m.renderRiskSummaryHeroCard(r, theme, full, heroH)
+	hero := m.renderRiskSummaryHeroCard(r, theme, full, budget.HeroH)
 
 	grid4 := m.renderUltraWideRiskGrid4(r, theme, col4, 3)
-	grid4 = fillHeight(grid4, mainGridH)
+	grid4 = fillHeight(grid4, budget.MainH)
 
 	workflow := m.renderRiskWorkflowCard(r, theme, col2)
 	whyScore := m.renderWhyScoreLowCard(r, theme, col2)
 	grid2a := lipgloss.JoinHorizontal(lipgloss.Top, workflow, "  ", whyScore)
-	grid2a = fillHeight(grid2a, secondaryGridH)
+	grid2a = fillHeight(grid2a, budget.SecondaryH)
 
 	selectedPrev := m.renderSelectedPreviewCard(r, theme, col2)
 	scanCtx := m.renderScanContextCard(r, theme, col2)
 	grid2b := lipgloss.JoinHorizontal(lipgloss.Top, selectedPrev, "  ", scanCtx)
-	grid2b = fillHeight(grid2b, tertiaryGridH)
+	grid2b = fillHeight(grid2b, budget.TertiaryH)
 
 	timeline := m.renderWorkflowTimelineCardRisk(theme, full)
-	timeline = fillHeight(timeline, workflowH)
+	timeline = fillHeight(timeline, budget.WorkflowH)
 
 	return joinRows(
 		statusLine,
@@ -743,45 +738,108 @@ func (m *overviewModel) renderWorkflowTimelineCardRisk(theme Theme, width int) s
 
 // ─── Wide Clean Dashboard (≥120x35, 0 findings) ─────────────────────────────
 
-func (m *overviewModel) renderWideCleanDashboard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *overviewModel) renderWideCleanDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
+	}
+
+	budget := dashboardHeightBudget(bodyHeight, LayoutWide)
+
+	// Distribute remaining into gaps
+	used := budget.StatusH + budget.HeroH + budget.MainH + budget.SecondaryH + budget.WorkflowH + budget.GapH*4
+	remaining := bodyHeight - used
+	gap := budget.GapH
+	if remaining > 0 {
+		extraGap := clamp(remaining/4, 0, 2)
+		gap += extraGap
+	}
+	_ = remaining
+
 	col3 := (width - 6) / 3
+	col2 := (width - 3) / 2
 	full := width - 2
+
+	statusLine := m.renderStatusLineClean(r, theme)
+
+	hero := m.renderAllClearHeroCard(theme, full, budget.HeroH)
 
 	allClear := m.renderAllClearCard(theme, col3)
 	scanCov := m.renderScanCoverageCard(r, theme, col3)
 	runtimeAd := m.renderRuntimeAdaptersCard(r, theme, col3)
-	nextSteps := m.renderNextStepsCard(theme, full)
+	mainGrid := lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov, "  ", runtimeAd)
+	mainGrid = fillHeight(mainGrid, budget.MainH)
+
+	areaHealth := m.renderAreaHealthCardScore(r, theme, col2, LayoutWide)
+	nextSteps := m.renderNextStepsCard(theme, col2)
+	secondaryGrid := lipgloss.JoinHorizontal(lipgloss.Top, areaHealth, "  ", nextSteps)
+	secondaryGrid = fillHeight(secondaryGrid, budget.SecondaryH)
+
+	timeline := m.renderWorkflowTimelineCardClean(theme, full)
+	timeline = fillHeight(timeline, budget.WorkflowH)
 
 	return joinRows(
-		lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov, "  ", runtimeAd),
+		statusLine,
+		hero,
 		"",
-		nextSteps,
+		mainGrid,
+		"",
+		secondaryGrid,
+		"",
+		timeline,
 	)
 }
 
 // ─── Wide Risk Dashboard (≥120x35, findings > 0) ────────────────────────────
 
 func (m *overviewModel) renderWideRiskDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
+	bodyHeight := height - 4
+	if bodyHeight < 10 {
+		bodyHeight = 10
+	}
+
+	budget := dashboardHeightBudget(bodyHeight, LayoutWide)
+
+	used := budget.StatusH + budget.HeroH + budget.MainH + budget.SecondaryH + budget.WorkflowH + budget.GapH*4
+	remaining := bodyHeight - used
+	gap := budget.GapH
+	if remaining > 0 {
+		extraGap := clamp(remaining/4, 0, 2)
+		gap += extraGap
+	}
+	_ = remaining
+
 	col3 := (width - 6) / 3
 	col2 := (width - 2) / 2
 	full := width - 2
 
+	statusLine := m.renderStatusLineRisk(r, theme)
+
+	hero := m.renderRiskSummaryHeroCard(r, theme, full, budget.HeroH)
+
 	nextActions := m.renderNextActionsCard(r, theme, col3)
 	riskByArea := m.renderRiskByAreaCard(r, theme, col3)
 	affectedSvcs := m.renderAffectedServicesCard(r, theme, col3)
+	mainGrid := joinColumns([]string{nextActions, riskByArea, affectedSvcs}, []int{col3, col3, col3}, 3)
+	mainGrid = fillHeight(mainGrid, budget.MainH)
+
 	fixQueue := m.renderFixQueueCard(r, theme, col2)
 	scanCtx := m.renderScanContextCard(r, theme, col2)
-	rec := m.renderRecommendationCard(r, theme, full)
+	secondaryGrid := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
+	secondaryGrid = fillHeight(secondaryGrid, budget.SecondaryH)
 
-	top := lipgloss.JoinHorizontal(lipgloss.Top, nextActions, "  ", riskByArea, "  ", affectedSvcs)
-	middle := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
+	timeline := m.renderWorkflowTimelineCardRisk(theme, full)
+	timeline = fillHeight(timeline, budget.WorkflowH)
 
 	return joinRows(
-		top,
+		statusLine,
+		hero,
 		"",
-		middle,
+		mainGrid,
 		"",
-		rec,
+		secondaryGrid,
+		"",
+		timeline,
 	)
 }
 
@@ -815,7 +873,7 @@ func (m *overviewModel) renderMiniDashboard(r *domain.ScanResult, theme Theme, w
 
 	svcCount := len(r.Metadata.Services)
 	line2 := fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount))
-	line3 := "Press 2 findings · ? help · q quit"
+	line3 := "2 → Findings · ? help · q quit"
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
 	return style.Render(line1 + "\n" + line2 + "\n" + line3)
@@ -860,7 +918,7 @@ func (m *overviewModel) renderNextActionsCard(r *domain.ScanResult, theme Theme,
 		}
 		sevColor := f.Severity.Color()
 		icon := severityIcon(f.Severity)
-		sevLabel := strings.ToUpper(f.Severity.String()[:4])
+		sevLabel := severityShortLabel(f.Severity)
 		sevTag := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(sevColor)).
 			Render(fmt.Sprintf("%s %s", icon, sevLabel))
@@ -1077,29 +1135,19 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 		addRow("Uptime", info.Uptime)
 	}
 	if info.LoadAverage != "" {
-		loadStr := info.LoadAverage
-		fields := strings.Fields(loadStr)
-		shortLoad := ""
-		for i, f := range fields {
-			if i >= 3 {
-				break
-			}
-			if i > 0 {
-				shortLoad += " "
-			}
-			shortLoad += f
-		}
+		loadStr := formatLoadAvg(info.LoadAverage, false)
+		fields := strings.Fields(info.LoadAverage)
 		if len(fields) > 0 {
 			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
 				switch {
 				case v > 2.0:
-					shortLoad += " ↑"
+					loadStr += " ↑"
 				case v > 1.0:
-					shortLoad += " →"
+					loadStr += " →"
 				}
 			}
 		}
-		addRow("Load", shortLoad)
+		addRow("Load", loadStr)
 	}
 
 	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
@@ -1208,29 +1256,19 @@ func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme,
 			addRow("Uptime", info.Uptime)
 		}
 		if info.LoadAverage != "" {
-			loadStr := info.LoadAverage
-			fields := strings.Fields(loadStr)
-			shortLoad := ""
-			for i, f := range fields {
-				if i >= 3 {
-					break
-				}
-				if i > 0 {
-					shortLoad += " "
-				}
-				shortLoad += f
-			}
+			loadStr := formatLoadAvg(info.LoadAverage, false)
+			fields := strings.Fields(info.LoadAverage)
 			if len(fields) > 0 {
 				if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
 					switch {
 					case v > 2.0:
-						shortLoad += " ↑"
+						loadStr += " ↑"
 					case v > 1.0:
-						shortLoad += " →"
+						loadStr += " →"
 					}
 				}
 			}
-			addRow("Load", shortLoad)
+			addRow("Load", loadStr)
 		}
 	}
 

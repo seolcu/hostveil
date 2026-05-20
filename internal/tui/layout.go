@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 type LayoutMode int
@@ -247,4 +249,132 @@ func renderBar(score uint8, width int, color string) string {
 	}
 	bar += "]"
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(bar)
+}
+
+func clamp(v, min, max int) int {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+
+func areaBarWidth(cardWidth int, mode LayoutMode) int {
+	switch mode {
+	case LayoutUltraWide:
+		return clamp(cardWidth/4, 10, 18)
+	case LayoutWide:
+		return clamp(cardWidth/4, 8, 14)
+	case LayoutMedium:
+		return clamp(cardWidth/5, 6, 10)
+	default:
+		return 0
+	}
+}
+
+func renderAreaHealthBars(r *domain.ScanResult, width int, mode LayoutMode, theme Theme) []string {
+	var lines []string
+	nameW := 24
+	barW := areaBarWidth(width, mode)
+
+	for _, axis := range domain.AllAxes() {
+		score := r.ScoreReport.AxisScores[axis]
+		scoreColor := theme.Success
+		gradeStr := "Good"
+		if score < 80 {
+			scoreColor = theme.Medium
+			gradeStr = "Risk"
+		}
+		if score < 50 {
+			scoreColor = theme.Critical
+			gradeStr = "Critical"
+		}
+
+		label := axis.Label()
+		if lipgloss.Width(label) > nameW {
+			label = truncateWidth(label, nameW)
+		}
+
+		bar := renderBar(score, barW, scoreColor)
+		scoreTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(scoreColor)).
+			Width(4).
+			Align(lipgloss.Right).
+			Render(fmt.Sprintf("%d", score))
+		gradeTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(scoreColor)).
+			Render(gradeStr)
+
+		lines = append(lines, fmt.Sprintf("  %-*s %s %s %s", nameW, label, bar, scoreTag, gradeTag))
+	}
+	return lines
+}
+
+// ─── Dashboard height budget ──────────────────────────────────────────────
+
+type SectionBudget struct {
+	Min   int
+	Ideal int
+	Max   int
+}
+
+type DashboardBudget struct {
+	StatusH    int
+	HeroH      int
+	MainH      int
+	SecondaryH int
+	TertiaryH  int
+	WorkflowH  int
+	GapH       int
+}
+
+func dashboardHeightBudget(bodyHeight int, mode LayoutMode) DashboardBudget {
+	switch mode {
+	case LayoutUltraWide:
+		return DashboardBudget{
+			StatusH:    1,
+			HeroH:      clamp(bodyHeight/10, 5, 8),
+			MainH:      clamp(bodyHeight/7, 8, 11),
+			SecondaryH: clamp(bodyHeight/8, 7, 10),
+			TertiaryH:  clamp(bodyHeight/8, 7, 10),
+			WorkflowH:  clamp(bodyHeight/16, 3, 5),
+			GapH:       clamp(bodyHeight/40, 1, 3),
+		}
+	case LayoutWide:
+		return DashboardBudget{
+			StatusH:    1,
+			HeroH:      clamp(bodyHeight/8, 4, 6),
+			MainH:      clamp(bodyHeight/4, 8, 10),
+			SecondaryH: clamp(bodyHeight/4, 7, 9),
+			WorkflowH:  clamp(bodyHeight/10, 3, 4),
+			GapH:       1,
+		}
+	case LayoutMedium:
+		return DashboardBudget{
+			HeroH:     clamp(bodyHeight/4, 5, 7),
+			MainH:     clamp(bodyHeight/4, 5, 7),
+			WorkflowH: 3,
+			GapH:      1,
+		}
+	default:
+		return DashboardBudget{
+			GapH: 1,
+		}
+	}
+}
+
+// ─── Load average formatting ─────────────────────────────────────────────
+
+func formatLoadAvg(raw string, detailed bool) string {
+	fields := strings.Fields(raw)
+	if len(fields) < 3 {
+		return raw
+	}
+	short := fmt.Sprintf("%s / %s / %s", fields[0], fields[1], fields[2])
+	if detailed && len(fields) >= 5 {
+		short += fmt.Sprintf("\nProcesses: %s\nLast PID: %s", fields[3], fields[4])
+	}
+	return short
 }

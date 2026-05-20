@@ -162,38 +162,11 @@ func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, width
 }
 
 func (m *historyModel) renderAreaHealthCardReport(r *domain.ScanResult, theme Theme, width int) string {
-	var lines []string
-	for _, axis := range domain.AllAxes() {
-		score := r.ScoreReport.AxisScores[axis]
-		scoreColor := theme.Success
-		gradeStr := "Good"
-		if score < 80 {
-			scoreColor = theme.Medium
-			gradeStr = "Risk"
-		}
-		if score < 50 {
-			scoreColor = theme.Critical
-			gradeStr = "Critical"
-		}
-
-		label := axis.Label()
-		barW := width - len(label) - 18
-		if barW < 4 {
-			barW = 4
-		}
-		bar := renderBar(score, barW, scoreColor)
-		scoreTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Width(4).
-			Align(lipgloss.Right).
-			Render(fmt.Sprintf("%d", score))
-		gradeTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Render(gradeStr)
-
-		lines = append(lines, fmt.Sprintf("  %s %s %s %s", label, bar, scoreTag, gradeTag))
+	lm := LayoutUltraWide
+	if width < 120 {
+		lm = LayoutWide
 	}
-	return renderCard("Area health", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCard("Area health", strings.Join(renderAreaHealthBars(r, width, lm, theme), "\n"), theme, width, 0)
 }
 
 func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme Theme, width int) string {
@@ -327,51 +300,8 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("  Area health"))
 	axisRows = append(axisRows, "")
 
-	for _, axis := range domain.AllAxes() {
-		score := r.ScoreReport.AxisScores[axis]
-		barColor := theme.Success
-		if score < 80 {
-			barColor = theme.Medium
-		}
-		if score < 50 {
-			barColor = theme.Critical
-		}
-
-		labelWidth := 22
-		if cardWidth < 35 {
-			labelWidth = 12
-		}
-		barWidth := cardWidth - labelWidth - 14
-		if barWidth < 4 {
-			barWidth = 4
-		}
-		barWidth = barWidth * 3 / 5
-
-		labelText := axis.Label()
-		if cardWidth < 35 {
-			switch labelText {
-			case "Excessive Permissions":
-				labelText = "Permissions"
-			case "Unnecessary Exposure":
-				labelText = "Exposure"
-			case "Update & Supply Chain":
-				labelText = "Supply Chain"
-			case "Sensitive Data":
-				labelText = "Sensitive"
-			}
-		}
-
-		label := lipgloss.NewStyle().
-			Width(labelWidth).
-			Render(labelText)
-		bar := renderColoredBar(score, barWidth, barColor)
-		scoreStr := lipgloss.NewStyle().
-			Width(4).
-			Align(lipgloss.Right).
-			Render(fmt.Sprintf("%d", score))
-
-		axisRows = append(axisRows, fmt.Sprintf("  %s %s %s", label, bar, scoreStr))
-	}
+	areaBars := renderAreaHealthBars(r, cardWidth, LayoutMedium, theme)
+	axisRows = append(axisRows, areaBars...)
 
 	card1 := cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, axisRows...))
 

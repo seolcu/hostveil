@@ -727,7 +727,7 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 
 		var sevLabel string
 		if compactSev {
-			sevLabel = fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()[:4]))
+			sevLabel = fmt.Sprintf("%s %s", icon, severityShortLabel(f.Severity))
 		} else {
 			sevLabel = fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()))
 		}
