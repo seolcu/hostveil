@@ -198,11 +198,36 @@ func fillHeight(content string, targetHeight int) string {
 }
 
 func truncateWidth(s string, maxWidth int) string {
-	runes := []rune(s)
-	if len(runes) <= maxWidth {
+	// Fast path: if visible width already fits, return as-is
+	if lipgloss.Width(s) <= maxWidth {
 		return s
 	}
-	return string(runes[:maxWidth-1]) + "…"
+
+	var visible int
+	var result strings.Builder
+	inEscape := false
+	for _, r := range s {
+		if r == '\x1b' {
+			inEscape = true
+			result.WriteRune(r)
+			continue
+		}
+		if inEscape {
+			result.WriteRune(r)
+			if r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
+				inEscape = false
+			}
+			continue
+		}
+		rw := lipgloss.Width(string(r))
+		if visible+rw > maxWidth-1 {
+			result.WriteString("…")
+			break
+		}
+		result.WriteRune(r)
+		visible += rw
+	}
+	return result.String()
 }
 
 func truncatePathForWidth(path string, maxWidth int) string {
