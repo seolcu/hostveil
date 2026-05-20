@@ -80,7 +80,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Width(dialogWidth).
-		Padding(1, 2).
+		Padding(0, 2).
 		Align(lipgloss.Left)
 
 	innerW := dialogWidth - 6
@@ -99,6 +99,9 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		}
 		contentParts = append(contentParts, style.Render(text))
 	}
+
+	// Top padding — explicit to cover full inner width with Surface background
+	contentParts = append(contentParts, surfaceBg.Width(innerW).Render(""))
 
 	// Title
 	addLine("Settings",
@@ -195,6 +198,9 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		addLine("j/k change · Esc close",
 			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 	}
+
+	// Bottom padding — explicit to cover full inner width with Surface background
+	contentParts = append(contentParts, surfaceBg.Width(innerW).Render(""))
 
 	return dialogStyle.Render(strings.Join(contentParts, "\n"))
 }
