@@ -232,9 +232,10 @@ func (m *appModel) View() string {
 	header := m.renderHeader(t)
 
 	var body string
-	// Use width-2 for body to leave 1-char left/right margin, preventing
-	// rightmost card borders from clipping at the terminal edge.
-	bodyWidth := m.width - 2
+	// Use full terminal width for body content. Column overflow is prevented by
+	// splitColumns (gap subtracted first) and joinColumns (truncates over-wide
+	// columns), so no safe-right-margin is needed and cards can fill the viewport.
+	bodyWidth := m.width
 	if bodyWidth < 40 {
 		bodyWidth = m.width
 	}

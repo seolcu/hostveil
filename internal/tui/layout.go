@@ -2,20 +2,93 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
+// ─── Debug layout mode ──────────────────────────────────────────────────────
+var debugLayout = os.Getenv("HOSTVEIL_TUI_DEBUG_LAYOUT") == "1"
+
 // assertDisplayWidthLTE checks that no line in s exceeds maxW.
-// Inline to avoid dead-code warnings; compile-time noop in production.
+// In debug mode it prints violations to stderr. Always recomputes widths
+// for accuracy; compile-time noop only if dead-code-eliminated.
 func assertDisplayWidthLTE(s string, maxW int) {
+	if !debugLayout {
+		return
+	}
 	for _, line := range strings.Split(s, "\n") {
-		if lipgloss.Width(line) > maxW {
-			_ = fmt.Sprintf("overflow %d > %d: %s", lipgloss.Width(line), maxW, truncateStr(stripANSI(line), 40))
+		w := lipgloss.Width(line)
+		if w > maxW {
+			fmt.Fprintf(os.Stderr, "[layout] overflow %d > %d: %s\n", w, maxW, truncateStr(stripANSI(line), 60))
 		}
 	}
+}
+
+// Rect defines a rectangular region in terminal cell coordinates.
+// W and H include borders (outer width/height).
+type Rect struct {
+	X, Y, W, H int
+}
+
+// Right returns the rightmost column index (inclusive).
+func (r Rect) Right() int { return r.X + r.W - 1 }
+
+// Bottom returns the bottommost row index (inclusive).
+func (r Rect) Bottom() int { return r.Y + r.H - 1 }
+
+// InnerW returns the inner (usable) width excluding left/right borders.
+func (r Rect) InnerW() int { return max(0, r.W-2) }
+
+// InnerH returns the inner (usable) height excluding top/bottom borders.
+func (r Rect) InnerH() int { return max(0, r.H-2) }
+
+// Inner returns the inner Rect with borders removed.
+func (r Rect) Inner() Rect { return Rect{r.X + 1, r.Y + 1, max(0, r.W - 2), max(0, r.H - 2)} }
+
+// Fit reports whether r fits within the given terminal dimensions (no overflow).
+func (r Rect) Fit(termW, termH int) bool {
+	return r.X >= 0 && r.Y >= 0 && r.Right() < termW && r.Bottom() < termH
+}
+
+// contentArea returns the safe root content area given terminal dimensions.
+// Column overflow is prevented by splitColumns (gap subtracted first) and
+// joinColumns (truncates over-wide columns), so no safe-right-margin needed.
+func contentArea(termW, termH int) Rect {
+	return Rect{
+		X: 0,
+		Y: 1, // below header
+		W: termW,
+		H: max(0, termH-1-1), // minus header(1) and footer(1)
+	}
+}
+
+// splitColumns divides totalW into numCols columns with colGap between them.
+// Gap is subtracted from totalW before distribution, so the sum of returned
+// widths plus gaps equals totalW (or less, due to integer division).
+func splitColumns(totalW int, numCols int, colGap int) []int {
+	if numCols <= 0 {
+		return nil
+	}
+	if numCols == 1 {
+		return []int{totalW}
+	}
+	available := totalW - colGap*(numCols-1)
+	if available < numCols {
+		available = numCols
+	}
+	base := available / numCols
+	remainder := available % numCols
+	widths := make([]int, numCols)
+	for i := range widths {
+		widths[i] = base
+		if i < remainder {
+			widths[i]++
+		}
+	}
+	return widths
 }
 
 type LayoutMode int
@@ -50,17 +123,31 @@ func contentHeight(totalHeight int) int {
 	return totalHeight - 4
 }
 
+// renderCard renders a bordered card. width is passed through to
+// lipgloss.Width() — the outer rendered width will be width+2 (border).
+// Use renderCardBounded when you need exact outer-width control.
 func renderCard(title, body string, theme Theme, width, height int) string {
-	innerW := width - 4 // border(2) + padding(2)
+	return renderCardBounded(title, body, theme, Rect{W: width + 2, H: height})
+}
+
+// renderCardBounded renders a bordered card whose outer width fits within
+// bounds.W. bounds.W is the total outer width including borders.
+func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
+	innerW := bounds.InnerW()
 	if innerW < 4 {
 		innerW = 4
 	}
-	// Truncate body lines to prevent overflow beyond border
+	contentW := innerW - 2 // subtract padding(2)
+	if contentW < 2 {
+		contentW = 2
+	}
+
+	// Truncate body lines to prevent overflow beyond padding
 	if body != "" {
 		var truncated []string
 		for _, line := range strings.Split(body, "\n") {
-			if lipgloss.Width(stripANSI(line)) > innerW {
-				truncated = append(truncated, truncateWidth(line, innerW))
+			if lipgloss.Width(stripANSI(line)) > contentW {
+				truncated = append(truncated, truncateWidth(line, contentW))
 			} else {
 				truncated = append(truncated, line)
 			}
@@ -69,7 +156,7 @@ func renderCard(title, body string, theme Theme, width, height int) string {
 	}
 
 	style := lipgloss.NewStyle().
-		Width(width).
+		Width(innerW).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
@@ -77,9 +164,9 @@ func renderCard(title, body string, theme Theme, width, height int) string {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(theme.Text)).
-		Width(width - 4)
-	if lipgloss.Width(title) > width-4 {
-		title = truncateWidth(title, width-4)
+		Width(contentW)
+	if lipgloss.Width(title) > contentW {
+		title = truncateWidth(title, contentW)
 	}
 	title = titleStyle.Render(title)
 
@@ -89,9 +176,15 @@ func renderCard(title, body string, theme Theme, width, height int) string {
 	}
 
 	rendered := style.Render(content)
-	assertDisplayWidthLTE(rendered, width)
-	if height > 0 {
-		rendered = fillHeight(rendered, height)
+	if debugLayout {
+		lw := lipgloss.Width(rendered)
+		if lw > bounds.W {
+			fmt.Fprintf(os.Stderr, "[layout] renderCardBounded: outer %d > bounds.W %d (innerW=%d, contentW=%d)\n",
+				lw, bounds.W, innerW, contentW)
+		}
+	}
+	if bounds.H > 0 {
+		rendered = fillHeight(rendered, bounds.H)
 	}
 	return rendered
 }
@@ -201,14 +294,45 @@ func joinColumns(columns []string, widths []int, gap int) string {
 		var rowParts []string
 		for colIdx := range columns {
 			line := colLines[colIdx][lineIdx]
-			// Pad to column width
 			lw := visibleWidth(line)
-			if lw < widths[colIdx] {
+			if lw > widths[colIdx] {
+				// Truncate over-wide lines — clip visible characters, preserving ANSI
+				truncated := ""
+				seen := 0
+				for _, r := range line {
+					if seen >= widths[colIdx] {
+						break
+					}
+					truncated += string(r)
+					if r != '\x1b' {
+						seen++
+					}
+				}
+				line = truncated
+				if debugLayout {
+					fmt.Fprintf(os.Stderr, "[layout] joinColumns: col %d overflow %d > %d, truncated\n", colIdx, lw, widths[colIdx])
+				}
+			} else if lw < widths[colIdx] {
 				line += strings.Repeat(" ", widths[colIdx]-lw)
 			}
 			rowParts = append(rowParts, line)
 		}
 		result = append(result, strings.Join(rowParts, gapStr))
+	}
+
+	// In debug mode, verify final line widths
+	if debugLayout {
+		for _, line := range result {
+			totalW := lipgloss.Width(line)
+			expectedW := 0
+			for _, w := range widths {
+				expectedW += w
+			}
+			expectedW += gap * (len(widths) - 1)
+			if totalW > expectedW {
+				fmt.Fprintf(os.Stderr, "[layout] joinColumns row overflow %d > %d\n", totalW, expectedW)
+			}
+		}
 	}
 
 	return strings.Join(result, "\n")

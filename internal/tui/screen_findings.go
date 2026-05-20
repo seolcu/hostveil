@@ -432,7 +432,9 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	listWidth := width
 	previewWidth := 0
 	if m.showDetail {
-		listWidth = width / 2
+		cols := splitColumns(width, 2, 1)
+		listWidth = cols[0]
+		previewWidth = cols[1]
 	} else if width >= wideWidth && len(m.list) > 0 {
 		listWidth = width * 2 / 3
 		previewWidth = width - listWidth - 1
@@ -450,14 +452,8 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
-		detail := m.renderDetailContent(&f, theme, listWidth, listHeight)
-		detailStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(theme.Border)).
-			Width(listWidth).
-			Padding(0, 1).
-			Height(listHeight)
-		detailPanel := detailStyle.Render(detail)
+		detail := m.renderDetailContent(&f, theme, previewWidth, listHeight)
+		detailPanel := renderCardBounded("", detail, theme, Rect{W: previewWidth, H: listHeight})
 		listStyle := lipgloss.NewStyle().
 			Width(listWidth).
 			Height(listHeight)
@@ -498,8 +494,9 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 
 	filterBar := m.renderFilterBar(theme, width)
 
-	listWidth := width * 2 / 5
-	previewWidth := width - listWidth - 1
+	cols := splitColumns(width, 2, 1)
+	listWidth := cols[0]
+	previewWidth := cols[1]
 	bottomHeight := 6
 	mainHeight := height - 2 - bottomHeight - 2
 
@@ -526,15 +523,10 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 	} else if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
 		detail := m.renderDetailContent(&f, theme, previewWidth, mainHeight)
-		detailStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(theme.Border)).
-			Width(previewWidth).
-			Padding(0, 1).
-			Height(mainHeight)
+		detailPanel := renderCardBounded("", detail, theme, Rect{W: previewWidth, H: mainHeight})
 		topRow = lipgloss.JoinHorizontal(lipgloss.Top,
 			listStyle.Render(listContent.String()),
-			detailStyle.Render(detail),
+			detailPanel,
 		)
 	} else {
 		preview := m.renderWidePreviewPanel(theme, previewWidth, mainHeight)
@@ -544,7 +536,7 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 		)
 	}
 
-	bottomCards := m.renderFindingsBottomCards(theme, listWidth, previewWidth)
+	bottomCards := m.renderFindingsBottomCards(theme, cols)
 	fixGuidance := m.renderFixGuidance(theme, width)
 
 	return joinRows(
@@ -558,18 +550,17 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height int) string {
 	filterBar := m.renderFilterBar(theme, width)
 
-	col2 := (width - 3) / 2
-	full := width - 2
+	cols := splitColumns(width, 2, 2)
 
-	left := m.renderCleanFindingsPanel(theme, col2, 0)
-	right := m.renderCleanScanMeaningPanel(theme, col2, 0)
-	topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+	left := m.renderCleanFindingsPanel(theme, cols[0], 0)
+	right := m.renderCleanScanMeaningPanel(theme, cols[1], 0)
+	topRow := joinColumns([]string{left, right}, cols, 2)
 
-	covCard := m.renderCleanScanCoverageCard(theme, col2)
-	stepsCard := m.renderCleanNextStepsCard(theme, col2)
-	bottomCards := lipgloss.JoinHorizontal(lipgloss.Top, covCard, "  ", stepsCard)
+	covCard := m.renderCleanScanCoverageCard(theme, cols[0])
+	stepsCard := m.renderCleanNextStepsCard(theme, cols[1])
+	bottomCards := joinColumns([]string{covCard, stepsCard}, cols, 2)
 
-	guidance := m.renderCleanScanGuidanceStrip(theme, full)
+	guidance := m.renderCleanScanGuidanceStrip(theme, width)
 
 	return joinRows(
 		filterBar,
@@ -580,14 +571,7 @@ func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height 
 	)
 }
 
-func (m *findingsModel) renderCleanFindingsPanel(theme Theme, width, height int) string {
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
+func (m *findingsModel) renderCleanFindingsPanel(theme Theme, outerW, height int) string {
 	icon := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Success)).
 		Bold(true).
@@ -601,10 +585,10 @@ func (m *findingsModel) renderCleanFindingsPanel(theme Theme, width, height int)
 		Foreground(lipgloss.Color(theme.Accent)).
 		Render("Press 3 to export a clean report.")
 
-	return style.Render(icon + "\n\n" + msg + "\n\n" + hint)
+	return renderCardBounded("", icon+"\n\n"+msg+"\n\n"+hint, theme, Rect{W: outerW, H: height})
 }
 
-func (m *findingsModel) renderCleanScanMeaningPanel(theme Theme, width, height int) string {
+func (m *findingsModel) renderCleanScanMeaningPanel(theme Theme, outerW, height int) string {
 	var lines []string
 	lines = append(lines, "  All enabled checks passed.")
 	lines = append(lines, "")
@@ -616,10 +600,10 @@ func (m *findingsModel) renderCleanScanMeaningPanel(theme Theme, width, height i
 		Foreground(lipgloss.Color(theme.TextMuted)).
 		Render("If no Compose services were discovered, service-level checks may not have been evaluated."))
 
-	return renderCard("Clean scan meaning", strings.Join(lines, "\n"), theme, width, height)
+	return renderCardBounded("Clean scan meaning", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
 }
 
-func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, width int) string {
+func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, outerW int) string {
 	var lines []string
 	addLine := func(k, v string) {
 		lines = append(lines, fmt.Sprintf("  %-20s %s", k+":", v))
@@ -630,22 +614,22 @@ func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, width int) stri
 	addLine("Image checks", "available")
 	addLine("Secret checks", "available")
 
-	return renderCard("Scan coverage", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Scan coverage", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *findingsModel) renderCleanNextStepsCard(theme Theme, width int) string {
+func (m *findingsModel) renderCleanNextStepsCard(theme Theme, outerW int) string {
 	steps := []string{
 		"1. Press 3 to export a clean report.",
 		"2. Add docker-compose.yml to scan service exposure and permissions.",
 		"3. Run Hostveil again after adding or changing services.",
 	}
 	joined := "  " + strings.Join(steps, "\n  ")
-	return renderCard("Next steps", joined, theme, width, 0)
+	return renderCardBounded("Next steps", joined, theme, Rect{W: outerW})
 }
 
-func (m *findingsModel) renderCleanScanGuidanceStrip(theme Theme, width int) string {
+func (m *findingsModel) renderCleanScanGuidanceStrip(theme Theme, outerW int) string {
 	text := "No findings were detected. Keep reports for audit/history, and rescan after configuration or Docker changes."
-	return renderCard("Clean scan guidance", "  "+text, theme, width, 0)
+	return renderCardBounded("Clean scan guidance", "  "+text, theme, Rect{W: outerW})
 }
 
 func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int) string {
@@ -688,19 +672,7 @@ func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int)
 	return b.String()
 }
 
-func (m *findingsModel) renderCleanFindingsState(theme Theme, width, height int) string {
-	cardStyle := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(theme.Success)).
-		Render("Clean scan meaning")
-
+func (m *findingsModel) renderCleanFindingsState(theme Theme, outerW, height int) string {
 	lines := []string{
 		"  All enabled checks passed.",
 		"",
@@ -709,8 +681,7 @@ func (m *findingsModel) renderCleanFindingsState(theme Theme, width, height int)
 		"  Compose file: not found",
 		"  Host checks: enabled",
 	}
-
-	return cardStyle.Render(title + "\n" + strings.Join(lines, "\n"))
+	return renderCardBounded("Clean scan meaning", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
 }
 
 func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, listWidth, listHeight int, showHints bool) {
@@ -800,18 +771,18 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 	}
 }
 
-func (m *findingsModel) renderFindingsBottomCards(theme Theme, leftWidth, rightWidth int) string {
-	filterState := m.renderFilterStateCard(theme, leftWidth)
-	related := m.renderRelatedFindingsCard(theme, rightWidth)
-	return lipgloss.JoinHorizontal(lipgloss.Top, filterState, "  ", related)
+func (m *findingsModel) renderFindingsBottomCards(theme Theme, cols []int) string {
+	filterState := m.renderFilterStateCard(theme, cols[0])
+	related := m.renderRelatedFindingsCard(theme, cols[1])
+	return joinColumns([]string{filterState, related}, cols, 2)
 }
 
-func (m *findingsModel) renderFilterStateCard(theme Theme, width int) string {
+func (m *findingsModel) renderFilterStateCard(theme Theme, outerW int) string {
 	allClear := m.severityFilter == "" && m.serviceFilter == "" && m.scopeFilter == "" &&
 		m.remediationFilter == "" && m.sourceFilter == "" && m.sortMode == "severity"
 
 	if allClear {
-		return renderCard("Filter state", "  All filters clear", theme, width, 0)
+		return renderCardBounded("Filter state", "  All filters clear", theme, Rect{W: outerW})
 	}
 
 	var lines []string
@@ -860,22 +831,21 @@ func (m *findingsModel) renderFilterStateCard(theme Theme, width int) string {
 	}
 	addLine("Source", src)
 
-	return renderCard("Filter state", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Filter state", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *findingsModel) renderRelatedFindingsCard(theme Theme, width int) string {
+func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) string {
 	if len(m.list) == 0 || m.selected >= len(m.list) {
-		return renderCard("Related findings", "  No finding selected.", theme, width, 0)
+		return renderCardBounded("Related findings", "  No finding selected.", theme, Rect{W: outerW})
 	}
 	f := m.list[m.selected]
 	svc := f.Service
 	if svc == "" {
-		return renderCard("Related findings", "  No service context.", theme, width, 0)
+		return renderCardBounded("Related findings", "  No service context.", theme, Rect{W: outerW})
 	}
 
 	related := m.relatedFindings(&f)
 	if len(related) == 0 {
-		// Show same-service findings instead
 		var sameSvc []domain.Finding
 		for _, o := range m.all {
 			if o.Service == svc && o.ID != f.ID {
@@ -883,7 +853,7 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, width int) string
 			}
 		}
 		if len(sameSvc) == 0 {
-			return renderCard("Related findings", "  No related findings.", theme, width, 0)
+			return renderCardBounded("Related findings", "  No related findings.", theme, Rect{W: outerW})
 		}
 		var lines []string
 		maxShow := 4
@@ -892,24 +862,24 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, width int) string
 				break
 			}
 			icon := severityIcon(rf.Severity)
-			title := truncateStr(rf.Title, width-12)
+			title := truncateStr(rf.Title, outerW-12)
 			lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
 		}
-		return renderCard(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, width, 0)
+		return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, Rect{W: outerW})
 	}
 
 	var lines []string
 	for _, rf := range related {
 		icon := severityIcon(rf.Severity)
-		title := truncateStr(rf.Title, width-12)
+		title := truncateStr(rf.Title, outerW-12)
 		lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
 	}
-	return renderCard(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
 func (m *findingsModel) renderFixGuidance(theme Theme, width int) string {
 	if len(m.list) == 0 || m.selected >= len(m.list) {
-		return renderCard("Fix guidance", "  No finding selected.", theme, width, 0)
+		return renderCardBounded("Fix guidance", "  No finding selected.", theme, Rect{W: width})
 	}
 	f := m.list[m.selected]
 	var guidance string
@@ -927,7 +897,7 @@ func (m *findingsModel) renderFixGuidance(theme Theme, width int) string {
 	default:
 		guidance = "Select a finding to see remediation guidance."
 	}
-	return renderCard("Fix guidance", "  "+guidance, theme, width, 0)
+	return renderCardBounded("Fix guidance", "  "+guidance, theme, Rect{W: width})
 }
 
 func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, width, height int) string {
@@ -1086,17 +1056,9 @@ func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, 
 	return detail
 }
 
-func (m *findingsModel) renderWidePreviewPanel(theme Theme, width, height int) string {
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
+func (m *findingsModel) renderWidePreviewPanel(theme Theme, outerW, height int) string {
 	if m.selected >= len(m.list) {
-		emptyText := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("No finding selected")
-		return style.Render(emptyText)
+		return renderCardBounded("", "  No finding selected", theme, Rect{W: outerW, H: height})
 	}
 
 	f := m.list[m.selected]
@@ -1132,7 +1094,7 @@ func (m *findingsModel) renderWidePreviewPanel(theme Theme, width, height int) s
 
 	if f.HowToFix != "" {
 		b.WriteString("Recommended:\n")
-		truncatedFix := truncateStr(f.HowToFix, width-6)
+		truncatedFix := truncateStr(f.HowToFix, outerW-6)
 		b.WriteString("  " + truncatedFix + "\n\n")
 	}
 
@@ -1143,7 +1105,7 @@ func (m *findingsModel) renderWidePreviewPanel(theme Theme, width, height int) s
 	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))
 	b.WriteString(hintStyle.Render(hint))
 
-	return style.Render(b.String())
+	return renderCardBounded("", b.String(), theme, Rect{W: outerW, H: height})
 }
 
 func (m *findingsModel) relatedFindings(f *domain.Finding) []domain.Finding {

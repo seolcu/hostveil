@@ -71,26 +71,25 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 // ─── UltraWide Report (≥180x45) ─────────────────────────────────────────────
 
 func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, width int) string {
-	col2 := (width - 3) / 2
-	full := width - 2
+	cols := splitColumns(width, 2, 2)
 
 	// Row 1: Current scan summary + Export report
-	summary := m.renderCurrentScanSummaryCard(r, theme, col2)
-	export := m.renderExportCard(r, theme, col2)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, summary, "  ", export)
+	summary := m.renderCurrentScanSummaryCard(r, theme, cols[0])
+	export := m.renderExportCard(r, theme, cols[1])
+	row1 := joinColumns([]string{summary, export}, cols, 2)
 
 	// Row 2: Area health + Scan coverage
-	areaHealth := m.renderAreaHealthCardReport(r, theme, col2)
-	scanCov := m.renderScanCoverageCardReport(r, theme, col2)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, areaHealth, "  ", scanCov)
+	areaHealth := m.renderAreaHealthCardReport(r, theme, cols[0])
+	scanCov := m.renderScanCoverageCardReport(r, theme, cols[1])
+	row2 := joinColumns([]string{areaHealth, scanCov}, cols, 2)
 
 	// Row 3: Notes/warnings + Report contents
-	notes := m.renderNotesWarningsCard(r, theme, col2)
-	contents := m.renderReportContentsCard(r, theme, col2)
-	row3 := lipgloss.JoinHorizontal(lipgloss.Top, notes, "  ", contents)
+	notes := m.renderNotesWarningsCard(r, theme, cols[0])
+	contents := m.renderReportContentsCard(r, theme, cols[1])
+	row3 := joinColumns([]string{notes, contents}, cols, 2)
 
-	// Bottom strip
-	guidance := m.renderExportGuidanceCard(theme, full)
+	// Bottom strip (full width)
+	guidance := m.renderExportGuidanceCard(theme, width)
 
 	return joinRows(
 		row1,
@@ -103,7 +102,7 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 	)
 }
 
-func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, outerW int) string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("  Score           %d/100", r.ScoreReport.Overall))
 	lines = append(lines, fmt.Sprintf("  Risk            %s", r.ScoreReport.Grade()))
@@ -126,10 +125,10 @@ func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme 
 	}
 	lines = append(lines, fmt.Sprintf("  Scan mode       %s", modeStr))
 
-	return renderCard("Current scan summary", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Current scan summary", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, outerW int) string {
 	var lines []string
 	for i, ef := range reportExportFormats {
 		cursor := " "
@@ -148,28 +147,28 @@ func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, width
 	}
 	lines = append(lines, "")
 	if m.lastExportPath != "" {
-		pathLabel := truncatePathForWidth(m.lastExportPath, width-16)
+		pathLabel := truncatePathForWidth(m.lastExportPath, outerW-16)
 		lines = append(lines, fmt.Sprintf("  Last export: %s", pathLabel))
 	} else {
-		pathLabel := truncatePathForWidth("./hostveil_report_YYYYMMDD_HHMMSS.<format>", width-16)
+		pathLabel := truncatePathForWidth("./hostveil_report_YYYYMMDD_HHMMSS.<format>", outerW-16)
 		lines = append(lines, fmt.Sprintf("  Output path: %s", pathLabel))
 	}
 	lines = append(lines, "")
 	lines = append(lines, "  "+lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
 		Render("j/k select · Enter export"))
-	return renderCard("Export report", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Export report", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderAreaHealthCardReport(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderAreaHealthCardReport(r *domain.ScanResult, theme Theme, outerW int) string {
 	lm := LayoutUltraWide
-	if width < 120 {
+	if outerW < 120 {
 		lm = LayoutWide
 	}
-	return renderCard("Area health", strings.Join(renderAreaHealthBars(r, width, lm, theme), "\n"), theme, width, 0)
+	return renderCardBounded("Area health", strings.Join(renderAreaHealthBars(r, outerW, lm, theme), "\n"), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme Theme, outerW int) string {
 	var lines []string
 	addLine := func(k, v string) {
 		lines = append(lines, fmt.Sprintf("  %-20s %s", k+":", v))
@@ -181,7 +180,7 @@ func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme 
 		addLine("Compose services", "none")
 	}
 	if r.Metadata.ComposeFile != "" {
-		addLine("Compose file", truncatePathForWidth(r.Metadata.ComposeFile, width-24))
+		addLine("Compose file", truncatePathForWidth(r.Metadata.ComposeFile, outerW-24))
 	} else {
 		addLine("Compose file", "not found")
 	}
@@ -189,10 +188,10 @@ func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme 
 	addLine("Image checks", "available")
 	addLine("Secret checks", "available")
 
-	return renderCard("Scan coverage", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Scan coverage", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderNotesWarningsCard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderNotesWarningsCard(r *domain.ScanResult, theme Theme, outerW int) string {
 	var lines []string
 	if len(r.Metadata.Adapters) > 0 {
 		for _, a := range r.Metadata.Adapters {
@@ -208,10 +207,10 @@ func (m *historyModel) renderNotesWarningsCard(r *domain.ScanResult, theme Theme
 	} else {
 		lines = append(lines, "  No warnings emitted.")
 	}
-	return renderCard("Notes and warnings", strings.Join(lines, "\n"), theme, width, 0)
+	return renderCardBounded("Notes and warnings", strings.Join(lines, "\n"), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Theme, width int) string {
+func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Theme, outerW int) string {
 	baseItems := []string{
 		"• Overall score and risk grade",
 		"• Findings summary",
@@ -234,33 +233,32 @@ func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Them
 	}
 
 	items := append(baseItems, extraItems...)
-	return renderCard("Report contents", "  "+strings.Join(items, "\n  "), theme, width, 0)
+	return renderCardBounded("Report contents", "  "+strings.Join(items, "\n  "), theme, Rect{W: outerW})
 }
 
-func (m *historyModel) renderExportGuidanceCard(theme Theme, width int) string {
+func (m *historyModel) renderExportGuidanceCard(theme Theme, outerW int) string {
 	text := "JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing with non-technical reviewers"
-	return renderCard("Export guidance", "  "+text, theme, width, 0)
+	return renderCardBounded("Export guidance", "  "+text, theme, Rect{W: outerW})
 }
 
 // ─── Wide Report (≥120x35) ──────────────────────────────────────────────────
 
 func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width int) string {
-	col2 := (width - 3) / 2
-	full := width - 2
+	cols := splitColumns(width, 2, 2)
 
-	summary := m.renderCurrentScanSummaryCard(r, theme, col2)
-	export := m.renderExportCard(r, theme, col2)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, summary, "  ", export)
+	summary := m.renderCurrentScanSummaryCard(r, theme, cols[0])
+	export := m.renderExportCard(r, theme, cols[1])
+	row1 := joinColumns([]string{summary, export}, cols, 2)
 
-	areaHealth := m.renderAreaHealthCardReport(r, theme, col2)
-	scanCov := m.renderScanCoverageCardReport(r, theme, col2)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, areaHealth, "  ", scanCov)
+	areaHealth := m.renderAreaHealthCardReport(r, theme, cols[0])
+	scanCov := m.renderScanCoverageCardReport(r, theme, cols[1])
+	row2 := joinColumns([]string{areaHealth, scanCov}, cols, 2)
 
-	notes := m.renderNotesWarningsCard(r, theme, col2)
-	contents := m.renderReportContentsCard(r, theme, col2)
-	row3 := lipgloss.JoinHorizontal(lipgloss.Top, notes, "  ", contents)
+	notes := m.renderNotesWarningsCard(r, theme, cols[0])
+	contents := m.renderReportContentsCard(r, theme, cols[1])
+	row3 := joinColumns([]string{notes, contents}, cols, 2)
 
-	guidance := m.renderExportGuidanceCard(theme, full)
+	guidance := m.renderExportGuidanceCard(theme, width)
 
 	return joinRows(
 		row1,
@@ -276,12 +274,6 @@ func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width
 // ─── Medium Report (default) ────────────────────────────────────────────────
 
 func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, width int) string {
-	cardStyle := lipgloss.NewStyle().
-		Width(width - 2).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Padding(0, 1)
-
 	cardWidth := width - 4
 
 	// Card 1: Current scan summary
@@ -303,7 +295,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	areaBars := renderAreaHealthBars(r, cardWidth, LayoutMedium, theme)
 	axisRows = append(axisRows, areaBars...)
 
-	card1 := cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, axisRows...))
+	card1 := renderCardBounded("Current scan summary", strings.Join(axisRows, "\n"), theme, Rect{W: width})
 
 	// Card 2: Severity summary
 	var sevRows []string
@@ -323,7 +315,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 		sevRows = append(sevRows,
 			"  "+lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render("No severity findings"))
 	}
-	card2 := "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, sevRows...))
+	card2 := "\n" + renderCardBounded("", strings.Join(sevRows, "\n"), theme, Rect{W: width})
 
 	// Card 3: Export options (selectable)
 	var exportRows []string
@@ -350,7 +342,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	exportRows = append(exportRows, "  "+lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
 		Render("Enter export · j/k select · s settings"))
-	card3 := "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, exportRows...))
+	card3 := "\n" + renderCardBounded("Export report", strings.Join(exportRows, "\n"), theme, Rect{W: width})
 
 	// Card 4: Info messages and warnings
 	infoLines := []string{}
@@ -386,7 +378,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	}
 	card4 := ""
 	if len(infoLines) > 0 {
-		card4 = "\n" + cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, infoLines...))
+		card4 = "\n" + renderCardBounded("", strings.Join(infoLines, "\n"), theme, Rect{W: width})
 	}
 
 	content := card1 + card2 + card3 + card4
