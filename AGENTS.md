@@ -85,7 +85,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 5 deferred items resolved)
+### ✅ Completed Issues (all 70 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -94,6 +94,11 @@ hostveil/
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
+| **#441** | Settings modal background gap | Every content line explicitly padded with `Background(theme.Surface)` + `Width(innerW)`. Empty lines get background too. |
+| **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. |
+| **#443** | Findings detail dedup | Removed Actions/Related sections from detail panel. Added context-aware Fix guidance. `formatFindingDetail()` gets Service + fix hint. Filter state compact when all clear. |
+| **#444** | Fix preview decision model | `renderFixDecision()` / `renderFixActions()` helpers. Context-aware action labels (`"[a] Apply reviewed fix"`, rescan labels). Structured status block. |
+| **#445** | Dashboard/Report path & runtime cleanup | Removed trailing arrows (`↑`/`→`) from Load values. Normalized cards. Added Load/Uptime to `renderRuntimeAdaptersCard`. |
 
 ## Tests (56 tests, 9 files)
 
@@ -131,7 +136,7 @@ Run: `go test -race -count=1 ./...`
 - No HTML templates, no CSS, no JS framework to maintain
 - Full keyboard/mouse support via xterm.js WebSocket
 - Font configured via `-t fontFamily=JetBrainsMono Nerd Font,Fira Code,Consolas,monospace`
-- Port auto-fallback: `findPort()` probes busy ports, increments until free
+- Port: always uses exactly port 9090, no fallback. If occupied, `killPort()` uses `lsof`/`fuser` to forcefully free it (`internal/web/server.go`).
 
 ### Design Decisions (v1.0.0)
 
@@ -255,6 +260,18 @@ mkdir -p "$SHOT_DIR"
 agent-browser screenshot "$SHOT_DIR/overview.png"
 ```
 
+### `serve` vs `serve-detached`
+
+| Command | Mode | Use case |
+|---------|------|----------|
+| `lab.sh serve` | Foreground (Ctrl+C to quit) | Human-driven QA in browser |
+| `lab.sh serve-detached` | Background + readiness wait loop | AI-agent automated browser QA |
+
+Both run `./hostveil --serve --port 9090` inside the container. `serve-detached` additionally:
+1. Kills any previous `hostveil` and `ttyd` processes first
+2. Waits for `curl http://127.0.0.1:9090/` to respond (max 20 retries)
+3. Logs to `/workspace/hostveil-serve.log` inside the container
+
 ### Verified TUI Keyboard Navigation (via ttyd)
 
 All keys confirmed working through agent-browser → ttyd → Bubbletea:
@@ -362,7 +379,7 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 ## Key References
 
 - `AGENTS.md` — this file
-- `internal/web/server.go` — ttyd launcher (50 lines, port fallback + font config)
+- `internal/web/server.go` — ttyd launcher (port 9090 forced, `killPort()` to free busy port, font config)
 - `internal/tui/app.go` — Bubbletea root model, background rendering, footer anchoring
 - `internal/tui/screen_findings.go` — Index numbers, detail separators, fix preview render, search/filter UX
 - `internal/fix/engine.go` — Fix engine with `PreviewFinding()` for per-finding YAML context diff
