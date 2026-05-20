@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -276,6 +275,12 @@ func (m *overviewModel) renderRuntimeAdaptersCard(r *domain.ScanResult, theme Th
 		}
 		if info.DockerVersion != "" {
 			addRow("Docker", info.DockerVersion)
+		}
+		if info.Uptime != "" {
+			addRow("Uptime", info.Uptime)
+		}
+		if info.LoadAverage != "" {
+			addRow("Load", formatLoadAvg(info.LoadAverage, false))
 		}
 	}
 	if len(r.Metadata.Adapters) > 0 {
@@ -1135,19 +1140,7 @@ func (m *overviewModel) renderHostCard(r *domain.ScanResult, theme Theme, width 
 		addRow("Uptime", info.Uptime)
 	}
 	if info.LoadAverage != "" {
-		loadStr := formatLoadAvg(info.LoadAverage, false)
-		fields := strings.Fields(info.LoadAverage)
-		if len(fields) > 0 {
-			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
-				switch {
-				case v > 2.0:
-					loadStr += " ↑"
-				case v > 1.0:
-					loadStr += " →"
-				}
-			}
-		}
-		addRow("Load", loadStr)
+		addRow("Load", formatLoadAvg(info.LoadAverage, false))
 	}
 
 	return style.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
@@ -1256,19 +1249,7 @@ func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme,
 			addRow("Uptime", info.Uptime)
 		}
 		if info.LoadAverage != "" {
-			loadStr := formatLoadAvg(info.LoadAverage, false)
-			fields := strings.Fields(info.LoadAverage)
-			if len(fields) > 0 {
-				if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
-					switch {
-					case v > 2.0:
-						loadStr += " ↑"
-					case v > 1.0:
-						loadStr += " →"
-					}
-				}
-			}
-			addRow("Load", loadStr)
+			addRow("Load", formatLoadAvg(info.LoadAverage, false))
 		}
 	}
 

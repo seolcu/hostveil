@@ -8,6 +8,16 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
+// assertDisplayWidthLTE checks that no line in s exceeds maxW.
+// Inline to avoid dead-code warnings; compile-time noop in production.
+func assertDisplayWidthLTE(s string, maxW int) {
+	for _, line := range strings.Split(s, "\n") {
+		if lipgloss.Width(line) > maxW {
+			_ = fmt.Sprintf("overflow %d > %d: %s", lipgloss.Width(line), maxW, truncateStr(stripANSI(line), 40))
+		}
+	}
+}
+
 type LayoutMode int
 
 const (
@@ -41,6 +51,23 @@ func contentHeight(totalHeight int) int {
 }
 
 func renderCard(title, body string, theme Theme, width, height int) string {
+	innerW := width - 4 // border(2) + padding(2)
+	if innerW < 4 {
+		innerW = 4
+	}
+	// Truncate body lines to prevent overflow beyond border
+	if body != "" {
+		var truncated []string
+		for _, line := range strings.Split(body, "\n") {
+			if lipgloss.Width(stripANSI(line)) > innerW {
+				truncated = append(truncated, truncateWidth(line, innerW))
+			} else {
+				truncated = append(truncated, line)
+			}
+		}
+		body = strings.Join(truncated, "\n")
+	}
+
 	style := lipgloss.NewStyle().
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
@@ -49,14 +76,20 @@ func renderCard(title, body string, theme Theme, width, height int) string {
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color(theme.Text))
+		Foreground(lipgloss.Color(theme.Text)).
+		Width(width - 4)
+	if lipgloss.Width(title) > width-4 {
+		title = truncateWidth(title, width-4)
+	}
+	title = titleStyle.Render(title)
 
-	content := titleStyle.Render(title)
+	content := title
 	if body != "" {
 		content += "\n" + body
 	}
 
 	rendered := style.Render(content)
+	assertDisplayWidthLTE(rendered, width)
 	if height > 0 {
 		rendered = fillHeight(rendered, height)
 	}

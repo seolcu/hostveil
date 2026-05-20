@@ -232,18 +232,24 @@ func (m *appModel) View() string {
 	header := m.renderHeader(t)
 
 	var body string
+	// Use width-2 for body to leave 1-char left/right margin, preventing
+	// rightmost card borders from clipping at the terminal edge.
+	bodyWidth := m.width - 2
+	if bodyWidth < 40 {
+		bodyWidth = m.width
+	}
 	switch m.currentScreen {
 	case screenDashboard:
-		body = m.overview.render(m.scanResult, t, m.width, m.height-4)
+		body = m.overview.render(m.scanResult, t, bodyWidth, m.height-4)
 	case screenFindings:
-		body = m.findings.render(t, m.width, m.height-4)
+		body = m.findings.render(t, bodyWidth, m.height-4)
 	case screenReport:
-		body = m.history.render(m.scanResult, t, m.width, m.height-4)
+		body = m.history.render(m.scanResult, t, bodyWidth, m.height-4)
 	}
 
 	// Blank screen guard: never show completely empty body
 	if strings.TrimSpace(stripANSI(body)) == "" {
-		body = m.renderFallbackState(t, m.width, m.height-4)
+		body = m.renderFallbackState(t, bodyWidth, m.height-4)
 	}
 
 	footer := m.renderFooter(t)
@@ -270,6 +276,7 @@ func (m *appModel) View() string {
 	}
 
 	// Wrap entire render in background color, pad each line to full width
+	// Use m.width for the canvas so rightmost card borders have 1-char margin
 	view := applyBackground(content, t.Background, m.width, m.height)
 
 	// Overlays — place centered on the background-filled canvas

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/config"
 )
@@ -25,20 +26,26 @@ func Serve(cfg *config.Config) error {
 		return fmt.Errorf("get executable path: %w", err)
 	}
 
-	// Find an available port, starting from the requested one
-	port := findPort(cfg.Host, cfg.Port)
-	if port != cfg.Port {
-		fmt.Printf("Port %d is in use, falling back to port %d\n", cfg.Port, port)
-	}
-	portStr := strconv.Itoa(port)
-
 	host := cfg.Host
 	if host == "" {
 		host = "127.0.0.1"
 	}
+	port := cfg.Port
 
-	// Build the command ttyd will run: hostveil in user-mode (auto-discovers compose files)
-	childArgs := []string{self, "--user-mode"}
+	// No fallback: if the port is taken, forcefully reclaim it.
+	addr := fmt.Sprintf("%s:%d", host, port)
+	if err := tryBind(addr); err != nil {
+		fmt.Printf("Port %d is in use, freeing it...\n", port)
+		killPort(port)
+		if err := tryBind(addr); err != nil {
+			return fmt.Errorf("port %d still unavailable after freeing: %w", port, err)
+		}
+		fmt.Printf("Port %d freed successfully.\n", port)
+	}
+	portStr := strconv.Itoa(port)
+
+	// Build the command ttyd will run: hostveil (auto-discovers compose files)
+	childArgs := []string{self}
 
 	// ttyd arguments
 	ttydArgs := []string{
@@ -52,7 +59,7 @@ func Serve(cfg *config.Config) error {
 	}
 	ttydArgs = append(ttydArgs, childArgs...)
 
-	fmt.Printf("Hostveil web interface running on http://%s:%d/\n", host, port)
+	fmt.Printf("Hostveil web interface running on http://%s:%s/\n", host, portStr)
 	fmt.Println("The TUI is streamed to your browser via ttyd (WebSocket terminal).")
 
 	cmd := exec.Command(ttyd, ttydArgs...)
@@ -62,22 +69,36 @@ func Serve(cfg *config.Config) error {
 	return cmd.Run()
 }
 
-// findPort tries the given port and increments until it finds an available one.
-func findPort(host string, start int) int {
-	for port := start; port < start+100; port++ {
-		addr := fmt.Sprintf("%s:%d", host, port)
-		l, err := net.Listen("tcp", addr)
-		if err == nil {
-			l.Close()
-			return port
-		}
-	}
-	// Last resort: let the OS assign one
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", host))
+// tryBind attempts to listen on addr and returns nil if successful.
+func tryBind(addr string) error {
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		return start // give up, let ttyd fail with its own error
+		return err
 	}
-	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
-	return port
+	return nil
+}
+
+// killPort forcefully frees the given TCP port by killing the owning process.
+// Tries multiple tools to handle different environments (host vs container).
+func killPort(port int) {
+	// Strategy 1: lsof (macOS, Linux with lsof installed)
+	exec.Command("sh", "-c",
+		fmt.Sprintf("lsof -ti :%d 2>/dev/null | xargs -r kill 2>/dev/null", port)).Run()
+	time.Sleep(200 * time.Millisecond)
+
+	// Strategy 2: fuser (Linux, often in minimal containers)
+	exec.Command("sh", "-c",
+		fmt.Sprintf("fuser -k %d/tcp 2>/dev/null", port)).Run()
+	time.Sleep(200 * time.Millisecond)
+
+	// Strategy 3: hard kill via lsof
+	exec.Command("sh", "-c",
+		fmt.Sprintf("lsof -ti :%d 2>/dev/null | xargs -r kill -9 2>/dev/null", port)).Run()
+	time.Sleep(200 * time.Millisecond)
+
+	// Strategy 4: hard kill via fuser
+	exec.Command("sh", "-c",
+		fmt.Sprintf("fuser -k -9 %d/tcp 2>/dev/null", port)).Run()
+	time.Sleep(300 * time.Millisecond)
 }

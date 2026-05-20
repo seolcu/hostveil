@@ -72,15 +72,55 @@ cmd_run() {
 }
 
 cmd_serve() {
+  # Kill any previous instance (ttyd + hostveil) before taking the port
+  docker compose -f "$LAB_COMPOSE" exec lab bash -c \
+    'pkill -f "[h]ostveil.*--serve" 2>/dev/null; pkill -f "ttyd.*9090" 2>/dev/null' || true
+  sleep 1
+  cmd_build_in_lab
   docker compose -f "$LAB_COMPOSE" exec -e TERM=${TERM:-xterm-256color} -e COLORTERM=${COLORTERM:-truecolor} lab bash -c \
-    'cd /workspace && go run ./cmd/hostveil/ --serve --port 9090'
+    'cd /workspace && ./hostveil --serve --port 9090'
+}
+
+cmd_build_in_lab() {
+  echo "Building hostveil binary inside the lab..."
+  docker compose -f "$LAB_COMPOSE" exec lab bash -c \
+    'cd /workspace && go build -buildvcs=false -o hostveil ./cmd/hostveil/'
 }
 
 cmd_serve_detached() {
-  docker compose -f "$LAB_COMPOSE" exec lab bash -c 'pkill -f "hostveil --serve" || true'
-  docker compose -f "$LAB_COMPOSE" exec -d -e TERM=${TERM:-xterm-256color} -e COLORTERM=${COLORTERM:-truecolor} lab bash -c \
-    'cd /workspace && go run ./cmd/hostveil/ --serve --port 9090 > /tmp/hostveil-serve.log 2>&1'
-  echo "Detached hostveil --serve is running on http://127.0.0.1:9090/"
+  # Kill any previous instance (ttyd + hostveil)
+  docker compose -f "$LAB_COMPOSE" exec lab bash -c \
+    'pkill -f "[h]ostveil.*--serve" 2>/dev/null; pkill -f "ttyd.*9090" 2>/dev/null' || true
+  sleep 1
+
+  cmd_build_in_lab
+
+  LOG_PATH="/workspace/hostveil-serve.log"
+  docker compose -f "$LAB_COMPOSE" exec -d \
+    -e TERM=${TERM:-xterm-256color} \
+    -e COLORTERM=${COLORTERM:-truecolor} \
+    lab bash -c \
+    "cd /workspace && ./hostveil --serve --port 9090 > ${LOG_PATH} 2>&1"
+
+  # Wait until the server is actually listening on the port
+  echo "Waiting for hostveil --serve to become ready..."
+  local retries=20
+  local ready=false
+  for i in $(seq 1 $retries); do
+    if docker compose -f "$LAB_COMPOSE" exec lab bash -c \
+      'curl -s -o /dev/null --connect-timeout 1 http://127.0.0.1:9090/' 2>/dev/null; then
+      ready=true
+      break
+    fi
+    sleep 1
+  done
+
+  if [ "$ready" = true ]; then
+    echo "hostveil --serve is ready on http://127.0.0.1:9090/"
+  else
+    echo "Warning: could not verify hostveil --serve started (timeout)." >&2
+    echo "  Log: docker compose -f ${LAB_COMPOSE} exec lab cat ${LOG_PATH}" >&2
+  fi
 }
 
 main() {

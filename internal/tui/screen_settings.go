@@ -83,20 +83,36 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		Padding(1, 2).
 		Align(lipgloss.Left)
 
-	content := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(theme.Text)).
-		Render("Settings") + "\n\n"
+	innerW := dialogWidth - 6
+	if innerW < 10 {
+		innerW = 10
+	}
+
+	surfaceBg := lipgloss.NewStyle().Background(lipgloss.Color(theme.Surface))
+
+	var contentParts []string
+
+	addLine := func(text string, opts ...lipgloss.Style) {
+		style := surfaceBg.Width(innerW)
+		for _, o := range opts {
+			style = style.Inherit(o)
+		}
+		contentParts = append(contentParts, style.Render(text))
+	}
+
+	// Title
+	addLine("Settings",
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)))
+	addLine("")
 
 	// Theme selector (2-column grid)
-	content += lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Theme:") + "\n"
+	addLine("Theme:",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
 	themes := ThemeNames()
 	colWidth := (dialogWidth - 6) / 2
 	for i := 0; i < len(themes); i += 2 {
-		rowEntries := []string{}
+		var rowEntries []string
 		for j := 0; j < 2; j++ {
 			idx := i + j
 			if idx >= len(themes) {
@@ -114,43 +130,43 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 			}
 			entry := lipgloss.NewStyle().
 				Foreground(lipgloss.Color(th.Accent)).
+				Background(lipgloss.Color(theme.Surface)).
 				Width(colWidth).
 				Render(fmt.Sprintf("%s%s %s", prefix, dot, t))
 			if isSelected {
 				entry = lipgloss.NewStyle().
 					Foreground(lipgloss.Color(th.Accent)).
 					Bold(true).
+					Background(lipgloss.Color(theme.Surface)).
 					Width(colWidth).
 					Render(fmt.Sprintf("%s%s %s", prefix, dot, t))
 			}
 			rowEntries = append(rowEntries, entry)
 		}
-		content += "  " + lipgloss.JoinHorizontal(lipgloss.Center, rowEntries...) + "\n"
+		row := "  " + lipgloss.JoinHorizontal(lipgloss.Center, rowEntries...)
+		contentParts = append(contentParts, surfaceBg.Width(innerW).Render(row))
 	}
-	content += "\n"
+
+	addLine("")
 
 	// Adapters section
-	content += lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("Adapters:") + "\n"
+	addLine("Adapters:",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
+
 	if len(m.adapterNames) > 0 {
 		for _, name := range m.adapterNames {
-			content += "  " + lipgloss.NewStyle().
-				Foreground(lipgloss.Color(theme.Success)).
-				Render("● "+name) + "\n"
+			addLine("  ● "+name,
+				lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)))
 		}
 	} else {
-		content += "  " + lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.TextMuted)).
-			Render("· none detected") + "\n"
+		addLine("  · none detected",
+			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 	}
-	content += "\n"
 
-	content += "\n"
+	addLine("")
 
-	content += lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.TextMuted)).
-		Render("j/k or ←/→ change theme  |  Esc close")
+	addLine("j/k or ←/→ change theme  |  Esc close",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
-	return dialogStyle.Render(content)
+	return dialogStyle.Render(strings.Join(contentParts, "\n"))
 }

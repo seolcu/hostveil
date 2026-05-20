@@ -379,10 +379,15 @@ func formatFindingDetail(f *domain.Finding) string {
 		b.WriteString(f.HowToFix + "\n\n")
 	}
 
+	// Fix preview hint
+	if f.IsFixable() {
+		b.WriteString("p preview fix\n\n")
+	}
+
 	// Metadata (bottom)
 	b.WriteString("───  Metadata  ───\n")
-	b.WriteString(fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s\n",
-		f.ID, f.Source.String(), f.Scope.String()))
+	b.WriteString(fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s\n",
+		f.ID, f.Source.String(), f.Scope.String(), f.Service))
 
 	return b.String()
 }
@@ -802,6 +807,13 @@ func (m *findingsModel) renderFindingsBottomCards(theme Theme, leftWidth, rightW
 }
 
 func (m *findingsModel) renderFilterStateCard(theme Theme, width int) string {
+	allClear := m.severityFilter == "" && m.serviceFilter == "" && m.scopeFilter == "" &&
+		m.remediationFilter == "" && m.sourceFilter == "" && m.sortMode == "severity"
+
+	if allClear {
+		return renderCard("Filter state", "  All filters clear", theme, width, 0)
+	}
+
 	var lines []string
 	addLine := func(k, v string) {
 		if v == "" {
@@ -901,13 +913,19 @@ func (m *findingsModel) renderFixGuidance(theme Theme, width int) string {
 	}
 	f := m.list[m.selected]
 	var guidance string
-	switch f.Remediation {
-	case domain.RemediationAuto:
-		guidance = "This finding can be auto-fixed. Press p to preview the change, then a to apply."
-	case domain.RemediationReview:
-		guidance = "This finding requires review. Press p to preview the suggested change. Apply only after verifying correctness."
+	switch {
+	case f.Remediation == domain.RemediationAuto && !m.showFixPreview:
+		guidance = "Auto-fix preview available. Press p to inspect the diff before applying."
+	case f.Remediation == domain.RemediationAuto && m.showFixPreview:
+		guidance = "Review the proposed diff. Press a to apply only after verifying correctness."
+	case f.Remediation == domain.RemediationReview && !m.showFixPreview:
+		guidance = "Review required. Press p to preview the suggested change. Apply only after verifying correctness."
+	case f.Remediation == domain.RemediationReview && m.showFixPreview:
+		guidance = "Review the proposed diff. Apply manually if correct, then rescan."
+	case f.Remediation == domain.RemediationManual:
+		guidance = "Manual change required. Follow the recommended fix steps above, then press r to rescan."
 	default:
-		guidance = "This finding requires manual intervention. Follow the recommended fix steps above."
+		guidance = "Select a finding to see remediation guidance."
 	}
 	return renderCard("Fix guidance", "  "+guidance, theme, width, 0)
 }
@@ -946,33 +964,80 @@ func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, widt
 		detail += fmt.Sprintf("Recommended fix:\n%s\n\n", f.HowToFix)
 	}
 	if f.IsFixable() {
-		detail += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render("p preview fix") + "\n"
+		detail += "  " + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render("p preview fix") + "\n"
 	}
 
 	detail += sep
 	detail += fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
 		f.ID, f.Source.String(), f.Scope.String(), f.Service)
 
-	detail += "\n\n───  Actions  ───\n"
-	if f.IsFixable() {
-		detail += "p  Preview fix\n"
-		if f.Source == domain.SourceNativeCompose {
-			detail += "a  Apply after preview\n"
-		}
-	}
-	detail += "r  Rescan\n"
-	detail += "Esc  Back to list"
-
-	related := m.relatedFindings(f)
-	if len(related) > 0 {
-		detail += "\n\n───  Related findings  ───\n"
-		for _, rf := range related {
-			icon := severityIcon(rf.Severity)
-			detail += fmt.Sprintf("  %s %s\n", icon, rf.Title)
-		}
+	// Context-aware fix guidance
+	detail += "\n\n───  Fix guidance  ───\n"
+	switch {
+	case f.Remediation == domain.RemediationAuto && !m.showFixPreview:
+		detail += "  Auto-fix preview available. Press p to inspect the diff before applying."
+	case f.Remediation == domain.RemediationAuto && m.showFixPreview:
+		detail += "  Review the proposed diff. Press a to apply only after verifying correctness."
+	case f.Remediation == domain.RemediationReview:
+		detail += "  Review required. Follow the recommended fix manually, then press r to rescan."
+	case f.Remediation == domain.RemediationManual:
+		detail += "  Manual change required. Update the configuration per the recommendation, then rescan."
+	default:
+		detail += "  Select a finding to see remediation guidance."
 	}
 
 	return detail
+}
+
+func renderFixDecision(f *domain.Finding, hasBackup bool) string {
+	reviewReq := f.Remediation == domain.RemediationReview
+	manualOnly := f.Remediation == domain.RemediationManual
+
+	var status []string
+	if !manualOnly {
+		status = append(status, "Auto-fix: available")
+		if reviewReq {
+			status = append(status, "Review: required")
+		} else {
+			status = append(status, "Review: not required")
+		}
+	} else {
+		status = append(status, "Auto-fix: unavailable")
+	}
+	if hasBackup {
+		status = append(status, "Backup: available")
+	} else {
+		status = append(status, "Backup: unavailable")
+	}
+
+	statusStr := strings.Join(status, " · ")
+
+	var recommended string
+	switch {
+	case manualOnly:
+		recommended = "Update the configuration manually, then press r to rescan."
+	case reviewReq && !hasBackup:
+		recommended = "Review the diff before applying. No backup path available — ensure the compose file is version-controlled."
+	case reviewReq && hasBackup:
+		recommended = "Review the diff before applying, then press a to apply. Backup will be created."
+	case !reviewReq && hasBackup:
+		recommended = "Apply the fix, then rescan. Backup will be created automatically."
+	default:
+		recommended = "Apply the fix, then rescan to verify."
+	}
+
+	return fmt.Sprintf("Fix status: %s\nRecommended action: %s", statusStr, recommended)
+}
+
+func renderFixActions(f *domain.Finding) string {
+	switch {
+	case f.Remediation == domain.RemediationManual:
+		return ""
+	case f.Remediation == domain.RemediationReview:
+		return "[a] Apply reviewed fix"
+	default:
+		return "[a] Apply fix"
+	}
 }
 
 func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, width int) string {
@@ -982,31 +1047,41 @@ func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, 
 	sep := "\n" + strings.Repeat("═", width-4) + "\n"
 
 	detail := headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
-	detail += "Current setup:\n"
+
+	// Status block
+	detail += renderFixDecision(f, m.fixBackupPath != "") + "\n\n"
+
+	// Current setup
+	detail += "Current setup\n"
 	detail += m.fixPreviewContent
-	if m.fixBackupPath != "" {
-		detail += fmt.Sprintf("\nBackup: %s\n", m.fixBackupPath)
-	}
+
+	// Decision / risk
 	detail += "\n───  Decision  ───\n"
 	switch f.Remediation {
 	case domain.RemediationAuto:
-		detail += "This change can be applied automatically.\n"
+		detail += "This change can be applied automatically. Review the diff, then press a if correct.\n"
 	case domain.RemediationReview:
-		detail += "This change requires review before applying.\n"
+		detail += "This change requires review before applying. Review the diff carefully.\n"
 	default:
-		detail += "This change must be applied manually.\n"
+		detail += "This change must be applied manually. No automated fix is available.\n"
 	}
 	if m.fixBackupPath != "" {
-		detail += fmt.Sprintf("Backup will be created: %s\n", m.fixBackupPath)
-	} else {
-		detail += "No backup path available.\n"
+		detail += fmt.Sprintf("Backup: %s\n", m.fixBackupPath)
+	} else if f.Remediation != domain.RemediationManual {
+		detail += "No backup path available. Ensure the file is version-controlled.\n"
 	}
+
+	// Actions
 	detail += "\n"
 	detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("[p] Close preview") + "\n"
-	if f.Remediation != domain.RemediationManual {
-		detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Success)).Render("[a] Apply fix") + "\n"
+	if actions := renderFixActions(f); actions != "" {
+		detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Success)).Render(actions) + "\n"
 	}
-	detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.TextMuted)).Render("[r] Rescan after manual change")
+	rescanLabel := "[r] Rescan"
+	if f.Remediation == domain.RemediationManual {
+		rescanLabel = "[r] Rescan after manual change"
+	}
+	detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.TextMuted)).Render(rescanLabel)
 	detail += sep
 	return detail
 }
