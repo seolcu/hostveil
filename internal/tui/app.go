@@ -210,7 +210,8 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.currentScreen == screenReport {
 				if s == "enter" {
 					format := reportExportFormats[m.history.exportCursor].name
-					toastMsg := doExport(m.scanResult, format)
+					toastMsg, exportPath := doExport(m.scanResult, format)
+					m.history.lastExportPath = exportPath
 					return m, m.showToast(toastMsg)
 				}
 				m.history.Update(msg)
@@ -222,7 +223,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *appModel) View() string {
-	if m.width == 0 {
+	if m.width == 0 || m.height == 0 {
 		return "Loading..."
 	}
 
@@ -238,6 +239,11 @@ func (m *appModel) View() string {
 		body = m.findings.render(t, m.width, m.height-4)
 	case screenReport:
 		body = m.history.render(m.scanResult, t, m.width, m.height-4)
+	}
+
+	// Blank screen guard: never show completely empty body
+	if strings.TrimSpace(stripANSI(body)) == "" {
+		body = m.renderFallbackState(t, m.width, m.height-4)
 	}
 
 	footer := m.renderFooter(t)
@@ -389,9 +395,70 @@ func (m *appModel) renderHeader(t Theme) string {
 		Bold(true).
 		Render("hostveil")
 
-	score := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(t.Accent)).
-		Render(fmtScore(m.scanResult))
+	r := m.scanResult
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	gradeColor := t.Critical
+	if score >= 50 {
+		gradeColor = t.Medium
+	}
+	if score >= 80 {
+		gradeColor = t.Success
+	}
+	scoreTag := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(gradeColor)).
+		Bold(true).
+		Render(fmt.Sprintf("Score: %d/%d", score, 100))
+	riskTag := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(gradeColor)).
+		Render(fmt.Sprintf("Risk: %s", grade))
+	findingsTag := fmt.Sprintf("Findings: %d", r.TotalFindings())
+	svcTag := fmt.Sprintf("Services: %d", len(r.Metadata.Services))
+
+	autoCount := 0
+	for _, f := range r.Findings {
+		if f.Remediation == domain.RemediationAuto {
+			autoCount++
+		}
+	}
+	fixTag := ""
+	if autoCount > 0 {
+		fixTag = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Success)).
+			Render(fmt.Sprintf("Fixable: %d", autoCount))
+	}
+
+	// Scan mode info
+	modeStr := "live"
+	if r.Metadata.ScanMode == domain.ScanModeExplicit {
+		modeStr = "compose"
+	}
+	modeTag := fmt.Sprintf("Scan: %s", modeStr)
+
+	// Docker + host info
+	dockerTag := ""
+	if info := r.Metadata.HostRuntime; info != nil && info.DockerVersion != "" {
+		dockerTag = fmt.Sprintf("Docker %s", info.DockerVersion)
+	}
+	hostTag := ""
+	if info := r.Metadata.HostRuntime; info != nil && info.Hostname != "" {
+		hostTag = fmt.Sprintf("host %s", info.Hostname)
+	}
+
+	parts := []string{scoreTag, riskTag, findingsTag, svcTag}
+	if fixTag != "" {
+		parts = append(parts, fixTag)
+	}
+	metaParts := []string{modeTag}
+	if dockerTag != "" {
+		metaParts = append(metaParts, dockerTag)
+	}
+	if hostTag != "" {
+		metaParts = append(metaParts, hostTag)
+	}
+
+	line1 := strings.Join(parts, "  ")
+	line2 := strings.Join(metaParts, "  ·  ")
 
 	headerStyle := lipgloss.NewStyle().
 		BorderBottom(true).
@@ -399,13 +466,16 @@ func (m *appModel) renderHeader(t Theme) string {
 		Padding(0, 1).
 		Width(m.width)
 
-	return headerStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", score))
+	return headerStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", line1),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(line2),
+	))
 }
 
 func (m *appModel) renderFooter(t Theme) string {
-	nav := " [1] Dashboard  [2] Findings  [3] Report "
-	hint := " [?] Help  [s] Settings  [q] Quit "
-	if m.width < 80 {
+	nav := " [1] Dashboard    [2] Findings    [3] Report "
+	hint := " [?] Help    [s] Settings    [q] Quit "
+	if m.width < 100 {
 		nav = " [1] Dsh  [2] Fnd  [3] Rpt "
 		hint = " [?] [s] [q] "
 	}
@@ -419,11 +489,35 @@ func (m *appModel) renderFooter(t Theme) string {
 	return style.Render(lipgloss.JoinHorizontal(lipgloss.Center, nav, hint))
 }
 
-func fmtScore(r *domain.ScanResult) string {
-	return fmt.Sprintf("Score: %d (%s)  |  %d findings", r.ScoreReport.Overall, r.ScoreReport.Grade(), r.TotalFindings())
+func (m *appModel) renderFallbackState(t Theme, width, height int) string {
+	screenName := "Dashboard"
+	switch m.currentScreen {
+	case screenFindings:
+		screenName = "Findings"
+	case screenReport:
+		screenName = "Report"
+	}
+
+	lines := []string{
+		"hostveil",
+		"",
+		fmt.Sprintf("Rendering fallback state: %s", screenName),
+		"",
+		"Press ? for help or q to quit.",
+	}
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Align(lipgloss.Center).
+		Foreground(lipgloss.Color(t.TextMuted))
+
+	return style.Render(strings.Join(lines, "\n"))
 }
 
-func doExport(r *domain.ScanResult, format string) string {
+
+
+func doExport(r *domain.ScanResult, format string) (string, string) {
 	var data string
 	var err error
 	switch format {
@@ -437,7 +531,7 @@ func doExport(r *domain.ScanResult, format string) string {
 		data, err = export.HTML(r)
 	}
 	if err != nil {
-		return fmt.Sprintf("Export failed: %v", err)
+		return fmt.Sprintf("Export failed: %v", err), ""
 	}
 
 	ts := time.Now().Format("20060102_150405")
@@ -447,7 +541,7 @@ func doExport(r *domain.ScanResult, format string) string {
 		outPath = filename
 	}
 	if err := os.WriteFile(outPath, []byte(data), 0644); err != nil {
-		return fmt.Sprintf("Export write failed: %v", err)
+		return fmt.Sprintf("Export write failed: %v", err), ""
 	}
-	return fmt.Sprintf("Exported %s report to %s", strings.ToUpper(format), outPath)
+	return fmt.Sprintf("Exported %s report to %s", strings.ToUpper(format), outPath), outPath
 }

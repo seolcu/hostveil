@@ -58,10 +58,10 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 	}
 
 	content += renderSection("Navigation", [][2]string{
-		{"1 / 2 / 3", "Overview, Findings, Report"},
-		{"↑ / ↓ or j / k", "Navigate list"},
-		{"Enter or → or l", "Open finding detail panel"},
-		{"← or h", "Back to list"},
+		{"1 / 2 / 3", "Switch screens (Dashboard / Findings / Report)"},
+		{"↑ / ↓ or j / k", "Move selection"},
+		{"Enter or l", "Open detail / select"},
+		{"Esc or h", "Back / close panel"},
 		{"q", "Quit"},
 	})
 
@@ -69,22 +69,20 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 		{"/", "Search findings"},
 		{"f", "Open filter panel"},
 		{"s", "Cycle sort (severity → source → title)"},
-		{"r", "Reset all filters"},
+		{"r", "Reset filters"},
 		{"p", "Toggle fix preview (on fixable findings)"},
 		{"a", "Apply fix (from fix preview)"},
-		{"h (Dashboard)", "Host triage (filter to host scope)"},
 	})
 
 	content += renderSection("Report", [][2]string{
 		{"j / k", "Select export format"},
 		{"Enter", "Export to file"},
-		{"s", "Settings modal"},
 	})
 
 	content += renderSection("General", [][2]string{
 		{"?", "Toggle this help"},
-		{"Esc", "Close panel / cancel"},
-		{"q", "Quit"},
+		{"s", "Settings (Dashboard/Report) / Sort (Findings)"},
+		{"h (Dashboard)", "Host triage (filter to host scope)"},
 	})
 
 	content += lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Press ? or Esc to close")

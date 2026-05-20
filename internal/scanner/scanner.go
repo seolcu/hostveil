@@ -155,6 +155,9 @@ func scanMode(userMode bool) domain.ScanMode {
 
 func calculateScores(result *domain.ScanResult) {
 	if len(result.Findings) == 0 {
+		for _, axis := range domain.AllAxes() {
+			result.ScoreReport.AxisScores[axis] = 100
+		}
 		return
 	}
 
