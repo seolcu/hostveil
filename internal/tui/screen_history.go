@@ -86,7 +86,7 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 
 	// Row 3: Notes/warnings + Report contents
 	notes := m.renderNotesWarningsCard(r, theme, col2)
-	contents := m.renderReportContentsCard(theme, col2)
+	contents := m.renderReportContentsCard(r, theme, col2)
 	row3 := lipgloss.JoinHorizontal(lipgloss.Top, notes, "  ", contents)
 
 	// Bottom strip
@@ -148,9 +148,11 @@ func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, width
 	}
 	lines = append(lines, "")
 	if m.lastExportPath != "" {
-		lines = append(lines, fmt.Sprintf("  Last export: %s", m.lastExportPath))
+		pathLabel := truncatePathForWidth(m.lastExportPath, width-16)
+		lines = append(lines, fmt.Sprintf("  Last export: %s", pathLabel))
 	} else {
-		lines = append(lines, "  Output path: ./hostveil_report_YYYYMMDD_HHMMSS.<format>")
+		pathLabel := truncatePathForWidth("./hostveil_report_YYYYMMDD_HHMMSS.<format>", width-16)
+		lines = append(lines, fmt.Sprintf("  Output path: %s", pathLabel))
 	}
 	lines = append(lines, "")
 	lines = append(lines, "  "+lipgloss.NewStyle().
@@ -206,7 +208,7 @@ func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme 
 		addLine("Compose services", "none")
 	}
 	if r.Metadata.ComposeFile != "" {
-		addLine("Compose file", r.Metadata.ComposeFile)
+		addLine("Compose file", truncatePathForWidth(r.Metadata.ComposeFile, width-24))
 	} else {
 		addLine("Compose file", "not found")
 	}
@@ -236,14 +238,29 @@ func (m *historyModel) renderNotesWarningsCard(r *domain.ScanResult, theme Theme
 	return renderCard("Notes and warnings", strings.Join(lines, "\n"), theme, width, 0)
 }
 
-func (m *historyModel) renderReportContentsCard(theme Theme, width int) string {
-	items := []string{
+func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Theme, width int) string {
+	baseItems := []string{
 		"• Overall score and risk grade",
 		"• Findings summary",
 		"• Area health / risk by area",
 		"• Runtime and adapter metadata",
 		"• Export timestamp",
 	}
+
+	var extraItems []string
+	if r.TotalFindings() == 0 {
+		extraItems = []string{
+			"• Clean scan statement",
+			"• Scan coverage limitations",
+		}
+	} else {
+		extraItems = []string{
+			"• Finding details and remediation guidance",
+			"• Fix preview metadata where available",
+		}
+	}
+
+	items := append(baseItems, extraItems...)
 	return renderCard("Report contents", "  "+strings.Join(items, "\n  "), theme, width, 0)
 }
 
@@ -262,13 +279,22 @@ func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width
 	export := m.renderExportCard(r, theme, col2)
 	row1 := lipgloss.JoinHorizontal(lipgloss.Top, summary, "  ", export)
 
-	areaHealth := m.renderAreaHealthCardReport(r, theme, full)
+	areaHealth := m.renderAreaHealthCardReport(r, theme, col2)
+	scanCov := m.renderScanCoverageCardReport(r, theme, col2)
+	row2 := lipgloss.JoinHorizontal(lipgloss.Top, areaHealth, "  ", scanCov)
+
+	notes := m.renderNotesWarningsCard(r, theme, col2)
+	contents := m.renderReportContentsCard(r, theme, col2)
+	row3 := lipgloss.JoinHorizontal(lipgloss.Top, notes, "  ", contents)
+
 	guidance := m.renderExportGuidanceCard(theme, full)
 
 	return joinRows(
 		row1,
 		"",
-		areaHealth,
+		row2,
+		"",
+		row3,
 		"",
 		guidance,
 	)

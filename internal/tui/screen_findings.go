@@ -612,6 +612,12 @@ func (m *findingsModel) renderCleanFindingsState(theme Theme, width, height int)
 }
 
 func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, listWidth, listHeight int, showHints bool) {
+	// Determine if we have room for the service column
+	// Minimum overhead: cursor(1) + idx(4) + spaces(4) + sevLabel min(4)
+	// With service: adds 1 space + service name (average ~10 chars)
+	showService := listWidth > 60
+	compactSev := listWidth < 45
+
 	for i, f := range m.list {
 		cursor := " "
 		if i == m.selected {
@@ -621,7 +627,13 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 		color := f.Severity.Color()
 		icon := severityIcon(f.Severity)
 		idxStr := fmt.Sprintf("%2d.", i+1)
-		sevLabel := fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()))
+
+		var sevLabel string
+		if compactSev {
+			sevLabel = fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()[:4]))
+		} else {
+			sevLabel = fmt.Sprintf("%s %s", icon, strings.ToUpper(f.Severity.String()))
+		}
 
 		title := f.Title
 		if m.searchQuery != "" {
@@ -632,9 +644,20 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 				title += "…"
 			}
 		}
-		title = truncateStr(title, listWidth-36)
 
-		line := fmt.Sprintf("%s  %s  %s %s  %s", cursor, idxStr, sevLabel, title, f.Service)
+		var line string
+		if showService {
+			overhead := len(cursor) + 2 + len(idxStr) + 2 + len(sevLabel) + 2 + len(f.Service) + 4
+			title = truncateStr(title, listWidth-overhead)
+			if compactSev && len(f.Service) > 12 {
+				f.Service = truncateStr(f.Service, 12)
+			}
+			line = fmt.Sprintf("%s  %s  %s  %s  %s", cursor, idxStr, sevLabel, title, f.Service)
+		} else {
+			overhead := len(cursor) + 2 + len(idxStr) + 2 + len(sevLabel) + 2
+			title = truncateStr(title, listWidth-overhead)
+			line = fmt.Sprintf("%s  %s  %s  %s", cursor, idxStr, sevLabel, title)
+		}
 
 		style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 		if i == m.selected {
@@ -995,7 +1018,6 @@ func (m *findingsModel) relatedFindings(f *domain.Finding) []domain.Finding {
 
 func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Findings: %d/%d\n", len(m.list), len(m.all)))
 
 	if len(m.list) == 0 {
 		if len(m.all) == 0 {
@@ -1163,7 +1185,7 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 		tokens = append(tokens, fmt.Sprintf("Sort: %s ↑", m.sortMode))
 	}
 
-	info := fmt.Sprintf("%d/%d findings", len(m.list), len(m.all))
+	info := fmt.Sprintf("%d findings", len(m.list))
 	if len(tokens) > 0 {
 		filterLine := strings.Join(tokens, " | ")
 		if lipgloss.Width(info)+lipgloss.Width(filterLine)+7 > width {

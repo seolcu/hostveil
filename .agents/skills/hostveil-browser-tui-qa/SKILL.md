@@ -1,6 +1,6 @@
 ---
 name: hostveil-browser-tui-qa
-description: Use this skill when the user wants to visually QA hostveil's Bubbletea TUI through `--serve`, verify the ttyd browser terminal, drive the UI with keyboard input, capture screenshots via agent-browser, and inspect the images for rendering issues. The agent runs an iterative Observe–Explore loop: each screenshot's visual analysis drives the next exploration decision, with a ≤20 screenshot budget. Trigger this for requests like "run hostveil --serve and take screenshots", "check the TUI in browser", "use agent-browser to test hostveil", "capture overview/findings/help/settings screens", or any browser-based visual review of hostveil's terminal UI.
+description: Use this skill when the user wants to visually QA hostveil's Bubbletea TUI through `--serve`, verify the ttyd browser terminal, drive the UI with keyboard input, capture screenshots via agent-browser, and inspect the images for rendering issues. The agent runs an iterative Observe–Explore loop: each screenshot's visual analysis drives the next exploration decision, with a ≤20 screenshot budget. Trigger this for requests like "run hostveil --serve and take screenshots", "check the TUI in browser", "use agent-browser to test hostveil", "capture overview/findings/help/settings screens", or any browser-based visual review of hostveil's terminal UI. Uses Docker lab (`scripts/lab.sh`) for setup — build on host, serve inside lab container, cleanup via `lab.sh down`.
 ---
 
 # Hostveil Browser TUI QA
@@ -13,34 +13,51 @@ This skill enables an AI agent to autonomously perform visual QA on hostveil's B
 
 - `agent-browser` installed and usable from PATH
 - The `agent-browser` skill should be loaded before driving the browser
-- `ttyd` installed and usable from PATH
-- Go toolchain available for `go build`
+- Docker installed and usable from PATH
+- Go toolchain (for `go build` on the host; the binary is volume-mounted into the lab container)
 - Run from the hostveil repository root unless the user provides another path
 
 ## Phase 1: Setup
 
-### 1. Build
+### 1. Build binary (on host, volume-mounted into lab container)
 
 ```bash
 go build -o hostveil ./cmd/hostveil/
 ```
 
-### 2. Start server (detached)
+### 2. Start Docker lab
+
+Starts the lab container (with ttyd, Trivy, Dockle, Lynis, Gitleaks) and target services:
+
+```bash
+./scripts/lab.sh up
+```
+
+This builds the container image if needed and starts all services in detached mode.
+The project root is volume-mounted at `/workspace` inside the container, so the
+binary built in step 1 is available at `/workspace/hostveil`.
+
+### 3. Start hostveil --serve inside the lab container (detached)
 
 ```bash
 rm -f /tmp/hostveil-serve.log
-setsid -f ./hostveil --serve --port 8080 --compose tests/scenarios/vaultwarden-domain/docker-compose.yml > /tmp/hostveil-serve.log 2>&1
+setsid -f docker compose -f docker/lab/compose.yml exec -d -e TERM -e COLORTERM lab bash -c 'cd /workspace && ./hostveil --serve --port 9090' > /tmp/hostveil-serve.log 2>&1
 sleep 3
 ```
 
-If `8080` is busy, hostveil auto-increments. Parse the actual URL from the log:
+The lab compose maps `127.0.0.1:9090:9090`, so the ttyd web UI is available on
+the host at port 9090. Unlike direct execution (which auto-fallsback on busy
+ports), the Docker port mapping is fixed, so the URL is always:
 
 ```bash
-URL=$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' /tmp/hostveil-serve.log | tail -n 1)
+URL="http://127.0.0.1:9090/"
 echo "$URL"
 ```
 
-### 3. Create screenshot output directory
+If the port is already in use, stop the existing lab (`./scripts/lab.sh down`)
+and retry from step 2.
+
+### 4. Create screenshot output directory
 
 Create a timestamped subdirectory under `screenshots/` to organize this session's captures:
 
@@ -53,7 +70,7 @@ echo "Screenshots will be saved to $SHOT_DIR"
 
 Use `"$SHOT_DIR"` as the target directory for all `agent-browser screenshot` commands in this session.
 
-### 4. Connect agent-browser
+### 5. Connect agent-browser
 
 ```bash
 agent-browser open "$URL"
@@ -70,7 +87,7 @@ agent-browser click @e1
 
 The ref (`@e1`) is invalidated after navigation or viewport changes — re-run `snapshot -i` before clicking.
 
-### 4. Keyboard input
+### 6. Keyboard input
 
 Use `agent-browser press <key>` to send keystrokes. Bubbletea responds to single-character keys.
 
@@ -271,19 +288,25 @@ After capturing each screenshot, read the PNG file with the image-capable file r
 
 ## Phase 4: Cleanup
 
-Always clean up background processes at the end:
+Always clean up at the end. Stopping the lab container via `lab.sh down` is
+sufficient — it stops hostveil, ttyd, and all target services:
 
 ```bash
+./scripts/lab.sh down
 agent-browser close >/dev/null 2>&1 || true
-pkill -f "hostveil.*--serve" 2>/dev/null || true
-pkill -f "ttyd.*hostveil" 2>/dev/null || true
 ```
 
-If `pkill` fails or misses a process, use:
+If the lab down command fails or leftover processes remain, fall back to
+manual cleanup:
 
 ```bash
-ps aux | rg 'hostveil|ttyd'
-kill <PID>    # kill only test processes, not root-owned ttyd sessions
+docker compose -f docker/lab/compose.yml down --remove-orphans 2>/dev/null || true
+for svc in vaultwarden jellyfin gitea nextcloud nginx; do
+  compose="docker/lab/$svc/compose.yml"
+  [ -f "$compose" ] && docker compose -f "$compose" down --remove-orphans 2>/dev/null || true
+done
+docker network rm hostveil-lab 2>/dev/null || true
+agent-browser close >/dev/null 2>&1 || true
 ```
 
 ## Report Format

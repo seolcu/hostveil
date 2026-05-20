@@ -77,6 +77,47 @@ func truncateWidth(s string, maxWidth int) string {
 	return string(runes[:maxWidth-1]) + "…"
 }
 
+func truncatePathForWidth(path string, maxWidth int) string {
+	if maxWidth < 8 {
+		return "…"
+	}
+	if lipgloss.Width(stripANSI(path)) <= maxWidth {
+		return path
+	}
+
+	// Try filename only
+	parts := strings.Split(path, "/")
+	filename := parts[len(parts)-1]
+	if lipgloss.Width(filename)+4 <= maxWidth {
+		return ".../" + filename
+	}
+
+	// Try parent/filename
+	if len(parts) >= 2 {
+		parent := parts[len(parts)-2]
+		parentFile := parent + "/" + filename
+		if lipgloss.Width(parentFile)+4 <= maxWidth {
+			return ".../" + parentFile
+		}
+	}
+
+	// Try grandparent/parent/filename
+	if len(parts) >= 3 {
+		gp := parts[len(parts)-3] + "/" + parts[len(parts)-2] + "/" + filename
+		if lipgloss.Width(gp)+4 <= maxWidth {
+			return ".../" + gp
+		}
+	}
+
+	// Fallback: ellipsis the filename itself
+	maxFn := maxWidth - 4
+	if maxFn < 4 {
+		maxFn = 4
+	}
+	fn := truncateWidth(filename, maxFn)
+	return ".../" + fn
+}
+
 func wrapLines(s string, w int) []string {
 	if w <= 0 || s == "" {
 		return []string{}

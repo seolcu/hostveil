@@ -395,6 +395,18 @@ func (m *appModel) renderHeader(t Theme) string {
 		Bold(true).
 		Render("hostveil")
 
+	lm := layoutMode(m.width, m.height)
+
+	// Mini: just "hostveil"
+	if lm == LayoutMini || m.width < miniWidth {
+		headerStyle := lipgloss.NewStyle().
+			BorderBottom(true).
+			BorderForeground(lipgloss.Color(t.Border)).
+			Padding(0, 1).
+			Width(m.width)
+		return headerStyle.Render(title)
+	}
+
 	r := m.scanResult
 	score := r.ScoreReport.Overall
 	grade := r.ScoreReport.Grade()
@@ -405,15 +417,6 @@ func (m *appModel) renderHeader(t Theme) string {
 	if score >= 80 {
 		gradeColor = t.Success
 	}
-	scoreTag := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(gradeColor)).
-		Bold(true).
-		Render(fmt.Sprintf("Score: %d/%d", score, 100))
-	riskTag := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(gradeColor)).
-		Render(fmt.Sprintf("Risk: %s", grade))
-	findingsTag := fmt.Sprintf("Findings: %d", r.TotalFindings())
-	svcTag := fmt.Sprintf("Services: %d", len(r.Metadata.Services))
 
 	autoCount := 0
 	for _, f := range r.Findings {
@@ -421,21 +424,12 @@ func (m *appModel) renderHeader(t Theme) string {
 			autoCount++
 		}
 	}
-	fixTag := ""
-	if autoCount > 0 {
-		fixTag = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(t.Success)).
-			Render(fmt.Sprintf("Fixable: %d", autoCount))
-	}
 
-	// Scan mode info
 	modeStr := "live"
 	if r.Metadata.ScanMode == domain.ScanModeExplicit {
 		modeStr = "compose"
 	}
-	modeTag := fmt.Sprintf("Scan: %s", modeStr)
 
-	// Docker + host info
 	dockerTag := ""
 	if info := r.Metadata.HostRuntime; info != nil && info.DockerVersion != "" {
 		dockerTag = fmt.Sprintf("Docker %s", info.DockerVersion)
@@ -445,11 +439,79 @@ func (m *appModel) renderHeader(t Theme) string {
 		hostTag = fmt.Sprintf("host %s", info.Hostname)
 	}
 
+	headerStyle := lipgloss.NewStyle().
+		BorderBottom(true).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Padding(0, 1).
+		Width(m.width)
+
+	if lm == LayoutCompact {
+		// Compact: "hostveil  16 Critical  6 findings" (one line)
+		scoreStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(gradeColor)).
+			Bold(true).
+			Render(fmt.Sprintf("%d", score))
+		riskStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(gradeColor)).
+			Render(grade)
+		parts := []string{scoreStr + " " + riskStr, fmt.Sprintf("%d findings", r.TotalFindings())}
+		line := title + "  " + strings.Join(parts, "  ")
+		return headerStyle.Render(line)
+	}
+
+	if lm == LayoutMedium {
+		// Medium: "hostveil  16/100 Critical  6 findings  1 service" / "Docker 29.5.0 · host msi"
+		scoreStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(gradeColor)).
+			Bold(true).
+			Render(fmt.Sprintf("%d/%d", score, 100))
+		riskStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(gradeColor)).
+			Render(grade)
+		parts := []string{
+			scoreStr + " " + riskStr,
+			fmt.Sprintf("%d findings", r.TotalFindings()),
+			fmt.Sprintf("%d %s", len(r.Metadata.Services), pluralize("service", len(r.Metadata.Services))),
+		}
+		line1 := title + "  " + strings.Join(parts, "  ")
+
+		metaParts := []string{modeStr}
+		if dockerTag != "" {
+			metaParts = append(metaParts, dockerTag)
+		}
+		if hostTag != "" {
+			metaParts = append(metaParts, hostTag)
+		}
+		line2 := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.TextMuted)).
+			Render(strings.Join(metaParts, " · "))
+		return headerStyle.Render(lipgloss.JoinVertical(lipgloss.Left, line1, line2))
+	}
+
+	// Wide/UltraWide: full header
+	findingsTag := fmt.Sprintf("Findings: %d", r.TotalFindings())
+	svcTag := fmt.Sprintf("Services: %d", len(r.Metadata.Services))
+
+	scoreTag := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(gradeColor)).
+		Bold(true).
+		Render(fmt.Sprintf("Score: %d/%d", score, 100))
+	riskTag := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(gradeColor)).
+		Render(fmt.Sprintf("Risk: %s", grade))
+
+	fixTag := ""
+	if autoCount > 0 {
+		fixTag = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Success)).
+			Render(fmt.Sprintf("Auto-fix: %d", autoCount))
+	}
+
 	parts := []string{scoreTag, riskTag, findingsTag, svcTag}
 	if fixTag != "" {
 		parts = append(parts, fixTag)
 	}
-	metaParts := []string{modeTag}
+	metaParts := []string{modeStr}
 	if dockerTag != "" {
 		metaParts = append(metaParts, dockerTag)
 	}
@@ -458,24 +520,28 @@ func (m *appModel) renderHeader(t Theme) string {
 	}
 
 	line1 := strings.Join(parts, "  ")
-	line2 := strings.Join(metaParts, "  ·  ")
-
-	headerStyle := lipgloss.NewStyle().
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 1).
-		Width(m.width)
+	line2 := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.TextMuted)).
+		Render(strings.Join(metaParts, " · "))
 
 	return headerStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", line1),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(line2),
+		line2,
 	))
 }
 
 func (m *appModel) renderFooter(t Theme) string {
-	nav := " [1] Dashboard    [2] Findings    [3] Report "
-	hint := " [?] Help    [s] Settings    [q] Quit "
-	if m.width < 100 {
+	lm := layoutMode(m.width, m.height)
+
+	var nav, hint string
+	switch {
+	case lm == LayoutUltraWide || lm == LayoutWide:
+		nav = " [1] Dashboard    [2] Findings    [3] Report "
+		hint = " [?] Help    [s] Settings    [q] Quit "
+	case lm == LayoutMedium || lm == LayoutCompact:
+		nav = " [1] Dsh   [2] Fnd   [3] Rpt "
+		hint = " [?] Help   [s] Set   [q] Quit "
+	default:
 		nav = " [1] Dsh  [2] Fnd  [3] Rpt "
 		hint = " [?] [s] [q] "
 	}

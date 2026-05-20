@@ -76,9 +76,7 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return m.renderWideRiskDashboard(r, theme, width, height)
 	}
 
-	summary := m.renderSummaryLine(r, theme, width)
-
-	// Medium, Compact — use existing width-based logic
+	// Medium, Compact — use existing width-based logic (no summary line, header covers it)
 	if r.TotalFindings() == 0 {
 		return m.renderCleanScanDashboard(r, theme, width, height)
 	}
@@ -100,7 +98,7 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		middle := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
 
 		body := lipgloss.JoinVertical(lipgloss.Top, top, "", middle, "", rec)
-		return summary + "\n" + body
+		return body
 
 	case width >= mediumWidth:
 		col2 := (width - 2) / 2
@@ -120,7 +118,7 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, fixQueue, "  ", scanCtx)
 
 		body := lipgloss.JoinVertical(lipgloss.Top, topRow, "", bottomRow, "", rec)
-		return summary + "\n" + body
+		return body
 
 	default:
 		colWidth := width - 2
@@ -132,14 +130,14 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		scanCtx := m.renderScanContextCard(r, theme, colWidth)
 		rec := m.renderRecommendationCard(r, theme, colWidth)
 		body := lipgloss.JoinVertical(lipgloss.Top, nextActions, riskByArea, affectedSvcs, hostCard, fixQueue, scanCtx, rec)
-		return summary + "\n" + body
+		return body
 	}
 }
 
 // ─── Clean scan (0 findings) dashboard ─────────────────────────────────────
 
 func (m *overviewModel) renderCleanScanDashboard(r *domain.ScanResult, theme Theme, width, height int) string {
-	summary := m.renderSummaryLine(r, theme, width)
+	// No summary line — header covers the info
 
 	switch {
 	case width >= wideWidth:
@@ -152,8 +150,7 @@ func (m *overviewModel) renderCleanScanDashboard(r *domain.ScanResult, theme The
 		nextSteps := m.renderNextStepsCard(theme, full)
 
 		top := lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov, "  ", runtimeAd)
-		body := lipgloss.JoinVertical(lipgloss.Top, top, "", nextSteps)
-		return summary + "\n" + body
+		return lipgloss.JoinVertical(lipgloss.Top, top, "", nextSteps)
 
 	case width >= mediumWidth:
 		col2 := (width - 2) / 2
@@ -166,8 +163,7 @@ func (m *overviewModel) renderCleanScanDashboard(r *domain.ScanResult, theme The
 
 		topRow := lipgloss.JoinHorizontal(lipgloss.Top, allClear, "  ", scanCov)
 
-		body := lipgloss.JoinVertical(lipgloss.Top, topRow, "", runtimeAd, "", nextSteps)
-		return summary + "\n" + body
+		return lipgloss.JoinVertical(lipgloss.Top, topRow, "", runtimeAd, "", nextSteps)
 
 	default:
 		colWidth := width - 2
@@ -175,8 +171,7 @@ func (m *overviewModel) renderCleanScanDashboard(r *domain.ScanResult, theme The
 		scanCov := m.renderScanCoverageCard(r, theme, colWidth)
 		runtimeAd := m.renderRuntimeAdaptersCard(r, theme, colWidth)
 		nextSteps := m.renderNextStepsCard(theme, colWidth)
-		body := lipgloss.JoinVertical(lipgloss.Top, allClear, "", scanCov, "", runtimeAd, "", nextSteps)
-		return summary + "\n" + body
+		return lipgloss.JoinVertical(lipgloss.Top, allClear, "", scanCov, "", runtimeAd, "", nextSteps)
 	}
 }
 
@@ -218,7 +213,7 @@ func (m *overviewModel) renderScanCoverageCard(r *domain.ScanResult, theme Theme
 		addRow("Services", "none")
 	}
 	if r.Metadata.ComposeFile != "" {
-		addRow("Compose", r.Metadata.ComposeFile)
+		addRow("Compose", truncatePathForWidth(r.Metadata.ComposeFile, width-14))
 	}
 
 	if len(rows) == 1 {
@@ -721,70 +716,25 @@ func (m *overviewModel) renderMiniDashboard(r *domain.ScanResult, theme Theme, w
 		gradeColor = theme.Success
 	}
 
-	line1 := lipgloss.NewStyle().Bold(true).Render("hostveil")
-	line2 := lipgloss.JoinHorizontal(lipgloss.Center,
+	line1 := lipgloss.JoinHorizontal(lipgloss.Center,
 		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100)),
 		" · ",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
 	)
 
 	if findings == 0 {
-		line3 := "No findings detected."
-		line4 := "3 export · ? help · q quit"
+		line2 := "No findings detected."
+		line3 := "3 export · ? help · q quit"
 		style := lipgloss.NewStyle().Width(width).Padding(0, 1)
-		return style.Render(line1 + "\n" + line2 + "\n" + line3 + "\n" + line4)
+		return style.Render(line1 + "\n" + line2 + "\n" + line3)
 	}
 
 	svcCount := len(r.Metadata.Services)
-	line3 := fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount))
-	line4 := "Press 2 findings · ? help · q quit"
+	line2 := fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount))
+	line3 := "Press 2 findings · ? help · q quit"
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
-	return style.Render(line1 + "\n" + line2 + "\n" + line3 + "\n" + line4)
-}
-
-func (m *overviewModel) renderSummaryLine(r *domain.ScanResult, theme Theme, width int) string {
-	score := r.ScoreReport.Overall
-	grade := r.ScoreReport.Grade()
-	findings := r.TotalFindings()
-	svcCount := len(r.Metadata.Services)
-
-	autoCount := 0
-	for _, f := range r.Findings {
-		if f.Remediation == domain.RemediationAuto {
-			autoCount++
-		}
-	}
-
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
-
-	scoreStr := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100", score))
-	riskStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Risk: %s", grade))
-
-	parts := []string{
-		scoreStr,
-		riskStr,
-		fmt.Sprintf("%d findings", findings),
-		fmt.Sprintf("%d %s", svcCount, pluralize("service", svcCount)),
-	}
-
-	if autoCount > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render(fmt.Sprintf("%d auto-fixable", autoCount)))
-	}
-
-	line := strings.Join(parts, "  ·  ")
-
-	style := lipgloss.NewStyle().
-		Width(width).
-		Padding(0, 1)
-
-	return style.Render(line)
+	return style.Render(line1 + "\n" + line2 + "\n" + line3)
 }
 
 func pluralize(s string, n int) string {
@@ -873,28 +823,17 @@ func (m *overviewModel) renderRiskByAreaCard(r *domain.ScanResult, theme Theme, 
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Risk by area")
 	var rows []string
 
-	// Count findings per axis
+	// Count findings per axis (count centered — no score language in Dashboard)
 	axisCounts := make(map[domain.Axis]int)
 	for _, f := range r.Findings {
 		axisCounts[f.Axis]++
-	}
-	maxCount := 0
-	for _, c := range axisCounts {
-		if c > maxCount {
-			maxCount = c
-		}
 	}
 
 	for _, axis := range domain.AllAxes() {
 		count := axisCounts[axis]
 
-		labelWidth := 22
-		if width < 35 {
-			labelWidth = 12
-		}
-
 		labelText := axis.Label()
-		if width < 35 {
+		if width < 45 {
 			switch labelText {
 			case "Excessive Permissions":
 				labelText = "Permissions"
@@ -906,40 +845,35 @@ func (m *overviewModel) renderRiskByAreaCard(r *domain.ScanResult, theme Theme, 
 				labelText = "Sensitive"
 			}
 		}
+
 		label := lipgloss.NewStyle().
-			Width(labelWidth).
+			Width(22).
 			Render(labelText)
 
-		// Bar showing relative finding density across axes
-		barWidth := width - labelWidth - 16
-		if barWidth < 4 {
-			barWidth = 4
-		}
-		barWidth = barWidth * 3 / 5
-
-		var bar string
 		var countDisplay string
 		if count == 0 {
-			bar = renderColoredBar(0, barWidth, theme.Success)
 			countDisplay = lipgloss.NewStyle().
 				Foreground(lipgloss.Color(theme.Success)).
+				Bold(true).
 				Render("Clear")
 		} else {
 			fillColor := theme.Medium
 			if count > 3 {
 				fillColor = theme.Critical
 			}
-			filled := count * barWidth / maxCount
-			bar = renderColoredBar(uint8(filled*100/barWidth), barWidth, fillColor)
+			findingStr := fmt.Sprintf("%d finding", count)
+			if count != 1 {
+				findingStr += "s"
+			}
 			countDisplay = lipgloss.NewStyle().
 				Foreground(lipgloss.Color(fillColor)).
-				Render(fmt.Sprintf("%d", count))
+				Render(findingStr)
 		}
 
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Center, label, " ", bar, " ", countDisplay))
+		rows = append(rows, fmt.Sprintf("  %s%s", label, countDisplay))
 	}
 
-	return style.Render(title + "\n" + lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return style.Render(title + "\n" + strings.Join(rows, "\n"))
 }
 
 func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme Theme, width int) string {
@@ -956,7 +890,9 @@ func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme T
 	type svcInfo struct {
 		name        string
 		findings    int
-		fixable     int
+		autoFix     int
+		reviewFix   int
+		manualFix   int
 	}
 	svcMap := make(map[string]*svcInfo)
 	var svcOrder []string
@@ -970,8 +906,13 @@ func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme T
 			svcOrder = append(svcOrder, svc)
 		}
 		svcMap[svc].findings++
-		if f.IsFixable() {
-			svcMap[svc].fixable++
+		switch f.Remediation {
+		case domain.RemediationAuto:
+			svcMap[svc].autoFix++
+		case domain.RemediationReview:
+			svcMap[svc].reviewFix++
+		case domain.RemediationManual:
+			svcMap[svc].manualFix++
 		}
 	}
 
@@ -981,15 +922,36 @@ func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme T
 			Foreground(lipgloss.Color(theme.Accent)).
 			Render(name)
 
-		countStr := fmt.Sprintf("%d findings", info.findings)
-		if info.fixable > 0 {
-			countStr += fmt.Sprintf("  (%d fixable)", info.fixable)
+		var parts []string
+		parts = append(parts, fmt.Sprintf("%d findings", info.findings))
+
+		// Narrow cards show abbreviated breakdown
+		compact := width < 45
+		if compact {
+			if info.autoFix > 0 {
+				parts = append(parts, fmt.Sprintf("%d auto", info.autoFix))
+			}
+			if info.reviewFix > 0 {
+				parts = append(parts, fmt.Sprintf("%d review", info.reviewFix))
+			}
+		} else {
+			if info.autoFix > 0 {
+				parts = append(parts, fmt.Sprintf("%d auto-fix", info.autoFix))
+			}
+			if info.reviewFix > 0 {
+				parts = append(parts, fmt.Sprintf("%d review", info.reviewFix))
+			}
+			if info.manualFix > 0 {
+				parts = append(parts, fmt.Sprintf("%d manual", info.manualFix))
+			}
 		}
+
+		countStr := strings.Join(parts, " · ")
 		countLabel := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.TextMuted)).
 			Render(countStr)
 
-		spacer := width - lipgloss.Width(svcLabel) - lipgloss.Width(countStr) - 8
+		spacer := width - lipgloss.Width(stripANSI(svcLabel)) - lipgloss.Width(countStr) - 8
 		if spacer < 1 {
 			spacer = 1
 		}
@@ -1201,7 +1163,7 @@ func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme,
 		}
 	}
 	if r.Metadata.ComposeFile != "" {
-		addRow("Compose", r.Metadata.ComposeFile)
+		addRow("Compose", truncatePathForWidth(r.Metadata.ComposeFile, width-14))
 	}
 	if len(r.Metadata.Adapters) > 0 {
 		names := make([]string, len(r.Metadata.Adapters))
@@ -1226,24 +1188,28 @@ func (m *overviewModel) renderRecommendationCard(r *domain.ScanResult, theme The
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Recommendation")
 	var desc string
 
-	lowestScore := uint8(100)
-	lowestAxis := ""
-	for _, axis := range domain.AllAxes() {
-		score := r.ScoreReport.AxisScores[axis]
-		if score < lowestScore {
-			lowestScore = score
-			lowestAxis = axis.Label()
+	// Find axis with the most findings (count centered, no score language)
+	axisCounts := make(map[string]int)
+	for _, f := range r.Findings {
+		axisCounts[f.Axis.Label()]++
+	}
+	mostAxis := ""
+	mostCount := 0
+	for axis, c := range axisCounts {
+		if c > mostCount {
+			mostCount = c
+			mostAxis = axis
 		}
 	}
 
 	grade := r.ScoreReport.Grade()
-	if lowestScore >= 80 {
+	if mostCount == 0 {
 		desc = "Overall security posture is Good. Maintain current practices."
 	} else {
-		desc = fmt.Sprintf("Overall risk is %s because %s score is %d.",
-			grade, strings.ToLower(lowestAxis), lowestScore)
+		desc = fmt.Sprintf("Overall risk is %s, driven by %d %s-related finding(s).",
+			grade, mostCount, strings.ToLower(mostAxis))
 
-		lowLabel := strings.ToLower(lowestAxis)
+		lowLabel := strings.ToLower(mostAxis)
 		switch {
 		case strings.Contains(lowLabel, "exposure"):
 			desc += " Start with public bindings and reverse proxy configuration first."
