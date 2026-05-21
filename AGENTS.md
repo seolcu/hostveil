@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 80 issues closed)
+### ✅ Completed Issues (all 81 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -105,6 +105,7 @@ hostveil/
 | **#443** | Findings detail dedup | Removed duplicate Fix guidance from detail card (하단 renderFixGuidance strip이 동일 역할). Detail card는 metadata line에서 종료. |
 | **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. 추천 문구 단축 (최대 104→67자)으로 truncation 방지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
+| **#456** | Responsive TUI: Compact & Mini Viewports | 3개의 `LayoutCompact` 전용 plain-text renderer 추가. Mini renderer 정보 우선순위 개선 (score + risk + next action 항상 visible). Findings compact: single-column list + Enter/Esc detail toggle. QA: 11 screenshots at 1400×800, 640×480, 400×300. |
 
 ### Issue #451 — TUI Layout Contract (Complete)
 
@@ -166,6 +167,23 @@ Conditions: `state==DashboardClean && mode>=LayoutWide`. Brand uses `theme.TextM
 | Build + vet + all 56 tests pass | — | — | ✅ |
 
 Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). Cards with `bounds.H < 4` (e.g. timeline at LayoutMedium) are exempt — they keep current `fillHeight`-only behavior (no clipping). Post-render `fillHeight` still pads short cards. No truncation applied when `bounds.H == 0`.
+
+### Issue #456 — Responsive TUI: Compact & Mini Viewports (Closes #456)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| `LayoutCompact` case added to Dashboard `render()` dispatch | `screen_overview.go` | +2 | ✅ |
+| `LayoutCompact` case added to Findings `render()` dispatch | `screen_findings.go` | +2 | ✅ |
+| `LayoutCompact` case added to Report `render()` dispatch | `screen_history.go` | +3 | ✅ |
+| `renderCompactDashboard()` — plain text with score/risk/top-3/footer | `screen_overview.go` | ~60 | ✅ |
+| `renderCompactFindings()` — single-column list + detail toggle | `screen_findings.go` | ~55 | ✅ |
+| `renderCompactReport()` — plain text score + severity + export | `screen_history.go` | ~45 | ✅ |
+| Mini dashboard info-priority: `renderMiniDashboard` shows score + next action + main issue | `screen_overview.go` | ~30 | ✅ |
+| Mini findings info-priority: `renderMiniFindings` adds findings header + severity colors | `screen_findings.go` | ~20 | ✅ |
+| Mini report info-priority: `renderMiniReport` adds severity counts | `screen_history.go` | ~25 | ✅ |
+| Build + vet + all 56 tests pass | — | — | ✅ |
+
+**Status**: All three screens now have dedicated `LayoutCompact` (50-79px width) renderers that use plain text instead of rich cards. Mini renderers (<50px) improved to always show score/risk/next-action. Compact findings uses single-column list with Enter/ Esc detail toggle. QA screenshots captured at 1400×800, 640×480, 400×300 — see `screenshots/20260522_053628/`. No regressions detected in wide/medium layouts, which retain their existing slot-based card renderers.
 
 ## Tests (56 tests, 9 files)
 

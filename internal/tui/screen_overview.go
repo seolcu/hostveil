@@ -86,6 +86,8 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 		return m.renderUltraWideDashboard(r, theme, width, height, state)
 	case LayoutWide:
 		return m.renderWideDashboard(r, theme, width, height, state)
+	case LayoutCompact:
+		return m.renderCompactDashboard(r, theme, width)
 	default:
 		return m.renderMediumDashboard(r, theme, width, height, state)
 	}
@@ -714,25 +716,127 @@ func (m *overviewModel) renderMiniDashboard(r *domain.ScanResult, theme Theme, w
 		gradeColor = theme.Success
 	}
 
-	line1 := lipgloss.JoinHorizontal(lipgloss.Center,
-		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100)),
-		" · ",
-		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
-	)
+	coloredGrade := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor))
+	scoreLine := coloredGrade.Render(fmt.Sprintf("Score %d/%d · %s", score, 100, grade))
+
+	var lines []string
+	lines = append(lines, scoreLine)
 
 	if findings == 0 {
-		line2 := "No findings detected."
-		line3 := "3 export · ? help · q quit"
-		style := lipgloss.NewStyle().Width(width).Padding(0, 1)
-		return style.Render(line1 + "\n" + line2 + "\n" + line3)
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render("All clear"))
+		lines = append(lines, "")
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("Export · ? help · q quit"))
+	} else {
+		svcCount := len(r.Metadata.Services)
+		lines = append(lines, fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount)))
+
+		// Show most critical finding as next action
+		sorted := make([]domain.Finding, len(r.Findings))
+		copy(sorted, r.Findings)
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].Severity != sorted[j].Severity {
+				return sorted[i].Severity < sorted[j].Severity
+			}
+			return sorted[i].Title < sorted[j].Title
+		})
+		f := sorted[0]
+		sevTag := lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(severityShortLabel(f.Severity))
+		title := truncateStr(f.Title, width-8)
+		lines = append(lines, fmt.Sprintf("Next: %s %s", sevTag, title))
+
+		lines = append(lines, "")
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).
+			Render("2 Findings · Preview · Export · ?"))
 	}
 
-	svcCount := len(r.Metadata.Services)
-	line2 := fmt.Sprintf("%d findings · %d %s", findings, svcCount, pluralize("service", svcCount))
-	line3 := "2 → Findings · ? help · q quit"
+	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
+	return style.Render(strings.Join(lines, "\n"))
+}
+
+// ─── Compact Dashboard (50-79px) ───────────────────────────────────────────
+
+func (m *overviewModel) renderCompactDashboard(r *domain.ScanResult, theme Theme, width int) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	findings := r.TotalFindings()
+
+	gradeColor := theme.Critical
+	if score >= 50 {
+		gradeColor = theme.Medium
+	}
+	if score >= 80 {
+		gradeColor = theme.Success
+	}
+
+	// Line 1: Score header
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))
+	gradeStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade)
+	line1 := fmt.Sprintf("%s · %s · %d findings", scoreStr, gradeStr, findings)
+
+	// Line 2: Main issue or next action
+	line2 := ""
+	if findings > 0 {
+		sorted := make([]domain.Finding, len(r.Findings))
+		copy(sorted, r.Findings)
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].Severity != sorted[j].Severity {
+				return sorted[i].Severity < sorted[j].Severity
+			}
+			return sorted[i].Title < sorted[j].Title
+		})
+		f := sorted[0]
+		sevTag := lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(severityShortLabel(f.Severity))
+		title := truncateStr(f.Title, width-8)
+		line2 = fmt.Sprintf("%s %s", sevTag, title)
+	} else {
+		line2 = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render("All clear — no issues found")
+	}
+
+	// Line 3: Top 3 findings (if any)
+	var lines []string
+	lines = append(lines, line1)
+	if line2 != "" {
+		lines = append(lines, line2)
+	}
+
+	if findings > 0 {
+		lines = append(lines, "")
+		sorted := make([]domain.Finding, len(r.Findings))
+		copy(sorted, r.Findings)
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].Severity != sorted[j].Severity {
+				return sorted[i].Severity < sorted[j].Severity
+			}
+			return sorted[i].Title < sorted[j].Title
+		})
+		maxShow := 3
+		if len(sorted) < maxShow {
+			maxShow = len(sorted)
+		}
+		for i := 0; i < maxShow; i++ {
+			f := sorted[i]
+			icon := severityIcon(f.Severity)
+			sevLabel := severityShortLabel(f.Severity)
+			col := f.Severity.Color()
+			sevStr := lipgloss.NewStyle().Foreground(lipgloss.Color(col)).Render(fmt.Sprintf("%s %s", icon, sevLabel))
+			title := truncateStr(f.Title, width-8)
+			lines = append(lines, fmt.Sprintf("%s %s", sevStr, title))
+		}
+		if len(sorted) > maxShow {
+			lines = append(lines, fmt.Sprintf("  … and %d more findings", len(sorted)-maxShow))
+		}
+	}
+
+	// Footer: navigation
+	nav := "[1]D [2]F [3]R [?]Help [q]Quit"
+	if findings > 0 {
+		nav = "[1]D [2]F [3]R [?]Help [q]Quit"
+	}
+	lines = append(lines, "")
+	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render(nav))
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
-	return style.Render(line1 + "\n" + line2 + "\n" + line3)
+	return style.Render(strings.Join(lines, "\n"))
 }
 
 func pluralize(s string, n int) string {

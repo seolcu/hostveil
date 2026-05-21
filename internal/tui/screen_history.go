@@ -64,6 +64,9 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 	if lm == LayoutWide {
 		return m.renderWideReport(r, theme, width, height)
 	}
+	if lm == LayoutCompact {
+		return m.renderCompactReport(r, theme, width)
+	}
 
 	return m.renderMediumReport(r, theme, width, height)
 }
@@ -415,19 +418,79 @@ func (m *historyModel) renderMiniReport(r *domain.ScanResult, theme Theme, width
 	}
 
 	line1 := lipgloss.NewStyle().Bold(true).Render("Report")
-	line2 := lipgloss.JoinHorizontal(lipgloss.Center,
-		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100)),
-		" · ",
-		lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade),
-	)
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))
+	gradeStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade)
+	line2 := fmt.Sprintf("%s · %s", scoreStr, gradeStr)
 
-	var line3 string
-	if findings == 0 {
-		line3 = "Enter export · s settings"
-	} else {
-		line3 = fmt.Sprintf("%d findings · Enter export · s settings", findings)
+	var lines []string
+	lines = append(lines, line1, line2)
+
+	if findings > 0 {
+		lines = append(lines, fmt.Sprintf("%d findings", findings))
+		// Severity summary
+		var sevParts []string
+		for _, sev := range []domain.Severity{domain.SeverityCritical, domain.SeverityHigh, domain.SeverityMedium, domain.SeverityLow} {
+			count := r.FindingsBySeverity(sev)
+			if count > 0 {
+				sevParts = append(sevParts,
+					lipgloss.NewStyle().Foreground(lipgloss.Color(sev.Color())).Render(fmt.Sprintf("%s: %d", strings.ToUpper(sev.String()), count)),
+				)
+			}
+		}
+		if len(sevParts) > 0 {
+			lines = append(lines, strings.Join(sevParts, "  "))
+		}
 	}
 
+	lines = append(lines, "")
+	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Enter export · j/k select · q quit"))
+
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
-	return style.Render(line1 + "\n" + line2 + "\n" + line3)
+	return style.Render(strings.Join(lines, "\n"))
+}
+
+// ─── Compact Report (50-79px) ──────────────────────────────────────────────
+
+func (m *historyModel) renderCompactReport(r *domain.ScanResult, theme Theme, width int) string {
+	score := r.ScoreReport.Overall
+	grade := r.ScoreReport.Grade()
+	findings := r.TotalFindings()
+
+	gradeColor := theme.Critical
+	if score >= 50 {
+		gradeColor = theme.Medium
+	}
+	if score >= 80 {
+		gradeColor = theme.Success
+	}
+
+	line1 := lipgloss.NewStyle().Bold(true).Render("Report")
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))
+	gradeStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(grade)
+	line2 := fmt.Sprintf("%s · %s · %d findings", scoreStr, gradeStr, findings)
+
+	var lines []string
+	lines = append(lines, line1, line2, "")
+
+	for i, ef := range reportExportFormats {
+		cursor := " "
+		if i == m.exportCursor {
+			cursor = ">"
+		}
+		nameStr := lipgloss.NewStyle().
+			Bold(i == m.exportCursor).
+			Foreground(lipgloss.Color(theme.TextBright)).
+			Render(strings.ToUpper(ef.name[:1]) + ef.name[1:])
+		descStr := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Render(ef.desc)
+		lines = append(lines, fmt.Sprintf("%s %s  %s", cursor, nameStr, descStr))
+	}
+	lines = append(lines, "")
+	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Enter export · j/k select · q quit"))
+
+	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
+	return style.Render(strings.Join(lines, "\n"))
 }

@@ -427,6 +427,10 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		return m.renderUltraWideFindings(theme, width, height)
 	}
 
+	if lm == LayoutCompact {
+		return m.renderCompactFindings(theme, width, height)
+	}
+
 	// Compute fixed slots from viewport dimensions (NOT from content)
 	hasBottom := len(m.list) > 0
 	slots := FindingsSlots(width, height, lm, hasBottom)
@@ -1215,6 +1219,8 @@ func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
 		return b.String()
 	}
 
+	b.WriteString(fmt.Sprintf("Findings %d/%d\n", len(m.list), len(m.all)))
+
 	maxShow := 3
 	if len(m.list) < maxShow {
 		maxShow = len(m.list)
@@ -1222,8 +1228,10 @@ func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
 	for i := 0; i < maxShow; i++ {
 		f := m.list[i]
 		icon := severityIcon(f.Severity)
-		title := truncateStr(f.Title, width-10)
-		b.WriteString(fmt.Sprintf("%s %s\n", icon, title))
+		col := f.Severity.Color()
+		sev := lipgloss.NewStyle().Foreground(lipgloss.Color(col)).Render(fmt.Sprintf("%s %s", icon, severityShortLabel(f.Severity)))
+		title := truncateStr(f.Title, width-8)
+		b.WriteString(fmt.Sprintf("%s %s\n", sev, title))
 	}
 
 	if len(m.list) > maxShow {
@@ -1231,6 +1239,69 @@ func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
 	}
 
 	b.WriteString("/ search  ·  f filters  ·  ? help  ·  q quit")
+	return b.String()
+}
+
+func (m *findingsModel) renderCompactFindings(theme Theme, width, height int) string {
+	var b strings.Builder
+
+	// Header: finding count
+	header := fmt.Sprintf("Findings %d/%d", len(m.list), len(m.all))
+	b.WriteString(lipgloss.NewStyle().Bold(true).Render(header) + "\n")
+
+	if len(m.list) == 0 {
+		if len(m.all) == 0 {
+			b.WriteString("All clear — no findings detected.\n")
+		} else {
+			b.WriteString("No findings match current filters.\n")
+		}
+		b.WriteString("/ search  ·  r reset  ·  q quit")
+		return b.String()
+	}
+
+	// Detail toggle mode
+	if m.showDetail && m.selected < len(m.list) {
+		f := m.list[m.selected]
+		sevColor := f.Severity.Color()
+		sevStr := strings.ToUpper(f.Severity.String())
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(sevColor)).Bold(true).Render(sevStr+" · "+f.Title) + "\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(sevColor)).Render(f.Remediation.Label()) + "\n\n")
+
+		body := buildFindingBodyLines(&f, width-4)
+		for _, line := range body {
+			b.WriteString("  " + truncateStr(line, width-2) + "\n")
+		}
+		b.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("p preview · Esc list · q quit"))
+		return b.String()
+	}
+
+	// List view: show findings with severity
+	maxShow := height - 4
+	if maxShow < 1 {
+		maxShow = 1
+	}
+	if len(m.list) < maxShow {
+		maxShow = len(m.list)
+	}
+	for i := 0; i < maxShow; i++ {
+		f := m.list[i]
+		icon := severityIcon(f.Severity)
+		sevLabel := severityShortLabel(f.Severity)
+		col := f.Severity.Color()
+		cursor := " "
+		if i == m.selected {
+			cursor = ">"
+		}
+		sev := lipgloss.NewStyle().Foreground(lipgloss.Color(col)).Render(fmt.Sprintf("%s %s", icon, sevLabel))
+		title := truncateStr(f.Title, width-10)
+		b.WriteString(fmt.Sprintf("%s %s %s\n", cursor, sev, title))
+	}
+	if len(m.list) > maxShow {
+		b.WriteString(fmt.Sprintf("… and %d more\n", len(m.list)-maxShow))
+	}
+
+	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).
+		Render("Enter detail · / search · f filter · q quit"))
 	return b.String()
 }
 
