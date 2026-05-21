@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 75 issues closed)
+### ✅ Completed Issues (all 76 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -100,11 +100,10 @@ hostveil/
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
-| **#441** | Settings modal background gap | Every content line explicitly padded with `Background(theme.Surface)` + `Width(innerW)`. Empty lines get background too. |
 | **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. |
 | **#443** | Findings detail dedup | Removed Actions/Related sections from detail panel. Added context-aware Fix guidance. `formatFindingDetail()` gets Service + fix hint. Filter state compact when all clear. |
 | **#444** | Fix preview decision model | `renderFixDecision()` / `renderFixActions()` helpers. Context-aware action labels (`"[a] Apply reviewed fix"`, rescan labels). Structured status block. |
-| **#445** | Dashboard/Report path & runtime cleanup | Removed trailing arrows (`↑`/`→`) from Load values. Normalized cards. Added Load/Uptime to `renderRuntimeAdaptersCard`. |
+| **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
 
 ## Tests (56 tests, 9 files)
 
