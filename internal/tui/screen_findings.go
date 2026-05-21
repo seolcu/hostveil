@@ -539,8 +539,13 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 		topRow = joinColumns([]string{listPanel, preview}, []int{listWidth, previewWidth}, 1)
 	}
 
-	bottomCards := m.renderFindingsBottomCards(theme, cols)
+	bottomCards := m.renderFindingsBottomCards(theme, splitColumns(width, 2, 2))
 	fixGuidance := m.renderFixGuidance(theme, width)
+
+	if debugLayout {
+		assertDisplayWidthLTE(topRow, width)
+		assertDisplayWidthLTE(bottomCards, width)
+	}
 
 	return joinRows(
 		filterBar,
@@ -565,6 +570,11 @@ func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height 
 	bottomCards := joinColumns([]string{covCard, stepsCard}, cols, 2)
 
 	guidance := m.renderCleanScanGuidanceStrip(theme, width)
+
+	if debugLayout {
+		assertDisplayWidthLTE(topRow, width)
+		assertDisplayWidthLTE(bottomCards, width)
+	}
 
 	return joinRows(
 		filterBar,

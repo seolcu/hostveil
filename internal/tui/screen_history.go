@@ -89,6 +89,12 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 
 	guidance := m.renderExportGuidanceCard(theme, rootW)
 
+	if debugLayout {
+		assertDisplayWidthLTE(row1, rootW)
+		assertDisplayWidthLTE(row2, rootW)
+		assertDisplayWidthLTE(row3, rootW)
+	}
+
 	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
 	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
 }
@@ -252,6 +258,12 @@ func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width
 	row3 := joinColumns([]string{notes, contents}, cols, sp.ColGap)
 
 	guidance := m.renderExportGuidanceCard(theme, rootW)
+
+	if debugLayout {
+		assertDisplayWidthLTE(row1, rootW)
+		assertDisplayWidthLTE(row2, rootW)
+		assertDisplayWidthLTE(row3, rootW)
+	}
 
 	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
 	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
