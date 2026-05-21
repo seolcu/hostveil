@@ -106,7 +106,7 @@ hostveil/
 | **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. 추천 문구 단축 (최대 104→67자)으로 truncation 방지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
 
-### Issue #451 — TUI Layout Contract (In Progress)
+### Issue #451 — TUI Layout Contract (Complete)
 
 | Change | File | Lines | Status |
 |--------|------|-------|--------|
@@ -129,8 +129,13 @@ hostveil/
 | `renderDetailContent` section-based: metadata anchored bottom, overflow hint | `screen_findings.go` | +73 | ✅ |
 | `buildFindingBodyLines` helper extracted | `screen_findings.go` | ~30 | ✅ |
 | `OverflowScroll` → `OverflowClip` for detail panel | `screen_findings.go` | −2 | ✅ |
+| Height params for 7 report card functions | `screen_history.go` | ~14 | ✅ |
+| `renderUltraWideReport()` — ReportSlots consumer | `screen_history.go` | ~50 | ✅ |
+| `renderWideReport()` — ReportSlots consumer | `screen_history.go` | ~50 | ✅ |
+| `renderMediumReport()` — height budget per card | `screen_history.go` | ~20 | ✅ |
+| `historyModel.render()` caller — height 전달 | `screen_history.go` | ~2 | ✅ |
 
-**Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass. Browser QA verified — detail panel height stable across selection changes, no regressions found. Search/Filter/Settings unresponsive in overlay states during QA is a browser key-delivery issue.
+**Status**: All three screens (Dashboard, Findings, Report) are now fully slot-based. Dashboard `DashboardSlots` consumed by 8 state-aware renderers. Report `ReportSlots` consumed by UltraWide and Wide renderers; Medium uses height budget with proportional distribution. `renderCardBounded` body truncation (#455) acts as safety net preventing card overflow. Findings detail panel height stable across selection changes. Build + vet + all 56 tests pass. Browser QA verified — no regressions in #454 (Brand filler), #455 (height enforcement).
 
 ### Issue #454 — TUI Brand Filler (Complete)
 
