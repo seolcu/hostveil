@@ -976,7 +976,7 @@ func renderFixDecision(f *domain.Finding, hasBackup bool) string {
 		if reviewReq {
 			status = append(status, "Review: required")
 		} else {
-			status = append(status, "Review: not required")
+			status = append(status, "No review needed")
 		}
 	} else {
 		status = append(status, "Auto-fix: unavailable")
@@ -992,15 +992,15 @@ func renderFixDecision(f *domain.Finding, hasBackup bool) string {
 	var recommended string
 	switch {
 	case manualOnly:
-		recommended = "Update the configuration manually, then press r to rescan."
+		recommended = "Apply manually, then press r to rescan."
 	case reviewReq && !hasBackup:
-		recommended = "Review the diff before applying. No backup path available — ensure the compose file is version-controlled."
+		recommended = "Review diff before applying. No backup — use version control."
 	case reviewReq && hasBackup:
-		recommended = "Review the diff before applying, then press a to apply. Backup will be created."
+		recommended = "Review diff, then press a to apply. Backup will be created."
 	case !reviewReq && hasBackup:
-		recommended = "Apply the fix, then rescan. Backup will be created automatically."
+		recommended = "Apply fix, then rescan. Backup will be created."
 	default:
-		recommended = "Apply the fix, then rescan to verify."
+		recommended = "Apply fix, then rescan to verify."
 	}
 
 	return statusStr + "\n  → " + recommended
