@@ -168,6 +168,20 @@ func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 				truncated = append(truncated, line)
 			}
 		}
+		// Clip body lines so rendered card fits within bounds.H
+		// Only for bounds.H >= 4 (minimum useful card: 2 borders + title + 1 body)
+		if bounds.H >= 4 {
+			available := bounds.H - 2
+			if title != "" {
+				available--
+			}
+			if available < 0 {
+				available = 0
+			}
+			if len(truncated) > available {
+				truncated = truncated[:available]
+			}
+		}
 		body = strings.Join(truncated, "\n")
 	}
 
