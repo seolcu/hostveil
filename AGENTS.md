@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 79 issues closed)
+### ✅ Completed Issues (all 80 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -101,7 +101,7 @@ hostveil/
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
-| **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. |
+| **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. UltraWide Findings bottom cards splitColumns/joinColumns gap 불일치 수정. |
 | **#443** | Findings detail dedup | Removed duplicate Fix guidance from detail card (하단 renderFixGuidance strip이 동일 역할). Detail card는 metadata line에서 종료. |
 | **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. 추천 문구 단축 (최대 104→67자)으로 truncation 방지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
@@ -476,5 +476,18 @@ Verification of #450 (Report spacing refactor) at 3 viewports.
 
 **회귀 발견 및 수정:** Medium Report의 `Export report` 카드 제목이 border title + body title로 중복 표시됨. body의 중복 `exportTitle` 라인 제거로 수정.
 
-### Remaining open issues (1)
-- **#442** — Right border/corner clipping (전 화면 layout 수준)
+## QA Session 2026-05-21 (Commit e1edb04)
+
+Verification of #442 (right border/corner clipping) — UI audit.
+
+| Component | Finding |
+|-----------|---------|
+| UltraWide Findings top row (gap=1) | ✅ splitColumns + joinColumns gap 일치 |
+| UltraWide Findings bottom cards | ✅ **수정 완료** — gap 불일치로 인한 1글자 overflow 해결 |
+| UltraWide Report rows | ✅ 모든 row gap 일치 |
+| Clean Findings UltraWide | ✅ splitColumns(width, 2, 2) + joinColumns(..., 2) 정합 |
+| assertDisplayWidthLTE | ✅ 6개 render 함수에 caller 추가 (debug 모드) |
+
+**모든 80개 이슈 해결** 🎉
+
+v1.0.0-rewrite의 모든 TUI layout/QA 이슈가 종료되었습니다.
