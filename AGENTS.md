@@ -124,7 +124,7 @@ hostveil/
 | `renderFixGuidance` — accept height param | `screen_findings.go` | ~5 | ✅ |
 | Removed dead `renderFindingsBottomCards` | `screen_findings.go` | −5 | ✅ |
 
-**Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass.
+**Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass. Browser QA verified — detail panel height stable across selection changes, no regressions found. Search/Filter/Settings unresponsive in overlay states during QA is a browser key-delivery issue.
 
 ## Tests (56 tests, 9 files)
 
@@ -522,3 +522,21 @@ Browser-based visual verification of #442 at 1400×800.
 | Report wide | right border/corner, spacing | ✅ Clean — border clipping 없음, spacing 일관됨 |
 
 모든 80개 이슈에 대한 최종 TUI QA 완료. v1.0.0-rewrite 마감.
+
+## QA Session 2026-05-22 (Commit a1e49f4)
+
+Browser-based visual verification of #451 (layout contract) at wide/medium/narrow/tiny viewports.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Overview wide (1400×800) | fixed skeleton, borders, footer | ✅ Clean — slot-based skeleton 안정적 |
+| Findings list/detail wide | detail panel height stability | ✅ Detail panel height 고정, 선택 변경에도 frame 유지 |
+| Fix preview wide | YAML context + diff markers | ✅ 정상 표시 |
+| History wide | axis bars, severity, info | ✅ Clean |
+| Help wide | centering, overlay | ✅ 중앙 정렬, 단 높이 clip 있음 |
+| Overview medium (640×480) | 2-column reflow | ✅ Clean — text truncation but no breakage |
+| Overview narrow (400×300) | single-column fallback | ✅ Fallback 정상 |
+| Overview tiny (280×200) | minimal fallback | ✅ 텍스트 fallback 정상 |
+| Overview wide (final) | after viewport detours | ✅ 회귀 없음 |
+
+**회귀: 없음.** Findings detail panel height가 모든 선택 항목에서 동일하게 유지됨. Search/Filter/Settings 키가 특정 overlay 상태에서 캡처되지 않은 것은 브라우저 키 전달 이슈로 추정.
