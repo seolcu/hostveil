@@ -53,6 +53,29 @@ func (r Rect) Fit(termW, termH int) bool {
 	return r.X >= 0 && r.Y >= 0 && r.Right() < termW && r.Bottom() < termH
 }
 
+// Spacing defines consistent gap/padding values for a given layout mode.
+type Spacing struct {
+	OuterX   int // left/right outer margin
+	OuterY   int // top/bottom outer margin
+	RowGap   int // number of blank lines between rows
+	ColGap   int // number of spaces between columns
+	CardPadX int // left/right padding inside cards (beyond border)
+	CardPadY int // top/bottom padding inside cards (beyond border)
+	FooterGap int // blank lines between last content row and footer
+}
+
+// spacingFor returns the appropriate Spacing for a given LayoutMode.
+func spacingFor(mode LayoutMode) Spacing {
+	switch {
+	case mode >= LayoutWide:
+		return Spacing{OuterX: 0, OuterY: 0, RowGap: 1, ColGap: 2, CardPadX: 2, CardPadY: 0, FooterGap: 0}
+	case mode >= LayoutMedium:
+		return Spacing{OuterX: 0, OuterY: 0, RowGap: 1, ColGap: 1, CardPadX: 1, CardPadY: 0, FooterGap: 0}
+	default:
+		return Spacing{OuterX: 0, OuterY: 0, RowGap: 0, ColGap: 0, CardPadX: 0, CardPadY: 0, FooterGap: 0}
+	}
+}
+
 // contentArea returns the safe root content area given terminal dimensions.
 // Column overflow is prevented by splitColumns (gap subtracted first) and
 // joinColumns (truncates over-wide columns), so no safe-right-margin needed.

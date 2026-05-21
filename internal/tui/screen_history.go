@@ -71,35 +71,26 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 // ─── UltraWide Report (≥180x45) ─────────────────────────────────────────────
 
 func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, width int) string {
-	cols := splitColumns(width, 2, 2)
+	sp := spacingFor(LayoutUltraWide)
+	rootW := width - sp.OuterX*2
+	cols := splitColumns(rootW, 2, sp.ColGap)
 
-	// Row 1: Current scan summary + Export report
 	summary := m.renderCurrentScanSummaryCard(r, theme, cols[0])
 	export := m.renderExportCard(r, theme, cols[1])
-	row1 := joinColumns([]string{summary, export}, cols, 2)
+	row1 := joinColumns([]string{summary, export}, cols, sp.ColGap)
 
-	// Row 2: Area health + Scan coverage
 	areaHealth := m.renderAreaHealthCardReport(r, theme, cols[0])
 	scanCov := m.renderScanCoverageCardReport(r, theme, cols[1])
-	row2 := joinColumns([]string{areaHealth, scanCov}, cols, 2)
+	row2 := joinColumns([]string{areaHealth, scanCov}, cols, sp.ColGap)
 
-	// Row 3: Notes/warnings + Report contents
 	notes := m.renderNotesWarningsCard(r, theme, cols[0])
 	contents := m.renderReportContentsCard(r, theme, cols[1])
-	row3 := joinColumns([]string{notes, contents}, cols, 2)
+	row3 := joinColumns([]string{notes, contents}, cols, sp.ColGap)
 
-	// Bottom strip (full width)
-	guidance := m.renderExportGuidanceCard(theme, width)
+	guidance := m.renderExportGuidanceCard(theme, rootW)
 
-	return joinRows(
-		row1,
-		"",
-		row2,
-		"",
-		row3,
-		"",
-		guidance,
-	)
+	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
+	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
 }
 
 func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, outerW int) string {
@@ -244,44 +235,36 @@ func (m *historyModel) renderExportGuidanceCard(theme Theme, outerW int) string 
 // ─── Wide Report (≥120x35) ──────────────────────────────────────────────────
 
 func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width int) string {
-	cols := splitColumns(width, 2, 2)
+	sp := spacingFor(LayoutWide)
+	rootW := width - sp.OuterX*2
+	cols := splitColumns(rootW, 2, sp.ColGap)
 
 	summary := m.renderCurrentScanSummaryCard(r, theme, cols[0])
 	export := m.renderExportCard(r, theme, cols[1])
-	row1 := joinColumns([]string{summary, export}, cols, 2)
+	row1 := joinColumns([]string{summary, export}, cols, sp.ColGap)
 
 	areaHealth := m.renderAreaHealthCardReport(r, theme, cols[0])
 	scanCov := m.renderScanCoverageCardReport(r, theme, cols[1])
-	row2 := joinColumns([]string{areaHealth, scanCov}, cols, 2)
+	row2 := joinColumns([]string{areaHealth, scanCov}, cols, sp.ColGap)
 
 	notes := m.renderNotesWarningsCard(r, theme, cols[0])
 	contents := m.renderReportContentsCard(r, theme, cols[1])
-	row3 := joinColumns([]string{notes, contents}, cols, 2)
+	row3 := joinColumns([]string{notes, contents}, cols, sp.ColGap)
 
-	guidance := m.renderExportGuidanceCard(theme, width)
+	guidance := m.renderExportGuidanceCard(theme, rootW)
 
-	return joinRows(
-		row1,
-		"",
-		row2,
-		"",
-		row3,
-		"",
-		guidance,
-	)
+	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
+	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
 }
 
 // ─── Medium Report (default) ────────────────────────────────────────────────
 
 func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, width int) string {
-	cardWidth := width - 4
+	sp := spacingFor(LayoutMedium)
+	contentW := width - sp.OuterX*2 - 2 - sp.CardPadX*2
 
 	// Card 1: Current scan summary
 	var axisRows []string
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Current scan summary")
-	axisRows = append(axisRows, title)
-	axisRows = append(axisRows, "")
-
 	info := fmt.Sprintf("Score: %d (%s)  |  Findings: %d  |  Services: %d",
 		r.ScoreReport.Overall, r.ScoreReport.Grade(),
 		r.TotalFindings(), len(r.Metadata.Services))
@@ -292,7 +275,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render("  Area health"))
 	axisRows = append(axisRows, "")
 
-	areaBars := renderAreaHealthBars(r, cardWidth, LayoutMedium, theme)
+	areaBars := renderAreaHealthBars(r, contentW, LayoutMedium, theme)
 	axisRows = append(axisRows, areaBars...)
 
 	card1 := renderCardBounded("Current scan summary", strings.Join(axisRows, "\n"), theme, Rect{W: width})
@@ -315,7 +298,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 		sevRows = append(sevRows,
 			"  "+lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)).Render("No severity findings"))
 	}
-	card2 := "\n" + renderCardBounded("", strings.Join(sevRows, "\n"), theme, Rect{W: width})
+	card2 := renderCardBounded("", strings.Join(sevRows, "\n"), theme, Rect{W: width})
 
 	// Card 3: Export options (selectable)
 	var exportRows []string
@@ -342,7 +325,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	exportRows = append(exportRows, "  "+lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.TextMuted)).
 		Render("Enter export · j/k select · s settings"))
-	card3 := "\n" + renderCardBounded("Export report", strings.Join(exportRows, "\n"), theme, Rect{W: width})
+	card3 := renderCardBounded("Export report", strings.Join(exportRows, "\n"), theme, Rect{W: width})
 
 	// Card 4: Info messages and warnings
 	infoLines := []string{}
@@ -378,14 +361,18 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	}
 	card4 := ""
 	if len(infoLines) > 0 {
-		card4 = "\n" + renderCardBounded("", strings.Join(infoLines, "\n"), theme, Rect{W: width})
+		card4 = renderCardBounded("", strings.Join(infoLines, "\n"), theme, Rect{W: width})
 	}
 
-	content := card1 + card2 + card3 + card4
+	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
+	content := card1 + rowGap + card2 + rowGap + card3
+	if card4 != "" {
+		content += rowGap + card4
+	}
 
 	style := lipgloss.NewStyle().
 		Width(width).
-		Padding(0, 1)
+		Padding(sp.OuterY, sp.OuterX)
 
 	return style.Render(content)
 }
