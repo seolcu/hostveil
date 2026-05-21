@@ -126,6 +126,9 @@ hostveil/
 | `renderFilterStateCard` + `renderRelatedFindingsCard` — accept height param | `screen_findings.go` | ~15 | ✅ |
 | `renderFixGuidance` — accept height param | `screen_findings.go` | ~5 | ✅ |
 | Removed dead `renderFindingsBottomCards` | `screen_findings.go` | −5 | ✅ |
+| `renderDetailContent` section-based: metadata anchored bottom, overflow hint | `screen_findings.go` | +73 | ✅ |
+| `buildFindingBodyLines` helper extracted | `screen_findings.go` | ~30 | ✅ |
+| `OverflowScroll` → `OverflowClip` for detail panel | `screen_findings.go` | −2 | ✅ |
 
 **Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass. Browser QA verified — detail panel height stable across selection changes, no regressions found. Search/Filter/Settings unresponsive in overlay states during QA is a browser key-delivery issue.
 

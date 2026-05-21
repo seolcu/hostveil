@@ -466,7 +466,7 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
 		detail := m.renderDetailContent(&f, theme, slots.Detail.InnerW(), slots.Detail.InnerH())
-		detailContent = RenderPanel(slots.Detail, "", detail, theme, OverflowScroll)
+		detailContent = RenderPanel(slots.Detail, "", detail, theme, OverflowClip)
 	} else if slots.Detail.W > 0 && m.selected < len(m.list) {
 		detailContent = m.renderWidePreviewPanel(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
 		if detailContent != "" {
@@ -534,7 +534,7 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 	} else if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
 		detail := m.renderDetailContent(&f, theme, slots.Detail.InnerW(), slots.Detail.InnerH())
-		detailPanel := RenderPanel(slots.Detail, "", detail, theme, OverflowScroll)
+		detailPanel := RenderPanel(slots.Detail, "", detail, theme, OverflowClip)
 		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
 	} else {
 		preview := m.renderWidePreviewPanel(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
@@ -938,39 +938,93 @@ func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, widt
 		return m.renderFixPreviewContent(f, theme, width)
 	}
 
-	sep := "\n" + strings.Repeat("═", width-4) + "\n"
-	detail := headerStyle.Render(f.Title) + "\n\n"
+	innerH := height
+	headerH := 3 // title + blank + severity·remediation
+	actionH := 0
+	if f.IsFixable() {
+		actionH = 1
+	}
+	metadataH := 3 // blank + separator + ID line
+	reservedH := headerH + actionH + metadataH
+	bodyAvailable := innerH - reservedH
+	if bodyAvailable < 1 {
+		bodyAvailable = 1
+	}
 
+	// 1. Header (fixed)
+	title := headerStyle.Render(f.Title)
 	sevRem := fmt.Sprintf("%s · %s",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(f.Severity.Color())).Render(strings.ToUpper(f.Severity.String())),
 		f.Remediation.Label())
-	detail += sevRem + "\n\n"
+	header := title + "\n\n" + sevRem
 
-	if f.Description != "" {
-		detail += fmt.Sprintf("Impact:\n%s\n\n", f.Description)
+	// 2. Body (fitted to available height)
+	body := buildFindingBodyLines(f, width)
+	if len(body) > bodyAvailable {
+		body = body[:bodyAvailable-1]
+		body = append(body, "  "+lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.TextMuted)).
+			Italic(true).
+			Render("Enter full detail for complete text"))
 	}
-	if f.WhyRisky != "" {
-		detail += fmt.Sprintf("Why it matters:\n%s\n\n", f.WhyRisky)
-	}
-	if len(f.Evidence) > 0 {
-		detail += "Evidence:\n"
-		for k, v := range f.Evidence {
-			detail += fmt.Sprintf("  %s: %s\n", k, v)
-		}
-		detail += "\n"
-	}
-	if f.HowToFix != "" {
-		detail += fmt.Sprintf("Recommended fix:\n%s\n\n", f.HowToFix)
-	}
+
+	// 3. Action hint
+	var action string
 	if f.IsFixable() {
-		detail += "  " + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Render("p preview fix") + "\n"
+		action = "  " + lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Accent)).
+			Render("p preview fix")
 	}
 
-	detail += sep
-	detail += fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
+	// 4. Assemble
+	sep := "\n" + strings.Repeat("═", width-4) + "\n"
+	metadata := fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
 		f.ID, f.Source.String(), f.Scope.String(), f.Service)
 
-	return detail
+	result := header + "\n\n" + strings.Join(body, "\n")
+	if action != "" {
+		result += "\n" + action
+	}
+
+	// Fill remaining lines to push metadata to bottom
+	currentLines := strings.Count(result, "\n") + 1
+	fillLines := innerH - currentLines - metadataH
+	if fillLines > 0 {
+		result += strings.Repeat("\n", fillLines)
+	}
+	result += "\n" + sep
+	result += metadata
+
+	return result
+}
+
+func buildFindingBodyLines(f *domain.Finding, width int) []string {
+	var sections []string
+	if f.Description != "" {
+		sections = append(sections, "Impact:\n"+f.Description)
+	}
+	if f.WhyRisky != "" {
+		sections = append(sections, "Why it matters:\n"+f.WhyRisky)
+	}
+	if len(f.Evidence) > 0 {
+		var evLines []string
+		for k, v := range f.Evidence {
+			evLines = append(evLines, fmt.Sprintf("  %s: %s", k, v))
+		}
+		sections = append(sections, "Evidence:\n"+strings.Join(evLines, "\n"))
+	}
+	if f.HowToFix != "" {
+		sections = append(sections, "Recommended fix:\n"+f.HowToFix)
+	}
+
+	var result []string
+	for i, s := range sections {
+		if i > 0 {
+			result = append(result, "")
+		}
+		result = append(result, strings.Split(s, "\n")...)
+	}
+	return result
 }
 
 func renderFixDecision(f *domain.Finding, hasBackup bool) string {
