@@ -75,14 +75,6 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		dialogWidth = 36
 	}
 
-	dialogStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color(theme.Surface)).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(theme.Border)).
-		Width(dialogWidth).
-		Padding(0, 2).
-		Align(lipgloss.Left)
-
 	innerW := dialogWidth - 6
 	if innerW < 10 {
 		innerW = 10
@@ -90,25 +82,26 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 
 	surfaceBg := lipgloss.NewStyle().Background(lipgloss.Color(theme.Surface))
 
-	var contentParts []string
+	// ── Build content lines ─────────────────────────────────────────────────
+	var lines []string
 
 	addLine := func(text string, opts ...lipgloss.Style) {
 		style := surfaceBg.Width(innerW)
 		for _, o := range opts {
 			style = style.Inherit(o)
 		}
-		contentParts = append(contentParts, style.Render(text))
+		lines = append(lines, style.Render(text))
 	}
 
-	// Top padding — explicit to cover full inner width with Surface background
-	contentParts = append(contentParts, surfaceBg.Width(innerW).Render(""))
+	// Top padding
+	lines = append(lines, surfaceBg.Width(innerW).Render(""))
 
 	// Title
 	addLine("Settings",
 		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)))
 	addLine("")
 
-	// Theme selector (responsive 1/2-column grid)
+	// Theme selector
 	addLine("Theme:",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
@@ -149,7 +142,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 				rowEntries = append(rowEntries, entry.Render(label))
 			}
 			row := indent + lipgloss.JoinHorizontal(lipgloss.Center, rowEntries...)
-			contentParts = append(contentParts, surfaceBg.Width(innerW).Render(row))
+			lines = append(lines, surfaceBg.Width(innerW).Render(row))
 		}
 	} else {
 		for _, t := range themes {
@@ -169,7 +162,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 			if isSelected {
 				entry = entry.Bold(true)
 			}
-			contentParts = append(contentParts, surfaceBg.Width(innerW).Render(indent+entry.Render(label)))
+			lines = append(lines, surfaceBg.Width(innerW).Render(indent+entry.Render(label)))
 		}
 	}
 
@@ -179,6 +172,14 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 	addLine("Adapters:",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
+	// ── Height-aware clipping ──────────────────────────────────────────────
+	// Reserve fixed lines: title(1) + blank(1) + Theme(1) + themeRows + 
+	// blank(1) + Adapters(1) + adapterLines + blank(1) + hint(1) + padding(2) + border(2)
+	maxContentH := height - 8
+
+	// Count current lines so far (title, blank, theme label, themes, blank, adapters label)
+	adapterStart := len(lines)
+
 	if len(m.adapterNames) > 0 {
 		for _, name := range m.adapterNames {
 			addLine("  ● "+name,
@@ -187,6 +188,31 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 	} else {
 		addLine("  · none detected",
 			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
+	}
+
+	// Truncate adapters if too tall
+	if maxContentH > 0 && len(lines) > maxContentH {
+		// Determine how many adapters to keep
+		keepLines := lines[:adapterStart]
+		remaining := maxContentH - adapterStart - 2 // reserve for hint + bottom
+		if remaining < 1 {
+			remaining = 1
+		}
+		// Keep header + at least 1 adapter
+		var adapterLines []string
+		for i := adapterStart; i < len(lines); i++ {
+			if len(adapterLines) >= remaining {
+				break
+			}
+			adapterLines = append(adapterLines, lines[i])
+		}
+		hidden := len(m.adapterNames) - len(adapterLines)
+		if hidden > 0 {
+			lastLine := surfaceBg.Width(innerW).Render(
+				fmt.Sprintf("  · … and %d more", hidden))
+			adapterLines[len(adapterLines)-1] = lastLine
+		}
+		lines = append(keepLines, adapterLines...)
 	}
 
 	addLine("")
@@ -199,8 +225,19 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 			lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 	}
 
-	// Bottom padding — explicit to cover full inner width with Surface background
-	contentParts = append(contentParts, surfaceBg.Width(innerW).Render(""))
+	// Bottom padding
+	lines = append(lines, surfaceBg.Width(innerW).Render(""))
 
-	return dialogStyle.Render(strings.Join(contentParts, "\n"))
+	content := strings.Join(lines, "\n")
+
+	// If content still exceeds viewport, apply height cap via dialog style
+	dialogStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color(theme.Surface)).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Border)).
+		Width(dialogWidth).
+		Padding(0, 2).
+		Align(lipgloss.Left)
+
+	return dialogStyle.Render(content)
 }

@@ -132,6 +132,13 @@ hostveil/
 
 **Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass. Browser QA verified — detail panel height stable across selection changes, no regressions found. Search/Filter/Settings unresponsive in overlay states during QA is a browser key-delivery issue.
 
+### Help/Settings Modal Height Fix (post-QA #453)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| Help modal 3-tier height-aware (full/compact/minimal) | `screen_help.go` | +90/-30 | ✅ |
+| Settings modal height-aware + adapter truncation | `screen_settings.go` | +50/-20 | ✅ |
+
 ## Tests (56 tests, 9 files)
 
 | File | Tests | Coverage |
