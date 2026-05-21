@@ -185,6 +185,18 @@ Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). 
 
 **Status**: All three screens now have dedicated `LayoutCompact` (50-79px width) renderers that use plain text instead of rich cards. Mini renderers (<50px) improved to always show score/risk/next-action. Compact findings uses single-column list with Enter/ Esc detail toggle. QA screenshots captured at 1400×800, 640×480, 400×300 — see `screenshots/20260522_053628/`. No regressions detected in wide/medium layouts, which retain their existing slot-based card renderers.
 
+### Issue #457 — TUI fixed-layout contract: card height, body budget, nested preview (Closes #457)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| `renderCardBounded` — content padded/clipped inside border (fixed-height contract) | `layout.go` | ~50 | ✅ |
+| `lineCount()`, `fitBlockHeight()` — shared height helpers | `layout.go` | ~25 | ✅ |
+| `app.View()` — dynamic body height from actual header/footer/toast line counts | `app.go` | ~25 | ✅ |
+| `renderWidePreviewPanel` — removed nested `renderCardBounded` (caller wraps via `RenderPanel`) | `screen_findings.go` | ~5 | ✅ |
+| Build + vet + all 56 tests pass | — | — | ✅ |
+
+**Status**: `renderCardBounded` now enforces the fixed-height contract: content lines are clipped/padded inside the card border, so the rendered card occupies exactly `bounds.H` visual rows. `fillHeight()` post-render padding is no longer needed (the old approach added blank lines outside the card). Body height is computed accurately from actual header/footer/toast heights instead of hardcoded `m.height-4`. Wide Findings detail panel no longer has a double-border artifact from `renderWidePreviewPanel` returning a card inside `RenderPanel`. QA screenshots captured at 1400×800, 640×480, 400×300.
+
 ## Tests (56 tests, 9 files)
 
 | File | Tests | Coverage |

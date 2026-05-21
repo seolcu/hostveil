@@ -230,29 +230,6 @@ func (m *appModel) View() string {
 	t := m.effectiveTheme()
 
 	header := m.renderHeader(t)
-
-	var body string
-	// Use full terminal width for body content. Column overflow is prevented by
-	// splitColumns (gap subtracted first) and joinColumns (truncates over-wide
-	// columns), so no safe-right-margin is needed and cards can fill the viewport.
-	bodyWidth := m.width
-	if bodyWidth < 40 {
-		bodyWidth = m.width
-	}
-	switch m.currentScreen {
-	case screenDashboard:
-		body = m.overview.render(m.scanResult, t, bodyWidth, m.height-4)
-	case screenFindings:
-		body = m.findings.render(t, bodyWidth, m.height-4)
-	case screenReport:
-		body = m.history.render(m.scanResult, t, bodyWidth, m.height-4)
-	}
-
-	// Blank screen guard: never show completely empty body
-	if strings.TrimSpace(stripANSI(body)) == "" {
-		body = m.renderFallbackState(t, bodyWidth, m.height-4)
-	}
-
 	footer := m.renderFooter(t)
 
 	toastLine := m.toast.Render(t.Background, t.Success, t.Surface, m.width)
@@ -260,16 +237,38 @@ func (m *appModel) View() string {
 		toastLine = truncateStr(toastLine, m.width-4)
 	}
 
-	// Pad body so footer stays at terminal bottom
-	toastExtra := 0
+	toastH := 0
 	if toastLine != "" {
-		toastExtra = 1
+		toastH = 1
 	}
-	totalLines := strings.Count(header, "\n") + 1 + strings.Count(body, "\n") + 1 + strings.Count(footer, "\n") + 1 + toastExtra
-	availableLines := m.height
-	if totalLines < availableLines {
-		body += strings.Repeat("\n", availableLines-totalLines)
+
+	// Compute exact body height from actual header/footer/toast heights
+	headerH := lineCount(header)
+	footerH := lineCount(footer)
+	bodyHeight := max(0, m.height-headerH-footerH-toastH)
+
+	var body string
+	bodyWidth := m.width
+	if bodyWidth < 40 {
+		bodyWidth = m.width
 	}
+	switch m.currentScreen {
+	case screenDashboard:
+		body = m.overview.render(m.scanResult, t, bodyWidth, bodyHeight)
+	case screenFindings:
+		body = m.findings.render(t, bodyWidth, bodyHeight)
+	case screenReport:
+		body = m.history.render(m.scanResult, t, bodyWidth, bodyHeight)
+	}
+
+	// Blank screen guard: never show completely empty body
+	if strings.TrimSpace(stripANSI(body)) == "" {
+		body = m.renderFallbackState(t, bodyWidth, bodyHeight)
+	}
+
+	// Height guard: ensure body doesn't overflow (shouldn't happen with
+	// fixed-height slot renderers, but be defensive).
+	body = fitBlockHeight(body, bodyHeight)
 
 	content := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
 	if toastLine != "" {

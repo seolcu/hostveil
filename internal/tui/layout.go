@@ -146,8 +146,10 @@ func renderCard(title, body string, theme Theme, width, height int) string {
 	return renderCardBounded(title, body, theme, Rect{W: width + 2, H: height})
 }
 
-// renderCardBounded renders a bordered card whose outer width fits within
-// bounds.W. bounds.W is the total outer width including borders.
+// renderCardBounded renders a bordered card whose outer dimensions match
+// bounds exactly (W × H). borders are included in bounds.W and bounds.H.
+// Content lines are clipped or padded inside the card so the rendered card
+// always occupies exactly bounds.H visual rows.
 func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 	innerW := bounds.InnerW()
 	if innerW < 4 {
@@ -158,7 +160,7 @@ func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 		contentW = 2
 	}
 
-	// Truncate body lines to prevent overflow beyond padding
+	// Truncate body lines to fit content width
 	if body != "" {
 		var truncated []string
 		for _, line := range strings.Split(body, "\n") {
@@ -168,21 +170,41 @@ func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 				truncated = append(truncated, line)
 			}
 		}
-		// Clip body lines so rendered card fits within bounds.H
-		// Only for bounds.H >= 4 (minimum useful card: 2 borders + title + 1 body)
-		if bounds.H >= 4 {
-			available := bounds.H - 2
-			if title != "" {
-				available--
-			}
-			if available < 0 {
-				available = 0
-			}
-			if len(truncated) > available {
-				truncated = truncated[:available]
-			}
-		}
 		body = strings.Join(truncated, "\n")
+	}
+
+	// Build content lines (title + body bodyLines)
+	var contentLines []string
+	if title != "" {
+		titleStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(theme.Text)).
+			Width(contentW)
+		if lipgloss.Width(title) > contentW {
+			title = truncateWidth(title, contentW)
+		}
+		contentLines = append(contentLines, titleStyle.Render(title))
+	}
+	if body != "" {
+		for _, line := range strings.Split(body, "\n") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	// Fixed-height contract: pad/truncate content to fill the slot INSIDE the
+	// card border. The border consumes 2 rows (top + bottom), so content height
+	// = bounds.H - 2. Short content is padded, long content is clipped.
+	if bounds.H > 0 {
+		targetContentH := bounds.H - 2
+		if targetContentH < 0 {
+			targetContentH = 0
+		}
+		if len(contentLines) > targetContentH {
+			contentLines = contentLines[:targetContentH]
+		}
+		for len(contentLines) < targetContentH {
+			contentLines = append(contentLines, "")
+		}
 	}
 
 	style := lipgloss.NewStyle().
@@ -191,20 +213,7 @@ func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 		BorderForeground(lipgloss.Color(theme.Border)).
 		Padding(0, 1)
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(theme.Text)).
-		Width(contentW)
-	if lipgloss.Width(title) > contentW {
-		title = truncateWidth(title, contentW)
-	}
-	title = titleStyle.Render(title)
-
-	content := title
-	if body != "" {
-		content += "\n" + body
-	}
-
+	content := strings.Join(contentLines, "\n")
 	rendered := style.Render(content)
 	if debugLayout {
 		lw := lipgloss.Width(rendered)
@@ -213,18 +222,33 @@ func renderCardBounded(title, body string, theme Theme, bounds Rect) string {
 				lw, bounds.W, innerW, contentW)
 		}
 	}
-	if bounds.H > 0 {
-		rendered = fillHeight(rendered, bounds.H)
-	}
 	return rendered
 }
 
-func fillHeight(content string, targetHeight int) string {
-	lines := strings.Count(content, "\n") + 1
-	if lines >= targetHeight {
-		return content
+// lineCount returns the number of visible lines in s (including ANSI sequences).
+func lineCount(s string) int {
+	if s == "" {
+		return 0
 	}
-	return content + strings.Repeat("\n", targetHeight-lines)
+	return strings.Count(s, "\n") + 1
+}
+
+// fitBlockHeight pads or truncates s to exactly targetH lines.
+func fitBlockHeight(s string, targetH int) string {
+	if targetH <= 0 {
+		return ""
+	}
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		lines = []string{}
+	}
+	if len(lines) > targetH {
+		lines = lines[:targetH]
+	}
+	for len(lines) < targetH {
+		lines = append(lines, "")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func truncateWidth(s string, maxWidth int) string {

@@ -1114,7 +1114,7 @@ func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, 
 
 func (m *findingsModel) renderWidePreviewPanel(theme Theme, outerW, height int) string {
 	if m.selected >= len(m.list) {
-		return renderCardBounded("", "  No finding selected", theme, Rect{W: outerW, H: height})
+		return "  No finding selected"
 	}
 
 	f := m.list[m.selected]
@@ -1161,7 +1161,7 @@ func (m *findingsModel) renderWidePreviewPanel(theme Theme, outerW, height int) 
 	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))
 	b.WriteString(hintStyle.Render(hint))
 
-	return renderCardBounded("", b.String(), theme, Rect{W: outerW, H: height})
+	return b.String()
 }
 
 func (m *findingsModel) relatedFindings(f *domain.Finding) []domain.Finding {
