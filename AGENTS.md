@@ -491,3 +491,14 @@ Verification of #442 (right border/corner clipping) — UI audit.
 **모든 80개 이슈 해결** 🎉
 
 v1.0.0-rewrite의 모든 TUI layout/QA 이슈가 종료되었습니다.
+
+## QA Session 2026-05-21 (Commit d420ddd)
+
+Browser-based visual verification of #442 at 1400×800.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Findings wide | bottom cards right border/corner | ✅ Clean — gap 불일치 수정으로 overflow 없음 |
+| Report wide | right border/corner, spacing | ✅ Clean — border clipping 없음, spacing 일관됨 |
+
+모든 80개 이슈에 대한 최종 TUI QA 완료. v1.0.0-rewrite 마감.
