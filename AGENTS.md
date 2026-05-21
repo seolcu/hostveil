@@ -464,5 +464,17 @@ Verification of #444 (fix preview) + #443 (findings dedup) in 1400×800 viewport
 
 회귀: 없음.
 
+## QA Session 2026-05-21 (Commit 8e71b77 → 1763022)
+
+Verification of #450 (Report spacing refactor) at 3 viewports.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Report wide (1400×800) | 2×3 row layout, col gap, guidance boundary | ✅ Clean — spacing 일관됨, right border 정상 |
+| Report medium (640×480) | stacked cards, row gap | ⚠️ Export report title 중복 → 즉시 수정 |
+| Report ultrawide small (316×75) | compressed layout | ✅ Clean — 모든 gap 일관됨 |
+
+**회귀 발견 및 수정:** Medium Report의 `Export report` 카드 제목이 border title + body title로 중복 표시됨. body의 중복 `exportTitle` 라인 제거로 수정.
+
 ### Remaining open issues (1)
 - **#442** — Right border/corner clipping (전 화면 layout 수준)

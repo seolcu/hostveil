@@ -302,9 +302,6 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 
 	// Card 3: Export options (selectable)
 	var exportRows []string
-	exportTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("Export report")
-	exportRows = append(exportRows, exportTitle)
-	exportRows = append(exportRows, "")
 
 	for i, ef := range reportExportFormats {
 		cursor := " "
