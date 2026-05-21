@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 77 issues closed)
+### ✅ Completed Issues (all 78 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -101,7 +101,7 @@ hostveil/
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
 | **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. |
-| **#443** | Findings detail dedup | Removed Actions/Related sections from detail panel. Added context-aware Fix guidance. `formatFindingDetail()` gets Service + fix hint. Filter state compact when all clear. |
+| **#443** | Findings detail dedup | Removed duplicate Fix guidance from detail card (하단 renderFixGuidance strip이 동일 역할). Detail card는 metadata line에서 종료. |
 | **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
 
