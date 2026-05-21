@@ -114,6 +114,9 @@ hostveil/
 | `DashboardState` type (Clean/Risk) | `layout.go` | +4 | ✅ |
 | `FindingsSlots()` — fixed slot computation for Findings | `layout.go` | ~40 | ✅ |
 | `DashboardSlots()` — fixed slot computation for Dashboard | `layout.go` | ~60 | ✅ |
+| Renderers consume DashboardSlots (8→3 state-aware) | `screen_overview.go` | ~217 | ✅ |
+| Height params for all card helpers | `screen_overview.go` | ~50 | ✅ |
+| Dead code removal (dashboardHeightBudget, etc.) | `layout.go`, `screen_overview.go` | −475 | ✅ |
 | `ReportSlots()` — fixed slot computation for Report | `layout.go` | ~15 | ✅ |
 | `RenderPanel()` — fixed-height panel renderer with overflow handling | `layout.go` | ~30 | ✅ |
 | `rectsFromWidths()` — helper for creating row rects | `layout.go` | ~10 | ✅ |

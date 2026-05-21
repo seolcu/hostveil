@@ -139,13 +139,6 @@ func layoutMode(w, h int) LayoutMode {
 	}
 }
 
-func contentHeight(totalHeight int) int {
-	if totalHeight < 6 {
-		return 0
-	}
-	return totalHeight - 4
-}
-
 // renderCard renders a bordered card. width is passed through to
 // lipgloss.Width() — the outer rendered width will be width+2 (border).
 // Use renderCardBounded when you need exact outer-width control.
@@ -765,58 +758,6 @@ func RenderPanel(rect Rect, title, content string, theme Theme, overflow Overflo
 	return card
 }
 
-// ─── Dashboard height budget ──────────────────────────────────────────────
-
-type SectionBudget struct {
-	Min   int
-	Ideal int
-	Max   int
-}
-
-type DashboardBudget struct {
-	StatusH    int
-	HeroH      int
-	MainH      int
-	SecondaryH int
-	TertiaryH  int
-	WorkflowH  int
-	GapH       int
-}
-
-func dashboardHeightBudget(bodyHeight int, mode LayoutMode) DashboardBudget {
-	switch mode {
-	case LayoutUltraWide:
-		return DashboardBudget{
-			StatusH:    1,
-			HeroH:      clamp(bodyHeight/10, 5, 8),
-			MainH:      clamp(bodyHeight/7, 8, 11),
-			SecondaryH: clamp(bodyHeight/8, 7, 10),
-			TertiaryH:  clamp(bodyHeight/8, 7, 10),
-			WorkflowH:  clamp(bodyHeight/16, 3, 5),
-			GapH:       clamp(bodyHeight/40, 1, 3),
-		}
-	case LayoutWide:
-		return DashboardBudget{
-			StatusH:    1,
-			HeroH:      clamp(bodyHeight/8, 4, 6),
-			MainH:      clamp(bodyHeight/4, 8, 10),
-			SecondaryH: clamp(bodyHeight/4, 7, 9),
-			WorkflowH:  clamp(bodyHeight/10, 3, 4),
-			GapH:       1,
-		}
-	case LayoutMedium:
-		return DashboardBudget{
-			HeroH:     clamp(bodyHeight/4, 5, 7),
-			MainH:     clamp(bodyHeight/4, 5, 7),
-			WorkflowH: 3,
-			GapH:      1,
-		}
-	default:
-		return DashboardBudget{
-			GapH: 1,
-		}
-	}
-}
 
 // ─── Load average formatting ─────────────────────────────────────────────
 
