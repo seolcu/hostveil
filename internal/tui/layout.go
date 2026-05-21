@@ -546,6 +546,7 @@ type DashboardLayout struct {
 	Row1     []Rect
 	Row2     []Rect
 	Row3     []Rect
+	Brand    Rect
 	Timeline Rect
 }
 
@@ -610,6 +611,16 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 	var heroH, mainH, secH, tertH, timelineH int
 	var row1, row2, row3 []Rect
 
+	brandH := 0
+	if state == DashboardClean {
+		switch mode {
+		case LayoutUltraWide:
+			brandH = 8
+		case LayoutWide:
+			brandH = 6
+		}
+	}
+
 	switch mode {
 	case LayoutUltraWide:
 		heroH = 7
@@ -630,9 +641,16 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		row2 = rectsFromWidths(col2, 0, y, secH)
 
 		y += secH + rowGap
-		row3 = rectsFromWidths(col2, 0, y, tertH)
 
-		y += tertH + rowGap
+		var brandRect Rect
+		if brandH > 0 {
+			brandRect = Rect{X: 0, Y: y, W: w, H: brandH}
+			y += brandH + rowGap
+		} else {
+			row3 = rectsFromWidths(col2, 0, y, tertH)
+			y += tertH + rowGap
+		}
+
 		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
 
 		return DashboardLayout{
@@ -641,6 +659,7 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			Row1:     row1,
 			Row2:     row2,
 			Row3:     row3,
+			Brand:    brandRect,
 			Timeline: timelineRect,
 		}
 
@@ -662,6 +681,13 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		row2 = rectsFromWidths(col2, 0, y, secH)
 
 		y += secH + rowGap
+
+		var brandRect Rect
+		if brandH > 0 {
+			brandRect = Rect{X: 0, Y: y, W: w, H: brandH}
+			y += brandH + rowGap
+		}
+
 		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
 
 		return DashboardLayout{
@@ -669,6 +695,7 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			Hero:     heroRect,
 			Row1:     row1,
 			Row2:     row2,
+			Brand:    brandRect,
 			Timeline: timelineRect,
 		}
 

@@ -132,6 +132,19 @@ hostveil/
 
 **Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass. Browser QA verified — detail panel height stable across selection changes, no regressions found. Search/Filter/Settings unresponsive in overlay states during QA is a browser key-delivery issue.
 
+### Issue #454 — TUI Brand Filler (Complete)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| `Brand` field added to `DashboardLayout` | `layout.go` | +1 | ✅ |
+| `DashboardSlots()` computes Brand slot when `state==DashboardClean` | `layout.go` | ~30 | ✅ |
+| UltraWide: Brand H=8 (replaces Row3), Wide: Brand H=6 (inserted between Row2↔Timeline) | `layout.go` | ~15 | ✅ |
+| `renderBrandFillerCard()` with 2 ASCII art variants (6-line / compact 1-line) | `screen_overview.go` | ~20 | ✅ |
+| UltraWide & Wide renderers wired: checks `slots.Brand.W > 0` | `screen_overview.go` | ~25 | ✅ |
+| Build + vet + all 56 tests pass | — | — | ✅ |
+
+Conditions: `state==DashboardClean && mode>=LayoutWide`. Brand uses `theme.TextMuted` only. No visual effect on Risk/Medium/Narrow.
+
 ### Help/Settings Modal Height Fix (post-QA #453)
 
 | Change | File | Lines | Status |

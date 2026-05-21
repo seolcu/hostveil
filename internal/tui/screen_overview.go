@@ -280,11 +280,15 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 		}
 		grid2a = joinColumns(row2clean, col2w, 2)
 
-		row3clean := []string{
-			m.renderReportPreviewCard(theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH()),
-			m.renderRecentScanNotesCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH()),
+		if slots.Brand.W > 0 {
+			grid2b = m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.InnerH())
+		} else {
+			row3clean := []string{
+				m.renderReportPreviewCard(theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH()),
+				m.renderRecentScanNotesCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH()),
+			}
+			grid2b = joinColumns(row3clean, col2w, 2)
 		}
-		grid2b = joinColumns(row3clean, col2w, 2)
 	} else {
 		row2risk := []string{
 			m.renderRiskWorkflowCard(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH()),
@@ -678,16 +682,21 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 		timeline = m.renderWorkflowTimelineCardRisk(theme, width, slots.Timeline.InnerH())
 	}
 
-	return joinRows(
+	rows := []string{
 		statusLine,
 		hero,
 		"",
 		mainGrid,
 		"",
 		secondaryGrid,
-		"",
-		timeline,
-	)
+	}
+	if state == DashboardClean && slots.Brand.W > 0 {
+		rows = append(rows, "",
+			m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.InnerH()),
+		)
+	}
+	rows = append(rows, "", timeline)
+	return joinRows(rows...)
 }
 
 // ─── Mini dashboard ────────────────────────────────────────────────────────
@@ -1046,4 +1055,30 @@ func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme,
 	}
 
 	return renderCardBounded("Scan context", strings.Join(rows, "\n"), theme, Rect{W: outerW, H: height})
+}
+
+// ─── Brand Filler ─────────────────────────────────────────────────────────
+
+func (m *overviewModel) renderBrandFillerCard(theme Theme, outerW, height int) string {
+	art := []string{
+		`   __  __           __             _ __`,
+		`  / / / /___  _____/ /__   _____  (_) /`,
+		` / /_/ / __ \/ ___/ __/ | / / _ \/ / / `,
+		`/ __  / /_/ (__  ) /_ | |/ /  __/ / /  `,
+		`/_/ /_/\____/____/\__/ |___/\___/_/_/   `,
+	}
+
+	artStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted))
+	captionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted))
+
+	var body string
+	if height >= 10 {
+		body = artStyle.Render(strings.Join(art, "\n"))
+		body += "\n\n" + captionStyle.Render("Clean report ready · Press 3 to export")
+	} else {
+		body = artStyle.Render("HOSTVEIL  ·  Host security posture, explained.")
+		body += "\n" + captionStyle.Render("Clean report ready · Press 3 to export")
+	}
+
+	return renderCardBounded("hostveil", body, theme, Rect{W: outerW, H: height})
 }
