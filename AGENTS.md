@@ -86,7 +86,7 @@ hostveil/
 | TUI StatusBar | ~80 | Index/count/filter status bar |
 | Web Server | ~50 | ttyd-backed, streams actual TUI to browser |
 
-### ✅ Completed Issues (all 78 issues closed)
+### ✅ Completed Issues (all 79 issues closed)
 
 | Issue | What | Resolution |
 |-------|------|-----------|
@@ -96,6 +96,7 @@ hostveil/
 | **#449** | Narrow dashboard gray overlay artifact | `truncateWidth`를 display-width-aware로 재작성. ANSI escape sequence visible width 제외, `lipgloss.Width(r)`로 문자별 display width 계산 |
 | **#448** | Settings modal option grid wrapping | colWidth indent 반영, innerW < 34에서 1-column 전환, option label truncate 처리 |
 | **#441** | Settings modal background gap | Padding(1,2)→(0,2)로 변경, top/bottom padding explicit line으로 대체, border 안쪽 전체 Surface background 보장 |
+| **#450** | Report spacing token 통일 | `Spacing` 타입 + `spacingFor()` 도입. RenderU/W/Medium Report magic number 제거. card1 중복 title 수정. guidance card boundary 일치. |
 | **#447** | Findings 화면 3-row inspector redesign | List panel bordered + title, 3-row layout (list+detail / filter+context / guidance), Context compact when no service |
 | **#386** | Adapter Integration Tests | 9 tests covering Trivy/Dockle/Lynis/Gitleaks JSON/NDJSON parsing, timeout, edge cases |
 | **#420** | TUI E2E Test Scenarios | Test coverage expanded: domain (14), host (4), export (8), fix engine (12) |
@@ -463,6 +464,5 @@ Verification of #444 (fix preview) + #443 (findings dedup) in 1400×800 viewport
 
 회귀: 없음.
 
-### Remaining open issues (2)
-- **#450** — Report spacing consistency (Spacing token 도입)
+### Remaining open issues (1)
 - **#442** — Right border/corner clipping (전 화면 layout 수준)
