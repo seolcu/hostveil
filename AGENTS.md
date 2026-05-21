@@ -106,6 +106,26 @@ hostveil/
 | **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. 추천 문구 단축 (최대 104→67자)으로 truncation 방지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
 
+### Issue #451 — TUI Layout Contract (In Progress)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| `OverflowPolicy` type (Clip/Ellipsis/Scroll) | `layout.go` | +5 | ✅ |
+| `DashboardState` type (Clean/Risk) | `layout.go` | +4 | ✅ |
+| `FindingsSlots()` — fixed slot computation for Findings | `layout.go` | ~40 | ✅ |
+| `DashboardSlots()` — fixed slot computation for Dashboard | `layout.go` | ~60 | ✅ |
+| `ReportSlots()` — fixed slot computation for Report | `layout.go` | ~15 | ✅ |
+| `RenderPanel()` — fixed-height panel renderer with overflow handling | `layout.go` | ~30 | ✅ |
+| `rectsFromWidths()` — helper for creating row rects | `layout.go` | ~10 | ✅ |
+| Findings `render()` — slot-based with fixed detail panel height | `screen_findings.go` | ~50 | ✅ |
+| Findings `renderUltraWideFindings()` — slot-based layout | `screen_findings.go` | ~50 | ✅ |
+| `renderFixGuidanceText()` — text-only guidance (for fixed-height card) | `screen_findings.go` | ~20 | ✅ |
+| `renderFilterStateCard` + `renderRelatedFindingsCard` — accept height param | `screen_findings.go` | ~15 | ✅ |
+| `renderFixGuidance` — accept height param | `screen_findings.go` | ~5 | ✅ |
+| Removed dead `renderFindingsBottomCards` | `screen_findings.go` | −5 | ✅ |
+
+**Status**: Findings layout is now slot-based with fixed detail panel height. Dashboard `DashboardSlots` defined but not yet consumed by renderers (existing budget system remains). Report `ReportSlots` defined but renderers not yet migrated. Build + vet + all 56 tests pass.
+
 ## Tests (56 tests, 9 files)
 
 | File | Tests | Coverage |

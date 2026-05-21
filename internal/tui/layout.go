@@ -517,6 +517,254 @@ func renderAreaHealthBars(r *domain.ScanResult, width int, mode LayoutMode, them
 	return lines
 }
 
+// ─── Layout contract types ─────────────────────────────────────────────────
+
+// OverflowPolicy defines how content that exceeds its slot is handled.
+type OverflowPolicy int
+
+const (
+	OverflowClip OverflowPolicy = iota
+	OverflowEllipsis
+	OverflowScroll
+)
+
+// DashboardState distinguishes clean vs risk dashboard skeletons.
+type DashboardState int
+
+const (
+	DashboardClean DashboardState = iota
+	DashboardRisk
+)
+
+// FindingsLayout defines fixed slot positions for the Findings screen.
+type FindingsLayout struct {
+	FilterBar Rect
+	List      Rect
+	Detail    Rect
+	MidLeft   Rect
+	MidRight  Rect
+	Guidance  Rect
+}
+
+// DashboardLayout defines fixed slot positions for the Dashboard screen.
+type DashboardLayout struct {
+	Status   Rect
+	Hero     Rect
+	Row1     []Rect
+	Row2     []Rect
+	Row3     []Rect
+	Timeline Rect
+}
+
+// ReportLayout defines fixed slot positions for the Report screen.
+type ReportLayout struct {
+	Row1     []Rect
+	Row2     []Rect
+	Row3     []Rect
+	Guidance Rect
+}
+
+// FindingsSlots computes fixed slot positions for the Findings screen.
+// hasBottom indicates whether mid-row cards (filter/context) and guidance are shown.
+func FindingsSlots(w, h int, mode LayoutMode, hasBottom bool) FindingsLayout {
+	filterH := 1
+	midH := 6
+	guidH := 3
+	gapH := 1
+
+	if h < 20 || !hasBottom {
+		return FindingsLayout{
+			FilterBar: Rect{X: 0, Y: 0, W: w, H: filterH},
+			List:      Rect{X: 0, Y: filterH, W: w, H: max(0, h-filterH)},
+			Detail:    Rect{},
+		}
+	}
+
+	topH := h - filterH - midH - guidH - gapH*3
+	if topH < 6 {
+		topH = 6
+	}
+
+	cols := splitColumns(w, 2, 1)
+
+	y := filterH
+	listRect := Rect{X: 0, Y: y, W: cols[0], H: topH}
+	detailRect := Rect{X: cols[0] + 1, Y: y, W: cols[1], H: topH}
+
+	y += topH + gapH
+	midLeft := Rect{X: 0, Y: y, W: cols[0], H: midH}
+	midRight := Rect{X: cols[0] + 1, Y: y, W: cols[1], H: midH}
+
+	y += midH + gapH
+	guidRect := Rect{X: 0, Y: y, W: w, H: guidH}
+
+	return FindingsLayout{
+		FilterBar: Rect{X: 0, Y: 0, W: w, H: filterH},
+		List:      listRect,
+		Detail:    detailRect,
+		MidLeft:   midLeft,
+		MidRight:  midRight,
+		Guidance:  guidRect,
+	}
+}
+
+// DashboardSlots computes fixed slot positions for the Dashboard screen.
+// Slots are computed from viewport and state only — NOT from content.
+func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLayout {
+	statusH := 1
+	rowGap := 1
+
+	var heroH, mainH, secH, tertH, timelineH int
+	var row1, row2, row3 []Rect
+
+	switch mode {
+	case LayoutUltraWide:
+		heroH = 7
+		mainH = 7
+		secH = 6
+		tertH = 6
+		timelineH = 4
+
+		y := statusH + rowGap
+		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
+
+		y += heroH + rowGap
+		col4 := splitColumns(w, 4, 2)
+		row1 = rectsFromWidths(col4, 0, y, mainH)
+
+		y += mainH + rowGap
+		col2 := splitColumns(w, 2, 2)
+		row2 = rectsFromWidths(col2, 0, y, secH)
+
+		y += secH + rowGap
+		row3 = rectsFromWidths(col2, 0, y, tertH)
+
+		y += tertH + rowGap
+		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
+
+		return DashboardLayout{
+			Status:   Rect{X: 0, Y: 0, W: w, H: statusH},
+			Hero:     heroRect,
+			Row1:     row1,
+			Row2:     row2,
+			Row3:     row3,
+			Timeline: timelineRect,
+		}
+
+	case LayoutWide:
+		heroH = 6
+		mainH = 7
+		secH = 5
+		timelineH = 3
+
+		y := statusH + rowGap
+		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
+
+		y += heroH + rowGap
+		col3 := splitColumns(w, 3, 2)
+		row1 = rectsFromWidths(col3, 0, y, mainH)
+
+		y += mainH + rowGap
+		col2 := splitColumns(w, 2, 2)
+		row2 = rectsFromWidths(col2, 0, y, secH)
+
+		y += secH + rowGap
+		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
+
+		return DashboardLayout{
+			Status:   Rect{X: 0, Y: 0, W: w, H: statusH},
+			Hero:     heroRect,
+			Row1:     row1,
+			Row2:     row2,
+			Timeline: timelineRect,
+		}
+
+	case LayoutMedium:
+		heroH = 6
+		mainH = 7
+		timelineH = 3
+
+		y := rowGap
+		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
+		y += heroH + rowGap
+
+		row1 = []Rect{{X: 0, Y: y, W: w, H: mainH}}
+		y += mainH + rowGap
+		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
+
+		return DashboardLayout{
+			Hero:     heroRect,
+			Row1:     row1,
+			Timeline: timelineRect,
+		}
+
+	default:
+		return DashboardLayout{}
+	}
+}
+
+func rectsFromWidths(widths []int, x, y, h int) []Rect {
+	rects := make([]Rect, len(widths))
+	cx := x
+	for i, w := range widths {
+		rects[i] = Rect{X: cx, Y: y, W: w, H: h}
+		cx += w + 1 // +1 for col gap
+	}
+	return rects
+}
+
+// ReportSlots computes fixed slot positions for the Report screen.
+func ReportSlots(w, h int, mode LayoutMode) ReportLayout {
+	sp := spacingFor(mode)
+	rootW := w - sp.OuterX*2
+	cols := splitColumns(rootW, 2, sp.ColGap)
+	guidH := 3
+
+	return ReportLayout{
+		Row1:     []Rect{{X: 0, Y: 0, W: cols[0], H: h / 3}, {X: cols[0], Y: 0, W: cols[1], H: h / 3}},
+		Row2:     []Rect{{X: 0, Y: h/3, W: cols[0], H: h / 3}, {X: cols[0], Y: h/3, W: cols[1], H: h / 3}},
+		Row3:     []Rect{{X: 0, Y: h*2/3, W: cols[0], H: h/3 - guidH}, {X: cols[0], Y: h*2/3, W: cols[1], H: h/3 - guidH}},
+		Guidance: Rect{X: 0, Y: h - guidH, W: rootW, H: guidH},
+	}
+}
+
+// RenderPanel renders content into a fixed-size rect, handling overflow.
+// The output is always exactly rect.H lines tall.
+func RenderPanel(rect Rect, title, content string, theme Theme, overflow OverflowPolicy) string {
+	if rect.H <= 0 || rect.W <= 0 {
+		return ""
+	}
+	innerH := rect.InnerH()
+	if innerH <= 0 {
+		return ""
+	}
+
+	// Split content into lines
+	lines := strings.Split(content, "\n")
+
+	// Handle overflow
+	if len(lines) > innerH {
+		switch overflow {
+		case OverflowClip:
+			lines = lines[:innerH]
+		case OverflowEllipsis:
+			if innerH > 0 {
+				lines = lines[:innerH]
+				last := len(lines) - 1
+				if last >= 0 {
+					lines[last] = truncateWidth(lines[last], rect.InnerW()-4)
+				}
+			}
+		case OverflowScroll:
+			// Keep all lines; renderCardBounded will handle height
+		}
+	}
+
+	content = strings.Join(lines, "\n")
+	card := renderCardBounded(title, content, theme, rect)
+	return card
+}
+
 // ─── Dashboard height budget ──────────────────────────────────────────────
 
 type SectionBudget struct {

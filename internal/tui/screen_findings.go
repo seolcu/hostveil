@@ -427,25 +427,24 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		return m.renderUltraWideFindings(theme, width, height)
 	}
 
-	filterBar := m.renderFilterBar(theme, width)
+	// Compute fixed slots from viewport dimensions (NOT from content)
+	hasBottom := len(m.list) > 0
+	slots := FindingsSlots(width, height, lm, hasBottom)
 
-	listWidth := width
-	previewWidth := 0
-	if m.showDetail {
-		cols := splitColumns(width, 2, 1)
-		listWidth = cols[0]
-		previewWidth = cols[1]
-	} else if width >= wideWidth && len(m.list) > 0 {
-		listWidth = width * 2 / 3
-		previewWidth = width - listWidth - 1
+	filterBar := m.renderFilterBar(theme, width)
+	// Ensure filter bar fits its slot
+	filterLines := strings.Count(filterBar, "\n") + 1
+	if filterLines > slots.FilterBar.InnerH() {
+		// Truncate to fit
+		lines := strings.Split(filterBar, "\n")
+		filterBar = strings.Join(lines[:slots.FilterBar.InnerH()], "\n")
 	}
-	listHeight := height - 2
 
 	// Filter panel dialog overrides normal layout
 	if m.showFilterPanel && !m.showDetail {
-		panel := m.renderFilterPanel(theme, listWidth, listHeight)
+		panel := m.renderFilterPanel(theme, slots.List.W, slots.List.H)
 		panelLines := strings.Count(panel, "\n") + 1
-		padTop := (listHeight - panelLines) / 2
+		padTop := (slots.List.H - panelLines) / 2
 		if padTop < 0 {
 			padTop = 0
 		}
@@ -455,43 +454,43 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	// Build list panel with border and title
 	var listContent strings.Builder
 	if len(m.list) == 0 {
-		listContent.WriteString(m.renderEmptyFindingsState(theme, listWidth, listHeight))
+		listContent.WriteString(m.renderEmptyFindingsState(theme, slots.List.InnerW(), slots.List.InnerH()))
 	} else {
-		m.renderFindingsList(theme, &listContent, listWidth, listHeight, false)
+		m.renderFindingsList(theme, &listContent, slots.List.InnerW(), slots.List.InnerH(), false)
 	}
 	listTitle := fmt.Sprintf("Findings %d/%d", len(m.list), len(m.all))
-	listPanel := renderCardBounded(listTitle, listContent.String(), theme, Rect{W: listWidth, H: listHeight})
+	listPanel := RenderPanel(slots.List, listTitle, listContent.String(), theme, OverflowClip)
 
 	// Detail or preview panel (right column)
 	var detailContent string
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
-		detail := m.renderDetailContent(&f, theme, previewWidth, listHeight)
-		detailContent = renderCardBounded("", detail, theme, Rect{W: previewWidth, H: listHeight})
-	} else if previewWidth > 0 && m.selected < len(m.list) {
-		detailContent = m.renderWidePreviewPanel(theme, previewWidth, listHeight)
+		detail := m.renderDetailContent(&f, theme, slots.Detail.InnerW(), slots.Detail.InnerH())
+		detailContent = RenderPanel(slots.Detail, "", detail, theme, OverflowScroll)
+	} else if slots.Detail.W > 0 && m.selected < len(m.list) {
+		detailContent = m.renderWidePreviewPanel(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
+		if detailContent != "" {
+			detailContent = RenderPanel(slots.Detail, "", detailContent, theme, OverflowClip)
+		}
 	}
 
 	// Top row: list + detail side by side
-	var topRow string
-	if detailContent != "" {
-		topRow = joinColumns([]string{listPanel, detailContent}, []int{listWidth, previewWidth}, 1)
-	} else {
-		topRow = listPanel
+	topRow := joinColumns([]string{listPanel, detailContent}, []int{slots.List.W, slots.Detail.W}, 1)
+	if debugLayout {
+		assertDisplayWidthLTE(topRow, width)
 	}
 
 	// Empty state: no bottom cards needed
-	if len(m.list) == 0 {
+	if !hasBottom {
 		return filterBar + "\n" + topRow
 	}
 
-	// 3-row inspector layout
-	cols := splitColumns(width, 2, 2)
-	filterCard := m.renderFilterStateCard(theme, cols[0])
-	contextCard := m.renderRelatedFindingsCard(theme, cols[1])
-	midRow := joinColumns([]string{filterCard, contextCard}, cols, 2)
+	// Mid row: filter + context cards into fixed-height slots
+	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.InnerW(), slots.MidLeft.InnerH())
+	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.InnerW(), slots.MidRight.InnerH())
+	midRow := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
 
-	guidance := m.renderFixGuidance(theme, width)
+	guidance := m.renderFixGuidance(theme, width, slots.Guidance.InnerH())
 
 	return joinRows(
 		filterBar,
@@ -508,51 +507,65 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 		return m.renderCleanFindingsUltraWide(theme, width, height)
 	}
 
-	filterBar := m.renderFilterBar(theme, width)
+	hasBottom := len(m.list) > 0
+	slots := FindingsSlots(width, height, LayoutUltraWide, hasBottom)
 
-	cols := splitColumns(width, 2, 1)
-	listWidth := cols[0]
-	previewWidth := cols[1]
-	bottomHeight := 6
-	mainHeight := height - 2 - bottomHeight - 2
+	filterBar := m.renderFilterBar(theme, width)
+	filterLines := strings.Count(filterBar, "\n") + 1
+	if filterLines > slots.FilterBar.InnerH() {
+		lines := strings.Split(filterBar, "\n")
+		filterBar = strings.Join(lines[:slots.FilterBar.InnerH()], "\n")
+	}
 
 	listTitle := fmt.Sprintf("Findings %d/%d", len(m.list), len(m.all))
 	var listContent strings.Builder
 	if len(m.list) == 0 {
-		listContent.WriteString(m.renderEmptyFindingsState(theme, listWidth, mainHeight))
+		listContent.WriteString(m.renderEmptyFindingsState(theme, slots.List.InnerW(), slots.List.InnerH()))
 	} else {
-		m.renderFindingsList(theme, &listContent, listWidth, mainHeight, false)
+		m.renderFindingsList(theme, &listContent, slots.List.InnerW(), slots.List.InnerH(), false)
 	}
-	listPanel := renderCardBounded(listTitle, listContent.String(), theme, Rect{W: listWidth, H: mainHeight})
+	listPanel := RenderPanel(slots.List, listTitle, listContent.String(), theme, OverflowClip)
 
 	var topRow string
 	if len(m.list) == 0 {
-		preview := m.renderCleanFindingsState(theme, previewWidth, mainHeight)
-		topRow = joinColumns([]string{listPanel, preview}, []int{listWidth, previewWidth}, 1)
+		preview := m.renderCleanFindingsState(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
+		detailPanel := RenderPanel(slots.Detail, "Clean scan meaning", preview, theme, OverflowClip)
+		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
 	} else if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
-		detail := m.renderDetailContent(&f, theme, previewWidth, mainHeight)
-		detailPanel := renderCardBounded("", detail, theme, Rect{W: previewWidth, H: mainHeight})
-		topRow = joinColumns([]string{listPanel, detailPanel}, []int{listWidth, previewWidth}, 1)
+		detail := m.renderDetailContent(&f, theme, slots.Detail.InnerW(), slots.Detail.InnerH())
+		detailPanel := RenderPanel(slots.Detail, "", detail, theme, OverflowScroll)
+		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
 	} else {
-		preview := m.renderWidePreviewPanel(theme, previewWidth, mainHeight)
-		topRow = joinColumns([]string{listPanel, preview}, []int{listWidth, previewWidth}, 1)
+		preview := m.renderWidePreviewPanel(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
+		detailPanel := RenderPanel(slots.Detail, "", preview, theme, OverflowClip)
+		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
 	}
-
-	bottomCards := m.renderFindingsBottomCards(theme, splitColumns(width, 2, 2))
-	fixGuidance := m.renderFixGuidance(theme, width)
 
 	if debugLayout {
 		assertDisplayWidthLTE(topRow, width)
+	}
+
+	if !hasBottom {
+		return filterBar + "\n" + topRow
+	}
+
+	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.InnerW(), slots.MidLeft.InnerH())
+	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.InnerW(), slots.MidRight.InnerH())
+	bottomCards := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
+
+	if debugLayout {
 		assertDisplayWidthLTE(bottomCards, width)
 	}
+
+	guidance := m.renderFixGuidance(theme, width, slots.Guidance.InnerH())
 
 	return joinRows(
 		filterBar,
 		topRow,
 		"",
 		bottomCards,
-		fixGuidance,
+		guidance,
 	)
 }
 
@@ -785,18 +798,12 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 	}
 }
 
-func (m *findingsModel) renderFindingsBottomCards(theme Theme, cols []int) string {
-	filterState := m.renderFilterStateCard(theme, cols[0])
-	related := m.renderRelatedFindingsCard(theme, cols[1])
-	return joinColumns([]string{filterState, related}, cols, 2)
-}
-
-func (m *findingsModel) renderFilterStateCard(theme Theme, outerW int) string {
+func (m *findingsModel) renderFilterStateCard(theme Theme, outerW, height int) string {
 	allClear := m.severityFilter == "" && m.serviceFilter == "" && m.scopeFilter == "" &&
 		m.remediationFilter == "" && m.sourceFilter == "" && m.sortMode == "severity"
 
 	if allClear {
-		return renderCardBounded("Filters", "  All filters clear", theme, Rect{W: outerW})
+		return renderCardBounded("Filters", "  All filters clear", theme, Rect{W: outerW, H: height})
 	}
 
 	var lines []string
@@ -845,10 +852,11 @@ func (m *findingsModel) renderFilterStateCard(theme Theme, outerW int) string {
 	}
 	addLine("Source", src)
 
-	return renderCardBounded("Filter state", strings.Join(lines, "\n"), theme, Rect{W: outerW})
+	r := Rect{W: outerW, H: height}
+	return renderCardBounded("Filter state", strings.Join(lines, "\n"), theme, r)
 }
 
-func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) string {
+func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW, height int) string {
 	if len(m.list) == 0 || m.selected >= len(m.list) {
 		return renderCardBounded("Context", "  No finding selected.", theme, Rect{W: outerW})
 	}
@@ -860,6 +868,7 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) strin
 		return renderCardBounded("Context", body, theme, Rect{W: outerW})
 	}
 
+	r := Rect{W: outerW, H: height}
 	related := m.relatedFindings(&f)
 	if len(related) == 0 {
 		var sameSvc []domain.Finding
@@ -870,7 +879,7 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) strin
 		}
 		if len(sameSvc) == 0 {
 			return renderCardBounded(fmt.Sprintf("Same service: %s", svc),
-				"  No related findings.", theme, Rect{W: outerW})
+				"  No related findings.", theme, r)
 		}
 		var lines []string
 		maxShow := 4
@@ -882,7 +891,7 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) strin
 			title := truncateStr(rf.Title, outerW-12)
 			lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
 		}
-		return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, Rect{W: outerW})
+		return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, r)
 	}
 
 	var lines []string
@@ -891,30 +900,33 @@ func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW int) strin
 		title := truncateStr(rf.Title, outerW-12)
 		lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
 	}
-	return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, Rect{W: outerW})
+	return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, r)
 }
 
-func (m *findingsModel) renderFixGuidance(theme Theme, width int) string {
-	if len(m.list) == 0 || m.selected >= len(m.list) {
-		return renderCardBounded("Fix guidance", "  No finding selected.", theme, Rect{W: width})
+func (m *findingsModel) renderFixGuidanceText(theme Theme, selected int) string {
+	if len(m.list) == 0 || selected >= len(m.list) {
+		return "No finding selected."
 	}
-	f := m.list[m.selected]
-	var guidance string
+	f := m.list[selected]
 	switch {
 	case f.Remediation == domain.RemediationAuto && !m.showFixPreview:
-		guidance = "Auto-fix preview available. Press p to inspect the diff before applying."
+		return "Auto-fix preview available. Press p to inspect the diff before applying."
 	case f.Remediation == domain.RemediationAuto && m.showFixPreview:
-		guidance = "Review the proposed diff. Press a to apply only after verifying correctness."
+		return "Review the proposed diff. Press a to apply only after verifying correctness."
 	case f.Remediation == domain.RemediationReview && !m.showFixPreview:
-		guidance = "Review required. Press p to preview the suggested change. Apply only after verifying correctness."
+		return "Review required. Press p to preview the suggested change. Apply only after verifying correctness."
 	case f.Remediation == domain.RemediationReview && m.showFixPreview:
-		guidance = "Review the proposed diff. Apply manually if correct, then rescan."
+		return "Review the proposed diff. Apply manually if correct, then rescan."
 	case f.Remediation == domain.RemediationManual:
-		guidance = "Manual change required. Follow the recommended fix steps above, then press r to rescan."
+		return "Manual change required. Follow the recommended fix steps above, then press r to rescan."
 	default:
-		guidance = "Select a finding to see remediation guidance."
+		return "Select a finding to see remediation guidance."
 	}
-	return renderCardBounded("Fix guidance", "  "+guidance, theme, Rect{W: width})
+}
+
+func (m *findingsModel) renderFixGuidance(theme Theme, width, height int) string {
+	guidance := m.renderFixGuidanceText(theme, m.selected)
+	return renderCardBounded("Fix guidance", "  "+guidance, theme, Rect{W: width, H: height})
 }
 
 func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, width, height int) string {
