@@ -948,21 +948,6 @@ func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, widt
 	detail += fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
 		f.ID, f.Source.String(), f.Scope.String(), f.Service)
 
-	// Context-aware fix guidance
-	detail += "\n\n───  Fix guidance  ───\n"
-	switch {
-	case f.Remediation == domain.RemediationAuto && !m.showFixPreview:
-		detail += "  Auto-fix preview available. Press p to inspect the diff before applying."
-	case f.Remediation == domain.RemediationAuto && m.showFixPreview:
-		detail += "  Review the proposed diff. Press a to apply only after verifying correctness."
-	case f.Remediation == domain.RemediationReview:
-		detail += "  Review required. Follow the recommended fix manually, then press r to rescan."
-	case f.Remediation == domain.RemediationManual:
-		detail += "  Manual change required. Update the configuration per the recommendation, then rescan."
-	default:
-		detail += "  Select a finding to see remediation guidance."
-	}
-
 	return detail
 }
 
