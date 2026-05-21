@@ -1003,7 +1003,7 @@ func renderFixDecision(f *domain.Finding, hasBackup bool) string {
 		recommended = "Apply the fix, then rescan to verify."
 	}
 
-	return fmt.Sprintf("Fix status: %s\nRecommended action: %s", statusStr, recommended)
+	return statusStr + "\n  → " + recommended
 }
 
 func renderFixActions(f *domain.Finding) string {
@@ -1032,24 +1032,8 @@ func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, 
 	detail += "Current setup\n"
 	detail += m.fixPreviewContent
 
-	// Decision / risk
-	detail += "\n───  Decision  ───\n"
-	switch f.Remediation {
-	case domain.RemediationAuto:
-		detail += "This change can be applied automatically. Review the diff, then press a if correct.\n"
-	case domain.RemediationReview:
-		detail += "This change requires review before applying. Review the diff carefully.\n"
-	default:
-		detail += "This change must be applied manually. No automated fix is available.\n"
-	}
-	if m.fixBackupPath != "" {
-		detail += fmt.Sprintf("Backup: %s\n", m.fixBackupPath)
-	} else if f.Remediation != domain.RemediationManual {
-		detail += "No backup path available. Ensure the file is version-controlled.\n"
-	}
-
-	// Actions
-	detail += "\n"
+	// Actions (separator + action buttons)
+	detail += "\n───\n"
 	detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Accent)).Render("[p] Close preview") + "\n"
 	if actions := renderFixActions(f); actions != "" {
 		detail += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Success)).Render(actions) + "\n"
