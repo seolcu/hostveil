@@ -397,7 +397,7 @@ func (m *overviewModel) renderRuntimeCard(r *domain.ScanResult, theme Theme, out
 			addRow("Uptime", info.Uptime)
 		}
 		if info.LoadAverage != "" {
-			addRow("Load avg", formatLoadAvg(info.LoadAverage, false))
+			addRow("Load", formatLoadAvg(info.LoadAverage, false))
 		}
 	}
 	return renderCardBounded("Runtime", strings.Join(rows, "\n"), theme, Rect{W: outerW})
