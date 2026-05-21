@@ -102,7 +102,7 @@ hostveil/
 | **#422** | Docker Lab 유지보수 | scripts/lab.sh works with Go binary |
 | **#442** | Right border/corner clipping | `assertDisplayWidthLTE` debug helper. `renderCard` truncates body lines to inner width. Body width reduced by 2 in `app.go` for 1-char left/right margin. |
 | **#443** | Findings detail dedup | Removed duplicate Fix guidance from detail card (하단 renderFixGuidance strip이 동일 역할). Detail card는 metadata line에서 종료. |
-| **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. |
+| **#444** | Fix preview decision model | `renderFixDecision()` compact format (`→` recommended action), 중복 `─── Decision ───` 섹션 제거. Context-aware action labels 유지. 추천 문구 단축 (최대 104→67자)으로 truncation 방지. |
 | **#445** | Dashboard Load label 일관성 | `"Load avg"` → `"Load"` 통일. Compose path truncate와 Load `→` 제거는 이전 이슈에서 이미 해결. |
 
 ## Tests (56 tests, 9 files)
@@ -450,3 +450,19 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - **Problem**: Findings list had no border, list/detail height mismatch, no-service-context took a full card, filter state always verbose.
 - **Fix**: List panel wrapped in `renderCardBounded` with `Findings N/N` title. Layout restructured to 3 rows: top (list+detail via `joinColumns`), middle (filter+context cards), bottom (full-width guidance). No-service-context shows compact inline (`Scope: host · No service context · Source: ...`). Filter state shows `All filters clear` when all default.
 - **Key files**: `internal/tui/screen_findings.go` — `render()` (lines 416-488), `renderUltraWideFindings()`, `renderRelatedFindingsCard()`, `renderFilterStateCard()`.
+
+## QA Session 2026-05-21 (Commits f77f297 → 7799015)
+
+Verification of #444 (fix preview) + #443 (findings dedup) in 1400×800 viewport.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Findings detail wide | detail card stops at metadata, no duplicate Fix guidance | ✅ Clean — 하단 guidance strip만 표시 |
+| Fix preview wide | preview diff, action buttons, status line | ✅ Clean — truncation 해결 (문구 단축 적용) |
+| Report wide | right border/corner, spacing | ✅ Clean — border clipping 없음, spacing 일관됨 |
+
+회귀: 없음.
+
+### Remaining open issues (2)
+- **#450** — Report spacing consistency (Spacing token 도입)
+- **#442** — Right border/corner clipping (전 화면 layout 수준)
