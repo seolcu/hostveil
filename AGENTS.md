@@ -152,6 +152,16 @@ Conditions: `state==DashboardClean && mode>=LayoutWide`. Brand uses `theme.TextM
 | Help modal 3-tier height-aware (full/compact/minimal) | `screen_help.go` | +90/-30 | ✅ |
 | Settings modal height-aware + adapter truncation | `screen_settings.go` | +50/-20 | ✅ |
 
+### Issue #455 — Renderer Card Height Enforcement (Complete)
+
+| Change | File | Lines | Status |
+|--------|------|-------|--------|
+| `renderCardBounded` body line truncation for `bounds.H >= 4` | `layout.go` | +14 | ✅ |
+| Safety-net: cards never exceed their allocated slot height | `layout.go` | inline | ✅ |
+| Build + vet + all 56 tests pass | — | — | ✅ |
+
+Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). Cards with `bounds.H < 4` (e.g. timeline at LayoutMedium) are exempt — they keep current `fillHeight`-only behavior (no clipping). Post-render `fillHeight` still pads short cards. No truncation applied when `bounds.H == 0`.
+
 ## Tests (56 tests, 9 files)
 
 | File | Tests | Coverage |
@@ -498,6 +508,11 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 - **Fix**: List panel wrapped in `renderCardBounded` with `Findings N/N` title. Layout restructured to 3 rows: top (list+detail via `joinColumns`), middle (filter+context cards), bottom (full-width guidance). No-service-context shows compact inline (`Scope: host · No service context · Source: ...`). Filter state shows `All filters clear` when all default.
 - **Key files**: `internal/tui/screen_findings.go` — `render()` (lines 416-488), `renderUltraWideFindings()`, `renderRelatedFindingsCard()`, `renderFilterStateCard()`.
 
+### Card height overflow in dashboard slots (#455)
+- **Problem**: `renderCardBounded` used `fillHeight()` which pads short cards to their slot height but does NOT truncate tall cards. Dashboard cards (hero, next-actions, risk-by-area) commonly overflow their allocated `DashboardSlots` heights, causing grid misalignment and background-fill gaps at compact viewports.
+- **Fix**: Added pre-render body line count clipping in `renderCardBounded` when `bounds.H >= 4`. The number of body lines is limited to `bounds.H - 2` (borders) `- 1` (title if set), so the rendered card never exceeds its slot. Cards with `bounds.H < 4` (timeline at LayoutMedium) are exempt — they keep the old `fillHeight`-only behavior without clipping.
+- **Key file**: `internal/tui/layout.go:171-184` — body line truncation in `renderCardBounded`.
+
 ## QA Session 2026-05-21 (Commits f77f297 → 7799015)
 
 Verification of #444 (fix preview) + #443 (findings dedup) in 1400×800 viewport.
@@ -534,7 +549,7 @@ Verification of #442 (right border/corner clipping) — UI audit.
 | Clean Findings UltraWide | ✅ splitColumns(width, 2, 2) + joinColumns(..., 2) 정합 |
 | assertDisplayWidthLTE | ✅ 6개 render 함수에 caller 추가 (debug 모드) |
 
-**모든 80개 이슈 해결** 🎉
+**모든 81개 이슈 해결** 🎉
 
 v1.0.0-rewrite의 모든 TUI layout/QA 이슈가 종료되었습니다.
 
@@ -547,7 +562,7 @@ Browser-based visual verification of #442 at 1400×800.
 | Findings wide | bottom cards right border/corner | ✅ Clean — gap 불일치 수정으로 overflow 없음 |
 | Report wide | right border/corner, spacing | ✅ Clean — border clipping 없음, spacing 일관됨 |
 
-모든 80개 이슈에 대한 최종 TUI QA 완료. v1.0.0-rewrite 마감.
+모든 81개 이슈에 대한 최종 TUI QA 완료. v1.0.0-rewrite 마감.
 
 ## QA Session 2026-05-22 (Commit a1e49f4)
 
@@ -566,3 +581,23 @@ Browser-based visual verification of #451 (layout contract) at wide/medium/narro
 | Overview wide (final) | after viewport detours | ✅ 회귀 없음 |
 
 **회귀: 없음.** Findings detail panel height가 모든 선택 항목에서 동일하게 유지됨. Search/Filter/Settings 키가 특정 overlay 상태에서 캡처되지 않은 것은 브라우저 키 전달 이슈로 추정.
+
+## QA Session 2026-05-22 (Commit 59b113c)
+
+Verification of #455 (renderer card height enforcement) at 1400×800, 640×480, and 280×200.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Overview wide (1400×800) | layout, borders, footer | ✅ Clean — no regression |
+| Findings wide | list, detail panel, fix preview | ✅ Clean — detail panel height stable |
+| Help/Settings wide | overlay centering, background | ✅ Clean — centered, no black bars |
+| Search wide | filtering | ✅ Clean — matches highlighted |
+| Report wide | axis bars, export, info | ✅ Clean |
+| Overview medium (640×480) | 2-column reflow | ✅ Clean — no new clipping |
+| Findings medium | list/detail | ✅ Clean — right panel compressed but stable |
+| Fix preview medium | preview diff | ✅ Clean |
+| Report medium | stacked layout | ✅ Clean |
+| Overview tiny (280×200) | minimal fallback | ✅ Text fallback 정상 |
+| Report tiny | minimal report | ✅ Text fallback 정상 |
+
+**회귀: 없음.** `#455` body line truncation이 기존 카드 동작을 깨지 않음. 넓은/중간/좁은 폭 모두 배경/테두리/패널 경계 유지.
