@@ -140,11 +140,10 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
-	return joinRows(
+	sp := spacingFor(LayoutMedium)
+	return joinRowsWithGap(sp.RowGap,
 		hero,
-		"",
 		mainContent,
-		"",
 		timeline,
 	)
 }
@@ -312,16 +311,13 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
-	return joinRows(
+	sp := spacingFor(LayoutUltraWide)
+	return joinRowsWithGap(sp.RowGap,
 		statusLine,
 		hero,
-		"",
 		grid4,
-		"",
 		grid2a,
-		"",
 		grid2b,
-		"",
 		timeline,
 	)
 }
@@ -565,7 +561,7 @@ func (m *overviewModel) renderWhyScoreLowCard(r *domain.ScanResult, theme Theme,
 
 func (m *overviewModel) renderSelectedPreviewCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
 	if len(r.Findings) == 0 {
-		return renderCardBounded("Selected preview", "  No findings to preview.", theme, Rect{W: outerW})
+		return renderCardBounded("Selected preview", "  No findings to preview.", theme, Rect{W: outerW, H: height})
 	}
 
 	var firstFixable *domain.Finding
@@ -682,21 +678,20 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
+	sp := spacingFor(LayoutWide)
 	rows := []string{
 		statusLine,
 		hero,
-		"",
 		mainGrid,
-		"",
 		secondaryGrid,
 	}
 	if state == DashboardClean && slots.Brand.W > 0 {
-		rows = append(rows, "",
+		rows = append(rows,
 			m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.H),
 		)
 	}
-	rows = append(rows, "", timeline)
-	return joinRows(rows...)
+	rows = append(rows, timeline)
+	return joinRowsWithGap(sp.RowGap, rows...)
 }
 
 // ─── Mini dashboard ────────────────────────────────────────────────────────

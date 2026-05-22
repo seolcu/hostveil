@@ -484,9 +484,11 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		assertDisplayWidthLTE(topRow, width)
 	}
 
+	sp := spacingFor(lm)
+
 	// Empty state: no bottom cards needed
 	if !hasBottom {
-		return filterBar + "\n" + topRow
+		return joinRowsWithGap(sp.RowGap, filterBar, topRow)
 	}
 
 	// Mid row: filter + context cards into fixed-height slots
@@ -497,12 +499,10 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
 		theme, slots.Guidance.W, slots.Guidance.H)
 
-	return joinRows(
+	return joinRowsWithGap(sp.RowGap,
 		filterBar,
 		topRow,
-		"",
 		midRow,
-		"",
 		guidance,
 	)
 }
@@ -514,6 +514,7 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 
 	hasBottom := len(m.list) > 0
 	slots := FindingsSlots(width, height, LayoutUltraWide, hasBottom)
+	sp := spacingFor(LayoutUltraWide)
 
 	filterBar := m.renderFilterBar(theme, width)
 	filterLines := strings.Count(filterBar, "\n") + 1
@@ -552,7 +553,7 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 	}
 
 	if !hasBottom {
-		return filterBar + "\n" + topRow
+		return joinRowsWithGap(sp.RowGap, filterBar, topRow)
 	}
 
 	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.W, slots.MidLeft.H)
@@ -566,10 +567,9 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
 		theme, slots.Guidance.W, slots.Guidance.H)
 
-	return joinRows(
+	return joinRowsWithGap(sp.RowGap,
 		filterBar,
 		topRow,
-		"",
 		bottomCards,
 		guidance,
 	)
@@ -580,25 +580,27 @@ func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height 
 
 	cols := splitColumns(width, 2, 2)
 
-	left := m.renderCleanFindingsPanel(theme, cols[0], 0)
-	right := m.renderCleanScanMeaningPanel(theme, cols[1], 0)
+	left := m.renderCleanFindingsPanel(theme, cols[0], 7)
+	right := m.renderCleanScanMeaningPanel(theme, cols[1], 7)
 	topRow := joinColumns([]string{left, right}, cols, 2)
 
-	covCard := m.renderCleanScanCoverageCard(theme, cols[0])
-	stepsCard := m.renderCleanNextStepsCard(theme, cols[1])
+	covCard := m.renderCleanScanCoverageCard(theme, cols[0], 6)
+	stepsCard := m.renderCleanNextStepsCard(theme, cols[1], 6)
 	bottomCards := joinColumns([]string{covCard, stepsCard}, cols, 2)
 
-	guidance := m.renderCleanScanGuidanceStrip(theme, width)
+	guidance := renderInfoStrip("Clean scan guidance",
+		"No findings were detected. Keep reports for audit/history, and rescan after configuration or Docker changes.",
+		theme, width, 3)
 
 	if debugLayout {
 		assertDisplayWidthLTE(topRow, width)
 		assertDisplayWidthLTE(bottomCards, width)
 	}
 
-	return joinRows(
+	sp := spacingFor(LayoutUltraWide)
+	return joinRowsWithGap(sp.RowGap,
 		filterBar,
 		topRow,
-		"",
 		bottomCards,
 		guidance,
 	)
@@ -636,7 +638,7 @@ func (m *findingsModel) renderCleanScanMeaningPanel(theme Theme, outerW, height 
 	return renderCardBounded("Clean scan meaning", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
 }
 
-func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, outerW int) string {
+func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, outerW, height int) string {
 	var lines []string
 	addLine := func(k, v string) {
 		lines = append(lines, fmt.Sprintf("  %-20s %s", k+":", v))
@@ -647,22 +649,17 @@ func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, outerW int) str
 	addLine("Image checks", "available")
 	addLine("Secret checks", "available")
 
-	return renderCardBounded("Scan coverage", strings.Join(lines, "\n"), theme, Rect{W: outerW})
+	return renderCardBounded("Scan coverage", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
 }
 
-func (m *findingsModel) renderCleanNextStepsCard(theme Theme, outerW int) string {
+func (m *findingsModel) renderCleanNextStepsCard(theme Theme, outerW, height int) string {
 	steps := []string{
 		"1. Press 3 to export a clean report.",
 		"2. Add docker-compose.yml to scan service exposure and permissions.",
 		"3. Run Hostveil again after adding or changing services.",
 	}
 	joined := "  " + strings.Join(steps, "\n  ")
-	return renderCardBounded("Next steps", joined, theme, Rect{W: outerW})
-}
-
-func (m *findingsModel) renderCleanScanGuidanceStrip(theme Theme, outerW int) string {
-	text := "No findings were detected. Keep reports for audit/history, and rescan after configuration or Docker changes."
-	return renderCardBounded("Clean scan guidance", "  "+text, theme, Rect{W: outerW})
+	return renderCardBounded("Next steps", joined, theme, Rect{W: outerW, H: height})
 }
 
 func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int) string {

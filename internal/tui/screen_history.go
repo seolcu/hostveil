@@ -103,8 +103,7 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 		assertDisplayWidthLTE(row3, rootW)
 	}
 
-	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
-	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
+	return joinRowsWithGap(sp.RowGap, row1, row2, row3, guidance)
 }
 
 func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
@@ -273,8 +272,7 @@ func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width
 		assertDisplayWidthLTE(row3, rootW)
 	}
 
-	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
-	return row1 + rowGap + row2 + rowGap + row3 + rowGap + guidance
+	return joinRowsWithGap(sp.RowGap, row1, row2, row3, guidance)
 }
 
 // ─── Medium Report (default) ────────────────────────────────────────────────
@@ -390,11 +388,11 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 		card4 = renderCardBounded("", strings.Join(infoLines, "\n"), theme, Rect{W: width, H: cardH})
 	}
 
-	rowGap := "\n" + strings.Repeat("\n", sp.RowGap)
-	content := card1 + rowGap + card2 + rowGap + card3
+	cards := []string{card1, card2, card3}
 	if card4 != "" {
-		content += rowGap + card4
+		cards = append(cards, card4)
 	}
+	content := joinRowsWithGap(sp.RowGap, cards...)
 
 	style := lipgloss.NewStyle().
 		Width(width).

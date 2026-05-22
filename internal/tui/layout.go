@@ -427,6 +427,26 @@ func joinRows(rows ...string) string {
 	return strings.Join(nonEmpty, "\n")
 }
 
+// joinRowsWithGap joins non-empty content blocks with a fixed number of
+// blank lines between them. gap=0 produces no blank lines (direct \n join).
+func joinRowsWithGap(gap int, rows ...string) string {
+	var parts []string
+	for _, r := range rows {
+		trimmed := strings.TrimRight(r, "\n")
+		if trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	if gap <= 0 {
+		return strings.Join(parts, "\n")
+	}
+	sep := "\n" + strings.Repeat("\n", gap)
+	return strings.Join(parts, sep)
+}
+
 func stripANSI(s string) string {
 	var b strings.Builder
 	i := 0
