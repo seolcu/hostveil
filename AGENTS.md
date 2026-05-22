@@ -787,3 +787,54 @@ At 400×300 browser viewport → ttyd terminal roughly 32-39 cols × 8-10 rows:
 - **이슈 자동 닫기 금지**: 커밋 메시지에 `Fixes #N` / `Closes #N` 키워드를 넣으면 GitHub이 자동으로 이슈를 닫음. 앞으로는 이슈 번호만 언급하고 `Fixes`/`Closes` 접두사를 붙이지 말 것.
 - **joinRowsWithGap contract**: `gap`은 블록 사이의 **빈 줄 개수** (0=직접 연결, 1=한 줄 공백). `joinRows`와 달리 `""`를 필터링하지 않고 `TrimRight("\n")` 후 non-empty 체크.
 - **ReportSlots height budget**: #460은 #459와 별도로 처리해야 함. ReportSlots가 RowGap을 height 계산에 포함하지 않아 medium viewport에서 하단 card가 clipping됨.
+
+## QA Session 2026-05-22 (Commits 05d3b4e + e301265)
+
+### #460 — ReportSlots row gap height budget (05d3b4e)
+
+**Changes (1 file, +37/-5):**
+
+| File | Change |
+|------|--------|
+| `layout.go` | `ReportSlots()` — subtract `gapH * 3` from usable height before dividing into 3 rows; correct X coordinates with `sp.ColGap` for second column; fallback to gapH=0 when usableH < 9 |
+
+Before: `row1H = h/3, row2H = h/3, row3H = h/3 - 3` — no gap budget, caused guidance strip clipping at many viewports.
+After: `usableH = h - guidH - gapH*3; row1H = row2H = usableH/3; row3H = usableH - row1H - row2H` — total rendered height fits within content area.
+
+### Medium Report card height overflow fix (e301265)
+
+**Same problem as #460** but in the medium report path (`renderMediumReport()`) which does its own height calculation instead of using `ReportSlots()`.
+
+**Changes (1 file, +8/-2):**
+
+| File | Change |
+|------|--------|
+| `screen_history.go` | `renderMediumReport()` — subtract `gapH * (nCards-1)` from available height before dividing evenly; fallback to gapH=0 when `usableH < nCards*3` |
+
+Before: `cardH = height / nCards` — didn't account for RowGap lines between cards, causing 3-line (4 cards) or 2-line (3 cards) overflow.
+After: `usableH = height - gapH*(nCards-1); cardH = usableH / nCards` — total rendered height fits within content area.
+
+### QA (browser, 5 screenshots in `screenshots/20260522_143130/`):
+
+| Shot | Viewport | Result |
+|------|----------|--------|
+| overview-wide | 1400×800 | ✅ Clean |
+| report-wide | 1400×800 | ✅ Clean — guidance strip visible, no overflow |
+| report-medium | 640×480 | ✅ Clean — lower info card visible again (was clipped before) |
+| overview-medium | 640×480 | ✅ Clean |
+| findings-medium | 640×480 | ✅ Clean |
+
+### Remaining open issues
+
+| # | Title | Status |
+|---|-------|--------|
+| 459 | Unify vertical row gap handling | ✅ **Implemented** (d6c1a72), commit message closed it, reopened per policy |
+| 460 | ReportSlots subtract row gaps | ✅ **Implemented** (05d3b4e), commit message closed it, reopened per policy |
+| 461 | Replace unsafe ANSI truncation in joinColumns | ❌ Pending |
+| 462 | Distribute Dashboard extra height | ❌ Pending |
+| 463 | Fix gap mismatch in rectsFromWidths | ✅ **Implemented as side effect of #460** (05d3b4e), reopened per policy |
+
+### Re-learned lesson
+
+- **"Closes #N" / "Fixes #N" 이외에도 "Closes: #N" 형식도 GitHub이 인식하여 자동 닫음**. 이슈 번호를 언급할 때는 `#N`만 적고 `Fixes`/`Closes`/`Resolves` 접두사를 절대 붙이지 말 것.
+- `#463`(X 좌표 gap 불일치)은 #460 수정 중 `cols[0] + sp.ColGap`으로 함께 해결됨. 별도 작업 불필요.
