@@ -288,7 +288,13 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	if !hasInfo {
 		nCards = 3
 	}
-	cardH := height / nCards
+	gapH := max(0, sp.RowGap)
+	usableH := height - gapH*(nCards-1)
+	if usableH < nCards*3 {
+		usableH = height
+		gapH = 0
+	}
+	cardH := usableH / nCards
 
 	// Card 1: Current scan summary
 	var axisRows []string
@@ -392,7 +398,7 @@ func (m *historyModel) renderMediumReport(r *domain.ScanResult, theme Theme, wid
 	if card4 != "" {
 		cards = append(cards, card4)
 	}
-	content := joinRowsWithGap(sp.RowGap, cards...)
+	content := joinRowsWithGap(gapH, cards...)
 
 	style := lipgloss.NewStyle().
 		Width(width).
