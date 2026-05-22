@@ -15,7 +15,8 @@ permissions:
 
 jobs:
   tui-ux-checks:
-    name: Automated TUI UX scenario validation
+    name: Automated TUI UX scenario validation [DISABLED - tui-ux-check.sh not found]
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
