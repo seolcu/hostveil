@@ -9,13 +9,13 @@ const (
 )
 
 type FixAction struct {
-	Type    FixActionType
-	Service string
-	Summary string
-	Diff    string
-	Path    string
-	Content string
-	Command string
+	Type     FixActionType
+	Service  string
+	Summary  string
+	Diff     string
+	Path     string
+	Content  string
+	Command  string
 	Rollback string
 }
 

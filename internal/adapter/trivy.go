@@ -36,7 +36,7 @@ type trivyReport struct {
 }
 
 type trivyResult struct {
-	Target      string       `json:"Target"`
+	Target          string      `json:"Target"`
 	Vulnerabilities []trivyVuln `json:"Vulnerabilities"`
 }
 
@@ -75,11 +75,11 @@ func parseTrivyOutput(output, image string) ([]domain.Finding, error) {
 				WhyRisky:    "Vulnerability " + v.VulnerabilityID + " affects " + v.PkgName + " (" + v.InstalledVersion + "). Fixed in " + v.FixedVersion + ".",
 				HowToFix:    "Update " + v.PkgName + " to version " + v.FixedVersion + " or later. Rebuild the image with the updated base image.",
 				Evidence: map[string]string{
-					"vulnerability_id":  v.VulnerabilityID,
-					"package":           v.PkgName + "@" + v.InstalledVersion,
-					"fixed_version":     v.FixedVersion,
-					"severity":          v.Severity,
-					"url":               v.PrimaryURL,
+					"vulnerability_id": v.VulnerabilityID,
+					"package":          v.PkgName + "@" + v.InstalledVersion,
+					"fixed_version":    v.FixedVersion,
+					"severity":         v.Severity,
+					"url":              v.PrimaryURL,
 				},
 				Remediation: domain.RemediationAuto,
 			})

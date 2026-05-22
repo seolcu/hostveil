@@ -197,7 +197,7 @@ func TestAppCompactNavigationDoesNotPanic(t *testing.T) {
 			{ID: "F-002", Title: "Docker socket is accessible to non-root users", Severity: domain.SeverityHigh, Remediation: domain.RemediationReview},
 		},
 		ScoreReport: domain.ScoreReport{Overall: 2},
-		Metadata: domain.ScanMetadata{ScanMode: domain.ScanModeLive},
+		Metadata:    domain.ScanMetadata{ScanMode: domain.ScanModeLive},
 	}
 
 	for _, size := range []struct{ w, h int }{

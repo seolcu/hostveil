@@ -29,7 +29,7 @@ func (a *DockleAdapter) Run(image string) ([]domain.Finding, error) {
 }
 
 type dockleReport struct {
-	Summary dockleSummary `json:"summary"`
+	Summary dockleSummary  `json:"summary"`
 	Details []dockleDetail `json:"details"`
 }
 
@@ -41,10 +41,10 @@ type dockleSummary struct {
 }
 
 type dockleDetail struct {
-	Code    string `json:"code"`
-	Title   string `json:"title"`
-	Level   string `json:"level"`
-	Alerts  []string `json:"alerts"`
+	Code   string   `json:"code"`
+	Title  string   `json:"title"`
+	Level  string   `json:"level"`
+	Alerts []string `json:"alerts"`
 }
 
 func parseDockleOutput(output, image string) ([]domain.Finding, error) {

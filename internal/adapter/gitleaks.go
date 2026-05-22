@@ -68,8 +68,8 @@ func parseGitleaksOutput(output, path string) ([]domain.Finding, error) {
 		}
 
 		evidence := map[string]string{
-			"file":  l.File,
-			"line":  itoa(l.StartLine),
+			"file": l.File,
+			"line": itoa(l.StartLine),
 		}
 
 		findings = append(findings, domain.Finding{

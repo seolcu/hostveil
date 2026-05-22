@@ -20,8 +20,8 @@ type HostEdit struct {
 
 // ShellCommand defines a shell command to run on the host.
 type ShellCommand struct {
-	Command string
-	Summary string
+	Command  string
+	Summary  string
 	Rollback string
 }
 
@@ -39,9 +39,9 @@ func PrepareHostEdit(path, summary, original, updated string, mode os.FileMode) 
 // PrepareShellCommand creates a FixAction for a shell command.
 func PrepareShellCommand(cmd, summary, rollback string) FixAction {
 	return FixAction{
-		Type:    ActionShellCommand,
-		Summary: summary,
-		Command: cmd,
+		Type:     ActionShellCommand,
+		Summary:  summary,
+		Command:  cmd,
 		Rollback: rollback,
 	}
 }
@@ -420,5 +420,3 @@ func getDockleFixCommand(code, svc string) string {
 		return fmt.Sprintf("echo 'Review Dockle CIS finding for %s and apply recommended fix' >> DOCKLE_FIXES.md", svc)
 	}
 }
-
-

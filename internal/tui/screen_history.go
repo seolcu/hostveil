@@ -10,9 +10,9 @@ import (
 )
 
 type historyModel struct {
-	scroll           int
-	exportCursor     int
-	lastExportPath   string
+	scroll         int
+	exportCursor   int
+	lastExportPath string
 }
 
 type exportFormatItem struct {

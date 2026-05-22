@@ -25,14 +25,14 @@ func (r *RuntimeRule) Scan(svc compose.Service, name string, cf *compose.Compose
 		}
 		if !hasNoNewPriv {
 			findings = append(findings, domain.Finding{
-				ID:       "runtime.no_new_privileges_disabled",
-				Axis:     domain.AxisExcessivePermissions,
-				Severity: domain.SeverityLow,
-				Scope:    domain.ScopeService,
-				Source:   domain.SourceNativeCompose,
-				Subject:  name,
-				Service:  name,
-				Title:    "Container allows privilege escalation",
+				ID:          "runtime.no_new_privileges_disabled",
+				Axis:        domain.AxisExcessivePermissions,
+				Severity:    domain.SeverityLow,
+				Scope:       domain.ScopeService,
+				Source:      domain.SourceNativeCompose,
+				Subject:     name,
+				Service:     name,
+				Title:       "Container allows privilege escalation",
 				Description: name + " does not drop all capabilities or set no-new-privileges.",
 				WhyRisky: "Without dropping unnecessary capabilities, a compromised container " +
 					"can escalate privileges via setuid binaries or kernel exploits.",
@@ -54,14 +54,14 @@ func (r *RuntimeRule) Scan(svc compose.Service, name string, cf *compose.Compose
 		}
 		if !hasWritableRoot {
 			findings = append(findings, domain.Finding{
-				ID:       "runtime.writable_rootfs",
-				Axis:     domain.AxisExcessivePermissions,
-				Severity: domain.SeverityLow,
-				Scope:    domain.ScopeService,
-				Source:   domain.SourceNativeCompose,
-				Subject:  name,
-				Service:  name,
-				Title:    "Container root filesystem is writable",
+				ID:          "runtime.writable_rootfs",
+				Axis:        domain.AxisExcessivePermissions,
+				Severity:    domain.SeverityLow,
+				Scope:       domain.ScopeService,
+				Source:      domain.SourceNativeCompose,
+				Subject:     name,
+				Service:     name,
+				Title:       "Container root filesystem is writable",
 				Description: name + " does not set read_only: true.",
 				WhyRisky: "A writable root filesystem lets compromised containers " +
 					"modify binaries, write to /tmp, and persist changes.",

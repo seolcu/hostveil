@@ -37,10 +37,10 @@ const (
 )
 
 type serviceDetection struct {
-	kind    ServiceKind
-	images  []string
-	names   []string
-	label   string
+	kind   ServiceKind
+	images []string
+	names  []string
+	label  string
 }
 
 var serviceDetections = []serviceDetection{
@@ -200,7 +200,9 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			Description: "%s does not set POSTGRES_PASSWORD.",
 			WhyRisky:    "A database without authentication allows anyone who can reach it to read and write all data.",
 			HowToFix:    "Set a strong POSTGRES_PASSWORD in the environment.",
-			Condition:   func(svc compose.Service) bool { return !hasEnv(svc, "POSTGRES_PASSWORD") && !hasEnv(svc, "POSTGRES_PASSWORD_FILE") },
+			Condition: func(svc compose.Service) bool {
+				return !hasEnv(svc, "POSTGRES_PASSWORD") && !hasEnv(svc, "POSTGRES_PASSWORD_FILE")
+			},
 		},
 	},
 

@@ -82,7 +82,7 @@ func (r *PermissionsRule) Scan(svc compose.Service, name string, cf *compose.Com
 				"which is often excessive.",
 			WhyRisky: "SYS_ADMIN is a wide cap that permits mount, " +
 				"namespace, and kernel operations. Most services don't need it.",
-			HowToFix: "Remove SYS_ADMIN from cap_add and add only specific capabilities needed.",
+			HowToFix:    "Remove SYS_ADMIN from cap_add and add only specific capabilities needed.",
 			Evidence:    map[string]string{"cap_add": strings.Join(svc.CapAdd, ", ")},
 			Remediation: domain.RemediationManual,
 		})

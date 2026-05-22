@@ -46,7 +46,7 @@ func (r Rect) InnerW() int { return max(0, r.W-2) }
 func (r Rect) InnerH() int { return max(0, r.H-2) }
 
 // Inner returns the inner Rect with borders removed.
-func (r Rect) Inner() Rect { return Rect{r.X + 1, r.Y + 1, max(0, r.W - 2), max(0, r.H - 2)} }
+func (r Rect) Inner() Rect { return Rect{r.X + 1, r.Y + 1, max(0, r.W-2), max(0, r.H-2)} }
 
 // Fit reports whether r fits within the given terminal dimensions (no overflow).
 func (r Rect) Fit(termW, termH int) bool {
@@ -55,12 +55,12 @@ func (r Rect) Fit(termW, termH int) bool {
 
 // Spacing defines consistent gap/padding values for a given layout mode.
 type Spacing struct {
-	OuterX   int // left/right outer margin
-	OuterY   int // top/bottom outer margin
-	RowGap   int // number of blank lines between rows
-	ColGap   int // number of spaces between columns
-	CardPadX int // left/right padding inside cards (beyond border)
-	CardPadY int // top/bottom padding inside cards (beyond border)
+	OuterX    int // left/right outer margin
+	OuterY    int // top/bottom outer margin
+	RowGap    int // number of blank lines between rows
+	ColGap    int // number of spaces between columns
+	CardPadX  int // left/right padding inside cards (beyond border)
+	CardPadY  int // top/bottom padding inside cards (beyond border)
 	FooterGap int // blank lines between last content row and footer
 }
 
@@ -905,7 +905,6 @@ func RenderPanel(rect Rect, title, content string, theme Theme, overflow Overflo
 	card := renderCardBounded(title, content, theme, rect)
 	return card
 }
-
 
 // ─── Load average formatting ─────────────────────────────────────────────
 

@@ -103,9 +103,9 @@ func TestServiceAwareFindsVaultwardenIssues(t *testing.T) {
 				Image: "vaultwarden/server:latest",
 				Ports: []compose.Port{{Published: 80, Target: 80, HostIP: "0.0.0.0"}},
 				Environment: map[string]string{
-					"DOMAIN":           "http://vault.example.com",
-					"SIGNUPS_ALLOWED":  "true",
-					"ADMIN_TOKEN":      "lab-admin-token",
+					"DOMAIN":          "http://vault.example.com",
+					"SIGNUPS_ALLOWED": "true",
+					"ADMIN_TOKEN":     "lab-admin-token",
 				},
 			},
 		},

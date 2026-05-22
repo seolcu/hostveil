@@ -7,13 +7,13 @@ import (
 )
 
 type jsonOutput struct {
-	Version      string            `json:"version"`
-	Overall      uint8             `json:"overall_score"`
-	Findings     []jsonFinding     `json:"findings,omitempty"`
-	Severity     map[string]int    `json:"severity_counts"`
-	AxisScores   map[string]uint8  `json:"axis_scores"`
-	Warnings     []string          `json:"warnings,omitempty"`
-	InfoMessages []string          `json:"info_messages,omitempty"`
+	Version      string           `json:"version"`
+	Overall      uint8            `json:"overall_score"`
+	Findings     []jsonFinding    `json:"findings,omitempty"`
+	Severity     map[string]int   `json:"severity_counts"`
+	AxisScores   map[string]uint8 `json:"axis_scores"`
+	Warnings     []string         `json:"warnings,omitempty"`
+	InfoMessages []string         `json:"info_messages,omitempty"`
 }
 
 type jsonFinding struct {

@@ -44,14 +44,14 @@ type appModel struct {
 	tick          int
 	keys          keyMap
 
-	theme       Theme
-	overview    *overviewModel
-	findings    *findingsModel
-	history     *historyModel
-	settings    *settingsModel
-	help        *helpModel
+	theme    Theme
+	overview *overviewModel
+	findings *findingsModel
+	history  *historyModel
+	settings *settingsModel
+	help     *helpModel
 
-	toast   *component.Toast
+	toast *component.Toast
 }
 
 type keyMap struct {
@@ -593,8 +593,6 @@ func (m *appModel) renderFallbackState(t Theme, width, height int) string {
 
 	return style.Render(strings.Join(lines, "\n"))
 }
-
-
 
 func doExport(r *domain.ScanResult, format string) (string, string) {
 	var data string

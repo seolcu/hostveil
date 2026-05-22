@@ -1,9 +1,9 @@
 package domain
 
 type ScoreReport struct {
-	Overall          uint8
-	AxisScores       map[Axis]uint8
-	SeverityCounts   map[Severity]int
+	Overall        uint8
+	AxisScores     map[Axis]uint8
+	SeverityCounts map[Severity]int
 }
 
 func (s *ScoreReport) CountForSeverity(key string) int {

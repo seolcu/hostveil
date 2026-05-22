@@ -173,7 +173,7 @@ func (m *settingsModel) Render(theme Theme, width, height int) string {
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)))
 
 	// ── Height-aware clipping ──────────────────────────────────────────────
-	// Reserve fixed lines: title(1) + blank(1) + Theme(1) + themeRows + 
+	// Reserve fixed lines: title(1) + blank(1) + Theme(1) + themeRows +
 	// blank(1) + Adapters(1) + adapterLines + blank(1) + hint(1) + padding(2) + border(2)
 	maxContentH := height - 8
 

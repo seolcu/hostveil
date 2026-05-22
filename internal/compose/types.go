@@ -44,6 +44,6 @@ type Volume struct {
 }
 
 type Network struct {
-	Driver     string
-	External   bool
+	Driver   string
+	External bool
 }

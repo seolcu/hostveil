@@ -49,14 +49,14 @@ func (r *SensitiveRule) Scan(svc compose.Service, name string, cf *compose.Compo
 
 			if isDefault {
 				findings = append(findings, domain.Finding{
-					ID:       "sensitive.default_secret",
-					Axis:     domain.AxisSensitiveData,
-					Severity: domain.SeverityHigh,
-					Scope:    domain.ScopeService,
-					Source:   domain.SourceNativeCompose,
-					Subject:  name,
-					Service:  name,
-					Title:    "Default or weak credential detected in environment",
+					ID:          "sensitive.default_secret",
+					Axis:        domain.AxisSensitiveData,
+					Severity:    domain.SeverityHigh,
+					Scope:       domain.ScopeService,
+					Source:      domain.SourceNativeCompose,
+					Subject:     name,
+					Service:     name,
+					Title:       "Default or weak credential detected in environment",
 					Description: name + " sets " + key + " to a default or weak value.",
 					WhyRisky: "Default credentials are the first thing attackers try. " +
 						"They are published in documentation and easily guessable.",
@@ -69,14 +69,14 @@ func (r *SensitiveRule) Scan(svc compose.Service, name string, cf *compose.Compo
 			} else {
 				// Inline secret (not necessarily weak)
 				findings = append(findings, domain.Finding{
-					ID:       "sensitive.inline_secret",
-					Axis:     domain.AxisSensitiveData,
-					Severity: domain.SeverityLow,
-					Scope:    domain.ScopeService,
-					Source:   domain.SourceNativeCompose,
-					Subject:  name,
-					Service:  name,
-					Title:    "Inline secret detected in environment",
+					ID:          "sensitive.inline_secret",
+					Axis:        domain.AxisSensitiveData,
+					Severity:    domain.SeverityLow,
+					Scope:       domain.ScopeService,
+					Source:      domain.SourceNativeCompose,
+					Subject:     name,
+					Service:     name,
+					Title:       "Inline secret detected in environment",
 					Description: name + " sets " + key + " inline in the compose file.",
 					WhyRisky: "Inline secrets are visible to anyone with access to the compose file, " +
 						"leak into version control, and are harder to rotate.",

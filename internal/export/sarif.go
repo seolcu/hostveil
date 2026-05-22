@@ -14,8 +14,8 @@ type sarifLog struct {
 }
 
 type sarifRun struct {
-	Tool     sarifTool      `json:"tool"`
-	Results  []sarifResult  `json:"results"`
+	Tool    sarifTool     `json:"tool"`
+	Results []sarifResult `json:"results"`
 }
 
 type sarifTool struct {
@@ -23,16 +23,16 @@ type sarifTool struct {
 }
 
 type sarifDriver struct {
-	Name           string              `json:"name"`
-	SemanticVersion string             `json:"semanticVersion"`
-	Rules          []sarifRule         `json:"rules"`
+	Name            string      `json:"name"`
+	SemanticVersion string      `json:"semanticVersion"`
+	Rules           []sarifRule `json:"rules"`
 }
 
 type sarifRule struct {
-	ID              string          `json:"id"`
-	ShortDescription sarifMessage   `json:"shortDescription"`
-	FullDescription  sarifMessage   `json:"fullDescription"`
-	Properties      sarifProperties `json:"properties"`
+	ID               string          `json:"id"`
+	ShortDescription sarifMessage    `json:"shortDescription"`
+	FullDescription  sarifMessage    `json:"fullDescription"`
+	Properties       sarifProperties `json:"properties"`
 }
 
 type sarifProperties struct {
@@ -71,10 +71,10 @@ func SARIF(r *domain.ScanResult) (string, error) {
 		if !seen[f.ID] {
 			seen[f.ID] = true
 			rules = append(rules, sarifRule{
-				ID: f.ID,
+				ID:               f.ID,
 				ShortDescription: sarifMessage{Text: f.Title},
 				FullDescription:  sarifMessage{Text: f.Description},
-				Properties:      sarifProperties{Severity: f.Severity.String()},
+				Properties:       sarifProperties{Severity: f.Severity.String()},
 			})
 		}
 
@@ -109,9 +109,9 @@ func SARIF(r *domain.ScanResult) (string, error) {
 			{
 				Tool: sarifTool{
 					Driver: sarifDriver{
-						Name:           "hostveil",
+						Name:            "hostveil",
 						SemanticVersion: "1.0.0",
-						Rules:          rules,
+						Rules:           rules,
 					},
 				},
 				Results: results,

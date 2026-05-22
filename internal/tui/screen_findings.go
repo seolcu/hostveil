@@ -40,9 +40,9 @@ type findingsModel struct {
 }
 
 type filterRow struct {
-	label    string
-	value    string
-	options  []string
+	label   string
+	value   string
+	options []string
 }
 
 var filterPanelRows = []filterRow{

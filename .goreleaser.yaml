@@ -5,7 +5,7 @@
 #   hostveil-v{Version}-{Os}-{Arch}.tar.gz + .sha256 checksum files
 # Uploads everything to GitHub Releases automatically.
 
-version: 2
+version: 1
 project_name: hostveil
 
 before:

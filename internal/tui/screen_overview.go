@@ -112,14 +112,14 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 		col2w := []int{slots.Row1[0].W, slots.Row1[1].W}
 		if state == DashboardClean {
 			row1 := []string{
-			m.renderAreaHealthCardScore(r, theme, slots.Row1[0].W, slots.Row1[0].H, LayoutMedium),
-			m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
+				m.renderAreaHealthCardScore(r, theme, slots.Row1[0].W, slots.Row1[0].H, LayoutMedium),
+				m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
 			mainContent = joinColumns(row1, col2w, 2)
 		} else {
 			row1 := []string{
-			m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
-			m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
+				m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
+				m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
 			mainContent = joinColumns(row1, col2w, 2)
 		}
@@ -955,11 +955,11 @@ func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme T
 	var rows []string
 
 	type svcInfo struct {
-		name        string
-		findings    int
-		autoFix     int
-		reviewFix   int
-		manualFix   int
+		name      string
+		findings  int
+		autoFix   int
+		reviewFix int
+		manualFix int
 	}
 	svcMap := make(map[string]*svcInfo)
 	var svcOrder []string

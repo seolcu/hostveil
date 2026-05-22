@@ -7,8 +7,8 @@ import (
 )
 
 type StatusBar struct {
-	selectedIdx int
-	totalCount  int
+	selectedIdx   int
+	totalCount    int
 	activeFilters string
 	statusText    string
 }

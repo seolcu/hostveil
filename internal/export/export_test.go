@@ -40,8 +40,8 @@ func makeTestResult() *domain.ScanResult {
 		ScoreReport: domain.ScoreReport{
 			Overall: 85,
 			AxisScores: map[domain.Axis]uint8{
-				domain.AxisHostHardening:       80,
-				domain.AxisUpdateSupplyChain:   90,
+				domain.AxisHostHardening:     80,
+				domain.AxisUpdateSupplyChain: 90,
 			},
 			SeverityCounts: map[domain.Severity]int{
 				domain.SeverityCritical: 1,
