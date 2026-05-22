@@ -375,19 +375,7 @@ func joinColumns(columns []string, widths []int, gap int) string {
 			line := colLines[colIdx][lineIdx]
 			lw := visibleWidth(line)
 			if lw > widths[colIdx] {
-				// Truncate over-wide lines — clip visible characters, preserving ANSI
-				truncated := ""
-				seen := 0
-				for _, r := range line {
-					if seen >= widths[colIdx] {
-						break
-					}
-					truncated += string(r)
-					if r != '\x1b' {
-						seen++
-					}
-				}
-				line = truncated
+				line = truncateWidth(line, widths[colIdx])
 				if debugLayout {
 					fmt.Fprintf(os.Stderr, "[layout] joinColumns: col %d overflow %d > %d, truncated\n", colIdx, lw, widths[colIdx])
 				}
