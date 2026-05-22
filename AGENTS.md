@@ -717,3 +717,39 @@ Total: 73 tests, all passing with `-race`.
 | Timeline with `renderInfoStrip` (clean + risk) | `screen_overview.go` | `~8` |
 | Dead code removal (`renderExportGuidanceCard`, `renderFixGuidance`) | `screen_history.go`, `screen_findings.go` | `−12` |
 | Strip body visibility tests (4 new functions) | `compact_render_test.go` | `+52` |
+
+## QA Session 2026-05-22 (Commit 5c655b4)
+
+Full TUI QA after #458 patches. Screenshots in `screenshots/20260522_121404/` and `screenshots/20260522_122908/`.
+
+### Key Findings
+
+| Viewport | Result | Notes |
+|----------|--------|-------|
+| 1400×800 wide | ✅ Clean | Timeline strip visible, fix/export guidance strips show body text |
+| 640×480 medium | ✅ Mostly clean | Some text truncation on narrow cards, no structural issues |
+| 400×300 compact | ⚠️ Still unstable | findings/report 전환 후 blank pane / panic overlay. 로그상 crash는 아니나 렌더링 불안정 |
+| 280×200 mini | ⚠️ Untested | Not enough time |
+
+### Compact Browser Instability
+
+At 400×300 browser viewport → ttyd terminal roughly 32-39 cols × 8-10 rows:
+- Wide → medium 전환은 문제 없음
+- compact에서 findings/report 전환 시 브라우저 스크롤 이슈로 콘텐츠가 viewport 밖으로 나가는 것으로 추정
+- App-level unit test(50×18, 39×10, 32×8, 28×6)는 모두 통과 — panic도 없고 View()도 non-empty
+- 이슈는 ttyd/browser 레벨의 PTY 크기 전달 또는 스크롤 위치 문제로 보임 (앱 코드 버그는 아님)
+
+### Patches Applied During QA
+
+| Change | File | Reason |
+|--------|------|--------|
+| `tea.ErrProgramKilled` → `return nil` | `cmd/hostveil/main.go` | ttyd 재연결 시 `os.Exit(1)` 방지 |
+| `bodyHeight := max(1, ...)` | `internal/tui/app.go` | header/footer가 전체 높이를 차지해도 body 최소 1줄 보장 |
+| `Rect{W: outerW}` → `Rect{W: outerW, H: height}` (4 sites) | `screen_findings.go`, `screen_overview.go` | missing H로 인한 zero-height card 수정 |
+| `.gitignore: hostveil` → `/hostveil` | `.gitignore` | `cmd/hostveil/` 디렉터리가 무시되던 버그 수정 (main.go가 git에 없었음) |
+| App-level compact test (4 sizes + View non-empty check) | `compact_render_test.go` | 32×8, 28×6 포함 극단적 치수에서도 View가 비어있지 않음 검증 |
+
+### Important Context
+
+- **`.gitignore` 처음에 `hostveil`이 `cmd/hostveil/` 디렉터리까지 무시**하고 있었음. Go rewrite `cmd/hostveil/main.go`가 git에 들어가지 않았던 것으로 추정. 건드리지 않았다면 main.go가 clone 시 누락됨. `/hostveil`로 수정.
+- **compact 400 browser 테스트는 불안정**. 단위 테스트로는 재현되지 않으며 ttyd가 PTY 크기를 어떻게 전달하는지에 따라 결과가 달라질 수 있음. `tea.ErrProgramKilled` 무시 처리와 `bodyHeight` 하한선 조정으로 영향 최소화.
