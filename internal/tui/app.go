@@ -245,7 +245,7 @@ func (m *appModel) View() string {
 	// Compute exact body height from actual header/footer/toast heights
 	headerH := lineCount(header)
 	footerH := lineCount(footer)
-	bodyHeight := max(0, m.height-headerH-footerH-toastH)
+	bodyHeight := max(1, m.height-headerH-footerH-toastH)
 
 	var body string
 	bodyWidth := m.width

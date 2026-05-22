@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
@@ -186,5 +187,45 @@ func TestFindingsGuidanceTextContent(t *testing.T) {
 	body := stripANSI(got)
 	if !strings.Contains(body, "Auto-fix") {
 		t.Fatalf("expected Fix guidance body to be visible:\n%s", body)
+	}
+}
+
+func TestAppCompactNavigationDoesNotPanic(t *testing.T) {
+	result := &domain.ScanResult{
+		Findings: []domain.Finding{
+			{ID: "F-001", Title: "SSH root login may be permitted", Severity: domain.SeverityHigh, Remediation: domain.RemediationReview},
+			{ID: "F-002", Title: "Docker socket is accessible to non-root users", Severity: domain.SeverityHigh, Remediation: domain.RemediationReview},
+		},
+		ScoreReport: domain.ScoreReport{Overall: 2},
+		Metadata: domain.ScanMetadata{ScanMode: domain.ScanModeLive},
+	}
+
+	for _, size := range []struct{ w, h int }{
+		{50, 18},
+		{39, 10},
+		{32, 8},
+		{28, 6},
+	} {
+		m := NewApp(result)
+		model, _ := m.Update(tea.WindowSizeMsg{Width: size.w, Height: size.h})
+		app := model.(*appModel)
+
+		steps := []tea.KeyMsg{
+			{Type: tea.KeyRunes, Runes: []rune{'2'}},
+			{Type: tea.KeyEnter},
+			{Type: tea.KeyRunes, Runes: []rune{'p'}},
+			{Type: tea.KeyRunes, Runes: []rune{'3'}},
+		}
+
+		for _, key := range steps {
+			var cmd tea.Cmd
+			model, cmd = app.Update(key)
+			_ = cmd
+			app = model.(*appModel)
+			view := app.View()
+			if len(strings.TrimSpace(stripANSI(view))) == 0 {
+				t.Fatalf("View() returned empty at size %dx%d after key %q", size.w, size.h, key.Runes)
+			}
+		}
 	}
 }
