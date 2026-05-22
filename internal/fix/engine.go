@@ -92,48 +92,83 @@ func (e *Engine) Preview() (*FixPlan, error) {
 
 	// Generate text-based compose edit FixActions from findings
 	// so that Apply() can actually modify the YAML file.
+	//
+	// Design: ONE action per service. Each action's Content is the exact
+	// service YAML snippet from the ORIGINAL file (context=0, no neighboring
+	// lines). This avoids the content-chaining bug that corrupted multi-service
+	// compose files when snippets overlapped between services.
 	if len(plan.AutoApplied) > 0 || len(plan.ReviewNeeded) > 0 {
 		data, err := os.ReadFile(e.ComposeFile)
 		if err == nil {
-			content := string(data)
+			origContent := string(data)
+
 			for svc, findings := range byService {
-				// Process auto-remediation findings first, then review-remediation findings.
-				// This ensures auto actions' Content is findable in the original file when
-				// Apply() applies auto-only actions in order.
-				for _, rem := range []domain.RemediationKind{domain.RemediationAuto, domain.RemediationReview} {
-					for _, f := range findings {
-						if f.Source != domain.SourceNativeCompose {
-							continue
-						}
-						if !f.IsFixable() {
-							continue
-						}
-						if f.Remediation != rem {
-							continue
-						}
-						snippet := extractServiceSnippet(content, svc, 5)
-						if snippet == "" {
-							continue
-						}
-						updated := applySnippetFix(snippet, f.ID)
-						if updated != snippet {
-							cmd := "auto"
-							if f.Remediation == domain.RemediationReview {
-								cmd = "review"
-							}
-							plan.Actions = append(plan.Actions, FixAction{
-								Type:    ActionComposeEdit,
-								Service: svc,
-								Summary: f.Title,
-								Content: snippet,
-								Diff:    updated,
-								Command: cmd,
-							})
-							// Update content for subsequent fix actions on the same service
-							content = strings.Replace(content, snippet, updated, 1)
-							snippet = extractServiceSnippet(content, svc, 5)
+				// Extract the ORIGINAL snippet exactly (context=0).
+				// Using context>0 causes snippets to overlap between services
+				// and the find-and-replace approach in Apply() corrupts the file.
+				snippet := extractServiceSnippet(origContent, svc, 0)
+				if snippet == "" {
+					continue
+				}
+
+				// Apply ALL auto-remediation fixes accumulatively
+				autoSnippet := snippet
+				hasAuto := false
+				for _, f := range findings {
+					if f.Source != domain.SourceNativeCompose {
+						continue
+					}
+					if !f.IsFixable() {
+						continue
+					}
+					if f.Remediation == domain.RemediationAuto {
+						updated := applySnippetFix(autoSnippet, f.ID)
+						if updated != autoSnippet {
+							autoSnippet = updated
+							hasAuto = true
 						}
 					}
+				}
+
+				if hasAuto {
+					plan.Actions = append(plan.Actions, FixAction{
+						Type:    ActionComposeEdit,
+						Service: svc,
+						Summary: fmt.Sprintf("Auto-fix %s (%d findings)", svc, countAutoFindings(findings)),
+						Content: snippet,
+						Diff:    autoSnippet,
+						Command: "auto",
+					})
+				}
+
+				// Apply all review-remediation findings for the review diff
+				reviewSnippet := snippet
+				hasReview := false
+				for _, f := range findings {
+					if f.Source != domain.SourceNativeCompose {
+						continue
+					}
+					if !f.IsFixable() {
+						continue
+					}
+					if f.Remediation == domain.RemediationReview {
+						updated := applySnippetFix(reviewSnippet, f.ID)
+						if updated != reviewSnippet {
+							reviewSnippet = updated
+							hasReview = true
+						}
+					}
+				}
+
+				if hasReview {
+					plan.Actions = append(plan.Actions, FixAction{
+						Type:    ActionComposeEdit,
+						Service: svc,
+						Summary: fmt.Sprintf("Review fix for %s", svc),
+						Content: snippet,
+						Diff:    reviewSnippet,
+						Command: "review",
+					})
 				}
 			}
 		}
@@ -143,6 +178,18 @@ func (e *Engine) Preview() (*FixPlan, error) {
 	plan.DiffPreview = e.generateDiff(plan)
 
 	return plan, nil
+}
+
+// countAutoFindings returns the number of auto-remediation compose findings
+// for a service. Used for action summary labels.
+func countAutoFindings(findings []domain.Finding) int {
+	n := 0
+	for _, f := range findings {
+		if f.Source == domain.SourceNativeCompose && f.IsFixable() && f.Remediation == domain.RemediationAuto {
+			n++
+		}
+	}
+	return n
 }
 
 func (e *Engine) Apply() (*FixPlan, error) {
@@ -171,6 +218,8 @@ func (e *Engine) Apply() (*FixPlan, error) {
 	plan.BackupPath = backupPath
 
 	// Apply compose edits (auto-fix only)
+	// Each auto action's Content was extracted from the original file with
+	// context=0, so it uniquely identifies the service's YAML block.
 	content := string(data)
 	for _, a := range plan.Actions {
 		if a.Type == ActionComposeEdit && a.Command == "auto" {
