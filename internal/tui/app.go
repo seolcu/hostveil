@@ -111,8 +111,10 @@ func (m *appModel) showToast(msg string) tea.Cmd {
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		if msg.Width > 0 && msg.Height > 0 {
+			m.width = msg.Width
+			m.height = msg.Height
+		}
 
 	case component.ExpiredMsg:
 		m.toast.Update(msg)
