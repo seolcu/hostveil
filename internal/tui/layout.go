@@ -831,17 +831,49 @@ func rectsFromWidths(widths []int, x, y, h int) []Rect {
 }
 
 // ReportSlots computes fixed slot positions for the Report screen.
+// Row heights are derived from the height budget with row gaps subtracted,
+// so the rendered output never exceeds the content area height.
 func ReportSlots(w, h int, mode LayoutMode) ReportLayout {
 	sp := spacingFor(mode)
-	rootW := w - sp.OuterX*2
+	rootW := max(1, w-sp.OuterX*2)
 	cols := splitColumns(rootW, 2, sp.ColGap)
 	guidH := 3
 
+	gapH := max(0, sp.RowGap)
+	usableH := h - guidH - gapH*3
+	if usableH < 9 {
+		usableH = max(0, h-guidH)
+		gapH = 0
+	}
+
+	row1H := usableH / 3
+	row2H := usableH / 3
+	row3H := usableH - row1H - row2H
+
+	y := 0
+	row1 := []Rect{
+		{X: 0, Y: y, W: cols[0], H: row1H},
+		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row1H},
+	}
+	y += row1H + gapH
+
+	row2 := []Rect{
+		{X: 0, Y: y, W: cols[0], H: row2H},
+		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row2H},
+	}
+	y += row2H + gapH
+
+	row3 := []Rect{
+		{X: 0, Y: y, W: cols[0], H: row3H},
+		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row3H},
+	}
+	y += row3H + gapH
+
 	return ReportLayout{
-		Row1:     []Rect{{X: 0, Y: 0, W: cols[0], H: h / 3}, {X: cols[0], Y: 0, W: cols[1], H: h / 3}},
-		Row2:     []Rect{{X: 0, Y: h/3, W: cols[0], H: h / 3}, {X: cols[0], Y: h/3, W: cols[1], H: h / 3}},
-		Row3:     []Rect{{X: 0, Y: h*2/3, W: cols[0], H: h/3 - guidH}, {X: cols[0], Y: h*2/3, W: cols[1], H: h/3 - guidH}},
-		Guidance: Rect{X: 0, Y: h - guidH, W: rootW, H: guidH},
+		Row1:     row1,
+		Row2:     row2,
+		Row3:     row3,
+		Guidance: Rect{X: 0, Y: y, W: rootW, H: guidH},
 	}
 }
 
