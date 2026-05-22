@@ -667,6 +667,19 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		tertH = 6
 		timelineH = 4
 
+		if state != DashboardClean {
+			used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+			if brandH > 0 {
+				used += brandH + rowGap
+			}
+			used += tertH + rowGap + timelineH
+			extra := max(0, h-used)
+			heroH += min(extra, 2)
+			extra = max(0, extra-2)
+			mainH += min(extra/3*2, 4)
+			secH += min(extra-extra/3*2, 6)
+		}
+
 		y := statusH + rowGap
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 
@@ -707,6 +720,19 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		secH = 5
 		timelineH = 3
 
+		if state != DashboardClean {
+			used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+			if brandH > 0 {
+				used += brandH + rowGap
+			}
+			used += timelineH
+			extra := max(0, h-used)
+			heroH += min(extra, 2)
+			extra = max(0, extra-2)
+			mainH += min(extra/3*2, 4)
+			secH += min(extra-extra/3*2, 6)
+		}
+
 		y := statusH + rowGap
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 
@@ -742,6 +768,13 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		mainH = 7
 		timelineH = 3
 
+		if state != DashboardClean {
+			used := heroH + rowGap*2 + mainH + timelineH
+			extra := max(0, h-used)
+			heroH += min(extra, 2)
+			mainH += min(extra-extra/3*2, 4)
+		}
+
 		y := rowGap
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 		y += heroH + rowGap
@@ -759,6 +792,12 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 	default:
 		return DashboardLayout{}
 	}
+}
+
+func renderInfoStrip(label, text string, theme Theme, outerW, outerH int) string {
+	contentW := max(1, outerW-8)
+	line := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render(label) + "  " + text
+	return renderCardBounded("", "  "+truncateWidth(line, contentW), theme, Rect{W: outerW, H: outerH})
 }
 
 func rectsFromWidths(widths []int, x, y, h int) []Rect {

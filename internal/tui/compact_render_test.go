@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -122,4 +123,68 @@ func TestCompactDashboardRenderer(t *testing.T) {
 	t.Run("compact_clean", func(t *testing.T) {
 		_ = m.renderCompactDashboard(cleanResult, theme, 50)
 	})
+}
+
+func TestRenderInfoStripBodyVisible(t *testing.T) {
+	theme := DefaultTheme()
+	t.Run("h3_shows_body", func(t *testing.T) {
+		got := renderInfoStrip("Test label", "Body text should be visible here", theme, 80, 3)
+		if !strings.Contains(stripANSI(got), "Body text should be visible") {
+			t.Fatalf("expected strip body to be visible at H=3, got:\n%s", got)
+		}
+	})
+	t.Run("h2_still_works", func(t *testing.T) {
+		got := renderInfoStrip("Mini", "x", theme, 40, 2)
+		// H=2: only borders, no content body. Should not panic.
+		_ = got
+	})
+	t.Run("h4_has_extra_space", func(t *testing.T) {
+		got := renderInfoStrip("Wide label", "Longer body content for testing", theme, 80, 4)
+		if !strings.Contains(stripANSI(got), "Longer body content") {
+			t.Fatalf("expected strip body visible at H=4:\n%s", got)
+		}
+	})
+}
+
+func TestTitledCardH3LosesBody(t *testing.T) {
+	theme := DefaultTheme()
+	t.Run("titled_card_h3_loses_body", func(t *testing.T) {
+		got := renderCardBounded("Export guidance", "  JSON for automation", theme, Rect{W: 80, H: 3})
+		body := stripANSI(got)
+		if strings.Contains(body, "JSON for automation") {
+			t.Logf("WARNING: H=3 titled card unexpectedly shows body (expected only title):\n%s", body)
+		}
+	})
+}
+
+func TestExportGuidanceUsesOuterDimensions(t *testing.T) {
+	theme := DefaultTheme()
+	got := renderInfoStrip("Export guidance",
+		"JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing",
+		theme, 80, 3)
+	body := stripANSI(got)
+	if !strings.Contains(body, "JSON for automation") {
+		t.Fatalf("expected export guidance body to be visible, got:\n%s", body)
+	}
+	if !strings.Contains(body, "SARIF") {
+		t.Fatalf("expected SARIF in guidance body:\n%s", body)
+	}
+}
+
+func TestFindingsGuidanceTextContent(t *testing.T) {
+	theme := DefaultTheme()
+	findings := []domain.Finding{
+		{ID: "F-001", Title: "Test", Severity: domain.SeverityCritical, Remediation: domain.RemediationAuto},
+	}
+	m := newFindingsModel(findings)
+	text := m.renderFixGuidanceText(theme, 0)
+	if !strings.Contains(text, "Auto-fix") {
+		t.Fatalf("expected Auto-fix guidance text, got: %s", text)
+	}
+	// Also verify it renders in info strip without panic
+	got := renderInfoStrip("Fix guidance", text, theme, 80, 3)
+	body := stripANSI(got)
+	if !strings.Contains(body, "Auto-fix") {
+		t.Fatalf("expected Fix guidance body to be visible:\n%s", body)
+	}
 }

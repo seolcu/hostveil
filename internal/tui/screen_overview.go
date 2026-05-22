@@ -452,8 +452,7 @@ func (m *overviewModel) renderWorkflowTimelineCardClean(theme Theme, outerW, hei
 		"4 Export report ○",
 		"5 Rescan after changes ○",
 	}
-	line := "  " + strings.Join(steps, "    ")
-	return renderCardBounded("Workflow timeline", line, theme, Rect{W: outerW, H: height})
+	return renderInfoStrip("Timeline", strings.Join(steps, "    "), theme, outerW, height)
 }
 
 // ─── (replaced by renderUltraWideDashboard) ─────────────────────────────────
@@ -615,8 +614,7 @@ func (m *overviewModel) renderWorkflowTimelineCardRisk(theme Theme, width, heigh
 		"4 Apply / rescan ○",
 		"5 Export report ○",
 	}
-	line := "  " + strings.Join(steps, "    ")
-	return renderCardBounded("Workflow timeline", line, theme, Rect{W: width, H: height})
+	return renderInfoStrip("Timeline", strings.Join(steps, "    "), theme, width, height)
 }
 
 // ─── Wide Dashboard (≥120x35) ───────────────────────────────────────────────

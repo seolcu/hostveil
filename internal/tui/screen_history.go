@@ -77,22 +77,24 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 	slots := ReportSlots(width, height, LayoutUltraWide)
 	sp := spacingFor(LayoutUltraWide)
 
-	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH())
-	export := m.renderExportCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH())
+	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].W, slots.Row1[0].H)
+	export := m.renderExportCard(r, theme, slots.Row1[1].W, slots.Row1[1].H)
 	row1w := []int{slots.Row1[0].W, slots.Row1[1].W}
 	row1 := joinColumns([]string{summary, export}, row1w, sp.ColGap)
 
-	areaHealth := m.renderAreaHealthCardReport(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH())
-	scanCov := m.renderScanCoverageCardReport(r, theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH())
+	areaHealth := m.renderAreaHealthCardReport(r, theme, slots.Row2[0].W, slots.Row2[0].H)
+	scanCov := m.renderScanCoverageCardReport(r, theme, slots.Row2[1].W, slots.Row2[1].H)
 	row2w := []int{slots.Row2[0].W, slots.Row2[1].W}
 	row2 := joinColumns([]string{areaHealth, scanCov}, row2w, sp.ColGap)
 
-	notes := m.renderNotesWarningsCard(r, theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH())
-	contents := m.renderReportContentsCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH())
+	notes := m.renderNotesWarningsCard(r, theme, slots.Row3[0].W, slots.Row3[0].H)
+	contents := m.renderReportContentsCard(r, theme, slots.Row3[1].W, slots.Row3[1].H)
 	row3w := []int{slots.Row3[0].W, slots.Row3[1].W}
 	row3 := joinColumns([]string{notes, contents}, row3w, sp.ColGap)
 
-	guidance := m.renderExportGuidanceCard(theme, slots.Guidance.InnerW(), slots.Guidance.InnerH())
+	guidance := renderInfoStrip("Export guidance",
+		"JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing with non-technical reviewers",
+		theme, slots.Guidance.W, slots.Guidance.H)
 
 	rootW := slots.Row1[0].W + slots.Row1[1].W + sp.ColGap
 	if debugLayout {
@@ -239,33 +241,30 @@ func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Them
 	return renderCardBounded("Report contents", "  "+strings.Join(items, "\n  "), theme, Rect{W: outerW, H: height})
 }
 
-func (m *historyModel) renderExportGuidanceCard(theme Theme, outerW, height int) string {
-	text := "JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing with non-technical reviewers"
-	return renderCardBounded("Export guidance", "  "+text, theme, Rect{W: outerW, H: height})
-}
-
 // ─── Wide Report (≥120x35) ──────────────────────────────────────────────────
 
 func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width, height int) string {
 	slots := ReportSlots(width, height, LayoutWide)
 	sp := spacingFor(LayoutWide)
 
-	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH())
-	export := m.renderExportCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH())
+	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].W, slots.Row1[0].H)
+	export := m.renderExportCard(r, theme, slots.Row1[1].W, slots.Row1[1].H)
 	row1w := []int{slots.Row1[0].W, slots.Row1[1].W}
 	row1 := joinColumns([]string{summary, export}, row1w, sp.ColGap)
 
-	areaHealth := m.renderAreaHealthCardReport(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH())
-	scanCov := m.renderScanCoverageCardReport(r, theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH())
+	areaHealth := m.renderAreaHealthCardReport(r, theme, slots.Row2[0].W, slots.Row2[0].H)
+	scanCov := m.renderScanCoverageCardReport(r, theme, slots.Row2[1].W, slots.Row2[1].H)
 	row2w := []int{slots.Row2[0].W, slots.Row2[1].W}
 	row2 := joinColumns([]string{areaHealth, scanCov}, row2w, sp.ColGap)
 
-	notes := m.renderNotesWarningsCard(r, theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH())
-	contents := m.renderReportContentsCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH())
+	notes := m.renderNotesWarningsCard(r, theme, slots.Row3[0].W, slots.Row3[0].H)
+	contents := m.renderReportContentsCard(r, theme, slots.Row3[1].W, slots.Row3[1].H)
 	row3w := []int{slots.Row3[0].W, slots.Row3[1].W}
 	row3 := joinColumns([]string{notes, contents}, row3w, sp.ColGap)
 
-	guidance := m.renderExportGuidanceCard(theme, slots.Guidance.InnerW(), slots.Guidance.InnerH())
+	guidance := renderInfoStrip("Export guidance",
+		"JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing with non-technical reviewers",
+		theme, slots.Guidance.W, slots.Guidance.H)
 
 	rootW := slots.Row1[0].W + slots.Row1[1].W + sp.ColGap
 	if debugLayout {

@@ -490,11 +490,12 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 	}
 
 	// Mid row: filter + context cards into fixed-height slots
-	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.InnerW(), slots.MidLeft.InnerH())
-	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.InnerW(), slots.MidRight.InnerH())
+	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.W, slots.MidLeft.H)
+	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.W, slots.MidRight.H)
 	midRow := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
 
-	guidance := m.renderFixGuidance(theme, width, slots.Guidance.InnerH())
+	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
+		theme, slots.Guidance.W, slots.Guidance.H)
 
 	return joinRows(
 		filterBar,
@@ -554,15 +555,16 @@ func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) 
 		return filterBar + "\n" + topRow
 	}
 
-	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.InnerW(), slots.MidLeft.InnerH())
-	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.InnerW(), slots.MidRight.InnerH())
+	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.W, slots.MidLeft.H)
+	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.W, slots.MidRight.H)
 	bottomCards := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
 
 	if debugLayout {
 		assertDisplayWidthLTE(bottomCards, width)
 	}
 
-	guidance := m.renderFixGuidance(theme, width, slots.Guidance.InnerH())
+	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
+		theme, slots.Guidance.W, slots.Guidance.H)
 
 	return joinRows(
 		filterBar,
@@ -862,14 +864,14 @@ func (m *findingsModel) renderFilterStateCard(theme Theme, outerW, height int) s
 
 func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW, height int) string {
 	if len(m.list) == 0 || m.selected >= len(m.list) {
-		return renderCardBounded("Context", "  No finding selected.", theme, Rect{W: outerW})
+		return renderCardBounded("Context", "  No finding selected.", theme, Rect{W: outerW, H: height})
 	}
 	f := m.list[m.selected]
 	svc := f.Service
 	if svc == "" {
 		body := fmt.Sprintf("  Scope: %s · No service context · Source: %s",
 			f.Scope.String(), f.Source.String())
-		return renderCardBounded("Context", body, theme, Rect{W: outerW})
+		return renderCardBounded("Context", body, theme, Rect{W: outerW, H: height})
 	}
 
 	r := Rect{W: outerW, H: height}
@@ -926,11 +928,6 @@ func (m *findingsModel) renderFixGuidanceText(theme Theme, selected int) string 
 	default:
 		return "Select a finding to see remediation guidance."
 	}
-}
-
-func (m *findingsModel) renderFixGuidance(theme Theme, width, height int) string {
-	guidance := m.renderFixGuidanceText(theme, m.selected)
-	return renderCardBounded("Fix guidance", "  "+guidance, theme, Rect{W: width, H: height})
 }
 
 func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, width, height int) string {
