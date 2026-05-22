@@ -228,6 +228,18 @@ func (m *findingsModel) Update(msg tea.Msg) {
 				m.showFilterPanel = true
 				m.filterCursor = 0
 			}
+		case "a":
+			// Toggle fix preview (apply is handled by app.go)
+			if m.selected < len(m.list) && m.list[m.selected].IsFixable() {
+				m.showFixPreview = !m.showFixPreview
+				m.showDetail = false
+			}
+		case "p":
+			// Toggle fix preview for consistency with 'a'
+			if m.selected < len(m.list) && m.list[m.selected].IsFixable() {
+				m.showFixPreview = !m.showFixPreview
+				m.showDetail = false
+			}
 		case "/":
 			m.showSearch = true
 		case "esc":

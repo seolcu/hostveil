@@ -188,24 +188,47 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		case s == "a" && m.currentScreen == screenFindings && m.findings.showFixPreview && m.findings.selected < len(m.findings.list):
-			f := m.findings.list[m.findings.selected]
+	case s == "a" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
+		f := m.findings.list[m.findings.selected]
+		if !f.IsFixable() {
+			return m, m.showToast("This finding requires manual review (not auto-fixable)")
+		}
+		if !m.findings.showFixPreview {
+			// First press: show fix preview
+			m.findings.fixPreviewContent = fix.PreviewAnyFinding(f,
+				m.scanResult.Metadata.ComposeFile,
+				m.scanResult.Findings)
+			m.findings.showFixPreview = true
+			m.findings.showDetail = false
+			// Compute backup path for preview
 			if f.Source == domain.SourceNativeCompose && m.scanResult.Metadata.ComposeFile != "" {
 				eng := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
-				plan, err := eng.Apply()
-				if err != nil {
-					return m, m.showToast(fmt.Sprintf("Apply failed: %v", err))
+				if plan, err := eng.Preview(); err == nil {
+					m.findings.fixBackupPath = plan.BackupPath
 				}
-				n := len(plan.AutoApplied) + len(plan.ReviewNeeded)
-				msg := fmt.Sprintf("Applied %d fixes. Backup: %s. Press 2 to rescan.",
-					n, plan.BackupPath)
-				if plan.BackupPath == "" {
-					msg = fmt.Sprintf("Applied %d fixes. Press 2 to rescan.", n)
-				}
-				m.findings.showFixPreview = false
-				m.findings.showDetail = false
-				return m, m.showToast(msg)
 			}
+			return m, m.showToast("Press 'a' again to apply this fix (Esc to cancel)")
+		}
+		// Second press: apply the fix
+		if f.Source == domain.SourceNativeCompose && m.scanResult.Metadata.ComposeFile != "" {
+			eng := fix.NewEngine(m.scanResult.Metadata.ComposeFile, m.scanResult.Findings)
+			plan, err := eng.Apply()
+			if err != nil {
+				return m, m.showToast(fmt.Sprintf("Apply failed: %v", err))
+			}
+			n := len(plan.AutoApplied) + len(plan.ReviewNeeded)
+			msg := fmt.Sprintf("Applied %d fixes. Backup: %s. Press 2 to rescan.",
+				n, plan.BackupPath)
+			if plan.BackupPath == "" {
+				msg = fmt.Sprintf("Applied %d fixes. Press 2 to rescan.", n)
+			}
+			m.findings.showFixPreview = false
+			m.findings.showDetail = false
+			return m, m.showToast(msg)
+		}
+		// For host/adapter findings: show available fix commands
+		m.findings.showFixPreview = false
+		return m, m.showToast("Fix commands shown in preview. Run them manually or press 'p' to review.")
 		default:
 			if m.currentScreen == screenFindings {
 				m.findings.Update(msg)
