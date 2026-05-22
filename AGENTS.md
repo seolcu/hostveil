@@ -217,6 +217,7 @@ Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). 
 | `internal/scanner/host/engine_test.go` | 4 | NewEngine, EngineScan, check names, Remediation type |
 | `internal/scanner/rules/engine_test.go` | 6 | Core rules + service-aware (Vaultwarden, Postgres/Redis) |
 | `internal/scanner/scanner_test.go` | 4 | Scan run, empty config, finding detection, score calculation |
+| `internal/tui/compact_render_test.go` | 17 | Compact/mini renderers, strip visibility, guidance content |
 
 Run: `go test -race -count=1 ./...`
 
@@ -699,7 +700,7 @@ Screenshots at `screenshots/20260522_103925/`.
 |------|-------|------|
 | `internal/tui/compact_render_test.go` | 13 | Compact/mini renderers for all 3 screens: edge cases (empty, nil findings, single item, selected-last, clean state, width/height boundaries) |
 
-Total: 69 tests, all passing with `-race`.
+Total: 73 tests, all passing with `-race`.
 
 ### #458 — 정리
 
