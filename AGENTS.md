@@ -192,10 +192,11 @@ Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). 
 | `renderCardBounded` — content padded/clipped inside border (fixed-height contract) | `layout.go` | ~50 | ✅ |
 | `lineCount()`, `fitBlockHeight()` — shared height helpers | `layout.go` | ~25 | ✅ |
 | `app.View()` — dynamic body height from actual header/footer/toast line counts | `app.go` | ~25 | ✅ |
+| Dashboard renderer callsites normalized to outer slot `W/H` | `screen_overview.go` | ~96 | ✅ |
 | `renderWidePreviewPanel` — removed nested `renderCardBounded` (caller wraps via `RenderPanel`) | `screen_findings.go` | ~5 | ✅ |
 | Build + vet + all 56 tests pass | — | — | ✅ |
 
-**Status**: `renderCardBounded` now enforces the fixed-height contract: content lines are clipped/padded inside the card border, so the rendered card occupies exactly `bounds.H` visual rows. `fillHeight()` post-render padding is no longer needed (the old approach added blank lines outside the card). Body height is computed accurately from actual header/footer/toast heights instead of hardcoded `m.height-4`. Wide Findings detail panel no longer has a double-border artifact from `renderWidePreviewPanel` returning a card inside `RenderPanel`. QA screenshots captured at 1400×800, 640×480, 400×300.
+**Status**: `renderCardBounded` now enforces the fixed-height contract: content lines are clipped/padded inside the card border, so the rendered card occupies exactly `bounds.H` visual rows. `fillHeight()` post-render padding is no longer needed (the old approach added blank lines outside the card). Body height is computed accurately from actual header/footer/toast heights instead of hardcoded `m.height-4`. Dashboard renderers now pass outer slot `W/H`, fixing the blank lower-card regression exposed by QA. Wide Findings detail panel no longer has a double-border artifact from `renderWidePreviewPanel` returning a card inside `RenderPanel`. QA screenshots captured at 1400×800, 640×480, 400×300.
 
 ## Tests (56 tests, 9 files)
 

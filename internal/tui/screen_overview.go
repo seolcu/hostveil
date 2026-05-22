@@ -100,9 +100,9 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 
 	var hero string
 	if state == DashboardClean {
-		hero = m.renderAllClearHeroCard(theme, width, slots.Hero.InnerH())
+		hero = m.renderAllClearHeroCard(theme, slots.Hero.W, slots.Hero.H)
 	} else {
-		hero = m.renderRiskSummaryHeroCard(r, theme, width, slots.Hero.InnerH())
+		hero = m.renderRiskSummaryHeroCard(r, theme, slots.Hero.W, slots.Hero.H)
 	}
 
 	// Main row: 2 columns or stacked
@@ -112,32 +112,32 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 		col2w := []int{slots.Row1[0].W, slots.Row1[1].W}
 		if state == DashboardClean {
 			row1 := []string{
-				m.renderAreaHealthCardScore(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH(), LayoutMedium),
-				m.renderScanCoverageCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH()),
+			m.renderAreaHealthCardScore(r, theme, slots.Row1[0].W, slots.Row1[0].H, LayoutMedium),
+			m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
 			mainContent = joinColumns(row1, col2w, 2)
 		} else {
 			row1 := []string{
-				m.renderNextActionsCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH()),
-				m.renderRiskByAreaCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH()),
+			m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
+			m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
 			mainContent = joinColumns(row1, col2w, 2)
 		}
 	} else {
 		if state == DashboardClean {
-			mainContent = m.renderAreaHealthCardScore(r, theme, colW, slots.Row1[0].InnerH(), LayoutMedium) + "\n\n" +
-				m.renderScanCoverageCard(r, theme, colW, slots.Row1[0].InnerH())
+			mainContent = m.renderAreaHealthCardScore(r, theme, colW, slots.Row1[0].H, LayoutMedium) + "\n\n" +
+				m.renderScanCoverageCard(r, theme, colW, slots.Row1[0].H)
 		} else {
-			mainContent = m.renderNextActionsCard(r, theme, colW, slots.Row1[0].InnerH()) + "\n\n" +
-				m.renderRiskByAreaCard(r, theme, colW, slots.Row1[0].InnerH())
+			mainContent = m.renderNextActionsCard(r, theme, colW, slots.Row1[0].H) + "\n\n" +
+				m.renderRiskByAreaCard(r, theme, colW, slots.Row1[0].H)
 		}
 	}
 
 	var timeline string
 	if state == DashboardClean {
-		timeline = m.renderWorkflowTimelineCardClean(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardClean(theme, slots.Timeline.W, slots.Timeline.H)
 	} else {
-		timeline = m.renderWorkflowTimelineCardRisk(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
 	return joinRows(
@@ -244,9 +244,9 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 
 	var hero string
 	if state == DashboardClean {
-		hero = m.renderAllClearHeroCard(theme, width, slots.Hero.InnerH())
+		hero = m.renderAllClearHeroCard(theme, slots.Hero.W, slots.Hero.H)
 	} else {
-		hero = m.renderRiskSummaryHeroCard(r, theme, width, slots.Hero.InnerH())
+		hero = m.renderRiskSummaryHeroCard(r, theme, slots.Hero.W, slots.Hero.H)
 	}
 
 	// Row1: 4 columns
@@ -257,17 +257,17 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 	}
 	if state == DashboardClean {
 		col4Cards = []string{
-			m.renderScanCoverageCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH()),
-			m.renderAreaHealthCardScore(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH(), LayoutUltraWide),
-			m.renderRuntimeCard(r, theme, slots.Row1[2].InnerW(), slots.Row1[2].InnerH()),
-			m.renderAdaptersCard(r, theme, slots.Row1[3].InnerW(), slots.Row1[3].InnerH()),
+			m.renderScanCoverageCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
+			m.renderAreaHealthCardScore(r, theme, slots.Row1[1].W, slots.Row1[1].H, LayoutUltraWide),
+			m.renderRuntimeCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
+			m.renderAdaptersCard(r, theme, slots.Row1[3].W, slots.Row1[3].H),
 		}
 	} else {
 		col4Cards = []string{
-			m.renderNextActionsCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH()),
-			m.renderRiskByAreaCardFindings(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH()),
-			m.renderAffectedServicesCard(r, theme, slots.Row1[2].InnerW(), slots.Row1[2].InnerH()),
-			m.renderFixQueueCard(r, theme, slots.Row1[3].InnerW(), slots.Row1[3].InnerH()),
+			m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
+			m.renderRiskByAreaCardFindings(r, theme, slots.Row1[1].W, slots.Row1[1].H),
+			m.renderAffectedServicesCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
+			m.renderFixQueueCard(r, theme, slots.Row1[3].W, slots.Row1[3].H),
 		}
 	}
 	grid4 := joinColumns(col4Cards, col4w, 2)
@@ -277,39 +277,39 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 	var grid2a, grid2b string
 	if state == DashboardClean {
 		row2clean := []string{
-			m.renderRecommendedNextStepsCard(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH()),
-			m.renderWhatThisResultMeansCard(r, theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH()),
+			m.renderRecommendedNextStepsCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
+			m.renderWhatThisResultMeansCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
 		grid2a = joinColumns(row2clean, col2w, 2)
 
 		if slots.Brand.W > 0 {
-			grid2b = m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.InnerH())
+			grid2b = m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.H)
 		} else {
 			row3clean := []string{
-				m.renderReportPreviewCard(theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH()),
-				m.renderRecentScanNotesCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH()),
+				m.renderReportPreviewCard(theme, slots.Row3[0].W, slots.Row3[0].H),
+				m.renderRecentScanNotesCard(r, theme, slots.Row3[1].W, slots.Row3[1].H),
 			}
 			grid2b = joinColumns(row3clean, col2w, 2)
 		}
 	} else {
 		row2risk := []string{
-			m.renderRiskWorkflowCard(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH()),
-			m.renderWhyScoreLowCard(r, theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH()),
+			m.renderRiskWorkflowCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
+			m.renderWhyScoreLowCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
 		grid2a = joinColumns(row2risk, col2w, 2)
 
 		row3risk := []string{
-			m.renderSelectedPreviewCard(r, theme, slots.Row3[0].InnerW(), slots.Row3[0].InnerH()),
-			m.renderScanContextCard(r, theme, slots.Row3[1].InnerW(), slots.Row3[1].InnerH()),
+			m.renderSelectedPreviewCard(r, theme, slots.Row3[0].W, slots.Row3[0].H),
+			m.renderScanContextCard(r, theme, slots.Row3[1].W, slots.Row3[1].H),
 		}
 		grid2b = joinColumns(row3risk, col2w, 2)
 	}
 
 	var timeline string
 	if state == DashboardClean {
-		timeline = m.renderWorkflowTimelineCardClean(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardClean(theme, slots.Timeline.W, slots.Timeline.H)
 	} else {
-		timeline = m.renderWorkflowTimelineCardRisk(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
 	return joinRows(
@@ -633,9 +633,9 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 
 	var hero string
 	if state == DashboardClean {
-		hero = m.renderAllClearHeroCard(theme, width, slots.Hero.InnerH())
+		hero = m.renderAllClearHeroCard(theme, slots.Hero.W, slots.Hero.H)
 	} else {
-		hero = m.renderRiskSummaryHeroCard(r, theme, width, slots.Hero.InnerH())
+		hero = m.renderRiskSummaryHeroCard(r, theme, slots.Hero.W, slots.Hero.H)
 	}
 
 	// Row1: 3 columns
@@ -646,16 +646,16 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 	var mainGrid string
 	if state == DashboardClean {
 		row1clean := []string{
-			m.renderAllClearCard(theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH()),
-			m.renderScanCoverageCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH()),
-			m.renderRuntimeAdaptersCard(r, theme, slots.Row1[2].InnerW(), slots.Row1[2].InnerH()),
+			m.renderAllClearCard(theme, slots.Row1[0].W, slots.Row1[0].H),
+			m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
+			m.renderRuntimeAdaptersCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
 		}
 		mainGrid = joinColumns(row1clean, col3w, 2)
 	} else {
 		row1risk := []string{
-			m.renderNextActionsCard(r, theme, slots.Row1[0].InnerW(), slots.Row1[0].InnerH()),
-			m.renderRiskByAreaCard(r, theme, slots.Row1[1].InnerW(), slots.Row1[1].InnerH()),
-			m.renderAffectedServicesCard(r, theme, slots.Row1[2].InnerW(), slots.Row1[2].InnerH()),
+			m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
+			m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
+			m.renderAffectedServicesCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
 		}
 		mainGrid = joinColumns(row1risk, col3w, 2)
 	}
@@ -665,23 +665,23 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 	var secondaryGrid string
 	if state == DashboardClean {
 		row2clean := []string{
-			m.renderAreaHealthCardScore(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH(), LayoutWide),
-			m.renderNextStepsCard(theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH()),
+			m.renderAreaHealthCardScore(r, theme, slots.Row2[0].W, slots.Row2[0].H, LayoutWide),
+			m.renderNextStepsCard(theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
 		secondaryGrid = joinColumns(row2clean, col2w, 2)
 	} else {
 		row2risk := []string{
-			m.renderFixQueueCard(r, theme, slots.Row2[0].InnerW(), slots.Row2[0].InnerH()),
-			m.renderScanContextCard(r, theme, slots.Row2[1].InnerW(), slots.Row2[1].InnerH()),
+			m.renderFixQueueCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
+			m.renderScanContextCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
 		secondaryGrid = joinColumns(row2risk, col2w, 2)
 	}
 
 	var timeline string
 	if state == DashboardClean {
-		timeline = m.renderWorkflowTimelineCardClean(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardClean(theme, slots.Timeline.W, slots.Timeline.H)
 	} else {
-		timeline = m.renderWorkflowTimelineCardRisk(theme, width, slots.Timeline.InnerH())
+		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
 	rows := []string{
@@ -694,7 +694,7 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 	}
 	if state == DashboardClean && slots.Brand.W > 0 {
 		rows = append(rows, "",
-			m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.InnerH()),
+			m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.H),
 		)
 	}
 	rows = append(rows, "", timeline)
