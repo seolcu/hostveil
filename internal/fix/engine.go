@@ -452,8 +452,12 @@ func addLoopbackBinding(snippet string) string {
 			value = strings.Trim(value, `"`)
 		}
 		if strings.Count(value, ":") == 1 {
+			// Short form: "8080:80" -> "127.0.0.1:8080:80"
 			updated := "127.0.0.1:" + value
 			lines[i] = strings.Replace(line, strings.TrimSpace(strings.TrimPrefix(trimmed, "-")), quote+updated+quote, 1)
+		} else if strings.Count(value, ":") == 2 && strings.HasPrefix(value, "0.0.0.0:") {
+			// Long form with explicit 0.0.0.0: "0.0.0.0:8080:80" -> "127.0.0.1:8080:80"
+			lines[i] = strings.Replace(line, "0.0.0.0:", "127.0.0.1:", 1)
 		}
 	}
 	return strings.Join(lines, "\n")
