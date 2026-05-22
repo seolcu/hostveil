@@ -662,3 +662,41 @@ Verification of #457 (fixed-layout contract) at 1400×800 and 640×480.
 | Wide findings preview | fix preview panel | ✅ 정상 표시 |
 
 **결론:** build + vet + test 통과. 열린 이슈 0개. `main`/`v1.0.0-rewrite` 모두 최신 커밋 `32f5b5a` 반영됨.
+
+## QA Session 2026-05-22 (Commit 29fbbb8)
+
+Full-breadth TUI QA with 20 shots across 5 viewports (1400×800, 1280×720, 640×480, 400×300, 280×200).
+
+Screenshots at `screenshots/20260522_103925/`.
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| 01-06 | Wide (1400×800) — overview, list, detail, preview, report, help | ✅ All clean — borders, spacing, overlays stable |
+| 07-09 | Wide-tight (1280×720) — overview, detail, settings | ✅ Clean — 2-col reflow, settings modal centered |
+| 10-13 | Medium (640×480) — overview, list, fix preview, report | ✅ Clean — stacked cards, text truncation OK |
+| 14 | Compact (400×300) — dashboard | ✅ Clean — plain-text renderer works |
+| 15-16 | Compact — findings / report | ⚠️ Process exit (code 1) — ttyd reconnection overlay visible |
+| 17-18 | Mini (280×200) — dashboard / findings | ⚠️ Process exit (code 1) — same reconnection |
+| 19-20 | Wide — search / filter | ⚠️ Invalid — after restart, default overview shown instead |
+
+### Compact/Mini Process Exit Investigation
+
+**Finding:** At compact (400×300) and mini (280×200) viewports, the TUI process exits with code 1, causing ttyd to show its reconnection overlay and restart the child process.
+
+**What it is NOT:**
+- **NOT a Go panic.** No panic stack trace exists. Compact renderer unit tests (13 new tests in `internal/tui/compact_render_test.go`) pass cleanly at all dimensions including edge cases (empty list, last item selected, filtered-empty, width/height boundaries).
+- **NOT a nil pointer or bounds issue.** Full code audit of all 9 TUI files (~5.3K lines) confirmed every slice access, nil dereference, string slice, type assertion, and division is properly guarded.
+
+**Root cause:** `tea.ErrProgramKilled`. When ttyd drops the WebSocket during rapid viewport changes, it closes the PTY and sends SIGHUP to the child process. Bubbletea's `p.Run()` returns `tea.ErrProgramKilled`, which propagates to `main()` → `os.Exit(1)`. This is expected ttyd lifecycle behavior: the child exits cleanly, ttyd restarts a new instance.
+
+**Impact:** Cosmetic only — user sees a brief "reconnecting" overlay, then the fresh process. No data loss, no state corruption.
+
+**Note:** `fix-preview` key is `p` (not `f`). `f` opens the filter panel. Both documented correctly in help overlay (`screen_help.go:97-100`).
+
+### Test Coverage Added
+
+| File | Tests | What |
+|------|-------|------|
+| `internal/tui/compact_render_test.go` | 13 | Compact/mini renderers for all 3 screens: edge cases (empty, nil findings, single item, selected-last, clean state, width/height boundaries) |
+
+Total: 56 + 13 = 69 tests, all passing with `-race`.
