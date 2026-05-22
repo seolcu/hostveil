@@ -637,3 +637,28 @@ Verification of #455 (renderer card height enforcement) at 1400×800, 640×480, 
 | Report tiny | minimal report | ✅ Text fallback 정상 |
 
 **회귀: 없음.** `#455` body line truncation이 기존 카드 동작을 깨지 않음. 넓은/중간/좁은 폭 모두 배경/테두리/패널 경계 유지.
+
+## QA Session 2026-05-22 (Commit 32f5b5a)
+
+Verification of #457 (fixed-layout contract) at 1400×800 and 640×480.
+
+### Iteration 1 — Wide overview regression found
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Wide overview (1400×800) | lower cards (Fix queue, Scan context) | ⚠️ **회귀 발견** — 카드 내용이 모두 비어 있었음 (제목만 보임) |
+
+**원인:** `renderCardBounded`가 fixed-height contract으로 변경되었으나, dashboard callsite들이 `InnerH()`를 전달. slot.H=5일 때 `bounds.H`가 `InnerH()=3`이 되어 content lines가 1줄만 허용됨 (border 2 + title 1 + content 1). 본문이 2줄 이상 필요한 Fix queue/Scan context는 전부 잘렸음.
+
+**수정:** dashboard 3개 renderer(`renderUltraWideDashboard`, `renderWideDashboard`, `renderMediumDashboard`)의 모든 slot dimension 호출을 `InnerW()/InnerH()` → `W/H`로 정규화 (96줄 변경).
+
+### Iteration 2 — QA 재확인
+
+| Shot | Focus | Finding |
+|------|-------|---------|
+| Wide overview (1400×800) | lower cards after fix | ✅ 내용 정상 표시 — Fix queue, Scan context 모두 읽힘 |
+| Compact overview (640×480) | medium dashboard after fix | ✅ 내용 정상 — 회귀 없음 |
+| Wide findings detail | right panel gray block | ✅ #457 수정으로 중첩 border 제거, gray block 없음 |
+| Wide findings preview | fix preview panel | ✅ 정상 표시 |
+
+**결론:** build + vet + test 통과. 열린 이슈 0개. `main`/`v1.0.0-rewrite` 모두 최신 커밋 `32f5b5a` 반영됨.
