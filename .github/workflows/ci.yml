@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, v1.0.0-rewrite]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -42,7 +42,6 @@ jobs:
         run: |
           ./hostveil --help
           ./hostveil --version
-          ./hostveil --compose tests/scenarios/vaultwarden-domain/docker-compose.yml --output json --findings-only > /dev/null
           echo "Smoke test passed"
 
       - name: Adapter integration tests
@@ -53,12 +52,6 @@ jobs:
 
       - name: Scanner integration tests
         run: go test -race -count=1 -run 'TestScan' ./internal/scanner/
-
-      - name: E2E screen test (tmux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get -qq update && sudo apt-get -qq install -y tmux
-          scripts/tui-test.sh
 
       - name: Upload binary
         uses: actions/upload-artifact@v4

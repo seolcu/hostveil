@@ -4,8 +4,8 @@ Context for AI coding assistants on this repo. Not a substitute for README.
 
 ## Project Status
 
-**v1.0.0-rewrite** — Complete rewrite of hostveil from Rust (v0.29) to Go + Bubbletea.
-Branch: `v1.0.0-rewrite` (never merged to main, `main` still has the Rust version).
+**v1.0.0** — Complete rewrite of hostveil from Rust (v0.29) to Go + Bubbletea.
+Branch: `main` (rewrite completed, merged from `v1.0.0-rewrite`).
 
 ## Tech Stack
 
@@ -198,7 +198,7 @@ Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). 
 
 **Status**: `renderCardBounded` now enforces the fixed-height contract: content lines are clipped/padded inside the card border, so the rendered card occupies exactly `bounds.H` visual rows. `fillHeight()` post-render padding is no longer needed (the old approach added blank lines outside the card). Body height is computed accurately from actual header/footer/toast heights instead of hardcoded `m.height-4`. Dashboard renderers now pass outer slot `W/H`, fixing the blank lower-card regression exposed by QA. Wide Findings detail panel no longer has a double-border artifact from `renderWidePreviewPanel` returning a card inside `RenderPanel`. QA screenshots captured at 1400×800, 640×480, 400×300.
 
-## Tests (73 tests, 9 files + compact render tests)
+## Tests (73 tests, 9 packages)
 
 | File | Tests | Coverage |
 |------|-------|----------|
@@ -471,7 +471,7 @@ GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
 
 - **8 Milestones**: M1-M8, each with ~7-11 issues
 - **62 Issues total**: #367-#428
-- **Branch naming**: `v1.0.0-rewrite` for the rewrite (never merge to main)
+- **Branch**: `main` (rewrite merged from `v1.0.0-rewrite`)
 - Issues automatically close via `Closes #N` in commit messages when merged
 - PRs should correspond to individual issues, not milestone batches
 
@@ -838,3 +838,47 @@ After: `usableH = height - gapH*(nCards-1); cardH = usableH / nCards` — total 
 
 - **"Closes #N" / "Fixes #N" 이외에도 "Closes: #N" 형식도 GitHub이 인식하여 자동 닫음**. 이슈 번호를 언급할 때는 `#N`만 적고 `Fixes`/`Closes`/`Resolves` 접두사를 절대 붙이지 말 것.
 - `#463`(X 좌표 gap 불일치)은 #460 수정 중 `cols[0] + sp.ColGap`으로 함께 해결됨. 별도 작업 불필요.
+
+## Productization Complete (2026-05-22)
+
+| 항목 | 상태 | 설명 |
+|------|------|------|
+| Makefile | ✅ | `build-all`, `dist`, `release` (with dist), `lab-*` 단축 명령어 추가. 기존 타겟 유지 |
+| .gitignore | ✅ | `dist/`, `*.tar.gz`, `*.sha256` 추가 |
+| 빌드 (native) | ✅ | `go build -o hostveil ./cmd/hostveil/` — 통과 |
+| 크로스컴파일 | ✅ | linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 — 모두 통과 |
+| 테스트 | ✅ | 73 tests, 9 packages — `go test -race -count=1 ./...` 전부 통과 |
+| go vet | ✅ | `go vet ./...` — 경고 없음 |
+| AGENTS.md | ✅ | 최신 상태 반영, productization 완료 기록 |
+
+### 최종 커밋 상태
+
+- 마지막 커밋: `c9a3504` — TUI Dashboard distribute extra height
+- 현재 브랜치: `main` (v1.0.0-rewrite merged)
+- 미추적 untracked: `cmd/fixdemo/`, `scripts/qa_screenshots.py`
+- 미스테이지 변경: README.ko.md, README.md, docker/lab/Dockerfile, internal/export/html.go, internal/fix/engine.go, internal/fix/engine_test.go, internal/scanner/host/engine.go, internal/scanner/rules/updates.go, internal/tui/screen_findings.go
+
+### 릴리스 절차
+
+```sh
+# 1. 모든 테스트 통과 확인
+go test -race -count=1 ./...
+
+# 2. 크로스컴파일 + dist 생성
+make dist
+
+# 3. dist/ 디렉터리 검증
+ls -lh dist/
+
+# 4. GitHub Releases 태깅
+make release VERSION=v1.0.0
+```
+
+### 알려진 이슈
+
+| # | 제목 | 상태 |
+|---|------|------|
+| 461 | Replace unsafe ANSI truncation in joinColumns | ❌ Open |
+| 462 | Distribute Dashboard extra height | ❌ Open |
+
+(두 이슈는 기능적 회귀가 아닌 코드 품질 개선 항목으로, v1.0.0 릴리스에 blocking 아님.)

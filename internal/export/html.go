@@ -52,7 +52,7 @@ func HTML(r *domain.ScanResult) (string, error) {
 	b.WriteString("<h2>Axis Scores</h2><div class=\"card\">")
 	for _, axis := range domain.AllAxes() {
 		score := r.ScoreReport.AxisScores[axis]
-		b.WriteString(fmt.Sprintf("<div><strong>%s</strong>: %d</div>", axis.Label(), score))
+		b.WriteString(fmt.Sprintf("<div><strong>%s</strong>: %d</div>", html.EscapeString(axis.Label()), score))
 	}
 	b.WriteString("</div>")
 
@@ -63,7 +63,7 @@ func HTML(r *domain.ScanResult) (string, error) {
 		b.WriteString(fmt.Sprintf(`<div class="finding sev-%s">`, sevClass))
 		b.WriteString(fmt.Sprintf(`<span class="badge badge-%s">%s</span> `, sevClass, strings.ToUpper(sevClass)))
 		b.WriteString(fmt.Sprintf(`<strong>%s</strong>`, html.EscapeString(f.Title)))
-		b.WriteString(fmt.Sprintf(`<div class="meta">%s · %s · %s</div>`, f.ID, f.Axis.Label(), f.Service))
+		b.WriteString(fmt.Sprintf(`<div class="meta">%s · %s · %s</div>`, html.EscapeString(f.ID), html.EscapeString(f.Axis.Label()), html.EscapeString(f.Service)))
 		b.WriteString(fmt.Sprintf("<p>%s</p>", html.EscapeString(f.Description)))
 		b.WriteString(fmt.Sprintf("<p><strong>Why it's risky:</strong> %s</p>", html.EscapeString(f.WhyRisky)))
 		b.WriteString(fmt.Sprintf("<p><strong>How to fix:</strong> %s</p>", html.EscapeString(f.HowToFix)))

@@ -90,6 +90,55 @@ func (e *Engine) Preview() (*FixPlan, error) {
 		}
 	}
 
+	// Generate text-based compose edit FixActions from findings
+	// so that Apply() can actually modify the YAML file.
+	if len(plan.AutoApplied) > 0 || len(plan.ReviewNeeded) > 0 {
+		data, err := os.ReadFile(e.ComposeFile)
+		if err == nil {
+			content := string(data)
+			for svc, findings := range byService {
+				// Process auto-remediation findings first, then review-remediation findings.
+				// This ensures auto actions' Content is findable in the original file when
+				// Apply() applies auto-only actions in order.
+				for _, rem := range []domain.RemediationKind{domain.RemediationAuto, domain.RemediationReview} {
+					for _, f := range findings {
+						if f.Source != domain.SourceNativeCompose {
+							continue
+						}
+						if !f.IsFixable() {
+							continue
+						}
+						if f.Remediation != rem {
+							continue
+						}
+						snippet := extractServiceSnippet(content, svc, 5)
+						if snippet == "" {
+							continue
+						}
+						updated := applySnippetFix(snippet, f.ID)
+						if updated != snippet {
+							cmd := "auto"
+							if f.Remediation == domain.RemediationReview {
+								cmd = "review"
+							}
+							plan.Actions = append(plan.Actions, FixAction{
+								Type:    ActionComposeEdit,
+								Service: svc,
+								Summary: f.Title,
+								Content: snippet,
+								Diff:    updated,
+								Command: cmd,
+							})
+							// Update content for subsequent fix actions on the same service
+							content = strings.Replace(content, snippet, updated, 1)
+							snippet = extractServiceSnippet(content, svc, 5)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Generate diff preview
 	plan.DiffPreview = e.generateDiff(plan)
 
@@ -121,10 +170,10 @@ func (e *Engine) Apply() (*FixPlan, error) {
 	}
 	plan.BackupPath = backupPath
 
-	// Apply compose edits
+	// Apply compose edits (auto-fix only)
 	content := string(data)
 	for _, a := range plan.Actions {
-		if a.Type == ActionComposeEdit {
+		if a.Type == ActionComposeEdit && a.Command == "auto" {
 			content = strings.Replace(content, a.Content, a.Diff, 1)
 		}
 	}
@@ -209,8 +258,15 @@ func (e *Engine) fixReadOnlyRootfs(f domain.Finding, cf *compose.ComposeFile, sv
 
 func (e *Engine) fixPinVersion(f domain.Finding, cf *compose.ComposeFile, svc string) *FixProposal {
 	svcConfig := cf.Services[svc]
-	if !strings.Contains(svcConfig.Image, ":") {
-		svcConfig.Image = svcConfig.Image + ":stable"
+	img := svcConfig.Image
+
+	// Handle images with explicit :latest tag
+	if strings.HasSuffix(img, ":latest") {
+		svcConfig.Image = strings.TrimSuffix(img, ":latest") + ":stable"
+		cf.Services[svc] = svcConfig
+	} else if !strings.Contains(img, ":") {
+		// No tag at all — add :stable
+		svcConfig.Image = img + ":stable"
 		cf.Services[svc] = svcConfig
 	}
 
@@ -317,8 +373,26 @@ func previewSnippetDiff(snippet string, finding domain.Finding) string {
 
 func addLoopbackBinding(snippet string) string {
 	lines := strings.Split(snippet, "\n")
+	inPorts := false
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		// Track whether we're inside a ports: section
+		if strings.TrimRight(line, " ") == "    ports:" || strings.TrimRight(line, " ") == "  ports:" {
+			inPorts = true
+			continue
+		}
+		// If we were in ports and hit a non-empty line with less indentation, we've left ports
+		if inPorts && trimmed != "" {
+			indent := len(line) - len(strings.TrimLeft(line, " "))
+			if indent < 6 {
+				inPorts = false
+			}
+		}
+		if !inPorts {
+			continue
+		}
+
 		if !strings.HasPrefix(trimmed, "-") || strings.Contains(trimmed, "127.0.0.1:") {
 			continue
 		}
@@ -524,4 +598,24 @@ func extractServiceSnippet(content, serviceName string, context int) string {
 	}
 
 	return strings.Join(lines[start:end], "\n")
+}
+
+// applySnippetFix applies a text fix for a specific finding ID to a YAML snippet.
+// Returns the modified snippet or the original if no fix applies.
+func applySnippetFix(snippet string, findingID string) string {
+	switch findingID {
+	case "exposure.public_binding":
+		return addLoopbackBinding(snippet)
+	case "runtime.no_new_privileges_disabled":
+		return addServiceLine(snippet, "    security_opt:\n      - no-new-privileges:true")
+	case "runtime.writable_rootfs":
+		return addServiceLine(snippet, "    read_only: true")
+	case "network.default_bridge_used":
+		return addServiceLine(snippet, "    networks:\n      - hostveil")
+	case "updates.latest_tag":
+		return addServiceLine(snippet, "    # TODO: pin image version tag")
+	case "service.vaultwarden.insecure_domain":
+		return strings.ReplaceAll(snippet, "http://", "https://")
+	}
+	return snippet
 }

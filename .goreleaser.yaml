@@ -1,5 +1,9 @@
 # GoReleaser configuration for hostveil
 # See https://goreleaser.com for details
+#
+# Produces tar.gz archives matching the Makefile `dist` target format:
+#   hostveil-v{Version}-{Os}-{Arch}.tar.gz + .sha256 checksum files
+# Uploads everything to GitHub Releases automatically.
 
 version: 2
 project_name: hostveil
@@ -25,42 +29,17 @@ builds:
       - arm64
 
 archives:
-  - id: binary
+  - id: tar-gz
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
-    format: binary
+      {{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}
+    format: tar.gz
     files:
       - none*
+    # Archive contains only the single binary, no extra files.
 
-nfpms:
-  - id: deb
-    package_name: hostveil
-    file_name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Arch }}
-    vendor: hostveil
-    homepage: https://github.com/seolcu/hostveil
-    maintainer: Gyuwon Seol <seolcu0112@proton.me>
-    description: Linux self-hosting security dashboard
-    license: GPL-3.0
-    formats:
-      - deb
-      - rpm
-    bindir: /usr/libexec/hostveil
-    contents:
-      - src: packaging/wrapper.sh
-        dst: /usr/bin/hostveil
-        type: file
-    overrides:
-      deb:
-        contents:
-          - src: packaging/hostveil-package-wrapper-deb.sh
-            dst: /usr/bin/hostveil
-            type: file
-      rpm:
-        contents:
-          - src: packaging/hostveil-package-wrapper-rpm.sh
-            dst: /usr/bin/hostveil
-            type: file
+checksum:
+  name_template: "{{ .ProjectName }}-v{{ .Version }}-checksums.txt"
+  algorithm: sha256
 
 release:
   github:
@@ -68,13 +47,22 @@ release:
     name: hostveil
   name_template: "v{{.Version}}"
   header: |
-    ## hostveil {{.Version}}
+    ## hostveil v{{.Version}}
 
     Linux self-hosting security dashboard.
 
     ### Installation
 
     ```sh
-    curl -fsSL https://github.com/seolcu/hostveil/releases/download/v{{.Version}}/hostveil_{{.Version}}_linux_amd64 -o /usr/local/bin/hostveil
-    chmod +x /usr/local/bin/hostveil
+    curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+    ```
+
+    Or download the archive for your platform and verify:
+
+    ```sh
+    curl -fsSLO https://github.com/seolcu/hostveil/releases/download/v{{.Version}}/hostveil-v{{.Version}}-linux-amd64.tar.gz
+    curl -fsSLO https://github.com/seolcu/hostveil/releases/download/v{{.Version}}/hostveil-v{{.Version}}-checksums.txt
+    sha256sum -c hostveil-v{{.Version}}-checksums.txt --ignore-missing
+    tar xzf hostveil-v{{.Version}}-linux-amd64.tar.gz
+    sudo install hostveil /usr/local/bin/
     ```

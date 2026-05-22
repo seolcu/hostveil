@@ -683,7 +683,10 @@ func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int)
 	}
 	msg := strings.Join(msgLines, "\n")
 
-	padding := strings.Repeat("\n", (height-6)/2)
+	var padding string
+	if height >= 7 {
+		padding = strings.Repeat("\n", (height-6)/2)
+	}
 	iconStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Border)).
 		Render(icon)
@@ -751,14 +754,30 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 		var line string
 		if showService {
 			overhead := len(cursor) + 2 + len(idxStr) + 2 + len(sevLabel) + 2 + len(f.Service) + 4
-			title = truncateStr(title, listWidth-overhead)
+			maxTitle := listWidth - overhead
+			if maxTitle < 4 {
+				maxTitle = 4
+			}
+			title = truncateWidth(title, maxTitle)
 			if compactSev && len(f.Service) > 12 {
 				f.Service = truncateStr(f.Service, 12)
+			}
+			// Truncate service name to prevent overflow
+			maxSvc := listWidth - overhead + len(f.Service) - 4
+			if maxSvc < 4 {
+				maxSvc = 4
+			}
+			if lipgloss.Width(f.Service) > maxSvc {
+				f.Service = truncateWidth(f.Service, maxSvc)
 			}
 			line = fmt.Sprintf("%s  %s  %s  %s  %s", cursor, idxStr, sevLabel, title, f.Service)
 		} else {
 			overhead := len(cursor) + 2 + len(idxStr) + 2 + len(sevLabel) + 2
-			title = truncateStr(title, listWidth-overhead)
+			maxTitle := listWidth - overhead
+			if maxTitle < 4 {
+				maxTitle = 4
+			}
+			title = truncateWidth(title, maxTitle)
 			line = fmt.Sprintf("%s  %s  %s  %s", cursor, idxStr, sevLabel, title)
 		}
 
@@ -975,7 +994,11 @@ func (m *findingsModel) renderDetailContent(f *domain.Finding, theme Theme, widt
 	}
 
 	// 4. Assemble
-	sep := "\n" + strings.Repeat("═", width-4) + "\n"
+	sepWidth := width - 4
+	if sepWidth < 1 {
+		sepWidth = 1
+	}
+	sep := "\n" + strings.Repeat("═", sepWidth) + "\n"
 	metadata := fmt.Sprintf("ID: %s  |  Source: %s  |  Scope: %s  |  Service: %s",
 		f.ID, f.Source.String(), f.Scope.String(), f.Service)
 
@@ -1080,7 +1103,11 @@ func (m *findingsModel) renderFixPreviewContent(f *domain.Finding, theme Theme, 
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(f.Severity.Color())).
 		Bold(true)
-	sep := "\n" + strings.Repeat("═", width-4) + "\n"
+	sepWidth := width - 4
+	if sepWidth < 1 {
+		sepWidth = 1
+	}
+	sep := "\n" + strings.Repeat("═", sepWidth) + "\n"
 
 	detail := headerStyle.Render(fmt.Sprintf("Fix Preview: %s", f.Title)) + "\n\n"
 
@@ -1466,6 +1493,9 @@ func (m *findingsModel) renderFilterBar(theme Theme, width int) string {
 }
 
 func truncateStr(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
 	runes := []rune(s)
 	if len(runes) <= n {
 		return s

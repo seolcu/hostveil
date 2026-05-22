@@ -9,10 +9,12 @@ type HostCheck interface {
 
 type Engine struct {
 	checks []HostCheck
+	root   string
 }
 
 func NewEngine(root string) *Engine {
 	return &Engine{
+		root: root,
 		checks: []HostCheck{
 			&SSHCheck{Root: root},
 			&DockerCheck{Root: root},
@@ -30,7 +32,7 @@ func NewEngine(root string) *Engine {
 func (e *Engine) Scan() []domain.Finding {
 	var findings []domain.Finding
 	for _, c := range e.checks {
-		findings = append(findings, c.Scan("")...)
+		findings = append(findings, c.Scan(e.root)...)
 	}
 	return findings
 }
