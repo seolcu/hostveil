@@ -753,3 +753,37 @@ At 400×300 browser viewport → ttyd terminal roughly 32-39 cols × 8-10 rows:
 
 - **`.gitignore` 처음에 `hostveil`이 `cmd/hostveil/` 디렉터리까지 무시**하고 있었음. Go rewrite `cmd/hostveil/main.go`가 git에 들어가지 않았던 것으로 추정. 건드리지 않았다면 main.go가 clone 시 누락됨. `/hostveil`로 수정.
 - **compact 400 browser 테스트는 불안정**. 단위 테스트로는 재현되지 않으며 ttyd가 PTY 크기를 어떻게 전달하는지에 따라 결과가 달라질 수 있음. `tea.ErrProgramKilled` 무시 처리와 `bodyHeight` 하한선 조정으로 영향 최소화.
+
+## QA Session 2026-05-22 (Commit d6c1a72)
+
+### #459 — Unify vertical row gap handling
+
+**Goal**: Replace the per-screen gap logic split (Dashboard/Findings used `joinRows()` stripping `""` placeholders → no gaps; Report used explicit `rowGap`) with a single `joinRowsWithGap(gap, rows...)` helper.
+
+**Changes (4 files, +54/-44):**
+
+| File | Change |
+|------|--------|
+| `layout.go` | Added `joinRowsWithGap(gap, rows...)` — joins non-empty blocks with `gap` blank lines between them |
+| `screen_overview.go` | `renderMediumDashboard` / `renderUltraWideDashboard` / `renderWideDashboard`: all `joinRows()` with `""` placeholders → `joinRowsWithGap(sp.RowGap, ...)` |
+| `screen_findings.go` | `render()` medium / `renderUltraWideFindings` / `renderCleanFindingsUltraWide`: same migration, plus early returns (`filterBar + "\n" + topRow`) migrated |
+| `screen_history.go` | `renderUltraWideReport` / `renderWideReport` / `renderMediumReport`: explicit `"\n\n"` gap concatenation → `joinRowsWithGap` (no behavioral change, Report already used RowGap=1) |
+
+**Visual effect:**
+- Wide/UltraWide: all 3 screens now have 1 blank line between card rows (RowGap=1). Dashboard/Findings previously had 0. Report unchanged.
+- Compact/Mini: RowGap=0, no change.
+
+**QA (browser, 8 screenshots in `screenshots/20260522_135727/`):**
+- Wide (1400×800): Overview/Findings/Report all consistent spacing, no border breakage
+- Medium (640×480): Overview/Findings clean; Report 하단 info card clipping is pre-existing (#460)
+- Narrow (400×300): compact path unaffected
+- Findings detail/preview: row composition intact
+
+**Known issues:**
+- Medium Report clipping is a pre-existing height-budget problem tracked by #460 (ReportSlots must subtract row gaps from available height). NOT a #459 regression.
+
+### Important Lessons
+
+- **이슈 자동 닫기 금지**: 커밋 메시지에 `Fixes #N` / `Closes #N` 키워드를 넣으면 GitHub이 자동으로 이슈를 닫음. 앞으로는 이슈 번호만 언급하고 `Fixes`/`Closes` 접두사를 붙이지 말 것.
+- **joinRowsWithGap contract**: `gap`은 블록 사이의 **빈 줄 개수** (0=직접 연결, 1=한 줄 공백). `joinRows`와 달리 `""`를 필터링하지 않고 `TrimRight("\n")` 후 non-empty 체크.
+- **ReportSlots height budget**: #460은 #459와 별도로 처리해야 함. ReportSlots가 RowGap을 height 계산에 포함하지 않아 medium viewport에서 하단 card가 clipping됨.
