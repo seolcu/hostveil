@@ -682,10 +682,12 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			}
 			used += tertH + rowGap + timelineH
 			extra := max(0, h-used)
-			heroH += min(extra, 2)
-			extra = max(0, extra-2)
-			mainH += min(extra/3*2, 4)
-			secH += min(extra-extra/3*2, 6)
+			heroAdd := min(extra, 2)
+			heroH += heroAdd
+			remaining := extra - heroAdd
+			mainH += remaining / 3
+			secH += remaining / 3
+			tertH += remaining - remaining/3*2
 		}
 
 		y := statusH + rowGap
@@ -735,10 +737,11 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			}
 			used += timelineH
 			extra := max(0, h-used)
-			heroH += min(extra, 2)
-			extra = max(0, extra-2)
-			mainH += min(extra/3*2, 4)
-			secH += min(extra-extra/3*2, 6)
+			heroAdd := min(extra, 2)
+			heroH += heroAdd
+			remaining := extra - heroAdd
+			mainH += remaining / 2
+			secH += remaining - remaining/2
 		}
 
 		y := statusH + rowGap
@@ -779,8 +782,9 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		if state != DashboardClean {
 			used := heroH + rowGap*2 + mainH + timelineH
 			extra := max(0, h-used)
-			heroH += min(extra, 2)
-			mainH += min(extra-extra/3*2, 4)
+			heroAdd := min(extra, 2)
+			heroH += heroAdd
+			mainH += extra - heroAdd
 		}
 
 		y := rowGap
