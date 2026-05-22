@@ -198,7 +198,7 @@ Conditions: `bounds.H >= 4` (minimum useful card = 2 borders + title + 1 body). 
 
 **Status**: `renderCardBounded` now enforces the fixed-height contract: content lines are clipped/padded inside the card border, so the rendered card occupies exactly `bounds.H` visual rows. `fillHeight()` post-render padding is no longer needed (the old approach added blank lines outside the card). Body height is computed accurately from actual header/footer/toast heights instead of hardcoded `m.height-4`. Dashboard renderers now pass outer slot `W/H`, fixing the blank lower-card regression exposed by QA. Wide Findings detail panel no longer has a double-border artifact from `renderWidePreviewPanel` returning a card inside `RenderPanel`. QA screenshots captured at 1400×800, 640×480, 400×300.
 
-## Tests (56 tests, 9 files)
+## Tests (73 tests, 9 files + compact render tests)
 
 | File | Tests | Coverage |
 |------|-------|----------|
@@ -699,4 +699,20 @@ Screenshots at `screenshots/20260522_103925/`.
 |------|-------|------|
 | `internal/tui/compact_render_test.go` | 13 | Compact/mini renderers for all 3 screens: edge cases (empty, nil findings, single item, selected-last, clean state, width/height boundaries) |
 
-Total: 56 + 13 = 69 tests, all passing with `-race`.
+Total: 69 tests, all passing with `-race`.
+
+### #458 — 정리
+
+| Change | File | Lines |
+|--------|------|-------|
+| `renderInfoStrip` helper added | `layout.go` | `+16` |
+| `DashboardSlots` extra height distribution (risk state) | `layout.go` | `+30` |
+| InnerW/H → W/H in `renderUltraWideReport` (7 sites) | `screen_history.go` | `~7` |
+| InnerW/H → W/H in `renderWideReport` (7 sites) | `screen_history.go` | `~7` |
+| Guidance strip (export) with `renderInfoStrip` | `screen_history.go` | `~3` |
+| InnerW/H → W/H in `render()` + `renderUltraWideFindings()` (6 sites) | `screen_findings.go` | `~6` |
+| Guidance strip (fix) with `renderInfoStrip` | `screen_findings.go` | `~3` |
+| `renderRelatedFindingsCard` missing H param (2 branches) | `screen_findings.go` | `~2` |
+| Timeline with `renderInfoStrip` (clean + risk) | `screen_overview.go` | `~8` |
+| Dead code removal (`renderExportGuidanceCard`, `renderFixGuidance`) | `screen_history.go`, `screen_findings.go` | `−12` |
+| Strip body visibility tests (4 new functions) | `compact_render_test.go` | `+52` |
