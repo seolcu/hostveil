@@ -1,4 +1,4 @@
-hostveil
+/hostveil
 hostveil-*
 /target/
 *.db
