@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 type Config struct {
@@ -44,7 +46,7 @@ Options:
 	}
 
 	if os.Args[1] == "--version" || os.Args[1] == "-V" {
-		fmt.Println("hostveil v1.0.0")
+		fmt.Println("hostveil", domain.Version)
 		os.Exit(0)
 	}
 

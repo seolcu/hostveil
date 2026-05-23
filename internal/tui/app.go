@@ -446,13 +446,7 @@ func (m *appModel) renderHeader(t Theme) string {
 	r := m.scanResult
 	score := r.ScoreReport.Overall
 	grade := r.ScoreReport.Grade()
-	gradeColor := t.Critical
-	if score >= 50 {
-		gradeColor = t.Medium
-	}
-	if score >= 80 {
-		gradeColor = t.Success
-	}
+	gradeColor := t.GradeColor(score)
 
 	autoCount := 0
 	for _, f := range r.Findings {

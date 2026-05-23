@@ -49,7 +49,7 @@ func (r *SensitiveRule) Scan(svc compose.Service, name string, cf *compose.Compo
 
 			if isDefault {
 				findings = append(findings, domain.Finding{
-					ID:          "sensitive.default_secret",
+					ID:          domain.FindingSensitiveDefaultSecret,
 					Axis:        domain.AxisSensitiveData,
 					Severity:    domain.SeverityHigh,
 					Scope:       domain.ScopeService,
@@ -69,7 +69,7 @@ func (r *SensitiveRule) Scan(svc compose.Service, name string, cf *compose.Compo
 			} else {
 				// Inline secret (not necessarily weak)
 				findings = append(findings, domain.Finding{
-					ID:          "sensitive.inline_secret",
+					ID:          domain.FindingSensitiveInlineSecret,
 					Axis:        domain.AxisSensitiveData,
 					Severity:    domain.SeverityLow,
 					Scope:       domain.ScopeService,

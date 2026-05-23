@@ -9,7 +9,7 @@ func (c *MACCheck) Name() string { return "mac" }
 func (c *MACCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.mac.no_apparmor",
+			domain.FindingHostMACNoAppArmor,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"mac",
@@ -19,7 +19,7 @@ func (c *MACCheck) Scan(_ string) []domain.Finding {
 			"Install and enable AppArmor: sudo apt install apparmor apparmor-utils && sudo systemctl enable apparmor",
 		),
 		hostFinding(
-			"host.mac.no_selinux",
+			domain.FindingHostMACNoSELinux,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"mac",

@@ -71,7 +71,7 @@ func JSON(r *domain.ScanResult, findingsOnly bool) (string, error) {
 	}
 
 	output := jsonOutput{
-		Version:      "1.0.0",
+		Version:      domain.Version,
 		Overall:      r.ScoreReport.Overall,
 		Findings:     findings,
 		Severity:     sev,

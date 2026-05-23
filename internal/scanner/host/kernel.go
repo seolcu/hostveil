@@ -9,7 +9,7 @@ func (c *KernelCheck) Name() string { return "kernel" }
 func (c *KernelCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.kernel.kernel_updates",
+			domain.FindingHostKernelUpdates,
 			domain.AxisUpdateSupplyChain,
 			domain.SeverityHigh,
 			"kernel",
@@ -19,7 +19,7 @@ func (c *KernelCheck) Scan(_ string) []domain.Finding {
 			"Update the kernel: sudo apt update && sudo apt upgrade linux-image-$(uname -r)",
 		),
 		hostFinding(
-			"host.kernel.core_dumps",
+			domain.FindingHostKernelCoreDumps,
 			domain.AxisHostHardening,
 			domain.SeverityLow,
 			"kernel",
@@ -29,7 +29,7 @@ func (c *KernelCheck) Scan(_ string) []domain.Finding {
 			"Set ulimit -c 0 in /etc/security/limits.conf or set kernel.core_pattern to /dev/null.",
 		),
 		hostFinding(
-			"host.kernel.ip_forwarding",
+			domain.FindingHostKernelIPForward,
 			domain.AxisHostHardening,
 			domain.SeverityLow,
 			"kernel",

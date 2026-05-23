@@ -9,7 +9,7 @@ func (c *SSHCheck) Name() string { return "ssh" }
 func (c *SSHCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.ssh.root_login",
+			domain.FindingHostSSHRootLogin,
 			domain.AxisHostHardening,
 			domain.SeverityHigh,
 			"ssh",
@@ -19,7 +19,7 @@ func (c *SSHCheck) Scan(_ string) []domain.Finding {
 			"Set PermitRootLogin no in /etc/ssh/sshd_config and use sudo instead.",
 		),
 		hostFinding(
-			"host.ssh.password_auth",
+			domain.FindingHostSSHPasswordAuth,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"ssh",
@@ -29,7 +29,7 @@ func (c *SSHCheck) Scan(_ string) []domain.Finding {
 			"Set PasswordAuthentication no and use SSH keys only.",
 		),
 		hostFinding(
-			"host.ssh.protocol",
+			domain.FindingHostSSHProtocol,
 			domain.AxisHostHardening,
 			domain.SeverityLow,
 			"ssh",

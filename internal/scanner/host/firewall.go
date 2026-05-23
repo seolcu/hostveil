@@ -9,7 +9,7 @@ func (c *FirewallCheck) Name() string { return "firewall" }
 func (c *FirewallCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.firewall.no_active_firewall",
+			domain.FindingHostFirewallNoActive,
 			domain.AxisHostHardening,
 			domain.SeverityHigh,
 			"firewall",
@@ -19,7 +19,7 @@ func (c *FirewallCheck) Scan(_ string) []domain.Finding {
 			"Install and enable a firewall: apt install ufw && ufw enable",
 		),
 		hostFinding(
-			"host.firewall.default_drop",
+			domain.FindingHostFirewallDefaultDrop,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"firewall",

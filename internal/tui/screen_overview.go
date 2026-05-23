@@ -162,24 +162,20 @@ func (m *overviewModel) renderAllClearCard(theme Theme, outerW, height int) stri
 }
 
 func (m *overviewModel) renderScanCoverageCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
-	var rows []string
-	addRow := func(k, v string) {
-		rows = append(rows, fmt.Sprintf("  %-12s %s", k+":", v))
+	svc := fmt.Sprintf("%d", len(r.Metadata.Services))
+	if len(r.Metadata.Services) == 0 {
+		svc = "none"
 	}
-
-	if len(r.Metadata.Services) > 0 {
-		addRow("Services", fmt.Sprintf("%d", len(r.Metadata.Services)))
+	composePath := r.Metadata.ComposeFile
+	if composePath != "" {
+		composePath = truncatePathForWidth(composePath, outerW-16)
 	} else {
-		addRow("Services", "none")
+		composePath = "none"
 	}
-	if r.Metadata.ComposeFile != "" {
-		addRow("Compose", truncatePathForWidth(r.Metadata.ComposeFile, outerW-16))
+	rows := []string{
+		fmt.Sprintf("  %-12s %s", "Services:", svc),
+		fmt.Sprintf("  %-12s %s", "Compose:", composePath),
 	}
-
-	if len(rows) == 1 {
-		rows = append(rows, "")
-	}
-
 	return renderCardBounded("Scan coverage", strings.Join(rows, "\n"), theme, Rect{W: outerW, H: height})
 }
 
@@ -432,13 +428,7 @@ func (m *overviewModel) renderWorkflowTimelineCardClean(theme Theme, outerW, hei
 func (m *overviewModel) renderRiskSummaryHeroCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
 	grade := r.ScoreReport.Grade()
 	score := r.ScoreReport.Overall
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
+	gradeColor := theme.GradeColor(score)
 
 	riskLine := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(gradeColor)).
@@ -644,13 +634,7 @@ func (m *overviewModel) renderMiniDashboard(r *domain.ScanResult, theme Theme, w
 	grade := r.ScoreReport.Grade()
 	findings := r.TotalFindings()
 
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
+	gradeColor := theme.GradeColor(score)
 
 	coloredGrade := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor))
 	scoreLine := coloredGrade.Render(fmt.Sprintf("Score %d/%d · %s", score, 100, grade))
@@ -696,13 +680,7 @@ func (m *overviewModel) renderCompactDashboard(r *domain.ScanResult, theme Theme
 	grade := r.ScoreReport.Grade()
 	findings := r.TotalFindings()
 
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
+	gradeColor := theme.GradeColor(score)
 
 	// Line 1: Score header
 	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))
@@ -773,13 +751,6 @@ func (m *overviewModel) renderCompactDashboard(r *domain.ScanResult, theme Theme
 
 	style := lipgloss.NewStyle().Width(width).Padding(0, 1)
 	return style.Render(strings.Join(lines, "\n"))
-}
-
-func pluralize(s string, n int) string {
-	if n == 1 {
-		return s
-	}
-	return s + "s"
 }
 
 func (m *overviewModel) renderNextActionsCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
@@ -976,27 +947,6 @@ func (m *overviewModel) renderAffectedServicesCard(r *domain.ScanResult, theme T
 	return renderCardBounded("Affected services", strings.Join(rows, "\n"), theme, Rect{W: outerW, H: height})
 }
 
-func RenderBar(score uint8, width int) string {
-	if width < 2 {
-		return ""
-	}
-	filled := int(score) * width / 100
-	bar := "["
-	for i := 0; i < width; i++ {
-		if i < filled {
-			bar += "█"
-		} else {
-			bar += "░"
-		}
-	}
-	bar += "]"
-	return bar
-}
-
-func renderColoredBar(score uint8, width int, color string) string {
-	bar := RenderBar(score, width)
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(bar)
-}
 
 func (m *overviewModel) renderFixQueueCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
 	var rows []string
@@ -1047,54 +997,51 @@ func (m *overviewModel) renderFixQueueCard(r *domain.ScanResult, theme Theme, ou
 }
 
 func (m *overviewModel) renderScanContextCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
-	var rows []string
-	addRow := func(k, v string) {
-		rows = append(rows, fmt.Sprintf("%-12s %s", k+":", v))
-	}
+	var pairs []KV
 
 	info := r.Metadata.HostRuntime
 	if info != nil {
 		if info.Hostname != "" {
-			addRow("Hostname", info.Hostname)
+			pairs = append(pairs, KV{"Hostname", info.Hostname})
 		}
 		if info.DockerVersion != "" {
-			addRow("Docker", info.DockerVersion)
+			pairs = append(pairs, KV{"Docker", info.DockerVersion})
 		}
 		if info.Uptime != "" {
-			addRow("Uptime", info.Uptime)
+			pairs = append(pairs, KV{"Uptime", info.Uptime})
 		}
 		if info.LoadAverage != "" {
-			addRow("Load", formatLoadAvg(info.LoadAverage, false))
+			pairs = append(pairs, KV{"Load", formatLoadAvg(info.LoadAverage, false)})
 		}
 	}
 
 	if len(r.Metadata.Services) > 0 {
 		if len(r.Metadata.Services) == 1 {
-			addRow("Service", r.Metadata.Services[0].Name)
+			pairs = append(pairs, KV{"Service", r.Metadata.Services[0].Name})
 		} else {
 			names := make([]string, len(r.Metadata.Services))
 			for i, s := range r.Metadata.Services {
 				names[i] = s.Name
 			}
-			addRow("Services", fmt.Sprintf("%d (%s)", len(r.Metadata.Services), strings.Join(names, ", ")))
+			pairs = append(pairs, KV{"Services", fmt.Sprintf("%d (%s)", len(r.Metadata.Services), strings.Join(names, ", "))})
 		}
 	}
 	if r.Metadata.ComposeFile != "" {
-		addRow("Compose", truncatePathForWidth(r.Metadata.ComposeFile, outerW-16))
+		pairs = append(pairs, KV{"Compose", truncatePathForWidth(r.Metadata.ComposeFile, outerW-16)})
 	}
 	if len(r.Metadata.Adapters) > 0 {
 		names := make([]string, len(r.Metadata.Adapters))
 		for i, a := range r.Metadata.Adapters {
 			names[i] = a.Name
 		}
-		addRow("Adapters", strings.Join(names, ", "))
+		pairs = append(pairs, KV{"Adapters", strings.Join(names, ", ")})
 	}
 
-	if len(rows) == 0 {
-		rows = append(rows, "  No scan context available")
+	body := renderKV(pairs, 12)
+	if body == "" {
+		body = "  No scan context available"
 	}
-
-	return renderCardBounded("Scan context", strings.Join(rows, "\n"), theme, Rect{W: outerW, H: height})
+	return renderCardBounded("Scan context", body, theme, Rect{W: outerW, H: height})
 }
 
 // ─── Brand Filler ─────────────────────────────────────────────────────────

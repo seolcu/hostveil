@@ -68,22 +68,6 @@ cmd_run() {
     'cd /workspace && go run ./cmd/hostveil/'
 }
 
-cmd_serve() {
-  # Kill any previous instance (ttyd + hostveil) before taking the port
-  docker compose -f "$LAB_COMPOSE" exec lab bash -c \
-    'pkill -f "[h]ostveil.*--serve" 2>/dev/null; pkill -f "ttyd.*9090" 2>/dev/null' || true
-  sleep 1
-  cmd_build_in_lab
-  docker compose -f "$LAB_COMPOSE" exec -e TERM=${TERM:-xterm-256color} -e COLORTERM=${COLORTERM:-truecolor} lab bash -c \
-    'cd /workspace && ./hostveil --serve --port 9090'
-}
-
-cmd_build_in_lab() {
-  echo "Building hostveil binary inside the lab..."
-  docker compose -f "$LAB_COMPOSE" exec lab bash -c \
-    'cd /workspace && go build -buildvcs=false -o hostveil ./cmd/hostveil/'
-}
-
 main() {
   ensure_docker
   case "${1:-help}" in

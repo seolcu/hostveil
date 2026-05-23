@@ -2,25 +2,10 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
-[![Status: Active](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/seolcu/hostveil)
 
 > **hostveil** — Linux self-hosting security dashboard. Zero-config, terminal-native, adapter-aware.
 
 Inspired by Chrome Lighthouse and `btop`, hostveil scans your Docker Compose stacks and host environment for security misconfigurations — then presents everything in one interactive TUI. Just run `hostveil`.
-
-**[English](README.md)** | [한국어](README.ko.md)
-
----
-
-## Philosophy
-
-**`hostveil` — no flags needed.** Auto-discovers everything:
-
-- Walks up from `pwd` to find compose files.
-- Detects Trivy, Dockle, Lynis, Gitleaks in `PATH` and runs them automatically.
-- Scores findings across five audit axes in a rich Bubbletea TUI.
-
-No `--compose`, `--output`, `--fix`, or `--adapters` flags. Only `--serve`, `--port`, `--host`, `--user-mode`, `--version`. Run as root for full coverage; use `--user-mode` to restrict.
 
 ---
 
@@ -30,14 +15,11 @@ No `--compose`, `--output`, `--fix`, or `--adapters` flags. Only `--serve`, `--p
 # Interactive TUI (auto-discovers everything)
 hostveil
 
-# Web UI via ttyd (http://127.0.0.1:8080)
-hostveil --serve
-
-# Restricted privileges
+# Restricted privileges (skip host-level checks)
 hostveil --user-mode
 ```
 
-Just `hostveil`. It finds compose files, runs rules, detects adapter tools, and opens a TUI with overview, findings, and history screens.
+Just `hostveil`. It finds compose files, runs rules, detects adapter tools, and opens a TUI with dashboard, findings, and report screens.
 
 ---
 
@@ -53,20 +35,20 @@ Just `hostveil`. It finds compose files, runs rules, detects adapter tools, and 
 | **Sensitive Data** | Inline secrets in env vars, default/weak credentials |
 | **Updates** | Missing version pins, `:latest` tag |
 | **Network** | Default bridge network, `network_mode: host` |
-| **Service-Aware** | 23 services — Vaultwarden, Jellyfin, Gitea, Nextcloud, Immich, Traefik, Portainer, Home Assistant, Pi-hole, Grafana, NPM, Caddy, Authentik, Paperless, Postgres, MySQL, Redis, GitLab, Uptime Kuma, Duplicati, Restic, Borg, Kopia |
+| **Service-Aware** | 23 known services with tailored checks (Vaultwarden, Jellyfin, Gitea, Nextcloud, Immich, Traefik, Portainer, Home Assistant, Pi-hole, Grafana, Nginx Proxy Manager, Caddy, Authentik, Paperless, PostgreSQL, MySQL/MariaDB, Redis, GitLab, Uptime Kuma, Duplicati, Restic, Borg, Kopia) |
 
 ### Host Auditing — 9 Check Modules
 
 | Module | What It Checks |
 |--------|---------------|
 | **SSH** | PermitRootLogin, password auth, protocol version |
-| **Docker** | Daemon socket exposure, user-namespace remapping |
+| **Docker** | Daemon socket exposure, daemon TLS |
 | **Firewall** | Active firewall (iptables/nftables/ufw), default policies |
-| **Kernel** | sysctl hardening, ASLR, YAMA ptrace |
-| **Filesystem** | World-writable dirs, noexec mounts |
-| **FIM** | File integrity monitoring (AIDE, Tripwire) |
+| **Kernel** | Kernel updates, core dumps, IP forwarding |
+| **Filesystem** | World-writable files, SUID binaries, separate partitions |
+| **FIM** | File integrity monitoring (AIDE) |
 | **MAC** | Mandatory access control (AppArmor, SELinux) |
-| **Defenses** | Fail2ban, auditd, rkhunter |
+| **Defenses** | Fail2ban, rkhunter, auditd |
 | **Updates** | Unattended-upgrades, pending reboot |
 
 ### External Adapters — Installed = Auto-Run
@@ -78,22 +60,22 @@ Just `hostveil`. It finds compose files, runs rules, detects adapter tools, and 
 | **Lynis** | Host-level security auditing |
 | **Gitleaks** | Git secret/credential leak detection |
 
-No config needed. Available tools are detected at startup and their results merge into the findings list.
+No config needed. Available tools are auto-detected via PATH and their results merge into the findings list.
 
 ### Fix Engine
 
 Guided remediation for compose files and host configs:
 
-- **Preview** changes before applying (press `f` on any fixable finding).
-- **Auto** — applied on confirm (pin tags, drop caps).
-- **Review** — user input needed (bind port to `127.0.0.1`).
+- **Preview** changes before applying (press `p` on any fixable finding).
+- **Auto** — applied on confirm (pin tags, drop caps, bind ports).
+- **Review** — user input needed (reverse proxy, Vaultwarden config).
 - **Manual** — instructions provided when automation isn't possible.
 - **Backups** — original files are backed up before edits.
 - **Host + adapter fixes** — shell commands for SSH, firewall, Trivy updates, Gitleaks cleanup.
 
 ### Export
 
-Available from the History screen:
+Available from the Report screen:
 
 | Format | Use Case |
 |--------|----------|
@@ -102,17 +84,9 @@ Available from the History screen:
 | **Markdown** | Human-readable reports, PR comments |
 | **HTML** | Rich formatted reports for stakeholders |
 
-### Web UI (ttyd)
-
-```sh
-hostveil --serve --port 8080 --host 127.0.0.1
-```
-
-Streams the real Bubbletea TUI to your browser via ttyd WebSocket. Handles port conflicts by freeing the occupied port.
-
 ### TUI Themes
 
-9 themes: Default ANSI, Catppuccin, Nord, Tokyo Night, Gruvbox, Dracula, Monokai, Light, Solarized Light.
+5 themes: Tokyo Night, Dracula, Nord, Catppuccin, Gruvbox. Press `s` on the Dashboard or Report screen to change themes.
 
 ---
 
@@ -125,7 +99,7 @@ curl -fsSL https://github.com/seolcu/hostveil/releases/latest/download/hostveil_
 chmod +x /usr/local/bin/hostveil
 ```
 
-Architectures: `amd64`, `arm64`. Linux and macOS.
+Architectures: `amd64`, `arm64`. Linux only.
 
 ### Go Install
 
@@ -134,12 +108,6 @@ go install github.com/seolcu/hostveil/cmd/hostveil@latest
 ```
 
 Requires Go 1.24+.
-
-### Docker
-
-```sh
-docker pull ghcr.io/seolcu/hostveil:latest
-```
 
 ---
 
@@ -154,7 +122,6 @@ go build -o hostveil ./cmd/hostveil/
 
 # Cross-compile (native, no toolchain)
 GOOS=linux GOARCH=arm64 go build -o hostveil-linux-arm64 ./cmd/hostveil/
-GOOS=darwin GOARCH=amd64 go build -o hostveil-darwin-amd64 ./cmd/hostveil/
 ```
 
 Or use Makefile: `make build`, `make cross`, `make test`.
@@ -167,38 +134,45 @@ Or use Makefile: `make build`, `make cross`, `make test`.
 
 | Key | Screen | Content |
 |-----|--------|---------|
-| `1` | **Overview** | Score card, axis breakdown, action queue, adapter status, host info |
-| `2` | **Findings** | Severity-sorted list, detail panel, fix guidance, filters, search |
-| `3` | **History** | Score trends, severity summary, export buttons |
+| `1` | **Dashboard** | Score card, axis breakdown, action queue, adapter status, host info |
+| `2` | **Findings** | Severity-sorted list, detail panel, fix preview, filters, search |
+| `3` | **Report** | Score summary, severity breakdown, export options |
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `f` | Fix preview for selected finding |
+| `1` / `2` / `3` | Switch screens (Dashboard / Findings / Report) |
+| `↑` / `↓` or `j` / `k` | Move selection |
+| `Enter` or `l` | Open detail / select |
+| `Esc` or `h` | Back / close panel |
 | `/` | Search findings |
-| `s` | Settings (theme, layout, borders) |
-| `?` | Help overlay |
-| `Tab` | Cycle panel focus |
-| `q` / `Esc` | Quit or back |
-| `L` | Cycle layout presets |
+| `f` | Open filter panel (Findings) |
+| `s` | Cycle sort (Findings) / Open settings (Dashboard/Report) |
+| `p` | Toggle fix preview (on fixable findings) |
+| `a` | Apply fix (from fix preview) |
+| `h` | Host triage — filter findings to host scope (Dashboard) |
+| `r` | Reset filters (Findings) / Reset export cursor (Report) |
+| `?` | Toggle help overlay |
+| `q` | Quit |
 
 ### Findings Screen
 
-- Sorted by severity (Critical → High → Medium → Low).
-- Filter by source (compose/host/adapter), remediation type (auto/review/manual), or service.
-- Three sort modes: severity, service, axis.
-- Press `f` on fixable findings to enter the fix preview workflow.
+- Sorted by severity by default (Critical → High → Medium → Low).
+- Filter by source, scope, service, or remediation type.
+- Three sort modes: severity, source, title.
+- Press `p` on fixable findings to preview the diff before applying.
+- Press `a` to apply after preview.
 
 ### Fix Engine Workflow
 
 1. Select a fixable finding (`Auto` or `Review` type).
-2. Press `f` — preview panel shows the diff and action summary.
-3. Confirm — engine backs up the original file and applies the fix.
+2. Press `p` — preview panel shows the diff and action summary.
+3. Press `a` to apply — engine backs up the original file and applies the fix.
 
 ### Export
 
-From History screen, export to JSON, SARIF, Markdown, or HTML.
+From Report screen, use `j`/`k` to select format and `Enter` to export. Creates `hostveil_report_<timestamp>.<format>` in the current directory.
 
 ---
 
@@ -218,7 +192,7 @@ Every finding maps to one of five axes. The TUI shows per-axis scores alongside 
 
 ## Docker Lab
 
-Complete lab environment for development and testing. Spins up a scanner container with all tools pre-installed plus five intentionally-vulnerable compose stacks.
+Complete lab environment for development and testing. Spins up a scanner container with all tools pre-installed plus several intentionally-vulnerable compose stacks.
 
 ### Prerequisites
 
@@ -231,7 +205,7 @@ cd hostveil
 ./scripts/lab.sh up
 ```
 
-Builds the lab container (Go 1.24, ttyd, Trivy, Dockle, Lynis, Gitleaks) and starts Vaultwarden, Jellyfin, Gitea, Nextcloud, and nginx — each with deliberate security flaws.
+Builds the lab container (Go 1.24, Trivy, Dockle, Lynis, Gitleaks) and starts Vaultwarden, Jellyfin, Gitea, Nextcloud, and nginx — each with deliberate security flaws.
 
 ### Lab Commands
 
@@ -240,8 +214,6 @@ Builds the lab container (Go 1.24, ttyd, Trivy, Dockle, Lynis, Gitleaks) and sta
 ./scripts/lab.sh down            # Stop all lab services
 ./scripts/lab.sh shell           # Enter lab container (bash)
 ./scripts/lab.sh run             # Run hostveil inside lab (auto-discovery)
-./scripts/lab.sh serve           # hostveil --serve at http://localhost:9090/
-./scripts/lab.sh serve-detached  # hostveil --serve in detached mode
 ```
 
 Target services can also be started individually:
@@ -256,8 +228,7 @@ docker compose -f docker/lab/vaultwarden/compose.yml up -d
 ┌──────────────────────┐
 │   Lab Container       │
 │  (Go 1.24 + tools)    │
-│  hostveil --serve     │
-│  http://localhost:9090 │
+│  hostveil             │
 └──────────┬───────────┘
            │
 ┌──────────┴───────────┐
@@ -295,9 +266,8 @@ go test -race -count=1 ./internal/export/...
 ## Tech Stack
 
 - **Language**: Go 1.24+, no CGO
-- **TUI**: Bubbletea, Bubbles, Lipgloss, Glamour, Huh
+- **TUI**: Bubbletea, Bubbles, Lipgloss
 - **YAML**: goccy/go-yaml
-- **Web**: [ttyd](https://github.com/tsl0922/ttyd) — streams TUI via WebSocket
 - **Build**: `go build`, cross-compile by `GOOS`/`GOARCH`
 - **License**: GPL-3.0
 
@@ -305,7 +275,7 @@ go test -race -count=1 ./internal/export/...
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. See [AGENTS.md](AGENTS.md) for implementation details and architecture.
 
 ## License
 

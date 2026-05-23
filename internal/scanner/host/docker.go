@@ -9,7 +9,7 @@ func (c *DockerCheck) Name() string { return "docker" }
 func (c *DockerCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.docker.socket_accessible",
+			domain.FindingHostDockerSocketAccessible,
 			domain.AxisHostHardening,
 			domain.SeverityHigh,
 			"docker",
@@ -19,7 +19,7 @@ func (c *DockerCheck) Scan(_ string) []domain.Finding {
 			"Restrict docker group membership and consider using rootless Docker.",
 		),
 		hostFinding(
-			"host.docker.daemon_tls",
+			domain.FindingHostDockerDaemonTLS,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"docker",

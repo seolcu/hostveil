@@ -9,7 +9,7 @@ func (c *UpdatesCheck) Name() string { return "updates" }
 func (c *UpdatesCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.updates.unattended_upgrades",
+			domain.FindingHostUpdatesUnattended,
 			domain.AxisUpdateSupplyChain,
 			domain.SeverityMedium,
 			"updates",
@@ -19,7 +19,7 @@ func (c *UpdatesCheck) Scan(_ string) []domain.Finding {
 			"Install unattended-upgrades: sudo apt install unattended-upgrades && sudo dpkg-reconfigure unattended-upgrades",
 		),
 		hostFinding(
-			"host.updates.reboot_required",
+			domain.FindingHostUpdatesReboot,
 			domain.AxisUpdateSupplyChain,
 			domain.SeverityLow,
 			"updates",

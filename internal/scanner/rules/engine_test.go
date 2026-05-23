@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/compose"
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func TestRuleEngineFindsExposureIssues(t *testing.T) {
@@ -28,10 +29,10 @@ func TestRuleEngineFindsExposureIssues(t *testing.T) {
 	hasPublicBinding := false
 	hasReverseProxy := false
 	for _, f := range findings {
-		if f.ID == "exposure.public_binding" {
+		if f.ID == domain.FindingExposurePublicBinding {
 			hasPublicBinding = true
 		}
-		if f.ID == "exposure.reverse_proxy_expected" {
+		if f.ID == domain.FindingExposureReverseProxy {
 			hasReverseProxy = true
 		}
 	}
@@ -59,7 +60,7 @@ func TestRuleEngineFindsPrivilegedContainer(t *testing.T) {
 
 	hasPrivileged := false
 	for _, f := range findings {
-		if f.ID == "permissions.privileged" {
+		if f.ID == domain.FindingPermissionsPrivileged {
 			hasPrivileged = true
 			if f.Severity.String() != "high" {
 				t.Errorf("expected high severity, got %s", f.Severity)
@@ -86,7 +87,7 @@ func TestRuleEngineFindsLatestTag(t *testing.T) {
 
 	hasLatest := false
 	for _, f := range findings {
-		if f.ID == "updates.latest_tag" {
+		if f.ID == domain.FindingUpdatesLatestTag {
 			hasLatest = true
 		}
 	}
@@ -119,13 +120,13 @@ func TestServiceAwareFindsVaultwardenIssues(t *testing.T) {
 		ids[f.ID] = true
 	}
 
-	if !ids["service.vaultwarden.insecure_domain"] {
+	if !ids[domain.FindingVaultwardenInsecureDomain] {
 		t.Error("expected service.vaultwarden.insecure_domain")
 	}
-	if !ids["service.vaultwarden.signups_allowed"] {
+	if !ids[domain.FindingVaultwardenSignupsAllowed] {
 		t.Error("expected service.vaultwarden.signups_allowed")
 	}
-	if !ids["service.vaultwarden.admin_token"] {
+	if !ids[domain.FindingVaultwardenAdminToken] {
 		t.Error("expected service.vaultwarden.admin_token")
 	}
 }
@@ -154,13 +155,13 @@ func TestServiceAwareDetectsPostgresAndRedis(t *testing.T) {
 		ids[f.ID] = true
 	}
 
-	if !ids["service.postgres.default_password"] {
+	if !ids[domain.FindingPostgresDefaultPassword] {
 		t.Error("expected service.postgres.default_password")
 	}
-	if !ids["service.redis.no_password"] {
+	if !ids[domain.FindingRedisNoPassword] {
 		t.Error("expected service.redis.no_password")
 	}
-	if !ids["service.redis.public_bind"] {
+	if !ids[domain.FindingRedisPublicBind] {
 		t.Error("expected service.redis.public_bind")
 	}
 }
@@ -180,7 +181,7 @@ func TestRuleEngineFindsDefaultBridgeNetwork(t *testing.T) {
 
 	hasBridge := false
 	for _, f := range findings {
-		if f.ID == "network.default_bridge_used" {
+		if f.ID == domain.FindingNetworkDefaultBridge {
 			hasBridge = true
 		}
 	}

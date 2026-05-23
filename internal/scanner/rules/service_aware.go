@@ -102,7 +102,7 @@ type serviceFindingDef struct {
 var serviceFindings = map[ServiceKind][]serviceFindingDef{
 	KindVaultwarden: {
 		{
-			ID:          "service.vaultwarden.insecure_domain",
+			ID:          domain.FindingVaultwardenInsecureDomain,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -114,7 +114,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			EvidenceKey: "DOMAIN",
 		},
 		{
-			ID:          "service.vaultwarden.signups_allowed",
+			ID:          domain.FindingVaultwardenSignupsAllowed,
 			Axis:        domain.AxisExcessivePermissions,
 			Severity:    domain.SeverityMedium,
 			Remediation: domain.RemediationReview,
@@ -126,7 +126,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			EvidenceKey: "SIGNUPS_ALLOWED",
 		},
 		{
-			ID:          "service.vaultwarden.admin_token",
+			ID:          domain.FindingVaultwardenAdminToken,
 			Axis:        domain.AxisSensitiveData,
 			Severity:    domain.SeverityMedium,
 			Remediation: domain.RemediationReview,
@@ -141,7 +141,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindJellyfin: {
 		{
-			ID:          "service.jellyfin.public_url",
+			ID:          domain.FindingJellyfinPublicURL,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityMedium,
 			Remediation: domain.RemediationReview,
@@ -153,7 +153,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			EvidenceKey: "JELLYFIN_PublishedServerUrl",
 		},
 		{
-			ID:          "service.jellyfin.root_user",
+			ID:          domain.FindingJellyfinRootUser,
 			Axis:        domain.AxisExcessivePermissions,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -165,7 +165,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			EvidenceKey: "user",
 		},
 		{
-			ID:          "service.jellyfin.privileged",
+			ID:          domain.FindingJellyfinPrivileged,
 			Axis:        domain.AxisExcessivePermissions,
 			Severity:    domain.SeverityCritical,
 			Remediation: domain.RemediationReview,
@@ -180,7 +180,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindPostgres: {
 		{
-			ID:          "service.postgres.default_password",
+			ID:          domain.FindingPostgresDefaultPassword,
 			Axis:        domain.AxisSensitiveData,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -192,7 +192,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			EvidenceKey: "POSTGRES_PASSWORD",
 		},
 		{
-			ID:          "service.postgres.no_password",
+			ID:          domain.FindingPostgresNoPassword,
 			Axis:        domain.AxisSensitiveData,
 			Severity:    domain.SeverityCritical,
 			Remediation: domain.RemediationManual,
@@ -208,7 +208,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindRedis: {
 		{
-			ID:          "service.redis.no_password",
+			ID:          domain.FindingRedisNoPassword,
 			Axis:        domain.AxisSensitiveData,
 			Severity:    domain.SeverityCritical,
 			Remediation: domain.RemediationManual,
@@ -219,7 +219,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 			Condition:   func(svc compose.Service) bool { return !hasEnv(svc, "REDIS_PASSWORD") },
 		},
 		{
-			ID:          "service.redis.public_bind",
+			ID:          domain.FindingRedisPublicBind,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationAuto,
@@ -233,7 +233,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindGitlab: {
 		{
-			ID:          "service.gitlab.root_password",
+			ID:          domain.FindingGitlabRootPassword,
 			Axis:        domain.AxisSensitiveData,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -248,7 +248,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindTraefik: {
 		{
-			ID:          "service.traefik.dashboard_exposed",
+			ID:          domain.FindingTraefikDashboardExposed,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -262,7 +262,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindPortainer: {
 		{
-			ID:          "service.portainer.public_access",
+			ID:          domain.FindingPortainerPublicAccess,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityHigh,
 			Remediation: domain.RemediationReview,
@@ -276,7 +276,7 @@ var serviceFindings = map[ServiceKind][]serviceFindingDef{
 
 	KindPihole: {
 		{
-			ID:          "service.pihole.unsecured_web_interface",
+			ID:          domain.FindingPiholeUnsecuredWebUI,
 			Axis:        domain.AxisUnnecessaryExposure,
 			Severity:    domain.SeverityMedium,
 			Remediation: domain.RemediationManual,

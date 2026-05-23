@@ -28,7 +28,7 @@ func (r *UpdatesRule) Scan(svc compose.Service, name string, cf *compose.Compose
 		}
 
 		findings = append(findings, domain.Finding{
-			ID:          "updates.latest_tag",
+			ID:          domain.FindingUpdatesLatestTag,
 			Axis:        domain.AxisUpdateSupplyChain,
 			Severity:    domain.SeverityMedium,
 			Scope:       domain.ScopeService,

@@ -12,8 +12,8 @@ import (
 
 func TestMinimalHostFix(t *testing.T) {
 	findings := []domain.Finding{
-		{ID: "host.ssh.root_login", Service: "host"},
-		{ID: "host.firewall.no_active_firewall", Service: "host"},
+		{ID: domain.FindingHostSSHRootLogin, Service: "host"},
+		{ID: domain.FindingHostFirewallNoActive, Service: "host"},
 	}
 	plan := MinimalHostFix(findings)
 	if plan == nil {
@@ -68,7 +68,7 @@ func TestPreviewAnyFindingCompose(t *testing.T) {
 
 func TestPreviewAnyFindingHost(t *testing.T) {
 	f := domain.Finding{
-		ID: "host.ssh.root_login", Source: domain.SourceNativeHost,
+		ID: domain.FindingHostSSHRootLogin, Source: domain.SourceNativeHost,
 		Remediation: domain.RemediationReview, Service: "host",
 	}
 	result := PreviewAnyFinding(f, "", nil)
@@ -167,7 +167,7 @@ func TestEngineApplyModifiesComposeFile(t *testing.T) {
 	// Verify exposure.public_binding finding exists
 	var hasPublicBinding bool
 	for _, f := range result.Findings {
-		if f.ID == "exposure.public_binding" {
+		if f.ID == domain.FindingExposurePublicBinding {
 			hasPublicBinding = true
 			break
 		}
@@ -302,7 +302,7 @@ func TestEngineApplyUpdatesLatestTag(t *testing.T) {
 	// 3. Verify updates.latest_tag finding is generated
 	var latestTagFindings []domain.Finding
 	for _, f := range result.Findings {
-		if f.ID == "updates.latest_tag" {
+		if f.ID == domain.FindingUpdatesLatestTag {
 			latestTagFindings = append(latestTagFindings, f)
 		}
 	}
@@ -413,7 +413,7 @@ func TestEngineApplyWritableRootfs(t *testing.T) {
 	// 3. Verify runtime.writable_rootfs finding
 	var writableRootfsFindings []domain.Finding
 	for _, f := range result.Findings {
-		if f.ID == "runtime.writable_rootfs" {
+		if f.ID == domain.FindingRuntimeWritableRootfs {
 			writableRootfsFindings = append(writableRootfsFindings, f)
 		}
 	}

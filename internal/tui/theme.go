@@ -121,6 +121,18 @@ var themes = map[string]func() Theme{
 // themeOrder defines the display order for themes
 var themeOrder = []string{"tokyo-night", "dracula", "nord", "catppuccin", "gruvbox"}
 
+// GradeColor returns the appropriate theme color for a score (0-100).
+func (t Theme) GradeColor(score uint8) string {
+	switch {
+	case score >= 80:
+		return t.Success
+	case score >= 50:
+		return t.Medium
+	default:
+		return t.Critical
+	}
+}
+
 func ThemeNames() []string {
 	// Return a copy to prevent modification
 	names := make([]string, len(themeOrder))

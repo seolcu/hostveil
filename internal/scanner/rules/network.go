@@ -17,7 +17,7 @@ func (r *NetworkRule) Scan(svc compose.Service, name string, cf *compose.Compose
 	// Rule: using default bridge network
 	if cf.Networks == nil || len(cf.Networks) == 0 {
 		findings = append(findings, domain.Finding{
-			ID:       "network.default_bridge_used",
+			ID:       domain.FindingNetworkDefaultBridge,
 			Axis:     domain.AxisUnnecessaryExposure,
 			Severity: domain.SeverityLow,
 			Scope:    domain.ScopeProject,
@@ -40,7 +40,7 @@ func (r *NetworkRule) Scan(svc compose.Service, name string, cf *compose.Compose
 	// Rule: host network mode
 	if strings.EqualFold(svc.NetworkMode, "host") {
 		findings = append(findings, domain.Finding{
-			ID:       "network.host_mode",
+			ID:       domain.FindingNetworkHostMode,
 			Axis:     domain.AxisUnnecessaryExposure,
 			Severity: domain.SeverityHigh,
 			Scope:    domain.ScopeService,

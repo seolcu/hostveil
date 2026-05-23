@@ -110,7 +110,7 @@ func SARIF(r *domain.ScanResult) (string, error) {
 				Tool: sarifTool{
 					Driver: sarifDriver{
 						Name:            "hostveil",
-						SemanticVersion: "1.0.0",
+						SemanticVersion: domain.Version,
 						Rules:           rules,
 					},
 				},

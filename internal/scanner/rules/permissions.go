@@ -17,7 +17,7 @@ func (r *PermissionsRule) Scan(svc compose.Service, name string, cf *compose.Com
 	// Rule: privileged mode
 	if svc.Privileged {
 		findings = append(findings, domain.Finding{
-			ID:       "permissions.privileged",
+			ID:       domain.FindingPermissionsPrivileged,
 			Axis:     domain.AxisExcessivePermissions,
 			Severity: domain.SeverityHigh,
 			Scope:    domain.ScopeService,
@@ -39,7 +39,7 @@ func (r *PermissionsRule) Scan(svc compose.Service, name string, cf *compose.Com
 	// Rule: root user
 	if strings.EqualFold(svc.User, "root") || svc.User == "" || svc.User == "0:0" {
 		findings = append(findings, domain.Finding{
-			ID:       "permissions.root_user",
+			ID:       domain.FindingPermissionsRootUser,
 			Axis:     domain.AxisExcessivePermissions,
 			Severity: domain.SeverityMedium,
 			Scope:    domain.ScopeService,
@@ -70,7 +70,7 @@ func (r *PermissionsRule) Scan(svc compose.Service, name string, cf *compose.Com
 
 	if hasSysAdmin {
 		findings = append(findings, domain.Finding{
-			ID:       "permissions.sys_admin_capability",
+			ID:       domain.FindingPermissionsSysAdmin,
 			Axis:     domain.AxisExcessivePermissions,
 			Severity: domain.SeverityMedium,
 			Scope:    domain.ScopeService,
@@ -93,7 +93,7 @@ func (r *PermissionsRule) Scan(svc compose.Service, name string, cf *compose.Com
 		sensitive := isSensitiveMount(vol.Source)
 		if sensitive {
 			findings = append(findings, domain.Finding{
-				ID:       "permissions.sensitive_mount",
+				ID:       domain.FindingPermissionsSensitiveMount,
 				Axis:     domain.AxisExcessivePermissions,
 				Severity: domain.SeverityHigh,
 				Scope:    domain.ScopeService,

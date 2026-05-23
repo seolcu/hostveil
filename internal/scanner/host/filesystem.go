@@ -9,7 +9,7 @@ func (c *FilesystemCheck) Name() string { return "filesystem" }
 func (c *FilesystemCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.filesystem.world_writable_files",
+			domain.FindingHostFilesystemWorldWritable,
 			domain.AxisExcessivePermissions,
 			domain.SeverityMedium,
 			"filesystem",
@@ -19,7 +19,7 @@ func (c *FilesystemCheck) Scan(_ string) []domain.Finding {
 			"Remove world-writable permissions: sudo chmod o-w /path/to/file",
 		),
 		hostFinding(
-			"host.filesystem.suid_files",
+			domain.FindingHostFilesystemSUID,
 			domain.AxisExcessivePermissions,
 			domain.SeverityMedium,
 			"filesystem",
@@ -29,7 +29,7 @@ func (c *FilesystemCheck) Scan(_ string) []domain.Finding {
 			"Remove SUID from suspicious binaries: sudo chmod u-s /path/to/binary",
 		),
 		hostFinding(
-			"host.filesystem.separate_partitions",
+			domain.FindingHostFilesystemSeparateParts,
 			domain.AxisHostHardening,
 			domain.SeverityLow,
 			"filesystem",

@@ -240,29 +240,29 @@ func (e *Engine) fixForFinding(f domain.Finding, cf *compose.ComposeFile, svc st
 	}
 
 	switch f.ID {
-	case "exposure.public_binding":
+	case domain.FindingExposurePublicBinding:
 		return e.fixPublicBinding(f, cf, svc)
-	case "runtime.no_new_privileges_disabled":
+	case domain.FindingRuntimeNoNewPrivileges:
 		return e.fixDropAllCapabilities(f, cf, svc)
-	case "runtime.writable_rootfs":
+	case domain.FindingRuntimeWritableRootfs:
 		return e.fixReadOnlyRootfs(f, cf, svc)
-	case "updates.latest_tag":
+	case domain.FindingUpdatesLatestTag:
 		return e.fixPinVersion(f, cf, svc)
-	case "network.default_bridge_used":
+	case domain.FindingNetworkDefaultBridge:
 		return e.fixCustomNetwork(f, cf, svc)
-	case "exposure.reverse_proxy_expected":
+	case domain.FindingExposureReverseProxy:
 		return &FixProposal{
 			Service:     svc,
 			Summary:     "Consider adding a reverse proxy for " + svc,
 			Remediation: "review",
 		}
-	case "service.vaultwarden.signups_allowed":
+	case domain.FindingVaultwardenSignupsAllowed:
 		return &FixProposal{
 			Service:     svc,
 			Summary:     "Disable open registration: set SIGNUPS_ALLOWED=false",
 			Remediation: "review",
 		}
-	case "service.vaultwarden.insecure_domain":
+	case domain.FindingVaultwardenInsecureDomain:
 		return &FixProposal{
 			Service:     svc,
 			Summary:     "Change DOMAIN to HTTPS URL",
@@ -403,15 +403,15 @@ func previewSnippetDiff(snippet string, finding domain.Finding) string {
 	}
 	updated := snippet
 	switch finding.ID {
-	case "exposure.public_binding":
+	case domain.FindingExposurePublicBinding:
 		updated = addLoopbackBinding(snippet)
-	case "runtime.no_new_privileges_disabled":
+	case domain.FindingRuntimeNoNewPrivileges:
 		updated = addServiceLine(snippet, "    security_opt:\n      - no-new-privileges:true")
-	case "runtime.writable_rootfs":
+	case domain.FindingRuntimeWritableRootfs:
 		updated = addServiceLine(snippet, "    read_only: true")
-	case "network.default_bridge_used":
+	case domain.FindingNetworkDefaultBridge:
 		updated = addServiceLine(snippet, "    networks:\n      - hostveil")
-	case "service.vaultwarden.insecure_domain":
+	case domain.FindingVaultwardenInsecureDomain:
 		updated = strings.ReplaceAll(snippet, "http://", "https://")
 	}
 	if updated == snippet {
@@ -657,17 +657,17 @@ func extractServiceSnippet(content, serviceName string, context int) string {
 // Returns the modified snippet or the original if no fix applies.
 func applySnippetFix(snippet string, findingID string) string {
 	switch findingID {
-	case "exposure.public_binding":
+	case domain.FindingExposurePublicBinding:
 		return addLoopbackBinding(snippet)
-	case "runtime.no_new_privileges_disabled":
+	case domain.FindingRuntimeNoNewPrivileges:
 		return addServiceLine(snippet, "    security_opt:\n      - no-new-privileges:true")
-	case "runtime.writable_rootfs":
+	case domain.FindingRuntimeWritableRootfs:
 		return addServiceLine(snippet, "    read_only: true")
-	case "network.default_bridge_used":
+	case domain.FindingNetworkDefaultBridge:
 		return addServiceLine(snippet, "    networks:\n      - hostveil")
-	case "updates.latest_tag":
+	case domain.FindingUpdatesLatestTag:
 		return addServiceLine(snippet, "    # TODO: pin image version tag")
-	case "service.vaultwarden.insecure_domain":
+	case domain.FindingVaultwardenInsecureDomain:
 		return strings.ReplaceAll(snippet, "http://", "https://")
 	}
 	return snippet

@@ -34,7 +34,6 @@ hostveil/
 │   │   └── docker.go                 # Walk up from pwd, find compose.yml files
 │   ├── export/                       # JSON, SARIF, Markdown, HTML
 │   ├── config/                       # CLI argument parsing
-│   └── web/                          # ttyd web server launcher
 ├── scripts/
 │   └── lab.sh                        # Docker lab management (up/down/shell/run)
 ├── docker/
@@ -48,8 +47,7 @@ hostveil/
 │       ├── nginx/compose.yml         # Target service (individual)
 │       └── self-hosting-stack.yml    # All targets combined
 ├── Makefile
-├── proto/                            # Frozen Python prototype (reference only)
-└── docs/adr/                         # Architecture Decision Records (0003-0009)
+└── proto/                            # Frozen Python prototype (reference only)
 ```
 
 ## Design Philosophy

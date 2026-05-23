@@ -9,7 +9,7 @@ func (c *DefensesCheck) Name() string { return "defenses" }
 func (c *DefensesCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.defenses.fail2ban_not_installed",
+			domain.FindingHostDefensesFail2ban,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"defenses",
@@ -19,7 +19,7 @@ func (c *DefensesCheck) Scan(_ string) []domain.Finding {
 			"Install fail2ban: sudo apt install fail2ban && sudo systemctl enable fail2ban",
 		),
 		hostFinding(
-			"host.defenses.rkhunter_not_installed",
+			domain.FindingHostDefensesRkhunter,
 			domain.AxisHostHardening,
 			domain.SeverityLow,
 			"defenses",
@@ -29,7 +29,7 @@ func (c *DefensesCheck) Scan(_ string) []domain.Finding {
 			"Install rkhunter: sudo apt install rkhunter && sudo rkhunter --check",
 		),
 		hostFinding(
-			"host.defenses.auditd_not_installed",
+			domain.FindingHostDefensesAuditd,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"defenses",

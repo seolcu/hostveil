@@ -22,7 +22,7 @@ func (r *ExposureRule) Scan(svc compose.Service, name string, cf *compose.Compos
 			}
 
 			findings = append(findings, domain.Finding{
-				ID:       "exposure.public_binding",
+				ID:       domain.FindingExposurePublicBinding,
 				Axis:     domain.AxisUnnecessaryExposure,
 				Severity: sev,
 				Scope:    domain.ScopeService,
@@ -44,7 +44,7 @@ func (r *ExposureRule) Scan(svc compose.Service, name string, cf *compose.Compos
 		// Rule: reverse proxy expected (port 80 or 443 exposed)
 		if p.Target == 80 || p.Target == 443 {
 			findings = append(findings, domain.Finding{
-				ID:       "exposure.reverse_proxy_expected",
+				ID:       domain.FindingExposureReverseProxy,
 				Axis:     domain.AxisUnnecessaryExposure,
 				Severity: domain.SeverityHigh,
 				Scope:    domain.ScopeService,

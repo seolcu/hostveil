@@ -71,11 +71,11 @@ func (m *historyModel) render(r *domain.ScanResult, theme Theme, width, height i
 	return m.renderMediumReport(r, theme, width, height)
 }
 
-// ─── UltraWide Report (≥180x45) ─────────────────────────────────────────────
+// ─── Report Shared Layout ─────────────────────────────────────────────────
 
-func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, width, height int) string {
-	slots := ReportSlots(width, height, LayoutUltraWide)
-	sp := spacingFor(LayoutUltraWide)
+func (m *historyModel) renderGridReport(r *domain.ScanResult, theme Theme, width, height int, mode LayoutMode) string {
+	slots := ReportSlots(width, height, mode)
+	sp := spacingFor(mode)
 
 	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].W, slots.Row1[0].H)
 	export := m.renderExportCard(r, theme, slots.Row1[1].W, slots.Row1[1].H)
@@ -106,30 +106,32 @@ func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, 
 	return joinRowsWithGap(sp.RowGap, row1, row2, row3, guidance)
 }
 
-func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
-	var lines []string
-	lines = append(lines, fmt.Sprintf("  Score           %d/100", r.ScoreReport.Overall))
-	lines = append(lines, fmt.Sprintf("  Risk            %s", r.ScoreReport.Grade()))
-	lines = append(lines, fmt.Sprintf("  Findings        %d", r.TotalFindings()))
-	lines = append(lines, fmt.Sprintf("  Services        %d", len(r.Metadata.Services)))
+func (m *historyModel) renderUltraWideReport(r *domain.ScanResult, theme Theme, width, height int) string {
+	return m.renderGridReport(r, theme, width, height, LayoutUltraWide)
+}
 
+func (m *historyModel) renderCurrentScanSummaryCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
+	pairs := []KV{
+		{"Score", fmt.Sprintf("%d/100", r.ScoreReport.Overall)},
+		{"Risk", r.ScoreReport.Grade()},
+		{"Findings", fmt.Sprintf("%d", r.TotalFindings())},
+		{"Services", fmt.Sprintf("%d", len(r.Metadata.Services))},
+	}
 	info := r.Metadata.HostRuntime
 	if info != nil {
 		if info.Hostname != "" {
-			lines = append(lines, fmt.Sprintf("  Hostname        %s", info.Hostname))
+			pairs = append(pairs, KV{"Hostname", info.Hostname})
 		}
 		if info.DockerVersion != "" {
-			lines = append(lines, fmt.Sprintf("  Docker          %s", info.DockerVersion))
+			pairs = append(pairs, KV{"Docker", info.DockerVersion})
 		}
 	}
-
 	modeStr := "live"
 	if r.Metadata.ScanMode == domain.ScanModeExplicit {
 		modeStr = "explicit"
 	}
-	lines = append(lines, fmt.Sprintf("  Scan mode       %s", modeStr))
-
-	return renderCardBounded("Current scan summary", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
+	pairs = append(pairs, KV{"Scan mode", modeStr})
+	return renderCardBounded("Current scan summary", renderKV(pairs, 16), theme, Rect{W: outerW, H: height})
 }
 
 func (m *historyModel) renderExportCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
@@ -173,26 +175,22 @@ func (m *historyModel) renderAreaHealthCardReport(r *domain.ScanResult, theme Th
 }
 
 func (m *historyModel) renderScanCoverageCardReport(r *domain.ScanResult, theme Theme, outerW, height int) string {
-	var lines []string
-	addLine := func(k, v string) {
-		lines = append(lines, fmt.Sprintf("  %-20s %s", k+":", v))
+	svcCount := fmt.Sprintf("%d", len(r.Metadata.Services))
+	if len(r.Metadata.Services) == 0 {
+		svcCount = "none"
 	}
-
-	if len(r.Metadata.Services) > 0 {
-		addLine("Compose services", fmt.Sprintf("%d", len(r.Metadata.Services)))
-	} else {
-		addLine("Compose services", "none")
+	comp := truncatePathForWidth(r.Metadata.ComposeFile, outerW-24)
+	if r.Metadata.ComposeFile == "" {
+		comp = "not found"
 	}
-	if r.Metadata.ComposeFile != "" {
-		addLine("Compose file", truncatePathForWidth(r.Metadata.ComposeFile, outerW-24))
-	} else {
-		addLine("Compose file", "not found")
+	pairs := []KV{
+		{"Compose services", svcCount},
+		{"Compose file", comp},
+		{"Host checks", "enabled"},
+		{"Image checks", "available"},
+		{"Secret checks", "available"},
 	}
-	addLine("Host checks", "enabled")
-	addLine("Image checks", "available")
-	addLine("Secret checks", "available")
-
-	return renderCardBounded("Scan coverage", strings.Join(lines, "\n"), theme, Rect{W: outerW, H: height})
+	return renderCardBounded("Scan coverage", renderKV(pairs, 18), theme, Rect{W: outerW, H: height})
 }
 
 func (m *historyModel) renderNotesWarningsCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
@@ -243,36 +241,7 @@ func (m *historyModel) renderReportContentsCard(r *domain.ScanResult, theme Them
 // ─── Wide Report (≥120x35) ──────────────────────────────────────────────────
 
 func (m *historyModel) renderWideReport(r *domain.ScanResult, theme Theme, width, height int) string {
-	slots := ReportSlots(width, height, LayoutWide)
-	sp := spacingFor(LayoutWide)
-
-	summary := m.renderCurrentScanSummaryCard(r, theme, slots.Row1[0].W, slots.Row1[0].H)
-	export := m.renderExportCard(r, theme, slots.Row1[1].W, slots.Row1[1].H)
-	row1w := []int{slots.Row1[0].W, slots.Row1[1].W}
-	row1 := joinColumns([]string{summary, export}, row1w, sp.ColGap)
-
-	areaHealth := m.renderAreaHealthCardReport(r, theme, slots.Row2[0].W, slots.Row2[0].H)
-	scanCov := m.renderScanCoverageCardReport(r, theme, slots.Row2[1].W, slots.Row2[1].H)
-	row2w := []int{slots.Row2[0].W, slots.Row2[1].W}
-	row2 := joinColumns([]string{areaHealth, scanCov}, row2w, sp.ColGap)
-
-	notes := m.renderNotesWarningsCard(r, theme, slots.Row3[0].W, slots.Row3[0].H)
-	contents := m.renderReportContentsCard(r, theme, slots.Row3[1].W, slots.Row3[1].H)
-	row3w := []int{slots.Row3[0].W, slots.Row3[1].W}
-	row3 := joinColumns([]string{notes, contents}, row3w, sp.ColGap)
-
-	guidance := renderInfoStrip("Export guidance",
-		"JSON for automation · SARIF for code/security tooling · Markdown for project docs · HTML for sharing with non-technical reviewers",
-		theme, slots.Guidance.W, slots.Guidance.H)
-
-	rootW := slots.Row1[0].W + slots.Row1[1].W + sp.ColGap
-	if debugLayout {
-		assertDisplayWidthLTE(row1, rootW)
-		assertDisplayWidthLTE(row2, rootW)
-		assertDisplayWidthLTE(row3, rootW)
-	}
-
-	return joinRowsWithGap(sp.RowGap, row1, row2, row3, guidance)
+	return m.renderGridReport(r, theme, width, height, LayoutWide)
 }
 
 // ─── Medium Report (default) ────────────────────────────────────────────────
@@ -412,13 +381,7 @@ func (m *historyModel) renderMiniReport(r *domain.ScanResult, theme Theme, width
 	grade := r.ScoreReport.Grade()
 	findings := r.TotalFindings()
 
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
+	gradeColor := theme.GradeColor(score)
 
 	line1 := lipgloss.NewStyle().Bold(true).Render("Report")
 	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))
@@ -460,13 +423,7 @@ func (m *historyModel) renderCompactReport(r *domain.ScanResult, theme Theme, wi
 	grade := r.ScoreReport.Grade()
 	findings := r.TotalFindings()
 
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
+	gradeColor := theme.GradeColor(score)
 
 	line1 := lipgloss.NewStyle().Bold(true).Render("Report")
 	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score %d/%d", score, 100))

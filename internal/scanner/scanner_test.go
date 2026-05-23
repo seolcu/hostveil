@@ -50,7 +50,7 @@ func TestScanFindsExposureFinding(t *testing.T) {
 
 	hasExposure := false
 	for _, f := range result.Findings {
-		if f.ID == "exposure.public_binding" {
+		if f.ID == domain.FindingExposurePublicBinding {
 			hasExposure = true
 			break
 		}

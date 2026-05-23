@@ -465,20 +465,6 @@ func visibleWidth(s string) int {
 	return lipgloss.Width(s)
 }
 
-func renderLabelValue(label, value string, labelWidth int, theme Theme) string {
-	labelStyle := lipgloss.NewStyle().
-		Width(labelWidth).
-		Foreground(lipgloss.Color(theme.TextMuted))
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Text))
-	return labelStyle.Render(label+":") + " " + valueStyle.Render(value)
-}
-
-func renderSeparator(width int, theme Theme) string {
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Border)).
-		Render(strings.Repeat("─", width))
-}
 
 func renderBar(score uint8, width int, color string) string {
 	if width < 2 {
@@ -929,16 +915,18 @@ func RenderPanel(rect Rect, title, content string, theme Theme, overflow Overflo
 	return card
 }
 
-// ─── Load average formatting ─────────────────────────────────────────────
+// KV represents a key-value row for renderKV.
+type KV struct {
+	Key   string
+	Value string
+}
 
-func formatLoadAvg(raw string, detailed bool) string {
-	fields := strings.Fields(raw)
-	if len(fields) < 3 {
-		return raw
+// renderKV renders a string of key-value rows with the given label width.
+// Each row is formatted as "  key: value" with labels right-padded to labelWidth.
+func renderKV(pairs []KV, labelWidth int) string {
+	var rows []string
+	for _, p := range pairs {
+		rows = append(rows, fmt.Sprintf("  %-*s %s", labelWidth, p.Key+":", p.Value))
 	}
-	short := fmt.Sprintf("%s / %s / %s", fields[0], fields[1], fields[2])
-	if detailed && len(fields) >= 5 {
-		short += fmt.Sprintf("\nProcesses: %s\nLast PID: %s", fields[3], fields[4])
-	}
-	return short
+	return strings.Join(rows, "\n")
 }

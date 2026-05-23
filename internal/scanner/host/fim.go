@@ -9,7 +9,7 @@ func (c *FIMCheck) Name() string { return "fim" }
 func (c *FIMCheck) Scan(_ string) []domain.Finding {
 	return []domain.Finding{
 		hostFinding(
-			"host.fim.no_fim_tool",
+			domain.FindingHostFIMNoTool,
 			domain.AxisHostHardening,
 			domain.SeverityMedium,
 			"fim",

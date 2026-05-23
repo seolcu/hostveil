@@ -25,7 +25,7 @@ func (r *RuntimeRule) Scan(svc compose.Service, name string, cf *compose.Compose
 		}
 		if !hasNoNewPriv {
 			findings = append(findings, domain.Finding{
-				ID:          "runtime.no_new_privileges_disabled",
+				ID:          domain.FindingRuntimeNoNewPrivileges,
 				Axis:        domain.AxisExcessivePermissions,
 				Severity:    domain.SeverityLow,
 				Scope:       domain.ScopeService,
@@ -54,7 +54,7 @@ func (r *RuntimeRule) Scan(svc compose.Service, name string, cf *compose.Compose
 		}
 		if !hasWritableRoot {
 			findings = append(findings, domain.Finding{
-				ID:          "runtime.writable_rootfs",
+				ID:          domain.FindingRuntimeWritableRootfs,
 				Axis:        domain.AxisExcessivePermissions,
 				Severity:    domain.SeverityLow,
 				Scope:       domain.ScopeService,

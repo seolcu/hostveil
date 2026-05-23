@@ -88,7 +88,7 @@ func ApplyShellCommand(action FixAction) (string, error) {
 // Full coverage of all host check findings from internal/scanner/host/.
 func hostEditsForFinding(findingID string, svc string) []FixAction {
 	switch findingID {
-	case "host.ssh.root_login":
+	case domain.FindingHostSSHRootLogin:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/ssh/sshd_config",
@@ -104,7 +104,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.ssh.password_auth":
+	case domain.FindingHostSSHPasswordAuth:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/ssh/sshd_config",
@@ -120,7 +120,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.ssh.protocol":
+	case domain.FindingHostSSHProtocol:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/ssh/sshd_config",
@@ -136,7 +136,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.docker.socket_accessible":
+	case domain.FindingHostDockerSocketAccessible:
 		return []FixAction{
 			PrepareShellCommand(
 				"usermod -aG docker root && chmod 660 /var/run/docker.sock",
@@ -150,7 +150,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.docker.daemon_tls":
+	case domain.FindingHostDockerDaemonTLS:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/docker/daemon.json",
@@ -166,7 +166,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.firewall.no_active_firewall":
+	case domain.FindingHostFirewallNoActive:
 		return []FixAction{
 			PrepareShellCommand(
 				"ufw --force enable",
@@ -175,7 +175,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.firewall.default_drop":
+	case domain.FindingHostFirewallDefaultDrop:
 		return []FixAction{
 			PrepareShellCommand(
 				"iptables -P INPUT DROP && iptables -P FORWARD DROP",
@@ -184,7 +184,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.kernel.kernel_updates":
+	case domain.FindingHostKernelUpdates:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get update && apt-get upgrade -y linux-image-$(uname -r)",
@@ -193,7 +193,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.kernel.core_dumps":
+	case domain.FindingHostKernelCoreDumps:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/security/limits.conf",
@@ -209,7 +209,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.kernel.ip_forwarding":
+	case domain.FindingHostKernelIPForward:
 		return []FixAction{
 			PrepareShellCommand(
 				"sysctl -w net.ipv4.ip_forward=0 && sysctl -w net.ipv6.conf.all.forwarding=0",
@@ -218,7 +218,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.filesystem.world_writable_files":
+	case domain.FindingHostFilesystemWorldWritable:
 		return []FixAction{
 			PrepareShellCommand(
 				"find /etc -type f -perm -o+w 2>/dev/null | xargs -r chmod o-w",
@@ -227,7 +227,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.filesystem.suid_files":
+	case domain.FindingHostFilesystemSUID:
 		return []FixAction{
 			PrepareShellCommand(
 				"find /usr -type f -perm -4000 -exec chmod u-s {} \\; 2>/dev/null || true",
@@ -236,7 +236,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.fim.no_fim_tool":
+	case domain.FindingHostFIMNoTool:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y aide && aideinit",
@@ -245,7 +245,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.mac.no_apparmor":
+	case domain.FindingHostMACNoAppArmor:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y apparmor apparmor-utils && systemctl enable --now apparmor",
@@ -254,7 +254,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.mac.no_selinux":
+	case domain.FindingHostMACNoSELinux:
 		return []FixAction{
 			PrepareHostEdit(
 				"/etc/selinux/config",
@@ -270,7 +270,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.defenses.fail2ban_not_installed":
+	case domain.FindingHostDefensesFail2ban:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y fail2ban && systemctl enable --now fail2ban",
@@ -279,7 +279,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.defenses.rkhunter_not_installed":
+	case domain.FindingHostDefensesRkhunter:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y rkhunter && rkhunter --propupd",
@@ -288,7 +288,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.defenses.auditd_not_installed":
+	case domain.FindingHostDefensesAuditd:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y auditd && systemctl enable --now auditd",
@@ -297,7 +297,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.updates.unattended_upgrades":
+	case domain.FindingHostUpdatesUnattended:
 		return []FixAction{
 			PrepareShellCommand(
 				"apt-get install -y unattended-upgrades && dpkg-reconfigure -f noninteractive unattended-upgrades",
@@ -306,7 +306,7 @@ func hostEditsForFinding(findingID string, svc string) []FixAction {
 			),
 		}
 
-	case "host.updates.reboot_required":
+	case domain.FindingHostUpdatesReboot:
 		return []FixAction{
 			PrepareShellCommand(
 				"shutdown -r +5 'Hostveil: rebooting to apply kernel updates'",
