@@ -97,6 +97,7 @@ func (m *overviewModel) render(r *domain.ScanResult, theme Theme, width, height 
 
 func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme, width, height int, state DashboardState) string {
 	slots := DashboardSlots(width, height, state, LayoutMedium)
+	sp := spacingFor(LayoutMedium)
 
 	var hero string
 	if state == DashboardClean {
@@ -115,13 +116,13 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 				m.renderAreaHealthCardScore(r, theme, slots.Row1[0].W, slots.Row1[0].H, LayoutMedium),
 				m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
-			mainContent = joinColumns(row1, col2w, 2)
+			mainContent = joinColumns(row1, col2w, sp.ColGap)
 		} else {
 			row1 := []string{
 				m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
 				m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			}
-			mainContent = joinColumns(row1, col2w, 2)
+			mainContent = joinColumns(row1, col2w, sp.ColGap)
 		}
 	} else {
 		if state == DashboardClean {
@@ -140,7 +141,6 @@ func (m *overviewModel) renderMediumDashboard(r *domain.ScanResult, theme Theme,
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
-	sp := spacingFor(LayoutMedium)
 	return joinRowsWithGap(sp.RowGap,
 		hero,
 		mainContent,
@@ -234,13 +234,6 @@ func (m *overviewModel) renderNextStepsCard(theme Theme, outerW, height int) str
 func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme Theme, width, height int, state DashboardState) string {
 	slots := DashboardSlots(width, height, state, LayoutUltraWide)
 
-	var statusLine string
-	if state == DashboardClean {
-		statusLine = m.renderStatusLineClean(r, theme)
-	} else {
-		statusLine = m.renderStatusLineRisk(r, theme)
-	}
-
 	var hero string
 	if state == DashboardClean {
 		hero = m.renderAllClearHeroCard(theme, slots.Hero.W, slots.Hero.H)
@@ -269,7 +262,8 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 			m.renderFixQueueCard(r, theme, slots.Row1[3].W, slots.Row1[3].H),
 		}
 	}
-	grid4 := joinColumns(col4Cards, col4w, 2)
+	sp := spacingFor(LayoutUltraWide)
+	grid4 := joinColumns(col4Cards, col4w, sp.ColGap)
 
 	// Row2 + Row3: 2 columns each
 	col2w := []int{slots.Row2[0].W, slots.Row2[1].W}
@@ -279,7 +273,7 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 			m.renderRecommendedNextStepsCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
 			m.renderWhatThisResultMeansCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
-		grid2a = joinColumns(row2clean, col2w, 2)
+		grid2a = joinColumns(row2clean, col2w, sp.ColGap)
 
 		if slots.Brand.W > 0 {
 			grid2b = m.renderBrandFillerCard(theme, slots.Brand.W, slots.Brand.H)
@@ -288,20 +282,20 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 				m.renderReportPreviewCard(theme, slots.Row3[0].W, slots.Row3[0].H),
 				m.renderRecentScanNotesCard(r, theme, slots.Row3[1].W, slots.Row3[1].H),
 			}
-			grid2b = joinColumns(row3clean, col2w, 2)
+			grid2b = joinColumns(row3clean, col2w, sp.ColGap)
 		}
 	} else {
 		row2risk := []string{
 			m.renderRiskWorkflowCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
 			m.renderWhyScoreLowCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
-		grid2a = joinColumns(row2risk, col2w, 2)
+		grid2a = joinColumns(row2risk, col2w, sp.ColGap)
 
 		row3risk := []string{
 			m.renderSelectedPreviewCard(r, theme, slots.Row3[0].W, slots.Row3[0].H),
 			m.renderScanContextCard(r, theme, slots.Row3[1].W, slots.Row3[1].H),
 		}
-		grid2b = joinColumns(row3risk, col2w, 2)
+		grid2b = joinColumns(row3risk, col2w, sp.ColGap)
 	}
 
 	var timeline string
@@ -311,29 +305,13 @@ func (m *overviewModel) renderUltraWideDashboard(r *domain.ScanResult, theme The
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
-	sp := spacingFor(LayoutUltraWide)
 	return joinRowsWithGap(sp.RowGap,
-		statusLine,
 		hero,
 		grid4,
 		grid2a,
 		grid2b,
 		timeline,
 	)
-}
-
-func (m *overviewModel) renderStatusLineClean(r *domain.ScanResult, theme Theme) string {
-	score := r.ScoreReport.Overall
-	grade := r.ScoreReport.Grade()
-	gradeColor := theme.Success
-	if score < 80 {
-		gradeColor = theme.Medium
-	}
-	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100 · Risk: %s", score, grade))
-	findings := r.TotalFindings()
-	svcs := len(r.Metadata.Services)
-	return fmt.Sprintf("  %s · %d findings · %d services · %d auto-fixable",
-		scoreStr, findings, svcs, 0)
 }
 
 func (m *overviewModel) renderAllClearHeroCard(theme Theme, outerW, height int) string {
@@ -449,33 +427,6 @@ func (m *overviewModel) renderWorkflowTimelineCardClean(theme Theme, outerW, hei
 		"5 Rescan after changes ○",
 	}
 	return renderInfoStrip("Timeline", strings.Join(steps, "    "), theme, outerW, height)
-}
-
-// ─── (replaced by renderUltraWideDashboard) ─────────────────────────────────
-
-func (m *overviewModel) renderStatusLineRisk(r *domain.ScanResult, theme Theme) string {
-	score := r.ScoreReport.Overall
-	grade := r.ScoreReport.Grade()
-	gradeColor := theme.Critical
-	if score >= 50 {
-		gradeColor = theme.Medium
-	}
-	if score >= 80 {
-		gradeColor = theme.Success
-	}
-	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(gradeColor)).Render(fmt.Sprintf("Score: %d/100 · Risk: %s", score, grade))
-	findings := r.TotalFindings()
-	svcs := len(r.Metadata.Services)
-
-	autoCount := 0
-	for _, f := range r.Findings {
-		if f.Remediation == domain.RemediationAuto {
-			autoCount++
-		}
-	}
-
-	return fmt.Sprintf("  %s · %d findings · %d %s · %d auto-fixable",
-		scoreStr, findings, svcs, pluralize("service", svcs), autoCount)
 }
 
 func (m *overviewModel) renderRiskSummaryHeroCard(r *domain.ScanResult, theme Theme, outerW, height int) string {
@@ -618,13 +569,6 @@ func (m *overviewModel) renderWorkflowTimelineCardRisk(theme Theme, width, heigh
 func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, width, height int, state DashboardState) string {
 	slots := DashboardSlots(width, height, state, LayoutWide)
 
-	var statusLine string
-	if state == DashboardClean {
-		statusLine = m.renderStatusLineClean(r, theme)
-	} else {
-		statusLine = m.renderStatusLineRisk(r, theme)
-	}
-
 	var hero string
 	if state == DashboardClean {
 		hero = m.renderAllClearHeroCard(theme, slots.Hero.W, slots.Hero.H)
@@ -637,6 +581,7 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 	for i := range slots.Row1 {
 		col3w[i] = slots.Row1[i].W
 	}
+	sp := spacingFor(LayoutWide)
 	var mainGrid string
 	if state == DashboardClean {
 		row1clean := []string{
@@ -644,14 +589,14 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 			m.renderScanCoverageCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			m.renderRuntimeAdaptersCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
 		}
-		mainGrid = joinColumns(row1clean, col3w, 2)
+		mainGrid = joinColumns(row1clean, col3w, sp.ColGap)
 	} else {
 		row1risk := []string{
 			m.renderNextActionsCard(r, theme, slots.Row1[0].W, slots.Row1[0].H),
 			m.renderRiskByAreaCard(r, theme, slots.Row1[1].W, slots.Row1[1].H),
 			m.renderAffectedServicesCard(r, theme, slots.Row1[2].W, slots.Row1[2].H),
 		}
-		mainGrid = joinColumns(row1risk, col3w, 2)
+		mainGrid = joinColumns(row1risk, col3w, sp.ColGap)
 	}
 
 	// Row2: 2 columns
@@ -662,13 +607,13 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 			m.renderAreaHealthCardScore(r, theme, slots.Row2[0].W, slots.Row2[0].H, LayoutWide),
 			m.renderNextStepsCard(theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
-		secondaryGrid = joinColumns(row2clean, col2w, 2)
+		secondaryGrid = joinColumns(row2clean, col2w, sp.ColGap)
 	} else {
 		row2risk := []string{
 			m.renderFixQueueCard(r, theme, slots.Row2[0].W, slots.Row2[0].H),
 			m.renderScanContextCard(r, theme, slots.Row2[1].W, slots.Row2[1].H),
 		}
-		secondaryGrid = joinColumns(row2risk, col2w, 2)
+		secondaryGrid = joinColumns(row2risk, col2w, sp.ColGap)
 	}
 
 	var timeline string
@@ -678,9 +623,7 @@ func (m *overviewModel) renderWideDashboard(r *domain.ScanResult, theme Theme, w
 		timeline = m.renderWorkflowTimelineCardRisk(theme, slots.Timeline.W, slots.Timeline.H)
 	}
 
-	sp := spacingFor(LayoutWide)
 	rows := []string{
-		statusLine,
 		hero,
 		mainGrid,
 		secondaryGrid,

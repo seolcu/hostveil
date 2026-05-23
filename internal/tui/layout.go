@@ -68,9 +68,9 @@ type Spacing struct {
 func spacingFor(mode LayoutMode) Spacing {
 	switch {
 	case mode >= LayoutWide:
-		return Spacing{OuterX: 0, OuterY: 0, RowGap: 1, ColGap: 2, CardPadX: 2, CardPadY: 0, FooterGap: 0}
+		return Spacing{OuterX: 0, OuterY: 0, RowGap: 0, ColGap: 0, CardPadX: 2, CardPadY: 0, FooterGap: 0}
 	case mode >= LayoutMedium:
-		return Spacing{OuterX: 0, OuterY: 0, RowGap: 1, ColGap: 1, CardPadX: 1, CardPadY: 0, FooterGap: 0}
+		return Spacing{OuterX: 0, OuterY: 0, RowGap: 0, ColGap: 0, CardPadX: 1, CardPadY: 0, FooterGap: 0}
 	default:
 		return Spacing{OuterX: 0, OuterY: 0, RowGap: 0, ColGap: 0, CardPadX: 0, CardPadY: 0, FooterGap: 0}
 	}
@@ -592,7 +592,6 @@ type FindingsLayout struct {
 
 // DashboardLayout defines fixed slot positions for the Dashboard screen.
 type DashboardLayout struct {
-	Status   Rect
 	Hero     Rect
 	Row1     []Rect
 	Row2     []Rect
@@ -656,8 +655,7 @@ func FindingsSlots(w, h int, mode LayoutMode, hasBottom bool) FindingsLayout {
 // DashboardSlots computes fixed slot positions for the Dashboard screen.
 // Slots are computed from viewport and state only — NOT from content.
 func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLayout {
-	statusH := 1
-	rowGap := 1
+	rowGap := 0
 
 	var heroH, mainH, secH, tertH, timelineH int
 	var row1, row2, row3 []Rect
@@ -680,11 +678,11 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		tertH = 6
 		timelineH = 4
 
-		used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+		used := heroH + mainH + secH
 		if brandH > 0 {
-			used += brandH + rowGap
+			used += brandH
 		} else {
-			used += tertH + rowGap
+			used += tertH
 		}
 		used += timelineH
 		extra := max(0, h-used)
@@ -708,15 +706,15 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			}
 		}
 
-		y := statusH + rowGap
+		y := 0
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 
 		y += heroH + rowGap
-		col4 := splitColumns(w, 4, 2)
+		col4 := splitColumns(w, 4, 0)
 		row1 = rectsFromWidths(col4, 0, y, mainH)
 
 		y += mainH + rowGap
-		col2 := splitColumns(w, 2, 2)
+		col2 := splitColumns(w, 2, 0)
 		row2 = rectsFromWidths(col2, 0, y, secH)
 
 		y += secH + rowGap
@@ -733,7 +731,6 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
 
 		return DashboardLayout{
-			Status:   Rect{X: 0, Y: 0, W: w, H: statusH},
 			Hero:     heroRect,
 			Row1:     row1,
 			Row2:     row2,
@@ -748,9 +745,9 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		secH = 5
 		timelineH = 3
 
-		used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+		used := heroH + mainH + secH
 		if brandH > 0 {
-			used += brandH + rowGap
+			used += brandH
 		}
 		used += timelineH
 		extra := max(0, h-used)
@@ -766,15 +763,15 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			}
 		}
 
-		y := statusH + rowGap
+		y := 0
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 
 		y += heroH + rowGap
-		col3 := splitColumns(w, 3, 2)
+		col3 := splitColumns(w, 3, 0)
 		row1 = rectsFromWidths(col3, 0, y, mainH)
 
 		y += mainH + rowGap
-		col2 := splitColumns(w, 2, 2)
+		col2 := splitColumns(w, 2, 0)
 		row2 = rectsFromWidths(col2, 0, y, secH)
 
 		y += secH + rowGap
@@ -788,7 +785,6 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
 
 		return DashboardLayout{
-			Status:   Rect{X: 0, Y: 0, W: w, H: statusH},
 			Hero:     heroRect,
 			Row1:     row1,
 			Row2:     row2,
@@ -801,7 +797,7 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		mainH = 7
 		timelineH = 3
 
-		used := heroH + rowGap*2 + mainH + timelineH
+		used := heroH + mainH + timelineH
 		extra := max(0, h-used)
 		if extra > 0 {
 			heroAdd := min(extra, 2)
@@ -814,7 +810,7 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 			}
 		}
 
-		y := rowGap
+		y := 0
 		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
 		y += heroH + rowGap
 

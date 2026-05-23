@@ -422,10 +422,14 @@ func (m *appModel) effectiveTheme() Theme {
 }
 
 func (m *appModel) renderHeader(t Theme) string {
-	title := lipgloss.NewStyle().
+	hostveilLabel := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Text)).
 		Bold(true).
 		Render("hostveil")
+	versionLabel := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.TextMuted)).
+		Render(domain.Version)
+	title := hostveilLabel + "  " + versionLabel
 
 	lm := layoutMode(m.width, m.height)
 

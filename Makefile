@@ -8,7 +8,7 @@ DIST_DIR=dist
 all: fmt vet build
 
 build:
-	go build -o $(BINARY) ./cmd/hostveil/
+	go build -ldflags="-X github.com/seolcu/hostveil/internal/domain.Version=$(VERSION)" -o $(BINARY) ./cmd/hostveil/
 
 build-all: build cross
 
@@ -27,10 +27,10 @@ clean:
 	go clean
 
 cross:
-	GOOS=linux GOARCH=amd64 go build -o $(BINARY)-linux-amd64 ./cmd/hostveil/
-	GOOS=linux GOARCH=arm64 go build -o $(BINARY)-linux-arm64 ./cmd/hostveil/
-	GOOS=darwin GOARCH=amd64 go build -o $(BINARY)-darwin-amd64 ./cmd/hostveil/
-	GOOS=darwin GOARCH=arm64 go build -o $(BINARY)-darwin-arm64 ./cmd/hostveil/
+	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/seolcu/hostveil/internal/domain.Version=$(VERSION)" -o $(BINARY)-linux-amd64 ./cmd/hostveil/
+	GOOS=linux GOARCH=arm64 go build -ldflags="-X github.com/seolcu/hostveil/internal/domain.Version=$(VERSION)" -o $(BINARY)-linux-arm64 ./cmd/hostveil/
+	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/seolcu/hostveil/internal/domain.Version=$(VERSION)" -o $(BINARY)-darwin-amd64 ./cmd/hostveil/
+	GOOS=darwin GOARCH=arm64 go build -ldflags="-X github.com/seolcu/hostveil/internal/domain.Version=$(VERSION)" -o $(BINARY)-darwin-arm64 ./cmd/hostveil/
 
 dist: build-all
 	@mkdir -p $(DIST_DIR)
