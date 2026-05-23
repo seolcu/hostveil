@@ -9,7 +9,6 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/scanner"
 	"github.com/seolcu/hostveil/internal/tui"
-	"github.com/seolcu/hostveil/internal/web"
 )
 
 func main() {
@@ -25,11 +24,6 @@ func run() error {
 		return err
 	}
 
-	// Web mode: serve the TUI via ttyd
-	if cfg.Serve {
-		return web.Serve(cfg)
-	}
-
 	result, err := scanner.Run(scanner.Config{
 		UserMode: cfg.UserMode,
 	})
@@ -43,8 +37,5 @@ func run() error {
 func runTUI(result *domain.ScanResult) error {
 	p := tea.NewProgram(tui.NewApp(result), tea.WithAltScreen())
 	_, err := p.Run()
-	if err == tea.ErrProgramKilled {
-		return nil // ttyd lifecycle (WebSocket reconnect), not an error
-	}
 	return err
 }

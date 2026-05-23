@@ -260,9 +260,11 @@ func truncateWidth(s string, maxWidth int) string {
 	var visible int
 	var result strings.Builder
 	inEscape := false
+	hasAnsi := false
 	for _, r := range s {
 		if r == '\x1b' {
 			inEscape = true
+			hasAnsi = true
 			result.WriteRune(r)
 			continue
 		}
@@ -280,6 +282,9 @@ func truncateWidth(s string, maxWidth int) string {
 		}
 		result.WriteRune(r)
 		visible += rw
+	}
+	if hasAnsi {
+		result.WriteString("\x1b[0m")
 	}
 	return result.String()
 }
@@ -675,19 +680,32 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		tertH = 6
 		timelineH = 4
 
-		if state != DashboardClean {
-			used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
-			if brandH > 0 {
-				used += brandH + rowGap
-			}
-			used += tertH + rowGap + timelineH
-			extra := max(0, h-used)
+		used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+		if brandH > 0 {
+			used += brandH + rowGap
+		} else {
+			used += tertH + rowGap
+		}
+		used += timelineH
+		extra := max(0, h-used)
+		if extra > 0 {
 			heroAdd := min(extra, 2)
 			heroH += heroAdd
 			remaining := extra - heroAdd
-			mainH += remaining / 3
-			secH += remaining / 3
-			tertH += remaining - remaining/3*2
+			if remaining > 0 {
+				if brandH > 0 {
+					base := mainH + secH + timelineH
+					timelineH += remaining * timelineH / base
+					mainH += remaining * mainH / base
+					secH += remaining - (remaining*timelineH/base + remaining*mainH/base)
+				} else {
+					base := mainH + secH + tertH + timelineH
+					timelineH += remaining * timelineH / base
+					mainH += remaining * mainH / base
+					secH += remaining * secH / base
+					tertH += remaining - (remaining*timelineH/base + remaining*mainH/base + remaining*secH/base)
+				}
+			}
 		}
 
 		y := statusH + rowGap
@@ -730,18 +748,22 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		secH = 5
 		timelineH = 3
 
-		if state != DashboardClean {
-			used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
-			if brandH > 0 {
-				used += brandH + rowGap
-			}
-			used += timelineH
-			extra := max(0, h-used)
+		used := statusH + rowGap + heroH + rowGap + mainH + rowGap + secH + rowGap
+		if brandH > 0 {
+			used += brandH + rowGap
+		}
+		used += timelineH
+		extra := max(0, h-used)
+		if extra > 0 {
 			heroAdd := min(extra, 2)
 			heroH += heroAdd
 			remaining := extra - heroAdd
-			mainH += remaining / 2
-			secH += remaining - remaining/2
+			if remaining > 0 {
+				base := mainH + secH + timelineH
+				timelineH += remaining * timelineH / base
+				mainH += remaining * mainH / base
+				secH += remaining - (remaining*timelineH/base + remaining*mainH/base)
+			}
 		}
 
 		y := statusH + rowGap
@@ -779,12 +801,17 @@ func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLa
 		mainH = 7
 		timelineH = 3
 
-		if state != DashboardClean {
-			used := heroH + rowGap*2 + mainH + timelineH
-			extra := max(0, h-used)
+		used := heroH + rowGap*2 + mainH + timelineH
+		extra := max(0, h-used)
+		if extra > 0 {
 			heroAdd := min(extra, 2)
 			heroH += heroAdd
-			mainH += extra - heroAdd
+			remaining := extra - heroAdd
+			if remaining > 0 {
+				base := mainH + timelineH
+				timelineH += remaining * timelineH / base
+				mainH += remaining - remaining*timelineH/base
+			}
 		}
 
 		y := rowGap

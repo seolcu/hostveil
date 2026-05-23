@@ -1,5 +1,4 @@
 .git/
 .github/
 proto/.venv/
-src/target/
 target/

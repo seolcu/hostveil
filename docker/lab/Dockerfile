@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.4/ttyd.aarch64 \
-    -o /usr/local/bin/ttyd && chmod +x /usr/local/bin/ttyd
-
 RUN curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.70.0/trivy_0.70.0_Linux-ARM64.deb \
     -o /tmp/trivy.deb && dpkg -i /tmp/trivy.deb && rm /tmp/trivy.deb
 

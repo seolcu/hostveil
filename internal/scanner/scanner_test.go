@@ -8,7 +8,7 @@ import (
 
 func TestScanWithComposeFile(t *testing.T) {
 	result, err := Run(Config{
-		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
 		UserMode:     true,
 	})
 	if err != nil {
@@ -41,7 +41,7 @@ func TestScanWithEmptyConfig(t *testing.T) {
 
 func TestScanFindsExposureFinding(t *testing.T) {
 	result, err := Run(Config{
-		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
 		UserMode:     true,
 	})
 	if err != nil {
@@ -63,7 +63,7 @@ func TestScanFindsExposureFinding(t *testing.T) {
 
 func TestScoreCalculation(t *testing.T) {
 	result, err := Run(Config{
-		ComposeFiles: []string{"../../tests/scenarios/vaultwarden-domain/docker-compose.yml"},
+		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
 		UserMode:     true,
 	})
 	if err != nil {

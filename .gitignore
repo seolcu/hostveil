@@ -1,10 +1,6 @@
 /hostveil
 hostveil-*
-/target/
-*.db
 .DS_Store
-/screenshots/
 /dist/
 *.tar.gz
 *.sha256
-/cmd/fixdemo/

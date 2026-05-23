@@ -1,5 +1,5 @@
 .PHONY: all build build-all test clean fmt vet cross release dist
-.PHONY: lab-up lab-down lab-shell lab-run lab-serve
+.PHONY: lab-up lab-down lab-shell lab-run
 
 BINARY=hostveil
 VERSION?=$(shell git describe --tags --dirty 2>/dev/null || echo "dev")
@@ -68,6 +68,3 @@ lab-shell:
 
 lab-run:
 	./scripts/lab.sh run
-
-lab-serve:
-	./scripts/lab.sh serve
