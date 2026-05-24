@@ -1,45 +1,54 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
 var Version = "v2.0.0-dev"
 
-var defaultKeyList = []key.Binding{
-	key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-	key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	key.NewBinding(key.WithKeys("enter", "l", "right"), key.WithHelp("enter", "open")),
-	key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-	key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-	key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
-	key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
-}
+type screenMode int
+
+const (
+	modeList screenMode = iota
+	modeDetail
+)
+
+type modalMode int
+
+const (
+	modalNone modalMode = iota
+	modalHelp
+	modalTheme
+)
 
 type model struct {
-	result     *domain.ScanResult
-	themeIdx   int
-	selected   int
-	showDetail bool
-	showHelp   bool
-	showTheme  bool
-	themeCur   int
-	help       help.Model
-	detailVP   viewport.Model
-	width      int
-	height     int
+	result *domain.ScanResult
+
+	width  int
+	height int
+
+	mode  screenMode
+	modal modalMode
+
+	selected     int
+	listOffset   int
+	detailOffset int
+
+	themeIdx    int
+	themeCursor int
+	themeSaved  int
+
+	help help.Model
 }
 
 func NewApp(result *domain.ScanResult) *model {
 	return &model{
-		result:   result,
-		help:     help.New(),
-		detailVP: viewport.New(60, 20),
+		result: result,
+		help:   help.New(),
 	}
 }
 
@@ -50,121 +59,232 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.clampSelection()
+		m.keepSelectionVisible()
+		m.clampDetailOffset()
 
-	case tea.KeyMsg:
-		s := msg.String()
-
-		if s == "ctrl+c" {
+	case tea.KeyPressMsg:
+		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
 
-		if m.showTheme {
-			switch s {
-			case "esc":
-				m.showTheme = false
-				m.themeCur = 0
-			case "up", "k":
-				if m.themeCur > 0 {
-					m.themeCur--
-				}
-			case "down", "j":
-				if m.themeCur < len(AllThemes())-1 {
-					m.themeCur++
-				}
-			case "enter", "l", "right":
-				m.themeIdx = m.themeCur
-				m.showTheme = false
-				m.themeCur = 0
-			}
-			return m, nil
+		if m.modal != modalNone {
+			return m.updateModal(msg)
 		}
 
-		switch s {
-		case "?":
-			m.showHelp = !m.showHelp
-		case "s":
-			m.showTheme = true
-			m.showDetail = false
-		case "esc":
-			if m.showHelp {
-				m.showHelp = false
-			} else if m.showDetail {
-				m.showDetail = false
-			}
-		case "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.showDetail {
-				m.detailVP.LineUp(1)
-			} else if m.selected > 0 {
-				m.selected--
-			}
-		case "down", "j":
-			if m.showDetail {
-				m.detailVP.LineDown(1)
-			} else if m.selected < len(m.result.Findings)-1 {
-				m.selected++
-			}
-		case "enter", "l", "right":
-			if !m.showDetail && m.selected < len(m.result.Findings) {
-				m.showDetail = true
-				m.showHelp = false
-				content := renderDetail(AllThemes()[m.themeIdx], &m.result.Findings[m.selected], m.width/2, 20)
-				m.detailVP.SetContent(content)
-				m.detailVP.GotoTop()
-			}
+		switch m.mode {
+		case modeDetail:
+			return m.updateDetail(msg)
+		default:
+			return m.updateList(msg)
+		}
+	}
+
+	return m, nil
+}
+
+func (m model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q":
+		return m, tea.Quit
+	case "?":
+		m.modal = modalHelp
+	case "s":
+		m.openThemeModal()
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+			m.keepSelectionVisible()
+		}
+	case "down", "j":
+		if m.selected < len(m.result.Findings)-1 {
+			m.selected++
+			m.keepSelectionVisible()
+		}
+	case "enter", "l", "right":
+		if len(m.result.Findings) > 0 {
+			m.mode = modeDetail
+			m.detailOffset = 0
 		}
 	}
 	return m, nil
 }
 
-func (m model) View() string {
-	t := AllThemes()[m.themeIdx]
+func (m model) updateDetail(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "esc":
+		m.mode = modeList
+		m.detailOffset = 0
+	case "?":
+		m.modal = modalHelp
+	case "s":
+		m.openThemeModal()
+	case "up", "k":
+		if m.detailOffset > 0 {
+			m.detailOffset--
+		}
+	case "down", "j":
+		if m.detailOffset < m.detailScrollLimit() {
+			m.detailOffset++
+		}
+	}
+	return m, nil
+}
 
-	if m.showTheme {
-		return renderSettings(t, AllThemes(), m.themeCur, m.width, m.height)
+func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch m.modal {
+	case modalHelp:
+		switch msg.String() {
+		case "q", "esc", "?", "enter", "l", "right":
+			m.modal = modalNone
+		}
+	case modalTheme:
+		switch msg.String() {
+		case "q", "esc":
+			m.themeIdx = m.themeSaved
+			m.themeCursor = m.themeSaved
+			m.modal = modalNone
+		case "up", "k":
+			if m.themeCursor > 0 {
+				m.themeCursor--
+				m.themeIdx = m.themeCursor
+			}
+		case "down", "j":
+			if m.themeCursor < len(AllThemes())-1 {
+				m.themeCursor++
+				m.themeIdx = m.themeCursor
+			}
+		case "enter", "l", "right":
+			m.themeIdx = m.themeCursor
+			m.themeSaved = m.themeIdx
+			m.modal = modalNone
+		}
+	}
+	return m, nil
+}
+
+func (m *model) openThemeModal() {
+	m.themeSaved = m.themeIdx
+	m.themeCursor = m.themeIdx
+	m.modal = modalTheme
+}
+
+func (m model) View() tea.View {
+	t := m.theme()
+	content := renderBase(m)
+	if m.modal != modalNone {
+		content = renderWithModal(m, content)
 	}
 
-	header := renderHeader(t, m.width)
-	overview := renderOverview(t, m.result, m.width)
+	v := tea.NewView(content)
+	v.AltScreen = true
+	v.BackgroundColor = lipgloss.Color(t.Background)
+	v.ForegroundColor = lipgloss.Color(t.Text)
+	v.WindowTitle = "hostveil"
+	return v
+}
 
-	var footer string
-	if m.showHelp {
-		footer = m.help.FullHelpView([][]key.Binding{defaultKeyList})
-	} else {
-		footer = m.help.ShortHelpView(defaultKeyList)
+func (m model) theme() Theme {
+	themes := AllThemes()
+	if m.themeIdx < 0 || m.themeIdx >= len(themes) {
+		return DefaultTheme()
 	}
-	footer = lipgloss.NewStyle().
-		BorderTop(true).
-		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 1).
-		Width(m.width).
-		Render(footer)
+	return themes[m.themeIdx]
+}
 
-	bodyTop := lineCount(header) + lineCount(overview)
-	footerH := lineCount(footer)
-	bodyHeight := m.height - bodyTop - footerH
-	if bodyHeight < 3 {
-		bodyHeight = 3
+func (m *model) clampSelection() {
+	if len(m.result.Findings) == 0 {
+		m.selected = 0
+		m.listOffset = 0
+		return
+	}
+	if m.selected < 0 {
+		m.selected = 0
+	}
+	if m.selected >= len(m.result.Findings) {
+		m.selected = len(m.result.Findings) - 1
+	}
+}
+
+func (m *model) keepSelectionVisible() {
+	l := computeLayout(m.width, m.height, m.mode == modeDetail)
+	visible := l.listH
+	if visible < 1 {
+		visible = 1
+	}
+	if m.selected < m.listOffset {
+		m.listOffset = m.selected
+	}
+	if m.selected >= m.listOffset+visible {
+		m.listOffset = m.selected - visible + 1
+	}
+	if m.listOffset < 0 {
+		m.listOffset = 0
+	}
+}
+
+func (m *model) clampDetailOffset() {
+	limit := m.detailScrollLimit()
+	if m.detailOffset > limit {
+		m.detailOffset = limit
+	}
+	if m.detailOffset < 0 {
+		m.detailOffset = 0
+	}
+}
+
+func (m model) detailScrollLimit() int {
+	if len(m.result.Findings) == 0 || m.selected >= len(m.result.Findings) {
+		return 0
+	}
+	l := computeLayout(m.width, m.height, m.mode == modeDetail)
+	content := renderDetailContent(m.theme(), &m.result.Findings[m.selected], max(0, l.detailW-4))
+	limit := lipgloss.Height(content) - max(1, l.bodyH-2)
+	if limit < 0 {
+		return 0
+	}
+	return limit
+}
+
+type keyMap struct {
+	bindings []key.Binding
+}
+
+func (k keyMap) ShortHelp() []key.Binding { return k.bindings }
+
+func (k keyMap) FullHelp() [][]key.Binding { return [][]key.Binding{k.bindings} }
+
+func keyBindings(m model) keyMap {
+	if m.modal != modalNone {
+		if m.modal == modalTheme {
+			return keyMap{[]key.Binding{
+				key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "preview up")),
+				key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "preview down")),
+				key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+				key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc/q", "cancel")),
+			}}
+		}
+		return keyMap{[]key.Binding{
+			key.NewBinding(key.WithKeys("esc", "q", "?"), key.WithHelp("esc/q/?", "close")),
+		}}
 	}
 
-	listWidth := m.width
-	if m.showDetail && m.width >= 60 {
-		listWidth = m.width / 2
+	if m.mode == modeDetail {
+		return keyMap{[]key.Binding{
+			key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "scroll up")),
+			key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "scroll down")),
+			key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc/q", "back")),
+			key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+			key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
+		}}
 	}
 
-	list := renderFindingsList(t, m.result.Findings, m.selected, listWidth, bodyHeight)
-
-	if m.showDetail && m.selected < len(m.result.Findings) {
-		detailWidth := m.width - listWidth - 2
-		detail := renderDetail(t, &m.result.Findings[m.selected], detailWidth, bodyHeight)
-		body := lipgloss.JoinHorizontal(lipgloss.Top,
-			list,
-			lipgloss.NewStyle().Width(1).Render(" "),
-			detail,
-		)
-		return lipgloss.JoinVertical(lipgloss.Top, header, overview, body, footer)
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Top, header, overview, list, footer)
+	return keyMap{[]key.Binding{
+		key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+		key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+		key.NewBinding(key.WithKeys("enter", "l", "right"), key.WithHelp("enter", "details")),
+		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
+		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	}}
 }

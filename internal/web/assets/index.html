@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>hostveil</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Linux self-hosting security scanner</p>
+          <h1>hostveil</h1>
+        </div>
+        <div class="scoreplate">
+          <span class="score-label">Security score</span>
+          <strong id="score">--</strong>
+        </div>
+      </header>
+
+      <section class="metrics" id="metrics"></section>
+
+      <main class="workspace">
+        <aside class="filters">
+          <label class="search">
+            <span>Search findings</span>
+            <input id="query" type="search" placeholder="SSH, AUTH, CVE, service..." autocomplete="off" />
+          </label>
+
+          <div class="filter-block">
+            <h2>Severity</h2>
+            <div class="chips" id="severityFilters"></div>
+          </div>
+
+          <div class="filter-block">
+            <h2>Source</h2>
+            <div class="chips" id="sourceFilters"></div>
+          </div>
+
+          <div class="filter-block">
+            <h2>Remediation</h2>
+            <div class="chips" id="remediationFilters"></div>
+          </div>
+
+          <div class="filter-block">
+            <h2>Sort</h2>
+            <select id="sortBy">
+              <option value="severity">Severity first</option>
+              <option value="source">Source</option>
+              <option value="title">Title</option>
+              <option value="remediation">Remediation</option>
+            </select>
+          </div>
+        </aside>
+
+        <section class="findings-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Findings</p>
+              <h2 id="findingCount">0 visible</h2>
+            </div>
+            <button id="clearFilters" type="button">Clear filters</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Source</th>
+                  <th>ID</th>
+                  <th>Finding</th>
+                  <th>Fix</th>
+                </tr>
+              </thead>
+              <tbody id="findings"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="detail" id="detail">
+          <div class="empty-detail">
+            <span></span>
+            <h2>Select a finding</h2>
+            <p>Choose an item from the table to inspect evidence and remediation guidance.</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,167 @@
+const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+
+const state = {
+  result: null,
+  selected: 0,
+  query: "",
+  severity: "all",
+  source: "all",
+  remediation: "all",
+  sortBy: "severity",
+};
+
+const $ = (id) => document.getElementById(id);
+
+async function init() {
+  const response = await fetch("/api/result");
+  state.result = await response.json();
+  bindControls();
+  render();
+}
+
+function bindControls() {
+  $("query").addEventListener("input", (event) => {
+    state.query = event.target.value.toLowerCase();
+    state.selected = 0;
+    render();
+  });
+  $("sortBy").addEventListener("change", (event) => {
+    state.sortBy = event.target.value;
+    render();
+  });
+  $("clearFilters").addEventListener("click", () => {
+    state.query = "";
+    state.severity = "all";
+    state.source = "all";
+    state.remediation = "all";
+    state.selected = 0;
+    $("query").value = "";
+    render();
+  });
+}
+
+function findings() {
+  const items = [...(state.result?.Findings || state.result?.findings || [])];
+  const query = state.query;
+  return items
+    .filter((f) => state.severity === "all" || severity(f) === state.severity)
+    .filter((f) => state.source === "all" || source(f) === state.source)
+    .filter((f) => state.remediation === "all" || remediation(f) === state.remediation)
+    .filter((f) => !query || searchable(f).includes(query))
+    .sort(sorter);
+}
+
+function sorter(a, b) {
+  if (state.sortBy === "source") return source(a).localeCompare(source(b)) || severityOrder[severity(a)] - severityOrder[severity(b)];
+  if (state.sortBy === "title") return title(a).localeCompare(title(b));
+  if (state.sortBy === "remediation") return remediation(a).localeCompare(remediation(b));
+  return severityOrder[severity(a)] - severityOrder[severity(b)] || title(a).localeCompare(title(b));
+}
+
+function render() {
+  const visible = findings();
+  if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
+  renderMetrics();
+  renderFilters();
+  renderTable(visible);
+  renderDetail(visible[state.selected]);
+}
+
+function renderMetrics() {
+  const items = state.result?.Findings || state.result?.findings || [];
+  const score = state.result?.Score ?? state.result?.score ?? 0;
+  $("score").textContent = `${score}/100`;
+  $("score").className = severityClassForScore(score);
+  const counts = countBy(items, severity);
+  const sources = countBy(items, source);
+  const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
+  const metrics = [
+    ["Total", items.length],
+    ["Critical", counts.critical || 0, "critical"],
+    ["High", counts.high || 0, "high"],
+    ["Medium", counts.medium || 0, "medium"],
+    ["Lynis", sources.lynis || 0],
+    ["Fixable", fixable],
+  ];
+  $("metrics").innerHTML = metrics.map(([label, value, cls = ""]) => `<article class="metric"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
+}
+
+function renderFilters() {
+  const items = state.result?.Findings || state.result?.findings || [];
+  renderChips("severityFilters", ["all", "critical", "high", "medium", "low"], "severity");
+  renderChips("sourceFilters", ["all", ...Object.keys(countBy(items, source)).sort()], "source");
+  renderChips("remediationFilters", ["all", ...Object.keys(countBy(items, remediation)).sort()], "remediation");
+}
+
+function renderChips(id, values, key) {
+  $(id).innerHTML = values.map((value) => `<button class="chip ${state[key] === value ? "active" : ""}" data-key="${key}" data-value="${value}" type="button">${label(value)}</button>`).join("");
+  $(id).querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      state[button.dataset.key] = button.dataset.value;
+      state.selected = 0;
+      render();
+    });
+  });
+}
+
+function renderTable(visible) {
+  $("findingCount").textContent = `${visible.length} visible`;
+  $("findings").innerHTML = visible.map((f, index) => `
+    <tr class="${index === state.selected ? "selected" : ""}" data-index="${index}">
+      <td><span class="badge ${severity(f)}">${severity(f)}</span></td>
+      <td class="muted">${source(f)}</td>
+      <td class="id">${shortId(f.ID)}</td>
+      <td class="title">${escapeHTML(title(f))}</td>
+      <td class="muted">${label(remediation(f))}</td>
+    </tr>`).join("") || `<tr><td colspan="5" class="muted">No findings match the current filters.</td></tr>`;
+  $("findings").querySelectorAll("tr[data-index]").forEach((row) => {
+    row.addEventListener("click", () => {
+      state.selected = Number(row.dataset.index);
+      render();
+    });
+  });
+}
+
+function renderDetail(f) {
+  if (!f) {
+    $("detail").innerHTML = `<div class="empty-detail"><span></span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
+    return;
+  }
+  const evidence = f.Evidence || {};
+  const evidenceHTML = Object.keys(evidence).sort().map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("");
+  $("detail").innerHTML = `
+    <span class="badge ${severity(f)}">${severity(f)}</span>
+    <h2>${escapeHTML(title(f))}</h2>
+    <dl class="detail-meta">
+      <dt>ID</dt><dd>${escapeHTML(f.ID || "")}</dd>
+      <dt>Source</dt><dd>${source(f)}</dd>
+      <dt>Remediation</dt><dd>${label(remediation(f))}</dd>
+      ${f.Service ? `<dt>Service</dt><dd>${escapeHTML(f.Service)}</dd>` : ""}
+    </dl>
+    ${section("Description", f.Description)}
+    ${section("How to fix", f.HowToFix, true)}
+    ${evidenceHTML ? `<section class="section"><h3>Evidence</h3>${evidenceHTML}</section>` : ""}
+  `;
+  const button = $("detail").querySelector(".copy");
+  if (button) button.addEventListener("click", () => navigator.clipboard?.writeText(f.HowToFix || ""));
+}
+
+function section(name, content, copy = false) {
+  if (!content) return "";
+  return `<section class="section"><h3>${name}</h3><p>${escapeHTML(content)}</p>${copy ? `<button class="copy" type="button">Copy guidance</button>` : ""}</section>`;
+}
+
+function countBy(items, fn) { return items.reduce((acc, item) => ((acc[fn(item)] = (acc[fn(item)] || 0) + 1), acc), {}); }
+function severity(f) { return ["critical", "high", "medium", "low"][f.Severity] || String(f.Severity || "unknown").toLowerCase(); }
+function source(f) { return ["trivy", "lynis"][f.Source] || String(f.Source || "unknown").toLowerCase(); }
+function remediation(f) { return ["auto", "review", "unavailable", "manual"][f.Remediation] || String(f.Remediation || "unknown").toLowerCase(); }
+function title(f) { return f.Title || "Untitled finding"; }
+function shortId(id = "") { const parts = id.split("."); return parts[parts.length - 1] || id; }
+function searchable(f) { return [f.ID, f.Title, f.Description, f.HowToFix, f.Service, severity(f), source(f), remediation(f), ...Object.values(f.Evidence || {})].join(" ").toLowerCase(); }
+function label(value) { return value === "all" ? "All" : value.charAt(0).toUpperCase() + value.slice(1); }
+function severityClassForScore(score) { return score >= 70 ? "low" : score >= 40 ? "medium" : score >= 20 ? "high" : "critical"; }
+function escapeHTML(value = "") { return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch])); }
+
+init().catch((error) => {
+  document.body.innerHTML = `<main class="shell"><section class="detail"><h1>hostveil</h1><p class="muted">Failed to load scan results.</p><pre>${escapeHTML(error.message)}</pre></section></main>`;
+});

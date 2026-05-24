@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,11 +12,12 @@ import (
 	"strings"
 	"sync"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/lynis"
 	"github.com/seolcu/hostveil/internal/trivy"
 	"github.com/seolcu/hostveil/internal/tui"
+	"github.com/seolcu/hostveil/internal/web"
 )
 
 func main() {
@@ -33,6 +35,9 @@ func run() error {
 		case "update", "upgrade":
 			ensureSudo()
 			return runUpdate()
+		case "serve", "web":
+			ensureSudo()
+			return runServe(os.Args[2:])
 		case "--help", "-h":
 			printHelp()
 			return nil
@@ -47,6 +52,46 @@ func run() error {
 	if !hasFlag("--no-update") {
 		checkUpdate()
 	}
+
+	result, err := scanHost()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("  Starting TUI...")
+	fmt.Println()
+
+	p := tea.NewProgram(tui.NewApp(result))
+	_, err = p.Run()
+	return err
+}
+
+func runServe(args []string) error {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	addr := fs.String("addr", "127.0.0.1:8787", "address to serve the web UI on")
+	noUpdate := fs.Bool("no-update", false, "skip update check on startup")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if !*noUpdate && !hasFlag("--no-update") {
+		checkUpdate()
+	}
+
+	result, err := scanHost()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Starting Web UI at http://%s\n", *addr)
+	fmt.Println("  Press Ctrl+C to stop.")
+	fmt.Println()
+
+	return web.Serve(web.Options{Addr: *addr, Result: result})
+}
+
+func scanHost() (*domain.ScanResult, error) {
 
 	fmt.Println()
 	fmt.Println("  hostveil — scanning")
@@ -96,12 +141,8 @@ func run() error {
 
 	fmt.Printf("  • Found %d findings (%d fixable)\n", len(all), countFixable(all))
 	fmt.Println()
-	fmt.Println("  Starting TUI...")
-	fmt.Println()
 
-	p := tea.NewProgram(tui.NewApp(result), tea.WithAltScreen())
-	_, err := p.Run()
-	return err
+	return result, nil
 }
 
 func runSetup() error {
@@ -202,6 +243,9 @@ func printHelp() {
 
 Usage:
   hostveil                    Scan and open TUI
+  hostveil serve              Scan and serve Web UI on 127.0.0.1:8787
+  hostveil web                Alias for serve
+  hostveil serve --addr ADDR  Serve Web UI on a custom address
   hostveil setup              Install dependencies (trivy, lynis)
   hostveil update             Update to the latest version
   hostveil --no-update        Skip update check on startup
