@@ -12,186 +12,36 @@ import (
 )
 
 type findingsModel struct {
-	list     []domain.Finding
-	all      []domain.Finding
-	selected int
-	scroll   int
-	detailVP viewport.Model
-
-	// Filters
-	severityFilter    string
-	sourceFilter      string
-	scopeFilter       string
-	serviceFilter     string
-	remediationFilter string
-	sortMode          string
-
-	searchQuery       string
-	showSearch        bool
-	showDetail        bool
-	showFixPreview    bool
+	list            []domain.Finding
+	all             []domain.Finding
+	selected        int
+	scroll          int
+	detailVP        viewport.Model
+	showDetail      bool
+	showFixPreview  bool
 	fixPreviewContent string
-	fixBackupPath     string
-	hostTriageMode    bool
-	showFilterPanel   bool
-	filterCursor      int
-
-	uniqueServices []string
-}
-
-type filterRow struct {
-	label   string
-	value   string
-	options []string
-}
-
-var filterPanelRows = []filterRow{
-	{label: "Severity", options: []string{"all", "critical", "high", "medium", "low"}},
-	{label: "Service", options: nil},
-	{label: "Scope", options: []string{"all", "service", "host", "image", "project"}},
-	{label: "Fix", options: []string{"all", "auto", "review", "manual"}},
-	{label: "Source", options: []string{"all", "native_compose", "native_host", "trivy", "dockle", "lynis", "gitleaks"}},
+	fixBackupPath   string
 }
 
 func newFindingsModel(findings []domain.Finding) *findingsModel {
 	m := &findingsModel{
 		all:      findings,
+		list:     findings,
 		selected: 0,
 	}
-	m.collectUniqueServices()
-	m.applyFilters()
+	sort.Slice(m.list, func(i, j int) bool {
+		if m.list[i].Severity != m.list[j].Severity {
+			return m.list[i].Severity < m.list[j].Severity
+		}
+		return m.list[i].Title < m.list[j].Title
+	})
 	return m
-}
-
-func (m *findingsModel) collectUniqueServices() {
-	seen := make(map[string]bool)
-	for _, f := range m.all {
-		if f.Service != "" && !seen[f.Service] {
-			seen[f.Service] = true
-			m.uniqueServices = append(m.uniqueServices, f.Service)
-		}
-	}
-	sort.Strings(m.uniqueServices)
-	// Update filter panel services
-	for i := range filterPanelRows {
-		if filterPanelRows[i].label == "Service" {
-			filterPanelRows[i].options = append([]string{"all"}, m.uniqueServices...)
-			break
-		}
-	}
-}
-
-func (m *findingsModel) applyFilters() {
-	m.list = make([]domain.Finding, 0)
-	for _, f := range m.all {
-		if m.severityFilter != "" && f.Severity.String() != m.severityFilter {
-			continue
-		}
-		if m.sourceFilter != "" && f.Source.String() != m.sourceFilter {
-			continue
-		}
-		if m.scopeFilter != "" && f.Scope.String() != m.scopeFilter {
-			continue
-		}
-		if m.serviceFilter != "" && f.Service != m.serviceFilter {
-			continue
-		}
-		if m.remediationFilter != "" && f.Remediation.String() != m.remediationFilter {
-			continue
-		}
-		if m.searchQuery != "" {
-			q := strings.ToLower(m.searchQuery)
-			if !strings.Contains(strings.ToLower(f.Title), q) &&
-				!strings.Contains(strings.ToLower(f.Description), q) {
-				continue
-			}
-		}
-		m.list = append(m.list, f)
-	}
-
-	switch m.sortMode {
-	case "severity":
-		sort.Slice(m.list, func(i, j int) bool {
-			if m.list[i].Severity != m.list[j].Severity {
-				return m.list[i].Severity < m.list[j].Severity
-			}
-			return m.list[i].Title < m.list[j].Title
-		})
-	case "source":
-		sort.Slice(m.list, func(i, j int) bool {
-			if m.list[i].Source.String() != m.list[j].Source.String() {
-				return m.list[i].Source.String() < m.list[j].Source.String()
-			}
-			return m.list[i].Severity < m.list[j].Severity
-		})
-	case "title":
-		sort.Slice(m.list, func(i, j int) bool {
-			if m.list[i].Title != m.list[j].Title {
-				return m.list[i].Title < m.list[j].Title
-			}
-			return m.list[i].Severity < m.list[j].Severity
-		})
-	}
-
-	if m.selected >= len(m.list) {
-		m.selected = 0
-	}
 }
 
 func (m *findingsModel) Update(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		s := msg.String()
-
-		// Search mode takes priority
-		if m.showSearch {
-			switch s {
-			case "esc":
-				m.showSearch = false
-				m.searchQuery = ""
-				m.applyFilters()
-			case "enter":
-				m.showSearch = false
-			case "backspace":
-				if len(m.searchQuery) > 0 {
-					runes := []rune(m.searchQuery)
-					m.searchQuery = string(runes[:len(runes)-1])
-					m.applyFilters()
-				}
-			default:
-				if len(msg.Runes) > 0 {
-					m.searchQuery += string(msg.Runes)
-					m.applyFilters()
-				}
-			}
-			return
-		}
-
-		// Filter panel mode
-		if m.showFilterPanel {
-			switch s {
-			case "f", "esc":
-				m.showFilterPanel = false
-			case "j", "down":
-				m.filterCursor++
-				if m.filterCursor >= len(filterPanelRows) {
-					m.filterCursor = 0
-				}
-			case "k", "up":
-				m.filterCursor--
-				if m.filterCursor < 0 {
-					m.filterCursor = len(filterPanelRows) - 1
-				}
-			case "l", "right", "enter":
-				m.cycleFilterValue(1)
-			case "h", "left":
-				m.cycleFilterValue(-1)
-			case "r":
-				m.resetFilters()
-				m.showFilterPanel = false
-			}
-			return
-		}
 
 		switch s {
 		case "j", "down":
@@ -221,126 +71,20 @@ func (m *findingsModel) Update(msg tea.Msg) {
 			}
 		case "h", "left":
 			m.showDetail = false
-		case "s":
-			m.cycleSort()
-		case "f":
-			if !m.showDetail {
-				m.showFilterPanel = true
-				m.filterCursor = 0
-			}
 		case "a":
-			// Toggle fix preview (apply is handled by app.go)
 			if m.selected < len(m.list) && m.list[m.selected].IsFixable() {
 				m.showFixPreview = !m.showFixPreview
 				m.showDetail = false
 			}
 		case "p":
-			// Toggle fix preview for consistency with 'a'
 			if m.selected < len(m.list) && m.list[m.selected].IsFixable() {
 				m.showFixPreview = !m.showFixPreview
 				m.showDetail = false
 			}
-		case "/":
-			m.showSearch = true
 		case "esc":
-			m.showSearch = false
 			m.showDetail = false
-			m.showFilterPanel = false
-			m.searchQuery = ""
-			m.applyFilters()
 		}
 	}
-}
-
-func (m *findingsModel) cycleFilterValue(dir int) {
-	if m.filterCursor >= len(filterPanelRows) {
-		return
-	}
-	row := &filterPanelRows[m.filterCursor]
-	if len(row.options) <= 1 {
-		return
-	}
-
-	current := row.value
-	if current == "" {
-		current = row.options[0]
-	}
-
-	idx := -1
-	for i, o := range row.options {
-		if o == current {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		idx = 0
-	}
-
-	newIdx := (idx + dir + len(row.options)) % len(row.options)
-	row.value = row.options[newIdx]
-
-	// Apply the filter value
-	switch row.label {
-	case "Severity":
-		if row.value == "all" {
-			m.severityFilter = ""
-		} else {
-			m.severityFilter = row.value
-		}
-	case "Service":
-		if row.value == "all" {
-			m.serviceFilter = ""
-		} else {
-			m.serviceFilter = row.value
-		}
-	case "Scope":
-		if row.value == "all" {
-			m.scopeFilter = ""
-		} else {
-			m.scopeFilter = row.value
-		}
-	case "Fix":
-		if row.value == "all" {
-			m.remediationFilter = ""
-		} else {
-			m.remediationFilter = row.value
-		}
-	case "Source":
-		if row.value == "all" {
-			m.sourceFilter = ""
-		} else {
-			m.sourceFilter = row.value
-		}
-	}
-	m.applyFilters()
-}
-
-func (m *findingsModel) cycleSort() {
-	m.sortMode = nextCycle(m.sortMode, []string{"severity", "source", "title"})
-	m.applyFilters()
-}
-
-func (m *findingsModel) resetFilters() {
-	m.severityFilter = ""
-	m.sourceFilter = ""
-	m.scopeFilter = ""
-	m.serviceFilter = ""
-	m.remediationFilter = ""
-	m.sortMode = "severity"
-	m.searchQuery = ""
-	m.showSearch = false
-	m.selected = 0
-	m.hostTriageMode = false
-	m.showFixPreview = false
-	m.fixPreviewContent = ""
-	m.fixBackupPath = ""
-	m.showFilterPanel = false
-	// Reset filter panel row values
-	for i := range filterPanelRows {
-		filterPanelRows[i].value = ""
-	}
-	m.applyFilters()
 }
 
 func formatFindingDetail(f *domain.Finding) string {
@@ -395,28 +139,7 @@ func formatFindingDetail(f *domain.Finding) string {
 	return b.String()
 }
 
-func highlightText(s, query string) string {
-	if query == "" {
-		return s
-	}
-	q := strings.ToLower(query)
-	lower := strings.ToLower(s)
-	var result strings.Builder
-	start := 0
-	for {
-		idx := strings.Index(lower[start:], q)
-		if idx == -1 {
-			result.WriteString(s[start:])
-			break
-		}
-		result.WriteString(s[start : start+idx])
-		result.WriteString("\x1b[7m" + s[start+idx:start+idx+len(q)] + "\x1b[27m")
-		start = start + idx + len(q)
-	}
-	return result.String()
-}
-
-func (m *findingsModel) render(theme Theme, width, height int) string {
+func (m *findingsModel) render(r *domain.ScanResult, theme Theme, width, height int) string {
 	if width < 20 {
 		return "Terminal too narrow"
 	}
@@ -425,42 +148,23 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		return m.renderMiniFindings(theme, width)
 	}
 
-	lm := layoutMode(width, height)
-	if lm == LayoutUltraWide || lm == LayoutWide {
-		return m.renderUltraWideFindings(theme, width, height)
-	}
+	overviewRow := renderOverviewRow(r, theme, width)
+	overviewH := strings.Count(overviewRow, "\n") + 1
+	findingsH := max(10, height-overviewH)
 
+	lm := layoutMode(width, findingsH)
 	if lm == LayoutCompact {
-		return m.renderCompactFindings(theme, width, height)
+		return joinRowsWithGap(0, overviewRow, m.renderCompactFindings(theme, width, findingsH))
 	}
 
-	// Compute fixed slots from viewport dimensions (NOT from content)
-	hasBottom := len(m.list) > 0
-	slots := FindingsSlots(width, height, lm, hasBottom)
-
-	filterBar := m.renderFilterBar(theme, width)
-	if slots.FilterBar.InnerH() > 0 {
-		filterLines := strings.Count(filterBar, "\n") + 1
-		if filterLines > slots.FilterBar.InnerH() {
-			lines := strings.Split(filterBar, "\n")
-			filterBar = strings.Join(lines[:slots.FilterBar.InnerH()], "\n")
-		}
+	if len(m.all) == 0 {
+		return joinRowsWithGap(0, overviewRow, m.renderCleanFindingsUltraWide(theme, width, findingsH))
 	}
 
-	// Filter panel dialog overrides normal layout
-	if m.showFilterPanel && !m.showDetail {
-		panel := m.renderFilterPanel(theme, slots.List.W, slots.List.H)
-		panelLines := strings.Count(panel, "\n") + 1
-		padTop := (slots.List.H - panelLines) / 2
-		if padTop < 0 {
-			padTop = 0
-		}
-		return filterBar + "\n" + strings.Repeat("\n", padTop) + panel
-	}
+	slots := FindingsSlots(width, findingsH)
 
 	listPanel := m.renderFindingsListPanel(theme, slots.List)
 
-	// Detail or preview panel (right column)
 	var detailContent string
 	if m.showDetail && m.selected < len(m.list) {
 		f := m.list[m.selected]
@@ -473,36 +177,14 @@ func (m *findingsModel) render(theme Theme, width, height int) string {
 		}
 	}
 
-	// Top row: list + detail side by side
 	topRow := joinColumns([]string{listPanel, detailContent}, []int{slots.List.W, slots.Detail.W}, 1)
 	if debugLayout {
 		assertDisplayWidthLTE(topRow, width)
 	}
 
-	sp := spacingFor(lm)
-
-	// Empty state: no bottom cards needed
-	if !hasBottom {
-		return joinRowsWithGap(sp.RowGap, filterBar, topRow)
-	}
-
-	// Mid row: filter + context cards into fixed-height slots
-	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.W, slots.MidLeft.H)
-	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.W, slots.MidRight.H)
-	midRow := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
-
-	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
-		theme, slots.Guidance.W, slots.Guidance.H)
-
-	return joinRowsWithGap(sp.RowGap,
-		filterBar,
-		topRow,
-		midRow,
-		guidance,
-	)
+	return joinRowsWithGap(0, overviewRow, topRow)
 }
 
-// renderFindingsListPanel builds the findings list panel with title.
 func (m *findingsModel) renderFindingsListPanel(theme Theme, listRect Rect) string {
 	var listContent strings.Builder
 	if len(m.list) == 0 {
@@ -514,71 +196,7 @@ func (m *findingsModel) renderFindingsListPanel(theme Theme, listRect Rect) stri
 	return RenderPanel(listRect, listTitle, listContent.String(), theme, OverflowClip)
 }
 
-func (m *findingsModel) renderUltraWideFindings(theme Theme, width, height int) string {
-	if len(m.all) == 0 {
-		return m.renderCleanFindingsUltraWide(theme, width, height)
-	}
-
-	hasBottom := len(m.list) > 0
-	slots := FindingsSlots(width, height, LayoutUltraWide, hasBottom)
-	sp := spacingFor(LayoutUltraWide)
-
-	filterBar := m.renderFilterBar(theme, width)
-	if slots.FilterBar.InnerH() > 0 {
-		filterLines := strings.Count(filterBar, "\n") + 1
-		if filterLines > slots.FilterBar.InnerH() {
-			lines := strings.Split(filterBar, "\n")
-			filterBar = strings.Join(lines[:slots.FilterBar.InnerH()], "\n")
-		}
-	}
-	listPanel := m.renderFindingsListPanel(theme, slots.List)
-
-	var topRow string
-	if len(m.list) == 0 {
-		preview := m.renderCleanFindingsState(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
-		detailPanel := RenderPanel(slots.Detail, "Clean scan meaning", preview, theme, OverflowClip)
-		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
-	} else if m.showDetail && m.selected < len(m.list) {
-		f := m.list[m.selected]
-		detail := m.renderDetailContent(&f, theme, slots.Detail.InnerW(), slots.Detail.InnerH())
-		detailPanel := RenderPanel(slots.Detail, "", detail, theme, OverflowClip)
-		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
-	} else {
-		preview := m.renderWidePreviewPanel(theme, slots.Detail.InnerW(), slots.Detail.InnerH())
-		detailPanel := RenderPanel(slots.Detail, "", preview, theme, OverflowClip)
-		topRow = joinColumns([]string{listPanel, detailPanel}, []int{slots.List.W, slots.Detail.W}, 1)
-	}
-
-	if debugLayout {
-		assertDisplayWidthLTE(topRow, width)
-	}
-
-	if !hasBottom {
-		return joinRowsWithGap(sp.RowGap, filterBar, topRow)
-	}
-
-	filterCard := m.renderFilterStateCard(theme, slots.MidLeft.W, slots.MidLeft.H)
-	contextCard := m.renderRelatedFindingsCard(theme, slots.MidRight.W, slots.MidRight.H)
-	bottomCards := joinColumns([]string{filterCard, contextCard}, []int{slots.MidLeft.W, slots.MidRight.W}, 2)
-
-	if debugLayout {
-		assertDisplayWidthLTE(bottomCards, width)
-	}
-
-	guidance := renderInfoStrip("Fix guidance", m.renderFixGuidanceText(theme, m.selected),
-		theme, slots.Guidance.W, slots.Guidance.H)
-
-	return joinRowsWithGap(sp.RowGap,
-		filterBar,
-		topRow,
-		bottomCards,
-		guidance,
-	)
-}
-
 func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height int) string {
-	filterBar := m.renderFilterBar(theme, width)
-
 	cols := splitColumns(width, 2, 2)
 
 	left := m.renderCleanFindingsPanel(theme, cols[0], 7)
@@ -589,21 +207,14 @@ func (m *findingsModel) renderCleanFindingsUltraWide(theme Theme, width, height 
 	stepsCard := m.renderCleanNextStepsCard(theme, cols[1], 6)
 	bottomCards := joinColumns([]string{covCard, stepsCard}, cols, 2)
 
-	guidance := renderInfoStrip("Clean scan guidance",
-		"No findings were detected. Keep reports for audit/history, and rescan after configuration or Docker changes.",
-		theme, width, 3)
-
 	if debugLayout {
 		assertDisplayWidthLTE(topRow, width)
 		assertDisplayWidthLTE(bottomCards, width)
 	}
 
-	sp := spacingFor(LayoutUltraWide)
-	return joinRowsWithGap(sp.RowGap,
-		filterBar,
+	return joinRowsWithGap(0,
 		topRow,
 		bottomCards,
-		guidance,
 	)
 }
 
@@ -619,7 +230,7 @@ func (m *findingsModel) renderCleanFindingsPanel(theme Theme, outerW, height int
 
 	hint := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Accent)).
-		Render("Press 3 to export a clean report.")
+		Render("Export options available in the TUI menu.")
 
 	return renderCardBounded("", icon+"\n\n"+msg+"\n\n"+hint, theme, Rect{W: outerW, H: height})
 }
@@ -655,9 +266,9 @@ func (m *findingsModel) renderCleanScanCoverageCard(theme Theme, outerW, height 
 
 func (m *findingsModel) renderCleanNextStepsCard(theme Theme, outerW, height int) string {
 	steps := []string{
-		"1. Press 3 to export a clean report.",
-		"2. Add docker-compose.yml to scan service exposure and permissions.",
-		"3. Run Hostveil again after adding or changing services.",
+		"1. Add docker-compose.yml to scan service exposure and permissions.",
+		"2. Run Hostveil again after adding or changing services.",
+		"3. Use export from TUI menu to save results.",
 	}
 	joined := "  " + strings.Join(steps, "\n  ")
 	return renderCardBounded("Next steps", joined, theme, Rect{W: outerW, H: height})
@@ -669,18 +280,14 @@ func (m *findingsModel) renderEmptyFindingsState(theme Theme, width, height int)
 	var help string
 
 	switch {
-	case m.hostTriageMode:
-		icon = "○"
-		msgLines = []string{"No host-level findings detected.", "All findings from this scan are service-level."}
-		help = "Press r to clear filters"
 	case len(m.all) == 0:
 		icon = "✓"
 		msgLines = []string{"No findings detected.", "Your current scan passed all enabled checks."}
-		help = "Press 3 to export a clean report"
+		help = "No findings detected in current scan"
 	default:
 		icon = "·"
 		msgLines = []string{"No findings match current filters."}
-		help = "Press r to clear filters"
+		help = ""
 	}
 	msg := strings.Join(msgLines, "\n")
 
@@ -743,14 +350,6 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 		}
 
 		title := f.Title
-		if m.searchQuery != "" {
-			titleMatch := strings.Contains(strings.ToLower(f.Title), strings.ToLower(m.searchQuery))
-			if titleMatch {
-				title = highlightText(title, m.searchQuery)
-			} else if strings.Contains(strings.ToLower(f.Description), strings.ToLower(m.searchQuery)) {
-				title += "…"
-			}
-		}
 
 		var line string
 		if showService {
@@ -818,132 +417,6 @@ func (m *findingsModel) renderFindingsList(theme Theme, b *strings.Builder, list
 			hint := "Enter/l detail  |  / search  |  f filter  |  s sort  |  r reset"
 			b.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.TextMuted)).Render(hint) + "\n")
 		}
-	}
-}
-
-func (m *findingsModel) renderFilterStateCard(theme Theme, outerW, height int) string {
-	allClear := m.severityFilter == "" && m.serviceFilter == "" && m.scopeFilter == "" &&
-		m.remediationFilter == "" && m.sourceFilter == "" && m.sortMode == "severity"
-
-	if allClear {
-		return renderCardBounded("Filters", "  All filters clear", theme, Rect{W: outerW, H: height})
-	}
-
-	var lines []string
-	addLine := func(k, v string) {
-		if v == "" {
-			v = "All"
-		}
-		lines = append(lines, fmt.Sprintf("  %-12s %s", k+":", v))
-	}
-
-	sev := m.severityFilter
-	if sev == "" {
-		sev = "All"
-	} else {
-		sev = naturalSeverity(sev)
-	}
-	addLine("Severity", sev)
-
-	svc := m.serviceFilter
-	if svc == "" {
-		svc = "All"
-	}
-	addLine("Service", svc)
-
-	scope := m.scopeFilter
-	if scope == "" {
-		scope = "All"
-	} else {
-		scope = naturalScope(scope)
-	}
-	addLine("Scope", scope)
-
-	fix := m.remediationFilter
-	if fix == "" {
-		fix = "All"
-	} else {
-		fix = naturalRemediation(fix)
-	}
-	addLine("Fix", fix)
-
-	src := m.sourceFilter
-	if src == "" {
-		src = "All"
-	} else {
-		src = naturalSource(src)
-	}
-	addLine("Source", src)
-
-	r := Rect{W: outerW, H: height}
-	return renderCardBounded("Filter state", strings.Join(lines, "\n"), theme, r)
-}
-
-func (m *findingsModel) renderRelatedFindingsCard(theme Theme, outerW, height int) string {
-	if len(m.list) == 0 || m.selected >= len(m.list) {
-		return renderCardBounded("Context", "  No finding selected.", theme, Rect{W: outerW, H: height})
-	}
-	f := m.list[m.selected]
-	svc := f.Service
-	if svc == "" {
-		body := fmt.Sprintf("  Scope: %s · No service context · Source: %s",
-			f.Scope.String(), f.Source.String())
-		return renderCardBounded("Context", body, theme, Rect{W: outerW, H: height})
-	}
-
-	r := Rect{W: outerW, H: height}
-	related := m.relatedFindings(&f)
-	if len(related) == 0 {
-		var sameSvc []domain.Finding
-		for _, o := range m.all {
-			if o.Service == svc && o.ID != f.ID {
-				sameSvc = append(sameSvc, o)
-			}
-		}
-		if len(sameSvc) == 0 {
-			return renderCardBounded(fmt.Sprintf("Same service: %s", svc),
-				"  No related findings.", theme, r)
-		}
-		var lines []string
-		maxShow := 4
-		for i, rf := range sameSvc {
-			if i >= maxShow {
-				break
-			}
-			icon := severityIcon(rf.Severity)
-			title := truncateStr(rf.Title, outerW-12)
-			lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
-		}
-		return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, r)
-	}
-
-	var lines []string
-	for _, rf := range related {
-		icon := severityIcon(rf.Severity)
-		title := truncateStr(rf.Title, outerW-12)
-		lines = append(lines, fmt.Sprintf("  %s %s", icon, title))
-	}
-	return renderCardBounded(fmt.Sprintf("Same service: %s", svc), strings.Join(lines, "\n"), theme, r)
-}
-
-func (m *findingsModel) renderFixGuidanceText(theme Theme, selected int) string {
-	if len(m.list) == 0 || selected >= len(m.list) {
-		return "No finding selected."
-	}
-	f := m.list[selected]
-	switch {
-	case f.Remediation == domain.RemediationAuto && !m.showFixPreview:
-		return "Auto-fix preview available. Press p to inspect the diff before applying."
-	case f.Remediation == domain.RemediationAuto && m.showFixPreview:
-		return "Review the proposed diff. Press a to apply only after verifying correctness."
-	case f.Remediation == domain.RemediationReview && !m.showFixPreview:
-		return "Review required. Press p to preview the suggested change. Apply only after verifying correctness."
-	case f.Remediation == domain.RemediationReview && m.showFixPreview:
-		return "Review the proposed diff. Apply manually if correct, then rescan."
-	case f.Remediation == domain.RemediationManual:
-		return "Manual change required. Follow the recommended fix steps above, then press r to rescan."
-	default:
-		return "Select a finding to see remediation guidance."
 	}
 }
 
@@ -1186,48 +659,6 @@ func (m *findingsModel) renderWidePreviewPanel(theme Theme, outerW, height int) 
 	return b.String()
 }
 
-func (m *findingsModel) relatedFindings(f *domain.Finding) []domain.Finding {
-	svc := f.Service
-	if svc == "" {
-		return nil
-	}
-
-	type scoredFindings struct {
-		finding domain.Finding
-		score   int
-	}
-	var candidates []scoredFindings
-	for _, other := range m.all {
-		if other.Service != svc || other.ID == f.ID {
-			continue
-		}
-		s := 0
-		if other.Axis == f.Axis {
-			s += 2
-		}
-		if other.Remediation == f.Remediation {
-			s++
-		}
-		candidates = append(candidates, scoredFindings{other, s})
-	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		if candidates[i].score != candidates[j].score {
-			return candidates[i].score > candidates[j].score
-		}
-		return candidates[i].finding.Severity < candidates[j].finding.Severity
-	})
-
-	var related []domain.Finding
-	for i, c := range candidates {
-		if i >= 3 {
-			break
-		}
-		related = append(related, c.finding)
-	}
-	return related
-}
-
 func (m *findingsModel) renderMiniFindings(theme Theme, width int) string {
 	var b strings.Builder
 
@@ -1327,6 +758,168 @@ func (m *findingsModel) renderCompactFindings(theme Theme, width, height int) st
 	return b.String()
 }
 
+
+func severityIcon(sev domain.Severity) string {
+	switch sev {
+	case domain.SeverityCritical:
+		return "■"
+	case domain.SeverityHigh:
+		return "◆"
+	case domain.SeverityMedium:
+		return "●"
+	case domain.SeverityLow:
+		return "▸"
+	default:
+		return "·"
+	}
+}
+
+func severityShortLabel(sev domain.Severity) string {
+	switch sev {
+	case domain.SeverityCritical:
+		return "CRIT"
+	case domain.SeverityHigh:
+		return "HIGH"
+	case domain.SeverityMedium:
+		return "MED"
+	case domain.SeverityLow:
+		return "LOW"
+	default:
+		return strings.ToUpper(sev.String())
+	}
+}
+
+func remediationColor(r domain.RemediationKind, theme Theme) string {
+	switch r {
+	case domain.RemediationAuto:
+		return theme.Success
+	case domain.RemediationReview:
+		return theme.Accent
+	default:
+		return theme.TextMuted
+	}
+}
+
+func scoreBarContent(r *domain.ScanResult, theme Theme, outerW int) string {
+	var rows []string
+	barW := clamp(outerW/4, 6, 16)
+	for _, axis := range domain.AllAxes() {
+		score := r.ScoreReport.AxisScores[axis]
+		scoreColor := theme.Success
+		gradeStr := "Good"
+		if score < 80 {
+			scoreColor = theme.Medium
+			gradeStr = "Risk"
+		}
+		if score < 50 {
+			scoreColor = theme.Critical
+			gradeStr = "Critical"
+		}
+		label := lipgloss.NewStyle().Width(22).Render(axis.Label())
+		bar := renderBar(score, barW, scoreColor)
+		scoreTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(scoreColor)).
+			Width(4).Align(lipgloss.Right).
+			Render(fmt.Sprintf("%d", score))
+		gradeTag := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(scoreColor)).
+			Render(gradeStr)
+		rows = append(rows, fmt.Sprintf("  %s %s %s %s", label, bar, scoreTag, gradeTag))
+	}
+	return strings.Join(rows, "\n")
+}
+
+func scanContextContent(r *domain.ScanResult, theme Theme, outerW int) string {
+	var pairs []KV
+	info := r.Metadata.HostRuntime
+	if info != nil {
+		if info.Hostname != "" {
+			pairs = append(pairs, KV{"Hostname", info.Hostname})
+		}
+		if info.DockerVersion != "" {
+			pairs = append(pairs, KV{"Docker", info.DockerVersion})
+		}
+		if info.Uptime != "" {
+			pairs = append(pairs, KV{"Uptime", formatUptime(info.Uptime)})
+		}
+		if info.LoadAverage != "" {
+			pairs = append(pairs, KV{"Load", formatLoadAvg(info.LoadAverage, false)})
+		}
+	}
+	if len(r.Metadata.Services) > 0 {
+		if len(r.Metadata.Services) == 1 {
+			pairs = append(pairs, KV{"Service", r.Metadata.Services[0].Name})
+		} else {
+			names := make([]string, len(r.Metadata.Services))
+			for i, s := range r.Metadata.Services {
+				names[i] = s.Name
+			}
+			pairs = append(pairs, KV{"Services", fmt.Sprintf("%d (%s)", len(r.Metadata.Services), strings.Join(names, ", "))})
+		}
+	}
+	if r.Metadata.ComposeFile != "" {
+		pairs = append(pairs, KV{"Compose", truncatePathForWidth(r.Metadata.ComposeFile, outerW-16)})
+	}
+	if len(r.Metadata.Adapters) > 0 {
+		names := make([]string, len(r.Metadata.Adapters))
+		for i, a := range r.Metadata.Adapters {
+			names[i] = a.Name
+		}
+		pairs = append(pairs, KV{"Adapters", strings.Join(names, ", ")})
+	}
+	body := renderKV(pairs, 12)
+	if body == "" {
+		body = "  No scan context available"
+	}
+	return body
+}
+
+func renderOverviewRow(r *domain.ScanResult, theme Theme, width int) string {
+	if width < 80 {
+		leftContent := scanContextContent(r, theme, width)
+		lines := strings.Count(leftContent, "\n") + 1
+		leftH := clamp(lines+3, 4, 12)
+		left := renderCardBounded("Scan context", leftContent, theme, Rect{W: width, H: leftH})
+
+		rightContent := scoreBarContent(r, theme, width)
+		rlines := strings.Count(rightContent, "\n") + 1
+		rightH := clamp(rlines+3, 4, 12)
+		right := renderCardBounded("Area health", rightContent, theme, Rect{W: width, H: rightH})
+		return joinRowsWithGap(0, left, right)
+	}
+
+	colW := (width - 1) / 2
+	rightW := width - colW - 1
+
+	leftContent := scanContextContent(r, theme, colW)
+	rightContent := scoreBarContent(r, theme, rightW)
+
+	leftLines := strings.Count(leftContent, "\n") + 1
+	rightLines := strings.Count(rightContent, "\n") + 1
+	cardH := clamp(max(leftLines, rightLines)+3, 4, 12)
+
+	left := renderCardBounded("Scan context", leftContent, theme, Rect{W: colW, H: cardH})
+	right := renderCardBounded("Area health", rightContent, theme, Rect{W: rightW, H: cardH})
+
+	leftSplit := strings.Split(left, "\n")
+	rightSplit := strings.Split(right, "\n")
+	maxH := max(len(leftSplit), len(rightSplit))
+	for len(leftSplit) < maxH {
+		leftSplit = append(leftSplit, strings.Repeat(" ", colW))
+	}
+	for len(rightSplit) < maxH {
+		rightSplit = append(rightSplit, strings.Repeat(" ", rightW))
+	}
+	var result []string
+	for i := 0; i < maxH; i++ {
+		result = append(result, leftSplit[i]+" "+rightSplit[i])
+	}
+	body := strings.Join(result, "\n")
+	if debugLayout {
+		assertDisplayWidthLTE(body, width)
+	}
+	return body
+}
 
 func truncateStr(s string, n int) string {
 	if n <= 0 {

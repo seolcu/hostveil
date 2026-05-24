@@ -14,7 +14,6 @@ import (
 )
 
 type Config struct {
-	UserMode     bool
 	ComposeFiles []string // optional explicit paths (for testing/programmatic use)
 }
 
@@ -22,7 +21,7 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 	start := time.Now()
 	result := &domain.ScanResult{
 		Metadata: domain.ScanMetadata{
-			ScanMode:  scanMode(cfg.UserMode),
+			ScanMode:  domain.ScanModeLive,
 			StartedAt: start,
 		},
 		ScoreReport: domain.ScoreReport{
@@ -37,7 +36,7 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 		},
 	}
 
-	// 1. Collect compose files: explicit paths or auto-discover
+	// 1. Collect compose files: explicit paths or auto-discover via docker compose ls
 	var projects []discovery.Project
 	if len(cfg.ComposeFiles) > 0 {
 		for _, path := range cfg.ComposeFiles {
@@ -51,7 +50,7 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 			})
 		}
 	} else {
-		disc := discovery.Discover(cfg.UserMode)
+		disc := discovery.Discover()
 		projects = disc.Projects
 		switch disc.Status {
 		case discovery.DockerMissing:
@@ -59,7 +58,7 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 				"Docker is not available. Compose-based scans only.")
 		case discovery.DockerPermissionDenied:
 			result.Metadata.Warnings = append(result.Metadata.Warnings,
-				"Docker permission denied. Run with sudo or install Docker.")
+				"Docker permission denied. Run with sudo.")
 		}
 	}
 
@@ -96,14 +95,12 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 		}
 	}
 
-	// 3. Run host checks (unless user-mode)
-	if !cfg.UserMode {
-		hostRoot := "/"
-		if _, err := os.Stat(hostRoot); err == nil {
-			hostEngine := host.NewEngine(hostRoot)
-			hostFindings := hostEngine.Scan()
-			result.Findings = append(result.Findings, hostFindings...)
-		}
+	// 3. Run host checks
+	hostRoot := "/"
+	if _, err := os.Stat(hostRoot); err == nil {
+		hostEngine := host.NewEngine(hostRoot)
+		hostFindings := hostEngine.Scan()
+		result.Findings = append(result.Findings, hostFindings...)
 	}
 
 	// 4. Auto-detect and run available adapters
@@ -117,12 +114,9 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 		result.Metadata.InfoMessages = append(result.Metadata.InfoMessages,
 			"Adapter detected: "+a.Name())
 	}
-	if len(adapters) > 0 {
-
-		// Run each adapter against the first project
-		if len(projects) > 0 {
-			target := projects[0].ComposePath
-			adapterFindings := adapter.RunAll(adapters, target)
+	if len(adapters) > 0 && len(projects) > 0 {
+		for _, p := range projects {
+			adapterFindings := adapter.RunAll(adapters, p.ComposePath)
 			result.Findings = append(result.Findings, adapterFindings...)
 		}
 	}
@@ -144,13 +138,6 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 	result.Metadata.Duration = time.Since(start)
 
 	return result, nil
-}
-
-func scanMode(userMode bool) domain.ScanMode {
-	if userMode {
-		return domain.ScanModeExplicit
-	}
-	return domain.ScanModeLive
 }
 
 func calculateScores(result *domain.ScanResult) {

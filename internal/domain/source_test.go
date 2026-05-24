@@ -24,7 +24,7 @@ func TestSourceString(t *testing.T) {
 
 func TestAllSources(t *testing.T) {
 	sources := AllSources()
-	if len(sources) != 6 {
+	if len(sources) != 7 {
 		t.Errorf("AllSources() returned %d, want 6", len(sources))
 	}
 }

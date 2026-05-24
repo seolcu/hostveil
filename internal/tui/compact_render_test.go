@@ -78,54 +78,6 @@ func TestCompactFindingsRenderer(t *testing.T) {
 	})
 }
 
-func TestCompactReportRenderer(t *testing.T) {
-	result := &domain.ScanResult{
-		ScoreReport: domain.ScoreReport{Overall: 45},
-		Findings:    []domain.Finding{{ID: "F-001", Severity: domain.SeverityCritical, Title: "Test"}},
-	}
-	theme := DefaultTheme()
-	m := &historyModel{}
-
-	t.Run("compact", func(t *testing.T) {
-		_ = m.renderCompactReport(result, theme, 50)
-	})
-	t.Run("narrow", func(t *testing.T) {
-		_ = m.renderCompactReport(result, theme, 60)
-	})
-}
-
-func TestCompactDashboardRenderer(t *testing.T) {
-	result := &domain.ScanResult{
-		ScoreReport: domain.ScoreReport{Overall: 45},
-		Findings: []domain.Finding{
-			{ID: "F-001", Title: "Test", Severity: domain.SeverityCritical, Remediation: domain.RemediationAuto},
-			{ID: "F-002", Title: "Test2", Severity: domain.SeverityHigh, Remediation: domain.RemediationReview},
-			{ID: "F-003", Title: "Test3", Severity: domain.SeverityMedium, Remediation: domain.RemediationManual},
-			{ID: "F-004", Title: "Test4", Severity: domain.SeverityLow, Remediation: domain.RemediationAuto},
-			{ID: "F-005", Title: "Test5", Severity: domain.SeverityLow, Remediation: domain.RemediationAuto},
-		},
-	}
-	cleanResult := &domain.ScanResult{
-		ScoreReport: domain.ScoreReport{Overall: 100},
-		Findings:    nil,
-	}
-	theme := DefaultTheme()
-	m := &overviewModel{}
-
-	t.Run("mini", func(t *testing.T) {
-		_ = m.renderMiniDashboard(result, theme, 39)
-	})
-	t.Run("mini_clean", func(t *testing.T) {
-		_ = m.renderMiniDashboard(cleanResult, theme, 39)
-	})
-	t.Run("compact", func(t *testing.T) {
-		_ = m.renderCompactDashboard(result, theme, 50)
-	})
-	t.Run("compact_clean", func(t *testing.T) {
-		_ = m.renderCompactDashboard(cleanResult, theme, 50)
-	})
-}
-
 func TestRenderInfoStripBodyVisible(t *testing.T) {
 	theme := DefaultTheme()
 	t.Run("h3_shows_body", func(t *testing.T) {
@@ -169,24 +121,6 @@ func TestExportGuidanceUsesOuterDimensions(t *testing.T) {
 	}
 	if !strings.Contains(body, "SARIF") {
 		t.Fatalf("expected SARIF in guidance body:\n%s", body)
-	}
-}
-
-func TestFindingsGuidanceTextContent(t *testing.T) {
-	theme := DefaultTheme()
-	findings := []domain.Finding{
-		{ID: "F-001", Title: "Test", Severity: domain.SeverityCritical, Remediation: domain.RemediationAuto},
-	}
-	m := newFindingsModel(findings)
-	text := m.renderFixGuidanceText(theme, 0)
-	if !strings.Contains(text, "Auto-fix") {
-		t.Fatalf("expected Auto-fix guidance text, got: %s", text)
-	}
-	// Also verify it renders in info strip without panic
-	got := renderInfoStrip("Fix guidance", text, theme, 80, 3)
-	body := stripANSI(got)
-	if !strings.Contains(body, "Auto-fix") {
-		t.Fatalf("expected Fix guidance body to be visible:\n%s", body)
 	}
 }
 

@@ -2,8 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,21 +11,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/seolcu/hostveil/internal/domain"
-	"github.com/seolcu/hostveil/internal/export"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/discovery"
 	"github.com/seolcu/hostveil/internal/tui/component"
 )
 
 var resetSeq = regexp.MustCompile(`\x1b\[0m`)
 var bgResetSeq = regexp.MustCompile(`\x1b\[49m`)
 
-type screen int
-
-const (
-	screenDashboard screen = iota
-	screenFindings
-	screenReport
-)
+type refreshTickMsg time.Time
 
 // Responsive layout width thresholds
 const (
@@ -37,17 +29,14 @@ const (
 )
 
 type appModel struct {
-	currentScreen screen
-	width         int
-	height        int
-	scanResult    *domain.ScanResult
-	tick          int
-	keys          keyMap
+	width      int
+	height     int
+	scanResult *domain.ScanResult
+	tick       int
+	keys       keyMap
 
 	theme    Theme
-	overview *overviewModel
 	findings *findingsModel
-	history  *historyModel
 	settings *settingsModel
 	help     *helpModel
 
@@ -87,21 +76,20 @@ func NewApp(result *domain.ScanResult) *appModel {
 	settings.SetAdapters(adapterNames)
 
 	return &appModel{
-		currentScreen: screenDashboard,
-		scanResult:    result,
-		keys:          defaultKeyMap(),
-		theme:         DefaultTheme(),
-		overview:      &overviewModel{},
-		findings:      newFindingsModel(result.Findings),
-		history:       &historyModel{},
-		settings:      settings,
-		help:          &helpModel{},
-		toast:         component.NewToast(),
+		scanResult: result,
+		keys:       defaultKeyMap(),
+		theme:      DefaultTheme(),
+		findings:   newFindingsModel(result.Findings),
+		settings:   settings,
+		help:       &helpModel{},
+		toast:      component.NewToast(),
 	}
 }
 
 func (m *appModel) Init() tea.Cmd {
-	return nil
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return refreshTickMsg(t)
+	})
 }
 
 func (m *appModel) showToast(msg string) tea.Cmd {
@@ -118,6 +106,20 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case component.ExpiredMsg:
 		m.toast.Update(msg)
+
+	case refreshTickMsg:
+		if info := m.scanResult.Metadata.HostRuntime; info != nil {
+			uptime, loadAvg := discovery.RefreshRuntimeHostInfo("")
+			if uptime != "" {
+				info.Uptime = uptime
+			}
+			if loadAvg != "" {
+				info.LoadAverage = loadAvg
+			}
+		}
+		return m, tea.Tick(time.Second, func(t time.Time) tea.Msg {
+			return refreshTickMsg(t)
+		})
 
 	case tea.KeyMsg:
 		s := msg.String()
@@ -147,28 +149,9 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case s == "?":
 			m.help.Toggle()
-		case s == "1":
-			m.currentScreen = screenDashboard
-		case s == "2":
-			m.currentScreen = screenFindings
-		case s == "3":
-			m.currentScreen = screenReport
-		case s == "s" && m.currentScreen != screenFindings:
+		case s == "s":
 			m.settings.Toggle()
-		case s == "r" || s == "R":
-			if m.currentScreen == screenFindings {
-				m.findings.resetFilters()
-			}
-			if m.currentScreen == screenReport {
-				m.history.exportCursor = 0
-			}
-		case s == "h" && m.currentScreen == screenDashboard:
-			// Host triage: switch to findings filtered to host scope
-			m.currentScreen = screenFindings
-			m.findings.hostTriageMode = true
-			m.findings.scopeFilter = "host"
-			m.findings.applyFilters()
-		case s == "p" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
+		case s == "p" && m.findings.selected < len(m.findings.list):
 			f := m.findings.list[m.findings.selected]
 			if f.IsFixable() {
 				if m.findings.showFixPreview {
@@ -188,7 +171,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-	case s == "a" && m.currentScreen == screenFindings && m.findings.selected < len(m.findings.list):
+	case s == "a" && m.findings.selected < len(m.findings.list):
 		f := m.findings.list[m.findings.selected]
 		if !f.IsFixable() {
 			return m, m.showToast("This finding requires manual review (not auto-fixable)")
@@ -230,17 +213,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.findings.showFixPreview = false
 		return m, m.showToast("Fix commands shown in preview. Run them manually or press 'p' to review.")
 		default:
-			if m.currentScreen == screenFindings {
-				m.findings.Update(msg)
-			} else if m.currentScreen == screenReport {
-				if s == "enter" {
-					format := reportExportFormats[m.history.exportCursor].name
-					toastMsg, exportPath := doExport(m.scanResult, format)
-					m.history.lastExportPath = exportPath
-					return m, m.showToast(toastMsg)
-				}
-				m.history.Update(msg)
-			}
+			m.findings.Update(msg)
 		}
 	}
 
@@ -277,14 +250,7 @@ func (m *appModel) View() string {
 	if bodyWidth < 40 {
 		bodyWidth = m.width
 	}
-	switch m.currentScreen {
-	case screenDashboard:
-		body = m.overview.render(m.scanResult, t, bodyWidth, bodyHeight)
-	case screenFindings:
-		body = m.findings.render(t, bodyWidth, bodyHeight)
-	case screenReport:
-		body = m.history.render(m.scanResult, t, bodyWidth, bodyHeight)
-	}
+	body = m.findings.render(m.scanResult, t, bodyWidth, bodyHeight)
 
 	// Blank screen guard: never show completely empty body
 	if strings.TrimSpace(stripANSI(body)) == "" {
@@ -422,52 +388,10 @@ func (m *appModel) effectiveTheme() Theme {
 }
 
 func (m *appModel) renderHeader(t Theme) string {
-	hostveilLabel := lipgloss.NewStyle().
+	title := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Text)).
 		Bold(true).
-		Render("hostveil")
-	versionLabel := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(t.TextMuted)).
-		Render(domain.Version)
-	title := hostveilLabel + "  " + versionLabel
-
-	lm := layoutMode(m.width, m.height)
-
-	// Mini: just "hostveil"
-	if lm == LayoutMini || m.width < miniWidth {
-		headerStyle := lipgloss.NewStyle().
-			BorderBottom(true).
-			BorderForeground(lipgloss.Color(t.Border)).
-			Padding(0, 1).
-			Width(m.width)
-		return headerStyle.Render(title)
-	}
-
-	r := m.scanResult
-	score := r.ScoreReport.Overall
-	grade := r.ScoreReport.Grade()
-	gradeColor := t.GradeColor(score)
-
-	autoCount := 0
-	for _, f := range r.Findings {
-		if f.Remediation == domain.RemediationAuto {
-			autoCount++
-		}
-	}
-
-	modeStr := "live"
-	if r.Metadata.ScanMode == domain.ScanModeExplicit {
-		modeStr = "compose"
-	}
-
-	dockerTag := ""
-	if info := r.Metadata.HostRuntime; info != nil && info.DockerVersion != "" {
-		dockerTag = fmt.Sprintf("Docker %s", info.DockerVersion)
-	}
-	hostTag := ""
-	if info := r.Metadata.HostRuntime; info != nil && info.Hostname != "" {
-		hostTag = fmt.Sprintf("host %s", info.Hostname)
-	}
+		Render("hostveil " + domain.Version)
 
 	headerStyle := lipgloss.NewStyle().
 		BorderBottom(true).
@@ -475,89 +399,7 @@ func (m *appModel) renderHeader(t Theme) string {
 		Padding(0, 1).
 		Width(m.width)
 
-	if lm == LayoutCompact {
-		// Compact: "hostveil  16 Critical  6 findings" (one line)
-		scoreStr := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(gradeColor)).
-			Bold(true).
-			Render(fmt.Sprintf("%d", score))
-		riskStr := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(gradeColor)).
-			Render(grade)
-		parts := []string{scoreStr + " " + riskStr, fmt.Sprintf("%d findings", r.TotalFindings())}
-		line := title + "  " + strings.Join(parts, "  ")
-		return headerStyle.Render(line)
-	}
-
-	if lm == LayoutMedium {
-		// Medium: "hostveil  16/100 Critical  6 findings  1 service" / "Docker 29.5.0 · host msi"
-		scoreStr := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(gradeColor)).
-			Bold(true).
-			Render(fmt.Sprintf("%d/%d", score, 100))
-		riskStr := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(gradeColor)).
-			Render(grade)
-		parts := []string{
-			scoreStr + " " + riskStr,
-			fmt.Sprintf("%d findings", r.TotalFindings()),
-			fmt.Sprintf("%d %s", len(r.Metadata.Services), pluralize("service", len(r.Metadata.Services))),
-		}
-		line1 := title + "  " + strings.Join(parts, "  ")
-
-		metaParts := []string{modeStr}
-		if dockerTag != "" {
-			metaParts = append(metaParts, dockerTag)
-		}
-		if hostTag != "" {
-			metaParts = append(metaParts, hostTag)
-		}
-		line2 := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(t.TextMuted)).
-			Render(strings.Join(metaParts, " · "))
-		return headerStyle.Render(lipgloss.JoinVertical(lipgloss.Left, line1, line2))
-	}
-
-	// Wide/UltraWide: full header
-	findingsTag := fmt.Sprintf("Findings: %d", r.TotalFindings())
-	svcTag := fmt.Sprintf("Services: %d", len(r.Metadata.Services))
-
-	scoreTag := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(gradeColor)).
-		Bold(true).
-		Render(fmt.Sprintf("Score: %d/%d", score, 100))
-	riskTag := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(gradeColor)).
-		Render(fmt.Sprintf("Risk: %s", grade))
-
-	fixTag := ""
-	if autoCount > 0 {
-		fixTag = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(t.Success)).
-			Render(fmt.Sprintf("Auto-fix: %d", autoCount))
-	}
-
-	parts := []string{scoreTag, riskTag, findingsTag, svcTag}
-	if fixTag != "" {
-		parts = append(parts, fixTag)
-	}
-	metaParts := []string{modeStr}
-	if dockerTag != "" {
-		metaParts = append(metaParts, dockerTag)
-	}
-	if hostTag != "" {
-		metaParts = append(metaParts, hostTag)
-	}
-
-	line1 := strings.Join(parts, "  ")
-	line2 := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(t.TextMuted)).
-		Render(strings.Join(metaParts, " · "))
-
-	return headerStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", line1),
-		line2,
-	))
+	return headerStyle.Render(title)
 }
 
 func (m *appModel) renderFooter(t Theme) string {
@@ -574,11 +416,11 @@ func (m *appModel) renderFooter(t Theme) string {
 
 func (m *appModel) footerContent(available int) string {
 	candidates := []string{
-		"[1] Dashboard    [2] Findings    [3] Report    [?] Help    [s] Settings    [q] Quit",
-		"[1] Dsh   [2] Fnd   [3] Rpt   [?] Help   [s] Set   [q] Quit",
-		"[1]Dsh [2]Fnd [3]Rpt [?]Help [s]Set [q]Quit",
-		"[1]D [2]F [3]R [?] [s] [q]",
-		"1D 2F 3R ? s q",
+		"[?] Help  [s] Settings  [q] Quit",
+		"[?] Help [s] Set [q] Quit",
+		"[?]Help [s]Set [q]Quit",
+		"[?] [s] [q]",
+		"? s q",
 	}
 
 	for _, c := range candidates {
@@ -590,18 +432,10 @@ func (m *appModel) footerContent(available int) string {
 }
 
 func (m *appModel) renderFallbackState(t Theme, width, height int) string {
-	screenName := "Dashboard"
-	switch m.currentScreen {
-	case screenFindings:
-		screenName = "Findings"
-	case screenReport:
-		screenName = "Report"
-	}
-
 	lines := []string{
 		"hostveil",
 		"",
-		fmt.Sprintf("Rendering fallback state: %s", screenName),
+		"Rendering fallback state.",
 		"",
 		"Press ? for help or q to quit.",
 	}
@@ -615,31 +449,4 @@ func (m *appModel) renderFallbackState(t Theme, width, height int) string {
 	return style.Render(strings.Join(lines, "\n"))
 }
 
-func doExport(r *domain.ScanResult, format string) (string, string) {
-	var data string
-	var err error
-	switch format {
-	case "json":
-		data, err = export.JSON(r, false)
-	case "sarif":
-		data, err = export.SARIF(r)
-	case "markdown":
-		data = export.Markdown(r)
-	case "html":
-		data, err = export.HTML(r)
-	}
-	if err != nil {
-		return fmt.Sprintf("Export failed: %v", err), ""
-	}
 
-	ts := time.Now().Format("20060102_150405")
-	filename := fmt.Sprintf("hostveil_report_%s.%s", ts, format)
-	outPath, err := filepath.Abs(filename)
-	if err != nil {
-		outPath = filename
-	}
-	if err := os.WriteFile(outPath, []byte(data), 0644); err != nil {
-		return fmt.Sprintf("Export write failed: %v", err), ""
-	}
-	return fmt.Sprintf("Exported %s report to %s", strings.ToUpper(format), outPath), outPath
-}

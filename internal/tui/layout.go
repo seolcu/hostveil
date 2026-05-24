@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/seolcu/hostveil/internal/domain"
 )
 
 // ─── Debug layout mode ──────────────────────────────────────────────────────
@@ -496,57 +495,6 @@ func clamp(v, min, max int) int {
 	return v
 }
 
-func areaBarWidth(cardWidth int, mode LayoutMode) int {
-	switch mode {
-	case LayoutUltraWide:
-		return clamp(cardWidth/4, 10, 18)
-	case LayoutWide:
-		return clamp(cardWidth/4, 8, 14)
-	case LayoutMedium:
-		return clamp(cardWidth/5, 6, 10)
-	default:
-		return 0
-	}
-}
-
-func renderAreaHealthBars(r *domain.ScanResult, width int, mode LayoutMode, theme Theme) []string {
-	var lines []string
-	nameW := 24
-	barW := areaBarWidth(width, mode)
-
-	for _, axis := range domain.AllAxes() {
-		score := r.ScoreReport.AxisScores[axis]
-		scoreColor := theme.Success
-		gradeStr := "Good"
-		if score < 80 {
-			scoreColor = theme.Medium
-			gradeStr = "Risk"
-		}
-		if score < 50 {
-			scoreColor = theme.Critical
-			gradeStr = "Critical"
-		}
-
-		label := axis.Label()
-		if lipgloss.Width(label) > nameW {
-			label = truncateWidth(label, nameW)
-		}
-
-		bar := renderBar(score, barW, scoreColor)
-		scoreTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Width(4).
-			Align(lipgloss.Right).
-			Render(fmt.Sprintf("%d", score))
-		gradeTag := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(scoreColor)).
-			Render(gradeStr)
-
-		lines = append(lines, fmt.Sprintf("  %-*s %s %s %s", nameW, label, bar, scoreTag, gradeTag))
-	}
-	return lines
-}
-
 // ─── Layout contract types ─────────────────────────────────────────────────
 
 // OverflowPolicy defines how content that exceeds its slot is handled.
@@ -558,260 +506,18 @@ const (
 	OverflowScroll
 )
 
-// DashboardState distinguishes clean vs risk dashboard skeletons.
-type DashboardState int
-
-const (
-	DashboardClean DashboardState = iota
-	DashboardRisk
-)
-
 // FindingsLayout defines fixed slot positions for the Findings screen.
 type FindingsLayout struct {
-	FilterBar Rect
-	List      Rect
-	Detail    Rect
-	MidLeft   Rect
-	MidRight  Rect
-	Guidance  Rect
-}
-
-// DashboardLayout defines fixed slot positions for the Dashboard screen.
-type DashboardLayout struct {
-	Hero     Rect
-	Row1     []Rect
-	Row2     []Rect
-	Row3     []Rect
-	Brand    Rect
-	Timeline Rect
-}
-
-// ReportLayout defines fixed slot positions for the Report screen.
-type ReportLayout struct {
-	Row1     []Rect
-	Row2     []Rect
-	Row3     []Rect
-	Guidance Rect
+	List   Rect
+	Detail Rect
 }
 
 // FindingsSlots computes fixed slot positions for the Findings screen.
-// hasBottom indicates whether mid-row cards (filter/context) and guidance are shown.
-func FindingsSlots(w, h int, mode LayoutMode, hasBottom bool) FindingsLayout {
-	filterH := 1
-	midH := 6
-	guidH := 3
-	gapH := 1
-
-	if h < 20 || !hasBottom {
-		return FindingsLayout{
-			FilterBar: Rect{X: 0, Y: 0, W: w, H: filterH},
-			List:      Rect{X: 0, Y: filterH, W: w, H: max(0, h-filterH)},
-			Detail:    Rect{},
-		}
-	}
-
-	topH := h - filterH - midH - guidH - gapH*3
-	if topH < 6 {
-		topH = 6
-	}
-
+func FindingsSlots(w, h int) FindingsLayout {
 	cols := splitColumns(w, 2, 1)
-
-	y := filterH
-	listRect := Rect{X: 0, Y: y, W: cols[0], H: topH}
-	detailRect := Rect{X: cols[0] + 1, Y: y, W: cols[1], H: topH}
-
-	y += topH + gapH
-	midLeft := Rect{X: 0, Y: y, W: cols[0], H: midH}
-	midRight := Rect{X: cols[0] + 1, Y: y, W: cols[1], H: midH}
-
-	y += midH + gapH
-	guidRect := Rect{X: 0, Y: y, W: w, H: guidH}
-
 	return FindingsLayout{
-		FilterBar: Rect{X: 0, Y: 0, W: w, H: filterH},
-		List:      listRect,
-		Detail:    detailRect,
-		MidLeft:   midLeft,
-		MidRight:  midRight,
-		Guidance:  guidRect,
-	}
-}
-
-// DashboardSlots computes fixed slot positions for the Dashboard screen.
-// Slots are computed from viewport and state only — NOT from content.
-func DashboardSlots(w, h int, state DashboardState, mode LayoutMode) DashboardLayout {
-	rowGap := 0
-
-	var heroH, mainH, secH, tertH, timelineH int
-	var row1, row2, row3 []Rect
-
-	brandH := 0
-	if state == DashboardClean {
-		switch mode {
-		case LayoutUltraWide:
-			brandH = 8
-		case LayoutWide:
-			brandH = 6
-		}
-	}
-
-	switch mode {
-	case LayoutUltraWide:
-		heroH = 7
-		mainH = 7
-		secH = 6
-		tertH = 6
-		timelineH = 4
-
-		used := heroH + mainH + secH
-		if brandH > 0 {
-			used += brandH
-		} else {
-			used += tertH
-		}
-		used += timelineH
-		extra := max(0, h-used)
-		if extra > 0 {
-			heroAdd := min(extra, 2)
-			heroH += heroAdd
-			remaining := extra - heroAdd
-			if remaining > 0 {
-				if brandH > 0 {
-					base := mainH + secH + timelineH
-					timelineH += remaining * timelineH / base
-					mainH += remaining * mainH / base
-					secH += remaining - (remaining*timelineH/base + remaining*mainH/base)
-				} else {
-					base := mainH + secH + tertH + timelineH
-					timelineH += remaining * timelineH / base
-					mainH += remaining * mainH / base
-					secH += remaining * secH / base
-					tertH += remaining - (remaining*timelineH/base + remaining*mainH/base + remaining*secH/base)
-				}
-			}
-		}
-
-		y := 0
-		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
-
-		y += heroH + rowGap
-		col4 := splitColumns(w, 4, 0)
-		row1 = rectsFromWidths(col4, 0, y, mainH)
-
-		y += mainH + rowGap
-		col2 := splitColumns(w, 2, 0)
-		row2 = rectsFromWidths(col2, 0, y, secH)
-
-		y += secH + rowGap
-
-		var brandRect Rect
-		if brandH > 0 {
-			brandRect = Rect{X: 0, Y: y, W: w, H: brandH}
-			y += brandH + rowGap
-		} else {
-			row3 = rectsFromWidths(col2, 0, y, tertH)
-			y += tertH + rowGap
-		}
-
-		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
-
-		return DashboardLayout{
-			Hero:     heroRect,
-			Row1:     row1,
-			Row2:     row2,
-			Row3:     row3,
-			Brand:    brandRect,
-			Timeline: timelineRect,
-		}
-
-	case LayoutWide:
-		heroH = 6
-		mainH = 7
-		secH = 5
-		timelineH = 3
-
-		used := heroH + mainH + secH
-		if brandH > 0 {
-			used += brandH
-		}
-		used += timelineH
-		extra := max(0, h-used)
-		if extra > 0 {
-			heroAdd := min(extra, 2)
-			heroH += heroAdd
-			remaining := extra - heroAdd
-			if remaining > 0 {
-				base := mainH + secH + timelineH
-				timelineH += remaining * timelineH / base
-				mainH += remaining * mainH / base
-				secH += remaining - (remaining*timelineH/base + remaining*mainH/base)
-			}
-		}
-
-		y := 0
-		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
-
-		y += heroH + rowGap
-		col3 := splitColumns(w, 3, 0)
-		row1 = rectsFromWidths(col3, 0, y, mainH)
-
-		y += mainH + rowGap
-		col2 := splitColumns(w, 2, 0)
-		row2 = rectsFromWidths(col2, 0, y, secH)
-
-		y += secH + rowGap
-
-		var brandRect Rect
-		if brandH > 0 {
-			brandRect = Rect{X: 0, Y: y, W: w, H: brandH}
-			y += brandH + rowGap
-		}
-
-		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
-
-		return DashboardLayout{
-			Hero:     heroRect,
-			Row1:     row1,
-			Row2:     row2,
-			Brand:    brandRect,
-			Timeline: timelineRect,
-		}
-
-	case LayoutMedium:
-		heroH = 6
-		mainH = 7
-		timelineH = 3
-
-		used := heroH + mainH + timelineH
-		extra := max(0, h-used)
-		if extra > 0 {
-			heroAdd := min(extra, 2)
-			heroH += heroAdd
-			remaining := extra - heroAdd
-			if remaining > 0 {
-				base := mainH + timelineH
-				timelineH += remaining * timelineH / base
-				mainH += remaining - remaining*timelineH/base
-			}
-		}
-
-		y := 0
-		heroRect := Rect{X: 0, Y: y, W: w, H: heroH}
-		y += heroH + rowGap
-
-		row1 = []Rect{{X: 0, Y: y, W: w, H: mainH}}
-		y += mainH + rowGap
-		timelineRect := Rect{X: 0, Y: y, W: w, H: timelineH}
-
-		return DashboardLayout{
-			Hero:     heroRect,
-			Row1:     row1,
-			Timeline: timelineRect,
-		}
-
-	default:
-		return DashboardLayout{}
+		List:   Rect{X: 0, Y: 0, W: cols[0], H: h},
+		Detail: Rect{X: cols[0] + 1, Y: 0, W: cols[1], H: h},
 	}
 }
 
@@ -831,52 +537,7 @@ func rectsFromWidths(widths []int, x, y, h int) []Rect {
 	return rects
 }
 
-// ReportSlots computes fixed slot positions for the Report screen.
-// Row heights are derived from the height budget with row gaps subtracted,
-// so the rendered output never exceeds the content area height.
-func ReportSlots(w, h int, mode LayoutMode) ReportLayout {
-	sp := spacingFor(mode)
-	rootW := max(1, w-sp.OuterX*2)
-	cols := splitColumns(rootW, 2, sp.ColGap)
-	guidH := 3
 
-	gapH := max(0, sp.RowGap)
-	usableH := h - guidH - gapH*3
-	if usableH < 9 {
-		usableH = max(0, h-guidH)
-		gapH = 0
-	}
-
-	row1H := usableH / 3
-	row2H := usableH / 3
-	row3H := usableH - row1H - row2H
-
-	y := 0
-	row1 := []Rect{
-		{X: 0, Y: y, W: cols[0], H: row1H},
-		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row1H},
-	}
-	y += row1H + gapH
-
-	row2 := []Rect{
-		{X: 0, Y: y, W: cols[0], H: row2H},
-		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row2H},
-	}
-	y += row2H + gapH
-
-	row3 := []Rect{
-		{X: 0, Y: y, W: cols[0], H: row3H},
-		{X: cols[0] + sp.ColGap, Y: y, W: cols[1], H: row3H},
-	}
-	y += row3H + gapH
-
-	return ReportLayout{
-		Row1:     row1,
-		Row2:     row2,
-		Row3:     row3,
-		Guidance: Rect{X: 0, Y: y, W: rootW, H: guidH},
-	}
-}
 
 // RenderPanel renders content into a fixed-size rect, handling overflow.
 // The output is always exactly rect.H lines tall.

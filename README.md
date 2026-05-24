@@ -16,7 +16,7 @@ Inspired by Chrome Lighthouse and `btop`, hostveil scans your Docker Compose sta
 hostveil
 
 # Restricted privileges (skip host-level checks)
-hostveil --user-mode
+hostveil
 ```
 
 Just `hostveil`. It finds compose files, runs rules, detects adapter tools, and opens a TUI with dashboard, findings, and report screens.

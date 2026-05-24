@@ -14,5 +14,6 @@ func All() []Adapter {
 		&DockleAdapter{},
 		&LynisAdapter{},
 		&GitleaksAdapter{},
+		&ComposeScanAdapter{},
 	}
 }

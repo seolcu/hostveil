@@ -85,7 +85,7 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 		content = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Keyboard Shortcuts") + "\n\n"
 
 		content += renderSection("Navigation", [][2]string{
-			{"1 / 2 / 3", "Switch screens (Dashboard / Findings / Report)"},
+			{"h", "Host triage (filter findings to host scope)"},
 			{"↑ / ↓ or j / k", "Move selection"},
 			{"Enter or l", "Open detail / select"},
 			{"Esc or h", "Back / close panel"},
@@ -101,14 +101,9 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 			{"a", "Apply fix (from fix preview)"},
 		})
 
-		content += renderSection("Report", [][2]string{
-			{"j / k", "Select export format"},
-			{"Enter", "Export to file"},
-		})
-
 		content += renderSection("General", [][2]string{
 			{"?", "Toggle this help"},
-			{"s", "Settings (Dashboard/Report) / Sort (Findings)"},
+			{"s", "Settings (Dashboard) / Sort (Findings)"},
 			{"h (Dashboard)", "Host triage (filter to host scope)"},
 		})
 
@@ -117,7 +112,7 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 		content = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Text)).Render("Keyboard Shortcuts") + "\n\n"
 
 		content += renderCompactSection("Navigation", [][2]string{
-			{"1/2/3", "Switch screens"},
+			{"h", "Host triage"},
 			{"j/k", "Move"},
 			{"Enter", "Open detail"},
 			{"Esc/h", "Back"},
@@ -131,11 +126,6 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 			{"r", "Reset"},
 			{"p", "Fix preview"},
 			{"a", "Apply fix"},
-		})
-
-		content += renderCompactSection("Report", [][2]string{
-			{"j/k", "Select format"},
-			{"Enter", "Export"},
 		})
 
 		content += renderCompactSection("General", [][2]string{
@@ -152,9 +142,8 @@ func (m *helpModel) Render(theme Theme, width, height int) string {
 			title string
 			keys  string
 		}{
-			{"Nav", "1/2/3  j/k  Enter  Esc  q"},
+			{"Nav", "j/k  Enter  Esc  q"},
 			{"Findings", "/  f  s  r  p  a"},
-			{"Report", "j/k  Enter"},
 			{"General", "?  s  h"},
 		}
 		for _, g := range groups {

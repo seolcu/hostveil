@@ -158,7 +158,6 @@ func TestEngineApplyModifiesComposeFile(t *testing.T) {
 	// 2. Run the scanner
 	result, err := scanner.Run(scanner.Config{
 		ComposeFiles: []string{composePath},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -290,10 +289,9 @@ func TestEngineApplyUpdatesLatestTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 2. Run the scanner (user mode only so no host findings)
+	// 2. Run the scanner
 	result, err := scanner.Run(scanner.Config{
 		ComposeFiles: []string{composePath},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -404,7 +402,6 @@ func TestEngineApplyWritableRootfs(t *testing.T) {
 	// 2. Run the scanner
 	result, err := scanner.Run(scanner.Config{
 		ComposeFiles: []string{composePath},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatal(err)

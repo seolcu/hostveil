@@ -9,7 +9,6 @@ import (
 func TestScanWithComposeFile(t *testing.T) {
 	result, err := Run(Config{
 		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -29,7 +28,7 @@ func TestScanWithComposeFile(t *testing.T) {
 }
 
 func TestScanWithEmptyConfig(t *testing.T) {
-	result, err := Run(Config{UserMode: true})
+	result, err := Run(Config{})
 	if err != nil {
 		t.Fatalf("Run failed with empty config: %v", err)
 	}
@@ -42,7 +41,6 @@ func TestScanWithEmptyConfig(t *testing.T) {
 func TestScanFindsExposureFinding(t *testing.T) {
 	result, err := Run(Config{
 		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -64,7 +62,6 @@ func TestScanFindsExposureFinding(t *testing.T) {
 func TestScoreCalculation(t *testing.T) {
 	result, err := Run(Config{
 		ComposeFiles: []string{"testdata/vaultwarden-domain.yml"},
-		UserMode:     true,
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)

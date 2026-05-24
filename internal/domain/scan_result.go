@@ -5,14 +5,11 @@ import "time"
 type ScanMode int
 
 const (
-	ScanModeExplicit ScanMode = iota
-	ScanModeLive
+	ScanModeLive ScanMode = iota
 )
 
 func (m ScanMode) String() string {
 	switch m {
-	case ScanModeExplicit:
-		return "explicit"
 	case ScanModeLive:
 		return "live"
 	default:

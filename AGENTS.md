@@ -53,7 +53,7 @@ hostveil/
 ## Design Philosophy
 
 - **`hostveil` — no flags needed**. Auto-discovers compose files by walking up from pwd.
-- **Root by default**. `--user-mode` to restrict. Scanner + adapters need Docker/host access.
+- **`docker compose ls`-based discovery** (no pwd walk-up). Finds running compose projects system-wide.
 - **Installed adapter = auto-run**. Adapter tools found in PATH are detected and run automatically.
 - **All flags removed**. `--compose`, `--output`, `--fix`, `--host-root` etc. all gone. Everything happens inside the TUI.
 
@@ -71,13 +71,13 @@ hostveil/
 - **No `--output` flag**: All output modes (JSON, SARIF, Markdown, HTML) are accessible from within the TUI.
 - **No `--fix` flag**: Fix operations happen inside the TUI via the fix preview/apply flow.
 - **Adapters auto-detect**: If Trivy/Dockle/Lynis/Gitleaks is in PATH, it runs automatically.
-- **Root by default**: `hostveil` assumes root access for host checks and Docker operations. Use `--user-mode` to run as non-root.
+- **Root by default**: hostveil assumes root access for host checks and Docker operations.
 
 ### TUI Design
 - **Full background coverage**: `applyBackground()` intercepts ANSI reset codes and re-applies the theme background color, preventing terminal default from showing through
 - **Footer anchored to bottom**: body padded with newlines to fill terminal height
 - **Responsive 3-column layout**: width ≥100 → 3 columns, 60-99 → 2 columns, <60 → 1 column
-- **Component architecture**: screen models (overview/findings/history) are self-contained Bubbletea models
+- **Component architecture**: single-screen model (findings) with integrated overview row (area health + scan context)
 - **Fix Preview**: Press `p` on a fixable finding to toggle between detail view and fix preview. Shows YAML block with 3-line context plus `- old` / `+ new` diff.
 - **Findings list index numbers**: Each finding prefixed with ` 1.`, ` 2.` for easy verbal reference during review
 - **Detail panel separators**: `───` line divides metadata (ID/Severity/Axis/Source/Scope/Service) from content sections

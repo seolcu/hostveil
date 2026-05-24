@@ -1,3 +1,3 @@
 package domain
 
-var Version = "dev"
+var Version = "v1.1.0"

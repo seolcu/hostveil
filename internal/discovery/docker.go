@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -24,53 +25,67 @@ type Project struct {
 type Result struct {
 	Status   DockerStatus
 	Projects []Project
-	Err      string
 }
 
-// Discover finds compose files by walking up from the current directory.
-// If userMode is true, Docker socket access and host checks are skipped.
-func Discover(userMode bool) Result {
-	status := DockerAvailable
-
-	// Check Docker availability
+// Discover finds running compose projects via `docker compose ls`.
+func Discover() Result {
 	if _, err := exec.LookPath("docker"); err != nil {
-		status = DockerMissing
-	} else if !userMode {
-		cmd := exec.Command("docker", "info", "--format", "{{.ServerVersion}}")
-		if err := cmd.Run(); err != nil {
-			status = DockerPermissionDenied
-		}
+		return Result{Status: DockerMissing}
 	}
 
-	// Walk up from current directory looking for compose files
+	out, err := exec.Command("docker", "compose", "ls", "--format", "json").Output()
+	if err != nil {
+		return Result{Status: DockerPermissionDenied}
+	}
+	return parseDockerComposeLS(string(out))
+}
+
+type composeLSProject struct {
+	Name        string `json:"Name"`
+	Status      string `json:"Status"`
+	ConfigFiles string `json:"ConfigFiles"`
+}
+
+func parseDockerComposeLS(output string) Result {
+	// Handle empty output (no projects)
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return Result{Status: DockerAvailable}
+	}
+
+	var raw []composeLSProject
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		return Result{Status: DockerAvailable}
+	}
+
 	var projects []Project
 	seen := make(map[string]bool)
-	dir, _ := os.Getwd()
-
-	for {
-		for _, name := range []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"} {
-			path := filepath.Join(dir, name)
-			if _, err := os.Stat(path); err == nil && !seen[path] {
-				seen[path] = true
-				projects = append(projects, Project{
-					Name:        filepath.Base(dir),
-					ComposePath: path,
-				})
+	for _, p := range raw {
+		files := strings.Split(p.ConfigFiles, ",")
+		if len(files) == 0 {
+			continue
+		}
+		path := strings.TrimSpace(files[0])
+		if !strings.HasPrefix(path, "/") {
+			abs, err := filepath.Abs(path)
+			if err == nil {
+				path = abs
 			}
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
+		if seen[path] {
+			continue
 		}
-		dir = parent
+		seen[path] = true
+		projects = append(projects, Project{
+			Name:        p.Name,
+			ComposePath: path,
+		})
 	}
-
 	if len(projects) > 20 {
 		projects = projects[:20]
 	}
-
 	return Result{
-		Status:   status,
+		Status:   DockerAvailable,
 		Projects: projects,
 	}
 }
@@ -118,4 +133,20 @@ func GetHostRuntime(root string) map[string]string {
 	}
 
 	return info
+}
+
+func RefreshRuntimeHostInfo(root string) (uptime, loadAvg string) {
+	if root == "" {
+		root = "/"
+	}
+	if data, err := os.ReadFile(root + "/proc/loadavg"); err == nil {
+		loadAvg = strings.TrimSpace(string(data))
+	}
+	if data, err := os.ReadFile(root + "/proc/uptime"); err == nil {
+		parts := strings.Fields(string(data))
+		if len(parts) > 0 {
+			uptime = parts[0] + "s"
+		}
+	}
+	return
 }

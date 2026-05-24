@@ -9,7 +9,6 @@ import (
 )
 
 type Config struct {
-	UserMode    bool   // limit to user privileges
 	ShowHelp    bool
 	ShowVersion bool
 }
@@ -17,7 +16,6 @@ type Config struct {
 func Parse() (*Config, error) {
 	cfg := &Config{}
 
-	flag.BoolVar(&cfg.UserMode, "user-mode", false, "run without root/sudo")
 	flag.BoolVar(&cfg.ShowHelp, "help", false, "show help")
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "show version")
 
@@ -25,12 +23,10 @@ func Parse() (*Config, error) {
 		fmt.Fprintf(os.Stderr, `hostveil - Linux Self-Hosting Security Scanner
 
 Usage:
-  hostveil                    TUI: auto-discover compose files + adapters
-  hostveil --user-mode        Run without root/sudo (limited checks)
+  hostveil              TUI: auto-discover compose files + adapters
   hostveil --version
 
 Options:
-  --user-mode   run without root/sudo (limited checks)
   --version     show version
   --help        show this help
 `)

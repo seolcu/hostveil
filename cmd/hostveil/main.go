@@ -19,14 +19,11 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Parse()
-	if err != nil {
+	if _, err := config.Parse(); err != nil {
 		return err
 	}
 
-	result, err := scanner.Run(scanner.Config{
-		UserMode: cfg.UserMode,
-	})
+	result, err := scanner.Run(scanner.Config{})
 	if err != nil {
 		return fmt.Errorf("scan: %w", err)
 	}
