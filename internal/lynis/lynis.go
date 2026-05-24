@@ -29,16 +29,8 @@ func runLynis() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	args := []string{"audit", "system", "--quiet", "--report-file", reportPath}
-	cmd := lynisCommand(ctx, args...)
+	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
 	return cmd.Run()
-}
-
-func lynisCommand(ctx context.Context, args ...string) *exec.Cmd {
-	if os.Geteuid() == 0 {
-		return exec.CommandContext(ctx, "lynis", args...)
-	}
-	return exec.CommandContext(ctx, "sudo", append([]string{"-n", "lynis"}, args...)...)
 }
 
 func parseReport() ([]domain.Finding, error) {
