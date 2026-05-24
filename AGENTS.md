@@ -21,10 +21,11 @@ Go 1.26, module `github.com/seolcu/hostveil`.
 
 ## Architecture
 
-7 source files, ~1070 lines. Three internal packages + TUI:
+10 source files, ~1200 lines. Three internal packages + TUI:
 
 ```
-cmd/hostveil/main.go          — ensureSudo(re-exec), parallel scan, score, TUI
+cmd/hostveil/main.go          — subcommands (setup/update/--no-update),
+                                ensureSudo(re-exec), parallel scan, auto-update check
 internal/
 ├── domain/types.go            — Finding, Severity, Source, RemediationKind, ScanResult
 ├── trivy/trivy.go             — ScanAll(): compose ls → config + image scan
@@ -40,6 +41,10 @@ internal/
 ```
 main.go → ensureSudo() → goroutine trivy.ScanAll() + goroutine lynis.Scan()
        → merge findings → calculateScore() → tea.NewProgram(TUI)
+
+Subcommands (no sudo):
+  hostveil setup   → bash -c "curl ...install.sh | bash"
+  hostveil update  → GitHub API → download tar.gz → install to /usr/bin
 ```
 
 ### Key dependencies
@@ -47,7 +52,7 @@ main.go → ensureSudo() → goroutine trivy.ScanAll() + goroutine lynis.Scan()
 - `github.com/charmbracelet/bubbletea` v1 — TUI framework (v1 API: `tea.KeyMsg`, not `KeyPressMsg`)
 - `github.com/charmbracelet/bubbles` v1 — help model, viewport
 - `github.com/charmbracelet/lipgloss` v1 — styling
-- Standard library: `os/exec`, `encoding/json`, `context`, `sync`
+- Standard library: `os/exec`, `encoding/json`, `context`, `sync`, `net/http`
 
 ### External runtime deps
 
@@ -55,7 +60,19 @@ main.go → ensureSudo() → goroutine trivy.ScanAll() + goroutine lynis.Scan()
 - `trivy` — for `trivy config` (IaC) + `trivy image` (CVE)
 - `lynis` — for `lynis audit system` (host audit)
 
-All three must be in `$PATH`. The process runs as root (auto re-exec via `sudo`).
+Tools are checked via `exec.LookPath` before each scan. Missing tools are
+skipped gracefully—the TUI still starts with whatever findings exist.
+Install them with `hostveil setup`.
+
+The process runs as root (auto re-exec via `sudo os.Args...`).
+
+### Release workflow
+
+- `.github/workflows/release.yml` — triggered by `git tag v*`
+  - runs goreleaser, uploads 4 archives (linux/darwin × amd64/arm64) to GitHub Releases
+  - no local goreleaser installation needed
+- `.goreleaser.yaml` — builds with `-X internal/tui.Version={{.Version}}`
+- `scripts/install.sh` — curl-pipe installer with interactive dep checkbox
 
 ## Code conventions
 
@@ -63,7 +80,7 @@ All three must be in `$PATH`. The process runs as root (auto re-exec via `sudo`)
 - Score is a simple severity-weight formula (Critical=4, High=3, etc., multiplied by 5).
 - `truncate()` in screen.go handles negative width (returns `"…"`). Callers pass `width-N` where N is consumed chars.
 - `tui.Version` is a `var` settable via `-ldflags` for releases. Defaults to `"v2.0.0-dev"`.
-- TUI uses `help.Model.ShortHelpView(keys)` and `help.Model.FullHelpView(keys)` (not `ShortView`/`FullView`).
+- TUI uses `help.Model.ShortHelpView(keys)` and `help.Model.FullHelpView(keys)`.
 - Lynis report.dat is written to `/tmp/hostveil-lynis.dat` and cleaned up after parsing.
 
 ## What's not implemented (yet)
@@ -76,8 +93,11 @@ All three must be in `$PATH`. The process runs as root (auto re-exec via `sudo`)
 ## Common mistakes to avoid
 
 - Do not add `sudo` inside trivy/lynis packages — the process is always root when they run.
-- `ensureSudo()` in main.go re-execs the binary via `sudo os.Args...`. It does NOT use `sudo -v`.
+- `ensureSudo()` re-execs via `sudo os.Args...`, NOT via `sudo -v`. Do not change this.
 - Do not use `tea.KeyPressMsg` — Bubbletea v1 uses `tea.KeyMsg`.
-- The `defaultKeyList` in app.go is a flat `[]key.Binding`, not a struct with methods.
+- The `defaultKeyList` in app.go is a flat `[]key.Binding`, not a struct.
 - `FullHelpView` takes `[][]key.Binding`, `ShortHelpView` takes `[]key.Binding`.
 - Lynis findings use stable test IDs (`AUTH-9286`) in finding ID: `"lynis.AUTH-9286"`.
+- `.gitignore` uses `/hostveil` (prefixed slash) to avoid ignoring `cmd/hostveil/`.
+- New release via Actions: `git tag vX.Y.Z && git push origin vX.Y.Z`. Do not run goreleaser locally.
+- GitHub token is injected by Actions via `${{ secrets.GITHUB_TOKEN }}`.
