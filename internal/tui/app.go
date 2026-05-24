@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -26,7 +28,10 @@ const (
 )
 
 type model struct {
-	result *domain.ScanResult
+	live   *domain.ScanProgress
+	snap   domain.Snapshot
+	send   func(tea.Msg)
+	noSync bool
 
 	width  int
 	height int
@@ -42,19 +47,31 @@ type model struct {
 	themeCursor int
 	themeSaved  int
 
-	help help.Model
+	help      help.Model
+	tickCount int
 }
 
-func NewApp(result *domain.ScanResult) *model {
+type tickMsg struct{}
+
+func NewApp(live *domain.ScanProgress, noUpdateCheck bool) *model {
 	return &model{
-		result: result,
+		live:   live,
+		noSync: noUpdateCheck,
 		help:   help.New(),
 	}
 }
 
-func (m model) Init() tea.Cmd { return nil }
+func (m *model) SetProgram(send func(tea.Msg)) {
+	m.send = send
+}
+
+func (m model) Init() tea.Cmd {
+	return tickCmd()
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.snap = m.live.Snapshot()
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -63,15 +80,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.keepSelectionVisible()
 		m.clampDetailOffset()
 
+	case domain.ProgressTick, tickMsg:
+		m.tickCount++
+		if m.snap.Phase == "loading" {
+			return m, tickCmd()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
-
+		if m.snap.Phase == "loading" {
+			if msg.String() == "q" {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		if m.modal != modalNone {
 			return m.updateModal(msg)
 		}
-
 		switch m.mode {
 		case modeDetail:
 			return m.updateDetail(msg)
@@ -79,7 +107,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateList(msg)
 		}
 	}
-
 	return m, nil
 }
 
@@ -97,12 +124,12 @@ func (m model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.keepSelectionVisible()
 		}
 	case "down", "j":
-		if m.selected < len(m.result.Findings)-1 {
+		if m.selected < len(m.snap.Findings)-1 {
 			m.selected++
 			m.keepSelectionVisible()
 		}
 	case "enter", "l", "right":
-		if len(m.result.Findings) > 0 {
+		if len(m.snap.Findings) > 0 {
 			m.mode = modeDetail
 			m.detailOffset = 0
 		}
@@ -171,8 +198,15 @@ func (m *model) openThemeModal() {
 
 func (m model) View() tea.View {
 	t := m.theme()
-	content := renderBase(m)
-	if m.modal != modalNone {
+
+	var content string
+	if m.snap.Phase == "loading" {
+		content = renderLoading(m)
+	} else {
+		content = renderBase(m)
+	}
+
+	if m.modal != modalNone && m.snap.Phase != "loading" {
 		content = renderWithModal(m, content)
 	}
 
@@ -193,7 +227,7 @@ func (m model) theme() Theme {
 }
 
 func (m *model) clampSelection() {
-	if len(m.result.Findings) == 0 {
+	if len(m.snap.Findings) == 0 {
 		m.selected = 0
 		m.listOffset = 0
 		return
@@ -201,8 +235,8 @@ func (m *model) clampSelection() {
 	if m.selected < 0 {
 		m.selected = 0
 	}
-	if m.selected >= len(m.result.Findings) {
-		m.selected = len(m.result.Findings) - 1
+	if m.selected >= len(m.snap.Findings) {
+		m.selected = len(m.snap.Findings) - 1
 	}
 }
 
@@ -234,11 +268,11 @@ func (m *model) clampDetailOffset() {
 }
 
 func (m model) detailScrollLimit() int {
-	if len(m.result.Findings) == 0 || m.selected >= len(m.result.Findings) {
+	if len(m.snap.Findings) == 0 || m.selected >= len(m.snap.Findings) {
 		return 0
 	}
 	l := computeLayout(m.width, m.height, m.mode == modeDetail)
-	content := renderDetailContent(m.theme(), &m.result.Findings[m.selected], max(0, l.detailW-4))
+	content := renderDetailContent(m.theme(), &m.snap.Findings[m.selected], max(0, l.detailW-4))
 	limit := lipgloss.Height(content) - max(1, l.bodyH-2)
 	if limit < 0 {
 		return 0
@@ -287,4 +321,10 @@ func keyBindings(m model) keyMap {
 		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
 		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	}}
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(200*time.Millisecond, func(t time.Time) tea.Msg {
+		return tickMsg{}
+	})
 }

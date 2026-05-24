@@ -1,47 +1,106 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+const toolLabels = { trivy: "Trivy", lynis: "Lynis", update: "Update" };
+const statusIcons = ["○", "◌", "✓", "−", "✗"];
 
 const state = {
-  result: null,
+  live: null,
+  phase: "loading",
   selected: 0,
   query: "",
   severity: "all",
   source: "all",
   remediation: "all",
   sortBy: "severity",
+  pollTimer: null,
 };
 
 const $ = (id) => document.getElementById(id);
 
+async function fetchResult() {
+  try {
+    const response = await fetch("/api/result");
+    state.live = await response.json();
+    state.phase = state.live.phase || "complete";
+    render();
+  } catch (error) {
+    // Keep polling
+  }
+}
+
 async function init() {
-  const response = await fetch("/api/result");
-  state.result = await response.json();
+  await fetchResult();
+  if (state.phase === "loading") {
+    state.pollTimer = setInterval(fetchResult, 2000);
+  }
   bindControls();
-  render();
 }
 
 function bindControls() {
-  $("query").addEventListener("input", (event) => {
+  $("query")?.addEventListener("input", (event) => {
     state.query = event.target.value.toLowerCase();
     state.selected = 0;
     render();
   });
-  $("sortBy").addEventListener("change", (event) => {
+  $("sortBy")?.addEventListener("change", (event) => {
     state.sortBy = event.target.value;
     render();
   });
-  $("clearFilters").addEventListener("click", () => {
+  $("clearFilters")?.addEventListener("click", () => {
     state.query = "";
     state.severity = "all";
     state.source = "all";
     state.remediation = "all";
     state.selected = 0;
-    $("query").value = "";
+    if ($("query")) $("query").value = "";
     render();
   });
 }
 
+function render() {
+  if (state.phase === "loading") {
+    renderLoading();
+    return;
+  }
+  if (state.pollTimer) {
+    clearInterval(state.pollTimer);
+    state.pollTimer = null;
+  }
+  const visible = findings();
+  if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
+  renderMetrics();
+  renderFilters();
+  renderTable(visible);
+  renderDetail(visible[state.selected]);
+}
+
+function renderLoading() {
+  const tools = state.live.tools || {};
+  document.querySelector(".shell").className = "shell loading";
+  $("score").textContent = "--/100";
+  $("score").className = "";
+  const toolOrder = ["update", "trivy", "lynis"];
+  const toolRows = toolOrder
+    .filter((name) => tools[name])
+    .map((name) => {
+      const t = tools[name];
+      const icon = statusIcons[t.status] || "○";
+      const iconClass = ["", "running", "done", "muted", "error"][t.status] || "";
+      return `<div class="tool-row"><span class="tool-icon ${iconClass}">${icon}</span><span class="tool-name">${toolLabels[name] || name}</span><span class="tool-msg">${escapeHTML(t.message || "")}</span></div>`;
+    })
+    .join("");
+  $("metrics").innerHTML = "";
+  $("findings").innerHTML = "";
+  $("detail").innerHTML = `
+    <div class="loading-state">
+      <h2>Scanning...</h2>
+      <div class="tool-status">${toolRows}</div>
+      <p class="muted" style="margin-top:20px">Results appear automatically when scans complete.</p>
+    </div>`;
+  $("findingCount").textContent = "Scanning...";
+}
+
 function findings() {
-  const items = [...(state.result?.Findings || state.result?.findings || [])];
+  const items = [...(state.live?.findings || [])];
   const query = state.query;
   return items
     .filter((f) => state.severity === "all" || severity(f) === state.severity)
@@ -58,18 +117,9 @@ function sorter(a, b) {
   return severityOrder[severity(a)] - severityOrder[severity(b)] || title(a).localeCompare(title(b));
 }
 
-function render() {
-  const visible = findings();
-  if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
-  renderMetrics();
-  renderFilters();
-  renderTable(visible);
-  renderDetail(visible[state.selected]);
-}
-
 function renderMetrics() {
-  const items = state.result?.Findings || state.result?.findings || [];
-  const score = state.result?.Score ?? state.result?.score ?? 0;
+  const items = state.live?.findings || [];
+  const score = state.live?.score ?? 0;
   $("score").textContent = `${score}/100`;
   $("score").className = severityClassForScore(score);
   const counts = countBy(items, severity);
@@ -87,13 +137,14 @@ function renderMetrics() {
 }
 
 function renderFilters() {
-  const items = state.result?.Findings || state.result?.findings || [];
+  const items = state.live?.findings || [];
   renderChips("severityFilters", ["all", "critical", "high", "medium", "low"], "severity");
   renderChips("sourceFilters", ["all", ...Object.keys(countBy(items, source)).sort()], "source");
   renderChips("remediationFilters", ["all", ...Object.keys(countBy(items, remediation)).sort()], "remediation");
 }
 
 function renderChips(id, values, key) {
+  if (!$(id)) return;
   $(id).innerHTML = values.map((value) => `<button class="chip ${state[key] === value ? "active" : ""}" data-key="${key}" data-value="${value}" type="button">${label(value)}</button>`).join("");
   $(id).querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {

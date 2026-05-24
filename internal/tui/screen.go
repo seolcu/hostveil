@@ -103,6 +103,64 @@ func makeStyles(t Theme, l layout) styles {
 	}
 }
 
+func renderLoading(m model) string {
+	t := m.theme()
+	l := computeLayout(m.width, m.height, false)
+	s := makeStyles(t, l)
+	spinner := string([]rune("⠋⠙⠹⠸")[m.tickCount%4])
+
+	if l.width < 50 || l.height < 12 {
+		return s.app.Render(lipgloss.Place(l.width, l.height, lipgloss.Center, lipgloss.Center,
+			s.muted.Render("Terminal too small for hostveil")))
+	}
+
+	brand := s.accent.Render("hostveil") + " " + s.muted.Render(Version)
+	heading := fmt.Sprintf("%s  %s", s.muted.Render("⟐"), brand)
+	phase := s.muted.Render("Scanning...")
+
+	toolOrder := []string{"update", "trivy", "lynis"}
+	var toolLines []string
+	for _, name := range toolOrder {
+		tRaw, ok := m.snap.Tools[name]
+		if !ok {
+			continue
+		}
+		status := domain.ToolStatus(tRaw.Status)
+		icon := s.muted.Render(string(spinner))
+		switch status {
+		case domain.ToolPending:
+			icon = s.muted.Render("○")
+		case domain.ToolRunning:
+			icon = s.accent.Render(string(spinner))
+		case domain.ToolDone:
+			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Success)).Bold(true).Render("✓")
+		case domain.ToolSkipped:
+			icon = s.muted.Render("−")
+		case domain.ToolError:
+			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Critical)).Bold(true).Render("✗")
+		default:
+			icon = s.muted.Render("○")
+		}
+		label := s.muted.Render(fmt.Sprintf("%-8s", name))
+		toolLines = append(toolLines, fmt.Sprintf("  %s %s %s", icon, label, tRaw.Message))
+	}
+
+	lines := []string{
+		"",
+		"  " + heading,
+		"",
+		"  " + phase,
+	}
+	lines = append(lines, toolLines...)
+	lines = append(lines,
+		"",
+		"  "+s.muted.Render("q quit"),
+	)
+
+	content := strings.Join(lines, "\n")
+	return s.app.Render(lipgloss.Place(l.width, l.height, lipgloss.Center, lipgloss.Center, content))
+}
+
 func renderBase(m model) string {
 	t := m.theme()
 	l := computeLayout(m.width, m.height, m.mode == modeDetail)
@@ -114,7 +172,7 @@ func renderBase(m model) string {
 	}
 
 	header := renderHeader(t, s, l)
-	summary := renderSummary(t, s, l, m.result)
+	summary := renderSummary(t, s, l, m.snap.Findings, m.snap.Score, m.snap.Grade)
 	body := renderBody(t, s, l, m)
 	footer := s.footer.Render(m.help.ShortHelpView(keyBindings(m).ShortHelp()))
 
@@ -131,24 +189,24 @@ func renderHeader(t Theme, s styles, l layout) string {
 	return s.header.Render(brand + strings.Repeat(" ", space) + right)
 }
 
-func renderSummary(t Theme, s styles, l layout, r *domain.ScanResult) string {
-	counts := severityCounts(r.Findings)
+func renderSummary(t Theme, s styles, l layout, findings []domain.Finding, score uint8, grade string) string {
+	counts := severityCounts(findings)
 	fixable := 0
 	sources := map[domain.Source]int{}
-	for _, f := range r.Findings {
+	for _, f := range findings {
 		if f.IsFixable() {
 			fixable++
 		}
 		sources[f.Source]++
 	}
 
-	score := lipgloss.NewStyle().Foreground(lipgloss.Color(scoreColor(r.Score, t))).Bold(true).Render(fmt.Sprintf("Score %d/100", r.Score))
-	if r.Grade != "" {
-		score += " " + s.muted.Render("Grade "+r.Grade)
+	scoreStr := lipgloss.NewStyle().Foreground(lipgloss.Color(scoreColor(score, t))).Bold(true).Render(fmt.Sprintf("Score %d/100", score))
+	if grade != "" {
+		scoreStr += " " + s.muted.Render("Grade "+grade)
 	}
 	line1 := strings.Join([]string{
-		score,
-		fmt.Sprintf("Findings %d", r.TotalFindings()),
+		scoreStr,
+		fmt.Sprintf("Findings %d", len(findings)),
 		colorText(fmt.Sprintf("Critical %d", counts[domain.SeverityCritical]), t.Critical),
 		colorText(fmt.Sprintf("High %d", counts[domain.SeverityHigh]), t.High),
 		colorText(fmt.Sprintf("Medium %d", counts[domain.SeverityMedium]), t.Medium),
@@ -164,12 +222,12 @@ func renderSummary(t Theme, s styles, l layout, r *domain.ScanResult) string {
 }
 
 func renderBody(t Theme, s styles, l layout, m model) string {
-	list := renderFindings(t, s, l.listW, l.listH, m.result.Findings, m.selected, m.listOffset)
-	if m.mode != modeDetail || len(m.result.Findings) == 0 {
+	list := renderFindings(t, s, l.listW, l.listH, m.snap.Findings, m.selected, m.listOffset)
+	if m.mode != modeDetail || len(m.snap.Findings) == 0 {
 		return list
 	}
 
-	detail := renderDetail(t, l.detailW, l.bodyH, &m.result.Findings[m.selected], m.detailOffset)
+	detail := renderDetail(t, l.detailW, l.bodyH, &m.snap.Findings[m.selected], m.detailOffset)
 	if !l.twoPane {
 		return detail
 	}

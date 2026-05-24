@@ -213,6 +213,45 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 .section pre { white-space: pre-wrap; word-break: break-word; padding: 14px; border: 1px solid var(--line); background: #0b0e17; }
 .copy { margin-top: 10px; }
 
+.loading .findings-panel,
+.loading .filters { display: none; }
+
+.loading .detail { grid-column: 1 / -1; min-height: auto; }
+
+.tool-status {
+  margin: 24px 0;
+  max-width: 480px;
+}
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(139, 155, 191, 0.12);
+}
+
+.tool-icon {
+  width: 24px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.tool-icon.done { color: var(--low); }
+.tool-icon.error { color: var(--critical); }
+.tool-icon.running { color: var(--accent); }
+.tool-icon.muted { color: var(--muted); }
+
+.tool-name {
+  width: 70px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.tool-msg { color: var(--muted); }
+
 @media (max-width: 1180px) {
   .metrics { grid-template-columns: repeat(3, 1fr); }
   .workspace { grid-template-columns: 240px 1fr; }

@@ -22,16 +22,16 @@ import (
 var assets embed.FS
 
 type Options struct {
-	Addr   string
-	Result *domain.ScanResult
+	Addr string
+	Live *domain.ScanProgress
 }
 
 func Serve(opts Options) error {
 	if opts.Addr == "" {
 		opts.Addr = "127.0.0.1:8787"
 	}
-	if opts.Result == nil {
-		opts.Result = &domain.ScanResult{}
+	if opts.Live == nil {
+		opts.Live = domain.NewScanProgress(true)
 	}
 	if strings.HasPrefix(opts.Addr, "0.0.0.0:") || strings.HasPrefix(opts.Addr, ":") {
 		fmt.Fprintln(os.Stderr, "  Warning: serving host scan results on a non-local address.")
@@ -53,7 +53,7 @@ func Serve(opts Options) error {
 		writeJSON(w, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /api/result", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, opts.Result)
+		writeJSON(w, opts.Live.Snapshot())
 	})
 	mux.Handle("/", http.FileServerFS(staticFS))
 

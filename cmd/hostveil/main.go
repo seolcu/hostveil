@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"sync"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -48,21 +47,22 @@ func run() error {
 	}
 
 	ensureSudo()
+	noUpdate := hasFlag("--no-update")
 
-	if !hasFlag("--no-update") {
-		checkUpdate()
+	live := domain.NewScanProgress(noUpdate)
+
+	notify := func() {}
+	m := tui.NewApp(live, noUpdate)
+	p := tea.NewProgram(m)
+	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
+
+	if !noUpdate {
+		go runUpdateCheckBackground(live, notify)
 	}
+	go runScanBackground(live, "trivy", notify)
+	go runScanBackground(live, "lynis", notify)
 
-	result, err := scanHost()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("  Starting TUI...")
-	fmt.Println()
-
-	p := tea.NewProgram(tui.NewApp(result))
-	_, err = p.Run()
+	_, err := p.Run()
 	return err
 }
 
@@ -75,74 +75,97 @@ func runServe(args []string) error {
 		return err
 	}
 
-	if !*noUpdate && !hasFlag("--no-update") {
-		checkUpdate()
-	}
+	skipUpdate := *noUpdate || hasFlag("--no-update")
+	live := domain.NewScanProgress(skipUpdate)
 
-	result, err := scanHost()
-	if err != nil {
-		return err
+	if !skipUpdate {
+		go runUpdateCheckBackground(live, nil)
 	}
+	go runScanBackground(live, "trivy", nil)
+	go runScanBackground(live, "lynis", nil)
 
 	fmt.Printf("  Starting Web UI at http://%s\n", *addr)
 	fmt.Println("  Press Ctrl+C to stop.")
 	fmt.Println()
 
-	return web.Serve(web.Options{Addr: *addr, Result: result})
+	return web.Serve(web.Options{Addr: *addr, Live: live})
 }
 
-func scanHost() (*domain.ScanResult, error) {
-
-	fmt.Println()
-	fmt.Println("  hostveil — scanning")
-	fmt.Println()
-
-	var wg sync.WaitGroup
-	var trivyFindings, lynisFindings []domain.Finding
-	var trivyErr, lynisErr error
-
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		if _, err := exec.LookPath("trivy"); err != nil {
-			fmt.Println("  • Trivy: not found (run 'hostveil setup')")
-			return
-		}
-		fmt.Print("  • Trivy: scanning compose projects...")
-		trivyFindings, trivyErr = trivy.ScanAll()
-		if trivyErr != nil {
-			fmt.Printf(" warning: %v", trivyErr)
-		}
-		fmt.Println(" done")
-	}()
-
-	go func() {
-		defer wg.Done()
-		if _, err := exec.LookPath("lynis"); err != nil {
-			fmt.Println("  • Lynis: not found (run 'hostveil setup')")
-			return
-		}
-		fmt.Print("  • Lynis: auditing system hardening...")
-		lynisFindings, lynisErr = lynis.Scan()
-		if lynisErr != nil {
-			fmt.Printf(" warning: %v", lynisErr)
-		}
-		fmt.Println(" done")
-	}()
-
-	wg.Wait()
-
-	all := append(trivyFindings, lynisFindings...)
-	result := &domain.ScanResult{
-		Findings: all,
-		Score:    calculateScore(all),
+func runScanBackground(live *domain.ScanProgress, tool string, notify func()) {
+	if _, err := exec.LookPath(tool); err != nil {
+		live.SetToolStatus(tool, domain.ToolSkipped, fmt.Sprintf("Not found (run 'hostveil setup')"))
+		return
 	}
 
-	fmt.Printf("  • Found %d findings (%d fixable)\n", len(all), countFixable(all))
-	fmt.Println()
+	live.SetToolStatus(tool, domain.ToolRunning, scanningMessage(tool))
 
-	return result, nil
+	var findings []domain.Finding
+	var scanErr error
+	switch tool {
+	case "trivy":
+		findings, scanErr = trivy.ScanAll()
+	case "lynis":
+		findings, scanErr = lynis.Scan()
+	}
+
+	if scanErr != nil {
+		live.SetToolStatus(tool, domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
+	} else {
+		live.SetToolStatus(tool, domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
+		live.AddFindings(findings)
+	}
+
+	if live.AllToolsDone() {
+		live.Finalize()
+	}
+}
+
+func scanningMessage(tool string) string {
+	switch tool {
+	case "trivy":
+		return "Scanning compose projects..."
+	case "lynis":
+		return "Auditing system hardening..."
+	default:
+		return "Scanning..."
+	}
+}
+
+func runUpdateCheckBackground(live *domain.ScanProgress, notify func()) {
+	live.SetToolStatus("update", domain.ToolRunning, "Checking for updates...")
+
+	version, err := checkLatestVersion()
+	if err != nil {
+		live.SetToolStatus("update", domain.ToolDone, "Check failed")
+		return
+	}
+
+	if version == "" || version == strings.TrimPrefix(tui.Version, "v") {
+		live.SetToolStatus("update", domain.ToolDone, "Up to date")
+	} else {
+		live.SetUpdateAvailable(version)
+		live.SetToolStatus("update", domain.ToolDone, fmt.Sprintf("v%s available (run 'hostveil update')", version))
+	}
+
+	if live.AllToolsDone() {
+		live.Finalize()
+	}
+}
+
+func checkLatestVersion() (string, error) {
+	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", err
+	}
+	return strings.TrimPrefix(release.TagName, "v"), nil
 }
 
 func runSetup() error {
@@ -159,23 +182,13 @@ func runSetup() error {
 func runUpdate() error {
 	fmt.Print("  hostveil update: checking latest version...")
 
-	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	version, err := checkLatestVersion()
 	if err != nil {
 		return fmt.Errorf("failed to check for updates: %w", err)
 	}
-	defer resp.Body.Close()
+	fmt.Printf(" %s\n", version)
 
-	var release struct {
-		TagName string `json:"tag_name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return fmt.Errorf("failed to parse release info: %w", err)
-	}
-
-	latest := strings.TrimPrefix(release.TagName, "v")
-	fmt.Printf(" %s\n", latest)
-
-	if latest == strings.TrimPrefix(tui.Version, "v") {
+	if version == strings.TrimPrefix(tui.Version, "v") {
 		fmt.Println("  Already up to date.")
 		return nil
 	}
@@ -185,10 +198,10 @@ func runUpdate() error {
 		arch = "amd64"
 	}
 	url := fmt.Sprintf("https://github.com/seolcu/hostveil/releases/download/v%s/hostveil-%s-%s.tar.gz",
-		latest, runtime.GOOS, arch)
+		version, runtime.GOOS, arch)
 
-	fmt.Printf("  Downloading hostveil %s...\n", latest)
-	resp, err = http.Get(url)
+	fmt.Printf("  Downloading hostveil %s...\n", version)
+	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
@@ -210,32 +223,8 @@ func runUpdate() error {
 		return fmt.Errorf("install failed: %w", err)
 	}
 	os.Remove(tmpFile)
-	fmt.Println("  Updated to v" + latest)
+	fmt.Println("  Updated to v" + version)
 	return nil
-}
-
-func checkUpdate() {
-	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	var release struct {
-		TagName string `json:"tag_name"`
-	}
-	if json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return
-	}
-
-	latest := strings.TrimPrefix(release.TagName, "v")
-	current := strings.TrimPrefix(tui.Version, "v")
-	if latest != current {
-		fmt.Printf("\n  Update available: v%s (current: v%s)\n", latest, current)
-		fmt.Println("  Run 'hostveil update' to upgrade.")
-		fmt.Println("  Use 'hostveil --no-update' to skip this check.")
-		fmt.Println()
-	}
 }
 
 func printHelp() {
@@ -260,40 +249,6 @@ func hasFlag(name string) bool {
 		}
 	}
 	return false
-}
-
-func calculateScore(findings []domain.Finding) uint8 {
-	if len(findings) == 0 {
-		return 100
-	}
-	total := 0
-	for _, f := range findings {
-		switch f.Severity {
-		case domain.SeverityCritical:
-			total += 4
-		case domain.SeverityHigh:
-			total += 3
-		case domain.SeverityMedium:
-			total += 2
-		case domain.SeverityLow:
-			total += 1
-		}
-	}
-	score := 100 - total*5
-	if score < 0 {
-		return 0
-	}
-	return uint8(score)
-}
-
-func countFixable(findings []domain.Finding) int {
-	n := 0
-	for _, f := range findings {
-		if f.IsFixable() {
-			n++
-		}
-	}
-	return n
 }
 
 func ensureSudo() {
