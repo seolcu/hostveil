@@ -1,9 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
+	"strings"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,13 +20,33 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "hostveil: error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func run() error {
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "setup":
+			return runSetup()
+		case "update", "upgrade":
+			ensureSudo()
+			return runUpdate()
+		case "--help", "-h":
+			printHelp()
+			return nil
+		case "--version", "-v":
+			fmt.Println("hostveil", tui.Version)
+			return nil
+		}
+	}
+
 	ensureSudo()
+
+	if !hasFlag("--no-update") {
+		checkUpdate()
+	}
 
 	fmt.Println()
 	fmt.Println("  hostveil — scanning")
@@ -36,7 +61,7 @@ func run() error {
 	go func() {
 		defer wg.Done()
 		if _, err := exec.LookPath("trivy"); err != nil {
-			fmt.Println("  • Trivy: not found (install via: apt install trivy)")
+			fmt.Println("  • Trivy: not found (run 'hostveil setup')")
 			return
 		}
 		fmt.Print("  • Trivy: scanning compose projects...")
@@ -50,7 +75,7 @@ func run() error {
 	go func() {
 		defer wg.Done()
 		if _, err := exec.LookPath("lynis"); err != nil {
-			fmt.Println("  • Lynis: not found (install via: apt install lynis)")
+			fmt.Println("  • Lynis: not found (run 'hostveil setup')")
 			return
 		}
 		fmt.Print("  • Lynis: auditing system hardening...")
@@ -77,6 +102,120 @@ func run() error {
 	p := tea.NewProgram(tui.NewApp(result), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
+}
+
+func runSetup() error {
+	fmt.Println("  hostveil setup — installing dependencies")
+	fmt.Println()
+	cmd := exec.Command("bash", "-c",
+		"curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func runUpdate() error {
+	fmt.Print("  hostveil update: checking latest version...")
+
+	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return fmt.Errorf("failed to parse release info: %w", err)
+	}
+
+	latest := strings.TrimPrefix(release.TagName, "v")
+	fmt.Printf(" %s\n", latest)
+
+	if latest == strings.TrimPrefix(tui.Version, "v") {
+		fmt.Println("  Already up to date.")
+		return nil
+	}
+
+	arch := runtime.GOARCH
+	if arch == "x86_64" {
+		arch = "amd64"
+	}
+	url := fmt.Sprintf("https://github.com/seolcu/hostveil/releases/download/v%s/hostveil-%s-%s.tar.gz",
+		latest, runtime.GOOS, arch)
+
+	fmt.Printf("  Downloading hostveil %s...\n", latest)
+	resp, err = http.Get(url)
+	if err != nil {
+		return fmt.Errorf("download failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	tmpFile := "/tmp/hostveil.tar.gz"
+	f, err := os.Create(tmpFile)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		f.Close()
+		return err
+	}
+	f.Close()
+
+	exec.Command("tar", "xzf", tmpFile, "-C", "/tmp").Run()
+	if err := exec.Command("install", "-m", "755", "/tmp/hostveil", "/usr/bin/hostveil").Run(); err != nil {
+		return fmt.Errorf("install failed: %w", err)
+	}
+	os.Remove(tmpFile)
+	fmt.Println("  Updated to v" + latest)
+	return nil
+}
+
+func checkUpdate() {
+	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return
+	}
+
+	latest := strings.TrimPrefix(release.TagName, "v")
+	current := strings.TrimPrefix(tui.Version, "v")
+	if latest != current {
+		fmt.Printf("\n  Update available: v%s (current: v%s)\n", latest, current)
+		fmt.Println("  Run 'hostveil update' to upgrade.")
+		fmt.Println("  Use 'hostveil --no-update' to skip this check.")
+		fmt.Println()
+	}
+}
+
+func printHelp() {
+	fmt.Println(`hostveil — Linux self-hosting security scanner
+
+Usage:
+  hostveil                    Scan and open TUI
+  hostveil setup              Install dependencies (trivy, lynis)
+  hostveil update             Update to the latest version
+  hostveil --no-update        Skip update check on startup
+  hostveil --version          Show version
+  hostveil --help             Show this help`)
+}
+
+func hasFlag(name string) bool {
+	for _, a := range os.Args {
+		if a == name {
+			return true
+		}
+	}
+	return false
 }
 
 func calculateScore(findings []domain.Finding) uint8 {
