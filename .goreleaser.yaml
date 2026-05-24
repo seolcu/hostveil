@@ -1,0 +1,50 @@
+version: 1
+project_name: hostveil
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: hostveil
+    main: ./cmd/hostveil/
+    binary: hostveil
+    ldflags:
+      - -s -w
+      - -X github.com/seolcu/hostveil/internal/tui.Version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: tar-gz
+    name_template: >-
+      {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
+    format: tar.gz
+    files:
+      - none*
+
+checksum:
+  name_template: "{{ .ProjectName }}-checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: seolcu
+    name: hostveil
+  name_template: "v{{.Version}}"
+  header: |
+    ## hostveil v{{.Version}}
+
+    Linux self-hosting security scanner with auto-fix.
+
+    ### Installation
+
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+    ```

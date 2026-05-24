@@ -8,19 +8,12 @@ misconfigurations, then helps you fix them — automatically.
 ## Quick start
 
 ```bash
-# Requirements
-sudo apt install docker.io trivy lynis
-sudo systemctl enable --now docker
-
-# Run
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
 hostveil
 ```
 
-`hostveil` auto-detects running Docker Compose projects, scans each one
-with Trivy (CVE + IaC misconfiguration), audits the host with Lynis,
-and opens a terminal UI showing all findings.
-
-Press `Enter` on a finding to see details and fix instructions.
+The installer prompts to install `trivy` and `lynis` automatically,
+then downloads the `hostveil` binary and installs it to `/usr/bin`.
 
 ## How it works
 
