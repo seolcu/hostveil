@@ -1,0 +1,6 @@
+hostveil
+hostveil-*
+dist/
+*.tar.gz
+*.sha256
+*.bak.*
