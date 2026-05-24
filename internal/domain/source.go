@@ -9,7 +9,6 @@ const (
 	SourceNativeHost
 	SourceTrivy
 	SourceLynis
-	SourceGitleaks
 )
 
 func (s Source) String() string {
@@ -22,8 +21,6 @@ func (s Source) String() string {
 		return "trivy"
 	case SourceLynis:
 		return "lynis"
-	case SourceGitleaks:
-		return "gitleaks"
 	default:
 		return "unknown"
 	}
@@ -39,13 +36,11 @@ func ParseSource(s string) (Source, bool) {
 		return SourceTrivy, true
 	case "lynis":
 		return SourceLynis, true
-	case "gitleaks":
-		return SourceGitleaks, true
 	default:
 		return 0, false
 	}
 }
 
 func AllSources() []Source {
-	return []Source{SourceNativeCompose, SourceNativeHost, SourceTrivy, SourceLynis, SourceGitleaks}
+	return []Source{SourceNativeCompose, SourceNativeHost, SourceTrivy, SourceLynis}
 }

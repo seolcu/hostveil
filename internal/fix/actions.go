@@ -349,21 +349,6 @@ func adapterFixForFinding(finding domain.Finding) []FixAction {
 		))
 		return actions
 
-	case strings.HasPrefix(id, "dockle."):
-		code := strings.TrimPrefix(id, "dockle.")
-		return []FixAction{
-			PrepareShellCommand(
-				fmt.Sprintf("echo 'Dockle CIS %s: review Dockerfile best practices for %s' >> DOCKLE_FIXES.md", code, svc),
-				fmt.Sprintf("Log Dockle CIS %s finding for %s", code, svc),
-				"",
-			),
-			PrepareShellCommand(
-				getDockleFixCommand(code, svc),
-				fmt.Sprintf("Apply Dockle CIS %s fix for %s", code, svc),
-				"",
-			),
-		}
-
 	case strings.HasPrefix(id, "lynis."):
 		return []FixAction{
 			PrepareShellCommand(
@@ -378,45 +363,7 @@ func adapterFixForFinding(finding domain.Finding) []FixAction {
 			),
 		}
 
-	case strings.HasPrefix(id, "gitleaks."):
-		actions := []FixAction{
-			PrepareShellCommand(
-				fmt.Sprintf("echo 'WARNING: Secret leak detected by Gitleaks (%s). Rotate the credential immediately.'", id),
-				fmt.Sprintf("Alert about secret leak %s — manual rotation required", id),
-				"",
-			),
-		}
-		if file, ok := finding.Evidence["file"]; ok {
-			actions = append(actions, PrepareShellCommand(
-				fmt.Sprintf("echo 'Remove secret from %s, add to .gitignore, and rotate the credential'", file),
-				fmt.Sprintf("Remove leaked secret from %s", file),
-				"",
-			))
-		}
-		actions = append(actions, PrepareShellCommand(
-			fmt.Sprintf("BFG_REPO=$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo '.')) && echo 'Run: java -jar bfg.jar --delete-files .env && git reflog expire --expire=now --all && git gc --prune=now --aggressive'"),
-			"Provide BFG repo-cleaner instructions for git history cleanup",
-			"",
-		))
-		return actions
 	}
 
 	return nil
-}
-
-func getDockleFixCommand(code, svc string) string {
-	switch code {
-	case "CIS-DI-0001":
-		return fmt.Sprintf("echo 'USER instruction missing. Add: USER nobody' to Dockerfile for %s", svc)
-	case "CIS-DI-0005":
-		return fmt.Sprintf("echo 'Enable Docker content trust: export DOCKER_CONTENT_TRUST=1' before building %s", svc)
-	case "CIS-DI-0006":
-		return fmt.Sprintf("echo 'Add HEALTHCHECK instruction to Dockerfile for %s'", svc)
-	case "CIS-DI-0007":
-		return fmt.Sprintf("echo 'Remove sudo from %s Dockerfile. Use gosu or su-exec instead.'", svc)
-	case "CIS-DI-0008":
-		return fmt.Sprintf("echo 'Set USER instruction in %s Dockerfile to non-root user'", svc)
-	default:
-		return fmt.Sprintf("echo 'Review Dockle CIS finding for %s and apply recommended fix' >> DOCKLE_FIXES.md", svc)
-	}
 }

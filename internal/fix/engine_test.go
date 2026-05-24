@@ -109,7 +109,7 @@ func TestPreviewAnyFindingHostUnknown(t *testing.T) {
 
 func TestPreviewAnyFindingAdapterUnknown(t *testing.T) {
 	f := domain.Finding{
-		ID: "unknown.finding", Source: domain.SourceGitleaks,
+		ID: "unknown.finding", Source: domain.SourceTrivy,
 		Remediation: domain.RemediationReview,
 	}
 	result := PreviewAnyFinding(f, "", nil)

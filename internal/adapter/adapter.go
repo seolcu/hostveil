@@ -12,6 +12,5 @@ func All() []Adapter {
 	return []Adapter{
 		&TrivyAdapter{},
 		&LynisAdapter{},
-		&GitleaksAdapter{},
 	}
 }

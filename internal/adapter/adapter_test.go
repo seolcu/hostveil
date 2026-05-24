@@ -55,38 +55,10 @@ func TestTrivyParsingEmptyOutput(t *testing.T) {
 	}
 }
 
-func TestGitleaksParsingSingleJSON(t *testing.T) {
-	output := `[{"RuleID":"aws-access-token","Description":"AWS Access Token","File":"config.env","Severity":"HIGH","StartLine":5}]`
-
-	findings, err := parseGitleaksOutput(output, "/repo")
-	if err != nil {
-		t.Fatalf("parseGitleaksOutput failed: %v", err)
-	}
-
-	if len(findings) != 1 {
-		t.Fatalf("expected 1 finding, got %d", len(findings))
-	}
-
-	if findings[0].ID != "gitleaks.aws-access-token" {
-		t.Errorf("expected gitleaks.aws-access-token, got %s", findings[0].ID)
-	}
-	if findings[0].Severity.String() != "high" {
-		t.Errorf("expected high severity, got %s", findings[0].Severity)
-	}
-}
-
-func TestGitleaksParsingNDJSON(t *testing.T) {
-	output := `{"RuleID":"aws-key","Description":"AWS Key","File":".env","Severity":"MEDIUM","StartLine":1}
-{"RuleID":"github-token","Description":"GitHub Token","File":".env","Severity":"HIGH","StartLine":2}`
-
-	findings, err := parseGitleaksOutput(output, "/repo")
-	if err != nil {
-		t.Fatalf("parseGitleaksOutput failed: %v", err)
-	}
-
-	if len(findings) != 2 {
-		t.Fatalf("expected 2 findings, got %d", len(findings))
-	}
+func TestAdapterIsAvailableChecks(t *testing.T) {
+	// These should not crash even if tools aren't installed
+	_ = (&TrivyAdapter{}).IsAvailable()
+	_ = (&LynisAdapter{}).IsAvailable()
 }
 
 func TestLynisParsing(t *testing.T) {
@@ -106,13 +78,6 @@ func TestLynisParsing(t *testing.T) {
 	if findings[0].Severity.String() != "high" {
 		t.Errorf("expected high for warning [!], got %s", findings[0].Severity)
 	}
-}
-
-func TestAdapterIsAvailableChecks(t *testing.T) {
-	// These should not crash even if tools aren't installed
-	_ = (&TrivyAdapter{}).IsAvailable()
-	_ = (&LynisAdapter{}).IsAvailable()
-	_ = (&GitleaksAdapter{}).IsAvailable()
 }
 
 func TestCommandRunnerTimeout(t *testing.T) {

@@ -68,9 +68,7 @@ func TestAdapterFixForFindingCoverage(t *testing.T) {
 		expects int
 	}{
 		{domain.Finding{ID: "trivy.CVE-2024-0001", Service: "test:latest", Evidence: map[string]string{"package": "curl@7.0", "fixed_version": "7.1"}}, 3},
-		{domain.Finding{ID: "dockle.CIS-DI-0001", Service: "test:latest"}, 2},
 		{domain.Finding{ID: "lynis.some_test", Service: "test:latest"}, 2},
-		{domain.Finding{ID: "gitleaks.aws-key", Service: "test:latest", Evidence: map[string]string{"file": ".env"}}, 3},
 		{domain.Finding{ID: "unknown.finding", Service: "test:latest"}, 0},
 	}
 

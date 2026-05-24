@@ -11,7 +11,6 @@ func TestSourceString(t *testing.T) {
 		{SourceNativeHost, "native_host"},
 		{SourceTrivy, "trivy"},
 		{SourceLynis, "lynis"},
-		{SourceGitleaks, "gitleaks"},
 		{Source(99), "unknown"},
 	}
 	for _, tt := range tests {
@@ -23,7 +22,7 @@ func TestSourceString(t *testing.T) {
 
 func TestAllSources(t *testing.T) {
 	sources := AllSources()
-	if len(sources) != 5 {
+	if len(sources) != 4 {
 		t.Errorf("AllSources() returned %d, want 6", len(sources))
 	}
 }
