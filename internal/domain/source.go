@@ -9,9 +9,7 @@ const (
 	SourceNativeHost
 	SourceTrivy
 	SourceLynis
-	SourceDockle
 	SourceGitleaks
-	SourceComposeScan
 )
 
 func (s Source) String() string {
@@ -24,12 +22,8 @@ func (s Source) String() string {
 		return "trivy"
 	case SourceLynis:
 		return "lynis"
-	case SourceDockle:
-		return "dockle"
 	case SourceGitleaks:
 		return "gitleaks"
-	case SourceComposeScan:
-		return "composescan"
 	default:
 		return "unknown"
 	}
@@ -45,17 +39,13 @@ func ParseSource(s string) (Source, bool) {
 		return SourceTrivy, true
 	case "lynis":
 		return SourceLynis, true
-	case "dockle":
-		return SourceDockle, true
 	case "gitleaks":
 		return SourceGitleaks, true
-	case "composescan":
-		return SourceComposeScan, true
 	default:
 		return 0, false
 	}
 }
 
 func AllSources() []Source {
-	return []Source{SourceNativeCompose, SourceNativeHost, SourceTrivy, SourceLynis, SourceDockle, SourceGitleaks, SourceComposeScan}
+	return []Source{SourceNativeCompose, SourceNativeHost, SourceTrivy, SourceLynis, SourceGitleaks}
 }

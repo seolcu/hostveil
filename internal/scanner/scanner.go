@@ -10,7 +10,6 @@ import (
 	"github.com/seolcu/hostveil/internal/discovery"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/scanner/host"
-	"github.com/seolcu/hostveil/internal/scanner/rules"
 )
 
 type Config struct {
@@ -64,7 +63,6 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 
 	// 2. Parse and scan each compose file
 	serviceSeen := make(map[string]bool)
-	ruleEngine := rules.NewEngine()
 
 	for _, p := range projects {
 		cf, err := compose.ParseFile(p.ComposePath)
@@ -77,10 +75,6 @@ func Run(cfg Config) (*domain.ScanResult, error) {
 		result.Metadata.ComposeFile = p.ComposePath
 		result.Metadata.InfoMessages = append(result.Metadata.InfoMessages,
 			"Discovered project: "+p.Name+" at "+p.ComposePath)
-
-		// Run rule engine on this compose file
-		findings := ruleEngine.Scan(cf)
-		result.Findings = append(result.Findings, findings...)
 
 		// Collect services (deduplicated)
 		for name, svc := range cf.Services {

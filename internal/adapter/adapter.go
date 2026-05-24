@@ -11,9 +11,7 @@ type Adapter interface {
 func All() []Adapter {
 	return []Adapter{
 		&TrivyAdapter{},
-		&DockleAdapter{},
 		&LynisAdapter{},
 		&GitleaksAdapter{},
-		&ComposeScanAdapter{},
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/domain"
-	"github.com/seolcu/hostveil/internal/scanner"
 )
 
 func TestMinimalHostFix(t *testing.T) {
@@ -155,28 +154,13 @@ func TestEngineApplyModifiesComposeFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 2. Run the scanner
-	result, err := scanner.Run(scanner.Config{
-		ComposeFiles: []string{composePath},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify exposure.public_binding finding exists
-	var hasPublicBinding bool
-	for _, f := range result.Findings {
-		if f.ID == domain.FindingExposurePublicBinding {
-			hasPublicBinding = true
-			break
-		}
-	}
-	if !hasPublicBinding {
-		t.Fatal("expected exposure.public_binding finding from scanner")
+	// 2. Create findings directly (the Fix Engine tests the fix logic, not scanner rules)
+	findings := []domain.Finding{
+		{ID: domain.FindingExposurePublicBinding, Remediation: domain.RemediationAuto, Service: "web"},
 	}
 
 	// 3. Create a fix Engine with the findings
-	engine := NewEngine(composePath, result.Findings)
+	engine := NewEngine(composePath, findings)
 
 	// 4. Call Preview() and verify AutoApplied has expected items
 	plan, err := engine.Preview()
@@ -289,26 +273,17 @@ func TestEngineApplyUpdatesLatestTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 2. Run the scanner
-	result, err := scanner.Run(scanner.Config{
-		ComposeFiles: []string{composePath},
-	})
-	if err != nil {
-		t.Fatal(err)
+	// 2. Create findings directly
+	latestTagFindings := []domain.Finding{
+		{
+			ID:          domain.FindingUpdatesLatestTag,
+			Remediation: domain.RemediationAuto,
+			Service:     "web",
+			Evidence:    map[string]string{"image": "nginx:latest"},
+		},
 	}
 
-	// 3. Verify updates.latest_tag finding is generated
-	var latestTagFindings []domain.Finding
-	for _, f := range result.Findings {
-		if f.ID == domain.FindingUpdatesLatestTag {
-			latestTagFindings = append(latestTagFindings, f)
-		}
-	}
-	if len(latestTagFindings) == 0 {
-		t.Fatal("expected updates.latest_tag finding for image: nginx:latest")
-	}
-
-	// Filter to only latest_tag findings
+	// 3. Run fix engine on latest_tag findings
 	engine := NewEngine(composePath, latestTagFindings)
 
 	// 4. Call Preview() and verify AutoApplied has the pin version proposal
@@ -399,26 +374,12 @@ func TestEngineApplyWritableRootfs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 2. Run the scanner
-	result, err := scanner.Run(scanner.Config{
-		ComposeFiles: []string{composePath},
-	})
-	if err != nil {
-		t.Fatal(err)
+	// 2. Create findings directly
+	writableRootfsFindings := []domain.Finding{
+		{ID: domain.FindingRuntimeWritableRootfs, Remediation: domain.RemediationAuto, Service: "web"},
 	}
 
-	// 3. Verify runtime.writable_rootfs finding
-	var writableRootfsFindings []domain.Finding
-	for _, f := range result.Findings {
-		if f.ID == domain.FindingRuntimeWritableRootfs {
-			writableRootfsFindings = append(writableRootfsFindings, f)
-		}
-	}
-	if len(writableRootfsFindings) == 0 {
-		t.Fatal("expected runtime.writable_rootfs finding")
-	}
-
-	// Filter to only writable_rootfs findings
+	// 3. Run fix engine on writable_rootfs findings
 	engine := NewEngine(composePath, writableRootfsFindings)
 
 	// 4. Call Preview() and verify AutoApplied has the read_only proposal

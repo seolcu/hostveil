@@ -21,9 +21,9 @@ func TestTrivyParsing(t *testing.T) {
 		}]
 	}`
 
-	findings, err := parseTrivyOutput(output, "nginx:latest")
+	findings, err := parseTrivyImageOutput(output, "nginx:latest")
 	if err != nil {
-		t.Fatalf("parseTrivyOutput failed: %v", err)
+		t.Fatalf("parseTrivyImageOutput failed: %v", err)
 	}
 
 	if len(findings) != 1 {
@@ -46,42 +46,9 @@ func TestTrivyParsing(t *testing.T) {
 }
 
 func TestTrivyParsingEmptyOutput(t *testing.T) {
-	findings, err := parseTrivyOutput(`{"Results":[]}`, "nginx:latest")
+	findings, err := parseTrivyImageOutput(`{"Results":[]}`, "nginx:latest")
 	if err != nil {
-		t.Fatalf("parseTrivyOutput failed on empty: %v", err)
-	}
-	if len(findings) != 0 {
-		t.Errorf("expected 0 findings, got %d", len(findings))
-	}
-}
-
-func TestDockleParsing(t *testing.T) {
-	output := `{"summary":{"fatal":1,"warn":2,"info":1,"pass":5},"details":[
-		{"code":"CIS-DI-0001","title":"Create a user for the container","level":"WARN","alerts":["No USER specified"]},
-		{"code":"CIS-DI-0005","title":"Enable content trust","level":"INFO","alerts":["Docker content trust not enabled"]}
-	]}`
-
-	findings, err := parseDockleOutput(output, "myapp:latest")
-	if err != nil {
-		t.Fatalf("parseDockleOutput failed: %v", err)
-	}
-
-	if len(findings) != 2 {
-		t.Fatalf("expected 2 findings, got %d", len(findings))
-	}
-
-	if findings[0].ID != "dockle.CIS-DI-0001" {
-		t.Errorf("expected dockle.CIS-DI-0001, got %s", findings[0].ID)
-	}
-	if findings[0].Severity.String() != "medium" {
-		t.Errorf("expected medium severity for WARN, got %s", findings[0].Severity)
-	}
-}
-
-func TestDockleParsingEmpty(t *testing.T) {
-	findings, err := parseDockleOutput("", "myapp:latest")
-	if err != nil {
-		t.Fatalf("parseDockleOutput failed on empty: %v", err)
+		t.Fatalf("parseTrivyImageOutput failed on empty: %v", err)
 	}
 	if len(findings) != 0 {
 		t.Errorf("expected 0 findings, got %d", len(findings))
@@ -144,7 +111,6 @@ func TestLynisParsing(t *testing.T) {
 func TestAdapterIsAvailableChecks(t *testing.T) {
 	// These should not crash even if tools aren't installed
 	_ = (&TrivyAdapter{}).IsAvailable()
-	_ = (&DockleAdapter{}).IsAvailable()
 	_ = (&LynisAdapter{}).IsAvailable()
 	_ = (&GitleaksAdapter{}).IsAvailable()
 }

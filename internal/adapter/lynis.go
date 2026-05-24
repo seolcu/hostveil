@@ -47,7 +47,7 @@ func parseLynisOutput(output string) ([]domain.Finding, error) {
 				Scope:       domain.ScopeHost,
 				Source:      domain.SourceLynis,
 				Subject:     "host",
-				Title:       truncate(line, 80),
+				Title:       truncateText(line, 80),
 				Description: line,
 				WhyRisky:    "Lynis security audit identified a hardening opportunity.",
 				HowToFix:    "Review the Lynis suggestion and apply the recommended hardening measure.",
@@ -66,7 +66,7 @@ func hashLine(line string) string {
 		h = h*31 + int(c)
 	}
 	return strings.ToLower(strings.ReplaceAll(
-		truncate(strings.Map(func(r rune) rune {
+		truncateText(strings.Map(func(r rune) rune {
 			if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 				return r
 			}
