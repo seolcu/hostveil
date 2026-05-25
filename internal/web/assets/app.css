@@ -41,6 +41,12 @@ body::before {
 
 button, input, select { font: inherit; }
 
+.sysinfo {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .shell {
   position: relative;
   z-index: 1;

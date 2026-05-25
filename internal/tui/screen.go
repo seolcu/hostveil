@@ -105,6 +105,7 @@ func (m model) renderMain() string {
 	}
 
 	header := m.renderHeader()
+	sysinfo := m.renderSysInfo()
 	metrics := m.renderMetrics()
 	var body string
 	if m.mode == paneDetail {
@@ -112,7 +113,7 @@ func (m model) renderMain() string {
 	} else {
 		body = m.renderListPane()
 	}
-	sections := []string{header, metrics, body}
+	sections := []string{header, sysinfo, metrics, body}
 	return lipgloss.JoinVertical(lipgloss.Top, sections...)
 }
 
@@ -171,6 +172,22 @@ func (m model) renderScorePlate() string {
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(1, 2).
 		Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
+}
+
+func (m model) renderSysInfo() string {
+	t := m.theme()
+	host := m.snap.Hostname
+	ip := m.snap.LocalIP
+	if host == "" && ip == "" {
+		return ""
+	}
+	label := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.TextMuted)).
+		Render(fmt.Sprintf("%s @ %s", host, ip))
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Padding(0, 2).
+		Render(label)
 }
 
 // ── Metrics bar ──

@@ -80,6 +80,9 @@ function render() {
     return;
   }
   document.querySelector(".shell").className = "shell";
+  const host = state.live?.hostname || "";
+  const ip = state.live?.local_ip || "";
+  $("sysinfo").textContent = host ? `${host} @ ${ip}` : "";
   if (state.pollTimer) {
     clearInterval(state.pollTimer);
     state.pollTimer = null;

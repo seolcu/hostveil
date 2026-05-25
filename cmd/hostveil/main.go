@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -63,6 +64,8 @@ func run() error {
 	noUpdate := hasFlag(os.Args, "--no-update")
 
 	live := domain.NewScanProgress(noUpdate)
+	live.Hostname, _ = os.Hostname()
+	live.LocalIP = localIP()
 
 	m := tui.NewApp(live, noUpdate, fixRegistry)
 	p := tea.NewProgram(m)
@@ -89,6 +92,8 @@ func runServe(args []string) error {
 
 	skipUpdate := *noUpdate || hasFlag(os.Args, "--no-update")
 	live := domain.NewScanProgress(skipUpdate)
+	live.Hostname, _ = os.Hostname()
+	live.LocalIP = localIP()
 
 	if !skipUpdate {
 		go runUpdateCheckBackground(live)
@@ -307,6 +312,19 @@ func hasFlag(args []string, name string) bool {
 		}
 	}
 	return false
+}
+
+func localIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String()
+		}
+	}
+	return ""
 }
 
 func ensureSudo() {

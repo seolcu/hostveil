@@ -26,6 +26,8 @@ type ScanProgress struct {
 	Findings        []Finding
 	Score           uint8
 	Grade           string
+	Hostname        string
+	LocalIP         string
 }
 
 func NewScanProgress(noUpdateCheck bool) *ScanProgress {
@@ -120,6 +122,8 @@ type Snapshot struct {
 	Findings        []Finding               `json:"findings"`
 	Score           uint8                   `json:"score"`
 	Grade           string                  `json:"grade"`
+	Hostname        string                  `json:"hostname"`
+	LocalIP         string                  `json:"local_ip"`
 }
 
 func (sp *ScanProgress) Snapshot() Snapshot {
@@ -138,6 +142,8 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 		Findings:        findings,
 		Score:           sp.Score,
 		Grade:           sp.Grade,
+		Hostname:        sp.Hostname,
+		LocalIP:         sp.LocalIP,
 	}
 }
 
