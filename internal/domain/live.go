@@ -95,6 +95,7 @@ func (sp *ScanProgress) ResetForRescan() {
 	sp.Phase = "loading"
 	sp.Score = 0
 	sp.Grade = ""
+	sp.Findings = nil
 	for _, t := range sp.Tools {
 		t.Status = ToolPending
 		t.Message = "Waiting..."
