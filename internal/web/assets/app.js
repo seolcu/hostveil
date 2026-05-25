@@ -59,7 +59,7 @@ function bindControls() {
   rescanBtn.id = "rescanBtn";
   rescanBtn.type = "button";
   rescanBtn.textContent = "Re-scan";
-  $("clearFilters").parentNode.appendChild(rescanBtn);
+  document.querySelector(".panel-head").appendChild(rescanBtn);
   rescanBtn.addEventListener("click", async () => {
     rescanBtn.disabled = true;
     rescanBtn.textContent = "Scanning...";
@@ -145,14 +145,13 @@ function renderMetrics() {
   $("score").textContent = `${score}/100`;
   $("score").className = severityClassForScore(score);
   const counts = countBy(items, severity);
-  const sources = countBy(items, source);
   const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
   const metrics = [
     ["Total", items.length],
     ["Critical", counts.critical || 0, "critical"],
     ["High", counts.high || 0, "high"],
     ["Medium", counts.medium || 0, "medium"],
-    ["Lynis", sources.lynis || 0],
+    ["Low", counts.low || 0, "low"],
     ["Fixable", fixable],
   ];
   $("metrics").innerHTML = metrics.map(([label, value, cls = ""]) => `<article class="metric"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
@@ -209,8 +208,13 @@ function renderDetail(f) {
     return;
   }
   const evidence = f.Evidence || {};
-  const evidenceHTML = Object.keys(evidence).sort().map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("");
-  const fixable = f.Remediation === 0 || f.Remediation === 1; // Auto or Review
+  const evKeys = Object.keys(evidence).sort();
+  const evidenceHTML = evKeys.length > 0 ? `
+    <details class="evidence-details">
+      <summary>Evidence (${evKeys.length})</summary>
+      ${evKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("")}
+    </details>` : "";
+  const fixable = f.Remediation === 0 || f.Remediation === 1;
   $("detail").innerHTML = `
     <span class="badge ${severity(f)}">${severity(f)}</span>
     <h2>${escapeHTML(title(f))}</h2>
@@ -223,13 +227,28 @@ function renderDetail(f) {
     </dl>
     ${section("Description", f.Description)}
     ${section("How to fix", f.HowToFix, true)}
-    ${evidenceHTML ? `<section class="section"><h3>Evidence</h3>${evidenceHTML}</section>` : ""}
+    ${evidenceHTML}
     <div id="fixResult"></div>
   `;
-  const button = $("detail").querySelector(".copy");
-  if (button) button.addEventListener("click", () => navigator.clipboard?.writeText(f.HowToFix || ""));
-  const fixBtn = $("detail").querySelector(".fix-btn");
-  if (fixBtn) fixBtn.addEventListener("click", () => applyFix(f, fixBtn));
+  const detail = $("detail");
+  detail.querySelectorAll(".toggle-more").forEach((btn) => {
+    btn.onclick = () => {
+      const body = btn.parentElement.querySelector(".collapse-body");
+      if (btn.textContent === "View more") {
+        body.innerHTML = `<p>${body.dataset.full}</p>`;
+        btn.textContent = "View less";
+      } else {
+        const lines = body.dataset.full.split("\n");
+        body.innerHTML = `<p>${lines.slice(0, 5).join("\n")}...</p>`;
+        btn.textContent = "View more";
+      }
+    };
+  });
+  detail.querySelectorAll(".copy").forEach((btn) => {
+    btn.onclick = () => navigator.clipboard?.writeText(f.HowToFix || "");
+  });
+  const fixBtn = detail.querySelector(".fix-btn");
+  if (fixBtn) fixBtn.onclick = () => applyFix(f, fixBtn);
 }
 
 async function applyFix(finding, button) {
@@ -250,18 +269,10 @@ async function applyFix(finding, button) {
     }
 
     if (info.warning) {
-      // Show confirmation with warning
-      resultDiv.innerHTML = `
-        <div class="fix-confirm">
-          <p><strong>${escapeHTML(info.label)}</strong></p>
-          <p class="fix-warning">&#9888; ${escapeHTML(info.warning)}</p>
-          <div class="fix-confirm-actions">
-            <button id="fixConfirmYes" class="fix-btn">Apply</button>
-            <button id="fixConfirmNo" type="button" class="chip">Cancel</button>
-          </div>
-        </div>`;
-      $("fixConfirmYes").onclick = () => doApplyFix(finding, button);
-      $("fixConfirmNo").onclick = () => { resultDiv.innerHTML = ""; };
+      showFixModal(info.label, info.warning, () => {
+        closeFixModal();
+        doApplyFix(finding, button);
+      });
       return;
     }
   } catch (error) {
@@ -269,7 +280,6 @@ async function applyFix(finding, button) {
     return;
   }
 
-  // No warning, apply directly
   doApplyFix(finding, button);
 }
 
@@ -303,6 +313,19 @@ async function doApplyFix(finding, button) {
 
 function section(name, content, copy = false) {
   if (!content) return "";
+  const lines = content.split("\n").length;
+  const longText = lines > 5 || content.length > 300;
+  if (longText) {
+    const truncated = content.split("\n").slice(0, 5).join("\n");
+    return `<section class="section collapsible">
+      <h3>${name}</h3>
+      <div class="collapse-body" data-full="${escapeHTML(content)}">
+        <p>${escapeHTML(truncated)}...</p>
+      </div>
+      <button class="toggle-more" type="button">View more</button>
+      ${copy ? `<button class="copy" type="button">Copy guidance</button>` : ""}
+    </section>`;
+  }
   return `<section class="section"><h3>${name}</h3><p>${escapeHTML(content)}</p>${copy ? `<button class="copy" type="button">Copy guidance</button>` : ""}</section>`;
 }
 
@@ -316,6 +339,30 @@ function searchable(f) { return [f.ID, f.Title, f.Description, f.HowToFix, f.Ser
 function label(value) { return value === "all" ? "All" : value.charAt(0).toUpperCase() + value.slice(1); }
 function severityClassForScore(score) { return score >= 85 ? "low" : score >= 65 ? "medium" : score >= 40 ? "high" : score >= 20 ? "critical" : "critical"; }
 function escapeHTML(value = "") { return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch])); }
+
+function showFixModal(label, warning, onConfirm) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "fixModal";
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <h2>Apply fix</h2>
+      <p><strong>${escapeHTML(label)}</strong></p>
+      <p class="fix-warning">&#9888; ${escapeHTML(warning)}</p>
+      <div class="modal-actions">
+        <button class="fix-btn" id="modalFixYes">Apply</button>
+        <button class="chip" id="modalFixNo">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#modalFixYes").onclick = onConfirm;
+  overlay.querySelector("#modalFixNo").onclick = closeFixModal;
+}
+
+function closeFixModal() {
+  const overlay = document.getElementById("fixModal");
+  if (overlay) overlay.remove();
+}
 
 init().catch((error) => {
   document.body.innerHTML = `<main class="shell"><section class="detail"><h1>hostveil</h1><p class="muted">Failed to load scan results.</p><pre>${escapeHTML(error.message)}</pre></section></main>`;
