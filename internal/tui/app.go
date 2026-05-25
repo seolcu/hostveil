@@ -185,6 +185,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fixResultMsg:
 		if msg.result.Success {
 			m.fixResult = "✓ " + msg.result.Label
+			if msg.result.Diff != "" {
+				m.fixResult += "\n\n" + msg.result.Diff
+			}
 		} else {
 			m.fixResult = "✗ " + msg.result.Error
 		}

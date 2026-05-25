@@ -113,6 +113,7 @@ func composePortRestrict(ctx Context, bind string) error {
 			return err
 		}
 	}
+	ctx.Diff = f.Diff()
 	return f.Save()
 }
 
@@ -134,6 +135,7 @@ func composeVolumeRO(ctx Context) error {
 			return fmt.Errorf("failed to set read-only volume: %w", err)
 		}
 	}
+	ctx.Diff = f.Diff()
 	return f.Save()
 }
 
@@ -151,6 +153,7 @@ func composeEdit(ctx Context, field string, value interface{}) error {
 			return err
 		}
 	}
+	ctx.Diff = f.Diff()
 	return f.Save()
 }
 
@@ -168,6 +171,7 @@ func composeDel(ctx Context, field string) error {
 			return err
 		}
 	}
+	ctx.Diff = f.Diff()
 	return f.Save()
 }
 
@@ -185,6 +189,7 @@ func composeDrop(ctx Context, field string, value interface{}) error {
 			return err
 		}
 	}
+	ctx.Diff = f.Diff()
 	return f.Save()
 }
 

@@ -20,6 +20,7 @@ const (
 type Context struct {
 	Finding *domain.Finding
 	Log     func(string, ...interface{})
+	Diff    string
 }
 
 func (c Context) ComposePath() string {
@@ -67,7 +68,7 @@ func (f *Fix) Run(ctx Context, actionIdx int) FixResult {
 	if err != nil {
 		return FixResult{Error: err.Error()}
 	}
-	return FixResult{Success: true, Label: action.Label}
+	return FixResult{Success: true, Label: action.Label, Diff: ctx.Diff}
 }
 
 type FixResult struct {
