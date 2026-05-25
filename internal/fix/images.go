@@ -49,9 +49,15 @@ func fixImageCVE(ctx Context) error {
 		var err error
 		f, err = compose.Open(composePath)
 		if err == nil {
-			f.Backup()
-			_ = updateImageTagInCompose(f, image, fixedVer, pkgName)
-			_ = f.Save()
+			if err := f.Backup(); err != nil {
+				return fmt.Errorf("backup failed: %w", err)
+			}
+			if err := updateImageTagInCompose(f, image, fixedVer, pkgName); err != nil {
+				return fmt.Errorf("image tag update failed: %w", err)
+			}
+			if err := f.Save(); err != nil {
+				return fmt.Errorf("compose save failed: %w", err)
+			}
 		}
 	}
 

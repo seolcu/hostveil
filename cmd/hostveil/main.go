@@ -261,7 +261,10 @@ func runUpdate() error {
 	}
 	f.Close()
 
-	exec.Command("tar", "xzf", tmpFile, "-C", "/tmp").Run()
+	if err := exec.Command("tar", "xzf", tmpFile, "-C", "/tmp").Run(); err != nil {
+		os.Remove(tmpFile)
+		return fmt.Errorf("archive extraction failed: %w", err)
+	}
 	if err := exec.Command("install", "-m", "755", "/tmp/hostveil", "/usr/bin/hostveil").Run(); err != nil {
 		return fmt.Errorf("install failed: %w", err)
 	}

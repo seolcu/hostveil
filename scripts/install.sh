@@ -27,6 +27,17 @@ case "$OS" in linux|darwin) ;; *)
   echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
+# ─── SHA256 helper (portable) ─────────────────────────────────────────────
+sha256_hash() {
+  if command -v sha256sum &>/dev/null; then
+    sha256sum "$1" 2>/dev/null | cut -d' ' -f1
+  elif command -v shasum &>/dev/null; then
+    shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1
+  else
+    echo ""
+  fi
+}
+
 # ─── PACKAGE MANAGER ──────────────────────────────────────────────────────
 PM=""
 PM_INSTALL=""
@@ -161,7 +172,7 @@ CHECKSUM_URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/h
 curl -fsSL --retry 3 "$CHECKSUM_URL" -o "/tmp/hostveil-checksums.txt" 2>/dev/null || true
 EXPECTED=$(grep "${TAR}" /tmp/hostveil-checksums.txt 2>/dev/null | cut -d' ' -f1)
 if [[ -n "$EXPECTED" ]]; then
-  ACTUAL=$(sha256sum "/tmp/${TAR}" | cut -d' ' -f1)
+  ACTUAL=$(sha256_hash "/tmp/${TAR}")
   if [[ "$EXPECTED" != "$ACTUAL" ]]; then
     echo "  ERROR: checksum mismatch for ${TAR}"
     echo "    expected: $EXPECTED"

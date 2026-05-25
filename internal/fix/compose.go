@@ -130,7 +130,9 @@ func composeVolumeRO(ctx Context) error {
 		return err
 	}
 	for _, svc := range svcs {
-		f.SetField(svc, "volumes", vol+":ro")
+		if err := f.SetField(svc, "volumes", vol+":ro"); err != nil {
+			return fmt.Errorf("failed to set read-only volume: %w", err)
+		}
 	}
 	return f.Save()
 }

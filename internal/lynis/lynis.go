@@ -12,29 +12,40 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-var reportPath = "/tmp/hostveil-lynis.dat"
-
 func Scan() ([]domain.Finding, error) {
-	os.Remove(reportPath)
+	f, err := os.CreateTemp("", "hostveil-lynis-*.dat")
+	if err != nil {
+		return nil, fmt.Errorf("create temp file: %w", err)
+	}
+	reportPath := f.Name()
+	f.Close()
+	defer os.Remove(reportPath)
 
-	if err := runLynis(); err != nil {
+	if err := runLynis(reportPath); err != nil {
 		return nil, err
 	}
 
-	findings, err := parseReport()
-	os.Remove(reportPath)
+	findings, err := parseReportFile(reportPath)
 	return findings, err
 }
 
-func runLynis() error {
+func runLynis(reportPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
-	return cmd.Run()
+	if err := cmd.Run(); err == nil {
+		return nil
+	}
+
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel2()
+
+	cmd2 := exec.CommandContext(ctx2, "lynis", "audit", "system", "--quiet", "--logfile", reportPath)
+	return cmd2.Run()
 }
 
-func parseReport() ([]domain.Finding, error) {
+func parseReportFile(reportPath string) ([]domain.Finding, error) {
 	data, err := os.ReadFile(reportPath)
 	if err != nil {
 		return nil, fmt.Errorf("lynis report not found: %w", err)

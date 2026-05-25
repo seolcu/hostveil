@@ -96,6 +96,14 @@ func listenWithReclaim(addr string) (net.Listener, error) {
 		return listener, nil
 	}
 	if !isAddrInUse(err) {
+		host, portText, splitErr := net.SplitHostPort(addr)
+		if splitErr == nil && host == "127.0.0.1" {
+			ipv6Addr := net.JoinHostPort("::1", portText)
+			listener, err2 := net.Listen("tcp6", ipv6Addr)
+			if err2 == nil {
+				return listener, nil
+			}
+		}
 		return nil, err
 	}
 
@@ -121,6 +129,10 @@ func listenWithReclaim(addr string) (net.Listener, error) {
 		if pid == self {
 			continue
 		}
+		if !isHostveilProcess(pid) {
+			fmt.Fprintf(os.Stderr, "  Port %d is in use by another process (PID %d); not stopping.\n", port, pid)
+			continue
+		}
 		fmt.Fprintf(os.Stderr, "  Port %d is in use; stopping process %d.\n", port, pid)
 		_ = syscall.Kill(pid, syscall.SIGTERM)
 	}
@@ -139,6 +151,9 @@ func listenWithReclaim(addr string) (net.Listener, error) {
 
 	for pid := range pids {
 		if pid == self {
+			continue
+		}
+		if !isHostveilProcess(pid) {
 			continue
 		}
 		_ = syscall.Kill(pid, syscall.SIGKILL)
@@ -234,6 +249,14 @@ func listenerInodes(path string, port int) (map[string]struct{}, error) {
 	return inodes, nil
 }
 
+func isHostveilProcess(pid int) bool {
+	data, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cmdline"))
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), "hostveil")
+}
+
 type fixRequest struct {
 	Finding     domain.Finding `json:"finding"`
 	ActionIndex int            `json:"action_index"`
@@ -243,6 +266,13 @@ func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
 	if reg == nil {
 		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
 		return
+	}
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		if !strings.HasPrefix(origin, "http://"+r.Host) && !strings.HasPrefix(origin, "https://"+r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
 	}
 	var req fixRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -418,8 +418,12 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 			m.modal = modalFixConfirm
 			return m, nil
 		}
+		m.toast = "Applying fix..."
+		m.toastClear = 5
 		return m.applyFix()
 	case domain.RemediationReview:
+		m.toast = "Applying fix..."
+		m.toastClear = 5
 		m.modal = modalFixConfirm
 		return m, nil
 	case domain.RemediationManual:

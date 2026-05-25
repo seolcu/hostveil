@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/domain"
-	"gopkg.in/yaml.v3"
 )
 
 func ScanAll() ([]domain.Finding, error) {
@@ -98,18 +97,19 @@ func scanProject(p project) []domain.Finding {
 }
 
 func extractImages(path string) []string {
-	data, err := os.ReadFile(path)
+	f, err := compose.Open(path)
+	if err != nil {
+		return nil
+	}
+	svcs, err := f.ServiceNames()
 	if err != nil {
 		return nil
 	}
 	var images []string
-	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "image:") {
-			img := strings.TrimSpace(trimmed[6:])
-			if img != "" {
-				images = append(images, img)
-			}
+	for _, svc := range svcs {
+		img, _ := f.GetFieldRaw(svc, "image")
+		if img != "" {
+			images = append(images, img)
 		}
 	}
 	return images
@@ -240,50 +240,32 @@ func parseSeverity(s string) domain.Severity {
 // ── env_file detection ──
 
 func detectEnvFiles(composePath, project string) []domain.Finding {
-	data, err := os.ReadFile(composePath)
+	f, err := compose.Open(composePath)
 	if err != nil {
 		return nil
 	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil
-	}
-	root := doc.Content[0]
-	if root == nil {
-		return nil
-	}
-	services := findMappingEntry(root, "services")
-	if services == nil {
+	svcs, err := f.ServiceNames()
+	if err != nil {
 		return nil
 	}
 	var findings []domain.Finding
-	for i := 0; i < len(services.Content)-1; i += 2 {
-		svcName := services.Content[i].Value
-		svcNode := services.Content[i+1]
-		envFile := findMappingEntry(svcNode, "env_file")
-		if envFile == nil {
+	for _, svc := range svcs {
+		raw, _ := f.GetFieldRaw(svc, "env_file")
+		if raw == "" {
 			continue
 		}
-		var envPath string
-		if envFile.Kind == yaml.ScalarNode {
-			envPath = envFile.Value
-		} else if envFile.Kind == yaml.SequenceNode && len(envFile.Content) > 0 {
-			envPath = envFile.Content[0].Value
-		}
-		if envPath == "" {
-			continue
-		}
+		envPath := strings.TrimSpace(raw)
 		if !filepath.IsAbs(envPath) {
 			envPath = filepath.Join(filepath.Dir(composePath), envPath)
 		}
 		findings = append(findings, domain.Finding{
 			ID:          "trivy.dr004",
 			Title:       "Secrets in env_file",
-			Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svcName, envPath),
+			Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svc, envPath),
 			HowToFix:    "Restrict .env permissions or migrate to Docker secrets.",
 			Severity:    domain.SeverityHigh,
 			Source:      domain.SourceTrivy,
-			Service:     svcName,
+			Service:     svc,
 			Remediation: domain.RemediationUnavailable,
 			Metadata: map[string]string{
 				"compose_path": composePath,
@@ -293,18 +275,6 @@ func detectEnvFiles(composePath, project string) []domain.Finding {
 		})
 	}
 	return findings
-}
-
-func findMappingEntry(node *yaml.Node, key string) *yaml.Node {
-	if node == nil {
-		return nil
-	}
-	for i := 0; i < len(node.Content)-1; i += 2 {
-		if node.Content[i].Value == key {
-			return node.Content[i+1]
-		}
-	}
-	return nil
 }
 
 func truncate(s string, n int) string {

@@ -242,7 +242,7 @@ function title(f) { return f.Title || "Untitled finding"; }
 function shortId(id = "") { const parts = id.split("."); return parts[parts.length - 1] || id; }
 function searchable(f) { return [f.ID, f.Title, f.Description, f.HowToFix, f.Service, severity(f), source(f), remediation(f), ...Object.values(f.Evidence || {})].join(" ").toLowerCase(); }
 function label(value) { return value === "all" ? "All" : value.charAt(0).toUpperCase() + value.slice(1); }
-function severityClassForScore(score) { return score >= 70 ? "low" : score >= 40 ? "medium" : score >= 20 ? "high" : "critical"; }
+function severityClassForScore(score) { return score >= 85 ? "low" : score >= 65 ? "medium" : score >= 40 ? "high" : score >= 20 ? "critical" : "critical"; }
 function escapeHTML(value = "") { return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch])); }
 
 init().catch((error) => {

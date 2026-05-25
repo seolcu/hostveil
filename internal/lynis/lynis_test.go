@@ -2,6 +2,7 @@ package lynis
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -90,25 +91,22 @@ func TestParseEntry_TooFewParts(t *testing.T) {
 }
 
 func TestParseReport(t *testing.T) {
+	dir := t.TempDir()
+	reportPath := filepath.Join(dir, "report.dat")
 	content := []byte(`warning[]=AUTH-9286|Disable SSH password authentication|Fix it
 suggestion[]=FILE-6310|Fix /etc/shadow permissions|chmod
 warning[]=TEST-2|Another warning with no remediation
 `)
-	origPath := reportPath
-	reportPath = "/tmp/hostveil-lynis-test.dat"
-	defer func() { reportPath = origPath }()
-
 	if err := os.WriteFile(reportPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(reportPath)
 
-	findings, err := parseReport()
+	findings, err := parseReportFile(reportPath)
 	if err != nil {
-		t.Fatalf("parseReport: %v", err)
+		t.Fatalf("parseReportFile: %v", err)
 	}
 	if len(findings) != 3 {
-		t.Fatalf("parseReport returned %d findings, want 3", len(findings))
+		t.Fatalf("parseReportFile returned %d findings, want 3", len(findings))
 	}
 
 	if findings[0].ID != "lynis.AUTH-9286" {
@@ -126,16 +124,13 @@ warning[]=TEST-2|Another warning with no remediation
 }
 
 func TestParseReport_Empty(t *testing.T) {
-	origPath := reportPath
-	reportPath = "/tmp/hostveil-lynis-empty-test.dat"
-	defer func() { reportPath = origPath }()
-
+	dir := t.TempDir()
+	reportPath := filepath.Join(dir, "empty.dat")
 	os.WriteFile(reportPath, []byte{}, 0644)
-	defer os.Remove(reportPath)
 
-	findings, err := parseReport()
+	findings, err := parseReportFile(reportPath)
 	if err != nil {
-		t.Fatalf("parseReport: %v", err)
+		t.Fatalf("parseReportFile: %v", err)
 	}
 	if len(findings) != 0 {
 		t.Errorf("empty report should return 0 findings, got %d", len(findings))
