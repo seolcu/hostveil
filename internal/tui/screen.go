@@ -408,12 +408,15 @@ func renderFixConfirmModal(t Theme, s styles, l layout, m model) string {
 		s.accent.Render("Apply fix"),
 		"",
 	}
-	if m.fixTarget != nil {
+	if m.fixTarget != nil && len(m.fixTarget.Actions) > 0 {
 		lines = append(lines, s.header.Render(m.fixTarget.Label))
-		if m.fixTarget.Warning != "" {
+
+		action := m.fixTarget.Actions[m.fixActionIdx]
+		if action.Warning != "" {
 			lines = append(lines, "")
-			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Render("⚠ "+m.fixTarget.Warning))
+			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Render("⚠ "+action.Warning))
 		}
+
 		if m.fixTarget.Class() == domain.RemediationReview {
 			lines = append(lines, "")
 			lines = append(lines, s.muted.Render("Actions:"))
@@ -422,7 +425,11 @@ func renderFixConfirmModal(t Theme, s styles, l layout, m model) string {
 				if i == m.fixActionIdx {
 					mark = "> "
 				}
-				lines = append(lines, fmt.Sprintf("  %s%s", mark, a.Label))
+				warn := ""
+				if a.Warning != "" {
+					warn = " ⚠"
+				}
+				lines = append(lines, fmt.Sprintf("  %s%s%s", mark, a.Label, warn))
 			}
 		}
 	}

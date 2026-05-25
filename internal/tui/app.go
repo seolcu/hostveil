@@ -242,7 +242,7 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 
 	switch f.Class() {
 	case domain.RemediationAuto:
-		if f.Warning != "" {
+		if f.Actions[0].Warning != "" {
 			m.modal = modalFixConfirm
 			return m, nil
 		}

@@ -19,16 +19,6 @@ func registerComposeFixes(r *Registry) {
 			},
 		}
 	}
-	del := func(field string) Action {
-		return Action{
-			Type:     ActionEdit,
-			Label:    fmt.Sprintf("Remove %s", field),
-			EditPath: field,
-			Apply: func(ctx Context) error {
-				return composeDel(ctx, field)
-			},
-		}
-	}
 	drop := func(field string, value interface{}) Action {
 		return Action{
 			Type:     ActionEdit,
@@ -42,15 +32,15 @@ func registerComposeFixes(r *Registry) {
 
 	r.Register(&Fix{FindingID: "trivy.ds001", Label: "Disable privileged mode", Actions: []Action{edit("privileged", false)}})
 	r.Register(&Fix{FindingID: "trivy.ds002", Label: "Enable read-only root filesystem", Actions: []Action{edit("read_only", true)}})
-	r.Register(&Fix{FindingID: "trivy.ds003", Label: "Remove pid_mode: host", Warning: "Container loses host PID access.", Actions: []Action{del("pid_mode")}})
-	r.Register(&Fix{FindingID: "trivy.ds004", Label: "Remove ipc_mode: host", Warning: "Container loses host IPC access.", Actions: []Action{del("ipc_mode")}})
+	r.Register(&Fix{FindingID: "trivy.ds003", Label: "Remove pid_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove pid_mode: host", Warning: "Container loses host PID access.", Apply: func(ctx Context) error { return composeDel(ctx, "pid_mode") }}}})
+	r.Register(&Fix{FindingID: "trivy.ds004", Label: "Remove ipc_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove ipc_mode: host", Warning: "Container loses host IPC access.", Apply: func(ctx Context) error { return composeDel(ctx, "ipc_mode") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds005", Label: "Drop dangerous capabilities", Actions: []Action{drop("cap_add", "SYS_ADMIN"), drop("cap_add", "NET_ADMIN"), drop("cap_add", "SYS_RAWIO"), drop("cap_add", "SYS_PTRACE"), drop("cap_add", "SYS_MODULE")}})
 	r.Register(&Fix{FindingID: "trivy.ds006", Label: "Add no-new-privileges", Actions: []Action{edit("security_opt", []interface{}{"no-new-privileges:true"})}})
 	r.Register(&Fix{FindingID: "trivy.ds008", Label: "Change restart to unless-stopped", Actions: []Action{edit("restart", "unless-stopped")}})
-	r.Register(&Fix{FindingID: "trivy.ds009", Label: "Set non-root user", Warning: "Ensure image supports non-root operation.", Actions: []Action{edit("user", "1000:1000")}})
+	r.Register(&Fix{FindingID: "trivy.ds009", Label: "Set non-root user", Actions: []Action{{Type: ActionEdit, Label: "Set user: 1000:1000", Warning: "Ensure image supports non-root operation.", Apply: func(ctx Context) error { return composeEdit(ctx, "user", "1000:1000") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds010", Label: "Add memory limit", Actions: []Action{edit("deploy.resources.limits.memory", "512M")}})
 	r.Register(&Fix{FindingID: "trivy.ds011", Label: "Add CPU limit", Actions: []Action{edit("deploy.resources.limits.cpus", "1.0")}})
-	r.Register(&Fix{FindingID: "trivy.ds012", Label: "Add healthcheck", Warning: "Uses default TCP check; customize if needed.", Actions: []Action{edit("healthcheck", map[string]interface{}{"test": []interface{}{"CMD", "curl", "-f", "http://localhost/"}, "interval": "30s", "timeout": "10s", "retries": 3})}})
+	r.Register(&Fix{FindingID: "trivy.ds012", Label: "Add healthcheck", Actions: []Action{{Type: ActionEdit, Label: "Add healthcheck block", Warning: "Uses default TCP check; customize if needed.", Apply: func(ctx Context) error { return composeEdit(ctx, "healthcheck", map[string]interface{}{"test": []interface{}{"CMD", "curl", "-f", "http://localhost/"}, "interval": "30s", "timeout": "10s", "retries": 3}) }}}})
 	r.Register(&Fix{FindingID: "trivy.ds013", Label: "Add tmpfs with noexec", Actions: []Action{edit("tmpfs", "/tmp:noexec")}})
 	r.Register(&Fix{FindingID: "trivy.ds014", Label: "Remove seccomp: unconfined", Actions: []Action{drop("security_opt", "seccomp:unconfined")}})
 	r.Register(&Fix{FindingID: "trivy.ds015", Label: "Remove apparmor: unconfined", Actions: []Action{drop("security_opt", "apparmor:unconfined")}})

@@ -207,7 +207,7 @@ func TestRegisterAll_WarningPreserved(t *testing.T) {
 	if fix == nil {
 		t.Fatal("trivy.ds003 not registered")
 	}
-	if fix.Warning == "" {
-		t.Error("trivy.ds003 should have a warning")
+	if len(fix.Actions) == 0 || fix.Actions[0].Warning == "" {
+		t.Error("trivy.ds003 action should have a warning")
 	}
 }

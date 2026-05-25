@@ -11,11 +11,11 @@ func registerImageFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "trivy.cve-*",
 		Label:     "Update image to patched version",
-		Warning:   "Updating the image may break API compatibility. Verify after applying.",
 		Actions: []Action{
 			{
-				Type:  ActionEdit,
-				Label: "Update image tag and pull",
+				Type:    ActionEdit,
+				Label:   "Update image tag and pull",
+				Warning: "Updating the image may break API compatibility. Verify after applying.",
 				Apply: func(ctx Context) error {
 					return fixImageCVE(ctx)
 				},

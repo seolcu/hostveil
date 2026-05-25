@@ -28,16 +28,6 @@ func registerSystemFixes(r *Registry) {
 			},
 		}
 	}
-	sedEdit := func(pattern, file string) Action {
-		return Action{
-			Type:    ActionExec,
-			Label:   fmt.Sprintf("sed -i '%s' %s", pattern, file),
-			Command: []string{"sed", "-i", pattern, file},
-			Apply: func(ctx Context) error {
-				return exec.Command("sed", "-i", pattern, file).Run()
-			},
-		}
-	}
 	sysctlApply := func(param, value string) Action {
 		return Action{
 			Type:    ActionExec,
@@ -56,14 +46,28 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9286",
 		Label:     "Disable SSH password authentication",
-		Warning:   "Ensure SSH key access is configured before applying. You may lose remote access.",
-		Actions:   []Action{sedEdit(`s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Disable SSH password authentication",
+			Warning: "Ensure SSH key access is configured before applying. You may lose remote access.",
+			Command: []string{"sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config"},
+			Apply: func(ctx Context) error {
+				return exec.Command("sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config").Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9308",
 		Label:     "Restrict root SSH login",
-		Warning:   "Requires sudo or SSH key access for root.",
-		Actions:   []Action{sedEdit(`s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Restrict root SSH login",
+			Warning: "Requires sudo or SSH key access for root.",
+			Command: []string{"sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config"},
+			Apply: func(ctx Context) error {
+				return exec.Command("sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config").Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — File permissions
@@ -87,8 +91,17 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5780",
 		Label:     "Disable IP forwarding",
-		Warning:   "May affect Docker networking or router functions.",
-		Actions:   []Action{sysctlApply("net.ipv4.ip_forward", "0")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Disable IP forwarding",
+			Warning: "May affect Docker networking or router functions.",
+			Apply: func(ctx Context) error {
+				if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=0").Run(); err != nil {
+					return err
+				}
+				return exec.Command("sh", "-c", "echo 'net.ipv4.ip_forward=0' >> /etc/sysctl.conf").Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5820",

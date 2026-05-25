@@ -38,6 +38,7 @@ type Action struct {
 	Type        ActionType
 	Label       string
 	Description string
+	Warning     string
 	EditPath    string
 	Command     []string
 	Apply       func(Context) error
@@ -46,7 +47,6 @@ type Action struct {
 type Fix struct {
 	FindingID string
 	Label     string
-	Warning   string
 	Actions   []Action
 }
 
