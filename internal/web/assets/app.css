@@ -239,7 +239,7 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 
 .empty-detail { display: grid; min-height: 380px; place-content: center; text-align: center; color: var(--muted); }
 .empty-detail span { width: 56px; height: 56px; margin: 0 auto 16px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(100,200,255,0.22), rgba(255,85,115,0.1)); }
-.detail .badge { display: block; margin-bottom: 12px; }
+.detail .badge { display: inline-block; margin-bottom: 12px; }
 .detail h2 { font-size: 26px; line-height: 1.1; letter-spacing: -0.04em; }
 .detail-meta { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 20px 0; padding: 16px; background: rgba(255,255,255,0.035); border: 1px solid var(--line); }
 .detail-meta dt { color: var(--muted); }
@@ -268,6 +268,8 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 
 .loading .findings-panel,
 .loading .filters { display: none; }
+
+.loading .detail { flex: 1 1 100%; }
 
 .tool-status {
   margin: 24px 0;
@@ -331,8 +333,6 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 .evidence-details summary { color: var(--accent); cursor: pointer; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
 .evidence-details[open] { margin-bottom: 8px; }
 
-.collapse-body { max-height: 120px; overflow: hidden; }
-.collapse-body.expanded { max-height: none; }
 .collapsible .collapse-body p { margin: 0; }
 .toggle-more { background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px 0; font-size: 12px; }
 .toggle-more:hover { text-decoration: underline; }

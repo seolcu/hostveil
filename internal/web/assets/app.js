@@ -234,8 +234,13 @@ function renderDetail(f) {
   detail.querySelectorAll(".toggle-more").forEach((btn) => {
     btn.onclick = () => {
       const body = btn.parentElement.querySelector(".collapse-body");
-      const expanded = body.classList.toggle("expanded");
-      btn.textContent = expanded ? "View less" : "View more";
+      if (btn.textContent === "View more") {
+        body.innerHTML = `<p>${body.dataset.full}</p>`;
+        btn.textContent = "View less";
+      } else {
+        body.innerHTML = `<p>${body.dataset.truncated}</p>`;
+        btn.textContent = "View more";
+      }
     };
   });
   detail.querySelectorAll(".copy").forEach((btn) => {
@@ -312,7 +317,7 @@ function section(name, content, copy = false) {
     const truncated = content.slice(0, 300) + "...";
     return `<section class="section collapsible">
       <h3>${name}</h3>
-      <div class="collapse-body" data-full="${escapeHTML(content)}">
+      <div class="collapse-body" data-full="${escapeHTML(content)}" data-truncated="${escapeHTML(truncated)}">
         <p>${escapeHTML(truncated)}</p>
       </div>
       <button class="toggle-more" type="button">View more</button>
