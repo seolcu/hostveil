@@ -53,6 +53,9 @@ button, input, select { font: inherit; }
   width: min(1760px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .topbar {
@@ -61,6 +64,7 @@ button, input, select { font: inherit; }
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 18px;
+  flex-shrink: 0;
 }
 
 .eyebrow {
@@ -107,6 +111,7 @@ h1 {
   grid-template-columns: repeat(6, minmax(120px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .metric {
@@ -130,10 +135,11 @@ h1 {
 }
 
 .workspace {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 280px minmax(440px, 1fr) minmax(360px, 0.72fr);
   gap: 14px;
-  height: calc(100vh - 210px);
 }
 
 .filters { align-self: start; padding: 18px; position: sticky; top: 18px; border: 1px solid var(--line); background: rgba(17, 21, 34, 0.88); box-shadow: 0 24px 60px var(--shadow); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
@@ -239,10 +245,12 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 .fix-error { color: var(--critical); margin-top: 12px; font-weight: 700; }
 .fix-diff { margin-top: 8px; padding: 10px; background: #0b0e17; border: 1px solid var(--line); white-space: pre-wrap; font-size: 12px; }
 
+.loading .workspace { flex-grow: 0; }
+
 .loading .findings-panel,
 .loading .filters { display: none; }
 
-.loading .detail { grid-column: 1 / -1; min-height: auto; }
+.loading .detail { grid-column: 1 / -1; }
 
 .tool-status {
   margin: 24px 0;
