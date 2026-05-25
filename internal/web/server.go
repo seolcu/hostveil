@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/lynis"
+	"github.com/seolcu/hostveil/internal/trivy"
 )
 
 //go:embed assets/*
@@ -62,6 +65,9 @@ func Serve(opts Options) error {
 	})
 	mux.HandleFunc("POST /api/fix", func(w http.ResponseWriter, r *http.Request) {
 		handleFix(w, r, opts.Fixes)
+	})
+	mux.HandleFunc("POST /api/rescan", func(w http.ResponseWriter, r *http.Request) {
+		handleRescan(w, r, opts)
 	})
 	mux.Handle("/", http.FileServerFS(staticFS))
 
@@ -260,6 +266,7 @@ func isHostveilProcess(pid int) bool {
 type fixRequest struct {
 	Finding     domain.Finding `json:"finding"`
 	ActionIndex int            `json:"action_index"`
+	InfoOnly    bool           `json:"info_only"`
 }
 
 func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
@@ -286,6 +293,24 @@ func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
 		return
 	}
 
+	if req.InfoOnly {
+		warning := ""
+		actionLabels := make([]string, len(f.Actions))
+		if len(f.Actions) > req.ActionIndex {
+			warning = f.Actions[req.ActionIndex].Warning
+		}
+		for i, a := range f.Actions {
+			actionLabels[i] = a.Label
+		}
+		writeJSON(w, map[string]interface{}{
+			"success": true,
+			"label":   f.Label,
+			"warning": warning,
+			"actions": actionLabels,
+		})
+		return
+	}
+
 	result := f.Run(fix.Context{Finding: &req.Finding, Log: func(s string, args ...interface{}) {}}, req.ActionIndex)
 	resp := map[string]interface{}{
 		"success": result.Success,
@@ -299,3 +324,43 @@ func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
 	}
 	writeJSON(w, resp)
 }
+
+func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
+	opts.Live.ResetForRescan()
+	go runRescan(opts)
+	writeJSON(w, map[string]string{"status": "rescanning"})
+}
+
+func runRescan(opts Options) {
+	if _, err := exec.LookPath("trivy"); err == nil {
+		opts.Live.SetToolStatus("trivy", domain.ToolRunning, "Scanning compose projects...")
+		findings, scanErr := trivy.ScanAll()
+		if scanErr != nil {
+			opts.Live.SetToolStatus("trivy", domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
+		} else {
+			opts.Fixes.Classify(findings)
+			opts.Live.SetToolStatus("trivy", domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
+			opts.Live.AddFindings(findings)
+		}
+	} else {
+		opts.Live.SetToolStatus("trivy", domain.ToolSkipped, "Not found (run 'hostveil setup')")
+	}
+
+	if _, err := exec.LookPath("lynis"); err == nil {
+		opts.Live.SetToolStatus("lynis", domain.ToolRunning, "Auditing system hardening...")
+		findings, scanErr := lynis.Scan()
+		if scanErr != nil {
+			opts.Live.SetToolStatus("lynis", domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
+		} else {
+			opts.Fixes.Classify(findings)
+			opts.Live.SetToolStatus("lynis", domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
+			opts.Live.AddFindings(findings)
+		}
+	} else {
+		opts.Live.SetToolStatus("lynis", domain.ToolSkipped, "Not found (run 'hostveil setup')")
+	}
+
+	opts.Live.Finalize()
+}
+
+

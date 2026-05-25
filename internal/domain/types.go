@@ -97,6 +97,7 @@ type Finding struct {
 	Remediation RemediationKind
 	Evidence    map[string]string
 	Metadata    map[string]string
+	Fixed       bool
 }
 
 func (f *Finding) IsFixable() bool {

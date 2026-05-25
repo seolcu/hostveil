@@ -82,6 +82,25 @@ func (sp *ScanProgress) Finalize() {
 	sp.Grade = GradeFromScore(sp.Score)
 }
 
+func (sp *ScanProgress) Recalculate() {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.Score = CalculateScore(sp.Findings)
+	sp.Grade = GradeFromScore(sp.Score)
+}
+
+func (sp *ScanProgress) ResetForRescan() {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.Phase = "loading"
+	sp.Score = 0
+	sp.Grade = ""
+	for _, t := range sp.Tools {
+		t.Status = ToolPending
+		t.Message = "Waiting..."
+	}
+}
+
 func (sp *ScanProgress) SetUpdateAvailable(v string) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()

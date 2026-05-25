@@ -283,3 +283,10 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
   .table-wrap { max-height: none; }
   th:nth-child(2), td:nth-child(2), th:nth-child(5), td:nth-child(5) { display: none; }
 }
+
+.fixed td { opacity: 0.45; }
+
+.fix-confirm { padding: 4px 0; }
+.fix-confirm p { margin: 8px 0; }
+.fix-warning { color: var(--high); }
+.fix-confirm-actions { display: flex; gap: 10px; margin-top: 14px; }

@@ -411,6 +411,7 @@ func (m model) renderHelpModal() string {
 			"  /             Search findings",
 			"  t             Change theme",
 			"  f             Apply fix",
+			"  Ctrl+R        Recalculate score",
 			"  0-4           Filter by severity (0=all, 1=critical...)",
 			"  s             Cycle source filter (all→trivy→lynis)",
 			"  o             Cycle sort order",
@@ -426,6 +427,7 @@ func (m model) renderHelpModal() string {
 			"  Esc, h        Back to list",
 			"  f             Apply fix",
 			"  t             Change theme",
+			"  Ctrl+R        Recalculate score",
 			"  ?             This help",
 			"  q             Quit",
 		)

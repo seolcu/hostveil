@@ -184,10 +184,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case fixResultMsg:
 		if msg.result.Success {
+			visible := m.visibleFindings()
+			idx := m.table.Cursor()
+			if idx >= 0 && idx < len(visible) {
+				for i := range m.snap.Findings {
+					if m.snap.Findings[i].ID == visible[idx].ID {
+						m.snap.Findings[i].Fixed = true
+						break
+					}
+				}
+			}
 			m.fixResult = "✓ " + msg.result.Label
 			if msg.result.Diff != "" {
 				m.fixResult += "\n\n" + msg.result.Diff
 			}
+			m.rebuildTable()
 		} else {
 			m.fixResult = "✗ " + msg.result.Error
 		}
@@ -292,6 +303,13 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.table.SetCursor(len(visible) - 1)
 			m.updateDetailViewport()
 		}
+		return m, nil
+	case "ctrl+r":
+		m.live.Recalculate()
+		m.snap = m.live.Snapshot()
+		m.snapOK = true
+		m.toast = "Score recalculated"
+		m.toastClear = 5
 		return m, nil
 	}
 
@@ -613,13 +631,17 @@ func (m *model) rebuildTable() {
 	rows := make([]table.Row, len(visible))
 	for i, f := range visible {
 		id := shortID(f.ID)
-		rows[i] = table.Row{
-			strings.ToUpper(short(f.Severity.String(), 3)),
-			strings.ToUpper(short(f.Source.String(), 3)),
-			id,
-			f.Title,
-			f.Remediation.Label(),
+		sev := strings.ToUpper(short(f.Severity.String(), 3))
+		src := strings.ToUpper(short(f.Source.String(), 3))
+		title := f.Title
+		fixLbl := f.Remediation.Label()
+		if f.Fixed {
+			sev = "✓"
+			src = ""
+			title = "~" + title
+			fixLbl = "Fixed"
 		}
+		rows[i] = table.Row{sev, src, id, title, fixLbl}
 	}
 	m.table.SetRows(rows)
 	m.table.SetWidth(m.listWidth())
@@ -693,6 +715,7 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "clear filters")),
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
+		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	}
@@ -706,6 +729,7 @@ func (m model) detailKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
+		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	}}
 }

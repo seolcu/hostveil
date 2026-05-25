@@ -54,6 +54,24 @@ function bindControls() {
     if ($("query")) $("query").value = "";
     render();
   });
+
+  const rescanBtn = document.createElement("button");
+  rescanBtn.id = "rescanBtn";
+  rescanBtn.type = "button";
+  rescanBtn.textContent = "Re-scan";
+  $("clearFilters").parentNode.appendChild(rescanBtn);
+  rescanBtn.addEventListener("click", async () => {
+    rescanBtn.disabled = true;
+    rescanBtn.textContent = "Scanning...";
+    try {
+      await fetch("/api/rescan", { method: "POST" });
+      state.pollTimer = setInterval(fetchResult, 2000);
+    } catch (e) {
+      console.error("Rescan failed");
+    }
+    rescanBtn.disabled = false;
+    rescanBtn.textContent = "Re-scan";
+  });
 }
 
 function render() {
@@ -158,14 +176,22 @@ function renderChips(id, values, key) {
 
 function renderTable(visible) {
   $("findingCount").textContent = `${visible.length} visible`;
-  $("findings").innerHTML = visible.map((f, index) => `
-    <tr class="${index === state.selected ? "selected" : ""}" data-index="${index}">
-      <td><span class="badge ${severity(f)}">${severity(f)}</span></td>
-      <td class="muted">${source(f)}</td>
+  $("findings").innerHTML = visible.map((f, index) => {
+    const fixedClass = f.Fixed ? "fixed" : "";
+    const selClass = index === state.selected ? "selected" : "";
+    const rowClass = [fixedClass, selClass].filter(Boolean).join(" ");
+    const sevDisplay = f.Fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
+    const srcDisplay = f.Fixed ? "" : `<span class="muted">${source(f)}</span>`;
+    const fixDisplay = f.Fixed ? "Fixed" : label(remediation(f));
+    const titleDisplay = f.Fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
+    return `<tr class="${rowClass}" data-index="${index}">
+      <td>${sevDisplay}</td>
+      <td>${srcDisplay}</td>
       <td class="id">${shortId(f.ID)}</td>
-      <td class="title">${escapeHTML(title(f))}</td>
-      <td class="muted">${label(remediation(f))}</td>
-    </tr>`).join("") || `<tr><td colspan="5" class="muted">No findings match the current filters.</td></tr>`;
+      <td class="title">${titleDisplay}</td>
+      <td class="muted">${fixDisplay}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" class="muted">No findings match the current filters.</td></tr>`;
   $("findings").querySelectorAll("tr[data-index]").forEach((row) => {
     row.addEventListener("click", () => {
       state.selected = Number(row.dataset.index);
@@ -205,25 +231,68 @@ function renderDetail(f) {
 
 async function applyFix(finding, button) {
   const resultDiv = $("fixResult");
+  resultDiv.innerHTML = "";
+
+  // Step 1: Get fix info (warning, actions)
+  try {
+    const infoResp = await fetch("/api/fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finding, action_index: 0, info_only: true }),
+    });
+    const info = await infoResp.json();
+    if (!info.success) {
+      resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(info.error || "Fix info unavailable")}</div>`;
+      return;
+    }
+
+    if (info.warning) {
+      // Show confirmation with warning
+      resultDiv.innerHTML = `
+        <div class="fix-confirm">
+          <p><strong>${escapeHTML(info.label)}</strong></p>
+          <p class="fix-warning">&#9888; ${escapeHTML(info.warning)}</p>
+          <div class="fix-confirm-actions">
+            <button id="fixConfirmYes" class="fix-btn">Apply</button>
+            <button id="fixConfirmNo" type="button" class="chip">Cancel</button>
+          </div>
+        </div>`;
+      $("fixConfirmYes").onclick = () => doApplyFix(finding, button);
+      $("fixConfirmNo").onclick = () => { resultDiv.innerHTML = ""; };
+      return;
+    }
+  } catch (error) {
+    resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(error.message)}</div>`;
+    return;
+  }
+
+  // No warning, apply directly
+  doApplyFix(finding, button);
+}
+
+async function doApplyFix(finding, button) {
+  const resultDiv = $("fixResult");
   button.disabled = true;
   button.textContent = "Applying...";
   try {
     const response = await fetch("/api/fix", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ finding: finding, action_index: 0 }),
+      body: JSON.stringify({ finding, action_index: 0 }),
     });
     const result = await response.json();
     if (result.success) {
-      resultDiv.innerHTML = `<div class="fix-success">✓ ${escapeHTML(result.label || "Fixed")}</div>`;
+      resultDiv.innerHTML = `<div class="fix-success">&#10003; ${escapeHTML(result.label || "Fixed")}</div>`;
+      finding.Fixed = true;
+      render();
     } else {
-      resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(result.error || "Fix failed")}</div>`;
+      resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(result.error || "Fix failed")}</div>`;
     }
     if (result.diff) {
       resultDiv.innerHTML += `<pre class="fix-diff">${escapeHTML(result.diff)}</pre>`;
     }
   } catch (error) {
-    resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(error.message)}</div>`;
+    resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(error.message)}</div>`;
   }
   button.disabled = false;
   button.textContent = "Fix";
