@@ -234,7 +234,7 @@ th:nth-child(1) { width: 90px; }
 th:nth-child(2) { width: 70px; }
 th:nth-child(3) { width: 140px; }
 th:nth-child(4) { width: 100%; }
-th:nth-child(5) { width: 70px; }
+th:nth-child(5) { width: 125px; }
 .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; padding: 4px 7px; border: 1px solid currentColor; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .critical { color: var(--critical); }
