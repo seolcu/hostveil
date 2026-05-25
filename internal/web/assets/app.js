@@ -234,14 +234,8 @@ function renderDetail(f) {
   detail.querySelectorAll(".toggle-more").forEach((btn) => {
     btn.onclick = () => {
       const body = btn.parentElement.querySelector(".collapse-body");
-      if (btn.textContent === "View more") {
-        body.innerHTML = `<p>${body.dataset.full}</p>`;
-        btn.textContent = "View less";
-      } else {
-        const lines = body.dataset.full.split("\n");
-        body.innerHTML = `<p>${lines.slice(0, 5).join("\n")}...</p>`;
-        btn.textContent = "View more";
-      }
+      const expanded = body.classList.toggle("expanded");
+      btn.textContent = expanded ? "View less" : "View more";
     };
   });
   detail.querySelectorAll(".copy").forEach((btn) => {
@@ -313,14 +307,13 @@ async function doApplyFix(finding, button) {
 
 function section(name, content, copy = false) {
   if (!content) return "";
-  const lines = content.split("\n").length;
-  const longText = lines > 5 || content.length > 300;
+  const longText = content.length > 300;
   if (longText) {
-    const truncated = content.split("\n").slice(0, 5).join("\n");
+    const truncated = content.slice(0, 300) + "...";
     return `<section class="section collapsible">
       <h3>${name}</h3>
       <div class="collapse-body" data-full="${escapeHTML(content)}">
-        <p>${escapeHTML(truncated)}...</p>
+        <p>${escapeHTML(truncated)}</p>
       </div>
       <button class="toggle-more" type="button">View more</button>
       ${copy ? `<button class="copy" type="button">Copy guidance</button>` : ""}
