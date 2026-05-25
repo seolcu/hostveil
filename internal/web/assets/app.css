@@ -134,6 +134,7 @@ h1 {
   border: 1px solid var(--line);
   background: rgba(17, 21, 34, 0.88);
   box-shadow: 0 24px 60px var(--shadow);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 

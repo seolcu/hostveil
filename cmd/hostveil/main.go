@@ -64,16 +64,15 @@ func run() error {
 
 	live := domain.NewScanProgress(noUpdate)
 
-	notify := func() {}
 	m := tui.NewApp(live, noUpdate, fixRegistry)
 	p := tea.NewProgram(m)
 	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
 
 	if !noUpdate {
-		go runUpdateCheckBackground(live, notify)
+		go runUpdateCheckBackground(live)
 	}
-	go runScanBackground(live, "trivy", notify)
-	go runScanBackground(live, "lynis", notify)
+	go runScanBackground(live, "trivy")
+	go runScanBackground(live, "lynis")
 
 	_, err := p.Run()
 	return err
@@ -92,10 +91,10 @@ func runServe(args []string) error {
 	live := domain.NewScanProgress(skipUpdate)
 
 	if !skipUpdate {
-		go runUpdateCheckBackground(live, nil)
+		go runUpdateCheckBackground(live)
 	}
-	go runScanBackground(live, "trivy", nil)
-	go runScanBackground(live, "lynis", nil)
+	go runScanBackground(live, "trivy")
+	go runScanBackground(live, "lynis")
 
 	fmt.Printf("  Starting Web UI at http://%s\n", *addr)
 	fmt.Println("  Press Ctrl+C to stop.")
@@ -104,7 +103,7 @@ func runServe(args []string) error {
 	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry})
 }
 
-func runScanBackground(live *domain.ScanProgress, tool string, notify func()) {
+func runScanBackground(live *domain.ScanProgress, tool string) {
 	if _, err := exec.LookPath(tool); err != nil {
 		live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
 		return
@@ -145,7 +144,7 @@ func scanningMessage(tool string) string {
 	}
 }
 
-func runUpdateCheckBackground(live *domain.ScanProgress, notify func()) {
+func runUpdateCheckBackground(live *domain.ScanProgress) {
 	live.SetToolStatus("update", domain.ToolRunning, "Checking for updates...")
 
 	version, err := checkLatestVersion()
@@ -174,6 +173,9 @@ func checkLatestVersion() (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == 429 {
+			return "", fmt.Errorf("GitHub API rate limited (status %d). Use --no-update or set --version", resp.StatusCode)
+		}
 		return "", fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 
