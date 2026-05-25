@@ -180,9 +180,11 @@ function renderDetail(f) {
   }
   const evidence = f.Evidence || {};
   const evidenceHTML = Object.keys(evidence).sort().map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("");
+  const fixable = f.Remediation === 0 || f.Remediation === 1; // Auto or Review
   $("detail").innerHTML = `
     <span class="badge ${severity(f)}">${severity(f)}</span>
     <h2>${escapeHTML(title(f))}</h2>
+    ${fixable ? `<button class="fix-btn" data-finding-id="${escapeHTML(f.ID)}">Fix</button>` : ""}
     <dl class="detail-meta">
       <dt>ID</dt><dd>${escapeHTML(f.ID || "")}</dd>
       <dt>Source</dt><dd>${source(f)}</dd>
@@ -192,9 +194,38 @@ function renderDetail(f) {
     ${section("Description", f.Description)}
     ${section("How to fix", f.HowToFix, true)}
     ${evidenceHTML ? `<section class="section"><h3>Evidence</h3>${evidenceHTML}</section>` : ""}
+    <div id="fixResult"></div>
   `;
   const button = $("detail").querySelector(".copy");
   if (button) button.addEventListener("click", () => navigator.clipboard?.writeText(f.HowToFix || ""));
+  const fixBtn = $("detail").querySelector(".fix-btn");
+  if (fixBtn) fixBtn.addEventListener("click", () => applyFix(f, fixBtn));
+}
+
+async function applyFix(finding, button) {
+  const resultDiv = $("fixResult");
+  button.disabled = true;
+  button.textContent = "Applying...";
+  try {
+    const response = await fetch("/api/fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finding: finding, action_index: 0 }),
+    });
+    const result = await response.json();
+    if (result.success) {
+      resultDiv.innerHTML = `<div class="fix-success">✓ ${escapeHTML(result.label || "Fixed")}</div>`;
+    } else {
+      resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(result.error || "Fix failed")}</div>`;
+    }
+    if (result.diff) {
+      resultDiv.innerHTML += `<pre class="fix-diff">${escapeHTML(result.diff)}</pre>`;
+    }
+  } catch (error) {
+    resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(error.message)}</div>`;
+  }
+  button.disabled = false;
+  button.textContent = "Fix";
 }
 
 function section(name, content, copy = false) {

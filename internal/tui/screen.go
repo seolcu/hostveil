@@ -305,6 +305,10 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	}
 	b.WriteString(metaLine(t, "Remediation", f.Remediation.Label()))
 
+	if f.IsFixable() {
+		b.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Press 'f' to fix") + "\n")
+	}
+
 	if f.Description != "" {
 		b.WriteString("\n" + sectionTitle(t, "Description") + "\n")
 		b.WriteString(lipgloss.Wrap(f.Description, width, " ") + "\n")
@@ -339,6 +343,10 @@ func renderWithModal(m model, base string) string {
 		modal = renderHelpModal(t, s, l)
 	case modalTheme:
 		modal = renderThemeModal(t, s, l, m.themeCursor)
+	case modalFixConfirm:
+		modal = renderFixConfirmModal(t, s, l, m)
+	case modalFixResult:
+		modal = renderFixResultModal(t, s, l, m)
 	default:
 		return base
 	}
@@ -393,6 +401,45 @@ func renderThemeModal(t Theme, s styles, l layout, cursor int) string {
 	)
 	body += "\n\n" + s.muted.Render("↑/k preview  ↓/j preview  Enter select  Esc/q cancel")
 	return s.modal.Width(clamp(l.width-8, 72, 108)).Render(body)
+}
+
+func renderFixConfirmModal(t Theme, s styles, l layout, m model) string {
+	lines := []string{
+		s.accent.Render("Apply fix"),
+		"",
+	}
+	if m.fixTarget != nil {
+		lines = append(lines, s.header.Render(m.fixTarget.Label))
+		if m.fixTarget.Warning != "" {
+			lines = append(lines, "")
+			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Render("⚠ "+m.fixTarget.Warning))
+		}
+		if m.fixTarget.Class() == domain.RemediationReview {
+			lines = append(lines, "")
+			lines = append(lines, s.muted.Render("Actions:"))
+			for i, a := range m.fixTarget.Actions {
+				mark := "  "
+				if i == m.fixActionIdx {
+					mark = "> "
+				}
+				lines = append(lines, fmt.Sprintf("  %s%s", mark, a.Label))
+			}
+		}
+	}
+	lines = append(lines, "")
+	lines = append(lines, s.muted.Render("Apply? (y/N)"))
+	return s.modal.Width(clamp(l.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+}
+
+func renderFixResultModal(t Theme, s styles, l layout, m model) string {
+	lines := []string{
+		s.accent.Render("Fix result"),
+		"",
+		m.fixResult,
+		"",
+		s.muted.Render("Press enter to close"),
+	}
+	return s.modal.Width(clamp(l.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
 }
 
 func renderThemePreview(t Theme) string {

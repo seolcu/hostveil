@@ -16,14 +16,16 @@ import (
 	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
+	"github.com/seolcu/hostveil/internal/fix"
 )
 
 //go:embed assets/*
 var assets embed.FS
 
 type Options struct {
-	Addr string
-	Live *domain.ScanProgress
+	Addr  string
+	Live  *domain.ScanProgress
+	Fixes *fix.Registry
 }
 
 func Serve(opts Options) error {
@@ -54,6 +56,9 @@ func Serve(opts Options) error {
 	})
 	mux.HandleFunc("GET /api/result", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, opts.Live.Snapshot())
+	})
+	mux.HandleFunc("POST /api/fix", func(w http.ResponseWriter, r *http.Request) {
+		handleFix(w, r, opts.Fixes)
 	})
 	mux.Handle("/", http.FileServerFS(staticFS))
 
@@ -224,4 +229,40 @@ func listenerInodes(path string, port int) (map[string]struct{}, error) {
 		inodes[fields[9]] = struct{}{}
 	}
 	return inodes, nil
+}
+
+type fixRequest struct {
+	Finding     domain.Finding `json:"finding"`
+	ActionIndex int            `json:"action_index"`
+}
+
+func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
+	if reg == nil {
+		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+	var req fixRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request: " + err.Error()})
+		return
+	}
+
+	f := reg.Lookup(req.Finding.ID)
+	if f == nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "no fix registered for this finding"})
+		return
+	}
+
+	result := f.Run(fix.Context{Finding: &req.Finding, Log: func(s string, args ...interface{}) {}}, req.ActionIndex)
+	resp := map[string]interface{}{
+		"success": result.Success,
+		"label":   result.Label,
+	}
+	if result.Error != "" {
+		resp["error"] = result.Error
+	}
+	if result.Diff != "" {
+		resp["diff"] = result.Diff
+	}
+	writeJSON(w, resp)
 }

@@ -64,11 +64,25 @@ func scanProject(p project) []domain.Finding {
 	var all []domain.Finding
 
 	cfgs, _ := runConfig(p.ComposePath)
+	for i := range cfgs {
+		if cfgs[i].Metadata == nil {
+			cfgs[i].Metadata = map[string]string{}
+		}
+		cfgs[i].Metadata["compose_path"] = p.ComposePath
+		cfgs[i].Metadata["project"] = p.Name
+	}
 	all = append(all, cfgs...)
 
 	images := extractImages(p.ComposePath)
 	for _, img := range images {
 		findings, _ := runImage(img)
+		for i := range findings {
+			if findings[i].Metadata == nil {
+				findings[i].Metadata = map[string]string{}
+			}
+			findings[i].Metadata["compose_path"] = p.ComposePath
+			findings[i].Metadata["project"] = p.Name
+		}
 		all = append(all, findings...)
 	}
 

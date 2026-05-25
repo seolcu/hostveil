@@ -13,11 +13,19 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
+	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/lynis"
 	"github.com/seolcu/hostveil/internal/trivy"
 	"github.com/seolcu/hostveil/internal/tui"
 	"github.com/seolcu/hostveil/internal/web"
 )
+
+var fixRegistry *fix.Registry
+
+func init() {
+	fixRegistry = fix.New()
+	fix.RegisterAll(fixRegistry)
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -52,7 +60,7 @@ func run() error {
 	live := domain.NewScanProgress(noUpdate)
 
 	notify := func() {}
-	m := tui.NewApp(live, noUpdate)
+	m := tui.NewApp(live, noUpdate, fixRegistry)
 	p := tea.NewProgram(m)
 	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
 
@@ -88,7 +96,7 @@ func runServe(args []string) error {
 	fmt.Println("  Press Ctrl+C to stop.")
 	fmt.Println()
 
-	return web.Serve(web.Options{Addr: *addr, Live: live})
+	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry})
 }
 
 func runScanBackground(live *domain.ScanProgress, tool string, notify func()) {
@@ -111,6 +119,7 @@ func runScanBackground(live *domain.ScanProgress, tool string, notify func()) {
 	if scanErr != nil {
 		live.SetToolStatus(tool, domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
 	} else {
+		fixRegistry.Classify(findings)
 		live.SetToolStatus(tool, domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
 		live.AddFindings(findings)
 	}

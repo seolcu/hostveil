@@ -213,6 +213,22 @@ tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 .section pre { white-space: pre-wrap; word-break: break-word; padding: 14px; border: 1px solid var(--line); background: #0b0e17; }
 .copy { margin-top: 10px; }
 
+.fix-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  color: #090b12;
+  background: var(--low);
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fix-btn:hover { filter: brightness(1.2); }
+.fix-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.fix-success { color: var(--low); margin-top: 12px; font-weight: 700; }
+.fix-error { color: var(--critical); margin-top: 12px; font-weight: 700; }
+.fix-diff { margin-top: 8px; padding: 10px; background: #0b0e17; border: 1px solid var(--line); white-space: pre-wrap; font-size: 12px; }
+
 .loading .findings-panel,
 .loading .filters { display: none; }
 
