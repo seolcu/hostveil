@@ -17,15 +17,6 @@ type Theme struct {
 
 func DefaultTheme() Theme     { return allThemes[0] }
 func AllThemes() []Theme      { return allThemes }
-func GetTheme(s string) (Theme, bool) {
-	for _, t := range allThemes {
-		if t.Name == s {
-			return t, true
-		}
-	}
-	return Theme{}, false
-}
-
 var allThemes = []Theme{
 	{
 		Name: "Tokyo Night", Background: "#1a1b26", Surface: "#24283b",

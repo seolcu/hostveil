@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -40,7 +39,7 @@ type composeLSProject struct {
 }
 
 func discoverProjects() ([]project, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), domain.DockerComposeTimeout)
 	defer cancel()
 
 	out, err := exec.CommandContext(ctx, "docker", "compose", "ls", "--format", "json").Output()
@@ -132,7 +131,7 @@ type misconfig struct {
 }
 
 func runConfig(path string) ([]domain.Finding, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyConfigTimeout)
 	defer cancel()
 
 	out, err := exec.CommandContext(ctx, "trivy", "config",
@@ -183,7 +182,7 @@ type vuln struct {
 }
 
 func runImage(image string) ([]domain.Finding, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyImageTimeout)
 	defer cancel()
 
 	out, err := exec.CommandContext(ctx, "trivy", "image",

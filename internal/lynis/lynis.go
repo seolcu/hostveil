@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
 )
@@ -30,7 +29,7 @@ func Scan() ([]domain.Finding, error) {
 }
 
 func runLynis(reportPath string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), domain.LynisAuditTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
@@ -38,7 +37,7 @@ func runLynis(reportPath string) error {
 		return nil
 	}
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), domain.LynisAuditTimeout)
 	defer cancel2()
 
 	cmd2 := exec.CommandContext(ctx2, "lynis", "audit", "system", "--quiet", "--logfile", reportPath)

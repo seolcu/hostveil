@@ -100,9 +100,4 @@ func TestFinding_IsFixable(t *testing.T) {
 	}
 }
 
-func TestScanResult_TotalFindings(t *testing.T) {
-	r := &ScanResult{Findings: []Finding{{}, {}}}
-	if got := r.TotalFindings(); got != 2 {
-		t.Errorf("TotalFindings() = %d, want 2", got)
-	}
-}
+

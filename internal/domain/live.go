@@ -88,12 +88,6 @@ func (sp *ScanProgress) SetUpdateAvailable(v string) {
 	sp.UpdateAvailable = v
 }
 
-func (sp *ScanProgress) SetGrade(g string) {
-	sp.mu.Lock()
-	defer sp.mu.Unlock()
-	sp.Grade = g
-}
-
 type ToolStateJSON struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
@@ -126,21 +120,6 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 		Grade:           sp.Grade,
 	}
 }
-
-func (sp *ScanProgress) ToolCounts() (total, fixable int, sources map[Source]int) {
-	sp.mu.RLock()
-	defer sp.mu.RUnlock()
-	sources = map[Source]int{}
-	for _, f := range sp.Findings {
-		if f.IsFixable() {
-			fixable++
-		}
-		sources[f.Source]++
-	}
-	return len(sp.Findings), fixable, sources
-}
-
-type ProgressTick struct{}
 
 func CalculateScore(findings []Finding) uint8 {
 	if len(findings) == 0 {
@@ -181,12 +160,4 @@ func GradeFromScore(score uint8) string {
 	}
 }
 
-func CountFixable(findings []Finding) int {
-	n := 0
-	for _, f := range findings {
-		if f.IsFixable() {
-			n++
-		}
-	}
-	return n
-}
+

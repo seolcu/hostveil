@@ -42,14 +42,20 @@ func mustOpen(t *testing.T, path string) *File {
 	return f
 }
 
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
 func TestOpen(t *testing.T) {
 	path := writeTestCompose(t, testCompose)
 	f := mustOpen(t, path)
 	if f == nil {
 		t.Fatal("Open returned nil")
-	}
-	if f.OriginalContent() != testCompose {
-		t.Errorf("OriginalContent mismatch")
 	}
 }
 
@@ -77,7 +83,7 @@ func TestSetField_Scalar(t *testing.T) {
 	if err := f.Save(); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	out := f.Render()
+	out := readFile(t, f.path)
 	if !strings.Contains(out, "privileged: false") {
 		t.Errorf("output should contain 'privileged: false'\n%s", out)
 	}
@@ -90,7 +96,7 @@ func TestSetField_NewField(t *testing.T) {
 		t.Fatalf("SetField: %v", err)
 	}
 	f.Save()
-	out := f.Render()
+	out := readFile(t, f.path)
 	if !strings.Contains(out, "read_only: true") {
 		t.Errorf("output should contain 'read_only: true'\n%s", out)
 	}
@@ -103,7 +109,7 @@ func TestSetField_NestedPath(t *testing.T) {
 		t.Fatalf("SetField nested: %v", err)
 	}
 	f.Save()
-	out := f.Render()
+	out := readFile(t, f.path)
 	if !strings.Contains(out, "memory: 512M") {
 		t.Errorf("output should contain 'memory: 512M'\n%s", out)
 	}
@@ -120,7 +126,7 @@ func TestSetField_MapValue(t *testing.T) {
 		t.Fatalf("SetField healthcheck: %v", err)
 	}
 	f.Save()
-	out := f.Render()
+	out := readFile(t, f.path)
 	checks := []string{"healthcheck", "interval: 30s", "curl"}
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
@@ -136,7 +142,7 @@ func TestSetField_BoolTrue(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Save()
-	if !strings.Contains(f.Render(), "true") {
+	if !strings.Contains(readFile(t, f.path), "true") {
 		t.Error("bool true should render as 'true'")
 	}
 }
@@ -148,7 +154,7 @@ func TestSetField_Integer(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Save()
-	if !strings.Contains(f.Render(), "replicas: 3") {
+	if !strings.Contains(readFile(t, f.path), "replicas: 3") {
 		t.Error("int should render as '3'")
 	}
 }
@@ -160,7 +166,7 @@ func TestDeleteField(t *testing.T) {
 		t.Fatalf("DeleteField: %v", err)
 	}
 	f.Save()
-	out := f.Render()
+	out := readFile(t, f.path)
 	if strings.Contains(out, "privileged: true") {
 		t.Errorf("output should not contain privileged\n%s", out)
 	}
@@ -189,7 +195,7 @@ func TestRemoveFromList(t *testing.T) {
 		t.Fatalf("RemoveFromList: %v", err)
 	}
 	f.Save()
-	out := f.Render()
+	out := readFile(t, f.path)
 	if strings.Contains(out, "SYS_ADMIN") {
 		t.Errorf("SYS_ADMIN should be removed from cap_add\n%s", out)
 	}
@@ -250,23 +256,6 @@ func TestBackup(t *testing.T) {
 	}
 }
 
-func TestRestore(t *testing.T) {
-	original := testCompose
-	path := writeTestCompose(t, original)
-	f := mustOpen(t, path)
-	f.Backup()
-	f.SetField("web", "privileged", false)
-	f.Save()
-
-	if err := f.Restore(); err != nil {
-		t.Fatalf("Restore: %v", err)
-	}
-	data, _ := os.ReadFile(path)
-	if string(data) != original {
-		t.Errorf("Restored content differs from original")
-	}
-}
-
 func TestMultipleEdits(t *testing.T) {
 	path := writeTestCompose(t, testCompose)
 	f := mustOpen(t, path)
@@ -284,7 +273,7 @@ func TestMultipleEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := f.Render()
+	out := readFile(t, f.path)
 	for _, want := range []string{"privileged: false", "read_only: true"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in output\n%s", want, out)
@@ -319,21 +308,4 @@ func TestGetFieldRaw_Missing(t *testing.T) {
 	}
 }
 
-func TestComposeDir(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	dir := f.ComposeDir()
-	if !filepath.IsAbs(dir) {
-		t.Errorf("ComposeDir should be absolute, got %s", dir)
-	}
-}
 
-func TestRender_AfterEdit(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	f.SetField("web", "privileged", false)
-	rendered := f.Render()
-	if !strings.Contains(rendered, "privileged: false") {
-		t.Error("Render should reflect edits")
-	}
-}

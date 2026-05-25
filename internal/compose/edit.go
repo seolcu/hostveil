@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -35,14 +34,6 @@ func (f *File) Backup() error {
 	return os.WriteFile(f.path+".bak", f.original, 0644)
 }
 
-func (f *File) Restore() error {
-	data, err := os.ReadFile(f.path + ".bak")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(f.path, data, 0644)
-}
-
 func (f *File) Save() error {
 	if !f.dirty {
 		return nil
@@ -52,15 +43,6 @@ func (f *File) Save() error {
 		return err
 	}
 	return os.WriteFile(f.path, out, 0644)
-}
-
-func (f *File) Render() string {
-	out, _ := yaml.Marshal(&f.doc)
-	return string(out)
-}
-
-func (f *File) OriginalContent() string {
-	return string(f.original)
 }
 
 func (f *File) Diff() string {
@@ -131,24 +113,23 @@ func (f *File) serviceNode(service string, create bool) (*yaml.Node, error) {
 		f.doc.Content = append(f.doc.Content, root)
 	}
 
-	services, _ := getOrCreateMappingEntry(root, "services", create)
+	services := getOrCreateMappingEntry(root, "services", create)
 	if services == nil {
 		return nil, nil
 	}
-	svc, _ := getOrCreateMappingEntry(services, service, create)
+	svc := getOrCreateMappingEntry(services, service, create)
 	return svc, nil
 }
 
-func getOrCreateMappingEntry(mapping *yaml.Node, key string, create bool) (*yaml.Node, int) {
+func getOrCreateMappingEntry(mapping *yaml.Node, key string, create bool) *yaml.Node {
 	for i := 0; i < len(mapping.Content)-1; i += 2 {
 		if mapping.Content[i].Value == key {
-			return mapping.Content[i+1], i + 1
+			return mapping.Content[i+1]
 		}
 	}
 	if !create {
-		return nil, -1
+		return nil
 	}
-	// Ensure mapping node
 	if mapping.Kind != yaml.MappingNode {
 		mapping.Kind = yaml.MappingNode
 		mapping.Tag = "!!map"
@@ -156,7 +137,7 @@ func getOrCreateMappingEntry(mapping *yaml.Node, key string, create bool) (*yaml
 	kn := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
 	vn := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	mapping.Content = append(mapping.Content, kn, vn)
-	return vn, len(mapping.Content) - 1
+	return vn
 }
 
 func findInMapping(mapping *yaml.Node, key string) *yaml.Node {
@@ -292,17 +273,6 @@ func toNode(v interface{}) *yaml.Node {
 	return n
 }
 
-type Context struct {
-	ComposeDir string
-}
-
-func (c Context) ResolvePath(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(c.ComposeDir, path)
-}
-
 func (f *File) ServiceNames() ([]string, error) {
 	root := f.doc.Content[0]
 	if root == nil {
@@ -317,10 +287,6 @@ func (f *File) ServiceNames() ([]string, error) {
 		names = append(names, services.Content[i].Value)
 	}
 	return names, nil
-}
-
-func (f *File) ComposeDir() string {
-	return filepath.Dir(f.path)
 }
 
 func (f *File) GetFieldStrings(service, path string) ([]string, error) {

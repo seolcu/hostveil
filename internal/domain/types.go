@@ -103,12 +103,3 @@ func (f *Finding) IsFixable() bool {
 	return f.Remediation.IsFixable()
 }
 
-type ScanResult struct {
-	Findings []Finding
-	Score    uint8
-	Grade    string
-}
-
-func (r *ScanResult) TotalFindings() int {
-	return len(r.Findings)
-}

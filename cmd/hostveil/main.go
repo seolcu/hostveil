@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -21,7 +20,10 @@ import (
 	"github.com/seolcu/hostveil/internal/web"
 )
 
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+var httpClient = &http.Client{Timeout: domain.HTTPClientTimeout}
+
+var checkLatestURL = "https://api.github.com/repos/seolcu/hostveil/releases/latest"
+var installerURL = "https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh"
 
 var fixRegistry *fix.Registry
 
@@ -58,7 +60,7 @@ func run() error {
 	}
 
 	ensureSudo()
-	noUpdate := hasFlag("--no-update")
+	noUpdate := hasFlag(os.Args, "--no-update")
 
 	live := domain.NewScanProgress(noUpdate)
 
@@ -86,7 +88,7 @@ func runServe(args []string) error {
 		return err
 	}
 
-	skipUpdate := *noUpdate || hasFlag("--no-update")
+	skipUpdate := *noUpdate || hasFlag(os.Args, "--no-update")
 	live := domain.NewScanProgress(skipUpdate)
 
 	if !skipUpdate {
@@ -165,11 +167,15 @@ func runUpdateCheckBackground(live *domain.ScanProgress, notify func()) {
 }
 
 func checkLatestVersion() (string, error) {
-	resp, err := httpClient.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	resp, err := httpClient.Get(checkLatestURL)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
 
 	var release struct {
 		TagName string `json:"tag_name"`
@@ -185,7 +191,7 @@ func runSetup() error {
 	fmt.Println()
 
 	tmpFile := "/tmp/hostveil-install.sh"
-	resp, err := httpClient.Get("https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh")
+	resp, err := httpClient.Get(installerURL)
 	if err != nil {
 		return fmt.Errorf("failed to download installer: %w", err)
 	}
@@ -274,7 +280,11 @@ func runUpdate() error {
 }
 
 func printHelp() {
-	fmt.Println(`hostveil — Linux self-hosting security scanner
+	fmt.Println(helpText())
+}
+
+func helpText() string {
+	return `hostveil — Linux self-hosting security scanner
 
 Usage:
   hostveil                    Scan and open TUI
@@ -285,11 +295,11 @@ Usage:
   hostveil update             Update to the latest version
   hostveil --no-update        Skip update check on startup
   hostveil --version          Show version
-  hostveil --help             Show this help`)
+  hostveil --help             Show this help`
 }
 
-func hasFlag(name string) bool {
-	for _, a := range os.Args {
+func hasFlag(args []string, name string) bool {
+	for _, a := range args {
 		if a == name {
 			return true
 		}

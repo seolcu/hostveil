@@ -51,8 +51,6 @@ type model struct {
 	snap   domain.Snapshot
 	fixReg *fix.Registry
 	send   func(tea.Msg)
-	noSync bool
-
 	width  int
 	height int
 
@@ -113,10 +111,9 @@ func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *m
 	vp.SoftWrap = true
 
 	return &model{
-		live:      live,
-		fixReg:    reg,
-		noSync:    noUpdateCheck,
-		spinner:   s,
+		live:    live,
+		fixReg:  reg,
+		spinner: s,
 		table:     t,
 		viewport:  vp,
 		help:      help.New(),
@@ -711,7 +708,7 @@ func (m model) detailKeyMap() keyMap {
 }
 
 func tickCmd() tea.Cmd {
-	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+	return tea.Tick(domain.TUITickInterval, func(t time.Time) tea.Msg {
 		return tickMsg{}
 	})
 }

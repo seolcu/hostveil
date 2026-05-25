@@ -112,9 +112,7 @@ func (m model) renderMain() string {
 	} else {
 		body = m.renderListPane()
 	}
-	footer := m.renderFooter()
-
-	sections := []string{header, metrics, body, footer}
+	sections := []string{header, metrics, body}
 	return lipgloss.JoinVertical(lipgloss.Top, sections...)
 }
 
@@ -315,15 +313,6 @@ func (m model) renderDetailPane() string {
 	)
 }
 
-// ── Footer (both panes) ──
-
-func (m model) renderFooter() string {
-	if m.mode == paneDetail || m.mode == paneList {
-		return ""
-	}
-	return ""
-}
-
 // ── Detail content (used by viewport) ──
 
 func renderDetailContent(t Theme, f *domain.Finding, width int) string {
@@ -479,7 +468,6 @@ func (m model) renderThemeModal() string {
 
 func (m model) renderFilterModal() string {
 	t := m.theme()
-	_ = t
 	s := m.modalStyle()
 
 	lines := []string{

@@ -67,7 +67,7 @@ func Serve(opts Options) error {
 
 	server := &http.Server{
 		Handler:           secureHeaders(mux),
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: domain.HTTPReadHeaderTimeout,
 	}
 	return server.Serve(listener)
 }

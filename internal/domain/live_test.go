@@ -44,18 +44,6 @@ func TestCalculateScore_Floor(t *testing.T) {
 	}
 }
 
-func TestCountFixable(t *testing.T) {
-	f := []Finding{
-		{Remediation: RemediationAuto},
-		{Remediation: RemediationUnavailable},
-		{Remediation: RemediationReview},
-		{Remediation: RemediationManual},
-	}
-	if got := CountFixable(f); got != 2 {
-		t.Errorf("CountFixable() = %d, want 2", got)
-	}
-}
-
 func TestNewScanProgress_IncludesUpdate(t *testing.T) {
 	sp := NewScanProgress(false)
 	if _, ok := sp.Tools["update"]; !ok {

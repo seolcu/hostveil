@@ -29,13 +29,6 @@ func (c Context) ComposePath() string {
 	return c.Finding.Metadata["compose_path"]
 }
 
-func (c Context) ProjectName() string {
-	if c.Finding == nil {
-		return ""
-	}
-	return c.Finding.Metadata["project"]
-}
-
 type Action struct {
 	Type        ActionType
 	Label       string
