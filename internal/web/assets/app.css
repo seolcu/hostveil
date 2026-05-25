@@ -58,6 +58,13 @@ button, input, select { font: inherit; }
   min-height: 100vh;
 }
 
+@media (min-width: 1181px) {
+  .shell {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
 .topbar {
   display: flex;
   align-items: stretch;
@@ -139,6 +146,7 @@ h1 {
   min-height: 0;
   display: flex;
   gap: 14px;
+  overflow: hidden;
 }
 
 .filters { width: 280px; flex-shrink: 0; align-self: flex-start; padding: 18px; border: 1px solid var(--line); background: rgba(17, 21, 34, 0.88); box-shadow: 0 24px 60px var(--shadow); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
