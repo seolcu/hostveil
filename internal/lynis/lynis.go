@@ -11,7 +11,7 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-const reportPath = "/tmp/hostveil-lynis.dat"
+var reportPath = "/tmp/hostveil-lynis.dat"
 
 func Scan() ([]domain.Finding, error) {
 	os.Remove(reportPath)
