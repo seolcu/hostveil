@@ -61,6 +61,7 @@ function render() {
     renderLoading();
     return;
   }
+  document.querySelector(".shell").className = "shell";
   if (state.pollTimer) {
     clearInterval(state.pollTimer);
     state.pollTimer = null;

@@ -1,7 +1,9 @@
+// Package fix provides the fix engine registry and actions for security findings.
 package fix
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -93,7 +95,13 @@ func (r FixResult) String() string {
 }
 
 type Registry struct {
-	entries map[string]*Fix
+	entries  map[string]*Fix
+	patterns []patternFix
+}
+
+type patternFix struct {
+	pattern string
+	fix     *Fix
 }
 
 func New() *Registry {
@@ -101,11 +109,25 @@ func New() *Registry {
 }
 
 func (r *Registry) Register(f *Fix) {
-	r.entries[strings.ToLower(f.FindingID)] = f
+	id := strings.ToLower(f.FindingID)
+	if strings.ContainsAny(id, "*?[") {
+		r.patterns = append(r.patterns, patternFix{pattern: id, fix: f})
+		return
+	}
+	r.entries[id] = f
 }
 
 func (r *Registry) Lookup(id string) *Fix {
-	return r.entries[strings.ToLower(id)]
+	key := strings.ToLower(id)
+	if f, ok := r.entries[key]; ok {
+		return f
+	}
+	for _, pf := range r.patterns {
+		if matched, _ := filepath.Match(pf.pattern, key); matched {
+			return pf.fix
+		}
+	}
+	return nil
 }
 
 func (r *Registry) Classify(findings []domain.Finding) {

@@ -84,7 +84,14 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.FILE-6405",
 		Label:     "Remove world-writable from file",
-		Actions:   []Action{execCmd("chmod o-w")},
+		Actions:   []Action{{
+			Type:    ActionExec,
+			Label:   "Remove world-writable bit",
+			Command: []string{"chmod", "o-w"},
+			Apply: func(ctx Context) error {
+				return exec.Command("chmod", "o-w", ctx.Finding.Evidence["path"]).Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — Kernel
@@ -131,7 +138,14 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9626",
 		Label:     "Set password aging",
-		Actions:   []Action{execCmd("chage -M 90")},
+		Actions:   []Action{{
+			Type:    ActionExec,
+			Label:   "Set password aging to 90 days",
+			Command: []string{"chage", "-M", "90"},
+			Apply: func(ctx Context) error {
+				return exec.Command("chage", "-M", "90", ctx.Finding.Evidence["user"]).Run()
+			},
+		}},
 	})
 
 	// Review (≥2 actions) — Firewall
@@ -147,7 +161,18 @@ func registerSystemFixes(r *Registry) {
 		FindingID: "lynis.FIRE-4513",
 		Label:     "Close open firewall ports",
 		Actions: []Action{
-			execCmd("ufw deny"),
+			{
+				Type:    ActionExec,
+				Label:   "Block port with ufw",
+				Command: []string{"ufw", "deny"},
+				Apply: func(ctx Context) error {
+					port := ctx.Finding.Evidence["port"]
+					if port == "" {
+						port = "22/tcp"
+					}
+					return exec.Command("ufw", "deny", port).Run()
+				},
+			},
 			execCmd("iptables -A INPUT -p tcp --dport 22 -j DROP"),
 		},
 	})

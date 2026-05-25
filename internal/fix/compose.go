@@ -74,7 +74,13 @@ func registerComposeFixes(r *Registry) {
 		FindingID: "trivy.dr004",
 		Label:     "Remove secrets from env_file",
 		Actions: []Action{
-			{Type: ActionEdit, Label: "Restrict .env permissions", Apply: func(ctx Context) error { return exec.Command("chmod", "600", ctx.Finding.Metadata["env_path"]).Run() }},
+			{Type: ActionEdit, Label: "Restrict .env permissions", Apply: func(ctx Context) error {
+				envPath := ctx.Finding.Metadata["env_path"]
+				if envPath == "" {
+					return nil
+				}
+				return exec.Command("chmod", "600", envPath).Run()
+			}},
 			{Type: ActionPrompt, Label: "Migrate to Docker secrets", Description: "Define secrets in the compose file and reference via secrets:."},
 		},
 	})
@@ -92,10 +98,19 @@ func composePortRestrict(ctx Context, bind string) error {
 		return err
 	}
 	for _, svc := range svcs {
-		raw, _ := f.GetFieldRaw(svc, "ports")
-		if raw != "" {
-			fixed := rePortPrefix.ReplaceAllString(raw, bind+":")
-			f.SetField(svc, "ports", fixed)
+		vals, _ := f.GetFieldStrings(svc, "ports")
+		if len(vals) == 0 {
+			continue
+		}
+		var fixed []interface{}
+		for _, v := range vals {
+			if rePortPrefix.MatchString(v) {
+				v = rePortPrefix.ReplaceAllString(v, bind+":")
+			}
+			fixed = append(fixed, v)
+		}
+		if err := f.SetField(svc, "ports", fixed); err != nil {
+			return err
 		}
 	}
 	return f.Save()

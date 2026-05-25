@@ -200,6 +200,49 @@ func TestRegisterAll_Classification(t *testing.T) {
 	}
 }
 
+func TestRegisterAll_SystemFixes(t *testing.T) {
+	r := New()
+	RegisterAll(r)
+	for _, id := range []string{
+		"lynis.ACCT-9626",
+		"lynis.FILE-6405",
+		"lynis.FIRE-4513",
+	} {
+		if r.Lookup(id) == nil {
+			t.Errorf("RegisterAll did not register %s", id)
+		}
+	}
+}
+
+func TestRegisterAll_SystemFixActionTypes(t *testing.T) {
+	r := New()
+	RegisterAll(r)
+
+	fix := r.Lookup("lynis.FILE-6405")
+	if fix == nil || len(fix.Actions) == 0 {
+		t.Fatal("FILE-6405 not registered or has no actions")
+	}
+	if fix.Actions[0].Type != ActionExec {
+		t.Errorf("FILE-6405 action type = %v, want ActionExec", fix.Actions[0].Type)
+	}
+
+	fix = r.Lookup("lynis.ACCT-9626")
+	if fix == nil || len(fix.Actions) == 0 {
+		t.Fatal("ACCT-9626 not registered or has no actions")
+	}
+	if fix.Actions[0].Type != ActionExec {
+		t.Errorf("ACCT-9626 action type = %v, want ActionExec", fix.Actions[0].Type)
+	}
+
+	fix = r.Lookup("lynis.FIRE-4513")
+	if fix == nil || len(fix.Actions) == 0 {
+		t.Fatal("FIRE-4513 not registered or has no actions")
+	}
+	if fix.Actions[0].Type != ActionExec {
+		t.Errorf("FIRE-4513 action[0] type = %v, want ActionExec", fix.Actions[0].Type)
+	}
+}
+
 func TestRegisterAll_WarningPreserved(t *testing.T) {
 	r := New()
 	RegisterAll(r)
@@ -209,5 +252,63 @@ func TestRegisterAll_WarningPreserved(t *testing.T) {
 	}
 	if len(fix.Actions) == 0 || fix.Actions[0].Warning == "" {
 		t.Error("trivy.ds003 action should have a warning")
+	}
+}
+
+func TestRegistry_WildcardMatch(t *testing.T) {
+	r := New()
+	r.Register(&Fix{FindingID: "trivy.cve-*", Actions: []Action{{Type: ActionEdit}}})
+	r.Register(&Fix{FindingID: "lynis.AUTH-*", Actions: []Action{{Type: ActionExec}}})
+
+	if f := r.Lookup("trivy.cve-2024-12345"); f == nil {
+		t.Error("Lookup(trivy.cve-2024-12345) should match trivy.cve-*")
+	}
+	if f := r.Lookup("trivy.cve-2023-54321"); f == nil {
+		t.Error("Lookup(trivy.cve-2023-54321) should match trivy.cve-*")
+	}
+	if f := r.Lookup("lynis.AUTH-9999"); f == nil {
+		t.Error("Lookup(lynis.AUTH-9999) should match lynis.AUTH-*")
+	}
+	if f := r.Lookup("trivy.ds001"); f != nil {
+		t.Error("Lookup(trivy.ds001) should NOT match any wildcard (ds001)")
+	}
+}
+
+func TestRegistry_WildcardExactLookup(t *testing.T) {
+	r := New()
+	r.Register(&Fix{FindingID: "trivy.cve-*", Actions: []Action{{Type: ActionEdit}}})
+	r.Register(&Fix{FindingID: "trivy.cve-*-base", Actions: []Action{{Type: ActionPrompt}}})
+	r.Register(&Fix{FindingID: "trivy.ds001", Actions: []Action{{Type: ActionExec}}})
+
+	if f := r.Lookup("trivy.cve-*"); f == nil {
+		t.Error("exact lookup of wildcard pattern should find itself")
+	}
+	if f := r.Lookup("trivy.ds001"); f == nil {
+		t.Error("exact lookup should still work alongside wildcards")
+	}
+	if f := r.Lookup("trivy.cve-*-base"); f == nil {
+		t.Error("wildcard pattern with multiple special chars should be findable")
+	}
+}
+
+func TestRegistry_WildcardClassify(t *testing.T) {
+	r := New()
+	r.Register(&Fix{FindingID: "trivy.cve-*", Actions: []Action{{Type: ActionEdit}}})
+
+	findings := []domain.Finding{
+		{ID: "trivy.cve-2024-12345", Remediation: domain.RemediationUnavailable},
+		{ID: "trivy.cve-2023-99999", Remediation: domain.RemediationUnavailable},
+		{ID: "trivy.ds001", Remediation: domain.RemediationUnavailable},
+	}
+	r.Classify(findings)
+
+	if findings[0].Remediation != domain.RemediationAuto {
+		t.Errorf("CVE-2024-12345 should be Auto, got %v", findings[0].Remediation)
+	}
+	if findings[1].Remediation != domain.RemediationAuto {
+		t.Errorf("CVE-2023-99999 should be Auto, got %v", findings[1].Remediation)
+	}
+	if findings[2].Remediation != domain.RemediationUnavailable {
+		t.Errorf("ds001 should remain Unavailable (unregistered), got %v", findings[2].Remediation)
 	}
 }

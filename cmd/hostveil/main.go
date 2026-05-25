@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -19,6 +20,8 @@ import (
 	"github.com/seolcu/hostveil/internal/tui"
 	"github.com/seolcu/hostveil/internal/web"
 )
+
+var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 var fixRegistry *fix.Registry
 
@@ -101,7 +104,7 @@ func runServe(args []string) error {
 
 func runScanBackground(live *domain.ScanProgress, tool string, notify func()) {
 	if _, err := exec.LookPath(tool); err != nil {
-		live.SetToolStatus(tool, domain.ToolSkipped, fmt.Sprintf("Not found (run 'hostveil setup')"))
+		live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
 		return
 	}
 
@@ -162,7 +165,7 @@ func runUpdateCheckBackground(live *domain.ScanProgress, notify func()) {
 }
 
 func checkLatestVersion() (string, error) {
-	resp, err := http.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
+	resp, err := httpClient.Get("https://api.github.com/repos/seolcu/hostveil/releases/latest")
 	if err != nil {
 		return "", err
 	}
@@ -180,12 +183,43 @@ func checkLatestVersion() (string, error) {
 func runSetup() error {
 	fmt.Println("  hostveil setup — installing dependencies")
 	fmt.Println()
-	cmd := exec.Command("bash", "-c",
-		"curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash")
+
+	tmpFile := "/tmp/hostveil-install.sh"
+	resp, err := httpClient.Get("https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh")
+	if err != nil {
+		return fmt.Errorf("failed to download installer: %w", err)
+	}
+	defer resp.Body.Close()
+
+	f, err := os.Create(tmpFile)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(f, resp.Body)
+	f.Close()
+	if err != nil {
+		os.Remove(tmpFile)
+		return err
+	}
+
+	data, _ := os.ReadFile(tmpFile)
+	if len(data) == 0 || !strings.HasPrefix(string(data), "#!/") {
+		os.Remove(tmpFile)
+		return fmt.Errorf("downloaded installer looks invalid")
+	}
+
+	os.Chmod(tmpFile, 0755)
+
+	fmt.Println("  Downloaded installer script. Running...")
+	fmt.Println()
+
+	cmd := exec.Command(tmpFile)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	err = cmd.Run()
+	os.Remove(tmpFile)
+	return err
 }
 
 func runUpdate() error {
@@ -210,7 +244,7 @@ func runUpdate() error {
 		version, runtime.GOOS, arch)
 
 	fmt.Printf("  Downloading hostveil %s...\n", version)
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}

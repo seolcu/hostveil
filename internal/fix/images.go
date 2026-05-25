@@ -3,6 +3,7 @@ package fix
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/compose"
 )
@@ -65,7 +66,7 @@ func updateImageTagInCompose(f *compose.File, currentImage, fixedVersion, pkgNam
 	}
 	for _, svc := range svcs {
 		img, _ := f.GetFieldRaw(svc, "image")
-		if img == currentImage || img == currentImage+":latest" {
+		if img == currentImage || strings.HasPrefix(img, currentImage+":") {
 			pinned := fmt.Sprintf("%s@%s", currentImage, fixedVersion)
 			f.SetField(svc, "image", pinned)
 		}

@@ -1,3 +1,4 @@
+// Package lynis parses Lynis audit reports into domain.Findings.
 package lynis
 
 import (

@@ -1,3 +1,4 @@
+// Package web provides the embedded HTTP server and Web UI.
 package web
 
 import (
@@ -35,8 +36,10 @@ func Serve(opts Options) error {
 	if opts.Live == nil {
 		opts.Live = domain.NewScanProgress(true)
 	}
-	if strings.HasPrefix(opts.Addr, "0.0.0.0:") || strings.HasPrefix(opts.Addr, ":") {
-		fmt.Fprintln(os.Stderr, "  Warning: serving host scan results on a non-local address.")
+	if os.Getenv("HOSTVEIL_TEST") == "" {
+		if strings.HasPrefix(opts.Addr, "0.0.0.0:") || strings.HasPrefix(opts.Addr, ":") {
+			fmt.Fprintln(os.Stderr, "  Warning: serving host scan results on a non-local address.")
+		}
 	}
 
 	listener, err := listenWithReclaim(opts.Addr)
@@ -74,7 +77,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Fprintf(os.Stderr, "hostveil web: writeJSON: %v\n", err)
 	}
 }
 

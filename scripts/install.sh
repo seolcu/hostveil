@@ -4,13 +4,15 @@ set -euo pipefail
 VERSION=""
 SKIP_TRIVY=false
 SKIP_LYNIS=false
+FORCE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) VERSION="$2"; shift 2 ;;
     --no-trivy) SKIP_TRIVY=true; shift ;;
     --no-lynis) SKIP_LYNIS=true; shift ;;
-    --help|-h) echo "Usage: $0 [--version vX.Y.Z] [--no-trivy] [--no-lynis]"; exit 0 ;;
+    --yes|-y) FORCE=true; shift ;;
+    --help|-h) echo "Usage: $0 [--version vX.Y.Z] [--no-trivy] [--no-lynis] [--yes]"; exit 0 ;;
     *) echo "Unknown: $1"; exit 1 ;;
   esac
 done
@@ -41,7 +43,9 @@ fi
 DEP_TRIVY=true
 DEP_LYNIS=true
 
-if ! [[ -t 0 ]]; then
+if $FORCE; then
+  DEP_TRIVY=true; DEP_LYNIS=true
+elif ! [[ -t 0 ]]; then
   DEP_TRIVY=true; DEP_LYNIS=true
 else
   prompt_deps() {
@@ -99,18 +103,38 @@ install_tool() {
     echo "  • $name: no package manager found, skipping (install manually)"
     return
   fi
-  echo "  • $name: installing via $PM..."
-  $PM_INSTALL "$@" 2>/dev/null || echo "  • $name: fallback to binary download..."
-  if ! command -v "$name" &>/dev/null; then
-    case "$name" in
-      trivy)
-        curl -fsSL "https://github.com/aquasecurity/trivy/releases/latest/download/trivy_${VERSION}_${OS}-${ARCH}.tar.gz" | tar xz -C /tmp
-        sudo install -m 755 /tmp/trivy /usr/bin/trivy ;;
-      lynis)
-        curl -fsSL "https://github.com/CISOfy/lynis/archive/refs/tags/3.1.6.tar.gz" | tar xz -C /tmp
-        sudo install -m 755 /tmp/lynis-3.1.6/lynis /usr/bin/lynis ;;
-    esac
+  local pkg_exists=true
+  if [[ "$PM" == "apt" ]]; then
+    apt-cache show "$name" >/dev/null 2>&1 || pkg_exists=false
   fi
+  if $pkg_exists; then
+    echo "  • $name: installing via $PM..."
+    $PM_INSTALL "$@" 2>/dev/null && return
+  fi
+  echo "  • $name: fallback to binary download..."
+  case "$name" in
+    trivy)
+      curl -fsSL --retry 3 "https://github.com/aquasecurity/trivy/releases/latest/download/trivy_${VERSION}_${OS}-${ARCH}.tar.gz" -o "/tmp/trivy.tar.gz"
+      tar xzf "/tmp/trivy.tar.gz" -C /tmp || { echo "  ERROR: trivy extraction failed"; return; }
+      TRIVY_BIN=$(find /tmp -name 'trivy' -type f 2>/dev/null | head -1)
+      if [[ -n "$TRIVY_BIN" ]]; then
+        sudo install -m 755 "$TRIVY_BIN" /usr/bin/trivy
+      else
+        echo "  ERROR: trivy binary not found after extraction"
+      fi
+      rm -f "/tmp/trivy.tar.gz" ;;
+    lynis)
+      LYNIS_VER=$(curl -fsSL --retry 3 https://api.github.com/repos/CISOfy/lynis/releases/latest | grep '"tag_name":' | sed 's/.*"\([^"]*\)".*/\1/')
+      curl -fsSL --retry 3 "https://github.com/CISOfy/lynis/archive/refs/tags/${LYNIS_VER}.tar.gz" -o "/tmp/lynis.tar.gz"
+      tar xzf "/tmp/lynis.tar.gz" -C /tmp || { echo "  ERROR: lynis extraction failed"; return; }
+      LYNIS_BIN=$(find /tmp -name 'lynis' -type f 2>/dev/null | head -1)
+      if [[ -n "$LYNIS_BIN" ]]; then
+        sudo install -m 755 "$LYNIS_BIN" /usr/bin/lynis
+      else
+        echo "  ERROR: lynis binary not found after extraction"
+      fi
+      rm -f "/tmp/lynis.tar.gz" ;;
+  esac
 }
 
 [[ "$SKIP_TRIVY" != true && "$DEP_TRIVY" == true ]] && install_tool trivy trivy
@@ -118,16 +142,41 @@ install_tool() {
 
 # ─── INSTALL HOSTVEIL ────────────────────────────────────────────────────
 if [[ -z "$VERSION" ]]; then
-  VERSION=$(curl -fsSL https://api.github.com/repos/seolcu/hostveil/releases/latest \
+  VERSION=$(curl -fsSL --retry 3 https://api.github.com/repos/seolcu/hostveil/releases/latest \
     | grep '"tag_name":' | sed 's/.*"v\([^"]*\)".*/\1/')
+  if [[ -z "$VERSION" ]]; then
+    echo "  ERROR: failed to determine latest version (GitHub API rate limit?)"
+    echo "  Try again later or specify a version with --version vX.Y.Z"
+    exit 1
+  fi
 fi
 
 echo "  • hostveil: downloading v${VERSION}..."
 TAR="hostveil-${OS}-${ARCH}.tar.gz"
 URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/${TAR}"
-curl -fsSL "$URL" -o "/tmp/${TAR}"
-tar xzf "/tmp/${TAR}" -C /tmp
-sudo install -m 755 "/tmp/hostveil" /usr/bin/hostveil
+curl -fsSL --retry 3 "$URL" -o "/tmp/${TAR}" || { echo "  ERROR: download failed"; exit 1; }
+
+echo "  • hostveil: verifying checksum..."
+CHECKSUM_URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/hostveil-checksums.txt"
+curl -fsSL --retry 3 "$CHECKSUM_URL" -o "/tmp/hostveil-checksums.txt" 2>/dev/null || true
+EXPECTED=$(grep "${TAR}" /tmp/hostveil-checksums.txt 2>/dev/null | cut -d' ' -f1)
+if [[ -n "$EXPECTED" ]]; then
+  ACTUAL=$(sha256sum "/tmp/${TAR}" | cut -d' ' -f1)
+  if [[ "$EXPECTED" != "$ACTUAL" ]]; then
+    echo "  ERROR: checksum mismatch for ${TAR}"
+    echo "    expected: $EXPECTED"
+    echo "    actual:   $ACTUAL"
+    rm -f "/tmp/${TAR}" "/tmp/hostveil-checksums.txt"
+    exit 1
+  fi
+  echo "  ✓ checksum verified"
+  rm -f "/tmp/hostveil-checksums.txt"
+else
+  echo "  ⚠ checksums file not available, skipping verification"
+fi
+
+tar xzf "/tmp/${TAR}" -C /tmp || { echo "  ERROR: extraction failed"; exit 1; }
+sudo install -m 755 "/tmp/hostveil" /usr/bin/hostveil || { echo "  ERROR: install failed"; exit 1; }
 rm -f "/tmp/${TAR}" "/tmp/hostveil"
 
 echo ""

@@ -1,3 +1,4 @@
+// Package domain defines core types: Finding, Severity, Source, and scan progress.
 package domain
 
 type Severity int

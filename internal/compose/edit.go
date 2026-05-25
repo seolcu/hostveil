@@ -1,3 +1,4 @@
+// Package compose provides YAML editing primitives for Docker Compose files.
 package compose
 
 import (
@@ -68,10 +69,10 @@ func (f *File) Diff() string {
 	yaml.NewEncoder(tmp).Encode(&f.doc)
 	tmp.Close()
 	out, err := exec.Command("diff", "-u", f.path+".bak", tmp.Name()).CombinedOutput()
-	if err != nil {
-		return string(out)
+	if err == nil {
+		return ""
 	}
-	return ""
+	return string(out)
 }
 
 func (f *File) SetField(service, path string, value interface{}) error {
@@ -320,6 +321,35 @@ func (f *File) ServiceNames() ([]string, error) {
 
 func (f *File) ComposeDir() string {
 	return filepath.Dir(f.path)
+}
+
+func (f *File) GetFieldStrings(service, path string) ([]string, error) {
+	svc, err := f.serviceNode(service, false)
+	if err != nil || svc == nil {
+		return nil, err
+	}
+	parts := strings.Split(path, ".")
+	node := svc
+	for _, part := range parts {
+		node = findInMapping(node, part)
+		if node == nil {
+			return nil, nil
+		}
+	}
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return []string{node.Value}, nil
+	case yaml.SequenceNode:
+		var vals []string
+		for _, item := range node.Content {
+			if item.Kind == yaml.ScalarNode {
+				vals = append(vals, item.Value)
+			}
+		}
+		return vals, nil
+	default:
+		return nil, nil
+	}
 }
 
 func (f *File) GetFieldRaw(service, path string) (string, error) {

@@ -1,10 +1,17 @@
+// Package tui provides the Bubble Tea terminal user interface.
 package tui
 
 import (
+	"sort"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -13,11 +20,11 @@ import (
 
 var Version = "v2.0.0-dev"
 
-type screenMode int
+type paneMode int
 
 const (
-	modeList screenMode = iota
-	modeDetail
+	paneList paneMode = iota
+	paneDetail
 )
 
 type modalMode int
@@ -26,9 +33,18 @@ const (
 	modalNone modalMode = iota
 	modalHelp
 	modalTheme
+	modalFilter
 	modalFixConfirm
 	modalFixResult
 )
+
+type filterState struct {
+	query       string
+	severity    string
+	source      string
+	remediation string
+	sortBy      string
+}
 
 type model struct {
 	live   *domain.ScanProgress
@@ -40,34 +56,78 @@ type model struct {
 	width  int
 	height int
 
-	mode  screenMode
-	modal modalMode
+	phase  string
+	snapOK bool
 
-	selected     int
-	listOffset   int
-	detailOffset int
+	// bubbles v2 components
+	spinner   spinner.Model
+	table     table.Model
+	viewport  viewport.Model
+	help      help.Model
+	searchBox textinput.Model
 
-	themeIdx    int
+	// UI state
+	mode     paneMode
+	filter   filterState
+	themeIdx int
+
+	// modals
+	modal       modalMode
 	themeCursor int
 	themeSaved  int
 
-	fixTarget   *fix.Fix
+	// fix
+	fixTarget    *fix.Fix
 	fixActionIdx int
-	fixResult   string
+	fixResult    string
 
-	help      help.Model
-	tickCount int
+	// toast
+	toast      string
+	toastClear int
 }
 
 type tickMsg struct{}
 type fixResultMsg struct{ result fix.FixResult }
 
 func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *model {
+	s := spinner.New(spinner.WithSpinner(spinner.Dot))
+
+	t := table.New(
+		table.WithColumns([]table.Column{
+			{Title: "Sev", Width: 5},
+			{Title: "Src", Width: 4},
+			{Title: "ID", Width: 14},
+			{Title: "Finding", Width: 0},
+			{Title: "Fix", Width: 12},
+		}),
+		table.WithFocused(true),
+		table.WithHeight(10),
+		table.WithStyles(tableStyles(DefaultTheme())),
+	)
+
+	search := textinput.New()
+	search.Placeholder = "Search findings..."
+	search.CharLimit = 64
+
+	vp := viewport.New()
+	vp.SoftWrap = true
+
 	return &model{
-		live:   live,
-		fixReg: reg,
-		noSync: noUpdateCheck,
-		help:   help.New(),
+		live:      live,
+		fixReg:    reg,
+		noSync:    noUpdateCheck,
+		spinner:   s,
+		table:     t,
+		viewport:  vp,
+		help:      help.New(),
+		searchBox: search,
+		filter: filterState{
+			severity:    "all",
+			source:      "all",
+			remediation: "all",
+			sortBy:      "severity",
+		},
+		phase: "loading",
 	}
 }
 
@@ -76,26 +136,54 @@ func (m *model) SetProgram(send func(tea.Msg)) {
 }
 
 func (m model) Init() tea.Cmd {
-	return tickCmd()
+	return tea.Batch(tickCmd(), func() tea.Msg { return m.spinner.Tick() })
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.snap = m.live.Snapshot()
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.snap = m.live.Snapshot()
+		m.snapOK = true
 		m.width = msg.Width
 		m.height = msg.Height
-		m.clampSelection()
-		m.keepSelectionVisible()
-		m.clampDetailOffset()
+		m.table.SetWidth(m.listWidth())
+		m.viewport.SetWidth(m.detailWidth())
+		m.table.SetHeight(m.listHeight())
+		m.viewport.SetHeight(m.detailHeight())
+		if m.phase == "ready" {
+			m.rebuildTable()
+		}
+		return m, nil
 
-	case domain.ProgressTick, tickMsg:
-		m.tickCount++
-		if m.snap.Phase == "loading" {
+	case tickMsg:
+		if m.phase == "loading" {
+			m.snap = m.live.Snapshot()
+			m.snapOK = true
+			if m.snap.Phase == "complete" {
+				m.phase = "ready"
+				m.toast = ""
+				if m.width > 0 && m.height > 0 {
+					m.rebuildTable()
+				}
+			}
+			return m, tickCmd()
+		}
+		if m.toast != "" && m.toastClear > 0 {
+			m.toastClear--
+			if m.toastClear == 0 {
+				m.toast = ""
+			}
 			return m, tickCmd()
 		}
 		return m, nil
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		if m.phase == "loading" {
+			return m, tea.Batch(cmd, func() tea.Msg { return m.spinner.Tick() })
+		}
+		return m, cmd
 
 	case fixResultMsg:
 		if msg.result.Success {
@@ -110,84 +198,156 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
-		if m.snap.Phase == "loading" {
+		if m.phase == "loading" {
 			if msg.String() == "q" {
 				return m, tea.Quit
 			}
 			return m, nil
 		}
+		if !m.snapOK {
+			m.snap = m.live.Snapshot()
+			m.snapOK = true
+		}
 		if m.modal != modalNone {
 			return m.updateModal(msg)
 		}
-		switch m.mode {
-		case modeDetail:
-			return m.updateDetail(msg)
-		default:
-			return m.updateList(msg)
-		}
+		return m.updateMain(msg)
 	}
 	return m, nil
 }
 
-func (m model) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	keyStr := msg.String()
+
+	// Global shortcuts
+	switch keyStr {
 	case "q":
+		if m.mode == paneDetail {
+			m.mode = paneList
+			m.updateDetailViewport()
+			return m, nil
+		}
 		return m, tea.Quit
 	case "?":
 		m.modal = modalHelp
-	case "s":
+		return m, nil
+	case "t":
 		m.openThemeModal()
+		return m, nil
+	case "/":
+		m.modal = modalFilter
+		m.searchBox.SetValue(m.filter.query)
+		m.searchBox.Focus()
+		return m, nil
 	case "f":
 		return m.runFix()
-	case "up", "k":
-		if m.selected > 0 {
-			m.selected--
-			m.keepSelectionVisible()
+	case "1":
+		m.filter.severity = "critical"
+		m.rebuildTable()
+		return m, nil
+	case "2":
+		m.filter.severity = "high"
+		m.rebuildTable()
+		return m, nil
+	case "3":
+		m.filter.severity = "medium"
+		m.rebuildTable()
+		return m, nil
+	case "4":
+		m.filter.severity = "low"
+		m.rebuildTable()
+		return m, nil
+	case "0":
+		m.filter.severity = "all"
+		m.rebuildTable()
+		return m, nil
+	case "s":
+		m.cycleSourceFilter()
+		m.rebuildTable()
+		return m, nil
+	case "r":
+		m.cycleRemediationFilter()
+		m.rebuildTable()
+		return m, nil
+	case "o":
+		m.cycleSortOrder()
+		m.rebuildTable()
+		return m, nil
+	case "R":
+		m.filter.query = ""
+		m.filter.severity = "all"
+		m.filter.source = "all"
+		m.filter.remediation = "all"
+		m.rebuildTable()
+		m.toast = "Filters cleared"
+		m.toastClear = 3
+		return m, nil
+	case "g":
+		m.table.SetCursor(0)
+		m.updateDetailViewport()
+		return m, nil
+	case "G":
+		visible := m.visibleFindings()
+		if len(visible) > 0 {
+			m.table.SetCursor(len(visible) - 1)
+			m.updateDetailViewport()
 		}
-	case "down", "j":
-		if m.selected < len(m.snap.Findings)-1 {
-			m.selected++
-			m.keepSelectionVisible()
-		}
-	case "enter", "l", "right":
-		if len(m.snap.Findings) > 0 {
-			m.mode = modeDetail
-			m.detailOffset = 0
-		}
+		return m, nil
 	}
-	return m, nil
-}
 
-func (m model) updateDetail(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "q", "esc":
-		m.mode = modeList
-		m.detailOffset = 0
-	case "?":
-		m.modal = modalHelp
-	case "s":
-		m.openThemeModal()
-	case "f":
-		return m.runFix()
-	case "up", "k":
-		if m.detailOffset > 0 {
-			m.detailOffset--
+	// Detail mode: delegate to viewport for scrolling
+	if m.mode == paneDetail {
+		switch keyStr {
+		case "esc", "h", "left":
+			m.mode = paneList
+			m.updateDetailViewport()
+			return m, nil
 		}
-	case "down", "j":
-		if m.detailOffset < m.detailScrollLimit() {
-			m.detailOffset++
-		}
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
 	}
-	return m, nil
+
+	// List mode: delegate to table for navigation
+	switch keyStr {
+	case "enter", "l", "right":
+		visible := m.visibleFindings()
+		cursor := m.table.Cursor()
+		if cursor >= 0 && cursor < len(visible) {
+			m.mode = paneDetail
+			m.updateDetailViewport()
+		}
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
 }
 
 func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch m.modal {
 	case modalHelp:
 		switch msg.String() {
-		case "q", "esc", "?", "enter", "l", "right":
+		case "q", "esc", "?", "enter":
 			m.modal = modalNone
 		}
+	case modalFilter:
+		switch msg.String() {
+		case "esc":
+			m.modal = modalNone
+			m.searchBox.Blur()
+			return m, nil
+		case "enter":
+			m.filter.query = m.searchBox.Value()
+			m.modal = modalNone
+			m.searchBox.Blur()
+			m.rebuildTable()
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.searchBox, cmd = m.searchBox.Update(msg)
+		return m, cmd
 	case modalTheme:
 		switch msg.String() {
 		case "q", "esc":
@@ -221,7 +381,7 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case modalFixResult:
 		switch msg.String() {
-		case "q", "esc", "enter", "l", "right":
+		case "q", "esc", "enter":
 			m.fixTarget = nil
 			m.modal = modalNone
 		}
@@ -230,11 +390,23 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) runFix() (tea.Model, tea.Cmd) {
-	if m.fixReg == nil || m.selected >= len(m.snap.Findings) {
+	if m.fixReg == nil {
+		m.toast = "Fix engine not available"
+		m.toastClear = 5
 		return m, nil
 	}
-	f := m.fixReg.Lookup(m.snap.Findings[m.selected].ID)
+	visible := m.visibleFindings()
+	if len(visible) == 0 {
+		return m, nil
+	}
+	idx := m.table.Cursor()
+	if idx < 0 || idx >= len(visible) {
+		return m, nil
+	}
+	f := m.fixReg.Lookup(visible[idx].ID)
 	if f == nil {
+		m.toast = "No fix available for this finding"
+		m.toastClear = 5
 		return m, nil
 	}
 	m.fixTarget = f
@@ -264,8 +436,12 @@ func (m model) applyFix() (tea.Model, tea.Cmd) {
 	if f == nil || m.fixActionIdx >= len(f.Actions) {
 		return m, nil
 	}
-
-	finding := m.snap.Findings[m.selected]
+	visible := m.visibleFindings()
+	idx := m.table.Cursor()
+	if idx < 0 || idx >= len(visible) {
+		return m, nil
+	}
+	finding := visible[idx]
 	return m, func() tea.Msg {
 		result := f.Run(fix.Context{
 			Finding: &finding,
@@ -285,14 +461,14 @@ func (m model) View() tea.View {
 	t := m.theme()
 
 	var content string
-	if m.snap.Phase == "loading" {
-		content = renderLoading(m)
+	if m.phase == "loading" {
+		content = m.renderLoading()
 	} else {
-		content = renderBase(m)
+		content = m.renderMain()
 	}
 
-	if m.modal != modalNone && m.snap.Phase != "loading" {
-		content = renderWithModal(m, content)
+	if m.modal != modalNone && m.phase != "loading" {
+		content = m.renderWithModal(content)
 	}
 
 	v := tea.NewView(content)
@@ -311,117 +487,227 @@ func (m model) theme() Theme {
 	return themes[m.themeIdx]
 }
 
-func (m *model) clampSelection() {
-	if len(m.snap.Findings) == 0 {
-		m.selected = 0
-		m.listOffset = 0
+// ── filtering & sorting ──
+
+func (m model) visibleFindings() []domain.Finding {
+	items := m.snap.Findings
+	f := m.filter
+	filtered := make([]domain.Finding, 0, len(items))
+	for _, item := range items {
+		if f.severity != "all" && item.Severity.String() != f.severity {
+			continue
+		}
+		if f.source != "all" && item.Source.String() != f.source {
+			continue
+		}
+		if f.remediation != "all" && item.Remediation.String() != f.remediation {
+			continue
+		}
+		if f.query != "" && !findingMatches(item, f.query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	sortFindings(filtered, f.sortBy)
+	return filtered
+}
+
+func findingMatches(f domain.Finding, q string) bool {
+	q = strings.ToLower(q)
+	for _, s := range []string{f.ID, f.Title, f.Description, f.HowToFix, f.Service, f.Severity.String(), f.Source.String(), f.Remediation.String()} {
+		if strings.Contains(strings.ToLower(s), q) {
+			return true
+		}
+	}
+	return false
+}
+
+func sortFindings(findings []domain.Finding, sortBy string) {
+	sevOrder := func(s domain.Severity) int {
+		switch s {
+		case domain.SeverityCritical:
+			return 0
+		case domain.SeverityHigh:
+			return 1
+		case domain.SeverityMedium:
+			return 2
+		default:
+			return 3
+		}
+	}
+	switch sortBy {
+	case "severity":
+		sort.Slice(findings, func(i, j int) bool {
+			si, sj := sevOrder(findings[i].Severity), sevOrder(findings[j].Severity)
+			if si != sj {
+				return si < sj
+			}
+			return findings[i].Title < findings[j].Title
+		})
+	case "source":
+		sort.Slice(findings, func(i, j int) bool {
+			if findings[i].Source != findings[j].Source {
+				return findings[i].Source.String() < findings[j].Source.String()
+			}
+			return sevOrder(findings[i].Severity) < sevOrder(findings[j].Severity)
+		})
+	case "title":
+		sort.Slice(findings, func(i, j int) bool {
+			return findings[i].Title < findings[j].Title
+		})
+	case "remediation":
+		sort.Slice(findings, func(i, j int) bool {
+			if findings[i].Remediation != findings[j].Remediation {
+				return findings[i].Remediation.String() < findings[j].Remediation.String()
+			}
+			return sevOrder(findings[i].Severity) < sevOrder(findings[j].Severity)
+		})
+	}
+}
+
+func (m *model) cycleSourceFilter() {
+	switch m.filter.source {
+	case "all":
+		m.filter.source = "trivy"
+	case "trivy":
+		m.filter.source = "lynis"
+	default:
+		m.filter.source = "all"
+	}
+}
+
+func (m *model) cycleRemediationFilter() {
+	switch m.filter.remediation {
+	case "all":
+		m.filter.remediation = "auto"
+	case "auto":
+		m.filter.remediation = "review"
+	case "review":
+		m.filter.remediation = "manual"
+	default:
+		m.filter.remediation = "all"
+	}
+}
+
+func (m *model) cycleSortOrder() {
+	switch m.filter.sortBy {
+	case "severity":
+		m.filter.sortBy = "source"
+	case "source":
+		m.filter.sortBy = "title"
+	case "title":
+		m.filter.sortBy = "remediation"
+	default:
+		m.filter.sortBy = "severity"
+	}
+}
+
+// ── table management ──
+
+func (m *model) rebuildTable() {
+	visible := m.visibleFindings()
+	rows := make([]table.Row, len(visible))
+	for i, f := range visible {
+		id := shortID(f.ID)
+		rows[i] = table.Row{
+			strings.ToUpper(short(f.Severity.String(), 3)),
+			strings.ToUpper(short(f.Source.String(), 3)),
+			id,
+			f.Title,
+			f.Remediation.Label(),
+		}
+	}
+	m.table.SetRows(rows)
+	m.table.SetWidth(m.listWidth())
+	m.table.SetHeight(m.listHeight())
+}
+
+func (m *model) updateDetailViewport() {
+	visible := m.visibleFindings()
+	idx := m.table.Cursor()
+	if idx < 0 || idx >= len(visible) {
+		m.viewport.SetContent("")
 		return
 	}
-	if m.selected < 0 {
-		m.selected = 0
-	}
-	if m.selected >= len(m.snap.Findings) {
-		m.selected = len(m.snap.Findings) - 1
-	}
+	t := m.theme()
+	m.viewport.SetContent(renderDetailContent(t, &visible[idx], m.detailWidth()-4))
+	m.viewport.SetWidth(m.detailWidth())
+	m.viewport.SetHeight(m.detailHeight())
+	m.viewport.GotoTop()
 }
 
-func (m *model) keepSelectionVisible() {
-	l := computeLayout(m.width, m.height, m.mode == modeDetail)
-	visible := l.listH
-	if visible < 1 {
-		visible = 1
+// ── layout ──
+
+func (m model) listWidth() int {
+	if m.width >= 180 {
+		return m.width * 3 / 5
 	}
-	if m.selected < m.listOffset {
-		m.listOffset = m.selected
+	if m.width >= 130 {
+		return m.width / 2
 	}
-	if m.selected >= m.listOffset+visible {
-		m.listOffset = m.selected - visible + 1
-	}
-	if m.listOffset < 0 {
-		m.listOffset = 0
-	}
+	return m.width - 4
 }
 
-func (m *model) clampDetailOffset() {
-	limit := m.detailScrollLimit()
-	if m.detailOffset > limit {
-		m.detailOffset = limit
+func (m model) listHeight() int {
+	h := m.height - 10
+	if h < 4 {
+		return 4
 	}
-	if m.detailOffset < 0 {
-		m.detailOffset = 0
-	}
+	return h
 }
 
-func (m model) detailScrollLimit() int {
-	if len(m.snap.Findings) == 0 || m.selected >= len(m.snap.Findings) {
-		return 0
+func (m model) detailWidth() int {
+	if m.width >= 130 {
+		return m.width - m.listWidth() - 4
 	}
-	l := computeLayout(m.width, m.height, m.mode == modeDetail)
-	content := renderDetailContent(m.theme(), &m.snap.Findings[m.selected], max(0, l.detailW-4))
-	limit := lipgloss.Height(content) - max(1, l.bodyH-2)
-	if limit < 0 {
-		return 0
-	}
-	return limit
+	return m.width - 4
 }
+
+func (m model) detailHeight() int {
+	return m.listHeight()
+}
+
+// ── keymap for help ──
 
 type keyMap struct {
 	bindings []key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding { return k.bindings }
-
 func (k keyMap) FullHelp() [][]key.Binding { return [][]key.Binding{k.bindings} }
 
-func keyBindings(m model) keyMap {
-	if m.modal != modalNone {
-		switch m.modal {
-		case modalTheme:
-			return keyMap{[]key.Binding{
-				key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "preview up")),
-				key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "preview down")),
-				key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
-				key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc/q", "cancel")),
-			}}
-		case modalFixConfirm:
-			return keyMap{[]key.Binding{
-				key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "apply")),
-				key.NewBinding(key.WithKeys("n", "esc"), key.WithHelp("n/esc", "cancel")),
-			}}
-		case modalFixResult:
-			return keyMap{[]key.Binding{
-				key.NewBinding(key.WithKeys("enter", "q"), key.WithHelp("enter/q", "close")),
-			}}
-		}
-		return keyMap{[]key.Binding{
-			key.NewBinding(key.WithKeys("esc", "q", "?"), key.WithHelp("esc/q/?", "close")),
-		}}
-	}
-
-	if m.mode == modeDetail {
-		return keyMap{[]key.Binding{
-			key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "scroll up")),
-			key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "scroll down")),
-			key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
-			key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc/q", "back")),
-			key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-			key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
-		}}
-	}
-
-	return keyMap{[]key.Binding{
-		key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-		key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-		key.NewBinding(key.WithKeys("enter", "l", "right"), key.WithHelp("enter", "details")),
+func (m model) listKeyMap() keyMap {
+	binds := []key.Binding{
+		key.NewBinding(key.WithKeys("↑/↓"), key.WithHelp("j/k", "navigate")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "detail")),
+		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
+		key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "theme")),
+		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
+		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "source: "+m.filter.source)),
+		key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "sort: "+m.filter.sortBy)),
+		key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "clear filters")),
+		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
+		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "theme")),
 		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	}
+	return keyMap{binds}
+}
+
+func (m model) detailKeyMap() keyMap {
+	return keyMap{[]key.Binding{
+		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		key.NewBinding(key.WithKeys("↑/↓"), key.WithHelp("j/k", "scroll")),
+		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
+		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
+		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
+		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	}}
 }
 
 func tickCmd() tea.Cmd {
-	return tea.Tick(200*time.Millisecond, func(t time.Time) tea.Msg {
+	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
 		return tickMsg{}
 	})
 }

@@ -1,3 +1,4 @@
+// Package domain defines core types: Finding, Severity, Source, and scan progress.
 package domain
 
 import "sync"
@@ -78,6 +79,7 @@ func (sp *ScanProgress) Finalize() {
 	defer sp.mu.Unlock()
 	sp.Phase = "complete"
 	sp.Score = CalculateScore(sp.Findings)
+	sp.Grade = GradeFromScore(sp.Score)
 }
 
 func (sp *ScanProgress) SetUpdateAvailable(v string) {
@@ -162,6 +164,21 @@ func CalculateScore(findings []Finding) uint8 {
 		return 0
 	}
 	return uint8(score)
+}
+
+func GradeFromScore(score uint8) string {
+	switch {
+	case score >= 90:
+		return "A"
+	case score >= 70:
+		return "B"
+	case score >= 50:
+		return "C"
+	case score >= 30:
+		return "D"
+	default:
+		return "F"
+	}
 }
 
 func CountFixable(findings []Finding) int {
