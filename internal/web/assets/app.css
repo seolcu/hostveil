@@ -42,9 +42,9 @@ body::before {
 button, input, select { font: inherit; }
 
 .sysinfo {
-  margin: 0 0 16px;
+  margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .shell {
