@@ -128,6 +128,9 @@ func (r *Registry) Classify(findings []domain.Finding) {
 	for i := range findings {
 		if f := r.Lookup(findings[i].ID); f != nil {
 			findings[i].Remediation = f.Class()
+			if findings[i].HowToFix == "" {
+				findings[i].HowToFix = f.Label
+			}
 		}
 	}
 }

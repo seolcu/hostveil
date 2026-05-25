@@ -126,12 +126,26 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.BANN-7126",
 		Label:     "Add legal banner to /etc/issue",
-		Actions:   []Action{execCmd("sh -c 'echo \"Unauthorized access prohibited\" > /etc/issue'")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Add banner to /etc/issue",
+			Command: []string{"sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`},
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.BANN-7130",
 		Label:     "Add legal banner to /etc/motd",
-		Actions:   []Action{execCmd("sh -c 'echo \"Unauthorized access prohibited\" > /etc/motd'")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Add banner to /etc/motd",
+			Command: []string{"sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`},
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`).Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — Accounts
@@ -154,7 +168,14 @@ func registerSystemFixes(r *Registry) {
 		Label:     "Enable firewall",
 		Actions: []Action{
 			execCmd("ufw --force enable"),
-			execCmd("iptables -P INPUT DROP; iptables -P FORWARD DROP"),
+			{
+				Type:    ActionExec,
+				Label:   "Set iptables default deny policies",
+				Command: []string{"sh", "-c", "iptables -P INPUT DROP; iptables -P FORWARD DROP"},
+				Apply: func(ctx Context) error {
+					return exec.Command("sh", "-c", "iptables -P INPUT DROP; iptables -P FORWARD DROP").Run()
+				},
+			},
 		},
 	})
 	r.Register(&Fix{
@@ -180,7 +201,30 @@ func registerSystemFixes(r *Registry) {
 		FindingID: "lynis.LOGG-2130",
 		Label:     "Enable system logging",
 		Actions: []Action{
-			execCmd("apt-get install -y rsyslog && systemctl enable --now rsyslog"),
+			{
+				Type:    ActionExec,
+				Label:   "Install and enable rsyslog",
+				Warning: "Requires internet access for package download.",
+				Command: []string{"sh", "-c", `
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y rsyslog && systemctl enable --now rsyslog
+elif command -v apk >/dev/null 2>&1; then
+    apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y rsyslog && systemctl enable --now rsyslog
+fi`},
+				Apply: func(ctx Context) error {
+					script := `
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y rsyslog && systemctl enable --now rsyslog
+elif command -v apk >/dev/null 2>&1; then
+    apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y rsyslog && systemctl enable --now rsyslog
+fi`
+					return exec.Command("sh", "-c", script).Run()
+				},
+			},
 			prompt("Configure journald forwarding", "Edit /etc/systemd/journald.conf and set ForwardToSyslog=yes"),
 		},
 	})
