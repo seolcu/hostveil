@@ -359,3 +359,4 @@ th:nth-child(5) { width: 125px; }
 .modal-content h2 { margin-bottom: 12px; font-size: 22px; }
 .modal-content p { margin: 8px 0; line-height: 1.5; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions button { flex: 1; padding: 10px 16px; height: 42px; box-sizing: border-box; }
