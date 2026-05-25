@@ -133,9 +133,10 @@ h1 {
   display: grid;
   grid-template-columns: 280px minmax(440px, 1fr) minmax(360px, 0.72fr);
   gap: 14px;
-  align-items: start;
   height: calc(100vh - 210px);
 }
+
+.filters { align-self: start; padding: 18px; position: sticky; top: 18px; border: 1px solid var(--line); background: rgba(17, 21, 34, 0.88); box-shadow: 0 24px 60px var(--shadow); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 
 .findings-panel {
   display: flex;
@@ -147,8 +148,6 @@ h1 {
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
-
-.filters { padding: 18px; position: sticky; top: 18px; border: 1px solid var(--line); background: rgba(17, 21, 34, 0.88); box-shadow: 0 24px 60px var(--shadow); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 
 .search span, .filter-block h2 {
   display: block;
