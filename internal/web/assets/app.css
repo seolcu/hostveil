@@ -229,7 +229,13 @@ th { position: sticky; top: 0; z-index: 2; color: var(--muted); background: #101
 tbody tr { cursor: pointer; transition: background 150ms ease, color 150ms ease; }
 tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 .id { color: #b9c3dd; white-space: nowrap; }
-.title { min-width: 240px; }
+table { table-layout: fixed; }
+th:nth-child(1) { width: 90px; }
+th:nth-child(2) { width: 70px; }
+th:nth-child(3) { width: 140px; }
+th:nth-child(4) { width: 100%; }
+th:nth-child(5) { width: 70px; }
+.title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; padding: 4px 7px; border: 1px solid currentColor; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .critical { color: var(--critical); }
 .high { color: var(--high); }

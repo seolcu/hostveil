@@ -203,7 +203,7 @@ func runImage(image string) ([]domain.Finding, error) {
 		for _, v := range result.Vulnerabilities {
 			findings = append(findings, domain.Finding{
 				ID:          "trivy." + strings.ToLower(v.VulnerabilityID),
-				Title:       truncate(v.Title, 80),
+				Title:       v.Title,
 				Description: v.Description,
 				HowToFix:    fmt.Sprintf("Update %s to version %s or later.", v.PkgName, v.FixedVersion),
 				Severity:    parseSeverity(v.Severity),
@@ -276,10 +276,4 @@ func detectEnvFiles(composePath, project string) []domain.Finding {
 	return findings
 }
 
-func truncate(s string, n int) string {
-	runes := []rune(s)
-	if len(runes) <= n {
-		return s
-	}
-	return string(runes[:n]) + "..."
-}
+

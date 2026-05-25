@@ -75,26 +75,6 @@ func TestParseSeverity(t *testing.T) {
 	}
 }
 
-func TestTruncate(t *testing.T) {
-	tests := []struct {
-		s      string
-		n      int
-		want   string
-	}{
-		{"hello world", 5, "hello..."},
-		{"short", 10, "short"},
-		{"exact", 5, "exact"},
-		{"", 5, ""},
-		{"hello", 0, "..."},
-	}
-	for _, tt := range tests {
-		got := truncate(tt.s, tt.n)
-		if got != tt.want {
-			t.Errorf("truncate(%q, %d) = %q, want %q", tt.s, tt.n, got, tt.want)
-		}
-	}
-}
-
 func writeTemp(t *testing.T, content string) string {
 	t.Helper()
 	f, err := os.CreateTemp("", "hostveil-test-*.yml")
