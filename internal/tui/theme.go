@@ -15,8 +15,9 @@ type Theme struct {
 	Success    string
 }
 
-func DefaultTheme() Theme     { return allThemes[0] }
-func AllThemes() []Theme      { return allThemes }
+func DefaultTheme() Theme { return allThemes[0] }
+func AllThemes() []Theme  { return allThemes }
+
 var allThemes = []Theme{
 	{
 		Name: "Tokyo Night", Background: "#1a1b26", Surface: "#24283b",

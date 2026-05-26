@@ -12,10 +12,20 @@ import (
 type ActionType int
 
 const (
-	ActionEdit   ActionType = iota
+	ActionEdit ActionType = iota
 	ActionExec
-	ActionPrompt
 )
+
+func (a ActionType) String() string {
+	switch a {
+	case ActionEdit:
+		return "edit"
+	case ActionExec:
+		return "exec"
+	default:
+		return "unknown"
+	}
+}
 
 type Context struct {
 	Finding *domain.Finding
@@ -36,6 +46,7 @@ type Action struct {
 	Description string
 	Warning     string
 	EditPath    string
+	FilePath    string
 	Command     []string
 	Apply       func(Context) error
 }
@@ -52,8 +63,6 @@ func (f *Fix) Class() domain.RemediationKind {
 		return domain.RemediationUnavailable
 	case len(f.Actions) > 1:
 		return domain.RemediationReview
-	case f.Actions[0].Type == ActionPrompt:
-		return domain.RemediationManual
 	default:
 		return domain.RemediationAuto
 	}
@@ -64,11 +73,22 @@ func (f *Fix) Run(ctx Context, actionIdx int) FixResult {
 		return FixResult{Error: "invalid action index"}
 	}
 	action := f.Actions[actionIdx]
-	err := action.Apply(ctx)
-	if err != nil {
-		return FixResult{Error: err.Error()}
+
+	var diff string
+	if action.Type == ActionEdit {
+		var err error
+		diff, err = CaptureDiff(ctx, action)
+		if err != nil {
+			return FixResult{Error: err.Error()}
+		}
+	} else {
+		err := action.Apply(ctx)
+		if err != nil {
+			return FixResult{Error: err.Error()}
+		}
 	}
-	return FixResult{Success: true, Label: action.Label, Diff: ctx.Diff}
+
+	return FixResult{Success: true, Label: action.Label, Diff: diff}
 }
 
 type FixResult struct {

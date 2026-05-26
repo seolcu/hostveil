@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/compose"
 )
@@ -34,13 +35,23 @@ func registerComposeFixes(r *Registry) {
 	r.Register(&Fix{FindingID: "trivy.ds002", Label: "Enable read-only root filesystem", Actions: []Action{edit("read_only", true)}})
 	r.Register(&Fix{FindingID: "trivy.ds003", Label: "Remove pid_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove pid_mode: host", Warning: "Container loses host PID access.", Apply: func(ctx Context) error { return composeDel(ctx, "pid_mode") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds004", Label: "Remove ipc_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove ipc_mode: host", Warning: "Container loses host IPC access.", Apply: func(ctx Context) error { return composeDel(ctx, "ipc_mode") }}}})
-	r.Register(&Fix{FindingID: "trivy.ds005", Label: "Drop dangerous capabilities", Actions: []Action{drop("cap_add", "SYS_ADMIN"), drop("cap_add", "NET_ADMIN"), drop("cap_add", "SYS_RAWIO"), drop("cap_add", "SYS_PTRACE"), drop("cap_add", "SYS_MODULE")}})
+	r.Register(&Fix{FindingID: "trivy.ds005", Label: "Drop dangerous capabilities", Actions: []Action{{
+		Type:  ActionEdit,
+		Label: "Drop all dangerous capabilities",
+		Apply: func(ctx Context) error {
+			return composeDropBatch(ctx, "cap_add", []interface{}{
+				"SYS_ADMIN", "NET_ADMIN", "SYS_RAWIO", "SYS_PTRACE", "SYS_MODULE",
+			})
+		},
+	}}})
 	r.Register(&Fix{FindingID: "trivy.ds006", Label: "Add no-new-privileges", Actions: []Action{edit("security_opt", []interface{}{"no-new-privileges:true"})}})
 	r.Register(&Fix{FindingID: "trivy.ds008", Label: "Change restart to unless-stopped", Actions: []Action{edit("restart", "unless-stopped")}})
 	r.Register(&Fix{FindingID: "trivy.ds009", Label: "Set non-root user", Actions: []Action{{Type: ActionEdit, Label: "Set user: 1000:1000", Warning: "Ensure image supports non-root operation.", Apply: func(ctx Context) error { return composeEdit(ctx, "user", "1000:1000") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds010", Label: "Add memory limit", Actions: []Action{edit("deploy.resources.limits.memory", "512M")}})
 	r.Register(&Fix{FindingID: "trivy.ds011", Label: "Add CPU limit", Actions: []Action{edit("deploy.resources.limits.cpus", "1.0")}})
-	r.Register(&Fix{FindingID: "trivy.ds012", Label: "Add healthcheck", Actions: []Action{{Type: ActionEdit, Label: "Add healthcheck block", Warning: "Uses default TCP check; customize if needed.", Apply: func(ctx Context) error { return composeEdit(ctx, "healthcheck", map[string]interface{}{"test": []interface{}{"CMD", "curl", "-f", "http://localhost/"}, "interval": "30s", "timeout": "10s", "retries": 3}) }}}})
+	r.Register(&Fix{FindingID: "trivy.ds012", Label: "Add healthcheck", Actions: []Action{{Type: ActionEdit, Label: "Add healthcheck block", Warning: "Uses default TCP check; customize if needed.", Apply: func(ctx Context) error {
+		return composeEdit(ctx, "healthcheck", map[string]interface{}{"test": []interface{}{"CMD", "curl", "-f", "http://localhost/"}, "interval": "30s", "timeout": "10s", "retries": 3})
+	}}}})
 	r.Register(&Fix{FindingID: "trivy.ds013", Label: "Add tmpfs with noexec", Actions: []Action{edit("tmpfs", "/tmp:noexec")}})
 	r.Register(&Fix{FindingID: "trivy.ds014", Label: "Remove seccomp: unconfined", Actions: []Action{drop("security_opt", "seccomp:unconfined")}})
 	r.Register(&Fix{FindingID: "trivy.ds015", Label: "Remove apparmor: unconfined", Actions: []Action{drop("security_opt", "apparmor:unconfined")}})
@@ -67,7 +78,6 @@ func registerComposeFixes(r *Registry) {
 		Label:     "Secure volume mounts",
 		Actions: []Action{
 			{Type: ActionEdit, Label: "Add :ro flag", Apply: func(ctx Context) error { return composeVolumeRO(ctx) }},
-			{Type: ActionPrompt, Label: "Migrate to named volumes", Description: "Replace host path with a volume name and add to top-level volumes."},
 		},
 	})
 	r.Register(&Fix{
@@ -81,7 +91,6 @@ func registerComposeFixes(r *Registry) {
 				}
 				return exec.Command("chmod", "600", envPath).Run()
 			}},
-			{Type: ActionPrompt, Label: "Migrate to Docker secrets", Description: "Define secrets in the compose file and reference via secrets:."},
 		},
 	})
 }
@@ -122,17 +131,28 @@ func composeVolumeRO(ctx Context) error {
 	if err != nil {
 		return err
 	}
-	vol := ctx.Finding.Evidence["volume"]
-	if vol == "" {
-		return fmt.Errorf("no volume evidence")
-	}
 	svcs, err := targetServices(f, ctx.Finding.Service)
 	if err != nil {
 		return err
 	}
+	targetVol := ctx.Finding.Evidence["volume"]
 	for _, svc := range svcs {
-		if err := f.SetField(svc, "volumes", vol+":ro"); err != nil {
-			return fmt.Errorf("failed to set read-only volume: %w", err)
+		vols, err := f.GetFieldStrings(svc, "volumes")
+		if err != nil || len(vols) == 0 {
+			return fmt.Errorf("no volumes found for service %q", svc)
+		}
+		fixed := make([]interface{}, len(vols))
+		for i, v := range vols {
+			if strings.Contains(v, ":ro") {
+				fixed[i] = v
+			} else if targetVol == "" || strings.HasPrefix(v, strings.Split(targetVol, ":")[0]) {
+				fixed[i] = v + ":ro"
+			} else {
+				fixed[i] = v
+			}
+		}
+		if err := f.SetField(svc, "volumes", fixed); err != nil {
+			return fmt.Errorf("failed to set read-only volumes: %w", err)
 		}
 	}
 	ctx.Diff = f.Diff()
@@ -187,6 +207,26 @@ func composeDrop(ctx Context, field string, value interface{}) error {
 	for _, svc := range svcs {
 		if err := f.RemoveFromList(svc, field, value); err != nil {
 			return err
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeDropBatch(ctx Context, field string, values []interface{}) error {
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	for _, svc := range svcs {
+		for _, v := range values {
+			if err := f.RemoveFromList(svc, field, v); err != nil {
+				return err
+			}
 		}
 	}
 	ctx.Diff = f.Diff()

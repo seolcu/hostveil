@@ -70,8 +70,9 @@ func parseReportFile(reportPath string) ([]domain.Finding, error) {
 }
 
 // parseEntry parses a lynis report entry line:
-//   warning[]=TEST_ID|Description|Remediation|Extra
-//   suggestion[]=TEST_ID|Description|Remediation|Extra
+//
+//	warning[]=TEST_ID|Description|Remediation|Extra
+//	suggestion[]=TEST_ID|Description|Remediation|Extra
 func parseEntry(line string, sev domain.Severity) *domain.Finding {
 	eq := strings.IndexByte(line, '=')
 	if eq < 0 {
@@ -93,6 +94,22 @@ func parseEntry(line string, sev domain.Severity) *domain.Finding {
 		howToFix = strings.TrimSpace(parts[2])
 	}
 
+	ev := map[string]string{}
+	if len(parts) >= 4 {
+		extra := strings.TrimSpace(parts[3])
+		if extra != "" {
+			ev["extra"] = extra
+			switch {
+			case id == "FILE-6405" || strings.HasPrefix(id, "FILE-6405"):
+				ev["path"] = extra
+			case id == "ACCT-9626" || strings.HasPrefix(id, "ACCT-9626"):
+				ev["user"] = extra
+			case id == "FIRE-4513" || strings.HasPrefix(id, "FIRE-4513"):
+				ev["port"] = extra
+			}
+		}
+	}
+
 	return &domain.Finding{
 		ID:          "lynis." + id,
 		Title:       desc,
@@ -102,5 +119,6 @@ func parseEntry(line string, sev domain.Severity) *domain.Finding {
 		Source:      domain.SourceLynis,
 		Service:     "host",
 		Remediation: domain.RemediationUnavailable,
+		Evidence:    ev,
 	}
 }

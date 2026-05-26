@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/scan"
 )
 
 func TestHasFlag(t *testing.T) {
@@ -40,9 +42,9 @@ func TestScanningMessage(t *testing.T) {
 		{"", "Scanning..."},
 	}
 	for _, tt := range tests {
-		got := scanningMessage(tt.tool)
+		got := scan.ScanningMessage(tt.tool)
 		if got != tt.want {
-			t.Errorf("scanningMessage(%q) = %q, want %q", tt.tool, got, tt.want)
+			t.Errorf("ScanningMessage(%q) = %q, want %q", tt.tool, got, tt.want)
 		}
 	}
 }

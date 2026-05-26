@@ -9,8 +9,8 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,8 +19,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
-	"github.com/seolcu/hostveil/internal/lynis"
-	"github.com/seolcu/hostveil/internal/trivy"
+	"github.com/seolcu/hostveil/internal/scan"
 )
 
 //go:embed assets/*
@@ -64,10 +63,16 @@ func Serve(opts Options) error {
 		writeJSON(w, opts.Live.Snapshot())
 	})
 	mux.HandleFunc("POST /api/fix", func(w http.ResponseWriter, r *http.Request) {
-		handleFix(w, r, opts.Fixes)
+		handleFix(w, r, opts)
+	})
+	mux.HandleFunc("POST /api/fix/batch", func(w http.ResponseWriter, r *http.Request) {
+		handleFixBatch(w, r, opts)
 	})
 	mux.HandleFunc("POST /api/rescan", func(w http.ResponseWriter, r *http.Request) {
 		handleRescan(w, r, opts)
+	})
+	mux.HandleFunc("GET /api/export", func(w http.ResponseWriter, r *http.Request) {
+		handleExport(w, r, opts.Live)
 	})
 	mux.Handle("/", http.FileServerFS(staticFS))
 
@@ -85,6 +90,14 @@ func writeJSON(w http.ResponseWriter, v any) {
 	if err := enc.Encode(v); err != nil {
 		fmt.Fprintf(os.Stderr, "hostveil web: writeJSON: %v\n", err)
 	}
+}
+
+func sameOrigin(origin, host string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return u.Host == host && (u.Scheme == "http" || u.Scheme == "https")
 }
 
 func secureHeaders(next http.Handler) http.Handler {
@@ -269,17 +282,16 @@ type fixRequest struct {
 	InfoOnly    bool           `json:"info_only"`
 }
 
-func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
+func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
+	reg := opts.Fixes
 	if reg == nil {
 		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
 		return
 	}
 	origin := r.Header.Get("Origin")
-	if origin != "" {
-		if !strings.HasPrefix(origin, "http://"+r.Host) && !strings.HasPrefix(origin, "https://"+r.Host) {
-			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
-			return
-		}
+	if origin != "" && !sameOrigin(origin, r.Host) {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+		return
 	}
 	var req fixRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -294,19 +306,44 @@ func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
 	}
 
 	if req.InfoOnly {
-		warning := ""
-		actionLabels := make([]string, len(f.Actions))
-		if len(f.Actions) > req.ActionIndex {
-			warning = f.Actions[req.ActionIndex].Warning
-		}
+		actions := make([]map[string]interface{}, len(f.Actions))
+		ctx := fix.Context{Finding: &req.Finding}
 		for i, a := range f.Actions {
-			actionLabels[i] = a.Label
+			actionInfo := map[string]interface{}{
+				"index":   i,
+				"type":    a.Type.String(),
+				"label":   a.Label,
+				"warning": a.Warning,
+			}
+
+			switch a.Type {
+			case fix.ActionEdit:
+				editPath := a.FilePath
+				if editPath == "" {
+					editPath = a.EditPath
+				}
+				if editPath == "" {
+					editPath = ctx.ComposePath()
+				}
+				if editPath != "" {
+					actionInfo["edit_path"] = editPath
+				}
+				diff, _ := fix.SimulateDiff(ctx, a)
+				if diff != "" {
+					actionInfo["diff_preview"] = diff
+				}
+			case fix.ActionExec:
+				if len(a.Command) > 0 {
+					actionInfo["command"] = strings.Join(a.Command, " ")
+				}
+			}
+
+			actions[i] = actionInfo
 		}
 		writeJSON(w, map[string]interface{}{
 			"success": true,
 			"label":   f.Label,
-			"warning": warning,
-			"actions": actionLabels,
+			"actions": actions,
 		})
 		return
 	}
@@ -322,6 +359,17 @@ func handleFix(w http.ResponseWriter, r *http.Request, reg *fix.Registry) {
 	if result.Diff != "" {
 		resp["diff"] = result.Diff
 	}
+
+	// Auto-mark related findings as Fixed (shared solution detection)
+	if result.Success && req.Finding.Service != "" {
+		alsoFixed := opts.Live.MarkRelatedFixed(req.Finding.ID, req.Finding.Service, func(id string) bool {
+			return reg.Lookup(id) == f
+		})
+		if len(alsoFixed) > 0 {
+			resp["also_fixed"] = alsoFixed
+		}
+	}
+
 	writeJSON(w, resp)
 }
 
@@ -332,35 +380,112 @@ func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
 }
 
 func runRescan(opts Options) {
-	if _, err := exec.LookPath("trivy"); err == nil {
-		opts.Live.SetToolStatus("trivy", domain.ToolRunning, "Scanning compose projects...")
-		findings, scanErr := trivy.ScanAll()
-		if scanErr != nil {
-			opts.Live.SetToolStatus("trivy", domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
-		} else {
-			opts.Fixes.Classify(findings)
-			opts.Live.SetToolStatus("trivy", domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
-			opts.Live.AddFindings(findings)
-		}
-	} else {
-		opts.Live.SetToolStatus("trivy", domain.ToolSkipped, "Not found (run 'hostveil setup')")
-	}
-
-	if _, err := exec.LookPath("lynis"); err == nil {
-		opts.Live.SetToolStatus("lynis", domain.ToolRunning, "Auditing system hardening...")
-		findings, scanErr := lynis.Scan()
-		if scanErr != nil {
-			opts.Live.SetToolStatus("lynis", domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
-		} else {
-			opts.Fixes.Classify(findings)
-			opts.Live.SetToolStatus("lynis", domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
-			opts.Live.AddFindings(findings)
-		}
-	} else {
-		opts.Live.SetToolStatus("lynis", domain.ToolSkipped, "Not found (run 'hostveil setup')")
-	}
-
+	scan.RunSingleTool(opts.Live, opts.Fixes, "trivy")
+	scan.RunSingleTool(opts.Live, opts.Fixes, "lynis")
 	opts.Live.Finalize()
 }
 
+type fixBatchRequest struct {
+	Findings    []domain.Finding `json:"findings"`
+	ActionIndex int              `json:"action_index"`
+}
 
+func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
+	reg := opts.Fixes
+	if reg == nil {
+		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+	origin := r.Header.Get("Origin")
+	if origin != "" && !sameOrigin(origin, r.Host) {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+		return
+	}
+	var req fixBatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request: " + err.Error()})
+		return
+	}
+
+	results := make([]map[string]interface{}, 0, len(req.Findings))
+	allAlsoFixed := make(map[string]bool)
+
+	for _, finding := range req.Findings {
+		f := reg.Lookup(finding.ID)
+		if f == nil {
+			results = append(results, map[string]interface{}{
+				"id":      finding.ID,
+				"success": false,
+				"error":   "no fix registered",
+			})
+			continue
+		}
+
+		result := f.Run(fix.Context{Finding: &finding, Log: func(s string, args ...interface{}) {}}, req.ActionIndex)
+		entry := map[string]interface{}{
+			"id":      finding.ID,
+			"success": result.Success,
+			"label":   result.Label,
+		}
+		if result.Error != "" {
+			entry["error"] = result.Error
+		}
+		if result.Diff != "" {
+			entry["diff"] = result.Diff
+		}
+
+		// Auto-mark related findings
+		if result.Success && finding.Service != "" {
+			alsoFixed := opts.Live.MarkRelatedFixed(finding.ID, finding.Service, func(id string) bool {
+				return reg.Lookup(id) == f
+			})
+			for _, aid := range alsoFixed {
+				allAlsoFixed[aid] = true
+			}
+		}
+
+		results = append(results, entry)
+	}
+
+	resp := map[string]interface{}{
+		"results": results,
+	}
+	if len(allAlsoFixed) > 0 {
+		alsoFixedList := make([]string, 0, len(allAlsoFixed))
+		for id := range allAlsoFixed {
+			alsoFixedList = append(alsoFixedList, id)
+		}
+		resp["also_fixed"] = alsoFixedList
+	}
+
+	writeJSON(w, resp)
+}
+
+func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgress) {
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	snap := live.Snapshot()
+
+	switch format {
+	case "csv":
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.csv")
+		var buf strings.Builder
+		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
+		for _, f := range snap.Findings {
+			buf.WriteString(fmt.Sprintf("%q,%s,%s,%s,%q,%s,%v\n",
+				f.ID, f.Severity.String(), f.Source.String(), f.Service,
+				f.Title, f.Remediation.String(), f.Fixed))
+		}
+		w.Write([]byte(buf.String()))
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.json")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		enc.Encode(snap)
+	}
+}

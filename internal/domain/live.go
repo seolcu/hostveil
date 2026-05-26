@@ -98,7 +98,10 @@ func (sp *ScanProgress) ResetForRescan() {
 	sp.Score = 0
 	sp.Grade = ""
 	sp.Findings = nil
-	for _, t := range sp.Tools {
+	for name, t := range sp.Tools {
+		if name == "update" {
+			continue
+		}
 		t.Status = ToolPending
 		t.Message = "Waiting..."
 	}
@@ -110,20 +113,64 @@ func (sp *ScanProgress) SetUpdateAvailable(v string) {
 	sp.UpdateAvailable = v
 }
 
+// MarkFixed sets Fixed=true for the finding with the given ID.
+// Returns the number of findings marked (0 if not found).
+func (sp *ScanProgress) MarkFixed(id string) int {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	count := 0
+	for i := range sp.Findings {
+		if sp.Findings[i].ID == id && !sp.Findings[i].Fixed {
+			sp.Findings[i].Fixed = true
+			count++
+		}
+	}
+	return count
+}
+
+// MarkRelatedFixed marks findings as Fixed when they:
+// 1. Match the same fix (via matchFn)
+// 2. Share the same Service (image/compose service)
+// 3. Are not already fixed
+// Returns IDs of newly marked findings.
+func (sp *ScanProgress) MarkRelatedFixed(excludeID string, service string, matchFn func(id string) bool) []string {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	var alsoFixed []string
+	for i := range sp.Findings {
+		f := &sp.Findings[i]
+		if f.ID == excludeID {
+			continue
+		}
+		if f.Fixed {
+			continue
+		}
+		if f.Service == "" || f.Service != service {
+			continue
+		}
+		if !matchFn(f.ID) {
+			continue
+		}
+		f.Fixed = true
+		alsoFixed = append(alsoFixed, f.ID)
+	}
+	return alsoFixed
+}
+
 type ToolStateJSON struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
 }
 
 type Snapshot struct {
-	Phase           string                  `json:"phase"`
-	UpdateAvailable string                  `json:"update_available"`
+	Phase           string                   `json:"phase"`
+	UpdateAvailable string                   `json:"update_available"`
 	Tools           map[string]ToolStateJSON `json:"tools"`
-	Findings        []Finding               `json:"findings"`
-	Score           uint8                   `json:"score"`
-	Grade           string                  `json:"grade"`
-	Hostname        string                  `json:"hostname"`
-	LocalIP         string                  `json:"local_ip"`
+	Findings        []Finding                `json:"findings"`
+	Score           uint8                    `json:"score"`
+	Grade           string                   `json:"grade"`
+	Hostname        string                   `json:"hostname"`
+	LocalIP         string                   `json:"local_ip"`
 }
 
 func (sp *ScanProgress) Snapshot() Snapshot {
@@ -185,5 +232,3 @@ func GradeFromScore(score uint8) string {
 		return "F"
 	}
 }
-
-

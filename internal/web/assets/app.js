@@ -12,6 +12,7 @@ const state = {
   remediation: "all",
   sortBy: "severity",
   pollTimer: null,
+  selectedSet: new Set(),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -23,14 +24,32 @@ async function fetchResult() {
     state.phase = state.live.phase || "complete";
     render();
   } catch (error) {
-    // Keep polling
+    // Keep polling — transient network errors are expected during rescan
+  }
+}
+
+let fetchFailures = 0;
+
+async function fetchResultWithRetry() {
+  try {
+    const response = await fetch("/api/result");
+    state.live = await response.json();
+    state.phase = state.live.phase || "complete";
+    fetchFailures = 0;
+    render();
+  } catch (error) {
+    fetchFailures++;
+    if (fetchFailures >= 5) {
+      showToast("Connection lost — retrying...", "toast-error");
+      fetchFailures = 0;
+    }
   }
 }
 
 async function init() {
   await fetchResult();
   if (state.phase === "loading") {
-    state.pollTimer = setInterval(fetchResult, 2000);
+    state.pollTimer = setInterval(fetchResultWithRetry, 2000);
   }
   bindControls();
 }
@@ -55,6 +74,16 @@ function bindControls() {
     render();
   });
 
+  $("selectAllCheck")?.addEventListener("change", (event) => {
+    const visible = findings();
+    if (event.target.checked) {
+      visible.forEach((f) => state.selectedSet.add(f.ID));
+    } else {
+      visible.forEach((f) => state.selectedSet.delete(f.ID));
+    }
+    render();
+  });
+
   const rescanBtn = document.createElement("button");
   rescanBtn.id = "rescanBtn";
   rescanBtn.type = "button";
@@ -65,12 +94,37 @@ function bindControls() {
     rescanBtn.textContent = "Scanning...";
     try {
       await fetch("/api/rescan", { method: "POST" });
-      state.pollTimer = setInterval(fetchResult, 2000);
+      state.pollTimer = setInterval(fetchResultWithRetry, 2000);
     } catch (e) {
       console.error("Rescan failed");
     }
     rescanBtn.disabled = false;
     rescanBtn.textContent = "Re-scan";
+  });
+
+  const exportBtn = document.createElement("button");
+  exportBtn.id = "exportBtn";
+  exportBtn.type = "button";
+  exportBtn.textContent = "Export";
+  document.querySelector(".panel-head").appendChild(exportBtn);
+  exportBtn.addEventListener("click", () => {
+    showExportModal();
+  });
+
+  const fixSelectedBtn = document.createElement("button");
+  fixSelectedBtn.id = "fixSelectedBtn";
+  fixSelectedBtn.type = "button";
+  fixSelectedBtn.className = "fix-selected-btn";
+  document.querySelector(".panel-head").appendChild(fixSelectedBtn);
+  fixSelectedBtn.addEventListener("click", () => {
+    applyFixBatch();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeFixModal();
+      closeExportModal();
+    }
   });
 }
 
@@ -93,6 +147,7 @@ function render() {
   renderFilters();
   renderTable(visible);
   renderDetail(visible[state.selected]);
+  updateFixSelectedBtn();
 }
 
 function renderLoading() {
@@ -178,25 +233,52 @@ function renderChips(id, values, key) {
 
 function renderTable(visible) {
   $("findingCount").textContent = `${visible.length} visible`;
+  const allSelected = visible.length > 0 && visible.every((f) => state.selectedSet.has(f.ID));
+  const someSelected = visible.some((f) => state.selectedSet.has(f.ID));
+  const checkState = allSelected ? "checked" : someSelected ? "indeterminate" : "";
+
   $("findings").innerHTML = visible.map((f, index) => {
     const fixedClass = f.Fixed ? "fixed" : "";
     const selClass = index === state.selected ? "selected" : "";
-    const rowClass = [fixedClass, selClass].filter(Boolean).join(" ");
+    const rowSelectedClass = state.selectedSet.has(f.ID) ? "row-selected" : "";
+    const rowClass = [fixedClass, selClass, rowSelectedClass].filter(Boolean).join(" ");
     const sevDisplay = f.Fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
     const srcDisplay = f.Fixed ? "" : `<span class="muted">${source(f)}</span>`;
     const fixDisplay = f.Fixed ? "Fixed" : label(remediation(f));
     const titleDisplay = f.Fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
-    return `<tr class="${rowClass}" data-index="${index}">
+    const checked = state.selectedSet.has(f.ID) ? "checked" : "";
+    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.ID)}">
+      <td class="check-cell"><input type="checkbox" ${checked} data-id="${escapeHTML(f.ID)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
       <td class="id">${shortId(f.ID)}</td>
       <td class="title">${titleDisplay}</td>
       <td class="muted">${fixDisplay}</td>
     </tr>`;
-  }).join("") || `<tr><td colspan="5" class="muted">No findings match the current filters.</td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="muted">No findings match the current filters.</td></tr>`;
+
+  const selectAllCheck = $("selectAllCheck");
+  if (selectAllCheck) {
+    selectAllCheck.checked = allSelected;
+    selectAllCheck.indeterminate = someSelected && !allSelected;
+  }
+
   $("findings").querySelectorAll("tr[data-index]").forEach((row) => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (e) => {
+      if (e.target.classList.contains("row-check")) return;
       state.selected = Number(row.dataset.index);
+      render();
+    });
+  });
+  $("findings").querySelectorAll(".row-check").forEach((cb) => {
+    cb.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = cb.dataset.id;
+      if (cb.checked) {
+        state.selectedSet.add(id);
+      } else {
+        state.selectedSet.delete(id);
+      }
       render();
     });
   });
@@ -254,7 +336,6 @@ async function applyFix(finding, button) {
   const resultDiv = $("fixResult");
   resultDiv.innerHTML = "";
 
-  // Step 1: Get fix info (warning, actions)
   try {
     const infoResp = await fetch("/api/fix", {
       method: "POST",
@@ -263,26 +344,34 @@ async function applyFix(finding, button) {
     });
     const info = await infoResp.json();
     if (!info.success) {
-      resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(info.error || "Fix info unavailable")}</div>`;
+      resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(info.error || "Fix info unavailable")}</div>`;
       return;
     }
 
-    if (info.warning) {
-      showFixModal(info.label, info.warning, () => {
-        closeFixModal();
-        doApplyFix(finding, button);
-      });
+    const actions = info.actions || [];
+    if (actions.length === 0) {
+      resultDiv.innerHTML = `<div class="fix-error">No actions available</div>`;
       return;
+    }
+
+    if (actions.length === 1) {
+      showFixModal(info.label, actions[0], () => {
+        closeFixModal();
+        doApplyFix(finding, button, 0);
+      });
+    } else {
+      showFixActionModal(info.label, actions, (selectedIdx) => {
+        closeFixModal();
+        doApplyFix(finding, button, selectedIdx);
+      });
     }
   } catch (error) {
-    resultDiv.innerHTML = `<div class="fix-error">✗ ${escapeHTML(error.message)}</div>`;
+    resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(error.message)}</div>`;
     return;
   }
-
-  doApplyFix(finding, button);
 }
 
-async function doApplyFix(finding, button) {
+async function doApplyFix(finding, button, actionIdx) {
   const resultDiv = $("fixResult");
   button.disabled = true;
   button.textContent = "Applying...";
@@ -290,24 +379,46 @@ async function doApplyFix(finding, button) {
     const response = await fetch("/api/fix", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ finding, action_index: 0 }),
+      body: JSON.stringify({ finding, action_index: actionIdx }),
     });
     const result = await response.json();
     if (result.success) {
-      resultDiv.innerHTML = `<div class="fix-success">&#10003; ${escapeHTML(result.label || "Fixed")}</div>`;
       finding.Fixed = true;
+      const successHtml = `<div class="fix-success">&#10003; ${escapeHTML(result.label || "Fixed")}</div>`;
+      const diffHtml = result.diff ? highlightDiff(result.diff) : "";
       render();
+      const newResultDiv = $("fixResult");
+      if (newResultDiv) {
+        newResultDiv.innerHTML = successHtml + diffHtml;
+      }
+      if (result.also_fixed?.length > 0) {
+        showToast(`Also resolved ${result.also_fixed.length} related finding${result.also_fixed.length !== 1 ? "s" : ""}`, "toast-info");
+      }
     } else {
       resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(result.error || "Fix failed")}</div>`;
-    }
-    if (result.diff) {
-      resultDiv.innerHTML += `<pre class="fix-diff">${escapeHTML(result.diff)}</pre>`;
     }
   } catch (error) {
     resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(error.message)}</div>`;
   }
   button.disabled = false;
   button.textContent = "Fix";
+}
+
+function highlightDiff(diff) {
+  const lines = diff.split("\n");
+  const highlighted = lines.map((line) => {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      return `<span class="diff-add">${escapeHTML(line)}</span>`;
+    }
+    if (line.startsWith("-") && !line.startsWith("---")) {
+      return `<span class="diff-del">${escapeHTML(line)}</span>`;
+    }
+    if (line.startsWith("@@")) {
+      return `<span class="diff-hunk">${escapeHTML(line)}</span>`;
+    }
+    return escapeHTML(line);
+  }).join("\n");
+  return `<pre class="fix-diff">${highlighted}</pre>`;
 }
 
 function section(name, content, copy = false) {
@@ -338,15 +449,31 @@ function label(value) { return value === "all" ? "All" : value.charAt(0).toUpper
 function severityClassForScore(score) { return score >= 85 ? "low" : score >= 65 ? "medium" : score >= 40 ? "high" : score >= 20 ? "critical" : "critical"; }
 function escapeHTML(value = "") { return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch])); }
 
-function showFixModal(label, warning, onConfirm) {
+function showFixModal(label, action, onConfirm) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.id = "fixModal";
+
+  const actionTypeBadge = `<span class="action-type-badge type-${escapeHTML(action.type)}">${escapeHTML(action.type)}</span>`;
+  const commandBlock = action.command ? `<div class="action-command"><span class="command-label">Command</span><code>${escapeHTML(action.command)}</code></div>` : "";
+  const editPathBlock = action.edit_path ? `<div class="action-edit-path"><span class="path-label">File</span><code>${escapeHTML(action.edit_path)}</code></div>` : "";
+  const diffPreviewBlock = action.diff_preview ? `<div class="diff-preview"><span class="preview-label">Diff preview</span>${highlightDiff(action.diff_preview)}</div>` : "";
+  const warningBlock = action.warning ? `<p class="fix-warning">&#9888; ${escapeHTML(action.warning)}</p>` : "";
+
   overlay.innerHTML = `
-    <div class="modal-content">
+    <div class="modal-content modal-fix">
       <h2>Apply fix</h2>
-      <p><strong>${escapeHTML(label)}</strong></p>
-      <p class="fix-warning">&#9888; ${escapeHTML(warning)}</p>
+      <p class="fix-label">${escapeHTML(label)}</p>
+      <div class="action-summary">
+        <div class="action-header">
+          ${actionTypeBadge}
+          <strong>${escapeHTML(action.label)}</strong>
+        </div>
+        ${commandBlock}
+        ${editPathBlock}
+        ${diffPreviewBlock}
+      </div>
+      ${warningBlock}
       <div class="modal-actions">
         <button class="fix-btn" id="modalFixYes">Apply</button>
         <button class="chip" id="modalFixNo">Cancel</button>
@@ -357,11 +484,196 @@ function showFixModal(label, warning, onConfirm) {
   overlay.querySelector("#modalFixNo").onclick = closeFixModal;
 }
 
+function showFixActionModal(label, actions, onSelect) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "fixModal";
+
+  const actionItems = actions.map((action, idx) => {
+    const actionTypeBadge = `<span class="action-type-badge type-${escapeHTML(action.type)}">${escapeHTML(action.type)}</span>`;
+    const commandBlock = action.command ? `<div class="action-command"><span class="command-label">Command</span><code>${escapeHTML(action.command)}</code></div>` : "";
+    const editPathBlock = action.edit_path ? `<div class="action-edit-path"><span class="path-label">File</span><code>${escapeHTML(action.edit_path)}</code></div>` : "";
+  const diffPreviewBlock = action.diff_preview ? `<div class="diff-preview"><span class="preview-label">Diff preview</span>${highlightDiff(action.diff_preview)}</div>` : "";
+    const warningBlock = action.warning ? `<p class="fix-warning">&#9888; ${escapeHTML(action.warning)}</p>` : "";
+
+    return `
+      <div class="action-option" data-idx="${idx}">
+        <div class="action-option-header">
+          <input type="radio" name="fixAction" value="${idx}" id="actionRadio${idx}">
+          <label for="actionRadio${idx}">
+            ${actionTypeBadge}
+            <strong>${escapeHTML(action.label)}</strong>
+          </label>
+        </div>
+        ${commandBlock}
+        ${editPathBlock}
+        ${diffPreviewBlock}
+        ${warningBlock}
+      </div>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="modal-content modal-fix">
+      <h2>Choose action</h2>
+      <p class="fix-label">${escapeHTML(label)}</p>
+      <div class="action-options">
+        ${actionItems}
+      </div>
+      <div class="modal-actions">
+        <button class="fix-btn" id="modalFixYes" disabled>Select an action</button>
+        <button class="chip" id="modalFixNo">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const radios = overlay.querySelectorAll('input[name="fixAction"]');
+  const confirmBtn = overlay.querySelector("#modalFixYes");
+  let selectedIdx = -1;
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      selectedIdx = Number(radio.value);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Apply selected";
+      overlay.querySelectorAll(".action-option").forEach((opt) => opt.classList.remove("selected"));
+      radio.closest(".action-option").classList.add("selected");
+    });
+  });
+
+  confirmBtn.onclick = () => {
+    if (selectedIdx >= 0) onSelect(selectedIdx);
+  };
+  overlay.querySelector("#modalFixNo").onclick = closeFixModal;
+}
+
 function closeFixModal() {
   const overlay = document.getElementById("fixModal");
   if (overlay) overlay.remove();
 }
 
+async function applyFixBatch() {
+  const selectedIds = new Set(state.selectedSet);
+  if (selectedIds.size === 0) return;
+
+  const visible = findings();
+  const selectedFindings = visible.filter((f) => selectedIds.has(f.ID));
+  if (selectedFindings.length === 0) return;
+
+  const fixSelectedBtn = $("fixSelectedBtn");
+  if (fixSelectedBtn) {
+    fixSelectedBtn.disabled = true;
+    fixSelectedBtn.textContent = "Applying...";
+  }
+
+  try {
+    const response = await fetch("/api/fix/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ findings: selectedFindings, action_index: 0 }),
+    });
+    const result = await response.json();
+
+    if (result.results) {
+      for (const r of result.results) {
+        if (r.success) {
+          const f = state.live?.findings?.find((f) => f.ID === r.id);
+          if (f) f.Fixed = true;
+        }
+      }
+    }
+
+    const alsoFixedCount = result.also_fixed?.length || 0;
+    const successCount = result.results?.filter((r) => r.success).length || 0;
+    const failCount = result.results?.filter((r) => !r.success).length || 0;
+
+    let msg = `Fixed ${successCount} finding${successCount !== 1 ? "s" : ""}`;
+    if (failCount > 0) msg += ` (${failCount} failed)`;
+    if (alsoFixedCount > 0) msg += ` — also resolved ${alsoFixedCount} related`;
+
+    showToast(msg, alsoFixedCount > 0 ? "toast-info" : "toast-success");
+
+    state.selectedSet.clear();
+    render();
+  } catch (error) {
+    showToast("Batch fix failed: " + error.message, "toast-error");
+  }
+
+  if (fixSelectedBtn) {
+    fixSelectedBtn.disabled = false;
+    updateFixSelectedBtn();
+  }
+}
+
+function updateFixSelectedBtn() {
+  const btn = $("fixSelectedBtn");
+  if (!btn) return;
+  const count = state.selectedSet.size;
+  if (count > 0) {
+    btn.textContent = `Fix selected (${count})`;
+    btn.style.display = "";
+  } else {
+    btn.style.display = "none";
+  }
+}
+
+function showToast(message, cls = "toast-success") {
+  const existing = document.getElementById("toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.id = "toast";
+  toast.className = `toast ${cls}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("toast-hide");
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+function showExportModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "exportModal";
+  overlay.innerHTML = `
+    <div class="modal-content modal-export">
+      <h2>Export report</h2>
+      <p class="muted">Download scan results in your preferred format.</p>
+      <div class="export-options">
+        <button class="export-option" id="exportJson">
+          <span class="export-icon">{ }</span>
+          <span class="export-label">JSON</span>
+          <span class="export-desc">Full scan data</span>
+        </button>
+        <button class="export-option" id="exportCsv">
+          <span class="export-icon">CSV</span>
+          <span class="export-label">CSV</span>
+          <span class="export-desc">Spreadsheet friendly</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="chip" id="exportClose">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#exportJson").onclick = () => {
+    window.location.href = "/api/export?format=json";
+    closeExportModal();
+  };
+  overlay.querySelector("#exportCsv").onclick = () => {
+    window.location.href = "/api/export?format=csv";
+    closeExportModal();
+  };
+  overlay.querySelector("#exportClose").onclick = closeExportModal;
+}
+
+function closeExportModal() {
+  const overlay = document.getElementById("exportModal");
+  if (overlay) overlay.remove();
+}
+
 init().catch((error) => {
-  document.body.innerHTML = `<main class="shell"><section class="detail"><h1>hostveil</h1><p class="muted">Failed to load scan results.</p><pre>${escapeHTML(error.message)}</pre></section></main>`;
+  document.body.innerHTML = `<main class="shell"><section class="detail"><h1>hostveil</h1><p class="muted">Failed to load scan results.</p><pre>${escapeHTML(error.message)}</pre><p><button onclick="location.reload()" style="margin-top:1rem;padding:0.5rem 1.5rem;cursor:pointer;">Retry</button></p></section></main>`;
 });

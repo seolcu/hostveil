@@ -15,8 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
-	"github.com/seolcu/hostveil/internal/lynis"
-	"github.com/seolcu/hostveil/internal/trivy"
+	"github.com/seolcu/hostveil/internal/scan"
 	"github.com/seolcu/hostveil/internal/tui"
 	"github.com/seolcu/hostveil/internal/web"
 )
@@ -74,8 +73,8 @@ func run() error {
 	if !noUpdate {
 		go runUpdateCheckBackground(live)
 	}
-	go runScanBackground(live, "trivy")
-	go runScanBackground(live, "lynis")
+	go scan.RunSingleTool(live, fixRegistry, "trivy")
+	go scan.RunSingleTool(live, fixRegistry, "lynis")
 
 	_, err := p.Run()
 	return err
@@ -98,55 +97,14 @@ func runServe(args []string) error {
 	if !skipUpdate {
 		go runUpdateCheckBackground(live)
 	}
-	go runScanBackground(live, "trivy")
-	go runScanBackground(live, "lynis")
+	go scan.RunSingleTool(live, fixRegistry, "trivy")
+	go scan.RunSingleTool(live, fixRegistry, "lynis")
 
 	fmt.Printf("  Starting Web UI at http://%s\n", *addr)
 	fmt.Println("  Press Ctrl+C to stop.")
 	fmt.Println()
 
 	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry})
-}
-
-func runScanBackground(live *domain.ScanProgress, tool string) {
-	if _, err := exec.LookPath(tool); err != nil {
-		live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
-		return
-	}
-
-	live.SetToolStatus(tool, domain.ToolRunning, scanningMessage(tool))
-
-	var findings []domain.Finding
-	var scanErr error
-	switch tool {
-	case "trivy":
-		findings, scanErr = trivy.ScanAll()
-	case "lynis":
-		findings, scanErr = lynis.Scan()
-	}
-
-	if scanErr != nil {
-		live.SetToolStatus(tool, domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
-	} else {
-		fixRegistry.Classify(findings)
-		live.SetToolStatus(tool, domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
-		live.AddFindings(findings)
-	}
-
-	if live.AllToolsDone() {
-		live.Finalize()
-	}
-}
-
-func scanningMessage(tool string) string {
-	switch tool {
-	case "trivy":
-		return "Scanning compose projects..."
-	case "lynis":
-		return "Auditing system hardening..."
-	default:
-		return "Scanning..."
-	}
 }
 
 func runUpdateCheckBackground(live *domain.ScanProgress) {

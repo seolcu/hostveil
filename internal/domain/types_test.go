@@ -99,5 +99,3 @@ func TestFinding_IsFixable(t *testing.T) {
 		t.Error("Unavailable should not be fixable")
 	}
 }
-
-

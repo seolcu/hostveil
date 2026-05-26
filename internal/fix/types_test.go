@@ -28,13 +28,6 @@ func TestClass_Auto_Exec(t *testing.T) {
 	}
 }
 
-func TestClass_Manual(t *testing.T) {
-	f := &Fix{Actions: []Action{{Type: ActionPrompt}}}
-	if got := f.Class(); got != domain.RemediationManual {
-		t.Errorf("Class(prompt) = %v, want Manual", got)
-	}
-}
-
 func TestClass_Review(t *testing.T) {
 	f := &Fix{Actions: []Action{{Type: ActionEdit}, {Type: ActionExec}}}
 	if got := f.Class(); got != domain.RemediationReview {
@@ -277,7 +270,7 @@ func TestRegistry_WildcardMatch(t *testing.T) {
 func TestRegistry_WildcardExactLookup(t *testing.T) {
 	r := New()
 	r.Register(&Fix{FindingID: "trivy.cve-*", Actions: []Action{{Type: ActionEdit}}})
-	r.Register(&Fix{FindingID: "trivy.cve-*-base", Actions: []Action{{Type: ActionPrompt}}})
+	r.Register(&Fix{FindingID: "trivy.cve-*-base", Actions: []Action{{Type: ActionExec}}})
 	r.Register(&Fix{FindingID: "trivy.ds001", Actions: []Action{{Type: ActionExec}}})
 
 	if f := r.Lookup("trivy.cve-*"); f == nil {

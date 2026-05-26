@@ -103,4 +103,3 @@ type Finding struct {
 func (f *Finding) IsFixable() bool {
 	return f.Remediation.IsFixable()
 }
-

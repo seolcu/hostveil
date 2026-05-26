@@ -136,3 +136,59 @@ func TestParseReport_Empty(t *testing.T) {
 		t.Errorf("empty report should return 0 findings, got %d", len(findings))
 	}
 }
+
+func TestParseEntry_Evidence_FILE6405(t *testing.T) {
+	f := parseEntry(`warning[]=FILE-6405|World writable file found|chmod o-w|/tmp/sensitive`, domain.SeverityHigh)
+	if f == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if f.Evidence["path"] != "/tmp/sensitive" {
+		t.Errorf("Evidence[path] = %q, want /tmp/sensitive", f.Evidence["path"])
+	}
+	if f.Evidence["extra"] != "/tmp/sensitive" {
+		t.Errorf("Evidence[extra] = %q, want /tmp/sensitive", f.Evidence["extra"])
+	}
+}
+
+func TestParseEntry_Evidence_ACCT9626(t *testing.T) {
+	f := parseEntry(`warning[]=ACCT-9626|Password aging not set for user|chage -M 90|admin`, domain.SeverityHigh)
+	if f == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if f.Evidence["user"] != "admin" {
+		t.Errorf("Evidence[user] = %q, want admin", f.Evidence["user"])
+	}
+}
+
+func TestParseEntry_Evidence_FIRE4513(t *testing.T) {
+	f := parseEntry(`warning[]=FIRE-4513|Open port detected|Block with firewall|8080/tcp`, domain.SeverityHigh)
+	if f == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if f.Evidence["port"] != "8080/tcp" {
+		t.Errorf("Evidence[port] = %q, want 8080/tcp", f.Evidence["port"])
+	}
+}
+
+func TestParseEntry_Evidence_Generic(t *testing.T) {
+	f := parseEntry(`warning[]=AUTH-9286|SSH password auth enabled|Disable it|some extra info`, domain.SeverityHigh)
+	if f == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if f.Evidence["extra"] != "some extra info" {
+		t.Errorf("Evidence[extra] = %q, want 'some extra info'", f.Evidence["extra"])
+	}
+	if _, ok := f.Evidence["path"]; ok {
+		t.Error("AUTH-9286 should not have Evidence[path]")
+	}
+}
+
+func TestParseEntry_NoEvidence(t *testing.T) {
+	f := parseEntry(`warning[]=AUTH-9286|SSH password auth enabled|Disable it`, domain.SeverityHigh)
+	if f == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if len(f.Evidence) != 0 {
+		t.Errorf("Evidence should be empty, got %v", f.Evidence)
+	}
+}

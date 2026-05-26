@@ -18,14 +18,12 @@ func registerSystemFixes(r *Registry) {
 			},
 		}
 	}
-	prompt := func(label, desc string) Action {
+	fileEdit := func(path, label string, apply func(Context) error) Action {
 		return Action{
-			Type:        ActionPrompt,
-			Label:       label,
-			Description: desc,
-			Apply: func(ctx Context) error {
-				return fmt.Errorf("manual step: %s", desc)
-			},
+			Type:     ActionEdit,
+			Label:    label,
+			FilePath: path,
+			Apply:    apply,
 		}
 	}
 	sysctlApply := func(param, value string) Action {
@@ -42,32 +40,20 @@ func registerSystemFixes(r *Registry) {
 		}
 	}
 
-	// Auto (exec) — SSH
+	// Auto (edit) — SSH
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9286",
 		Label:     "Disable SSH password authentication",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Disable SSH password authentication",
-			Warning: "Ensure SSH key access is configured before applying. You may lose remote access.",
-			Command: []string{"sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config"},
-			Apply: func(ctx Context) error {
-				return exec.Command("sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config").Run()
-			},
-		}},
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Disable SSH password authentication", func(ctx Context) error {
+			return exec.Command("sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config").Run()
+		})},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9308",
 		Label:     "Restrict root SSH login",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Restrict root SSH login",
-			Warning: "Requires sudo or SSH key access for root.",
-			Command: []string{"sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config"},
-			Apply: func(ctx Context) error {
-				return exec.Command("sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config").Run()
-			},
-		}},
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Restrict root SSH login", func(ctx Context) error {
+			return exec.Command("sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config").Run()
+		})},
 	})
 
 	// Auto (exec) — File permissions
@@ -84,7 +70,7 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.FILE-6405",
 		Label:     "Remove world-writable from file",
-		Actions:   []Action{{
+		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Remove world-writable bit",
 			Command: []string{"chmod", "o-w"},
@@ -122,37 +108,27 @@ func registerSystemFixes(r *Registry) {
 			execCmd("sysctl -w net.ipv4.conf.all.rp_filter=1")},
 	})
 
-	// Auto (exec) — Banners
+	// Auto (edit) — Banners
 	r.Register(&Fix{
 		FindingID: "lynis.BANN-7126",
 		Label:     "Add legal banner to /etc/issue",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Add banner to /etc/issue",
-			Command: []string{"sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`},
-			Apply: func(ctx Context) error {
-				return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`).Run()
-			},
-		}},
+		Actions: []Action{fileEdit("/etc/issue", "Add banner to /etc/issue", func(ctx Context) error {
+			return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`).Run()
+		})},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.BANN-7130",
 		Label:     "Add legal banner to /etc/motd",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Add banner to /etc/motd",
-			Command: []string{"sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`},
-			Apply: func(ctx Context) error {
-				return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`).Run()
-			},
-		}},
+		Actions: []Action{fileEdit("/etc/motd", "Add banner to /etc/motd", func(ctx Context) error {
+			return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`).Run()
+		})},
 	})
 
 	// Auto (exec) — Accounts
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9626",
 		Label:     "Set password aging",
-		Actions:   []Action{{
+		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Set password aging to 90 days",
 			Command: []string{"chage", "-M", "90"},
@@ -205,40 +181,84 @@ func registerSystemFixes(r *Registry) {
 				Type:    ActionExec,
 				Label:   "Install and enable rsyslog",
 				Warning: "Requires internet access for package download.",
-				Command: []string{"sh", "-c", `
-if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y rsyslog && systemctl enable --now rsyslog
-elif command -v apk >/dev/null 2>&1; then
-    apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y rsyslog && systemctl enable --now rsyslog
-fi`},
+				Command: []string{"sh", "-c", `set -e; if command -v apt-get >/dev/null 2>&1; then apt-get install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start); elif command -v apk >/dev/null 2>&1; then apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start; elif command -v dnf >/dev/null 2>&1; then dnf install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start); else echo "No supported package manager" >&2; exit 1; fi`},
 				Apply: func(ctx Context) error {
-					script := `
+					script := `set -e
 if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y rsyslog && systemctl enable --now rsyslog
+    apt-get install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start)
 elif command -v apk >/dev/null 2>&1; then
     apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start
 elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y rsyslog && systemctl enable --now rsyslog
+    dnf install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start)
+else
+    echo "No supported package manager (apt/apk/dnf) found" >&2
+    exit 1
 fi`
 					return exec.Command("sh", "-c", script).Run()
 				},
 			},
-			prompt("Configure journald forwarding", "Edit /etc/systemd/journald.conf and set ForwardToSyslog=yes"),
+			{
+				Type:    ActionEdit,
+				Label:   "Set ForwardToSyslog=yes in journald.conf",
+				Warning: "Requires systemd. Restart journald after applying.",
+				Apply: func(ctx Context) error {
+					if err := exec.Command("sed", "-i", `s/^#\?\s*ForwardToSyslog\s*=.*/ForwardToSyslog=yes/`, "/etc/systemd/journald.conf").Run(); err != nil {
+						return err
+					}
+					return exec.Command("sh", "-c", `grep -q '^ForwardToSyslog=yes' /etc/systemd/journald.conf || echo 'ForwardToSyslog=yes' >> /etc/systemd/journald.conf`).Run()
+				},
+			},
 		},
 	})
 
-	// Manual (prompt only)
+	// Auto (exec) — LDAP
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9265",
 		Label:     "Configure LDAP authentication",
-		Actions:   []Action{prompt("Set up LDAP auth manually", "Install libnss-ldap and pam-ldap, then run 'pam-auth-update'.")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install LDAP packages",
+			Warning: "Requires internet access. Post-install pam-auth-update may be needed.",
+			Command: []string{"sh", "-c", `if command -v apt-get >/dev/null 2>&1; then apt-get install -y libnss-ldap pam-ldap; elif command -v dnf >/dev/null 2>&1; then dnf install -y nss-pam-ldapd; elif command -v apk >/dev/null 2>&1; then apk add nss-pam-ldapd; else echo "No supported package manager" >&2; exit 1; fi`},
+			Apply: func(ctx Context) error {
+				script := `if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y libnss-ldap pam-ldap
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y nss-pam-ldapd
+elif command -v apk >/dev/null 2>&1; then
+    apk add nss-pam-ldapd
+else
+    echo "No supported package manager (apt/dnf/apk) found" >&2
+    exit 1
+fi`
+				return exec.Command("sh", "-c", script).Run()
+			},
+		}},
 	})
+
+	// Auto (exec) — SELinux/AppArmor
 	r.Register(&Fix{
 		FindingID: "lynis.HRMN-6114",
 		Label:     "Enable SELinux or AppArmor",
-		Actions:   []Action{prompt("Install SELinux/AppArmor profile", "Install the package and ensure the LSM is enabled in kernel cmdline.")},
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install SELinux/AppArmor packages",
+			Warning: "Requires kernel support. May need reboot.",
+			Command: []string{"sh", "-c", `if command -v apt-get >/dev/null 2>&1; then apt-get install -y selinux-policy-default apparmor; elif command -v dnf >/dev/null 2>&1; then dnf install -y selinux-policy; elif command -v apk >/dev/null 2>&1; then apk add apparmor; else echo "No supported package manager" >&2; exit 1; fi`},
+			Apply: func(ctx Context) error {
+				script := `if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y selinux-policy-default apparmor
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y selinux-policy
+elif command -v apk >/dev/null 2>&1; then
+    apk add apparmor
+else
+    echo "No supported package manager (apt/dnf/apk) found" >&2
+    exit 1
+fi`
+				return exec.Command("sh", "-c", script).Run()
+			},
+		}},
 	})
 }
 

@@ -275,5 +275,3 @@ func detectEnvFiles(composePath, project string) []domain.Finding {
 	}
 	return findings
 }
-
-

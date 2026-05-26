@@ -307,5 +307,3 @@ func TestGetFieldRaw_Missing(t *testing.T) {
 		t.Errorf("GetFieldRaw(nonexistent) = %q, want empty", val)
 	}
 }
-
-

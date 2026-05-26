@@ -16,6 +16,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/scan"
 )
 
 var Version = "v2.0.0-dev"
@@ -34,6 +35,7 @@ const (
 	modalHelp
 	modalTheme
 	modalFilter
+	modalFixAction
 	modalFixConfirm
 	modalFixResult
 )
@@ -111,9 +113,9 @@ func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *m
 	vp.SoftWrap = true
 
 	return &model{
-		live:    live,
-		fixReg:  reg,
-		spinner: s,
+		live:      live,
+		fixReg:    reg,
+		spinner:   s,
 		table:     t,
 		viewport:  vp,
 		help:      help.New(),
@@ -311,6 +313,20 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.toast = "Score recalculated"
 		m.toastClear = 5
 		return m, nil
+	case "ctrl+s":
+		m.live.ResetForRescan()
+		m.phase = "loading"
+		m.toast = "Rescanning..."
+		m.toastClear = 0
+		go func() {
+			scan.RunSingleTool(m.live, m.fixReg, "trivy")
+			scan.RunSingleTool(m.live, m.fixReg, "lynis")
+			m.live.Finalize()
+			if m.send != nil {
+				m.send(tickMsg{})
+			}
+		}()
+		return m, tickCmd()
 	}
 
 	// Detail mode: delegate to viewport for scrolling
@@ -387,6 +403,32 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.themeSaved = m.themeIdx
 			m.modal = modalNone
 		}
+	case modalFixAction:
+		switch msg.String() {
+		case "up", "k":
+			if m.fixActionIdx > 0 {
+				m.fixActionIdx--
+			}
+		case "down", "j":
+			if m.fixTarget != nil && m.fixActionIdx < len(m.fixTarget.Actions)-1 {
+				m.fixActionIdx++
+			}
+		case "enter", "l":
+			if m.fixTarget != nil && len(m.fixTarget.Actions) > 0 {
+				if m.fixTarget.Actions[m.fixActionIdx].Warning != "" {
+					m.modal = modalFixConfirm
+				} else {
+					m.modal = modalNone
+					m.toast = "Applying fix..."
+					m.toastClear = 5
+					m2, cmd := m.applyFix()
+					return m2, cmd
+				}
+			}
+		case "q", "esc":
+			m.fixTarget = nil
+			m.modal = modalNone
+		}
 	case modalFixConfirm:
 		switch msg.String() {
 		case "y", "Y":
@@ -430,6 +472,11 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 	m.fixTarget = f
 	m.fixActionIdx = 0
 
+	if len(f.Actions) > 1 {
+		m.modal = modalFixAction
+		return m, nil
+	}
+
 	switch f.Class() {
 	case domain.RemediationAuto:
 		if f.Actions[0].Warning != "" {
@@ -443,10 +490,6 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 		m.toast = "Applying fix..."
 		m.toastClear = 5
 		m.modal = modalFixConfirm
-		return m, nil
-	case domain.RemediationManual:
-		m.fixResult = "ℹ " + f.Actions[0].Description
-		m.modal = modalFixResult
 		return m, nil
 	default:
 		return m, nil
@@ -699,7 +742,7 @@ type keyMap struct {
 	bindings []key.Binding
 }
 
-func (k keyMap) ShortHelp() []key.Binding { return k.bindings }
+func (k keyMap) ShortHelp() []key.Binding  { return k.bindings }
 func (k keyMap) FullHelp() [][]key.Binding { return [][]key.Binding{k.bindings} }
 
 func (m model) listKeyMap() keyMap {
@@ -711,11 +754,13 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "theme")),
 		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
 		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "source: "+m.filter.source)),
+		key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "remediation: "+m.filter.remediation)),
 		key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "sort: "+m.filter.sortBy)),
 		key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "clear filters")),
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
+		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	}
@@ -730,6 +775,7 @@ func (m model) detailKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
+		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	}}
 }

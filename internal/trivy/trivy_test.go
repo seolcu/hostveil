@@ -63,9 +63,9 @@ func TestParseSeverity(t *testing.T) {
 		{"medium", domain.SeverityMedium},
 		{"LOW", domain.SeverityLow},
 		{"Low", domain.SeverityLow},
-		{"UNKNOWN", domain.SeverityMedium},   // default
-		{"", domain.SeverityMedium},           // default
-		{"CRIT", domain.SeverityMedium},       // default (unexpected)
+		{"UNKNOWN", domain.SeverityMedium}, // default
+		{"", domain.SeverityMedium},        // default
+		{"CRIT", domain.SeverityMedium},    // default (unexpected)
 	}
 	for _, tt := range tests {
 		got := parseSeverity(tt.in)

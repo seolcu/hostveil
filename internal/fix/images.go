@@ -23,36 +23,42 @@ func registerImageFixes(r *Registry) {
 			},
 		},
 	})
-	r.Register(&Fix{
-		FindingID: "trivy.cve-*-base",
-		Label:     "Switch to a different base image",
-		Actions:   []Action{{Type: ActionPrompt, Label: "Manually change base image", Description: "Edit the Dockerfile FROM line to use a less vulnerable base image."}},
-	})
 }
 
 func fixImageCVE(ctx Context) error {
 	ev := ctx.Finding.Evidence
-	image := ctx.Finding.Service // holds the image name for CVE findings
+	image := ctx.Finding.Service
 	if image == "" {
 		return fmt.Errorf("no image name in finding")
 	}
 	fixedVer := ev["fixed_version"]
-	pkgName := ev["package"]
 	if fixedVer == "" {
 		return fmt.Errorf("no fixed version available")
 	}
 
-	// Try to find and update the image in compose files
+	// Step 1: Pull the latest image to get its digest
+	if err := exec.Command("docker", "pull", image).Run(); err != nil {
+		return fmt.Errorf("docker pull failed: %w", err)
+	}
+
+	// Step 2: Get the digest from the pulled image
+	digest := getRepoDigest(image)
+	var pinned string
+	if digest != "" {
+		pinned = digest // e.g. nginx@sha256:abc123...
+	} else {
+		pinned = fmt.Sprintf("%s:%s", image, fixedVer) // fallback to tag pinning
+	}
+
+	// Step 3: Update compose file with the pinned reference
 	composePath := ctx.ComposePath()
-	var f *compose.File
 	if composePath != "" {
-		var err error
-		f, err = compose.Open(composePath)
+		f, err := compose.Open(composePath)
 		if err == nil {
 			if err := f.Backup(); err != nil {
 				return fmt.Errorf("backup failed: %w", err)
 			}
-			if err := updateImageTagInCompose(f, image, fixedVer, pkgName); err != nil {
+			if err := updateImageTagInCompose(f, image, pinned); err != nil {
 				return fmt.Errorf("image tag update failed: %w", err)
 			}
 			if err := f.Save(); err != nil {
@@ -61,19 +67,32 @@ func fixImageCVE(ctx Context) error {
 		}
 	}
 
-	// Pull the latest patched image
-	return exec.Command("docker", "pull", image).Run()
+	return nil
 }
 
-func updateImageTagInCompose(f *compose.File, currentImage, fixedVersion, pkgName string) error {
+func getRepoDigest(image string) string {
+	out, err := exec.Command("docker", "inspect", image,
+		"--format", "{{range .RepoDigests}}{{.}}{{end}}").Output()
+	if err != nil {
+		return ""
+	}
+	digest := strings.TrimSpace(string(out))
+	if strings.Contains(digest, "@sha256:") {
+		return digest
+	}
+	return ""
+}
+
+func updateImageTagInCompose(f *compose.File, currentImage, pinned string) error {
 	svcs, err := f.ServiceNames()
 	if err != nil {
 		return err
 	}
 	for _, svc := range svcs {
 		img, _ := f.GetFieldRaw(svc, "image")
-		if img == currentImage || strings.HasPrefix(img, currentImage+":") {
-			pinned := fmt.Sprintf("%s@%s", currentImage, fixedVersion)
+		if img == currentImage ||
+			strings.HasPrefix(img, currentImage+":") ||
+			strings.HasPrefix(img, currentImage+"@") {
 			f.SetField(svc, "image", pinned)
 		}
 	}
