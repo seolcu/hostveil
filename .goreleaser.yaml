@@ -1,4 +1,4 @@
-version: 1
+version: 2
 project_name: hostveil
 
 before:
@@ -25,9 +25,7 @@ archives:
   - id: tar-gz
     name_template: >-
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
-    format: tar.gz
-    files:
-      - none*
+    formats: ["tar.gz"]
 
 checksum:
   name_template: "{{ .ProjectName }}-checksums.txt"
