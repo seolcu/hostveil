@@ -35,7 +35,12 @@ func registerSystemFixes(r *Registry) {
 				if err := exec.Command("sysctl", "-w", fmt.Sprintf("%s=%s", param, value)).Run(); err != nil {
 					return err
 				}
-				return exec.Command("sh", "-c", fmt.Sprintf("echo '%s=%s' >> /etc/sysctl.conf", param, value)).Run()
+				entry := fmt.Sprintf("%s=%s", param, value)
+				existsErr := exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run()
+				if existsErr != nil {
+					return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+				}
+				return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
 			},
 		}
 	}
@@ -92,7 +97,12 @@ func registerSystemFixes(r *Registry) {
 				if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=0").Run(); err != nil {
 					return err
 				}
-				return exec.Command("sh", "-c", "echo 'net.ipv4.ip_forward=0' >> /etc/sysctl.conf").Run()
+				entry := "net.ipv4.ip_forward=0"
+				existsErr := exec.Command("sh", "-c", "grep -q '^net.ipv4.ip_forward=' /etc/sysctl.conf").Run()
+				if existsErr != nil {
+					return exec.Command("sh", "-c", "echo '"+entry+"' >> /etc/sysctl.conf").Run()
+				}
+				return exec.Command("sh", "-c", "sed -i 's/^#*\\s*net.ipv4.ip_forward\\s*=.*/"+entry+"/' /etc/sysctl.conf").Run()
 			},
 		}},
 	})
@@ -254,6 +264,150 @@ elif command -v apk >/dev/null 2>&1; then
     apk add apparmor
 else
     echo "No supported package manager (apt/dnf/apk) found" >&2
+    exit 1
+fi`
+				return exec.Command("sh", "-c", script).Run()
+			},
+		}},
+	})
+
+	// Auto (exec) — Kernel hardening (sysctl)
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5830",
+		Label:     "Disable source routed packets",
+		Actions:   []Action{sysctlApply("net.ipv4.conf.all.accept_source_route", "0")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5840",
+		Label:     "Disable send redirects",
+		Actions:   []Action{sysctlApply("net.ipv4.conf.all.send_redirects", "0")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5860",
+		Label:     "Enable TCP SYN cookies",
+		Actions:   []Action{sysctlApply("net.ipv4.tcp_syncookies", "1")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5870",
+		Label:     "Enable reverse path filtering",
+		Actions:   []Action{sysctlApply("net.ipv4.conf.all.rp_filter", "1")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5880",
+		Label:     "Ignore ICMP echo broadcasts",
+		Actions:   []Action{sysctlApply("net.ipv4.icmp_echo_ignore_broadcasts", "1")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5890",
+		Label:     "Ignore bogus ICMP errors",
+		Actions:   []Action{sysctlApply("net.ipv4.icmp_ignore_bogus_error_responses", "1")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.KRNL-5930",
+		Label:     "Disable TCP timestamps",
+		Actions:   []Action{sysctlApply("net.ipv4.tcp_timestamps", "0")},
+	})
+
+	// Auto (exec) — File permissions
+	r.Register(&Fix{
+		FindingID: "lynis.FILE-6300",
+		Label:     "Restrict /etc/passwd permissions",
+		Actions:   []Action{execCmd("chmod 644 /etc/passwd")},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.FILE-6304",
+		Label:     "Restrict /etc/group permissions",
+		Actions:   []Action{execCmd("chmod 644 /etc/group")},
+	})
+
+	// Auto (edit) — Authentication
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9208",
+		Label:     "Disable SSH protocol 1",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set SSH Protocol 2", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^Protocol' /etc/ssh/sshd_config && sed -i 's/^Protocol.*/Protocol 2/' /etc/ssh/sshd_config || echo 'Protocol 2' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9222",
+		Label:     "Set password minimum days",
+		Actions: []Action{fileEdit("/etc/login.defs", "Set PASS_MIN_DAYS", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^PASS_MIN_DAYS' /etc/login.defs && sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 1/' /etc/login.defs || echo 'PASS_MIN_DAYS 1' >> /etc/login.defs`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9223",
+		Label:     "Set password maximum days",
+		Actions: []Action{fileEdit("/etc/login.defs", "Set PASS_MAX_DAYS", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^PASS_MAX_DAYS' /etc/login.defs && sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' /etc/login.defs || echo 'PASS_MAX_DAYS 90' >> /etc/login.defs`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9262",
+		Label:     "Configure sudo timestamp timeout",
+		Actions: []Action{fileEdit("/etc/sudoers.d/hv-timeout", "Set sudo timestamp timeout", func(ctx Context) error {
+			return exec.Command("sh", "-c", `echo 'Defaults timestamp_timeout=5' > /etc/sudoers.d/hv-timeout && chmod 440 /etc/sudoers.d/hv-timeout`).Run()
+		})},
+	})
+
+	// Auto (exec) — Boot security
+	r.Register(&Fix{
+		FindingID: "lynis.BOOT-5120",
+		Label:     "Set bootloader password",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set GRUB bootloader password",
+			Warning: "Requires GRUB. Verify bootloader config after applying.",
+			Command: []string{"sh", "-c", `grub2-set-password 2>/dev/null || grub-set-password 2>/dev/null || echo "GRUB password tool not found" >&2`},
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `if command -v grub2-set-password >/dev/null 2>&1; then grub2-set-password; elif command -v grub-set-password >/dev/null 2>&1; then grub-set-password; else echo "GRUB password tool not available" >&2; exit 1; fi`).Run()
+			},
+		}},
+	})
+
+	// Auto (exec) — Logging
+	r.Register(&Fix{
+		FindingID: "lynis.LOGG-2100",
+		Label:     "Enable syslog-ng or rsyslog",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install and enable rsyslog",
+			Warning: "Requires internet access for package download.",
+			Apply: func(ctx Context) error {
+				script := `set -e
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start)
+elif command -v apk >/dev/null 2>&1; then
+    apk add rsyslog && rc-update add rsyslog default && rc-service rsyslog start
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y rsyslog && (systemctl enable --now rsyslog || service rsyslog start)
+else
+    echo "No supported package manager (apt/apk/dnf) found" >&2
+    exit 1
+fi`
+				return exec.Command("sh", "-c", script).Run()
+			},
+		}},
+	})
+
+	// Auto (exec) — Time sync
+	r.Register(&Fix{
+		FindingID: "lynis.TIME-3106",
+		Label:     "Configure NTP/Chrony",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install and enable chrony",
+			Warning: "Requires internet access. Configure NTP servers after install.",
+			Apply: func(ctx Context) error {
+				script := `set -e
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y chrony && (systemctl enable --now chrony || service chrony start)
+elif command -v apk >/dev/null 2>&1; then
+    apk add chrony && rc-update add chrony default && rc-service chrony start
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y chrony && (systemctl enable --now chrony || service chrony start)
+else
+    echo "No supported package manager (apt/apk/dnf) found" >&2
     exit 1
 fi`
 				return exec.Command("sh", "-c", script).Run()

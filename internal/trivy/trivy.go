@@ -4,6 +4,7 @@ package trivy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -22,10 +23,15 @@ func ScanAll() ([]domain.Finding, error) {
 		return nil, nil
 	}
 	var all []domain.Finding
+	var errs []error
 	for _, p := range projects {
-		all = append(all, scanProject(p)...)
+		findings, err := scanProject(p)
+		all = append(all, findings...)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return all, nil
+	return all, errors.Join(errs...)
 }
 
 type project struct {
@@ -64,10 +70,14 @@ func discoverProjects() ([]project, error) {
 	return projects, nil
 }
 
-func scanProject(p project) []domain.Finding {
+func scanProject(p project) ([]domain.Finding, error) {
 	var all []domain.Finding
+	var errs []error
 
-	cfgs, _ := runConfig(p.ComposePath)
+	cfgs, err := runConfig(p.ComposePath)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("config scan %q: %w", p.ComposePath, err))
+	}
 	for i := range cfgs {
 		if cfgs[i].Metadata == nil {
 			cfgs[i].Metadata = map[string]string{}
@@ -77,9 +87,13 @@ func scanProject(p project) []domain.Finding {
 	}
 	all = append(all, cfgs...)
 
-	images := extractImages(p.ComposePath)
+	images, imgErrs := extractImages(p.ComposePath)
+	errs = append(errs, imgErrs...)
 	for _, img := range images {
-		findings, _ := runImage(img)
+		findings, imgScanErr := runImage(img)
+		if imgScanErr != nil {
+			errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
+		}
 		for i := range findings {
 			if findings[i].Metadata == nil {
 				findings[i].Metadata = map[string]string{}
@@ -90,28 +104,35 @@ func scanProject(p project) []domain.Finding {
 		all = append(all, findings...)
 	}
 
-	all = append(all, detectEnvFiles(p.ComposePath, p.Name)...)
+	envFindings, envErr := detectEnvFiles(p.ComposePath, p.Name)
+	if envErr != nil {
+		errs = append(errs, envErr)
+	}
+	all = append(all, envFindings...)
 
-	return all
+	return all, errors.Join(errs...)
 }
 
-func extractImages(path string) []string {
+func extractImages(path string) ([]string, []error) {
 	f, err := compose.Open(path)
 	if err != nil {
-		return nil
+		return nil, []error{fmt.Errorf("open compose %q: %w", path, err)}
 	}
 	svcs, err := f.ServiceNames()
 	if err != nil {
-		return nil
+		return nil, []error{fmt.Errorf("list services %q: %w", path, err)}
 	}
 	var images []string
 	for _, svc := range svcs {
-		img, _ := f.GetFieldRaw(svc, "image")
+		img, err := f.GetFieldRaw(svc, "image")
+		if err != nil {
+			continue
+		}
 		if img != "" {
 			images = append(images, img)
 		}
 	}
-	return images
+	return images, nil
 }
 
 // ── trivy config parsing ──
@@ -141,7 +162,7 @@ func runConfig(path string) ([]domain.Finding, error) {
 	}
 
 	var report configReport
-	if err := json.Unmarshal(out, &report); err != nil {
+	if err := decodeTrivyJSON(out, &report); err != nil {
 		return nil, err
 	}
 
@@ -194,7 +215,7 @@ func runImage(image string) ([]domain.Finding, error) {
 	}
 
 	var report imageReport
-	if err := json.Unmarshal(out, &report); err != nil {
+	if err := decodeTrivyJSON(out, &report); err != nil {
 		return nil, err
 	}
 
@@ -221,6 +242,21 @@ func runImage(image string) ([]domain.Finding, error) {
 	return findings, nil
 }
 
+func decodeTrivyJSON(out []byte, v any) error {
+	trimmed := strings.TrimSpace(string(out))
+	if trimmed == "" {
+		return fmt.Errorf("trivy returned empty output")
+	}
+	first := trimmed[0]
+	if first != '{' && first != '[' {
+		return fmt.Errorf("trivy returned non-JSON output")
+	}
+	if err := json.Unmarshal([]byte(trimmed), v); err != nil {
+		return fmt.Errorf("trivy returned invalid JSON")
+	}
+	return nil
+}
+
 func parseSeverity(s string) domain.Severity {
 	switch strings.ToUpper(s) {
 	case "CRITICAL":
@@ -238,18 +274,21 @@ func parseSeverity(s string) domain.Severity {
 
 // ── env_file detection ──
 
-func detectEnvFiles(composePath, project string) []domain.Finding {
+func detectEnvFiles(composePath, project string) ([]domain.Finding, error) {
 	f, err := compose.Open(composePath)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("open compose %q: %w", composePath, err)
 	}
 	svcs, err := f.ServiceNames()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list services %q: %w", composePath, err)
 	}
 	var findings []domain.Finding
 	for _, svc := range svcs {
-		raw, _ := f.GetFieldRaw(svc, "env_file")
+		raw, err := f.GetFieldRaw(svc, "env_file")
+		if err != nil {
+			continue
+		}
 		if raw == "" {
 			continue
 		}
@@ -273,5 +312,5 @@ func detectEnvFiles(composePath, project string) []domain.Finding {
 			},
 		})
 	}
-	return findings
+	return findings, nil
 }

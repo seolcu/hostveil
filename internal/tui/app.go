@@ -2,6 +2,9 @@
 package tui
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -19,7 +22,7 @@ import (
 	"github.com/seolcu/hostveil/internal/scan"
 )
 
-var Version = "v2.0.0-dev"
+var Version = "v2.1.1"
 
 type paneMode int
 
@@ -33,11 +36,11 @@ type modalMode int
 const (
 	modalNone modalMode = iota
 	modalHelp
-	modalTheme
 	modalFilter
 	modalFixAction
 	modalFixConfirm
 	modalFixResult
+	modalExport
 )
 
 type filterState struct {
@@ -46,6 +49,7 @@ type filterState struct {
 	source      string
 	remediation string
 	sortBy      string
+	service     string
 }
 
 type model struct {
@@ -67,38 +71,46 @@ type model struct {
 	searchBox textinput.Model
 
 	// UI state
-	mode     paneMode
-	filter   filterState
-	themeIdx int
+	mode   paneMode
+	filter filterState
 
 	// modals
-	modal       modalMode
-	themeCursor int
-	themeSaved  int
+	modal modalMode
 
 	// fix
 	fixTarget    *fix.Fix
 	fixActionIdx int
 	fixResult    string
 
+	// export
+	exportIdx int
+
+	// batch selection
+	selectedSet map[string]bool
+
 	// toast
 	toast      string
-	toastClear int
+	toastUntil time.Time
+
+	// confirm reset
+	confirmReset bool
 }
 
 type tickMsg struct{}
 type fixResultMsg struct{ result fix.FixResult }
+type fixBatchResultMsg struct{ success, fail, skipped int }
 
 func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *model {
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 
 	t := table.New(
 		table.WithColumns([]table.Column{
-			{Title: "Sev", Width: 5},
-			{Title: "Src", Width: 4},
+			{Title: " ", Width: 3},
+			{Title: "Severity", Width: 8},
+			{Title: "Source", Width: 6},
 			{Title: "ID", Width: 14},
-			{Title: "Finding", Width: 0},
-			{Title: "Fix", Width: 12},
+			{Title: "Finding", Width: 40},
+			{Title: "Fix", Width: 11},
 		}),
 		table.WithFocused(true),
 		table.WithHeight(10),
@@ -113,18 +125,20 @@ func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *m
 	vp.SoftWrap = true
 
 	return &model{
-		live:      live,
-		fixReg:    reg,
-		spinner:   s,
-		table:     t,
-		viewport:  vp,
-		help:      help.New(),
-		searchBox: search,
+		live:        live,
+		fixReg:      reg,
+		spinner:     s,
+		table:       t,
+		viewport:    vp,
+		help:        help.New(),
+		searchBox:   search,
+		selectedSet: make(map[string]bool),
 		filter: filterState{
 			severity:    "all",
 			source:      "all",
 			remediation: "all",
 			sortBy:      "severity",
+			service:     "all",
 		},
 		phase: "loading",
 	}
@@ -145,8 +159,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.snapOK = true
 		m.width = msg.Width
 		m.height = msg.Height
-		m.table.SetWidth(m.listWidth())
-		m.viewport.SetWidth(m.detailWidth())
+		m.table.SetWidth(m.listTableWidth())
+		m.viewport.SetWidth(max(20, m.detailWidth()-8))
 		m.table.SetHeight(m.listHeight())
 		m.viewport.SetHeight(m.detailHeight())
 		if m.phase == "ready" {
@@ -161,20 +175,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.snap.Phase == "complete" {
 				m.phase = "ready"
 				m.toast = ""
+				m.toastUntil = time.Time{}
 				if m.width > 0 && m.height > 0 {
 					m.rebuildTable()
 				}
 			}
 			return m, tickCmd()
 		}
-		if m.toast != "" && m.toastClear > 0 {
-			m.toastClear--
-			if m.toastClear == 0 {
-				m.toast = ""
-			}
-			return m, tickCmd()
+		if m.toast != "" && !m.toastUntil.IsZero() && time.Now().After(m.toastUntil) {
+			m.toast = ""
+			m.toastUntil = time.Time{}
 		}
-		return m, nil
+		return m, tickCmd()
 
 	case spinner.TickMsg:
 		var cmd tea.Cmd
@@ -189,12 +201,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			visible := m.visibleFindings()
 			idx := m.table.Cursor()
 			if idx >= 0 && idx < len(visible) {
+				id := visible[idx].ID
 				for i := range m.snap.Findings {
-					if m.snap.Findings[i].ID == visible[idx].ID {
+					if m.snap.Findings[i].ID == id {
 						m.snap.Findings[i].Fixed = true
 						break
 					}
 				}
+				m.live.MarkFixed(id)
 			}
 			m.fixResult = "✓ " + msg.result.Label
 			if msg.result.Diff != "" {
@@ -205,6 +219,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fixResult = "✗ " + msg.result.Error
 		}
 		m.modal = modalFixResult
+		return m, nil
+
+	case fixBatchResultMsg:
+		m.selectedSet = make(map[string]bool)
+		m.rebuildTable()
+		if msg.success > 0 || msg.fail > 0 || msg.skipped > 0 {
+			parts := []string{fmt.Sprintf("Fixed %d", msg.success)}
+			if msg.fail > 0 {
+				parts = append(parts, fmt.Sprintf("%d failed", msg.fail))
+			}
+			if msg.skipped > 0 {
+				parts = append(parts, fmt.Sprintf("%d skipped (multi-action)", msg.skipped))
+			}
+			m.toast = strings.Join(parts, ", ")
+			m.toastUntil = time.Now().Add(5 * time.Second)
+		}
 		return m, nil
 
 	case tea.KeyPressMsg:
@@ -225,12 +255,53 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateModal(msg)
 		}
 		return m.updateMain(msg)
+
+	case tea.MouseMsg:
+		if m.phase == "loading" || m.modal != modalNone {
+			return m, nil
+		}
+		if !m.snapOK {
+			m.snap = m.live.Snapshot()
+			m.snapOK = true
+		}
+		mouse := msg.Mouse()
+		if m.width <= 0 || m.height <= 0 {
+			return m, nil
+		}
+		headerH := lipgloss.Height(m.renderHeader())
+		metricsH := lipgloss.Height(m.renderMetrics())
+		if mouse.Y < headerH+metricsH {
+			return m, nil
+		}
+		target := m.panelAt(mouse.X)
+		switch mouse.Button {
+		case tea.MouseWheelUp:
+			if target == paneDetail {
+				m.viewport.ScrollUp(3)
+			} else {
+				m.table, _ = m.table.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyUp}))
+			}
+		case tea.MouseWheelDown:
+			if target == paneDetail {
+				m.viewport.ScrollDown(3)
+			} else {
+				m.table, _ = m.table.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyDown}))
+			}
+		}
+		if target == paneList && m.inlineDetail() {
+			m.updateDetailViewport()
+		}
+		return m, nil
 	}
 	return m, nil
 }
 
 func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	keyStr := msg.String()
+
+	if m.confirmReset && keyStr != "R" {
+		m.confirmReset = false
+	}
 
 	// Global shortcuts
 	switch keyStr {
@@ -244,8 +315,15 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.modal = modalHelp
 		return m, nil
-	case "t":
-		m.openThemeModal()
+	case "tab":
+		if m.inlineDetail() {
+			if m.mode == paneDetail {
+				m.mode = paneList
+			} else {
+				m.mode = paneDetail
+				m.updateDetailViewport()
+			}
+		}
 		return m, nil
 	case "/":
 		m.modal = modalFilter
@@ -253,6 +331,9 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.searchBox.Focus()
 		return m, nil
 	case "f":
+		if len(m.selectedSet) > 0 {
+			return m.runBatchFix()
+		}
 		return m.runFix()
 	case "1":
 		m.filter.severity = "critical"
@@ -287,13 +368,75 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.rebuildTable()
 		return m, nil
 	case "R":
-		m.filter.query = ""
-		m.filter.severity = "all"
-		m.filter.source = "all"
-		m.filter.remediation = "all"
+		if m.confirmReset {
+			m.filter.query = ""
+			m.filter.severity = "all"
+			m.filter.source = "all"
+			m.filter.remediation = "all"
+			m.filter.service = "all"
+			m.rebuildTable()
+			m.toast = "Filters cleared"
+			m.toastUntil = time.Now().Add(3 * time.Second)
+			m.confirmReset = false
+		} else {
+			m.confirmReset = true
+			m.toast = "Press R again to confirm reset"
+			m.toastUntil = time.Now().Add(5 * time.Second)
+		}
+		return m, nil
+	case "ctrl+r":
+		m.live.Recalculate()
+		m.snap = m.live.Snapshot()
+		m.snapOK = true
+		m.toast = "Score recalculated"
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return m, nil
+	case "ctrl+s":
+		m.live.ResetForRescan()
+		m.phase = "loading"
+		m.toast = "Rescanning..."
+		m.toastUntil = time.Time{}
+		go func() {
+			scan.RunSingleTool(m.live, m.fixReg, "trivy")
+			scan.RunSingleTool(m.live, m.fixReg, "lynis")
+			m.live.Finalize()
+			if m.send != nil {
+				m.send(tickMsg{})
+			}
+		}()
+		return m, tickCmd()
+	case "e":
+		m.exportIdx = 0
+		m.modal = modalExport
+		return m, nil
+	}
+
+	// Detail mode: delegate to viewport for scrolling
+	if m.mode == paneDetail {
+		switch keyStr {
+		case "esc", "h", "left":
+			m.mode = paneList
+			m.updateDetailViewport()
+			return m, nil
+		case "g":
+			m.viewport.GotoTop()
+			return m, nil
+		case "G":
+			m.viewport.GotoBottom()
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
+	}
+
+	// List mode: delegate to table for navigation
+	switch keyStr {
+	case " ", "space":
+		m.toggleSelection()
+		cursor := m.table.Cursor()
 		m.rebuildTable()
-		m.toast = "Filters cleared"
-		m.toastClear = 3
+		m.table.SetCursor(cursor)
 		return m, nil
 	case "g":
 		m.table.SetCursor(0)
@@ -306,44 +449,6 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.updateDetailViewport()
 		}
 		return m, nil
-	case "ctrl+r":
-		m.live.Recalculate()
-		m.snap = m.live.Snapshot()
-		m.snapOK = true
-		m.toast = "Score recalculated"
-		m.toastClear = 5
-		return m, nil
-	case "ctrl+s":
-		m.live.ResetForRescan()
-		m.phase = "loading"
-		m.toast = "Rescanning..."
-		m.toastClear = 0
-		go func() {
-			scan.RunSingleTool(m.live, m.fixReg, "trivy")
-			scan.RunSingleTool(m.live, m.fixReg, "lynis")
-			m.live.Finalize()
-			if m.send != nil {
-				m.send(tickMsg{})
-			}
-		}()
-		return m, tickCmd()
-	}
-
-	// Detail mode: delegate to viewport for scrolling
-	if m.mode == paneDetail {
-		switch keyStr {
-		case "esc", "h", "left":
-			m.mode = paneList
-			m.updateDetailViewport()
-			return m, nil
-		}
-		var cmd tea.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
-		return m, cmd
-	}
-
-	// List mode: delegate to table for navigation
-	switch keyStr {
 	case "enter", "l", "right":
 		visible := m.visibleFindings()
 		cursor := m.table.Cursor()
@@ -356,6 +461,9 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
+	if m.inlineDetail() {
+		m.updateDetailViewport()
+	}
 	return m, cmd
 }
 
@@ -382,27 +490,6 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.searchBox, cmd = m.searchBox.Update(msg)
 		return m, cmd
-	case modalTheme:
-		switch msg.String() {
-		case "q", "esc":
-			m.themeIdx = m.themeSaved
-			m.themeCursor = m.themeSaved
-			m.modal = modalNone
-		case "up", "k":
-			if m.themeCursor > 0 {
-				m.themeCursor--
-				m.themeIdx = m.themeCursor
-			}
-		case "down", "j":
-			if m.themeCursor < len(AllThemes())-1 {
-				m.themeCursor++
-				m.themeIdx = m.themeCursor
-			}
-		case "enter", "l", "right":
-			m.themeIdx = m.themeCursor
-			m.themeSaved = m.themeIdx
-			m.modal = modalNone
-		}
 	case modalFixAction:
 		switch msg.String() {
 		case "up", "k":
@@ -420,7 +507,7 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				} else {
 					m.modal = modalNone
 					m.toast = "Applying fix..."
-					m.toastClear = 5
+					m.toastUntil = time.Now().Add(5 * time.Second)
 					m2, cmd := m.applyFix()
 					return m2, cmd
 				}
@@ -445,14 +532,97 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.fixTarget = nil
 			m.modal = modalNone
 		}
+	case modalExport:
+		switch msg.String() {
+		case "up", "k":
+			m.exportIdx = 0
+		case "down", "j":
+			m.exportIdx = 1
+		case "enter", "l":
+			m.modal = modalNone
+			m.exportReport()
+		case "q", "esc":
+			m.modal = modalNone
+		}
 	}
 	return m, nil
+}
+
+func (m *model) toggleSelection() {
+	visible := m.visibleFindings()
+	idx := m.table.Cursor()
+	if idx < 0 && len(visible) > 0 {
+		idx = 0
+		m.table.SetCursor(0)
+	}
+	if idx < 0 || idx >= len(visible) {
+		return
+	}
+	id := visible[idx].ID
+	if m.selectedSet[id] {
+		delete(m.selectedSet, id)
+	} else {
+		m.selectedSet[id] = true
+	}
+}
+
+func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
+	if m.fixReg == nil {
+		m.toast = "Fix engine not available"
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return m, nil
+	}
+	visible := m.visibleFindings()
+	var toFix []domain.Finding
+	for _, f := range visible {
+		if m.selectedSet[f.ID] {
+			toFix = append(toFix, f)
+		}
+	}
+	if len(toFix) == 0 {
+		m.toast = "No findings selected"
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return m, nil
+	}
+
+	m.toast = fmt.Sprintf("Batch fixing %d findings...", len(toFix))
+	m.toastUntil = time.Time{}
+
+	reg := m.fixReg
+	go func() {
+		success, fail, skipped := 0, 0, 0
+		for _, finding := range toFix {
+			f := reg.Lookup(finding.ID)
+			if f == nil {
+				fail++
+				continue
+			}
+			if len(f.Actions) > 1 {
+				skipped++
+				continue
+			}
+			result := f.Run(fix.Context{
+				Finding: &finding,
+				Log:     func(s string, args ...interface{}) {},
+			}, 0)
+			if result.Success {
+				success++
+				m.live.MarkFixed(finding.ID)
+			} else {
+				fail++
+			}
+		}
+		if m.send != nil {
+			m.send(fixBatchResultMsg{success: success, fail: fail, skipped: skipped})
+		}
+	}()
+	return m, tickCmd()
 }
 
 func (m model) runFix() (tea.Model, tea.Cmd) {
 	if m.fixReg == nil {
 		m.toast = "Fix engine not available"
-		m.toastClear = 5
+		m.toastUntil = time.Now().Add(5 * time.Second)
 		return m, nil
 	}
 	visible := m.visibleFindings()
@@ -466,7 +636,7 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 	f := m.fixReg.Lookup(visible[idx].ID)
 	if f == nil {
 		m.toast = "No fix available for this finding"
-		m.toastClear = 5
+		m.toastUntil = time.Now().Add(5 * time.Second)
 		return m, nil
 	}
 	m.fixTarget = f
@@ -484,11 +654,11 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.toast = "Applying fix..."
-		m.toastClear = 5
+		m.toastUntil = time.Now().Add(5 * time.Second)
 		return m.applyFix()
 	case domain.RemediationReview:
 		m.toast = "Applying fix..."
-		m.toastClear = 5
+		m.toastUntil = time.Now().Add(5 * time.Second)
 		m.modal = modalFixConfirm
 		return m, nil
 	default:
@@ -516,10 +686,46 @@ func (m model) applyFix() (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *model) openThemeModal() {
-	m.themeSaved = m.themeIdx
-	m.themeCursor = m.themeIdx
-	m.modal = modalTheme
+func (m *model) exportReport() {
+	snap := m.live.Snapshot()
+	ts := time.Now().Format("2006-01-02_150405")
+	filename := fmt.Sprintf("hostveil-report-%s", ts)
+
+	var path, content string
+	if m.exportIdx == 0 {
+		path = filename + ".json"
+		data, err := json.MarshalIndent(snap, "", "  ")
+		if err != nil {
+			m.toast = "Export failed: " + err.Error()
+			m.toastUntil = time.Now().Add(5 * time.Second)
+			return
+		}
+		content = string(data)
+	} else {
+		path = filename + ".csv"
+		var buf strings.Builder
+		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
+		for _, f := range snap.Findings {
+			buf.WriteString(fmt.Sprintf("%q,%s,%s,%s,%q,%s,%v\n",
+				f.ID, f.Severity.String(), f.Source.String(), f.Service,
+				f.Title, f.Remediation.String(), f.Fixed))
+		}
+		content = buf.String()
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		fallback := "/tmp/" + fmt.Sprintf("%s.%s", strings.TrimPrefix(filename, "hostveil-report-"), map[bool]string{true: "json", false: "csv"}[m.exportIdx == 0])
+		if err2 := os.WriteFile(fallback, []byte(content), 0644); err2 != nil {
+			m.fixResult = "✗ Export failed\n\nPrimary: " + err.Error() + "\nFallback (/tmp): " + err2.Error()
+			m.modal = modalFixResult
+			return
+		}
+		m.toast = "Exported to " + fallback + " (primary path failed)"
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return
+	}
+	m.toast = "Exported to " + path
+	m.toastUntil = time.Now().Add(5 * time.Second)
 }
 
 func (m model) View() tea.View {
@@ -545,11 +751,7 @@ func (m model) View() tea.View {
 }
 
 func (m model) theme() Theme {
-	themes := AllThemes()
-	if m.themeIdx < 0 || m.themeIdx >= len(themes) {
-		return DefaultTheme()
-	}
-	return themes[m.themeIdx]
+	return DefaultTheme()
 }
 
 // ── filtering & sorting ──
@@ -566,6 +768,9 @@ func (m model) visibleFindings() []domain.Finding {
 			continue
 		}
 		if f.remediation != "all" && item.Remediation.String() != f.remediation {
+			continue
+		}
+		if f.service != "all" && item.Service != f.service {
 			continue
 		}
 		if f.query != "" && !findingMatches(item, f.query) {
@@ -648,10 +853,35 @@ func (m *model) cycleRemediationFilter() {
 	case "auto":
 		m.filter.remediation = "review"
 	case "review":
+		m.filter.remediation = "unavailable"
+	case "unavailable":
 		m.filter.remediation = "manual"
 	default:
 		m.filter.remediation = "all"
 	}
+}
+
+func (m *model) cycleServiceFilter() {
+	services := []string{"all"}
+	seen := map[string]bool{"all": true}
+	for _, f := range m.snap.Findings {
+		if f.Service != "" && !seen[f.Service] {
+			seen[f.Service] = true
+			services = append(services, f.Service)
+		}
+	}
+	if len(services) <= 1 {
+		return
+	}
+	idx := -1
+	for i, s := range services {
+		if s == m.filter.service {
+			idx = i
+			break
+		}
+	}
+	next := (idx + 1) % len(services)
+	m.filter.service = services[next]
 }
 
 func (m *model) cycleSortOrder() {
@@ -670,28 +900,58 @@ func (m *model) cycleSortOrder() {
 // ── table management ──
 
 func (m *model) rebuildTable() {
+	m.live.Recalculate()
+	m.snap = m.live.Snapshot()
+	m.snapOK = true
 	visible := m.visibleFindings()
 	rows := make([]table.Row, len(visible))
+	layout := m.tableLayout()
+	cursor := m.table.Cursor()
 	for i, f := range visible {
-		id := shortID(f.ID)
-		sev := strings.ToUpper(short(f.Severity.String(), 3))
-		src := strings.ToUpper(short(f.Source.String(), 3))
-		title := f.Title
-		fixLbl := f.Remediation.Label()
-		if f.Fixed {
-			sev = "✓"
-			src = ""
-			title = "~" + title
-			fixLbl = "Fixed"
+		checkbox := "◇"
+		if m.selectedSet[f.ID] {
+			checkbox = "◆"
 		}
-		rows[i] = table.Row{sev, src, id, title, fixLbl}
+		sevText := strings.ToUpper(f.Severity.String())
+		src := f.Source.String()
+		id := shortID(f.ID)
+		title := findingTitle(f)
+		fixLabel := remediationShortLabel(f.Remediation)
+		if f.Fixed {
+			sevText = "✓"
+			src = ""
+			title = "✓ " + title
+			fixLabel = "Fixed"
+		}
+		switch layout {
+		case "compact":
+			rows[i] = table.Row{checkbox, sevText, fit(title, m.findingColumnWidth(layout))}
+		case "medium":
+			rows[i] = table.Row{checkbox, sevText, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
+		default:
+			rows[i] = table.Row{checkbox, sevText, src, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
+		}
 	}
+	m.table.SetRows(nil)
+	m.updateTableColumns()
 	m.table.SetRows(rows)
-	m.table.SetWidth(m.listWidth())
+	m.table.SetCursor(cursor)
+	m.table.SetWidth(m.listTableWidth())
 	m.table.SetHeight(m.listHeight())
+	if m.width > 0 && m.height > 0 {
+		m.updateDetailViewport()
+	}
 }
 
 func (m *model) updateDetailViewport() {
+	contentWidth := m.detailContentWidth()
+	if m.phase == "loading" {
+		m.viewport.SetContent("Scanning in progress...\n\nResults will appear when scans complete.")
+		m.viewport.SetWidth(contentWidth)
+		m.viewport.SetHeight(m.detailHeight())
+		m.viewport.GotoTop()
+		return
+	}
 	visible := m.visibleFindings()
 	idx := m.table.Cursor()
 	if idx < 0 || idx >= len(visible) {
@@ -699,26 +959,82 @@ func (m *model) updateDetailViewport() {
 		return
 	}
 	t := m.theme()
-	m.viewport.SetContent(renderDetailContent(t, &visible[idx], m.detailWidth()-4))
-	m.viewport.SetWidth(m.detailWidth())
+	m.viewport.SetContent(renderDetailContent(t, &visible[idx], contentWidth))
+	m.viewport.SetWidth(contentWidth)
 	m.viewport.SetHeight(m.detailHeight())
 	m.viewport.GotoTop()
 }
 
 // ── layout ──
 
+func (m model) tableLayout() string {
+	w := m.listWidth()
+	if w < 64 {
+		return "compact"
+	}
+	if w < 88 {
+		return "medium"
+	}
+	return "full"
+}
+
+func (m *model) updateTableColumns() {
+	switch m.tableLayout() {
+	case "compact":
+		m.table.SetColumns([]table.Column{
+			{Title: " ", Width: 3},
+			{Title: "Severity", Width: 8},
+			{Title: "Finding", Width: m.findingColumnWidth("compact")},
+		})
+	case "medium":
+		m.table.SetColumns([]table.Column{
+			{Title: " ", Width: 3},
+			{Title: "Severity", Width: 8},
+			{Title: "ID", Width: 14},
+			{Title: "Finding", Width: m.findingColumnWidth("medium")},
+			{Title: "Fix", Width: 8},
+		})
+	default:
+		m.table.SetColumns([]table.Column{
+			{Title: " ", Width: 3},
+			{Title: "Severity", Width: 8},
+			{Title: "Source", Width: 6},
+			{Title: "ID", Width: 14},
+			{Title: "Finding", Width: m.findingColumnWidth("full")},
+			{Title: "Fix", Width: 9},
+		})
+	}
+}
+
+func (m model) findingColumnWidth(layout string) int {
+	w := m.listTableWidth()
+	switch layout {
+	case "compact":
+		return max(12, w-3-8-6)
+	case "medium":
+		return max(14, w-3-8-14-8-18)
+	default:
+		return max(16, w-3-8-6-14-9-24)
+	}
+}
+
 func (m model) listWidth() int {
-	if m.width >= 180 {
-		return m.width * 3 / 5
+	fw := m.filterWidth()
+	if fw > 0 {
+		return max(52, m.width-fw-m.detailWidth()-4)
 	}
-	if m.width >= 130 {
-		return m.width / 2
+	if m.splitDetail() {
+		return max(52, m.width-m.detailWidth()-2)
 	}
-	return m.width - 4
+	return max(1, m.width-4)
+}
+
+func (m model) listTableWidth() int {
+	return max(20, m.listWidth()-4)
 }
 
 func (m model) listHeight() int {
-	h := m.height - 10
+	h := m.bodyHeight() - 12
 	if h < 4 {
 		return 4
 	}
@@ -726,14 +1042,81 @@ func (m model) listHeight() int {
 }
 
 func (m model) detailWidth() int {
-	if m.width >= 130 {
-		return m.width - m.listWidth() - 4
+	if m.filterWidth() > 0 {
+		remaining := m.width - m.filterWidth() - 4
+		d := remaining * 2 / 5
+		if d < 44 {
+			return 44
+		}
+		if d > 66 {
+			return 66
+		}
+		return d
 	}
-	return m.width - 4
+	if m.splitDetail() {
+		d := m.width * 2 / 5
+		if d < 42 {
+			return 42
+		}
+		if d > 58 {
+			return 58
+		}
+		return d
+	}
+	return max(1, m.width-4)
 }
 
 func (m model) detailHeight() int {
-	return m.listHeight()
+	h := m.bodyHeight() - 6
+	if h < 4 {
+		return 4
+	}
+	return h
+}
+
+func (m model) bodyHeight() int {
+	if m.height <= 0 || m.width <= 0 {
+		return 10
+	}
+	header := m.renderHeader()
+	metrics := m.renderMetrics()
+	h := m.height - lipgloss.Height(header) - lipgloss.Height(metrics)
+	if h < 4 {
+		return 4
+	}
+	return h
+}
+
+func (m model) splitDetail() bool {
+	return m.width >= 116
+}
+
+func (m model) inlineDetail() bool {
+	return m.filterWidth() > 0 || m.splitDetail()
+}
+
+func (m model) detailContentWidth() int {
+	return max(20, m.detailWidth()-8)
+}
+
+func (m model) panelAt(x int) paneMode {
+	fw := m.filterWidth()
+	if fw > 0 {
+		listStart := fw + 2
+		listEnd := listStart + m.listWidth() + 2
+		if x >= listEnd {
+			return paneDetail
+		}
+		return paneList
+	}
+	if m.splitDetail() {
+		listEnd := m.listWidth() + 2
+		if x >= listEnd {
+			return paneDetail
+		}
+		return paneList
+	}
+	return m.mode
 }
 
 // ── keymap for help ──
@@ -751,7 +1134,7 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "detail")),
 		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
-		key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "theme")),
+		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
 		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
 		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "source: "+m.filter.source)),
 		key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "remediation: "+m.filter.remediation)),
@@ -761,6 +1144,7 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
 		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
+		key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "export")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	}
@@ -776,6 +1160,7 @@ func (m model) detailKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
 		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
+		key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "export")),
 		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	}}
 }

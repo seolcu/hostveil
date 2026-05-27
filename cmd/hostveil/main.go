@@ -61,6 +61,7 @@ func run() error {
 
 	ensureSudo()
 	noUpdate := hasFlag(os.Args, "--no-update")
+	noScan := hasFlag(os.Args, "--no-scan")
 
 	live := domain.NewScanProgress(noUpdate)
 	live.Hostname, _ = os.Hostname()
@@ -73,8 +74,14 @@ func run() error {
 	if !noUpdate {
 		go runUpdateCheckBackground(live)
 	}
-	go scan.RunSingleTool(live, fixRegistry, "trivy")
-	go scan.RunSingleTool(live, fixRegistry, "lynis")
+	if !noScan {
+		go scan.RunSingleTool(live, fixRegistry, "trivy")
+		go scan.RunSingleTool(live, fixRegistry, "lynis")
+	} else {
+		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.Finalize()
+	}
 
 	_, err := p.Run()
 	return err
@@ -84,7 +91,10 @@ func runServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	addr := fs.String("addr", "127.0.0.1:8787", "address to serve the web UI on")
+	certFile := fs.String("cert-file", "", "TLS certificate file (enables HTTPS)")
+	keyFile := fs.String("key-file", "", "TLS private key file")
 	noUpdate := fs.Bool("no-update", false, "skip update check on startup")
+	noScan := fs.Bool("no-scan", false, "skip scanning, serve immediately")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -97,14 +107,24 @@ func runServe(args []string) error {
 	if !skipUpdate {
 		go runUpdateCheckBackground(live)
 	}
-	go scan.RunSingleTool(live, fixRegistry, "trivy")
-	go scan.RunSingleTool(live, fixRegistry, "lynis")
+	if !*noScan {
+		go scan.RunSingleTool(live, fixRegistry, "trivy")
+		go scan.RunSingleTool(live, fixRegistry, "lynis")
+	} else {
+		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.Finalize()
+	}
 
-	fmt.Printf("  Starting Web UI at http://%s\n", *addr)
+	if *certFile != "" && *keyFile != "" {
+		fmt.Printf("  Starting Web UI at https://%s\n", *addr)
+	} else {
+		fmt.Printf("  Starting Web UI at http://%s\n", *addr)
+	}
 	fmt.Println("  Press Ctrl+C to stop.")
 	fmt.Println()
 
-	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry})
+	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
 }
 
 func runUpdateCheckBackground(live *domain.ScanProgress) {
@@ -253,9 +273,12 @@ func helpText() string {
 
 Usage:
   hostveil                    Scan and open TUI
+  hostveil --no-scan          Open TUI without scanning
   hostveil serve              Scan and serve Web UI on 127.0.0.1:8787
+  hostveil serve --no-scan    Serve Web UI immediately (no scan)
   hostveil web                Alias for serve
   hostveil serve --addr ADDR  Serve Web UI on a custom address
+  hostveil serve --cert-file CERT --key-file KEY  Serve with HTTPS
   hostveil setup              Install dependencies (trivy, lynis)
   hostveil update             Update to the latest version
   hostveil --no-update        Skip update check on startup

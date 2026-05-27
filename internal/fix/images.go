@@ -2,6 +2,7 @@ package fix
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 
@@ -54,16 +55,18 @@ func fixImageCVE(ctx Context) error {
 	composePath := ctx.ComposePath()
 	if composePath != "" {
 		f, err := compose.Open(composePath)
-		if err == nil {
-			if err := f.Backup(); err != nil {
-				return fmt.Errorf("backup failed: %w", err)
-			}
-			if err := updateImageTagInCompose(f, image, pinned); err != nil {
-				return fmt.Errorf("image tag update failed: %w", err)
-			}
-			if err := f.Save(); err != nil {
-				return fmt.Errorf("compose save failed: %w", err)
-			}
+		if err != nil {
+			ctx.Log("fix: cannot open compose file %s: %v", composePath, err)
+			return fmt.Errorf("open compose file %s: %w", composePath, err)
+		}
+		if err := f.Backup(); err != nil {
+			return fmt.Errorf("backup failed: %w", err)
+		}
+		if err := updateImageTagInCompose(f, image, pinned); err != nil {
+			return fmt.Errorf("image tag update failed: %w", err)
+		}
+		if err := f.Save(); err != nil {
+			return fmt.Errorf("compose save failed: %w", err)
 		}
 	}
 
@@ -74,6 +77,7 @@ func getRepoDigest(image string) string {
 	out, err := exec.Command("docker", "inspect", image,
 		"--format", "{{range .RepoDigests}}{{.}}{{end}}").Output()
 	if err != nil {
+		log.Printf("fix: docker inspect for %q failed: %v (falling back to tag pinning)", image, err)
 		return ""
 	}
 	digest := strings.TrimSpace(string(out))

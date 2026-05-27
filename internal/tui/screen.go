@@ -17,14 +17,15 @@ func (m model) renderLoading() string {
 	if m.width < 40 || m.height < 10 {
 		return lipgloss.NewStyle().
 			Width(m.width).Height(m.height).
-			Background(lipgloss.Color(t.Background)).
 			Render(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
 				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Terminal too small")))
 	}
 
 	brand := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("hostveil")
 	subtitle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(Version)
-	heading := fmt.Sprintf("⟐  %s %s", brand, subtitle)
+	heading := fmt.Sprintf("%s %s", brand, subtitle)
+	panelW := clamp(m.width-8, 56, 92)
+	innerW := max(20, panelW-6)
 
 	spinnerView := m.spinner.View()
 
@@ -54,6 +55,10 @@ func (m model) renderLoading() string {
 			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("−")
 			totalWeight++
 			doneWeight++
+		case domain.ToolDegraded:
+			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Bold(true).Render("◪")
+			totalWeight++
+			doneWeight++
 		case domain.ToolError:
 			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Critical)).Bold(true).Render("✗")
 			totalWeight++
@@ -62,34 +67,39 @@ func (m model) renderLoading() string {
 			icon = lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("○")
 			totalWeight++
 		}
-		label := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fmt.Sprintf("%-8s", name))
-		toolLines = append(toolLines, fmt.Sprintf("  %s %s %s", icon, label, ts.Message))
+		label := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fmt.Sprintf("%-7s", name))
+		message := fit(ts.Message, max(8, innerW-13))
+		toolLines = append(toolLines, fmt.Sprintf("%s %s %s", icon, label, message))
 	}
 
 	pct := 0.0
 	if totalWeight > 0 {
 		pct = float64(doneWeight) / float64(totalWeight)
 	}
-	bar := renderProgressBar(pct, m.width-40)
+	bar := renderProgressBar(pct, min(54, max(18, innerW-8)))
 
 	lines := []string{
-		"",
-		"  " + heading,
+		heading,
 		"",
 	}
 	lines = append(lines, toolLines...)
 	lines = append(lines,
 		"",
-		"  "+bar,
+		bar,
 		"",
-		"  "+lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("q quit"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("q quit"),
 	)
 
-	content := strings.Join(lines, "\n")
+	content := lipgloss.NewStyle().Width(innerW).Render(strings.Join(lines, "\n"))
+	panel := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Padding(1, 2).
+		Width(panelW).
+		Render(content)
 	return lipgloss.NewStyle().
 		Width(m.width).Height(m.height).
-		Background(lipgloss.Color(t.Background)).
-		Render(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content))
+		Render(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, panel))
 }
 
 // ── Main screen ──
@@ -99,60 +109,223 @@ func (m model) renderMain() string {
 	if m.width < 40 || m.height < 10 {
 		return lipgloss.NewStyle().
 			Width(m.width).Height(m.height).
-			Background(lipgloss.Color(t.Background)).
 			Render(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
 				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Terminal too small")))
 	}
 
 	header := m.renderHeader()
-	sysinfo := m.renderSysInfo()
 	metrics := m.renderMetrics()
-	var body string
-	if m.mode == paneDetail {
-		body = m.renderDetailPane()
-	} else {
-		body = m.renderListPane()
+	body := m.renderContent()
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		Render(lipgloss.JoinVertical(lipgloss.Top, header, metrics, body))
+}
+
+func (m model) renderContent() string {
+	fw := m.filterWidth()
+	if fw > 0 {
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			m.renderFilterPanel(fw),
+			strings.Repeat(" ", 2),
+			m.renderListPane(),
+			strings.Repeat(" ", 2),
+			m.renderDetailPane(),
+		)
 	}
-	sections := []string{header, sysinfo, metrics, body}
-	return lipgloss.JoinVertical(lipgloss.Top, sections...)
+
+	if m.splitDetail() {
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			m.renderListPane(),
+			strings.Repeat(" ", 2),
+			m.renderDetailPane(),
+		)
+	}
+
+	if m.mode == paneDetail {
+		return m.renderDetailPane()
+	}
+	return m.renderListPane()
+}
+
+func (m model) filterWidth() int {
+	if m.width < 190 {
+		return 0
+	}
+	return 32
+}
+
+func (m model) renderFilterPanel(width int) string {
+	t := m.theme()
+	muted := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
+	label := muted
+	sectionLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
+	title := sectionLabel.Render("SEARCH FINDINGS")
+
+	chip := func(text string, active bool) string {
+		if active {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render("[" + text + "]")
+		}
+		return lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(text)
+	}
+	joinChips := func(values ...string) string {
+		parts := make([]string, 0, len(values))
+		for _, v := range values {
+			parts = append(parts, v)
+		}
+		return strings.Join(parts, " ")
+	}
+
+	searchValue := "SSH, AUTH, CVE, service"
+	if m.filter.query != "" {
+		searchValue = fit(m.filter.query, width-6)
+	}
+	searchBox := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.TextMuted)).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Padding(0, 1).
+		Width(width - 6).
+		Render(searchValue)
+
+	sev := joinChips(
+		chip("All", m.filter.severity == "all"),
+		chip("Critical", m.filter.severity == "critical"),
+	)
+	sev2 := joinChips(
+		chip("High", m.filter.severity == "high"),
+		chip("Medium", m.filter.severity == "medium"),
+		chip("Low", m.filter.severity == "low"),
+	)
+	src := joinChips(
+		chip("All", m.filter.source == "all"),
+		chip("Lynis", m.filter.source == "lynis"),
+		chip("Trivy", m.filter.source == "trivy"),
+	)
+	rem := joinChips(
+		chip("All", m.filter.remediation == "all"),
+		chip("Auto", m.filter.remediation == "auto"),
+		chip("Review", m.filter.remediation == "review"),
+	)
+	rem2 := joinChips(
+		chip("Unavailable", m.filter.remediation == "unavailable"),
+		chip("Manual", m.filter.remediation == "manual"),
+	)
+	sortDisplay := map[string]string{
+		"severity":    "Severity first",
+		"source":      "Source",
+		"title":       "Title",
+		"remediation": "Remediation",
+	}[m.filter.sortBy]
+	if sortDisplay == "" {
+		sortDisplay = m.filter.sortBy
+	}
+	sortBox := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.Text)).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Padding(0, 1).
+		Width(width - 6).
+		Render(sortDisplay)
+
+	clear := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("R  Clear filters")
+	lines := []string{
+		title,
+		searchBox,
+		"",
+		label.Render("SEVERITY"),
+		sev,
+		sev2,
+		"",
+		label.Render("SOURCE"),
+		src,
+		"",
+		label.Render("REMEDIATION"),
+		rem,
+		rem2,
+		"",
+		label.Render("SORT"),
+		sortBox,
+		"",
+		clear,
+	}
+	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Width(width).
+		Padding(1, 2).
+		Render(content)
 }
 
 // ── Header ──
 
 func (m model) renderHeader() string {
 	t := m.theme()
-	brand := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("hostveil")
-	ver := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(Version)
-	tagline := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Linux self-hosting security scanner")
-
-	left := fmt.Sprintf("%s %s", brand, ver)
+	eyebrow := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.Accent)).
+		Render("LINUX SELF-HOSTING SECURITY SCANNER")
+	brand := m.renderBrand()
+	lines := []string{eyebrow}
+	if m.width >= 100 {
+		lines = append(lines, brand)
+	} else {
+		lines = append(lines, brand)
+	}
+	if sys := m.sysInfoLine(); sys != "" {
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(sys))
+	}
+	left := strings.Join(lines, "\n")
 	right := m.renderScorePlate()
 
-	leftW := lipgloss.Width(left)
-	rightW := lipgloss.Width(right)
-	available := m.width - leftW - rightW - 4
-
-	top := ""
-	if available > lipgloss.Width(tagline)+2 {
-		top = left + strings.Repeat(" ", available-lipgloss.Width(tagline)) + tagline + "  " + right
-	} else if m.width-leftW-4 > 20 {
-		top = left + strings.Repeat(" ", m.width-leftW-rightW-4) + right
-	} else {
-		top = lipgloss.JoinVertical(lipgloss.Left, left, right)
+	innerW := max(1, m.width-4)
+	if m.width < 86 {
+		return lipgloss.NewStyle().
+			Width(m.width).
+			Padding(1, 2).
+			Render(lipgloss.JoinVertical(lipgloss.Left, left, "", right))
 	}
+
+	rightW := lipgloss.Width(right)
+	gap := 3
+	leftW := max(24, innerW-rightW-gap)
+	body := lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Width(leftW).Render(left),
+		strings.Repeat(" ", gap),
+		right,
+	)
 
 	return lipgloss.NewStyle().
 		Width(m.width).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color(t.Border)).
-		Render(top)
+		Padding(1, 2).
+		Render(body)
+}
+
+func (m model) renderBrand() string {
+	t := m.theme()
+	if m.width < 100 {
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Text)).
+			Bold(true).
+			Render("hostveil")
+	}
+	logo := strings.Join([]string{
+		" _               _             _ _",
+		"| |__   ___  ___| |___   _____(_) |",
+		"| '_ \\ / _ \\/ __| __\\ \\ / / _ \\ | |",
+		"| | | | (_) \\__ \\ |_ \\ V /  __/ | |",
+		"|_| |_|\\___/|___/\\__| \\_/ \\___|_|_|",
+	}, "\n")
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.Text)).
+		Bold(true).
+		Render(logo)
 }
 
 func (m model) renderScorePlate() string {
 	t := m.theme()
 	score := m.snap.Score
-	grade := m.snap.Grade
 
 	scoreColor := scoreColor(score, t)
 	scoreStr := lipgloss.NewStyle().
@@ -160,34 +333,31 @@ func (m model) renderScorePlate() string {
 		Bold(true).
 		Render(fmt.Sprintf("%d/100", score))
 
-	var lines []string
-	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("SCORE"))
-	lines = append(lines, scoreStr)
-	if grade != "" {
-		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Grade "+grade))
-	}
+	label := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(t.TextMuted)).
+		Render("SECURITY SCORE")
 
 	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(1, 2).
-		Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
+		Width(24).
+		Render(lipgloss.JoinVertical(lipgloss.Left, label, scoreStr))
 }
 
-func (m model) renderSysInfo() string {
-	t := m.theme()
+func (m model) sysInfoLine() string {
 	host := m.snap.Hostname
 	ip := m.snap.LocalIP
 	if host == "" && ip == "" {
 		return ""
 	}
-	label := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(t.TextMuted)).
-		Render(fmt.Sprintf("%s @ %s", host, ip))
-	return lipgloss.NewStyle().
-		Width(m.width).
-		Padding(0, 2).
-		Render(label)
+	if host == "" {
+		return ip
+	}
+	if ip == "" {
+		return host
+	}
+	return fmt.Sprintf("%s @ %s", host, ip)
 }
 
 // ── Metrics bar ──
@@ -197,11 +367,9 @@ func (m model) renderMetrics() string {
 	findings := m.snap.Findings
 
 	counts := map[domain.Severity]int{}
-	sources := map[domain.Source]int{}
 	fixable := 0
 	for _, f := range findings {
 		counts[f.Severity]++
-		sources[f.Source]++
 		if f.IsFixable() {
 			fixable++
 		}
@@ -213,23 +381,29 @@ func (m model) renderMetrics() string {
 		color string
 	}
 	metrics := []metric{
-		{"Total", fmt.Sprintf("%d", len(findings)), t.Text},
-		{"Critical", fmt.Sprintf("%d", counts[domain.SeverityCritical]), t.Critical},
-		{"High", fmt.Sprintf("%d", counts[domain.SeverityHigh]), t.High},
-		{"Medium", fmt.Sprintf("%d", counts[domain.SeverityMedium]), t.Medium},
-		{"Low", fmt.Sprintf("%d", counts[domain.SeverityLow]), t.Low},
-		{"Fixable", fmt.Sprintf("%d", fixable), t.Accent},
+		{"TOTAL", fmt.Sprintf("%d", len(findings)), t.Text},
+		{"CRITICAL", fmt.Sprintf("%d", counts[domain.SeverityCritical]), t.Critical},
+		{"HIGH", fmt.Sprintf("%d", counts[domain.SeverityHigh]), t.High},
+		{"MEDIUM", fmt.Sprintf("%d", counts[domain.SeverityMedium]), t.Medium},
+		{"LOW", fmt.Sprintf("%d", counts[domain.SeverityLow]), t.Low},
+		{"FIXABLE", fmt.Sprintf("%d", fixable), t.Text},
 	}
 
-	cardW := max(14, (m.width-4)/len(metrics)-2)
+	cols := len(metrics)
+	if m.width < 70 {
+		cols = 2
+	} else if m.width < 118 {
+		cols = 3
+	}
+	cardW := max(13, (m.width-4-(cols-1))/cols-1)
 	var cards []string
 	muted := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
 	for _, mt := range metrics {
 		card := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color(t.Border)).
 			Width(cardW).
-			Padding(0, 1).
+			Padding(1, 2).
 			Render(
 				muted.Render(mt.label) + "\n" +
 					lipgloss.NewStyle().Foreground(lipgloss.Color(mt.color)).Bold(true).Render(mt.value),
@@ -237,7 +411,20 @@ func (m model) renderMetrics() string {
 		cards = append(cards, card)
 	}
 
-	return lipgloss.NewStyle().Width(m.width).Padding(0, 1).Render(lipgloss.JoinHorizontal(lipgloss.Top, cards...))
+	rows := make([]string, 0, (len(cards)+cols-1)/cols)
+	for i := 0; i < len(cards); i += cols {
+		end := min(i+cols, len(cards))
+		rowParts := make([]string, 0, cols*2-1)
+		for j := i; j < end; j++ {
+			if j > i {
+				rowParts = append(rowParts, " ")
+			}
+			rowParts = append(rowParts, cards[j])
+		}
+		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, rowParts...))
+	}
+
+	return lipgloss.NewStyle().Width(m.width).Padding(0, 2).Render(lipgloss.JoinVertical(lipgloss.Top, rows...))
 }
 
 // ── List pane ──
@@ -246,47 +433,79 @@ func (m model) renderListPane() string {
 	t := m.theme()
 
 	visible := m.visibleFindings()
-	count := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fmt.Sprintf("%d visible", len(visible)))
+	count := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(fmt.Sprintf("%d visible", len(visible)))
 
-	filterInfo := fmt.Sprintf("[s:%s o:%s]", m.filter.source, m.filter.sortBy)
+	filterInfo := fmt.Sprintf("s:%s o:%s", m.filter.source, m.filter.sortBy)
 	if m.filter.severity != "all" {
-		filterInfo += fmt.Sprintf(" sev:%s", m.filter.severity)
+		filterInfo += fmt.Sprintf("  sev:%s", m.filter.severity)
+	}
+	if m.filter.remediation != "all" {
+		filterInfo += fmt.Sprintf("  rem:%s", m.filter.remediation)
+	}
+	if m.filter.service != "all" {
+		filterInfo += fmt.Sprintf("  svc:%s", m.filter.service)
 	}
 	if m.filter.query != "" {
-		filterInfo += fmt.Sprintf(" q:\"%s\"", m.filter.query)
+		filterInfo += fmt.Sprintf("  q:%q", m.filter.query)
 	}
 
 	filterLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(filterInfo)
 
-	headLeft := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Findings") + "  " + count
+	titleColor := t.Accent
+	if m.mode != paneList {
+		titleColor = t.TextMuted
+	}
+
+	headLeft := lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().Foreground(lipgloss.Color(titleColor)).Render("FINDINGS"),
+		count,
+	)
 	headRight := filterLabel
 
 	headW := m.listWidth()
 	head := lipgloss.NewStyle().
 		Width(headW).
-		Padding(0, 1).
+		Padding(1, 2).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Render(headLeft + strings.Repeat(" ", max(0, headW-lipgloss.Width(headLeft)-lipgloss.Width(headRight)-4)) + headRight)
+		Render(lipgloss.JoinHorizontal(lipgloss.Top,
+			headLeft,
+			strings.Repeat(" ", max(1, headW-lipgloss.Width(headLeft)-lipgloss.Width(headRight)-6)),
+			headRight,
+		))
 
 	tableView := m.table.View()
 
 	var footerEls []string
-	footerEls = append(footerEls, m.help.ShortHelpView(m.listKeyMap().ShortHelp()))
+	footerEls = append(footerEls, m.footerHelp(paneList, max(1, headW-4)))
+	if len(m.selectedSet) > 0 {
+		selLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render(fmt.Sprintf("%d selected — press f to batch fix", len(m.selectedSet)))
+		footerEls = append(footerEls, selLabel)
+	}
 	if m.toast != "" {
-		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Bold(true)
+		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true)
 		footerEls = append(footerEls, toastStyle.Render(m.toast))
 	}
 	footerStyled := lipgloss.NewStyle().
 		Width(headW).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 1).
+		Padding(0, 2).
 		Render(lipgloss.JoinVertical(lipgloss.Top, footerEls...))
 
-	return lipgloss.NewStyle().Width(headW).Render(
-		lipgloss.JoinVertical(lipgloss.Top, head, tableView, footerStyled),
-	)
+	borderColor := t.Border
+	if m.mode == paneList {
+		borderColor = t.Accent
+	}
+
+	return lipgloss.NewStyle().
+		Width(headW).
+		Height(m.bodyHeight()).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(borderColor)).
+		Render(
+			lipgloss.JoinVertical(lipgloss.Top, head, tableView, footerStyled),
+		)
 }
 
 func tableStyles(t Theme) table.Styles {
@@ -299,35 +518,60 @@ func tableStyles(t Theme) table.Styles {
 		Padding(0, 1)
 	s.Cell = lipgloss.NewStyle().Padding(0, 1)
 	s.Selected = lipgloss.NewStyle().
-		Background(lipgloss.Color(t.Surface)).
-		Foreground(lipgloss.Color(t.Accent)).
+		Foreground(lipgloss.Color(t.Text)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Bold(true).
-		Padding(0, 1)
+		ColorWhitespace(true)
 	return s
+}
+
+func (m model) footerHelp(mode paneMode, width int) string {
+	t := m.theme()
+	text := "j/k navigate · space select · enter detail · / search · f fix · ? help · q quit"
+	if mode == paneDetail {
+		text = "j/k scroll · esc list · tab focus · f fix · ? help · q quit"
+	}
+	if width < 72 {
+		if mode == paneDetail {
+			text = "j/k scroll · esc list · tab · ? · q"
+		} else {
+			text = "j/k nav · space select · enter · ? · q"
+		}
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fit(text, width))
 }
 
 // ── Detail pane ──
 
 func (m model) renderDetailPane() string {
 	t := m.theme()
-	viewportStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 1)
+	innerW := max(1, m.detailWidth()-4)
+	detailContent := lipgloss.NewStyle().
+		Width(innerW).
+		Padding(1, 2).
+		Render(m.viewport.View())
 
-	detailContent := viewportStyle.Render(m.viewport.View())
-
-	footer := m.help.ShortHelpView(m.detailKeyMap().ShortHelp())
+	footer := m.footerHelp(paneDetail, innerW)
 	footerStyled := lipgloss.NewStyle().
-		Width(m.detailWidth()).
+		Width(innerW).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(0, 1).
+		Padding(0, 2).
 		Render(footer)
 
-	return lipgloss.NewStyle().Width(m.detailWidth()).Render(
-		lipgloss.JoinVertical(lipgloss.Top, detailContent, footerStyled),
-	)
+	borderColor := t.Border
+	if m.mode == paneDetail {
+		borderColor = t.Accent
+	}
+
+	return lipgloss.NewStyle().
+		Width(m.detailWidth()).
+		Height(m.bodyHeight()).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(borderColor)).
+		Render(
+			lipgloss.JoinVertical(lipgloss.Top, detailContent, footerStyled),
+		)
 }
 
 // ── Detail content (used by viewport) ──
@@ -335,49 +579,66 @@ func (m model) renderDetailPane() string {
 func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	var b strings.Builder
 
-	sevBadge := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(severityColor(f.Severity, t))).
-		Foreground(lipgloss.Color(severityColor(f.Severity, t))).
-		Bold(true).
-		Padding(0, 1).
-		Render(strings.ToUpper(f.Severity.String()))
-
-	b.WriteString(sevBadge + " " + lipgloss.NewStyle().Bold(true).Render(f.Title))
-	b.WriteString("\n\n")
-
 	muted := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
 	accent := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true)
+	text := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
 
-	b.WriteString(muted.Render(fmt.Sprintf("%-12s", "ID")) + f.ID + "\n")
-	b.WriteString(muted.Render(fmt.Sprintf("%-12s", "Source")) + f.Source.String() + "\n")
-	b.WriteString(muted.Render(fmt.Sprintf("%-12s", "Remediation")) + f.Remediation.Label() + "\n")
-	if f.Service != "" {
-		b.WriteString(muted.Render(fmt.Sprintf("%-12s", "Service")) + f.Service + "\n")
-	}
+	sevBadge := severityBadgeStr(strings.ToUpper(f.Severity.String()), severityColor(f.Severity, t))
+	b.WriteString(sevBadge + "\n")
+	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(lipgloss.Wrap(detailTitle(*f), width, " ")))
+	b.WriteString("\n")
 
 	if f.IsFixable() {
-		b.WriteString("\n" + accent.Render("Press 'f' to fix") + "\n")
+		fixButton := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Background)).
+			Background(lipgloss.Color(t.Low)).
+			Bold(true).
+			Padding(0, 2).
+			Render("Fix")
+		b.WriteString("\n" + fixButton + "\n")
 	}
 
-	if f.Description != "" {
-		b.WriteString("\n" + accent.Render("Description") + "\n")
-		b.WriteString(lipgloss.Wrap(f.Description, width, " ") + "\n")
+	metaRows := []string{
+		muted.Render(fmt.Sprintf("%-12s", "ID")) + text.Render(f.ID),
+		muted.Render(fmt.Sprintf("%-12s", "Source")) + text.Render(f.Source.String()),
+		muted.Render(fmt.Sprintf("%-12s", "Remediation")) + text.Render(remediationShortLabel(f.Remediation)),
 	}
-	if f.HowToFix != "" {
-		b.WriteString("\n" + accent.Render("How to fix") + "\n")
-		b.WriteString(lipgloss.Wrap(f.HowToFix, width, " ") + "\n")
+	if f.Service != "" {
+		metaRows = append(metaRows, muted.Render(fmt.Sprintf("%-12s", "Service"))+text.Render(f.Service))
 	}
+	meta := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(t.Border)).
+		Padding(1, 2).
+		Width(width).
+		Render(strings.Join(metaRows, "\n"))
+	b.WriteString("\n" + meta + "\n")
+
+	writeSection := func(title, body string) {
+		if body == "" {
+			return
+		}
+		b.WriteString("\n" + accent.Render(strings.ToUpper(title)) + "\n")
+		b.WriteString(text.Render(lipgloss.Wrap(body, width, " ")) + "\n")
+	}
+
+	writeSection("Description", f.Description)
+	writeSection("How to fix", f.HowToFix)
 	if len(f.Evidence) > 0 {
-		b.WriteString("\n" + accent.Render("Evidence") + "\n")
+		b.WriteString("\n" + accent.Render(fmt.Sprintf("EVIDENCE (%d)", len(f.Evidence))) + "\n")
 		keys := make([]string, 0, len(f.Evidence))
 		for k := range f.Evidence {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			prefix := muted.Render(fmt.Sprintf("  %-14s ", fit(k, 14)))
-			b.WriteString(prefix + lipgloss.Wrap(f.Evidence[k], max(1, width-lipgloss.Width(prefix)), " ") + "\n")
+			block := lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color(t.Border)).
+				Padding(0, 1).
+				Width(width).
+				Render(muted.Render(k) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], max(1, width-2), " ")))
+			b.WriteString(block + "\n")
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")
@@ -390,8 +651,6 @@ func (m model) renderWithModal(base string) string {
 	switch m.modal {
 	case modalHelp:
 		modal = m.renderHelpModal()
-	case modalTheme:
-		modal = m.renderThemeModal()
 	case modalFilter:
 		modal = m.renderFilterModal()
 	case modalFixAction:
@@ -400,6 +659,8 @@ func (m model) renderWithModal(base string) string {
 		modal = m.renderFixConfirmModal()
 	case modalFixResult:
 		modal = m.renderFixResultModal()
+	case modalExport:
+		modal = m.renderExportModal()
 	default:
 		return base
 	}
@@ -428,13 +689,16 @@ func (m model) renderHelpModal() string {
 			"  g/G          Top / bottom",
 			"  Enter, l      Open detail",
 			"  /             Search findings",
-			"  t             Change theme",
 			"  f             Apply fix",
+			"  Space         Select for batch fix",
 			"  Ctrl+R        Recalculate score",
+			"  Ctrl+S        Rescan all tools",
 			"  0-4           Filter by severity (0=all, 1=critical...)",
 			"  s             Cycle source filter (all→trivy→lynis)",
+			"  r             Cycle remediation filter (all→auto→review→unavailable→manual)",
 			"  o             Cycle sort order",
 			"  R             Clear all filters",
+			"  e             Export report (JSON/CSV)",
 			"  ?             This help",
 			"  q             Quit",
 		)
@@ -445,8 +709,9 @@ func (m model) renderHelpModal() string {
 			"  g/G          Top / bottom",
 			"  Esc, h        Back to list",
 			"  f             Apply fix",
-			"  t             Change theme",
 			"  Ctrl+R        Recalculate score",
+			"  Ctrl+S        Rescan all tools",
+			"  e             Export report (JSON/CSV)",
 			"  ?             This help",
 			"  q             Quit",
 		)
@@ -454,37 +719,6 @@ func (m model) renderHelpModal() string {
 	lines = append(lines, "", lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press any key to close"))
 
 	return s.Width(clamp(m.width-8, 48, 80)).Render(strings.Join(lines, "\n"))
-}
-
-func (m model) renderThemeModal() string {
-	t := m.theme()
-	s := m.modalStyle()
-	themes := AllThemes()
-
-	left := make([]string, 0, len(themes)+2)
-	left = append(left,
-		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Theme"),
-		"",
-	)
-	for i, th := range themes {
-		mark := "  "
-		nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
-		if i == m.themeCursor {
-			mark = "> "
-			nameStyle = nameStyle.Foreground(lipgloss.Color(t.Accent)).Bold(true)
-		}
-		left = append(left, "  "+mark+nameStyle.Render(th.Name))
-	}
-
-	previewTheme := themes[clamp(m.themeCursor, 0, len(themes)-1)]
-	preview := renderThemePreview(previewTheme)
-	body := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(32).Render(strings.Join(left, "\n")),
-		"  ",
-		preview,
-	)
-	body += "\n\n" + lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ preview  Enter select  Esc cancel")
-	return s.Width(clamp(m.width-8, 72, 110)).Render(body)
 }
 
 func (m model) renderFilterModal() string {
@@ -582,44 +816,97 @@ func (m model) renderFixResultModal() string {
 	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
 }
 
+func (m model) renderExportModal() string {
+	t := m.theme()
+	s := m.modalStyle()
+
+	formats := []string{"JSON (full data)", "CSV (spreadsheet)"}
+	var items []string
+	for i, f := range formats {
+		mark := "  "
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
+		if i == m.exportIdx {
+			mark = "> "
+			style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
+		}
+		items = append(items, "  "+mark+style.Render(f))
+	}
+
+	lines := []string{
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Export report"),
+		"",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Choose format:"),
+		"",
+	}
+	lines = append(lines, items...)
+	lines = append(lines,
+		"",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter export · Esc cancel"),
+	)
+	return s.Width(clamp(m.width-8, 48, 64)).Render(strings.Join(lines, "\n"))
+}
+
 func (m model) modalStyle() lipgloss.Style {
 	t := m.theme()
 	return lipgloss.NewStyle().
-		Background(lipgloss.Color(t.Surface)).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
-		BorderBackground(lipgloss.Color(t.Surface)).
 		Padding(1, 2)
-}
-
-func renderThemePreview(t Theme) string {
-	s := lipgloss.NewStyle().
-		Background(lipgloss.Color(t.Surface)).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(1, 2).
-		Width(44)
-
-	rows := []string{
-		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Preview"),
-		severityBadgeStr("HIGH", t.High) + "  " + severityBadgeStr("MED", t.Medium) + "  " + severityBadgeStr("LOW", t.Low),
-		severityBadgeStr("CRIT", t.Critical) + "  sshd_config hardening",
-		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Score 72/100  Grade B+"),
-	}
-	return s.Render(strings.Join(rows, "\n"))
 }
 
 func severityBadgeStr(label, color string) string {
 	return lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(color)).
 		Foreground(lipgloss.Color(color)).
 		Bold(true).
-		Padding(0, 1).
-		Render(label)
+		Render("[" + label + "]")
+}
+
+func severityText(s domain.Severity, t Theme) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(severityColor(s, t))).
+		Bold(true).
+		Render(strings.ToUpper(s.String()))
 }
 
 // ── Utility functions ──
+
+func findingTitle(f domain.Finding) string {
+	if strings.TrimSpace(f.Title) != "" {
+		return strings.TrimSpace(f.Title)
+	}
+	if strings.TrimSpace(f.Description) != "" {
+		desc := strings.TrimSpace(f.Description)
+		if idx := strings.Index(desc, ". "); idx > 0 {
+			return strings.TrimSpace(desc[:idx+1])
+		}
+		return desc
+	}
+	if strings.TrimSpace(f.ID) != "" {
+		return f.ID
+	}
+	return "Untitled finding"
+}
+
+func detailTitle(f domain.Finding) string {
+	title := findingTitle(f)
+	if strings.Contains(title, "...") || strings.Contains(title, "…") {
+		if desc := firstSentence(f.Description); desc != "" {
+			return desc
+		}
+	}
+	return title
+}
+
+func firstSentence(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if idx := strings.Index(s, ". "); idx > 0 {
+		return strings.TrimSpace(s[:idx+1])
+	}
+	return s
+}
 
 func shortID(id string) string {
 	parts := strings.Split(id, ".")
@@ -635,6 +922,21 @@ func short(s string, n int) string {
 		return s
 	}
 	return string(runes[:n])
+}
+
+func remediationShortLabel(r domain.RemediationKind) string {
+	switch r {
+	case domain.RemediationAuto:
+		return "Auto"
+	case domain.RemediationReview:
+		return "Review"
+	case domain.RemediationUnavailable:
+		return "Unavailable"
+	case domain.RemediationManual:
+		return "Manual"
+	default:
+		return "Unknown"
+	}
 }
 
 func fit(s string, width int) string {
@@ -666,6 +968,13 @@ func clamp(v, low, high int) int {
 
 func max(a, b int) int {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
 		return a
 	}
 	return b

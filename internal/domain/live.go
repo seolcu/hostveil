@@ -11,6 +11,7 @@ const (
 	ToolDone
 	ToolSkipped
 	ToolError
+	ToolDegraded
 )
 
 type ToolState struct {

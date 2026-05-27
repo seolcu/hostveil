@@ -64,6 +64,16 @@ func parseReportFile(reportPath string) ([]domain.Finding, error) {
 			if f != nil {
 				findings = append(findings, *f)
 			}
+		case strings.HasPrefix(line, "manual_event[]="):
+			f := parseManualEntry(line)
+			if f != nil {
+				findings = append(findings, *f)
+			}
+		case strings.HasPrefix(line, "exception_event[]="):
+			f := parseExceptionEntry(line)
+			if f != nil {
+				findings = append(findings, *f)
+			}
 		}
 	}
 	return findings, nil
@@ -120,5 +130,65 @@ func parseEntry(line string, sev domain.Severity) *domain.Finding {
 		Service:     "host",
 		Remediation: domain.RemediationUnavailable,
 		Evidence:    ev,
+	}
+}
+
+// parseManualEntry parses manual_event[] lines:
+//
+//	manual_event[]=text
+func parseManualEntry(line string) *domain.Finding {
+	eq := strings.IndexByte(line, '=')
+	if eq < 0 {
+		return nil
+	}
+	text := strings.TrimSpace(line[eq+1:])
+	if text == "" {
+		return nil
+	}
+	return &domain.Finding{
+		ID:          "lynis.manual",
+		Title:       text,
+		Description: text,
+		HowToFix:    "Manual intervention required. Review Lynis documentation for guidance.",
+		Severity:    domain.SeverityMedium,
+		Source:      domain.SourceLynis,
+		Service:     "host",
+		Remediation: domain.RemediationManual,
+	}
+}
+
+// parseExceptionEntry parses exception_event[] lines:
+//
+//	exception_event[]=TEST_ID|Message|
+func parseExceptionEntry(line string) *domain.Finding {
+	eq := strings.IndexByte(line, '=')
+	if eq < 0 {
+		return nil
+	}
+	parts := strings.Split(line[eq+1:], "|")
+	if len(parts) < 2 {
+		return nil
+	}
+
+	id := strings.TrimSpace(parts[0])
+	msg := strings.TrimSpace(parts[1])
+	if msg == "" {
+		return nil
+	}
+
+	findingID := "lynis.exception"
+	if id != "" {
+		findingID = "lynis.exception." + id
+	}
+
+	return &domain.Finding{
+		ID:          findingID,
+		Title:       msg,
+		Description: msg,
+		HowToFix:    "Check Lynis scan logs for details on this exception.",
+		Severity:    domain.SeverityLow,
+		Source:      domain.SourceLynis,
+		Service:     "host",
+		Remediation: domain.RemediationUnavailable,
 	}
 }

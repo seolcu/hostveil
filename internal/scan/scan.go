@@ -4,6 +4,7 @@ package scan
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
@@ -29,10 +30,20 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 		findings, scanErr = trivy.ScanAll()
 	case "lynis":
 		findings, scanErr = lynis.Scan()
+	default:
+		live.SetToolStatus(tool, domain.ToolSkipped, "Unknown tool")
+		return
 	}
 
 	if scanErr != nil {
-		live.SetToolStatus(tool, domain.ToolError, fmt.Sprintf("Error: %v", scanErr))
+		if len(findings) > 0 {
+			fixes.Classify(findings)
+			live.AddFindings(findings)
+			live.SetToolStatus(tool, domain.ToolDegraded,
+				fmt.Sprintf("Partial: %d issues, %s", len(findings), summarizeScanError(scanErr)))
+		} else {
+			live.SetToolStatus(tool, domain.ToolError, "Error: "+summarizeScanError(scanErr))
+		}
 	} else {
 		fixes.Classify(findings)
 		live.SetToolStatus(tool, domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
@@ -41,6 +52,31 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 
 	if live.AllToolsDone() {
 		live.Finalize()
+	}
+}
+
+func summarizeScanError(err error) string {
+	if err == nil {
+		return ""
+	}
+	s := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(s, "config scan"):
+		return "config scan failed"
+	case strings.Contains(s, "image scan"):
+		return "image scan failed"
+	case strings.Contains(s, "compose"):
+		return "compose discovery failed"
+	case strings.Contains(s, "non-json") || strings.Contains(s, "invalid json"):
+		return "scanner output unreadable"
+	case strings.Contains(s, "timeout") || strings.Contains(s, "deadline"):
+		return "scan timed out"
+	default:
+		msg := err.Error()
+		if len(msg) > 72 {
+			return msg[:69] + "..."
+		}
+		return msg
 	}
 }
 

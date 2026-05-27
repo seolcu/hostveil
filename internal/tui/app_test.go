@@ -268,3 +268,118 @@ func TestShortID_Empty(t *testing.T) {
 		t.Errorf("expected empty, got %q", got)
 	}
 }
+
+func TestCycleRemediationFilter(t *testing.T) {
+	m := &model{filter: filterState{remediation: "all"}}
+	m.cycleRemediationFilter()
+	if m.filter.remediation != "auto" {
+		t.Errorf("expected 'auto', got %q", m.filter.remediation)
+	}
+	m.cycleRemediationFilter()
+	if m.filter.remediation != "review" {
+		t.Errorf("expected 'review', got %q", m.filter.remediation)
+	}
+	m.cycleRemediationFilter()
+	if m.filter.remediation != "unavailable" {
+		t.Errorf("expected 'unavailable', got %q", m.filter.remediation)
+	}
+	m.cycleRemediationFilter()
+	if m.filter.remediation != "manual" {
+		t.Errorf("expected 'manual', got %q", m.filter.remediation)
+	}
+	m.cycleRemediationFilter()
+	if m.filter.remediation != "all" {
+		t.Errorf("expected 'all', got %q", m.filter.remediation)
+	}
+}
+
+func TestCycleServiceFilter(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.AddFindings([]domain.Finding{
+		{Service: "nginx"},
+		{Service: "postgres"},
+		{Service: "nginx"},
+	})
+	m := &model{
+		filter: filterState{service: "all"},
+		snap:   live.Snapshot(),
+	}
+	m.cycleServiceFilter()
+	if m.filter.service != "nginx" {
+		t.Errorf("expected 'nginx', got %q", m.filter.service)
+	}
+	m.cycleServiceFilter()
+	if m.filter.service != "postgres" {
+		t.Errorf("expected 'postgres', got %q", m.filter.service)
+	}
+	m.cycleServiceFilter()
+	if m.filter.service != "all" {
+		t.Errorf("expected 'all', got %q", m.filter.service)
+	}
+}
+
+func TestCycleServiceFilter_NoServices(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	m := &model{
+		filter: filterState{service: "all"},
+		snap:   live.Snapshot(),
+	}
+	m.cycleServiceFilter()
+	if m.filter.service != "all" {
+		t.Errorf("expected 'all' (no change), got %q", m.filter.service)
+	}
+}
+
+func TestRebuildTable(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.AddFindings([]domain.Finding{
+		{ID: "a", Severity: domain.SeverityHigh, Title: "High finding", Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
+		{ID: "b", Severity: domain.SeverityLow, Title: "Low finding", Source: domain.SourceTrivy, Remediation: domain.RemediationUnavailable},
+	})
+	live.Finalize()
+
+	m := &model{
+		live:        live,
+		snap:        live.Snapshot(),
+		phase:       "ready",
+		width:       160,
+		height:      50,
+		filter:      filterState{severity: "all", source: "all", remediation: "all", service: "all", sortBy: "severity"},
+		selectedSet: make(map[string]bool),
+	}
+
+	visible := m.visibleFindings()
+	if len(visible) != 2 {
+		t.Fatalf("expected 2 visible findings, got %d", len(visible))
+	}
+	if visible[0].Title != "High finding" {
+		t.Errorf("expected first finding 'High finding', got %q", visible[0].Title)
+	}
+}
+
+func TestRebuildTable_FixedIndicator(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.AddFindings([]domain.Finding{
+		{ID: "a", Severity: domain.SeverityHigh, Title: "High finding", Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
+	})
+	live.Finalize()
+	live.MarkFixed("a")
+
+	m := &model{
+		live:        live,
+		snap:        live.Snapshot(),
+		phase:       "ready",
+		width:       160,
+		height:      50,
+		filter:      filterState{severity: "all", source: "all", remediation: "all", service: "all", sortBy: "severity"},
+		selectedSet: make(map[string]bool),
+	}
+
+	visible := m.visibleFindings()
+	if len(visible) != 1 {
+		t.Fatalf("expected 1 visible finding, got %d", len(visible))
+	}
+	if !visible[0].Fixed {
+		t.Error("expected finding to be marked Fixed")
+	}
+}

@@ -192,3 +192,118 @@ func TestParseEntry_NoEvidence(t *testing.T) {
 		t.Errorf("Evidence should be empty, got %v", f.Evidence)
 	}
 }
+
+func TestParseManualEntry_Basic(t *testing.T) {
+	f := parseManualEntry(`manual_event[]=Review firewall rules for unused ports`)
+	if f == nil {
+		t.Fatal("parseManualEntry returned nil")
+	}
+	if f.ID != "lynis.manual" {
+		t.Errorf("ID = %q, want lynis.manual", f.ID)
+	}
+	if f.Title != "Review firewall rules for unused ports" {
+		t.Errorf("Title = %q", f.Title)
+	}
+	if f.Severity != domain.SeverityMedium {
+		t.Errorf("Severity = %v, want Medium", f.Severity)
+	}
+	if f.Remediation != domain.RemediationManual {
+		t.Errorf("Remediation = %v, want Manual", f.Remediation)
+	}
+	if f.Service != "host" {
+		t.Errorf("Service = %q, want host", f.Service)
+	}
+}
+
+func TestParseManualEntry_Empty(t *testing.T) {
+	f := parseManualEntry(`manual_event[]=`)
+	if f != nil {
+		t.Error("empty manual_event should return nil")
+	}
+}
+
+func TestParseManualEntry_NoEquals(t *testing.T) {
+	f := parseManualEntry(`just some text`)
+	if f != nil {
+		t.Error("entry without '=' should return nil")
+	}
+}
+
+func TestParseExceptionEntry_Basic(t *testing.T) {
+	f := parseExceptionEntry(`exception_event[]=AUTH-9286|Failed to read sshd_config|`)
+	if f == nil {
+		t.Fatal("parseExceptionEntry returned nil")
+	}
+	if f.ID != "lynis.exception.AUTH-9286" {
+		t.Errorf("ID = %q, want lynis.exception.AUTH-9286", f.ID)
+	}
+	if f.Title != "Failed to read sshd_config" {
+		t.Errorf("Title = %q", f.Title)
+	}
+	if f.Severity != domain.SeverityLow {
+		t.Errorf("Severity = %v, want Low", f.Severity)
+	}
+}
+
+func TestParseExceptionEntry_NoID(t *testing.T) {
+	f := parseExceptionEntry(`exception_event[]=|Generic scan error|`)
+	if f == nil {
+		t.Fatal("parseExceptionEntry returned nil")
+	}
+	if f.ID != "lynis.exception" {
+		t.Errorf("ID = %q, want lynis.exception", f.ID)
+	}
+	if f.Title != "Generic scan error" {
+		t.Errorf("Title = %q", f.Title)
+	}
+}
+
+func TestParseExceptionEntry_Empty(t *testing.T) {
+	f := parseExceptionEntry(`exception_event[]=|`)
+	if f != nil {
+		t.Error("exception with empty message should return nil")
+	}
+}
+
+func TestParseReport_WithAllTypes(t *testing.T) {
+	dir := t.TempDir()
+	reportPath := filepath.Join(dir, "report.dat")
+	content := []byte(`warning[]=AUTH-9286|Disable SSH password authentication|Fix it
+suggestion[]=FILE-6310|Fix /etc/shadow permissions|chmod
+manual_event[]=Review firewall configuration
+exception_event[]=KRNL-5780|Could not read sysctl value
+`)
+	if err := os.WriteFile(reportPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	findings, err := parseReportFile(reportPath)
+	if err != nil {
+		t.Fatalf("parseReportFile: %v", err)
+	}
+	if len(findings) != 4 {
+		t.Fatalf("parseReportFile returned %d findings, want 4", len(findings))
+	}
+
+	// Check each type is parsed
+	types := map[string]bool{}
+	for _, f := range findings {
+		if f.ID == "lynis.AUTH-9286" {
+			types["warning"] = true
+		}
+		if f.ID == "lynis.FILE-6310" {
+			types["suggestion"] = true
+		}
+		if f.ID == "lynis.manual" {
+			types["manual"] = true
+		}
+		if f.ID == "lynis.exception.KRNL-5780" {
+			types["exception"] = true
+		}
+	}
+	for _, name := range []string{"warning", "suggestion", "manual", "exception"} {
+		if !types[name] {
+			t.Errorf("missing finding type: %s", name)
+		}
+	}
+}

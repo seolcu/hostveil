@@ -2,6 +2,7 @@ package fix
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -45,6 +46,7 @@ func registerComposeFixes(r *Registry) {
 		},
 	}}})
 	r.Register(&Fix{FindingID: "trivy.ds006", Label: "Add no-new-privileges", Actions: []Action{edit("security_opt", []interface{}{"no-new-privileges:true"})}})
+	r.Register(&Fix{FindingID: "trivy.ds007", Label: "Remove userns_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove userns_mode: host", Warning: "Container loses host user namespace access.", Apply: func(ctx Context) error { return composeDel(ctx, "userns_mode") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds008", Label: "Change restart to unless-stopped", Actions: []Action{edit("restart", "unless-stopped")}})
 	r.Register(&Fix{FindingID: "trivy.ds009", Label: "Set non-root user", Actions: []Action{{Type: ActionEdit, Label: "Set user: 1000:1000", Warning: "Ensure image supports non-root operation.", Apply: func(ctx Context) error { return composeEdit(ctx, "user", "1000:1000") }}}})
 	r.Register(&Fix{FindingID: "trivy.ds010", Label: "Add memory limit", Actions: []Action{edit("deploy.resources.limits.memory", "512M")}})
@@ -107,7 +109,11 @@ func composePortRestrict(ctx Context, bind string) error {
 		return err
 	}
 	for _, svc := range svcs {
-		vals, _ := f.GetFieldStrings(svc, "ports")
+		vals, err := f.GetFieldStrings(svc, "ports")
+		if err != nil {
+			log.Printf("fix: cannot read ports for service %q: %v", svc, err)
+			continue
+		}
 		if len(vals) == 0 {
 			continue
 		}

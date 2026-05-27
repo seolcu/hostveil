@@ -2,6 +2,7 @@ package fix
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,7 +60,8 @@ func SimulateDiff(ctx Context, a Action) (string, error) {
 
 // CaptureDiff runs an ActionEdit for real and captures the resulting diff.
 // Unlike SimulateDiff, it does NOT restore the original file.
-// If no file path is available, it falls back to calling Apply directly.
+// If no file path is available, it falls back to calling Apply directly
+// and returns any diff captured in the context.
 func CaptureDiff(ctx Context, a Action) (string, error) {
 	if a.Type != ActionEdit {
 		return "", nil
@@ -67,8 +69,12 @@ func CaptureDiff(ctx Context, a Action) (string, error) {
 
 	path := pickPath(ctx, a)
 	if path == "" {
-		// No file to diff — just run Apply
-		return "", a.Apply(ctx)
+		// No file to diff — just run Apply and return context diff
+		err := a.Apply(ctx)
+		if err != nil {
+			return "", err
+		}
+		return ctx.Diff, nil
 	}
 
 	original, err := os.ReadFile(path)
@@ -78,7 +84,10 @@ func CaptureDiff(ctx Context, a Action) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		modified, _ := os.ReadFile(path)
+		modified, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return "", fmt.Errorf("read modified file after apply: %w", readErr)
+		}
 		return unifiedDiff(path, nil, modified), nil
 	}
 

@@ -138,11 +138,14 @@ install_tool() {
       LYNIS_VER=$(curl -fsSL --retry 3 https://api.github.com/repos/CISOfy/lynis/releases/latest | grep '"tag_name":' | sed 's/.*"\([^"]*\)".*/\1/')
       curl -fsSL --retry 3 "https://github.com/CISOfy/lynis/archive/refs/tags/${LYNIS_VER}.tar.gz" -o "/tmp/lynis.tar.gz"
       tar xzf "/tmp/lynis.tar.gz" -C /tmp || { echo "  ERROR: lynis extraction failed"; return; }
-      LYNIS_BIN=$(find /tmp -name 'lynis' -type f 2>/dev/null | head -1)
-      if [[ -n "$LYNIS_BIN" ]]; then
-        sudo install -m 755 "$LYNIS_BIN" /usr/bin/lynis
+      LYNIS_DIR=$(find /tmp -maxdepth 1 -name 'lynis-*' -type d 2>/dev/null | head -1)
+      if [[ -n "$LYNIS_DIR" ]]; then
+        sudo rm -rf /usr/share/lynis
+        sudo mv "$LYNIS_DIR" /usr/share/lynis
+        sudo ln -sf /usr/share/lynis/lynis /usr/bin/lynis
+        sudo chmod +x /usr/share/lynis/lynis
       else
-        echo "  ERROR: lynis binary not found after extraction"
+        echo "  ERROR: lynis directory not found after extraction"
       fi
       rm -f "/tmp/lynis.tar.gz" ;;
   esac

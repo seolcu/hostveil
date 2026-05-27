@@ -15,13 +15,49 @@ cd "$SCRIPT_DIR"
 cmd="${1:-up}"
 shift || true
 
+# ── helpers ────────────────────────────────────────────────────────────────
+free_port() {
+    local port="${1:-8787}"
+    local pids=""
+    if command -v lsof >/dev/null 2>&1; then
+        pids=$(lsof -ti :"$port" 2>/dev/null || true)
+    fi
+    if [ -n "$pids" ]; then
+        echo "  Port $port in use by PID(s):$(echo $pids) — freeing"
+        for pid in $pids; do
+            kill "$pid" 2>/dev/null || true
+        done
+        sleep 1
+        for pid in $pids; do
+            kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+}
+
 # ── up ────────────────────────────────────────────────────────────────────
 up() {
     echo "  hostveil test env — starting"
     echo ""
 
+    free_port 8787
     docker compose down --remove-orphans -v 2>/dev/null || true
-    docker compose up -d --build --remove-orphans
+
+    for attempt in 1 2 3; do
+        if out=$(docker compose up -d --build --remove-orphans 2>&1); then
+            break
+        fi
+        if echo "$out" | grep -q "address already in use"; then
+            echo "  Port conflict, retrying in 3s... (attempt $attempt/3)"
+            free_port 8787
+            sleep 3
+        else
+            echo "$out"
+            exit 1
+        fi
+        if [ "$attempt" = "3" ]; then
+            docker compose up -d --build --remove-orphans
+        fi
+    done
 
     echo "  Waiting for Docker daemon..."
     for i in {1..30}; do
@@ -57,6 +93,7 @@ up() {
 # ── down ──────────────────────────────────────────────────────────────────
 down() {
     echo "  hostveil test env — full reset"
+    free_port 8787
     docker compose down --remove-orphans -v 2>/dev/null || true
     echo "  Done."
 }
@@ -64,6 +101,7 @@ down() {
 # ── stop ──────────────────────────────────────────────────────────────────
 stop() {
     echo "  hostveil test env — stopping"
+    free_port 8787
     docker compose stop 2>/dev/null || true
     echo "  Done (data preserved)."
 }

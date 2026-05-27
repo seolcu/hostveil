@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -26,9 +27,11 @@ import (
 var assets embed.FS
 
 type Options struct {
-	Addr  string
-	Live  *domain.ScanProgress
-	Fixes *fix.Registry
+	Addr     string
+	Live     *domain.ScanProgress
+	Fixes    *fix.Registry
+	CertFile string
+	KeyFile  string
 }
 
 func Serve(opts Options) error {
@@ -69,9 +72,19 @@ func Serve(opts Options) error {
 		handleFixBatch(w, r, opts)
 	})
 	mux.HandleFunc("POST /api/rescan", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && !sameOrigin(origin, r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
 		handleRescan(w, r, opts)
 	})
 	mux.HandleFunc("GET /api/export", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && !sameOrigin(origin, r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
 		handleExport(w, r, opts.Live)
 	})
 	mux.Handle("/", http.FileServerFS(staticFS))
@@ -79,6 +92,9 @@ func Serve(opts Options) error {
 	server := &http.Server{
 		Handler:           secureHeaders(mux),
 		ReadHeaderTimeout: domain.HTTPReadHeaderTimeout,
+	}
+	if opts.CertFile != "" && opts.KeyFile != "" {
+		return server.ServeTLS(listener, opts.CertFile, opts.KeyFile)
 	}
 	return server.Serve(listener)
 }
@@ -198,6 +214,7 @@ func isAddrInUse(err error) bool {
 }
 
 func listenerPIDs(port int) (map[int]struct{}, error) {
+	// Try /proc/net/tcp* first (Linux)
 	inodes := map[string]struct{}{}
 	for _, path := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
 		found, err := listenerInodes(path, port)
@@ -208,35 +225,61 @@ func listenerPIDs(port int) (map[int]struct{}, error) {
 			inodes[inode] = struct{}{}
 		}
 	}
-
-	pids := map[int]struct{}{}
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		pid, err := strconv.Atoi(entry.Name())
+	if len(inodes) > 0 {
+		pids := map[int]struct{}{}
+		entries, err := os.ReadDir("/proc")
 		if err != nil {
-			continue
+			return nil, err
 		}
-		fdDir := filepath.Join("/proc", entry.Name(), "fd")
-		fds, err := os.ReadDir(fdDir)
-		if err != nil {
-			continue
-		}
-		for _, fd := range fds {
-			target, err := os.Readlink(filepath.Join(fdDir, fd.Name()))
-			if err != nil || !strings.HasPrefix(target, "socket:[") || !strings.HasSuffix(target, "]") {
+		for _, entry := range entries {
+			if !entry.IsDir() {
 				continue
 			}
-			inode := strings.TrimSuffix(strings.TrimPrefix(target, "socket:["), "]")
-			if _, ok := inodes[inode]; ok {
-				pids[pid] = struct{}{}
+			pid, err := strconv.Atoi(entry.Name())
+			if err != nil {
+				continue
+			}
+			fdDir := filepath.Join("/proc", entry.Name(), "fd")
+			fds, err := os.ReadDir(fdDir)
+			if err != nil {
+				continue
+			}
+			for _, fd := range fds {
+				target, err := os.Readlink(filepath.Join(fdDir, fd.Name()))
+				if err != nil || !strings.HasPrefix(target, "socket:[") || !strings.HasSuffix(target, "]") {
+					continue
+				}
+				inode := strings.TrimSuffix(strings.TrimPrefix(target, "socket:["), "]")
+				if _, ok := inodes[inode]; ok {
+					pids[pid] = struct{}{}
+				}
 			}
 		}
+		if len(pids) > 0 {
+			return pids, nil
+		}
+	}
+
+	// Fallback: use lsof (macOS, or Linux without /proc)
+	return listenerPIDsViaLsof(port)
+}
+
+func listenerPIDsViaLsof(port int) (map[int]struct{}, error) {
+	out, err := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-t").Output()
+	if err != nil {
+		// lsof returns non-zero when no matches found
+		return nil, nil
+	}
+	pids := map[int]struct{}{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		pid, err := strconv.Atoi(strings.TrimSpace(line))
+		if err != nil {
+			continue
+		}
+		pids[pid] = struct{}{}
 	}
 	return pids, nil
 }

@@ -46,9 +46,15 @@ func (f *File) Save() error {
 }
 
 func (f *File) Diff() string {
-	tmp, _ := os.CreateTemp("", "hostveil-*.yml")
+	tmp, err := os.CreateTemp("", "hostveil-*.yml")
+	if err != nil {
+		return ""
+	}
 	defer os.Remove(tmp.Name())
-	yaml.NewEncoder(tmp).Encode(&f.doc)
+	if err := yaml.NewEncoder(tmp).Encode(&f.doc); err != nil {
+		tmp.Close()
+		return ""
+	}
 	tmp.Close()
 	out, err := exec.Command("diff", "-u", f.path+".bak", tmp.Name()).CombinedOutput()
 	if err == nil {

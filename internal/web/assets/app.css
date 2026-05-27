@@ -301,6 +301,7 @@ th:nth-child(6) { width: 125px; }
 .tool-icon.error { color: var(--critical); }
 .tool-icon.running { color: var(--accent); }
 .tool-icon.muted { color: var(--muted); }
+.tool-icon.degraded { color: var(--high); }
 
 .tool-name {
   width: 70px;

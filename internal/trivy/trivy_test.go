@@ -2,6 +2,7 @@ package trivy
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -17,7 +18,10 @@ func TestExtractImages(t *testing.T) {
 	path := writeTemp(t, content)
 	defer os.Remove(path)
 
-	imgs := extractImages(path)
+	imgs, errs := extractImages(path)
+	if len(errs) != 0 {
+		t.Fatalf("extractImages returned errors: %v", errs)
+	}
 	if len(imgs) != 2 {
 		t.Fatalf("extractImages = %v, want 2 images", imgs)
 	}
@@ -37,16 +41,44 @@ func TestExtractImages_NoImage(t *testing.T) {
 	path := writeTemp(t, content)
 	defer os.Remove(path)
 
-	imgs := extractImages(path)
+	imgs, errs := extractImages(path)
+	if len(errs) != 0 {
+		t.Fatalf("extractImages returned errors: %v", errs)
+	}
 	if len(imgs) != 0 {
 		t.Errorf("expected no images, got %v", imgs)
 	}
 }
 
 func TestExtractImages_MissingFile(t *testing.T) {
-	imgs := extractImages("/nonexistent.yml")
+	imgs, errs := extractImages("/nonexistent.yml")
+	if len(errs) == 0 {
+		t.Error("expected error for missing file")
+	}
 	if imgs != nil {
-		t.Errorf("expected nil, got %v", imgs)
+		t.Errorf("expected nil images, got %v", imgs)
+	}
+}
+
+func TestDecodeTrivyJSON_NonJSONOutput(t *testing.T) {
+	var report configReport
+	err := decodeTrivyJSON([]byte("Scanning...\nnot json"), &report)
+	if err == nil {
+		t.Fatal("expected error for non-JSON output")
+	}
+	if !strings.Contains(err.Error(), "non-JSON") {
+		t.Fatalf("expected non-JSON summary, got %v", err)
+	}
+}
+
+func TestDecodeTrivyJSON_InvalidJSONOutput(t *testing.T) {
+	var report configReport
+	err := decodeTrivyJSON([]byte("{"), &report)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON output")
+	}
+	if strings.Contains(err.Error(), "unexpected end") {
+		t.Fatalf("expected sanitized JSON error, got %v", err)
 	}
 }
 

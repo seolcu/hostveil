@@ -169,3 +169,9 @@ func TestScanProgress_Snapshot_Immutable(t *testing.T) {
 		t.Error("Snapshot should not mutate original")
 	}
 }
+
+func TestToolDegraded_StatusValue(t *testing.T) {
+	if ToolDegraded <= ToolError {
+		t.Errorf("ToolDegraded (%d) should be after ToolError (%d)", ToolDegraded, ToolError)
+	}
+}

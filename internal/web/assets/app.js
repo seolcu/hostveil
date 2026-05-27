@@ -1,6 +1,6 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 const toolLabels = { trivy: "Trivy", lynis: "Lynis", update: "Update" };
-const statusIcons = ["○", "◌", "✓", "−", "✗"];
+const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
 
 const state = {
   live: null,
@@ -13,6 +13,7 @@ const state = {
   sortBy: "severity",
   pollTimer: null,
   selectedSet: new Set(),
+  renderPending: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -52,6 +53,20 @@ async function init() {
     state.pollTimer = setInterval(fetchResultWithRetry, 2000);
   }
   bindControls();
+  bindVisibilityPause();
+}
+
+function bindVisibilityPause() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (state.pollTimer) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = null;
+      }
+    } else if (state.phase === "loading") {
+      state.pollTimer = setInterval(fetchResultWithRetry, 2000);
+    }
+  });
 }
 
 function bindControls() {
@@ -125,10 +140,49 @@ function bindControls() {
       closeFixModal();
       closeExportModal();
     }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const visible = findings();
+      if (visible.length > 0) {
+        state.selected = Math.min(state.selected + 1, visible.length - 1);
+        render();
+        scrollSelectedIntoView();
+      }
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      state.selected = Math.max(state.selected - 1, 0);
+      render();
+      scrollSelectedIntoView();
+    }
+    if (e.key === "Enter") {
+      const fixModal = document.getElementById("fixModal");
+      const exportModal = document.getElementById("exportModal");
+      if (fixModal) {
+        const yesBtn = fixModal.querySelector("#modalFixYes");
+        if (yesBtn && !yesBtn.disabled) yesBtn.click();
+      } else if (exportModal) {
+        // do nothing — export requires explicit choice
+      } else {
+        const fixBtn = $("detail")?.querySelector(".fix-btn");
+        if (fixBtn) fixBtn.click();
+      }
+    }
   });
 }
 
+let renderTimer = null;
+
 function render() {
+  if (renderTimer) {
+    cancelAnimationFrame(renderTimer);
+    renderTimer = null;
+  }
+  renderTimer = requestAnimationFrame(doRender);
+}
+
+function doRender() {
+  renderTimer = null;
   if (state.phase === "loading") {
     renderLoading();
     return;
@@ -161,7 +215,7 @@ function renderLoading() {
     .map((name) => {
       const t = tools[name];
       const icon = statusIcons[t.status] || "○";
-      const iconClass = ["", "running", "done", "muted", "error"][t.status] || "";
+      const iconClass = ["", "running", "done", "muted", "error", "degraded"][t.status] || "";
       return `<div class="tool-row"><span class="tool-icon ${iconClass}">${icon}</span><span class="tool-name">${toolLabels[name] || name}</span><span class="tool-msg">${escapeHTML(t.message || "")}</span></div>`;
     })
     .join("");
@@ -174,6 +228,11 @@ function renderLoading() {
       <p class="muted" style="margin-top:20px">Results appear automatically when scans complete.</p>
     </div>`;
   $("findingCount").textContent = "Scanning...";
+}
+
+function scrollSelectedIntoView() {
+  const row = $("findings")?.querySelector("tr.selected");
+  if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function findings() {
@@ -559,6 +618,43 @@ async function applyFixBatch() {
   const selectedFindings = visible.filter((f) => selectedIds.has(f.ID));
   if (selectedFindings.length === 0) return;
 
+  // Fetch fix info for all selected findings to check action counts
+  const fixInfos = [];
+  for (const f of selectedFindings) {
+    try {
+      const resp = await fetch("/api/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finding: f, action_index: 0, info_only: true }),
+      });
+      const info = await resp.json();
+      fixInfos.push({ finding: f, info });
+    } catch (e) {
+      fixInfos.push({ finding: f, info: { success: false, error: e.message } });
+    }
+  }
+
+  // Check if any fix has multiple actions
+  const hasMultiAction = fixInfos.some((fi) => fi.info.success && (fi.info.actions || []).length > 1);
+  const allHaveFix = fixInfos.every((fi) => fi.info.success);
+
+  if (!allHaveFix) {
+    const failed = fixInfos.filter((fi) => !fi.info.success).map((fi) => fi.finding.ID);
+    showToast(`No fix available for: ${failed.join(", ")}`, "toast-error");
+    return;
+  }
+
+  if (hasMultiAction) {
+    showBatchActionModal(fixInfos, (actionIdx) => {
+      closeFixModal();
+      doApplyFixBatch(selectedFindings, actionIdx);
+    });
+  } else {
+    doApplyFixBatch(selectedFindings, 0);
+  }
+}
+
+async function doApplyFixBatch(selectedFindings, actionIdx) {
   const fixSelectedBtn = $("fixSelectedBtn");
   if (fixSelectedBtn) {
     fixSelectedBtn.disabled = true;
@@ -569,7 +665,7 @@ async function applyFixBatch() {
     const response = await fetch("/api/fix/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ findings: selectedFindings, action_index: 0 }),
+      body: JSON.stringify({ findings: selectedFindings, action_index: actionIdx }),
     });
     const result = await response.json();
 
@@ -602,6 +698,85 @@ async function applyFixBatch() {
     fixSelectedBtn.disabled = false;
     updateFixSelectedBtn();
   }
+}
+
+function showBatchActionModal(fixInfos, onSelect) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "fixModal";
+
+  // Group findings by their fix label to show unique actions
+  const actionMap = new Map();
+  for (const fi of fixInfos) {
+    if (!fi.info.success) continue;
+    const actions = fi.info.actions || [];
+    for (const a of actions) {
+      const key = `${a.type}:${a.label}`;
+      if (!actionMap.has(key)) {
+        actionMap.set(key, { ...a, count: 0 });
+      }
+      actionMap.get(key).count++;
+    }
+  }
+
+  const uniqueActions = Array.from(actionMap.values());
+  const actionItems = uniqueActions.map((action, idx) => {
+    const actionTypeBadge = `<span class="action-type-badge type-${escapeHTML(action.type)}">${escapeHTML(action.type)}</span>`;
+    const commandBlock = action.command ? `<div class="action-command"><span class="command-label">Command</span><code>${escapeHTML(action.command)}</code></div>` : "";
+    const editPathBlock = action.edit_path ? `<div class="action-edit-path"><span class="path-label">File</span><code>${escapeHTML(action.edit_path)}</code></div>` : "";
+    const diffPreviewBlock = action.diff_preview ? `<div class="diff-preview"><span class="preview-label">Diff preview</span>${highlightDiff(action.diff_preview)}</div>` : "";
+    const warningBlock = action.warning ? `<p class="fix-warning">&#9888; ${escapeHTML(action.warning)}</p>` : "";
+    const countBadge = action.count > 1 ? `<span class="muted">(${action.count} findings)</span>` : "";
+
+    return `
+      <div class="action-option" data-idx="${idx}">
+        <div class="action-option-header">
+          <input type="radio" name="batchFixAction" value="${idx}" id="batchActionRadio${idx}">
+          <label for="batchActionRadio${idx}">
+            ${actionTypeBadge}
+            <strong>${escapeHTML(action.label)}</strong>
+            ${countBadge}
+          </label>
+        </div>
+        ${commandBlock}
+        ${editPathBlock}
+        ${diffPreviewBlock}
+        ${warningBlock}
+      </div>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="modal-content modal-fix">
+      <h2>Choose action for batch fix</h2>
+      <p class="fix-label">${fixInfos.length} findings selected</p>
+      <div class="action-options">
+        ${actionItems}
+      </div>
+      <div class="modal-actions">
+        <button class="fix-btn" id="modalFixYes" disabled>Select an action</button>
+        <button class="chip" id="modalFixNo">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const radios = overlay.querySelectorAll('input[name="batchFixAction"]');
+  const confirmBtn = overlay.querySelector("#modalFixYes");
+  let selectedIdx = -1;
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      selectedIdx = Number(radio.value);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Apply to all selected";
+      overlay.querySelectorAll(".action-option").forEach((opt) => opt.classList.remove("selected"));
+      radio.closest(".action-option").classList.add("selected");
+    });
+  });
+
+  confirmBtn.onclick = () => {
+    if (selectedIdx >= 0) onSelect(selectedIdx);
+  };
+  overlay.querySelector("#modalFixNo").onclick = closeFixModal;
 }
 
 function updateFixSelectedBtn() {
