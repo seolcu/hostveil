@@ -27,6 +27,7 @@ type ScanProgress struct {
 	Findings        []Finding
 	Score           uint8
 	Grade           string
+	ScoreBreakdown  ScoreBreakdown
 	Hostname        string
 	LocalIP         string
 }
@@ -81,15 +82,20 @@ func (sp *ScanProgress) Finalize() {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.Phase = "complete"
-	sp.Score = CalculateScore(sp.Findings)
-	sp.Grade = GradeFromScore(sp.Score)
+	sp.updateScoreLocked()
 }
 
 func (sp *ScanProgress) Recalculate() {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	sp.Score = CalculateScore(sp.Findings)
-	sp.Grade = GradeFromScore(sp.Score)
+	sp.updateScoreLocked()
+}
+
+func (sp *ScanProgress) updateScoreLocked() {
+	breakdown := ScoreFindings(sp.Findings)
+	sp.Score = breakdown.Overall
+	sp.Grade = breakdown.Grade
+	sp.ScoreBreakdown = breakdown
 }
 
 func (sp *ScanProgress) ResetForRescan() {
@@ -98,6 +104,7 @@ func (sp *ScanProgress) ResetForRescan() {
 	sp.Phase = "loading"
 	sp.Score = 0
 	sp.Grade = ""
+	sp.ScoreBreakdown = ScoreBreakdown{}
 	sp.Findings = nil
 	for name, t := range sp.Tools {
 		if name == "update" {
@@ -125,6 +132,9 @@ func (sp *ScanProgress) MarkFixed(id string) int {
 			sp.Findings[i].Fixed = true
 			count++
 		}
+	}
+	if count > 0 {
+		sp.updateScoreLocked()
 	}
 	return count
 }
@@ -155,6 +165,9 @@ func (sp *ScanProgress) MarkRelatedFixed(excludeID string, service string, match
 		f.Fixed = true
 		alsoFixed = append(alsoFixed, f.ID)
 	}
+	if len(alsoFixed) > 0 {
+		sp.updateScoreLocked()
+	}
 	return alsoFixed
 }
 
@@ -170,6 +183,7 @@ type Snapshot struct {
 	Findings        []Finding                `json:"findings"`
 	Score           uint8                    `json:"score"`
 	Grade           string                   `json:"grade"`
+	ScoreBreakdown  ScoreBreakdown           `json:"score_breakdown"`
 	Hostname        string                   `json:"hostname"`
 	LocalIP         string                   `json:"local_ip"`
 }
@@ -183,6 +197,10 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 	}
 	findings := make([]Finding, len(sp.Findings))
 	copy(findings, sp.Findings)
+	breakdown := sp.ScoreBreakdown
+	if len(breakdown.Axes) > 0 {
+		breakdown.Axes = append([]ScoreAxis(nil), breakdown.Axes...)
+	}
 	return Snapshot{
 		Phase:           sp.Phase,
 		UpdateAvailable: sp.UpdateAvailable,
@@ -190,46 +208,8 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 		Findings:        findings,
 		Score:           sp.Score,
 		Grade:           sp.Grade,
+		ScoreBreakdown:  breakdown,
 		Hostname:        sp.Hostname,
 		LocalIP:         sp.LocalIP,
-	}
-}
-
-func CalculateScore(findings []Finding) uint8 {
-	if len(findings) == 0 {
-		return 100
-	}
-	total := 0
-	for _, f := range findings {
-		switch f.Severity {
-		case SeverityCritical:
-			total += 4
-		case SeverityHigh:
-			total += 3
-		case SeverityMedium:
-			total += 2
-		case SeverityLow:
-			total += 1
-		}
-	}
-	score := 100 - total*5
-	if score < 0 {
-		return 0
-	}
-	return uint8(score)
-}
-
-func GradeFromScore(score uint8) string {
-	switch {
-	case score >= 90:
-		return "A"
-	case score >= 70:
-		return "B"
-	case score >= 50:
-		return "C"
-	case score >= 30:
-		return "D"
-	default:
-		return "F"
 	}
 }

@@ -168,6 +168,18 @@ function bindControls() {
         if (fixBtn) fixBtn.click();
       }
     }
+    if (e.key === " " || e.key === "Spacebar") {
+      if (isTypingTarget(e.target)) return;
+      const fixModal = document.getElementById("fixModal");
+      const exportModal = document.getElementById("exportModal");
+      if (fixModal || exportModal) return;
+      const visible = findings();
+      const finding = visible[state.selected];
+      if (!finding) return;
+      e.preventDefault();
+      toggleFindingSelection(finding.ID);
+      render();
+    }
   });
 }
 
@@ -328,19 +340,42 @@ function renderTable(visible) {
       state.selected = Number(row.dataset.index);
       render();
     });
+    row.addEventListener("dblclick", (e) => {
+      if (e.target.classList.contains("row-check")) return;
+      state.selected = Number(row.dataset.index);
+      const finding = visible[state.selected];
+      if (!finding) return;
+      toggleFindingSelection(finding.ID);
+      render();
+    });
   });
   $("findings").querySelectorAll(".row-check").forEach((cb) => {
     cb.addEventListener("click", (e) => {
       e.stopPropagation();
-      const id = cb.dataset.id;
-      if (cb.checked) {
-        state.selectedSet.add(id);
-      } else {
-        state.selectedSet.delete(id);
-      }
+      setFindingSelection(cb.dataset.id, cb.checked);
       render();
     });
   });
+}
+
+function isTypingTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || target.isContentEditable;
+}
+
+function setFindingSelection(id, selected) {
+  if (!id) return;
+  if (selected) {
+    state.selectedSet.add(id);
+  } else {
+    state.selectedSet.delete(id);
+  }
+}
+
+function toggleFindingSelection(id) {
+  if (!id) return;
+  setFindingSelection(id, !state.selectedSet.has(id));
 }
 
 function renderDetail(f) {

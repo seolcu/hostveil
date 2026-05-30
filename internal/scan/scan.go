@@ -18,6 +18,7 @@ import (
 func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) {
 	if _, err := exec.LookPath(tool); err != nil {
 		live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
+		finalizeIfDone(live)
 		return
 	}
 
@@ -32,6 +33,7 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 		findings, scanErr = lynis.Scan()
 	default:
 		live.SetToolStatus(tool, domain.ToolSkipped, "Unknown tool")
+		finalizeIfDone(live)
 		return
 	}
 
@@ -50,6 +52,10 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 		live.AddFindings(findings)
 	}
 
+	finalizeIfDone(live)
+}
+
+func finalizeIfDone(live *domain.ScanProgress) {
 	if live.AllToolsDone() {
 		live.Finalize()
 	}

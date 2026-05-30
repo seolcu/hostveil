@@ -41,6 +41,7 @@ fi
 echo ""
 echo "  Ready. Run hostveil:"
 echo "    cd /hostveil && go build -o hostveil ./cmd/hostveil && ./hostveil serve --addr 0.0.0.0:8787"
+echo "    cd /hostveil && go build -o hostveil ./cmd/hostveil && ./hostveil tui-web --addr 0.0.0.0:8787"
 echo ""
 
 wait $DOCKER_PID

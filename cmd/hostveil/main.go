@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -50,6 +51,9 @@ func run() error {
 		case "serve", "web":
 			ensureSudo()
 			return runServe(os.Args[2:])
+		case "tui-web":
+			ensureSudo()
+			return runTUIWeb(os.Args[2:])
 		case "--help", "-h":
 			printHelp()
 			return nil
@@ -85,6 +89,61 @@ func run() error {
 
 	_, err := p.Run()
 	return err
+}
+
+func runTUIWeb(args []string) error {
+	fs := flag.NewFlagSet("tui-web", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	addr := fs.String("addr", "127.0.0.1:8787", "address to serve the web UI on")
+	certFile := fs.String("cert-file", "", "TLS certificate file (enables HTTPS)")
+	keyFile := fs.String("key-file", "", "TLS private key file")
+	noUpdate := fs.Bool("no-update", false, "skip update check on startup")
+	noScan := fs.Bool("no-scan", false, "skip scanning, open immediately")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	skipUpdate := *noUpdate || hasFlag(os.Args, "--no-update")
+	live := domain.NewScanProgress(skipUpdate)
+	live.Hostname, _ = os.Hostname()
+	live.LocalIP = localIP()
+
+	m := tui.NewApp(live, skipUpdate, fixRegistry)
+	p := tea.NewProgram(m)
+	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
+
+	if !skipUpdate {
+		go runUpdateCheckBackground(live)
+	}
+	if !*noScan {
+		go scan.RunSingleTool(live, fixRegistry, "trivy")
+		go scan.RunSingleTool(live, fixRegistry, "lynis")
+	} else {
+		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
+		live.Finalize()
+	}
+
+	webErr := make(chan error, 1)
+	go func() {
+		webErr <- web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
+	}()
+	select {
+	case err := <-webErr:
+		return err
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	_, err := p.Run()
+	if err != nil {
+		return err
+	}
+	select {
+	case err := <-webErr:
+		return err
+	default:
+		return nil
+	}
 }
 
 func runServe(args []string) error {
@@ -277,7 +336,9 @@ Usage:
   hostveil serve              Scan and serve Web UI on 127.0.0.1:8787
   hostveil serve --no-scan    Serve Web UI immediately (no scan)
   hostveil web                Alias for serve
+  hostveil tui-web            Open TUI and serve Web UI at the same time
   hostveil serve --addr ADDR  Serve Web UI on a custom address
+  hostveil tui-web --addr ADDR  TUI plus Web UI on a custom address
   hostveil serve --cert-file CERT --key-file KEY  Serve with HTTPS
   hostveil setup              Install dependencies (trivy, lynis)
   hostveil update             Update to the latest version

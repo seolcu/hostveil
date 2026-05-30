@@ -533,7 +533,7 @@ func (m model) footerHelp(mode paneMode, width int) string {
 	}
 	if width < 72 {
 		if mode == paneDetail {
-			text = "j/k scroll · esc list · tab · ? · q"
+			text = "j/k · esc · f fix · tab · ? · q"
 		} else {
 			text = "j/k nav · space select · enter · ? · q"
 		}
@@ -587,16 +587,6 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	b.WriteString(sevBadge + "\n")
 	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(lipgloss.Wrap(detailTitle(*f), width, " ")))
 	b.WriteString("\n")
-
-	if f.IsFixable() {
-		fixButton := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(t.Background)).
-			Background(lipgloss.Color(t.Low)).
-			Bold(true).
-			Padding(0, 2).
-			Render("Fix")
-		b.WriteString("\n" + fixButton + "\n")
-	}
 
 	metaRows := []string{
 		muted.Render(fmt.Sprintf("%-12s", "ID")) + text.Render(f.ID),

@@ -404,12 +404,15 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 	}
 
 	// Auto-mark related findings as Fixed (shared solution detection)
-	if result.Success && req.Finding.Service != "" {
-		alsoFixed := opts.Live.MarkRelatedFixed(req.Finding.ID, req.Finding.Service, func(id string) bool {
-			return reg.Lookup(id) == f
-		})
-		if len(alsoFixed) > 0 {
-			resp["also_fixed"] = alsoFixed
+	if result.Success && opts.Live != nil {
+		opts.Live.MarkFixed(req.Finding.ID)
+		if req.Finding.Service != "" {
+			alsoFixed := opts.Live.MarkRelatedFixed(req.Finding.ID, req.Finding.Service, func(id string) bool {
+				return reg.Lookup(id) == f
+			})
+			if len(alsoFixed) > 0 {
+				resp["also_fixed"] = alsoFixed
+			}
 		}
 	}
 
@@ -478,12 +481,15 @@ func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
 		}
 
 		// Auto-mark related findings
-		if result.Success && finding.Service != "" {
-			alsoFixed := opts.Live.MarkRelatedFixed(finding.ID, finding.Service, func(id string) bool {
-				return reg.Lookup(id) == f
-			})
-			for _, aid := range alsoFixed {
-				allAlsoFixed[aid] = true
+		if result.Success && opts.Live != nil {
+			opts.Live.MarkFixed(finding.ID)
+			if finding.Service != "" {
+				alsoFixed := opts.Live.MarkRelatedFixed(finding.ID, finding.Service, func(id string) bool {
+					return reg.Lookup(id) == f
+				})
+				for _, aid := range alsoFixed {
+					allAlsoFixed[aid] = true
+				}
 			}
 		}
 

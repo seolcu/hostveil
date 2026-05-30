@@ -85,6 +85,7 @@ up() {
     echo ""
     echo "  Ready. Try:"
     echo "    ./docker/run.sh hostveil serve"
+    echo "    ./docker/run.sh hostveil tui-web    # TUI + Web UI"
     echo "    ./docker/run.sh hostveil           # TUI"
     echo "    ./docker/run.sh sh                 # interactive shell"
     echo ""
@@ -120,7 +121,7 @@ run_hostveil() {
     # Rebuild if needed
     if [ -f "../hostveil" ]; then
       BIN_AGE=$(stat -c%Y "../hostveil" 2>/dev/null || echo 0)
-      SRC_AGE=$(find .. -name '*.go' -newer "../hostveil" -exec stat -c%Y {} \; | sort -rn | head -1 || echo 0)
+      SRC_AGE=$(find .. \( -name '*.go' -o -path '../internal/web/assets/*' \) -newer "../hostveil" -exec stat -c%Y {} \; | sort -rn | head -1 || echo 0)
       if [ "${SRC_AGE:-0}" -gt "$BIN_AGE" ]; then
         echo "  Rebuilding..."
         docker compose exec -e TERM="$TERM" -e COLORTERM="$COLORTERM" -w /hostveil test-host go build -buildvcs=false -o hostveil ./cmd/hostveil
@@ -129,11 +130,11 @@ run_hostveil() {
       docker compose exec -e TERM="$TERM" -e COLORTERM="$COLORTERM" -w /hostveil test-host go build -buildvcs=false -o hostveil ./cmd/hostveil
     fi
 
-    # Auto-add --addr 0.0.0.0:8787 for serve/web inside container
+    # Auto-add --addr 0.0.0.0:8787 for serve/web/tui-web inside container
     local args=("$@")
     if [[ "${#args[@]}" -gt 0 ]]; then
       local cmd="${args[0]}"
-      if [[ "$cmd" == "serve" || "$cmd" == "web" ]] && [[ "$*" != *"--addr"* ]]; then
+      if [[ "$cmd" == "serve" || "$cmd" == "web" || "$cmd" == "tui-web" ]] && [[ "$*" != *"--addr"* ]]; then
         args+=(--addr "0.0.0.0:8787")
       fi
     fi

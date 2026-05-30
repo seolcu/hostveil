@@ -2,6 +2,7 @@
 package trivy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -155,10 +156,16 @@ func runConfig(path string) ([]domain.Finding, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyConfigTimeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, "trivy", "config",
-		"--format", "json", "--quiet", "--no-progress", path).Output()
-	if err != nil && len(out) == 0 {
-		return nil, fmt.Errorf("trivy config: %w", err)
+	cmd := exec.CommandContext(ctx, "trivy", "config", "--format", "json", "--quiet", path)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		detail := sanitizeCommandOutput(stderr.Bytes())
+		if detail == "no output" {
+			detail = sanitizeCommandOutput(out)
+		}
+		return nil, fmt.Errorf("trivy config: %w: %s", err, detail)
 	}
 
 	var report configReport
@@ -240,6 +247,32 @@ func runImage(image string) ([]domain.Finding, error) {
 		}
 	}
 	return findings, nil
+}
+
+func sanitizeCommandOutput(out []byte) string {
+	msg := strings.TrimSpace(string(out))
+	if msg == "" {
+		return "no output"
+	}
+	lines := strings.Split(msg, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Usage:") || strings.HasPrefix(line, "Aliases:") {
+			continue
+		}
+		if strings.Contains(strings.ToLower(line), "fatal") || strings.Contains(strings.ToLower(line), "error") {
+			return fitErrorLine(line)
+		}
+	}
+	return fitErrorLine(lines[0])
+}
+
+func fitErrorLine(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= 160 {
+		return s
+	}
+	return s[:157] + "..."
 }
 
 func decodeTrivyJSON(out []byte, v any) error {

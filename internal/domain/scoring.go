@@ -1,0 +1,166 @@
+package domain
+
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	scoreAxisVulnerabilities = "vulnerabilities"
+	scoreAxisContainer       = "container_exposure"
+	scoreAxisHost            = "host_hardening"
+	scoreAxisSecrets         = "secrets"
+)
+
+type ScoreBreakdown struct {
+	Overall uint8       `json:"overall"`
+	Grade   string      `json:"grade"`
+	Axes    []ScoreAxis `json:"axes"`
+}
+
+type ScoreAxis struct {
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	Score      uint8  `json:"score"`
+	Penalty    int    `json:"penalty"`
+	MaxPenalty int    `json:"max_penalty"`
+	Critical   int    `json:"critical"`
+	High       int    `json:"high"`
+	Medium     int    `json:"medium"`
+	Low        int    `json:"low"`
+}
+
+type scoreAxisDef struct {
+	id    string
+	label string
+	cap   int
+}
+
+var scoreAxisDefs = []scoreAxisDef{
+	{scoreAxisVulnerabilities, "Vulnerabilities", 35},
+	{scoreAxisContainer, "Container exposure", 30},
+	{scoreAxisHost, "Host hardening", 25},
+	{scoreAxisSecrets, "Secrets", 10},
+}
+
+func ScoreFindings(findings []Finding) ScoreBreakdown {
+	axes := make([]ScoreAxis, len(scoreAxisDefs))
+	axisIndex := make(map[string]int, len(scoreAxisDefs))
+	for i, def := range scoreAxisDefs {
+		axes[i] = ScoreAxis{ID: def.id, Label: def.label, Score: 100, MaxPenalty: def.cap}
+		axisIndex[def.id] = i
+	}
+
+	seen := make(map[string]bool, len(findings))
+	for i, f := range findings {
+		if f.Fixed {
+			continue
+		}
+		key := scoreDedupKey(f, i)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		idx := axisIndex[scoreAxisForFinding(f)]
+		axis := &axes[idx]
+		axis.Penalty += severityPenalty(f.Severity)
+		switch f.Severity {
+		case SeverityCritical:
+			axis.Critical++
+		case SeverityHigh:
+			axis.High++
+		case SeverityMedium:
+			axis.Medium++
+		case SeverityLow:
+			axis.Low++
+		}
+	}
+
+	totalPenalty := 0
+	for i := range axes {
+		if axes[i].Penalty > axes[i].MaxPenalty {
+			axes[i].Penalty = axes[i].MaxPenalty
+		}
+		axes[i].Score = axisScore(axes[i].Penalty, axes[i].MaxPenalty)
+		totalPenalty += axes[i].Penalty
+	}
+	if totalPenalty > 100 {
+		totalPenalty = 100
+	}
+	overall := uint8(100 - totalPenalty)
+	return ScoreBreakdown{Overall: overall, Grade: GradeFromScore(overall), Axes: axes}
+}
+
+func CalculateScore(findings []Finding) uint8 {
+	return ScoreFindings(findings).Overall
+}
+
+func scoreAxisForFinding(f Finding) string {
+	id := strings.ToLower(f.ID)
+	text := strings.ToLower(strings.Join([]string{f.ID, f.Title, f.Description, f.HowToFix}, " "))
+	switch {
+	case strings.HasPrefix(id, "trivy.cve-"):
+		return scoreAxisVulnerabilities
+	case id == "trivy.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
+		return scoreAxisSecrets
+	case f.Source == SourceLynis || strings.HasPrefix(id, "lynis."):
+		return scoreAxisHost
+	default:
+		return scoreAxisContainer
+	}
+}
+
+func scoreDedupKey(f Finding, index int) string {
+	if f.ID == "" {
+		return fmt.Sprintf("idx:%d", index)
+	}
+	key := f.Source.String() + "|" + strings.ToLower(f.ID)
+	if f.Service != "" {
+		key += "|" + f.Service
+	}
+	return key
+}
+
+func severityPenalty(s Severity) int {
+	switch s {
+	case SeverityCritical:
+		return 8
+	case SeverityHigh:
+		return 5
+	case SeverityMedium:
+		return 2
+	case SeverityLow:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func axisScore(penalty, maxPenalty int) uint8 {
+	if maxPenalty <= 0 {
+		return 100
+	}
+	if penalty <= 0 {
+		return 100
+	}
+	if penalty >= maxPenalty {
+		return 0
+	}
+	return uint8(100 - penalty*100/maxPenalty)
+}
+
+func GradeFromScore(score uint8) string {
+	switch {
+	case score >= 90:
+		return "A"
+	case score >= 70:
+		return "B"
+	case score >= 50:
+		return "C"
+	case score >= 30:
+		return "D"
+	default:
+		return "F"
+	}
+}

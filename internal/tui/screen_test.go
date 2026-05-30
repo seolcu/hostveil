@@ -193,7 +193,7 @@ func TestRenderMain_BasicStructure(t *testing.T) {
 	if !strings.Contains(output, "testhost") {
 		t.Error("expected hostname in output")
 	}
-	if !strings.Contains(output, "85/100") {
+	if !strings.Contains(output, "95/100") {
 		t.Error("expected score in output")
 	}
 	if strings.Contains(output, "Grade") {

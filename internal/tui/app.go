@@ -992,7 +992,7 @@ func (m *model) updateTableColumns() {
 			{Title: "Severity", Width: 8},
 			{Title: "ID", Width: 14},
 			{Title: "Finding", Width: m.findingColumnWidth("medium")},
-			{Title: "Fix", Width: 8},
+			{Title: "Fix", Width: 11},
 		})
 	default:
 		m.table.SetColumns([]table.Column{
@@ -1001,7 +1001,7 @@ func (m *model) updateTableColumns() {
 			{Title: "Source", Width: 6},
 			{Title: "ID", Width: 14},
 			{Title: "Finding", Width: m.findingColumnWidth("full")},
-			{Title: "Fix", Width: 9},
+			{Title: "Fix", Width: 11},
 		})
 	}
 }
@@ -1012,9 +1012,9 @@ func (m model) findingColumnWidth(layout string) int {
 	case "compact":
 		return max(12, w-3-8-6)
 	case "medium":
-		return max(14, w-3-8-14-8-18)
+		return max(14, w-3-8-14-11-18)
 	default:
-		return max(16, w-3-8-6-14-9-24)
+		return max(16, w-3-8-6-14-11-24)
 	}
 }
 

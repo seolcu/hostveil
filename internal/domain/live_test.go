@@ -16,8 +16,8 @@ func TestCalculateScore_AllCritical(t *testing.T) {
 		{Severity: SeverityCritical},
 		{Severity: SeverityCritical},
 	}
-	if got := CalculateScore(f); got != 40 {
-		t.Errorf("CalculateScore(3 critical) = %d, want 40 (100-60)", got)
+	if got := CalculateScore(f); got != 76 {
+		t.Errorf("CalculateScore(3 critical) = %d, want 76", got)
 	}
 }
 
@@ -28,19 +28,18 @@ func TestCalculateScore_Mixed(t *testing.T) {
 		{Severity: SeverityMedium},   // 2
 		{Severity: SeverityLow},      // 1
 	}
-	// total = 10, score = 100 - 10*5 = 50
-	if got := CalculateScore(f); got != 50 {
-		t.Errorf("CalculateScore(mixed) = %d, want 50", got)
+	if got := CalculateScore(f); got != 84 {
+		t.Errorf("CalculateScore(mixed) = %d, want 84", got)
 	}
 }
 
-func TestCalculateScore_Floor(t *testing.T) {
+func TestCalculateScore_AxisCap(t *testing.T) {
 	f := make([]Finding, 6)
 	for i := range f {
 		f[i].Severity = SeverityCritical
 	}
-	if got := CalculateScore(f); got != 0 {
-		t.Errorf("CalculateScore(6 critical) = %d, want 0", got)
+	if got := CalculateScore(f); got != 70 {
+		t.Errorf("CalculateScore(6 critical) = %d, want 70", got)
 	}
 }
 
@@ -110,11 +109,14 @@ func TestScanProgress_Finalize(t *testing.T) {
 	if sp.Phase != "complete" {
 		t.Errorf("Phase = %s, want complete", sp.Phase)
 	}
-	if sp.Score != 80 {
-		t.Errorf("Score = %d, want 80", sp.Score)
+	if sp.Score != 94 {
+		t.Errorf("Score = %d, want 94", sp.Score)
 	}
-	if sp.Grade != "B" {
-		t.Errorf("Grade = %s, want B", sp.Grade)
+	if sp.Grade != "A" {
+		t.Errorf("Grade = %s, want A", sp.Grade)
+	}
+	if sp.ScoreBreakdown.Overall != sp.Score {
+		t.Errorf("ScoreBreakdown.Overall = %d, want %d", sp.ScoreBreakdown.Overall, sp.Score)
 	}
 }
 
@@ -157,6 +159,9 @@ func TestScanProgress_Snapshot_Consistency(t *testing.T) {
 	}
 	if _, ok := snap.Tools["trivy"]; !ok {
 		t.Error("snap.Tools missing trivy")
+	}
+	if snap.ScoreBreakdown.Overall != snap.Score {
+		t.Errorf("snap.ScoreBreakdown.Overall = %d, want %d", snap.ScoreBreakdown.Overall, snap.Score)
 	}
 }
 
