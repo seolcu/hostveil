@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,9 +33,13 @@ type Options struct {
 	Fixes    *fix.Registry
 	CertFile string
 	KeyFile  string
+	rescanMu *sync.Mutex
 }
 
 func Serve(opts Options) error {
+	if opts.rescanMu == nil {
+		opts.rescanMu = &sync.Mutex{}
+	}
 	if opts.Addr == "" {
 		opts.Addr = "127.0.0.1:8787"
 	}
@@ -316,7 +321,14 @@ func isHostveilProcess(pid int) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(data), "hostveil")
+	cmdline := strings.ReplaceAll(string(data), "\x00", " ")
+	for _, field := range strings.Fields(cmdline) {
+		base := filepath.Base(field)
+		if base == "hostveil" {
+			return true
+		}
+	}
+	return false
 }
 
 type fixRequest struct {
@@ -336,6 +348,7 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req fixRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request: " + err.Error()})
@@ -420,8 +433,15 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 }
 
 func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
+	if !opts.rescanMu.TryLock() {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "rescan already in progress"})
+		return
+	}
 	opts.Live.ResetForRescan()
-	go runRescan(opts)
+	go func() {
+		defer opts.rescanMu.Unlock()
+		runRescan(opts)
+	}()
 	writeJSON(w, map[string]string{"status": "rescanning"})
 }
 
@@ -447,6 +467,7 @@ func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
 		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req fixBatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request: " + err.Error()})
@@ -525,9 +546,9 @@ func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgr
 		var buf strings.Builder
 		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
 		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%q,%s,%s,%s,%q,%s,%v\n",
-				f.ID, f.Severity.String(), f.Source.String(), f.Service,
-				f.Title, f.Remediation.String(), f.Fixed))
+			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%v\n",
+				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
+				domain.EscapeCSV(f.Title), f.Remediation.String(), f.Fixed))
 		}
 		w.Write([]byte(buf.String()))
 	default:

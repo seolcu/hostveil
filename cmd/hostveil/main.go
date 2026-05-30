@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,8 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -71,7 +74,7 @@ func run() error {
 	live.Hostname, _ = os.Hostname()
 	live.LocalIP = localIP()
 
-	m := tui.NewApp(live, noUpdate, fixRegistry)
+	m := tui.NewApp(live, fixRegistry)
 	p := tea.NewProgram(m)
 	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
 
@@ -108,7 +111,7 @@ func runTUIWeb(args []string) error {
 	live.Hostname, _ = os.Hostname()
 	live.LocalIP = localIP()
 
-	m := tui.NewApp(live, skipUpdate, fixRegistry)
+	m := tui.NewApp(live, fixRegistry)
 	p := tea.NewProgram(m)
 	m.SetProgram(func(msg tea.Msg) { p.Send(msg) })
 
@@ -128,10 +131,14 @@ func runTUIWeb(args []string) error {
 	go func() {
 		webErr <- web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
 	}()
-	select {
-	case err := <-webErr:
-		return err
-	case <-time.After(300 * time.Millisecond):
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case err := <-webErr:
+			return err
+		default:
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	_, err := p.Run()
@@ -182,6 +189,14 @@ func runServe(args []string) error {
 	}
 	fmt.Println("  Press Ctrl+C to stop.")
 	fmt.Println()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		os.Exit(0)
+	}()
 
 	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
 }
@@ -241,6 +256,10 @@ func runSetup() error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("installer download failed: HTTP %d", resp.StatusCode)
+	}
+
 	f, err := os.Create(tmpFile)
 	if err != nil {
 		return err
@@ -299,6 +318,10 @@ func runUpdate() error {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+	}
 
 	tmpFile := "/tmp/hostveil.tar.gz"
 	f, err := os.Create(tmpFile)
@@ -377,6 +400,7 @@ func ensureSudo() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil requires root access.")
 		os.Exit(1)

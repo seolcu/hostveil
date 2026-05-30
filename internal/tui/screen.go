@@ -115,6 +115,8 @@ func (m model) renderMain() string {
 
 	header := m.renderHeader()
 	metrics := m.renderMetrics()
+	m.headerH = lipgloss.Height(header)
+	m.metricsH = lipgloss.Height(metrics)
 	body := m.renderContent()
 	return lipgloss.NewStyle().
 		Width(m.width).
@@ -268,11 +270,7 @@ func (m model) renderHeader() string {
 		Render("LINUX SELF-HOSTING SECURITY SCANNER")
 	brand := m.renderBrand()
 	lines := []string{eyebrow}
-	if m.width >= 100 {
-		lines = append(lines, brand)
-	} else {
-		lines = append(lines, brand)
-	}
+	lines = append(lines, brand)
 	if sys := m.sysInfoLine(); sys != "" {
 		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(sys))
 	}
@@ -527,7 +525,7 @@ func tableStyles(t Theme) table.Styles {
 
 func (m model) footerHelp(mode paneMode, width int) string {
 	t := m.theme()
-	text := "j/k navigate · space select · enter detail · / search · f fix · ? help · q quit"
+	text := "j/k navigate · space select · enter detail · / search · v service · f fix · ? help · q quit"
 	if mode == paneDetail {
 		text = "j/k scroll · esc list · tab focus · f fix · ? help · q quit"
 	}
@@ -535,7 +533,7 @@ func (m model) footerHelp(mode paneMode, width int) string {
 		if mode == paneDetail {
 			text = "j/k · esc · f fix · tab · ? · q"
 		} else {
-			text = "j/k nav · space select · enter · ? · q"
+			text = "j/k nav · space select · enter · v · ? · q"
 		}
 	}
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fit(text, width))
@@ -552,12 +550,18 @@ func (m model) renderDetailPane() string {
 		Render(m.viewport.View())
 
 	footer := m.footerHelp(paneDetail, innerW)
+	var footerEls []string
+	footerEls = append(footerEls, footer)
+	if m.toast != "" {
+		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true)
+		footerEls = append(footerEls, toastStyle.Render(m.toast))
+	}
 	footerStyled := lipgloss.NewStyle().
 		Width(innerW).
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 2).
-		Render(footer)
+		Render(lipgloss.JoinVertical(lipgloss.Top, footerEls...))
 
 	borderColor := t.Border
 	if m.mode == paneDetail {
@@ -628,6 +632,23 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 				Padding(0, 1).
 				Width(width).
 				Render(muted.Render(k) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], max(1, width-2), " ")))
+			b.WriteString(block + "\n")
+		}
+	}
+	if len(f.Metadata) > 0 {
+		b.WriteString("\n" + accent.Render(fmt.Sprintf("METADATA (%d)", len(f.Metadata))) + "\n")
+		keys := make([]string, 0, len(f.Metadata))
+		for k := range f.Metadata {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			block := lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color(t.Border)).
+				Padding(0, 1).
+				Width(width).
+				Render(muted.Render(k) + "\n" + text.Render(lipgloss.Wrap(f.Metadata[k], max(1, width-2), " ")))
 			b.WriteString(block + "\n")
 		}
 	}
@@ -851,13 +872,6 @@ func severityBadgeStr(label, color string) string {
 		Render("[" + label + "]")
 }
 
-func severityText(s domain.Severity, t Theme) string {
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(severityColor(s, t))).
-		Bold(true).
-		Render(strings.ToUpper(s.String()))
-}
-
 // ── Utility functions ──
 
 func findingTitle(f domain.Finding) string {
@@ -906,14 +920,6 @@ func shortID(id string) string {
 	return fit(id, 12)
 }
 
-func short(s string, n int) string {
-	runes := []rune(s)
-	if len(runes) <= n {
-		return s
-	}
-	return string(runes[:n])
-}
-
 func remediationShortLabel(r domain.RemediationKind) string {
 	switch r {
 	case domain.RemediationAuto:
@@ -954,20 +960,6 @@ func clamp(v, low, high int) int {
 		return high
 	}
 	return v
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func renderProgressBar(pct float64, width int) string {

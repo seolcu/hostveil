@@ -112,29 +112,8 @@ func TestScanProgress_Finalize(t *testing.T) {
 	if sp.Score != 94 {
 		t.Errorf("Score = %d, want 94", sp.Score)
 	}
-	if sp.Grade != "A" {
-		t.Errorf("Grade = %s, want A", sp.Grade)
-	}
 	if sp.ScoreBreakdown.Overall != sp.Score {
 		t.Errorf("ScoreBreakdown.Overall = %d, want %d", sp.ScoreBreakdown.Overall, sp.Score)
-	}
-}
-
-func TestGradeFromScore(t *testing.T) {
-	tests := []struct {
-		score uint8
-		want  string
-	}{
-		{100, "A"}, {95, "A"}, {90, "A"},
-		{89, "B"}, {75, "B"}, {70, "B"},
-		{69, "C"}, {55, "C"}, {50, "C"},
-		{49, "D"}, {35, "D"}, {30, "D"},
-		{29, "F"}, {10, "F"}, {0, "F"},
-	}
-	for _, tt := range tests {
-		if got := GradeFromScore(tt.score); got != tt.want {
-			t.Errorf("GradeFromScore(%d) = %q, want %q", tt.score, got, tt.want)
-		}
 	}
 }
 

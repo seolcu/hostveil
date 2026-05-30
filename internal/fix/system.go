@@ -89,22 +89,7 @@ func registerSystemFixes(r *Registry) {
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5780",
 		Label:     "Disable IP forwarding",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Disable IP forwarding",
-			Warning: "May affect Docker networking or router functions.",
-			Apply: func(ctx Context) error {
-				if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=0").Run(); err != nil {
-					return err
-				}
-				entry := "net.ipv4.ip_forward=0"
-				existsErr := exec.Command("sh", "-c", "grep -q '^net.ipv4.ip_forward=' /etc/sysctl.conf").Run()
-				if existsErr != nil {
-					return exec.Command("sh", "-c", "echo '"+entry+"' >> /etc/sysctl.conf").Run()
-				}
-				return exec.Command("sh", "-c", "sed -i 's/^#*\\s*net.ipv4.ip_forward\\s*=.*/"+entry+"/' /etc/sysctl.conf").Run()
-			},
-		}},
+		Actions:   []Action{sysctlApply("net.ipv4.ip_forward", "0")},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5820",
@@ -180,7 +165,19 @@ func registerSystemFixes(r *Registry) {
 					return exec.Command("ufw", "deny", port).Run()
 				},
 			},
-			execCmd("iptables -A INPUT -p tcp --dport 22 -j DROP"),
+			{
+				Type:  ActionExec,
+				Label: "Block port with iptables",
+				Apply: func(ctx Context) error {
+					port := ctx.Finding.Evidence["port"]
+					if port == "" {
+						port = "22"
+					}
+					port = strings.TrimSuffix(port, "/tcp")
+					port = strings.TrimSuffix(port, "/udp")
+					return exec.Command("iptables", "-A", "INPUT", "-p", "tcp", "--dport", port, "-j", "DROP").Run()
+				},
+			},
 		},
 	})
 	r.Register(&Fix{

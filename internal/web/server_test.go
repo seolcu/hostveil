@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -483,7 +484,7 @@ func TestHandleRescan(t *testing.T) {
 	reg := fix.New()
 	req := httptest.NewRequest("POST", "/api/rescan", nil)
 	rec := httptest.NewRecorder()
-	handleRescan(rec, req, Options{Live: live, Fixes: reg})
+	handleRescan(rec, req, Options{Live: live, Fixes: reg, rescanMu: &sync.Mutex{}})
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rec.Code)

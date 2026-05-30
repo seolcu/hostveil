@@ -37,18 +37,22 @@ func fixImageCVE(ctx Context) error {
 		return fmt.Errorf("no fixed version available")
 	}
 
-	// Step 1: Pull the latest image to get its digest
-	if err := exec.Command("docker", "pull", image).Run(); err != nil {
-		return fmt.Errorf("docker pull failed: %w", err)
+	// Step 1: Pull the image at the fixed version (fallback to latest)
+	pullRef := fmt.Sprintf("%s:%s", image, fixedVer)
+	if err := exec.Command("docker", "pull", pullRef).Run(); err != nil {
+		if pullErr := exec.Command("docker", "pull", image).Run(); pullErr != nil {
+			return fmt.Errorf("docker pull failed: %w", pullErr)
+		}
+		pullRef = image
 	}
 
 	// Step 2: Get the digest from the pulled image
-	digest := getRepoDigest(image)
+	digest := getRepoDigest(pullRef)
 	var pinned string
 	if digest != "" {
 		pinned = digest // e.g. nginx@sha256:abc123...
 	} else {
-		pinned = fmt.Sprintf("%s:%s", image, fixedVer) // fallback to tag pinning
+		pinned = pullRef // fallback to the pulled reference
 	}
 
 	// Step 3: Update compose file with the pinned reference

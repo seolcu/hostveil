@@ -25,26 +25,44 @@ Go 1.26, module `github.com/seolcu/hostveil`.
 Core scanner packages plus TUI and embedded Web UI:
 
 ```
-cmd/hostveil/main.go          — subcommands (setup/update/serve/web),
+cmd/hostveil/main.go          — subcommands (setup/update/serve/web/tui-web),
                                 ensureSudo(re-exec), scanHost(), auto-update check
 internal/
-├── domain/types.go            — Finding, Severity, Source, RemediationKind, ScanResult
-├── trivy/trivy.go             — ScanAll(): compose ls → config + image scan
-├── lynis/lynis.go             — Scan(): lynis audit → report.dat parsing
+├── domain/
+│   ├── types.go              — Finding, Severity, Source, RemediationKind
+│   ├── scoring.go            — Axis-based scoring engine (4 axes)
+│   ├── live.go               — ScanProgress, thread-safe state, Snapshot
+│   └── defaults.go           — Timeouts and constants
+├── scan/
+│   └── scan.go               — RunSingleTool: dispatch to trivy/lynis, classify findings
+├── trivy/
+│   └── trivy.go              — ScanAll(): compose ls → config + image scan
+├── lynis/
+│   └── lynis.go              — Scan(): lynis audit → report.dat parsing
+├── fix/
+│   ├── types.go              — Fix, Action, Registry, Classify, Run
+│   ├── register.go           — RegisterAll: compose + system + image fixes
+│   ├── compose.go            — Docker Compose misconfiguration fixes
+│   ├── system.go             — Lynis host hardening fixes
+│   ├── images.go             — CVE image pinning fixes
+│   └── edit.go               — SimulateDiff, CaptureDiff
+├── compose/
+│   └── edit.go               — YAML document editing via yaml.v3 AST
 ├── tui/
-│   ├── app.go                 — Bubble Tea v2 model, Update, View, key modes
-│   ├── screen.go              — layout, fixed-width rows, detail panel, modals
-│   └── theme.go               — 13 color themes
+│   ├── app.go                — Bubble Tea v2 model, Update, View, key modes
+│   ├── screen.go             — layout, fixed-width rows, detail panel, modals
+│   └── theme.go              — single color theme
 └── web/
-    ├── server.go              — embedded HTTP server, JSON API, port reclaim
-    └── assets/                — no-build HTML/CSS/JS Web UI
+    ├── server.go             — embedded HTTP server, JSON API, port reclaim
+    └── assets/               — no-build HTML/CSS/JS Web UI
 ```
 
 ### Data flow
 
 ```
 main.go → ensureSudo() → goroutine trivy.ScanAll() + goroutine lynis.Scan()
-       → merge findings → calculateScore() → ScanResult
+       → scan.RunSingleTool → fix.Registry.Classify → merge findings
+       → calculateScore() → ScanResult
 
 Default UI:
   ScanResult → tea.NewProgram(tui.NewApp(result))
@@ -58,13 +76,15 @@ Subcommands (sudo):
   hostveil update  → GitHub API → download tar.gz → install to /usr/bin
   hostveil serve   → scan → serve Web UI on 127.0.0.1:8787
   hostveil web     → alias for serve
+  hostveil tui-web → open TUI and serve Web UI simultaneously
 ```
 
 ### Key dependencies
 
 - `charm.land/bubbletea/v2` — TUI framework (`tea.KeyPressMsg`, `tea.View`, `View.AltScreen`)
-- `charm.land/bubbles/v2` — help/key bindings
+- `charm.land/bubbles/v2` — help/key bindings, table, viewport, textinput
 - `charm.land/lipgloss/v2` — styling, layout, `Layer`/`Compositor` modal overlay
+- `gopkg.in/yaml.v3` — YAML AST manipulation for compose file editing
 - Standard library: `os/exec`, `encoding/json`, `sync`, `net/http`, `embed`, `net`
 
 ### External runtime deps
@@ -77,7 +97,7 @@ Tools are checked via `exec.LookPath` before each scan. Missing tools are
 skipped gracefully—the TUI/Web UI still starts with whatever findings exist.
 Install them with `hostveil setup`.
 
-The process runs as root (auto re-exec via `sudo os.Args...`).
+The process runs as root (auto re-exec via `sudo os.Args...` with environment preserved).
 
 ### Web UI
 
@@ -85,8 +105,12 @@ The process runs as root (auto re-exec via `sudo os.Args...`).
 - Default address is `127.0.0.1:8787`; override with `hostveil serve --addr HOST:PORT`.
 - Endpoints:
   - `GET /` — embedded Web UI
-  - `GET /api/result` — JSON `domain.ScanResult`
+  - `GET /api/result` — JSON `domain.Snapshot`
   - `GET /api/health` — health check
+  - `POST /api/fix` — single finding fix (supports `info_only` dry-run)
+  - `POST /api/fix/batch` — batch fix multiple findings
+  - `POST /api/rescan` — trigger full rescan
+  - `GET /api/export?format=json|csv` — export report
 - If the target port is already in use, `internal/web` inspects `/proc/net/tcp*`, finds listener PIDs via `/proc/<pid>/fd`, sends `SIGTERM`, then `SIGKILL` if needed.
 - Be careful with `--addr 0.0.0.0:PORT`: this exposes host scan results from a root process. The default must remain localhost.
 
@@ -100,26 +124,24 @@ The process runs as root (auto re-exec via `sudo os.Args...`).
 
 ## Code conventions
 
-- All findings use `RemediationUnavailable` until the fix engine is built.
-- Score is a simple severity-weight formula (Critical=4, High=3, etc., multiplied by 5).
+- All findings use `RemediationUnavailable` until classified by `fix.Registry.Classify()`.
+- Score is an axis-based model: 4 axes (Vulnerabilities, Container exposure, Host hardening, Secrets) with per-axis penalty caps.
 - `tui.Version` is a `var` settable via `-ldflags` for releases. Defaults to `"v2.0.0-dev"`.
 - TUI returns `tea.View`, sets `View.AltScreen`, `View.BackgroundColor`, `View.ForegroundColor`, and `View.WindowTitle`.
 - TUI modal overlays use Lip Gloss v2 `NewLayer`/`NewCompositor`; do not reintroduce manual ANSI string overlay slicing.
 - TUI row rendering should keep fixed-width row invariants; avoid slicing styled strings.
 - Web UI assets are embedded from `internal/web/assets/`; keep it no-build unless there is a strong reason to add a frontend toolchain.
-- Lynis report.dat is written to `/tmp/hostveil-lynis.dat` and cleaned up after parsing.
+- Lynis report.dat is written to a temp file and cleaned up after parsing.
+- `ensureSudo()` preserves environment variables when re-executing via sudo.
 
 ## What's not implemented (yet)
 
-- Fix engine (`internal/fix/engine.go`, `actions.go`, `internal/compose/parse.go`)
-- Scoring model with Axis (single flat score for now)
-- Persistent web settings/history/export reports
-- Tests
+- Persistent web settings/history/scan persistence (no database, scans are in-memory only)
 
 ## Common mistakes to avoid
 
 - Do not add `sudo` inside trivy/lynis packages — the process is always root when they run.
-- `ensureSudo()` re-execs via `sudo os.Args...`, NOT via `sudo -v`. Do not change this.
+- `ensureSudo()` re-execs via `sudo os.Args...` with `cmd.Env = os.Environ()`, NOT via `sudo -v`. Do not change this.
 - Bubble Tea is v2. Use `tea.KeyPressMsg` and `tea.View`; do not revert imports to `github.com/charmbracelet/...` v1 paths.
 - `hostveil serve` must default to `127.0.0.1:8787`; warn on non-local bind addresses.
 - Be careful changing port reclaim logic: it intentionally kills listener PIDs for the requested port.

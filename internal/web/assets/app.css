@@ -268,6 +268,7 @@ th:nth-child(6) { width: 125px; }
 }
 .fix-btn:hover { filter: brightness(1.2); }
 .fix-btn:disabled { opacity: 0.5; cursor: wait; }
+.fix-btn.loading { pointer-events: none; }
 
 .fix-success { color: var(--low); margin-top: 12px; font-weight: 700; }
 .fix-error { color: var(--critical); margin-top: 12px; font-weight: 700; }
@@ -312,6 +313,53 @@ th:nth-child(6) { width: 125px; }
 }
 
 .tool-msg { color: var(--muted); }
+
+.progress-bar {
+  width: 100%;
+  max-width: 480px;
+  height: 6px;
+  background: rgba(139, 155, 191, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  color: var(--accent);
+}
+
+th.sortable::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+th.sortable.asc::after {
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid currentColor;
+}
+
+th.sortable.desc::after {
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid currentColor;
+}
 
 @media (max-width: 1180px) {
   .metrics { grid-template-columns: repeat(3, 1fr); }

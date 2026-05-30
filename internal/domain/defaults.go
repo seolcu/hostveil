@@ -7,7 +7,7 @@ const (
 	DockerComposeTimeout  = 10 * time.Second
 	TrivyConfigTimeout    = 5 * time.Minute
 	TrivyImageTimeout     = 5 * time.Minute
-	LynisAuditTimeout     = 2 * time.Minute
+	LynisAuditTimeout = 5 * time.Minute
 	HTTPReadHeaderTimeout = 5 * time.Second
 	TUITickInterval       = 100 * time.Millisecond
 )

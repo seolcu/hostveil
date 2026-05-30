@@ -1,6 +1,8 @@
 // Package domain defines core types: Finding, Severity, Source, and scan progress.
 package domain
 
+import "strings"
+
 type Severity int
 
 const (
@@ -87,19 +89,27 @@ func (r RemediationKind) Label() string {
 }
 
 type Finding struct {
-	ID          string
-	Title       string
-	Description string
-	HowToFix    string
-	Severity    Severity
-	Source      Source
-	Service     string
-	Remediation RemediationKind
-	Evidence    map[string]string
-	Metadata    map[string]string
-	Fixed       bool
+	ID          string            `json:"id"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	HowToFix    string            `json:"how_to_fix"`
+	Severity    Severity          `json:"severity"`
+	Source      Source            `json:"source"`
+	Service     string            `json:"service"`
+	Remediation RemediationKind   `json:"remediation"`
+	Evidence    map[string]string `json:"evidence"`
+	Metadata    map[string]string `json:"metadata"`
+	Fixed       bool              `json:"fixed"`
 }
 
 func (f *Finding) IsFixable() bool {
 	return f.Remediation.IsFixable()
+}
+
+func EscapeCSV(s string) string {
+	if strings.ContainsAny(s, ",\"\n\r") {
+		s = strings.ReplaceAll(s, `"`, `""`)
+		return `"` + s + `"`
+	}
+	return s
 }

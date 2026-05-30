@@ -3,6 +3,7 @@ package lynis
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/exec"
@@ -33,7 +34,8 @@ func runLynis(reportPath string) error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
-	if err := cmd.Run(); err == nil {
+	err1 := cmd.Run()
+	if err1 == nil {
 		return nil
 	}
 
@@ -41,7 +43,17 @@ func runLynis(reportPath string) error {
 	defer cancel2()
 
 	cmd2 := exec.CommandContext(ctx2, "lynis", "audit", "system", "--quiet", "--logfile", reportPath)
-	return cmd2.Run()
+	var stderrBuf strings.Builder
+	cmd2.Stderr = &stderrBuf
+	err2 := cmd2.Run()
+	if err2 != nil {
+		stderr := strings.TrimSpace(stderrBuf.String())
+		if stderr != "" {
+			return fmt.Errorf("first attempt: %w; second attempt: %w: %s", err1, err2, stderr)
+		}
+		return fmt.Errorf("first attempt: %w; second attempt: %w", err1, err2)
+	}
+	return nil
 }
 
 func parseReportFile(reportPath string) ([]domain.Finding, error) {
@@ -145,8 +157,9 @@ func parseManualEntry(line string) *domain.Finding {
 	if text == "" {
 		return nil
 	}
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(text)))[:8]
 	return &domain.Finding{
-		ID:          "lynis.manual",
+		ID:          "lynis.manual." + hash,
 		Title:       text,
 		Description: text,
 		HowToFix:    "Manual intervention required. Review Lynis documentation for guidance.",

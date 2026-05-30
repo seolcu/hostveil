@@ -11,6 +11,7 @@ const state = {
   source: "all",
   remediation: "all",
   sortBy: "severity",
+  sortDir: "asc",
   pollTimer: null,
   selectedSet: new Set(),
   renderPending: false,
@@ -18,20 +19,9 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
-async function fetchResult() {
-  try {
-    const response = await fetch("/api/result");
-    state.live = await response.json();
-    state.phase = state.live.phase || "complete";
-    render();
-  } catch (error) {
-    // Keep polling — transient network errors are expected during rescan
-  }
-}
-
 let fetchFailures = 0;
 
-async function fetchResultWithRetry() {
+async function fetchResult() {
   try {
     const response = await fetch("/api/result");
     state.live = await response.json();
@@ -50,7 +40,7 @@ async function fetchResultWithRetry() {
 async function init() {
   await fetchResult();
   if (state.phase === "loading") {
-    state.pollTimer = setInterval(fetchResultWithRetry, 2000);
+    state.pollTimer = setInterval(fetchResult, 2000);
   }
   bindControls();
   bindVisibilityPause();
@@ -64,16 +54,21 @@ function bindVisibilityPause() {
         state.pollTimer = null;
       }
     } else if (state.phase === "loading") {
-      state.pollTimer = setInterval(fetchResultWithRetry, 2000);
+      state.pollTimer = setInterval(fetchResult, 2000);
     }
   });
 }
 
+let searchTimer = null;
+
 function bindControls() {
   $("query")?.addEventListener("input", (event) => {
-    state.query = event.target.value.toLowerCase();
-    state.selected = 0;
-    render();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.query = event.target.value.toLowerCase();
+      state.selected = 0;
+      render();
+    }, 150);
   });
   $("sortBy")?.addEventListener("change", (event) => {
     state.sortBy = event.target.value;
@@ -87,6 +82,24 @@ function bindControls() {
     state.selected = 0;
     if ($("query")) $("query").value = "";
     render();
+  });
+
+  const sortFields = { 1: "severity", 2: "source", 4: "title", 5: "remediation" };
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const col = Number(th.dataset.col);
+      const field = sortFields[col];
+      if (!field) return;
+      if (state.sortBy === field) {
+        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.sortBy = field;
+        state.sortDir = "asc";
+      }
+      const sel = $("sortBy");
+      if (sel) sel.value = state.sortBy;
+      render();
+    });
   });
 
   $("selectAllCheck")?.addEventListener("change", (event) => {
@@ -109,7 +122,7 @@ function bindControls() {
     rescanBtn.textContent = "Scanning...";
     try {
       await fetch("/api/rescan", { method: "POST" });
-      state.pollTimer = setInterval(fetchResultWithRetry, 2000);
+      state.pollTimer = setInterval(fetchResult, 2000);
     } catch (e) {
       console.error("Rescan failed");
     }
@@ -211,6 +224,15 @@ function doRender() {
   if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
   renderMetrics();
   renderFilters();
+  document.querySelectorAll("th.sortable").forEach((th) => {
+    const col = Number(th.dataset.col);
+    const sortFields = { 1: "severity", 2: "source", 4: "title", 5: "remediation" };
+    const field = sortFields[col];
+    th.classList.remove("asc", "desc");
+    if (field === state.sortBy) {
+      th.classList.add(state.sortDir);
+    }
+  });
   renderTable(visible);
   renderDetail(visible[state.selected]);
   updateFixSelectedBtn();
@@ -222,8 +244,13 @@ function renderLoading() {
   $("score").textContent = "--/100";
   $("score").className = "";
   const toolOrder = ["update", "trivy", "lynis"];
-  const toolRows = toolOrder
-    .filter((name) => tools[name])
+  const activeTools = toolOrder.filter((name) => tools[name]);
+  const doneCount = activeTools.filter((name) => {
+    const s = tools[name].status;
+    return s === 2 || s === 3 || s === 4 || s === 5;
+  }).length;
+  const progress = activeTools.length > 0 ? Math.round((doneCount / activeTools.length) * 100) : 0;
+  const toolRows = activeTools
     .map((name) => {
       const t = tools[name];
       const icon = statusIcons[t.status] || "○";
@@ -236,6 +263,8 @@ function renderLoading() {
   $("detail").innerHTML = `
     <div class="loading-state">
       <h2>Scanning...</h2>
+      <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+      <p class="muted" style="margin-top:8px">${progress}% complete</p>
       <div class="tool-status">${toolRows}</div>
       <p class="muted" style="margin-top:20px">Results appear automatically when scans complete.</p>
     </div>`;
@@ -259,10 +288,11 @@ function findings() {
 }
 
 function sorter(a, b) {
-  if (state.sortBy === "source") return source(a).localeCompare(source(b)) || severityOrder[severity(a)] - severityOrder[severity(b)];
-  if (state.sortBy === "title") return title(a).localeCompare(title(b));
-  if (state.sortBy === "remediation") return remediation(a).localeCompare(remediation(b));
-  return severityOrder[severity(a)] - severityOrder[severity(b)] || title(a).localeCompare(title(b));
+  const dir = state.sortDir === "desc" ? -1 : 1;
+  if (state.sortBy === "source") return dir * (source(a).localeCompare(source(b)) || severityOrder[severity(a)] - severityOrder[severity(b)]);
+  if (state.sortBy === "title") return dir * title(a).localeCompare(title(b));
+  if (state.sortBy === "remediation") return dir * remediation(a).localeCompare(remediation(b));
+  return dir * (severityOrder[severity(a)] - severityOrder[severity(b)] || title(a).localeCompare(title(b)));
 }
 
 function renderMetrics() {
@@ -390,6 +420,13 @@ function renderDetail(f) {
       <summary>Evidence (${evKeys.length})</summary>
       ${evKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("")}
     </details>` : "";
+  const metadata = f.Metadata || {};
+  const metaKeys = Object.keys(metadata).sort();
+  const metadataHTML = metaKeys.length > 0 ? `
+    <details class="evidence-details">
+      <summary>Metadata (${metaKeys.length})</summary>
+      ${metaKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(metadata[key])}</pre>`).join("")}
+    </details>` : "";
   const fixable = f.Remediation === 0 || f.Remediation === 1;
   $("detail").innerHTML = `
     <span class="badge ${severity(f)}">${severity(f)}</span>
@@ -404,6 +441,7 @@ function renderDetail(f) {
     ${section("Description", f.Description)}
     ${section("How to fix", f.HowToFix, true)}
     ${evidenceHTML}
+    ${metadataHTML}
     <div id="fixResult"></div>
   `;
   const detail = $("detail");
@@ -468,6 +506,7 @@ async function applyFix(finding, button) {
 async function doApplyFix(finding, button, actionIdx) {
   const resultDiv = $("fixResult");
   button.disabled = true;
+  button.classList.add("loading");
   button.textContent = "Applying...";
   try {
     const response = await fetch("/api/fix", {
@@ -495,6 +534,7 @@ async function doApplyFix(finding, button, actionIdx) {
     resultDiv.innerHTML = `<div class="fix-error">&#10007; ${escapeHTML(error.message)}</div>`;
   }
   button.disabled = false;
+  button.classList.remove("loading");
   button.textContent = "Fix";
 }
 
@@ -693,6 +733,7 @@ async function doApplyFixBatch(selectedFindings, actionIdx) {
   const fixSelectedBtn = $("fixSelectedBtn");
   if (fixSelectedBtn) {
     fixSelectedBtn.disabled = true;
+    fixSelectedBtn.classList.add("loading");
     fixSelectedBtn.textContent = "Applying...";
   }
 
@@ -731,6 +772,7 @@ async function doApplyFixBatch(selectedFindings, actionIdx) {
 
   if (fixSelectedBtn) {
     fixSelectedBtn.disabled = false;
+    fixSelectedBtn.classList.remove("loading");
     updateFixSelectedBtn();
   }
 }

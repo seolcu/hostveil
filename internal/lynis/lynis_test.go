@@ -3,6 +3,7 @@ package lynis
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -198,8 +199,8 @@ func TestParseManualEntry_Basic(t *testing.T) {
 	if f == nil {
 		t.Fatal("parseManualEntry returned nil")
 	}
-	if f.ID != "lynis.manual" {
-		t.Errorf("ID = %q, want lynis.manual", f.ID)
+	if !strings.HasPrefix(f.ID, "lynis.manual.") {
+		t.Errorf("ID = %q, want lynis.manual.<hash>", f.ID)
 	}
 	if f.Title != "Review firewall rules for unused ports" {
 		t.Errorf("Title = %q", f.Title)
@@ -294,7 +295,7 @@ exception_event[]=KRNL-5780|Could not read sysctl value
 		if f.ID == "lynis.FILE-6310" {
 			types["suggestion"] = true
 		}
-		if f.ID == "lynis.manual" {
+		if strings.HasPrefix(f.ID, "lynis.manual.") {
 			types["manual"] = true
 		}
 		if f.ID == "lynis.exception.KRNL-5780" {

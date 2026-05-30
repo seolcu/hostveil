@@ -297,7 +297,7 @@ func TestRenderMain_ResponsiveWidthsStayInBounds(t *testing.T) {
 			})
 			live.Finalize()
 
-			m := NewApp(live, true, nil)
+			m := NewApp(live, nil)
 			m.width = width
 			m.height = 44
 			m.phase = "ready"
@@ -328,7 +328,7 @@ func TestRenderMain_ShowsFindingTitle(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.width = 180
 	m.height = 44
 	m.phase = "ready"
@@ -370,7 +370,7 @@ func TestUpdate_WindowResizeDoesNotPanicAfterTableLayoutChange(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -398,7 +398,7 @@ func TestUpdate_SpaceTogglesSelectionInRenderedTable(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -423,7 +423,7 @@ func TestRebuildTable_RowsArePlainStrings(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -449,7 +449,7 @@ func TestUpdate_DetailModeScrollDoesNotMoveFindingCursor(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -475,7 +475,7 @@ func TestUpdate_SpacePreservesCursor(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -522,7 +522,7 @@ func TestUpdate_MouseWheelScrollsTable(t *testing.T) {
 	}
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true
@@ -547,7 +547,7 @@ func TestPanelAt_TwoPanelMode(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.width = 140
 	m.height = 40
 	m.phase = "ready"
@@ -579,7 +579,7 @@ func TestPanelAt_OnePanelMode(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.width = 80
 	m.height = 40
 	m.phase = "ready"
@@ -605,7 +605,7 @@ func TestPanelAt_ThreePanelMode(t *testing.T) {
 	})
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.width = 200
 	m.height = 40
 	m.phase = "ready"
@@ -642,7 +642,7 @@ func TestUpdate_MouseWheelIgnoredOverHeader(t *testing.T) {
 	}
 	live.Finalize()
 
-	m := NewApp(live, true, nil)
+	m := NewApp(live, nil)
 	m.phase = "ready"
 	m.snap = live.Snapshot()
 	m.snapOK = true

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 // pickPath resolves the target file path for an edit action.
@@ -36,6 +35,12 @@ func SimulateDiff(ctx Context, a Action) (string, error) {
 	if err != nil {
 		return "", nil
 	}
+	var originalMode os.FileMode
+	if info, statErr := os.Stat(path); statErr == nil {
+		originalMode = info.Mode()
+	} else {
+		originalMode = 0644
+	}
 
 	// Run the actual Apply (modifies the file)
 	applyErr := a.Apply(ctx)
@@ -46,7 +51,7 @@ func SimulateDiff(ctx Context, a Action) (string, error) {
 	}
 
 	// Always restore original (dry-run guarantee)
-	_ = os.WriteFile(path, original, 0644)
+	_ = os.WriteFile(path, original, originalMode)
 
 	// Clean up any .bak files left by compose edits
 	_ = os.Remove(path + ".bak")
@@ -109,17 +114,26 @@ func unifiedDiff(path string, before, after []byte) string {
 		return ""
 	}
 
-	dir := os.TempDir()
-	aFile := filepath.Join(dir, "hostveil.diff.a")
-	bFile := filepath.Join(dir, "hostveil.diff.b")
+	aFile, err := os.CreateTemp("", "hostveil-diff-a-*")
+	if err != nil {
+		return ""
+	}
+	bFile, err2 := os.CreateTemp("", "hostveil-diff-b-*")
+	if err2 != nil {
+		aFile.Close()
+		os.Remove(aFile.Name())
+		return ""
+	}
 
-	_ = os.WriteFile(aFile, before, 0644)
-	_ = os.WriteFile(bFile, after, 0644)
+	_ = os.WriteFile(aFile.Name(), before, 0644)
+	_ = os.WriteFile(bFile.Name(), after, 0644)
+	aFile.Close()
+	bFile.Close()
 	defer func() {
-		_ = os.Remove(aFile)
-		_ = os.Remove(bFile)
+		_ = os.Remove(aFile.Name())
+		_ = os.Remove(bFile.Name())
 	}()
 
-	out, _ := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, aFile, bFile).Output()
+	out, _ := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, aFile.Name(), bFile.Name()).Output()
 	return string(out)
 }

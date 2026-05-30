@@ -1,9 +1,7 @@
 package tui
 
 type Theme struct {
-	Name       string
 	Background string
-	Surface    string
 	SurfaceAlt string
 	Border     string
 	Text       string
@@ -19,9 +17,7 @@ type Theme struct {
 func DefaultTheme() Theme { return webTheme }
 
 var webTheme = Theme{
-	Name:       "Hostveil",
 	Background: "#090b12",
-	Surface:    "#111522",
 	SurfaceAlt: "#171c2b",
 	Border:     "#2f3a52",
 	Text:       "#e7ecf8",

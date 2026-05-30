@@ -13,9 +13,6 @@ func TestScoreFindings_AxisBreakdown(t *testing.T) {
 	if breakdown.Overall != 80 {
 		t.Fatalf("Overall = %d, want 80", breakdown.Overall)
 	}
-	if breakdown.Grade != "B" {
-		t.Fatalf("Grade = %q, want B", breakdown.Grade)
-	}
 
 	byID := axesByID(breakdown.Axes)
 	if byID[scoreAxisVulnerabilities].Penalty != 8 {

@@ -22,7 +22,7 @@ import (
 	"github.com/seolcu/hostveil/internal/scan"
 )
 
-var Version = "v2.1.1"
+var Version = "v2.2.0"
 
 type paneMode int
 
@@ -94,13 +94,17 @@ type model struct {
 
 	// confirm reset
 	confirmReset bool
+
+	// cached render heights
+	headerH  int
+	metricsH int
 }
 
 type tickMsg struct{}
 type fixResultMsg struct{ result fix.FixResult }
 type fixBatchResultMsg struct{ success, fail, skipped int }
 
-func NewApp(live *domain.ScanProgress, noUpdateCheck bool, reg *fix.Registry) *model {
+func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 
 	t := table.New(
@@ -275,6 +279,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		target := m.panelAt(mouse.X)
 		switch mouse.Button {
+		case tea.MouseLeft:
+			if target == paneList {
+				if m.mode != paneList {
+					m.mode = paneList
+				}
+			} else if target == paneDetail && m.inlineDetail() {
+				m.mode = paneDetail
+				m.updateDetailViewport()
+			}
 		case tea.MouseWheelUp:
 			if target == paneDetail {
 				m.viewport.ScrollUp(3)
@@ -365,6 +378,10 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "o":
 		m.cycleSortOrder()
+		m.rebuildTable()
+		return m, nil
+	case "v":
+		m.cycleServiceFilter()
 		m.rebuildTable()
 		return m, nil
 	case "R":
@@ -706,9 +723,9 @@ func (m *model) exportReport() {
 		var buf strings.Builder
 		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
 		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%q,%s,%s,%s,%q,%s,%v\n",
-				f.ID, f.Severity.String(), f.Source.String(), f.Service,
-				f.Title, f.Remediation.String(), f.Fixed))
+			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%v\n",
+				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
+				domain.EscapeCSV(f.Title), f.Remediation.String(), f.Fixed))
 		}
 		content = buf.String()
 	}
@@ -1078,9 +1095,7 @@ func (m model) bodyHeight() int {
 	if m.height <= 0 || m.width <= 0 {
 		return 10
 	}
-	header := m.renderHeader()
-	metrics := m.renderMetrics()
-	h := m.height - lipgloss.Height(header) - lipgloss.Height(metrics)
+	h := m.height - m.headerH - m.metricsH
 	if h < 4 {
 		return 4
 	}

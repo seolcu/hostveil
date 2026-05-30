@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
@@ -18,7 +19,11 @@ func TestExtractImages(t *testing.T) {
 	path := writeTemp(t, content)
 	defer os.Remove(path)
 
-	imgs, errs := extractImages(path)
+	f, err := compose.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgs, errs := extractImages(f)
 	if len(errs) != 0 {
 		t.Fatalf("extractImages returned errors: %v", errs)
 	}
@@ -41,7 +46,11 @@ func TestExtractImages_NoImage(t *testing.T) {
 	path := writeTemp(t, content)
 	defer os.Remove(path)
 
-	imgs, errs := extractImages(path)
+	f, err := compose.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgs, errs := extractImages(f)
 	if len(errs) != 0 {
 		t.Fatalf("extractImages returned errors: %v", errs)
 	}
@@ -50,13 +59,29 @@ func TestExtractImages_NoImage(t *testing.T) {
 	}
 }
 
-func TestExtractImages_MissingFile(t *testing.T) {
-	imgs, errs := extractImages("/nonexistent.yml")
-	if len(errs) == 0 {
-		t.Error("expected error for missing file")
+func TestExtractImages_Dedup(t *testing.T) {
+	content := `services:
+  web:
+    image: nginx
+  api:
+    image: nginx
+`
+	path := writeTemp(t, content)
+	defer os.Remove(path)
+
+	f, err := compose.Open(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if imgs != nil {
-		t.Errorf("expected nil images, got %v", imgs)
+	imgs, errs := extractImages(f)
+	if len(errs) != 0 {
+		t.Fatalf("extractImages returned errors: %v", errs)
+	}
+	if len(imgs) != 1 {
+		t.Fatalf("extractImages = %v, want 1 image (dedupled)", imgs)
+	}
+	if imgs[0] != "nginx" {
+		t.Errorf("imgs[0] = %q, want nginx", imgs[0])
 	}
 }
 

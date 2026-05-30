@@ -26,7 +26,6 @@ type ScanProgress struct {
 	Tools           map[string]*ToolState
 	Findings        []Finding
 	Score           uint8
-	Grade           string
 	ScoreBreakdown  ScoreBreakdown
 	Hostname        string
 	LocalIP         string
@@ -94,7 +93,6 @@ func (sp *ScanProgress) Recalculate() {
 func (sp *ScanProgress) updateScoreLocked() {
 	breakdown := ScoreFindings(sp.Findings)
 	sp.Score = breakdown.Overall
-	sp.Grade = breakdown.Grade
 	sp.ScoreBreakdown = breakdown
 }
 
@@ -103,7 +101,6 @@ func (sp *ScanProgress) ResetForRescan() {
 	defer sp.mu.Unlock()
 	sp.Phase = "loading"
 	sp.Score = 0
-	sp.Grade = ""
 	sp.ScoreBreakdown = ScoreBreakdown{}
 	sp.Findings = nil
 	for name, t := range sp.Tools {
@@ -182,7 +179,6 @@ type Snapshot struct {
 	Tools           map[string]ToolStateJSON `json:"tools"`
 	Findings        []Finding                `json:"findings"`
 	Score           uint8                    `json:"score"`
-	Grade           string                   `json:"grade"`
 	ScoreBreakdown  ScoreBreakdown           `json:"score_breakdown"`
 	Hostname        string                   `json:"hostname"`
 	LocalIP         string                   `json:"local_ip"`
@@ -207,7 +203,6 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 		Tools:           tools,
 		Findings:        findings,
 		Score:           sp.Score,
-		Grade:           sp.Grade,
 		ScoreBreakdown:  breakdown,
 		Hostname:        sp.Hostname,
 		LocalIP:         sp.LocalIP,

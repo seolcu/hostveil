@@ -88,48 +88,51 @@ func scanProject(p project) ([]domain.Finding, error) {
 	}
 	all = append(all, cfgs...)
 
-	images, imgErrs := extractImages(p.ComposePath)
-	errs = append(errs, imgErrs...)
-	for _, img := range images {
-		findings, imgScanErr := runImage(img)
-		if imgScanErr != nil {
-			errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
-		}
-		for i := range findings {
-			if findings[i].Metadata == nil {
-				findings[i].Metadata = map[string]string{}
+	f, composeErr := compose.Open(p.ComposePath)
+	if composeErr != nil {
+		errs = append(errs, fmt.Errorf("open compose %q: %w", p.ComposePath, composeErr))
+	} else {
+		images, imgErrs := extractImages(f)
+		errs = append(errs, imgErrs...)
+		for _, img := range images {
+			findings, imgScanErr := runImage(img)
+			if imgScanErr != nil {
+				errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
 			}
-			findings[i].Metadata["compose_path"] = p.ComposePath
-			findings[i].Metadata["project"] = p.Name
+			for i := range findings {
+				if findings[i].Metadata == nil {
+					findings[i].Metadata = map[string]string{}
+				}
+				findings[i].Metadata["compose_path"] = p.ComposePath
+				findings[i].Metadata["project"] = p.Name
+			}
+			all = append(all, findings...)
 		}
-		all = append(all, findings...)
-	}
 
-	envFindings, envErr := detectEnvFiles(p.ComposePath, p.Name)
-	if envErr != nil {
-		errs = append(errs, envErr)
+		envFindings, envErr := detectEnvFiles(f, p.ComposePath, p.Name)
+		if envErr != nil {
+			errs = append(errs, envErr)
+		}
+		all = append(all, envFindings...)
 	}
-	all = append(all, envFindings...)
 
 	return all, errors.Join(errs...)
 }
 
-func extractImages(path string) ([]string, []error) {
-	f, err := compose.Open(path)
-	if err != nil {
-		return nil, []error{fmt.Errorf("open compose %q: %w", path, err)}
-	}
+func extractImages(f *compose.File) ([]string, []error) {
 	svcs, err := f.ServiceNames()
 	if err != nil {
-		return nil, []error{fmt.Errorf("list services %q: %w", path, err)}
+		return nil, []error{err}
 	}
+	seen := make(map[string]bool)
 	var images []string
 	for _, svc := range svcs {
 		img, err := f.GetFieldRaw(svc, "image")
 		if err != nil {
 			continue
 		}
-		if img != "" {
+		if img != "" && !seen[img] {
+			seen[img] = true
 			images = append(images, img)
 		}
 	}
@@ -213,12 +216,20 @@ func runImage(image string) ([]domain.Finding, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyImageTimeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, "trivy", "image",
+	cmd := exec.CommandContext(ctx, "trivy", "image",
 		"--severity", "CRITICAL,HIGH,MEDIUM,LOW",
 		"--format", "json", "--quiet", "--no-progress",
-		"--timeout", "5m", image).Output()
+		"--timeout", "5m", image)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil && len(out) == 0 {
-		return nil, fmt.Errorf("trivy image: %w", err)
+		detail := sanitizeCommandOutput(stderr.Bytes())
+		return nil, fmt.Errorf("trivy image: %w: %s", err, detail)
+	}
+	var scanErr error
+	if err != nil {
+		scanErr = fmt.Errorf("trivy image partial: %w", err)
 	}
 
 	var report imageReport
@@ -246,7 +257,7 @@ func runImage(image string) ([]domain.Finding, error) {
 			})
 		}
 	}
-	return findings, nil
+	return findings, scanErr
 }
 
 func sanitizeCommandOutput(out []byte) string {
@@ -307,43 +318,41 @@ func parseSeverity(s string) domain.Severity {
 
 // ── env_file detection ──
 
-func detectEnvFiles(composePath, project string) ([]domain.Finding, error) {
-	f, err := compose.Open(composePath)
-	if err != nil {
-		return nil, fmt.Errorf("open compose %q: %w", composePath, err)
-	}
+func detectEnvFiles(f *compose.File, composePath, project string) ([]domain.Finding, error) {
 	svcs, err := f.ServiceNames()
 	if err != nil {
 		return nil, fmt.Errorf("list services %q: %w", composePath, err)
 	}
 	var findings []domain.Finding
 	for _, svc := range svcs {
-		raw, err := f.GetFieldRaw(svc, "env_file")
+		envFiles, err := f.GetFieldStrings(svc, "env_file")
 		if err != nil {
 			continue
 		}
-		if raw == "" {
-			continue
+		for _, raw := range envFiles {
+			envPath := strings.TrimSpace(raw)
+			if envPath == "" {
+				continue
+			}
+			if !filepath.IsAbs(envPath) {
+				envPath = filepath.Join(filepath.Dir(composePath), envPath)
+			}
+			findings = append(findings, domain.Finding{
+				ID:          "trivy.dr004",
+				Title:       "Secrets in env_file",
+				Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svc, envPath),
+				HowToFix:    "Restrict .env permissions or migrate to Docker secrets.",
+				Severity:    domain.SeverityHigh,
+				Source:      domain.SourceTrivy,
+				Service:     svc,
+				Remediation: domain.RemediationUnavailable,
+				Metadata: map[string]string{
+					"compose_path": composePath,
+					"project":      project,
+					"env_path":     envPath,
+				},
+			})
 		}
-		envPath := strings.TrimSpace(raw)
-		if !filepath.IsAbs(envPath) {
-			envPath = filepath.Join(filepath.Dir(composePath), envPath)
-		}
-		findings = append(findings, domain.Finding{
-			ID:          "trivy.dr004",
-			Title:       "Secrets in env_file",
-			Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svc, envPath),
-			HowToFix:    "Restrict .env permissions or migrate to Docker secrets.",
-			Severity:    domain.SeverityHigh,
-			Source:      domain.SourceTrivy,
-			Service:     svc,
-			Remediation: domain.RemediationUnavailable,
-			Metadata: map[string]string{
-				"compose_path": composePath,
-				"project":      project,
-				"env_path":     envPath,
-			},
-		})
 	}
 	return findings, nil
 }

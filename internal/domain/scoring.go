@@ -14,7 +14,6 @@ const (
 
 type ScoreBreakdown struct {
 	Overall uint8       `json:"overall"`
-	Grade   string      `json:"grade"`
 	Axes    []ScoreAxis `json:"axes"`
 }
 
@@ -89,7 +88,7 @@ func ScoreFindings(findings []Finding) ScoreBreakdown {
 		totalPenalty = 100
 	}
 	overall := uint8(100 - totalPenalty)
-	return ScoreBreakdown{Overall: overall, Grade: GradeFromScore(overall), Axes: axes}
+	return ScoreBreakdown{Overall: overall, Axes: axes}
 }
 
 func CalculateScore(findings []Finding) uint8 {
@@ -102,10 +101,10 @@ func scoreAxisForFinding(f Finding) string {
 	switch {
 	case strings.HasPrefix(id, "trivy.cve-"):
 		return scoreAxisVulnerabilities
-	case id == "trivy.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
-		return scoreAxisSecrets
 	case f.Source == SourceLynis || strings.HasPrefix(id, "lynis."):
 		return scoreAxisHost
+	case id == "trivy.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
+		return scoreAxisSecrets
 	default:
 		return scoreAxisContainer
 	}
@@ -148,19 +147,4 @@ func axisScore(penalty, maxPenalty int) uint8 {
 		return 0
 	}
 	return uint8(100 - penalty*100/maxPenalty)
-}
-
-func GradeFromScore(score uint8) string {
-	switch {
-	case score >= 90:
-		return "A"
-	case score >= 70:
-		return "B"
-	case score >= 50:
-		return "C"
-	case score >= 30:
-		return "D"
-	default:
-		return "F"
-	}
 }
