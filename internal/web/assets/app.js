@@ -105,9 +105,9 @@ function bindControls() {
   $("selectAllCheck")?.addEventListener("change", (event) => {
     const visible = findings();
     if (event.target.checked) {
-      visible.forEach((f) => state.selectedSet.add(f.ID));
+      visible.forEach((f) => state.selectedSet.add(f.id));
     } else {
-      visible.forEach((f) => state.selectedSet.delete(f.ID));
+      visible.forEach((f) => state.selectedSet.delete(f.id));
     }
     render();
   });
@@ -334,25 +334,25 @@ function renderChips(id, values, key) {
 
 function renderTable(visible) {
   $("findingCount").textContent = `${visible.length} visible`;
-  const allSelected = visible.length > 0 && visible.every((f) => state.selectedSet.has(f.ID));
-  const someSelected = visible.some((f) => state.selectedSet.has(f.ID));
+  const allSelected = visible.length > 0 && visible.every((f) => state.selectedSet.has(f.id));
+  const someSelected = visible.some((f) => state.selectedSet.has(f.id));
   const checkState = allSelected ? "checked" : someSelected ? "indeterminate" : "";
 
   $("findings").innerHTML = visible.map((f, index) => {
-    const fixedClass = f.Fixed ? "fixed" : "";
+    const fixedClass = f.fixed ? "fixed" : "";
     const selClass = index === state.selected ? "selected" : "";
-    const rowSelectedClass = state.selectedSet.has(f.ID) ? "row-selected" : "";
+    const rowSelectedClass = state.selectedSet.has(f.id) ? "row-selected" : "";
     const rowClass = [fixedClass, selClass, rowSelectedClass].filter(Boolean).join(" ");
-    const sevDisplay = f.Fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
-    const srcDisplay = f.Fixed ? "" : `<span class="muted">${source(f)}</span>`;
-    const fixDisplay = f.Fixed ? "Fixed" : label(remediation(f));
-    const titleDisplay = f.Fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
-    const checked = state.selectedSet.has(f.ID) ? "checked" : "";
-    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.ID)}">
-      <td class="check-cell"><input type="checkbox" ${checked} data-id="${escapeHTML(f.ID)}" class="row-check"></td>
+    const sevDisplay = f.fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
+    const srcDisplay = f.fixed ? "" : `<span class="muted">${source(f)}</span>`;
+    const fixDisplay = f.fixed ? "Fixed" : label(remediation(f));
+    const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
+    const checked = state.selectedSet.has(f.id) ? "checked" : "";
+    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}">
+      <td class="check-cell"><input type="checkbox" ${checked} data-id="${escapeHTML(f.id)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
-      <td class="id">${shortId(f.ID)}</td>
+      <td class="id">${shortId(f.id)}</td>
       <td class="title">${titleDisplay}</td>
       <td class="muted">${fixDisplay}</td>
     </tr>`;
@@ -413,33 +413,33 @@ function renderDetail(f) {
     $("detail").innerHTML = `<div class="empty-detail"><span></span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
     return;
   }
-  const evidence = f.Evidence || {};
+  const evidence = f.evidence || {};
   const evKeys = Object.keys(evidence).sort();
   const evidenceHTML = evKeys.length > 0 ? `
     <details class="evidence-details">
       <summary>Evidence (${evKeys.length})</summary>
       ${evKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(evidence[key])}</pre>`).join("")}
     </details>` : "";
-  const metadata = f.Metadata || {};
+  const metadata = f.metadata || {};
   const metaKeys = Object.keys(metadata).sort();
   const metadataHTML = metaKeys.length > 0 ? `
     <details class="evidence-details">
       <summary>Metadata (${metaKeys.length})</summary>
       ${metaKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(metadata[key])}</pre>`).join("")}
     </details>` : "";
-  const fixable = f.Remediation === 0 || f.Remediation === 1;
+  const fixable = f.remediation === 0 || f.remediation === 1;
   $("detail").innerHTML = `
     <span class="badge ${severity(f)}">${severity(f)}</span>
     <h2>${escapeHTML(title(f))}</h2>
-    ${fixable ? `<button class="fix-btn" data-finding-id="${escapeHTML(f.ID)}">Fix</button>` : ""}
+    ${fixable ? `<button class="fix-btn" data-finding-id="${escapeHTML(f.id)}">Fix</button>` : ""}
     <dl class="detail-meta">
-      <dt>ID</dt><dd>${escapeHTML(f.ID || "")}</dd>
+      <dt>ID</dt><dd>${escapeHTML(f.id || "")}</dd>
       <dt>Source</dt><dd>${source(f)}</dd>
       <dt>Remediation</dt><dd>${label(remediation(f))}</dd>
-      ${f.Service ? `<dt>Service</dt><dd>${escapeHTML(f.Service)}</dd>` : ""}
+      ${f.service ? `<dt>Service</dt><dd>${escapeHTML(f.service)}</dd>` : ""}
     </dl>
-    ${section("Description", f.Description)}
-    ${section("How to fix", f.HowToFix, true)}
+    ${section("Description", f.description)}
+    ${section("How to fix", f.how_to_fix, true)}
     ${evidenceHTML}
     ${metadataHTML}
     <div id="fixResult"></div>
@@ -458,7 +458,7 @@ function renderDetail(f) {
     };
   });
   detail.querySelectorAll(".copy").forEach((btn) => {
-    btn.onclick = () => navigator.clipboard?.writeText(f.HowToFix || "");
+    btn.onclick = () => navigator.clipboard?.writeText(f.how_to_fix || "");
   });
   const fixBtn = detail.querySelector(".fix-btn");
   if (fixBtn) fixBtn.onclick = () => applyFix(f, fixBtn);
@@ -573,12 +573,12 @@ function section(name, content, copy = false) {
 }
 
 function countBy(items, fn) { return items.reduce((acc, item) => ((acc[fn(item)] = (acc[fn(item)] || 0) + 1), acc), {}); }
-function severity(f) { return ["critical", "high", "medium", "low"][f.Severity] || String(f.Severity || "unknown").toLowerCase(); }
-function source(f) { return ["trivy", "lynis"][f.Source] || String(f.Source || "unknown").toLowerCase(); }
-function remediation(f) { return ["auto", "review", "unavailable", "manual"][f.Remediation] || String(f.Remediation || "unknown").toLowerCase(); }
-function title(f) { return f.Title || "Untitled finding"; }
+function severity(f) { return ["critical", "high", "medium", "low"][f.severity] || String(f.severity || "unknown").toLowerCase(); }
+function source(f) { return ["trivy", "lynis"][f.source] || String(f.source || "unknown").toLowerCase(); }
+function remediation(f) { return ["auto", "review", "unavailable", "manual"][f.remediation] || String(f.remediation || "unknown").toLowerCase(); }
+function title(f) { return f.title || "Untitled finding"; }
 function shortId(id = "") { const parts = id.split("."); return parts[parts.length - 1] || id; }
-function searchable(f) { return [f.ID, f.Title, f.Description, f.HowToFix, f.Service, severity(f), source(f), remediation(f), ...Object.values(f.Evidence || {})].join(" ").toLowerCase(); }
+function searchable(f) { return [f.id, f.title, f.description, f.how_to_fix, f.service, severity(f), source(f), remediation(f), ...Object.values(f.evidence || {})].join(" ").toLowerCase(); }
 function label(value) { return value === "all" ? "All" : value.charAt(0).toUpperCase() + value.slice(1); }
 function severityClassForScore(score) { return score >= 85 ? "low" : score >= 65 ? "medium" : score >= 40 ? "high" : score >= 20 ? "critical" : "critical"; }
 function escapeHTML(value = "") { return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch])); }
@@ -690,7 +690,7 @@ async function applyFixBatch() {
   if (selectedIds.size === 0) return;
 
   const visible = findings();
-  const selectedFindings = visible.filter((f) => selectedIds.has(f.ID));
+  const selectedFindings = visible.filter((f) => selectedIds.has(f.id));
   if (selectedFindings.length === 0) return;
 
   // Fetch fix info for all selected findings to check action counts
@@ -748,8 +748,8 @@ async function doApplyFixBatch(selectedFindings, actionIdx) {
     if (result.results) {
       for (const r of result.results) {
         if (r.success) {
-          const f = state.live?.findings?.find((f) => f.ID === r.id);
-          if (f) f.Fixed = true;
+          const f = state.live?.findings?.find((f) => f.id === r.id);
+          if (f) f.fixed = true;
         }
       }
     }
