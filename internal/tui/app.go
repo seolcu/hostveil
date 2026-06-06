@@ -40,6 +40,7 @@ const (
 	modalFixAction
 	modalFixConfirm
 	modalFixResult
+	modalFixProgress
 	modalExport
 )
 
@@ -88,6 +89,11 @@ type model struct {
 	// batch selection
 	selectedSet map[string]bool
 
+	// batch fix progress
+	fixProgress      int
+	fixProgressTotal int
+	fixProgressLabel string
+
 	// toast
 	toast      string
 	toastUntil time.Time
@@ -102,6 +108,7 @@ type model struct {
 
 type tickMsg struct{}
 type fixResultMsg struct{ result fix.FixResult }
+type fixProgressMsg struct{ current, total int; label string }
 type fixBatchResultMsg struct{ success, fail, skipped int }
 
 func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
@@ -225,7 +232,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modal = modalFixResult
 		return m, nil
 
+	case fixProgressMsg:
+		m.fixProgress = msg.current
+		m.fixProgressTotal = msg.total
+		m.fixProgressLabel = msg.label
+		return m, nil
+
 	case fixBatchResultMsg:
+		m.modal = modalNone
 		m.selectedSet = make(map[string]bool)
 		m.rebuildTable()
 		if msg.success > 0 || msg.fail > 0 || msg.skipped > 0 {
@@ -278,15 +292,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		target := m.panelAt(mouse.X)
+		listStartY := headerH + metricsH
+		headH := 5
+		tableStartY := listStartY + 1 + headH
 		switch mouse.Button {
 		case tea.MouseLeft:
 			if target == paneList {
-				if m.mode != paneList {
+				if !m.inlineDetail() && m.mode == paneDetail {
+					m.mode = paneList
+				} else if m.mode != paneList {
 					m.mode = paneList
 				}
-			} else if target == paneDetail && m.inlineDetail() {
-				m.mode = paneDetail
-				m.updateDetailViewport()
+				row := mouse.Y - tableStartY
+				if row >= 0 && row < m.listHeight() {
+					m.table.SetCursor(row)
+					if m.inlineDetail() {
+						m.updateDetailViewport()
+					}
+				}
+			} else if target == paneDetail {
+				if !m.inlineDetail() {
+					m.mode = paneDetail
+					m.updateDetailViewport()
+				} else {
+					m.mode = paneDetail
+					m.updateDetailViewport()
+				}
 			}
 		case tea.MouseWheelUp:
 			if target == paneDetail {
@@ -409,18 +440,7 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.toastUntil = time.Now().Add(5 * time.Second)
 		return m, nil
 	case "ctrl+s":
-		m.live.ResetForRescan()
-		m.phase = "loading"
-		m.toast = "Rescanning..."
-		m.toastUntil = time.Time{}
-		go func() {
-			scan.RunSingleTool(m.live, m.fixReg, "trivy")
-			scan.RunSingleTool(m.live, m.fixReg, "lynis")
-			m.live.Finalize()
-			if m.send != nil {
-				m.send(tickMsg{})
-			}
-		}()
+		m = m.startRescan()
 		return m, tickCmd()
 	case "e":
 		m.exportIdx = 0
@@ -549,6 +569,8 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.fixTarget = nil
 			m.modal = modalNone
 		}
+	case modalFixProgress:
+		return m, nil
 	case modalExport:
 		switch msg.String() {
 		case "up", "k":
@@ -573,6 +595,9 @@ func (m *model) toggleSelection() {
 		m.table.SetCursor(0)
 	}
 	if idx < 0 || idx >= len(visible) {
+		return
+	}
+	if visible[idx].Remediation == domain.RemediationUnavailable {
 		return
 	}
 	id := visible[idx].ID
@@ -602,13 +627,20 @@ func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.toast = fmt.Sprintf("Batch fixing %d findings...", len(toFix))
-	m.toastUntil = time.Time{}
+	m.fixProgress = 0
+	m.fixProgressTotal = len(toFix)
+	m.fixProgressLabel = ""
+	m.modal = modalFixProgress
 
 	reg := m.fixReg
+	total := len(toFix)
+	send := m.send
 	go func() {
 		success, fail, skipped := 0, 0, 0
-		for _, finding := range toFix {
+		for i, finding := range toFix {
+			if send != nil {
+				send(fixProgressMsg{current: i + 1, total: total, label: finding.ID})
+			}
 			f := reg.Lookup(finding.ID)
 			if f == nil {
 				fail++
@@ -629,8 +661,8 @@ func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
 				fail++
 			}
 		}
-		if m.send != nil {
-			m.send(fixBatchResultMsg{success: success, fail: fail, skipped: skipped})
+		if send != nil {
+			send(fixBatchResultMsg{success: success, fail: fail, skipped: skipped})
 		}
 	}()
 	return m, tickCmd()
@@ -926,7 +958,9 @@ func (m *model) rebuildTable() {
 	cursor := m.table.Cursor()
 	for i, f := range visible {
 		checkbox := "◇"
-		if m.selectedSet[f.ID] {
+		if f.Remediation == domain.RemediationUnavailable {
+			checkbox = "─"
+		} else if m.selectedSet[f.ID] {
 			checkbox = "◆"
 		}
 		sevText := strings.ToUpper(f.Severity.String())
@@ -1132,6 +1166,22 @@ func (m model) panelAt(x int) paneMode {
 		return paneList
 	}
 	return m.mode
+}
+
+func (m model) startRescan() model {
+	m.live.ResetForRescan()
+	m.phase = "loading"
+	m.toast = "Rescanning..."
+	m.toastUntil = time.Time{}
+	go func() {
+		scan.RunSingleTool(m.live, m.fixReg, "trivy")
+		scan.RunSingleTool(m.live, m.fixReg, "lynis")
+		m.live.Finalize()
+		if m.send != nil {
+			m.send(tickMsg{})
+		}
+	}()
+	return m
 }
 
 // ── keymap for help ──

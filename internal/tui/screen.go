@@ -472,7 +472,9 @@ func (m model) renderListPane() string {
 			headRight,
 		))
 
-	tableView := m.table.View()
+	tbl := m.table
+	tbl.SetHeight(m.listHeight())
+	tableView := tbl.View()
 
 	var footerEls []string
 	footerEls = append(footerEls, m.footerHelp(paneList, max(1, headW-4)))
@@ -544,10 +546,12 @@ func (m model) footerHelp(mode paneMode, width int) string {
 func (m model) renderDetailPane() string {
 	t := m.theme()
 	innerW := max(1, m.detailWidth()-4)
+	vp := m.viewport
+	vp.SetHeight(m.detailHeight())
 	detailContent := lipgloss.NewStyle().
 		Width(innerW).
 		Padding(1, 2).
-		Render(m.viewport.View())
+		Render(vp.View())
 
 	footer := m.footerHelp(paneDetail, innerW)
 	var footerEls []string
@@ -670,6 +674,8 @@ func (m model) renderWithModal(base string) string {
 		modal = m.renderFixConfirmModal()
 	case modalFixResult:
 		modal = m.renderFixResultModal()
+	case modalFixProgress:
+		modal = m.renderFixProgressModal()
 	case modalExport:
 		modal = m.renderExportModal()
 	default:
@@ -825,6 +831,46 @@ func (m model) renderFixResultModal() string {
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press any key to close"),
 	}
 	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+}
+
+func (m model) renderFixProgressModal() string {
+	t := m.theme()
+	s := m.modalStyle()
+
+	pct := 0
+	if m.fixProgressTotal > 0 {
+		pct = m.fixProgress * 100 / m.fixProgressTotal
+	}
+	barW := 30
+	filled := barW * pct / 100
+	if filled > barW {
+		filled = barW
+	}
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barW-filled)
+
+	title := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Applying fixes")
+	header := fmt.Sprintf("%d / %d", m.fixProgress, m.fixProgressTotal)
+	pctStr := fmt.Sprintf("%d%%", pct)
+
+	barLine := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Render(bar)
+	pctLine := lipgloss.JoinHorizontal(lipgloss.Top, " ", barLine, " ", pctStr)
+
+	var labelLine string
+	if m.fixProgressLabel != "" {
+		labelLine = lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("  " + m.fixProgressLabel)
+	}
+
+	lines := []string{
+		title,
+		"",
+		header,
+		pctLine,
+	}
+	if labelLine != "" {
+		lines = append(lines, labelLine)
+	}
+
+	return s.Width(clamp(m.width-8, 48, 64)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderExportModal() string {

@@ -75,6 +75,7 @@ function bindControls() {
     render();
   });
   $("clearFilters")?.addEventListener("click", () => {
+    $("clearFilters").blur();
     state.query = "";
     state.severity = "all";
     state.source = "all";
@@ -105,9 +106,13 @@ function bindControls() {
   $("selectAllCheck")?.addEventListener("change", (event) => {
     const visible = findings();
     if (event.target.checked) {
-      visible.forEach((f) => state.selectedSet.add(f.id));
+      visible.forEach((f) => {
+        if (isBatchSelectable(f)) state.selectedSet.add(f.id);
+      });
     } else {
-      visible.forEach((f) => state.selectedSet.delete(f.id));
+      visible.forEach((f) => {
+        if (isBatchSelectable(f)) state.selectedSet.delete(f.id);
+      });
     }
     render();
   });
@@ -118,6 +123,7 @@ function bindControls() {
   rescanBtn.textContent = "Re-scan";
   document.querySelector(".panel-head").appendChild(rescanBtn);
   rescanBtn.addEventListener("click", async () => {
+    rescanBtn.blur();
     rescanBtn.disabled = true;
     rescanBtn.textContent = "Scanning...";
     try {
@@ -136,6 +142,7 @@ function bindControls() {
   exportBtn.textContent = "Export";
   document.querySelector(".panel-head").appendChild(exportBtn);
   exportBtn.addEventListener("click", () => {
+    exportBtn.blur();
     showExportModal();
   });
 
@@ -145,6 +152,7 @@ function bindControls() {
   fixSelectedBtn.className = "fix-selected-btn";
   document.querySelector(".panel-head").appendChild(fixSelectedBtn);
   fixSelectedBtn.addEventListener("click", () => {
+    fixSelectedBtn.blur();
     applyFixBatch();
   });
 
@@ -189,8 +197,9 @@ function bindControls() {
       const visible = findings();
       const finding = visible[state.selected];
       if (!finding) return;
+      if (remediation(finding) === "unavailable") return;
       e.preventDefault();
-      toggleFindingSelection(finding.ID);
+      toggleFindingSelection(finding.id);
       render();
     }
   });
@@ -236,6 +245,26 @@ function doRender() {
   renderTable(visible);
   renderDetail(visible[state.selected]);
   updateFixSelectedBtn();
+}
+
+async function refreshResultNow() {
+  try {
+    const response = await fetch("/api/result");
+    state.live = await response.json();
+    state.phase = state.live.phase || "complete";
+    fetchFailures = 0;
+    if (renderTimer) {
+      cancelAnimationFrame(renderTimer);
+      renderTimer = null;
+    }
+    doRender();
+  } catch (error) {
+    fetchFailures++;
+    if (fetchFailures >= 5) {
+      showToast("Connection lost — retrying...", "toast-error");
+      fetchFailures = 0;
+    }
+  }
 }
 
 function renderLoading() {
@@ -334,22 +363,25 @@ function renderChips(id, values, key) {
 
 function renderTable(visible) {
   $("findingCount").textContent = `${visible.length} visible`;
-  const allSelected = visible.length > 0 && visible.every((f) => state.selectedSet.has(f.id));
-  const someSelected = visible.some((f) => state.selectedSet.has(f.id));
+  const selectable = visible.filter(isBatchSelectable);
+  const allSelected = selectable.length > 0 && selectable.every((f) => state.selectedSet.has(f.id));
+  const someSelected = selectable.some((f) => state.selectedSet.has(f.id));
   const checkState = allSelected ? "checked" : someSelected ? "indeterminate" : "";
 
   $("findings").innerHTML = visible.map((f, index) => {
     const fixedClass = f.fixed ? "fixed" : "";
+    const unavailClass = !f.fixed && remediation(f) === "unavailable" ? "disabled" : "";
     const selClass = index === state.selected ? "selected" : "";
     const rowSelectedClass = state.selectedSet.has(f.id) ? "row-selected" : "";
-    const rowClass = [fixedClass, selClass, rowSelectedClass].filter(Boolean).join(" ");
+    const rowClass = [fixedClass, unavailClass, selClass, rowSelectedClass].filter(Boolean).join(" ");
     const sevDisplay = f.fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
     const srcDisplay = f.fixed ? "" : `<span class="muted">${source(f)}</span>`;
     const fixDisplay = f.fixed ? "Fixed" : label(remediation(f));
     const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
     const checked = state.selectedSet.has(f.id) ? "checked" : "";
+    const disabledAttr = !f.fixed && remediation(f) === "unavailable" ? "disabled" : "";
     return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}">
-      <td class="check-cell"><input type="checkbox" ${checked} data-id="${escapeHTML(f.id)}" class="row-check"></td>
+      <td class="check-cell"><input type="checkbox" ${checked} ${disabledAttr} data-id="${escapeHTML(f.id)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
       <td class="id">${shortId(f.id)}</td>
@@ -367,21 +399,25 @@ function renderTable(visible) {
   $("findings").querySelectorAll("tr[data-index]").forEach((row) => {
     row.addEventListener("click", (e) => {
       if (e.target.classList.contains("row-check")) return;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       state.selected = Number(row.dataset.index);
       render();
     });
     row.addEventListener("dblclick", (e) => {
       if (e.target.classList.contains("row-check")) return;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       state.selected = Number(row.dataset.index);
       const finding = visible[state.selected];
       if (!finding) return;
-      toggleFindingSelection(finding.ID);
+      if (remediation(finding) === "unavailable") return;
+      toggleFindingSelection(finding.id);
       render();
     });
   });
   $("findings").querySelectorAll(".row-check").forEach((cb) => {
     cb.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (cb.disabled) return;
       setFindingSelection(cb.dataset.id, cb.checked);
       render();
     });
@@ -391,7 +427,12 @@ function renderTable(visible) {
 function isTypingTarget(target) {
   if (!target) return false;
   const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || target.isContentEditable;
+  if (tag === "TEXTAREA" || target.isContentEditable) return true;
+  if (tag === "INPUT") {
+    const t = (target.type || "").toLowerCase();
+    return t === "text" || t === "search" || t === "email" || t === "password" || t === "url" || t === "tel";
+  }
+  return false;
 }
 
 function setFindingSelection(id, selected) {
@@ -406,6 +447,11 @@ function setFindingSelection(id, selected) {
 function toggleFindingSelection(id) {
   if (!id) return;
   setFindingSelection(id, !state.selectedSet.has(id));
+}
+
+function isBatchSelectable(f) {
+  const r = remediation(f);
+  return r !== "unavailable" && r !== "manual";
 }
 
 function renderDetail(f) {
@@ -516,10 +562,10 @@ async function doApplyFix(finding, button, actionIdx) {
     });
     const result = await response.json();
     if (result.success) {
-      finding.Fixed = true;
+      finding.fixed = true;
       const successHtml = `<div class="fix-success">&#10003; ${escapeHTML(result.label || "Fixed")}</div>`;
       const diffHtml = result.diff ? highlightDiff(result.diff) : "";
-      render();
+      await refreshResultNow();
       const newResultDiv = $("fixResult");
       if (newResultDiv) {
         newResultDiv.innerHTML = successHtml + diffHtml;
@@ -618,7 +664,7 @@ function showFixModal(label, action, onConfirm) {
   overlay.querySelector("#modalFixNo").onclick = closeFixModal;
 }
 
-function showFixActionModal(label, actions, onSelect) {
+function showFixActionModal(label, actions, onSelect, onCancel = () => {}) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.id = "fixModal";
@@ -677,7 +723,10 @@ function showFixActionModal(label, actions, onSelect) {
   confirmBtn.onclick = () => {
     if (selectedIdx >= 0) onSelect(selectedIdx);
   };
-  overlay.querySelector("#modalFixNo").onclick = closeFixModal;
+  overlay.querySelector("#modalFixNo").onclick = () => {
+    closeFixModal();
+    onCancel();
+  };
 }
 
 function closeFixModal() {
@@ -693,43 +742,7 @@ async function applyFixBatch() {
   const selectedFindings = visible.filter((f) => selectedIds.has(f.id));
   if (selectedFindings.length === 0) return;
 
-  // Fetch fix info for all selected findings to check action counts
-  const fixInfos = [];
-  for (const f of selectedFindings) {
-    try {
-      const resp = await fetch("/api/fix", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ finding: f, action_index: 0, info_only: true }),
-      });
-      const info = await resp.json();
-      fixInfos.push({ finding: f, info });
-    } catch (e) {
-      fixInfos.push({ finding: f, info: { success: false, error: e.message } });
-    }
-  }
-
-  // Check if any fix has multiple actions
-  const hasMultiAction = fixInfos.some((fi) => fi.info.success && (fi.info.actions || []).length > 1);
-  const allHaveFix = fixInfos.every((fi) => fi.info.success);
-
-  if (!allHaveFix) {
-    const failed = fixInfos.filter((fi) => !fi.info.success).map((fi) => fi.finding.ID);
-    showToast(`No fix available for: ${failed.join(", ")}`, "toast-error");
-    return;
-  }
-
-  if (hasMultiAction) {
-    showBatchActionModal(fixInfos, (actionIdx) => {
-      closeFixModal();
-      doApplyFixBatch(selectedFindings, actionIdx);
-    });
-  } else {
-    doApplyFixBatch(selectedFindings, 0);
-  }
-}
-
-async function doApplyFixBatch(selectedFindings, actionIdx) {
+  // Immediate visual feedback
   const fixSelectedBtn = $("fixSelectedBtn");
   if (fixSelectedBtn) {
     fixSelectedBtn.disabled = true;
@@ -737,44 +750,130 @@ async function doApplyFixBatch(selectedFindings, actionIdx) {
     fixSelectedBtn.textContent = "Applying...";
   }
 
-  try {
-    const response = await fetch("/api/fix/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ findings: selectedFindings, action_index: actionIdx }),
-    });
-    const result = await response.json();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "fixProgressModal";
+  overlay.innerHTML = `
+    <div class="modal-content modal-fix">
+      <h2>Applying fixes</h2>
+      <p class="fix-label" id="progressCount">0 / ${selectedFindings.length}</p>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <p class="muted" id="progressLabel" style="margin-top:8px;font-size:12px">Checking fixes...</p>
+    </div>`;
+  document.body.appendChild(overlay);
 
-    if (result.results) {
-      for (const r of result.results) {
-        if (r.success) {
-          const f = state.live?.findings?.find((f) => f.id === r.id);
-          if (f) f.fixed = true;
-        }
+  // Parallel info-only fetches
+  const results = await Promise.all(selectedFindings.map(async (f) => {
+    try {
+      const resp = await fetch("/api/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finding: f, action_index: 0, info_only: true }),
+      });
+      const info = await resp.json();
+      return { finding: f, info };
+    } catch (e) {
+      return { finding: f, info: { success: false, error: e.message } };
+    }
+  }));
+
+  const allHaveFix = results.every((r) => r.info.success);
+
+  if (!allHaveFix) {
+    const modal = document.getElementById("fixProgressModal");
+    if (modal) modal.remove();
+    if (fixSelectedBtn) {
+      fixSelectedBtn.disabled = false;
+      fixSelectedBtn.classList.remove("loading");
+      updateFixSelectedBtn();
+    }
+    const failed = results.filter((r) => !r.info.success).map((r) => r.finding.id);
+    showToast(`No fix available for: ${failed.join(", ")}`, "toast-error");
+    return;
+  }
+
+  doApplyFixBatch(results);
+}
+
+async function doApplyFixBatch(fixInfos) {
+  const selectedFindings = fixInfos.map((fi) => fi.finding);
+  let success = 0, fail = 0, skipped = 0, alsoFixedTotal = 0;
+
+  for (let i = 0; i < fixInfos.length; i++) {
+    const fi = fixInfos[i];
+    const f = fi.finding;
+    const actions = fi.info.actions || [];
+    const pct = ((i + 1) / selectedFindings.length) * 100;
+    const countEl = document.getElementById("progressCount");
+    const fillEl = document.getElementById("progressFill");
+    const labelEl = document.getElementById("progressLabel");
+    if (countEl) countEl.textContent = `${i + 1} / ${selectedFindings.length}`;
+    if (fillEl) fillEl.style.width = pct + "%";
+    if (labelEl) labelEl.textContent = f.id || "";
+
+    if (actions.length === 0) {
+      fail++;
+      continue;
+    }
+
+    let actionIdx = 0;
+    if (actions.length > 1) {
+      if (labelEl) labelEl.textContent = `Choose action: ${f.id || ""}`;
+      actionIdx = await chooseBatchAction(f, actions, i + 1, selectedFindings.length);
+      if (actionIdx < 0) {
+        skipped++;
+        continue;
       }
     }
 
-    const alsoFixedCount = result.also_fixed?.length || 0;
-    const successCount = result.results?.filter((r) => r.success).length || 0;
-    const failCount = result.results?.filter((r) => !r.success).length || 0;
-
-    let msg = `Fixed ${successCount} finding${successCount !== 1 ? "s" : ""}`;
-    if (failCount > 0) msg += ` (${failCount} failed)`;
-    if (alsoFixedCount > 0) msg += ` — also resolved ${alsoFixedCount} related`;
-
-    showToast(msg, alsoFixedCount > 0 ? "toast-info" : "toast-success");
-
-    state.selectedSet.clear();
-    render();
-  } catch (error) {
-    showToast("Batch fix failed: " + error.message, "toast-error");
+    try {
+      const resp = await fetch("/api/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finding: f, action_index: actionIdx }),
+      });
+      const result = await resp.json();
+      if (result.success) {
+        success++;
+        const live = state.live?.findings?.find((lf) => lf.id === f.id);
+        if (live) live.fixed = true;
+        if (result.also_fixed?.length) alsoFixedTotal += result.also_fixed.length;
+      } else {
+        fail++;
+      }
+    } catch {
+      fail++;
+    }
   }
 
-  if (fixSelectedBtn) {
-    fixSelectedBtn.disabled = false;
-    fixSelectedBtn.classList.remove("loading");
+  const modal = document.getElementById("fixProgressModal");
+  if (modal) modal.remove();
+
+  let msg = `Fixed ${success} finding${success !== 1 ? "s" : ""}`;
+  if (fail > 0) msg += ` (${fail} failed)`;
+  if (skipped > 0) msg += `, ${skipped} skipped`;
+  if (alsoFixedTotal > 0) msg += ` — also resolved ${alsoFixedTotal} related`;
+  showToast(msg, alsoFixedTotal > 0 ? "toast-info" : "toast-success");
+
+  state.selectedSet.clear();
+  await refreshResultNow();
+
+  const batchFixBtn = $("fixSelectedBtn");
+  if (batchFixBtn) {
+    batchFixBtn.disabled = false;
+    batchFixBtn.classList.remove("loading");
     updateFixSelectedBtn();
   }
+}
+
+function chooseBatchAction(finding, actions, current, total) {
+  return new Promise((resolve) => {
+    const labelText = `${current}/${total} · ${shortId(finding.id)} · ${title(finding)}`;
+    showFixActionModal(labelText, actions, (selectedIdx) => {
+      closeFixModal();
+      resolve(selectedIdx);
+    }, () => resolve(-1));
+  });
 }
 
 function showBatchActionModal(fixInfos, onSelect) {
