@@ -136,11 +136,15 @@ All steps must pass before committing. If CI fails after push, fix and re-push i
 
 ### Post-commit CI check
 
-**Always monitor CI/CD results after EVERY push** (not just releases):
-- Actions dashboard: `https://github.com/seolcu/hostveil/actions`
-- Check that all jobs (build, test-installer, e2e) pass — not just the workflow status badge.
-- If any job fails, diagnose the root cause via the logs and fix before proceeding.
-- The most common CI failure is unformatted Go code (`gofmt -l .` will catch it locally).
+**The agent MUST check CI/CD results automatically after EVERY push** — never ask the user to check.
+
+Workflow:
+1. Push commit.
+2. Wait for CI to complete (poll via GitHub API every 30-60s, up to 10 min).
+3. Verify all jobs: `build`, `test-installer`, `e2e` all pass.
+4. If any job fails: diagnose via API (check `jobs` → `steps`), fix, push again.
+5. Only report to the user when ALL jobs are green.
+6. The most common CI failure is unformatted Go code (`gofmt -l .` catches it locally) or transient `test-installer` Docker failures (re-run with `gh run rerun --failed`).
 
 ### Release workflow
 
