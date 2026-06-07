@@ -1,0 +1,43 @@
+# Over-privileged compose project — covers trivy ds002-ds015 gaps
+services:
+  app:
+    image: node:18-alpine
+    pid: "host"
+    ipc: "host"
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    tmpfs: /tmp:noexec
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - app-data:/data:ro
+    environment:
+      - NODE_ENV=development
+
+  worker:
+    image: alpine:3.18
+    privileged: true
+    pid: "host"
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SECRET_KEY=supersecretworkerkey
+
+volumes:
+  app-data:

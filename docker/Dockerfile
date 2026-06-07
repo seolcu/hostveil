@@ -24,10 +24,10 @@ RUN LYNIS_VERSION=3.1.6 \
     && printf '#!/bin/sh\ncd /usr/local/lynis-'${LYNIS_VERSION}' && exec ./lynis "$@"\n' > /usr/bin/lynis \
     && chmod +x /usr/bin/lynis /usr/local/lynis-${LYNIS_VERSION}/lynis
 
-# ── Trivy (install via official script + pre-warm DB) ──
+# ── Trivy (latest via official script) ──
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
     | sh -s -- -b /usr/bin \
-    && trivy image --download-db-only --db-repository public.ecr.aws/aquasecurity/trivy-db 2>/dev/null || true
+    && trivy image --download-db-only 2>/dev/null || true
 
 # ── Vulnerable SSH configuration (lynis.AUTH-9286, lynis.AUTH-9308) ──
 RUN ssh-keygen -A
@@ -46,13 +46,38 @@ RUN echo "Welcome to Test Server" > /etc/issue && \
 # ── Password aging issue (lynis.ACCT-9626) ──
 RUN adduser -D testuser && echo "testuser:testpass" | chpasswd
 
+# ── Password policy issues (lynis.AUTH-9222, lynis.AUTH-9223) ──
+RUN echo "PASS_MIN_DAYS 0" >> /etc/login.defs && \
+    echo "PASS_MAX_DAYS 99999" >> /etc/login.defs
+
+# ── Disable firewall (lynis.FIRE-4512) — just ensure no custom rules, keep iptables installed
+# iptables is required by Docker-in-Docker, so we cannot remove it
+
+# ── Remove time sync (lynis.TIME-3106) ──
+RUN apk del chrony 2>/dev/null; rm -f /etc/chrony.conf 2>/dev/null; true
+
+# ── Remove logging (lynis.LOGG-2130) ──
+RUN rm -f /etc/rsyslog.conf 2>/dev/null; true
+
+# ── System logging daemon not running (lynis.LOGG-2100) ──
+RUN apk del rsyslog 2>/dev/null; true
+
 # ── Enable IP forwarding (lynis.KRNL-5780) ──
 RUN echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 
 # ── Accept ICMP redirects (lynis.KRNL-5820) ──
 RUN echo "net.ipv4.conf.all.accept_redirects=1" >> /etc/sysctl.conf
 
-# ── Test Compose project (trivy vulnerabilities) ──
+# ── Additional kernel hardening gaps (lynis.KRNL-5830 through KRNL-5930) ──
+RUN echo "net.ipv4.conf.all.accept_source_route=1" >> /etc/sysctl.conf && \
+    echo "net.ipv4.conf.all.send_redirects=1" >> /etc/sysctl.conf && \
+    echo "net.ipv4.conf.all.rp_filter=0" >> /etc/sysctl.conf && \
+    echo "net.ipv4.icmp_echo_ignore_broadcasts=0" >> /etc/sysctl.conf && \
+    echo "net.ipv4.icmp_ignore_bogus_error_responses=0" >> /etc/sysctl.conf && \
+    echo "net.ipv4.tcp_timestamps=1" >> /etc/sysctl.conf && \
+    echo "net.ipv4.tcp_syncookies=0" >> /etc/sysctl.conf
+
+# ── Test Compose projects (trivy vulnerabilities) ──
 COPY compose/ /opt/compose/
 
 COPY entrypoint.sh /

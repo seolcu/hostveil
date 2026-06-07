@@ -13,11 +13,17 @@ DOCKER_PID=$!
 until docker info >/dev/null 2>&1; do sleep 0.5; done
 echo "      ready."
 
-# ── 2. Apply kernel-level vulnerabilities ──
+# ── 2. Apply kernel-level vulnerabilities (expanded) ──
 echo "[2/4] Applying kernel vulnerabilities..."
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
 sysctl -w net.ipv4.conf.all.accept_redirects=1 2>/dev/null || true
+sysctl -w net.ipv4.conf.all.send_redirects=1 2>/dev/null || true
+sysctl -w net.ipv4.conf.all.accept_source_route=1 2>/dev/null || true
 sysctl -w net.ipv4.tcp_syncookies=0 2>/dev/null || true
+sysctl -w net.ipv4.conf.all.rp_filter=0 2>/dev/null || true
+sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0 2>/dev/null || true
+sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=0 2>/dev/null || true
+sysctl -w net.ipv4.tcp_timestamps=1 2>/dev/null || true
 
 # ── 3. Start SSH daemon ──
 echo "[3/4] Starting SSH..."
@@ -26,17 +32,22 @@ SSHD_PID=$!
 
 # ── 4. Start test Compose projects ──
 echo "[4/4] Starting Compose projects..."
-if [ -d /opt/compose/vuln-project ]; then
-    cd /opt/compose/vuln-project
-    docker compose pull 2>/dev/null || true
-    docker compose up -d 2>/dev/null || echo "      (compose skipped — images may need pulling on first run)"
+for project in vuln-project overprivileged; do
+    if [ -d "/opt/compose/$project" ]; then
+        cd "/opt/compose/$project"
+        docker compose pull 2>/dev/null || true
+        docker compose up -d 2>/dev/null || echo "      ($project skipped — images may need pulling)"
+    fi
+done
 
-    echo "      Verifying compose projects..."
-    for i in {1..10}; do
-      docker compose ps --status running 2>/dev/null | grep -q "Up" && break
-      sleep 1
-    done
-fi
+# Verify at least one project is running
+for i in {1..15}; do
+  running=$(docker compose ls --filter name=hostveil 2>/dev/null | wc -l || true)
+  if [ "$running" -ge 1 ]; then
+    break
+  fi
+  sleep 1
+done
 
 echo ""
 echo "  Ready. Run hostveil:"
