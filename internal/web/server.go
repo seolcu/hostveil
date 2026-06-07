@@ -86,26 +86,7 @@ func Serve(opts Options) error {
 		handleRescan(w, r, opts)
 	})
 	mux.HandleFunc("POST /api/dismiss", func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" && !sameOrigin(origin, r.Host) {
-			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
-			return
-		}
-		var req struct {
-			FindingID string `json:"finding_id"`
-			Dismissed bool   `json:"dismissed"`
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request"})
-			return
-		}
-		if req.Dismissed {
-			opts.Live.DismissFinding(req.FindingID)
-		} else {
-			opts.Live.UndismissFinding(req.FindingID)
-		}
-		writeJSON(w, map[string]interface{}{"success": true, "dismissed": req.Dismissed})
+		handleDismiss(w, r, opts)
 	})
 	mux.HandleFunc("POST /api/recalc", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -369,6 +350,31 @@ type fixRequest struct {
 	Finding     domain.Finding `json:"finding"`
 	ActionIndex int            `json:"action_index"`
 	InfoOnly    bool           `json:"info_only"`
+}
+
+type dismissRequest struct {
+	FindingID string `json:"finding_id"`
+	Dismissed bool   `json:"dismissed"`
+}
+
+func handleDismiss(w http.ResponseWriter, r *http.Request, opts Options) {
+	origin := r.Header.Get("Origin")
+	if origin != "" && !sameOrigin(origin, r.Host) {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req dismissRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request"})
+		return
+	}
+	if req.Dismissed {
+		opts.Live.DismissFinding(req.FindingID)
+	} else {
+		opts.Live.UndismissFinding(req.FindingID)
+	}
+	writeJSON(w, map[string]interface{}{"success": true, "dismissed": req.Dismissed})
 }
 
 func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {

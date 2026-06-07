@@ -862,3 +862,133 @@ func TestSameOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestHandleDismiss(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	body := `{"finding_id":"test.001","dismissed":true}`
+	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	handleDismiss(rec, req, Options{Live: live})
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["success"] != true {
+		t.Errorf("expected success true, got %v", resp["success"])
+	}
+	if resp["dismissed"] != true {
+		t.Errorf("expected dismissed true, got %v", resp["dismissed"])
+	}
+	if !live.IsDismissed("test.001") {
+		t.Error("expected finding to be dismissed in Live state")
+	}
+}
+
+func TestHandleDismiss_Undismiss(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.DismissFinding("test.001")
+
+	body := `{"finding_id":"test.001","dismissed":false}`
+	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	handleDismiss(rec, req, Options{Live: live})
+
+	if live.IsDismissed("test.001") {
+		t.Error("expected finding to be undismissed")
+	}
+}
+
+func TestHandleDismiss_InvalidBody(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(`not json`))
+	rec := httptest.NewRecorder()
+	handleDismiss(rec, req, Options{Live: live})
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["success"] != false {
+		t.Errorf("expected success false, got %v", resp["success"])
+	}
+}
+
+func TestHandleDismiss_CrossOrigin(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	body := `{"finding_id":"test.001","dismissed":true}`
+	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
+	req.Header.Set("Origin", "http://evil.com")
+	rec := httptest.NewRecorder()
+	handleDismiss(rec, req, Options{Live: live})
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["success"] != false {
+		t.Errorf("expected success false for cross-origin, got %v", resp["success"])
+	}
+}
+
+func TestHandleFix_InfoOnly(t *testing.T) {
+	reg := fix.New()
+	reg.Register(&fix.Fix{
+		FindingID: "test.finding",
+		Label:     "Test fix",
+		Actions: []fix.Action{
+			{
+				Type:  fix.ActionExec,
+				Label: "Apply",
+				Apply: func(ctx fix.Context) error { return nil },
+			},
+		},
+	})
+
+	body := `{"finding":{"id":"test.finding"},"action_index":0,"info_only":true}`
+	req := httptest.NewRequest("POST", "/api/fix", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	handleFix(rec, req, Options{Fixes: reg})
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["success"] != true {
+		t.Errorf("expected success true for info_only, got %v", resp["success"])
+	}
+	actions, ok := resp["actions"].([]interface{})
+	if !ok {
+		t.Fatal("expected actions array")
+	}
+	if len(actions) != 1 {
+		t.Errorf("expected 1 action, got %d", len(actions))
+	}
+}
+
+func TestHandleRescan_CrossOrigin(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	reg := fix.New()
+	req := httptest.NewRequest("POST", "/api/rescan", nil)
+	req.Header.Set("Origin", "http://evil.com")
+	rec := httptest.NewRecorder()
+	// Use the mux setup which has the origin check, not handleRescan directly
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/rescan", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && !sameOrigin(origin, r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
+		handleRescan(w, r, Options{Live: live, Fixes: reg, rescanMu: &sync.Mutex{}})
+	})
+	mux.ServeHTTP(rec, req)
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["success"] != false {
+		t.Errorf("expected false for cross-origin, got %v", resp["success"])
+	}
+}

@@ -50,6 +50,40 @@ func TestSanitizeUser(t *testing.T) {
 	}
 }
 
+func TestSanitizePath_NonDangerous(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"/etc/ssh/ssh_config", "/etc/ssh/ssh_config"},
+		{"/home/user/file.txt", "/home/user/file.txt"},
+		{"/tmp/test", "/tmp/test"},
+	}
+	for _, tt := range tests {
+		got := sanitizePath(tt.input)
+		if got != tt.want {
+			t.Errorf("sanitizePath(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSanitizeUser_Unicode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"日本語", ""},
+		{"user\u0000name", ""},
+		{"a-b_c.d", ""},
+	}
+	for _, tt := range tests {
+		got := sanitizeUser(tt.input)
+		if got != tt.want {
+			t.Errorf("sanitizeUser(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestSanitizePort(t *testing.T) {
 	tests := []struct {
 		input string
