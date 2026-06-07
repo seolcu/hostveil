@@ -25,6 +25,7 @@ type ScanProgress struct {
 	UpdateAvailable string
 	Tools           map[string]*ToolState
 	Findings        []Finding
+	DismissedIDs    map[string]bool
 	Score           uint8
 	ScoreBreakdown  ScoreBreakdown
 	Hostname        string
@@ -42,6 +43,7 @@ func NewScanProgress(noUpdateCheck bool) *ScanProgress {
 	if !noUpdateCheck {
 		sp.Tools["update"] = &ToolState{Status: ToolPending, Message: "Checking for updates..."}
 	}
+	sp.DismissedIDs = make(map[string]bool)
 	return sp
 }
 
@@ -103,6 +105,7 @@ func (sp *ScanProgress) ResetForRescan() {
 	sp.Score = 0
 	sp.ScoreBreakdown = ScoreBreakdown{}
 	sp.Findings = nil
+	sp.DismissedIDs = make(map[string]bool)
 	for name, t := range sp.Tools {
 		if name == "update" {
 			continue
@@ -110,6 +113,24 @@ func (sp *ScanProgress) ResetForRescan() {
 		t.Status = ToolPending
 		t.Message = "Waiting..."
 	}
+}
+
+func (sp *ScanProgress) DismissFinding(id string) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.DismissedIDs[id] = true
+}
+
+func (sp *ScanProgress) UndismissFinding(id string) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	delete(sp.DismissedIDs, id)
+}
+
+func (sp *ScanProgress) IsDismissed(id string) bool {
+	sp.mu.RLock()
+	defer sp.mu.RUnlock()
+	return sp.DismissedIDs[id]
 }
 
 func (sp *ScanProgress) SetUpdateAvailable(v string) {
@@ -178,6 +199,7 @@ type Snapshot struct {
 	UpdateAvailable string                   `json:"update_available"`
 	Tools           map[string]ToolStateJSON `json:"tools"`
 	Findings        []Finding                `json:"findings"`
+	DismissedIDs    []string                 `json:"dismissed_ids"`
 	Score           uint8                    `json:"score"`
 	ScoreBreakdown  ScoreBreakdown           `json:"score_breakdown"`
 	Hostname        string                   `json:"hostname"`
@@ -197,11 +219,16 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 	if len(breakdown.Axes) > 0 {
 		breakdown.Axes = append([]ScoreAxis(nil), breakdown.Axes...)
 	}
+	dismissedIDs := make([]string, 0, len(sp.DismissedIDs))
+	for id := range sp.DismissedIDs {
+		dismissedIDs = append(dismissedIDs, id)
+	}
 	return Snapshot{
 		Phase:           sp.Phase,
 		UpdateAvailable: sp.UpdateAvailable,
 		Tools:           tools,
 		Findings:        findings,
+		DismissedIDs:    dismissedIDs,
 		Score:           sp.Score,
 		ScoreBreakdown:  breakdown,
 		Hostname:        sp.Hostname,

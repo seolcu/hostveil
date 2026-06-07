@@ -11,6 +11,7 @@ const state = {
   source: "all",
   remediation: "all",
   service: "all",
+  showDismissed: false,
   sortBy: "severity",
   sortDir: "asc",
   pollTimer: null,
@@ -334,6 +335,7 @@ function findings() {
     .filter((f) => state.source === "all" || source(f) === state.source)
     .filter((f) => state.remediation === "all" || remediation(f) === state.remediation)
     .filter((f) => state.service === "all" || (f.service || "") === state.service)
+    .filter((f) => state.showDismissed || !(state.live?.dismissed_ids || []).includes(f.id))
     .filter((f) => !query || searchable(f).includes(query))
     .sort(sorter);
 }
@@ -371,6 +373,21 @@ function renderFilters() {
   renderChips("remediationFilters", ["all", ...Object.keys(countBy(items, remediation)).sort()], "remediation");
   const services = ["all", ...Object.keys(countBy(items, (f) => f.service || "")).sort()];
   renderChips("serviceFilters", services.filter((s) => s !== ""), "service");
+  renderDismissFilter();
+}
+
+function renderDismissFilter() {
+  const container = document.getElementById("dismissFilter");
+  if (!container) return;
+  const btn = document.createElement("button");
+  btn.className = "chip" + (state.showDismissed ? " active" : "");
+  btn.textContent = state.showDismissed ? "Dismissed: visible" : "Dismissed: hidden";
+  btn.onclick = () => {
+    state.showDismissed = !state.showDismissed;
+    render();
+  };
+  container.innerHTML = "";
+  container.appendChild(btn);
 }
 
 function renderChips(id, values, key) {
@@ -502,6 +519,7 @@ function renderDetail(f) {
     <span class="badge ${severity(f)}">${severity(f)}</span>
     <h2>${escapeHTML(title(f))}</h2>
     ${fixable ? `<button class="fix-btn" data-finding-id="${escapeHTML(f.id)}">Fix</button>` : ""}
+    <button class="dismiss-btn" data-finding-id="${escapeHTML(f.id)}">${isDismissed(f.id) ? "Undismiss" : "Dismiss"}</button>
     <dl class="detail-meta">
       <dt>ID</dt><dd>${escapeHTML(f.id || "")}</dd>
       <dt>Source</dt><dd>${source(f)}</dd>
@@ -532,6 +550,8 @@ function renderDetail(f) {
   });
   const fixBtn = detail.querySelector(".fix-btn");
   if (fixBtn) fixBtn.onclick = () => applyFix(f, fixBtn);
+  const dismissBtn = detail.querySelector(".dismiss-btn");
+  if (dismissBtn) dismissBtn.onclick = () => toggleDismiss(f, dismissBtn);
 }
 
 async function applyFix(finding, button) {
@@ -623,6 +643,10 @@ function highlightDiff(diff) {
     return escapeHTML(line);
   }).join("\n");
   return `<pre class="fix-diff">${highlighted}</pre>`;
+}
+
+function isDismissed(id) {
+  return (state.live?.dismissed_ids || []).includes(id);
 }
 
 function section(name, content, copy = false) {
@@ -751,6 +775,25 @@ function showFixActionModal(label, actions, onSelect, onCancel = () => {}) {
     closeFixModal();
     onCancel();
   };
+}
+
+async function toggleDismiss(finding, button) {
+  const dismissed = isDismissed(finding.id);
+  const action = dismissed ? "undismiss" : "dismiss";
+  try {
+    const resp = await fetch("/api/dismiss", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finding_id: finding.id, dismissed: !dismissed }),
+    });
+    const result = await resp.json();
+    if (result.success) {
+      await refreshResultNow();
+      showToast(dismissed ? "Undismissed" : "Dismissed", "toast-info");
+    }
+  } catch {
+    showToast("Failed to " + action, "toast-error");
+  }
 }
 
 function closeFixModal() {

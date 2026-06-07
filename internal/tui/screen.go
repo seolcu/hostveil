@@ -446,6 +446,11 @@ func (m model) renderListPane() string {
 	if m.filter.service != "all" {
 		filterInfo += fmt.Sprintf("  svc:%s", m.filter.service)
 	}
+	if m.filter.showDismissed {
+		filterInfo += "  d:show"
+	} else {
+		filterInfo += "  d:hide"
+	}
 	if m.filter.query != "" {
 		filterInfo += fmt.Sprintf("  q:%q", m.filter.query)
 	}
@@ -712,6 +717,8 @@ func (m model) renderHelpModal() string {
 			"  /             Search findings",
 			"  f             Apply fix",
 			"  Space         Select for batch fix",
+			"  d             Dismiss/undismiss current finding",
+			"  D             Show/hide dismissed findings",
 			"  Ctrl+A        Select/deselect all visible",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
@@ -732,6 +739,7 @@ func (m model) renderHelpModal() string {
 			"  g/G          Top / bottom",
 			"  Esc, h        Back to list",
 			"  f             Apply fix",
+			"  d             Dismiss/undismiss",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  Ctrl+A        Select/deselect all visible",

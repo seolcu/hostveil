@@ -53,13 +53,14 @@ type dryRunAction struct {
 }
 
 type filterState struct {
-	query       string
-	severity    string
-	source      string
-	remediation string
-	sortBy      string
-	sortDir     string // "asc" or "desc"
-	service     string
+	query         string
+	severity      string
+	source        string
+	remediation   string
+	sortBy        string
+	sortDir       string // "asc" | "desc"
+	service       string
+	showDismissed bool
 }
 
 type model struct {
@@ -159,12 +160,13 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 		searchBox:   search,
 		selectedSet: make(map[string]bool),
 		filter: filterState{
-			severity:    "all",
-			source:      "all",
-			remediation: "all",
-			sortBy:      "severity",
-			sortDir:     "asc",
-			service:     "all",
+			severity:      "all",
+			source:        "all",
+			remediation:   "all",
+			sortBy:        "severity",
+			sortDir:       "asc",
+			service:       "all",
+			showDismissed: false,
 		},
 		phase: "loading",
 	}
@@ -485,6 +487,32 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		m.exportIdx = 0
 		m.modal = modalExport
+		return m, nil
+	case "d":
+		visible := m.visibleFindings()
+		idx := m.table.Cursor()
+		if idx >= 0 && idx < len(visible) {
+			id := visible[idx].ID
+			if m.isDismissed(id) {
+				m.live.UndismissFinding(id)
+				m.toast = "Undismissed"
+			} else {
+				m.live.DismissFinding(id)
+				m.toast = "Dismissed"
+			}
+			m.toastUntil = time.Now().Add(3 * time.Second)
+			m.rebuildTable()
+		}
+		return m, nil
+	case "D":
+		m.filter.showDismissed = !m.filter.showDismissed
+		m.rebuildTable()
+		status := "hidden"
+		if m.filter.showDismissed {
+			status = "visible"
+		}
+		m.toast = "Dismissed findings " + status
+		m.toastUntil = time.Now().Add(3 * time.Second)
 		return m, nil
 	}
 
@@ -896,6 +924,9 @@ func (m model) visibleFindings() []domain.Finding {
 		if f.service != "all" && item.Service != f.service {
 			continue
 		}
+		if !f.showDismissed && m.isDismissed(item.ID) {
+			continue
+		}
 		if f.query != "" && !findingMatches(item, f.query) {
 			continue
 		}
@@ -1020,6 +1051,15 @@ func (m *model) cycleServiceFilter() {
 	m.filter.service = services[next]
 }
 
+func (m *model) isDismissed(id string) bool {
+	for _, did := range m.snap.DismissedIDs {
+		if did == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *model) cycleSortOrder() {
 	switch m.filter.sortBy {
 	case "severity":
@@ -1097,7 +1137,12 @@ func (m *model) updateDetailViewport() {
 		return
 	}
 	t := m.theme()
-	m.viewport.SetContent(renderDetailContent(t, &visible[idx], contentWidth))
+	content := renderDetailContent(t, &visible[idx], contentWidth)
+	if m.isDismissed(visible[idx].ID) {
+		dismissedBadge := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("[DISMISSED]")
+		content = dismissedBadge + "\n\n" + content
+	}
+	m.viewport.SetContent(content)
 	m.viewport.SetWidth(contentWidth)
 	m.viewport.SetHeight(m.detailHeight())
 	m.viewport.GotoTop()
@@ -1286,6 +1331,8 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "detail")),
 		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
+		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "dismiss")),
+		key.NewBinding(key.WithKeys("D"), key.WithHelp("D", "toggle dismissed")),
 		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
 		key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a", "select all")),
 		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
@@ -1310,6 +1357,7 @@ func (m model) detailKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 		key.NewBinding(key.WithKeys("↑/↓"), key.WithHelp("j/k", "scroll")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
+		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "dismiss")),
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
 		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
