@@ -241,14 +241,30 @@ func serveFixture(fixturePath, addr, certFile, keyFile string) error {
 
 	registerFixtureFixes(fixRegistry, fixture.Findings)
 
-	if len(fixture.Findings) > 0 {
-		fixRegistry.Classify(fixture.Findings)
-		live.AddFindings(fixture.Findings)
+	loadFixtureIntoLive := func(l *domain.ScanProgress) {
+		findings := make([]domain.Finding, len(fixture.Findings))
+		copy(findings, fixture.Findings)
+		if len(findings) > 0 {
+			fixRegistry.Classify(findings)
+			l.AddFindings(findings)
+		}
+		l.SetToolStatus("trivy", domain.ToolDone, fmt.Sprintf("Found %d issues (fixture)", len(findings)))
+		l.SetToolStatus("lynis", domain.ToolDone, "Fixture loaded")
+		l.Finalize()
 	}
 
-	live.SetToolStatus("trivy", domain.ToolDone, fmt.Sprintf("Found %d issues (fixture)", len(fixture.Findings)))
-	live.SetToolStatus("lynis", domain.ToolDone, "Fixture loaded")
-	live.Finalize()
+	loadFixtureIntoLive(live)
+
+	if fixture.Hostname != "" {
+		live.Hostname = fixture.Hostname
+	}
+	if fixture.LocalIP != "" {
+		live.LocalIP = fixture.LocalIP
+	}
+
+	rescanFn := func() {
+		loadFixtureIntoLive(live)
+	}
 
 	fmt.Printf("  Starting Web UI (fixture mode) at http://%s\n", addr)
 	fmt.Println("  Press Ctrl+C to stop.")
@@ -260,7 +276,7 @@ func serveFixture(fixturePath, addr, certFile, keyFile string) error {
 		os.Exit(0)
 	}()
 
-	return web.Serve(web.Options{Addr: addr, Live: live, Fixes: fixRegistry, CertFile: certFile, KeyFile: keyFile})
+	return web.Serve(web.Options{Addr: addr, Live: live, Fixes: fixRegistry, CertFile: certFile, KeyFile: keyFile, RescanFn: rescanFn})
 }
 
 func registerFixtureFixes(r *fix.Registry, findings []domain.Finding) {
@@ -270,11 +286,11 @@ func registerFixtureFixes(r *fix.Registry, findings []domain.Finding) {
 			continue
 		}
 		actions := []fix.Action{
-			{Label: "Apply mock fix", Apply: func(ctx fix.Context) error { return nil }},
+			{Type: fix.ActionExec, Label: "Apply mock fix", Apply: func(ctx fix.Context) error { return nil }},
 		}
 		if f.Remediation == domain.RemediationReview {
 			actions = append(actions, fix.Action{
-				Label: "Alternative mock fix",
+				Type: fix.ActionExec, Label: "Alternative mock fix",
 				Apply: func(ctx fix.Context) error { return nil },
 			})
 		}

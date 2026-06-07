@@ -33,6 +33,7 @@ type Options struct {
 	Fixes    *fix.Registry
 	CertFile string
 	KeyFile  string
+	RescanFn func()
 	rescanMu *sync.Mutex
 }
 
@@ -440,7 +441,11 @@ func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
 	opts.Live.ResetForRescan()
 	go func() {
 		defer opts.rescanMu.Unlock()
-		runRescan(opts)
+		if opts.RescanFn != nil {
+			opts.RescanFn()
+		} else {
+			runRescan(opts)
+		}
 	}()
 	writeJSON(w, map[string]string{"status": "rescanning"})
 }

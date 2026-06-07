@@ -1,8 +1,11 @@
-import { ChildProcess, spawn } from "child_process";
+import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import http from "http";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const FIXTURE_PATH = path.resolve(__dirname, "..", "fixtures", "mock-snapshot.json");
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..", "..");
 const BINARY_PATH = path.resolve(PROJECT_ROOT, "hostveil-e2e");
@@ -13,9 +16,6 @@ export interface E2EServer {
   stop: () => Promise<void>;
 }
 
-/**
- * Build the Go binary with --fixture support.
- */
 async function buildBinary(): Promise<void> {
   const { execSync } = await import("child_process");
   execSync("go build -o " + BINARY_PATH + " ./cmd/hostveil/", {
@@ -24,10 +24,6 @@ async function buildBinary(): Promise<void> {
   });
 }
 
-/**
- * Start the hostveil server with fixture data for E2E testing.
- * Returns the server URL and a stop function.
- */
 export async function startServer(
   port: number = 8787
 ): Promise<E2EServer> {
@@ -60,7 +56,6 @@ export async function startServer(
     }
   });
 
-  // Wait for the server to be ready
   await waitForServer(url, 15000);
 
   return {
@@ -81,9 +76,6 @@ export async function startServer(
   };
 }
 
-/**
- * Ping the health endpoint until the server responds.
- */
 function waitForServer(
   url: string,
   timeoutMs: number = 15000
