@@ -210,8 +210,8 @@ func runServe(args []string) error {
 }
 
 type fixtureData struct {
-	Hostname string          `json:"hostname"`
-	LocalIP  string          `json:"local_ip"`
+	Hostname string           `json:"hostname"`
+	LocalIP  string           `json:"local_ip"`
 	Findings []domain.Finding `json:"findings"`
 }
 

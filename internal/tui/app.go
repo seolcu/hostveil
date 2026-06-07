@@ -119,7 +119,10 @@ type model struct {
 
 type tickMsg struct{}
 type fixResultMsg struct{ result fix.FixResult }
-type fixProgressMsg struct{ current, total int; label string }
+type fixProgressMsg struct {
+	current, total int
+	label          string
+}
 type fixBatchResultMsg struct{ success, fail, skipped int }
 
 func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
