@@ -426,6 +426,60 @@ fi`
 			},
 		}},
 	})
+
+	// Auto (edit) — Additional SSH hardening
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9216",
+		Label:     "Set SSH MaxAuthTries",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set MaxAuthTries", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^MaxAuthTries' /etc/ssh/sshd_config && sed -i 's/^MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config || echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9229",
+		Label:     "Set SSH ClientAliveInterval",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set ClientAliveInterval", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^ClientAliveInterval' /etc/ssh/sshd_config && sed -i 's/^ClientAliveInterval.*/ClientAliveInterval 300/' /etc/ssh/sshd_config || echo 'ClientAliveInterval 300' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9230",
+		Label:     "Set SSH ClientAliveCountMax",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set ClientAliveCountMax", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^ClientAliveCountMax' /etc/ssh/sshd_config && sed -i 's/^ClientAliveCountMax.*/ClientAliveCountMax 2/' /etc/ssh/sshd_config || echo 'ClientAliveCountMax 2' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9328",
+		Label:     "Restrict SSH users",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Add AllowUsers", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^AllowUsers' /etc/ssh/sshd_config || echo 'AllowUsers root' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+	r.Register(&Fix{
+		FindingID: "lynis.SSH-7408",
+		Label:     "Harden SSH configuration",
+		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Disable SSH compression", func(ctx Context) error {
+			return exec.Command("sh", "-c", `grep -q '^Compression' /etc/ssh/sshd_config && sed -i 's/^Compression.*/Compression no/' /etc/ssh/sshd_config || echo 'Compression no' >> /etc/ssh/sshd_config`).Run()
+		})},
+	})
+
+	// Auto (exec) — File permissions
+	r.Register(&Fix{
+		FindingID: "lynis.FILE-7524",
+		Label:     "Fix /etc/issue permissions",
+		Actions:   []Action{execCmd("chmod 644 /etc/issue")},
+	})
+
+	// Auto (exec/sysctl) — Network & Kernel hardening
+	r.Register(&Fix{
+		FindingID: "lynis.NETW-3200",
+		Label:     "Harden network stack",
+		Actions: []Action{
+			sysctlApply("net.ipv4.tcp_syncookies", "1"),
+			sysctlApply("net.ipv4.conf.all.rp_filter", "1"),
+		},
+	})
 }
 
 var dangerousPaths = []string{"/etc/shadow", "/etc/sudoers", "/etc/sudoers.d", "/etc/pam.d", "/etc/ssh/sshd_config"}
