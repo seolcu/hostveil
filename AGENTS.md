@@ -114,6 +114,23 @@ The process runs as root (auto re-exec via `sudo os.Args...` with environment pr
 - If the target port is already in use, `internal/web` inspects `/proc/net/tcp*`, finds listener PIDs via `/proc/<pid>/fd`, sends `SIGTERM`, then `SIGKILL` if needed.
 - Be careful with `--addr 0.0.0.0:PORT`: this exposes host scan results from a root process. The default must remain localhost.
 
+### Pre-release checklist
+
+Before tagging a release, run ALL tests:
+
+```bash
+# 1. Go unit + integration tests (all packages)
+go build ./... && go vet ./... && go test ./...
+
+# 2. E2E browser tests (requires Node.js + Playwright)
+cd test/e2e && npx playwright test
+
+# 3. Clean up E2E artifacts
+rm -f hostveil-e2e test/e2e/.e2e-server-pid test/e2e/.e2e-kill.sh
+```
+
+All three steps must pass before creating a release tag.
+
 ### Release workflow
 
 - `.github/workflows/release.yml` — triggered by `git tag v*`
@@ -121,6 +138,7 @@ The process runs as root (auto re-exec via `sudo os.Args...` with environment pr
   - no local goreleaser installation needed
 - `.goreleaser.yaml` — builds with `-X internal/tui.Version={{.Version}}`
 - `scripts/install.sh` — curl-pipe installer with interactive dep checkbox
+- **After pushing a release tag, always monitor the CI/CD results** on GitHub Actions (`https://github.com/seolcu/hostveil/actions`) to confirm that the release build and all tests (Go unit + E2E) pass.
 
 ## Code conventions
 
