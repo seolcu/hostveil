@@ -125,7 +125,10 @@ install_tool() {
   echo "  • $name: fallback to binary download..."
   case "$name" in
     trivy)
-      curl -fsSL --retry 3 "https://github.com/aquasecurity/trivy/releases/latest/download/trivy_${VERSION}_${OS}-${ARCH}.tar.gz" -o "/tmp/trivy.tar.gz"
+      TRIVY_VER=$(curl -fsSL --retry 3 https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep '"tag_name":' | sed 's/.*"v\([^"]*\)".*/\1/')
+      case "$OS" in linux) TRIVY_OS="Linux" ;; darwin) TRIVY_OS="Darwin" ;; esac
+      case "$ARCH" in amd64) TRIVY_ARCH="64bit" ;; arm64) TRIVY_ARCH="ARM64" ;; esac
+      curl -fsSL --retry 3 "https://github.com/aquasecurity/trivy/releases/latest/download/trivy_${TRIVY_VER}_${TRIVY_OS}-${TRIVY_ARCH}.tar.gz" -o "/tmp/trivy.tar.gz"
       tar xzf "/tmp/trivy.tar.gz" -C /tmp || { echo "  ERROR: trivy extraction failed"; return; }
       TRIVY_BIN=$(find /tmp -name 'trivy' -type f 2>/dev/null | head -1)
       if [[ -n "$TRIVY_BIN" ]]; then

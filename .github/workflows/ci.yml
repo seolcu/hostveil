@@ -37,3 +37,12 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  test-installer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test install.sh across distributions
+        run: bash scripts/test-install.sh
