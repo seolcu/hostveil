@@ -137,6 +137,7 @@ func sameOrigin(origin, host string) bool {
 func secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Security-Policy",
@@ -588,11 +589,11 @@ func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgr
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.csv")
 		var buf strings.Builder
-		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
+		buf.WriteString("ID,Severity,Source,Service,Title,Description,Remediation,Fixed\n")
 		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%v\n",
+			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%v\n",
 				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
-				domain.EscapeCSV(f.Title), f.Remediation.String(), f.Fixed))
+				domain.EscapeCSV(f.Title), domain.EscapeCSV(f.Description), f.Remediation.String(), f.Fixed))
 		}
 		_, _ = w.Write([]byte(buf.String()))
 	default:

@@ -37,8 +37,16 @@ func fixImageCVE(ctx Context) error {
 		return fmt.Errorf("no fixed version available")
 	}
 
+	// Strip existing tag/digest from image name (e.g. "nginx:1.21" -> "nginx")
+	baseImage := image
+	if idx := strings.Index(baseImage, "@"); idx > 0 {
+		baseImage = baseImage[:idx]
+	} else if idx := strings.Index(baseImage, ":"); idx > 0 {
+		baseImage = baseImage[:idx]
+	}
+
 	// Step 1: Pull the image at the fixed version (fallback to latest)
-	pullRef := fmt.Sprintf("%s:%s", image, fixedVer)
+	pullRef := fmt.Sprintf("%s:%s", baseImage, fixedVer)
 	if err := exec.Command("docker", "pull", pullRef).Run(); err != nil {
 		if pullErr := exec.Command("docker", "pull", image).Run(); pullErr != nil {
 			return fmt.Errorf("docker pull failed: %w", pullErr)
@@ -79,7 +87,7 @@ func fixImageCVE(ctx Context) error {
 
 func getRepoDigest(image string) string {
 	out, err := exec.Command("docker", "inspect", image,
-		"--format", "{{range .RepoDigests}}{{.}}{{end}}").Output()
+		"--format", "{{(index .RepoDigests 0)}}").Output()
 	if err != nil {
 		log.Printf("fix: docker inspect for %q failed: %v (falling back to tag pinning)", image, err)
 		return ""

@@ -473,8 +473,8 @@ func TestHandleExport_CSV(t *testing.T) {
 		t.Error("expected Content-Disposition header")
 	}
 	body := rec.Body.String()
-	if !strings.HasPrefix(body, "ID,Severity,Source,Service,Title,Remediation,Fixed") {
-		t.Errorf("expected CSV header, got: %q", body[:50])
+	if !strings.HasPrefix(body, "ID,Severity,Source,Service,Title,Description,Remediation,Fixed") {
+		t.Errorf("expected CSV header, got: %q", body[:70])
 	}
 	if !strings.Contains(body, "test.001") {
 		t.Error("expected finding ID in CSV body")
@@ -752,8 +752,8 @@ func TestHandleExport_FormatValidation(t *testing.T) {
 			t.Errorf("expected 200, got %d", rec.Code)
 		}
 		body := rec.Body.String()
-		if !strings.HasPrefix(body, "ID,Severity,Source,Service,Title,Remediation,Fixed") {
-			t.Errorf("expected CSV header, got %q", body[:50])
+		if !strings.HasPrefix(body, "ID,Severity,Source,Service,Title,Description,Remediation,Fixed") {
+			t.Errorf("expected CSV header, got %q", body[:70])
 		}
 		lines := strings.Split(strings.TrimSpace(body), "\n")
 		if len(lines) != 1 {

@@ -38,7 +38,6 @@ const (
 	modalHelp
 	modalFilter
 	modalDryRun
-	modalFixAction
 	modalFixConfirm
 	modalFixResult
 	modalFixProgress
@@ -621,32 +620,6 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			m.fixTarget = nil
 			m.dryRunActions = nil
-			m.modal = modalNone
-		}
-	case modalFixAction:
-		switch msg.String() {
-		case "up", "k":
-			if m.fixActionIdx > 0 {
-				m.fixActionIdx--
-			}
-		case "down", "j":
-			if m.fixTarget != nil && m.fixActionIdx < len(m.fixTarget.Actions)-1 {
-				m.fixActionIdx++
-			}
-		case "enter", "l":
-			if m.fixTarget != nil && len(m.fixTarget.Actions) > 0 {
-				if m.fixTarget.Actions[m.fixActionIdx].Warning != "" {
-					m.modal = modalFixConfirm
-				} else {
-					m.modal = modalNone
-					m.toast = "Applying fix..."
-					m.toastUntil = time.Now().Add(5 * time.Second)
-					m2, cmd := m.applyFix()
-					return m2, cmd
-				}
-			}
-		case "q", "esc":
-			m.fixTarget = nil
 			m.modal = modalNone
 		}
 	case modalFixConfirm:

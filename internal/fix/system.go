@@ -110,19 +110,19 @@ func registerSystemFixes(r *Registry) {
 
 	// Auto (edit) — Banners
 	r.Register(&Fix{
-		FindingID: "lynis.BANN-7126",
-		Label:     "Add legal banner to /etc/issue",
-		Actions: []Action{fileEdit("/etc/issue", "Add banner to /etc/issue", func(ctx Context) error {
-			return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/issue`).Run()
-		})},
-	})
-	r.Register(&Fix{
-		FindingID: "lynis.BANN-7130",
-		Label:     "Add legal banner to /etc/motd",
-		Actions: []Action{fileEdit("/etc/motd", "Add banner to /etc/motd", func(ctx Context) error {
-			return exec.Command("sh", "-c", `echo "Unauthorized access prohibited" > /etc/motd`).Run()
-		})},
-	})
+			FindingID: "lynis.BANN-7126",
+			Label:     "Add legal banner to /etc/issue",
+			Actions: []Action{fileEdit("/etc/issue", "Add banner to /etc/issue", func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q "Unauthorized access prohibited" /etc/issue 2>/dev/null || echo "Unauthorized access prohibited" >> /etc/issue`).Run()
+			})},
+		})
+		r.Register(&Fix{
+			FindingID: "lynis.BANN-7130",
+			Label:     "Add legal banner to /etc/motd",
+			Actions: []Action{fileEdit("/etc/motd", "Add banner to /etc/motd", func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q "Unauthorized access prohibited" /etc/motd 2>/dev/null || echo "Unauthorized access prohibited" >> /etc/motd`).Run()
+			})},
+		})
 
 	// Auto (exec) — Accounts
 	r.Register(&Fix{

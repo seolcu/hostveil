@@ -52,7 +52,7 @@ func run() error {
 			ensureSudo()
 			return runUpdate()
 		case "serve", "web":
-			if hasFlag(os.Args, "--fixture") {
+			if hasFlag(os.Args, "--fixture") || hasFixtureWithValue(os.Args) {
 				return runServe(os.Args[2:])
 			}
 			ensureSudo()
@@ -66,6 +66,11 @@ func run() error {
 		case "--version", "-v":
 			fmt.Println("hostveil", tui.Version)
 			return nil
+		default:
+			fmt.Fprintf(os.Stderr, "hostveil: unknown subcommand %q\n", os.Args[1])
+			fmt.Fprintln(os.Stderr)
+			printHelp()
+			return fmt.Errorf("unknown subcommand: %s", os.Args[1])
 		}
 	}
 
@@ -260,18 +265,15 @@ func serveFixture(fixturePath, addr, certFile, keyFile string) error {
 
 	loadFixtureIntoLive(live)
 
-	if fixture.Hostname != "" {
-		live.Hostname = fixture.Hostname
-	}
-	if fixture.LocalIP != "" {
-		live.LocalIP = fixture.LocalIP
-	}
-
 	rescanFn := func() {
 		loadFixtureIntoLive(live)
 	}
 
-	fmt.Printf("  Starting Web UI (fixture mode) at http://%s\n", addr)
+	scheme := "http"
+	if certFile != "" && keyFile != "" {
+		scheme = "https"
+	}
+	fmt.Printf("  Starting Web UI (fixture mode) at %s://%s\n", scheme, addr)
 	fmt.Println("  Press Ctrl+C to stop.")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -361,12 +363,31 @@ func runSetup() error {
 	fmt.Println("  hostveil setup — installing dependencies")
 	fmt.Println()
 
-	tmpFile := "/tmp/hostveil-install.sh"
+	f, err := os.CreateTemp("", "hostveil-install-*.sh")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpFile := f.Name()
+
 	resp, err := httpClient.Get(installerURL)
 	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpFile)
 		return fmt.Errorf("failed to download installer: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
+
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpFile)
+		return fmt.Errorf("failed to write installer: %w", err)
+	}
+	_ = f.Close()
+
+	if err := os.Chmod(tmpFile, 0755); err != nil {
+		_ = os.Remove(tmpFile)
+		return fmt.Errorf("failed to make installer executable: %w", err)
+	}
 
 	fmt.Println("  Downloaded installer script. Running...")
 	fmt.Println()
@@ -394,12 +415,8 @@ func runUpdate() error {
 		return nil
 	}
 
-	arch := runtime.GOARCH
-	if arch == "x86_64" {
-		arch = "amd64"
-	}
 	url := fmt.Sprintf("https://github.com/seolcu/hostveil/releases/download/v%s/hostveil-%s-%s.tar.gz",
-		version, runtime.GOOS, arch)
+		version, runtime.GOOS, runtime.GOARCH)
 
 	fmt.Printf("  Downloading hostveil %s...\n", version)
 	resp, err := httpClient.Get(url)
@@ -469,14 +486,39 @@ func hasFlag(args []string, name string) bool {
 	return false
 }
 
+func hasFixtureWithValue(args []string) bool {
+	for _, a := range args {
+		if strings.HasPrefix(a, "--fixture=") {
+			return true
+		}
+	}
+	return false
+}
+
 func localIP() string {
-	addrs, err := net.InterfaceAddrs()
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		return ""
 	}
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			return ipnet.IP.String()
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		// Skip Docker bridge interfaces
+		if iface.Name == "docker0" || iface.Name == "br-0" {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
 		}
 	}
 	return ""
@@ -491,9 +533,14 @@ func ensureSudo() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
+	exitCode := 0
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "hostveil requires root access.")
-		os.Exit(1)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			fmt.Fprintln(os.Stderr, "hostveil requires root access.")
+			os.Exit(1)
+		}
 	}
-	os.Exit(0)
+	os.Exit(exitCode)
 }

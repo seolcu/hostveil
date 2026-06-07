@@ -677,8 +677,6 @@ func (m model) renderWithModal(base string) string {
 		modal = m.renderFilterModal()
 	case modalDryRun:
 		modal = m.renderFixDryRunModal()
-	case modalFixAction:
-		modal = m.renderFixActionModal()
 	case modalFixConfirm:
 		modal = m.renderFixConfirmModal()
 	case modalFixResult:
@@ -748,7 +746,7 @@ func (m model) renderHelpModal() string {
 			"  q             Quit",
 		)
 	}
-	lines = append(lines, "", lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press any key to close"))
+	lines = append(lines, "", lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press q, esc, ? or enter to close"))
 
 	return s.Width(clamp(m.width-8, 48, 80)).Render(strings.Join(lines, "\n"))
 }
@@ -764,35 +762,6 @@ func (m model) renderFilterModal() string {
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press Enter to apply, Esc to cancel"),
 	}
-	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
-}
-
-func (m model) renderFixActionModal() string {
-	t := m.theme()
-	s := m.modalStyle()
-
-	lines := []string{
-		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Choose action"),
-		"",
-	}
-	if m.fixTarget != nil {
-		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.fixTarget.Label))
-		lines = append(lines, "")
-		for i, a := range m.fixTarget.Actions {
-			prefix := "  "
-			if i == m.fixActionIdx {
-				prefix = "> "
-			}
-			typeTag := " [" + a.Type.String() + "]"
-			warn := ""
-			if a.Warning != "" {
-				warn = " ⚠"
-			}
-			lines = append(lines, fmt.Sprintf("%s%s%s%s", prefix, a.Label, typeTag, warn))
-		}
-	}
-	lines = append(lines, "")
-	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter confirm · Esc cancel"))
 	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
 }
 

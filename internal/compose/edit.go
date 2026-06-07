@@ -42,7 +42,11 @@ func (f *File) Save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(f.path, out, 0644)
+	mode := os.FileMode(0644)
+	if info, statErr := os.Stat(f.path); statErr == nil {
+		mode = info.Mode()
+	}
+	return os.WriteFile(f.path, out, mode)
 }
 
 func (f *File) Diff() string {
@@ -110,14 +114,14 @@ func (f *File) RemoveFromList(service, path string, value interface{}) error {
 
 func (f *File) serviceNode(service string, create bool) (*yaml.Node, error) {
 	// doc is DocumentNode, Content[0] is the root mapping
-	root := f.doc.Content[0]
-	if root == nil {
+	if len(f.doc.Content) == 0 || f.doc.Content[0] == nil {
 		if !create {
 			return nil, nil
 		}
-		root = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		root := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 		f.doc.Content = append(f.doc.Content, root)
 	}
+	root := f.doc.Content[0]
 
 	services := getOrCreateMappingEntry(root, "services", create)
 	if services == nil {
@@ -280,6 +284,9 @@ func toNode(v interface{}) *yaml.Node {
 }
 
 func (f *File) ServiceNames() ([]string, error) {
+	if len(f.doc.Content) == 0 || f.doc.Content[0] == nil {
+		return nil, nil
+	}
 	root := f.doc.Content[0]
 	if root == nil {
 		return nil, nil

@@ -43,7 +43,7 @@ test.describe("Export", () => {
     const content = await (await download.createReadStream()).toArray();
     const csv = Buffer.concat(content).toString("utf-8");
 
-    expect(csv).toContain("ID,Severity,Source,Service,Title,Remediation,Fixed");
+    expect(csv).toContain("ID,Severity,Source,Service,Title,Description,Remediation,Fixed");
     expect(csv).toContain("trivy.cve-2024-0001");
     expect(csv).toContain("lynis.AUTH-9286");
 

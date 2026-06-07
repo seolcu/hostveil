@@ -79,6 +79,9 @@ func scanProject(p project) ([]domain.Finding, error) {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("config scan %q: %w", p.ComposePath, err))
 	}
+	// Config findings have no Service field (Trivy config output doesn't
+	// specify which compose service each misconfiguration affects).
+	// The fix engine will apply to all services via targetServices(f, "").
 	for i := range cfgs {
 		if cfgs[i].Metadata == nil {
 			cfgs[i].Metadata = map[string]string{}
