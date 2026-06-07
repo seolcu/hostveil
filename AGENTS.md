@@ -114,22 +114,33 @@ The process runs as root (auto re-exec via `sudo os.Args...` with environment pr
 - If the target port is already in use, `internal/web` inspects `/proc/net/tcp*`, finds listener PIDs via `/proc/<pid>/fd`, sends `SIGTERM`, then `SIGKILL` if needed.
 - Be careful with `--addr 0.0.0.0:PORT`: this exposes host scan results from a root process. The default must remain localhost.
 
-### Pre-release checklist
+### Pre-flight checklist (every commit)
 
-Before tagging a release, run ALL tests:
+Before ANY commit or release, run:
 
 ```bash
-# 1. Go unit + integration tests (all packages)
+# 1. Format check
+gofmt -l .
+
+# 2. Go unit + integration tests (all packages)
 go build ./... && go vet ./... && go test ./...
 
-# 2. E2E browser tests (requires Node.js + Playwright)
+# 3. E2E browser tests (requires Node.js + Playwright)
 cd test/e2e && npx playwright test
 
-# 3. Clean up E2E artifacts
+# 4. Clean up E2E artifacts
 rm -f hostveil-e2e test/e2e/.e2e-server-pid test/e2e/.e2e-kill.sh
 ```
 
-All three steps must pass before creating a release tag.
+All steps must pass before committing. If CI fails after push, fix and re-push immediately.
+
+### Post-commit CI check
+
+**Always monitor CI/CD results after EVERY push** (not just releases):
+- Actions dashboard: `https://github.com/seolcu/hostveil/actions`
+- Check that all jobs (build, test-installer, e2e) pass — not just the workflow status badge.
+- If any job fails, diagnose the root cause via the logs and fix before proceeding.
+- The most common CI failure is unformatted Go code (`gofmt -l .` will catch it locally).
 
 ### Release workflow
 
