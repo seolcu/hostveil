@@ -213,6 +213,12 @@ func (m model) renderFilterPanel(width int) string {
 		chip("Unavailable", m.filter.remediation == "unavailable"),
 		chip("Manual", m.filter.remediation == "manual"),
 	)
+	sortDirIndicator := ""
+	if m.filter.sortDir == "desc" {
+		sortDirIndicator = " ↓"
+	} else {
+		sortDirIndicator = " ↑"
+	}
 	sortDisplay := map[string]string{
 		"severity":    "Severity first",
 		"source":      "Source",
@@ -222,6 +228,7 @@ func (m model) renderFilterPanel(width int) string {
 	if sortDisplay == "" {
 		sortDisplay = m.filter.sortBy
 	}
+	sortDisplay += sortDirIndicator
 	sortBox := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Text)).
 		Border(lipgloss.NormalBorder()).
@@ -433,7 +440,7 @@ func (m model) renderListPane() string {
 	visible := m.visibleFindings()
 	count := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(fmt.Sprintf("%d visible", len(visible)))
 
-	filterInfo := fmt.Sprintf("s:%s o:%s", m.filter.source, m.filter.sortBy)
+	filterInfo := fmt.Sprintf("s:%s o:%s(%s)", m.filter.source, m.filter.sortBy, m.filter.sortDir)
 	if m.filter.severity != "all" {
 		filterInfo += fmt.Sprintf("  sev:%s", m.filter.severity)
 	}
@@ -668,6 +675,8 @@ func (m model) renderWithModal(base string) string {
 		modal = m.renderHelpModal()
 	case modalFilter:
 		modal = m.renderFilterModal()
+	case modalDryRun:
+		modal = m.renderFixDryRunModal()
 	case modalFixAction:
 		modal = m.renderFixActionModal()
 	case modalFixConfirm:
@@ -708,12 +717,14 @@ func (m model) renderHelpModal() string {
 			"  /             Search findings",
 			"  f             Apply fix",
 			"  Space         Select for batch fix",
+			"  Ctrl+A        Select/deselect all visible",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  0-4           Filter by severity (0=all, 1=critical...)",
 			"  s             Cycle source filter (all→trivy→lynis)",
 			"  r             Cycle remediation filter (all→auto→review→unavailable→manual)",
 			"  o             Cycle sort order",
+			"  O             Toggle sort direction",
 			"  R             Clear all filters",
 			"  e             Export report (JSON/CSV)",
 			"  ?             This help",
@@ -728,6 +739,7 @@ func (m model) renderHelpModal() string {
 			"  f             Apply fix",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
+			"  Ctrl+A        Select/deselect all visible",
 			"  e             Export report (JSON/CSV)",
 			"  ?             This help",
 			"  q             Quit",
@@ -779,6 +791,69 @@ func (m model) renderFixActionModal() string {
 	lines = append(lines, "")
 	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter confirm · Esc cancel"))
 	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+}
+
+func (m model) renderFixDryRunModal() string {
+	t := m.theme()
+	s := m.modalStyle()
+
+	label := m.fixTarget.Label
+	multi := len(m.dryRunActions) > 1
+	title := "Apply fix"
+	if multi {
+		title = "Choose action"
+	}
+	lines := []string{
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render(title),
+		"",
+		lipgloss.NewStyle().Bold(true).Render(label),
+		"",
+	}
+
+	for i, info := range m.dryRunActions {
+		prefix := "  "
+		if multi && i == m.dryRunApplyIdx {
+			prefix = "> "
+		}
+		typeTag := " [" + info.actionType + "]"
+		warn := ""
+		if info.warning != "" {
+			warn = " ⚠"
+		}
+		actionLine := fmt.Sprintf("%s%s%s%s", prefix, info.label, typeTag, warn)
+		if !multi || i == m.dryRunApplyIdx {
+			style := lipgloss.NewStyle()
+			if multi && i == m.dryRunApplyIdx {
+				style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
+			}
+			lines = append(lines, style.Render(actionLine))
+		} else {
+			lines = append(lines, actionLine)
+		}
+
+		if i == m.dryRunApplyIdx && info.warning != "" {
+			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Render("  ⚠ "+info.warning))
+		}
+		if i == m.dryRunApplyIdx && info.diffPreview != "" {
+			diffLines := strings.Split(info.diffPreview, "\n")
+			diffStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
+			lines = append(lines, "")
+			lines = append(lines, diffStyle.Render("  Diff preview:"))
+			for _, dl := range diffLines {
+				lines = append(lines, diffStyle.Render("  "+dl))
+			}
+		}
+	}
+
+	if multi {
+		lines = append(lines, "")
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter confirm · Esc cancel"))
+	} else {
+		lines = append(lines, "")
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Enter apply · Esc cancel"))
+	}
+
+	return s.Width(clamp(m.width-8, 48, 80)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFixConfirmModal() string {

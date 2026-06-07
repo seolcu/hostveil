@@ -10,6 +10,7 @@ const state = {
   severity: "all",
   source: "all",
   remediation: "all",
+  service: "all",
   sortBy: "severity",
   sortDir: "asc",
   pollTimer: null,
@@ -80,6 +81,7 @@ function bindControls() {
     state.severity = "all";
     state.source = "all";
     state.remediation = "all";
+    state.service = "all";
     state.selected = 0;
     if ($("query")) $("query").value = "";
     render();
@@ -122,6 +124,25 @@ function bindControls() {
   rescanBtn.type = "button";
   rescanBtn.textContent = "Re-scan";
   document.querySelector(".panel-head").appendChild(rescanBtn);
+
+  const recalcBtn = document.createElement("button");
+  recalcBtn.id = "recalcBtn";
+  recalcBtn.type = "button";
+  recalcBtn.textContent = "Recalc";
+  recalcBtn.title = "Recalculate score";
+  document.querySelector(".panel-head").appendChild(recalcBtn);
+  recalcBtn.addEventListener("click", async () => {
+    recalcBtn.blur();
+    try {
+      const resp = await fetch("/api/recalc", { method: "POST" });
+      const snap = await resp.json();
+      state.live = snap;
+      render();
+      showToast("Score recalculated", "toast-info");
+    } catch {
+      showToast("Recalculation failed", "toast-error");
+    }
+  });
   rescanBtn.addEventListener("click", async () => {
     rescanBtn.blur();
     rescanBtn.disabled = true;
@@ -312,6 +333,7 @@ function findings() {
     .filter((f) => state.severity === "all" || severity(f) === state.severity)
     .filter((f) => state.source === "all" || source(f) === state.source)
     .filter((f) => state.remediation === "all" || remediation(f) === state.remediation)
+    .filter((f) => state.service === "all" || (f.service || "") === state.service)
     .filter((f) => !query || searchable(f).includes(query))
     .sort(sorter);
 }
@@ -347,6 +369,8 @@ function renderFilters() {
   renderChips("severityFilters", ["all", "critical", "high", "medium", "low"], "severity");
   renderChips("sourceFilters", ["all", ...Object.keys(countBy(items, source)).sort()], "source");
   renderChips("remediationFilters", ["all", ...Object.keys(countBy(items, remediation)).sort()], "remediation");
+  const services = ["all", ...Object.keys(countBy(items, (f) => f.service || "")).sort()];
+  renderChips("serviceFilters", services.filter((s) => s !== ""), "service");
 }
 
 function renderChips(id, values, key) {

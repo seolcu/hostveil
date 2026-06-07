@@ -37,6 +37,7 @@ const (
 	modalNone modalMode = iota
 	modalHelp
 	modalFilter
+	modalDryRun
 	modalFixAction
 	modalFixConfirm
 	modalFixResult
@@ -44,12 +45,20 @@ const (
 	modalExport
 )
 
+type dryRunAction struct {
+	label       string
+	actionType  string
+	warning     string
+	diffPreview string
+}
+
 type filterState struct {
 	query       string
 	severity    string
 	source      string
 	remediation string
 	sortBy      string
+	sortDir     string // "asc" or "desc"
 	service     string
 }
 
@@ -79,9 +88,11 @@ type model struct {
 	modal modalMode
 
 	// fix
-	fixTarget    *fix.Fix
-	fixActionIdx int
-	fixResult    string
+	fixTarget      *fix.Fix
+	fixActionIdx   int
+	fixResult      string
+	dryRunActions  []dryRunAction
+	dryRunApplyIdx int
 
 	// export
 	exportIdx int
@@ -149,6 +160,7 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 			source:      "all",
 			remediation: "all",
 			sortBy:      "severity",
+			sortDir:     "asc",
 			service:     "all",
 		},
 		phase: "loading",
@@ -411,6 +423,30 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.cycleSortOrder()
 		m.rebuildTable()
 		return m, nil
+	case "O":
+		if m.filter.sortDir == "asc" {
+			m.filter.sortDir = "desc"
+		} else {
+			m.filter.sortDir = "asc"
+		}
+		m.rebuildTable()
+		m.toast = "Sort: " + m.filter.sortBy + " (" + m.filter.sortDir + ")"
+		m.toastUntil = time.Now().Add(3 * time.Second)
+		return m, nil
+	case "ctrl+a":
+		visible := m.visibleFindings()
+		if len(m.selectedSet) == len(visible) {
+			m.selectedSet = make(map[string]bool)
+		} else {
+			m.selectedSet = make(map[string]bool)
+			for _, f := range visible {
+				if f.Remediation != domain.RemediationUnavailable {
+					m.selectedSet[f.ID] = true
+				}
+			}
+		}
+		m.rebuildTable()
+		return m, nil
 	case "v":
 		m.cycleServiceFilter()
 		m.rebuildTable()
@@ -527,6 +563,34 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.searchBox, cmd = m.searchBox.Update(msg)
 		return m, cmd
+	case modalDryRun:
+		switch msg.String() {
+		case "up", "k":
+			if m.dryRunApplyIdx > 0 {
+				m.dryRunApplyIdx--
+			}
+		case "down", "j":
+			if m.dryRunApplyIdx < len(m.dryRunActions)-1 {
+				m.dryRunApplyIdx++
+			}
+		case "enter", "l":
+			m.fixActionIdx = m.dryRunApplyIdx
+			if m.fixTarget != nil && m.fixActionIdx < len(m.fixTarget.Actions) {
+				if m.fixTarget.Actions[m.fixActionIdx].Warning != "" {
+					m.modal = modalFixConfirm
+				} else {
+					m.modal = modalNone
+					m.toast = "Applying fix..."
+					m.toastUntil = time.Now().Add(5 * time.Second)
+					m2, cmd := m.applyFix()
+					return m2, cmd
+				}
+			}
+		case "q", "esc":
+			m.fixTarget = nil
+			m.dryRunActions = nil
+			m.modal = modalNone
+		}
 	case modalFixAction:
 		switch msg.String() {
 		case "up", "k":
@@ -557,16 +621,19 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "Y":
 			m.modal = modalNone
+			m.dryRunActions = nil
 			m2, cmd := m.applyFix()
 			return m2, cmd
 		case "n", "N", "q", "esc":
 			m.fixTarget = nil
+			m.dryRunActions = nil
 			m.modal = modalNone
 		}
 	case modalFixResult:
 		switch msg.String() {
 		case "q", "esc", "enter":
 			m.fixTarget = nil
+			m.dryRunActions = nil
 			m.modal = modalNone
 		}
 	case modalFixProgress:
@@ -691,28 +758,31 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 	m.fixTarget = f
 	m.fixActionIdx = 0
 
-	if len(f.Actions) > 1 {
-		m.modal = modalFixAction
-		return m, nil
-	}
-
-	switch f.Class() {
-	case domain.RemediationAuto:
-		if f.Actions[0].Warning != "" {
-			m.modal = modalFixConfirm
-			return m, nil
+	// Build dry-run info
+	finding := visible[idx]
+	m.dryRunActions = make([]dryRunAction, len(f.Actions))
+	for i, a := range f.Actions {
+		info := dryRunAction{
+			label:      a.Label,
+			actionType: a.Type.String(),
+			warning:    a.Warning,
 		}
-		m.toast = "Applying fix..."
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m.applyFix()
-	case domain.RemediationReview:
-		m.toast = "Applying fix..."
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		m.modal = modalFixConfirm
-		return m, nil
-	default:
+		if a.Type == fix.ActionEdit {
+			diff, _ := fix.SimulateDiff(fix.Context{Finding: &finding}, a)
+			if diff != "" {
+				info.diffPreview = diff
+			}
+		}
+		m.dryRunActions[i] = info
+	}
+	m.dryRunApplyIdx = 0
+
+	if len(f.Actions) > 1 {
+		m.modal = modalDryRun
 		return m, nil
 	}
+	m.modal = modalDryRun
+	return m, nil
 }
 
 func (m model) applyFix() (tea.Model, tea.Cmd) {
@@ -827,7 +897,7 @@ func (m model) visibleFindings() []domain.Finding {
 		}
 		filtered = append(filtered, item)
 	}
-	sortFindings(filtered, f.sortBy)
+	sortFindings(filtered, f.sortBy, f.sortDir)
 	return filtered
 }
 
@@ -841,7 +911,11 @@ func findingMatches(f domain.Finding, q string) bool {
 	return false
 }
 
-func sortFindings(findings []domain.Finding, sortBy string) {
+func sortFindings(findings []domain.Finding, sortBy, sortDir string) {
+	dir := 1
+	if sortDir == "desc" {
+		dir = -1
+	}
 	sevOrder := func(s domain.Severity) int {
 		switch s {
 		case domain.SeverityCritical:
@@ -854,32 +928,41 @@ func sortFindings(findings []domain.Finding, sortBy string) {
 			return 3
 		}
 	}
+	less := func(a, b int) bool {
+		if dir == -1 {
+			return b < a
+		}
+		return a < b
+	}
 	switch sortBy {
 	case "severity":
 		sort.Slice(findings, func(i, j int) bool {
 			si, sj := sevOrder(findings[i].Severity), sevOrder(findings[j].Severity)
 			if si != sj {
-				return si < sj
+				return less(si, sj)
 			}
-			return findings[i].Title < findings[j].Title
+			return less(strings.Compare(findings[i].Title, findings[j].Title), 0)
 		})
 	case "source":
 		sort.Slice(findings, func(i, j int) bool {
 			if findings[i].Source != findings[j].Source {
-				return findings[i].Source.String() < findings[j].Source.String()
+				ci := strings.Compare(findings[i].Source.String(), findings[j].Source.String())
+				return less(ci, 0)
 			}
-			return sevOrder(findings[i].Severity) < sevOrder(findings[j].Severity)
+			return less(sevOrder(findings[i].Severity), sevOrder(findings[j].Severity))
 		})
 	case "title":
 		sort.Slice(findings, func(i, j int) bool {
-			return findings[i].Title < findings[j].Title
+			ci := strings.Compare(findings[i].Title, findings[j].Title)
+			return less(ci, 0)
 		})
 	case "remediation":
 		sort.Slice(findings, func(i, j int) bool {
 			if findings[i].Remediation != findings[j].Remediation {
-				return findings[i].Remediation.String() < findings[j].Remediation.String()
+				ci := strings.Compare(findings[i].Remediation.String(), findings[j].Remediation.String())
+				return less(ci, 0)
 			}
-			return sevOrder(findings[i].Severity) < sevOrder(findings[j].Severity)
+			return less(sevOrder(findings[i].Severity), sevOrder(findings[j].Severity))
 		})
 	}
 }
@@ -1200,10 +1283,12 @@ func (m model) listKeyMap() keyMap {
 		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
 		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
+		key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a", "select all")),
 		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
 		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "source: "+m.filter.source)),
 		key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "remediation: "+m.filter.remediation)),
 		key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "sort: "+m.filter.sortBy)),
+		key.NewBinding(key.WithKeys("O"), key.WithHelp("O", "direction: "+m.filter.sortDir)),
 		key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "clear filters")),
 		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
 		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),

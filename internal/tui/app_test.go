@@ -13,6 +13,7 @@ func testModel() *model {
 			source:      "all",
 			remediation: "all",
 			sortBy:      "severity",
+			sortDir:     "asc",
 		},
 		phase: "ready",
 	}
@@ -26,7 +27,7 @@ func TestSortFindings_Severity(t *testing.T) {
 		{Severity: domain.SeverityMedium, Title: "C medium"},
 		{Severity: domain.SeverityCritical, Title: "D critical"},
 	}
-	sortFindings(findings, "severity")
+	sortFindings(findings, "severity", "asc")
 	if findings[0].Title != "A critical" {
 		t.Errorf("expected first to be 'A critical', got %q", findings[0].Title)
 	}
@@ -51,7 +52,7 @@ func TestSortFindings_Source(t *testing.T) {
 		{Source: domain.SourceTrivy, Severity: domain.SeverityHigh, Title: "trivy high"},
 		{Source: domain.SourceLynis, Severity: domain.SeverityMedium, Title: "lynis med"},
 	}
-	sortFindings(findings, "source")
+	sortFindings(findings, "source", "asc")
 	// "lynis" < "trivy" alphabetically, so lynis first, then trivy
 	if findings[0].Title != "lynis crit" {
 		t.Errorf("expected first 'lynis crit', got %q", findings[0].Title)
@@ -73,7 +74,7 @@ func TestSortFindings_Title(t *testing.T) {
 		{Title: "A finding", Severity: domain.SeverityLow},
 		{Title: "M finding", Severity: domain.SeverityHigh},
 	}
-	sortFindings(findings, "title")
+	sortFindings(findings, "title", "asc")
 	if findings[0].Title != "A finding" {
 		t.Errorf("expected first 'A finding', got %q", findings[0].Title)
 	}
@@ -92,7 +93,7 @@ func TestSortFindings_Remediation(t *testing.T) {
 		{Remediation: domain.RemediationUnavailable, Severity: domain.SeverityHigh, Title: "unavail high"},
 		{Remediation: domain.RemediationReview, Severity: domain.SeverityMedium, Title: "review med"},
 	}
-	sortFindings(findings, "remediation")
+	sortFindings(findings, "remediation", "asc")
 	// alphabetical by String(): auto, manual, review, unavailable
 	if findings[0].Title != "auto crit" {
 		t.Errorf("expected first 'auto crit', got %q", findings[0].Title)

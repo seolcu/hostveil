@@ -85,6 +85,10 @@ func Serve(opts Options) error {
 		}
 		handleRescan(w, r, opts)
 	})
+	mux.HandleFunc("POST /api/recalc", func(w http.ResponseWriter, r *http.Request) {
+		opts.Live.Recalculate()
+		writeJSON(w, opts.Live.Snapshot())
+	})
 	mux.HandleFunc("GET /api/export", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" && !sameOrigin(origin, r.Host) {
