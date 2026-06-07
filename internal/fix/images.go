@@ -101,7 +101,9 @@ func updateImageTagInCompose(f *compose.File, currentImage, pinned string) error
 		if img == currentImage ||
 			strings.HasPrefix(img, currentImage+":") ||
 			strings.HasPrefix(img, currentImage+"@") {
-			f.SetField(svc, "image", pinned)
+			if err := f.SetField(svc, "image", pinned); err != nil {
+				return fmt.Errorf("update image for service %q: %w", svc, err)
+			}
 		}
 	}
 	return nil

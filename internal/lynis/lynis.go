@@ -18,8 +18,8 @@ func Scan() ([]domain.Finding, error) {
 		return nil, fmt.Errorf("create temp file: %w", err)
 	}
 	reportPath := f.Name()
-	f.Close()
-	defer os.Remove(reportPath)
+	_ = f.Close()
+	defer os.Remove(reportPath) //nolint:errcheck // temp file cleanup
 
 	if err := runLynis(reportPath); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func runLynis(reportPath string) error {
 }
 
 func parseReportFile(reportPath string) ([]domain.Finding, error) {
-	data, err := os.ReadFile(reportPath)
+	data, err := os.ReadFile(reportPath) //nolint:gosec // temp file created by this package
 	if err != nil {
 		return nil, fmt.Errorf("lynis report not found: %w", err)
 	}

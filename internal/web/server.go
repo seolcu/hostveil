@@ -57,7 +57,7 @@ func Serve(opts Options) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	staticFS, err := fs.Sub(assets, "assets")
 	if err != nil {
@@ -566,12 +566,12 @@ func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgr
 				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
 				domain.EscapeCSV(f.Title), f.Remediation.String(), f.Fixed))
 		}
-		w.Write([]byte(buf.String()))
+		_, _ = w.Write([]byte(buf.String()))
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.json")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		enc.Encode(snap)
+		_ = enc.Encode(snap)
 	}
 }

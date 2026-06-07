@@ -171,11 +171,7 @@ func (m model) renderFilterPanel(width int) string {
 		return lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(text)
 	}
 	joinChips := func(values ...string) string {
-		parts := make([]string, 0, len(values))
-		for _, v := range values {
-			parts = append(parts, v)
-		}
-		return strings.Join(parts, " ")
+		return strings.Join(values, " ")
 	}
 
 	searchValue := "SSH, AUTH, CVE, service"
@@ -527,8 +523,7 @@ func tableStyles(t Theme) table.Styles {
 	s.Selected = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Text)).
 		Background(lipgloss.Color(t.SurfaceAlt)).
-		Bold(true).
-		ColorWhitespace(true)
+		Bold(true)
 	return s
 }
 

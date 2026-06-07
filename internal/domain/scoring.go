@@ -87,7 +87,11 @@ func ScoreFindings(findings []Finding) ScoreBreakdown {
 	if totalPenalty > 100 {
 		totalPenalty = 100
 	}
-	overall := uint8(100 - totalPenalty)
+	score := 100 - totalPenalty
+	if score < 0 {
+		score = 0
+	}
+	overall := uint8(score) //nolint:gosec // score is bounded 0-100
 	return ScoreBreakdown{Overall: overall, Axes: axes}
 }
 
@@ -143,8 +147,12 @@ func axisScore(penalty, maxPenalty int) uint8 {
 	if penalty <= 0 {
 		return 100
 	}
-	if penalty >= maxPenalty {
+	if penalty >= maxPenalty || maxPenalty <= 0 {
 		return 0
 	}
-	return uint8(100 - penalty*100/maxPenalty)
+	s := 100 - penalty*100/maxPenalty
+	if s < 0 {
+		s = 0
+	}
+	return uint8(s) //nolint:gosec // s is bounded 0-100
 }

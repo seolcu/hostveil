@@ -445,7 +445,12 @@ func sanitizePath(raw string) string {
 
 func sanitizeUser(raw string) string {
 	for _, r := range raw {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == '_', r == '-':
+		default:
 			return ""
 		}
 	}

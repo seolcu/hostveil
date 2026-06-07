@@ -312,7 +312,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		tableStartY := listStartY + 1 + headH
 		switch mouse.Button {
 		case tea.MouseLeft:
-			if target == paneList {
+			switch target {
+			case paneList:
 				if !m.inlineDetail() && m.mode == paneDetail {
 					m.mode = paneList
 				} else if m.mode != paneList {
@@ -325,7 +326,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.updateDetailViewport()
 					}
 				}
-			} else if target == paneDetail {
+			case paneDetail:
 				if !m.inlineDetail() {
 					m.mode = paneDetail
 					m.updateDetailViewport()
