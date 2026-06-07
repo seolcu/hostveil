@@ -1,0 +1,209 @@
+{
+  "hostname": "e2e-test-box",
+  "local_ip": "192.168.1.100",
+  "findings": [
+    {
+      "id": "trivy.cve-2024-0001",
+      "title": "CVE-2024-0001 in nginx:1.24 – remote code execution",
+      "description": "A critical vulnerability was found in nginx 1.24 that allows remote code execution via a specially crafted HTTP/2 request. This affects all deployments running nginx:1.24.",
+      "how_to_fix": "Update nginx to version 1.25.0 or later to patch this vulnerability.",
+      "severity": 0,
+      "source": 0,
+      "service": "nginx:1.24",
+      "remediation": 0,
+      "evidence": {
+        "fixed_version": "1.25.0",
+        "pkg_name": "nginx",
+        "cve_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-0001"
+      },
+      "metadata": {
+        "compose_path": "/home/test/docker-compose.yml"
+      },
+      "fixed": false
+    },
+    {
+      "id": "trivy.cve-2024-0002",
+      "title": "CVE-2024-0002 in nginx:1.24 – denial of service",
+      "description": "A denial of service vulnerability in nginx 1.24 allows an attacker to crash the worker process via a malformed request.",
+      "how_to_fix": "Update nginx to version 1.25.0 or later.",
+      "severity": 1,
+      "source": 0,
+      "service": "nginx:1.24",
+      "remediation": 0,
+      "evidence": {
+        "fixed_version": "1.25.0",
+        "pkg_name": "nginx"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "trivy.ds001",
+      "title": "Container runs in privileged mode",
+      "description": "The container 'webapp' is configured with privileged: true, granting all capabilities and unrestricted host access.",
+      "how_to_fix": "Set privileged: false in the compose file to disable privileged mode.",
+      "severity": 1,
+      "source": 0,
+      "service": "webapp",
+      "remediation": 0,
+      "evidence": {
+        "compose_service": "webapp",
+        "current_value": "true"
+      },
+      "metadata": {
+        "compose_path": "/home/test/docker-compose.yml"
+      },
+      "fixed": false
+    },
+    {
+      "id": "trivy.dr001",
+      "title": "Container uses host network mode",
+      "description": "The container 'webapp' uses network_mode: host, which shares the host network namespace and bypasses Docker network isolation.",
+      "how_to_fix": "Remove network_mode: host to use the default bridge network, or assign to an overlay network.",
+      "severity": 2,
+      "source": 0,
+      "service": "webapp",
+      "remediation": 1,
+      "evidence": {
+        "compose_service": "webapp",
+        "current_value": "host"
+      },
+      "metadata": {
+        "compose_path": "/home/test/docker-compose.yml"
+      },
+      "fixed": false
+    },
+    {
+      "id": "lynis.AUTH-9286",
+      "title": "SSH password authentication is enabled",
+      "description": "SSH password authentication is currently enabled, making the system vulnerable to brute-force attacks. Key-based authentication is recommended instead.",
+      "how_to_fix": "Set PasswordAuthentication no in /etc/ssh/sshd_config and restart the SSH service.",
+      "severity": 1,
+      "source": 1,
+      "service": "",
+      "remediation": 0,
+      "evidence": {
+        "current_value": "yes",
+        "config_file": "/etc/ssh/sshd_config"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "lynis.FIRE-4512",
+      "title": "No firewall is enabled",
+      "description": "The system does not have an active firewall. This exposes all network services to potential unauthorized access.",
+      "how_to_fix": "Enable a firewall using ufw or iptables to restrict incoming connections.",
+      "severity": 2,
+      "source": 1,
+      "service": "",
+      "remediation": 1,
+      "evidence": {
+        "active_firewall": "none"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "lynis.AUTH-9308",
+      "title": "Root SSH login is permitted",
+      "description": "SSH permits direct root login, which is a security risk. Root should only log in via su or sudo from a regular user account.",
+      "how_to_fix": "Set PermitRootLogin prohibit-password in /etc/ssh/sshd_config.",
+      "severity": 2,
+      "source": 1,
+      "service": "",
+      "remediation": 0,
+      "evidence": {
+        "current_value": "yes",
+        "config_file": "/etc/ssh/sshd_config"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "test.unfixable-001",
+      "title": "Custom security policy violation detected",
+      "description": "A custom security policy check has failed. This finding requires manual review and remediation by a security administrator.",
+      "how_to_fix": "Review the custom security policy and apply the necessary configuration changes manually.",
+      "severity": 0,
+      "source": 1,
+      "service": "",
+      "remediation": 2,
+      "evidence": {
+        "policy_name": "custom-policy-001",
+        "expected_value": "enabled",
+        "actual_value": "disabled"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "trivy.cve-2024-0003",
+      "title": "CVE-2024-0003 in redis:7 – information disclosure",
+      "description": "A vulnerability in redis:7 allows an authenticated user to read arbitrary memory locations.",
+      "how_to_fix": "Update redis to version 7.2.5 or later.",
+      "severity": 1,
+      "source": 0,
+      "service": "redis:7",
+      "remediation": 0,
+      "evidence": {
+        "fixed_version": "7.2.5",
+        "pkg_name": "redis"
+      },
+      "metadata": {},
+      "fixed": true
+    },
+    {
+      "id": "lynis.FILE-6310",
+      "title": "/etc/shadow has insecure permissions",
+      "description": "The /etc/shadow file has permissions that are too permissive, potentially allowing unauthorized users to read password hashes.",
+      "how_to_fix": "Run: chmod 640 /etc/shadow",
+      "severity": 3,
+      "source": 1,
+      "service": "",
+      "remediation": 0,
+      "evidence": {
+        "path": "/etc/shadow",
+        "current_permissions": "0644",
+        "expected_permissions": "0640"
+      },
+      "metadata": {},
+      "fixed": false
+    },
+    {
+      "id": "trivy.dr002",
+      "title": "Container exposes ports on all interfaces",
+      "description": "The container 'database' exposes ports on 0.0.0.0, making it accessible from external networks.",
+      "how_to_fix": "Bind to 127.0.0.1 only to restrict access to localhost.",
+      "severity": 2,
+      "source": 0,
+      "service": "database",
+      "remediation": 1,
+      "evidence": {
+        "compose_service": "database",
+        "ports": "5432:5432"
+      },
+      "metadata": {
+        "compose_path": "/home/test/docker-compose.yml"
+      },
+      "fixed": false
+    },
+    {
+      "id": "lynis.KRNL-5780",
+      "title": "IP forwarding is enabled",
+      "description": "IPv4 forwarding is enabled on the system. This should be disabled unless the system is acting as a router.",
+      "how_to_fix": "Disable IP forwarding: sysctl -w net.ipv4.ip_forward=0",
+      "severity": 3,
+      "source": 1,
+      "service": "",
+      "remediation": 0,
+      "evidence": {
+        "sysctl_key": "net.ipv4.ip_forward",
+        "current_value": "1",
+        "expected_value": "0"
+      },
+      "metadata": {},
+      "fixed": false
+    }
+  ]
+}

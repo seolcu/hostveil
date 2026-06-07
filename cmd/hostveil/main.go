@@ -52,6 +52,9 @@ func run() error {
 			ensureSudo()
 			return runUpdate()
 		case "serve", "web":
+			if hasFlag(os.Args, "--fixture") {
+				return runServe(os.Args[2:])
+			}
 			ensureSudo()
 			return runServe(os.Args[2:])
 		case "tui-web":
@@ -161,8 +164,13 @@ func runServe(args []string) error {
 	keyFile := fs.String("key-file", "", "TLS private key file")
 	noUpdate := fs.Bool("no-update", false, "skip update check on startup")
 	noScan := fs.Bool("no-scan", false, "skip scanning, serve immediately")
+	fixture := fs.String("fixture", "", "path to fixture JSON (for E2E testing)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *fixture != "" {
+		return serveFixture(*fixture, *addr, *certFile, *keyFile)
 	}
 
 	skipUpdate := *noUpdate || hasFlag(os.Args, "--no-update")
@@ -199,6 +207,83 @@ func runServe(args []string) error {
 	}()
 
 	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
+}
+
+type fixtureData struct {
+	Hostname string          `json:"hostname"`
+	LocalIP  string          `json:"local_ip"`
+	Findings []domain.Finding `json:"findings"`
+}
+
+func serveFixture(fixturePath, addr, certFile, keyFile string) error {
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		return fmt.Errorf("read fixture: %w", err)
+	}
+
+	var fixture fixtureData
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		return fmt.Errorf("parse fixture: %w", err)
+	}
+
+	live := domain.NewScanProgress(true)
+
+	if fixture.Hostname != "" {
+		live.Hostname = fixture.Hostname
+	} else {
+		live.Hostname, _ = os.Hostname()
+	}
+	if fixture.LocalIP != "" {
+		live.LocalIP = fixture.LocalIP
+	} else {
+		live.LocalIP = localIP()
+	}
+
+	registerFixtureFixes(fixRegistry, fixture.Findings)
+
+	if len(fixture.Findings) > 0 {
+		fixRegistry.Classify(fixture.Findings)
+		live.AddFindings(fixture.Findings)
+	}
+
+	live.SetToolStatus("trivy", domain.ToolDone, fmt.Sprintf("Found %d issues (fixture)", len(fixture.Findings)))
+	live.SetToolStatus("lynis", domain.ToolDone, "Fixture loaded")
+	live.Finalize()
+
+	fmt.Printf("  Starting Web UI (fixture mode) at http://%s\n", addr)
+	fmt.Println("  Press Ctrl+C to stop.")
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		os.Exit(0)
+	}()
+
+	return web.Serve(web.Options{Addr: addr, Live: live, Fixes: fixRegistry, CertFile: certFile, KeyFile: keyFile})
+}
+
+func registerFixtureFixes(r *fix.Registry, findings []domain.Finding) {
+	for _, finding := range findings {
+		f := finding
+		if f.Remediation == domain.RemediationUnavailable {
+			continue
+		}
+		actions := []fix.Action{
+			{Label: "Apply mock fix", Apply: func(ctx fix.Context) error { return nil }},
+		}
+		if f.Remediation == domain.RemediationReview {
+			actions = append(actions, fix.Action{
+				Label: "Alternative mock fix",
+				Apply: func(ctx fix.Context) error { return nil },
+			})
+		}
+		r.Register(&fix.Fix{
+			FindingID: f.ID,
+			Label:     "Mock fix for " + f.ID,
+			Actions:   actions,
+		})
+	}
 }
 
 func runUpdateCheckBackground(live *domain.ScanProgress) {
@@ -366,6 +451,7 @@ Usage:
   hostveil setup              Install dependencies (trivy, lynis)
   hostveil update             Update to the latest version
   hostveil --no-update        Skip update check on startup
+  hostveil serve --fixture F  Serve fixture data (E2E testing)
   hostveil --version          Show version
   hostveil --help             Show this help`
 }
