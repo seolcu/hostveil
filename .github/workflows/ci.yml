@@ -35,6 +35,14 @@ jobs:
             exit 1
           fi
 
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.0
+
+      - name: Check go.mod is tidy
+        run: go mod tidy && git diff --exit-code go.mod go.sum
+
       - name: Test
         run: go test ./...
 

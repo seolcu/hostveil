@@ -86,6 +86,11 @@ func Serve(opts Options) error {
 		handleRescan(w, r, opts)
 	})
 	mux.HandleFunc("POST /api/recalc", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && !sameOrigin(origin, r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
 		opts.Live.Recalculate()
 		writeJSON(w, opts.Live.Snapshot())
 	})
@@ -131,6 +136,8 @@ func secureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'")
 		next.ServeHTTP(w, r)
 	})
 }

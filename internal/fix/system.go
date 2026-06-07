@@ -3,6 +3,7 @@ package fix
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -80,7 +81,11 @@ func registerSystemFixes(r *Registry) {
 			Label:   "Remove world-writable bit",
 			Command: []string{"chmod", "o-w"},
 			Apply: func(ctx Context) error {
-				return exec.Command("chmod", "o-w", ctx.Finding.Evidence["path"]).Run()
+				p := sanitizePath(ctx.Finding.Evidence["path"])
+				if p == "" {
+					return fmt.Errorf("invalid or dangerous path: %q", ctx.Finding.Evidence["path"])
+				}
+				return exec.Command("chmod", "o-w", p).Run()
 			},
 		}},
 	})
@@ -128,7 +133,11 @@ func registerSystemFixes(r *Registry) {
 			Label:   "Set password aging to 90 days",
 			Command: []string{"chage", "-M", "90"},
 			Apply: func(ctx Context) error {
-				return exec.Command("chage", "-M", "90", ctx.Finding.Evidence["user"]).Run()
+				u := sanitizeUser(ctx.Finding.Evidence["user"])
+				if u == "" {
+					return fmt.Errorf("invalid username: %q", ctx.Finding.Evidence["user"])
+				}
+				return exec.Command("chage", "-M", "90", u).Run()
 			},
 		}},
 	})
@@ -162,20 +171,26 @@ func registerSystemFixes(r *Registry) {
 					if port == "" {
 						port = "22/tcp"
 					}
-					return exec.Command("ufw", "deny", port).Run()
+					sp := sanitizePort(port)
+					if sp == "" {
+						return fmt.Errorf("invalid port: %q", port)
+					}
+					return exec.Command("ufw", "deny", sp).Run()
 				},
 			},
 			{
 				Type:  ActionExec,
 				Label: "Block port with iptables",
 				Apply: func(ctx Context) error {
-					port := ctx.Finding.Evidence["port"]
-					if port == "" {
-						port = "22"
+					raw := ctx.Finding.Evidence["port"]
+					if raw == "" {
+						raw = "22"
 					}
-					port = strings.TrimSuffix(port, "/tcp")
-					port = strings.TrimSuffix(port, "/udp")
-					return exec.Command("iptables", "-A", "INPUT", "-p", "tcp", "--dport", port, "-j", "DROP").Run()
+					sp := sanitizePort(raw)
+					if sp == "" {
+						return fmt.Errorf("invalid port: %q", raw)
+					}
+					return exec.Command("iptables", "-A", "INPUT", "-p", "tcp", "--dport", sp, "-j", "DROP").Run()
 				},
 			},
 		},
@@ -413,4 +428,40 @@ fi`
 	})
 }
 
-// Lynis findings registered above.
+var dangerousPaths = []string{"/etc/shadow", "/etc/sudoers", "/etc/sudoers.d", "/etc/pam.d", "/etc/ssh/sshd_config"}
+
+func sanitizePath(raw string) string {
+	clean := filepath.Clean(raw)
+	for _, dp := range dangerousPaths {
+		if clean == dp {
+			return ""
+		}
+	}
+	if !strings.HasPrefix(clean, "/") {
+		return ""
+	}
+	return clean
+}
+
+func sanitizeUser(raw string) string {
+	for _, r := range raw {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+			return ""
+		}
+	}
+	return raw
+}
+
+func sanitizePort(raw string) string {
+	s := strings.TrimSuffix(raw, "/tcp")
+	s = strings.TrimSuffix(s, "/udp")
+	if s == "" {
+		return ""
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+	return s
+}

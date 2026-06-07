@@ -201,12 +201,17 @@ func runServe(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	errCh := make(chan error, 1)
 	go func() {
-		<-ctx.Done()
-		os.Exit(0)
+		errCh <- web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
 	}()
 
-	return web.Serve(web.Options{Addr: *addr, Live: live, Fixes: fixRegistry, CertFile: *certFile, KeyFile: *keyFile})
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return nil
+	}
 }
 
 type fixtureData struct {
@@ -271,12 +276,18 @@ func serveFixture(fixturePath, addr, certFile, keyFile string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	errCh := make(chan error, 1)
 	go func() {
-		<-ctx.Done()
-		os.Exit(0)
+		errCh <- web.Serve(web.Options{Addr: addr, Live: live, Fixes: fixRegistry, CertFile: certFile, KeyFile: keyFile, RescanFn: rescanFn})
 	}()
 
-	return web.Serve(web.Options{Addr: addr, Live: live, Fixes: fixRegistry, CertFile: certFile, KeyFile: keyFile, RescanFn: rescanFn})
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return nil
+	}
 }
 
 func registerFixtureFixes(r *fix.Registry, findings []domain.Finding) {
