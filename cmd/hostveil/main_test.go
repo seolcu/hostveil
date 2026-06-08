@@ -36,7 +36,7 @@ func TestScanningMessage(t *testing.T) {
 		tool string
 		want string
 	}{
-		{"trivy", "Scanning compose projects..."},
+		{"trivy", "Scanning container images..."},
 		{"lynis", "Auditing system hardening..."},
 		{"unknown", "Scanning..."},
 		{"", "Scanning..."},
@@ -206,5 +206,95 @@ func TestCheckLatestVersion_ReadError(t *testing.T) {
 	}
 	if version != "1.0.0" {
 		t.Errorf("checkLatestVersion() = %q, want %q", version, "1.0.0")
+	}
+}
+
+func TestRunSetup_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("#!/bin/sh\necho hello\n"))
+	}))
+	defer ts.Close()
+
+	oldURL := installerURL
+	oldClient := httpClient
+	defer func() {
+		installerURL = oldURL
+		httpClient = oldClient
+	}()
+
+	installerURL = ts.URL
+	httpClient = ts.Client()
+
+	err := runSetup()
+	if err != nil {
+		t.Fatalf("runSetup() returned error: %v", err)
+	}
+}
+
+func TestRunSetup_HTTPError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	oldURL := installerURL
+	oldClient := httpClient
+	defer func() {
+		installerURL = oldURL
+		httpClient = oldClient
+	}()
+
+	installerURL = ts.URL
+	httpClient = ts.Client()
+
+	err := runSetup()
+	if err == nil {
+		t.Fatal("runSetup() should return error for HTTP 404")
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Errorf("runSetup() error should mention status code, got: %v", err)
+	}
+}
+
+func TestRunSetup_ServerError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	oldURL := installerURL
+	oldClient := httpClient
+	defer func() {
+		installerURL = oldURL
+		httpClient = oldClient
+	}()
+
+	installerURL = ts.URL
+	httpClient = ts.Client()
+
+	err := runSetup()
+	if err == nil {
+		t.Fatal("runSetup() should return error for HTTP 500")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("runSetup() error should mention status code, got: %v", err)
+	}
+}
+
+func TestRunSetup_NetworkError(t *testing.T) {
+	oldURL := installerURL
+	oldClient := httpClient
+	defer func() {
+		installerURL = oldURL
+		httpClient = oldClient
+	}()
+
+	installerURL = "http://127.0.0.1:1/"
+	httpClient = &http.Client{}
+
+	err := runSetup()
+	if err == nil {
+		t.Error("runSetup() should return error for unreachable host")
 	}
 }

@@ -107,7 +107,7 @@ func scoreAxisForFinding(f Finding) string {
 		return scoreAxisVulnerabilities
 	case f.Source == SourceLynis || strings.HasPrefix(id, "lynis."):
 		return scoreAxisHost
-	case id == "trivy.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
+	case id == "compose.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
 		return scoreAxisSecrets
 	default:
 		return scoreAxisContainer

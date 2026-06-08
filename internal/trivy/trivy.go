@@ -1,4 +1,4 @@
-// Package trivy discovers compose projects and runs trivy config/image scans.
+// Package trivy discovers compose projects and runs trivy image scans.
 package trivy
 
 import (
@@ -8,15 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/compose"
+	"github.com/seolcu/hostveil/internal/composeaudit"
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func ScanAll() ([]domain.Finding, error) {
-	projects, err := discoverProjects()
+	projects, err := composeaudit.DiscoverProjects()
 	if err != nil {
 		return nil, err
 	}
@@ -35,88 +35,30 @@ func ScanAll() ([]domain.Finding, error) {
 	return all, errors.Join(errs...)
 }
 
-type project struct {
-	Name        string
-	ComposePath string
-}
-
-type composeLSProject struct {
-	Name        string `json:"Name"`
-	ConfigFiles string `json:"ConfigFiles"`
-}
-
-func discoverProjects() ([]project, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), domain.DockerComposeTimeout)
-	defer cancel()
-
-	out, err := exec.CommandContext(ctx, "docker", "compose", "ls", "--format", "json").Output()
-	if err != nil {
-		return nil, fmt.Errorf("docker compose ls: %w", err)
-	}
-
-	var raw []composeLSProject
-	if err := json.Unmarshal(out, &raw); err != nil {
-		return nil, fmt.Errorf("docker compose ls parse: %w", err)
-	}
-
-	var projects []project
-	for _, r := range raw {
-		files := strings.Split(r.ConfigFiles, ",")
-		path := strings.TrimSpace(files[0])
-		if path == "" {
-			continue
-		}
-		projects = append(projects, project{Name: r.Name, ComposePath: path})
-	}
-	return projects, nil
-}
-
-func scanProject(p project) ([]domain.Finding, error) {
+func scanProject(p composeaudit.Project) ([]domain.Finding, error) {
 	var all []domain.Finding
 	var errs []error
 
-	cfgs, err := runConfig(p.ComposePath)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("config scan %q: %w", p.ComposePath, err))
-	}
-	// Config findings have no Service field (Trivy config output doesn't
-	// specify which compose service each misconfiguration affects).
-	// The fix engine will apply to all services via targetServices(f, "").
-	for i := range cfgs {
-		if cfgs[i].Metadata == nil {
-			cfgs[i].Metadata = map[string]string{}
-		}
-		cfgs[i].Metadata["compose_path"] = p.ComposePath
-		cfgs[i].Metadata["project"] = p.Name
-	}
-	all = append(all, cfgs...)
-
 	f, composeErr := compose.Open(p.ComposePath)
 	if composeErr != nil {
-		errs = append(errs, fmt.Errorf("open compose %q: %w", p.ComposePath, composeErr))
-	} else {
-		images, imgErrs := extractImages(f)
-		errs = append(errs, imgErrs...)
-		for _, img := range images {
-			findings, imgScanErr := runImage(img)
-			if imgScanErr != nil {
-				errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
-			}
-			for i := range findings {
-				if findings[i].Metadata == nil {
-					findings[i].Metadata = map[string]string{}
-				}
-				findings[i].Metadata["compose_path"] = p.ComposePath
-				findings[i].Metadata["project"] = p.Name
-			}
-			all = append(all, findings...)
-		}
+		return nil, fmt.Errorf("open compose %q: %w", p.ComposePath, composeErr)
+	}
 
-		envFindings, envErr := detectEnvFiles(f, p.ComposePath, p.Name)
-		if envErr != nil {
-			errs = append(errs, envErr)
+	images, imgErrs := extractImages(f)
+	errs = append(errs, imgErrs...)
+	for _, img := range images {
+		findings, imgScanErr := runImage(img)
+		if imgScanErr != nil {
+			errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
 		}
-		all = append(all, envFindings...)
+		for i := range findings {
+			if findings[i].Metadata == nil {
+				findings[i].Metadata = map[string]string{}
+			}
+			findings[i].Metadata["compose_path"] = p.ComposePath
+			findings[i].Metadata["project"] = p.Name
+		}
+		all = append(all, findings...)
 	}
 
 	return all, errors.Join(errs...)
@@ -140,60 +82,6 @@ func extractImages(f *compose.File) ([]string, []error) {
 		}
 	}
 	return images, nil
-}
-
-// ── trivy config parsing ──
-
-type configReport struct {
-	Results []struct {
-		Misconfigurations []misconfig `json:"Misconfigurations"`
-	} `json:"Results"`
-}
-
-type misconfig struct {
-	ID          string `json:"ID"`
-	Title       string `json:"Title"`
-	Description string `json:"Description"`
-	Severity    string `json:"Severity"`
-	Resolution  string `json:"Resolution"`
-}
-
-func runConfig(path string) ([]domain.Finding, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyConfigTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "trivy", "config", "--format", "json", "--quiet", path)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		detail := sanitizeCommandOutput(stderr.Bytes())
-		if detail == "no output" {
-			detail = sanitizeCommandOutput(out)
-		}
-		return nil, fmt.Errorf("trivy config: %w: %s", err, detail)
-	}
-
-	var report configReport
-	if err := decodeTrivyJSON(out, &report); err != nil {
-		return nil, err
-	}
-
-	var findings []domain.Finding
-	for _, result := range report.Results {
-		for _, m := range result.Misconfigurations {
-			findings = append(findings, domain.Finding{
-				ID:          "trivy." + strings.ToLower(m.ID),
-				Title:       m.Title,
-				Description: m.Description,
-				HowToFix:    m.Resolution,
-				Severity:    parseSeverity(m.Severity),
-				Source:      domain.SourceTrivy,
-				Remediation: domain.RemediationUnavailable,
-			})
-		}
-	}
-	return findings, nil
 }
 
 // ── trivy image parsing ──
@@ -317,45 +205,4 @@ func parseSeverity(s string) domain.Severity {
 	default:
 		return domain.SeverityMedium
 	}
-}
-
-// ── env_file detection ──
-
-func detectEnvFiles(f *compose.File, composePath, project string) ([]domain.Finding, error) {
-	svcs, err := f.ServiceNames()
-	if err != nil {
-		return nil, fmt.Errorf("list services %q: %w", composePath, err)
-	}
-	var findings []domain.Finding
-	for _, svc := range svcs {
-		envFiles, err := f.GetFieldStrings(svc, "env_file")
-		if err != nil {
-			continue
-		}
-		for _, raw := range envFiles {
-			envPath := strings.TrimSpace(raw)
-			if envPath == "" {
-				continue
-			}
-			if !filepath.IsAbs(envPath) {
-				envPath = filepath.Join(filepath.Dir(composePath), envPath)
-			}
-			findings = append(findings, domain.Finding{
-				ID:          "trivy.dr004",
-				Title:       "Secrets in env_file",
-				Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svc, envPath),
-				HowToFix:    "Restrict .env permissions or migrate to Docker secrets.",
-				Severity:    domain.SeverityHigh,
-				Source:      domain.SourceTrivy,
-				Service:     svc,
-				Remediation: domain.RemediationUnavailable,
-				Metadata: map[string]string{
-					"compose_path": composePath,
-					"project":      project,
-					"env_path":     envPath,
-				},
-			})
-		}
-	}
-	return findings, nil
 }

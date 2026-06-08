@@ -13,7 +13,7 @@ func TestScanningMessage(t *testing.T) {
 		tool string
 		want string
 	}{
-		{"trivy", "Scanning compose projects..."},
+		{"trivy", "Scanning container images..."},
 		{"lynis", "Auditing system hardening..."},
 		{"unknown", "Scanning..."},
 		{"", "Scanning..."},

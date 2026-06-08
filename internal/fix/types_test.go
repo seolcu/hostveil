@@ -159,8 +159,8 @@ func TestRegisterAll(t *testing.T) {
 	RegisterAll(r)
 	// spot-check a few known entries
 	for _, id := range []string{
-		"trivy.ds001",
-		"trivy.dr001",
+		"compose.ds001",
+		"compose.dr001",
 		"lynis.AUTH-9286",
 		"lynis.FIRE-4512",
 		"trivy.cve-*",
@@ -175,21 +175,21 @@ func TestRegisterAll_Classification(t *testing.T) {
 	r := New()
 	RegisterAll(r)
 	// ds001 = 1 action, ActionEdit → Auto
-	fix := r.Lookup("trivy.ds001")
+	fix := r.Lookup("compose.ds001")
 	if fix == nil {
-		t.Fatal("trivy.ds001 not registered")
+		t.Fatal("compose.ds001 not registered")
 	}
 	if got := fix.Class(); got != domain.RemediationAuto {
-		t.Errorf("trivy.ds001 class = %v, want Auto", got)
+		t.Errorf("compose.ds001 class = %v, want Auto", got)
 	}
 
 	// dr001 = 2 actions → Review
-	review := r.Lookup("trivy.dr001")
+	review := r.Lookup("compose.dr001")
 	if review == nil {
-		t.Fatal("trivy.dr001 not registered")
+		t.Fatal("compose.dr001 not registered")
 	}
 	if got := review.Class(); got != domain.RemediationReview {
-		t.Errorf("trivy.dr001 class = %v, want Review", got)
+		t.Errorf("compose.dr001 class = %v, want Review", got)
 	}
 }
 
@@ -239,12 +239,12 @@ func TestRegisterAll_SystemFixActionTypes(t *testing.T) {
 func TestRegisterAll_WarningPreserved(t *testing.T) {
 	r := New()
 	RegisterAll(r)
-	fix := r.Lookup("trivy.ds003") // pid_mode: host
+	fix := r.Lookup("compose.ds003") // pid_mode: host
 	if fix == nil {
-		t.Fatal("trivy.ds003 not registered")
+		t.Fatal("compose.ds003 not registered")
 	}
 	if len(fix.Actions) == 0 || fix.Actions[0].Warning == "" {
-		t.Error("trivy.ds003 action should have a warning")
+		t.Error("compose.ds003 action should have a warning")
 	}
 }
 

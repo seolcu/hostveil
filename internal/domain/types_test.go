@@ -29,6 +29,7 @@ func TestSource_String(t *testing.T) {
 	}{
 		{SourceTrivy, "trivy"},
 		{SourceLynis, "lynis"},
+		{SourceCompose, "compose"},
 		{Source(99), "unknown"},
 	}
 	for _, tt := range tests {

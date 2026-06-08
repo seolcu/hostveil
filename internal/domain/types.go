@@ -32,6 +32,7 @@ type Source int
 const (
 	SourceTrivy Source = iota
 	SourceLynis
+	SourceCompose
 )
 
 func (s Source) String() string {
@@ -40,6 +41,8 @@ func (s Source) String() string {
 		return "trivy"
 	case SourceLynis:
 		return "lynis"
+	case SourceCompose:
+		return "compose"
 	default:
 		return "unknown"
 	}

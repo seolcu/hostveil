@@ -1,4 +1,3 @@
-// Package scan provides shared scanning logic for trivy and lynis.
 package scan
 
 import (
@@ -6,20 +5,20 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/composeaudit"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/lynis"
 	"github.com/seolcu/hostveil/internal/trivy"
 )
 
-// RunSingleTool runs one scan (trivy or lynis) and updates the ScanProgress.
-// It checks for the tool, runs the scan, classifies findings, and finalizes
-// when all tools are done.
 func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) {
-	if _, err := exec.LookPath(tool); err != nil {
-		live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
-		finalizeIfDone(live)
-		return
+	if tool != "compose" {
+		if _, err := exec.LookPath(tool); err != nil {
+			live.SetToolStatus(tool, domain.ToolSkipped, "Not found (run 'hostveil setup')")
+			finalizeIfDone(live)
+			return
+		}
 	}
 
 	live.SetToolStatus(tool, domain.ToolRunning, ScanningMessage(tool))
@@ -31,6 +30,8 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 		findings, scanErr = trivy.ScanAll()
 	case "lynis":
 		findings, scanErr = lynis.Scan()
+	case "compose":
+		findings, scanErr = composeaudit.ScanAll()
 	default:
 		live.SetToolStatus(tool, domain.ToolSkipped, "Unknown tool")
 		finalizeIfDone(live)
@@ -89,9 +90,11 @@ func summarizeScanError(err error) string {
 func ScanningMessage(tool string) string {
 	switch tool {
 	case "trivy":
-		return "Scanning compose projects..."
+		return "Scanning container images..."
 	case "lynis":
 		return "Auditing system hardening..."
+	case "compose":
+		return "Scanning compose projects..."
 	default:
 		return "Scanning..."
 	}

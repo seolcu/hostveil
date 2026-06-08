@@ -90,9 +90,11 @@ func run() error {
 		go runUpdateCheckBackground(live)
 	}
 	if !noScan {
+		go scan.RunSingleTool(live, fixRegistry, "compose")
 		go scan.RunSingleTool(live, fixRegistry, "trivy")
 		go scan.RunSingleTool(live, fixRegistry, "lynis")
 	} else {
+		live.SetToolStatus("compose", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.Finalize()
@@ -127,9 +129,11 @@ func runTUIWeb(args []string) error {
 		go runUpdateCheckBackground(live)
 	}
 	if !*noScan {
+		go scan.RunSingleTool(live, fixRegistry, "compose")
 		go scan.RunSingleTool(live, fixRegistry, "trivy")
 		go scan.RunSingleTool(live, fixRegistry, "lynis")
 	} else {
+		live.SetToolStatus("compose", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.Finalize()
@@ -187,9 +191,11 @@ func runServe(args []string) error {
 		go runUpdateCheckBackground(live)
 	}
 	if !*noScan {
+		go scan.RunSingleTool(live, fixRegistry, "compose")
 		go scan.RunSingleTool(live, fixRegistry, "trivy")
 		go scan.RunSingleTool(live, fixRegistry, "lynis")
 	} else {
+		live.SetToolStatus("compose", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("trivy", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.SetToolStatus("lynis", domain.ToolSkipped, "Skipped (--no-scan)")
 		live.Finalize()
@@ -376,6 +382,12 @@ func runSetup() error {
 		return fmt.Errorf("failed to download installer: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		_ = f.Close()
+		_ = os.Remove(tmpFile)
+		return fmt.Errorf("installer download failed: HTTP %d", resp.StatusCode)
+	}
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		_ = f.Close()

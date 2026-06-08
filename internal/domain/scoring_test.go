@@ -5,9 +5,9 @@ import "testing"
 func TestScoreFindings_AxisBreakdown(t *testing.T) {
 	breakdown := ScoreFindings([]Finding{
 		{ID: "trivy.cve-2024-1234", Severity: SeverityCritical, Source: SourceTrivy, Service: "nginx:latest"},
-		{ID: "trivy.ds001", Severity: SeverityHigh, Source: SourceTrivy},
+		{ID: "compose.ds001", Severity: SeverityHigh, Source: SourceCompose},
 		{ID: "lynis.AUTH-9286", Severity: SeverityMedium, Source: SourceLynis},
-		{ID: "trivy.dr004", Severity: SeverityHigh, Source: SourceTrivy},
+		{ID: "compose.dr004", Severity: SeverityHigh, Source: SourceCompose},
 	})
 
 	if breakdown.Overall != 80 {
@@ -50,7 +50,7 @@ func TestScoreFindings_SkipsFixedAndDedupesByService(t *testing.T) {
 		{ID: "trivy.cve-2024-1234", Severity: SeverityCritical, Source: SourceTrivy, Service: "nginx:latest"},
 		{ID: "trivy.cve-2024-1234", Severity: SeverityCritical, Source: SourceTrivy, Service: "nginx:latest"},
 		{ID: "trivy.cve-2024-1234", Severity: SeverityCritical, Source: SourceTrivy, Service: "postgres:latest"},
-		{ID: "trivy.ds001", Severity: SeverityCritical, Source: SourceTrivy, Fixed: true},
+		{ID: "compose.ds001", Severity: SeverityCritical, Source: SourceCompose, Fixed: true},
 	})
 
 	byID := axesByID(breakdown.Axes)

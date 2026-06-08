@@ -86,7 +86,7 @@ func TestExtractImages_Dedup(t *testing.T) {
 }
 
 func TestDecodeTrivyJSON_NonJSONOutput(t *testing.T) {
-	var report configReport
+	var report imageReport
 	err := decodeTrivyJSON([]byte("Scanning...\nnot json"), &report)
 	if err == nil {
 		t.Fatal("expected error for non-JSON output")
@@ -97,7 +97,7 @@ func TestDecodeTrivyJSON_NonJSONOutput(t *testing.T) {
 }
 
 func TestDecodeTrivyJSON_InvalidJSONOutput(t *testing.T) {
-	var report configReport
+	var report imageReport
 	err := decodeTrivyJSON([]byte("{"), &report)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON output")
