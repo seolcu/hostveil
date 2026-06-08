@@ -58,11 +58,11 @@ func TestRegisterImageFixes(t *testing.T) {
 	if f == nil {
 		t.Fatal("expected to find fix for trivy.cve-2024-1234")
 	}
-	if f.Label != "Update image to patched version" {
+	if f.Label != "Update image tag or rebuild with patched base/package version. Verify with a new Trivy scan." {
 		t.Errorf("unexpected label: %q", f.Label)
 	}
-	if len(f.Actions) != 1 {
-		t.Errorf("expected 1 action, got %d", len(f.Actions))
+	if len(f.Actions) != 0 {
+		t.Errorf("expected 0 actions, got %d", len(f.Actions))
 	}
 }
 
@@ -77,8 +77,8 @@ func TestImageFixClassify(t *testing.T) {
 	r.Classify(findings)
 
 	for _, f := range findings {
-		if f.Remediation != domain.RemediationAuto {
-			t.Errorf("expected RemediationAuto for %q, got %v", f.ID, f.Remediation)
+		if f.Remediation != domain.RemediationManual {
+			t.Errorf("expected RemediationManual for %q, got %v", f.ID, f.Remediation)
 		}
 	}
 }

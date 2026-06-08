@@ -2,6 +2,8 @@ package fix
 
 import (
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func TestSanitizePath(t *testing.T) {
@@ -102,6 +104,54 @@ func TestSanitizePort(t *testing.T) {
 		got := sanitizePort(tt.input)
 		if got != tt.want {
 			t.Errorf("sanitizePort(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSystemFixClassification(t *testing.T) {
+	r := New()
+	registerSystemFixes(r)
+
+	tests := []struct {
+		id   string
+		kind domain.RemediationKind
+	}{
+		// Should stay AUTO
+		{"lynis.FILE-6310", domain.RemediationAuto},
+		{"lynis.KRNL-5830", domain.RemediationAuto},
+		// Downgraded to REVIEW
+		{"lynis.AUTH-9286", domain.RemediationReview},
+		{"lynis.KRNL-5780", domain.RemediationReview},
+		{"lynis.ACCT-9626", domain.RemediationReview},
+		{"lynis.LOGG-2100", domain.RemediationReview},
+		// Already REVIEW
+		{"lynis.FIRE-4512", domain.RemediationReview},
+		// Downgraded to MANUAL
+		{"lynis.AUTH-9265", domain.RemediationManual},
+		{"lynis.HRMN-6114", domain.RemediationManual},
+		{"lynis.BOOT-5120", domain.RemediationManual},
+		{"lynis.AUTH-9328", domain.RemediationManual},
+	}
+
+	for _, tt := range tests {
+		f := r.Lookup(tt.id)
+		if f == nil {
+			t.Errorf("%s not registered", tt.id)
+			continue
+		}
+		if got := f.Class(); got != tt.kind {
+			t.Errorf("%s Class() = %v, want %v", tt.id, got, tt.kind)
+		}
+	}
+
+	// MANUAL fixes must have no actions
+	for _, id := range []string{"lynis.AUTH-9265", "lynis.HRMN-6114", "lynis.BOOT-5120", "lynis.AUTH-9328"} {
+		f := r.Lookup(id)
+		if f == nil {
+			continue
+		}
+		if len(f.Actions) != 0 {
+			t.Errorf("%s should have 0 actions, got %d", id, len(f.Actions))
 		}
 	}
 }

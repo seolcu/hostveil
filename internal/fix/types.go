@@ -54,10 +54,14 @@ type Action struct {
 type Fix struct {
 	FindingID string
 	Label     string
+	Kind      domain.RemediationKind // zero = auto-detect from action count
 	Actions   []Action
 }
 
 func (f *Fix) Class() domain.RemediationKind {
+	if f.Kind != 0 {
+		return f.Kind
+	}
 	switch {
 	case len(f.Actions) == 0:
 		return domain.RemediationUnavailable

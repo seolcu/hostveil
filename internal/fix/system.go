@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func registerSystemFixes(r *Registry) {
@@ -46,20 +48,34 @@ func registerSystemFixes(r *Registry) {
 		}
 	}
 
-	// Auto (edit) — SSH
+	// Review — SSH
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9286",
 		Label:     "Disable SSH password authentication",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Disable SSH password authentication", func(ctx Context) error {
-			return exec.Command("sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config").Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Disable SSH password authentication",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Disabling password auth may lock out users who do not have SSH keys configured. Ensure key-based auth works first.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sed", "-i", `s/^#\?PasswordAuthentication.*/PasswordAuthentication no/`, "/etc/ssh/sshd_config").Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9308",
 		Label:     "Restrict root SSH login",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Restrict root SSH login", func(ctx Context) error {
-			return exec.Command("sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config").Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Restrict root SSH login",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Changing root SSH login policy may prevent administrative access. Verify an alternative account has sudo access.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sed", "-i", `s/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/`, "/etc/ssh/sshd_config").Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — File permissions
@@ -90,22 +106,66 @@ func registerSystemFixes(r *Registry) {
 		}},
 	})
 
-	// Auto (exec) — Kernel
+	// Review — Kernel
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5780",
 		Label:     "Disable IP forwarding",
-		Actions:   []Action{sysctlApply("net.ipv4.ip_forward", "0")},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set sysctl net.ipv4.ip_forward=0",
+			Command: []string{"sysctl", "-w", "net.ipv4.ip_forward=0"},
+			Warning: "Disabling IP forwarding will break any routing, NAT, or VPN functionality. Skip if this host acts as a router.",
+			Apply: func(ctx Context) error {
+				if err := exec.Command("sysctl", "-w", "net.ipv4.ip_forward=0").Run(); err != nil {
+					return err
+				}
+				entry := "net.ipv4.ip_forward=0"
+				param := "net.ipv4.ip_forward"
+				if exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run() != nil {
+					return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+				}
+				return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5820",
 		Label:     "Disable ICMP redirect",
-		Actions:   []Action{sysctlApply("net.ipv4.conf.all.accept_redirects", "0")},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set sysctl net.ipv4.conf.all.accept_redirects=0",
+			Command: []string{"sysctl", "-w", "net.ipv4.conf.all.accept_redirects=0"},
+			Warning: "Disabling ICMP redirects may affect network path optimization. Review for your network topology.",
+			Apply: func(ctx Context) error {
+				if err := exec.Command("sysctl", "-w", "net.ipv4.conf.all.accept_redirects=0").Run(); err != nil {
+					return err
+				}
+				entry := "net.ipv4.conf.all.accept_redirects=0"
+				param := "net.ipv4.conf.all.accept_redirects"
+				if exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run() != nil {
+					return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+				}
+				return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.NETW-2705",
 		Label:     "Harden network stack",
-		Actions: []Action{execCmd("sysctl -w net.ipv4.tcp_syncookies=1"),
-			execCmd("sysctl -w net.ipv4.conf.all.rp_filter=1")},
+		Actions: []Action{
+			{
+				Type:    ActionExec,
+				Label:   "Run: sysctl -w net.ipv4.tcp_syncookies=1",
+				Command: []string{"sysctl", "-w", "net.ipv4.tcp_syncookies=1"},
+				Warning: "Enabling syncookies may affect high-throughput TCP servers. Enabling rp_filter may drop legitimate packets in asymmetric routing setups.",
+				Apply: func(ctx Context) error {
+					return exec.Command("sysctl", "-w", "net.ipv4.tcp_syncookies=1").Run()
+				},
+			},
+			execCmd("sysctl -w net.ipv4.conf.all.rp_filter=1"),
+		},
 	})
 
 	// Auto (edit) — Banners
@@ -124,14 +184,16 @@ func registerSystemFixes(r *Registry) {
 		})},
 	})
 
-	// Auto (exec) — Accounts
+	// Review — Accounts
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9626",
 		Label:     "Set password aging",
+		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Set password aging to 90 days",
 			Command: []string{"chage", "-M", "90"},
+			Warning: "Setting password aging to 90 days may disrupt users who do not expect forced password changes. Notify users before applying.",
 			Apply: func(ctx Context) error {
 				u := sanitizeUser(ctx.Finding.Evidence["user"])
 				if u == "" {
@@ -147,7 +209,15 @@ func registerSystemFixes(r *Registry) {
 		FindingID: "lynis.FIRE-4512",
 		Label:     "Enable firewall",
 		Actions: []Action{
-			execCmd("ufw --force enable"),
+			{
+				Type:    ActionExec,
+				Label:   "Run: ufw --force enable",
+				Command: []string{"ufw", "--force", "enable"},
+				Warning: "Enabling firewall with default-deny policies will block all incoming connections including SSH. Ensure SSH (port 22) or your custom port is explicitly allowed first.",
+				Apply: func(ctx Context) error {
+					return exec.Command("ufw", "--force", "enable").Run()
+				},
+			},
 			{
 				Type:    ActionExec,
 				Label:   "Set iptables default deny policies",
@@ -166,6 +236,7 @@ func registerSystemFixes(r *Registry) {
 				Type:    ActionExec,
 				Label:   "Block port with ufw",
 				Command: []string{"ufw", "deny"},
+				Warning: "Blocking ports may disrupt services. The default port is 22 (SSH) — verify the port is correct before blocking.",
 				Apply: func(ctx Context) error {
 					port := ctx.Finding.Evidence["port"]
 					if port == "" {
@@ -179,8 +250,9 @@ func registerSystemFixes(r *Registry) {
 				},
 			},
 			{
-				Type:  ActionExec,
-				Label: "Block port with iptables",
+				Type:    ActionExec,
+				Label:   "Block port with iptables",
+				Warning: "Adding iptables DROP rules may persist only until reboot unless saved.",
 				Apply: func(ctx Context) error {
 					raw := ctx.Finding.Evidence["port"]
 					if raw == "" {
@@ -233,54 +305,20 @@ fi`
 		},
 	})
 
-	// Auto (exec) — LDAP
+	// Manual — LDAP
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9265",
-		Label:     "Configure LDAP authentication",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Install LDAP packages",
-			Warning: "Requires internet access. Post-install pam-auth-update may be needed.",
-			Command: []string{"sh", "-c", `if command -v apt-get >/dev/null 2>&1; then apt-get install -y libnss-ldap pam-ldap; elif command -v dnf >/dev/null 2>&1; then dnf install -y nss-pam-ldapd; elif command -v apk >/dev/null 2>&1; then apk add nss-pam-ldapd; else echo "No supported package manager" >&2; exit 1; fi`},
-			Apply: func(ctx Context) error {
-				script := `if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y libnss-ldap pam-ldap
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y nss-pam-ldapd
-elif command -v apk >/dev/null 2>&1; then
-    apk add nss-pam-ldapd
-else
-    echo "No supported package manager (apt/dnf/apk) found" >&2
-    exit 1
-fi`
-				return exec.Command("sh", "-c", script).Run()
-			},
-		}},
+		Label:     "LDAP authentication requires site-specific configuration. Install libnss-ldap/pam-ldap (Debian), nss-pam-ldapd (RHEL), or nss-pam-ldapd (Alpine) and run pam-auth-update. Consult your LDAP administrator for server details.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
 	})
 
-	// Auto (exec) — SELinux/AppArmor
+	// Manual — SELinux/AppArmor
 	r.Register(&Fix{
 		FindingID: "lynis.HRMN-6114",
-		Label:     "Enable SELinux or AppArmor",
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Install SELinux/AppArmor packages",
-			Warning: "Requires kernel support. May need reboot.",
-			Command: []string{"sh", "-c", `if command -v apt-get >/dev/null 2>&1; then apt-get install -y selinux-policy-default apparmor; elif command -v dnf >/dev/null 2>&1; then dnf install -y selinux-policy; elif command -v apk >/dev/null 2>&1; then apk add apparmor; else echo "No supported package manager" >&2; exit 1; fi`},
-			Apply: func(ctx Context) error {
-				script := `if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y selinux-policy-default apparmor
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y selinux-policy
-elif command -v apk >/dev/null 2>&1; then
-    apk add apparmor
-else
-    echo "No supported package manager (apt/dnf/apk) found" >&2
-    exit 1
-fi`
-				return exec.Command("sh", "-c", script).Run()
-			},
-		}},
+		Label:     "Enabling SELinux or AppArmor requires kernel support and may need a reboot. Install selinux-policy-default/apparmor (Debian), selinux-policy (RHEL), or apparmor (Alpine). Set enforcing mode after verifying no denials in permissive mode.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
 	})
 
 	// Auto (exec) — Kernel hardening (sysctl)
@@ -302,7 +340,24 @@ fi`
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5870",
 		Label:     "Enable reverse path filtering",
-		Actions:   []Action{sysctlApply("net.ipv4.conf.all.rp_filter", "1")},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set sysctl net.ipv4.conf.all.rp_filter=1",
+			Command: []string{"sysctl", "-w", "net.ipv4.conf.all.rp_filter=1"},
+			Warning: "Enabling rp_filter (strict mode) may drop legitimate packets in asymmetric routing setups. Consider mode 2 (loose) for multi-homed hosts.",
+			Apply: func(ctx Context) error {
+				if err := exec.Command("sysctl", "-w", "net.ipv4.conf.all.rp_filter=1").Run(); err != nil {
+					return err
+				}
+				entry := "net.ipv4.conf.all.rp_filter=1"
+				param := "net.ipv4.conf.all.rp_filter"
+				if exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run() != nil {
+					return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+				}
+				return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5880",
@@ -317,7 +372,24 @@ fi`
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5930",
 		Label:     "Disable TCP timestamps",
-		Actions:   []Action{sysctlApply("net.ipv4.tcp_timestamps", "0")},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set sysctl net.ipv4.tcp_timestamps=0",
+			Command: []string{"sysctl", "-w", "net.ipv4.tcp_timestamps=0"},
+			Warning: "Disabling TCP timestamps may affect TCP performance tuning or applications that rely on them. Review before applying.",
+			Apply: func(ctx Context) error {
+				if err := exec.Command("sysctl", "-w", "net.ipv4.tcp_timestamps=0").Run(); err != nil {
+					return err
+				}
+				entry := "net.ipv4.tcp_timestamps=0"
+				param := "net.ipv4.tcp_timestamps"
+				if exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run() != nil {
+					return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+				}
+				return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — File permissions
@@ -332,59 +404,81 @@ fi`
 		Actions:   []Action{execCmd("chmod 644 /etc/group")},
 	})
 
-	// Auto (edit) — Authentication
+	// Review — SSH
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9208",
 		Label:     "Disable SSH protocol 1",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set SSH Protocol 2", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^Protocol' /etc/ssh/sshd_config && sed -i 's/^Protocol.*/Protocol 2/' /etc/ssh/sshd_config || echo 'Protocol 2' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set SSH Protocol 2",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Modifying SSH protocol version may affect legacy clients. Verify all clients support Protocol 2.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^Protocol' /etc/ssh/sshd_config && sed -i 's/^Protocol.*/Protocol 2/' /etc/ssh/sshd_config || echo 'Protocol 2' >> /etc/ssh/sshd_config`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9222",
 		Label:     "Set password minimum days",
-		Actions: []Action{fileEdit("/etc/login.defs", "Set PASS_MIN_DAYS", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^PASS_MIN_DAYS' /etc/login.defs && sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 1/' /etc/login.defs || echo 'PASS_MIN_DAYS 1' >> /etc/login.defs`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set PASS_MIN_DAYS",
+			FilePath: "/etc/login.defs",
+			Warning:  "Setting minimum password age may prevent users from changing compromised passwords quickly. Review your policy.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^PASS_MIN_DAYS' /etc/login.defs && sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 1/' /etc/login.defs || echo 'PASS_MIN_DAYS 1' >> /etc/login.defs`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9223",
 		Label:     "Set password maximum days",
-		Actions: []Action{fileEdit("/etc/login.defs", "Set PASS_MAX_DAYS", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^PASS_MAX_DAYS' /etc/login.defs && sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' /etc/login.defs || echo 'PASS_MAX_DAYS 90' >> /etc/login.defs`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set PASS_MAX_DAYS",
+			FilePath: "/etc/login.defs",
+			Warning:  "Setting maximum password age will force periodic password changes. Ensure users are aware of the policy.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^PASS_MAX_DAYS' /etc/login.defs && sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' /etc/login.defs || echo 'PASS_MAX_DAYS 90' >> /etc/login.defs`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9262",
 		Label:     "Configure sudo timestamp timeout",
-		Actions: []Action{fileEdit("/etc/sudoers.d/hv-timeout", "Set sudo timestamp timeout", func(ctx Context) error {
-			return exec.Command("sh", "-c", `echo 'Defaults timestamp_timeout=5' > /etc/sudoers.d/hv-timeout && chmod 440 /etc/sudoers.d/hv-timeout`).Run()
-		})},
-	})
-
-	// Auto (exec) — Boot security
-	r.Register(&Fix{
-		FindingID: "lynis.BOOT-5120",
-		Label:     "Set bootloader password",
+		Kind:      domain.RemediationReview,
 		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Set GRUB bootloader password",
-			Warning: "Requires GRUB. Verify bootloader config after applying.",
-			Command: []string{"sh", "-c", `grub2-set-password 2>/dev/null || grub-set-password 2>/dev/null || echo "GRUB password tool not found" >&2`},
+			Type:     ActionEdit,
+			Label:    "Set sudo timestamp timeout",
+			FilePath: "/etc/sudoers.d/hv-timeout",
+			Warning:  "Modifying sudoers.d configuration may affect sudo behavior. Verify /etc/sudoers.d/hv-timeout does not conflict with existing sudo rules.",
 			Apply: func(ctx Context) error {
-				return exec.Command("sh", "-c", `if command -v grub2-set-password >/dev/null 2>&1; then grub2-set-password; elif command -v grub-set-password >/dev/null 2>&1; then grub-set-password; else echo "GRUB password tool not available" >&2; exit 1; fi`).Run()
+				return exec.Command("sh", "-c", `echo 'Defaults timestamp_timeout=5' > /etc/sudoers.d/hv-timeout && chmod 440 /etc/sudoers.d/hv-timeout`).Run()
 			},
 		}},
 	})
 
-	// Auto (exec) — Logging
+	// Manual — Boot security
+	r.Register(&Fix{
+		FindingID: "lynis.BOOT-5120",
+		Label:     "Setting a GRUB bootloader password prevents unauthorized boot parameter changes. Run grub2-set-password or grub-set-password interactively. Verify the generated password hash in your GRUB config before rebooting.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	// Review — Logging
 	r.Register(&Fix{
 		FindingID: "lynis.LOGG-2100",
 		Label:     "Enable syslog-ng or rsyslog",
+		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install and enable rsyslog",
-			Warning: "Requires internet access for package download.",
+			Warning: "Installing and enabling rsyslog requires internet access and may conflict with existing logging daemons. Review before applying.",
 			Apply: func(ctx Context) error {
 				script := `set -e
 if command -v apt-get >/dev/null 2>&1; then
@@ -402,14 +496,15 @@ fi`
 		}},
 	})
 
-	// Auto (exec) — Time sync
+	// Review — Time sync
 	r.Register(&Fix{
 		FindingID: "lynis.TIME-3106",
 		Label:     "Configure NTP/Chrony",
+		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install and enable chrony",
-			Warning: "Requires internet access. Configure NTP servers after install.",
+			Warning: "Installing chrony requires internet access and NTP server configuration. Ensure time sources are reachable.",
 			Apply: func(ctx Context) error {
 				script := `set -e
 if command -v apt-get >/dev/null 2>&1; then
@@ -427,41 +522,68 @@ fi`
 		}},
 	})
 
-	// Auto (edit) — Additional SSH hardening
+	// Review — SSH
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9216",
 		Label:     "Set SSH MaxAuthTries",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set MaxAuthTries", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^MaxAuthTries' /etc/ssh/sshd_config && sed -i 's/^MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config || echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set SSH MaxAuthTries",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Changing SSH authentication limits may affect automated tools or monitoring. Review before applying.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^MaxAuthTries' /etc/ssh/sshd_config && sed -i 's/^MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config || echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9229",
 		Label:     "Set SSH ClientAliveInterval",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set ClientAliveInterval", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^ClientAliveInterval' /etc/ssh/sshd_config && sed -i 's/^ClientAliveInterval.*/ClientAliveInterval 300/' /etc/ssh/sshd_config || echo 'ClientAliveInterval 300' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set SSH ClientAliveInterval",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Changing SSH keepalive may disconnect long-running sessions. Adjust interval to your environment.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^ClientAliveInterval' /etc/ssh/sshd_config && sed -i 's/^ClientAliveInterval.*/ClientAliveInterval 300/' /etc/ssh/sshd_config || echo 'ClientAliveInterval 300' >> /etc/ssh/sshd_config`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9230",
 		Label:     "Set SSH ClientAliveCountMax",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Set ClientAliveCountMax", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^ClientAliveCountMax' /etc/ssh/sshd_config && sed -i 's/^ClientAliveCountMax.*/ClientAliveCountMax 2/' /etc/ssh/sshd_config || echo 'ClientAliveCountMax 2' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set SSH ClientAliveCountMax",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Changing SSH keepalive count may disconnect sessions. Adjust to your environment.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^ClientAliveCountMax' /etc/ssh/sshd_config && sed -i 's/^ClientAliveCountMax.*/ClientAliveCountMax 2/' /etc/ssh/sshd_config || echo 'ClientAliveCountMax 2' >> /etc/ssh/sshd_config`).Run()
+			},
+		}},
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9328",
-		Label:     "Restrict SSH users",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Add AllowUsers", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^AllowUsers' /etc/ssh/sshd_config || echo 'AllowUsers root' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Label:     "Restrict SSH users with AllowUsers in /etc/ssh/sshd_config. Choose specific users for your environment — do NOT use a placeholder like 'root' alone. Example: AllowUsers admin operator. Restart sshd after editing.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
 	})
 	r.Register(&Fix{
 		FindingID: "lynis.SSH-7408",
 		Label:     "Harden SSH configuration",
-		Actions: []Action{fileEdit("/etc/ssh/sshd_config", "Disable SSH compression", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q '^Compression' /etc/ssh/sshd_config && sed -i 's/^Compression.*/Compression no/' /etc/ssh/sshd_config || echo 'Compression no' >> /etc/ssh/sshd_config`).Run()
-		})},
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Disable SSH compression",
+			FilePath: "/etc/ssh/sshd_config",
+			Warning:  "Disabling SSH compression may affect bandwidth for some workloads. Review for your use case.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `grep -q '^Compression' /etc/ssh/sshd_config && sed -i 's/^Compression.*/Compression no/' /etc/ssh/sshd_config || echo 'Compression no' >> /etc/ssh/sshd_config`).Run()
+			},
+		}},
 	})
 
 	// Auto (exec) — File permissions
@@ -476,7 +598,23 @@ fi`
 		FindingID: "lynis.NETW-3200",
 		Label:     "Harden network stack",
 		Actions: []Action{
-			sysctlApply("net.ipv4.tcp_syncookies", "1"),
+			{
+				Type:    ActionExec,
+				Label:   "Set sysctl net.ipv4.tcp_syncookies=1",
+				Command: []string{"sysctl", "-w", "net.ipv4.tcp_syncookies=1"},
+				Warning: "Enabling syncookies may affect high-throughput TCP servers. Enabling rp_filter may drop legitimate packets in asymmetric routing setups.",
+				Apply: func(ctx Context) error {
+					if err := exec.Command("sysctl", "-w", "net.ipv4.tcp_syncookies=1").Run(); err != nil {
+						return err
+					}
+					entry := "net.ipv4.tcp_syncookies=1"
+					param := "net.ipv4.tcp_syncookies"
+					if exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run() != nil {
+						return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+					}
+					return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+				},
+			},
 			sysctlApply("net.ipv4.conf.all.rp_filter", "1"),
 		},
 	})

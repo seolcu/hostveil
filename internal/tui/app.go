@@ -760,6 +760,17 @@ func (m model) runFix() (tea.Model, tea.Cmd) {
 		m.toastUntil = time.Now().Add(5 * time.Second)
 		return m, nil
 	}
+
+	if f.Class() == domain.RemediationManual {
+		m.toast = "This fix requires manual review. See guidance in the detail panel."
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return m, nil
+	}
+	if f.Class() == domain.RemediationUnavailable {
+		m.toast = "No automatic fix available for this finding."
+		m.toastUntil = time.Now().Add(5 * time.Second)
+		return m, nil
+	}
 	m.fixTarget = f
 	m.fixActionIdx = 0
 

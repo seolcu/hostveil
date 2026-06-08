@@ -197,7 +197,7 @@ func TestRegisterAll_SystemFixes(t *testing.T) {
 	r := New()
 	RegisterAll(r)
 	for _, id := range []string{
-		"lynis.ACCT-9626",
+		"lynis.AUTH-9328",
 		"lynis.FILE-6405",
 		"lynis.FIRE-4513",
 	} {
