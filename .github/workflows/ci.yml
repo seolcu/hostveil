@@ -39,7 +39,7 @@ jobs:
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
       - name: Test
-        run: go test ./...
+        run: go test -race ./...
 
   test-installer:
     runs-on: ubuntu-latest

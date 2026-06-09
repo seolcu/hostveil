@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -172,16 +171,6 @@ func TestCheckLatestVersion_NetworkError(t *testing.T) {
 	if err == nil {
 		t.Error("checkLatestVersion() should return error for unreachable host")
 	}
-}
-
-type errReader struct{}
-
-func (errReader) Read(p []byte) (n int, err error) {
-	return 0, io.ErrUnexpectedEOF
-}
-
-func (errReader) Close() error {
-	return nil
 }
 
 func TestCheckLatestVersion_ReadError(t *testing.T) {

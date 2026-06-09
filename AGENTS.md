@@ -34,9 +34,14 @@ internal/
 │   ├── live.go               — ScanProgress, thread-safe state, Snapshot
 │   └── defaults.go           — Timeouts and constants
 ├── scan/
-│   └── scan.go               — RunSingleTool: dispatch to trivy/lynis, classify findings
+│   └── scan.go               — RunSingleTool: dispatch to trivy/lynis/composeaudit, classify findings
 ├── trivy/
 │   └── trivy.go              — ScanAll(): compose ls → config + image scan
+├── composeaudit/
+│   ├── audit.go              — ScanAll(): native compose YAML audit (no trivy)
+│   ├── discover.go           — DiscoverProjects(): docker compose ls → config paths
+│   ├── env.go                — .env file parsing for compose variable resolution
+│   └── rules.go              — audit rules (privileged, host network, mounts, caps, etc.)
 ├── lynis/
 │   └── lynis.go              — Scan(): lynis audit → report.dat parsing
 ├── fix/
@@ -61,6 +66,7 @@ internal/
 
 ```
 main.go → ensureSudo() → goroutine trivy.ScanAll() + goroutine lynis.Scan()
+                        → scan.RunSingleTool("composeaudit") → composeaudit.ScanAll()
        → scan.RunSingleTool → fix.Registry.Classify → merge findings
        → calculateScore() → ScanResult
 

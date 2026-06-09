@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
@@ -1298,57 +1297,6 @@ func (m model) startRescan() model {
 		}
 	}()
 	return m
-}
-
-// ── keymap for help ──
-
-type keyMap struct {
-	bindings []key.Binding
-}
-
-func (k keyMap) ShortHelp() []key.Binding  { return k.bindings }
-func (k keyMap) FullHelp() [][]key.Binding { return [][]key.Binding{k.bindings} }
-
-func (m model) listKeyMap() keyMap {
-	binds := []key.Binding{
-		key.NewBinding(key.WithKeys("↑/↓"), key.WithHelp("j/k", "navigate")),
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "detail")),
-		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
-		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
-		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "dismiss")),
-		key.NewBinding(key.WithKeys("D"), key.WithHelp("D", "toggle dismissed")),
-		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
-		key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a", "select all")),
-		key.NewBinding(key.WithKeys("0-4"), key.WithHelp("0-4", "severity filter")),
-		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "source: "+m.filter.source)),
-		key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "remediation: "+m.filter.remediation)),
-		key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "sort: "+m.filter.sortBy)),
-		key.NewBinding(key.WithKeys("O"), key.WithHelp("O", "direction: "+m.filter.sortDir)),
-		key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "clear filters")),
-		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
-		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
-		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
-		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
-		key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "export")),
-		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-	}
-	return keyMap{binds}
-}
-
-func (m model) detailKeyMap() keyMap {
-	return keyMap{[]key.Binding{
-		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-		key.NewBinding(key.WithKeys("↑/↓"), key.WithHelp("j/k", "scroll")),
-		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "fix")),
-		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "dismiss")),
-		key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
-		key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
-		key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "recalc score")),
-		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "rescan")),
-		key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "export")),
-		key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-	}}
 }
 
 func tickCmd() tea.Cmd {
