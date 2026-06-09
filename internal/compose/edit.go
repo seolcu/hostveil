@@ -55,7 +55,13 @@ func (f *File) Diff() string {
 		return ""
 	}
 	defer os.Remove(tmp.Name())
-	if err := yaml.NewEncoder(tmp).Encode(&f.doc); err != nil {
+	enc := yaml.NewEncoder(tmp)
+	if err := enc.Encode(&f.doc); err != nil {
+		enc.Close()
+		tmp.Close()
+		return ""
+	}
+	if err := enc.Close(); err != nil {
 		tmp.Close()
 		return ""
 	}
@@ -348,4 +354,20 @@ func (f *File) GetFieldRaw(service, path string) (string, error) {
 		return node.Value, nil
 	}
 	return "", nil
+}
+
+func (f *File) GetFieldNode(service, path string) *yaml.Node {
+	svc, err := f.serviceNode(service, false)
+	if err != nil || svc == nil {
+		return nil
+	}
+	parts := strings.Split(path, ".")
+	node := svc
+	for _, part := range parts {
+		node = findInMapping(node, part)
+		if node == nil {
+			return nil
+		}
+	}
+	return node
 }

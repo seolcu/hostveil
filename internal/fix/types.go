@@ -78,6 +78,10 @@ func (f *Fix) Run(ctx Context, actionIdx int) FixResult {
 	}
 	action := f.Actions[actionIdx]
 
+	if action.Apply == nil {
+		return FixResult{Error: "action has no Apply function"}
+	}
+
 	var diff string
 	if action.Type == ActionEdit {
 		var err error

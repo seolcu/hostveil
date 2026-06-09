@@ -143,11 +143,11 @@ func TestParseEntry_Evidence_FILE6405(t *testing.T) {
 	if f == nil {
 		t.Fatal("parseEntry returned nil")
 	}
-	if f.Evidence["path"] != "/tmp/sensitive" {
-		t.Errorf("Evidence[path] = %q, want /tmp/sensitive", f.Evidence["path"])
-	}
 	if f.Evidence["extra"] != "/tmp/sensitive" {
 		t.Errorf("Evidence[extra] = %q, want /tmp/sensitive", f.Evidence["extra"])
+	}
+	if _, ok := f.Evidence["path"]; ok {
+		t.Error("FILE-6405 should not have Evidence[path] (no special-casing)")
 	}
 }
 
@@ -156,8 +156,11 @@ func TestParseEntry_Evidence_ACCT9626(t *testing.T) {
 	if f == nil {
 		t.Fatal("parseEntry returned nil")
 	}
-	if f.Evidence["user"] != "admin" {
-		t.Errorf("Evidence[user] = %q, want admin", f.Evidence["user"])
+	if f.Evidence["extra"] != "admin" {
+		t.Errorf("Evidence[extra] = %q, want admin", f.Evidence["extra"])
+	}
+	if _, ok := f.Evidence["user"]; ok {
+		t.Error("ACCT-9626 should not have Evidence[user] (no special-casing)")
 	}
 }
 
@@ -166,8 +169,11 @@ func TestParseEntry_Evidence_FIRE4513(t *testing.T) {
 	if f == nil {
 		t.Fatal("parseEntry returned nil")
 	}
-	if f.Evidence["port"] != "8080/tcp" {
-		t.Errorf("Evidence[port] = %q, want 8080/tcp", f.Evidence["port"])
+	if f.Evidence["extra"] != "8080/tcp" {
+		t.Errorf("Evidence[extra] = %q, want 8080/tcp", f.Evidence["extra"])
+	}
+	if _, ok := f.Evidence["port"]; ok {
+		t.Error("FIRE-4513 should not have Evidence[port] (no special-casing)")
 	}
 }
 

@@ -1,34 +1,14 @@
 # Test Compose project — deliberately vulnerable, lightweight images
-# Covers: ds001, ds005, ds014, ds015, dr001-dr004
+# Covers: ds001 (db), dr002 (web)
 services:
   web:
-    image: nginx:1.20-alpine
-    privileged: true
-    network_mode: host
-    restart: always
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
-      - SYS_RAWIO
-      - SYS_PTRACE
-      - SYS_MODULE
-    security_opt:
-      - seccomp:unconfined
-      - apparmor:unconfined
+    image: nginx:alpine
     ports:
       - "0.0.0.0:8080:80"
-    volumes:
-      - /tmp/test-data:/data
-    environment:
-      - SECRET_KEY=hardcoded-secret-value
 
   db:
-    image: postgres:12-alpine
+    image: postgres:alpine
     privileged: true
-    restart: always
 
   cache:
-    image: redis:6-alpine
-    restart: always
-    ports:
-      - "6379:6379"
+    image: redis:alpine

@@ -34,24 +34,15 @@ func runLynis(reportPath string) error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
-	err1 := cmd.Run()
-	if err1 == nil {
-		return nil
-	}
-
-	ctx2, cancel2 := context.WithTimeout(context.Background(), domain.LynisAuditTimeout)
-	defer cancel2()
-
-	cmd2 := exec.CommandContext(ctx2, "lynis", "audit", "system", "--quiet", "--logfile", reportPath)
 	var stderrBuf strings.Builder
-	cmd2.Stderr = &stderrBuf
-	err2 := cmd2.Run()
-	if err2 != nil {
+	cmd.Stderr = &stderrBuf
+	err := cmd.Run()
+	if err != nil {
 		stderr := strings.TrimSpace(stderrBuf.String())
 		if stderr != "" {
-			return fmt.Errorf("first attempt: %w; second attempt: %w: %s", err1, err2, stderr)
+			return fmt.Errorf("lynis scan: %w: %s", err, stderr)
 		}
-		return fmt.Errorf("first attempt: %w; second attempt: %w", err1, err2)
+		return fmt.Errorf("lynis scan: %w", err)
 	}
 	return nil
 }
@@ -121,14 +112,6 @@ func parseEntry(line string, sev domain.Severity) *domain.Finding {
 		extra := strings.TrimSpace(parts[3])
 		if extra != "" {
 			ev["extra"] = extra
-			switch {
-			case id == "FILE-6405" || strings.HasPrefix(id, "FILE-6405"):
-				ev["path"] = extra
-			case id == "ACCT-9626" || strings.HasPrefix(id, "ACCT-9626"):
-				ev["user"] = extra
-			case id == "FIRE-4513" || strings.HasPrefix(id, "FIRE-4513"):
-				ev["port"] = extra
-			}
 		}
 	}
 

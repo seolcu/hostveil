@@ -46,11 +46,11 @@ func TestAuditProject_PIDModeHost(t *testing.T) {
 	f := openCompose(t, `services:
   web:
     image: nginx
-    pid_mode: host
+    pid: host
 `)
 	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
 	if !hasFinding(findings, "compose.ds003") {
-		t.Error("expected compose.ds003 for pid_mode: host")
+		t.Error("expected compose.ds003 for pid: host")
 	}
 }
 
@@ -58,11 +58,11 @@ func TestAuditProject_IPCModeHost(t *testing.T) {
 	f := openCompose(t, `services:
   web:
     image: nginx
-    ipc_mode: host
+    ipc: host
 `)
 	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
 	if !hasFinding(findings, "compose.ds004") {
-		t.Error("expected compose.ds004 for ipc_mode: host")
+		t.Error("expected compose.ds004 for ipc: host")
 	}
 }
 

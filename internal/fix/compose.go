@@ -34,8 +34,8 @@ func registerComposeFixes(r *Registry) {
 
 	r.Register(&Fix{FindingID: "compose.ds001", Label: "Disable privileged mode", Actions: []Action{edit("privileged", false)}})
 	r.Register(&Fix{FindingID: "compose.ds002", Label: "Enable read-only root filesystem", Actions: []Action{edit("read_only", true)}})
-	r.Register(&Fix{FindingID: "compose.ds003", Label: "Remove pid_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove pid_mode: host", Warning: "Container loses host PID access.", Apply: func(ctx Context) error { return composeDel(ctx, "pid_mode") }}}})
-	r.Register(&Fix{FindingID: "compose.ds004", Label: "Remove ipc_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove ipc_mode: host", Warning: "Container loses host IPC access.", Apply: func(ctx Context) error { return composeDel(ctx, "ipc_mode") }}}})
+	r.Register(&Fix{FindingID: "compose.ds003", Label: "Remove pid: host", Actions: []Action{{Type: ActionEdit, Label: "Remove pid: host", Warning: "Container loses host PID access.", Apply: func(ctx Context) error { return composeDel(ctx, "pid") }}}})
+	r.Register(&Fix{FindingID: "compose.ds004", Label: "Remove ipc: host", Actions: []Action{{Type: ActionEdit, Label: "Remove ipc: host", Warning: "Container loses host IPC access.", Apply: func(ctx Context) error { return composeDel(ctx, "ipc") }}}})
 	r.Register(&Fix{FindingID: "compose.ds005", Label: "Drop dangerous capabilities", Actions: []Action{{
 		Type:  ActionEdit,
 		Label: "Drop all dangerous capabilities",
@@ -64,7 +64,7 @@ func registerComposeFixes(r *Registry) {
 		Label:     "Change network_mode: host",
 		Actions: []Action{
 			{Type: ActionEdit, Label: "Remove (default to bridge)", Apply: func(ctx Context) error { return composeDel(ctx, "network_mode") }},
-			{Type: ActionEdit, Label: "Assign to overlay network", Apply: func(ctx Context) error { return composeEdit(ctx, "network_mode", "overlay") }},
+			{Type: ActionEdit, Label: "Assign to bridge network", Apply: func(ctx Context) error { return composeEdit(ctx, "network_mode", "bridge") }},
 		},
 	})
 	r.Register(&Fix{

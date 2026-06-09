@@ -13,17 +13,12 @@ DOCKER_PID=$!
 until docker info >/dev/null 2>&1; do sleep 0.5; done
 echo "      ready."
 
-# ── 2. Apply kernel-level vulnerabilities (expanded) ──
+# ── 2. Apply kernel-level vulnerabilities ──
 echo "[2/4] Applying kernel vulnerabilities..."
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
-sysctl -w net.ipv4.conf.all.accept_redirects=1 2>/dev/null || true
-sysctl -w net.ipv4.conf.all.send_redirects=1 2>/dev/null || true
 sysctl -w net.ipv4.conf.all.accept_source_route=1 2>/dev/null || true
-sysctl -w net.ipv4.tcp_syncookies=0 2>/dev/null || true
-sysctl -w net.ipv4.conf.all.rp_filter=0 2>/dev/null || true
+sysctl -w net.ipv4.conf.all.send_redirects=1 2>/dev/null || true
 sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0 2>/dev/null || true
-sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=0 2>/dev/null || true
-sysctl -w net.ipv4.tcp_timestamps=1 2>/dev/null || true
 
 # ── 3. Start SSH daemon ──
 echo "[3/4] Starting SSH..."

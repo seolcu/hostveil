@@ -95,13 +95,13 @@ func checkReadOnly(f *compose.File, svc string, project Project) []domain.Findin
 }
 
 func checkPIDMode(f *compose.File, svc string, project Project) []domain.Finding {
-	v, _ := f.GetFieldRaw(svc, "pid_mode")
+	v, _ := f.GetFieldRaw(svc, "pid")
 	if v == "host" {
 		return []domain.Finding{{
 			ID:          "compose.ds003",
 			Title:       "Container shares host PID namespace",
-			Description: fmt.Sprintf("Service %q has pid_mode: host, exposing host processes.", svc),
-			HowToFix:    "Remove pid_mode: host. Use a sidecar if process visibility is needed.",
+			Description: fmt.Sprintf("Service %q has pid: host, exposing host processes.", svc),
+			HowToFix:    "Remove pid: host. Use a sidecar if process visibility is needed.",
 			Severity:    domain.SeverityMedium,
 			Source:      domain.SourceCompose,
 			Service:     svc,
@@ -113,13 +113,13 @@ func checkPIDMode(f *compose.File, svc string, project Project) []domain.Finding
 }
 
 func checkIPCMode(f *compose.File, svc string, project Project) []domain.Finding {
-	v, _ := f.GetFieldRaw(svc, "ipc_mode")
+	v, _ := f.GetFieldRaw(svc, "ipc")
 	if v == "host" {
 		return []domain.Finding{{
 			ID:          "compose.ds004",
 			Title:       "Container shares host IPC namespace",
-			Description: fmt.Sprintf("Service %q has ipc_mode: host, exposing host IPC.", svc),
-			HowToFix:    "Remove ipc_mode: host to isolate container IPC.",
+			Description: fmt.Sprintf("Service %q has ipc: host, exposing host IPC.", svc),
+			HowToFix:    "Remove ipc: host to isolate container IPC.",
 			Severity:    domain.SeverityMedium,
 			Source:      domain.SourceCompose,
 			Service:     svc,
@@ -237,6 +237,9 @@ func checkUser(f *compose.File, svc string, project Project) []domain.Finding {
 func checkMemoryLimit(f *compose.File, svc string, project Project) []domain.Finding {
 	v, _ := f.GetFieldRaw(svc, "deploy.resources.limits.memory")
 	if v == "" {
+		v, _ = f.GetFieldRaw(svc, "mem_limit")
+	}
+	if v == "" {
 		return []domain.Finding{{
 			ID:          "compose.ds010",
 			Title:       "Container has no memory limit",
@@ -254,6 +257,9 @@ func checkMemoryLimit(f *compose.File, svc string, project Project) []domain.Fin
 
 func checkCPULimit(f *compose.File, svc string, project Project) []domain.Finding {
 	v, _ := f.GetFieldRaw(svc, "deploy.resources.limits.cpus")
+	if v == "" {
+		v, _ = f.GetFieldRaw(svc, "cpus")
+	}
 	if v == "" {
 		return []domain.Finding{{
 			ID:          "compose.ds011",
@@ -399,6 +405,44 @@ func checkPortBinding(f *compose.File, svc string, project Project) []domain.Fin
 					Title:       "Container exposes ports on all interfaces",
 					Description: fmt.Sprintf("Service %q port mapping %q binds to 0.0.0.0.", svc, p),
 					HowToFix:    `Prefix port mapping with "127.0.0.1:" to restrict to localhost, or remove the mapping.`,
+					Severity:    domain.SeverityMedium,
+					Source:      domain.SourceCompose,
+					Service:     svc,
+					Remediation: domain.RemediationUnavailable,
+					Metadata:    composeMeta(project, svc),
+				}}
+			}
+		}
+	}
+	// Check long-syntax ports (mapping nodes with host_ip/published)
+	portsNode := f.GetFieldNode(svc, "ports")
+	if portsNode != nil && portsNode.Kind == 3 { // yaml.SequenceNode
+		for _, item := range portsNode.Content {
+			if item.Kind != 4 { // yaml.MappingNode
+				continue
+			}
+			hostIP := ""
+			published := ""
+			for i := 0; i < len(item.Content)-1; i += 2 {
+				key := item.Content[i].Value
+				val := item.Content[i+1].Value
+				switch key {
+				case "host_ip":
+					hostIP = val
+				case "published":
+					published = val
+				}
+			}
+			if hostIP == "0.0.0.0" || (hostIP == "" && published != "") {
+				desc := fmt.Sprintf("Service %q port long-syntax binding exposes on all interfaces.", svc)
+				if published != "" {
+					desc = fmt.Sprintf("Service %q port %q long-syntax binding exposes on all interfaces.", svc, published)
+				}
+				return []domain.Finding{{
+					ID:          "compose.dr002",
+					Title:       "Container exposes ports on all interfaces",
+					Description: desc,
+					HowToFix:    `Set host_ip: "127.0.0.1" in port long-syntax to restrict to localhost, or remove the mapping.`,
 					Severity:    domain.SeverityMedium,
 					Source:      domain.SourceCompose,
 					Service:     svc,

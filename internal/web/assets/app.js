@@ -1,5 +1,5 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-const toolLabels = { trivy: "Trivy", lynis: "Lynis", update: "Update" };
+const toolLabels = { trivy: "Trivy", lynis: "Lynis", compose: "Compose", update: "Update" };
 const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
 
 const state = {
@@ -294,7 +294,7 @@ function renderLoading() {
   document.querySelector(".shell").className = "shell loading";
   $("score").textContent = "--/100";
   $("score").className = "";
-  const toolOrder = ["update", "trivy", "lynis"];
+  const toolOrder = ["update", "trivy", "lynis", "compose"];
   const activeTools = toolOrder.filter((name) => tools[name]);
   const doneCount = activeTools.filter((name) => {
     const s = tools[name].status;
