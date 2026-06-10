@@ -178,10 +178,34 @@ function bindControls() {
   });
 
   document.addEventListener("keydown", (e) => {
+    // Don't intercept keys while typing in form fields
+    if (isTypingTarget(e.target)) {
+      if (e.key === "Escape") {
+        e.target.blur();
+      }
+      return;
+    }
+
+    // Close any open modal
     if (e.key === "Escape") {
       closeFixModal();
       closeExportModal();
+      closeHelpModal();
     }
+
+    if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+      e.preventDefault();
+      showHelpModal();
+      return;
+    }
+
+    // Don't process other shortcuts if a modal is open
+    const fixModal = document.getElementById("fixModal");
+    const exportModal = document.getElementById("exportModal");
+    const helpModal = document.getElementById("helpModal");
+    if (fixModal || exportModal || helpModal) return;
+
+    // ArrowUp / ArrowDown: navigate findings
     if (e.key === "ArrowDown") {
       e.preventDefault();
       const visible = findings();
@@ -190,38 +214,202 @@ function bindControls() {
         render();
         scrollSelectedIntoView();
       }
+      return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
       state.selected = Math.max(state.selected - 1, 0);
       render();
       scrollSelectedIntoView();
+      return;
     }
+
+    // q: quit (leave WebUI — just close window hint)
+    if (e.key === "q") {
+      e.preventDefault();
+      showToast("Press Ctrl+W or close the tab to leave", "toast-info");
+      return;
+    }
+
+    // tab: toggle detail panel focus
+    if (e.key === "Tab") {
+      // Let default Tab behavior work, but prevent focus traps
+      return;
+    }
+
+    // /: focus search
+    if (e.key === "/") {
+      e.preventDefault();
+      const search = $("query");
+      if (search) {
+        search.focus();
+        search.select();
+      }
+      return;
+    }
+
+    // f: fix selected or current finding
+    if (e.key === "f") {
+      e.preventDefault();
+      if (state.selectedSet.size > 0) {
+        applyFixBatch();
+      } else {
+        const visible = findings();
+        const f = visible[state.selected];
+        if (f) applyFix(f, $("detail")?.querySelector(".fix-btn"));
+      }
+      return;
+    }
+
+    // 0-4: severity filter
+    const sevKeys = { "0": "all", "1": "critical", "2": "high", "3": "medium", "4": "low" };
+    if (e.key in sevKeys) {
+      e.preventDefault();
+      state.severity = sevKeys[e.key];
+      state.selected = 0;
+      render();
+      return;
+    }
+
+    // s: cycle source filter
+    if (e.key === "s") {
+      e.preventDefault();
+      const sources = ["all", "trivy", "lynis", "compose"];
+      const idx = sources.indexOf(state.source);
+      state.source = sources[(idx + 1) % sources.length];
+      state.selected = 0;
+      render();
+      return;
+    }
+
+    // r: cycle remediation filter
+    if (e.key === "r") {
+      e.preventDefault();
+      const rems = ["all", "auto", "review", "unavailable", "manual"];
+      const idx = rems.indexOf(state.remediation);
+      state.remediation = rems[(idx + 1) % rems.length];
+      state.selected = 0;
+      render();
+      return;
+    }
+
+    // o: cycle sort field
+    if (e.key === "o" && !e.shiftKey) {
+      e.preventDefault();
+      const sorts = ["severity", "source", "title", "remediation"];
+      const idx = sorts.indexOf(state.sortBy);
+      state.sortBy = sorts[(idx + 1) % sorts.length];
+      state.sortDir = "asc";
+      const sel = $("sortBy");
+      if (sel) sel.value = state.sortBy;
+      render();
+      return;
+    }
+
+    // O (Shift+o): toggle sort direction
+    if (e.key === "O" || (e.shiftKey && e.key === "o")) {
+      e.preventDefault();
+      state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      render();
+      return;
+    }
+
+    // v: cycle service filter
+    if (e.key === "v") {
+      e.preventDefault();
+      const items = state.live?.findings || [];
+      const services = ["all"];
+      const seen = { all: true };
+      for (const f of items) {
+        const s = f.service || "";
+        if (s && !seen[s]) {
+          seen[s] = true;
+          services.push(s);
+        }
+      }
+      if (services.length <= 1) return;
+      const idx = services.indexOf(state.service);
+      state.service = services[(idx + 1) % services.length];
+      state.selected = 0;
+      render();
+      return;
+    }
+
+    // R (Shift+r): clear all filters (single press — single-press reset for WebUI)
+    if (e.key === "R" || (e.shiftKey && e.key === "r")) {
+      e.preventDefault();
+      state.query = "";
+      state.severity = "all";
+      state.source = "all";
+      state.remediation = "all";
+      state.service = "all";
+      state.selected = 0;
+      if ($("query")) $("query").value = "";
+      render();
+      showToast("Filters cleared", "toast-info");
+      return;
+    }
+
+    // ctrl+a: select all visible
+    if (e.ctrlKey && (e.key === "a" || e.key === "A")) {
+      e.preventDefault();
+      const visible = findings();
+      const selectable = visible.filter(isBatchSelectable);
+      if (state.selectedSet.size === selectable.length && selectable.length > 0) {
+        state.selectedSet = new Set();
+      } else {
+        state.selectedSet = new Set();
+        for (const f of visible) {
+          if (isBatchSelectable(f)) state.selectedSet.add(f.id);
+        }
+      }
+      render();
+      return;
+    }
+
+    // ctrl+r: recalc
+    if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
+      e.preventDefault();
+      $("recalcBtn")?.click();
+      return;
+    }
+
+    // ctrl+s: rescan
+    if (e.ctrlKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      $("rescanBtn")?.click();
+      return;
+    }
+
+    // e: open export modal
+    if (e.key === "e") {
+      e.preventDefault();
+      showExportModal();
+      return;
+    }
+
+    // Enter: confirm fix modal or open fix
     if (e.key === "Enter") {
-      const fixModal = document.getElementById("fixModal");
-      const exportModal = document.getElementById("exportModal");
       if (fixModal) {
         const yesBtn = fixModal.querySelector("#modalFixYes");
         if (yesBtn && !yesBtn.disabled) yesBtn.click();
-      } else if (exportModal) {
-        // do nothing — export requires explicit choice
       } else {
         const fixBtn = $("detail")?.querySelector(".fix-btn");
         if (fixBtn) fixBtn.click();
       }
+      return;
     }
+
+    // Space: toggle selection
     if (e.key === " " || e.key === "Spacebar") {
-      if (isTypingTarget(e.target)) return;
-      const fixModal = document.getElementById("fixModal");
-      const exportModal = document.getElementById("exportModal");
-      if (fixModal || exportModal) return;
+      e.preventDefault();
       const visible = findings();
       const finding = visible[state.selected];
       if (!finding) return;
       if (remediation(finding) === "unavailable") return;
-      e.preventDefault();
       toggleFindingSelection(finding.id);
       render();
+      return;
     }
   });
 }
@@ -1047,6 +1235,73 @@ function showExportModal() {
 
 function closeExportModal() {
   const overlay = document.getElementById("exportModal");
+  if (overlay) overlay.remove();
+}
+
+function showHelpModal() {
+  closeHelpModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "helpModal";
+  overlay.innerHTML = `
+    <div class="modal-content modal-help">
+      <h2>Keyboard shortcuts</h2>
+      <div class="help-grid">
+        <div class="help-section">
+          <h3>Navigation</h3>
+          <dl>
+            <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Move selection</dd>
+            <dt><kbd>Enter</kbd></dt><dd>Open fix for selected</dd>
+            <dt><kbd>Space</kbd></dt><dd>Toggle selection</dd>
+            <dt><kbd>Tab</kbd></dt><dd>Switch focus</dd>
+          </dl>
+        </div>
+        <div class="help-section">
+          <h3>Filters</h3>
+          <dl>
+            <dt><kbd>0</kbd>–<kbd>4</kbd></dt><dd>Severity (all/critical/high/medium/low)</dd>
+            <dt><kbd>s</kbd></dt><dd>Cycle source (all→trivy→lynis→compose)</dd>
+            <dt><kbd>r</kbd></dt><dd>Cycle remediation</dd>
+            <dt><kbd>v</kbd></dt><dd>Cycle service</dd>
+            <dt><kbd>/</kbd></dt><dd>Focus search</dd>
+            <dt><kbd>R</kbd></dt><dd>Clear all filters</dd>
+          </dl>
+        </div>
+        <div class="help-section">
+          <h3>Actions</h3>
+          <dl>
+            <dt><kbd>f</kbd></dt><dd>Fix (batch if selected, else current)</dd>
+            <dt><kbd>e</kbd></dt><dd>Export report</dd>
+            <dt><kbd>o</kbd></dt><dd>Cycle sort field</dd>
+            <dt><kbd>O</kbd></dt><dd>Toggle sort direction</dd>
+            <dt><kbd>Ctrl+A</kbd></dt><dd>Select all visible</dd>
+            <dt><kbd>Ctrl+R</kbd></dt><dd>Recalculate score</dd>
+            <dt><kbd>Ctrl+S</kbd></dt><dd>Re-scan all tools</dd>
+          </dl>
+        </div>
+        <div class="help-section">
+          <h3>Other</h3>
+          <dl>
+            <dt><kbd>?</kbd></dt><dd>Show this help</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Close modal / blur input</dd>
+            <dt><kbd>q</kbd></dt><dd>Tip: close tab to leave</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="fix-btn" id="modalHelpClose">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#modalHelpClose").onclick = closeHelpModal;
+  // Click on overlay (outside modal) also closes
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeHelpModal();
+  });
+}
+
+function closeHelpModal() {
+  const overlay = document.getElementById("helpModal");
   if (overlay) overlay.remove();
 }
 
