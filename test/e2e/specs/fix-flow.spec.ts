@@ -121,4 +121,67 @@ test.describe("Fix flow", () => {
     const toastText = await toast.textContent();
     expect(toastText).toContain("Fixed");
   });
+
+  test("Escape key closes fix modal", async ({ page }) => {
+    const fixableRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(fixableRow).toBeVisible();
+    await fixableRow.click({ force: true });
+    await page.waitForTimeout(300);
+
+    const fixBtn = page.locator("#detail .fix-btn");
+    await expect(fixBtn).toBeVisible({ timeout: 5000 });
+    await fixBtn.click();
+
+    const modal = page.locator("#fixModal");
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    await page.keyboard.press("Escape");
+    await expect(modal).not.toBeVisible();
+  });
+
+  test("Fix modal shows action type badge", async ({ page }) => {
+    const fixableRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(fixableRow).toBeVisible();
+    await fixableRow.click({ force: true });
+    await page.waitForTimeout(300);
+
+    const fixBtn = page.locator("#detail .fix-btn");
+    await expect(fixBtn).toBeVisible({ timeout: 5000 });
+    await fixBtn.click();
+
+    const modal = page.locator("#fixModal");
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    // action type badge should exist
+    const badge = modal.locator(".action-type-badge");
+    await expect(badge.first()).toBeVisible();
+
+    // action label should exist
+    const actionHeader = modal.locator(".action-header strong");
+    await expect(actionHeader.first()).toBeVisible();
+
+    await modal.locator("#modalFixNo").click();
+  });
+
+  test("Batch fix button shows correct count", async ({ page }) => {
+    const fixSelectedBtn = page.locator("#fixSelectedBtn");
+
+    // initially no selection → button should be hidden or empty
+    const initialText = await fixSelectedBtn.textContent();
+    expect(initialText).not.toContain("Fix selected (");
+
+    // select 3 findings
+    for (let i = 0; i < 3; i++) {
+      await page.locator("#findings .row-check:not(:disabled)").nth(i).check();
+    }
+    await page.waitForTimeout(200);
+
+    await expect(fixSelectedBtn).toContainText("Fix selected (3");
+
+    // unselect one
+    await page.locator("#findings .row-check:not(:disabled)").first().uncheck();
+    await page.waitForTimeout(200);
+
+    await expect(fixSelectedBtn).toContainText("Fix selected (2");
+  });
 });

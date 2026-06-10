@@ -367,7 +367,7 @@ func TestRebuildTable_FixedIndicator(t *testing.T) {
 		{ID: "a", Severity: domain.SeverityHigh, Title: "High finding", Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
 	})
 	live.Finalize()
-	live.MarkFixed("a")
+	live.MarkFixed("a", "")
 
 	m := &model{
 		live:        live,
@@ -556,44 +556,6 @@ func TestCycleSortOrder_Direction(t *testing.T) {
 	}
 }
 
-func TestDismissFinding_TUI(t *testing.T) {
-	findings := []domain.Finding{
-		{ID: "a.001", Title: "A", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Remediation: domain.RemediationAuto},
-	}
-	m := testModelWithFindings(t, findings)
-	m.table.SetCursor(0)
-
-	m.live.DismissFinding("a.001")
-	m.rebuildTable()
-
-	if !m.isDismissed("a.001") {
-		t.Error("expected a.001 to be dismissed")
-	}
-}
-
-func TestShowDismissedFilter(t *testing.T) {
-	findings := []domain.Finding{
-		{ID: "a.001", Title: "A", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Remediation: domain.RemediationAuto},
-	}
-	m := testModelWithFindings(t, findings)
-
-	if m.filter.showDismissed {
-		t.Error("expected showDismissed to default false")
-	}
-
-	got, _ := m.Update(tea.KeyPressMsg(tea.Key{Text: "D", Code: 'D'}))
-	gotM := got.(model)
-	if !gotM.filter.showDismissed {
-		t.Error("expected showDismissed to be true after D key")
-	}
-
-	got2, _ := gotM.Update(tea.KeyPressMsg(tea.Key{Text: "D", Code: 'D'}))
-	gotM2 := got2.(model)
-	if gotM2.filter.showDismissed {
-		t.Error("expected showDismissed to toggle back to false")
-	}
-}
-
 func TestModalHelp(t *testing.T) {
 	m := testModelWithFindings(t, nil)
 	m.modal = modalHelp
@@ -630,24 +592,5 @@ func TestModalFixResult(t *testing.T) {
 	gotM := got.(model)
 	if gotM.modal != modalNone {
 		t.Error("expected q to close fix result modal")
-	}
-}
-
-func TestDismissedFindingsHidden(t *testing.T) {
-	findings := []domain.Finding{
-		{ID: "a.001", Title: "Visible", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Remediation: domain.RemediationAuto},
-		{ID: "b.002", Title: "Hidden", Severity: domain.SeverityLow, Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
-	}
-	m := testModelWithFindings(t, findings)
-	m.live.DismissFinding("b.002")
-	m.rebuildTable()
-
-	// showDismissed=false (default), so b.002 should be hidden
-	visible := m.visibleFindings()
-	if len(visible) != 1 {
-		t.Fatalf("expected 1 visible finding, got %d", len(visible))
-	}
-	if visible[0].ID != "a.001" {
-		t.Errorf("expected only a.001 visible, got %s", visible[0].ID)
 	}
 }

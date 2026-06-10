@@ -129,7 +129,7 @@ func TestSystemFixClassification(t *testing.T) {
 		// Downgraded to MANUAL
 		{"lynis.AUTH-9265", domain.RemediationManual},
 		{"lynis.HRMN-6114", domain.RemediationManual},
-		{"lynis.BOOT-5120", domain.RemediationManual},
+		{"lynis.BOOT-5120", domain.RemediationReview},
 		{"lynis.AUTH-9328", domain.RemediationManual},
 	}
 
@@ -145,7 +145,7 @@ func TestSystemFixClassification(t *testing.T) {
 	}
 
 	// MANUAL fixes must have no actions
-	for _, id := range []string{"lynis.AUTH-9265", "lynis.HRMN-6114", "lynis.BOOT-5120", "lynis.AUTH-9328"} {
+	for _, id := range []string{"lynis.AUTH-9265", "lynis.HRMN-6114", "lynis.AUTH-9328"} {
 		f := r.Lookup(id)
 		if f == nil {
 			continue

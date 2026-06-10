@@ -1,54 +1,10 @@
 package fix
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/domain"
 )
-
-func TestUpdateImageTagInCompose(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "docker-compose.yml")
-	content := `services:
-  web:
-    image: nginx:1.24
-  db:
-    image: postgres:15
-`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	f, err := compose.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := updateImageTagInCompose(f, "nginx:1.24", "nginx@sha256:abc123"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := f.Save(); err != nil {
-		t.Fatal(err)
-	}
-
-	saved, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	savedStr := string(saved)
-	if !strings.Contains(savedStr, "nginx@sha256:abc123") {
-		t.Error("expected nginx image to be updated to digest")
-	}
-	if !strings.Contains(savedStr, "postgres:15") {
-		t.Error("expected postgres image to remain unchanged")
-	}
-}
 
 func TestRegisterImageFixes(t *testing.T) {
 	r := New()
@@ -58,27 +14,41 @@ func TestRegisterImageFixes(t *testing.T) {
 	if f == nil {
 		t.Fatal("expected to find fix for trivy.cve-2024-1234")
 	}
-	if f.Label != "Update image tag or rebuild with patched base/package version. Verify with a new Trivy scan." {
+	if f.Label != "Pull latest image and redeploy service" {
 		t.Errorf("unexpected label: %q", f.Label)
 	}
-	if len(f.Actions) != 0 {
-		t.Errorf("expected 0 actions, got %d", len(f.Actions))
+	if len(f.Actions) != 1 {
+		t.Errorf("expected 1 action, got %d", len(f.Actions))
 	}
 }
 
-func TestImageFixClassify(t *testing.T) {
+func TestImageFixClassify_WithFixedVersion(t *testing.T) {
 	r := New()
 	registerImageFixes(r)
 
 	findings := []domain.Finding{
-		{ID: "trivy.cve-2024-0001", Source: domain.SourceTrivy},
-		{ID: "trivy.cve-2024-0002", Source: domain.SourceTrivy},
+		{ID: "trivy.cve-2024-0001", Source: domain.SourceTrivy, Evidence: map[string]string{"fixed_version": "1.25.0"}},
 	}
 	r.Classify(findings)
 
-	for _, f := range findings {
-		if f.Remediation != domain.RemediationManual {
-			t.Errorf("expected RemediationManual for %q, got %v", f.ID, f.Remediation)
-		}
+	// With 1 action and no explicit Kind, Class() returns Auto
+	if findings[0].Remediation != domain.RemediationAuto {
+		t.Errorf("expected RemediationAuto for CVE with FixedVersion, got %v", findings[0].Remediation)
+	}
+}
+
+func TestImageFixClassify_NoFixedVersion(t *testing.T) {
+	r := New()
+	registerImageFixes(r)
+
+	findings := []domain.Finding{
+		{ID: "trivy.cve-2024-0002", Source: domain.SourceTrivy, Evidence: map[string]string{}},
+	}
+	r.Classify(findings)
+
+	// After Classify, the fix sets Auto. But scan.go's overrideCVEClassifications
+	// would set it to Manual. This test only checks Classify behavior.
+	if findings[0].Remediation != domain.RemediationAuto {
+		t.Errorf("expected RemediationAuto from Classify alone (override happens in scan.go), got %v", findings[0].Remediation)
 	}
 }

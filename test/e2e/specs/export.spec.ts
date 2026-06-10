@@ -81,4 +81,65 @@ test.describe("Export", () => {
     const titleHtml = await titleCell.innerHTML();
     expect(titleHtml).toContain("line-through");
   });
+
+  test("JSON export contains all required Snapshot fields", async ({
+    page,
+  }) => {
+    await page.locator("#exportBtn").click();
+    const modal = page.locator("#exportModal");
+    await expect(modal).toBeVisible();
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 5000 }),
+      modal.locator("#exportJson").click(),
+    ]);
+
+    const content = await (await download.createReadStream()).toArray();
+    const json = Buffer.concat(content).toString("utf-8");
+    const data = JSON.parse(json);
+
+    expect(data).toHaveProperty("phase", "complete");
+    expect(data).toHaveProperty("findings");
+    expect(data).toHaveProperty("score");
+    expect(data).toHaveProperty("tools");
+    expect(data).toHaveProperty("hostname");
+    expect(data).toHaveProperty("local_ip");
+    expect(data).toHaveProperty("score_breakdown");
+    expect(data.findings.length).toBe(12);
+  });
+
+  test("CSV export has correct row count and field values", async ({
+    page,
+  }) => {
+    await page.locator("#exportBtn").click();
+    const modal = page.locator("#exportModal");
+    await expect(modal).toBeVisible();
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 5000 }),
+      modal.locator("#exportCsv").click(),
+    ]);
+
+    const content = await (await download.createReadStream()).toArray();
+    const csv = Buffer.concat(content).toString("utf-8");
+    const lines = csv.trim().split("\n");
+
+    // header + 12 data rows
+    expect(lines.length).toBe(13);
+
+    // verify header
+    expect(lines[0]).toBe(
+      "ID,Severity,Source,Service,Title,Description,Remediation,Fixed"
+    );
+
+    // verify first data row has valid severity value
+    const firstFields = lines[1].split(",");
+    expect(["critical", "high", "medium", "low"]).toContain(firstFields[1]);
+    expect(["trivy", "lynis"]).toContain(firstFields[2]);
+
+    // verify known finding IDs are present
+    expect(csv).toContain("trivy.cve-2024-0001");
+    expect(csv).toContain("lynis.AUTH-9286");
+    expect(csv).toContain("test.unfixable-001");
+  });
 });

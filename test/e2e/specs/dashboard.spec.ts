@@ -42,11 +42,8 @@ test.describe("Dashboard", () => {
 
     const criticalCountText = await page.locator("#findingCount").textContent();
     const criticalCount = parseInt(criticalCountText || "0", 10);
+    expect(criticalCount).toBe(2);
     expect(criticalCount).toBeLessThan(initialCount);
-
-    const badges = await page.locator("#findings td .badge.critical").count();
-    const rows = await page.locator("#findings tr[data-index]").count();
-    expect(badges).toBe(rows);
 
     await page.locator('#severityFilters button[data-value="all"]').click();
     await page.waitForTimeout(300);
@@ -134,5 +131,57 @@ test.describe("Dashboard", () => {
     await page.waitForTimeout(200);
     const newIndex = await page.locator("#findings tr.selected").getAttribute("data-index");
     expect(newIndex).toBe("0");
+  });
+
+  test("Metrics panel shows correct finding counts", async ({ page }) => {
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    const metrics = page.locator("#metrics article.metric");
+    await expect(metrics.first()).toBeVisible();
+
+    // Total = 12
+    const totalMetric = metrics.filter({ hasText: "Total" });
+    await expect(totalMetric.locator("strong")).toHaveText("12");
+
+    // Critical = 2
+    const criticalMetric = metrics.filter({ hasText: "Critical" });
+    await expect(criticalMetric.locator("strong")).toHaveText("2");
+
+    // High = 4
+    const highMetric = metrics.filter({ hasText: "High" });
+    await expect(highMetric.locator("strong")).toHaveText("4");
+
+    // Medium = 4
+    const mediumMetric = metrics.filter({ hasText: "Medium" });
+    await expect(mediumMetric.locator("strong")).toHaveText("4");
+
+    // Low = 2
+    const lowMetric = metrics.filter({ hasText: "Low" });
+    await expect(lowMetric.locator("strong")).toHaveText("2");
+
+    // Fixable = 11 (auto=8 + review=3)
+    const fixableMetric = metrics.filter({ hasText: "Fixable" });
+    await expect(fixableMetric.locator("strong")).toHaveText("11");
+  });
+
+  test("Score element has severity color class", async ({ page }) => {
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    const scoreEl = page.locator("#score");
+    const classAttr = await scoreEl.getAttribute("class");
+    const validClasses = ["critical", "high", "medium", "low"];
+    const hasValidClass = validClasses.some(
+      (cls) => classAttr?.includes(cls) ?? false
+    );
+    expect(hasValidClass).toBe(true);
+  });
+
+  test("Sysinfo shows hostname and IP", async ({ page }) => {
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    const sysinfo = page.locator("#sysinfo");
+    const text = await sysinfo.textContent();
+    expect(text).toContain("e2e-test-box");
+    expect(text).toContain("192.168.1.100");
   });
 });

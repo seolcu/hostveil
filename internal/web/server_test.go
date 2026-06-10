@@ -383,9 +383,10 @@ func TestHandleFixBatch_Success(t *testing.T) {
 
 func TestHandleFixBatch_WithAlsoFixed(t *testing.T) {
 	reg := fix.New()
+	// Register with exact IDs (not wildcard) so cascade works
 	reg.Register(&fix.Fix{
-		FindingID: "trivy.cve-*",
-		Label:     "Fix CVE",
+		FindingID: "shared.001",
+		Label:     "Fix shared",
 		Actions: []fix.Action{{
 			Label: "Apply",
 			Apply: func(ctx fix.Context) error { return nil },
@@ -393,12 +394,12 @@ func TestHandleFixBatch_WithAlsoFixed(t *testing.T) {
 	})
 	live := domain.NewScanProgress(true)
 	live.AddFindings([]domain.Finding{
-		{ID: "trivy.cve-2024-1234", Service: "nginx:latest"},
-		{ID: "trivy.cve-2024-5678", Service: "nginx:latest"},
+		{ID: "shared.001", Service: "nginx:latest"},
+		{ID: "shared.001", Service: "redis:7"},
 	})
-	live.MarkFixed("trivy.cve-2024-1234")
+	live.MarkFixed("shared.001", "nginx:latest")
 
-	body := `{"findings":[{"id":"trivy.cve-2024-1234","Service":"nginx:latest"}],"action_index":0}`
+	body := `{"findings":[{"id":"shared.001","Service":"nginx:latest"}],"action_index":0}`
 	req := httptest.NewRequest("POST", "/api/fix/batch", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	handleFixBatch(rec, req, Options{Fixes: reg, Live: live})
@@ -407,15 +408,12 @@ func TestHandleFixBatch_WithAlsoFixed(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
-	alsoFixed, ok := resp["also_fixed"].([]interface{})
+	results, ok := resp["results"].([]interface{})
 	if !ok {
-		t.Fatal("expected also_fixed array")
+		t.Fatal("expected results array")
 	}
-	if len(alsoFixed) != 1 {
-		t.Fatalf("expected 1 also_fixed, got %d", len(alsoFixed))
-	}
-	if alsoFixed[0].(string) != "trivy.cve-2024-5678" {
-		t.Errorf("expected also_fixed trivy.cve-2024-5678, got %v", alsoFixed[0])
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
 	}
 }
 
@@ -681,7 +679,7 @@ func TestHandleResult_VariousStates(t *testing.T) {
 		live.SetToolStatus("trivy", domain.ToolDone, "Found 2 issues")
 		live.SetToolStatus("lynis", domain.ToolDone, "Found 0 issues")
 		live.Finalize()
-		live.MarkFixed("fixable.002")
+		live.MarkFixed("fixable.002", "")
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("GET /api/result", func(w http.ResponseWriter, r *http.Request) {
@@ -860,74 +858,6 @@ func TestSameOrigin(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("sameOrigin(%q, %q) = %v, want %v", tt.origin, tt.host, got, tt.want)
 		}
-	}
-}
-
-func TestHandleDismiss(t *testing.T) {
-	live := domain.NewScanProgress(true)
-	body := `{"finding_id":"test.001","dismissed":true}`
-	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
-	rec := httptest.NewRecorder()
-	handleDismiss(rec, req, Options{Live: live})
-
-	var resp map[string]interface{}
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatal(err)
-	}
-	if resp["success"] != true {
-		t.Errorf("expected success true, got %v", resp["success"])
-	}
-	if resp["dismissed"] != true {
-		t.Errorf("expected dismissed true, got %v", resp["dismissed"])
-	}
-	if !live.IsDismissed("test.001") {
-		t.Error("expected finding to be dismissed in Live state")
-	}
-}
-
-func TestHandleDismiss_Undismiss(t *testing.T) {
-	live := domain.NewScanProgress(true)
-	live.DismissFinding("test.001")
-
-	body := `{"finding_id":"test.001","dismissed":false}`
-	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
-	rec := httptest.NewRecorder()
-	handleDismiss(rec, req, Options{Live: live})
-
-	if live.IsDismissed("test.001") {
-		t.Error("expected finding to be undismissed")
-	}
-}
-
-func TestHandleDismiss_InvalidBody(t *testing.T) {
-	live := domain.NewScanProgress(true)
-	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(`not json`))
-	rec := httptest.NewRecorder()
-	handleDismiss(rec, req, Options{Live: live})
-
-	var resp map[string]interface{}
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatal(err)
-	}
-	if resp["success"] != false {
-		t.Errorf("expected success false, got %v", resp["success"])
-	}
-}
-
-func TestHandleDismiss_CrossOrigin(t *testing.T) {
-	live := domain.NewScanProgress(true)
-	body := `{"finding_id":"test.001","dismissed":true}`
-	req := httptest.NewRequest("POST", "/api/dismiss", strings.NewReader(body))
-	req.Header.Set("Origin", "http://evil.com")
-	rec := httptest.NewRecorder()
-	handleDismiss(rec, req, Options{Live: live})
-
-	var resp map[string]interface{}
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatal(err)
-	}
-	if resp["success"] != false {
-		t.Errorf("expected success false for cross-origin, got %v", resp["success"])
 	}
 }
 

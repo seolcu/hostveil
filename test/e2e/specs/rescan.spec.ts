@@ -11,9 +11,8 @@ test.describe("Rescan", () => {
 
     await rescanBtn.click();
 
-    await expect(rescanBtn).toContainText("Scanning");
-    await expect(rescanBtn).toBeDisabled();
-
+    // In fixture mode, rescan completes instantly so "Scanning" may not be visible.
+    // Just verify the button re-enables and findings reload.
     await expect(rescanBtn).toBeEnabled({ timeout: 15000 });
     await expect(rescanBtn).toContainText("Re-scan");
 
@@ -39,5 +38,47 @@ test.describe("Rescan", () => {
     await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
     const countText = await page.locator("#findingCount").textContent();
     expect(countText).toMatch(/^\d+ visible$/);
+  });
+
+  test("Rescan preserves finding IDs (data integrity)", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    // capture IDs before rescan
+    const idsBefore = await page.locator("#findings tr[data-id]").evaluateAll(
+      (els) => els.map((el) => el.getAttribute("data-id"))
+    );
+    expect(idsBefore.length).toBe(12);
+
+    // rescan
+    await page.locator("#rescanBtn").click();
+    await expect(page.locator("#rescanBtn")).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    // capture IDs after rescan
+    const idsAfter = await page.locator("#findings tr[data-id]").evaluateAll(
+      (els) => els.map((el) => el.getAttribute("data-id"))
+    );
+
+    // same set of IDs (order may differ)
+    expect(idsAfter.sort()).toEqual(idsBefore.sort());
+
+    // specific known IDs
+    expect(idsAfter).toContain("trivy.cve-2024-0001");
+    expect(idsAfter).toContain("lynis.AUTH-9286");
+    expect(idsAfter).toContain("test.unfixable-001");
+  });
+
+  test("Rescan reloads metrics correctly", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    await page.locator("#rescanBtn").click();
+    await expect(page.locator("#rescanBtn")).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    // metrics should still be correct after rescan
+    const totalMetric = page.locator("#metrics article.metric").filter({ hasText: "Total" });
+    await expect(totalMetric.locator("strong")).toHaveText("12");
   });
 });
