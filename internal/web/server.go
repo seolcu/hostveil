@@ -85,9 +85,6 @@ func Serve(opts Options) error {
 		}
 		handleRescan(w, r, opts)
 	})
-	mux.HandleFunc("POST /api/dismiss", func(w http.ResponseWriter, r *http.Request) {
-		handleDismiss(w, r, opts)
-	})
 	mux.HandleFunc("POST /api/recalc", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" && !sameOrigin(origin, r.Host) {
@@ -353,31 +350,6 @@ type fixRequest struct {
 	InfoOnly    bool           `json:"info_only"`
 }
 
-type dismissRequest struct {
-	FindingID string `json:"finding_id"`
-	Dismissed bool   `json:"dismissed"`
-}
-
-func handleDismiss(w http.ResponseWriter, r *http.Request, opts Options) {
-	origin := r.Header.Get("Origin")
-	if origin != "" && !sameOrigin(origin, r.Host) {
-		writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	var req dismissRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request"})
-		return
-	}
-	if req.Dismissed {
-		opts.Live.DismissFinding(req.FindingID)
-	} else {
-		opts.Live.UndismissFinding(req.FindingID)
-	}
-	writeJSON(w, map[string]interface{}{"success": true, "dismissed": req.Dismissed})
-}
-
 func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 	reg := opts.Fixes
 	if reg == nil {
@@ -459,13 +431,16 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 
 	// Auto-mark related findings as Fixed (shared solution detection)
 	if result.Success && opts.Live != nil {
-		opts.Live.MarkFixed(req.Finding.ID)
+		opts.Live.MarkFixed(req.Finding.ID, req.Finding.Service)
 		if req.Finding.Service != "" {
-			alsoFixed := opts.Live.MarkRelatedFixed(req.Finding.ID, req.Finding.Service, func(id string) bool {
-				return reg.Lookup(id) == f
-			})
-			if len(alsoFixed) > 0 {
-				resp["also_fixed"] = alsoFixed
+			// Only cascade to findings with the same fix AND not wildcard-registered
+			if reg.HasExactEntry(req.Finding.ID) {
+				alsoFixed := opts.Live.MarkRelatedFixed(req.Finding.ID, req.Finding.Service, func(id string) bool {
+					return reg.Lookup(id) == f
+				})
+				if len(alsoFixed) > 0 {
+					resp["also_fixed"] = alsoFixed
+				}
 			}
 		}
 	}
@@ -548,13 +523,15 @@ func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
 
 		// Auto-mark related findings
 		if result.Success && opts.Live != nil {
-			opts.Live.MarkFixed(finding.ID)
+			opts.Live.MarkFixed(finding.ID, finding.Service)
 			if finding.Service != "" {
-				alsoFixed := opts.Live.MarkRelatedFixed(finding.ID, finding.Service, func(id string) bool {
-					return reg.Lookup(id) == f
-				})
-				for _, aid := range alsoFixed {
-					allAlsoFixed[aid] = true
+				if reg.HasExactEntry(finding.ID) {
+					alsoFixed := opts.Live.MarkRelatedFixed(finding.ID, finding.Service, func(id string) bool {
+						return reg.Lookup(id) == f
+					})
+					for _, aid := range alsoFixed {
+						allAlsoFixed[aid] = true
+					}
 				}
 			}
 		}

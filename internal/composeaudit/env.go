@@ -2,6 +2,7 @@ package composeaudit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -28,9 +29,13 @@ func detectEnvFiles(f *compose.File, composePath, project string) []domain.Findi
 			if !filepath.IsAbs(envPath) {
 				envPath = filepath.Join(filepath.Dir(composePath), envPath)
 			}
+			// Skip empty files (0 bytes)
+			if info, err := os.Stat(envPath); err == nil && info.Size() == 0 {
+				continue
+			}
 			findings = append(findings, domain.Finding{
 				ID:          "compose.dr004",
-				Title:       "Secrets in env_file",
+				Title:       "Restrict env_file permissions",
 				Description: fmt.Sprintf("Service %q uses env_file %q which may expose secrets.", svc, envPath),
 				HowToFix:    "Restrict .env permissions or migrate to Docker secrets.",
 				Severity:    domain.SeverityHigh,

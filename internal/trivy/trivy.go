@@ -15,8 +15,8 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-func ScanAll() ([]domain.Finding, error) {
-	projects, err := composeaudit.DiscoverProjects()
+func ScanAll(runner domain.CommandRunner) ([]domain.Finding, error) {
+	projects, err := composeaudit.DiscoverProjects(runner)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func ScanAll() ([]domain.Finding, error) {
 	var all []domain.Finding
 	var errs []error
 	for _, p := range projects {
-		findings, err := scanProject(p)
+		findings, err := scanProject(p, runner)
 		all = append(all, findings...)
 		if err != nil {
 			errs = append(errs, err)
@@ -35,7 +35,7 @@ func ScanAll() ([]domain.Finding, error) {
 	return all, errors.Join(errs...)
 }
 
-func scanProject(p composeaudit.Project) ([]domain.Finding, error) {
+func scanProject(p composeaudit.Project, runner domain.CommandRunner) ([]domain.Finding, error) {
 	var all []domain.Finding
 	var errs []error
 
@@ -47,7 +47,7 @@ func scanProject(p composeaudit.Project) ([]domain.Finding, error) {
 	images, imgErrs := extractImages(f)
 	errs = append(errs, imgErrs...)
 	for _, img := range images {
-		findings, imgScanErr := runImage(img)
+		findings, imgScanErr := runImage(img, runner)
 		if imgScanErr != nil {
 			errs = append(errs, fmt.Errorf("image scan %q: %w", img, imgScanErr))
 		}
@@ -103,7 +103,7 @@ type vuln struct {
 	PrimaryURL       string `json:"PrimaryURL"`
 }
 
-func runImage(image string) ([]domain.Finding, error) {
+func runImage(image string, runner domain.CommandRunner) ([]domain.Finding, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), domain.TrivyImageTimeout)
 	defer cancel()
 
@@ -113,7 +113,7 @@ func runImage(image string) ([]domain.Finding, error) {
 		"--timeout", "5m", image)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	out, err := cmd.Output()
+	out, err := runner.Output(cmd)
 	if err != nil && len(out) == 0 {
 		detail := sanitizeCommandOutput(stderr.Bytes())
 		return nil, fmt.Errorf("trivy image: %w: %s", err, detail)

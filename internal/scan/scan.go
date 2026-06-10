@@ -27,11 +27,11 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 	var scanErr error
 	switch tool {
 	case "trivy":
-		findings, scanErr = trivy.ScanAll()
+		findings, scanErr = trivy.ScanAll(domain.DefaultRunner{})
 	case "lynis":
-		findings, scanErr = lynis.Scan()
+		findings, scanErr = lynis.Scan(domain.DefaultRunner{})
 	case "compose":
-		findings, scanErr = composeaudit.ScanAll()
+		findings, scanErr = composeaudit.ScanAll(domain.DefaultRunner{})
 	default:
 		live.SetToolStatus(tool, domain.ToolSkipped, "Unknown tool")
 		finalizeIfDone(live)
@@ -41,6 +41,7 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 	if scanErr != nil {
 		if len(findings) > 0 {
 			fixes.Classify(findings)
+			overrideCVEClassifications(findings)
 			live.AddFindings(findings)
 			live.SetToolStatus(tool, domain.ToolDegraded,
 				fmt.Sprintf("Partial: %d issues, %s", len(findings), summarizeScanError(scanErr)))
@@ -49,6 +50,7 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 		}
 	} else {
 		fixes.Classify(findings)
+		overrideCVEClassifications(findings)
 		live.SetToolStatus(tool, domain.ToolDone, fmt.Sprintf("Found %d issues", len(findings)))
 		live.AddFindings(findings)
 	}
@@ -97,5 +99,20 @@ func ScanningMessage(tool string) string {
 		return "Scanning compose projects..."
 	default:
 		return "Scanning..."
+	}
+}
+
+// overrideCVEClassifications sets CVE findings without a FixedVersion to Manual.
+// CVE findings with a FixedVersion keep their Auto classification (pull + redeploy).
+func overrideCVEClassifications(findings []domain.Finding) {
+	for i := range findings {
+		if strings.HasPrefix(findings[i].ID, "trivy.cve-") {
+			if findings[i].Evidence == nil || findings[i].Evidence["fixed_version"] == "" {
+				findings[i].Remediation = domain.RemediationManual
+				if findings[i].HowToFix == "" {
+					findings[i].HowToFix = "No patched version available yet. Monitor upstream for updates."
+				}
+			}
+		}
 	}
 }

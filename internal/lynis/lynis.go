@@ -12,7 +12,7 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-func Scan() ([]domain.Finding, error) {
+func Scan(runner domain.CommandRunner) ([]domain.Finding, error) {
 	f, err := os.CreateTemp("", "hostveil-lynis-*.dat")
 	if err != nil {
 		return nil, fmt.Errorf("create temp file: %w", err)
@@ -21,7 +21,7 @@ func Scan() ([]domain.Finding, error) {
 	_ = f.Close()
 	defer os.Remove(reportPath) //nolint:errcheck // temp file cleanup
 
-	if err := runLynis(reportPath); err != nil {
+	if err := runLynis(reportPath, runner); err != nil {
 		return nil, err
 	}
 
@@ -29,14 +29,14 @@ func Scan() ([]domain.Finding, error) {
 	return findings, err
 }
 
-func runLynis(reportPath string) error {
+func runLynis(reportPath string, runner domain.CommandRunner) error {
 	ctx, cancel := context.WithTimeout(context.Background(), domain.LynisAuditTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "lynis", "audit", "system", "--quiet", "--report-file", reportPath)
 	var stderrBuf strings.Builder
 	cmd.Stderr = &stderrBuf
-	err := cmd.Run()
+	err := runner.Run(cmd)
 	if err != nil {
 		stderr := strings.TrimSpace(stderrBuf.String())
 		if stderr != "" {

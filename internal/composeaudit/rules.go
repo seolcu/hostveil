@@ -137,24 +137,28 @@ func checkCapAdd(f *compose.File, svc string, project Project) []domain.Finding 
 	if err != nil || len(adds) == 0 {
 		return nil
 	}
+	var found []string
 	for _, cap := range dangerousCaps {
 		for _, a := range adds {
 			if strings.EqualFold(a, cap) {
-				return []domain.Finding{{
-					ID:          "compose.ds005",
-					Title:       "Container adds dangerous capabilities",
-					Description: fmt.Sprintf("Service %q adds %s to its capabilities.", svc, cap),
-					HowToFix:    "Remove %s from cap_add. Drop all with cap_drop: ALL and add only needed capabilities.",
-					Severity:    domain.SeverityHigh,
-					Source:      domain.SourceCompose,
-					Service:     svc,
-					Remediation: domain.RemediationUnavailable,
-					Metadata:    composeMeta(project, svc),
-				}}
+				found = append(found, cap)
 			}
 		}
 	}
-	return nil
+	if len(found) == 0 {
+		return nil
+	}
+	return []domain.Finding{{
+		ID:          "compose.ds005",
+		Title:       "Container adds dangerous capabilities",
+		Description: fmt.Sprintf("Service %q adds %s to its capabilities.", svc, strings.Join(found, ", ")),
+		HowToFix:    fmt.Sprintf("Remove %s from cap_add. Drop all with cap_drop: ALL and add only needed capabilities.", strings.Join(found, ", ")),
+		Severity:    domain.SeverityHigh,
+		Source:      domain.SourceCompose,
+		Service:     svc,
+		Remediation: domain.RemediationUnavailable,
+		Metadata:    composeMeta(project, svc),
+	}}
 }
 
 func checkNoNewPrivileges(f *compose.File, svc string, project Project) []domain.Finding {
@@ -218,12 +222,16 @@ func checkRestart(f *compose.File, svc string, project Project) []domain.Finding
 
 func checkUser(f *compose.File, svc string, project Project) []domain.Finding {
 	v, _ := f.GetFieldRaw(svc, "user")
-	if v == "" {
+	if v == "" || v == "0" || v == "root" || v == "0:0" || v == "root:root" {
+		desc := fmt.Sprintf("Service %q does not specify a user (defaults to root).", svc)
+		if v != "" {
+			desc = fmt.Sprintf("Service %q explicitly runs as root (user: %s).", svc, v)
+		}
 		return []domain.Finding{{
 			ID:          "compose.ds009",
 			Title:       "Container runs as root user",
-			Description: fmt.Sprintf("Service %q does not specify a user (defaults to root).", svc),
-			HowToFix:    "Set user: 1000:1000 or a non-root UID in the container image.",
+			Description: desc,
+			HowToFix:    "Set a non-root UID appropriate for the container image (e.g. user: 1000:1000).",
 			Severity:    domain.SeverityMedium,
 			Source:      domain.SourceCompose,
 			Service:     svc,
@@ -285,6 +293,11 @@ func checkHealthcheck(f *compose.File, svc string, project Project) []domain.Fin
 			return nil
 		}
 	}
+	port := detectContainerPort(f, svc)
+	meta := composeMeta(project, svc)
+	if port != "" {
+		meta["container_port"] = port
+	}
 	return []domain.Finding{{
 		ID:          "compose.ds012",
 		Title:       "Container has no healthcheck",
@@ -294,8 +307,46 @@ func checkHealthcheck(f *compose.File, svc string, project Project) []domain.Fin
 		Source:      domain.SourceCompose,
 		Service:     svc,
 		Remediation: domain.RemediationUnavailable,
-		Metadata:    composeMeta(project, svc),
+		Metadata:    meta,
 	}}
+}
+
+func detectContainerPort(f *compose.File, svc string) string {
+	// Try ports mapping: "host:container" or "container" format
+	ports, err := f.GetFieldStrings(svc, "ports")
+	if err == nil {
+		for _, p := range ports {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			// "host:container" format
+			if idx := strings.LastIndex(p, ":"); idx >= 0 {
+				container := p[idx+1:]
+				// strip /tcp or /udp suffix
+				if slash := strings.Index(container, "/"); slash >= 0 {
+					container = container[:slash]
+				}
+				if _, err := fmt.Sscanf(container, "%d", new(int)); err == nil {
+					return container
+				}
+			}
+			// bare port number
+			if _, err := fmt.Sscanf(p, "%d", new(int)); err == nil {
+				return p
+			}
+		}
+	}
+	// Try expose directive
+	expose, err := f.GetFieldStrings(svc, "expose")
+	if err == nil && len(expose) > 0 {
+		p := strings.TrimSpace(expose[0])
+		if slash := strings.Index(p, "/"); slash >= 0 {
+			p = p[:slash]
+		}
+		return p
+	}
+	return ""
 }
 
 func checkTmpfs(f *compose.File, svc string, project Project) []domain.Finding {
@@ -381,6 +432,20 @@ func checkNetworkMode(f *compose.File, svc string, project Project) []domain.Fin
 			Description: fmt.Sprintf("Service %q uses network_mode: host, bypassing network isolation.", svc),
 			HowToFix:    "Remove network_mode: host and use bridge or overlay networks. For port access, use explicit port mappings.",
 			Severity:    domain.SeverityHigh,
+			Source:      domain.SourceCompose,
+			Service:     svc,
+			Remediation: domain.RemediationUnavailable,
+			Metadata:    composeMeta(project, svc),
+		}}
+	}
+	if strings.HasPrefix(v, "container:") {
+		other := strings.TrimPrefix(v, "container:")
+		return []domain.Finding{{
+			ID:          "compose.dr001",
+			Title:       "Container shares another container's network",
+			Description: fmt.Sprintf("Service %q uses network_mode: container:%s, sharing its network stack.", svc, other),
+			HowToFix:    "Use bridge or overlay networks with explicit port mappings instead of sharing another container's network.",
+			Severity:    domain.SeverityMedium,
 			Source:      domain.SourceCompose,
 			Service:     svc,
 			Remediation: domain.RemediationUnavailable,

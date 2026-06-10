@@ -2,10 +2,7 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -42,24 +39,6 @@ const (
 	modalFixProgress
 	modalExport
 )
-
-type dryRunAction struct {
-	label       string
-	actionType  string
-	warning     string
-	diffPreview string
-}
-
-type filterState struct {
-	query         string
-	severity      string
-	source        string
-	remediation   string
-	sortBy        string
-	sortDir       string // "asc" | "desc"
-	service       string
-	showDismissed bool
-}
 
 type model struct {
 	live   *domain.ScanProgress
@@ -117,12 +96,6 @@ type model struct {
 }
 
 type tickMsg struct{}
-type fixResultMsg struct{ result fix.FixResult }
-type fixProgressMsg struct {
-	current, total int
-	label          string
-}
-type fixBatchResultMsg struct{ success, fail, skipped int }
 
 func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
@@ -158,13 +131,12 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 		searchBox:   search,
 		selectedSet: make(map[string]bool),
 		filter: filterState{
-			severity:      "all",
-			source:        "all",
-			remediation:   "all",
-			sortBy:        "severity",
-			sortDir:       "asc",
-			service:       "all",
-			showDismissed: false,
+			severity:    "all",
+			source:      "all",
+			remediation: "all",
+			sortBy:      "severity",
+			sortDir:     "asc",
+			service:     "all",
 		},
 		phase: "loading",
 	}
@@ -228,13 +200,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			idx := m.table.Cursor()
 			if idx >= 0 && idx < len(visible) {
 				id := visible[idx].ID
+				svc := visible[idx].Service
 				for i := range m.snap.Findings {
-					if m.snap.Findings[i].ID == id {
+					if m.snap.Findings[i].ID == id && (svc == "" || m.snap.Findings[i].Service == svc) {
 						m.snap.Findings[i].Fixed = true
-						break
 					}
 				}
-				m.live.MarkFixed(id)
+				m.live.MarkFixed(id, svc)
 			}
 			m.fixResult = "✓ " + msg.result.Label
 			if msg.result.Diff != "" {
@@ -363,7 +335,6 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.confirmReset = false
 	}
 
-	// Global shortcuts
 	switch keyStr {
 	case "q":
 		if m.mode == paneDetail {
@@ -486,35 +457,8 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.exportIdx = 0
 		m.modal = modalExport
 		return m, nil
-	case "d":
-		visible := m.visibleFindings()
-		idx := m.table.Cursor()
-		if idx >= 0 && idx < len(visible) {
-			id := visible[idx].ID
-			if m.isDismissed(id) {
-				m.live.UndismissFinding(id)
-				m.toast = "Undismissed"
-			} else {
-				m.live.DismissFinding(id)
-				m.toast = "Dismissed"
-			}
-			m.toastUntil = time.Now().Add(3 * time.Second)
-			m.rebuildTable()
-		}
-		return m, nil
-	case "D":
-		m.filter.showDismissed = !m.filter.showDismissed
-		m.rebuildTable()
-		status := "hidden"
-		if m.filter.showDismissed {
-			status = "visible"
-		}
-		m.toast = "Dismissed findings " + status
-		m.toastUntil = time.Now().Add(3 * time.Second)
-		return m, nil
 	}
 
-	// Detail mode: delegate to viewport for scrolling
 	if m.mode == paneDetail {
 		switch keyStr {
 		case "esc", "h", "left":
@@ -533,7 +477,6 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// List mode: delegate to table for navigation
 	switch keyStr {
 	case " ", "space":
 		m.toggleSelection()
@@ -658,210 +601,6 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) toggleSelection() {
-	visible := m.visibleFindings()
-	idx := m.table.Cursor()
-	if idx < 0 && len(visible) > 0 {
-		idx = 0
-		m.table.SetCursor(0)
-	}
-	if idx < 0 || idx >= len(visible) {
-		return
-	}
-	if visible[idx].Remediation == domain.RemediationUnavailable {
-		return
-	}
-	id := visible[idx].ID
-	if m.selectedSet[id] {
-		delete(m.selectedSet, id)
-	} else {
-		m.selectedSet[id] = true
-	}
-}
-
-func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
-	if m.fixReg == nil {
-		m.toast = "Fix engine not available"
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-	visible := m.visibleFindings()
-	var toFix []domain.Finding
-	for _, f := range visible {
-		if m.selectedSet[f.ID] {
-			toFix = append(toFix, f)
-		}
-	}
-	if len(toFix) == 0 {
-		m.toast = "No findings selected"
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-
-	m.fixProgress = 0
-	m.fixProgressTotal = len(toFix)
-	m.fixProgressLabel = ""
-	m.modal = modalFixProgress
-
-	reg := m.fixReg
-	total := len(toFix)
-	send := m.send
-	go func() {
-		success, fail, skipped := 0, 0, 0
-		for i, finding := range toFix {
-			if send != nil {
-				send(fixProgressMsg{current: i + 1, total: total, label: finding.ID})
-			}
-			f := reg.Lookup(finding.ID)
-			if f == nil {
-				fail++
-				continue
-			}
-			if len(f.Actions) > 1 {
-				skipped++
-				continue
-			}
-			result := f.Run(fix.Context{
-				Finding: &finding,
-				Log:     func(s string, args ...interface{}) {},
-			}, 0)
-			if result.Success {
-				success++
-				m.live.MarkFixed(finding.ID)
-			} else {
-				fail++
-			}
-		}
-		if send != nil {
-			send(fixBatchResultMsg{success: success, fail: fail, skipped: skipped})
-		}
-	}()
-	return m, tickCmd()
-}
-
-func (m model) runFix() (tea.Model, tea.Cmd) {
-	if m.fixReg == nil {
-		m.toast = "Fix engine not available"
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-	visible := m.visibleFindings()
-	if len(visible) == 0 {
-		return m, nil
-	}
-	idx := m.table.Cursor()
-	if idx < 0 || idx >= len(visible) {
-		return m, nil
-	}
-	f := m.fixReg.Lookup(visible[idx].ID)
-	if f == nil {
-		m.toast = "No fix available for this finding"
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-
-	if f.Class() == domain.RemediationManual {
-		m.toast = "This fix requires manual review. See guidance in the detail panel."
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-	if f.Class() == domain.RemediationUnavailable {
-		m.toast = "No automatic fix available for this finding."
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return m, nil
-	}
-	m.fixTarget = f
-	m.fixActionIdx = 0
-
-	// Build dry-run info
-	finding := visible[idx]
-	m.dryRunActions = make([]dryRunAction, len(f.Actions))
-	for i, a := range f.Actions {
-		info := dryRunAction{
-			label:      a.Label,
-			actionType: a.Type.String(),
-			warning:    a.Warning,
-		}
-		if a.Type == fix.ActionEdit {
-			diff, _ := fix.SimulateDiff(fix.Context{Finding: &finding}, a)
-			if diff != "" {
-				info.diffPreview = diff
-			}
-		}
-		m.dryRunActions[i] = info
-	}
-	m.dryRunApplyIdx = 0
-
-	if len(f.Actions) > 1 {
-		m.modal = modalDryRun
-		return m, nil
-	}
-	m.modal = modalDryRun
-	return m, nil
-}
-
-func (m model) applyFix() (tea.Model, tea.Cmd) {
-	f := m.fixTarget
-	if f == nil || m.fixActionIdx >= len(f.Actions) {
-		return m, nil
-	}
-	visible := m.visibleFindings()
-	idx := m.table.Cursor()
-	if idx < 0 || idx >= len(visible) {
-		return m, nil
-	}
-	finding := visible[idx]
-	return m, func() tea.Msg {
-		result := f.Run(fix.Context{
-			Finding: &finding,
-			Log:     func(s string, args ...interface{}) {},
-		}, m.fixActionIdx)
-		return fixResultMsg{result: result}
-	}
-}
-
-func (m *model) exportReport() {
-	snap := m.live.Snapshot()
-	ts := time.Now().Format("2006-01-02_150405")
-	filename := fmt.Sprintf("hostveil-report-%s", ts)
-
-	var path, content string
-	if m.exportIdx == 0 {
-		path = filename + ".json"
-		data, err := json.MarshalIndent(snap, "", "  ")
-		if err != nil {
-			m.toast = "Export failed: " + err.Error()
-			m.toastUntil = time.Now().Add(5 * time.Second)
-			return
-		}
-		content = string(data)
-	} else {
-		path = filename + ".csv"
-		var buf strings.Builder
-		buf.WriteString("ID,Severity,Source,Service,Title,Remediation,Fixed\n")
-		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%v\n",
-				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
-				domain.EscapeCSV(f.Title), f.Remediation.String(), f.Fixed))
-		}
-		content = buf.String()
-	}
-
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		fallback := "/tmp/" + fmt.Sprintf("%s.%s", strings.TrimPrefix(filename, "hostveil-report-"), map[bool]string{true: "json", false: "csv"}[m.exportIdx == 0])
-		if err2 := os.WriteFile(fallback, []byte(content), 0644); err2 != nil {
-			m.fixResult = "✗ Export failed\n\nPrimary: " + err.Error() + "\nFallback (/tmp): " + err2.Error()
-			m.modal = modalFixResult
-			return
-		}
-		m.toast = "Exported to " + fallback + " (primary path failed)"
-		m.toastUntil = time.Now().Add(5 * time.Second)
-		return
-	}
-	m.toast = "Exported to " + path
-	m.toastUntil = time.Now().Add(5 * time.Second)
-}
-
 func (m model) View() tea.View {
 	t := m.theme()
 
@@ -886,401 +625,6 @@ func (m model) View() tea.View {
 
 func (m model) theme() Theme {
 	return DefaultTheme()
-}
-
-// ── filtering & sorting ──
-
-func (m model) visibleFindings() []domain.Finding {
-	items := m.snap.Findings
-	f := m.filter
-	filtered := make([]domain.Finding, 0, len(items))
-	for _, item := range items {
-		if f.severity != "all" && item.Severity.String() != f.severity {
-			continue
-		}
-		if f.source != "all" && item.Source.String() != f.source {
-			continue
-		}
-		if f.remediation != "all" && item.Remediation.String() != f.remediation {
-			continue
-		}
-		if f.service != "all" && item.Service != f.service {
-			continue
-		}
-		if !f.showDismissed && m.isDismissed(item.ID) {
-			continue
-		}
-		if f.query != "" && !findingMatches(item, f.query) {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	sortFindings(filtered, f.sortBy, f.sortDir)
-	return filtered
-}
-
-func findingMatches(f domain.Finding, q string) bool {
-	q = strings.ToLower(q)
-	for _, s := range []string{f.ID, f.Title, f.Description, f.HowToFix, f.Service, f.Severity.String(), f.Source.String(), f.Remediation.String()} {
-		if strings.Contains(strings.ToLower(s), q) {
-			return true
-		}
-	}
-	return false
-}
-
-func sortFindings(findings []domain.Finding, sortBy, sortDir string) {
-	dir := 1
-	if sortDir == "desc" {
-		dir = -1
-	}
-	sevOrder := func(s domain.Severity) int {
-		switch s {
-		case domain.SeverityCritical:
-			return 0
-		case domain.SeverityHigh:
-			return 1
-		case domain.SeverityMedium:
-			return 2
-		default:
-			return 3
-		}
-	}
-	less := func(a, b int) bool {
-		if dir == -1 {
-			return b < a
-		}
-		return a < b
-	}
-	switch sortBy {
-	case "severity":
-		sort.Slice(findings, func(i, j int) bool {
-			si, sj := sevOrder(findings[i].Severity), sevOrder(findings[j].Severity)
-			if si != sj {
-				return less(si, sj)
-			}
-			return less(strings.Compare(findings[i].Title, findings[j].Title), 0)
-		})
-	case "source":
-		sort.Slice(findings, func(i, j int) bool {
-			if findings[i].Source != findings[j].Source {
-				ci := strings.Compare(findings[i].Source.String(), findings[j].Source.String())
-				return less(ci, 0)
-			}
-			return less(sevOrder(findings[i].Severity), sevOrder(findings[j].Severity))
-		})
-	case "title":
-		sort.Slice(findings, func(i, j int) bool {
-			ci := strings.Compare(findings[i].Title, findings[j].Title)
-			return less(ci, 0)
-		})
-	case "remediation":
-		sort.Slice(findings, func(i, j int) bool {
-			if findings[i].Remediation != findings[j].Remediation {
-				ci := strings.Compare(findings[i].Remediation.String(), findings[j].Remediation.String())
-				return less(ci, 0)
-			}
-			return less(sevOrder(findings[i].Severity), sevOrder(findings[j].Severity))
-		})
-	}
-}
-
-func (m *model) cycleSourceFilter() {
-	switch m.filter.source {
-	case "all":
-		m.filter.source = "trivy"
-	case "trivy":
-		m.filter.source = "lynis"
-	default:
-		m.filter.source = "all"
-	}
-}
-
-func (m *model) cycleRemediationFilter() {
-	switch m.filter.remediation {
-	case "all":
-		m.filter.remediation = "auto"
-	case "auto":
-		m.filter.remediation = "review"
-	case "review":
-		m.filter.remediation = "unavailable"
-	case "unavailable":
-		m.filter.remediation = "manual"
-	default:
-		m.filter.remediation = "all"
-	}
-}
-
-func (m *model) cycleServiceFilter() {
-	services := []string{"all"}
-	seen := map[string]bool{"all": true}
-	for _, f := range m.snap.Findings {
-		if f.Service != "" && !seen[f.Service] {
-			seen[f.Service] = true
-			services = append(services, f.Service)
-		}
-	}
-	if len(services) <= 1 {
-		return
-	}
-	idx := -1
-	for i, s := range services {
-		if s == m.filter.service {
-			idx = i
-			break
-		}
-	}
-	next := (idx + 1) % len(services)
-	m.filter.service = services[next]
-}
-
-func (m *model) isDismissed(id string) bool {
-	for _, did := range m.snap.DismissedIDs {
-		if did == id {
-			return true
-		}
-	}
-	return false
-}
-
-func (m *model) cycleSortOrder() {
-	switch m.filter.sortBy {
-	case "severity":
-		m.filter.sortBy = "source"
-	case "source":
-		m.filter.sortBy = "title"
-	case "title":
-		m.filter.sortBy = "remediation"
-	default:
-		m.filter.sortBy = "severity"
-	}
-}
-
-// ── table management ──
-
-func (m *model) rebuildTable() {
-	m.live.Recalculate()
-	m.snap = m.live.Snapshot()
-	m.snapOK = true
-	visible := m.visibleFindings()
-	rows := make([]table.Row, len(visible))
-	layout := m.tableLayout()
-	cursor := m.table.Cursor()
-	for i, f := range visible {
-		checkbox := "◇"
-		if f.Remediation == domain.RemediationUnavailable {
-			checkbox = "─"
-		} else if m.selectedSet[f.ID] {
-			checkbox = "◆"
-		}
-		sevText := strings.ToUpper(f.Severity.String())
-		src := f.Source.String()
-		id := shortID(f.ID)
-		title := findingTitle(f)
-		fixLabel := remediationShortLabel(f.Remediation)
-		if f.Fixed {
-			sevText = "✓"
-			src = ""
-			title = "✓ " + title
-			fixLabel = "Fixed"
-		}
-		switch layout {
-		case "compact":
-			rows[i] = table.Row{checkbox, sevText, fit(title, m.findingColumnWidth(layout))}
-		case "medium":
-			rows[i] = table.Row{checkbox, sevText, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
-		default:
-			rows[i] = table.Row{checkbox, sevText, src, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
-		}
-	}
-	m.table.SetRows(nil)
-	m.updateTableColumns()
-	m.table.SetRows(rows)
-	m.table.SetCursor(cursor)
-	m.table.SetWidth(m.listTableWidth())
-	m.table.SetHeight(m.listHeight())
-	if m.width > 0 && m.height > 0 {
-		m.updateDetailViewport()
-	}
-}
-
-func (m *model) updateDetailViewport() {
-	contentWidth := m.detailContentWidth()
-	if m.phase == "loading" {
-		m.viewport.SetContent("Scanning in progress...\n\nResults will appear when scans complete.")
-		m.viewport.SetWidth(contentWidth)
-		m.viewport.SetHeight(m.detailHeight())
-		m.viewport.GotoTop()
-		return
-	}
-	visible := m.visibleFindings()
-	idx := m.table.Cursor()
-	if idx < 0 || idx >= len(visible) {
-		m.viewport.SetContent("")
-		return
-	}
-	t := m.theme()
-	content := renderDetailContent(t, &visible[idx], contentWidth)
-	if m.isDismissed(visible[idx].ID) {
-		dismissedBadge := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("[DISMISSED]")
-		content = dismissedBadge + "\n\n" + content
-	}
-	m.viewport.SetContent(content)
-	m.viewport.SetWidth(contentWidth)
-	m.viewport.SetHeight(m.detailHeight())
-	m.viewport.GotoTop()
-}
-
-// ── layout ──
-
-func (m model) tableLayout() string {
-	w := m.listWidth()
-	if w < 64 {
-		return "compact"
-	}
-	if w < 88 {
-		return "medium"
-	}
-	return "full"
-}
-
-func (m *model) updateTableColumns() {
-	switch m.tableLayout() {
-	case "compact":
-		m.table.SetColumns([]table.Column{
-			{Title: " ", Width: 3},
-			{Title: "Severity", Width: 8},
-			{Title: "Finding", Width: m.findingColumnWidth("compact")},
-		})
-	case "medium":
-		m.table.SetColumns([]table.Column{
-			{Title: " ", Width: 3},
-			{Title: "Severity", Width: 8},
-			{Title: "ID", Width: 14},
-			{Title: "Finding", Width: m.findingColumnWidth("medium")},
-			{Title: "Fix", Width: 11},
-		})
-	default:
-		m.table.SetColumns([]table.Column{
-			{Title: " ", Width: 3},
-			{Title: "Severity", Width: 8},
-			{Title: "Source", Width: 6},
-			{Title: "ID", Width: 14},
-			{Title: "Finding", Width: m.findingColumnWidth("full")},
-			{Title: "Fix", Width: 11},
-		})
-	}
-}
-
-func (m model) findingColumnWidth(layout string) int {
-	w := m.listTableWidth()
-	switch layout {
-	case "compact":
-		return max(12, w-3-8-6)
-	case "medium":
-		return max(14, w-3-8-14-11-18)
-	default:
-		return max(16, w-3-8-6-14-11-24)
-	}
-}
-
-func (m model) listWidth() int {
-	fw := m.filterWidth()
-	if fw > 0 {
-		return max(52, m.width-fw-m.detailWidth()-4)
-	}
-	if m.splitDetail() {
-		return max(52, m.width-m.detailWidth()-2)
-	}
-	return max(1, m.width-4)
-}
-
-func (m model) listTableWidth() int {
-	return max(20, m.listWidth()-4)
-}
-
-func (m model) listHeight() int {
-	h := m.bodyHeight() - 12
-	if h < 4 {
-		return 4
-	}
-	return h
-}
-
-func (m model) detailWidth() int {
-	if m.filterWidth() > 0 {
-		remaining := m.width - m.filterWidth() - 4
-		d := remaining * 2 / 5
-		if d < 44 {
-			return 44
-		}
-		if d > 66 {
-			return 66
-		}
-		return d
-	}
-	if m.splitDetail() {
-		d := m.width * 2 / 5
-		if d < 42 {
-			return 42
-		}
-		if d > 58 {
-			return 58
-		}
-		return d
-	}
-	return max(1, m.width-4)
-}
-
-func (m model) detailHeight() int {
-	h := m.bodyHeight() - 6
-	if h < 4 {
-		return 4
-	}
-	return h
-}
-
-func (m model) bodyHeight() int {
-	if m.height <= 0 || m.width <= 0 {
-		return 10
-	}
-	h := m.height - m.headerH - m.metricsH
-	if h < 4 {
-		return 4
-	}
-	return h
-}
-
-func (m model) splitDetail() bool {
-	return m.width >= 116
-}
-
-func (m model) inlineDetail() bool {
-	return m.filterWidth() > 0 || m.splitDetail()
-}
-
-func (m model) detailContentWidth() int {
-	return max(20, m.detailWidth()-8)
-}
-
-func (m model) panelAt(x int) paneMode {
-	fw := m.filterWidth()
-	if fw > 0 {
-		listStart := fw + 2
-		listEnd := listStart + m.listWidth() + 2
-		if x >= listEnd {
-			return paneDetail
-		}
-		return paneList
-	}
-	if m.splitDetail() {
-		listEnd := m.listWidth() + 2
-		if x >= listEnd {
-			return paneDetail
-		}
-		return paneList
-	}
-	return m.mode
 }
 
 func (m model) startRescan() model {

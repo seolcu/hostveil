@@ -462,12 +462,26 @@ fi`
 		}},
 	})
 
-	// Manual — Boot security
+	// Review — Boot security
 	r.Register(&Fix{
 		FindingID: "lynis.BOOT-5120",
-		Label:     "Setting a GRUB bootloader password prevents unauthorized boot parameter changes. Run grub2-set-password or grub-set-password interactively. Verify the generated password hash in your GRUB config before rebooting.",
-		Kind:      domain.RemediationManual,
-		Actions:   nil,
+		Label:     "Set GRUB bootloader password",
+		Kind:      domain.RemediationReview,
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Set GRUB password to 'password' (grub2-set-password, change after boot)",
+			Warning: "The default password is 'password'. Change it immediately after boot. If you lose GRUB access, you will need boot media to recover.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `echo -e "password\npassword" | grub2-set-password 2>/dev/null`).Run()
+			},
+		}, {
+			Type:    ActionExec,
+			Label:   "Set GRUB password to 'password' (grub-set-password, change after boot)",
+			Warning: "The default password is 'password'. Change it immediately after boot. If you lose GRUB access, you will need boot media to recover.",
+			Apply: func(ctx Context) error {
+				return exec.Command("sh", "-c", `echo -e "password\npassword" | grub-set-password 2>/dev/null`).Run()
+			},
+		}},
 	})
 
 	// Review — Logging

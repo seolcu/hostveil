@@ -20,11 +20,12 @@ type composeLSProject struct {
 	ConfigFiles string `json:"ConfigFiles"`
 }
 
-func DiscoverProjects() ([]Project, error) {
+func DiscoverProjects(runner domain.CommandRunner) ([]Project, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), domain.DockerComposeTimeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, "docker", "compose", "ls", "--format", "json").Output()
+	cmd := exec.CommandContext(ctx, "docker", "compose", "ls", "--format", "json")
+	out, err := runner.Output(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("docker compose ls: %w", err)
 	}

@@ -25,7 +25,6 @@ type ScanProgress struct {
 	UpdateAvailable string
 	Tools           map[string]*ToolState
 	Findings        []Finding
-	DismissedIDs    map[string]bool
 	Score           uint8
 	ScoreBreakdown  ScoreBreakdown
 	Hostname        string
@@ -43,7 +42,6 @@ func NewScanProgress(noUpdateCheck bool) *ScanProgress {
 	if !noUpdateCheck {
 		sp.Tools["update"] = &ToolState{Status: ToolPending, Message: "Checking for updates..."}
 	}
-	sp.DismissedIDs = make(map[string]bool)
 	return sp
 }
 
@@ -105,7 +103,6 @@ func (sp *ScanProgress) ResetForRescan() {
 	sp.Score = 0
 	sp.ScoreBreakdown = ScoreBreakdown{}
 	sp.Findings = nil
-	sp.DismissedIDs = make(map[string]bool)
 	for name, t := range sp.Tools {
 		if name == "update" {
 			continue
@@ -115,38 +112,24 @@ func (sp *ScanProgress) ResetForRescan() {
 	}
 }
 
-func (sp *ScanProgress) DismissFinding(id string) {
-	sp.mu.Lock()
-	defer sp.mu.Unlock()
-	sp.DismissedIDs[id] = true
-}
-
-func (sp *ScanProgress) UndismissFinding(id string) {
-	sp.mu.Lock()
-	defer sp.mu.Unlock()
-	delete(sp.DismissedIDs, id)
-}
-
-func (sp *ScanProgress) IsDismissed(id string) bool {
-	sp.mu.RLock()
-	defer sp.mu.RUnlock()
-	return sp.DismissedIDs[id]
-}
-
 func (sp *ScanProgress) SetUpdateAvailable(v string) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.UpdateAvailable = v
 }
 
-// MarkFixed sets Fixed=true for the finding with the given ID.
+// MarkFixed sets Fixed=true for the finding with the given ID and service.
+// If service is empty, marks all findings with that ID (legacy behavior).
 // Returns the number of findings marked (0 if not found).
-func (sp *ScanProgress) MarkFixed(id string) int {
+func (sp *ScanProgress) MarkFixed(id string, service string) int {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	count := 0
 	for i := range sp.Findings {
 		if sp.Findings[i].ID == id && !sp.Findings[i].Fixed {
+			if service != "" && sp.Findings[i].Service != service {
+				continue
+			}
 			sp.Findings[i].Fixed = true
 			count++
 		}
@@ -199,7 +182,6 @@ type Snapshot struct {
 	UpdateAvailable string                   `json:"update_available"`
 	Tools           map[string]ToolStateJSON `json:"tools"`
 	Findings        []Finding                `json:"findings"`
-	DismissedIDs    []string                 `json:"dismissed_ids"`
 	Score           uint8                    `json:"score"`
 	ScoreBreakdown  ScoreBreakdown           `json:"score_breakdown"`
 	Hostname        string                   `json:"hostname"`
@@ -215,20 +197,31 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 	}
 	findings := make([]Finding, len(sp.Findings))
 	copy(findings, sp.Findings)
+	for i := range findings {
+		if findings[i].Evidence != nil {
+			ev := make(map[string]string, len(findings[i].Evidence))
+			for k, v := range findings[i].Evidence {
+				ev[k] = v
+			}
+			findings[i].Evidence = ev
+		}
+		if findings[i].Metadata != nil {
+			md := make(map[string]string, len(findings[i].Metadata))
+			for k, v := range findings[i].Metadata {
+				md[k] = v
+			}
+			findings[i].Metadata = md
+		}
+	}
 	breakdown := sp.ScoreBreakdown
 	if len(breakdown.Axes) > 0 {
 		breakdown.Axes = append([]ScoreAxis(nil), breakdown.Axes...)
-	}
-	dismissedIDs := make([]string, 0, len(sp.DismissedIDs))
-	for id := range sp.DismissedIDs {
-		dismissedIDs = append(dismissedIDs, id)
 	}
 	return Snapshot{
 		Phase:           sp.Phase,
 		UpdateAvailable: sp.UpdateAvailable,
 		Tools:           tools,
 		Findings:        findings,
-		DismissedIDs:    dismissedIDs,
 		Score:           sp.Score,
 		ScoreBreakdown:  breakdown,
 		Hostname:        sp.Hostname,

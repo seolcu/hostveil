@@ -8,8 +8,8 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
-func ScanAll() ([]domain.Finding, error) {
-	projects, err := DiscoverProjects()
+func ScanAll(runner domain.CommandRunner) ([]domain.Finding, error) {
+	projects, err := DiscoverProjects(runner)
 	if err != nil {
 		return nil, err
 	}

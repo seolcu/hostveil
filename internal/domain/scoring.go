@@ -101,13 +101,12 @@ func CalculateScore(findings []Finding) uint8 {
 
 func scoreAxisForFinding(f Finding) string {
 	id := strings.ToLower(f.ID)
-	text := strings.ToLower(strings.Join([]string{f.ID, f.Title, f.Description, f.HowToFix}, " "))
 	switch {
 	case strings.HasPrefix(id, "trivy.cve-"):
 		return scoreAxisVulnerabilities
 	case f.Source == SourceLynis || strings.HasPrefix(id, "lynis."):
 		return scoreAxisHost
-	case id == "compose.dr004" || strings.Contains(text, "secret") || strings.Contains(text, "env_file"):
+	case id == "compose.dr004":
 		return scoreAxisSecrets
 	default:
 		return scoreAxisContainer

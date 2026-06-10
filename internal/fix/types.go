@@ -152,6 +152,12 @@ func (r *Registry) Lookup(id string) *Fix {
 	return nil
 }
 
+// HasExactEntry returns true if the finding ID has an exact-match registration (not a pattern).
+func (r *Registry) HasExactEntry(id string) bool {
+	_, ok := r.entries[strings.ToLower(id)]
+	return ok
+}
+
 func (r *Registry) Classify(findings []domain.Finding) {
 	for i := range findings {
 		if f := r.Lookup(findings[i].ID); f != nil {
