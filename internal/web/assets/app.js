@@ -191,12 +191,23 @@ function bindControls() {
       closeFixModal();
       closeExportModal();
       closeHelpModal();
+      return;
     }
 
     if (e.key === "?" || (e.shiftKey && e.key === "/")) {
       e.preventDefault();
       showHelpModal();
       return;
+    }
+
+    // Enter: confirm fix modal (must run before the modal-open guard)
+    if (e.key === "Enter") {
+      const fixModal = document.getElementById("fixModal");
+      if (fixModal) {
+        const yesBtn = fixModal.querySelector("#modalFixYes");
+        if (yesBtn && !yesBtn.disabled) yesBtn.click();
+        return;
+      }
     }
 
     // Don't process other shortcuts if a modal is open
@@ -228,12 +239,6 @@ function bindControls() {
     if (e.key === "q") {
       e.preventDefault();
       showToast("Press Ctrl+W or close the tab to leave", "toast-info");
-      return;
-    }
-
-    // tab: toggle detail panel focus
-    if (e.key === "Tab") {
-      // Let default Tab behavior work, but prevent focus traps
       return;
     }
 
@@ -271,10 +276,10 @@ function bindControls() {
       return;
     }
 
-    // s: cycle source filter
+    // s: cycle source filter (all → trivy → lynis → all, matching TUI)
     if (e.key === "s") {
       e.preventDefault();
-      const sources = ["all", "trivy", "lynis", "compose"];
+      const sources = ["all", "trivy", "lynis"];
       const idx = sources.indexOf(state.source);
       state.source = sources[(idx + 1) % sources.length];
       state.selected = 0;
@@ -388,15 +393,11 @@ function bindControls() {
       return;
     }
 
-    // Enter: confirm fix modal or open fix
+    // Enter: open fix for selected finding
+    // (confirm-fix-modal case is handled above the modal-open guard)
     if (e.key === "Enter") {
-      if (fixModal) {
-        const yesBtn = fixModal.querySelector("#modalFixYes");
-        if (yesBtn && !yesBtn.disabled) yesBtn.click();
-      } else {
-        const fixBtn = $("detail")?.querySelector(".fix-btn");
-        if (fixBtn) fixBtn.click();
-      }
+      const fixBtn = $("detail")?.querySelector(".fix-btn");
+      if (fixBtn) fixBtn.click();
       return;
     }
 

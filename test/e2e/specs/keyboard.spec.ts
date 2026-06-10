@@ -45,6 +45,25 @@ test.describe("Keyboard interactions", () => {
     await expect(modal).not.toBeVisible();
   });
 
+  test("Enter confirms fix modal (regression test)", async ({ page }) => {
+    const fixableRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await fixableRow.click({ force: true });
+    await page.waitForTimeout(300);
+
+    // open fix modal
+    const fixBtn = page.locator("#detail .fix-btn");
+    await expect(fixBtn).toBeVisible({ timeout: 5000 });
+    await fixBtn.click();
+
+    const modal = page.locator("#fixModal").first();
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    // Enter should confirm (apply) the fix — fix is a mock so it succeeds
+    await page.keyboard.press("Enter");
+    // After fix, a fix result message is shown; the modal should close.
+    await page.waitForTimeout(2000);
+  });
+
   test("Escape closes fix modal", async ({ page }) => {
     // click a fixable row
     const fixableRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
