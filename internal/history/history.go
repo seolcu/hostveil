@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	BaseDir      = "/var/lib/hostveil"
-	CheckpointDir = BaseDir + "/checkpoints"
-	ScanDir       = BaseDir + "/scans"
-	BackupSubdir  = "files"
-	MaxScans      = 30
+	BaseDir        = "/var/lib/hostveil"
+	CheckpointDir  = BaseDir + "/checkpoints"
+	ScanDir        = BaseDir + "/scans"
+	BackupSubdir   = "files"
+	MaxScans       = 30
 	MaxCheckpoints = 100
 )
 
