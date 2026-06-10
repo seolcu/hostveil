@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"os"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
@@ -42,18 +41,18 @@ func runTUIWeb(args []string) error {
 		skipScanners(live)
 	}
 
+	ready := make(chan struct{}, 1)
 	webErr := make(chan error, 1)
 	go func() {
-		webErr <- web.Serve(web.Options{Addr: *addr, Live: live, Fixes: reg, CertFile: *certFile, KeyFile: *keyFile})
+		webErr <- web.Serve(web.Options{Addr: *addr, Live: live, Fixes: reg, CertFile: *certFile, KeyFile: *keyFile, Ready: ready})
 	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		select {
-		case err := <-webErr:
-			return err
-		default:
-		}
-		time.Sleep(500 * time.Millisecond)
+
+	// Wait for listener to be ready or for an error
+	select {
+	case <-ready:
+		// Web server is listening, start TUI
+	case err := <-webErr:
+		return err
 	}
 
 	_, err := p.Run()

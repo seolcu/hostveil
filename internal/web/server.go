@@ -34,6 +34,7 @@ type Options struct {
 	CertFile string
 	KeyFile  string
 	RescanFn func()
+	Ready    chan<- struct{} // signaled when listener is ready (nil-safe)
 	rescanMu *sync.Mutex
 }
 
@@ -107,6 +108,9 @@ func Serve(opts Options) error {
 	server := &http.Server{
 		Handler:           secureHeaders(mux),
 		ReadHeaderTimeout: domain.HTTPReadHeaderTimeout,
+	}
+	if opts.Ready != nil {
+		opts.Ready <- struct{}{}
 	}
 	if opts.CertFile != "" && opts.KeyFile != "" {
 		return server.ServeTLS(listener, opts.CertFile, opts.KeyFile)
