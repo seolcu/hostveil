@@ -157,12 +157,12 @@ func TestFixResult_String_Error(t *testing.T) {
 func TestRegisterAll(t *testing.T) {
 	r := New()
 	RegisterAll(r)
-	// spot-check a few known entries
+	// spot-check a few known entries (v2.5.0: IDs match Lynis 3.1.6 semantics)
 	for _, id := range []string{
 		"compose.ds001",
 		"compose.dr001",
-		"lynis.AUTH-9286",
-		"lynis.FIRE-4512",
+		"lynis.AUTH-9286", // min/max password age
+		"lynis.ACCT-9626", // sysstat
 		"trivy.cve-*",
 	} {
 		if r.Lookup(id) == nil {
@@ -196,10 +196,12 @@ func TestRegisterAll_Classification(t *testing.T) {
 func TestRegisterAll_SystemFixes(t *testing.T) {
 	r := New()
 	RegisterAll(r)
+	// v2.5.0: IDs match Lynis 3.1.6 semantics
 	for _, id := range []string{
-		"lynis.AUTH-9328",
-		"lynis.FILE-6405",
-		"lynis.FIRE-4513",
+		"lynis.AUTH-9328", // umask
+		"lynis.ACCT-9626", // sysstat
+		"lynis.ACCT-9622", // process accounting
+		"lynis.NETW-3200", // dccp/sctp/rds/tipc
 	} {
 		if r.Lookup(id) == nil {
 			t.Errorf("RegisterAll did not register %s", id)
@@ -211,15 +213,8 @@ func TestRegisterAll_SystemFixActionTypes(t *testing.T) {
 	r := New()
 	RegisterAll(r)
 
-	fix := r.Lookup("lynis.FILE-6405")
-	if fix == nil || len(fix.Actions) == 0 {
-		t.Fatal("FILE-6405 not registered or has no actions")
-	}
-	if fix.Actions[0].Type != ActionExec {
-		t.Errorf("FILE-6405 action type = %v, want ActionExec", fix.Actions[0].Type)
-	}
-
-	fix = r.Lookup("lynis.ACCT-9626")
+	// ACCT-9626 (sysstat) is now Review with 1 action (installPackage)
+	fix := r.Lookup("lynis.ACCT-9626")
 	if fix == nil || len(fix.Actions) == 0 {
 		t.Fatal("ACCT-9626 not registered or has no actions")
 	}
@@ -227,12 +222,22 @@ func TestRegisterAll_SystemFixActionTypes(t *testing.T) {
 		t.Errorf("ACCT-9626 action type = %v, want ActionExec", fix.Actions[0].Type)
 	}
 
-	fix = r.Lookup("lynis.FIRE-4513")
+	// ACCT-9622 (process accounting) — installPackage
+	fix = r.Lookup("lynis.ACCT-9622")
 	if fix == nil || len(fix.Actions) == 0 {
-		t.Fatal("FIRE-4513 not registered or has no actions")
+		t.Fatal("ACCT-9622 not registered or has no actions")
 	}
 	if fix.Actions[0].Type != ActionExec {
-		t.Errorf("FIRE-4513 action[0] type = %v, want ActionExec", fix.Actions[0].Type)
+		t.Errorf("ACCT-9622 action type = %v, want ActionExec", fix.Actions[0].Type)
+	}
+
+	// NETW-3200 (uncommon protocols) — modprobe
+	fix = r.Lookup("lynis.NETW-3200")
+	if fix == nil || len(fix.Actions) == 0 {
+		t.Fatal("NETW-3200 not registered or has no actions")
+	}
+	if fix.Actions[0].Type != ActionExec {
+		t.Errorf("NETW-3200 action type = %v, want ActionExec", fix.Actions[0].Type)
 	}
 }
 
