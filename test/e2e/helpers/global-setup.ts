@@ -9,7 +9,8 @@ const PID_FILE = path.resolve(__dirname, "..", ".e2e-server-pid");
 
 export default async function () {
   console.log("Starting E2E test server...");
-  const { url, stop, pid } = await startServer(8787);
+  const port = parseInt(process.env.E2E_PORT || "18787", 10);
+  const { url, stop, pid } = await startServer(port);
   console.log(`Server ready at ${url} (PID ${pid})`);
   fs.writeFileSync(PID_FILE, String(pid));
   const killScript = `#!/bin/bash\nkill ${pid} 2>/dev/null\nsleep 0.5\nkill -9 ${pid} 2>/dev/null\nexit 0\n`;

@@ -13,7 +13,7 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
   use: {
-    baseURL: process.env.HOSTVEIL_URL || "http://127.0.0.1:8787",
+    baseURL: process.env.HOSTVEIL_URL || `http://127.0.0.1:${process.env.E2E_PORT || "18787"}`,
     trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
   },
