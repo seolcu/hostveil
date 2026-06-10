@@ -183,3 +183,68 @@ func TestTargetServices_All(t *testing.T) {
 		t.Errorf("targetServices(all) = %v, want [web, db]", svcs)
 	}
 }
+
+func TestRestrictPort(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		bind    string
+		want    string
+		changed bool
+	}{
+		// Short form: HOST:CONTAINER
+		{"short form", "8080:80", "127.0.0.1", "127.0.0.1:8080:80", true},
+		// Long form: BIND_IP:HOST:CONTAINER (the actual bug case)
+		{"long form wildcard", "0.0.0.0:8080:80", "127.0.0.1", "127.0.0.1:8080:80", true},
+		{"long form loopback", "127.0.0.1:8080:80", "127.0.0.1", "127.0.0.1:8080:80", true},
+		// With protocol suffix
+		{"short with tcp", "8080:80/tcp", "127.0.0.1", "127.0.0.1:8080:80/tcp", true},
+		{"long with tcp", "0.0.0.0:8080:80/tcp", "127.0.0.1", "127.0.0.1:8080:80/tcp", true},
+		// Container port only — no host binding, no change
+		{"container only", "80", "127.0.0.1", "80", false},
+		// Short-form range — change (prepend bind)
+		{"short range", "3000-3005:3000-3005", "127.0.0.1", "127.0.0.1:3000-3005:3000-3005", true},
+		// Long-form range with wildcard IP — leave alone (range handling deferred)
+		{"long range wildcard", "0.0.0.0:3000-3005:3000-3005", "127.0.0.1", "0.0.0.0:3000-3005:3000-3005", false},
+		// Empty
+		{"empty", "", "127.0.0.1", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, changed := restrictPort(tt.input, tt.bind)
+			if got != tt.want || changed != tt.changed {
+				t.Errorf("restrictPort(%q, %q) = (%q, %v), want (%q, %v)",
+					tt.input, tt.bind, got, changed, tt.want, tt.changed)
+			}
+		})
+	}
+}
+
+// TestComposePortRestrict_LongForm is a regression test for the dr002 bug
+// where port mappings in long form (BIND_IP:HOST:CONTAINER) were silently
+// ignored by the regex, making the fix a no-op even though it reported
+// success.
+func TestComposePortRestrict_LongForm(t *testing.T) {
+	const yml = `services:
+  web:
+    image: nginx:alpine
+    ports:
+      - 0.0.0.0:8080:80
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "web")
+	if err := composePortRestrict(ctx, "127.0.0.1"); err != nil {
+		t.Fatalf("composePortRestrict: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "127.0.0.1:8080:80") {
+		t.Errorf("compose file should contain 127.0.0.1:8080:80 (regression! long-form port was not restricted)\n%s", content)
+	}
+	if strings.Contains(content, "0.0.0.0:8080:80") {
+		t.Errorf("compose file should not contain 0.0.0.0:8080:80\n%s", content)
+	}
+}

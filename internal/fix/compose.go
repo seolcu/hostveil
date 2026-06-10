@@ -108,7 +108,63 @@ func registerComposeFixes(r *Registry) {
 	})
 }
 
-var rePortPrefix = regexp.MustCompile(`^\d+:`)
+// rePortPrefix matches the leading host-side portion of a Compose port mapping,
+// which is either `HOST_PORT:` (short form, binds to 0.0.0.0) or
+// `BIND_IP:HOST_PORT:` (long form, may bind to 0.0.0.0 or a specific IP).
+// Examples that match: "8080:80", "127.0.0.1:8080:80", "0.0.0.0:8080:80".
+// Examples that do not match: "80" (container port only, no host binding).
+var rePortPrefix = regexp.MustCompile(`^(?:\d+\.?\d*\.?\d*\.?\d*:)?(\d+):`)
+
+// restrictPort replaces the host-side bind portion of a Compose port mapping
+// with the given bind address. Returns the new string and true if the input
+// was modified.
+//
+// Recognized forms (all use ":" as separator):
+//   - "80"                     — container port only, no host binding, no change
+//   - "8080:80"                — short form (binds 0.0.0.0:HOST), prepend bind:
+//   - "127.0.0.1:8080:80"      — long form with explicit bind IP, replace IP
+//   - "0.0.0.0:8080:80"        — long form with wildcard IP, replace IP
+//
+// Range syntax (e.g. "3000-3005") and protocol suffixes (e.g. "8080:80/tcp")
+// are preserved as-is.
+func restrictPort(v, bind string) (string, bool) {
+	if v == "" {
+		return v, false
+	}
+	// Split off the optional protocol suffix.
+	rest := v
+	proto := ""
+	if idx := strings.LastIndex(v, "/"); idx > 0 {
+		rest = v[:idx]
+		proto = v[idx:]
+	}
+	// If there's no ":", this is a container-port-only mapping.
+	// Nothing to restrict on the host side.
+	if !strings.Contains(rest, ":") {
+		return v, false
+	}
+	// Count colons to decide between short and long form.
+	// Long form (BIND_IP:HOST:CONTAINER) has 2 colons; short (HOST:CONTAINER) has 1.
+	// Anything else (range, IPv6) we leave alone.
+	firstColon := strings.Index(rest, ":")
+	lastColon := strings.LastIndex(rest, ":")
+	if firstColon == lastColon {
+		// Short form: HOST:CONTAINER
+		// e.g. "8080:80" -> "127.0.0.1:8080:80"
+		return bind + ":" + rest + proto, true
+	}
+	// Long form: BIND_IP:HOST:CONTAINER
+	// Replace the leading IP portion with `bind`.
+	// Find the second colon.
+	secondColon := strings.Index(rest[firstColon+1:], ":") + firstColon + 1
+	hostPort := rest[firstColon+1 : secondColon]
+	containerPort := rest[secondColon+1:]
+	if strings.Contains(hostPort, "-") || strings.Contains(containerPort, "-") {
+		// Range syntax — leave it alone for now.
+		return v, false
+	}
+	return bind + ":" + hostPort + ":" + containerPort + proto, true
+}
 
 func composePortRestrict(ctx Context, bind string) error {
 	f, err := openComposeFile(ctx)
@@ -128,12 +184,17 @@ func composePortRestrict(ctx Context, bind string) error {
 		if len(vals) == 0 {
 			continue
 		}
-		var fixed []interface{}
+		changed := false
+		fixed := make([]interface{}, 0, len(vals))
 		for _, v := range vals {
-			if rePortPrefix.MatchString(v) {
-				v = rePortPrefix.ReplaceAllString(v, bind+":")
+			newV, ok := restrictPort(v, bind)
+			if ok {
+				changed = true
 			}
-			fixed = append(fixed, v)
+			fixed = append(fixed, newV)
+		}
+		if !changed {
+			log.Printf("fix: no host-bound port found for service %q (already restricted or no host port)", svc)
 		}
 		if err := f.SetField(svc, "ports", fixed); err != nil {
 			return err
