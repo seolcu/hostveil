@@ -8,6 +8,7 @@ import (
 	"github.com/seolcu/hostveil/internal/composeaudit"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/lynis"
 	"github.com/seolcu/hostveil/internal/trivy"
 )
@@ -61,6 +62,11 @@ func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) 
 func finalizeIfDone(live *domain.ScanProgress) {
 	if live.AllToolsDone() {
 		live.Finalize()
+		// Save scan snapshot to history (best-effort)
+		go func() {
+			snap := live.Snapshot()
+			_ = history.SaveScan(snap)
+		}()
 	}
 }
 

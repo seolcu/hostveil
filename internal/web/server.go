@@ -21,6 +21,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/scan"
 )
 
@@ -421,7 +422,45 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 		return
 	}
 
+	// Create checkpoint before applying fix
+	cpID := history.CheckpointID(req.Finding.ID)
+	checkpointDir := filepath.Join(history.CheckpointDir, cpID)
+	cp := history.Checkpoint{
+		ID:        cpID,
+		Timestamp: time.Now(),
+		FindingID: req.Finding.ID,
+		Service:   req.Finding.Service,
+		Action:    f.Actions[req.ActionIndex].Label,
+		ActionIdx: req.ActionIndex,
+	}
+	if len(f.Actions) > req.ActionIndex {
+		action := f.Actions[req.ActionIndex]
+		if action.Type == fix.ActionEdit {
+			editPath := action.FilePath
+			if editPath == "" {
+				editPath = req.Finding.Metadata["compose_path"]
+			}
+			if editPath != "" {
+				if err := history.EnsureDirs(); err == nil {
+					os.MkdirAll(checkpointDir, 0755)
+					os.MkdirAll(filepath.Join(checkpointDir, history.BackupSubdir), 0755)
+					if backup, err := history.BackupFile(checkpointDir, editPath); err == nil {
+						cp.Backups = append(cp.Backups, *backup)
+					}
+				}
+			}
+		}
+	}
+
 	result := f.Run(fix.Context{Finding: &req.Finding, Log: func(s string, args ...interface{}) {}}, req.ActionIndex)
+
+	// Save checkpoint with diff if fix succeeded
+	if result.Success && len(cp.Backups) > 0 {
+		cp.Diff = result.Diff
+		cp.Restart = history.RestartForService(req.Finding.Service)
+		history.SaveCheckpoint(cp)
+	}
+
 	resp := map[string]interface{}{
 		"success": result.Success,
 		"label":   result.Label,

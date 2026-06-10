@@ -48,6 +48,11 @@ func run() error {
 		case "tui-web":
 			ensureSudo()
 			return runTUIWeb(os.Args[2:])
+		case "history":
+			return runHistory(os.Args[2:])
+		case "rollback":
+			ensureSudo()
+			return runRollback(os.Args[2:])
 		case "--help", "-h":
 			printHelp()
 			return nil
@@ -109,6 +114,10 @@ Usage:
   hostveil update             Update to the latest version
   hostveil --no-update        Skip update check on startup
   hostveil serve --fixture F  Serve fixture data (E2E testing)
+  hostveil history            List fix checkpoints
+  hostveil history show ID    Show checkpoint details
+  hostveil history --scans    List scan history
+  hostveil rollback ID        Rollback a fix checkpoint
   hostveil --version          Show version
   hostveil --help             Show this help`
 }
