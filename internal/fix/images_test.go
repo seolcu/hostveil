@@ -58,7 +58,7 @@ func TestImageFixClassify_NoFixedVersion(t *testing.T) {
 func TestImagesMatch(t *testing.T) {
 	tests := []struct {
 		a, b string
-		want  bool
+		want bool
 	}{
 		{"nginx:alpine", "nginx:alpine", true},
 		{"nginx", "nginx:latest", true},
