@@ -201,6 +201,54 @@ The four kinds are about FIXABILITY, not DANGER LEVEL.
 - Warning: "This fix may break things. Are you sure?" → Still Auto, show warning dialog
 - Review: "Which option do you prefer?" or "What value should this be?" → Requires Review
 
+### Review = alternatives, NOT stages
+
+A `Review` fix represents **independent alternative solutions** the user
+chooses between. The user picks ONE of N options. Each action must
+address the concern **independently** — none of them depend on the
+others being applied.
+
+Counter-example (v2.5.0 mistake): KRNL-6000 was originally registered
+as 1 bundled action that applied 6 sysctls together. This was wrong
+because it forced the user to accept all 6 or none. A user running a
+router may want `syncookies=1` but NOT `accept_source_route=0`. Reverted
+to 6 separate actions so the user can pick any subset.
+
+Correct: SSH-7408 has 5 actions (Compression, MaxAuthTries, TCPKeepAlive,
+AllowAgentForwarding, MaxSessions). Each is an independent SSH
+hardening choice; user can pick any subset.
+
+A single-action fix labeled `Kind: RemediationReview` is misleading —
+the user has no choice. Use `Kind: RemediationAuto` and put the
+concern in the action's `Warning` field (UI shows a warning dialog
+before applying).
+
+### Action success must reflect actual state change
+
+A fix that reports `success=true` MUST have made the expected system
+change. Common silent-failure patterns to avoid:
+
+- **Shell scripts ending in `exit 0`**: the final `exit 0` masks
+  earlier failures from `set +e` or `||` chains. v2.5.0 had this bug
+  in LOGG-2130, ACCT-9628, TIME-3104 install scripts.
+- **`set +e` for the whole script**: install failures and start
+  failures are conflated. Use `set -e` and `|| true` only on the
+  best-effort step (typically service start in containers).
+- **Try/catch swallowing errors**: in Go, an `Apply` function that
+  ignores `err` will report success even when nothing changed.
+
+Correct pattern: `set -e` for required steps, `|| true` for best-effort
+service start. Test with `TestRunInstallAndStart_PackageFailurePropagates`
+in `internal/fix/system_actions_test.go`.
+
+### Package name aliases across distros
+
+Some packages have different names per distro:
+- `auditd` (Debian/RHEL) vs `audit` (Alpine)
+
+The `alpinePackageAliases` map in `internal/fix/system.go` handles this.
+When adding new fixes that install packages, always check both names.
+
 ### CVE finding classification
 - `FixedVersion` exists → Auto: `docker compose pull` + `docker compose up -d` (with warning)
 - `FixedVersion` empty → Manual: no upstream fix available yet
@@ -220,3 +268,22 @@ The dismiss feature has been removed. All findings are always visible.
 - `.gitignore` uses `/hostveil` (prefixed slash) to avoid ignoring `cmd/hostveil/`.
 - New release via Actions: `git tag vX.Y.Z && git push origin vX.Y.Z`. Do not run goreleaser locally.
 - GitHub token is injected by Actions via `${{ secrets.GITHUB_TOKEN }}`.
+
+### Fix code design rules
+
+- **Review = user picks one of N independent options.** Never bundle N
+  separate settings into 1 Review action (that forces all-or-nothing).
+  See "Review = alternatives, NOT stages" above for the design rule and
+  KRNL-6000's history as a counter-example.
+- **Single-action fixes use `Kind: RemediationAuto`**, not Review. Put
+  danger warnings in the action's `Warning` field; the UI shows a
+  warning dialog before applying.
+- **Success must reflect actual change.** Shell scripts use `set -e`,
+  not `set +e; exit 0`. Best-effort steps (e.g. `rc-service` in
+  containers without init) use `|| true`. Test with
+  `TestRunInstallAndStart_PackageFailurePropagates`.
+- **Every multi-action Review needs exhaustive tests** for each action
+  index, not just action 0. Use path-parameterized core helpers
+  (`sshdSetOptionAt`, `loginDefsSetAt`, `fileAppendIfMissingAt`) so
+  tests can run against `t.TempDir()` files. See
+  `internal/fix/system_actions_test.go`.

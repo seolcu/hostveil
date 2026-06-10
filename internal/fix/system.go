@@ -14,9 +14,17 @@ import (
 // Lynis report; see system_validate_test.go for the runtime check.
 //
 // IDs that no longer appear in current Lynis reports are intentionally not
-// re-registered to avoid false-positive "fixable" findings. The hard-coded
-// fix logic is preserved in dormant helpers (systemDormant) so it can be
-// re-attached if Lynis reintroduces the test in a future release.
+// re-registered to avoid false-positive "fixable" findings.
+//
+// A Review fix has multiple actions representing INDEPENDENT alternatives the
+// user picks between — NOT sequential stages. Never bundle N settings into 1
+// Review action. See AGENTS.md "Review = alternatives, not stages" for the
+// design rule.
+//
+// A fix reporting success=true MUST have made the expected system change.
+// Shell scripts end with `set -e` (not `set +e; exit 0`) so that install
+// failures propagate. Service-start steps (which legitimately may fail in
+// containers without an init system) are best-effort with `|| true`.
 func registerSystemFixes(r *Registry) {
 	execCmd := func(cmdline string) Action {
 		return Action{
@@ -29,22 +37,17 @@ func registerSystemFixes(r *Registry) {
 			},
 		}
 	}
-	fileEdit := func(path, label string, apply func(Context) error) Action {
-		return Action{
-			Type:     ActionEdit,
-			Label:    label,
-			FilePath: path,
-			Apply:    apply,
-		}
-	}
 
 	// ── BANN — Banners ────────────────────────────────────────────────
 	r.Register(&Fix{
 		FindingID: "lynis.BANN-7126",
 		Label:     "Add legal banner to /etc/issue",
-		Actions: []Action{fileEdit("/etc/issue", "Add banner to /etc/issue", func(ctx Context) error {
-			return exec.Command("sh", "-c", `grep -q "Unauthorized access prohibited" /etc/issue 2>/dev/null || echo "Unauthorized access prohibited" >> /etc/issue`).Run()
-		})},
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Add banner to /etc/issue",
+			FilePath: "/etc/issue",
+			Apply:    fileAppendIfMissing("/etc/issue", "Unauthorized access prohibited"),
+		}},
 	})
 
 	// ── FILE — File permissions ───────────────────────────────────────
@@ -55,6 +58,8 @@ func registerSystemFixes(r *Registry) {
 	})
 
 	// ── SSH — Broad SSH hardening (Lynis reports many sub-concerns under SSH-7408) ──
+	// 5 INDEPENDENT options, user picks one. Each modifies a different sshd
+	// directive; none depend on the others.
 	r.Register(&Fix{
 		FindingID: "lynis.SSH-7408",
 		Label:     "Harden SSH configuration",
@@ -65,50 +70,41 @@ func registerSystemFixes(r *Registry) {
 				Label:    "Disable SSH compression",
 				FilePath: "/etc/ssh/sshd_config",
 				Warning:  "Disabling SSH compression may affect bandwidth for some workloads.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^Compression' /etc/ssh/sshd_config && sed -i 's/^Compression.*/Compression no/' /etc/ssh/sshd_config || echo 'Compression no' >> /etc/ssh/sshd_config`).Run()
-				},
+				Apply:    sshdSetOption("Compression", "no"),
 			},
 			{
 				Type:     ActionEdit,
 				Label:    "Set SSH MaxAuthTries to 3",
 				FilePath: "/etc/ssh/sshd_config",
 				Warning:  "Lowering MaxAuthTries may affect brute-force tolerance.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^MaxAuthTries' /etc/ssh/sshd_config && sed -i 's/^MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config || echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config`).Run()
-				},
+				Apply:    sshdSetOption("MaxAuthTries", "3"),
 			},
 			{
 				Type:     ActionEdit,
 				Label:    "Disable SSH TCPKeepAlive",
 				FilePath: "/etc/ssh/sshd_config",
 				Warning:  "Disabling TCPKeepAlive may cause stale sessions to linger longer.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^TCPKeepAlive' /etc/ssh/sshd_config && sed -i 's/^TCPKeepAlive.*/TCPKeepAlive no/' /etc/ssh/sshd_config || echo 'TCPKeepAlive no' >> /etc/ssh/sshd_config`).Run()
-				},
+				Apply:    sshdSetOption("TCPKeepAlive", "no"),
 			},
 			{
 				Type:     ActionEdit,
 				Label:    "Disable SSH agent forwarding",
 				FilePath: "/etc/ssh/sshd_config",
 				Warning:  "Disabling agent forwarding may break workflows that rely on it.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^AllowAgentForwarding' /etc/ssh/sshd_config && sed -i 's/^AllowAgentForwarding.*/AllowAgentForwarding no/' /etc/ssh/sshd_config || echo 'AllowAgentForwarding no' >> /etc/ssh/sshd_config`).Run()
-				},
+				Apply:    sshdSetOption("AllowAgentForwarding", "no"),
 			},
 			{
 				Type:     ActionEdit,
 				Label:    "Reduce MaxSessions to 2",
 				FilePath: "/etc/ssh/sshd_config",
 				Warning:  "Lowering MaxSessions may break multiplexing workflows.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^MaxSessions' /etc/ssh/sshd_config && sed -i 's/^MaxSessions.*/MaxSessions 2/' /etc/ssh/sshd_config || echo 'MaxSessions 2' >> /etc/ssh/sshd_config`).Run()
-				},
+				Apply:    sshdSetOption("MaxSessions", "2"),
 			},
 		},
 	})
 
 	// ── AUTH — Password aging (Lynis AUTH-9286) ──────────────────────
+	// 2 INDEPENDENT options. Either can be set without the other.
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9286",
 		Label:     "Configure password aging in /etc/login.defs",
@@ -119,147 +115,76 @@ func registerSystemFixes(r *Registry) {
 				Label:    "Set PASS_MIN_DAYS to 1",
 				FilePath: "/etc/login.defs",
 				Warning:  "Setting minimum password age may prevent users from changing compromised passwords quickly.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^PASS_MIN_DAYS' /etc/login.defs && sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 1/' /etc/login.defs || echo 'PASS_MIN_DAYS 1' >> /etc/login.defs`).Run()
-				},
+				Apply:    loginDefsSet("PASS_MIN_DAYS", "1"),
 			},
 			{
 				Type:     ActionEdit,
 				Label:    "Set PASS_MAX_DAYS to 365",
 				FilePath: "/etc/login.defs",
 				Warning:  "Forcing password rotation may disrupt user workflows. Adjust to your policy.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^PASS_MAX_DAYS' /etc/login.defs && sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 365/' /etc/login.defs || echo 'PASS_MAX_DAYS 365' >> /etc/login.defs`).Run()
-				},
+				Apply:    loginDefsSet("PASS_MAX_DAYS", "365"),
 			},
 		},
 	})
 
 	// ── AUTH — umask (Lynis AUTH-9328) ───────────────────────────────
+	// Single action — Auto. The Warning inside the action surfaces the
+	// "this changes default file permissions" concern.
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9328",
 		Label:     "Set default umask to 027",
-		Kind:      domain.RemediationReview,
-		Actions: []Action{
-			{
-				Type:     ActionEdit,
-				Label:    "Set umask 027 in /etc/profile",
-				FilePath: "/etc/profile",
-				Warning:  "Tightening umask changes default file permissions for new files site-wide.",
-				Apply: func(ctx Context) error {
-					return exec.Command("sh", "-c", `grep -q '^umask 027' /etc/profile || echo 'umask 027' >> /etc/profile`).Run()
-				},
-			},
-		},
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set umask 027 in /etc/profile",
+			FilePath: "/etc/profile",
+			Warning:  "Tightening umask changes default file permissions for new files site-wide.",
+			Apply:    fileAppendIfMissing("/etc/profile", "umask 027"),
+		}},
 	})
 
 	// ── KRNL — Core dump (Lynis KRNL-5820) ───────────────────────────
+	// Single action — Auto. The Warning surfaces "no post-mortem" concern.
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-5820",
 		Label:     "Disable core dumps for all users",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:     ActionEdit,
 			Label:    "Add * hard core 0 to /etc/security/limits.conf",
 			FilePath: "/etc/security/limits.conf",
 			Warning:  "Disabling core dumps makes post-mortem debugging impossible. Only disable if your environment does not require crash analysis.",
-			Apply: func(ctx Context) error {
-				return exec.Command("sh", "-c", `grep -q '^\* hard core 0' /etc/security/limits.conf || echo '* hard core 0' >> /etc/security/limits.conf`).Run()
-			},
+			Apply:    fileAppendIfMissing("/etc/security/limits.conf", "* hard core 0"),
 		}},
 	})
 
-	// ── KRNL — sysctl catch-all (Lynis KRNL-6000) ───────────────────
-	// The current report has only KRNL-6000 as the sysctl-related finding;
-	// the previously-used individual IDs (KRNL-5830, KRNL-5840, KRNL-5860,
-	// KRNL-5870, KRNL-5880, KRNL-5890, KRNL-5930) no longer match. We
-	// bundle the recommended sysctl profile into a single shell-driven
-	// action so the user gets the full hardening set in one click.
+	// ── KRNL — sysctl hardening (Lynis KRNL-6000) ───────────────────
+	// 6 INDEPENDENT options. User picks which sysctls to apply. e.g. an
+	// operator of a router may want syncookies but NOT accept_source_route=0.
+	// Class() auto-detects Review from len(Actions) > 1, no explicit Kind.
 	r.Register(&Fix{
 		FindingID: "lynis.KRNL-6000",
-		Label:     "Apply recommended kernel hardening sysctls",
-		Kind:      domain.RemediationReview,
-		Actions: []Action{{
-			Type:    ActionExec,
-			Label:   "Apply kernel hardening sysctls (source_route=0, send_redirects=0, syncookies=1, rp_filter=1, echo_ignore=1, bogus_icmp=1)",
-			Warning: "These settings may affect routing, NAT, or high-throughput TCP workloads. Review for your network topology before applying.",
-			Apply: func(ctx Context) error {
-				entries := []struct{ param, value string }{
-					{"net.ipv4.conf.all.accept_source_route", "0"},
-					{"net.ipv4.conf.all.send_redirects", "0"},
-					{"net.ipv4.tcp_syncookies", "1"},
-					{"net.ipv4.conf.all.rp_filter", "1"},
-					{"net.ipv4.icmp_echo_ignore_broadcasts", "1"},
-					{"net.ipv4.icmp_ignore_bogus_error_responses", "1"},
-				}
-				for _, e := range entries {
-					if err := exec.Command("sysctl", "-w", fmt.Sprintf("%s=%s", e.param, e.value)).Run(); err != nil {
-						return err
-					}
-				}
-				// Persist to /etc/sysctl.conf: one pass, append all entries
-				// that are not already present, then update existing ones.
-				for _, e := range entries {
-					param, value := e.param, e.value
-					entry := fmt.Sprintf("%s=%s", param, value)
-					existsErr := exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run()
-					if existsErr != nil {
-						if err := exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run(); err != nil {
-							return err
-						}
-					} else {
-						if err := exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run(); err != nil {
-							return err
-						}
-					}
-				}
-				return nil
-			},
-		}},
+		Label:     "Kernel sysctl hardening",
+		Actions: []Action{
+			sysctlApplyAction("Set net.ipv4.conf.all.accept_source_route=0", "net.ipv4.conf.all.accept_source_route", "0"),
+			sysctlApplyAction("Set net.ipv4.conf.all.send_redirects=0", "net.ipv4.conf.all.send_redirects", "0"),
+			sysctlApplyAction("Set net.ipv4.tcp_syncookies=1", "net.ipv4.tcp_syncookies", "1"),
+			sysctlApplyAction("Set net.ipv4.conf.all.rp_filter=1", "net.ipv4.conf.all.rp_filter", "1"),
+			sysctlApplyAction("Set net.ipv4.icmp_echo_ignore_broadcasts=1", "net.ipv4.icmp_echo_ignore_broadcasts", "1"),
+			sysctlApplyAction("Set net.ipv4.icmp_ignore_bogus_error_responses=1", "net.ipv4.icmp_ignore_bogus_error_responses", "1"),
+		},
 	})
 
 	// ── LOGG — Syslog daemon (Lynis LOGG-2130) ───────────────────────
-	// Robust installer: detects init system, installs rsyslog, best-effort
-	// start (no error if init system is missing, e.g. in containers).
+	// Single install action — Auto. The Warning dialog surfaces the
+	// "service may not start in containers" concern.
 	r.Register(&Fix{
 		FindingID: "lynis.LOGG-2130",
 		Label:     "Install and enable a syslog daemon (rsyslog)",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install and enable rsyslog",
 			Warning: "Installing rsyslog requires internet access and a working init system. In containers without an init system, the package will be installed but the service may not start.",
 			Apply: func(ctx Context) error {
-				script := `set +e
-if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y rsyslog
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now rsyslog 2>/dev/null
-    else
-        service rsyslog start 2>/dev/null
-    fi
-elif command -v apk >/dev/null 2>&1; then
-    apk add rsyslog
-    if command -v rc-update >/dev/null 2>&1; then
-        rc-update add rsyslog default 2>/dev/null
-    fi
-    if command -v rc-service >/dev/null 2>&1; then
-        rc-service rsyslog start 2>/dev/null
-    fi
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y rsyslog
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now rsyslog 2>/dev/null
-    else
-        service rsyslog start 2>/dev/null
-    fi
-else
-    echo "No supported package manager (apt/apk/dnf) found" >&2
-    exit 1
-fi
-exit 0
-`
-				return exec.Command("sh", "-c", script).Run()
+				return runInstallAndStart("rsyslog", "rsyslog", "rsyslog", "rsyslog")
 			},
 		}},
 	})
@@ -268,7 +193,6 @@ exit 0
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9626",
 		Label:     "Install sysstat for performance monitoring",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install sysstat",
@@ -283,7 +207,6 @@ exit 0
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9622",
 		Label:     "Enable process accounting",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install process accounting tools",
@@ -295,45 +218,17 @@ exit 0
 	})
 
 	// ── ACCT — auditd (Lynis ACCT-9628) ─────────────────────────────
+	// Package name differs per distro: Debian/RHEL = "auditd", Alpine = "audit".
+	// installPackage() handles the alias fallback automatically.
 	r.Register(&Fix{
 		FindingID: "lynis.ACCT-9628",
 		Label:     "Install and enable auditd",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install auditd",
-			Warning: "auditd requires kernel support and a working init system to start the daemon.",
+			Warning: "auditd requires kernel support and a working init system to start the daemon. On Alpine, the package is named 'audit' (handled internally).",
 			Apply: func(ctx Context) error {
-				script := `set +e
-if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y auditd
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now auditd 2>/dev/null
-    else
-        service auditd start 2>/dev/null
-    fi
-elif command -v apk >/dev/null 2>&1; then
-    apk add auditd
-    if command -v rc-update >/dev/null 2>&1; then
-        rc-update add auditd default 2>/dev/null
-    fi
-    if command -v rc-service >/dev/null 2>&1; then
-        rc-service auditd start 2>/dev/null
-    fi
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y auditd
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now auditd 2>/dev/null
-    else
-        service auditd start 2>/dev/null
-    fi
-else
-    echo "No supported package manager (apt/apk/dnf) found" >&2
-    exit 1
-fi
-exit 0
-`
-				return exec.Command("sh", "-c", script).Run()
+				return runInstallAndStart("auditd", "auditd", "auditd", "auditd")
 			},
 		}},
 	})
@@ -342,7 +237,6 @@ exit 0
 	r.Register(&Fix{
 		FindingID: "lynis.NETW-3200",
 		Label:     "Disable uncommon network protocols (dccp, sctp, rds, tipc)",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Blacklist dccp, sctp, rds, tipc in modprobe",
@@ -369,50 +263,18 @@ install tipc /bin/true
 	r.Register(&Fix{
 		FindingID: "lynis.TIME-3104",
 		Label:     "Install and enable an NTP daemon (chrony)",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Install and enable chrony",
 			Warning: "Installing chrony requires internet access. Configure your NTP sources (NTP_SERVERS) before relying on it.",
 			Apply: func(ctx Context) error {
-				script := `set +e
-if command -v apt-get >/dev/null 2>&1; then
-    apt-get install -y chrony
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now chrony 2>/dev/null
-    else
-        service chrony start 2>/dev/null
-    fi
-elif command -v apk >/dev/null 2>&1; then
-    apk add chrony
-    if command -v rc-update >/dev/null 2>&1; then
-        rc-update add chronyd default 2>/dev/null
-    fi
-    if command -v rc-service >/dev/null 2>&1; then
-        rc-service chronyd start 2>/dev/null
-    fi
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y chrony
-    if [ -d /run/systemd/system ]; then
-        systemctl enable --now chronyd 2>/dev/null
-    else
-        service chronyd start 2>/dev/null
-    fi
-else
-    echo "No supported package manager (apt/apk/dnf) found" >&2
-    exit 1
-fi
-exit 0
-`
-				return exec.Command("sh", "-c", script).Run()
+				// chrony package + chronyd service on Alpine, chrony on Debian/RHEL
+				return runInstallAndStart("chrony", "chrony", "chrony", "chronyd")
 			},
 		}},
 	})
 
 	// ── Manual — concerns without an automated fix ──────────────────
-	// Each entry explains what the user must do manually. Surfaced via
-	// RemediationManual so the UI shows guidance instead of an Apply button.
-
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9262",
 		Label:     "Install a PAM module for password strength testing (pam_cracklib on Debian/RHEL, libpam-passwdqc on Alpine). Configure /etc/pam.d/common-password to enforce strength requirements. Restart affected services after editing.",
@@ -449,9 +311,157 @@ exit 0
 	})
 }
 
-// installPackage installs the named package using the detected package manager.
-// Returns an error if no supported package manager is found or the install
-// command fails. Network failures bubble up as-is.
+// ── Helpers (extracted for unit-testability) ──────────────────────────
+
+// sshdSetOption returns an Apply that sets `key value` in /etc/ssh/sshd_config.
+// If the key is already present (possibly commented out), the line is updated.
+// Otherwise the option is appended.
+func sshdSetOption(key, value string) func(Context) error {
+	return func(ctx Context) error {
+		return sshdSetOptionAt("/etc/ssh/sshd_config", key, value)
+	}
+}
+
+// sshdSetOptionAt is the path-parameterized core of sshdSetOption, exposed
+// for unit tests so they can run against temp files.
+func sshdSetOptionAt(path, key, value string) error {
+	script := fmt.Sprintf(
+		"if grep -qE '^#?\\s*%s\\b' %s; then sed -i -E 's/^#?\\s*%s\\b.*/%s %s/' %s; else echo '%s %s' >> %s; fi",
+		key, shellQuote(path), key, key, value, shellQuote(path), key, value, shellQuote(path))
+	return exec.Command("sh", "-c", script).Run()
+}
+
+// loginDefsSet sets KEY value in /etc/login.defs (replace existing or append).
+func loginDefsSet(key, value string) func(Context) error {
+	return func(ctx Context) error {
+		return loginDefsSetAt("/etc/login.defs", key, value)
+	}
+}
+
+// loginDefsSetAt is the path-parameterized core of loginDefsSet.
+func loginDefsSetAt(path, key, value string) error {
+	script := fmt.Sprintf(
+		"if grep -qE '^#?\\s*%s\\b' %s; then sed -i -E 's/^#?\\s*%s\\b.*/%s %s/' %s; else echo '%s %s' >> %s; fi",
+		key, shellQuote(path), key, key, value, shellQuote(path), key, value, shellQuote(path))
+	return exec.Command("sh", "-c", script).Run()
+}
+
+// fileAppendIfMissing returns an Apply that appends `line` to `path` if a
+// line with the same key prefix is not already present. Idempotent.
+func fileAppendIfMissing(path, line string) func(Context) error {
+	return func(ctx Context) error {
+		return fileAppendIfMissingAt(path, line)
+	}
+}
+
+// fileAppendIfMissingAt is the testable core of fileAppendIfMissing.
+func fileAppendIfMissingAt(path, line string) error {
+	// Use a substring of the line as marker (e.g. first 32 chars) to
+	// determine if it's already there. Handles the case where the line
+	// exists in any form.
+	marker := line
+	if len(marker) > 32 {
+		marker = marker[:32]
+	}
+	script := fmt.Sprintf(
+		"if ! grep -qF %q %s 2>/dev/null; then echo %s >> %s; fi",
+		marker, shellQuote(path), shellQuote(line), shellQuote(path))
+	return exec.Command("sh", "-c", script).Run()
+}
+
+// shellQuote wraps a string in single quotes for safe shell interpolation.
+// Used to build script arguments for sh -c.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// sysctlApplyAction returns an Action that sets a kernel sysctl both at
+// runtime (sysctl -w) and persistently in /etc/sysctl.conf. Returns the
+// Action so it can be placed in an Actions slice.
+func sysctlApplyAction(label, param, value string) Action {
+	return Action{
+		Type:    ActionExec,
+		Label:   label,
+		Command: []string{"sysctl", "-w", fmt.Sprintf("%s=%s", param, value)},
+		Apply: func(ctx Context) error {
+			if err := exec.Command("sysctl", "-w", fmt.Sprintf("%s=%s", param, value)).Run(); err != nil {
+				return err
+			}
+			entry := fmt.Sprintf("%s=%s", param, value)
+			existsErr := exec.Command("sh", "-c", fmt.Sprintf("grep -q '^%s=' /etc/sysctl.conf", param)).Run()
+			if existsErr != nil {
+				return exec.Command("sh", "-c", fmt.Sprintf("echo '%s' >> /etc/sysctl.conf", entry)).Run()
+			}
+			return exec.Command("sh", "-c", fmt.Sprintf("sed -i 's/^#*\\s*%s\\s*=.*/%s/' /etc/sysctl.conf", param, entry)).Run()
+		},
+	}
+}
+
+// runInstallAndStart installs a package and best-effort starts its service
+// across apt/apk/dnf. `set -e` ensures install failures propagate. The
+// service-start step is `|| true`-guarded because it legitimately fails in
+// environments without an init system (containers, chroots, etc.).
+//
+// `pkg` is the package name on all distros (same as the function name).
+// `serviceApt` and `serviceDnf` are the systemd unit names on Debian/RHEL.
+// `serviceAlpine` is the OpenRC service name on Alpine (often "chronyd" vs "chrony").
+func runInstallAndStart(pkg, serviceApt, serviceDnf, serviceAlpine string) error {
+	script := fmt.Sprintf(`set -e
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y %s
+    if [ -d /run/systemd/system ]; then
+        systemctl enable --now %s 2>/dev/null || true
+    else
+        service %s start 2>/dev/null || true
+    fi
+elif command -v apk >/dev/null 2>&1; then
+    apk add %s 2>/dev/null || apk add %s
+    if command -v rc-update >/dev/null 2>&1; then
+        rc-update add %s default 2>/dev/null || true
+    fi
+    if command -v rc-service >/dev/null 2>&1; then
+        rc-service %s start 2>/dev/null || true
+    fi
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y %s
+    if [ -d /run/systemd/system ]; then
+        systemctl enable --now %s 2>/dev/null || true
+    else
+        service %s start 2>/dev/null || true
+    fi
+else
+    echo "No supported package manager (apt/apk/dnf) found" >&2
+    exit 1
+fi
+`, pkg, serviceApt, serviceApt, pkg, alpineAlias(pkg), serviceAlpine, serviceAlpine, pkg, serviceDnf, serviceDnf)
+	return exec.Command("sh", "-c", script).Run()
+}
+
+// alpineAlias returns the Alpine package name for the given generic name,
+// or the generic name itself if no alias is known. The lookup is needed
+// because some packages have different names across distros (e.g. auditd
+// on Debian is 'audit' on Alpine).
+func alpineAlias(pkg string) string {
+	if alias, ok := alpinePackageAliases[pkg]; ok {
+		return alias
+	}
+	return pkg
+}
+
+// alpinePackageAliases maps "generic" package names (used in fix code) to
+// the equivalent Alpine package name. When `apk add <pkg>` fails, the
+// installer tries the alias before reporting an error.
+var alpinePackageAliases = map[string]string{
+	"auditd": "audit",
+}
+
+// installPackage installs the named package using the detected package
+// manager. On Alpine, if the direct name fails, the alpinePackageAliases
+// map is consulted. Returns an error if no supported package manager is
+// found or the install ultimately fails.
+//
+// This helper is used by the simpler "install only, no service start" fixes
+// (sysstat, acct). Fixes that need a service start use runInstallAndStart().
 func installPackage(pkg string) error {
 	if _, err := exec.LookPath("apt-get"); err == nil {
 		out, err := exec.Command("apt-get", "install", "-y", pkg).CombinedOutput()
@@ -462,10 +472,18 @@ func installPackage(pkg string) error {
 	}
 	if _, err := exec.LookPath("apk"); err == nil {
 		out, err := exec.Command("apk", "add", pkg).CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("apk add %s failed: %s", pkg, string(out))
+		if err == nil {
+			return nil
 		}
-		return nil
+		// Direct install failed — try the Alpine alias if one is known.
+		if alias := alpineAlias(pkg); alias != pkg {
+			out2, err2 := exec.Command("apk", "add", alias).CombinedOutput()
+			if err2 == nil {
+				return nil
+			}
+			return fmt.Errorf("apk add %s (and alias %s) failed: %s; %s", pkg, alias, string(out), string(out2))
+		}
+		return fmt.Errorf("apk add %s failed: %s", pkg, string(out))
 	}
 	if _, err := exec.LookPath("dnf"); err == nil {
 		out, err := exec.Command("dnf", "install", "-y", pkg).CombinedOutput()

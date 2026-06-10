@@ -221,7 +221,7 @@ func TestSSH7408_MultipleActions(t *testing.T) {
 }
 
 // TestKrnl6000_SysctlActions verifies the sysctl catch-all is registered
-// as a single bundled action that applies the full hardening set.
+// as 6 INDEPENDENT actions (not bundled). User can pick any subset.
 func TestKrnl6000_SysctlActions(t *testing.T) {
 	r := New()
 	registerSystemFixes(r)
@@ -230,15 +230,13 @@ func TestKrnl6000_SysctlActions(t *testing.T) {
 	if fix == nil {
 		t.Fatal("lynis.KRNL-6000 not registered")
 	}
-	if len(fix.Actions) != 1 {
-		t.Errorf("KRNL-6000 should be a single bundled action, got %d", len(fix.Actions))
+	if len(fix.Actions) != 6 {
+		t.Errorf("KRNL-6000 should have 6 separate sysctl actions, got %d", len(fix.Actions))
 	}
-	a := fix.Actions[0]
-	if a.Type != ActionExec {
-		t.Errorf("KRNL-6000 action type = %v, want ActionExec", a.Type)
-	}
-	if a.Warning == "" {
-		t.Error("KRNL-6000 should have a Warning (kernel-level changes)")
+	for i, a := range fix.Actions {
+		if a.Type != ActionExec {
+			t.Errorf("KRNL-6000 action[%d] type = %v, want ActionExec", i, a.Type)
+		}
 	}
 }
 
@@ -273,22 +271,22 @@ func TestSystemFixClassification(t *testing.T) {
 		id   string
 		kind domain.RemediationKind
 	}{
-		// v2.5.0: IDs match Lynis 3.1.6 semantics
-		// Auto (single auto-exec action)
+		// v2.5.1: IDs match Lynis 3.1.6 semantics
+		// Auto (single action; no user choice; warning inside action)
 		{"lynis.BANN-7126", domain.RemediationAuto},
 		{"lynis.FILE-7524", domain.RemediationAuto},
-		// Review (multi-action or sed/exec that could break things)
-		{"lynis.AUTH-9286", domain.RemediationReview}, // password aging
-		{"lynis.AUTH-9328", domain.RemediationReview}, // umask
-		{"lynis.KRNL-5820", domain.RemediationReview}, // core dump
-		{"lynis.KRNL-6000", domain.RemediationReview}, // sysctl catch-all
-		{"lynis.LOGG-2130", domain.RemediationReview}, // rsyslog
-		{"lynis.ACCT-9626", domain.RemediationReview}, // sysstat
-		{"lynis.ACCT-9622", domain.RemediationReview}, // process accounting
-		{"lynis.ACCT-9628", domain.RemediationReview}, // auditd
-		{"lynis.NETW-3200", domain.RemediationReview}, // uncommon protocols
-		{"lynis.TIME-3104", domain.RemediationReview}, // NTP
-		{"lynis.SSH-7408", domain.RemediationReview},  // broad SSH hardening
+		{"lynis.AUTH-9328", domain.RemediationAuto}, // umask — single setting
+		{"lynis.KRNL-5820", domain.RemediationAuto}, // core dump — single setting
+		{"lynis.LOGG-2130", domain.RemediationAuto}, // rsyslog (single install method)
+		{"lynis.ACCT-9626", domain.RemediationAuto}, // sysstat
+		{"lynis.ACCT-9622", domain.RemediationAuto}, // process accounting
+		{"lynis.ACCT-9628", domain.RemediationAuto}, // auditd
+		{"lynis.NETW-3200", domain.RemediationAuto}, // uncommon protocols
+		{"lynis.TIME-3104", domain.RemediationAuto}, // NTP
+		// Review (multiple INDEPENDENT alternatives; user picks one)
+		{"lynis.AUTH-9286", domain.RemediationReview}, // password aging (MIN or MAX)
+		{"lynis.KRNL-6000", domain.RemediationReview}, // sysctl catch-all (6 options)
+		{"lynis.SSH-7408", domain.RemediationReview},  // broad SSH hardening (5 options)
 		// Manual (cannot automate)
 		{"lynis.AUTH-9262", domain.RemediationManual}, // PAM strength
 		{"lynis.AUTH-9308", domain.RemediationManual}, // single mode password
