@@ -260,23 +260,76 @@ func TestFileAppendIfMissingAt_SingleActionActions(t *testing.T) {
 
 // ── installPackage (Alpine alias) ──────────────────────────────────────
 
-// TestInstallPackage_AuditdAlpineAlias is the regression test for the
-// silent-failure bug where ACCT-9628 reported success but didn't actually
-// install the package because Alpine's package is named "audit", not
-// "auditd". On Alpine, installPackage("auditd") should fall back to
-// installing "audit".
-func TestInstallPackage_AuditdAlpineAlias(t *testing.T) {
-	if _, err := exec.LookPath("apk"); err != nil {
-		t.Skip("not on Alpine (no apk); skipping alias test")
-	}
-
-	// We don't actually want to install anything in tests. Just verify
-	// the alias map is correct.
+// TestAlpineAliasMap verifies the alpinePackageAliases map: a known
+// package name with a different Alpine spelling returns the Alpine
+// spelling, and an unknown name returns itself. This is the lookup
+// table that installPackage's apk branch consults when the direct
+// install fails (see ACCT-9628 auditd → audit regression).
+func TestAlpineAliasMap(t *testing.T) {
 	if got := alpineAlias("auditd"); got != "audit" {
 		t.Errorf("alpineAlias(auditd) = %q, want 'audit'", got)
 	}
 	if got := alpineAlias("nonexistent"); got != "nonexistent" {
 		t.Errorf("alpineAlias(nonexistent) should return itself, got %q", got)
+	}
+}
+
+// TestShellQuote verifies that shellQuote safely interpolates strings
+// containing shell metacharacters. Regression for the v2.5.1 review
+// finding: fileAppendIfMissingAt and runInstallAndStart now route all
+// caller-supplied values through shellQuote to prevent command
+// injection if a future fix passes user-controlled data (e.g. a
+// finding's evidence field) into these helpers.
+func TestShellQuote(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"simple", "'simple'"},
+		{"with space", "'with space'"},
+		{"with'apostrophe", "'with'\\''apostrophe'"},
+		{"$VAR", "'$VAR'"},   // must NOT expand
+		{"`id`", "'`id`'"},   // must NOT expand
+		{"$(id)", "'$(id)'"}, // must NOT expand
+		// `; rm -rf /` is safe inside single quotes (no way to break out
+		// because there's no embedded single quote). The shell receives
+		// the literal text.
+		{"; rm -rf /", "'; rm -rf /'"},
+		{"", "''"},
+		{"multi\nline", "'multi\nline'"},
+		{"a'b'c'd", "'a'\\''b'\\''c'\\''d'"},
+	}
+	for _, tt := range tests {
+		if got := shellQuote(tt.input); got != tt.expected {
+			t.Errorf("shellQuote(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
+// TestShellQuote_PreventsCommandInjection is an end-to-end check that
+// shellQuote actually neutralizes shell metacharacters: we feed a
+// payload containing `;`, `$()`, and “ ` “ through shellQuote into
+// an `echo` invocation, and assert the echo just prints the literal
+// payload (i.e. no command substitution or injection occurred).
+func TestShellQuote_PreventsCommandInjection(t *testing.T) {
+	// Build a script that runs the quoted payload through a sub-shell
+	// that tries to evaluate it. If shellQuote were broken, the
+	// injected commands would execute and create /tmp/hv-injection-*.
+	payload := "; touch /tmp/hv-injection-should-not-exist; $(touch /tmp/hv-injection-dollar); `touch /tmp/hv-injection-backtick`"
+	script := "echo " + shellQuote(payload)
+	if out, err := exec.Command("sh", "-c", script).CombinedOutput(); err != nil {
+		t.Fatalf("sh -c failed: %v, output: %s", err, string(out))
+	}
+	// Verify the file was NOT created (i.e. injection didn't happen).
+	for _, marker := range []string{
+		"/tmp/hv-injection-should-not-exist",
+		"/tmp/hv-injection-dollar",
+		"/tmp/hv-injection-backtick",
+	} {
+		if _, err := os.Stat(marker); err == nil {
+			os.Remove(marker) // clean up
+			t.Errorf("shell injection succeeded: %s was created", marker)
+		}
 	}
 }
 

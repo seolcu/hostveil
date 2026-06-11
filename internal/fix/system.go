@@ -59,11 +59,11 @@ func registerSystemFixes(r *Registry) {
 
 	// ── SSH — Broad SSH hardening (Lynis reports many sub-concerns under SSH-7408) ──
 	// 5 INDEPENDENT options, user picks one. Each modifies a different sshd
-	// directive; none depend on the others.
+	// directive; none depend on the others. Class() auto-detects Review
+	// from len(Actions) > 1, so no explicit Kind is needed.
 	r.Register(&Fix{
 		FindingID: "lynis.SSH-7408",
 		Label:     "Harden SSH configuration",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{
 			{
 				Type:     ActionEdit,
@@ -105,10 +105,10 @@ func registerSystemFixes(r *Registry) {
 
 	// ── AUTH — Password aging (Lynis AUTH-9286) ──────────────────────
 	// 2 INDEPENDENT options. Either can be set without the other.
+	// Class() auto-detects Review from len(Actions) > 1.
 	r.Register(&Fix{
 		FindingID: "lynis.AUTH-9286",
 		Label:     "Configure password aging in /etc/login.defs",
-		Kind:      domain.RemediationReview,
 		Actions: []Action{
 			{
 				Type:     ActionEdit,
@@ -356,16 +356,18 @@ func fileAppendIfMissing(path, line string) func(Context) error {
 
 // fileAppendIfMissingAt is the testable core of fileAppendIfMissing.
 func fileAppendIfMissingAt(path, line string) error {
-	// Use a substring of the line as marker (e.g. first 32 chars) to
-	// determine if it's already there. Handles the case where the line
-	// exists in any form.
+	// Use a substring of the line as marker (e.g. first 32 bytes) to
+	// determine if it's already there. `len` returns bytes, not runes;
+	// `grep -F` also operates on bytes, so the marker is consistent
+	// with grep's view of the file. Callers that need rune-correct
+	// truncation should pre-truncate `line` themselves.
 	marker := line
 	if len(marker) > 32 {
 		marker = marker[:32]
 	}
 	script := fmt.Sprintf(
-		"if ! grep -qF %q %s 2>/dev/null; then echo %s >> %s; fi",
-		marker, shellQuote(path), shellQuote(line), shellQuote(path))
+		"if ! grep -qF %s %s 2>/dev/null; then echo %s >> %s; fi",
+		shellQuote(marker), shellQuote(path), shellQuote(line), shellQuote(path))
 	return exec.Command("sh", "-c", script).Run()
 }
 
@@ -405,6 +407,11 @@ func sysctlApplyAction(label, param, value string) Action {
 // `pkg` is the package name on all distros (same as the function name).
 // `serviceApt` and `serviceDnf` are the systemd unit names on Debian/RHEL.
 // `serviceAlpine` is the OpenRC service name on Alpine (often "chronyd" vs "chrony").
+//
+// All four arguments are passed through `shellQuote` so a future caller
+// passing user-controlled values (e.g. a finding's evidence field) can't
+// inject shell metacharacters. Current call sites pass hardcoded ASCII
+// literals, but the helpers are now the public seam for new fixes.
 func runInstallAndStart(pkg, serviceApt, serviceDnf, serviceAlpine string) error {
 	script := fmt.Sprintf(`set -e
 if command -v apt-get >/dev/null 2>&1; then
@@ -433,7 +440,10 @@ else
     echo "No supported package manager (apt/apk/dnf) found" >&2
     exit 1
 fi
-`, pkg, serviceApt, serviceApt, pkg, alpineAlias(pkg), serviceAlpine, serviceAlpine, pkg, serviceDnf, serviceDnf)
+`, shellQuote(pkg), shellQuote(serviceApt), shellQuote(serviceApt),
+		shellQuote(pkg), shellQuote(alpineAlias(pkg)),
+		shellQuote(serviceAlpine), shellQuote(serviceAlpine),
+		shellQuote(pkg), shellQuote(serviceDnf), shellQuote(serviceDnf))
 	return exec.Command("sh", "-c", script).Run()
 }
 
