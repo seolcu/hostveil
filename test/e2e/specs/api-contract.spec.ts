@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const EXPECTED_TOTAL = 12;
+const EXPECTED_TOTAL = 14;
 
 async function apiFetch(page: any, path: string, options?: RequestInit) {
   return page.evaluate(

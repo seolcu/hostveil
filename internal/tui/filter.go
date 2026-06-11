@@ -115,6 +115,8 @@ func (m *model) cycleSourceFilter() {
 		m.filter.source = "trivy"
 	case "trivy":
 		m.filter.source = "lynis"
+	case "lynis":
+		m.filter.source = "compose"
 	default:
 		m.filter.source = "all"
 	}

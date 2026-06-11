@@ -119,18 +119,21 @@ function bindControls() {
     render();
   });
 
+  const actions = document.createElement("div");
+  actions.className = "panel-head-actions";
+
   const rescanBtn = document.createElement("button");
   rescanBtn.id = "rescanBtn";
   rescanBtn.type = "button";
-  rescanBtn.textContent = "Re-scan";
-  document.querySelector(".panel-head").appendChild(rescanBtn);
+  rescanBtn.textContent = "Rescan";
+  actions.appendChild(rescanBtn);
 
   const recalcBtn = document.createElement("button");
   recalcBtn.id = "recalcBtn";
   recalcBtn.type = "button";
   recalcBtn.textContent = "Recalc";
   recalcBtn.title = "Recalculate score";
-  document.querySelector(".panel-head").appendChild(recalcBtn);
+  actions.appendChild(recalcBtn);
   recalcBtn.addEventListener("click", async () => {
     recalcBtn.blur();
     try {
@@ -154,14 +157,14 @@ function bindControls() {
       console.error("Rescan failed");
     }
     rescanBtn.disabled = false;
-    rescanBtn.textContent = "Re-scan";
+  rescanBtn.textContent = "Rescan";
   });
 
   const exportBtn = document.createElement("button");
   exportBtn.id = "exportBtn";
   exportBtn.type = "button";
   exportBtn.textContent = "Export";
-  document.querySelector(".panel-head").appendChild(exportBtn);
+  actions.appendChild(exportBtn);
   exportBtn.addEventListener("click", () => {
     exportBtn.blur();
     showExportModal();
@@ -171,11 +174,13 @@ function bindControls() {
   fixSelectedBtn.id = "fixSelectedBtn";
   fixSelectedBtn.type = "button";
   fixSelectedBtn.className = "fix-selected-btn";
-  document.querySelector(".panel-head").appendChild(fixSelectedBtn);
+  actions.appendChild(fixSelectedBtn);
   fixSelectedBtn.addEventListener("click", () => {
     fixSelectedBtn.blur();
     applyFixBatch();
   });
+
+  document.querySelector(".panel-head").appendChild(actions);
 
   document.addEventListener("keydown", (e) => {
     // Don't intercept keys while typing in form fields
@@ -276,10 +281,10 @@ function bindControls() {
       return;
     }
 
-    // s: cycle source filter (all → trivy → lynis → all, matching TUI)
+    // s: cycle source filter (all → trivy → lynis → compose → all, matching TUI)
     if (e.key === "s") {
       e.preventDefault();
-      const sources = ["all", "trivy", "lynis"];
+      const sources = ["all", "trivy", "lynis", "compose"];
       const idx = sources.indexOf(state.source);
       state.source = sources[(idx + 1) % sources.length];
       state.selected = 0;
@@ -538,19 +543,24 @@ function sorter(a, b) {
 function renderMetrics() {
   const items = state.live?.findings || [];
   const score = state.live?.score ?? 0;
-  $("score").textContent = `${score}/100`;
-  $("score").className = severityClassForScore(score);
+  if (items.length === 0) {
+    $("score").textContent = "Clean";
+    $("score").className = "low";
+  } else {
+    $("score").textContent = `${score}/100`;
+    $("score").className = severityClassForScore(score);
+  }
   const counts = countBy(items, severity);
   const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
   const metrics = [
-    ["Total", items.length],
+    ["Total", items.length, "", "metric--total"],
     ["Critical", counts.critical || 0, "critical"],
     ["High", counts.high || 0, "high"],
     ["Medium", counts.medium || 0, "medium"],
     ["Low", counts.low || 0, "low"],
-    ["Fixable", fixable],
+    ["Fixable", fixable, "", "metric--fixable"],
   ];
-  $("metrics").innerHTML = metrics.map(([label, value, cls = ""]) => `<article class="metric"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
+  $("metrics").innerHTML = metrics.map(([label, value, cls = "", extra = ""]) => `<article class="metric ${extra}"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
 }
 
 function renderFilters() {
@@ -834,7 +844,7 @@ function section(name, content, copy = false) {
 
 function countBy(items, fn) { return items.reduce((acc, item) => ((acc[fn(item)] = (acc[fn(item)] || 0) + 1), acc), {}); }
 function severity(f) { return ["critical", "high", "medium", "low"][f.severity] || String(f.severity || "unknown").toLowerCase(); }
-function source(f) { return ["trivy", "lynis"][f.source] || String(f.source || "unknown").toLowerCase(); }
+function source(f) { return ["trivy", "lynis", "compose"][f.source] || String(f.source || "unknown").toLowerCase(); }
 function remediation(f) { return ["auto", "review", "unavailable", "manual"][f.remediation] || String(f.remediation || "unknown").toLowerCase(); }
 function title(f) { return f.title || "Untitled finding"; }
 function shortId(id = "") { const parts = id.split("."); return parts[parts.length - 1] || id; }
@@ -1277,7 +1287,7 @@ function showHelpModal() {
             <dt><kbd>O</kbd></dt><dd>Toggle sort direction</dd>
             <dt><kbd>Ctrl+A</kbd></dt><dd>Select all visible</dd>
             <dt><kbd>Ctrl+R</kbd></dt><dd>Recalculate score</dd>
-            <dt><kbd>Ctrl+S</kbd></dt><dd>Re-scan all tools</dd>
+            <dt><kbd>Ctrl+S</kbd></dt><dd>Rescan all tools</dd>
           </dl>
         </div>
         <div class="help-section">

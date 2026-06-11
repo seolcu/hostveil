@@ -208,6 +208,10 @@ func TestCycleSourceFilter(t *testing.T) {
 		t.Errorf("expected 'lynis', got %q", m.filter.source)
 	}
 	m.cycleSourceFilter()
+	if m.filter.source != "compose" {
+		t.Errorf("expected 'compose', got %q", m.filter.source)
+	}
+	m.cycleSourceFilter()
 	if m.filter.source != "all" {
 		t.Errorf("expected 'all', got %q", m.filter.source)
 	}
@@ -215,6 +219,10 @@ func TestCycleSourceFilter(t *testing.T) {
 
 func TestCycleSourceFilter_WrapsFromLynis(t *testing.T) {
 	m := &model{filter: filterState{source: "lynis"}}
+	m.cycleSourceFilter()
+	if m.filter.source != "compose" {
+		t.Errorf("expected 'compose', got %q", m.filter.source)
+	}
 	m.cycleSourceFilter()
 	if m.filter.source != "all" {
 		t.Errorf("expected 'all', got %q", m.filter.source)

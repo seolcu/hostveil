@@ -14,7 +14,7 @@ test.describe("Rescan", () => {
     // In fixture mode, rescan completes instantly so "Scanning" may not be visible.
     // Just verify the button re-enables and findings reload.
     await expect(rescanBtn).toBeEnabled({ timeout: 15000 });
-    await expect(rescanBtn).toContainText("Re-scan");
+    await expect(rescanBtn).toContainText("Rescan");
 
     await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
   });
@@ -48,7 +48,7 @@ test.describe("Rescan", () => {
     const idsBefore = await page.locator("#findings tr[data-id]").evaluateAll(
       (els) => els.map((el) => el.getAttribute("data-id"))
     );
-    expect(idsBefore.length).toBe(12);
+    expect(idsBefore.length).toBe(14);
 
     // rescan
     await page.locator("#rescanBtn").click();
@@ -79,6 +79,6 @@ test.describe("Rescan", () => {
 
     // metrics should still be correct after rescan
     const totalMetric = page.locator("#metrics article.metric").filter({ hasText: "Total" });
-    await expect(totalMetric.locator("strong")).toHaveText("12");
+    await expect(totalMetric.locator("strong")).toHaveText("14");
   });
 });

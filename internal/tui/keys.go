@@ -285,7 +285,7 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 var tableColumnsFull = []table.Column{
 	{Title: " ", Width: 3},
 	{Title: "Severity", Width: 8},
-	{Title: "Source", Width: 6},
+	{Title: "Source", Width: 8},
 	{Title: "ID", Width: 14},
 	{Title: "Finding", Width: 40},
 	{Title: "Fix", Width: 11},

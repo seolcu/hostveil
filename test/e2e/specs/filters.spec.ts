@@ -12,7 +12,7 @@ test.describe("Filters and sorting", () => {
     const initialCount = await page.locator(
       "#findings tr[data-index]"
     ).count();
-    expect(initialCount).toBe(12);
+    expect(initialCount).toBe(14);
 
     // click nginx service filter
     await page
@@ -34,7 +34,7 @@ test.describe("Filters and sorting", () => {
     const webappCount = await page.locator(
       "#findings tr[data-index]"
     ).count();
-    expect(webappCount).toBe(2);
+    expect(webappCount).toBe(4);
 
     // reset
     await page.locator('#serviceFilters button[data-value="all"]').click();
@@ -79,7 +79,7 @@ test.describe("Filters and sorting", () => {
     const allCount = await page.locator(
       "#findings tr[data-index]"
     ).count();
-    expect(allCount).toBe(12);
+    expect(allCount).toBe(14);
   });
 
   test("Column header click toggles sort direction", async ({ page }) => {
@@ -143,7 +143,7 @@ test.describe("Filters and sorting", () => {
     const resetCount = await page.locator(
       "#findings tr[data-index]"
     ).count();
-    expect(resetCount).toBe(12);
+    expect(resetCount).toBe(14);
     expect(resetCount).toBeGreaterThan(filteredCount);
 
     // search input should be empty
@@ -153,7 +153,7 @@ test.describe("Filters and sorting", () => {
 
   test("Finding count updates with filters", async ({ page }) => {
     const countEl = page.locator("#findingCount");
-    await expect(countEl).toContainText("12 visible");
+    await expect(countEl).toContainText("14 visible");
 
     await page
       .locator('#severityFilters button[data-value="low"]')
@@ -165,6 +165,6 @@ test.describe("Filters and sorting", () => {
       .locator('#severityFilters button[data-value="all"]')
       .click();
     await page.waitForTimeout(300);
-    await expect(countEl).toContainText("12 visible");
+    await expect(countEl).toContainText("14 visible");
   });
 });

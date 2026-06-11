@@ -174,9 +174,9 @@ func (m model) renderFilterPanel(width int) string {
 		return strings.Join(values, " ")
 	}
 
-	searchValue := "SSH, AUTH, CVE, service"
+	searchValue := "> ssh, auth, cve, …"
 	if m.filter.query != "" {
-		searchValue = fit(m.filter.query, width-6)
+		searchValue = "> " + fit(m.filter.query, width-10-2)
 	}
 	searchBox := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.TextMuted)).
@@ -199,6 +199,7 @@ func (m model) renderFilterPanel(width int) string {
 		chip("All", m.filter.source == "all"),
 		chip("Lynis", m.filter.source == "lynis"),
 		chip("Trivy", m.filter.source == "trivy"),
+		chip("Compose", m.filter.source == "compose"),
 	)
 	rem := joinChips(
 		chip("All", m.filter.remediation == "all"),
@@ -275,7 +276,11 @@ func (m model) renderHeader() string {
 	lines := []string{eyebrow}
 	lines = append(lines, brand)
 	if sys := m.sysInfoLine(); sys != "" {
-		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(sys))
+		sysStyled := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Text)).
+			Bold(true).
+			Render(sys)
+		lines = append(lines, sysStyled)
 	}
 	left := strings.Join(lines, "\n")
 	right := m.renderScorePlate()
@@ -328,11 +333,19 @@ func (m model) renderScorePlate() string {
 	t := m.theme()
 	score := m.snap.Score
 
-	scoreColor := scoreColor(score, t)
-	scoreStr := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(scoreColor)).
-		Bold(true).
-		Render(fmt.Sprintf("%d/100", score))
+	var scoreStr string
+	if len(m.snap.Findings) == 0 {
+		scoreStr = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.Success)).
+			Bold(true).
+			Render("Clean")
+	} else {
+		scoreColor := scoreColor(score, t)
+		scoreStr = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(scoreColor)).
+			Bold(true).
+			Render(fmt.Sprintf("%d/100", score))
+	}
 
 	label := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.TextMuted)).
@@ -380,14 +393,15 @@ func (m model) renderMetrics() string {
 		label string
 		value string
 		color string
+		big   bool
 	}
 	metrics := []metric{
-		{"TOTAL", fmt.Sprintf("%d", len(findings)), t.Text},
-		{"CRITICAL", fmt.Sprintf("%d", counts[domain.SeverityCritical]), t.Critical},
-		{"HIGH", fmt.Sprintf("%d", counts[domain.SeverityHigh]), t.High},
-		{"MEDIUM", fmt.Sprintf("%d", counts[domain.SeverityMedium]), t.Medium},
-		{"LOW", fmt.Sprintf("%d", counts[domain.SeverityLow]), t.Low},
-		{"FIXABLE", fmt.Sprintf("%d", fixable), t.Text},
+		{"TOTAL", fmt.Sprintf("%d", len(findings)), t.Accent, true},
+		{"CRITICAL", fmt.Sprintf("%d", counts[domain.SeverityCritical]), t.Critical, false},
+		{"HIGH", fmt.Sprintf("%d", counts[domain.SeverityHigh]), t.High, false},
+		{"MEDIUM", fmt.Sprintf("%d", counts[domain.SeverityMedium]), t.Medium, false},
+		{"LOW", fmt.Sprintf("%d", counts[domain.SeverityLow]), t.Low, false},
+		{"FIXABLE", fmt.Sprintf("%d", fixable), t.Accent, false},
 	}
 
 	cols := len(metrics)
@@ -400,14 +414,26 @@ func (m model) renderMetrics() string {
 	var cards []string
 	muted := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
 	for _, mt := range metrics {
+		border := lipgloss.NormalBorder()
+		borderColor := t.Border
+		valuePadding := 0
+		if mt.big {
+			border = lipgloss.ThickBorder()
+			borderColor = t.Accent
+			valuePadding = 2
+		}
+		valueStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(mt.color)).
+			Bold(true).
+			Padding(0, valuePadding)
 		card := lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(t.Border)).
+			Border(border).
+			BorderForeground(lipgloss.Color(borderColor)).
 			Width(cardW).
 			Padding(1, 2).
 			Render(
 				muted.Render(mt.label) + "\n" +
-					lipgloss.NewStyle().Foreground(lipgloss.Color(mt.color)).Bold(true).Render(mt.value),
+					valueStyle.Render(mt.value),
 			)
 		cards = append(cards, card)
 	}
@@ -715,7 +741,7 @@ func (m model) renderHelpModal() string {
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  0-4           Filter by severity (0=all, 1=critical...)",
-			"  s             Cycle source filter (all→trivy→lynis)",
+			"  s             Cycle source filter (all→trivy→lynis→compose)",
 			"  r             Cycle remediation filter (all→auto→review→unavailable→manual)",
 			"  o             Cycle sort order",
 			"  O             Toggle sort direction",

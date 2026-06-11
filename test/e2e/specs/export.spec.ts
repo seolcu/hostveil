@@ -105,7 +105,7 @@ test.describe("Export", () => {
     expect(data).toHaveProperty("hostname");
     expect(data).toHaveProperty("local_ip");
     expect(data).toHaveProperty("score_breakdown");
-    expect(data.findings.length).toBe(12);
+    expect(data.findings.length).toBe(14);
   });
 
   test("CSV export has correct row count and field values", async ({
@@ -124,8 +124,8 @@ test.describe("Export", () => {
     const csv = Buffer.concat(content).toString("utf-8");
     const lines = csv.trim().split("\n");
 
-    // header + 12 data rows
-    expect(lines.length).toBe(13);
+    // header + 14 data rows
+    expect(lines.length).toBe(15);
 
     // verify header
     expect(lines[0]).toBe(

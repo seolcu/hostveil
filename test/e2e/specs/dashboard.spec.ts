@@ -86,7 +86,7 @@ test.describe("Dashboard", () => {
     const countText = await page.locator("#findingCount").textContent();
     const count = parseInt(countText || "0", 10);
     expect(count).toBeGreaterThanOrEqual(2);
-    expect(count).toBeLessThan(12);
+    expect(count).toBeLessThan(14);
 
     await page.locator("#clearFilters").click();
     await page.waitForTimeout(300);
@@ -139,17 +139,17 @@ test.describe("Dashboard", () => {
     const metrics = page.locator("#metrics article.metric");
     await expect(metrics.first()).toBeVisible();
 
-    // Total = 12
+    // Total = 14 (12 original + 2 compose)
     const totalMetric = metrics.filter({ hasText: "Total" });
-    await expect(totalMetric.locator("strong")).toHaveText("12");
+    await expect(totalMetric.locator("strong")).toHaveText("14");
 
     // Critical = 2
     const criticalMetric = metrics.filter({ hasText: "Critical" });
     await expect(criticalMetric.locator("strong")).toHaveText("2");
 
-    // High = 4
+    // High = 6 (4 original + 2 compose)
     const highMetric = metrics.filter({ hasText: "High" });
-    await expect(highMetric.locator("strong")).toHaveText("4");
+    await expect(highMetric.locator("strong")).toHaveText("6");
 
     // Medium = 4
     const mediumMetric = metrics.filter({ hasText: "Medium" });
@@ -159,9 +159,9 @@ test.describe("Dashboard", () => {
     const lowMetric = metrics.filter({ hasText: "Low" });
     await expect(lowMetric.locator("strong")).toHaveText("2");
 
-    // Fixable = 11 (auto=8 + review=3)
+    // Fixable = 13 (both compose findings are classified as auto by the fix registry)
     const fixableMetric = metrics.filter({ hasText: "Fixable" });
-    await expect(fixableMetric.locator("strong")).toHaveText("11");
+    await expect(fixableMetric.locator("strong")).toHaveText("13");
   });
 
   test("Score element has severity color class", async ({ page }) => {
@@ -183,5 +183,29 @@ test.describe("Dashboard", () => {
     const text = await sysinfo.textContent();
     expect(text).toContain("e2e-test-box");
     expect(text).toContain("192.168.1.100");
+  });
+
+  test("Source column renders 'compose' for compose findings, not '2'", async ({ page }) => {
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    // Source filter chip should be labeled "compose" (not "2")
+    const composeChip = page.locator('#sourceFilters button[data-value="compose"]');
+    await expect(composeChip).toBeVisible();
+    await expect(composeChip).toContainText("Compose");
+
+    // Filter to compose only — at least 1 row
+    await composeChip.click();
+    await page.waitForTimeout(300);
+    const composeRows = page.locator("#findings tr[data-index]");
+    expect(await composeRows.count()).toBeGreaterThan(0);
+
+    // Each row's source cell should show "compose" (label uppercases), never "2"
+    const sources = await page.locator("#findings td:nth-child(3)").allTextContents();
+    for (const s of sources) {
+      expect(s.trim().toLowerCase()).toBe("compose");
+    }
+
+    // reset
+    await page.locator('#sourceFilters button[data-value="all"]').click();
   });
 });

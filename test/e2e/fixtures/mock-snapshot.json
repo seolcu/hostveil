@@ -204,6 +204,40 @@
       },
       "metadata": {},
       "fixed": false
+    },
+    {
+      "id": "compose.ds001",
+      "title": "Compose service runs in privileged mode",
+      "description": "The compose service 'webapp' is configured with privileged: true, granting all capabilities and unrestricted host access.",
+      "how_to_fix": "Set privileged: false in the compose file to disable privileged mode.",
+      "severity": 1,
+      "source": 2,
+      "service": "webapp",
+      "remediation": 0,
+      "evidence": {
+        "compose_service": "webapp",
+        "current_value": "true"
+      },
+      "metadata": {
+        "compose_path": "/home/test/docker-compose.yml"
+      },
+      "fixed": false
+    },
+    {
+      "id": "compose.dr004",
+      "title": "Compose file references env_file with permissive permissions",
+      "description": "The compose file '/home/test/docker-compose.yml' references an env_file whose permissions may expose secret values.",
+      "how_to_fix": "Restrict the .env file permissions to 600 and ensure it is gitignored.",
+      "severity": 1,
+      "source": 2,
+      "service": "webapp",
+      "remediation": 0,
+      "evidence": {
+        "compose_path": "/home/test/docker-compose.yml",
+        "secret_name": "db_password"
+      },
+      "metadata": {},
+      "fixed": false
     }
   ]
 }

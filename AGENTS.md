@@ -179,23 +179,10 @@ Workflow:
 
 ## RemediationKind Classification Rules
 
-The four kinds are about FIXABILITY, not DANGER LEVEL.
-
-- **Auto**: Software can fix it with one solution. The user still clicks "Apply".
-  If the fix is dangerous, show a WARNING DIALOG. It remains Auto.
-  Examples: chmod 640 /etc/shadow, sysctl -w net.ipv4.ip_forward=0
-  Counter-example: "Set user: 1000:1000" should NOT be Auto if the correct UID varies per image.
-
-- **Review**: Multiple solutions exist, OR the fix requires user input.
-  NOT about danger. A safe preference choice is Review.
-  Examples: "Choose bridge or overlay network", "What UID should this container use?"
-
-- **Manual**: Technically impossible to automate. Needs a legitimate reason.
-  NOT "it's hard to code" or "we haven't implemented it yet."
-  Examples: LDAP requires site-specific connection details, CVE has no upstream fix yet (FixedVersion empty)
-  Counter-example: CVE fix with FixedVersion available is NOT Manual — it's Auto (pull + redeploy).
-
-- **Unavailable**: Not yet implemented. The default for all findings before Classify().
+> The public-facing summary of the four kinds (Auto / Review / Manual /
+> Unavailable) lives in [`README.md`](README.md#remediation-kinds). This
+> section documents the design rationale, counter-examples, and
+> implementation patterns for contributors.
 
 ### Warning vs Review distinction
 - Warning: "This fix may break things. Are you sure?" → Still Auto, show warning dialog
