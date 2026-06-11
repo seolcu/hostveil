@@ -30,19 +30,23 @@ echo "[4/4] Starting Compose projects..."
 for project in vuln-project overprivileged; do
     if [ -d "/opt/compose/$project" ]; then
         cd "/opt/compose/$project"
-        docker compose pull 2>/dev/null || true
-        docker compose up -d 2>/dev/null || echo "      ($project skipped — images may need pulling)"
+        echo "      pulling images for $project..."
+        docker compose pull 2>&1 || echo "      ⚠ $project pull failed — continuing"
+        echo "      starting $project..."
+        docker compose up -d 2>&1 || echo "      ⚠ $project up failed — continuing"
     fi
 done
 
 # Verify at least one project is running
+echo "      checking compose projects..."
 for i in {1..15}; do
-  running=$(docker compose ls --filter name=hostveil 2>/dev/null | wc -l || true)
+  running=$(docker compose ls --filter name=hostveil 2>&1 | wc -l || true)
   if [ "$running" -ge 1 ]; then
     break
   fi
   sleep 1
 done
+docker compose ls --filter name=hostveil 2>&1 || true
 
 echo ""
 echo "  Ready. Run hostveil:"

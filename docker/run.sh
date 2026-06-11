@@ -50,20 +50,39 @@ up() {
             echo "  Port conflict, retrying in 3s... (attempt $attempt/3)"
             free_port 8787
             sleep 3
+        elif echo "$out" | grep -qiE "(not found|pull access denied|toomanyrequests|rate limit)"; then
+            echo "  ERROR: Failed to pull required Docker image."
+            echo "  This usually means the base image 'docker:28-dind'"
+            echo "  could not be downloaded. Check your network / Docker Hub"
+            echo "  authentication (docker login) or rate limit status."
+            echo ""
+            echo "$out"
+            exit 1
         else
             echo "$out"
             exit 1
         fi
         if [ "$attempt" = "3" ]; then
+            echo "  Retrying build without capturing output..."
             docker compose up -d --build --remove-orphans
         fi
     done
 
     echo "  Waiting for Docker daemon..."
+    DAEMON_READY=false
     for i in {1..30}; do
-      docker compose exec -w /hostveil test-host docker info >/dev/null 2>&1 && break
+      if docker compose exec -w /hostveil test-host docker info >/dev/null 2>&1; then
+        DAEMON_READY=true
+        break
+      fi
       sleep 1
     done
+    if [ "$DAEMON_READY" = false ]; then
+        docker compose exec -w /hostveil test-host docker info 2>&1 || true
+        echo "  ERROR: Docker daemon did not start inside container"
+        docker compose logs test-host 2>/dev/null | tail -20 || true
+        exit 1
+    fi
 
     # Verify mount
     docker compose exec -w /hostveil test-host ls go.mod >/dev/null 2>&1 || {
@@ -71,9 +90,18 @@ up() {
         exit 1
     }
 
-    # Start compose project
+    # Start compose project (retry in case entrypoint pull failed)
+    echo "  Ensuring compose projects are running..."
     docker compose exec test-host sh -c "
-        cd /opt/compose/vuln-project && docker compose up -d 2>/dev/null
+        for project in vuln-project overprivileged; do
+            if [ -d \"/opt/compose/\$project\" ]; then
+                cd \"/opt/compose/\$project\"
+                docker compose ps --filter status=running 2>&1 | grep -q up || {
+                    echo \"      starting \$project...\"
+                    docker compose up -d 2>&1 || echo \"      ⚠ \$project up failed\"
+                }
+            fi
+        done
     " || true
 
     # Build hostveil
