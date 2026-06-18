@@ -83,6 +83,13 @@ func Run(ctx context.Context, s *store.Store, requested []model.Category) (*RunR
 		cats = allCategories()
 	}
 
+	// Load the suppression set once. The orchestrator re-labels
+	// any matching finding as state=suppressed.
+	suppressed, err := s.LoadSuppressionSet(ctx, run.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("load suppressions: %w", err)
+	}
+
 	for _, c := range cats {
 		runner, ok := CategoryScanners[c]
 		if !ok {
@@ -111,6 +118,9 @@ func Run(ctx context.Context, s *store.Store, requested []model.Category) (*RunR
 			f := res.Findings[i]
 			f.Fingerprint = Fingerprint(f)
 			f.State = classify(f.Fingerprint, prev, seenThisRun)
+			if suppressed[f.RuleID] {
+				f.State = model.StateSuppressed
+			}
 			f.FirstSeenAt = firstSeenOr(f.Fingerprint, f.FirstSeenAt, prev)
 			f.LastSeenAt = now
 			seenThisRun[f.Fingerprint] = struct{}{}

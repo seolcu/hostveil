@@ -19,6 +19,15 @@ type CategorySkip struct {
 	Detail   string   `json:"detail,omitempty"`
 }
 
+// Suppression is a record of a rule being suppressed for a host.
+// The primary key is (HostID, RuleID). Reason is free-text.
+type Suppression struct {
+	HostID    string `json:"host_id"`
+	RuleID    string `json:"rule_id"`
+	Reason    string `json:"reason,omitempty"`
+	CreatedAt string `json:"created_at"`
+}
+
 // ScanRun is a single execution of the scan.
 type ScanRun struct {
 	ID                     string         `json:"id"`
