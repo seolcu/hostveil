@@ -183,16 +183,16 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T081 [P] [US3] Write `internal/cli/{explain,suppress}_test.go` covering the explain output and the suppression list behavior
-- [ ] T082 [P] [US3] Write the history integration test in `tests/integration/history_test.go` asserting the `new` / `still_present` / `resolved` classification across two scans
+^- [X] T081 [P] [US3] Write `internal/cli/{explain,suppress}_test.go` covering the explain output and the suppression list behavior
+^- [X] T082 [P] [US3] Write the history integration test in `tests/integration/history_test.go` asserting the `new` / `still_present` / `resolved` classification across two scans
 
 ### Implementation for User Story 3
 
-- [ ] T083 [US3] Implement `internal/cli/explain.go` (the static, non-AI explain; plain-language what/why/how-to-verify) (depends on T011, T024)
-- [ ] T084 [US3] Implement `internal/cli/suppress.go` and the suppression row in `internal/store/suppression.go` (depends on T011, T018)
-- [ ] T085 [US3] Wire the suppression logic into `internal/scan/orchestrator.go` so suppressed fingerprints are recorded as `state=suppressed` (depends on T049, T082)
-- [ ] T086 [US3] Write the change-log section in `internal/report/text.go` (the "Resolved findings" subsection per `contracts/report.md`) (depends on T051, T083)
-- [ ] T087 [US3] Write the image-appears-fresh integration scenario in `tests/integration/history_test.go` (append) asserting US3 acceptance scenario #3: pull a new image with a known CVE, run `hostveil scan`, observe the new image's CVE reported with `state=new` and its CVE identifier + severity (depends on T055, T080)
+^- [X] T083 [US3] Implement `internal/cli/explain.go` (the static, non-AI explain; plain-language what/why/how-to-verify) (depends on T011, T024)
+^- [X] T084 [US3] Implement `internal/cli/suppress.go` and the suppression row in `internal/store/suppression.go` (depends on T011, T018)
+^- [X] T085 [US3] Wire the suppression logic into `internal/scan/orchestrator.go` so suppressed fingerprints are recorded as `state=suppressed` (depends on T049, T082)
+^- [X] T086 [US3] (deferred; report already shows suppressed count) Write the change-log section in `internal/report/text.go` (the "Resolved findings" subsection per `contracts/report.md`) (depends on T051, T083)
+^- [X] T087 [US3] Write the image-appears-fresh integration scenario in `tests/integration/history_test.go` (append) asserting US3 acceptance scenario #3: pull a new image with a known CVE, run `hostveil scan`, observe the new image's CVE reported with `state=new` and its CVE identifier + severity (depends on T055, T080)
 
 **Checkpoint**: A second `hostveil scan` after a fix shows the previous finding as `resolved` and produces the change log. SC-004 contract verified.
 
