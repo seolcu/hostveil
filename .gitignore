@@ -1,5 +1,2 @@
-# User-specific tool state
-.agents/
-
 # Tool-local node_modules (covered by .opencode/.gitignore too; explicit here for clarity)
 .opencode/node_modules/
