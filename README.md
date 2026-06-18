@@ -50,4 +50,4 @@ make build-cross    # cross-compile to linux/{amd64,arm64,386,arm/v7}
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+GPL v3. See [LICENSE](LICENSE).

@@ -42,7 +42,7 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 - [X] T005 [P] Create `scripts/test.sh` running `go test ./...` (unit), then the contract suite, then the integration suite (gated by `HOSTVEIL_INTEGRATION=1`)
 - [X] T006 [P] Create `.golangci.yml` enabling `govet`, `staticcheck`, `gofmt`, `goimports`, and an `lll` line-length cap of 100 chars
 - [X] T007 [P] Create `Makefile` with targets: `build`, `test`, `test-unit`, `test-contract`, `test-integration`, `build-noai`, `build-notui`, `build-noweb`, `lint`, `verify-noai` (CI gate)
-- [X] T008 [P] Create `LICENSE` (MIT) and stub `README.md` pointing at `docs/` (full README lands in the Polish phase)
+- [X] T008 [P] Preserve the existing `LICENSE` (GPL v3) that was in the repository before the v3 rewrite (the previous v2.5.2 codebase was GPL v3 and v3 inherits that license); create the stub `README.md` pointing at `docs/` (full README lands in the Polish phase)
 - [X] T009 [P] Create `.gitignore` for Go build outputs (`/vendor/`, `*.test`, `*.out`), the local `dist/` directory, and editor / OS noise. Do NOT add XDG runtime paths: those are created in `$HOME`, not in the repo, and the user's `~/.local/share/hostveil/` is never tracked.
 - [X] T010 [P] Create `.github/workflows/ci.yml` running lint, unit, contract, integration (on push), and the `verify-noai` gate (build with `-tags noai` and assert `strings` matches no `(?i)anthropic|openai|ollama`)
 
