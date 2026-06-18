@@ -103,7 +103,9 @@ target host (matches spec FR-009).
 - A repeat scan with no host changes: ≤ 60 s (uses cached state).
 - Program startup to first output: < 500 ms cold start.
 - TUI first paint (findings list visible): < 200 ms on a host with
-  100 findings (SC-007 prerequisite).
+  100 findings (a soft cap on perceived snappiness; SC-007 measures
+  the *end-to-end* session budget, which is the user-visible
+  contract).
 - Web dashboard first paint: < 2 s on a local connection to a host
   with 100 findings (SC-008).
 - AI-assisted `explain` against local Ollama: < 30 s end-to-end

@@ -416,13 +416,30 @@ content crossed the wire.
 - **FR-009**: The program MUST be runnable as a single, documented
   command on a stock Linux server with only the prerequisites the user is
   told about up front, and MUST NOT require the user to install or learn
-  any extra framework, runtime, or service to run a scan.
+  any extra framework, runtime, or service to run a scan. The canonical
+  invocation is `hostveil scan`; every other surface (`hostveil tui`,
+  `hostveil web`, `hostveil ai ...`, `hostveil fix`, `hostveil
+  rollback`, `hostveil explain`, `hostveil suppress`) is a convenience
+  layer over the same scan and fix engine and MUST NOT introduce its own
+  prerequisite (no extra service, no extra runtime).
 - **FR-010**: The program MUST explain any single finding and any single
   proposed fix in plain language on demand, without requiring the user to
   read source code, documentation files, or external references.
 - **FR-011**: The program MUST surface conflicts between a proposed fix
   and the user's existing configuration, and MUST require explicit
-  override before proceeding in that case.
+  override before proceeding in that case. A *conflict* is any of:
+  (a) an SSH `Match` block that re-enables a setting the program
+  intends to disable (for example a per-user `PermitRootLogin yes`
+  that re-enables root login after the global `PermitRootLogin no`
+  is applied), (b) a Docker Compose override file (for example
+  `docker-compose.override.yml`) that re-applies a value the program
+  intends to change, (c) a user-supplied drop-in under
+  `/etc/ssh/sshd_config.d/` that conflicts with the main config, or
+  (d) any other host-side construct that would re-assert the pre-fix
+  value within the same process tree the fix is targeting. When a
+  conflict is detected, the program MUST list each conflicting file
+  and line, explain the conflict in plain language, and require an
+  explicit `--force` override before applying the fix.
 - **FR-012**: The program MUST surface prerequisites for each scan category
   (for example, the ability to read `/etc/ssh/sshd_config`) and MUST
   attempt to satisfy any elevation prerequisite through the platform's
