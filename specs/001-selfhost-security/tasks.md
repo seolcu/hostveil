@@ -107,7 +107,7 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 ^- [X] T044 [P] [US1] Implement `internal/checks/proxy/nginx.go` and `internal/checks/proxy/caddy.go` (parsers) plus the rules from T034
 ^- [X] T045 [P] [US1] Implement `internal/checks/ssl/cert.go` and `internal/checks/ssl/renewal.go` (cert inspection + renewal detection) plus the rules from T035
 ^- [X] T046 [P] [US1] Implement `internal/checks/hardening/firewall.go` (ufw/iptables/nftables detection), `fail2ban.go`, `unattended.go`, `sysctl.go` (in `internal/platform/sysctl/`), and `packages.go` (in `internal/platform/packagemanager/`)
-- [ ] T047 [P] [US1] Implement `internal/platform/packagemanager/{detect,apt,dnf,pacman,apk}.go` for the four families
+- [X] T047 [P] [US1] Implement `internal/platform/packagemanager/{detect,apt,dnf,pacman,apk}.go` for the four families
 ^- [X] T048 [P] [US1] Implement (skeleton; full NVD/OSV adapter deferred) `internal/cve/{feed,cache,matcher,source_nvd,source_osv}.go` per `research.md` R-003
 ^- [X] T049 [US1] Implement `internal/scan/orchestrator.go` that resolves elevation needs, runs each category, writes a `ScanRun` row, and records `CategorySkip` rows for skipped categories (depends on T020, T041..T048)
 ^- [X] T050 [US1] Implement `internal/scan/fingerprint.go` that computes the SHA-256 fingerprint from `(category, rule_id, sorted(entity_refs))` and classifies each finding as `new` / `still_present` / `resolved` (depends on T011)
@@ -270,10 +270,10 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 - [X] T123 [P] Add the cross-build matrix in `Makefile` (`build-cross` target) producing binaries for `linux/amd64`, `linux/arm64`, `linux/386`, `linux/arm/v7` (tier-1 has CI gates; tier-2 is best-effort)
 - [X] T124 [P] Add the build-variant matrix in `Makefile` (`build-noai`, `build-notui`, `build-noweb` targets) producing the variant binaries (depends on T076, T095, T110)
 - [X] T125 Add the reproducible-build verification in `scripts/build.sh` (record the SHA-256 of the produced binary and assert it matches a CI-recorded reference) (depends on T004)
-- [ ] T126 Write the final end-to-end smoke test in `tests/integration/smoke_test.go` that runs the full `quickstart.md` "Five-minute tour" against the test host and asserts every "Expected" line
-- [ ] T127 Verify SC-001..SC-010 from `spec.md` end to end (a manual + automated checklist in `docs/sc-verification.md` that signs off each SC)
-- [ ] T128 Update the spec quality checklist `specs/001-selfhost-security/checklists/requirements.md` if any item's pass state changed (it should not, but verify)
-- [ ] T129 [P] Write `tests/integration/perf_test.go` asserting the performance budgets from the spec: SC-001 (full scan ≤ 5 min on a representative host), SC-007 (TUI session end-to-end ≤ 2 min), SC-008 (web dashboard first paint ≤ 2 s on a local connection), SC-009 (AI `explain` against local Ollama ≤ 30 s). The test file is gated by `HOSTVEIL_PERF=1` so the default CI signal stays clean; when the env var is set, the assertions run and fail on regression (depends on T055, T123)
+- [X] T126 Write the final end-to-end smoke test in `tests/integration/smoke_test.go` that runs the full `quickstart.md` "Five-minute tour" against the test host and asserts every "Expected" line
+- [X] T127 Verify SC-001..SC-010 from `spec.md` end to end (a manual + automated checklist in `docs/sc-verification.md` that signs off each SC)
+- [X] T128 Update the spec quality checklist `specs/001-selfhost-security/checklists/requirements.md` if any item's pass state changed (it should not, but verify)
+- [X] T129 [P] Write `tests/integration/perf_test.go` asserting the performance budgets from the spec: SC-001 (full scan ≤ 5 min on a representative host), SC-007 (TUI session end-to-end ≤ 2 min), SC-008 (web dashboard first paint ≤ 2 s on a local connection), SC-009 (AI `explain` against local Ollama ≤ 30 s). The test file is gated by `HOSTVEIL_PERF=1` so the default CI signal stays clean; when the env var is set, the assertions run and fail on regression (depends on T055, T123)
 
 **Checkpoint**: v3.0.0 release candidate is ready: README, docs, changelog, release script, cross-build, build variants, and the final SC verification.
 
