@@ -31,5 +31,20 @@ go build \
   ./cmd/hostveil
 
 # Record the build artifact's hash so a CI rerun can verify reproducibility.
+# SC-009 requires that two builds with the same inputs produce the same hash.
 sha256sum "${OUT_DIR}/hostveil" | tee "${OUT_DIR}/hostveil.sha256"
+
+# If REFERENCE_SHA256 is provided (CI), compare. Build is non-reproducible
+# only if the values differ AND we did not pass REFERENCE_FORCE=1.
+if [ -n "${REFERENCE_SHA256:-}" ]; then
+  ACTUAL="$(sha256sum "${OUT_DIR}/hostveil" | awk '{print $1}')"
+  if [ "${ACTUAL}" != "${REFERENCE_SHA256}" ]; then
+    echo "REPRODUCIBILITY FAIL: actual=${ACTUAL} reference=${REFERENCE_SHA256}" >&2
+    echo "(this can be intentional; bump via REFERENCE_FORCE=1)" >&2
+    if [ "${REFERENCE_FORCE:-0}" != "1" ]; then
+      exit 1
+    fi
+  fi
+fi
+
 echo "hostveil ${VERSION} (commit ${COMMIT}, built ${BUILT})"

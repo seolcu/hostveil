@@ -49,5 +49,6 @@ func main() {
 		return
 	}
 
-	os.Exit(cli.Execute())
+	code := cli.Execute()
+	os.Exit(code)
 }

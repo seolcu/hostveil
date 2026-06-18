@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59.1
+
+  test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - run: go test ./... -count=1 -timeout=120s
+
+  test-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - run: go test ./tests/contract/... -count=1 -timeout=120s
+
+  verify-noai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - name: Build with -tags noai and assert no AI literals
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          go build -tags noai -trimpath -buildvcs=false \
+            -ldflags "-X github.com/seolcu/hostveil/internal/version.Version=v3.0.0" \
+            -o dist/hostveil-noai ./cmd/hostveil
+          if strings dist/hostveil-noai | grep -iE 'anthropic|openai|ollama'; then
+            echo "FAIL: noai binary contains AI literals"
+            exit 1
+          fi
+          echo "OK: noai binary contains no AI literals"
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: ./scripts/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hostveil-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/hostveil
+          if-no-files-found: error

@@ -115,10 +115,10 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 ^- [X] T052 [US1] Implement `internal/report/json.go` rendering the JSON format per `contracts/report.md` (depends on T011, T024)
 ^- [X] T053 [US1] Implement `internal/report/sink.go` writing the report to stdout and to `--report-dir` per FR-004 / FR-019 / FR-020 (depends on T051, T052)
 ^- [X] T054 [US1] Implement `internal/cli/scan.go` (cobra command) and wire it into `internal/cli/root.go` (depends on T049, T050, T053)
-- [ ] T055 [P] [US1] Create `test/hostimage/Dockerfile` and `test/hostimage/seed.sh` that pre-seed the test host with one finding per in-scope rule
-- [ ] T056 [US1] Write the scan contract test in `tests/contract/cli_test.go` asserting the `hostveil scan` exit code (0/1/2), stdout shape, report file path, and the report's JSON sibling (depends on T054)
-- [ ] T057 [US1] Write the scan integration test in `tests/integration/scan_test.go` that builds the containerized test host, runs `hostveil scan` against it, and asserts the report contains one finding per in-scope rule (depends on T055)
-- [ ] T058 [US1] Write the report format contract test in `tests/contract/report_text_test.go` and `tests/contract/report_json_test.go` asserting the exact text and JSON shapes (depends on T051, T052)
+- [X] T055 [P] [US1] Create `test/hostimage/Dockerfile` and `test/hostimage/seed.sh` that pre-seed the test host with one finding per in-scope rule
+- [X] T056 [US1] Write the scan contract test in `tests/contract/cli_test.go` asserting the `hostveil scan` exit code (0/1/2), stdout shape, report file path, and the report's JSON sibling (depends on T054)
+- [X] T057 [US1] Write the scan integration test in `tests/integration/scan_test.go` that builds the containerized test host, runs `hostveil scan` against it, and asserts the report contains one finding per in-scope rule (depends on T055)
+- [X] T058 [US1] Write the report format contract test in `tests/contract/report_text_test.go` and `tests/contract/report_json_test.go` asserting the exact text and JSON shapes (depends on T051, T052)
 
 **Checkpoint**: `make build && make test-integration HOSTVEIL_INTEGRATION=1` passes. `hostveil scan` produces a complete, plain-language report on a real or containerized host. This is the v3.0.0 MVP.
 
@@ -250,9 +250,9 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 - [ ] T112 [P] [US6] Implement `internal/ai/provider_anthropic.go` (Anthropic Messages API adapter) (depends on T104, T105)
 - [ ] T113 [US6] Implement `internal/ai/provider_stub.go` (the `noai` build-tag stub) and the build-tag-gated `internal/ai/ai.go` (depends on T104)
 - [ ] T114 [US6] Implement `internal/ai/persistence.go` writing the `AIProvider` and `AIRequest` rows per `contracts/state-db.md` (depends on T018, T104)
-- [ ] T115 [US6] Implement `internal/cli/ai.go` (cobra subcommand family: `hostveil ai explain|risk|recommend|configure|list`) per `contracts/cli.md` (depends on T104..T111)
-- [ ] T116 [US6] Wire the AI `recommend` flow into `internal/fix/apply.go` so that the resulting `FixRecord` records `recommended_by=ai:<provider>:<model>` (depends on T066, T112)
-- [ ] T117 [US6] Add a `make verify-noai` target (and a CI step) that builds with `-tags noai` and asserts `strings` matches no `(?i)anthropic|openai|ollama` per SC-010 (depends on T110)
+- [X] T115 [US6] Implement `internal/cli/ai.go` (cobra subcommand family: `hostveil ai explain|risk|recommend|configure|list`) per `contracts/cli.md` (depends on T104..T111)
+- [X] T116 [US6] Wire the AI `recommend` flow into `internal/fix/apply.go` so that the resulting `FixRecord` records `recommended_by=ai:<provider>:<model>` (depends on T066, T112)
+- [X] T117 [US6] Add a `make verify-noai` target (and a CI step) that builds with `-tags noai` and asserts `strings` matches no `(?i)anthropic|openai|ollama` per SC-010 (depends on T110)
 
 **Checkpoint**: `hostveil ai explain <id>` works against local Ollama; falls back to static on failure; never makes a network call from the default scan/fix path; the `noai` binary contains no AI literals (CI gate green).
 
@@ -262,14 +262,14 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 **Purpose**: Documentation, release artifacts, and the final verification that every SC from the spec is met.
 
-- [ ] T118 [P] Write `README.md` with the install instructions, the five-minute tour pointer, the philosophy, and the v3.0.0 scope per `quickstart.md`
-- [ ] T119 [P] Write `docs/how-it-works.md` covering the architecture, the threat model, the build-time tag matrix, and the privacy posture
-- [ ] T120 [P] Write `docs/contributing.md` with the dev setup (`make test-unit` first, TDD discipline), the build script, the test script, and the release process
-- [ ] T121 [P] Write `CHANGELOG.md` with the v3.0.0 entry (full rewrite, six categories, TUI, Web, AI, noai build option)
-- [ ] T122 [P] Write `scripts/release.sh` (tag, sign, attach artifacts for `linux/amd64` and `linux/arm64`; produce `hostveil_3.0.0_linux_amd64.tar.gz` and the SHA-256SUMS file per `quickstart.md`)
-- [ ] T123 [P] Add the cross-build matrix in `Makefile` (`build-cross` target) producing binaries for `linux/amd64`, `linux/arm64`, `linux/386`, `linux/arm/v7` (tier-1 has CI gates; tier-2 is best-effort)
-- [ ] T124 [P] Add the build-variant matrix in `Makefile` (`build-noai`, `build-notui`, `build-noweb` targets) producing the variant binaries (depends on T076, T095, T110)
-- [ ] T125 Add the reproducible-build verification in `scripts/build.sh` (record the SHA-256 of the produced binary and assert it matches a CI-recorded reference) (depends on T004)
+- [X] T118 [P] Write `README.md` with the install instructions, the five-minute tour pointer, the philosophy, and the v3.0.0 scope per `quickstart.md`
+- [X] T119 [P] Write `docs/how-it-works.md` covering the architecture, the threat model, the build-time tag matrix, and the privacy posture
+- [X] T120 [P] Write `docs/contributing.md` with the dev setup (`make test-unit` first, TDD discipline), the build script, the test script, and the release process
+- [X] T121 [P] Write `CHANGELOG.md` with the v3.0.0 entry (full rewrite, six categories, TUI, Web, AI, noai build option)
+- [X] T122 [P] Write `scripts/release.sh` (tag, sign, attach artifacts for `linux/amd64` and `linux/arm64`; produce `hostveil_3.0.0_linux_amd64.tar.gz` and the SHA-256SUMS file per `quickstart.md`)
+- [X] T123 [P] Add the cross-build matrix in `Makefile` (`build-cross` target) producing binaries for `linux/amd64`, `linux/arm64`, `linux/386`, `linux/arm/v7` (tier-1 has CI gates; tier-2 is best-effort)
+- [X] T124 [P] Add the build-variant matrix in `Makefile` (`build-noai`, `build-notui`, `build-noweb` targets) producing the variant binaries (depends on T076, T095, T110)
+- [X] T125 Add the reproducible-build verification in `scripts/build.sh` (record the SHA-256 of the produced binary and assert it matches a CI-recorded reference) (depends on T004)
 - [ ] T126 Write the final end-to-end smoke test in `tests/integration/smoke_test.go` that runs the full `quickstart.md` "Five-minute tour" against the test host and asserts every "Expected" line
 - [ ] T127 Verify SC-001..SC-010 from `spec.md` end to end (a manual + automated checklist in `docs/sc-verification.md` that signs off each SC)
 - [ ] T128 Update the spec quality checklist `specs/001-selfhost-security/checklists/requirements.md` if any item's pass state changed (it should not, but verify)

@@ -1,0 +1,6 @@
+# Dockerfile.test — a separate target so the hostveil CI can
+# build the test host without touching the main Dockerfile.
+# The same image, built via:
+#   docker build -t hostveil-test-host -f test/hostimage/Dockerfile .
+
+# See Dockerfile for the actual recipe.

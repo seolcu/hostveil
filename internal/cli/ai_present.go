@@ -1,12 +1,18 @@
+//go:build !noai
+
 package cli
 
 import "github.com/spf13/cobra"
+
+func addAIIfPresent(root *cobra.Command) {
+	root.AddCommand(newAICmd())
+}
 
 func newAICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ai <method>",
 		Short: "AI-assisted explanation / risk / recommend (opt-in)",
-		Long:  "hostveil ai explain|risk|recommend|configure|list. AI is opt-in per call; defaults to local Ollama. Cloud providers require explicit consent (FR-030).",
+		Long:  "hostveil ai explain|risk|recommend|configure|list. AI is opt-in per call; defaults to local provider. Cloud providers require explicit consent (FR-030).",
 	}
 	cmd.AddCommand(&cobra.Command{
 		Use:   "explain <finding-id>",

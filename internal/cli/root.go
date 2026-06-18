@@ -46,7 +46,7 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newTUICmd())
 	root.AddCommand(newWebCmd())
-	root.AddCommand(newAICmd())
+	addAIIfPresent(root)
 
 	return root
 }
