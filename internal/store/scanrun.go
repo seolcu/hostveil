@@ -4,6 +4,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -57,6 +58,146 @@ func (s *Store) UpdateReportPath(ctx context.Context, scanRunID, path string) er
 		`UPDATE scan_runs SET report_path=? WHERE id=?`, path, scanRunID,
 	)
 	return err
+}
+
+// LatestScanRunForFinding returns the most recent scan run that
+// produced the given finding (by fingerprint match). The fix
+// subcommand uses this to attach a new FixRecord to the same
+// scan_run that produced the finding it is fixing.
+func (s *Store) LatestScanRunForFinding(ctx context.Context, f model.Finding) (model.ScanRun, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	row := s.db.QueryRowContext(ctx, `
+SELECT r.id, r.host_id, r.started_at, r.finished_at, r.status,
+       r.finding_count_critical, r.finding_count_high,
+       r.finding_count_medium, r.finding_count_low,
+       r.hostveil_version, r.cve_feed_refreshed,
+       r.cve_feed_refresh_skipped_reason, r.report_path,
+       r.hostveil_exit_code
+FROM scan_runs r
+JOIN findings f ON f.scan_run_id = r.id
+WHERE f.fingerprint = ?
+ORDER BY r.started_at DESC
+LIMIT 1`, f.Fingerprint)
+	var r model.ScanRun
+	var startedAt string
+	var finishedAt, skipReason, reportPath sql.NullString
+	err := row.Scan(
+		&r.ID, &r.HostID, &startedAt, &finishedAt, &r.Status,
+		&r.FindingCountCritical, &r.FindingCountHigh,
+		&r.FindingCountMedium, &r.FindingCountLow,
+		&r.HostveilVersion, &r.CVEFEEDRefreshed,
+		&skipReason, &reportPath, &r.HostveilExitCode,
+	)
+	if err != nil {
+		return model.ScanRun{}, err
+	}
+	if t, err := time.Parse(time.RFC3339, startedAt); err == nil {
+		r.StartedAt = t
+	}
+	if finishedAt.Valid {
+		if t, err := time.Parse(time.RFC3339, finishedAt.String); err == nil {
+			r.FinishedAt = &t
+		}
+	}
+	if skipReason.Valid {
+		r.CVEFEEDRefreshSkipped = skipReason.String
+	}
+	if reportPath.Valid {
+		r.ReportPath = reportPath.String
+	}
+	return r, nil
+}
+
+// LatestScanRunForHost returns the most recent scan_run row for any
+// host, used as a fallback when the fix subcommand cannot link a
+// finding to its originating scan.
+func (s *Store) LatestScanRunForHost(ctx context.Context, _ model.Category) (model.ScanRun, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	row := s.db.QueryRowContext(ctx, `
+SELECT id, host_id, started_at, finished_at, status,
+       finding_count_critical, finding_count_high,
+       finding_count_medium, finding_count_low,
+       hostveil_version, cve_feed_refreshed,
+       cve_feed_refresh_skipped_reason, report_path,
+       hostveil_exit_code
+FROM scan_runs
+ORDER BY started_at DESC
+LIMIT 1`)
+	var r model.ScanRun
+	var startedAt string
+	var finishedAt, skipReason, reportPath sql.NullString
+	err := row.Scan(
+		&r.ID, &r.HostID, &startedAt, &finishedAt, &r.Status,
+		&r.FindingCountCritical, &r.FindingCountHigh,
+		&r.FindingCountMedium, &r.FindingCountLow,
+		&r.HostveilVersion, &r.CVEFEEDRefreshed,
+		&skipReason, &reportPath, &r.HostveilExitCode,
+	)
+	if err != nil {
+		return model.ScanRun{}, err
+	}
+	if t, err := time.Parse(time.RFC3339, startedAt); err == nil {
+		r.StartedAt = t
+	}
+	if finishedAt.Valid {
+		if t, err := time.Parse(time.RFC3339, finishedAt.String); err == nil {
+			r.FinishedAt = &t
+		}
+	}
+	if skipReason.Valid {
+		r.CVEFEEDRefreshSkipped = skipReason.String
+	}
+	if reportPath.Valid {
+		r.ReportPath = reportPath.String
+	}
+	return r, nil
+}
+
+// LatestFindings returns the most recent batch of findings. v3.0.0
+// returns the findings from the most recent scan_run.
+func (s *Store) LatestFindings() ([]model.Finding, error) {
+	// v3.0.0-alpha: no cross-run query yet; use the latest scan
+	// run and return all its findings.
+	rows, err := s.db.Query(`
+SELECT id, scan_run_id, fingerprint, category, rule_id,
+       severity, title, description, entity_refs_json, fix_id,
+       state, first_seen_at, last_seen_at
+FROM findings
+ORDER BY first_seen_at DESC
+LIMIT 1000`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.Finding
+	for rows.Next() {
+		var f model.Finding
+		var firstSeen, lastSeen string
+		var fixID, entityRefsJSON sql.NullString
+		if err := rows.Scan(
+			&f.ID, &f.ScanRunID, &f.Fingerprint, &f.Category, &f.RuleID,
+			&f.Severity, &f.Title, &f.Description, &entityRefsJSON, &fixID,
+			&f.State, &firstSeen, &lastSeen,
+		); err != nil {
+			return nil, err
+		}
+		_ = decodeJSONCompat(entityRefsJSON.String, &f.EntityRefs)
+		if fixID.Valid {
+			f.FixID = fixID.String
+		}
+		if t, err := time.Parse(time.RFC3339, firstSeen); err == nil {
+			f.FirstSeenAt = t
+		}
+		if t, err := time.Parse(time.RFC3339, lastSeen); err == nil {
+			f.LastSeenAt = t
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
 }
 
 // InsertFindings bulk-inserts the findings of a single ScanRun.

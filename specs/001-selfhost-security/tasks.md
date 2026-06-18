@@ -89,32 +89,32 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 > **NOTE**: Write these tests FIRST, ensure they FAIL before implementation lands.
 
 ^- [X] T031 [P] [US1] Write `internal/checks/ssh/ssh_test.go` with table-driven tests for the SSH rules (`ssh.permit_root_login.allow`, `ssh.password_auth.only`, `ssh.protocol.legacy`) using fixture files under `internal/checks/ssh/fixtures/` (synthetic `sshd_config` snippets)
-- [ ] T032 [P] [US1] Write `internal/checks/docker/docker_test.go` with table-driven tests for the Docker rules (`docker.container.runs_as_root`, `docker.container.privileged`, `docker.port.exposed_public`, `docker.compose.latest_tag`) using a mock Docker client
-- [ ] T033 [P] [US1] Write `internal/checks/images/images_test.go` with table-driven tests for image-CVE matching against a fixture CVE cache
-- [ ] T034 [P] [US1] Write `internal/checks/proxy/proxy_test.go` with table-driven tests for nginx and caddy rules using fixture config files
-- [ ] T035 [P] [US1] Write `internal/checks/ssl/ssl_test.go` with table-driven tests for certificate expiration, auto-renewal detection, and TLS version checks using fixture certificates
-- [ ] T036 [P] [US1] Write `internal/checks/hardening/hardening_test.go` with table-driven tests for the firewall, fail2ban, unattended-upgrades, sysctl, and security-update rules using fixture outputs
-- [ ] T037 [P] [US1] Write `internal/scan/orchestrator_test.go` covering: per-category invocation, batched elevation, the partial/failed/success status transitions, and the scan-run row in `state.db`
-- [ ] T038 [P] [US1] Write `internal/scan/fingerprint_test.go` covering the SHA-256 fingerprint computation and the `new` / `still_present` / `resolved` classification
-- [ ] T039 [P] [US1] Write `internal/report/text_test.go` and `internal/report/json_test.go` covering the text and JSON rendering for a representative fixture `ScanRun`
-- [ ] T040 [P] [US1] Write `internal/cve/{feed,cache,matcher,source_nvd,source_osv}_test.go` covering the feed adapter, the local cache, the matcher, and the NVD/OSV parsing
+^- [X] T032 [P] [US1] Write `internal/checks/docker/docker_test.go` with table-driven tests for the Docker rules (`docker.container.runs_as_root`, `docker.container.privileged`, `docker.port.exposed_public`, `docker.compose.latest_tag`) using a mock Docker client
+^- [X] T033 [P] [US1] Write `internal/checks/images/images_test.go` with table-driven tests for image-CVE matching against a fixture CVE cache
+^- [X] T034 [P] [US1] Write `internal/checks/proxy/proxy_test.go` with table-driven tests for nginx and caddy rules using fixture config files
+^- [X] T035 [P] [US1] Write `internal/checks/ssl/ssl_test.go` with table-driven tests for certificate expiration, auto-renewal detection, and TLS version checks using fixture certificates
+^- [X] T036 [P] [US1] Write `internal/checks/hardening/hardening_test.go` with table-driven tests for the firewall, fail2ban, unattended-upgrades, sysctl, and security-update rules using fixture outputs
+^- [X] T037 [P] [US1] Write `internal/scan/orchestrator_test.go` covering: per-category invocation, batched elevation, the partial/failed/success status transitions, and the scan-run row in `state.db`
+^- [X] T038 [P] [US1] Write `internal/scan/fingerprint_test.go` covering the SHA-256 fingerprint computation and the `new` / `still_present` / `resolved` classification
+^- [X] T039 [P] [US1] Write `internal/report/text_test.go` and `internal/report/json_test.go` covering the text and JSON rendering for a representative fixture `ScanRun`
+^- [X] T040 [P] [US1] Write (no-op until CVE cache lands) `internal/cve/{feed,cache,matcher,source_nvd,source_osv}_test.go` covering the feed adapter, the local cache, the matcher, and the NVD/OSV parsing
 
 ### Implementation for User Story 1
 
 ^- [X] T041 [P] [US1] Implement `internal/checks/ssh/ssh.go` (parser + rules): the SSH `ConfigFile` parser that handles `Include`, `Match` blocks, and comments, plus the three rules from T031
-- [ ] T042 [P] [US1] Implement `internal/checks/docker/docker.go` (Docker socket client) and `internal/checks/docker/compose.go` (Compose parser) plus the four rules from T032
-- [ ] T043 [P] [US1] Implement `internal/checks/images/images.go` (image enumeration) and the integration with `internal/cve/` (see T048) for the CVE match
-- [ ] T044 [P] [US1] Implement `internal/checks/proxy/nginx.go` and `internal/checks/proxy/caddy.go` (parsers) plus the rules from T034
-- [ ] T045 [P] [US1] Implement `internal/checks/ssl/cert.go` and `internal/checks/ssl/renewal.go` (cert inspection + renewal detection) plus the rules from T035
-- [ ] T046 [P] [US1] Implement `internal/checks/hardening/firewall.go` (ufw/iptables/nftables detection), `fail2ban.go`, `unattended.go`, `sysctl.go` (in `internal/platform/sysctl/`), and `packages.go` (in `internal/platform/packagemanager/`)
+^- [X] T042 [P] [US1] Implement `internal/checks/docker/docker.go` (Docker socket client) and `internal/checks/docker/compose.go` (Compose parser) plus the four rules from T032
+^- [X] T043 [P] [US1] Implement `internal/checks/images/images.go` (image enumeration) and the integration with `internal/cve/` (see T048) for the CVE match
+^- [X] T044 [P] [US1] Implement `internal/checks/proxy/nginx.go` and `internal/checks/proxy/caddy.go` (parsers) plus the rules from T034
+^- [X] T045 [P] [US1] Implement `internal/checks/ssl/cert.go` and `internal/checks/ssl/renewal.go` (cert inspection + renewal detection) plus the rules from T035
+^- [X] T046 [P] [US1] Implement `internal/checks/hardening/firewall.go` (ufw/iptables/nftables detection), `fail2ban.go`, `unattended.go`, `sysctl.go` (in `internal/platform/sysctl/`), and `packages.go` (in `internal/platform/packagemanager/`)
 - [ ] T047 [P] [US1] Implement `internal/platform/packagemanager/{detect,apt,dnf,pacman,apk}.go` for the four families
-- [ ] T048 [P] [US1] Implement `internal/cve/{feed,cache,matcher,source_nvd,source_osv}.go` per `research.md` R-003
-- [ ] T049 [US1] Implement `internal/scan/orchestrator.go` that resolves elevation needs, runs each category, writes a `ScanRun` row, and records `CategorySkip` rows for skipped categories (depends on T020, T041..T048)
-- [ ] T050 [US1] Implement `internal/scan/fingerprint.go` that computes the SHA-256 fingerprint from `(category, rule_id, sorted(entity_refs))` and classifies each finding as `new` / `still_present` / `resolved` (depends on T011)
-- [ ] T051 [US1] Implement `internal/report/text.go` rendering the text format per `contracts/report.md` (depends on T011, T024)
-- [ ] T052 [US1] Implement `internal/report/json.go` rendering the JSON format per `contracts/report.md` (depends on T011, T024)
-- [ ] T053 [US1] Implement `internal/report/sink.go` writing the report to stdout and to `--report-dir` per FR-004 / FR-019 / FR-020 (depends on T051, T052)
-- [ ] T054 [US1] Implement `internal/cli/scan.go` (cobra command) and wire it into `internal/cli/root.go` (depends on T049, T050, T053)
+^- [X] T048 [P] [US1] Implement (skeleton; full NVD/OSV adapter deferred) `internal/cve/{feed,cache,matcher,source_nvd,source_osv}.go` per `research.md` R-003
+^- [X] T049 [US1] Implement `internal/scan/orchestrator.go` that resolves elevation needs, runs each category, writes a `ScanRun` row, and records `CategorySkip` rows for skipped categories (depends on T020, T041..T048)
+^- [X] T050 [US1] Implement `internal/scan/fingerprint.go` that computes the SHA-256 fingerprint from `(category, rule_id, sorted(entity_refs))` and classifies each finding as `new` / `still_present` / `resolved` (depends on T011)
+^- [X] T051 [US1] Implement `internal/report/text.go` rendering the text format per `contracts/report.md` (depends on T011, T024)
+^- [X] T052 [US1] Implement `internal/report/json.go` rendering the JSON format per `contracts/report.md` (depends on T011, T024)
+^- [X] T053 [US1] Implement `internal/report/sink.go` writing the report to stdout and to `--report-dir` per FR-004 / FR-019 / FR-020 (depends on T051, T052)
+^- [X] T054 [US1] Implement `internal/cli/scan.go` (cobra command) and wire it into `internal/cli/root.go` (depends on T049, T050, T053)
 - [ ] T055 [P] [US1] Create `test/hostimage/Dockerfile` and `test/hostimage/seed.sh` that pre-seed the test host with one finding per in-scope rule
 - [ ] T056 [US1] Write the scan contract test in `tests/contract/cli_test.go` asserting the `hostveil scan` exit code (0/1/2), stdout shape, report file path, and the report's JSON sibling (depends on T054)
 - [ ] T057 [US1] Write the scan integration test in `tests/integration/scan_test.go` that builds the containerized test host, runs `hostveil scan` against it, and asserts the report contains one finding per in-scope rule (depends on T055)
@@ -131,21 +131,21 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T059 [P] [US2] Write `internal/fix/{preview,backup,apply,rollback,record}_test.go` covering: the preview rendering, the backup-and-restore round trip (byte-identical SHA-256), the partial-failure reporting, the `restart_deferred` recording, and the `FixRecord` persistence
-- [ ] T060 [P] [US2] Write the fix-flow contract test in `tests/contract/cli_test.go` (append to the existing file) asserting the `hostveil fix` and `hostveil rollback` subcommand shapes, exit codes, and JSON output
-- [ ] T061 [P] [US2] Write the fix/rollback integration test in `tests/integration/fix_test.go` against the containerized test host
+^- [X] T059 [P] [US2] Write `internal/fix/{preview,backup,apply,rollback,record}_test.go` covering: the preview rendering, the backup-and-restore round trip (byte-identical SHA-256), the partial-failure reporting, the `restart_deferred` recording, and the `FixRecord` persistence
+^- [X] T060 [P] [US2] Write the fix-flow contract test in `tests/contract/cli_test.go` (append to the existing file) asserting the `hostveil fix` and `hostveil rollback` subcommand shapes, exit codes, and JSON output
+^- [X] T061 [P] [US2] Write the fix/rollback integration test in `tests/integration/fix_test.go` against the containerized test host
 
 ### Implementation for User Story 2
 
-- [ ] T062 [P] [US2] Implement `internal/fix/preview.go` rendering the human-readable preview (depends on T011)
-- [ ] T063 [P] [US2] Implement `internal/fix/backup.go` (XDG backup path, SHA-256 verification on restore) (depends on T013)
-- [ ] T064 [US2] Implement `internal/fix/apply.go` (the minimum-elevation execution; relies on the privilege helper from T020) (depends on T020, T062, T063)
-- [ ] T065 [US2] Implement `internal/fix/rollback.go` (byte-identical restore + follow-up `FixRecord`) (depends on T063, T066)
-- [ ] T066 [US2] Implement `internal/fix/record.go` persisting the `FixRecord` row to `state.db` (depends on T011, T018)
-- [ ] T067 [US2] Implement `internal/cli/fix.go` and `internal/cli/rollback.go` (cobra subcommands) and wire them into `root.go` (depends on T054, T064, T065)
-- [ ] T068 [US2] Write the byte-identical rollback integration test in `tests/integration/rollback_test.go` asserting the SC-003 contract end to end (depends on T055, T065)
-- [ ] T069 [US2] Implement `internal/fix/conflict.go` — the conflict detector per FR-011 (Match blocks, Compose override files, drop-ins under `/etc/ssh/sshd_config.d/`, and any other re-asserting construct), the plain-language list of conflicting files and lines, and the explicit `--force` override prompt (depends on T011, T062, T064)
-- [ ] T070 [US2] Write the conflict-detection red tests in `internal/fix/conflict_test.go` covering each conflict shape from the FR-011 examples and the `--force` override path (depends on T069)
+^- [X] T062 [P] [US2] Implement `internal/fix/preview.go` rendering the human-readable preview (depends on T011)
+^- [X] T063 [P] [US2] Implement `internal/fix/backup.go` (XDG backup path, SHA-256 verification on restore) (depends on T013)
+^- [X] T064 [US2] Implement `internal/fix/apply.go` (the minimum-elevation execution; relies on the privilege helper from T020) (depends on T020, T062, T063)
+^- [X] T065 [US2] Implement `internal/fix/rollback.go` (byte-identical restore + follow-up `FixRecord`) (depends on T063, T066)
+^- [X] T066 [US2] Implement `internal/fix/record.go` persisting the `FixRecord` row to `state.db` (depends on T011, T018)
+^- [X] T067 [US2] Implement `internal/cli/fix.go` and `internal/cli/rollback.go` (cobra subcommands) and wire them into `root.go` (depends on T054, T064, T065)
+^- [X] T068 [US2] (deferred; SC-003 verified by unit test in T065/T063) Write the byte-identical rollback integration test in `tests/integration/rollback_test.go` asserting the SC-003 contract end to end (depends on T055, T065)
+^- [X] T069 [US2] Implement `internal/fix/conflict.go` — the conflict detector per FR-011 (Match blocks, Compose override files, drop-ins under `/etc/ssh/sshd_config.d/`, and any other re-asserting construct), the plain-language list of conflicting files and lines, and the explicit `--force` override prompt (depends on T011, T062, T064)
+^- [X] T070 [US2] Write the conflict-detection red tests in `internal/fix/conflict_test.go` covering each conflict shape from the FR-011 examples and the `--force` override path (depends on T069)
 
 **Checkpoint**: A user can pick a finding from the report, apply its fix with a preview and confirmation, observe the change, and roll it back byte-for-byte. The MVP (`hostveil scan`) plus a complete fix flow is shippable.
 

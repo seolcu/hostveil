@@ -129,7 +129,7 @@ CREATE TABLE findings (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     entity_refs_json TEXT NOT NULL,
-    fix_id TEXT REFERENCES fixes(id),
+    fix_id TEXT,
     state TEXT NOT NULL,
     first_seen_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL
@@ -156,7 +156,7 @@ CREATE TABLE fix_records (
     id TEXT PRIMARY KEY,
     scan_run_id TEXT NOT NULL REFERENCES scan_runs(id) ON DELETE CASCADE,
     finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
-    fix_id TEXT NOT NULL REFERENCES fixes(id),
+    fix_id TEXT,
     applied_at TEXT NOT NULL,
     affected_path TEXT NOT NULL,
     backup_path TEXT,
@@ -250,6 +250,62 @@ CREATE TABLE ai_requests (
 );
 CREATE INDEX idx_ai_requests_host_time ON ai_requests(host_id, requested_at DESC);
 CREATE INDEX idx_ai_requests_provider_time ON ai_requests(ai_provider_id, requested_at DESC);
+`,
+	},
+	{
+		// 0002_relax_fix_fks: drop the strict FKs from findings.fix_id
+		// and fix_records.fix_id. The fixes table is a static catalog
+		// that the v3.0.0-alpha binary does not yet seed, so a strict
+		// FK would block all writes. v3.x will re-establish the FK
+		// once a real catalog is in place. SQLite has no DROP
+		// CONSTRAINT, so we recreate the table — safe because the
+		// shape is unchanged and the old table is empty for any new
+		// install.
+		version: 2,
+		name:    "0002_relax_fix_fks",
+		sql: `
+CREATE TABLE findings_new (
+    id TEXT PRIMARY KEY,
+    scan_run_id TEXT NOT NULL REFERENCES scan_runs(id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL,
+    category TEXT NOT NULL,
+    rule_id TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    entity_refs_json TEXT NOT NULL,
+    fix_id TEXT,
+    state TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+INSERT INTO findings_new SELECT * FROM findings;
+DROP TABLE findings;
+ALTER TABLE findings_new RENAME TO findings;
+CREATE INDEX idx_findings_fingerprint ON findings(fingerprint);
+CREATE INDEX idx_findings_scan_run ON findings(scan_run_id);
+CREATE INDEX idx_findings_state ON findings(state);
+
+CREATE TABLE fix_records_new (
+    id TEXT PRIMARY KEY,
+    scan_run_id TEXT NOT NULL REFERENCES scan_runs(id) ON DELETE CASCADE,
+    finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    fix_id TEXT,
+    applied_at TEXT NOT NULL,
+    affected_path TEXT NOT NULL,
+    backup_path TEXT,
+    procedure_used TEXT NOT NULL,
+    requires_restart_json TEXT NOT NULL,
+    restart_deferred INTEGER NOT NULL,
+    recommended_by TEXT,
+    rolled_back_at TEXT,
+    rolled_back_via TEXT
+);
+INSERT INTO fix_records_new SELECT * FROM fix_records;
+DROP TABLE fix_records;
+ALTER TABLE fix_records_new RENAME TO fix_records;
+CREATE INDEX idx_fix_records_scan ON fix_records(scan_run_id);
+CREATE INDEX idx_fix_records_finding ON fix_records(finding_id);
 `,
 	},
 }
