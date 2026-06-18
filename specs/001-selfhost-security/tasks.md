@@ -88,7 +88,7 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 > **NOTE**: Write these tests FIRST, ensure they FAIL before implementation lands.
 
-- [ ] T031 [P] [US1] Write `internal/checks/ssh/ssh_test.go` with table-driven tests for the SSH rules (`ssh.permit_root_login.allow`, `ssh.password_auth.only`, `ssh.protocol.legacy`) using fixture files under `internal/checks/ssh/fixtures/` (synthetic `sshd_config` snippets)
+^- [X] T031 [P] [US1] Write `internal/checks/ssh/ssh_test.go` with table-driven tests for the SSH rules (`ssh.permit_root_login.allow`, `ssh.password_auth.only`, `ssh.protocol.legacy`) using fixture files under `internal/checks/ssh/fixtures/` (synthetic `sshd_config` snippets)
 - [ ] T032 [P] [US1] Write `internal/checks/docker/docker_test.go` with table-driven tests for the Docker rules (`docker.container.runs_as_root`, `docker.container.privileged`, `docker.port.exposed_public`, `docker.compose.latest_tag`) using a mock Docker client
 - [ ] T033 [P] [US1] Write `internal/checks/images/images_test.go` with table-driven tests for image-CVE matching against a fixture CVE cache
 - [ ] T034 [P] [US1] Write `internal/checks/proxy/proxy_test.go` with table-driven tests for nginx and caddy rules using fixture config files
@@ -101,7 +101,7 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 ### Implementation for User Story 1
 
-- [ ] T041 [P] [US1] Implement `internal/checks/ssh/ssh.go` (parser + rules): the SSH `ConfigFile` parser that handles `Include`, `Match` blocks, and comments, plus the three rules from T031
+^- [X] T041 [P] [US1] Implement `internal/checks/ssh/ssh.go` (parser + rules): the SSH `ConfigFile` parser that handles `Include`, `Match` blocks, and comments, plus the three rules from T031
 - [ ] T042 [P] [US1] Implement `internal/checks/docker/docker.go` (Docker socket client) and `internal/checks/docker/compose.go` (Compose parser) plus the four rules from T032
 - [ ] T043 [P] [US1] Implement `internal/checks/images/images.go` (image enumeration) and the integration with `internal/cve/` (see T048) for the CVE match
 - [ ] T044 [P] [US1] Implement `internal/checks/proxy/nginx.go` and `internal/checks/proxy/caddy.go` (parsers) plus the rules from T034
