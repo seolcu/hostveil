@@ -35,16 +35,16 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 **Purpose**: Project initialization, build pipeline, CI gates, and the shared scaffolding every later phase depends on.
 
-- [ ] T001 Initialize Go module at repository root with `go.mod` (Go 1.22+), set `module github.com/<owner>/hostveil`
-- [ ] T002 [P] Create the directory tree from `plan.md` §"Project Structure" (`cmd/hostveil/`, `internal/{cli,scan,checks/{ssh,docker,images,proxy,ssl,hardening},cve,fix,report,store,platform/{privilege,packagemanager,docker,sysctl},model,log,version,tui,web,ai}/`, `test/{integration,contract,hostimage}/`, `scripts/`, `docs/`)
-- [ ] T003 [P] Add primary Go dependencies to `go.mod`: `github.com/spf13/cobra`, `modernc.org/sqlite`, `github.com/Masterminds/semver/v3`, `github.com/charmbracelet/bubbletea`, `github.com/charmbracelet/lipgloss`, `github.com/charmbracelet/bubbles`, `github.com/stretchr/testify`
-- [ ] T004 [P] Create `scripts/build.sh` implementing the reproducible build from `research.md` R-010: `go build -trimpath -buildvcs=false` with embedded version, commit, and build date
-- [ ] T005 [P] Create `scripts/test.sh` running `go test ./...` (unit), then the contract suite, then the integration suite (gated by `HOSTVEIL_INTEGRATION=1`)
-- [ ] T006 [P] Create `.golangci.yml` enabling `govet`, `staticcheck`, `gofmt`, `goimports`, and an `lll` line-length cap of 100 chars
-- [ ] T007 [P] Create `Makefile` with targets: `build`, `test`, `test-unit`, `test-contract`, `test-integration`, `build-noai`, `build-notui`, `build-noweb`, `lint`, `verify-noai` (CI gate)
-- [ ] T008 [P] Create `LICENSE` (MIT) and stub `README.md` pointing at `docs/` (full README lands in the Polish phase)
-- [ ] T009 [P] Create `.gitignore` for Go build outputs (`/vendor/`, `*.test`, `*.out`), the local `dist/` directory, and editor / OS noise. Do NOT add XDG runtime paths: those are created in `$HOME`, not in the repo, and the user's `~/.local/share/hostveil/` is never tracked.
-- [ ] T010 [P] Create `.github/workflows/ci.yml` running lint, unit, contract, integration (on push), and the `verify-noai` gate (build with `-tags noai` and assert `strings` matches no `(?i)anthropic|openai|ollama`)
+- [X] T001 Initialize Go module at repository root with `go.mod` (Go 1.22+), set `module github.com/<owner>/hostveil`
+- [X] T002 [P] Create the directory tree from `plan.md` §"Project Structure" (`cmd/hostveil/`, `internal/{cli,scan,checks/{ssh,docker,images,proxy,ssl,hardening},cve,fix,report,store,platform/{privilege,packagemanager,docker,sysctl},model,log,version,tui,web,ai}/`, `test/{integration,contract,hostimage}/`, `scripts/`, `docs/`)
+- [X] T003 [P] Add primary Go dependencies to `go.mod`: `github.com/spf13/cobra`, `modernc.org/sqlite`, `github.com/Masterminds/semver/v3`, `github.com/charmbracelet/bubbletea`, `github.com/charmbracelet/lipgloss`, `github.com/charmbracelet/bubbles`, `github.com/stretchr/testify`
+- [X] T004 [P] Create `scripts/build.sh` implementing the reproducible build from `research.md` R-010: `go build -trimpath -buildvcs=false` with embedded version, commit, and build date
+- [X] T005 [P] Create `scripts/test.sh` running `go test ./...` (unit), then the contract suite, then the integration suite (gated by `HOSTVEIL_INTEGRATION=1`)
+- [X] T006 [P] Create `.golangci.yml` enabling `govet`, `staticcheck`, `gofmt`, `goimports`, and an `lll` line-length cap of 100 chars
+- [X] T007 [P] Create `Makefile` with targets: `build`, `test`, `test-unit`, `test-contract`, `test-integration`, `build-noai`, `build-notui`, `build-noweb`, `lint`, `verify-noai` (CI gate)
+- [X] T008 [P] Create `LICENSE` (MIT) and stub `README.md` pointing at `docs/` (full README lands in the Polish phase)
+- [X] T009 [P] Create `.gitignore` for Go build outputs (`/vendor/`, `*.test`, `*.out`), the local `dist/` directory, and editor / OS noise. Do NOT add XDG runtime paths: those are created in `$HOME`, not in the repo, and the user's `~/.local/share/hostveil/` is never tracked.
+- [X] T010 [P] Create `.github/workflows/ci.yml` running lint, unit, contract, integration (on push), and the `verify-noai` gate (build with `-tags noai` and assert `strings` matches no `(?i)anthropic|openai|ollama`)
 
 **Checkpoint**: `make lint && make test-unit` passes on a clean checkout. CI is green. No domain code yet.
 
@@ -54,26 +54,26 @@ This is a single Go project (CLI binary plus subcommands). Paths below match the
 
 **Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented. Every user story depends on these.
 
-- [ ] T011 [P] Define the canonical data model types in `internal/model/{host,service,configfile,setting,containerimage,vulnerability,finding,fix,fixrecord,scanrun,reverse_proxy,vhost,ssl_certificate,firewall_profile,hardening_baseline,system_update_status,tui_session,web_session,ai_provider,ai_request,entityref,categoryskip}.go` (all 22 entities from `data-model.md`; structs only, no behavior)
-- [ ] T012 Write red tests in `internal/model/*_test.go` covering the field types, enum string values, and JSON tags for every type from T011
-- [ ] T013 Implement XDG path resolution in `internal/store/path.go` returning `~/.local/share/hostveil/{reports,backups,logs}/` and `state.db` per `data-model.md` and `contracts/state-db.md` §"Storage"
-- [ ] T014 Write red tests for XDG path resolution in `internal/store/path_test.go` covering the default path, `$XDG_DATA_HOME` override, and the `mkdir -p` behavior
-- [ ] T015 Implement structured logging setup in `internal/log/log.go` with `log/slog` JSON handler, `scan_run_id` and `component` fields, and a `New(ctx, scanRunID)` constructor
+- [X] T011 [P] Define the canonical data model types in `internal/model/{host,service,configfile,setting,containerimage,vulnerability,finding,fix,fixrecord,scanrun,reverse_proxy,vhost,ssl_certificate,firewall_profile,hardening_baseline,system_update_status,tui_session,web_session,ai_provider,ai_request,entityref,categoryskip}.go` (all 22 entities from `data-model.md`; structs only, no behavior)
+- [X] T012 Write red tests in `internal/model/*_test.go` covering the field types, enum string values, and JSON tags for every type from T011
+- [X] T013 Implement XDG path resolution in `internal/store/path.go` returning `~/.local/share/hostveil/{reports,backups,logs}/` and `state.db` per `data-model.md` and `contracts/state-db.md` §"Storage"
+- [X] T014 Write red tests for XDG path resolution in `internal/store/path_test.go` covering the default path, `$XDG_DATA_HOME` override, and the `mkdir -p` behavior
+- [X] T015 Implement structured logging setup in `internal/log/log.go` with `log/slog` JSON handler, `scan_run_id` and `component` fields, and a `New(ctx, scanRunID)` constructor
 - [ ] T016 Write red tests for the logger in `internal/log/log_test.go` covering JSON output, correlation-id propagation, and level filtering
 - [ ] T017 Implement the SQLite store skeleton in `internal/store/store.go` opening the `state.db` with WAL mode, foreign keys on, busy timeout 5s, and the pragmas from `contracts/state-db.md` §"Global settings"
 - [ ] T018 Implement the migrations framework in `internal/store/migrations.go` with the `schema_migrations` table; add the first migration `0001_initial.sql` creating all tables from `contracts/state-db.md` (hosts, services, config_files, settings, container_images, vulnerabilities, container_image_vulnerabilities, scan_runs, findings, fixes, fix_records, suppressions, cve_cache_meta, tui_sessions, web_sessions, ai_providers, ai_requests)
 - [ ] T019 Write red tests for the store in `internal/store/store_test.go` and `internal/store/migrations_test.go` covering open/close, foreign-key enforcement, migration application, and idempotent re-application
-- [ ] T020 Implement privilege elevation in `internal/platform/privilege/elevate.go` with `sudo_linux.go` (sudo adapter) and `pkexec_linux.go` (polkit adapter); the function signature accepts a list of `(name, args)` commands, batches them into a single elevation, and returns the per-command output
-- [ ] T021 Write red tests for privilege elevation in `internal/platform/privilege/elevate_test.go` covering: the batching behavior, the no-op when no elevation is required, the "denied" path, and the "helper not installed" path (use a fake helper binary in a temp dir)
-- [ ] T022 Implement platform detection in `internal/platform/detect_linux.go` returning the `os_family`, `os_version`, `kernel`, and `arch`; refuse to start on non-Linux (the `cmd/hostveil/main.go` calls this and prints "unsupported platform" on non-Linux per `contracts/cli.md`)
-- [ ] T023 Write red tests for platform detection in `internal/platform/detect_test_linux.go` (build-tagged `_linux`) covering the four families and the unsupported-platform error
-- [ ] T024 Implement the report types in `internal/report/types.go` (Go structs matching `contracts/report.md` JSON shape) and the redaction list in `internal/report/redact.go` (PEM private keys, named credential fields, URL credentials, AWS access keys)
-- [ ] T025 Write red tests for the report types and redaction in `internal/report/types_test.go` and `internal/report/redact_test.go` covering the JSON tags and every redaction pattern from `contracts/report.md`
-- [ ] T026 Implement common CLI flag helpers in `internal/cli/flags.go` defining `--config`, `--log-level`, `--log-file`, `--no-color`, `--color` as persistent flags; add `internal/cli/exitcode.go` with the 0/1/2 contract
+- [X] T020 Implement privilege elevation in `internal/platform/privilege/elevate.go` with `sudo_linux.go` (sudo adapter) and `pkexec_linux.go` (polkit adapter); the function signature accepts a list of `(name, args)` commands, batches them into a single elevation, and returns the per-command output
+- [X] T021 Write red tests for privilege elevation in `internal/platform/privilege/elevate_test.go` covering: the batching behavior, the no-op when no elevation is required, the "denied" path, and the "helper not installed" path (use a fake helper binary in a temp dir)
+- [X] T022 Implement platform detection in `internal/platform/detect_linux.go` returning the `os_family`, `os_version`, `kernel`, and `arch`; refuse to start on non-Linux (the `cmd/hostveil/main.go` calls this and prints "unsupported platform" on non-Linux per `contracts/cli.md`)
+- [X] T023 Write red tests for platform detection in `internal/platform/detect_test_linux.go` (build-tagged `_linux`) covering the four families and the unsupported-platform error
+- [X] T024 Implement the report types in `internal/report/types.go` (Go structs matching `contracts/report.md` JSON shape) and the redaction list in `internal/report/redact.go` (PEM private keys, named credential fields, URL credentials, AWS access keys)
+- [X] T025 Write red tests for the report types and redaction in `internal/report/types_test.go` and `internal/report/redact_test.go` covering the JSON tags and every redaction pattern from `contracts/report.md`
+- [X] T026 Implement common CLI flag helpers in `internal/cli/flags.go` defining `--config`, `--log-level`, `--log-file`, `--no-color`, `--color` as persistent flags; add `internal/cli/exitcode.go` with the 0/1/2 contract
 - [ ] T027 Write red tests for the common flags and exit codes in `internal/cli/flags_test.go` and `internal/cli/exitcode_test.go`
-- [ ] T028 Implement `cmd/hostveil/main.go` wiring cobra, the common flags, the logger, the store, the platform check, and the version output (the version constants are defined in T029)
-- [ ] T029 Define `internal/version/version.go` with `Version`, `Commit`, `Built` string variables and `internal/version/buildinfo.go` exposing `String()` for the `hostveil version` output
-- [ ] T030 Write a contract test in `tests/contract/version_test.go` asserting that `hostveil version` prints the shape `hostveil v3.0.0 (commit <sha>, built <RFC3339>)`
+- [X] T028 Implement `cmd/hostveil/main.go` wiring cobra, the common flags, the logger, the store, the platform check, and the version output (the version constants are defined in T029)
+- [X] T029 Define `internal/version/version.go` with `Version`, `Commit`, `Built` string variables and `internal/version/buildinfo.go` exposing `String()` for the `hostveil version` output
+- [X] T030 Write a contract test in `tests/contract/version_test.go` asserting that `hostveil version` prints the shape `hostveil v3.0.0 (commit <sha>, built <RFC3339>)`
 
 **Checkpoint**: `make build && ./hostveil version` prints the version. `make test-unit` passes all model/store/privilege/CLI tests. No user-story code yet.
 
