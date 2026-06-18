@@ -62,6 +62,11 @@ func defaultConfigPath() string {
 func Execute() int {
 	if err := NewRoot().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
+		// Expose the sentinel for the main entry point so it can
+		// translate the "high or critical finding" case to exit 1.
+		if _, ok := err.(HitError); ok {
+			return ExitHit
+		}
 		return ExitError
 	}
 	return ExitOK
