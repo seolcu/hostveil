@@ -240,6 +240,20 @@ the score simply reflects the categories that ran.
 No. Scans are in-memory only. Resets on restart. This is intentional —
 hostveil is a "scan now and act" tool, not a continuous monitor.
 
+## Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — package layout, data flow,
+  scoring model, concurrency boundaries.
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — local workflow, build
+  commands, test layout, conventions.
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — how to file issues,
+  submit a PR, add a new fix rule.
+- [SECURITY.md](SECURITY.md) — threat model, what hostveil protects
+  against, how to report a vulnerability.
+- [CHANGELOG.md](CHANGELOG.md) — release notes and breaking changes.
+- [AGENTS.md](AGENTS.md) — in-repo agent guide with the actual
+  conventions the codebase uses (for AI agents and humans alike).
+
 ## License
 
 GPL-3.0
