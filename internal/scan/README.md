@@ -6,7 +6,7 @@ individual scanner packages.
 
 ## Files
 
-- **`scan.go`** — `RunSingleTool(live, fixes, tool)`, the
+- **`scan.go`**  `RunSingleTool(live, fixes, tool)`, the
   per-tool `ScanningMessage`, the `summarizeScanError` helper, and
   the `overrideCVEClassifications` post-processor that demotes CVE
   findings without a `FixedVersion` to `RemediationManual`.

@@ -5,30 +5,29 @@ actions the user can apply.
 
 ## Files
 
-- **`types.go`** — `Action`, `Fix`, `FixResult`, `Context`,
+- **`types.go`**  `Action`, `Fix`, `FixResult`, `Context`,
   `Registry`, and the dispatch logic (`Fix.Run`, `Registry.Classify`).
   This is the vocabulary the rest of `internal/fix` builds on.
-- **`register.go`** — `RegisterAll` wires up the three groups of
+- **`register.go`**  `RegisterAll` wires up the three groups of
   fixes: compose, system, image.
-- **`compose.go`** — fixes for Docker Compose misconfigurations
+- **`compose.go`**  fixes for Docker Compose misconfigurations
   (privileged, caps, mounts, ports, healthchecks, secrets, etc).
   Each fix uses `ActionEdit` against the compose YAML via
   `internal/compose`.
-- **`system.go`** — fixes for Lynis host-hardening findings
+- **`system.go`**  fixes for Lynis host-hardening findings
   (SSH, kernel sysctls, file perms, banners, audit, logging, ...).
   Uses `ActionEdit` for config files, `ActionExec` for shell
   commands.
-- **`images.go`** — fixes for Trivy CVE findings. Pulls the patched
+- **`images.go`**  fixes for Trivy CVE findings. Pulls the patched
   image and recreates the affected service. Skipped when no
   `FixedVersion` is available.
-- **`edit.go`** — `SimulateDiff` (dry-run) and `CaptureDiff` (real
+- **`edit.go`**  `SimulateDiff` (dry-run) and `CaptureDiff` (real
   apply), used by `ActionEdit` to produce a unified diff for the UI.
-- **`types_test.go`** — registry and dispatch tests.
-- **`compose_test.go`**, **`system_test.go`**, **`images_test.go`** —
-  per-source tests.
-- **`system_actions_test.go`** — exhaustive tests for every action
+- **`types_test.go`**  registry and dispatch tests.
+- **`compose_test.go`**, **`system_test.go`**, **`images_test.go`** per-source tests.
+- **`system_actions_test.go`**  exhaustive tests for every action
   of every multi-action fix.
-- **`system_validate_test.go`** — asserts that every registered
+- **`system_validate_test.go`**  asserts that every registered
   fix ID is one that Lynis actually emits.
 
 ## Conventions
@@ -39,10 +38,10 @@ convention is more important than your fix.
 
 ### `Auto` vs `Review`
 
-- **`Auto`** — one clear solution. Single action, no input needed.
+- **`Auto`**  one clear solution. Single action, no input needed.
   Use `Action.Warning` to flag side effects; the UI shows a warning
   dialog.
-- **`Review`** — multiple valid options. The user picks one. Each
+- **`Review`**  multiple valid options. The user picks one. Each
   action must address the concern **independently** of the others;
   the user can apply any subset. Never bundle N settings into one
   action.
@@ -74,12 +73,12 @@ cascade.
 2. Pick the right file (`compose.go`, `system.go`, or `images.go`).
 3. Register the fix with `r.Register(&Fix{...})`.
 4. Add a test in the corresponding `_test.go`. The test should
-   fail before your fix and pass after.
+ fail before your fix and pass after.
 5. If the fix is for a Lynis ID, the `system_validate_test.go`
-   check will keep your ID in sync with the Lynis report parser.
+ check will keep your ID in sync with the Lynis report parser.
 6. For multi-action fixes, follow the pattern in
-   `system_actions_test.go`: parameterized tests for every action
-   index, not just action 0.
+ `system_actions_test.go`: parameterized tests for every action
+ index, not just action 0.
 
 ## Running the tests
 

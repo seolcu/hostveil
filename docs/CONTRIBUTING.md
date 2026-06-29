@@ -1,13 +1,14 @@
 # Contributing
 
-Thanks for considering a contribution. This project has a small surface
-area and a high bar for changes that touch scoring, the fix engine, or
-the Web UI. Before opening a pull request, please read:
+Thanks for considering a contribution. This project has a small
+surface area and a high bar for changes that touch scoring, the
+fix engine, or the Web UI. Before opening a pull request, please
+read:
 
-1. `AGENTS.md` — the in-repo agent guide with the actual conventions
-   the codebase uses.
-2. `docs/ARCHITECTURE.md` — the package layout and data flow.
-3. `docs/DEVELOPMENT.md` — the local workflow and test layout.
+1. `AGENTS.md`, the in-repo agent guide with the actual
+   conventions the codebase uses.
+2. `docs/ARCHITECTURE.md`, the package layout and data flow.
+3. `docs/DEVELOPMENT.md`, the local workflow and test layout.
 
 ## How to contribute
 
@@ -38,20 +39,21 @@ Open a GitHub issue with:
    cd test/e2e && npx playwright test
    ```
 
-5. Push your branch and open a pull request. The CI runs the same
-   checks plus a `test-installer` matrix across six distros. All
-   jobs must be green before the PR can be merged.
+5. Push your branch and open a pull request. The CI runs the
+   same checks plus a `test-installer` matrix across six
+   distros. All jobs must be green before the PR can be merged.
 
 ### New fix rules
 
-The most common kind of contribution is a new fix for an existing
-finding ID. To add one:
+The most common kind of contribution is a new fix for an
+existing finding ID. To add one:
 
-1. Find the finding ID. It's the `id` field in the Web UI or the
-   `lynis.XXXX-YYYY` / `trivy.cve-YYYY-NNNNN` / `compose.XXXX`
-   pattern in the JSON.
-2. Pick the right remediation kind (`Auto`, `Review`, `Manual`).
-   Read `AGENTS.md#remediationkind-classification-rules` first.
+1. Find the finding ID. It is the `id` field in the Web UI or
+   the `lynis.XXXX-YYYY` / `trivy.cve-YYYY-NNNNN` /
+   `compose.XXXX` pattern in the JSON.
+2. Pick the right remediation kind (`Auto`, `Review`,
+   `Manual`). Read
+   `AGENTS.md#remediationkind-classification-rules` first.
 3. Implement the fix in the right file:
    - `internal/fix/compose.go` for compose misconfigurations
    - `internal/fix/system.go` for host hardening
@@ -64,15 +66,15 @@ finding ID. To add one:
 
 ### New scanner backends
 
-A new scanner backend is a 200–400 LoC change spread across three
-files:
+A new scanner backend is a 200-400 LoC change spread across
+three files:
 
-- `internal/<name>/<name>.go` — the scanner adapter, exposing a
+- `internal/<name>/<name>.go`, the scanner adapter, exposing a
   single `Scan(runner domain.CommandRunner) ([]domain.Finding, error)`
   function.
-- `internal/scan/scan.go` — add the tool name to the dispatch
+- `internal/scan/scan.go`, add the tool name to the dispatch
   switch in `RunSingleTool`.
-- `cmd/hostveil/scanhelp.go` — add the launch goroutine in
+- `cmd/hostveil/scanhelp.go`, add the launch goroutine in
   `launchScanners`.
 
 Add a test fixture and a Playwright spec that exercises the new
@@ -81,10 +83,11 @@ finding kind in both the TUI and the Web UI.
 ### Documentation
 
 - User-facing documentation lives in `README.md` and
-  `docs/ARCHITECTURE.md`. The README is the entry point — keep it
-  in sync with the actual behavior of the binary.
+  `docs/ARCHITECTURE.md`. The README is the entry point.
+  Keep it in sync with the actual behavior of the binary.
 - Contributor-facing documentation lives in `AGENTS.md`,
-  `docs/DEVELOPMENT.md`, and `docs/CONTRIBUTING.md` (this file).
+  `docs/DEVELOPMENT.md`, and `docs/CONTRIBUTING.md` (this
+  file).
 - API documentation is the GoDoc comments on every exported
   symbol. Run `go doc ./...` to spot-check.
 
@@ -93,12 +96,12 @@ finding kind in both the TUI and the Web UI.
 The codebase follows standard Go style:
 
 - `gofmt` and `go vet` must pass without warnings.
-- Comments on every exported symbol. Comments start with the symbol
-  name. ("Package foo does X." not "This package does X.".)
+- Comments on every exported symbol. Comments start with the
+  symbol name. "Package foo does X." not "This package does X."
 - No `init()` outside of `package main`.
 - Errors are wrapped with `%w`, never `%v`.
-- No exported mutable package-level state. Use a `New()` constructor
-  that returns a pointer.
+- No exported mutable package-level state. Use a `New()`
+  constructor that returns a pointer.
 
 ## Commit messages
 
@@ -116,14 +119,14 @@ encouraged but not enforced.
 ## Review process
 
 Pull requests are reviewed by the maintainers. The typical
-turnaround is 2–5 days. Reviews focus on:
+turnaround is 2-5 days. Reviews focus on:
 
 - Does the change match the design rules in `AGENTS.md`?
 - Is the test coverage adequate? (Both unit and E2E for UI
   changes.)
-- Does the change break any existing behavior? (Scoring changes
-  are the riskiest — bumping a penalty or changing a cap is a
-  user-visible behavior change.)
+- Does the change break any existing behavior? (Scoring
+  changes are the riskiest. Bumping a penalty or changing a
+  cap is a user-visible behavior change.)
 - Are there documentation updates needed?
 
 ## Code of conduct

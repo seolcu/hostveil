@@ -7,11 +7,11 @@ values.
 
 ## Files
 
-- **`lynis.go`** — `Scan` (the entry point), `runLynis` (the shell
+- **`lynis.go`**  `Scan` (the entry point), `runLynis` (the shell
   call), `parseReportFile` (the line-by-line parser), and the
   per-line parsers `parseEntry`, `parseManualEntry`, and
   `parseExceptionEntry`.
-- **`lynis_test.go`** — parser tests. Canned `report.dat`
+- **`lynis_test.go`**  parser tests. Canned `report.dat`
   snippets.
 
 ## What we call
@@ -50,7 +50,7 @@ the parser extracts more specific evidence fields. See
 `internal/fix/system.go` registers one `fix.Fix` per Lynis test
 ID. The fix ID and the finding ID match (with the `lynis.`
 prefix). `internal/fix/system_validate_test.go` asserts that every
-registered ID is one that `lynis.Scan` actually emits — so a
+registered ID is one that `lynis.Scan` actually emits  so a
 finding without a registered fix is fine, but a registered fix
 for an ID the parser never produces is a bug.
 

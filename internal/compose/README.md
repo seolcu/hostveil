@@ -6,11 +6,11 @@ round-tripping through `docker compose config`.
 
 ## Files
 
-- **`edit.go`** — `File` type, `Open`, `SetField`, `DeleteField`,
+- **`edit.go`**  `File` type, `Open`, `SetField`, `DeleteField`,
   `RemoveFromList`, `Backup`, `Save`, `Diff`. The `File` holds
   the parsed `yaml.Node` AST plus the original bytes, so `Diff`
   can produce a unified diff without re-parsing.
-- **`edit_test.go`** — every primitive is tested against a
+- **`edit_test.go`**  every primitive is tested against a
   fixture compose file.
 
 ## API
@@ -46,8 +46,8 @@ func (f *File) ServiceNames() ([]string, error)
 ## Round-trip safety
 
 `File.Save` writes the AST back through `yaml.Marshal`. The
-output is not byte-for-byte identical to the input — comments and
-quoting may change — but it is semantically equivalent. The
+output is not byte-for-byte identical to the input  comments and
+quoting may change  but it is semantically equivalent. The
 `Backup` / `Diff` flow is what hostveil uses to present a
 "what would change" preview before applying a fix.
 

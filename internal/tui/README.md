@@ -5,15 +5,15 @@ that the Web UI does.
 
 ## Files
 
-- **`app.go`** — the Bubble Tea `tea.Model` and its `Init`, `Update`,
+- **`app.go`**  the Bubble Tea `tea.Model` and its `Init`, `Update`,
   and `View` methods. State, key handling, and message dispatch.
-- **`keys.go`** — `updateMain` and `updateModal` key dispatch tables.
-- **`filter.go`** — finding filters and sort logic.
-- **`fix.go`** — fix dispatch (single + batch), fix dry-run, export.
-- **`layout.go`** — fixed-width row and panel layout primitives.
-- **`screen.go`** — `renderMain`, `renderLoading`, `renderDetail`,
+- **`keys.go`**  `updateMain` and `updateModal` key dispatch tables.
+- **`filter.go`**  finding filters and sort logic.
+- **`fix.go`**  fix dispatch (single + batch), fix dry-run, export.
+- **`layout.go`**  fixed-width row and panel layout primitives.
+- **`screen.go`**  `renderMain`, `renderLoading`, `renderDetail`,
   and the modal overlay renderer.
-- **`theme.go`** — the single color theme.
+- **`theme.go`**  the single color theme.
 
 ## Architecture
 
@@ -31,9 +31,9 @@ auto-clear toasts.
 
 ## Key modes
 
-- **Loading** — scan in progress. The user can press `q` to quit.
-- **Main** — findings table + detail panel. Most keys live here.
-- **Detail** — full-screen detail view. `j`/`k` scroll, `g`/`G` go
+- **Loading**  scan in progress. The user can press `q` to quit.
+- **Main**  findings table + detail panel. Most keys live here.
+- **Detail**  full-screen detail view. `j`/`k` scroll, `g`/`G` go
   to top/bottom, `Esc`/`h` returns to the main view.
 
 Modal overlays (help, filter, dry-run, fix confirm, fix result, fix

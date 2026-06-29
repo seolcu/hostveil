@@ -5,17 +5,17 @@ dependencies on other `internal/*` packages.
 
 ## Files
 
-- **`types.go`** — `Finding`, `Severity`, `Source`, `RemediationKind`,
+- **`types.go`**  `Finding`, `Severity`, `Source`, `RemediationKind`,
   and the `Finding.IsFixable` / `RemediationKind.IsFixable` helpers.
   The `Finding` struct is the central data model.
-- **`scoring.go`** — the 4-axis scoring engine (`ScoreFindings`,
+- **`scoring.go`**  the 4-axis scoring engine (`ScoreFindings`,
   `CalculateScore`, `ScoreBreakdown`, `ScoreAxis`).
-- **`live.go`** — `ScanProgress`, the thread-safe in-memory state
+- **`live.go`**  `ScanProgress`, the thread-safe in-memory state
   holder. The Web UI and TUI both read from this.
-- **`defaults.go`** — timeouts and HTTP client config. Single source
+- **`defaults.go`**  timeouts and HTTP client config. Single source
   of truth for `domain.HTTPClientTimeout`, `domain.LynisAuditTimeout`,
   etc.
-- **`exec.go`** — `CommandRunner` interface (for testability) and the
+- **`exec.go`**  `CommandRunner` interface (for testability) and the
   `DefaultRunner` implementation.
 
 ## Concurrency

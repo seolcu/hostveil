@@ -1,21 +1,23 @@
 # Changelog
 
-All notable changes to hostveil are recorded in this file. Versions follow
-[Semantic Versioning](https://semver.org/).
+All notable changes to hostveil are recorded in this file.
+Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
 ### Security
-- **Web UI XSS in detail panel** — `body.dataset.full` and
-  `body.dataset.truncated` are now re-escaped before being injected as HTML
-  on the "View more" / "View less" toggle. The browser auto-decodes HTML
-  entities in `data-*` attributes back to raw characters, so the previous
-  direct interpolation turned descriptions containing `<script>` (or any
-  HTML) into live markup. Finding description / how_to_fix text originates
-  from local scan sources (Trivy, Lynis, compose YAML), so a description
-  with attacker-controlled content rendered as working script.
+- **Web UI XSS in detail panel.** `body.dataset.full` and
+  `body.dataset.truncated` are now re-escaped before being
+  injected as HTML on the "View more" / "View less" toggle.
+  The browser auto-decodes HTML entities in `data-*` attributes
+  back to raw characters, so the previous direct interpolation
+  turned descriptions containing `<script>` (or any HTML) into
+  live markup. Finding description / how_to_fix text originates
+  from local scan sources (Trivy, Lynis, compose YAML), so a
+  description with attacker-controlled content rendered as
+  working script.
 
-## [2.5.2] — 2025-xx-xx
+## [2.5.2]  2025-xx-xx
 
 ### Changed
 - TUI and Web UI share the same in-memory snapshot via `domain.Snapshot`.

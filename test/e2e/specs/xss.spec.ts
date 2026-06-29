@@ -1,17 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-/**
- * Regression tests for the XSS surface in the Web UI.
- *
- * Description / how_to_fix / evidence / metadata text in findings originates
- * from external sources (Trivy reports, Lynis reports, user-edited compose
- * YAML). Any HTML/JS in those fields must render as escaped text, not as
- * live markup. Before the fix in app.js, clicking "View more" in the
- * collapsible section injected body.dataset.full / body.dataset.truncated
- * into innerHTML without re-escaping — the browser auto-decoded the
- * data-attribute entities first, so a malicious description rendered as
- * a working <script>.
- */
+// Regression tests for the XSS surface in the Web UI. Description
+// and how_to_fix text in findings originates from external sources
+// (Trivy, Lynis, compose YAML). Any HTML/JS in those fields must
+// render as escaped text, not as live markup. The specific bug
+// was in the "View more" / "View less" toggle: body.dataset
+// values are auto-decoded by the browser, so injecting them into
+// innerHTML without re-escaping turned `<script>` in a description
+// into working script.
 test.describe("XSS regression", () => {
   test("description, how_to_fix, evidence, and metadata render as text, not HTML", async ({ page }) => {
     await page.route("**/api/result", async (route) => {

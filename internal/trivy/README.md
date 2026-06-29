@@ -6,17 +6,17 @@ then translates the JSON output into `domain.Finding` values.
 
 ## Files
 
-- **`trivy.go`** — `ScanAll`, `scanConfig`, `scanImage`, the JSON
+- **`trivy.go`**  `ScanAll`, `scanConfig`, `scanImage`, the JSON
   decoders, and the per-finding constructor. The `extractImages`
   helper walks a Trivy report to collect the unique image names
   that need a CVE scan.
-- **`trivy_test.go`** — tests for the image extractor, the JSON
+- **`trivy_test.go`**  tests for the image extractor, the JSON
   decoder, and the severity mapper.
 
 ## What we call
 
 ```bash
-trivy config --format json --quiet <compose-path>      # one per project
+trivy config --format json --quiet <compose-path> # one per project
 trivy image --format json --quiet --severity <lvl> ...  # one per image
 ```
 
@@ -33,10 +33,10 @@ once per image.
 CVE findings are produced in two stages:
 
 1. The fix registry (`internal/fix/images.go`) classifies them
-   `Auto` when a `FixedVersion` is present.
+ `Auto` when a `FixedVersion` is present.
 2. `overrideCVEClassifications` in `internal/scan/scan.go`
-   demotes any remaining `trivy.cve-*` findings without a
-   `FixedVersion` to `Manual` (no upstream patch yet).
+ demotes any remaining `trivy.cve-*` findings without a
+ `FixedVersion` to `Manual` (no upstream patch yet).
 
 ## Tests
 
@@ -44,7 +44,7 @@ CVE findings are produced in two stages:
 go test ./internal/trivy/...
 ```
 
-`trivy_test.go` runs without an actual Trivy binary — the tests
+`trivy_test.go` runs without an actual Trivy binary  the tests
 use canned JSON output. Integration with Trivy is covered by the
 end-to-end smoke flow (`./hostveil` on a host that has Trivy
 installed).

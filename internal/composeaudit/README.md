@@ -2,19 +2,19 @@
 
 Native Docker Compose audit. Reads the compose YAML, applies a
 set of rules, and emits `domain.Finding` values. hostveil runs
-this in-process — no Trivy, no shell out, no extra tool needed.
+this in-process  no Trivy, no shell out, no extra tool needed.
 
 ## Files
 
-- **`audit.go`** — `ScanAll`, the per-project scanner entry point.
-- **`discover.go`** — `DiscoverProjects` shells out to
+- **`audit.go`**  `ScanAll`, the per-project scanner entry point.
+- **`discover.go`**  `DiscoverProjects` shells out to
   `docker compose ls --format json` to find the active compose
   projects and their config paths.
-- **`env.go`** — `.env` file parsing for compose variable
+- **`env.go`**  `.env` file parsing for compose variable
   resolution (so a `port: ${WEB_PORT:-8080}` doesn't trip the
   "exposing to all interfaces" rule).
-- **`rules.go`** — the audit rules. One function per rule.
-- **`audit_test.go`** — `TestAuditProject_*` for each rule.
+- **`rules.go`**  the audit rules. One function per rule.
+- **`audit_test.go`**  `TestAuditProject_*` for each rule.
 
 ## Rules
 
@@ -40,7 +40,7 @@ this in-process — no Trivy, no shell out, no extra tool needed.
 | `compose.DR-018` | Medium | Bind mount not read-only when it could be |
 | `compose.DR-019` | High | Secret present in `.env` file |
 
-(Not all rule IDs are in this list — see `rules.go` for the
+(Not all rule IDs are in this list  see `rules.go` for the
 complete set. The list is illustrative.)
 
 ## Variable resolution
