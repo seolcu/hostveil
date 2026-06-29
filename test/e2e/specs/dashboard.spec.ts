@@ -10,6 +10,9 @@ test.describe("Dashboard", () => {
 
     const scoreEl = page.locator("#score");
     await expect(scoreEl).toBeVisible();
+    // Score element renders "--" until the scan snapshot is computed; wait for
+    // the final numeric form before asserting.
+    await expect(scoreEl).toHaveText(/^\d+\/100$/, { timeout: 5000 });
     const scoreText = await scoreEl.textContent();
     expect(scoreText).toMatch(/^\d+\/100$/);
 

@@ -718,11 +718,15 @@ function renderDetail(f) {
   detail.querySelectorAll(".toggle-more").forEach((btn) => {
     btn.onclick = () => {
       const body = btn.parentElement.querySelector(".collapse-body");
+      // body.dataset.{full,truncated} are auto-decoded by the browser from the
+      // data-* attribute (HTML entities become real characters). Re-escape them
+      // before inserting as HTML — a malicious description from a scan source
+      // (lynis, trivy, or compose YAML) would otherwise render as live markup.
       if (btn.textContent === "View more") {
-        body.innerHTML = `<p>${body.dataset.full}</p>`;
+        body.innerHTML = `<p>${escapeHTML(body.dataset.full)}</p>`;
         btn.textContent = "View less";
       } else {
-        body.innerHTML = `<p>${body.dataset.truncated}</p>`;
+        body.innerHTML = `<p>${escapeHTML(body.dataset.truncated)}</p>`;
         btn.textContent = "View more";
       }
     };
