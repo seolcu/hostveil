@@ -422,6 +422,13 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 		return
 	}
 
+	// Reject out-of-range action indexes up front to avoid a panic when
+	// dereferencing f.Actions[req.ActionIndex] below.
+	if req.ActionIndex < 0 || req.ActionIndex >= len(f.Actions) {
+		writeJSON(w, map[string]interface{}{"success": false, "error": fmt.Sprintf("action_index %d out of range (have %d actions)", req.ActionIndex, len(f.Actions))})
+		return
+	}
+
 	// Create checkpoint before applying fix
 	cpID := history.CheckpointID(req.Finding.ID)
 	checkpointDir := filepath.Join(history.CheckpointDir, cpID)
@@ -433,20 +440,18 @@ func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 		Action:    f.Actions[req.ActionIndex].Label,
 		ActionIdx: req.ActionIndex,
 	}
-	if len(f.Actions) > req.ActionIndex {
-		action := f.Actions[req.ActionIndex]
-		if action.Type == fix.ActionEdit {
-			editPath := action.FilePath
-			if editPath == "" {
-				editPath = req.Finding.Metadata["compose_path"]
-			}
-			if editPath != "" {
-				if err := history.EnsureDirs(); err == nil {
-					os.MkdirAll(checkpointDir, 0755)
-					os.MkdirAll(filepath.Join(checkpointDir, history.BackupSubdir), 0755)
-					if backup, err := history.BackupFile(checkpointDir, editPath); err == nil {
-						cp.Backups = append(cp.Backups, *backup)
-					}
+	action := f.Actions[req.ActionIndex]
+	if action.Type == fix.ActionEdit {
+		editPath := action.FilePath
+		if editPath == "" {
+			editPath = req.Finding.Metadata["compose_path"]
+		}
+		if editPath != "" {
+			if err := history.EnsureDirs(); err == nil {
+				os.MkdirAll(checkpointDir, 0755)
+				os.MkdirAll(filepath.Join(checkpointDir, history.BackupSubdir), 0755)
+				if backup, err := history.BackupFile(checkpointDir, editPath); err == nil {
+					cp.Backups = append(cp.Backups, *backup)
 				}
 			}
 		}

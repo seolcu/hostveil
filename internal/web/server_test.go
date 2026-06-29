@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net"
@@ -294,6 +295,94 @@ func TestHandleFixSuccess(t *testing.T) {
 	}
 	if resp["success"] != true {
 		t.Errorf("expected success true, got %v", resp["success"])
+	}
+}
+
+// TestHandleFix_OutOfRangeActionIndex ensures the handler rejects action_index
+// values that would index past the registered fix's actions slice. Before the
+// fix, the handler dereferenced f.Actions[req.ActionIndex] before bounds
+// checking, which panicked on a missing or oversized index.
+func TestHandleFix_OutOfRangeActionIndex(t *testing.T) {
+	cases := []struct {
+		name        string
+		actions     []fix.Action
+		actionIndex int
+		wantSuccess bool
+		wantErr     string
+	}{
+		{
+			name:        "negative index",
+			actions:     []fix.Action{{Label: "only"}},
+			actionIndex: -1,
+			wantSuccess: false,
+			wantErr:     "out of range",
+		},
+		{
+			name:        "index equal to length",
+			actions:     []fix.Action{{Label: "only"}},
+			actionIndex: 1,
+			wantSuccess: false,
+			wantErr:     "out of range",
+		},
+		{
+			name:        "index beyond length",
+			actions:     []fix.Action{{Label: "only"}},
+			actionIndex: 5,
+			wantSuccess: false,
+			wantErr:     "out of range",
+		},
+		{
+			name:        "empty actions slice",
+			actions:     nil,
+			actionIndex: 0,
+			wantSuccess: false,
+			wantErr:     "out of range",
+		},
+		{
+			name:        "valid index",
+			actions:     []fix.Action{{Label: "only"}},
+			actionIndex: 0,
+			wantSuccess: true,
+		},
+	}
+	noopApply := func(ctx fix.Context) error { return nil }
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			reg := fix.New()
+			// subtest can actually succeed; the bound check should be the only
+			// difference between the cases.
+			actions := make([]fix.Action, len(tc.actions))
+			for i, a := range tc.actions {
+				if a.Apply == nil {
+					a.Apply = noopApply
+				}
+				actions[i] = a
+			}
+			reg.Register(&fix.Fix{
+				FindingID: "test-finding",
+				Label:     "Test",
+				Actions:   actions,
+			})
+			body := fmt.Sprintf(`{"finding":{"id":"test-finding"},"action_index":%d}`, tc.actionIndex)
+			req := httptest.NewRequest("POST", "/api/fix", strings.NewReader(body))
+			rec := httptest.NewRecorder()
+			handleFix(rec, req, Options{Fixes: reg})
+
+			var resp map[string]interface{}
+			if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := resp["success"], tc.wantSuccess; got != want {
+				t.Errorf("success = %v, want %v", got, want)
+			}
+			if tc.wantErr != "" {
+				errStr, _ := resp["error"].(string)
+				if !strings.Contains(errStr, tc.wantErr) {
+					t.Errorf("error = %q, want it to contain %q", errStr, tc.wantErr)
+				}
+			}
+		})
 	}
 }
 
