@@ -25,6 +25,9 @@ func (m model) renderLoading() string {
 	subtitle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(Version)
 	heading := fmt.Sprintf("%s %s", brand, subtitle)
 	panelW := clamp(m.width-8, 56, 92)
+	if m.width > 0 {
+		panelW = min(panelW, m.width)
+	}
 	innerW := max(20, panelW-6)
 
 	spinnerView := m.spinner.View()
@@ -261,6 +264,7 @@ func (m model) renderFilterPanel(width int) string {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Width(width).
+		Height(m.bodyHeight()).
 		Padding(1, 2).
 		Render(content)
 }
@@ -556,14 +560,20 @@ func (m model) renderListPane() string {
 		borderColor = t.Accent
 	}
 
+	top := lipgloss.JoinVertical(lipgloss.Top, head, tableView)
+	panelInnerH := m.bodyHeight() - 2 // minus border
+	emptyLines := panelInnerH - lipgloss.Height(top) - lipgloss.Height(footerStyled)
+	if emptyLines < 0 {
+		emptyLines = 0
+	}
+	body := joinVerticalWithGap(top, footerStyled, emptyLines)
+
 	return lipgloss.NewStyle().
 		Width(headW).
 		Height(m.bodyHeight()).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(borderColor)).
-		Render(
-			lipgloss.JoinVertical(lipgloss.Top, head, tableView, footerStyled),
-		)
+		Render(body)
 }
 
 func tableStyles(t Theme) table.Styles {
@@ -645,7 +655,7 @@ func (m model) renderDetailPane() string {
 	if emptyLines < 0 {
 		emptyLines = 0
 	}
-	body := detailContent + strings.Repeat("\n", emptyLines) + footerStyled
+	body := joinVerticalWithGap(detailContent, footerStyled, emptyLines)
 
 	return lipgloss.NewStyle().
 		Width(m.detailWidth()).
@@ -669,13 +679,27 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(lipgloss.Wrap(detailTitle(*f), width, " ")))
 	b.WriteString("\n")
 
+	metaContentW := max(1, width-6)
+	metaValueW := max(1, metaContentW-12)
+	metaRow := func(label, value string) string {
+		prefix := muted.Render(fmt.Sprintf("%-12s", label))
+		lines := strings.Split(lipgloss.Wrap(value, metaValueW, " "), "\n")
+		for i, line := range lines {
+			if i == 0 {
+				lines[i] = prefix + text.Render(line)
+			} else {
+				lines[i] = strings.Repeat(" ", 12) + text.Render(line)
+			}
+		}
+		return strings.Join(lines, "\n")
+	}
 	metaRows := []string{
-		muted.Render(fmt.Sprintf("%-12s", "ID")) + text.Render(f.ID),
-		muted.Render(fmt.Sprintf("%-12s", "Source")) + text.Render(f.Source.String()),
-		muted.Render(fmt.Sprintf("%-12s", "Remediation")) + text.Render(remediationShortLabel(f.Remediation)),
+		metaRow("ID", f.ID),
+		metaRow("Source", f.Source.String()),
+		metaRow("Remediation", remediationShortLabel(f.Remediation)),
 	}
 	if f.Service != "" {
-		metaRows = append(metaRows, muted.Render(fmt.Sprintf("%-12s", "Service"))+text.Render(f.Service))
+		metaRows = append(metaRows, metaRow("Service", f.Service))
 	}
 	meta := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -703,12 +727,13 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
+			blockInnerW := max(1, width-4)
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
 				Padding(0, 1).
 				Width(width).
-				Render(muted.Render(k) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], max(1, width-2), " ")))
+				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], blockInnerW, " ")))
 			b.WriteString(block + "\n")
 		}
 	}
@@ -720,12 +745,13 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
+			blockInnerW := max(1, width-4)
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
 				Padding(0, 1).
 				Width(width).
-				Render(muted.Render(k) + "\n" + text.Render(lipgloss.Wrap(f.Metadata[k], max(1, width-2), " ")))
+				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Metadata[k], blockInnerW, " ")))
 			b.WriteString(block + "\n")
 		}
 	}
@@ -735,6 +761,9 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 // ── Modals ──
 
 func (m model) renderWithModal(base string) string {
+	if m.width < 40 || m.height < 10 {
+		return base
+	}
 	var modal string
 	switch m.modal {
 	case modalHelp:
@@ -812,7 +841,7 @@ func (m model) renderHelpModal() string {
 	}
 	lines = append(lines, "", lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press q, esc, ? or enter to close"))
 
-	return s.Width(clamp(m.width-8, 48, 80)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(80)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFilterModal() string {
@@ -826,7 +855,7 @@ func (m model) renderFilterModal() string {
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press Enter to apply, Esc to cancel"),
 	}
-	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(76)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFixDryRunModal() string {
@@ -889,7 +918,7 @@ func (m model) renderFixDryRunModal() string {
 		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Enter apply · Esc cancel"))
 	}
 
-	return s.Width(clamp(m.width-8, 48, 80)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(80)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFixConfirmModal() string {
@@ -933,7 +962,7 @@ func (m model) renderFixConfirmModal() string {
 	}
 	lines = append(lines, "")
 	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Apply? (y/N)"))
-	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(76)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFixResultModal() string {
@@ -947,7 +976,7 @@ func (m model) renderFixResultModal() string {
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press any key to close"),
 	}
-	return s.Width(clamp(m.width-8, 48, 76)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(76)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderFixProgressModal() string {
@@ -958,7 +987,8 @@ func (m model) renderFixProgressModal() string {
 	if m.fixProgressTotal > 0 {
 		pct = m.fixProgress * 100 / m.fixProgressTotal
 	}
-	barW := 30
+	modalW := m.modalWidth(64)
+	barW := min(30, max(10, modalContentWidth(modalW)-6))
 	filled := barW * pct / 100
 	if filled > barW {
 		filled = barW
@@ -987,7 +1017,7 @@ func (m model) renderFixProgressModal() string {
 		lines = append(lines, labelLine)
 	}
 
-	return s.Width(clamp(m.width-8, 48, 64)).Render(strings.Join(lines, "\n"))
+	return s.Width(modalW).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderExportModal() string {
@@ -1017,7 +1047,7 @@ func (m model) renderExportModal() string {
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter export · Esc cancel"),
 	)
-	return s.Width(clamp(m.width-8, 48, 64)).Render(strings.Join(lines, "\n"))
+	return s.Width(m.modalWidth(64)).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) modalStyle() lipgloss.Style {
@@ -1026,6 +1056,25 @@ func (m model) modalStyle() lipgloss.Style {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(1, 2)
+}
+
+func (m model) modalWidth(maxWidth int) int {
+	width := clamp(m.width-8, 48, maxWidth)
+	if m.width > 0 {
+		width = min(width, m.width)
+	}
+	return max(1, width)
+}
+
+func modalContentWidth(width int) int {
+	return max(1, width-6)
+}
+
+func joinVerticalWithGap(top, bottom string, gap int) string {
+	if gap < 0 {
+		gap = 0
+	}
+	return top + strings.Repeat("\n", gap+1) + bottom
 }
 
 func severityBadgeStr(label, color string) string {

@@ -90,14 +90,26 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+a":
 		visible := m.visibleFindings()
-		if len(m.selectedSet) == len(visible) {
+		selectableCount := 0
+		allSelectableSelected := true
+		for _, f := range visible {
+			if f.Remediation == domain.RemediationUnavailable || f.Remediation == domain.RemediationManual {
+				continue
+			}
+			selectableCount++
+			if !m.selectedSet[f.ID] {
+				allSelectableSelected = false
+			}
+		}
+		if selectableCount > 0 && len(m.selectedSet) == selectableCount && allSelectableSelected {
 			m.selectedSet = make(map[string]bool)
 		} else {
 			m.selectedSet = make(map[string]bool)
 			for _, f := range visible {
-				if f.Remediation != domain.RemediationUnavailable {
-					m.selectedSet[f.ID] = true
+				if f.Remediation == domain.RemediationUnavailable || f.Remediation == domain.RemediationManual {
+					continue
 				}
+				m.selectedSet[f.ID] = true
 			}
 		}
 		m.rebuildTable()
@@ -257,12 +269,9 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.modal = modalNone
 		}
 	case modalFixResult:
-		switch msg.String() {
-		case "q", "esc", "enter":
-			m.fixTarget = nil
-			m.dryRunActions = nil
-			m.modal = modalNone
-		}
+		m.fixTarget = nil
+		m.dryRunActions = nil
+		m.modal = modalNone
 	case modalFixProgress:
 		return m, nil
 	case modalExport:
