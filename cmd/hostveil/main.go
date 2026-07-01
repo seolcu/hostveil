@@ -98,28 +98,33 @@ func printHelp() {
 }
 
 func helpText() string {
-	return `hostveil — Linux self-hosting security scanner
+	return `hostveil finds security problems on your self-hosted Docker host, and fixes them.
 
-Usage:
-  hostveil                    Scan and open TUI
-  hostveil --no-scan          Open TUI without scanning
-  hostveil serve              Scan and serve Web UI on 127.0.0.1:8787
-  hostveil serve --no-scan    Serve Web UI immediately (no scan)
-  hostveil web                Alias for serve
-  hostveil tui-web            Open TUI and serve Web UI at the same time
-  hostveil serve --addr ADDR  Serve Web UI on a custom address
-  hostveil tui-web --addr ADDR  TUI plus Web UI on a custom address
-  hostveil serve --cert-file CERT --key-file KEY  Serve with HTTPS
-  hostveil setup              Install dependencies (trivy, lynis)
-  hostveil update             Update to the latest version
-  hostveil --no-update        Skip update check on startup
-  hostveil serve --fixture F  Serve fixture data (E2E testing)
-  hostveil history            List fix checkpoints
-  hostveil history show ID    Show checkpoint details
-  hostveil history --scans    List scan history
-  hostveil rollback ID        Rollback a fix checkpoint
-  hostveil --version          Show version
-  hostveil --help             Show this help`
+Run:
+  hostveil            Scan everything, open the terminal UI
+  hostveil serve      Scan everything, serve the Web UI (127.0.0.1:8787)
+  hostveil tui-web    TUI and Web UI at the same time
+  hostveil web        Alias for serve
+  hostveil --no-scan  Open the TUI immediately, skip scanning
+
+Configure:
+  hostveil serve --addr ADDR                      Serve on a custom address
+  hostveil serve --cert-file CERT --key-file KEY  Serve over HTTPS
+  hostveil serve --fixture FILE                   Serve fixture data (E2E testing)
+
+Maintain:
+  hostveil setup        Install or update trivy/lynis
+  hostveil update       Upgrade hostveil to the latest release
+  hostveil --no-update  Skip the startup update check
+
+History and rollback:
+  hostveil history          List past fixes, each with a restore point
+  hostveil history show ID  Show one checkpoint's backed-up files and diff
+  hostveil history --scans  List past scans with the score change
+  hostveil rollback ID      Undo a fix, restoring the files it changed
+
+  hostveil --version  Show installed version
+  hostveil --help     Show this help`
 }
 
 func ensureSudo() {

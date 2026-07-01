@@ -34,6 +34,24 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - `hostveil history` and `hostveil rollback` are now documented in the
   main README (they existed already but weren't listed), along with
   `hostveil tui-web` and the `--cert-file`/`--key-file` TLS flags.
+- **Rewrote `README.md`.** The old opening line described hostveil as
+  a scanner and buried the actual differentiator — that it fixes
+  findings, not just reports them — 30 lines down inside an FAQ
+  answer. The comparison against running Trivy/Lynis separately (the
+  first question anyone evaluating hostveil asks) is now the second
+  thing in the file. Added CI/license/release/Go-version badges,
+  moved reference tables (score axes, TUI key list, Web UI API) into
+  collapsed `<details>` so the main read stays short, and replaced
+  the ASCII data-flow diagram with a Mermaid flowchart. Corrected
+  claims that didn't match the code: hostveil also talks to GitHub
+  from `hostveil setup` (not just the update check), and a shell-type
+  fix (a package install, a `sysctl -w`) has no file to back up and
+  cannot be rolled back the same way a file-edit fix can.
+- **Restructured `hostveil --help`.** Was a single flat 17-line list
+  mixing primary commands with E2E-testing flags in installation
+  order. Now opens with a one-line description and groups commands
+  by intent (Run / Configure / Maintain / History), matching the
+  README's structure.
 
 ### Fixed
 - **`compose.dr002` never detected long-syntax port exposure.**

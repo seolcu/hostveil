@@ -39,7 +39,7 @@ release:
   header: |
     ## hostveil v{{.Version}}
 
-    Linux self-hosting security scanner with auto-fix.
+    Finds security problems on your self-hosted Docker host, and fixes them.
 
     ### Installation
 
