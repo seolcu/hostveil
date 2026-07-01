@@ -27,23 +27,27 @@ removed on exit.
 
 ## Parsing rules
 
-The parser matches four kinds of lines:
+The parser matches four line prefixes, and **each has a different
+field format** — they are not variations on one shared layout:
 
-| Line prefix | Severity | Remediation |
-|-------------|----------|-------------|
-| `warning[]=` | High | Auto / Review (set by the fix registry) |
-| `suggestion[]=` | Medium | Auto / Review (set by the fix registry) |
-| `manual_event[]=` | Medium | Manual |
-| `exception_event[]=` | Low | Unavailable |
+| Line prefix | Format | Finding ID | Severity | Remediation |
+|---|---|---|---|---|
+| `warning[]=` | `TEST_ID\|Description\|Remediation\|Extra` (pipe-split, at least 2 fields required; a 5th+ field, if present, is silently ignored) | `lynis.TEST_ID` | High | Auto / Review (set by the fix registry) |
+| `suggestion[]=` | same as `warning[]=` | `lynis.TEST_ID` | Medium | Auto / Review (set by the fix registry) |
+| `manual_event[]=` | free text, no delimiter | `lynis.manual.<8-hex-char sha256 of the text>` | Medium | Manual |
+| `exception_event[]=` | `TEST_ID\|Message` (pipe-split, at least 2 fields — only the first two are read, extras ignored; no Remediation/Extra field) | `lynis.exception.TEST_ID` (or bare `lynis.exception` if `TEST_ID` is empty) | Low | Unavailable |
 
-Each line is split on `|` into `(ID, Description, Remediation,
-Extra)`. The ID is prefixed with `lynis.` to form the canonical
-finding ID (e.g. `lynis.AUTH-9286`).
-
-The `Extra` column becomes a `Finding.Evidence["extra"]` entry.
-For some specific IDs (`FILE-6405`, `ACCT-9626`, `FIRE-4513`)
-the parser extracts more specific evidence fields. See
-`parseEntry_Evidence_*` in `lynis_test.go` for the expectations.
+For `warning[]=`/`suggestion[]=`, the 3rd field (if present) becomes
+`Finding.HowToFix` and the 4th field (if present and non-empty)
+becomes `Finding.Evidence["extra"]`. There is **no per-test-ID
+special-casing** — every warning/suggestion, regardless of which
+Lynis test produced it, gets the exact same generic
+`Evidence["extra"]` treatment. `TestParseEntry_Evidence_FILE6405`,
+`_ACCT9626`, and `_FIRE4513` in `lynis_test.go` exist specifically
+to assert this — each one checks that no ID-specific `Evidence` key
+(`path`, `user`, `port`) is added, only the generic `extra`.
+`manual_event[]=` and `exception_event[]=` findings have no
+`Evidence` at all.
 
 ## How fixes are linked
 

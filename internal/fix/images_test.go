@@ -24,6 +24,26 @@ func TestRegisterImageFixes(t *testing.T) {
 	}
 }
 
+// TestRegisterImageFixes_MatchesGHSAOnlyID is a regression test: the
+// registration pattern was previously "trivy.cve-*", which does not match
+// Trivy findings reported under a bare GHSA-style VulnerabilityID (no CVE
+// ever assigned -- common for npm/pip/gem ecosystem advisories sourced
+// from GitHub Security Advisories). Widened to "trivy.*" so every Trivy
+// vulnerability finding gets classified instead of being stuck at
+// RemediationUnavailable.
+func TestRegisterImageFixes_MatchesGHSAOnlyID(t *testing.T) {
+	r := New()
+	registerImageFixes(r)
+
+	f := r.Lookup("trivy.ghsa-xqr8-7jwr-rhp7")
+	if f == nil {
+		t.Fatal("expected to find fix for trivy.ghsa-xqr8-7jwr-rhp7 (GHSA-only ID with no CVE)")
+	}
+	if f.Label != "Pull latest image and redeploy service" {
+		t.Errorf("unexpected label: %q", f.Label)
+	}
+}
+
 func TestImageFixClassify_WithFixedVersion(t *testing.T) {
 	r := New()
 	registerImageFixes(r)

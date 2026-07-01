@@ -93,7 +93,7 @@ violates them, fix it.
   to a binary download for both `trivy` and `lynis`.
 
 ### Fix registry
-- Read `AGENTS.md#remediationkind-classification-rules` before
+- Read `AGENTS.md#fix-engine-critical--internalfix` before
   adding a new fix. The two design rules that get broken the
   most:
   - **Review = alternatives, not stages.** A multi-action
@@ -195,15 +195,25 @@ Conventions:
   in `[0, 100]`, every axis `Penalty` is in `[0, MaxPenalty]`.
   Regressions in the cap math or in the dedup key surface
   here.
-- The `Snapshot` cache test
-  (`TestScanProgress_Snapshot_ReflectsMutations`) asserts the
-  cache invalidation contract: a snapshot taken before a
-  mutation does not reflect the mutation. It does NOT
-  assert that callers can safely mutate the returned
-  snapshot's findings slice in place — the cached snapshot
-  shares its backing array with the most recent returned
-  value, and mutating the returned value would corrupt the
-  cache. Callers must treat the returned value as read-only.
+- The `Snapshot` cache tests
+  (`TestScanProgress_Snapshot_Cached`,
+  `TestScanProgress_Snapshot_InvalidatedOnMutation`,
+  `TestScanProgress_Snapshot_InvalidatedOnMarkFixed`,
+  `TestScanProgress_Snapshot_InvalidatedOnRecalc`) assert the
+  cache invalidation contract: repeated `Snapshot()` calls with
+  no mutation in between return the same data (cache hit), and
+  a `Snapshot()` call after `AddFindings`/`MarkFixed`/`Recalculate`
+  always reflects that mutation (cache correctly invalidated).
+  They do NOT assert that callers can safely mutate a returned
+  snapshot's `Findings` slice in place — a cache hit returns a
+  shallow copy that shares its backing arrays (`Findings`,
+  `Tools`, `ScoreBreakdown.Axes`) with the previous caller and
+  with the cache itself, so an in-place mutation would corrupt
+  what every other caller sees. Callers must treat the returned
+  value as read-only; see
+  `TestUpdate_FixResultMsg_MarksFixedThroughLiveAPI` in
+  `internal/tui/app_test.go` for a `-race`-verified regression
+  test of exactly this hazard.
 
 #### Benchmarks
 - Benchmarks live in `internal/<pkg>/bench_test.go` next to
@@ -257,8 +267,8 @@ Releases are cut from the GitHub Actions release workflow on a
 `v*` tag push. To cut a release:
 
 ```bash
-git tag v2.5.3
-git push origin v2.5.3
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 The workflow:
@@ -267,7 +277,7 @@ The workflow:
 2. Runs `goreleaser release --clean`, which:
    - Builds linux/darwin × amd64/arm64 binaries.
    - Embeds the version string with
-     `-X internal/tui.Version={{.Version}}`.
+     `-X github.com/seolcu/hostveil/internal/tui.Version=v{{.Version}}`.
    - Generates `hostveil-checksums.txt` and uploads all 4
      archives to the GitHub release.
 

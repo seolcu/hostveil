@@ -700,7 +700,7 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	metaRows := []string{
 		metaRow("ID", f.ID),
 		metaRow("Source", f.Source.String()),
-		metaRow("Remediation", remediationShortLabel(f.Remediation)),
+		metaRow("Remediation", remediationShortLabel(f.Remediation)+" — "+remediationHint(f.Remediation)),
 	}
 	if f.Service != "" {
 		metaRows = append(metaRows, metaRow("Service", f.Service))
@@ -824,7 +824,7 @@ func (m model) renderHelpModal() string {
 			"  o             Cycle sort order",
 			"  O             Toggle sort direction",
 			"  R             Clear all filters",
-			"  e             Export report (JSON/CSV)",
+			"  e             Export report (JSON/CSV/AI)",
 			"  ?             This help",
 			"  q             Quit",
 		)
@@ -835,7 +835,7 @@ func (m model) renderHelpModal() string {
 			"  g/G          Top / bottom",
 			"  Esc, h        Back to list",
 			"  f             Apply fix",
-			"  e             Export report (JSON/CSV)",
+			"  e             Export report (JSON/CSV/AI)",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  Ctrl+A        Select/deselect all visible",
@@ -1028,16 +1028,15 @@ func (m model) renderExportModal() string {
 	t := m.theme()
 	s := m.modalStyle()
 
-	formats := []string{"JSON (full data)", "CSV (spreadsheet)"}
 	var items []string
-	for i, f := range formats {
+	for i, f := range exportFormats {
 		mark := "  "
 		style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
 		if i == m.exportIdx {
 			mark = "> "
 			style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
 		}
-		items = append(items, "  "+mark+style.Render(f))
+		items = append(items, "  "+mark+style.Render(f.label))
 	}
 
 	lines := []string{
@@ -1148,6 +1147,25 @@ func remediationShortLabel(r domain.RemediationKind) string {
 		return "Manual"
 	default:
 		return "Unknown"
+	}
+}
+
+// remediationHint returns a short, user-facing explanation of what a
+// RemediationKind means in practice. Shown next to the bare kind name
+// in the detail panel, since "Auto"/"Review"/"Manual"/"Unavailable" are
+// not self-explanatory to a first-time user.
+func remediationHint(r domain.RemediationKind) string {
+	switch r {
+	case domain.RemediationAuto:
+		return "one clear fix, click Apply"
+	case domain.RemediationReview:
+		return "multiple options, pick one"
+	case domain.RemediationUnavailable:
+		return "not yet classified"
+	case domain.RemediationManual:
+		return "no automated fix, see guidance below"
+	default:
+		return ""
 	}
 }
 

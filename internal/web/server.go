@@ -635,6 +635,13 @@ func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgr
 
 	snap := live.Snapshot()
 
+	if format == "ai" || format == "ai-brief" || format == "markdown" {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-ai-brief.md")
+		_, _ = w.Write([]byte(domain.RenderAIBrief(snap)))
+		return
+	}
+
 	switch format {
 	case "csv":
 		w.Header().Set("Content-Type", "text/csv")

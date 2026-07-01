@@ -31,6 +31,12 @@ Versions follow [Semantic Versioning](https://semver.org/).
   community post-mortems (mass scanners like Shodan index exposed
   admin panels within hours). Registered as a Review fix (bind to
   `127.0.0.1`, or remove the mapping).
+- **AI remediation brief export.** Both UIs can now export a local
+  Markdown brief for ChatGPT, Claude, or a local LLM. The brief includes
+  a prompt-injection warning, active findings prioritized by severity,
+  score/count summaries, existing hostveil guidance, and redacted
+  evidence/metadata so users can ask for a remediation plan without
+  uploading the raw JSON report.
 - `hostveil history` and `hostveil rollback` are now documented in the
   main README (they existed already but weren't listed), along with
   `hostveil tui-web` and the `--cert-file`/`--key-file` TLS flags.
@@ -102,6 +108,33 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - **`compose.dr003` fix over-applied `:ro`.** The finding didn't record
   which volume triggered it, so applying the fix appended `:ro` to
   every non-`:ro` volume on the service instead of just the flagged one.
+- **TUI applied a fix without cascading to related findings.** The Web
+  UI's `/api/fix` marks other findings resolved by the same exact-ID
+  fix on the same service (`MarkRelatedFixed`), but the TUI's fix
+  handler only marked the single finding, leaving related findings
+  showing as unfixed until the next rescan. Both UIs now cascade
+  identically.
+- **Trivy findings with a GHSA-only ID (no CVE assigned) were
+  permanently stuck as `Unavailable` and scored under the wrong axis.**
+  Trivy reports some vulnerabilities (common in npm/pip/gem ecosystem
+  advisories from GitHub Security Advisories) under a bare
+  `GHSA-xxxx-xxxx-xxxx` `VulnerabilityID` with no CVE ever assigned.
+  The fix registry's wildcard (`trivy.cve-*`), the CVE-vs-Manual
+  override, and the scoring axis router all matched only the
+  `trivy.cve-` prefix, so these findings never got classified (stuck
+  at `Unavailable`, contradicting the invariant that `Unavailable` is
+  never user-visible after a complete scan) and scored under
+  "Container exposure" instead of "Vulnerabilities" (wrong penalty
+  cap: 30 vs 35). All three now match on `trivy.*`.
+- **TUI mutated the live snapshot's `Findings` slice directly, racing
+  with concurrent readers.** `fixResultMsg`'s handler wrote
+  `m.snap.Findings[i].Fixed = true` on a snapshot returned by
+  `ScanProgress.Snapshot()`. Because `Snapshot()` caches and returns a
+  shallow copy that can alias the same backing array across multiple
+  calls, this unsynchronized write could race with any concurrent
+  `Snapshot()` caller — e.g. the Web UI's HTTP handlers in `hostveil
+  tui-web`, which runs the TUI and Web server against one shared
+  `ScanProgress`. Now goes through the mutex-protected `MarkFixed`.
 
 ### Security
 - **`GET /api/result` was vulnerable to DNS rebinding.** Unlike the
@@ -140,6 +173,18 @@ Versions follow [Semantic Versioning](https://semver.org/).
   from local scan sources (Trivy, Lynis, compose YAML), so a
   description with attacker-controlled content rendered as
   working script.
+- **`hostveil update` installed the downloaded release archive with
+  zero checksum verification**, despite `SECURITY.md` documenting that
+  it "re-verifies checksums before installing." Now fetches and
+  verifies the release's `hostveil-checksums.txt` before installing,
+  and fails closed (aborts, does not install) if the checksum is
+  missing or does not match.
+- **`scripts/install.sh.sha256` did not exist**, so `hostveil setup`'s
+  installer-checksum verification silently no-op'd on every run (the
+  checksum fetch 404'd, which the fail-open check treats as "skip").
+  Published the checksum file and added a CI check
+  (`sha256sum -c scripts/install.sh.sha256`) so it can never silently
+  drift again.
 
 ## [2.5.2] — 2025-xx-xx
 

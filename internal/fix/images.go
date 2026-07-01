@@ -10,12 +10,12 @@ import (
 
 func registerImageFixes(r *Registry) {
 	r.Register(&Fix{
-		FindingID: "trivy.cve-*",
+		FindingID: "trivy.*",
 		Label:     "Pull latest image and redeploy service",
 		Actions: []Action{{
 			Type:    ActionExec,
 			Label:   "Pull latest image and redeploy",
-			Warning: "This will restart the service with the latest image. The CVE may still be present if the image maintainer has not released a fix.",
+			Warning: "This will restart the service with the latest image. The vulnerability may still be present if the image maintainer has not released a fix.",
 			Apply: func(ctx Context) error {
 				if ctx.Finding == nil {
 					return fmt.Errorf("no finding provided")

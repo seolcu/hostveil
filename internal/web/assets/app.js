@@ -762,7 +762,7 @@ function renderDetail(f) {
     <dl class="detail-meta">
       <dt>ID</dt><dd>${escapeHTML(f.id || "")}</dd>
       <dt>Source</dt><dd>${source(f)}</dd>
-      <dt>Remediation</dt><dd>${label(remediation(f))}</dd>
+      <dt>Remediation</dt><dd>${label(remediation(f))} <span class="muted">— ${remediationHint(remediation(f))}</span></dd>
       ${f.service ? `<dt>Service</dt><dd>${escapeHTML(f.service)}</dd>` : ""}
     </dl>
     ${section("Description", f.description)}
@@ -907,6 +907,13 @@ function countBy(items, fn) { return items.reduce((acc, item) => ((acc[fn(item)]
 function severity(f) { return ["critical", "high", "medium", "low"][f.severity] || String(f.severity || "unknown").toLowerCase(); }
 function source(f) { return ["trivy", "lynis", "compose"][f.source] || String(f.source || "unknown").toLowerCase(); }
 function remediation(f) { return ["auto", "review", "unavailable", "manual"][f.remediation] || String(f.remediation || "unknown").toLowerCase(); }
+// remediationHint returns a short, user-facing explanation of what a
+// remediation kind means in practice. Mirrors internal/tui/screen.go's
+// remediationHint -- "auto"/"review"/"manual"/"unavailable" are not
+// self-explanatory to a first-time user.
+function remediationHint(kind) {
+  return { auto: "one clear fix, click Apply", review: "multiple options, pick one", manual: "no automated fix, see guidance below", unavailable: "not yet classified" }[kind] || "";
+}
 function title(f) { return f.title || "Untitled finding"; }
 function shortId(id = "") { const parts = id.split("."); return parts[parts.length - 1] || id; }
 function searchable(f) { return [f.id, f.title, f.description, f.how_to_fix, f.service, severity(f), source(f), remediation(f), ...Object.values(f.evidence || {})].join(" ").toLowerCase(); }
@@ -1283,7 +1290,7 @@ function showExportModal() {
   overlay.innerHTML = `
     <div class="modal-content modal-export">
       <h2>Export report</h2>
-      <p class="muted">Download scan results in your preferred format.</p>
+      <p class="muted">Download scan results or an AI-ready remediation brief generated locally.</p>
       <div class="export-options">
         <button class="export-option" id="exportJson">
           <span class="export-icon">{ }</span>
@@ -1294,6 +1301,11 @@ function showExportModal() {
           <span class="export-icon">CSV</span>
           <span class="export-label">CSV</span>
           <span class="export-desc">Spreadsheet friendly</span>
+        </button>
+        <button class="export-option" id="exportAi">
+          <span class="export-icon">AI</span>
+          <span class="export-label">AI brief</span>
+          <span class="export-desc">Markdown prompt with redacted evidence</span>
         </button>
       </div>
       <div class="modal-actions">
@@ -1308,6 +1320,10 @@ function showExportModal() {
   };
   overlay.querySelector("#exportCsv").onclick = () => {
     window.location.href = "/api/export?format=csv";
+    closeExportModal();
+  };
+  overlay.querySelector("#exportAi").onclick = () => {
+    window.location.href = "/api/export?format=ai";
     closeExportModal();
   };
   overlay.querySelector("#exportClose").onclick = closeExportModal;

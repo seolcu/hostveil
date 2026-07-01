@@ -80,3 +80,40 @@ func TestOverrideCVEClassifications_EmptyEvidence(t *testing.T) {
 		t.Errorf("findings[1].Remediation = %v, want Manual (no fixed_version key)", findings[1].Remediation)
 	}
 }
+
+// TestOverrideCVEClassifications_GHSAOnlyFinding is a regression test:
+// Trivy reports some vulnerabilities under a bare GHSA-style
+// VulnerabilityID with no CVE ever assigned (common in npm/pip/gem
+// ecosystem advisories sourced from GitHub Security Advisories). Before
+// this fix, overrideCVEClassifications only matched the "trivy.cve-"
+// prefix, so a "trivy.ghsa-..." finding was never touched here and
+// never matched the fix registry's "trivy.cve-*" pattern either --
+// leaving it stuck at RemediationUnavailable forever, contradicting the
+// documented invariant that Unavailable is never user-visible after a
+// complete scan (AGENTS.md).
+func TestOverrideCVEClassifications_GHSAOnlyFinding(t *testing.T) {
+	findings := []domain.Finding{
+		{ID: "trivy.ghsa-xqr8-7jwr-rhp7", Source: domain.SourceTrivy, Remediation: domain.RemediationUnavailable},
+		{
+			// Simulates state after fixes.Classify() ran first in the real
+			// pipeline (RunSingleTool) and matched the "trivy.*" wildcard,
+			// setting Auto. This asserts overrideCVEClassifications leaves
+			// an Auto-classified, FixedVersion-present GHSA finding alone.
+			ID:          "trivy.ghsa-aaaa-bbbb-cccc",
+			Source:      domain.SourceTrivy,
+			Remediation: domain.RemediationAuto,
+			Evidence:    map[string]string{"fixed_version": "2.31.0"},
+		},
+	}
+	overrideCVEClassifications(findings)
+
+	if findings[0].Remediation != domain.RemediationManual {
+		t.Errorf("GHSA finding without FixedVersion: Remediation = %v, want Manual (not stuck at Unavailable)", findings[0].Remediation)
+	}
+	if findings[0].HowToFix == "" {
+		t.Error("GHSA finding without FixedVersion should get a default HowToFix message")
+	}
+	if findings[1].Remediation != domain.RemediationAuto {
+		t.Errorf("GHSA finding WITH FixedVersion: Remediation = %v, want Auto (unchanged)", findings[1].Remediation)
+	}
+}

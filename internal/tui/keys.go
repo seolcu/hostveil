@@ -276,9 +276,13 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modalExport:
 		switch msg.String() {
 		case "up", "k":
-			m.exportIdx = 0
+			if m.exportIdx > 0 {
+				m.exportIdx--
+			}
 		case "down", "j":
-			m.exportIdx = 1
+			if m.exportIdx < len(exportFormats)-1 {
+				m.exportIdx++
+			}
 		case "enter", "l":
 			m.modal = modalNone
 			m.exportReport()

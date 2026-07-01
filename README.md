@@ -196,7 +196,7 @@ rule for when a fix must be split into multiple Review options, is in
 | `g` / `G` | Jump to top / bottom |
 | `Ctrl+S` | Rescan all tools |
 | `Ctrl+R` | Recalculate score |
-| `e` | Export the report (JSON/CSV) |
+| `e` | Export the report (JSON/CSV/AI brief) |
 | `?` | Toggle this help |
 | `q` | Quit |
 
@@ -222,7 +222,7 @@ embedded in the Go binary and are served as-is.
 | `/api/fix/batch` | POST | Apply fixes for multiple findings |
 | `/api/rescan` | POST | Rescan everything |
 | `/api/recalc` | POST | Recalculate the score without rescanning |
-| `/api/export?format=json\|csv` | GET | Download findings as JSON or CSV |
+| `/api/export?format=json\|csv\|ai` | GET | Download findings as JSON, CSV, or a Markdown AI remediation brief |
 
 </details>
 

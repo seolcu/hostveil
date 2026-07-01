@@ -53,7 +53,7 @@ existing finding ID. To add one:
    `compose.XXXX` pattern in the JSON.
 2. Pick the right remediation kind (`Auto`, `Review`,
    `Manual`). Read
-   `AGENTS.md#remediationkind-classification-rules` first.
+   `AGENTS.md#fix-engine-critical--internalfix` first.
 3. Implement the fix in the right file:
    - `internal/fix/compose.go` for compose misconfigurations
    - `internal/fix/system.go` for host hardening

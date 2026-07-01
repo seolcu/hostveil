@@ -108,11 +108,18 @@ func ScanningMessage(tool string) string {
 	}
 }
 
-// overrideCVEClassifications sets CVE findings without a FixedVersion to Manual.
-// CVE findings with a FixedVersion keep their Auto classification (pull + redeploy).
+// overrideCVEClassifications sets Trivy vulnerability findings without a
+// FixedVersion to Manual. Findings with a FixedVersion keep their Auto
+// classification (pull + redeploy). This covers every Trivy vulnerability
+// ID, not just CVE-prefixed ones: Trivy reports some advisories (e.g. from
+// GitHub Security Advisories / npm, pip, gem ecosystems) under a bare
+// GHSA-style VulnerabilityID with no CVE ever assigned, so restricting
+// this to "trivy.cve-" would leave those permanently unclassified
+// (Unavailable), contradicting the invariant that Unavailable is never
+// user-visible after a complete scan.
 func overrideCVEClassifications(findings []domain.Finding) {
 	for i := range findings {
-		if strings.HasPrefix(findings[i].ID, "trivy.cve-") {
+		if strings.HasPrefix(findings[i].ID, "trivy.") {
 			if findings[i].Evidence == nil || findings[i].Evidence["fixed_version"] == "" {
 				findings[i].Remediation = domain.RemediationManual
 				if findings[i].HowToFix == "" {

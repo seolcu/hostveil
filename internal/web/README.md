@@ -11,7 +11,7 @@ The embedded HTTP server and the static Web UI assets.
   - `POST /api/fix/batch`
   - `POST /api/rescan`
   - `POST /api/recalc`
-  - `GET /api/export?format=json|csv`
+  - `GET /api/export?format=json|csv|ai`
   - `GET /` — the embedded static Web UI
 
   Plus the CSRF / security middleware (`sameOrigin`, `secureHeaders`,

@@ -204,12 +204,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if idx >= 0 && idx < len(visible) {
 				id := visible[idx].ID
 				svc := visible[idx].Service
-				for i := range m.snap.Findings {
-					if m.snap.Findings[i].ID == id && (svc == "" || m.snap.Findings[i].Service == svc) {
-						m.snap.Findings[i].Fixed = true
-					}
-				}
 				m.live.MarkFixed(id, svc)
+				// Cascade to related findings, matching the Web UI's
+				// handleFix behavior: only for exact-ID registrations
+				// (never wildcards, e.g. trivy.cve-*), so a generic
+				// fix never silently marks other findings resolved.
+				if svc != "" && m.fixReg != nil && m.fixReg.HasExactEntry(id) {
+					f := m.fixTarget
+					m.live.MarkRelatedFixed(id, svc, func(candidateID string) bool {
+						return m.fixReg.Lookup(candidateID) == f
+					})
+				}
 			}
 			m.fixResult = "✓ " + msg.result.Label
 			if msg.result.Diff != "" {

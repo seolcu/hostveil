@@ -261,6 +261,16 @@ a way that goes unnoticed. These rules are enforced by tests in
   test is `TestHandleFix_OutOfRangeActionIndex` in
   `internal/web/server_test.go`.
 
+### Installer (`scripts/install.sh`)
+- `scripts/install.sh.sha256` **must be regenerated on every change**
+  to `install.sh`: `cd scripts && sha256sum install.sh > install.sh.sha256`.
+  CI's `build` job (`sha256sum -c scripts/install.sh.sha256`) fails the
+  build if they drift. `cmd/hostveil/setup.go` fetches this file from
+  `main` at runtime to verify the installer before executing it — a
+  stale checksum makes `hostveil setup` either hard-fail for every user
+  (mismatch) or silently skip verification (if the file goes missing
+  again). See `SECURITY.md`.
+
 ### Adding a fix rule
 1. Read `internal/fix/README.md` and the design rules above.
 2. Pick the right file: `internal/fix/compose.go`,
@@ -294,8 +304,8 @@ a way that goes unnoticed. These rules are enforced by tests in
 | `internal/domain/scoring.go` | `ScoreFindings`, `CalculateScore`, 4-axis `scoreAxisDefs` |
 | `internal/domain/live.go` | `ScanProgress` — the only type with internal synchronization |
 | `internal/domain/exec.go` | `CommandRunner` interface and `DefaultRunner` |
-| `internal/scan/scan.go` | `RunSingleTool`, `ScanningMessage`, `overrideCVEClassifications` (CVE → Manual when no `FixedVersion`) |
-| `internal/trivy/trivy.go` | `ScanAll`, `scanProject`, `runImage`, JSON decoders (image CVE scan only — see `internal/trivy/README.md`) |
+| `internal/scan/scan.go` | `RunSingleTool`, `ScanningMessage`, `overrideCVEClassifications` (Trivy findings → Manual when no `FixedVersion`; covers GHSA-only IDs too, not just CVEs) |
+| `internal/trivy/trivy.go` | `ScanAll`, `scanProject`, `runImage`, JSON decoders (image vulnerability scan only — see `internal/trivy/README.md`) |
 | `internal/lynis/lynis.go` | `Scan`, `runLynis`, `parseReportFile` (4 line types: warning, suggestion, manual_event, exception_event) |
 | `internal/composeaudit/audit.go` | `ScanAll`, per-project scanner |
 | `internal/composeaudit/rules.go` | One function per rule; 19 `compose.dsNNN` (per-service) + 4 `compose.drNNN` (cross-cutting) rules |
@@ -361,8 +371,9 @@ a way that goes unnoticed. These rules are enforced by tests in
 ## Testing & QA
 
 ### Test layout
-- 18 Go test files across 9 packages, ~160 test functions.
-- 11 Playwright spec files in `test/e2e/specs/`:
+- 36 Go test files across 11 packages, ~376 test functions
+  (including fuzz targets and benchmarks).
+- 13 Playwright spec files in `test/e2e/specs/`:
   - `dashboard.spec.ts`, `keyboard.spec.ts`, `filters.spec.ts`,
     `selection.spec.ts` — UI navigation and key handling
   - `api-contract.spec.ts` — server contract
@@ -371,6 +382,13 @@ a way that goes unnoticed. These rules are enforced by tests in
   - `export.spec.ts` — JSON/CSV export
   - `xss.spec.ts` — **XSS regression** (the `data-*` decoding
     bug covered the detail panel and the "View more" toggle)
+  - `extensive-coverage.spec.ts` — modal click-to-close,
+    selection edge cases, layout/wrapping/spacing visual checks,
+    filter combinations, sort interactions, rescan lifecycle,
+    and empty/edge-case states
+  - `responsive-visual-regressions.spec.ts` — table header
+    visibility and no-document-overflow checks across viewport
+    breakpoints
 - Unit tests live next to the source. Integration tests
   (`internal/web`, `cmd/hostveil`) hit the public HTTP API.
 
@@ -404,7 +422,8 @@ a way that goes unnoticed. These rules are enforced by tests in
 
 ### CI matrix (`.github/workflows/ci.yml`)
 - **`build`** — `gofmt -l`, `go build`, `go vet`, `go mod tidy`
-  diff, `go test -race ./...`.
+  diff, `scripts/install.sh.sha256` verification (see below),
+  `go test -race ./...`.
 - **`test-installer`** — `bash scripts/test-install.sh` across
   Ubuntu 24.04, Debian bookworm, Fedora, Arch, Alpine, openSUSE
   Tumbleweed.

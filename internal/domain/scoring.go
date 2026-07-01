@@ -99,10 +99,20 @@ func CalculateScore(findings []Finding) uint8 {
 	return ScoreFindings(findings).Overall
 }
 
+// scoreAxisForFinding returns which scoring axis a finding counts
+// against. Routing is by ID string prefix, not the structured Source
+// field: SourceTrivy is the zero value of the Source enum (iota starts
+// at 0), so an `f.Source == SourceTrivy` check would incorrectly match
+// any finding that never had Source set at all. The prefix is "trivy."
+// (not "trivy.cve-"): a Trivy finding's ID is not always CVE-shaped —
+// some Trivy-reported vulnerabilities use a bare GHSA-style
+// VulnerabilityID with no CVE ever assigned — so a narrower prefix would
+// silently route those findings to the Container exposure axis instead
+// of Vulnerabilities.
 func scoreAxisForFinding(f Finding) string {
 	id := strings.ToLower(f.ID)
 	switch {
-	case strings.HasPrefix(id, "trivy.cve-"):
+	case strings.HasPrefix(id, "trivy."):
 		return scoreAxisVulnerabilities
 	case f.Source == SourceLynis || strings.HasPrefix(id, "lynis."):
 		return scoreAxisHost

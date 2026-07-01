@@ -51,6 +51,36 @@ test.describe("Export", () => {
     expect(lines.length).toBeGreaterThan(1);
   });
 
+  test("Scenario 8: AI brief export downloads Markdown remediation brief", async ({
+    page,
+  }) => {
+    await page.locator("#exportBtn").click();
+    const modal = page.locator("#exportModal");
+    await expect(modal).toBeVisible();
+
+    const aiButton = modal.locator("#exportAi");
+    await expect(aiButton).toBeVisible();
+    await expect(aiButton).toContainText(/AI brief/i);
+    const stableFinding = page.locator('#findings tr[data-id="test.unfixable-001"]');
+    await expect(stableFinding).toBeVisible();
+    await expect(stableFinding.locator("td").last()).toHaveText("Unavailable");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 5000 }),
+      aiButton.click(),
+    ]);
+
+    expect(download.suggestedFilename()).toContain("hostveil-ai-brief.md");
+
+    const content = await (await download.createReadStream()).toArray();
+    const markdown = Buffer.concat(content).toString("utf-8");
+
+    expect(markdown).toContain("# hostveil AI remediation brief");
+    expect(markdown).toContain("Prompt for your AI assistant");
+    expect(markdown).toContain("test.unfixable-001");
+    expect(markdown).toContain("Custom security policy violation detected");
+  });
+
   test("Scenario 10: Empty state handling", async ({ page }) => {
     await page.locator("#query").fill("ZZZZ_NONEXISTENT_ZZZZ");
     await page.waitForTimeout(300);

@@ -29,6 +29,47 @@ func TestScoreFindings_AxisBreakdown(t *testing.T) {
 	}
 }
 
+// TestScoreFindings_GHSAOnlyTrivyFindingScoresAsVulnerability is a
+// regression test: Trivy reports some vulnerabilities under a bare
+// GHSA-style VulnerabilityID with no CVE ever assigned (common in
+// npm/pip/gem ecosystem advisories). scoreAxisForFinding previously
+// matched only the "trivy.cve-" prefix, so a "trivy.ghsa-..." finding
+// was silently scored under Container exposure (the default branch)
+// instead of Vulnerabilities -- wrong axis, wrong penalty cap (30 vs 35),
+// and a misleading score breakdown shown to the user.
+func TestScoreFindings_GHSAOnlyTrivyFindingScoresAsVulnerability(t *testing.T) {
+	breakdown := ScoreFindings([]Finding{
+		{ID: "trivy.ghsa-xqr8-7jwr-rhp7", Severity: SeverityCritical, Source: SourceTrivy, Service: "web"},
+	})
+	byID := axesByID(breakdown.Axes)
+	if byID[scoreAxisVulnerabilities].Penalty != 8 {
+		t.Errorf("vulnerability penalty = %d, want 8 (GHSA-only ID should score as a vulnerability)", byID[scoreAxisVulnerabilities].Penalty)
+	}
+	if byID[scoreAxisContainer].Penalty != 0 {
+		t.Errorf("container penalty = %d, want 0 (GHSA-only ID must not fall through to Container exposure)", byID[scoreAxisContainer].Penalty)
+	}
+}
+
+// TestScoreFindings_ZeroValueSourceDoesNotMisrouteToVulnerabilities is a
+// regression test for a bug introduced while fixing the above: SourceTrivy
+// is the zero value of the Source enum (iota starts at 0), so routing by
+// `f.Source == SourceTrivy` (instead of by ID prefix) would incorrectly
+// classify any finding that never had Source set at all as a
+// vulnerability. A finding with no ID and no Source must fall through to
+// the Container exposure default, matching pre-existing behavior.
+func TestScoreFindings_ZeroValueSourceDoesNotMisrouteToVulnerabilities(t *testing.T) {
+	breakdown := ScoreFindings([]Finding{
+		{Severity: SeverityCritical},
+	})
+	byID := axesByID(breakdown.Axes)
+	if byID[scoreAxisVulnerabilities].Penalty != 0 {
+		t.Errorf("vulnerability penalty = %d, want 0 (zero-value Source must not be treated as Trivy)", byID[scoreAxisVulnerabilities].Penalty)
+	}
+	if byID[scoreAxisContainer].Penalty != 8 {
+		t.Errorf("container penalty = %d, want 8 (zero-value Source/ID should fall through to Container exposure)", byID[scoreAxisContainer].Penalty)
+	}
+}
+
 func TestScoreFindings_CapsVulnerabilityAxis(t *testing.T) {
 	findings := make([]Finding, 10)
 	for i := range findings {

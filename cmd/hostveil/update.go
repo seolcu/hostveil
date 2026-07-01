@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -72,8 +74,8 @@ func runUpdate() error {
 		return nil
 	}
 
-	url := fmt.Sprintf("https://github.com/seolcu/hostveil/releases/download/v%s/hostveil-%s-%s.tar.gz",
-		version, runtime.GOOS, runtime.GOARCH)
+	archiveName := fmt.Sprintf("hostveil-%s-%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+	url := fmt.Sprintf("%s/v%s/%s", releaseDownloadBaseURL, version, archiveName)
 
 	fmt.Printf("  Downloading hostveil %s...\n", version)
 	resp, err := httpClient.Get(url)
@@ -86,6 +88,16 @@ func runUpdate() error {
 		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
 
+	archiveBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read download: %w", err)
+	}
+
+	fmt.Println("  Verifying checksum...")
+	if err := verifyReleaseChecksum(version, archiveName, archiveBytes); err != nil {
+		return err
+	}
+
 	f, err := os.CreateTemp("", "hostveil-update-*.tar.gz")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
@@ -93,7 +105,7 @@ func runUpdate() error {
 	tmpFile := f.Name()
 	defer os.Remove(tmpFile) //nolint:errcheck
 
-	if _, err := io.Copy(f, resp.Body); err != nil {
+	if _, err := f.Write(archiveBytes); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("write download: %w", err)
 	}
@@ -108,9 +120,55 @@ func runUpdate() error {
 	if err := exec.Command("tar", "xzf", tmpFile, "-C", tmpDir).Run(); err != nil {
 		return fmt.Errorf("archive extraction failed: %w", err)
 	}
-	if err := exec.Command("install", "-m", "755", tmpDir+"/hostveil", "/usr/bin/hostveil").Run(); err != nil {
+	if err := exec.Command("install", "-m", "755", tmpDir+"/hostveil", hostveilInstallPath).Run(); err != nil {
 		return fmt.Errorf("install failed: %w", err)
 	}
-	fmt.Println("  Updated to v" + version)
+	fmt.Println("  ✓ Updated to v" + version)
+	return nil
+}
+
+// verifyReleaseChecksum fetches the release's hostveil-checksums.txt and
+// confirms archiveBytes' SHA-256 matches the entry for archiveName.
+// Unlike the installer's best-effort checksum check (which fails open if
+// the checksum file is unreachable, since it predates that file existing
+// on every release), this fails closed: every hostveil release since
+// v2.0.0 has published hostveil-checksums.txt, and this replaces a
+// root-owned system binary, so an unreachable or non-matching checksum
+// must abort the update rather than silently install unverified bytes.
+func verifyReleaseChecksum(version, archiveName string, archiveBytes []byte) error {
+	checksumsURL := fmt.Sprintf("%s/v%s/hostveil-checksums.txt", releaseDownloadBaseURL, version)
+	resp, err := httpClient.Get(checksumsURL)
+	if err != nil {
+		return fmt.Errorf("fetch checksums: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fetch checksums: HTTP %d", resp.StatusCode)
+	}
+
+	checksumBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read checksums: %w", err)
+	}
+
+	var expected string
+	for _, line := range strings.Split(string(checksumBytes), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && fields[1] == archiveName {
+			expected = fields[0]
+			break
+		}
+	}
+	if expected == "" {
+		return fmt.Errorf("no checksum entry found for %s", archiveName)
+	}
+
+	sum := sha256.Sum256(archiveBytes)
+	actual := hex.EncodeToString(sum[:])
+	if actual != expected {
+		return fmt.Errorf("checksum mismatch for %s:\n  expected: %s\n  actual:   %s\nAborting for safety.", archiveName, expected, actual)
+	}
+	fmt.Println("  ✓ Checksum verified")
 	return nil
 }

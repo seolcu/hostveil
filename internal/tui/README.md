@@ -9,7 +9,8 @@ that the Web UI does.
   and `View` methods. State, key handling, and message dispatch.
 - **`keys.go`**  `updateMain` and `updateModal` key dispatch tables.
 - **`filter.go`**  finding filters and sort logic.
-- **`fix.go`**  fix dispatch (single + batch), fix dry-run, export.
+- **`fix.go`**  fix dispatch (single + batch), fix dry-run, and
+  JSON/CSV/AI-brief export.
 - **`layout.go`**  fixed-width row and panel layout primitives.
 - **`screen.go`**  `renderMain`, `renderLoading`, `renderDetail`,
   and the modal overlay renderer.
@@ -48,5 +49,9 @@ progress, export) take precedence over main and detail.
 
 ## Tests
 
-`internal/tui/app_test.go`, `screen_test.go` cover the rendering
-and key dispatch logic. Run with `go test ./internal/tui/...`.
+`internal/tui/app_test.go`, `screen_test.go`,
+`render_regression_test.go`, and `view_boundary_test.go` cover
+the rendering and key dispatch logic. `bench_test.go` holds
+performance benchmarks (`View`, `VisibleFindings`) — see
+`docs/DEVELOPMENT.md#benchmarks`, not run by default `go test`.
+Run with `go test ./internal/tui/...`.

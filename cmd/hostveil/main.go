@@ -18,6 +18,14 @@ var checkLatestURL = "https://api.github.com/repos/seolcu/hostveil/releases/late
 var installerURL = "https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh"
 var installerChecksumURL = "https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh.sha256"
 
+// releaseDownloadBaseURL is the base for versioned release asset
+// downloads (the archive and its checksums file). Overridden in tests.
+var releaseDownloadBaseURL = "https://github.com/seolcu/hostveil/releases/download"
+
+// hostveilInstallPath is where `hostveil update` installs the new binary.
+// Overridden in tests so runUpdate never touches the real system path.
+var hostveilInstallPath = "/usr/bin/hostveil"
+
 func newFixRegistry() *fix.Registry {
 	r := fix.New()
 	fix.RegisterAll(r)

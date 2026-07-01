@@ -118,8 +118,15 @@ host. Standard defenses apply:
 - Download from official GitHub releases only.
 - Verify the SHA-256 checksum against
   `hostveil-checksums.txt` in the release.
-- The installer pins the upstream `install.sh` against its
-  own checksum.
-- `hostveil update` downloads directly from the GitHub
-  release artifacts and re-verifies checksums before
-  installing.
+- The installer (`scripts/install.sh`, and `hostveil setup` which
+  fetches and runs it) verifies the downloaded script against
+  `scripts/install.sh.sha256` before executing it. This check is
+  best-effort: if the checksum file itself cannot be fetched, setup
+  proceeds without verification rather than blocking entirely.
+- `hostveil update` downloads directly from the GitHub release
+  artifacts and verifies the archive against that release's
+  `hostveil-checksums.txt` before installing. Unlike the installer
+  check above, this fails closed: since every release since v2.0.0
+  has published `hostveil-checksums.txt`, an unreachable or
+  mismatched checksum aborts the update rather than installing
+  unverified bytes over the running root-owned binary.

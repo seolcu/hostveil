@@ -98,6 +98,11 @@ func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
 			if result.Success {
 				success++
 				m.live.MarkFixed(finding.ID, finding.Service)
+				if finding.Service != "" && reg.HasExactEntry(finding.ID) {
+					m.live.MarkRelatedFixed(finding.ID, finding.Service, func(candidateID string) bool {
+						return reg.Lookup(candidateID) == f
+					})
+				}
 			} else {
 				fail++
 			}
@@ -186,14 +191,36 @@ func (m model) applyFix() (tea.Model, tea.Cmd) {
 	}
 }
 
+type exportFormat struct {
+	label string
+	ext   string
+}
+
+var exportFormats = []exportFormat{
+	{label: "JSON (full data)", ext: "json"},
+	{label: "CSV (spreadsheet)", ext: "csv"},
+	{label: "AI brief (Markdown)", ext: "md"},
+}
+
 func (m *model) exportReport() {
 	snap := m.live.Snapshot()
 	ts := time.Now().Format("2006-01-02_150405")
-	filename := fmt.Sprintf("hostveil-report-%s", ts)
 
-	var path, content string
-	if m.exportIdx == 0 {
-		path = filename + ".json"
+	idx := m.exportIdx
+	if idx < 0 || idx >= len(exportFormats) {
+		idx = 0
+	}
+	format := exportFormats[idx]
+	name := "hostveil-report"
+	if format.ext == "md" {
+		name = "hostveil-ai-brief"
+	}
+	filename := fmt.Sprintf("%s-%s", name, ts)
+
+	path := filename + "." + format.ext
+	var content string
+	switch format.ext {
+	case "json":
 		data, err := json.MarshalIndent(snap, "", "  ")
 		if err != nil {
 			m.toast = "Export failed: " + err.Error()
@@ -201,8 +228,7 @@ func (m *model) exportReport() {
 			return
 		}
 		content = string(data)
-	} else {
-		path = filename + ".csv"
+	case "csv":
 		var buf strings.Builder
 		buf.WriteString("ID,Severity,Source,Service,Title,Description,Remediation,Fixed\n")
 		for _, f := range snap.Findings {
@@ -211,10 +237,12 @@ func (m *model) exportReport() {
 				domain.EscapeCSV(f.Title), domain.EscapeCSV(f.Description), f.Remediation.String(), f.Fixed))
 		}
 		content = buf.String()
+	case "md":
+		content = domain.RenderAIBrief(snap)
 	}
 
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		fallback := "/tmp/" + fmt.Sprintf("%s.%s", strings.TrimPrefix(filename, "hostveil-report-"), map[bool]string{true: "json", false: "csv"}[m.exportIdx == 0])
+		fallback := "/tmp/" + fmt.Sprintf("%s.%s", strings.TrimPrefix(filename, name+"-"), format.ext)
 		if err2 := os.WriteFile(fallback, []byte(content), 0644); err2 != nil {
 			m.fixResult = "✗ Export failed\n\nPrimary: " + err.Error() + "\nFallback (/tmp): " + err2.Error()
 			m.modal = modalFixResult

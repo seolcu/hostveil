@@ -602,3 +602,142 @@ func TestModalFixResult(t *testing.T) {
 		t.Error("expected q to close fix result modal")
 	}
 }
+
+// TestUpdate_FixResultMsg_MarksFixedThroughLiveAPI is a regression test for
+// a data race: fixResultMsg's handler used to mutate m.snap.Findings[i].Fixed
+// directly. Because Snapshot() caches and returns a Findings slice that can
+// alias the same backing array across multiple calls, an unsynchronized
+// write here could race with a concurrent Snapshot() call from another
+// goroutine (e.g. the Web UI's HTTP handlers in `hostveil tui-web`). The fix
+// must go through m.live.MarkFixed, which holds the write lock and bumps
+// the cache version. Run with -race to catch a reintroduced direct mutation.
+func TestUpdate_FixResultMsg_MarksFixedThroughLiveAPI(t *testing.T) {
+	findings := []domain.Finding{
+		{ID: "fixable.001", Title: "Fixable", Severity: domain.SeverityHigh, Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
+	}
+	m := testModelWithFindings(t, findings)
+	m.table.SetCursor(0)
+
+	// Simulate a concurrent reader (e.g. the Web UI's /api/result handler,
+	// which JSON-encodes the snapshot). It must actually read the aliased
+	// Findings data -- merely calling Snapshot() and discarding the result
+	// does not touch the shared backing array and would not trigger the
+	// race detector.
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				snap := m.live.Snapshot()
+				if len(snap.Findings) > 0 {
+					_ = snap.Findings[0].Fixed
+				}
+			}
+		}
+	}()
+
+	got, _ := m.Update(fixResultMsg{result: fix.FixResult{Success: true, Label: "Test fix"}})
+	close(stop)
+	<-done
+
+	gotM := got.(model)
+	if gotM.modal != modalFixResult {
+		t.Errorf("expected modalFixResult, got %d", gotM.modal)
+	}
+	final := m.live.Snapshot()
+	if !final.Findings[0].Fixed {
+		t.Error("expected finding to be marked Fixed via live.MarkFixed")
+	}
+}
+
+// TestUpdate_FixResultMsg_CascadesToRelatedFindings is a regression test
+// for a TUI/Web UI parity bug: docs/ARCHITECTURE.md documents that both
+// UIs mark "related" findings (same exact-ID-registered *fix.Fix, same
+// service) as Fixed when one of them is fixed, via
+// domain.ScanProgress.MarkRelatedFixed. The Web UI's handleFix did this;
+// the TUI's fixResultMsg handler did not, silently leaving related
+// findings showing as unfixed until the next rescan.
+func TestUpdate_FixResultMsg_CascadesToRelatedFindings(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.AddFindings([]domain.Finding{
+		{ID: "shared.001", Title: "First", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Service: "nginx", Remediation: domain.RemediationAuto},
+		{ID: "shared.002", Title: "Second", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Service: "nginx", Remediation: domain.RemediationAuto},
+		{ID: "shared.003", Title: "Different service", Severity: domain.SeverityHigh, Source: domain.SourceTrivy, Service: "redis", Remediation: domain.RemediationAuto},
+	})
+	live.Finalize()
+
+	// Register the same *fix.Fix under two exact IDs (shared.001 and
+	// shared.002), simulating a single remediation that resolves multiple
+	// findings on the same service (e.g. one image pull fixing multiple
+	// CVEs). Register keys off f.FindingID at call time, so mutating and
+	// re-registering the same pointer aliases both entries to it; the
+	// registry never reads FindingID again after Register returns.
+	sharedFix := &fix.Fix{
+		Label:   "Shared remediation",
+		Actions: []fix.Action{{Type: fix.ActionExec, Label: "Apply", Apply: func(ctx fix.Context) error { return nil }}},
+	}
+	fixReg := fix.New()
+	sharedFix.FindingID = "shared.001"
+	fixReg.Register(sharedFix)
+	sharedFix.FindingID = "shared.002"
+	fixReg.Register(sharedFix)
+	fixReg.Register(&fix.Fix{
+		FindingID: "shared.003",
+		Label:     "Unrelated remediation",
+		Actions:   []fix.Action{{Type: fix.ActionExec, Label: "Apply", Apply: func(ctx fix.Context) error { return nil }}},
+	})
+
+	tbl := table.New(
+		table.WithColumns([]table.Column{
+			{Title: " ", Width: 3}, {Title: "Severity", Width: 8}, {Title: "Source", Width: 6},
+			{Title: "ID", Width: 14}, {Title: "Finding", Width: 40}, {Title: "Fix", Width: 11},
+		}),
+		table.WithFocused(true), table.WithHeight(10), table.WithStyles(table.DefaultStyles()),
+	)
+	m := &model{
+		live: live, snap: live.Snapshot(), phase: "ready", snapOK: true,
+		fixReg: fixReg, table: tbl, selectedSet: make(map[string]bool),
+		width: 160, height: 50,
+		filter: filterState{severity: "all", source: "all", remediation: "all", sortBy: "severity", sortDir: "asc", service: "all"},
+	}
+	m.rebuildTable()
+
+	// Drive runFix so m.fixTarget is populated exactly as it would be from
+	// a real key press, then position the cursor on shared.001.
+	visible := m.visibleFindings()
+	idx := -1
+	for i, f := range visible {
+		if f.ID == "shared.001" {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		t.Fatal("shared.001 not found in visible findings")
+	}
+	m.table.SetCursor(idx)
+	got, _ := m.runFix()
+	gotM := got.(model)
+
+	got2, _ := gotM.Update(fixResultMsg{result: fix.FixResult{Success: true, Label: "Shared remediation"}})
+	final := got2.(model)
+	_ = final
+
+	snap := live.Snapshot()
+	byID := map[string]bool{}
+	for _, f := range snap.Findings {
+		byID[f.ID] = f.Fixed
+	}
+	if !byID["shared.001"] {
+		t.Error("expected shared.001 (the fixed finding) to be Fixed")
+	}
+	if !byID["shared.002"] {
+		t.Error("expected shared.002 to cascade to Fixed (same service, same *fix.Fix)")
+	}
+	if byID["shared.003"] {
+		t.Error("expected shared.003 to stay unfixed (different service)")
+	}
+}

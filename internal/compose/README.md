@@ -36,8 +36,10 @@ func (f *File) SetField(service, path string, value interface{}) error
 // Delete a field.
 func (f *File) DeleteField(service, path string) error
 
-// Remove a value from a list field (e.g. a port or a volume).
-func (f *File) RemoveFromList(service, path, value string) error
+// Remove a value from a list field (e.g. a capability or a
+// security_opt entry). value is interface{}, matched via
+// fmt.Sprint(value) — every current call site passes a string.
+func (f *File) RemoveFromList(service, path string, value interface{}) error
 
 // Return the service names defined in this compose file.
 func (f *File) ServiceNames() ([]string, error)

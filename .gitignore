@@ -3,6 +3,7 @@ hostveil-*
 dist/
 *.tar.gz
 *.sha256
+!scripts/install.sh.sha256
 *.bak.*
 
 # E2E test artifacts

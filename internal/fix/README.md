@@ -63,13 +63,15 @@ environments without an init system.
 
 `Registry.Register` accepts `*` and `?` as wildcards in the
 finding ID. Use wildcards only for findings whose ID is genuinely
-variable (e.g. `trivy.cve-*`); prefer exact IDs for everything
+variable (e.g. `trivy.*`, since Trivy vulnerability IDs are not all
+CVEs — some ecosystem advisories are GHSA-only with no CVE ever
+assigned); prefer exact IDs for everything
 else, so `HasExactEntry` can correctly drive the related-finding
 cascade.
 
 ## Adding a fix
 
-1. Read `AGENTS.md#remediationkind-classification-rules`.
+1. Read `AGENTS.md#fix-engine-critical--internalfix`.
 2. Pick the right file (`compose.go`, `system.go`, or `images.go`).
 3. Register the fix with `r.Register(&Fix{...})`.
 4. Add a test in the corresponding `_test.go`. The test should

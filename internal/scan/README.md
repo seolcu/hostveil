@@ -8,8 +8,9 @@ individual scanner packages.
 
 - **`scan.go`**  `RunSingleTool(live, fixes, tool)`, the
   per-tool `ScanningMessage`, the `summarizeScanError` helper, and
-  the `overrideCVEClassifications` post-processor that demotes CVE
-  findings without a `FixedVersion` to `RemediationManual`.
+  the `overrideCVEClassifications` post-processor that demotes Trivy
+  vulnerability findings without a `FixedVersion` to `RemediationManual`
+  (covers every `trivy.*` ID, not just CVEs — see `internal/trivy/README.md`).
 
 ## Tool names
 
@@ -55,4 +56,7 @@ func ScanningMessage(tool string) string
 ## Tests
 
 `scan_test.go` covers the dispatch logic and the degraded-status
-path. Run with `go test ./internal/scan/...`.
+path. `override_test.go` covers `overrideCVEClassifications`
+(demoting Trivy vulnerability findings without a `FixedVersion`,
+leaving non-Trivy findings and already-annotated findings untouched). Run with
+`go test ./internal/scan/...`.

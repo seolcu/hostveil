@@ -568,6 +568,70 @@ func TestHandleExport_CSV(t *testing.T) {
 	}
 }
 
+func TestHandleExport_AI(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.AddFindings([]domain.Finding{
+		{
+			ID:          "export.ai.active",
+			Title:       "Active AI export finding",
+			Description: "The exported brief should carry this active finding.",
+			Severity:    domain.SeverityHigh,
+			Source:      domain.SourceTrivy,
+			Remediation: domain.RemediationManual,
+		},
+		{
+			ID:          "export.ai.fixed",
+			Title:       "Fixed AI export finding",
+			Severity:    domain.SeverityCritical,
+			Source:      domain.SourceLynis,
+			Remediation: domain.RemediationAuto,
+			Fixed:       true,
+		},
+	})
+	live.Finalize()
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"ai_format", "/api/export?format=ai"},
+		{"markdown_alias", "/api/export?format=markdown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.path, nil)
+			rec := httptest.NewRecorder()
+			handleExport(rec, req, live)
+
+			if rec.Code != http.StatusOK {
+				t.Errorf("expected 200, got %d", rec.Code)
+			}
+			if ct := rec.Header().Get("Content-Type"); ct != "text/markdown; charset=utf-8" {
+				t.Errorf("expected markdown content type, got %q", ct)
+			}
+			if cd := rec.Header().Get("Content-Disposition"); !strings.Contains(cd, "hostveil-ai-brief.md") {
+				t.Errorf("expected hostveil-ai-brief.md in Content-Disposition, got %q", cd)
+			}
+
+			body := rec.Body.String()
+			for _, want := range []string{
+				"# hostveil AI remediation brief",
+				"### 1. Active AI export finding [HIGH]",
+				"- ID: `export.ai.active`",
+				"The exported brief should carry this active finding.",
+			} {
+				if !strings.Contains(body, want) {
+					t.Fatalf("AI export body missing %q\n%s", want, body)
+				}
+			}
+			if strings.Contains(body, "Fixed AI export finding") || strings.Contains(body, "export.ai.fixed") {
+				t.Fatalf("fixed finding leaked into AI export body\n%s", body)
+			}
+		})
+	}
+}
+
 func TestHandleRescan(t *testing.T) {
 	live := domain.NewScanProgress(true)
 	reg := fix.New()

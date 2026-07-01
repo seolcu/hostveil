@@ -8,6 +8,9 @@ dependencies on other `internal/*` packages.
 - **`types.go`**  `Finding`, `Severity`, `Source`, `RemediationKind`,
   and the `Finding.IsFixable` / `RemediationKind.IsFixable` helpers.
   The `Finding` struct is the central data model.
+- **`ai.go`**  `RenderAIBrief`, a local Markdown prompt/export that
+  summarizes active findings for an AI assistant while redacting
+  sensitive evidence values.
 - **`scoring.go`**  the 4-axis scoring engine (`ScoreFindings`,
   `CalculateScore`, `ScoreBreakdown`, `ScoreAxis`).
 - **`live.go`**  `ScanProgress`, the thread-safe in-memory state
@@ -60,5 +63,11 @@ func ScoreFindings(findings []Finding) ScoreBreakdown
 
 ## Tests
 
-`internal/domain/live_test.go`, `scoring_test.go`, `types_test.go`
-cover the public API. Run with `go test ./internal/domain/...`.
+`internal/domain/live_test.go`, `live_extra_test.go`,
+`scoring_test.go`, `scoring_props_test.go`, `types_test.go`, and
+`types_extra_test.go` cover the public API. `scoring_props_test.go`
+is a property-based test: it hammers `ScoreFindings` with randomly
+generated finding slices and asserts bounds, monotonicity, and
+dedup invariants. `bench_test.go` holds performance benchmarks
+(`Snapshot`, `ScoreFindings`, `Recalculate`) — see
+`docs/DEVELOPMENT.md#benchmarks`, not run by default `go test`.
