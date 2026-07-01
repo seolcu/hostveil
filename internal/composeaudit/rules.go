@@ -37,6 +37,8 @@ func auditProject(f *compose.File, project Project) []domain.Finding {
 		all = append(all, checkVolumeRO(f, svc, project)...)
 		all = append(all, checkDockerSocket(f, svc, project)...)
 		all = append(all, checkSensitiveHostMount(f, svc, project)...)
+		all = append(all, checkUnauthenticatedDatastore(f, svc, project)...)
+		all = append(all, checkExposedAdminPanel(f, svc, project)...)
 	}
 	return all
 }
@@ -674,4 +676,162 @@ func checkSensitiveHostMount(f *compose.File, svc string, project Project) []dom
 		})
 	}
 	return findings
+}
+
+// baseImageName reduces a Compose "image:" reference to a bare, lowercased
+// repository basename for matching against known image lists: strips a
+// digest ("@sha256:..."), then a registry/namespace path
+// ("docker.io/library/redis" -> "redis"), then a tag (":7.2-alpine" -> "").
+// "ghcr.io/user/my-redis:latest" reduces to "my-redis", not "redis" -
+// callers that need substring matching for that case do it themselves.
+func baseImageName(image string) string {
+	if at := strings.Index(image, "@"); at >= 0 {
+		image = image[:at]
+	}
+	if slash := strings.LastIndex(image, "/"); slash >= 0 {
+		image = image[slash+1:]
+	}
+	if colon := strings.Index(image, ":"); colon >= 0 {
+		image = image[:colon]
+	}
+	return strings.ToLower(image)
+}
+
+// portsExposedOnAllInterfaces reports whether the service has at least one
+// port bound to 0.0.0.0 (explicitly, or implicitly via a bare host port),
+// in either Compose short or long port syntax. This mirrors the detection
+// in checkPortBinding (compose.dr002) but returns a bool instead of a
+// Finding, for rules that need to know "is this reachable from outside
+// the Docker network at all" without duplicating dr002's own finding.
+func portsExposedOnAllInterfaces(f *compose.File, svc string) bool {
+	ports, err := f.GetFieldStrings(svc, "ports")
+	if err == nil {
+		for _, p := range ports {
+			if colonIdx := strings.Index(p, ":"); colonIdx > 0 {
+				first := p[:colonIdx]
+				if first == "0.0.0.0" || isNumeric(first) {
+					return true
+				}
+			}
+		}
+	}
+	portsNode := f.GetFieldNode(svc, "ports")
+	if portsNode != nil && portsNode.Kind == yaml.SequenceNode {
+		for _, item := range portsNode.Content {
+			if item.Kind != yaml.MappingNode {
+				continue
+			}
+			hostIP := ""
+			published := ""
+			for i := 0; i < len(item.Content)-1; i += 2 {
+				key := item.Content[i].Value
+				val := item.Content[i+1].Value
+				switch key {
+				case "host_ip":
+					hostIP = val
+				case "published":
+					published = val
+				}
+			}
+			if hostIP == "0.0.0.0" || (hostIP == "" && published != "") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// unauthenticatedDatastoreImages are data stores whose official Docker
+// images ship with authentication OFF by default (Redis "protected mode",
+// MongoDB with no MONGO_INITDB_ROOT_* set, Memcached with no SASL) or that
+// are frequently deployed without it in self-hosted setups (Elasticsearch
+// pre-8.x, or 8.x+ with security explicitly disabled for a quick start).
+// None of these need a host port at all for other compose services to
+// reach them — only for host-side tooling or external access, both of
+// which should go through localhost or a network the operator controls.
+var unauthenticatedDatastoreImages = map[string]bool{
+	"redis":         true,
+	"mongo":         true,
+	"mongodb":       true,
+	"memcached":     true,
+	"elasticsearch": true,
+	"couchdb":       true,
+	"etcd":          true,
+}
+
+// checkUnauthenticatedDatastore flags a data store image whose service
+// exposes a port on all interfaces. Unlike compose.dr002 (which flags any
+// 0.0.0.0 port at Medium severity), this is Critical: connecting to an
+// exposed, unauthenticated Redis or MongoDB gives immediate read/write
+// access to all data, and Redis specifically can be abused to write an SSH
+// authorized_keys file for remote code execution.
+func checkUnauthenticatedDatastore(f *compose.File, svc string, project Project) []domain.Finding {
+	image, err := f.GetFieldRaw(svc, "image")
+	if err != nil || image == "" {
+		return nil
+	}
+	name := baseImageName(image)
+	if !unauthenticatedDatastoreImages[name] {
+		return nil
+	}
+	if !portsExposedOnAllInterfaces(f, svc) {
+		return nil
+	}
+	return []domain.Finding{{
+		ID:          "compose.ds018",
+		Title:       "Unauthenticated-by-default datastore exposed on all interfaces",
+		Description: fmt.Sprintf("Service %q runs %s, a datastore commonly deployed without authentication, and publishes a port on 0.0.0.0. Anyone who can reach the port has full read/write access to the data (and for Redis, can write an SSH authorized_keys file to gain shell access).", svc, name),
+		HowToFix:    "Remove the host port mapping — other compose services reach it over the Docker network without one. If external access is genuinely required, bind to 127.0.0.1 and tunnel in (SSH, Tailscale, WireGuard), and enable the datastore's own authentication regardless.",
+		Severity:    domain.SeverityCritical,
+		Source:      domain.SourceCompose,
+		Service:     svc,
+		Remediation: domain.RemediationUnavailable,
+		Metadata:    composeMeta(project, svc),
+	}}
+}
+
+// adminPanelImages are management/admin UIs that are top targets for mass
+// internet scanners (Shodan/Censys) the moment they're indexed on a public
+// port — see hostveil docs/ARCHITECTURE.md for sourcing. Some (Portainer)
+// do require a password; others (phpMyAdmin, Adminer) authenticate against
+// whatever backend credentials the operator configured, which are often
+// weak or shared. All of them are more attack surface than most operators
+// intend when they run their compose stack.
+var adminPanelImages = map[string]bool{
+	"portainer":     true,
+	"portainer-ce":  true,
+	"portainer-ee":  true,
+	"phpmyadmin":    true,
+	"adminer":       true,
+	"mongo-express": true,
+}
+
+// checkExposedAdminPanel flags a known admin/management UI image whose
+// service exposes a port on all interfaces without a reverse proxy or
+// VPN in front of it. Registered as Review (bind to localhost, or remove
+// the mapping) rather than Auto, since some operators genuinely want LAN
+// access and "just remove it" would break that.
+func checkExposedAdminPanel(f *compose.File, svc string, project Project) []domain.Finding {
+	image, err := f.GetFieldRaw(svc, "image")
+	if err != nil || image == "" {
+		return nil
+	}
+	name := baseImageName(image)
+	if !adminPanelImages[name] {
+		return nil
+	}
+	if !portsExposedOnAllInterfaces(f, svc) {
+		return nil
+	}
+	return []domain.Finding{{
+		ID:          "compose.ds019",
+		Title:       "Admin panel exposed on all interfaces",
+		Description: fmt.Sprintf("Service %q runs %s, an administrative UI, and publishes a port on 0.0.0.0. Admin panels are a top target for mass internet scanners (Shodan/Censys) within hours of being indexed.", svc, name),
+		HowToFix:    "Bind the port to 127.0.0.1 and reach it over a VPN/Tailscale, or put it behind an authenticating reverse proxy (Authelia, Authentik). Only remove the port mapping if nothing outside the compose network needs it.",
+		Severity:    domain.SeverityHigh,
+		Source:      domain.SourceCompose,
+		Service:     svc,
+		Remediation: domain.RemediationUnavailable,
+		Metadata:    composeMeta(project, svc),
+	}}
 }

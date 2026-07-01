@@ -74,6 +74,12 @@ func registerComposeFixes(r *Registry) {
 		Warning: "The service loses all Docker API access. If it genuinely needs specific API calls (e.g. to list or restart containers), put a socket proxy such as tecnativa/docker-socket-proxy in front of the daemon instead of restoring this mount.",
 		Apply:   composeDropVolume,
 	}}})
+	r.Register(&Fix{FindingID: "compose.ds018", Label: "Remove datastore port mapping", Actions: []Action{{
+		Type:    ActionEdit,
+		Label:   "Remove port mapping",
+		Warning: "The datastore is no longer reachable from the host or outside the compose network. Other compose services on the same network still reach it via its service name — only external/host access is removed.",
+		Apply:   func(ctx Context) error { return composeDel(ctx, "ports") },
+	}}})
 
 	// Review (≥2 actions)
 	r.Register(&Fix{
@@ -118,6 +124,14 @@ func registerComposeFixes(r *Registry) {
 		Actions: []Action{
 			{Type: ActionEdit, Label: "Add :ro flag", Apply: func(ctx Context) error { return composeVolumeRO(ctx) }},
 			{Type: ActionEdit, Label: "Remove mount", Apply: composeDropVolume},
+		},
+	})
+	r.Register(&Fix{
+		FindingID: "compose.ds019",
+		Label:     "Restrict admin panel access",
+		Actions: []Action{
+			{Type: ActionEdit, Label: "Bind to 127.0.0.1 only", Apply: func(ctx Context) error { return composePortRestrict(ctx, "127.0.0.1") }},
+			{Type: ActionEdit, Label: "Remove port mapping", Apply: func(ctx Context) error { return composeDel(ctx, "ports") }},
 		},
 	})
 }

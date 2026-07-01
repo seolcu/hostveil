@@ -16,6 +16,21 @@ Versions follow [Semantic Versioning](https://semver.org/).
   Flags read-write bind mounts of `/`, `/etc`, `/root`, `/home`,
   `/boot`, `/proc`, `/sys`, `/run`, `/var/run`, or any `.ssh` directory.
   Registered as a Review fix (add `:ro`, or remove the mount).
+- **`compose.ds018`: unauthenticated-by-default datastore exposed.**
+  Flags a service running Redis, Mongo, Memcached, Elasticsearch,
+  CouchDB, or etcd that publishes a port on `0.0.0.0`. These images
+  ship with authentication off by default (Redis "protected mode",
+  Mongo with no `MONGO_INITDB_ROOT_*`) or are commonly deployed
+  without it. Critical severity — an exposed Redis can be used to
+  write an SSH `authorized_keys` file for remote code execution.
+  Registered as an Auto fix (remove the port mapping — other compose
+  services still reach it over the Docker network) with a warning.
+- **`compose.ds019`: admin panel exposed on all interfaces.** Flags
+  Portainer, phpMyAdmin, Adminer, or mongo-express published on
+  `0.0.0.0` — the top compromise vector for self-hosted setups per
+  community post-mortems (mass scanners like Shodan index exposed
+  admin panels within hours). Registered as a Review fix (bind to
+  `127.0.0.1`, or remove the mapping).
 - `hostveil history` and `hostveil rollback` are now documented in the
   main README (they existed already but weren't listed), along with
   `hostveil tui-web` and the `--cert-file`/`--key-file` TLS flags.

@@ -221,6 +221,35 @@ func TestRegisterAll_DockerSocketAndSensitiveMountClassification(t *testing.T) {
 	}
 }
 
+func TestRegisterAll_DatastoreAndAdminPanelClassification(t *testing.T) {
+	r := New()
+	RegisterAll(r)
+
+	// ds018 (unauthenticated datastore exposed) = 1 action → Auto, with a
+	// warning since removing the port mapping can break intentional
+	// external access.
+	datastore := r.Lookup("compose.ds018")
+	if datastore == nil {
+		t.Fatal("compose.ds018 not registered")
+	}
+	if got := datastore.Class(); got != domain.RemediationAuto {
+		t.Errorf("compose.ds018 class = %v, want Auto", got)
+	}
+	if len(datastore.Actions) == 0 || datastore.Actions[0].Warning == "" {
+		t.Error("compose.ds018 action should have a warning (removing external access)")
+	}
+
+	// ds019 (admin panel exposed) = 2 actions → Review (localhost-bind vs
+	// remove are independent alternatives).
+	panel := r.Lookup("compose.ds019")
+	if panel == nil {
+		t.Fatal("compose.ds019 not registered")
+	}
+	if got := panel.Class(); got != domain.RemediationReview {
+		t.Errorf("compose.ds019 class = %v, want Review", got)
+	}
+}
+
 func TestRegisterAll_SystemFixes(t *testing.T) {
 	r := New()
 	RegisterAll(r)

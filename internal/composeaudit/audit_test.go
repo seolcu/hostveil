@@ -390,6 +390,115 @@ func TestAuditProject_SensitiveHostMount(t *testing.T) {
 	}
 }
 
+func TestAuditProject_UnauthenticatedDatastore(t *testing.T) {
+	f := openCompose(t, `services:
+  redis-exposed:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+  redis-localhost:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+  redis-internal:
+    image: redis
+  mongo-exposed:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+  registry-path:
+    image: docker.io/library/mongo:6
+    ports:
+      - "27018:27017"
+  web:
+    image: nginx:1.27
+    ports:
+      - "8080:80"
+`)
+	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFindingForService(findings, "compose.ds018", "redis-exposed") {
+		t.Error("expected compose.ds018 for redis-exposed (redis on 0.0.0.0)")
+	}
+	if hasFindingForService(findings, "compose.ds018", "redis-localhost") {
+		t.Error("compose.ds018 should not apply to redis-localhost (bound to 127.0.0.1)")
+	}
+	if hasFindingForService(findings, "compose.ds018", "redis-internal") {
+		t.Error("compose.ds018 should not apply to redis-internal (no port mapping at all)")
+	}
+	if !hasFindingForService(findings, "compose.ds018", "mongo-exposed") {
+		t.Error("expected compose.ds018 for mongo-exposed (mongo on 0.0.0.0)")
+	}
+	if !hasFindingForService(findings, "compose.ds018", "registry-path") {
+		t.Error("expected compose.ds018 for registry-path (docker.io/library/mongo should reduce to 'mongo')")
+	}
+	if hasFindingForService(findings, "compose.ds018", "web") {
+		t.Error("compose.ds018 should not apply to web (nginx is not a datastore image)")
+	}
+	for _, fnd := range findings {
+		if fnd.ID == "compose.ds018" && fnd.Severity != domain.SeverityCritical {
+			t.Errorf("compose.ds018 severity = %v, want Critical", fnd.Severity)
+		}
+	}
+}
+
+func TestAuditProject_ExposedAdminPanel(t *testing.T) {
+	f := openCompose(t, `services:
+  portainer-exposed:
+    image: portainer/portainer-ce:2.19
+    ports:
+      - "9000:9000"
+  portainer-localhost:
+    image: portainer/portainer-ce
+    ports:
+      - "127.0.0.1:9000:9000"
+  phpmyadmin-exposed:
+    image: phpmyadmin:5
+    ports:
+      - "8081:80"
+  web:
+    image: nginx
+    ports:
+      - "8080:80"
+`)
+	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFindingForService(findings, "compose.ds019", "portainer-exposed") {
+		t.Error("expected compose.ds019 for portainer-exposed (admin panel on 0.0.0.0)")
+	}
+	if hasFindingForService(findings, "compose.ds019", "portainer-localhost") {
+		t.Error("compose.ds019 should not apply to portainer-localhost (bound to 127.0.0.1)")
+	}
+	if !hasFindingForService(findings, "compose.ds019", "phpmyadmin-exposed") {
+		t.Error("expected compose.ds019 for phpmyadmin-exposed (admin panel on 0.0.0.0)")
+	}
+	if hasFindingForService(findings, "compose.ds019", "web") {
+		t.Error("compose.ds019 should not apply to web (nginx is not an admin panel image)")
+	}
+	for _, fnd := range findings {
+		if fnd.ID == "compose.ds019" && fnd.Severity != domain.SeverityHigh {
+			t.Errorf("compose.ds019 severity = %v, want High", fnd.Severity)
+		}
+	}
+}
+
+func TestBaseImageName(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"redis", "redis"},
+		{"redis:7.2-alpine", "redis"},
+		{"docker.io/library/mongo:6", "mongo"},
+		{"ghcr.io/user/my-app:latest", "my-app"},
+		{"portainer/portainer-ce:2.19.4", "portainer-ce"},
+		{"myregistry.example.com:5000/redis:7", "redis"},
+		{"redis@sha256:abcdef1234567890", "redis"},
+		{"MONGO", "mongo"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := baseImageName(c.in); got != c.want {
+			t.Errorf("baseImageName(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestAuditProject_SeccompUnconfined(t *testing.T) {
 	f := openCompose(t, `services:
   web:

@@ -10,10 +10,12 @@ hostveil runs three categories of checks and merges them into a single
 score and finding list:
 
 - **Docker Compose misconfigurations** — privileged mode, host network,
-  Docker socket exposure, sensitive host mounts, added capabilities,
-  missing `no-new-privileges`, missing healthchecks, no memory/CPU
-  limits, secrets in compose files, etc. Audited natively by
-  `hostveil` itself; no extra tool needed.
+  Docker socket exposure, sensitive host mounts, exposed
+  unauthenticated datastores (Redis, Mongo, etc.) and admin panels
+  (Portainer, phpMyAdmin, etc.), added capabilities, missing
+  `no-new-privileges`, missing healthchecks, no memory/CPU limits,
+  secrets in compose files, etc. Audited natively by `hostveil`
+  itself; no extra tool needed.
 - **Container image CVEs** — vulnerabilities in the base images your
   compose services run. Scanned with [Trivy](https://github.com/aquasecurity/trivy).
 - **Host hardening** — SSH config, firewall, kernel parameters, file

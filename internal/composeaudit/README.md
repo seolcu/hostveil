@@ -44,10 +44,21 @@ kept in sync with `rules.go`; if you add a rule, add its row here.
 | `compose.ds015` | Medium | `security_opt` has `apparmor:unconfined` |
 | `compose.ds016` | Critical | Docker socket (`/var/run/docker.sock` or `/run/docker.sock`) bind-mounted into the container — equivalent to root on the host, `:ro` does not mitigate it |
 | `compose.ds017` | High | Sensitive host root (`/`, `/etc`, `/root`, `/home`, `/boot`, `/proc`, `/sys`, `/run`, `/var/run`, or a `.ssh` directory) mounted read-write |
+| `compose.ds018` | Critical | Unauthenticated-by-default datastore image (Redis, Mongo, Memcached, Elasticsearch, CouchDB, etcd) with a port published on `0.0.0.0` |
+| `compose.ds019` | High | Known admin-panel image (Portainer, phpMyAdmin, Adminer, mongo-express) with a port published on `0.0.0.0` |
 | `compose.dr001` | High | `network_mode: host` or `network_mode: container:<other>` |
 | `compose.dr002` | Medium | Port bound to `0.0.0.0` (short or long syntax) |
 | `compose.dr003` | Low | Volume mounted without `:ro` when it could be read-only |
 | `compose.dr004` | High | `env_file` referencing a non-empty file (scored under the Secrets axis, not Container exposure) |
+
+`compose.ds018` and `compose.ds019` only match a fixed, hand-picked
+set of image basenames (see `unauthenticatedDatastoreImages` and
+`adminPanelImages` in `rules.go`) — an unlisted datastore or admin
+image with the same exposure won't be flagged by these two rules
+(`compose.dr002` still catches the exposed-port part generically,
+at Medium severity). Image matching strips registry/namespace and
+tag/digest (`ghcr.io/user/redis-fork:7@sha256:...` → `redis-fork`),
+so a fork or rename won't match either.
 
 `compose.ds016` and `compose.ds017` both parse only Compose
 short-syntax volume entries (`SOURCE:TARGET[:MODE]`); long-syntax
