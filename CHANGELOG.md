@@ -37,6 +37,10 @@ Versions follow [Semantic Versioning](https://semver.org/).
   score/count summaries, existing hostveil guidance, and redacted
   evidence/metadata so users can ask for a remediation plan without
   uploading the raw JSON report.
+- **Static project website.** Added a no-build landing page under
+  `site/` with the existing TUI/Web UI screenshots, install CTA,
+  feature/check coverage sections, FAQ, and a GitHub Pages deployment
+  workflow.
 - `hostveil history` and `hostveil rollback` are now documented in the
   main README (they existed already but weren't listed), along with
   `hostveil tui-web` and the `--cert-file`/`--key-file` TLS flags.

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>hostveil — find and fix security drift on self-hosted Docker hosts</title>
+    <meta name="description" content="hostveil scans Docker Compose, container images, and Linux host hardening in one local binary, then applies safe fixes with rollback.">
+    <meta name="theme-color" content="#07111f">
+    <meta property="og:title" content="hostveil — security scanner with fixes">
+    <meta property="og:description" content="One local binary for Docker Compose misconfigurations, image CVEs, host hardening, scoring, fixes, rollback, and AI-ready remediation briefs.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://seolcu.github.io/hostveil/">
+    <meta property="og:image" content="https://seolcu.github.io/hostveil/assets/web.png">
+    <link rel="canonical" href="https://seolcu.github.io/hostveil/">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="#top" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#checks">Checks</a>
+          <a href="#screenshots">Screenshots</a>
+          <a href="#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Local security scanner for self-hosters</p>
+            <h1>Find security problems on your Docker host, then fix them.</h1>
+            <p class="lede">hostveil combines Docker Compose audits, Trivy image CVEs, and Lynis host hardening into one scored snapshot. It runs locally, needs no cloud account, and ships fixes with rollback.</p>
+            <div class="hero-actions" aria-label="Primary actions">
+              <a class="button primary" href="#install">Install hostveil</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil">View on GitHub</a>
+            </div>
+            <div class="terminal-card" aria-label="Install command">
+              <div class="terminal-bar"><span></span><span></span><span></span></div>
+              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+hostveil</code></pre>
+            </div>
+          </div>
+
+          <div class="hero-panel" aria-label="hostveil product summary">
+            <div class="score-card">
+              <span>Security score</span>
+              <strong>68/100</strong>
+              <small>Fixes raise the score immediately</small>
+            </div>
+            <div class="finding-list" aria-label="Example findings">
+              <div class="finding critical"><span>Critical</span><strong>Docker socket mounted</strong><small>compose.ds016</small></div>
+              <div class="finding high"><span>High</span><strong>SSH password auth enabled</strong><small>lynis.AUTH-9286</small></div>
+              <div class="finding medium"><span>Medium</span><strong>Image CVE with patch</strong><small>trivy.cve-2024-0001</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust-strip" aria-label="Project facts">
+        <div class="container stats-grid">
+          <div><strong>1 binary</strong><span>No SaaS, no database, no frontend build</span></div>
+          <div><strong>3 scanners</strong><span>Compose, Trivy, and Lynis in one snapshot</span></div>
+          <div><strong>0 cloud accounts</strong><span>Everything runs on the host you control</span></div>
+          <div><strong>Rollback ready</strong><span>Fix checkpoints keep changes reversible</span></div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Why hostveil</p>
+            <h2>Built for operators who want action, not another report.</h2>
+            <p>Successful security tools make the next step obvious. hostveil turns scan output into a prioritized queue with concrete fixes, warnings, and recovery points.</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="card-kicker">One scored list</span>
+              <h3>Stop cross-referencing scanner output.</h3>
+              <p>Trivy, Lynis, and Compose findings land in one table with severity, source, service, remediation kind, and a capped 0-100 score.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-kicker">Auto-fix with guardrails</span>
+              <h3>Apply the safe fix from TUI or browser.</h3>
+              <p>Every automated fix shows the action first. File edits save checkpoints, and risky choices are marked for review instead of hidden behind a magic button.</p>
+            </article>
+            <article class="feature-card">
+              <span class="card-kicker">Self-hosted by design</span>
+              <h3>No agents, no cloud upload, no account.</h3>
+              <p>The scanner reads local Compose files, image metadata, and host configuration. Results stay on the machine unless you export them.</p>
+            </article>
+            <article class="feature-card accent-card">
+              <span class="card-kicker">AI-ready</span>
+              <h3>Export a remediation brief, not raw secrets.</h3>
+              <p>The AI brief is a local Markdown prompt with prioritized findings, prompt-injection guidance, and redacted evidence for ChatGPT, Claude, or a local LLM.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section split-section" id="checks">
+        <div class="container split-grid">
+          <div>
+            <p class="eyebrow">Coverage</p>
+            <h2>Three independent views of the same host.</h2>
+            <p>Most self-hosting incidents are boring: a privileged container, a public admin panel, an unpatched image, SSH left too open. hostveil checks those paths together.</p>
+          </div>
+          <div class="check-stack">
+            <article>
+              <strong>Compose audit</strong>
+              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores/admin panels, missing no-new-privileges, unsafe bind mounts, missing healthchecks, and hardcoded secrets.</p>
+            </article>
+            <article>
+              <strong>Image CVEs</strong>
+              <p>Trivy scans the container images your Compose services actually run and maps patched versions into fix guidance.</p>
+            </article>
+            <article>
+              <strong>Host hardening</strong>
+              <p>Lynis checks SSH, firewall, kernel settings, file permissions, audit/logging, and other Linux host controls.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section dark-section" id="screenshots">
+        <div class="container">
+          <div class="section-heading narrow">
+            <p class="eyebrow">Product</p>
+            <h2>Terminal-first, browser-friendly.</h2>
+            <p>Run the TUI by default, or serve the same scan state over localhost when a browser is better for review.</p>
+          </div>
+          <div class="screens-grid">
+            <figure class="screenshot-card">
+              <img src="assets/tui.png" alt="hostveil terminal UI showing score cards and findings table" width="1200" height="760" loading="lazy">
+              <figcaption><strong>TUI</strong><span>Keyboard-driven findings, detail panel, dry-run fixes, export, and rollback workflow.</span></figcaption>
+            </figure>
+            <figure class="screenshot-card">
+              <img src="assets/web.png" alt="hostveil Web UI showing dashboard filters and detail panel" width="1200" height="760" loading="lazy">
+              <figcaption><strong>Web UI</strong><span>Localhost dashboard with filters, batch fixes, JSON/CSV/AI brief export, and live scan status.</span></figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section flow-section">
+        <div class="container">
+          <div class="section-heading narrow">
+            <p class="eyebrow">Workflow</p>
+            <h2>Scan, decide, apply, recover.</h2>
+          </div>
+          <ol class="flow-list">
+            <li><span>01</span><strong>Scan locally</strong><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
+            <li><span>02</span><strong>Prioritize</strong><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of pretending at certainty.</p></li>
+            <li><span>03</span><strong>Apply fixes</strong><p>Use Auto for clear fixes, Review for alternatives, and Manual when the tool should guide instead of mutate.</p></li>
+            <li><span>04</span><strong>Rollback if needed</strong><p>Fix checkpoints keep edited files recoverable through <code>hostveil rollback</code>.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section install-section" id="install">
+        <div class="container install-grid">
+          <div>
+            <p class="eyebrow">Install</p>
+            <h2>One command, then scan.</h2>
+            <p>The installer downloads the release binary, verifies checksums, installs hostveil, and sets up Trivy and Lynis when possible.</p>
+            <div class="button-row">
+              <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">Latest release</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil/tree/main/docs">Read the docs</a>
+            </div>
+          </div>
+          <div class="code-block">
+            <pre><code># Install or update hostveil
+curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+
+# Terminal UI
+hostveil
+
+# Web UI on localhost
+hostveil serve</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section faq-section" id="faq">
+        <div class="container">
+          <div class="section-heading narrow">
+            <p class="eyebrow">FAQ</p>
+            <h2>Designed for real self-hosting constraints.</h2>
+          </div>
+          <div class="faq-grid">
+            <article>
+              <h3>Does it upload scan data?</h3>
+              <p>No. hostveil runs locally. Exports are files you explicitly download or save.</p>
+            </article>
+            <article>
+              <h3>Why not just run Trivy and Lynis?</h3>
+              <p>You can. hostveil adds Compose checks, one scored snapshot, UI workflows, registered fixes, and rollback.</p>
+            </article>
+            <article>
+              <h3>What if a fix has tradeoffs?</h3>
+              <p>It is a Review fix, not Auto. hostveil shows independent alternatives and makes you choose.</p>
+            </article>
+            <article>
+              <h3>Can I use it in a browser?</h3>
+              <p>Yes. <code>hostveil serve</code> starts the Web UI on <code>127.0.0.1:8787</code> by default.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Find and fix security drift on self-hosted Docker hosts.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+          <a href="https://github.com/seolcu/hostveil/tree/main/docs">Docs</a>
+          <a href="https://github.com/seolcu/hostveil/blob/main/SECURITY.md">Security</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
