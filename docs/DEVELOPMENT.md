@@ -113,8 +113,8 @@ violates them, fix it.
   `data-*` attribute values must be re-escaped on read, since
   the browser has already done entity-decoding once.
 - Modal overlays are `position: fixed` divs appended to
-  `document.body`. They are styled with the same theme tokens
-  as the main UI.
+  `document.body`. They are styled with the same theme tokens as
+  the main UI.
 
 ### Tests
 - Unit tests live next to the source. Integration tests
@@ -126,6 +126,88 @@ violates them, fix it.
   real listener.
 - For tests that need to inject findings, use the `Register`
   API on `fix.Registry` directly. Do not mock out the scanner.
+
+#### Fuzz tests
+- The three parsers — `internal/lynis`, `internal/trivy`,
+  `internal/compose` — have Go fuzz tests in
+  `*_fuzz_test.go` next to the source. The fuzz targets are
+  the public parsing entry points that take untrusted input:
+  - `internal/lynis`: `parseEntry`, `parseManualEntry`,
+    `parseExceptionEntry`, `parseReportFile`.
+  - `internal/trivy`: `decodeTrivyJSON`, `parseSeverity`,
+    `sanitizeCommandOutput`.
+  - `internal/compose`: `Open` (the YAML entry point) and
+    `yaml.Unmarshal` directly.
+- Fuzz tests run as part of `go test ./...` only with their
+  seed corpus (the `f.Add(...)` calls). To actually mutate
+  inputs, pass `-fuzz=<pattern>`:
+  ```bash
+  go test -fuzz=FuzzParseEntry -fuzztime=10s ./internal/lynis/...
+  ```
+- Failed inputs are saved to
+  `internal/<package>/testdata/fuzz/<Target>/<hash>`. Re-run
+  them with the standard test runner:
+  ```bash
+  go test -run=FuzzParseEntry/<hash> ./internal/lynis/...
+  ```
+- The trivy fuzz targets cap inputs at 1 MiB
+  (`maxFuzzDecodeBytes`). The cap exists because the
+  underlying `json.Unmarshal` can spend several seconds on
+  deeply-nested adversarial input. The 1 MiB ceiling is well
+  above any sane trivy report and keeps each iteration
+  bounded. If a real-world report ever exceeds this, the
+  cap should be raised, not removed.
+- The `FuzzDecodeTrivyJSON` test does NOT assert that
+  accepted input is also `json.Valid`. `json.Unmarshal` is
+  more permissive than `json.Valid` (it tolerates trailing
+  form feeds inside array literals), and the function
+  deliberately mirrors `json.Unmarshal`. Don't tighten the
+  assertion to require `json.Valid` — that would change the
+  function's documented contract.
+
+#### Property tests
+- `internal/domain/scoring_props_test.go` runs `ScoreFindings`
+  against 200 randomly-generated finding slices per test and
+  asserts bounds, monotonicity, dedup, and clean-state
+  invariants. The random number generator is seeded with a
+  fixed PCG seed so the tests are deterministic.
+- The score is bounded: `Overall` and every axis `Score` are
+  in `[0, 100]`, every axis `Penalty` is in `[0, MaxPenalty]`.
+  Regressions in the cap math or in the dedup key surface
+  here.
+- The `Snapshot` cache test
+  (`TestScanProgress_Snapshot_ReflectsMutations`) asserts the
+  cache invalidation contract: a snapshot taken before a
+  mutation does not reflect the mutation. It does NOT
+  assert that callers can safely mutate the returned
+  snapshot's findings slice in place — the cached snapshot
+  shares its backing array with the most recent returned
+  value, and mutating the returned value would corrupt the
+  cache. Callers must treat the returned value as read-only.
+
+#### Benchmarks
+- Benchmarks live in `internal/<pkg>/bench_test.go` next to
+  the source. They cover the hot paths: `Snapshot`,
+  `ScoreFindings`, `Recalculate`, `View`, and the cached
+  `VisibleFindings` filter.
+- Run every benchmark via the wrapper script:
+  ```bash
+  scripts/bench.sh                       # every benchmark, one iteration
+  scripts/bench.sh -benchtime=3s         # 3 seconds per benchmark
+  scripts/bench.sh -bench=Snapshot       # filter by name
+  scripts/bench.sh -count=5              # 5 samples per benchmark
+  ```
+- Compare two runs with `benchstat` (install with
+  `go install golang.org/x/perf/cmd/benchstat@latest`):
+  ```bash
+  scripts/bench.sh -benchtime=2s | tee before.txt
+  # ... make your change ...
+  scripts/bench.sh -benchtime=2s | tee after.txt
+  benchstat before.txt after.txt
+  ```
+- The script runs with `-run=^$` so the regular test suite
+  is excluded. Race detector is off (race inflates ns/op
+  substantially).
 
 ## Debugging tips
 
