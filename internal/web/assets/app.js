@@ -27,7 +27,14 @@ async function fetchResult() {
     const response = await fetch("/api/result");
     state.live = await response.json();
     state.phase = state.live.phase || "complete";
+    invalidateFindingsCache();
     fetchFailures = 0;
+    // Stop polling once the scan completes — the snapshot is static
+    // until the user triggers a rescan.
+    if (state.phase !== "loading" && state.pollTimer) {
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
+    }
     render();
   } catch (error) {
     fetchFailures++;
@@ -36,6 +43,43 @@ async function fetchResult() {
       fetchFailures = 0;
     }
   }
+}
+
+// Cached sorted+filtered findings. Invalidated when inputs change.
+let cachedFindings = null;
+let cachedFindingsKey = null;
+
+function findings() {
+  const items = state.live?.findings || [];
+  // Build a cache key from inputs that affect the result.
+  const key =
+    items.length + "|" +
+    state.severity + "|" +
+    state.source + "|" +
+    state.remediation + "|" +
+    state.service + "|" +
+    state.query + "|" +
+    state.sortBy + "|" +
+    state.sortDir;
+  if (cachedFindings && cachedFindingsKey === key) {
+    return cachedFindings;
+  }
+  const query = state.query;
+  const out = items
+    .filter((f) => state.severity === "all" || severity(f) === state.severity)
+    .filter((f) => state.source === "all" || source(f) === state.source)
+    .filter((f) => state.remediation === "all" || remediation(f) === state.remediation)
+    .filter((f) => state.service === "all" || (f.service || "") === state.service)
+    .filter((f) => !query || searchable(f).includes(query))
+    .sort(sorter);
+  cachedFindings = out;
+  cachedFindingsKey = key;
+  return out;
+}
+
+function invalidateFindingsCache() {
+  cachedFindings = null;
+  cachedFindingsKey = null;
 }
 
 async function init() {
@@ -140,6 +184,7 @@ function bindControls() {
       const resp = await fetch("/api/recalc", { method: "POST" });
       const snap = await resp.json();
       state.live = snap;
+      invalidateFindingsCache();
       render();
       showToast("Score recalculated", "toast-info");
     } catch {
@@ -520,17 +565,7 @@ function scrollSelectedIntoView() {
   if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
-function findings() {
-  const items = [...(state.live?.findings || [])];
-  const query = state.query;
-  return items
-    .filter((f) => state.severity === "all" || severity(f) === state.severity)
-    .filter((f) => state.source === "all" || source(f) === state.source)
-    .filter((f) => state.remediation === "all" || remediation(f) === state.remediation)
-    .filter((f) => state.service === "all" || (f.service || "") === state.service)
-    .filter((f) => !query || searchable(f).includes(query))
-    .sort(sorter);
-}
+
 
 function sorter(a, b) {
   const dir = state.sortDir === "desc" ? -1 : 1;

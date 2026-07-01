@@ -131,11 +131,17 @@ func runImage(image string, runner domain.CommandRunner) ([]domain.Finding, erro
 	var findings []domain.Finding
 	for _, result := range report.Results {
 		for _, v := range result.Vulnerabilities {
+			var howToFix string
+			if v.FixedVersion != "" {
+				howToFix = fmt.Sprintf("Update %s to version %s or later.", v.PkgName, v.FixedVersion)
+			} else {
+				howToFix = "No patched version available yet. Monitor upstream for updates."
+			}
 			findings = append(findings, domain.Finding{
 				ID:          "trivy." + strings.ToLower(v.VulnerabilityID),
 				Title:       v.Title,
 				Description: v.Description,
-				HowToFix:    fmt.Sprintf("Update %s to version %s or later.", v.PkgName, v.FixedVersion),
+				HowToFix:    howToFix,
 				Severity:    parseSeverity(v.Severity),
 				Source:      domain.SourceTrivy,
 				Service:     image,

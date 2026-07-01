@@ -109,6 +109,11 @@ func Serve(opts Options) error {
 	server := &http.Server{
 		Handler:           secureHeaders(mux),
 		ReadHeaderTimeout: domain.HTTPReadHeaderTimeout,
+		// Cap how long any single request can take. Without these a slow
+		// or malicious client can hold a connection open indefinitely.
+		ReadTimeout:  domain.HTTPReadHeaderTimeout + 30*time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 	if opts.Ready != nil {
 		opts.Ready <- struct{}{}

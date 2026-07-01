@@ -29,7 +29,7 @@ func (m model) renderLoading() string {
 
 	spinnerView := m.spinner.View()
 
-	toolOrder := []string{"update", "trivy", "lynis"}
+	toolOrder := []string{"update", "trivy", "lynis", "compose"}
 	var toolLines []string
 	totalWeight := 0
 	doneWeight := 0
@@ -351,12 +351,41 @@ func (m model) renderScorePlate() string {
 		Foreground(lipgloss.Color(t.TextMuted)).
 		Render("SECURITY SCORE")
 
+	// Match the brand area's height so the card stretches to align with the
+	// sysinfo line (mirrors the Web UI's `align-items: stretch` on `.topbar`).
+	height := max(6, m.brandHeight())
+
+	// When the card is stretched to 7+ lines, center the content vertically
+	// so the extra space distributes above and below instead of leaving an
+	// empty row at the bottom.
+	vPad := 1
+	if height > 6 {
+		vPad = 2
+	}
+
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Padding(1, 2).
+		Padding(vPad, 2).
 		Width(24).
+		Height(height).
 		Render(lipgloss.JoinVertical(lipgloss.Left, label, scoreStr))
+}
+
+// brandHeight returns the number of text lines the brand area occupies:
+// eyebrow + ASCII logo (or wordmark) + optional sysinfo. The score plate
+// stretches to match.
+func (m model) brandHeight() int {
+	h := 1 // eyebrow
+	if m.width >= 100 {
+		h += 5 // 5-line ASCII logo
+	} else {
+		h += 1 // single-line wordmark
+	}
+	if m.sysInfoLine() != "" {
+		h++
+	}
+	return h
 }
 
 func (m model) sysInfoLine() string {
@@ -416,16 +445,12 @@ func (m model) renderMetrics() string {
 	for _, mt := range metrics {
 		border := lipgloss.NormalBorder()
 		borderColor := t.Border
-		valuePadding := 0
 		if mt.big {
-			border = lipgloss.ThickBorder()
 			borderColor = t.Accent
-			valuePadding = 2
 		}
 		valueStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(mt.color)).
-			Bold(true).
-			Padding(0, valuePadding)
+			Bold(true)
 		card := lipgloss.NewStyle().
 			Border(border).
 			BorderForeground(lipgloss.Color(borderColor)).
@@ -502,7 +527,11 @@ func (m model) renderListPane() string {
 		))
 
 	tbl := m.table
-	tbl.SetHeight(m.listHeight())
+	tableH := m.listHeight()
+	if visible := m.visibleFindings(); len(visible)+1 < tableH {
+		tableH = len(visible) + 1
+	}
+	tbl.SetHeight(tableH)
 	tableView := tbl.View()
 
 	var footerEls []string
@@ -575,7 +604,14 @@ func (m model) renderDetailPane() string {
 	t := m.theme()
 	innerW := max(1, m.detailWidth()-4)
 	vp := m.viewport
-	vp.SetHeight(m.detailHeight())
+
+	// Reserve rows at the bottom for the footer so the keyboard hints
+	// anchor to the very bottom of the panel and the content hugs the
+	// top — instead of leaving a big blank gap between the description
+	// and the hints.
+	footerReserved := 3 // border-top + 1 content + 1 padding
+	vpH := max(4, m.detailHeight()-footerReserved)
+	vp.SetHeight(vpH)
 	detailContent := lipgloss.NewStyle().
 		Width(innerW).
 		Padding(1, 2).
@@ -600,14 +636,23 @@ func (m model) renderDetailPane() string {
 		borderColor = t.Accent
 	}
 
+	// Manually push the footer to the bottom by inserting blank lines
+	// between the content and the footer block. AlignVertical/Bottom
+	// is not enough on its own because it would also push the content
+	// down — we want content-at-top + footer-at-bottom.
+	panelInnerH := m.bodyHeight() - 2 // minus border
+	emptyLines := panelInnerH - lipgloss.Height(detailContent) - lipgloss.Height(footerStyled)
+	if emptyLines < 0 {
+		emptyLines = 0
+	}
+	body := detailContent + strings.Repeat("\n", emptyLines) + footerStyled
+
 	return lipgloss.NewStyle().
 		Width(m.detailWidth()).
 		Height(m.bodyHeight()).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(borderColor)).
-		Render(
-			lipgloss.JoinVertical(lipgloss.Top, detailContent, footerStyled),
-		)
+		Render(body)
 }
 
 // ── Detail content (used by viewport) ──
@@ -736,13 +781,13 @@ func (m model) renderHelpModal() string {
 			"  /             Search findings",
 			"  f             Apply fix",
 			"  Space         Select for batch fix",
-			"  e             Export report",
 			"  Ctrl+A        Select/deselect all visible",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  0-4           Filter by severity (0=all, 1=critical...)",
 			"  s             Cycle source filter (all→trivy→lynis→compose)",
-			"  r             Cycle remediation filter (all→auto→review→unavailable→manual)",
+			"  r             Cycle remediation filter",
+			"                (all→auto→review→unavailable→manual)",
 			"  o             Cycle sort order",
 			"  O             Toggle sort direction",
 			"  R             Clear all filters",
@@ -757,11 +802,10 @@ func (m model) renderHelpModal() string {
 			"  g/G          Top / bottom",
 			"  Esc, h        Back to list",
 			"  f             Apply fix",
-			"  e             Export",
+			"  e             Export report (JSON/CSV)",
 			"  Ctrl+R        Recalculate score",
 			"  Ctrl+S        Rescan all tools",
 			"  Ctrl+A        Select/deselect all visible",
-			"  e             Export report (JSON/CSV)",
 			"  ?             This help",
 			"  q             Quit",
 		)
@@ -859,7 +903,13 @@ func (m model) renderFixConfirmModal() string {
 	if m.fixTarget != nil && len(m.fixTarget.Actions) > 0 {
 		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.fixTarget.Label))
 
-		action := m.fixTarget.Actions[m.fixActionIdx]
+		// Clamp the action index so a stale value (e.g. left over from a
+		// previous multi-action fix) cannot index past the end.
+		idx := m.fixActionIdx
+		if idx < 0 || idx >= len(m.fixTarget.Actions) {
+			idx = 0
+		}
+		action := m.fixTarget.Actions[idx]
 		if action.Warning != "" {
 			lines = append(lines, "")
 			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.High)).Render("⚠ "+action.Warning))

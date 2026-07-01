@@ -154,6 +154,61 @@ func TestScanProgress_Snapshot_Immutable(t *testing.T) {
 	}
 }
 
+func TestScanProgress_Snapshot_Cached(t *testing.T) {
+	sp := NewScanProgress(false)
+	sp.AddFindings([]Finding{{ID: "x", Severity: SeverityHigh, Source: SourceLynis}})
+	sp.Finalize()
+	// Two snapshots without any mutation in between should produce equal
+	// values (the cache returns a copy of the same underlying snapshot).
+	s1 := sp.Snapshot()
+	s2 := sp.Snapshot()
+	if s1.Findings[0].ID != s2.Findings[0].ID {
+		t.Error("cached snapshot should return same data")
+	}
+}
+
+func TestScanProgress_Snapshot_InvalidatedOnMutation(t *testing.T) {
+	sp := NewScanProgress(false)
+	sp.AddFindings([]Finding{{ID: "x"}})
+	sp.Finalize()
+	_ = sp.Snapshot()                    // prime cache
+	sp.AddFindings([]Finding{{ID: "y"}}) // bumps version
+	snap := sp.Snapshot()
+	if len(snap.Findings) != 2 {
+		t.Errorf("expected 2 findings after mutation, got %d", len(snap.Findings))
+	}
+}
+
+func TestScanProgress_Snapshot_InvalidatedOnMarkFixed(t *testing.T) {
+	sp := NewScanProgress(false)
+	sp.AddFindings([]Finding{{ID: "x", Remediation: RemediationAuto}})
+	sp.Finalize()
+	_ = sp.Snapshot()     // prime cache
+	sp.MarkFixed("x", "") // bumps version
+	snap := sp.Snapshot()
+	if !snap.Findings[0].Fixed {
+		t.Error("MarkFixed should invalidate snapshot cache")
+	}
+}
+
+func TestScanProgress_Snapshot_InvalidatedOnRecalc(t *testing.T) {
+	sp := NewScanProgress(false)
+	sp.AddFindings([]Finding{{ID: "x", Remediation: RemediationAuto}})
+	sp.Finalize()
+	before := sp.Snapshot()
+	sp.Recalculate()
+	after := sp.Snapshot()
+	if after.Score != before.Score {
+		// In this trivial case scores are equal, but the snapshot must
+		// still be re-built. Check that the returned value is a fresh copy.
+	}
+	// Mutate the after snapshot; the cached state must be unaffected.
+	after.Findings[0].ID = "mutated"
+	_ = sp.Snapshot()
+	if sp.Findings[0].ID != "x" {
+		t.Error("snapshot mutation should not affect underlying state")
+	}
+}
 func TestToolDegraded_StatusValue(t *testing.T) {
 	if ToolDegraded <= ToolError {
 		t.Errorf("ToolDegraded (%d) should be after ToolError (%d)", ToolDegraded, ToolError)

@@ -11,6 +11,7 @@ func (m *model) rebuildTable() {
 	m.live.Recalculate()
 	m.snap = m.live.Snapshot()
 	m.snapOK = true
+	m.invalidateVisibleCache()
 	visible := m.visibleFindings()
 	rows := make([]table.Row, len(visible))
 	layout := m.tableLayout()
@@ -47,7 +48,13 @@ func (m *model) rebuildTable() {
 	m.table.SetRows(rows)
 	m.table.SetCursor(cursor)
 	m.table.SetWidth(m.listTableWidth())
-	m.table.SetHeight(m.listHeight())
+	// Cap table height to the data so we don't render empty rows in the
+	// table body; the leftover space lives below the table inside the panel.
+	tableH := m.listHeight()
+	if rows := len(visible); rows+1 < tableH {
+		tableH = rows + 1
+	}
+	m.table.SetHeight(tableH)
 	if m.width > 0 && m.height > 0 {
 		m.updateDetailViewport()
 	}
@@ -107,7 +114,7 @@ func (m *model) updateTableColumns() {
 		m.table.SetColumns([]table.Column{
 			{Title: " ", Width: 3},
 			{Title: "Severity", Width: 8},
-			{Title: "Source", Width: 6},
+			{Title: "Source", Width: 7},
 			{Title: "ID", Width: 14},
 			{Title: "Finding", Width: m.findingColumnWidth("full")},
 			{Title: "Fix", Width: 11},
@@ -123,7 +130,7 @@ func (m model) findingColumnWidth(layout string) int {
 	case "medium":
 		return max(14, w-3-8-14-11-18)
 	default:
-		return max(16, w-3-8-6-14-11-24)
+		return max(16, w-3-8-7-14-11-24)
 	}
 }
 

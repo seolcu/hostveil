@@ -29,6 +29,14 @@ type ScanProgress struct {
 	ScoreBreakdown  ScoreBreakdown
 	Hostname        string
 	LocalIP         string
+
+	// version is incremented on every mutation. Snapshot() uses it to
+	// short-circuit when nothing has changed since the last call.
+	version uint64
+
+	// lastSnap is the most recent snapshot, returned when version is
+	// unchanged. Cleared on any mutation.
+	lastSnap *Snapshot
 }
 
 func NewScanProgress(noUpdateCheck bool) *ScanProgress {
@@ -49,6 +57,7 @@ func (sp *ScanProgress) SetToolStatus(tool string, status ToolStatus, message st
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.Tools[tool] = &ToolState{Status: status, Message: message}
+	sp.bumpVersionLocked()
 }
 
 func (sp *ScanProgress) ToolState(tool string) ToolState {
@@ -75,6 +84,7 @@ func (sp *ScanProgress) AddFindings(findings []Finding) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.Findings = append(sp.Findings, findings...)
+	sp.bumpVersionLocked()
 }
 
 func (sp *ScanProgress) Finalize() {
@@ -82,12 +92,14 @@ func (sp *ScanProgress) Finalize() {
 	defer sp.mu.Unlock()
 	sp.Phase = "complete"
 	sp.updateScoreLocked()
+	sp.bumpVersionLocked()
 }
 
 func (sp *ScanProgress) Recalculate() {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.updateScoreLocked()
+	sp.bumpVersionLocked()
 }
 
 func (sp *ScanProgress) updateScoreLocked() {
@@ -110,12 +122,21 @@ func (sp *ScanProgress) ResetForRescan() {
 		t.Status = ToolPending
 		t.Message = "Waiting..."
 	}
+	sp.bumpVersionLocked()
+}
+
+// bumpVersionLocked must be called while holding the write lock.
+// It increments the version counter and invalidates the cached snapshot.
+func (sp *ScanProgress) bumpVersionLocked() {
+	sp.version++
+	sp.lastSnap = nil
 }
 
 func (sp *ScanProgress) SetUpdateAvailable(v string) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 	sp.UpdateAvailable = v
+	sp.bumpVersionLocked()
 }
 
 // MarkFixed sets Fixed=true for the finding with the given ID and service.
@@ -136,6 +157,7 @@ func (sp *ScanProgress) MarkFixed(id string, service string) int {
 	}
 	if count > 0 {
 		sp.updateScoreLocked()
+		sp.bumpVersionLocked()
 	}
 	return count
 }
@@ -168,6 +190,7 @@ func (sp *ScanProgress) MarkRelatedFixed(excludeID string, service string, match
 	}
 	if len(alsoFixed) > 0 {
 		sp.updateScoreLocked()
+		sp.bumpVersionLocked()
 	}
 	return alsoFixed
 }
@@ -190,7 +213,16 @@ type Snapshot struct {
 
 func (sp *ScanProgress) Snapshot() Snapshot {
 	sp.mu.RLock()
-	defer sp.mu.RUnlock()
+	// Fast path: if no mutation has happened since the last snapshot, return
+	// the same snapshot value (it's a value type, so we return a copy).
+	if sp.lastSnap != nil {
+		cached := *sp.lastSnap
+		sp.mu.RUnlock()
+		return cached
+	}
+	// Slow path: build a new snapshot. We hold the read lock for the
+	// entire walk so the data is consistent, but we don't hold the write
+	// lock — readers don't block writers.
 	tools := make(map[string]ToolStateJSON, len(sp.Tools))
 	for k, v := range sp.Tools {
 		tools[k] = ToolStateJSON{Status: int(v.Status), Message: v.Message}
@@ -217,7 +249,7 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 	if len(breakdown.Axes) > 0 {
 		breakdown.Axes = append([]ScoreAxis(nil), breakdown.Axes...)
 	}
-	return Snapshot{
+	snap := Snapshot{
 		Phase:           sp.Phase,
 		UpdateAvailable: sp.UpdateAvailable,
 		Tools:           tools,
@@ -227,4 +259,14 @@ func (sp *ScanProgress) Snapshot() Snapshot {
 		Hostname:        sp.Hostname,
 		LocalIP:         sp.LocalIP,
 	}
+	sp.mu.RUnlock()
+	// Cache the snapshot for next time. Use explicit heap allocation so
+	// the cached pointer stays valid after we return the value.
+	sp.mu.Lock()
+	if sp.lastSnap == nil {
+		cp := snap
+		sp.lastSnap = &cp
+	}
+	sp.mu.Unlock()
+	return snap
 }

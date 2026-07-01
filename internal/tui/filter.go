@@ -17,7 +17,14 @@ type filterState struct {
 	service     string
 }
 
-func (m model) visibleFindings() []domain.Finding {
+// visibleFindings returns the filtered+sorted findings for the current
+// model. The result is memoized per-render-frame via visibleCache so that
+// callers within a single View() call don't re-filter+sort repeatedly.
+// Callers that mutate m.filter/m.snap/selectedSet must call invalidateVisibleCache().
+func (m *model) visibleFindings() []domain.Finding {
+	if m.visibleCache != nil {
+		return m.visibleCache
+	}
 	items := m.snap.Findings
 	f := m.filter
 	filtered := make([]domain.Finding, 0, len(items))
@@ -40,8 +47,11 @@ func (m model) visibleFindings() []domain.Finding {
 		filtered = append(filtered, item)
 	}
 	sortFindings(filtered, f.sortBy, f.sortDir)
+	m.visibleCache = filtered
 	return filtered
 }
+
+func (m *model) invalidateVisibleCache() { m.visibleCache = nil }
 
 func findingMatches(f domain.Finding, q string) bool {
 	q = strings.ToLower(q)

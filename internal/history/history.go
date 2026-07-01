@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
@@ -42,10 +44,13 @@ type Backup struct {
 }
 
 // Restart records a service that may need restarting after rollback.
+// Command is a list of arguments passed directly to exec.Command — no
+// shell interpretation. The first element is the program; the rest are
+// its arguments.
 type Restart struct {
-	ServiceName string `json:"service_name"`
-	Command     string `json:"command"`
-	Description string `json:"description"`
+	ServiceName string   `json:"service_name"`
+	Command     []string `json:"command"`
+	Description string   `json:"description"`
 }
 
 // ScanRecord stores a scan snapshot for history comparison.
@@ -209,8 +214,22 @@ func SaveScan(snap domain.Snapshot) error {
 	return nil
 }
 
+// ScanID is monotonic within a process: even if two scans land in the
+// same second, the in-process counter disambiguates them so we never
+// overwrite a previously-saved scan record.
 func ScanID() string {
-	return time.Now().Format("20060102-150405")
+	return time.Now().Format("20060102-150405.000") + "-" + scanSeq()
+}
+
+var scanSeqMu sync.Mutex
+var scanSeqCount uint64
+
+func scanSeq() string {
+	scanSeqMu.Lock()
+	scanSeqCount++
+	n := scanSeqCount
+	scanSeqMu.Unlock()
+	return strconv.FormatUint(n, 36)
 }
 
 // ListScans returns all scan records sorted by time (newest first).

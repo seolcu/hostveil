@@ -93,6 +93,9 @@ type model struct {
 	// cached render heights
 	headerH  int
 	metricsH int
+
+	// per-render-frame cache for visibleFindings
+	visibleCache []domain.Finding
 }
 
 type tickMsg struct{}
@@ -330,6 +333,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() tea.View {
 	t := m.theme()
+
+	// Invalidate per-frame caches at the start of each render frame.
+	m.invalidateVisibleCache()
 
 	var content string
 	if m.phase == "loading" {

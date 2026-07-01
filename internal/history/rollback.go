@@ -44,13 +44,16 @@ func Rollback(cp Checkpoint) (*RollbackResult, error) {
 // RestartService attempts to restart a service.
 // Returns a user-friendly message about what to do.
 func RestartService(r Restart) (string, error) {
-	if r.Command == "" {
+	if len(r.Command) == 0 {
 		return fmt.Sprintf("Please manually restart: %s", r.Description), nil
 	}
 
-	out, err := exec.Command("sh", "-c", r.Command).CombinedOutput()
+	// r.Command is a []string passed directly to exec.Command — no shell
+	// interpretation, so a malicious service name can't inject extra
+	// arguments or shell metacharacters.
+	out, err := exec.Command(r.Command[0], r.Command[1:]...).CombinedOutput()
 	if err != nil {
-		return fmt.Sprintf("Automatic restart failed (%v). Please run manually: %s\nOutput: %s", err, r.Command, string(out)), err
+		return fmt.Sprintf("Automatic restart failed (%v). Please run manually: %v\nOutput: %s", err, r.Command, string(out)), err
 	}
 	return fmt.Sprintf("Restarted %s successfully.", r.ServiceName), nil
 }
@@ -61,7 +64,7 @@ func RestartForService(service string) *Restart {
 	case service == "sshd" || service == "ssh":
 		return &Restart{
 			ServiceName: "sshd",
-			Command:     "systemctl restart sshd || service sshd restart || service ssh restart",
+			Command:     []string{"sh", "-c", "systemctl restart sshd || service sshd restart || service ssh restart"},
 			Description: "Restart SSH daemon",
 		}
 	case service == "sysctl" || service == "":
@@ -69,7 +72,7 @@ func RestartForService(service string) *Restart {
 	default:
 		return &Restart{
 			ServiceName: service,
-			Command:     fmt.Sprintf("docker compose restart %s", service),
+			Command:     []string{"docker", "compose", "restart", service},
 			Description: fmt.Sprintf("Restart container %s", service),
 		}
 	}
