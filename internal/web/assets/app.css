@@ -269,7 +269,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   justify-content: flex-end;
 }
 
-.table-wrap { flex: 1; overflow-y: auto; }
+.table-wrap { flex: 1; overflow-y: auto; padding: 0 20px 18px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 12px 14px; border-bottom: 1px solid rgba(139, 155, 191, 0.13); text-align: left; vertical-align: top; }
 th { position: sticky; top: 0; z-index: 2; color: var(--muted); background: #101522; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -413,7 +413,7 @@ th.sortable.desc::after {
   border-top: 4px solid currentColor;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
   .metrics { grid-template-columns: repeat(3, 1fr); }
   .workspace { flex-wrap: wrap; }
   .filters { width: 100%; }
