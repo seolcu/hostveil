@@ -10,9 +10,10 @@ hostveil runs three categories of checks and merges them into a single
 score and finding list:
 
 - **Docker Compose misconfigurations** — privileged mode, host network,
-  sensitive mounts, added capabilities, missing `no-new-privileges`,
-  missing healthchecks, no memory/CPU limits, secrets in compose files, etc.
-  Audited natively by `hostveil` itself; no extra tool needed.
+  Docker socket exposure, sensitive host mounts, added capabilities,
+  missing `no-new-privileges`, missing healthchecks, no memory/CPU
+  limits, secrets in compose files, etc. Audited natively by
+  `hostveil` itself; no extra tool needed.
 - **Container image CVEs** — vulnerabilities in the base images your
   compose services run. Scanned with [Trivy](https://github.com/aquasecurity/trivy).
 - **Host hardening** — SSH config, firewall, kernel parameters, file
@@ -60,13 +61,20 @@ If a tool is missing, the corresponding category is skipped gracefully
 | Command | Action |
 |---------|--------|
 | `hostveil` | Scan compose projects + host, open TUI |
+| `hostveil --no-scan` | Open TUI immediately, skip scanning |
 | `hostveil serve` | Scan, serve Web UI on `127.0.0.1:8787` |
 | `hostveil web` | Alias for `hostveil serve` |
+| `hostveil tui-web` | Open the TUI and serve the Web UI at the same time, same address |
 | `hostveil serve --addr HOST:PORT` | Serve the Web UI on a custom address |
+| `hostveil serve --cert-file CERT --key-file KEY` | Serve the Web UI over HTTPS |
 | `hostveil serve --fixture F` | Serve fixture data (E2E testing) |
 | `hostveil setup` | Install/update dependencies (trivy, lynis) |
 | `hostveil update` | Upgrade hostveil to the latest release |
 | `hostveil --no-update` | Skip the automatic update check on startup |
+| `hostveil history` | List fix checkpoints (pre-fix restore points) |
+| `hostveil history show ID` | Show a checkpoint's backed-up files and diff |
+| `hostveil history --scans` | List past scans with score deltas |
+| `hostveil rollback ID` | Restore the files a checkpoint backed up before its fix ran |
 | `hostveil --version` | Show installed version |
 
 ## How it works
@@ -237,9 +245,15 @@ Run `hostveil setup` to install it. The remaining tools still scan;
 the score simply reflects the categories that ran.
 
 **Does hostveil persist scan history?**
-No. Scans are in-memory only. Resets on restart. This is
-intentional: hostveil is a "scan now and act" tool, not a
-continuous monitor.
+Yes, on disk, separately from the in-memory live snapshot the UIs
+poll. Every scan is saved to `/var/lib/hostveil/scans/` (capped at
+the 30 most recent — `hostveil history --scans` lists them with the
+score delta since the previous scan). Every applied fix also writes
+a checkpoint to `/var/lib/hostveil/checkpoints/` (capped at the 100
+most recent) containing a backup of every file it touched, so
+`hostveil rollback <id>` can restore them. Nothing here is a
+continuous background monitor — checkpoints and scan records are
+only written when you actually run a scan or apply a fix.
 
 ## Documentation
 

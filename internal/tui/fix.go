@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 )
 
 type dryRunAction struct {
@@ -93,10 +94,7 @@ func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
 				skipped++
 				continue
 			}
-			result := f.Run(fix.Context{
-				Finding: &finding,
-				Log:     func(s string, args ...interface{}) {},
-			}, 0)
+			result := history.ApplyWithCheckpoint(f, &finding, 0)
 			if result.Success {
 				success++
 				m.live.MarkFixed(finding.ID, finding.Service)
@@ -183,10 +181,7 @@ func (m model) applyFix() (tea.Model, tea.Cmd) {
 	}
 	finding := visible[idx]
 	return m, func() tea.Msg {
-		result := f.Run(fix.Context{
-			Finding: &finding,
-			Log:     func(s string, args ...interface{}) {},
-		}, m.fixActionIdx)
+		result := history.ApplyWithCheckpoint(f, &finding, m.fixActionIdx)
 		return fixResultMsg{result: result}
 	}
 }

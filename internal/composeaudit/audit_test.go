@@ -233,6 +233,34 @@ func TestAuditProject_PortBinding(t *testing.T) {
 	}
 }
 
+// TestAuditProject_PortBinding_LongSyntax is a regression test for a bug
+// where checkPortBinding compared the ports node's Kind against the wrong
+// numeric constant (3 instead of yaml.SequenceNode's actual value of 2),
+// making the entire long-syntax branch dead code — long-form port mappings
+// exposed on 0.0.0.0 were silently never flagged.
+func TestAuditProject_PortBinding_LongSyntax(t *testing.T) {
+	f := openCompose(t, `services:
+  web:
+    image: nginx
+    ports:
+      - target: 80
+        published: "8080"
+  api:
+    image: myapp
+    ports:
+      - target: 9090
+        published: "9090"
+        host_ip: "127.0.0.1"
+`)
+	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFindingForService(findings, "compose.dr002", "web") {
+		t.Error("expected compose.dr002 for web (long-syntax, no host_ip defaults to 0.0.0.0)")
+	}
+	if hasFindingForService(findings, "compose.dr002", "api") {
+		t.Error("compose.dr002 should not apply to api (long-syntax host_ip: 127.0.0.1)")
+	}
+}
+
 func TestAuditProject_VolumeRO(t *testing.T) {
 	f := openCompose(t, `services:
   web:
@@ -250,6 +278,115 @@ func TestAuditProject_VolumeRO(t *testing.T) {
 	}
 	if hasFindingForService(findings, "compose.dr003", "api") {
 		t.Error("compose.dr003 should not apply to api (has :ro)")
+	}
+	// Regression: dr003 must carry the exact volume string in Evidence so the
+	// fix (composeVolumeRO) can scope ":ro" to only the flagged mount instead
+	// of appending it to every non-":ro" volume on the service.
+	for _, fnd := range findings {
+		if fnd.ID == "compose.dr003" && fnd.Service == "web" {
+			if fnd.Evidence["volume"] != "./data:/data" {
+				t.Errorf("dr003 Evidence[volume] = %q, want %q", fnd.Evidence["volume"], "./data:/data")
+			}
+		}
+	}
+}
+
+func TestAuditProject_DockerSocketMount(t *testing.T) {
+	f := openCompose(t, `services:
+  portainer:
+    image: portainer/portainer-ce
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  portainer-ro:
+    image: portainer/portainer-ce
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  alt-path:
+    image: watchtower
+    volumes:
+      - /run/docker.sock:/var/run/docker.sock
+  web:
+    image: nginx
+    volumes:
+      - ./data:/data
+`)
+	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFindingForService(findings, "compose.ds016", "portainer") {
+		t.Error("expected compose.ds016 for portainer (docker.sock mounted)")
+	}
+	if !hasFindingForService(findings, "compose.ds016", "portainer-ro") {
+		t.Error("expected compose.ds016 for portainer-ro (:ro does not mitigate socket access)")
+	}
+	if !hasFindingForService(findings, "compose.ds016", "alt-path") {
+		t.Error("expected compose.ds016 for alt-path (/run/docker.sock source)")
+	}
+	if hasFindingForService(findings, "compose.ds016", "web") {
+		t.Error("compose.ds016 should not apply to web (no docker.sock mount)")
+	}
+	for _, fnd := range findings {
+		if fnd.ID == "compose.ds016" {
+			if fnd.Severity != domain.SeverityCritical {
+				t.Errorf("compose.ds016 severity = %v, want Critical", fnd.Severity)
+			}
+			if fnd.Evidence["volume"] == "" {
+				t.Error("compose.ds016 should carry the volume string in Evidence for the fix to remove")
+			}
+		}
+	}
+}
+
+func TestAuditProject_SensitiveHostMount(t *testing.T) {
+	f := openCompose(t, `services:
+  etc-rw:
+    image: busybox
+    volumes:
+      - /etc:/host-etc
+  etc-ro:
+    image: busybox
+    volumes:
+      - /etc:/host-etc:ro
+  root-rw:
+    image: busybox
+    volumes:
+      - /root:/host-root
+  ssh-rw:
+    image: busybox
+    volumes:
+      - /home/user/.ssh:/root/.ssh
+  narrow:
+    image: busybox
+    volumes:
+      - /etc/localtime:/etc/localtime
+  home-subdir:
+    image: busybox
+    volumes:
+      - /home/user/media:/media
+  named-volume:
+    image: busybox
+    volumes:
+      - data:/data
+`)
+	findings := auditProject(f, Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFindingForService(findings, "compose.ds017", "etc-rw") {
+		t.Error("expected compose.ds017 for etc-rw (/etc mounted read-write)")
+	}
+	if hasFindingForService(findings, "compose.ds017", "etc-ro") {
+		t.Error("compose.ds017 should not apply to etc-ro (:ro mitigates)")
+	}
+	if !hasFindingForService(findings, "compose.ds017", "root-rw") {
+		t.Error("expected compose.ds017 for root-rw (/root mounted read-write)")
+	}
+	if !hasFindingForService(findings, "compose.ds017", "ssh-rw") {
+		t.Error("expected compose.ds017 for ssh-rw (.ssh directory mounted read-write)")
+	}
+	if hasFindingForService(findings, "compose.ds017", "narrow") {
+		t.Error("compose.ds017 should not apply to narrow (/etc/localtime is not a sensitive root)")
+	}
+	if hasFindingForService(findings, "compose.ds017", "home-subdir") {
+		t.Error("compose.ds017 should not apply to home-subdir (/home/user/media is a narrow subdirectory, not the /home root)")
+	}
+	if hasFindingForService(findings, "compose.ds017", "named-volume") {
+		t.Error("compose.ds017 should not apply to named-volume (not a host path)")
 	}
 }
 

@@ -5,7 +5,46 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`compose.ds016`: Docker socket mount detection.** Flags any service
+  that bind-mounts `/var/run/docker.sock` or `/run/docker.sock` —
+  equivalent to root on the host, even mounted `:ro`. Registered as an
+  Auto fix (remove the mount) with a warning to use a socket proxy
+  (e.g. `tecnativa/docker-socket-proxy`) if the service genuinely needs
+  Docker API access.
+- **`compose.ds017`: sensitive host directory mounted read-write.**
+  Flags read-write bind mounts of `/`, `/etc`, `/root`, `/home`,
+  `/boot`, `/proc`, `/sys`, `/run`, `/var/run`, or any `.ssh` directory.
+  Registered as a Review fix (add `:ro`, or remove the mount).
+- `hostveil history` and `hostveil rollback` are now documented in the
+  main README (they existed already but weren't listed), along with
+  `hostveil tui-web` and the `--cert-file`/`--key-file` TLS flags.
+
+### Fixed
+- **`compose.dr002` never detected long-syntax port exposure.**
+  `checkPortBinding` compared the ports node's YAML `Kind` against the
+  wrong numeric constant, so the entire long-syntax branch (`target:` /
+  `published:` / `host_ip:` mapping form) was dead code. A separate
+  early-return on empty short-syntax ports also skipped the long-syntax
+  check entirely for any service using only long-syntax mappings.
+- **`compose.dr003` fix over-applied `:ro`.** The finding didn't record
+  which volume triggered it, so applying the fix appended `:ro` to
+  every non-`:ro` volume on the service instead of just the flagged one.
+
 ### Security
+- **Scan history and fix checkpoints were world-readable.**
+  `/var/lib/hostveil/{checkpoints,scans}` and their contents were
+  created `0755`/`0644`. Checkpoint diffs and full scan snapshots can
+  contain secrets (a compose file's hardcoded password sitting in the
+  context lines of an unrelated diff, or the evidence attached to a
+  `compose.dr004` finding), so any local user could read them
+  regardless of the audited file's own permissions. Both are now
+  owner-only (`0700`/`0600`), and `EnsureDirs` now `chmod`s existing
+  directories left behind by older hostveil versions.
+- **The TUI applied fixes without a checkpoint.** Only the Web UI's
+  `/api/fix` created a checkpoint, so `hostveil rollback` could not
+  undo a fix applied from the TUI (the default entry point). Both UIs
+  now go through the shared `history.ApplyWithCheckpoint`.
 - **Web UI XSS in detail panel.** `body.dataset.full` and
   `body.dataset.truncated` are now re-escaped before being
   injected as HTML on the "View more" / "View less" toggle.
@@ -17,7 +56,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
   description with attacker-controlled content rendered as
   working script.
 
-## [2.5.2]  2025-xx-xx
+## [2.5.2] — 2025-xx-xx
 
 ### Changed
 - TUI and Web UI share the same in-memory snapshot via `domain.Snapshot`.

@@ -14,10 +14,16 @@ import (
 	"github.com/seolcu/hostveil/internal/domain"
 )
 
+// BaseDir, CheckpointDir, and ScanDir are vars (not const) so tests in
+// this package can point them at a t.TempDir() instead of writing to the
+// real /var/lib/hostveil. Production code must never reassign them.
+var (
+	BaseDir       = "/var/lib/hostveil"
+	CheckpointDir = BaseDir + "/checkpoints"
+	ScanDir       = BaseDir + "/scans"
+)
+
 const (
-	BaseDir        = "/var/lib/hostveil"
-	CheckpointDir  = BaseDir + "/checkpoints"
-	ScanDir        = BaseDir + "/scans"
 	BackupSubdir   = "files"
 	MaxScans       = 30
 	MaxCheckpoints = 100
@@ -71,11 +77,24 @@ func hex8(b []byte) string {
 	return fmt.Sprintf("%x", b[:4])
 }
 
-// EnsureDirs creates the base directory structure.
+// EnsureDirs creates the base directory structure. Every directory is
+// owner-only (0700): hostveil always runs as root, and checkpoints/scans
+// can contain the contents of files a finding flagged as sensitive (e.g.
+// an .env referenced by compose.dr004, or a diff whose context lines
+// happen to include a secret next to an unrelated change). A world-
+// readable directory here would let any local user read that content
+// regardless of the backed-up file's own permissions.
+//
+// os.MkdirAll does not change the mode of a directory that already
+// exists, so an explicit os.Chmod is needed to tighten permissions left
+// behind by a hostveil version older than this check.
 func EnsureDirs() error {
 	for _, dir := range []string{BaseDir, CheckpointDir, ScanDir} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create %s: %w", dir, err)
+		}
+		if err := os.Chmod(dir, 0700); err != nil {
+			return fmt.Errorf("chmod %s: %w", dir, err)
 		}
 	}
 	return nil
@@ -87,17 +106,21 @@ func SaveCheckpoint(cp Checkpoint) error {
 		return err
 	}
 	dir := filepath.Join(CheckpointDir, cp.ID)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(dir, BackupSubdir), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, BackupSubdir), 0700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(cp, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "meta.json"), data, 0644)
+	// meta.json embeds cp.Diff, a unified diff of the edited file. That diff
+	// can contain secrets that were sitting near an unrelated change (e.g.
+	// a compose file's hardcoded password a few lines from a fixed
+	// "privileged: true"), so this must never be world-readable.
+	return os.WriteFile(filepath.Join(dir, "meta.json"), data, 0600)
 }
 
 // BackupFile copies a file to the checkpoint's backup directory.
@@ -207,7 +230,10 @@ func SaveScan(snap domain.Snapshot) error {
 		return err
 	}
 	path := filepath.Join(ScanDir, record.ID+".json")
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	// The full Snapshot (every finding, its evidence, and description) is a
+	// host audit report — treat it like the exported JSON/CSV reports
+	// described in SECURITY.md and keep it owner-only.
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return err
 	}
 	cleanupOldScans()

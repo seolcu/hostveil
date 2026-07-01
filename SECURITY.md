@@ -13,8 +13,15 @@ boundary are:
    only from the local machine.
 2. **The exported report**: a JSON or CSV dump of the
    snapshot, written to disk or downloaded via the Web UI.
+3. **On-disk scan/checkpoint history**: `hostveil` persists every
+   scan (`/var/lib/hostveil/scans/`) and every applied fix's
+   before-state (`/var/lib/hostveil/checkpoints/`) so `hostveil
+   history` and `hostveil rollback` work. Checkpoint diffs and
+   scan snapshots can carry the same sensitive content as the
+   exported report — including secrets sitting near an unrelated
+   change in a diff's context lines.
 
-Both are sensitive: they reveal network services, secrets in
+All three are sensitive: they reveal network services, secrets in
 env files, and which system files are misconfigured. Treat them
 as you would any other host audit report.
 
@@ -42,6 +49,11 @@ as you would any other host audit report.
   another hostveil process, the listener is killed before
   rebinding. If the port is held by a non-hostveil process,
   hostveil refuses to steal it.
+- **Owner-only on-disk history.** `/var/lib/hostveil/checkpoints/`
+  and `/var/lib/hostveil/scans/`, and every file inside them, are
+  created `0700`/`0600`. Since hostveil always runs as root, this
+  means only root (or an operator with `sudo`) can read scan
+  snapshots or fix checkpoints — no other local user can.
 
 ### Does not (yet)
 

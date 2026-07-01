@@ -68,6 +68,12 @@ func registerComposeFixes(r *Registry) {
 	r.Register(&Fix{FindingID: "compose.ds013", Label: "Add tmpfs with noexec", Actions: []Action{edit("tmpfs", "/tmp:noexec")}})
 	r.Register(&Fix{FindingID: "compose.ds014", Label: "Remove seccomp: unconfined", Actions: []Action{drop("security_opt", "seccomp:unconfined")}})
 	r.Register(&Fix{FindingID: "compose.ds015", Label: "Remove apparmor: unconfined", Actions: []Action{drop("security_opt", "apparmor:unconfined")}})
+	r.Register(&Fix{FindingID: "compose.ds016", Label: "Remove Docker socket mount", Actions: []Action{{
+		Type:    ActionEdit,
+		Label:   "Remove Docker socket mount",
+		Warning: "The service loses all Docker API access. If it genuinely needs specific API calls (e.g. to list or restart containers), put a socket proxy such as tecnativa/docker-socket-proxy in front of the daemon instead of restoring this mount.",
+		Apply:   composeDropVolume,
+	}}})
 
 	// Review (≥2 actions)
 	r.Register(&Fix{
@@ -104,6 +110,14 @@ func registerComposeFixes(r *Registry) {
 				}
 				return exec.Command("chmod", "600", envPath).Run()
 			}},
+		},
+	})
+	r.Register(&Fix{
+		FindingID: "compose.ds017",
+		Label:     "Secure sensitive host mount",
+		Actions: []Action{
+			{Type: ActionEdit, Label: "Add :ro flag", Apply: func(ctx Context) error { return composeVolumeRO(ctx) }},
+			{Type: ActionEdit, Label: "Remove mount", Apply: composeDropVolume},
 		},
 	})
 }
@@ -235,6 +249,18 @@ func composeVolumeRO(ctx Context) error {
 	}
 	ctx.Diff = f.Diff()
 	return f.Save()
+}
+
+// composeDropVolume removes the exact volume mount recorded in the
+// finding's Evidence["volume"] from the target service(s). Used by fixes
+// for findings where "just remove the mount" is the only safe mechanical
+// action (e.g. Docker socket mounts, where :ro does not reduce exposure).
+func composeDropVolume(ctx Context) error {
+	targetVol := ctx.Finding.Evidence["volume"]
+	if targetVol == "" {
+		return fmt.Errorf("no volume recorded in finding evidence")
+	}
+	return composeDrop(ctx, "volumes", targetVol)
 }
 
 func composeEdit(ctx Context, field string, value interface{}) error {

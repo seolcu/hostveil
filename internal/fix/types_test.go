@@ -193,6 +193,34 @@ func TestRegisterAll_Classification(t *testing.T) {
 	}
 }
 
+func TestRegisterAll_DockerSocketAndSensitiveMountClassification(t *testing.T) {
+	r := New()
+	RegisterAll(r)
+
+	// ds016 (Docker socket mount) = 1 action → Auto, with a warning since
+	// removing the mount can break services that depend on it.
+	socket := r.Lookup("compose.ds016")
+	if socket == nil {
+		t.Fatal("compose.ds016 not registered")
+	}
+	if got := socket.Class(); got != domain.RemediationAuto {
+		t.Errorf("compose.ds016 class = %v, want Auto", got)
+	}
+	if len(socket.Actions) == 0 || socket.Actions[0].Warning == "" {
+		t.Error("compose.ds016 action should have a warning (removing Docker API access)")
+	}
+
+	// ds017 (sensitive host mount) = 2 actions → Review (ro vs remove are
+	// independent alternatives, not stages).
+	sensitive := r.Lookup("compose.ds017")
+	if sensitive == nil {
+		t.Fatal("compose.ds017 not registered")
+	}
+	if got := sensitive.Class(); got != domain.RemediationReview {
+		t.Errorf("compose.ds017 class = %v, want Review", got)
+	}
+}
+
 func TestRegisterAll_SystemFixes(t *testing.T) {
 	r := New()
 	RegisterAll(r)

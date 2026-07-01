@@ -140,6 +140,40 @@ func TestComposeVolumeRO(t *testing.T) {
 	}
 }
 
+func TestComposeDropVolume(t *testing.T) {
+	yamlContent := `services:
+  portainer:
+    image: portainer/portainer-ce
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+`
+	path := writeTestCompose(t, yamlContent)
+	ctx := testContext(t, path, "portainer")
+	ctx.Finding.Evidence["volume"] = "/var/run/docker.sock:/var/run/docker.sock"
+	if err := composeDropVolume(ctx); err != nil {
+		t.Fatalf("composeDropVolume: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "docker.sock") {
+		t.Errorf("compose file should not contain docker.sock after fix\n%s", string(data))
+	}
+	if !strings.Contains(string(data), "portainer_data:/data") {
+		t.Errorf("compose file should still contain the unrelated named volume\n%s", string(data))
+	}
+}
+
+func TestComposeDropVolume_NoEvidence(t *testing.T) {
+	path := writeTestCompose(t, testComposeYAML)
+	ctx := testContext(t, path, "web")
+	if err := composeDropVolume(ctx); err == nil {
+		t.Error("composeDropVolume should error when Evidence[\"volume\"] is empty")
+	}
+}
+
 func TestOpenComposeFile_MissingPath(t *testing.T) {
 	ctx := Context{
 		Finding: &domain.Finding{

@@ -6,50 +6,66 @@ this in-process  no Trivy, no shell out, no extra tool needed.
 
 ## Files
 
-- **`audit.go`**  `ScanAll`, the per-project scanner entry point.
-- **`discover.go`**  `DiscoverProjects` shells out to
+- **`audit.go`** — `ScanAll`, the per-project scanner entry point.
+- **`discover.go`** — `DiscoverProjects` shells out to
   `docker compose ls --format json` to find the active compose
   projects and their config paths.
-- **`env.go`**  `.env` file parsing for compose variable
-  resolution (so a `port: ${WEB_PORT:-8080}` doesn't trip the
-  "exposing to all interfaces" rule).
-- **`rules.go`**  the audit rules. One function per rule.
-- **`audit_test.go`**  `TestAuditProject_*` for each rule.
+- **`env.go`** — `detectEnvFiles` flags services whose `env_file`
+  points at a non-empty file (`compose.dr004`). It does not parse
+  the file contents.
+- **`rules.go`** — the audit rules. One function per rule.
+- **`audit_test.go`** — `TestAuditProject_*` for each rule.
 
 ## Rules
 
+All IDs are lowercase. The `ds`/`dr` prefix split roughly separates
+per-service checks from checks that also touch cross-cutting
+resources (ports, volumes, `.env` files) or run once per compose
+file, but the boundary is historical, not a strict rule — check
+`rules.go` for what a given ID actually does. This table should be
+kept in sync with `rules.go`; if you add a rule, add its row here.
+
 | ID | Severity | Concern |
 |----|----------|---------|
-| `compose.DR-001` | High | `privileged: true` |
-| `compose.DR-002` | High | `network_mode: host` |
-| `compose.DR-003` | High | `pid_mode: host` |
-| `compose.DR-004` | High | Hardcoded secret in compose file |
-| `compose.DR-005` | High | `ipc_mode: host` |
-| `compose.DR-006` | High | `userns_mode: host` |
-| `compose.DR-007` | High | `cap_add` includes a dangerous capability |
-| `compose.DR-008` | Medium | `security_opt` missing `no-new-privileges` |
-| `compose.DR-009` | High | Container runs as root (`user: root` or no `user` field) |
-| `compose.DR-010` | Medium | `restart: always` (against Docker best practice for stateful services) |
-| `compose.DR-011` | Medium | No memory limit |
-| `compose.DR-012` | Medium | No CPU limit |
-| `compose.DR-013` | Medium | No `healthcheck` defined |
-| `compose.DR-014` | Medium | Port bound to `0.0.0.0` or unspecified |
-| `compose.DR-015` | Medium | Sensitive host directory mounted |
-| `compose.DR-016` | High | `seccomp` profile is `unconfined` |
-| `compose.DR-017` | High | `apparmor` profile is `unconfined` |
-| `compose.DR-018` | Medium | Bind mount not read-only when it could be |
-| `compose.DR-019` | High | Secret present in `.env` file |
+| `compose.ds001` | High | `privileged: true` |
+| `compose.ds002` | Medium | `read_only` not set (writable root filesystem) |
+| `compose.ds003` | Medium | `pid: host` |
+| `compose.ds004` | Medium | `ipc: host` |
+| `compose.ds005` | High | `cap_add` includes a dangerous capability (`SYS_ADMIN`, `NET_ADMIN`, `SYS_RAWIO`, `SYS_PTRACE`, `SYS_MODULE`) |
+| `compose.ds006` | Medium | `security_opt` missing `no-new-privileges:true` |
+| `compose.ds007` | Medium | `userns_mode: host` |
+| `compose.ds008` | Low | `restart` unset or `no` |
+| `compose.ds009` | Medium | Container runs as root (`user` unset, `root`, or UID `0`) |
+| `compose.ds010` | Low | No memory limit |
+| `compose.ds011` | Low | No CPU limit |
+| `compose.ds012` | Low | No `healthcheck` defined |
+| `compose.ds013` | Low | `tmpfs` mount missing `noexec` |
+| `compose.ds014` | Medium | `security_opt` has `seccomp:unconfined` |
+| `compose.ds015` | Medium | `security_opt` has `apparmor:unconfined` |
+| `compose.ds016` | Critical | Docker socket (`/var/run/docker.sock` or `/run/docker.sock`) bind-mounted into the container — equivalent to root on the host, `:ro` does not mitigate it |
+| `compose.ds017` | High | Sensitive host root (`/`, `/etc`, `/root`, `/home`, `/boot`, `/proc`, `/sys`, `/run`, `/var/run`, or a `.ssh` directory) mounted read-write |
+| `compose.dr001` | High | `network_mode: host` or `network_mode: container:<other>` |
+| `compose.dr002` | Medium | Port bound to `0.0.0.0` (short or long syntax) |
+| `compose.dr003` | Low | Volume mounted without `:ro` when it could be read-only |
+| `compose.dr004` | High | `env_file` referencing a non-empty file (scored under the Secrets axis, not Container exposure) |
 
-(Not all rule IDs are in this list  see `rules.go` for the
-complete set. The list is illustrative.)
+`compose.ds016` and `compose.ds017` both parse only Compose
+short-syntax volume entries (`SOURCE:TARGET[:MODE]`); long-syntax
+mapping-form volumes (`type: bind`, `source:`, `target:`) are not
+yet inspected by these two rules (`compose.dr002`'s long-syntax
+port form *is* handled — see `checkPortBinding`).
 
-## Variable resolution
+## Known limitation: no `${VAR}` interpolation
 
-Compose files can use `${VAR}` or `${VAR:-default}` syntax.
-`env.go` parses `.env` files (and the host environment, scoped
-to the variable names referenced) so that rules can see the
-resolved values. A `port: ${WEB_PORT:-8080}` with a default of
-`8080` is treated as `8080`, not as a literal `${WEB_PORT:-8080}`.
+Compose supports `${VAR}` / `${VAR:-default}` substitution in any
+field. `rules.go` reads raw YAML scalars via
+`compose.File.GetFieldStrings` — it does not resolve these
+variables. A port mapping like `"${WEB_PORT:-8080}:8080"` will not
+be recognized as exposing 8080 on all interfaces, because the
+colon inside `:-8080` is not the mapping separator the port-parsing
+heuristic expects. Prefer literal values in compose files you want
+audited precisely, or resolve with `docker compose config` before
+reasoning about exposure by hand.
 
 ## Public API
 

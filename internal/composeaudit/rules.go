@@ -6,6 +6,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/domain"
+	"gopkg.in/yaml.v3"
 )
 
 func auditProject(f *compose.File, project Project) []domain.Finding {
@@ -34,6 +35,8 @@ func auditProject(f *compose.File, project Project) []domain.Finding {
 		all = append(all, checkNetworkMode(f, svc, project)...)
 		all = append(all, checkPortBinding(f, svc, project)...)
 		all = append(all, checkVolumeRO(f, svc, project)...)
+		all = append(all, checkDockerSocket(f, svc, project)...)
+		all = append(all, checkSensitiveHostMount(f, svc, project)...)
 	}
 	return all
 }
@@ -457,7 +460,7 @@ func checkNetworkMode(f *compose.File, svc string, project Project) []domain.Fin
 
 func checkPortBinding(f *compose.File, svc string, project Project) []domain.Finding {
 	ports, err := f.GetFieldStrings(svc, "ports")
-	if err != nil || len(ports) == 0 {
+	if err != nil {
 		return nil
 	}
 	for _, p := range ports {
@@ -481,9 +484,9 @@ func checkPortBinding(f *compose.File, svc string, project Project) []domain.Fin
 	}
 	// Check long-syntax ports (mapping nodes with host_ip/published)
 	portsNode := f.GetFieldNode(svc, "ports")
-	if portsNode != nil && portsNode.Kind == 3 { // yaml.SequenceNode
+	if portsNode != nil && portsNode.Kind == yaml.SequenceNode {
 		for _, item := range portsNode.Content {
-			if item.Kind != 4 { // yaml.MappingNode
+			if item.Kind != yaml.MappingNode {
 				continue
 			}
 			hostIP := ""
@@ -539,9 +542,136 @@ func checkVolumeRO(f *compose.File, svc string, project Project) []domain.Findin
 				Source:      domain.SourceCompose,
 				Service:     svc,
 				Remediation: domain.RemediationUnavailable,
+				Evidence:    map[string]string{"volume": v},
 				Metadata:    composeMeta(project, svc),
 			}}
 		}
 	}
 	return nil
+}
+
+// hostVolumeSource splits a Compose short-syntax volume mount
+// ("SOURCE:TARGET[:MODE]") into its host source and mode, when SOURCE is
+// recognizably a host filesystem path rather than a named volume or an
+// anonymous target-only entry. ok is false for named volumes ("data:/data"),
+// anonymous volumes ("/data" alone), and entries whose source isn't a host
+// path.
+func hostVolumeSource(v string) (source, mode string, ok bool) {
+	parts := strings.Split(v, ":")
+	if len(parts) < 2 {
+		return "", "", false
+	}
+	source = parts[0]
+	if len(parts) >= 3 {
+		mode = parts[len(parts)-1]
+	}
+	if !isHostPath(source) {
+		return "", "", false
+	}
+	return source, mode, true
+}
+
+func isHostPath(s string) bool {
+	return strings.HasPrefix(s, "/") || strings.HasPrefix(s, "./") ||
+		strings.HasPrefix(s, "../") || strings.HasPrefix(s, "~/") ||
+		s == "." || s == ".."
+}
+
+// hasVolumeMode reports whether the comma-separated Compose volume mode
+// string (e.g. "ro", "ro,Z") includes the given mode component exactly.
+func hasVolumeMode(mode, want string) bool {
+	for _, part := range strings.Split(mode, ",") {
+		if strings.TrimSpace(part) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// checkDockerSocket flags services that bind-mount the Docker daemon
+// socket. Holding that socket is equivalent to root on the host: it can
+// create privileged containers, read any file via a bind mount, and control
+// every other container. Mounting it read-only does not mitigate this —
+// the socket is a bidirectional API channel, not a plain file.
+func checkDockerSocket(f *compose.File, svc string, project Project) []domain.Finding {
+	vols, err := f.GetFieldStrings(svc, "volumes")
+	if err != nil || len(vols) == 0 {
+		return nil
+	}
+	for _, v := range vols {
+		source, _, ok := hostVolumeSource(v)
+		if !ok {
+			continue
+		}
+		clean := strings.TrimSuffix(source, "/")
+		if clean != "/var/run/docker.sock" && clean != "/run/docker.sock" {
+			continue
+		}
+		return []domain.Finding{{
+			ID:          "compose.ds016",
+			Title:       "Docker socket mounted into container",
+			Description: fmt.Sprintf("Service %q mounts the Docker socket (%s). A container with this mount can control the Docker daemon and every other container on the host — equivalent to root on the host, even when mounted read-only.", svc, source),
+			HowToFix:    "Remove the Docker socket mount. If the service genuinely needs Docker API access (e.g. Traefik, Portainer, Watchtower), put a socket proxy such as tecnativa/docker-socket-proxy between it and the daemon so it only gets the specific API calls it needs.",
+			Severity:    domain.SeverityCritical,
+			Source:      domain.SourceCompose,
+			Service:     svc,
+			Remediation: domain.RemediationUnavailable,
+			Evidence:    map[string]string{"volume": v},
+			Metadata:    composeMeta(project, svc),
+		}}
+	}
+	return nil
+}
+
+// sensitiveHostRoots are host directories that, bind-mounted read-write,
+// let a container rewrite files controlling the host's security posture
+// (authentication, boot, privilege) or read other users' private data.
+var sensitiveHostRoots = map[string]bool{
+	"/":        true,
+	"/etc":     true,
+	"/root":    true,
+	"/home":    true,
+	"/boot":    true,
+	"/proc":    true,
+	"/sys":     true,
+	"/var/run": true,
+	"/run":     true,
+}
+
+// checkSensitiveHostMount flags services that bind-mount a sensitive host
+// root (or an SSH key directory) without the :ro flag. Read-only mounts of
+// the same paths are still informational-risk but are not flagged here —
+// the write access is what turns exposure into a host compromise path.
+func checkSensitiveHostMount(f *compose.File, svc string, project Project) []domain.Finding {
+	vols, err := f.GetFieldStrings(svc, "volumes")
+	if err != nil || len(vols) == 0 {
+		return nil
+	}
+	var findings []domain.Finding
+	for _, v := range vols {
+		source, mode, ok := hostVolumeSource(v)
+		if !ok || hasVolumeMode(mode, "ro") {
+			continue
+		}
+		clean := strings.TrimSuffix(source, "/")
+		if clean == "" {
+			clean = "/"
+		}
+		if !sensitiveHostRoots[clean] && !strings.HasSuffix(clean, "/.ssh") && clean != ".ssh" {
+			continue
+		}
+		findings = append(findings, domain.Finding{
+			ID:          "compose.ds017",
+			Title:       "Sensitive host directory mounted read-write",
+			Description: fmt.Sprintf("Service %q mounts host path %q read-write, letting the container modify sensitive host files.", svc, source),
+			HowToFix:    `Mount read-only by appending ":ro", or remove the mount if the container does not need it.`,
+			Severity:    domain.SeverityHigh,
+			Source:      domain.SourceCompose,
+			Service:     svc,
+			Remediation: domain.RemediationUnavailable,
+			Evidence:    map[string]string{"volume": v},
+			Metadata:    composeMeta(project, svc),
+		})
+	}
+	return findings
 }

@@ -143,22 +143,27 @@ Each `fix.Fix` has a `FindingID`, a `Label`, and a list of
 scan time. `Classify` writes the remediation kind and
 `how_to_fix` text onto each finding.
 
-At apply time, the user picks an action index. The handler:
+At apply time, the user picks an action index. Both the Web UI
+handler and the TUI's fix dispatch call the same
+`history.ApplyWithCheckpoint(fix, finding, actionIdx)`, which:
 
 1. Rejects invalid action indexes with a clear error.
-2. Creates a checkpoint (snapshot of any files the action will
-   edit).
+2. For `ActionEdit` actions with a resolvable file path, creates a
+   checkpoint (backs up the file before the action runs).
 3. Runs the action. For `ActionEdit` this is a real mutation.
    For `ActionExec` it is a shell command.
-4. On success, marks the finding as `Fixed`. If the fix was
-   registered for an exact ID (not a wildcard pattern), the
-   handler also marks any related findings on the same service
-   as fixed, so the user does not have to fix the same
-   problem multiple times.
-5. On success with a backup, saves the checkpoint with the
+4. On success with a backup, saves the checkpoint with the
    resulting diff and a `Restart` hint, so `hostveil rollback`
    can re-apply the backup and prompt to restart the affected
    service.
+
+The caller (Web UI handler or TUI) then, on success, marks the
+finding as `Fixed`. If the fix was registered for an exact ID (not
+a wildcard pattern), the caller also marks any related findings on
+the same service as fixed, so the user does not have to fix the
+same problem multiple times. Because both UIs go through
+`ApplyWithCheckpoint`, a fix applied from the TUI is just as
+rollback-able as one applied from the Web UI.
 
 ## Remediation kinds
 
