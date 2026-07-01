@@ -117,6 +117,26 @@ violates them, fix it.
   the main UI.
 
 ### Tests
+
+The test surface is layered. Each layer guards a different class of
+regression:
+
+- **Unit tests** (every package) cover the happy path and the
+  documented edge cases for the public API. They run on every CI
+  build.
+- **Property-based tests** (`internal/domain/scoring_props_test.go`)
+  hammer the invariants of the scoring model with random inputs
+  seeded for determinism. They catch off-by-one and cap-math
+  regressions that no fixed test case would.
+- **Fuzz tests** (the three parser packages) drive the public
+  parsing entry points with random bytes. They run on every CI
+  build with the seed corpus and can be invoked locally with
+  `go test -fuzz=...` for deeper exploration.
+- **Benchmarks** (`internal/<pkg>/bench_test.go`) lock in
+  performance for the hot paths. They are not part of `go test`
+  by default — use `scripts/bench.sh`.
+
+Conventions:
 - Unit tests live next to the source. Integration tests
   (`internal/web`, `cmd/hostveil`) hit the public HTTP API.
 - E2E tests live in `test/e2e/specs/`. Each spec file describes
