@@ -14,6 +14,41 @@ func TestClass_NoActions(t *testing.T) {
 	}
 }
 
+// TestRegistry_Classify_UnregisteredIDLeavesRemediationUnchanged is a
+// regression test for the RemediationKind zero-value footgun documented
+// on domain.Finding: RemediationAuto is 0, so a Finding built without
+// explicitly setting Remediation reads as "Auto-fixable" by default.
+// Classify must never paper over that by leaving an unregistered
+// finding's Remediation at whatever it already was — it only writes a
+// new Remediation when it finds an exact or wildcard match in the
+// registry. Every real scanner (composeaudit, trivy, lynis) sets
+// Remediation explicitly before Classify runs specifically so this
+// zero value is never actually reached in production; this test locks
+// in that Classify's contract doesn't quietly rely on that discipline.
+func TestRegistry_Classify_UnregisteredIDLeavesRemediationUnchanged(t *testing.T) {
+	r := New()
+	r.Register(&Fix{FindingID: "known.id", Actions: []Action{{Type: ActionEdit}}})
+
+	findings := []domain.Finding{
+		{ID: "known.id", Remediation: domain.RemediationUnavailable},
+		{ID: "totally.unknown.id"}, // zero-value Remediation == RemediationAuto
+	}
+	r.Classify(findings)
+
+	if findings[0].Remediation != domain.RemediationAuto {
+		t.Errorf("known.id: Remediation = %v, want Auto (registered fix should classify it)", findings[0].Remediation)
+	}
+	// This assertion is the documentation, not a desirable behavior: an
+	// unregistered finding's Remediation is whatever the caller set it
+	// to (here, the zero value). Classify has no way to distinguish "the
+	// caller explicitly wants Auto" from "the caller forgot to set
+	// this" — that's why every finding constructor in this codebase
+	// must set Remediation itself, per the domain.Finding doc comment.
+	if findings[1].Remediation != domain.RemediationAuto {
+		t.Errorf("totally.unknown.id: Remediation = %v, want unchanged zero-value Auto", findings[1].Remediation)
+	}
+}
+
 func TestClass_Auto_Edit(t *testing.T) {
 	f := &Fix{Actions: []Action{{Type: ActionEdit}}}
 	if got := f.Class(); got != domain.RemediationAuto {

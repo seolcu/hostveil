@@ -48,6 +48,13 @@ func (s Source) String() string {
 	}
 }
 
+// RemediationKind classifies how a finding can be fixed. Every
+// Finding-producing scanner must set this field explicitly:
+// RemediationAuto is 0, the zero value, so a Finding built without
+// setting Remediation silently reads as "Auto-fixable" (and IsFixable()
+// returns true for it) even though no fix was ever registered or
+// intended for it. If a finding genuinely has no classification yet,
+// set it to RemediationUnavailable — never leave the field unset.
 type RemediationKind int
 
 const (
@@ -91,6 +98,11 @@ func (r RemediationKind) Label() string {
 	}
 }
 
+// Finding represents a single security or hardening issue detected by
+// one of the three scanner backends (compose audit, Trivy, Lynis).
+// Remediation must be set explicitly by whatever code constructs a
+// Finding — see the RemediationKind doc comment for why its zero value
+// (RemediationAuto) is not a safe default to leave unset.
 type Finding struct {
 	ID          string            `json:"id"`
 	Title       string            `json:"title"`

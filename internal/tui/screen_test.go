@@ -38,7 +38,7 @@ func TestRenderMain_BasicStructure(t *testing.T) {
 
 	output := m.renderMain()
 
-	if !strings.Contains(output, "LINUX SELF-HOSTING SECURITY SCANNER") {
+	if !strings.Contains(output, "FINDS AND FIXES SECURITY ISSUES") {
 		t.Error("expected scanner eyebrow in output")
 	}
 	if !strings.Contains(output, "testhost") {

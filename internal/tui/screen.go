@@ -275,7 +275,7 @@ func (m model) renderHeader() string {
 	t := m.theme()
 	eyebrow := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Accent)).
-		Render("LINUX SELF-HOSTING SECURITY SCANNER")
+		Render("FINDS AND FIXES SECURITY ISSUES")
 	brand := m.renderBrand()
 	lines := []string{eyebrow}
 	lines = append(lines, brand)

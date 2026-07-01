@@ -52,6 +52,26 @@ Versions follow [Semantic Versioning](https://semver.org/).
   order. Now opens with a one-line description and groups commands
   by intent (Run / Configure / Maintain / History), matching the
   README's structure.
+- **The TUI and Web UI headers still said "Linux self-hosting
+  security scanner"** — the exact old positioning the README rewrite
+  replaced, but hardcoded as a persistent on-screen header in both
+  UIs, which is more load-bearing than the README since it's what
+  every user sees on every run. Both now read "Finds and fixes
+  security issues", matching the README's opening line.
+- **Documented the `RemediationKind` zero-value footgun.**
+  `RemediationAuto` is `0`, so a `domain.Finding` built without
+  explicitly setting `Remediation` silently reads as "Auto-fixable"
+  (and `IsFixable()` returns `true` for it) even though no fix was
+  ever registered for it. Every scanner already sets this field
+  explicitly (verified via `ast_grep` across all four
+  Finding-construction sites), so this was never reachable in
+  practice — but it's a real trap for a future custom rule or fix
+  author. Added doc comments on `RemediationKind` and `Finding`, plus
+  `TestRegistry_Classify_UnregisteredIDLeavesRemediationUnchanged` to
+  make the invariant explicit: `Registry.Classify` only overwrites
+  `Remediation` for a finding ID it recognizes — an unrecognized ID's
+  `Remediation` is whatever the caller already set it to, which is
+  exactly why every constructor must set it.
 
 ### Fixed
 - **`compose.dr002` never detected long-syntax port exposure.**
