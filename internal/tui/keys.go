@@ -5,7 +5,6 @@ import (
 
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
-	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -93,7 +92,7 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		selectableCount := 0
 		allSelectableSelected := true
 		for _, f := range visible {
-			if f.Remediation == domain.RemediationUnavailable || f.Remediation == domain.RemediationManual {
+			if !isBatchFixableFinding(f) {
 				continue
 			}
 			selectableCount++
@@ -106,7 +105,7 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.selectedSet = make(map[string]bool)
 			for _, f := range visible {
-				if f.Remediation == domain.RemediationUnavailable || f.Remediation == domain.RemediationManual {
+				if !isBatchFixableFinding(f) {
 					continue
 				}
 				m.selectedSet[f.ID] = true

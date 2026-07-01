@@ -468,7 +468,7 @@ function bindControls() {
       const visible = findings();
       const finding = visible[state.selected];
       if (!finding) return;
-      if (remediation(finding) === "unavailable") return;
+      if (!isBatchSelectable(finding)) return;
       toggleFindingSelection(finding.id);
       render();
       return;
@@ -533,6 +533,7 @@ async function refreshResultNow() {
     const response = await fetch("/api/result");
     state.live = await response.json();
     state.phase = state.live.phase || "complete";
+    invalidateFindingsCache();
     fetchFailures = 0;
     if (renderTimer) {
       cancelAnimationFrame(renderTimer);
@@ -630,7 +631,7 @@ function renderFilters() {
 
 function renderChips(id, values, key) {
   if (!$(id)) return;
-  $(id).innerHTML = values.map((value) => `<button class="chip ${state[key] === value ? "active" : ""}" data-key="${key}" data-value="${value}" type="button">${label(value)}</button>`).join("");
+  $(id).innerHTML = values.map((value) => `<button class="chip ${state[key] === value ? "active" : ""}" data-key="${key}" data-value="${escapeHTML(value)}" type="button">${escapeHTML(label(value))}</button>`).join("");
   $(id).querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
       state[button.dataset.key] = button.dataset.value;
@@ -648,23 +649,23 @@ function renderTable(visible) {
   const checkState = allSelected ? "checked" : someSelected ? "indeterminate" : "";
 
   $("findings").innerHTML = visible.map((f, index) => {
+    const selectableRow = isBatchSelectable(f);
     const fixedClass = f.fixed ? "fixed" : "";
-    const unavailClass = !f.fixed && (remediation(f) === "unavailable" || remediation(f) === "manual") ? "disabled" : "";
+    const unavailClass = !selectableRow ? "disabled" : "";
     const selClass = index === state.selected ? "selected" : "";
-    const rowSelectedClass = state.selectedSet.has(f.id) ? "row-selected" : "";
+    const rowSelectedClass = selectableRow && state.selectedSet.has(f.id) ? "row-selected" : "";
     const rowClass = [fixedClass, unavailClass, selClass, rowSelectedClass].filter(Boolean).join(" ");
     const sevDisplay = f.fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
     const srcDisplay = f.fixed ? "" : `<span class="muted">${source(f)}</span>`;
     const fixDisplay = f.fixed ? "Fixed" : label(remediation(f));
     const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
-    const checked = state.selectedSet.has(f.id) ? "checked" : "";
-    const r = remediation(f);
-    const disabledAttr = !f.fixed && (r === "unavailable" || r === "manual") ? "disabled" : "";
+    const checked = selectableRow && state.selectedSet.has(f.id) ? "checked" : "";
+    const disabledAttr = !selectableRow ? "disabled" : "";
     return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}">
       <td class="check-cell"><input type="checkbox" ${checked} ${disabledAttr} data-id="${escapeHTML(f.id)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
-      <td class="id">${shortId(f.id)}</td>
+      <td class="id">${escapeHTML(shortId(f.id))}</td>
       <td class="title">${titleDisplay}</td>
       <td class="muted">${fixDisplay}</td>
     </tr>`;
@@ -689,7 +690,7 @@ function renderTable(visible) {
       state.selected = Number(row.dataset.index);
       const finding = visible[state.selected];
       if (!finding) return;
-      if (remediation(finding) === "unavailable") return;
+      if (!isBatchSelectable(finding)) return;
       toggleFindingSelection(finding.id);
       render();
     });
@@ -731,7 +732,7 @@ function toggleFindingSelection(id) {
 
 function isBatchSelectable(f) {
   const r = remediation(f);
-  return r !== "unavailable" && r !== "manual";
+  return !f.fixed && r !== "unavailable" && r !== "manual";
 }
 
 function renderDetail(f) {
@@ -1026,12 +1027,12 @@ function closeFixModal() {
   if (overlay) overlay.remove();
 }
 
-async function applyFixBatch() {
-  const selectedIds = new Set(state.selectedSet);
-  if (selectedIds.size === 0) return;
+function selectedBatchFindings() {
+  return findings().filter((f) => state.selectedSet.has(f.id) && isBatchSelectable(f));
+}
 
-  const visible = findings();
-  const selectedFindings = visible.filter((f) => selectedIds.has(f.id));
+async function applyFixBatch() {
+  const selectedFindings = selectedBatchFindings();
   if (selectedFindings.length === 0) return;
 
   // Immediate visual feedback
@@ -1250,7 +1251,7 @@ function showBatchActionModal(fixInfos, onSelect) {
 function updateFixSelectedBtn() {
   const btn = $("fixSelectedBtn");
   if (!btn) return;
-  const count = state.selectedSet.size;
+  const count = selectedBatchFindings().length;
   if (count > 0) {
     btn.textContent = `Fix selected (${count})`;
     btn.style.display = "";

@@ -499,13 +499,11 @@ func (m model) renderListPane() string {
 		filterInfo += fmt.Sprintf("  rem:%s", m.filter.remediation)
 	}
 	if m.filter.service != "all" {
-		filterInfo += fmt.Sprintf("  svc:%s", m.filter.service)
+		filterInfo += fmt.Sprintf("  svc:%s", fit(m.filter.service, 16))
 	}
 	if m.filter.query != "" {
-		filterInfo += fmt.Sprintf("  q:%q", m.filter.query)
+		filterInfo += fmt.Sprintf("  q:%q", fit(m.filter.query, 16))
 	}
-
-	filterLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(filterInfo)
 
 	titleColor := t.Accent
 	if m.mode != paneList {
@@ -516,9 +514,9 @@ func (m model) renderListPane() string {
 		lipgloss.NewStyle().Foreground(lipgloss.Color(titleColor)).Render("FINDINGS"),
 		count,
 	)
-	headRight := filterLabel
-
 	headW := m.listWidth()
+	headRightW := max(1, headW-lipgloss.Width(headLeft)-7)
+	headRight := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fit(filterInfo, headRightW))
 	head := lipgloss.NewStyle().
 		Width(headW).
 		Padding(1, 2).
@@ -540,8 +538,14 @@ func (m model) renderListPane() string {
 
 	var footerEls []string
 	footerEls = append(footerEls, m.footerHelp(paneList, max(1, headW-4)))
-	if len(m.selectedSet) > 0 {
-		selLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render(fmt.Sprintf("%d selected — press f to batch fix", len(m.selectedSet)))
+	selectedVisible := 0
+	for _, f := range visible {
+		if m.selectedSet[f.ID] && isBatchFixableFinding(f) {
+			selectedVisible++
+		}
+	}
+	if selectedVisible > 0 {
+		selLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render(fmt.Sprintf("%d selected — press f to batch fix", selectedVisible))
 		footerEls = append(footerEls, selLabel)
 	}
 	if m.toast != "" {

@@ -275,8 +275,8 @@ th, td { padding: 12px 14px; border-bottom: 1px solid rgba(139, 155, 191, 0.13);
 th { position: sticky; top: 0; z-index: 2; color: var(--muted); background: #101522; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
 tbody tr { cursor: pointer; transition: background 150ms ease, color 150ms ease; }
 tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
-tbody tr.disabled { cursor: default; opacity: 0.55; pointer-events: none; }
-tbody tr.disabled .row-check { pointer-events: auto; cursor: not-allowed; }
+tbody tr.disabled { cursor: pointer; opacity: 0.55; }
+tbody tr.disabled .row-check { cursor: not-allowed; }
 tbody tr.disabled:hover { background: inherit; color: inherit; }
 .row-check:disabled { opacity: 0.35; cursor: not-allowed; }
 .id { color: #b9c3dd; white-space: nowrap; }

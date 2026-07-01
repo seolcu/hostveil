@@ -128,6 +128,88 @@ func TestRenderMain_WideLayoutKeepsFilterListAndDetailSeparated(t *testing.T) {
 	assertRenderedWidthAtMost(t, output, m.width)
 }
 
+func TestRenderListPane_LongFilterSummaryStaysWithinPanel(t *testing.T) {
+	longService := "service-" + strings.Repeat("segment-", 24)
+	findings := []domain.Finding{
+		{
+			ID:          "compose.long-service",
+			Title:       "Finding with a long service name",
+			Severity:    domain.SeverityHigh,
+			Source:      domain.SourceCompose,
+			Service:     longService,
+			Remediation: domain.RemediationAuto,
+		},
+	}
+	m := readyModelForRenderRegression(t, findings, 120, 32)
+	m.filter.service = longService
+	m.filter.query = "needle-" + strings.Repeat("very-long-query-", 12)
+	m.rebuildTable()
+
+	output := m.renderListPane()
+	assertRenderedWidthAtMost(t, output, m.listWidth())
+	if !strings.Contains(output, "svc:") || !strings.Contains(output, "q:") {
+		t.Fatalf("filter summary should still expose active service and query filters:\n%s", output)
+	}
+}
+
+func TestRenderListPane_SelectionFooterCountsOnlyVisibleBatchFixableFindings(t *testing.T) {
+	findings := []domain.Finding{
+		{ID: "auto.hidden", Title: "Hidden auto finding", Severity: domain.SeverityHigh, Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
+		{ID: "auto.visible", Title: "Visible auto finding", Severity: domain.SeverityMedium, Source: domain.SourceCompose, Remediation: domain.RemediationAuto},
+		{ID: "manual.visible", Title: "Visible manual finding", Severity: domain.SeverityLow, Source: domain.SourceTrivy, Remediation: domain.RemediationManual},
+	}
+	m := readyModelForRenderRegression(t, findings, 120, 32)
+	m.selectedSet = map[string]bool{
+		"auto.hidden":    true,
+		"manual.visible": true,
+	}
+	m.filter.query = "visible"
+	m.rebuildTable()
+
+	output := m.renderListPane()
+	if strings.Contains(output, "2 selected") || strings.Contains(output, "manual.visible") {
+		t.Fatalf("selection footer counted hidden or manual-only selections:\n%s", output)
+	}
+	if strings.Contains(output, "selected — press f") {
+		t.Fatalf("selection footer should be hidden when no visible batch-fixable finding is selected:\n%s", output)
+	}
+}
+
+func TestRenderFixProgressModal_LongLabelStaysWithinModal(t *testing.T) {
+	m := readyModelForRenderRegression(t, makeTestFindings(1), 56, 24)
+	m.fixProgress = 7
+	m.fixProgressTotal = 10
+	m.fixProgressLabel = "finding-" + strings.Repeat("very-long-identifier-", 8)
+
+	output := m.renderFixProgressModal()
+	assertRenderedWidthAtMost(t, output, m.modalWidth(64))
+	if !strings.Contains(output, "70%") {
+		t.Fatalf("progress modal should keep percent visible:\n%s", output)
+	}
+}
+
+func TestRenderFixConfirmModal_LongActionTextStaysWithinModal(t *testing.T) {
+	m := readyModelForRenderRegression(t, makeTestFindings(1), 64, 24)
+	m.fixTarget = &fix.Fix{
+		Label: "Apply " + strings.Repeat("very-long-fix-label-", 8),
+		Kind:  domain.RemediationReview,
+		Actions: []fix.Action{
+			{
+				Label:   "Action " + strings.Repeat("very-long-action-label-", 6),
+				Warning: "Warning " + strings.Repeat("very-long-warning-text-", 5),
+			},
+			{Label: "Alternative"},
+		},
+	}
+	m.fixActionIdx = 0
+
+	output := m.renderFixConfirmModal()
+	assertRenderedWidthAtMost(t, output, m.modalWidth(76))
+	if !strings.Contains(output, "Apply? (y/N)") {
+		t.Fatalf("confirm modal should keep confirmation prompt visible:\n%s", output)
+	}
+}
+
 func TestRenderModalsExposeActionableContent(t *testing.T) {
 	t.Run("help switches list and detail instructions", func(t *testing.T) {
 		m := readyModelForRenderRegression(t, makeTestFindings(1), 120, 32)
@@ -235,6 +317,7 @@ func TestUpdate_CtrlASelectsOnlyBatchFixableVisibleFindings(t *testing.T) {
 		{ID: "review.001", Title: "Review fix", Severity: domain.SeverityMedium, Source: domain.SourceCompose, Remediation: domain.RemediationReview},
 		{ID: "manual.001", Title: "Manual guidance", Severity: domain.SeverityLow, Source: domain.SourceTrivy, Remediation: domain.RemediationManual},
 		{ID: "unavailable.001", Title: "No fix", Severity: domain.SeverityCritical, Source: domain.SourceTrivy, Remediation: domain.RemediationUnavailable},
+		{ID: "fixed.001", Title: "Already fixed", Severity: domain.SeverityHigh, Source: domain.SourceLynis, Remediation: domain.RemediationAuto, Fixed: true},
 	}
 	m := readyModelForRenderRegression(t, findings, 120, 32)
 
@@ -244,11 +327,39 @@ func TestUpdate_CtrlASelectsOnlyBatchFixableVisibleFindings(t *testing.T) {
 	if !mv.selectedSet["auto.001"] || !mv.selectedSet["review.001"] {
 		t.Fatalf("ctrl+a should select automatic and review fixes, got %#v", mv.selectedSet)
 	}
-	if mv.selectedSet["manual.001"] || mv.selectedSet["unavailable.001"] || len(mv.selectedSet) != 2 {
-		t.Fatalf("ctrl+a should not select manual or unavailable findings for batch fix, got %#v", mv.selectedSet)
+	if mv.selectedSet["manual.001"] || mv.selectedSet["unavailable.001"] || mv.selectedSet["fixed.001"] || len(mv.selectedSet) != 2 {
+		t.Fatalf("ctrl+a should not select manual, unavailable, or fixed findings for batch fix, got %#v", mv.selectedSet)
 	}
 	if strings.Contains(mv.renderMain(), "4 selected") {
 		t.Fatal("selection footer counted non-batch-fixable findings")
+	}
+}
+
+func TestRebuildTable_DisablesManualUnavailableAndFixedRowMarkers(t *testing.T) {
+	findings := []domain.Finding{
+		{ID: "auto.001", Title: "Automatic fix", Severity: domain.SeverityHigh, Source: domain.SourceLynis, Remediation: domain.RemediationAuto},
+		{ID: "manual.001", Title: "Manual guidance", Severity: domain.SeverityLow, Source: domain.SourceTrivy, Remediation: domain.RemediationManual},
+		{ID: "unavailable.001", Title: "No fix", Severity: domain.SeverityCritical, Source: domain.SourceTrivy, Remediation: domain.RemediationUnavailable},
+		{ID: "fixed.001", Title: "Already fixed", Severity: domain.SeverityHigh, Source: domain.SourceCompose, Remediation: domain.RemediationAuto, Fixed: true},
+	}
+	m := readyModelForRenderRegression(t, findings, 120, 32)
+	m.selectedSet = map[string]bool{"manual.001": true, "fixed.001": true}
+	m.rebuildTable()
+
+	disabled := map[string]bool{}
+	for i, row := range m.table.Rows() {
+		visible := m.visibleFindings()
+		if row[0] == "─" {
+			disabled[visible[i].ID] = true
+		}
+		if (visible[i].ID == "manual.001" || visible[i].ID == "fixed.001") && row[0] == "◆" {
+			t.Fatalf("%s rendered as selected even though it is not batch-fixable: %#v", visible[i].ID, row)
+		}
+	}
+	for _, id := range []string{"manual.001", "unavailable.001", "fixed.001"} {
+		if !disabled[id] {
+			t.Fatalf("%s should render with disabled marker; got disabled map %#v", id, disabled)
+		}
 	}
 }
 

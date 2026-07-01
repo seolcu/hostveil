@@ -124,18 +124,17 @@ test.describe("Keyboard interactions", () => {
     );
   });
 
-  test("Full keyboard flow: navigate → select → fix → escape", async ({
+  test("Full keyboard flow: select → fix → escape", async ({
     page,
   }) => {
-    // navigate down past any disabled rows to a fixable one
-    await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(100);
-    await page.keyboard.press("ArrowDown");
+    // Start on a currently batch-fixable row. Earlier E2E tests may have
+    // fixed some fixture rows, so a hard-coded number of ArrowDown presses can
+    // legitimately land on a disabled/fixed row.
+    const selectedRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await selectedRow.click({ force: true });
     await page.waitForTimeout(200);
-
-    // select it with Space
-    const selectedRow = page.locator("#findings tr.selected");
     const selectedCheck = selectedRow.locator(".row-check");
+    await expect(selectedCheck).toBeEnabled();
     await page.keyboard.press("Space");
     await page.waitForTimeout(200);
     await expect(selectedCheck).toBeChecked();

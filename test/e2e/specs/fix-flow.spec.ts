@@ -185,3 +185,95 @@ test.describe("Fix flow", () => {
     await expect(fixSelectedBtn).toContainText("Fix selected (2");
   });
 });
+
+test.describe("Fix flow cache refresh", () => {
+  test("successful fix refresh invalidates cached findings with related fixed rows", async ({ page }) => {
+    const before = {
+      hostname: "fix-refresh",
+      local_ip: "127.0.0.1",
+      phase: "complete",
+      tools: { trivy: { status: 2, message: "ok" } },
+      score: 80,
+      findings: [
+        {
+          id: "primary.fix",
+          title: "Primary fix target",
+          description: "First finding",
+          how_to_fix: "Apply the primary fix",
+          severity: 1,
+          source: 1,
+          service: "host",
+          remediation: 0,
+          evidence: {},
+          metadata: {},
+          fixed: false,
+        },
+        {
+          id: "related.fix",
+          title: "Related finding fixed by same action",
+          description: "Second finding",
+          how_to_fix: "The primary fix should also resolve this",
+          severity: 1,
+          source: 1,
+          service: "host",
+          remediation: 0,
+          evidence: {},
+          metadata: {},
+          fixed: false,
+        },
+      ],
+      score_breakdown: { overall: 80, axes: [] },
+    };
+    const after = {
+      ...before,
+      findings: before.findings.map((finding) => ({ ...finding, fixed: true })),
+    };
+    let resultCalls = 0;
+    let fixCalls = 0;
+
+    await page.route("**/api/result", async (route) => {
+      resultCalls++;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(resultCalls === 1 ? before : after),
+      });
+    });
+    await page.route("**/api/fix", async (route) => {
+      const req = route.request();
+      const payload = req.postDataJSON();
+      fixCalls++;
+      if (payload.info_only) {
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            label: "Primary fix",
+            actions: [{ label: "Apply primary fix", type: "exec", command: "true" }],
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          label: "Applied primary fix",
+          also_fixed: ["related.fix"],
+        }),
+      });
+    });
+
+    await page.goto("/");
+    await expect(page.locator('#findings tr[data-id="primary.fix"]')).toBeVisible({ timeout: 5000 });
+
+    await page.locator('#findings tr[data-id="primary.fix"]').click({ force: true });
+    await page.locator("#detail .fix-btn").click();
+    await expect(page.locator("#fixModal")).toBeVisible();
+    await page.locator("#modalFixYes").click();
+
+    await expect(page.locator('#findings tr[data-id="primary.fix"] td').last()).toHaveText("Fixed");
+    await expect(page.locator('#findings tr[data-id="related.fix"] td').last()).toHaveText("Fixed");
+    expect(resultCalls).toBeGreaterThanOrEqual(2);
+    expect(fixCalls).toBe(2);
+  });
+});

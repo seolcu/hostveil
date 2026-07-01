@@ -26,6 +26,10 @@ type fixProgressMsg struct {
 }
 type fixBatchResultMsg struct{ success, fail, skipped int }
 
+func isBatchFixableFinding(f domain.Finding) bool {
+	return !f.Fixed && f.Remediation != domain.RemediationUnavailable && f.Remediation != domain.RemediationManual
+}
+
 func (m *model) toggleSelection() {
 	visible := m.visibleFindings()
 	idx := m.table.Cursor()
@@ -36,7 +40,7 @@ func (m *model) toggleSelection() {
 	if idx < 0 || idx >= len(visible) {
 		return
 	}
-	if visible[idx].Remediation == domain.RemediationUnavailable || visible[idx].Remediation == domain.RemediationManual {
+	if !isBatchFixableFinding(visible[idx]) {
 		return
 	}
 	id := visible[idx].ID
@@ -56,7 +60,7 @@ func (m *model) runBatchFix() (tea.Model, tea.Cmd) {
 	visible := m.visibleFindings()
 	var toFix []domain.Finding
 	for _, f := range visible {
-		if m.selectedSet[f.ID] {
+		if m.selectedSet[f.ID] && isBatchFixableFinding(f) {
 			toFix = append(toFix, f)
 		}
 	}

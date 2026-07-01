@@ -75,6 +75,97 @@ test.describe("XSS regression", () => {
     await expect(detail).toContainText("<script>window.__xss_evidence=true;</script>");
   });
 
+  test("service filter chips escape service names before using innerHTML", async ({ page }) => {
+    const servicePayload = "svc\"><img src=x onerror=\"window.__xss_service=true\">";
+
+    await page.route("**/api/result", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          hostname: "xss-test",
+          local_ip: "127.0.0.1",
+          phase: "complete",
+          tools: { trivy: { status: 2, message: "ok" }, lynis: { status: 2, message: "ok" } },
+          score: 80,
+          findings: [
+            {
+              id: "xss.service-filter",
+              title: "Finding with service filter payload",
+              description: "service names also originate from scan input",
+              how_to_fix: "escape the chip label and data attribute",
+              severity: 1,
+              source: 2,
+              service: servicePayload,
+              remediation: 0,
+              evidence: {},
+              metadata: {},
+              fixed: false,
+            },
+          ],
+          score_breakdown: { overall: 80, axes: [] },
+        }),
+      });
+    });
+
+    await page.addInitScript(() => {
+      window.__xss_service = false;
+    });
+
+    await page.goto("/");
+
+    await expect(page.locator("#findings tr[data-index]").first()).toBeVisible({ timeout: 5000 });
+    const serviceChip = page.locator("#serviceFilters .chip").filter({ hasText: "Svc" }).first();
+    await expect(serviceChip).toBeVisible();
+    await expect(serviceChip.locator("img")).toHaveCount(0);
+    expect(await serviceChip.getAttribute("data-value")).toBe(servicePayload);
+    expect(await page.evaluate(() => window.__xss_service)).toBe(false);
+  });
+
+  test("finding table escapes ID suffixes before rendering short IDs", async ({ page }) => {
+    const idPayload = "scanner.<img src=x onerror=\"globalThis['__xss_id']=true\">";
+
+    await page.route("**/api/result", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          hostname: "xss-test",
+          local_ip: "127.0.0.1",
+          phase: "complete",
+          tools: { trivy: { status: 2, message: "ok" }, lynis: { status: 2, message: "ok" } },
+          score: 80,
+          findings: [
+            {
+              id: idPayload,
+              title: "Finding with ID payload",
+              description: "IDs are rendered in both the table and detail panel",
+              how_to_fix: "escape the short ID cell",
+              severity: 1,
+              source: 1,
+              service: "host",
+              remediation: 0,
+              evidence: {},
+              metadata: {},
+              fixed: false,
+            },
+          ],
+          score_breakdown: { overall: 80, axes: [] },
+        }),
+      });
+    });
+
+    await page.addInitScript(() => {
+      window.__xss_id = false;
+    });
+
+    await page.goto("/");
+
+    const row = page.locator("#findings tr[data-index]").first();
+    await expect(row).toBeVisible({ timeout: 5000 });
+    await expect(row.locator(".id img")).toHaveCount(0);
+    await expect(row.locator(".id")).toContainText("<img src=x onerror=\"globalThis['__xss_id']=true\">");
+    expect(await page.evaluate(() => window.__xss_id)).toBe(false);
+  });
+
   test("collapsible 'View more' toggle does not execute embedded scripts", async ({ page }) => {
     const longHowToFix = "X".repeat(350) +
       "<script>window.__xss_collapse=true;</script><img src=x onerror=\"window.__xss_collapse_img=true\">" +

@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/table"
-	"github.com/seolcu/hostveil/internal/domain"
 )
 
 func (m *model) rebuildTable() {
@@ -18,7 +17,7 @@ func (m *model) rebuildTable() {
 	cursor := m.table.Cursor()
 	for i, f := range visible {
 		checkbox := "◇"
-		if f.Remediation == domain.RemediationUnavailable {
+		if !isBatchFixableFinding(f) {
 			checkbox = "─"
 		} else if m.selectedSet[f.ID] {
 			checkbox = "◆"

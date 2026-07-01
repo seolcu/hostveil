@@ -84,7 +84,8 @@ test.describe("Responsive visual regressions", () => {
     await gotoReady(page, { width: 1440, height: 520 });
 
     const findingRow = page.locator('#findings tr[data-id="trivy.cve-2024-0001"]');
-    await findingRow.click({ force: true });
+    await findingRow.scrollIntoViewIfNeeded();
+    await findingRow.click();
     await expect(page.locator("#detail h2")).toContainText("CVE-2024-0001");
 
     await page.locator("#detail details").evaluateAll((details) => {
@@ -181,11 +182,29 @@ test.describe("Responsive visual regressions", () => {
     await expect(unavailableCheckbox).toBeDisabled();
 
     const selectAll = page.locator("#selectAllCheck");
-    await selectAll.check({ force: true });
+    await selectAll.click({ force: true });
 
     await expect(unavailableCheckbox).not.toBeChecked();
     await expect(selectAll).not.toBeChecked();
     await expect(page.locator("#fixSelectedBtn")).toBeHidden();
+  });
+
+  test("select-all ignores fixed findings and does not expose stale batch counts", async ({
+    page,
+  }) => {
+    await gotoReady(page, { width: 1280, height: 720 });
+
+    const fixedRow = page.locator('#findings tr[data-id="trivy.cve-2024-0003"]');
+    await expect(fixedRow).toBeVisible();
+    await expect(fixedRow.locator("td").last()).toHaveText("Fixed");
+    const fixedCheckbox = fixedRow.locator(".row-check");
+    await expect(fixedCheckbox).toBeDisabled();
+
+    await page.locator("#selectAllCheck").check({ force: true });
+
+    await expect(fixedCheckbox).not.toBeChecked();
+    await expect(fixedRow).not.toHaveClass(/row-selected/);
+    await expect(page.locator("#fixSelectedBtn")).not.toContainText("14");
   });
 
   test("rescan button stays in loading state while the rescan request is pending", async ({
