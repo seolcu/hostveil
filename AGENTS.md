@@ -9,7 +9,8 @@ hostveil codebase. For deeper background, see
 ## Project Overview
 
 hostveil is a single-binary Linux security scanner (Go 1.26,
-~13.5k LoC). It runs three backends in parallel, merges their
+~17k LoC including tests, ~8.4k excluding). It runs three backends
+in parallel, merges their
 findings into a single scored snapshot, and renders the snapshot
 in either a terminal UI (Bubble Tea v2) or an embedded Web UI
 (no frontend build step).
@@ -17,7 +18,7 @@ in either a terminal UI (Bubble Tea v2) or an embedded Web UI
 | Concern | Backing scanner | Public entry |
 |---|---|---|
 | Docker Compose misconfigurations (privileged, host network, missing `no-new-privileges`, secrets, healthcheck, etc.) | native, in-process | `internal/composeaudit.ScanAll` |
-| Container image CVEs + IaC | [Trivy](https://github.com/aquasecurity/trivy) | `internal/trivy.ScanAll` |
+| Container image CVEs | [Trivy](https://github.com/aquasecurity/trivy) | `internal/trivy.ScanAll` |
 | Host hardening (SSH, kernel, file perms, audit, logging) | [Lynis](https://github.com/CISOfy/lynis) | `internal/lynis.Scan` |
 
 Every finding has a registered fix the user can apply from either
@@ -294,10 +295,10 @@ a way that goes unnoticed. These rules are enforced by tests in
 | `internal/domain/live.go` | `ScanProgress` — the only type with internal synchronization |
 | `internal/domain/exec.go` | `CommandRunner` interface and `DefaultRunner` |
 | `internal/scan/scan.go` | `RunSingleTool`, `ScanningMessage`, `overrideCVEClassifications` (CVE → Manual when no `FixedVersion`) |
-| `internal/trivy/trivy.go` | `ScanAll`, `scanConfig`, `scanImage`, JSON decoders |
+| `internal/trivy/trivy.go` | `ScanAll`, `scanProject`, `runImage`, JSON decoders (image CVE scan only — see `internal/trivy/README.md`) |
 | `internal/lynis/lynis.go` | `Scan`, `runLynis`, `parseReportFile` (4 line types: warning, suggestion, manual_event, exception_event) |
 | `internal/composeaudit/audit.go` | `ScanAll`, per-project scanner |
-| `internal/composeaudit/rules.go` | One function per rule (DR-001 … DR-019) |
+| `internal/composeaudit/rules.go` | One function per rule; 19 `compose.dsNNN` (per-service) + 4 `compose.drNNN` (cross-cutting) rules |
 | `internal/compose/edit.go` | `File`, `Open`, `SetField`, `RemoveFromList`, `Backup`, `Save`, `Diff` |
 | `internal/fix/types.go` | `Action`, `Fix`, `FixResult`, `Context`, `Registry` (Lookup, Classify, HasExactEntry, WildcardMatch) |
 | `internal/fix/register.go` | `RegisterAll` — wires up compose, system, and image fixes |
@@ -330,7 +331,7 @@ a way that goes unnoticed. These rules are enforced by tests in
 - **External runtime deps** (skipped gracefully if missing,
   never fatal):
   - `docker` — `docker compose ls` for project discovery
-  - `trivy` — CVE + IaC
+  - `trivy` — container image CVEs
   - `lynis` — host hardening
 - **Re-exec via sudo**: `ensureSudo()` in `cmd/hostveil/main.go`
   re-execs the current process through `sudo os.Args...` with

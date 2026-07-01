@@ -72,6 +72,25 @@ Versions follow [Semantic Versioning](https://semver.org/).
   `Remediation` for a finding ID it recognizes — an unrecognized ID's
   `Remediation` is whatever the caller already set it to, which is
   exactly why every constructor must set it.
+- **`internal/trivy/README.md` described a dead architecture.**
+  Claimed hostveil shells out to `trivy config` for compose
+  misconfigurations (via a `scanConfig` function that no longer
+  exists), when that scan was actually removed a month ago in favor
+  of the native `internal/composeaudit` package specifically
+  because it never produced compose findings in practice. The
+  package doc comment (`trivy.go` line 1) already said "image
+  scans" correctly; only the README had drifted. Also corrected the
+  same stale "CVE + IaC" claim in three places in `AGENTS.md`
+  (the architecture table, the important-files table's function
+  list for `trivy.go`, and the runtime-deps list), the
+  `compose.ds*`/`compose.dr*` rule-ID scheme (`AGENTS.md` still said
+  `DR-001 … DR-019`, an uppercase scheme this codebase never used
+  post-rewrite), the README's Mermaid diagram (labeled Trivy
+  "image + config scan"), and the README's "Can I add my own rule?"
+  answer (named only two of the three fix files, omitting
+  `internal/fix/images.go`). Also updated `AGENTS.md`'s LoC count,
+  stale since well before this session (~13.5k when the codebase is
+  actually ~17k including tests, ~8.4k without).
 
 ### Fixed
 - **`compose.dr002` never detected long-syntax port exposure.**

@@ -117,7 +117,7 @@ Everything else is optional:
 ```mermaid
 flowchart LR
     A[docker compose ls] --> B[Compose audit]
-    A --> C[Trivy: image + config scan]
+    A --> C[Trivy: image CVE scan]
     D[Lynis: host audit]
     B --> E[Merge findings]
     C --> E
@@ -268,8 +268,10 @@ Trivy's output can shift as its CVE database updates; Lynis is
 deterministic for an unchanged system.
 
 **Can I add my own rule?**
-Yes — register a `Fix` in `internal/fix/compose.go` or
-`internal/fix/system.go` and it's classified automatically. See
+Yes — register a `Fix` in `internal/fix/compose.go` (compose
+rules), `internal/fix/system.go` (host rules), or
+`internal/fix/images.go` (image/CVE rules), and it's classified
+automatically. See
 [`AGENTS.md`](AGENTS.md#remediationkind-classification-rules).
 
 **Does hostveil keep scanning in the background?**
