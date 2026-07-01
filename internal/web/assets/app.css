@@ -298,7 +298,8 @@ th:nth-child(6) { width: 125px; }
 .empty-detail { display: grid; min-height: 380px; place-content: center; text-align: center; color: var(--muted); }
 .empty-detail span { width: 56px; height: 56px; margin: 0 auto 16px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(100,200,255,0.22), rgba(255,85,115,0.1)); }
 .detail .badge { display: inline-block; margin-bottom: 12px; }
-.detail h2 { font-size: 26px; line-height: 1.1; letter-spacing: -0.04em; }
+.detail .fix-btn { margin-top: 18px; }
+.detail h2 { font-size: 26px; line-height: 1.1; letter-spacing: -0.04em; overflow-wrap: anywhere; }
 .detail-meta { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 20px 0; padding: 16px; background: rgba(255,255,255,0.035); border: 1px solid var(--line); }
 .detail-meta dt { color: var(--muted); }
 .detail-meta dd { margin: 0; }
@@ -461,6 +462,9 @@ th.sortable.desc::after {
 .modal-content p { margin: 8px 0; line-height: 1.5; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions button { flex: 1; padding: 10px 16px; height: 42px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; margin-top: 0; }
+/* Help modal: center the single Close button instead of stretching full width. */
+.modal-help .modal-actions { justify-content: center; }
+.modal-help .modal-actions button { flex: 0 0 auto; min-width: 160px; }
 
 .modal-fix .fix-label {
   color: var(--accent);

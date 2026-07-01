@@ -194,15 +194,26 @@ function bindControls() {
   rescanBtn.addEventListener("click", async () => {
     rescanBtn.blur();
     rescanBtn.disabled = true;
+    rescanBtn.classList.add("loading");
     rescanBtn.textContent = "Scanning...";
     try {
       await fetch("/api/rescan", { method: "POST" });
-      state.pollTimer = setInterval(fetchResult, 2000);
+      // The rescan runs in a goroutine on the server and the snapshot
+      // phase transitions to "loading" immediately. The polling loop
+      // stops on its own once phase !== "loading" (see fetchResult).
+      // doRender will re-set the button label and disabled state as
+      // the phase changes, so we intentionally do NOT reset the
+      // button here — doing so would briefly show "Rescan" while the
+      // scan is still running.
+      if (!state.pollTimer) {
+        state.pollTimer = setInterval(fetchResult, 2000);
+      }
     } catch (e) {
       console.error("Rescan failed");
+      rescanBtn.disabled = false;
+      rescanBtn.classList.remove("loading");
+      rescanBtn.textContent = "Rescan";
     }
-    rescanBtn.disabled = false;
-  rescanBtn.textContent = "Rescan";
   });
 
   const exportBtn = document.createElement("button");
@@ -488,6 +499,16 @@ function doRender() {
   if (state.pollTimer) {
     clearInterval(state.pollTimer);
     state.pollTimer = null;
+  }
+  // Reset the Rescan button to its idle state. It was set to
+  // "Scanning..." when the user clicked it, and renderLoading()
+  // hides the findings-panel (and therefore the button) during the
+  // scan. Now that the scan has finished, put the button back.
+  const rescanBtn = $("rescanBtn");
+  if (rescanBtn) {
+    rescanBtn.disabled = false;
+    rescanBtn.classList.remove("loading");
+    rescanBtn.textContent = "Rescan";
   }
   const visible = findings();
   if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
@@ -925,6 +946,10 @@ function showFixModal(label, action, onConfirm) {
   document.body.appendChild(overlay);
   overlay.querySelector("#modalFixYes").onclick = onConfirm;
   overlay.querySelector("#modalFixNo").onclick = closeFixModal;
+  // Click on overlay (outside modal) also closes — matches help modal.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeFixModal();
+  });
 }
 
 function showFixActionModal(label, actions, onSelect, onCancel = () => {}) {
@@ -990,6 +1015,10 @@ function showFixActionModal(label, actions, onSelect, onCancel = () => {}) {
     closeFixModal();
     onCancel();
   };
+  // Click on overlay (outside modal) also closes — matches help modal.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeFixModal();
+  });
 }
 
 function closeFixModal() {
@@ -1281,6 +1310,10 @@ function showExportModal() {
     closeExportModal();
   };
   overlay.querySelector("#exportClose").onclick = closeExportModal;
+  // Click on overlay (outside modal) also closes — matches help modal.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeExportModal();
+  });
 }
 
 function closeExportModal() {
