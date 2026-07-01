@@ -107,7 +107,7 @@ func Serve(opts Options) error {
 	mux.Handle("/", http.FileServerFS(staticFS))
 
 	server := &http.Server{
-		Handler:           secureHeaders(mux),
+		Handler:           secureHeaders(hostGuard(opts.Addr, mux)),
 		ReadHeaderTimeout: domain.HTTPReadHeaderTimeout,
 		// Cap how long any single request can take. Without these a slow
 		// or malicious client can hold a connection open indefinitely.
@@ -139,6 +139,62 @@ func sameOrigin(origin, host string) bool {
 		return false
 	}
 	return u.Host == host && (u.Scheme == "http" || u.Scheme == "https")
+}
+
+// allowedHostsFor computes the set of Host header values that are
+// legitimate for a server bound to bindAddr. For a wildcard bind
+// (0.0.0.0, ::, or a bare ":PORT") there is no fixed hostname to check —
+// the operator has already opted into broader exposure (see the
+// non-local bind warning) — so validation is skipped by returning nil.
+// For a specific bind (loopback or a chosen interface IP), only that
+// exact "host:port", plus loopback's usual aliases, are valid.
+func allowedHostsFor(bindAddr string) map[string]bool {
+	host, port, err := net.SplitHostPort(bindAddr)
+	if err != nil {
+		return nil
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		return nil
+	}
+	allowed := map[string]bool{net.JoinHostPort(host, port): true}
+	if host == "127.0.0.1" || host == "::1" {
+		allowed[net.JoinHostPort("127.0.0.1", port)] = true
+		allowed[net.JoinHostPort("::1", port)] = true
+		allowed[net.JoinHostPort("localhost", port)] = true
+	}
+	return allowed
+}
+
+// hostGuard defends against DNS rebinding: an attacker-controlled domain
+// whose DNS record is switched to resolve to this server's bind address
+// after the victim's browser has already loaded a page from it. The
+// browser's same-origin policy is IP-blind — it only compares the
+// declared Origin/Host, not the resolved address — so a plain script on
+// the attacker's page can fetch hostveil's API once the rebind lands, and
+// both the Origin and Host headers on that request read as the
+// attacker's domain. sameOrigin(Origin, r.Host) does NOT catch this: it
+// compares two attacker-controlled values against each other, and they
+// match by construction. The only real defense is validating Host
+// against a fixed allowlist derived from how this server was actually
+// bound, independent of anything the client sent.
+//
+// Applied globally (every route, including GET /api/result, which has
+// no other access control) rather than per-handler, so a future route
+// added without an explicit check is still covered.
+func hostGuard(bindAddr string, next http.Handler) http.Handler {
+	allowed := allowedHostsFor(bindAddr)
+	if allowed == nil {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !allowed[strings.ToLower(r.Host)] {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"rejected: unrecognized Host header"}`))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func secureHeaders(next http.Handler) http.Handler {

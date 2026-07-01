@@ -35,6 +35,23 @@ as you would any other host audit report.
   the `Host` header. Browsers always send `Origin` on
   cross-origin POSTs, so a malicious site open in another tab
   cannot trigger fix application.
+- **DNS rebinding protection.** Every route — including `GET
+  /api/result`, which has no other access control — is wrapped
+  in a Host-header allowlist derived from how the server was
+  actually bound (`hostGuard` in `internal/web/server.go`). This
+  matters because the CSRF check above (`sameOrigin(Origin,
+  Host)`) cannot detect DNS rebinding: after a successful rebind,
+  both the `Origin` and `Host` headers on the attacker's request
+  read as the attacker's domain, so they match each other by
+  construction. `hostGuard` instead checks `Host` against a fixed
+  allowlist independent of anything the client sent. When bound
+  to loopback (the default), only `127.0.0.1`, `::1`, and
+  `localhost` on the bound port are accepted. A non-loopback bind
+  to a specific IP accepts only that exact host — a wildcard bind
+  (`0.0.0.0`, `::`, or a bare `:PORT`) skips the check entirely,
+  since the operator has already opted into broader exposure (see
+  the non-local bind warning below) and there is no fixed
+  hostname to allowlist for a LAN/public listener.
 - **Secure response headers.** `X-Content-Type-Options:
   nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
   no-referrer`, `Cache-Control: no-store`, and a tight

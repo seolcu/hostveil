@@ -47,6 +47,19 @@ Versions follow [Semantic Versioning](https://semver.org/).
   every non-`:ro` volume on the service instead of just the flagged one.
 
 ### Security
+- **`GET /api/result` was vulnerable to DNS rebinding.** Unlike the
+  POST endpoints, it had no `Origin` check at all — a page on any
+  domain that later got DNS-rebound to `127.0.0.1` could `fetch()` it
+  and exfiltrate the full scan snapshot (findings, evidence, hostname,
+  local IP). More fundamentally, the existing `sameOrigin(Origin,
+  Host)` CSRF check used on the POST endpoints does not defend against
+  this class of attack anyway: after a successful rebind, both
+  `Origin` and `Host` read as the attacker's domain, so they match
+  each other by construction and the check passes. Added `hostGuard`,
+  applied globally to every route, which validates `Host` against a
+  fixed allowlist derived from how the server was actually bound
+  (independent of anything the client sends) rather than against
+  another client-controlled header.
 - **Scan history and fix checkpoints were world-readable.**
   `/var/lib/hostveil/{checkpoints,scans}` and their contents were
   created `0755`/`0644`. Checkpoint diffs and full scan snapshots can
