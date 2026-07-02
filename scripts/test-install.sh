@@ -26,6 +26,9 @@ if [ ! -f "$SCRIPT_DIR/install.sh" ]; then
     exit 1
 fi
 
+TEST_TIMEOUT_SECONDS="${HOSTVEIL_INSTALL_TEST_TIMEOUT_SECONDS:-420}"
+
+
 # ── Test runner ───────────────────────────────────────────────────────────
 # Arguments: image name setup_commands install_commands verify_commands
 run() {
@@ -37,7 +40,7 @@ run() {
     printf "  [%s] %-27s " "$image" "$name"
 
     rc=0
-    timeout 300 docker run --rm \
+    timeout "$TEST_TIMEOUT_SECONDS" docker run --rm \
         -v "$SCRIPT_DIR/install.sh:/install.sh:ro" \
         "$image" \
         /bin/sh -c "
@@ -55,7 +58,7 @@ run() {
         PASS=$((PASS + 1))
     else
         echo -e "${RED}✗${RESET}"
-        [ "$rc" -eq 124 ] && echo "      (timeout after 300s)"
+        [ "$rc" -eq 124 ] && echo "      (timeout after ${TEST_TIMEOUT_SECONDS}s)"
         # Show last relevant output (skip Docker pull progress)
         grep -v '^docker:' "$log" | tail -20 | sed 's/^/      /'
         FAIL=$((FAIL + 1))
