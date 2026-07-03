@@ -129,6 +129,7 @@ h1 {
 .metric {
   padding: 14px 16px;
   border: 1px solid var(--line);
+  border-radius: 4px;
   background: rgba(17, 21, 34, 0.88);
 }
 
@@ -203,6 +204,7 @@ h1 {
 .score-axis {
   padding: 12px;
   border: 1px solid var(--line);
+  border-radius: 4px;
   background: rgba(17, 21, 34, 0.88);
 }
 
@@ -331,9 +333,14 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   cursor: pointer;
   color: var(--muted);
   border: 1px solid var(--line);
+  border-radius: 4px;
   background: rgba(255,255,255,0.03);
   padding: 6px 8px;
 }
+
+.detail-meta { display: grid; grid-template-columns: minmax(92px, 110px) minmax(0, 1fr); gap: 8px 12px; margin: 20px 0; padding: 16px; background: rgba(255,255,255,0.035); border: 1px solid var(--line); border-radius: 4px; }
+
+.section pre, .evidence-details pre { white-space: pre-wrap; word-break: break-word; padding: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-sunken); }
 
 .chip.active, button:not(:disabled):hover {
   color: var(--text);
@@ -569,6 +576,7 @@ th.sortable.desc::after {
 .modal-content {
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 8px;
   padding: 32px;
   max-width: 480px;
   width: min(100%, 480px);
