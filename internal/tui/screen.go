@@ -109,7 +109,7 @@ func (m model) renderLoading() string {
 
 func (m model) renderMain() string {
 	t := m.theme()
-	if m.width < 40 || m.height < 10 {
+	if m.width < 40 || m.height < 24 {
 		return lipgloss.NewStyle().
 			Width(m.width).Height(m.height).
 			Render(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
@@ -443,7 +443,7 @@ func (m model) renderMetrics() string {
 	} else if m.width < 118 {
 		cols = 3
 	}
-	cardW := max(13, (m.width-4-(cols-1))/cols-1)
+	cardW := max(13, (m.width-4-(cols-1))/cols)
 	var cards []string
 	muted := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
 	for _, mt := range metrics {

@@ -126,9 +126,9 @@ func (m model) findingColumnWidth(layout string) int {
 	case "compact":
 		return max(12, w-3-8-6)
 	case "medium":
-		return max(14, w-3-8-14-11-18)
+		return max(14, w-3-8-14-11-10)
 	default:
-		return max(16, w-3-8-7-14-11-24)
+		return max(16, w-3-8-7-14-11-12)
 	}
 }
 
