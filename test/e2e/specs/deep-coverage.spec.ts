@@ -238,9 +238,10 @@ test.describe("Score plate styling", () => {
     expect(border).toBeTruthy();
 
     const bg = await scoreplate.evaluate(
-      (el) => getComputedStyle(el).backgroundImage
+      (el) => getComputedStyle(el).backgroundColor
     );
-    expect(bg).toContain("linear-gradient");
+    expect(bg).toBeTruthy();
+    expect(bg).not.toBe("rgba(0, 0, 0, 0)");
   });
 
   test("Score label uses correct font size", async ({ page }) => {

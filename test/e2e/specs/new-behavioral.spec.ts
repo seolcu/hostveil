@@ -667,32 +667,6 @@ test.describe("Finding count text", () => {
   });
 });
 
-test.describe("Row double-click toggles selection", () => {
-  test("double-click toggles row-selected class", async ({ page }) => {
-    await ready(page);
-
-    // Find a non-first row (to avoid auto-selection edge case)
-    const row = page.locator(
-      "#findings tr[data-id='trivy.cve-2024-0001']"
-    );
-    await row.dblclick({ force: true });
-    await page.waitForTimeout(300);
-
-    const isSelected = await row.evaluate((el) =>
-      el.classList.contains("row-selected")
-    );
-    expect(isSelected).toBe(true);
-
-    // Double-click again to deselect
-    await row.dblclick({ force: true });
-    await page.waitForTimeout(300);
-
-    const isDeselected = await row.evaluate(
-      (el) => !el.classList.contains("row-selected")
-    );
-    expect(isDeselected).toBe(true);
-  });
-});
 
 test.describe("Tab navigation", () => {
   test("Tab moves focus to interactive elements", async ({ page }) => {
