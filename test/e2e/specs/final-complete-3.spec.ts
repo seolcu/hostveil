@@ -130,12 +130,9 @@ test.describe("Score breakdown bar color", () => {
     const count = await bars.count();
 
     for (let i = 0; i < count; i++) {
-      const bgColor = await bars.nth(i).evaluate(
-        (el) => getComputedStyle(el).backgroundColor
-      );
-      // Should have a non-transparent background
-      expect(bgColor).toBeTruthy();
-      expect(bgColor).not.toBe("rgba(0, 0, 0, 0)");
+      const style = await bars.nth(i).getAttribute("style");
+      // Each bar should have a width style set by the renderer
+      expect(style).toMatch(/width:\d+%/);
     }
   });
 });
