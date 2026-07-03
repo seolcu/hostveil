@@ -858,11 +858,11 @@ th.sortable.desc::after {
 .score-axis[data-axis="host_hardening"] .score-axis-top strong { color: var(--medium); }
 .score-axis[data-axis="secrets"] .score-axis-top strong { color: var(--accent); }
 
-/* Score plate severity-based border */
-.scoreplate.score-low { border-color: rgba(135, 217, 120, 0.3); }
-.scoreplate.score-medium { border-color: rgba(247, 198, 107, 0.3); }
-.scoreplate.score-high { border-color: rgba(255, 152, 104, 0.3); }
-.scoreplate.score-critical { border-color: rgba(255, 85, 115, 0.3); }
+/* Score plate severity-based glow */
+.scoreplate.score-low { border-color: rgba(135, 217, 120, 0.35); box-shadow: 0 24px 60px var(--shadow), 0 0 20px rgba(135, 217, 120, 0.08); }
+.scoreplate.score-medium { border-color: rgba(247, 198, 107, 0.35); box-shadow: 0 24px 60px var(--shadow), 0 0 20px rgba(247, 198, 107, 0.08); }
+.scoreplate.score-high { border-color: rgba(255, 152, 104, 0.35); box-shadow: 0 24px 60px var(--shadow), 0 0 20px rgba(255, 152, 104, 0.08); }
+.scoreplate.score-critical { border-color: rgba(255, 85, 115, 0.35); box-shadow: 0 24px 60px var(--shadow), 0 0 20px rgba(255, 85, 115, 0.08); }
 
 /* Score breakdown description visibility */
 .score-breakdown-head p { color: rgba(131, 144, 173, 0.8); }
@@ -873,8 +873,12 @@ th.sortable.desc::after {
 .filters::-webkit-scrollbar-thumb { background: rgba(139, 155, 191, 0.3); border-radius: 3px; }
 .filters::-webkit-scrollbar-thumb:hover { background: rgba(139, 155, 191, 0.5); }
 
-/* Metrics card subtle border improvement */
+/* Metrics card color coding */
 .metric { border-color: rgba(139, 155, 191, 0.18); }
+.metric strong.critical { color: var(--critical); }
+.metric strong.high { color: var(--high); }
+.metric strong.medium { color: var(--medium); }
+.metric strong.low { color: var(--low); }
 
 /* Badge border radius for softer look */
 .badge { border-radius: 4px; }
