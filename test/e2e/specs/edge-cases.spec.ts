@@ -92,10 +92,12 @@ test.describe("Fix result modal", () => {
   });
 
   test("Apply fix shows fix progress modal then result", async ({ page }) => {
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    const fixBtn = page.locator(".fix-btn");
+    const fixBtn = page.locator("#detail .fix-btn");
     await expect(fixBtn).toBeVisible({ timeout: 5000 });
     await fixBtn.click();
 
@@ -165,10 +167,12 @@ test.describe("Toast notifications", () => {
   }) => {
     await waitForReady(page);
 
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    const fixBtn = page.locator(".fix-btn");
+    const fixBtn = page.locator("#detail .fix-btn");
     await expect(fixBtn).toBeVisible({ timeout: 5000 });
     await fixBtn.click();
 

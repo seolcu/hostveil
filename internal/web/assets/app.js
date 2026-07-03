@@ -807,7 +807,7 @@ function renderDetail(f) {
       <summary>Metadata (${metaKeys.length})</summary>
       ${metaKeys.map((key) => `<pre><strong>${escapeHTML(key)}</strong>\n${escapeHTML(metadata[key])}</pre>`).join("")}
     </details>` : "";
-  const fixable = f.remediation === 0 || f.remediation === 1;
+  const fixable = !f.fixed && (f.remediation === 0 || f.remediation === 1);
   $("detail").innerHTML = `
     <span class="badge ${severity(f)}">${severity(f)}</span>
     <h2>${escapeHTML(title(f))}</h2>

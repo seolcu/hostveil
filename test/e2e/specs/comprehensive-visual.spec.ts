@@ -160,11 +160,13 @@ test.describe("Fix modal interaction", () => {
   });
 
   test("Clicking Fix button opens fix modal", async ({ page }) => {
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    const fixBtn = page.locator(".fix-btn");
-    await expect(fixBtn).toBeVisible();
+    const fixBtn = page.locator("#detail .fix-btn");
+    await expect(fixBtn).toBeVisible({ timeout: 5000 });
     await fixBtn.click();
 
     const modal = page.locator(".modal-overlay");
@@ -173,18 +175,22 @@ test.describe("Fix modal interaction", () => {
   });
 
   test("Fix modal shows warning label", async ({ page }) => {
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    await page.locator(".fix-btn").click();
+    await page.locator("#detail .fix-btn").click();
     await expect(page.locator(".fix-label")).toBeVisible();
   });
 
   test("Fix modal has Apply and Cancel buttons", async ({ page }) => {
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    await page.locator(".fix-btn").click();
+    await page.locator("#detail .fix-btn").click();
     await expect(page.locator(".modal-actions button")).toHaveCount(2);
     await expect(
       page.locator(".modal-actions button").first()
@@ -192,10 +198,12 @@ test.describe("Fix modal interaction", () => {
   });
 
   test("Fix modal closes on cancel", async ({ page }) => {
-    const row = page.locator("#findings tr").nth(1);
-    await row.click();
+    const row = page.locator("#findings tr[data-index]:not(.disabled)").first();
+    await expect(row).toBeVisible();
+    await row.click({ force: true });
+    await page.waitForTimeout(300);
 
-    await page.locator(".fix-btn").click();
+    await page.locator("#detail .fix-btn").click();
     await expect(page.locator(".modal-overlay")).toBeVisible();
 
     await page.locator(".modal-actions button").last().click();
