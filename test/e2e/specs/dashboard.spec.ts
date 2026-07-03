@@ -34,6 +34,53 @@ test.describe("Dashboard", () => {
     await expect(page.locator("h1")).toHaveText("hostveil");
   });
 
+  test("Score breakdown renders fixture axes with scores and penalty caps", async ({ page }) => {
+    await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
+
+    const result = await page.evaluate(() =>
+      fetch("/api/result").then((response) => response.json())
+    );
+    const expectedAxes = result.score_breakdown.axes as Array<{
+      id: string;
+      label: string;
+      score: number;
+      penalty: number;
+      max_penalty: number;
+      critical?: number;
+      high?: number;
+      medium?: number;
+      low?: number;
+    }>;
+    expect(expectedAxes).toHaveLength(4);
+
+    const scoreBreakdown = page.locator("#scoreBreakdown");
+    await expect(scoreBreakdown).toBeVisible();
+
+    const axes = scoreBreakdown.locator(".score-axis");
+    await expect(axes).toHaveCount(expectedAxes.length);
+
+    for (const expected of expectedAxes) {
+      const severityCounts = [
+        [expected.critical, "C"],
+        [expected.high, "H"],
+        [expected.medium, "M"],
+        [expected.low, "L"],
+      ]
+        .filter(([count]) => Number(count) > 0)
+        .map(([count, label]) => `${count}${label}`);
+      const expectedCounts = severityCounts.length ? severityCounts : ["No active findings"];
+
+      const axis = scoreBreakdown.locator(`.score-axis[data-axis="${expected.id}"]`);
+      await expect(axis).toBeVisible();
+      await expect(axis.locator(".score-axis-top span")).toHaveText(expected.label);
+      await expect(axis.locator(".score-axis-top strong")).toHaveText(`${expected.score}/100`);
+      await expect(axis.locator(".score-axis-meta").first()).toContainText(
+        `${expected.penalty}/${expected.max_penalty} penalty cap used`
+      );
+      await expect(axis.locator(".score-axis-counts span")).toHaveText(expectedCounts);
+    }
+  });
+
   test("Scenario 2: Filter findings by severity", async ({ page }) => {
     await expect(page.locator("#findings tr").first()).toBeVisible({ timeout: 5000 });
 

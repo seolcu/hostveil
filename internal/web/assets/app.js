@@ -513,6 +513,7 @@ function doRender() {
   const visible = findings();
   if (state.selected >= visible.length) state.selected = Math.max(0, visible.length - 1);
   renderMetrics();
+  renderScoreBreakdown();
   renderFilters();
   document.querySelectorAll("th.sortable").forEach((th) => {
     const col = Number(th.dataset.col);
@@ -570,6 +571,8 @@ function renderLoading() {
     })
     .join("");
   $("metrics").innerHTML = "";
+  $("scoreBreakdown").hidden = true;
+  $("scoreBreakdown").innerHTML = "";
   $("findings").innerHTML = "";
   $("detail").innerHTML = `
     <div class="loading-state">
@@ -618,6 +621,56 @@ function renderMetrics() {
     ["Fixable", fixable, "", "metric--fixable"],
   ];
   $("metrics").innerHTML = metrics.map(([label, value, cls = "", extra = ""]) => `<article class="metric ${extra}"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
+}
+
+function renderScoreBreakdown() {
+  const container = $("scoreBreakdown");
+  if (!container) return;
+  const axes = state.live?.score_breakdown?.axes || [];
+  if (!axes.length) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+
+  container.hidden = false;
+  const cards = axes.map((axis) => {
+    const axisLabel = axis.label || axis.id || "Score axis";
+    const score = Math.max(0, Math.min(100, Math.round(Number(axis.score) || 0)));
+    const penalty = Math.max(0, Math.round(Number(axis.penalty) || 0));
+    const maxPenalty = Math.max(0, Math.round(Number(axis.max_penalty) || 0));
+    const penaltyPct = maxPenalty > 0 ? Math.min(100, Math.round((penalty / maxPenalty) * 100)) : 0;
+    const severityCounts = [
+      ["critical", Number(axis.critical) || 0, "C"],
+      ["high", Number(axis.high) || 0, "H"],
+      ["medium", Number(axis.medium) || 0, "M"],
+      ["low", Number(axis.low) || 0, "L"],
+    ].filter(([, count]) => count > 0);
+    const countSummary = severityCounts.length
+      ? severityCounts.map(([cls, count, label]) => `<span class="${cls}">${count}${label}</span>`).join("")
+      : `<span class="muted">No active findings</span>`;
+    const capText = maxPenalty > 0 ? `${penalty}/${maxPenalty} penalty cap used` : `${penalty} penalty`;
+    return `<article class="score-axis ${severityClassForScore(score)}" data-axis="${escapeHTML(axis.id || "")}">
+      <div class="score-axis-top">
+        <span>${escapeHTML(axisLabel)}</span>
+        <strong>${score}/100</strong>
+      </div>
+      <div class="score-axis-bar" aria-label="${escapeHTML(`${axisLabel}: ${capText}`)}">
+        <span style="width:${penaltyPct}%"></span>
+      </div>
+      <div class="score-axis-meta">
+        <span>${escapeHTML(capText)}</span>
+        <span class="score-axis-counts">${countSummary}</span>
+      </div>
+    </article>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="score-breakdown-head">
+      <span>Score breakdown</span>
+      <p>Each category has its own penalty cap, so one scanner cannot dominate the whole score.</p>
+    </div>
+    <div class="score-axis-grid">${cards}</div>`;
 }
 
 function renderFilters() {
@@ -847,7 +900,6 @@ async function doApplyFix(finding, button, actionIdx) {
     });
     const result = await response.json();
     if (result.success) {
-      finding.fixed = true;
       const successHtml = `<div class="fix-success">&#10003; ${escapeHTML(result.label || "Fixed")}</div>`;
       const diffHtml = result.diff ? highlightDiff(result.diff) : "";
       await refreshResultNow();

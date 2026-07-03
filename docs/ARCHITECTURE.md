@@ -197,6 +197,11 @@ State management is a single global `state` object plus a
 The poll is paused on `visibilitychange` to avoid hammering the
 server while the tab is hidden.
 
+The dashboard renders both the overall score and the four-axis
+`ScoreBreakdown` from `/api/result`, so users can see which capped
+category — vulnerabilities, container exposure, host hardening, or
+secrets — is driving the score.
+
 Modal overlays (fix confirmation, action selection, batch
 progress, export, help) are rendered as `position: fixed`
 divs appended to `document.body`. They are styled with the

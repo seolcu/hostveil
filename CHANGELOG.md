@@ -37,6 +37,10 @@ Versions follow [Semantic Versioning](https://semver.org/).
   score/count summaries, existing hostveil guidance, and redacted
   evidence/metadata so users can ask for a remediation plan without
   uploading the raw JSON report.
+- **Web UI score breakdown.** The dashboard now shows the same four
+  scoring axes exposed by `/api/result` — vulnerabilities, container
+  exposure, host hardening, and secrets — with each axis's score,
+  penalty cap usage, and severity counts.
 - **Static project website.** Added a no-build landing page under
   `site/` with the existing TUI/Web UI screenshots, install CTA,
   feature/check coverage sections, FAQ, and a GitHub Pages deployment

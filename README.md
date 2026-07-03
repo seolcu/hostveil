@@ -62,7 +62,9 @@ they're missing, drops the `hostveil` binary into `/usr/bin`, and
 root. No config file to write, no account to create.
 
 Prefer a browser to a terminal? Run `hostveil serve` and open
-<http://127.0.0.1:8787> instead — same scan, same fixes, same score.
+<http://127.0.0.1:8787> instead — same scan, same fixes, same score
+breakdown by vulnerabilities, container exposure, host hardening, and
+secrets.
 
 If `trivy` or `lynis` isn't installed, hostveil skips that category
 instead of crashing. Run `hostveil setup` any time to install what's
