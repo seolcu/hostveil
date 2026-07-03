@@ -189,11 +189,12 @@ test.describe("Sort by title then severity", () => {
 test.describe("Table row severity badge color", () => {
   test("critical badge has critical class", async ({ page }) => {
     await waitForReady(page);
-    await page.waitForTimeout(500);
     const row = page.locator(
       "#findings tr[data-id='trivy.cve-2024-0001']"
     );
+    await expect(row).toBeVisible({ timeout: 5000 });
     const badge = row.locator(".badge");
+    await expect(badge).toBeVisible({ timeout: 5000 });
     const cls = await badge.getAttribute("class");
     expect(cls).toContain("critical");
   });
