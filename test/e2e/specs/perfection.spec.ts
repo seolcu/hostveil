@@ -189,8 +189,9 @@ test.describe("Sort by title then severity", () => {
 test.describe("Table row severity badge color", () => {
   test("critical badge has critical class", async ({ page }) => {
     await waitForReady(page);
+    // Use unavailable finding that cannot be fixed by earlier tests
     const row = page.locator(
-      "#findings tr[data-id='trivy.cve-2024-0001']"
+      "#findings tr[data-id='test.unfixable-001']"
     );
     await expect(row).toBeVisible({ timeout: 5000 });
     const badge = row.locator(".badge");
@@ -204,7 +205,9 @@ test.describe("Table row severity badge color", () => {
     const row = page.locator(
       "#findings tr[data-id='lynis.KRNL-5780']"
     );
+    await expect(row).toBeVisible({ timeout: 5000 });
     const badge = row.locator(".badge");
+    await expect(badge).toBeVisible({ timeout: 5000 });
     const cls = await badge.getAttribute("class");
     expect(cls).toContain("low");
   });
