@@ -1,6 +1,7 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "@playwright/test";
 
-async function waitForReady(page: import("@playwright/test").Page): Promise<void> {
+async function waitForReady(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("#findings tr").first()).toBeVisible({
     timeout: 5000,
@@ -8,7 +9,7 @@ async function waitForReady(page: import("@playwright/test").Page): Promise<void
 }
 
 async function apiFetch(
-  page: import("@playwright/test").Page,
+  page: Page,
   path: string,
   options?: RequestInit
 ) {

@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "@playwright/test";
 
 // v2.5.1: Tests for fix-action classification and UI behavior.
@@ -18,7 +19,7 @@ test.describe("Fix action classification", () => {
 
   // Helper: find the first row index whose last-td.muted text matches `label`.
   // Returns -1 if not found.
-  async function findFirstRowByLabel(page: import("@playwright/test").Page, label: string): Promise<number> {
+  async function findFirstRowByLabel(page: Page, label: string): Promise<number> {
     const rows = page.locator("#findings tr[data-index]");
     const rowCount = await rows.count();
     for (let i = 0; i < rowCount; i++) {
