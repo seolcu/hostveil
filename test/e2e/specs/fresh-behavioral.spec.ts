@@ -57,7 +57,6 @@ test.describe("Fix apply flow end-to-end", () => {
   });
 });
 
-
 test.describe("Score breakdown with filtered data", () => {
   test("score breakdown updates after filter", async ({ page }) => {
     await ready(page);
@@ -361,7 +360,6 @@ test.describe("Sort by remediation grouping", () => {
       fixTexts.push((await lastCell.textContent()) ?? "");
     }
 
-    // All Auto+Fixed should come before Review, which comes before Unavailable
     const getGroup = (text: string): number => {
       if (text.includes("Auto") || text.includes("Fixed")) return 0;
       if (text.includes("Review")) return 1;
