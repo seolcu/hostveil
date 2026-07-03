@@ -610,6 +610,10 @@ function renderMetrics() {
     $("score").textContent = `${score}/100`;
     $("score").className = severityClassForScore(score);
   }
+  const scoreplate = document.querySelector(".scoreplate");
+  if (scoreplate) {
+    scoreplate.className = "scoreplate score-" + severityClassForScore(score);
+  }
   const counts = countBy(items, severity);
   const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
   const metrics = [
@@ -788,9 +792,10 @@ function isBatchSelectable(f) {
   return !f.fixed && r !== "unavailable" && r !== "manual";
 }
 
+
 function renderDetail(f) {
   if (!f) {
-    $("detail").innerHTML = `<div class="empty-detail"><span></span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
+    $("detail").innerHTML = `<div class="empty-detail"><span>\u26C5</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
     return;
   }
   const evidence = f.evidence || {};

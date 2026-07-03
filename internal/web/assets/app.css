@@ -24,8 +24,8 @@ body {
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(circle at 12% 8%, rgba(100, 200, 255, 0.2), transparent 28rem),
-    radial-gradient(circle at 90% 0%, rgba(255, 85, 115, 0.14), transparent 22rem),
+    radial-gradient(circle at 12% 8%, rgba(100, 200, 255, 0.12), transparent 28rem),
+    radial-gradient(circle at 90% 0%, rgba(255, 85, 115, 0.06), transparent 22rem),
     linear-gradient(135deg, #090b12 0%, #0c101a 42%, #080a10 100%);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
@@ -225,13 +225,7 @@ h1 {
   font-size: 18px;
 }
 
-.score-axis-bar {
-  height: 6px;
-  margin: 10px 0 8px;
-  overflow: hidden;
-  background: var(--surface-sunken);
-  border: 1px solid var(--line);
-}
+.score-axis-bar { height: 6px; margin: 10px 0 8px; overflow: hidden; background: var(--surface-sunken); border-radius: 3px; border: none; }
 
 .score-axis-bar span {
   display: block;
@@ -366,7 +360,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .table-wrap { flex: 1; min-width: 0; overflow: auto; padding: 0 18px; scroll-padding-top: 44px; }
 table { width: 100%; min-width: 680px; border-collapse: collapse; table-layout: fixed; }
 th, td { padding: 12px 14px; border-bottom: 1px solid rgba(139, 155, 191, 0.13); text-align: left; vertical-align: top; }
-th { position: sticky; top: 0; z-index: 2; color: var(--muted); background: var(--panel); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+th { position: sticky; top: 0; z-index: 2; color: var(--muted); background: var(--panel); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
 tbody tr { cursor: pointer; transition: background 150ms ease, color 150ms ease; }
 tbody tr:hover, tbody tr.selected { background: rgba(100, 200, 255, 0.09); }
 tbody tr.disabled { cursor: pointer; opacity: 0.55; }
@@ -389,7 +383,7 @@ th:nth-child(6) { width: 125px; }
 .muted { color: var(--muted); }
 
 .empty-detail { display: grid; min-height: 380px; place-content: center; text-align: center; color: var(--muted); }
-.empty-detail span { width: 56px; height: 56px; margin: 0 auto 16px; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(100,200,255,0.22), rgba(255,85,115,0.1)); }
+.empty-detail span { width: 56px; height: 56px; margin: 0 auto 16px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(135deg, rgba(100,200,255,0.15), rgba(255,85,115,0.08)); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--muted); }
 .detail .badge { display: inline-block; margin-bottom: 12px; }
 .detail .fix-btn { margin-top: 18px; }
 .detail h2 { font-size: 26px; line-height: 1.1; letter-spacing: -0.04em; overflow-wrap: anywhere; }
@@ -549,7 +543,7 @@ th.sortable.desc::after {
   th:nth-child(4), td:nth-child(4) { display: none; }
 }
 
-.fixed td { opacity: 0.45; }
+.fixed td { opacity: 0.65; }
 
 .fix-warning { color: var(--high); }
 
@@ -852,3 +846,34 @@ th.sortable.desc::after {
   .help-grid { grid-template-columns: 1fr; gap: 16px; }
   .help-section dl { grid-template-columns: auto minmax(0, 1fr); }
 }
+
+/* Per-axis penalty bar colors */
+.score-axis[data-axis="vulnerabilities"] .score-axis-bar span { background: var(--critical); }
+.score-axis[data-axis="container_exposure"] .score-axis-bar span { background: var(--high); }
+.score-axis[data-axis="host_hardening"] .score-axis-bar span { background: var(--medium); }
+.score-axis[data-axis="secrets"] .score-axis-bar span { background: var(--accent); }
+.score-axis[data-axis="vulnerabilities"] .score-axis-top strong { color: var(--critical); }
+.score-axis[data-axis="container_exposure"] .score-axis-top strong { color: var(--high); }
+.score-axis[data-axis="host_hardening"] .score-axis-top strong { color: var(--medium); }
+.score-axis[data-axis="secrets"] .score-axis-top strong { color: var(--accent); }
+
+/* Score plate severity-based border */
+.scoreplate.score-low { border-color: rgba(135, 217, 120, 0.3); }
+.scoreplate.score-medium { border-color: rgba(247, 198, 107, 0.3); }
+.scoreplate.score-high { border-color: rgba(255, 152, 104, 0.3); }
+.scoreplate.score-critical { border-color: rgba(255, 85, 115, 0.3); }
+
+/* Score breakdown description visibility */
+.score-breakdown-head p { color: rgba(131, 144, 173, 0.8); }
+
+/* Filter panel scrollbar styling */
+.filters::-webkit-scrollbar { width: 6px; }
+.filters::-webkit-scrollbar-track { background: transparent; }
+.filters::-webkit-scrollbar-thumb { background: rgba(139, 155, 191, 0.3); border-radius: 3px; }
+.filters::-webkit-scrollbar-thumb:hover { background: rgba(139, 155, 191, 0.5); }
+
+/* Metrics card subtle border improvement */
+.metric { border-color: rgba(139, 155, 191, 0.18); }
+
+/* Badge border radius for softer look */
+.badge { border-radius: 4px; }
