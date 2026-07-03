@@ -607,8 +607,7 @@ test.describe("Selection behavior", () => {
     const row = page.locator("#findings tr[data-index='1']");
     await row.click({ force: true });
     await page.waitForTimeout(200);
-    const cls1 = await row.getAttribute("class");
-    expect(cls1).toContain("selected");
+    expect((await row.getAttribute("class"))?.includes("selected")).toBeTruthy();
   });
 
   test("double-click toggles row-selected", async ({ page }) => {
@@ -616,12 +615,10 @@ test.describe("Selection behavior", () => {
     const row = page.locator("#findings tr[data-id='lynis.FILE-6310']");
     await row.dblclick();
     await page.waitForTimeout(200);
-    const cls2 = await row.getAttribute("class");
-    expect(cls2).toContain("row-selected");
+    expect((await row.getAttribute("class"))?.includes("row-selected")).toBeTruthy();
     await row.dblclick();
     await page.waitForTimeout(200);
-    const cls3 = await row.getAttribute("class");
-    expect(cls3).not.toContain("row-selected");
+    expect((await row.getAttribute("class"))?.includes("row-selected")).toBeFalsy();
   });
 
   test("select-all checkbox selects all batch-selectable", async ({ page }) => {
