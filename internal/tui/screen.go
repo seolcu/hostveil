@@ -519,12 +519,12 @@ func (m model) renderListPane() string {
 	headRight := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(fit(filterInfo, headRightW))
 	head := lipgloss.NewStyle().
 		Width(headW).
-		Padding(1, 2).
+		Padding(1, 1).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Render(lipgloss.JoinHorizontal(lipgloss.Top,
 			headLeft,
-			strings.Repeat(" ", max(1, headW-lipgloss.Width(headLeft)-lipgloss.Width(headRight)-6)),
+			strings.Repeat(" ", max(1, headW-lipgloss.Width(headLeft)-lipgloss.Width(headRight)-4)),
 			headRight,
 		))
 
