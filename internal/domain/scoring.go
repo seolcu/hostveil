@@ -156,7 +156,7 @@ func axisScore(penalty, maxPenalty int) uint8 {
 	if penalty <= 0 {
 		return 100
 	}
-	if penalty >= maxPenalty || maxPenalty <= 0 {
+	if penalty >= maxPenalty {
 		return 0
 	}
 	s := 100 - penalty*100/maxPenalty

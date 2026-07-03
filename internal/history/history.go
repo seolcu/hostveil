@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -187,13 +188,9 @@ func ListCheckpoints() ([]Checkpoint, error) {
 		cps = append(cps, cp)
 	}
 	// Sort newest first
-	for i := 0; i < len(cps); i++ {
-		for j := i + 1; j < len(cps); j++ {
-			if cps[j].Timestamp.After(cps[i].Timestamp) {
-				cps[i], cps[j] = cps[j], cps[i]
-			}
-		}
-	}
+	sort.Slice(cps, func(i, j int) bool {
+		return cps[i].Timestamp.After(cps[j].Timestamp)
+	})
 	// Trim to max
 	if len(cps) > MaxCheckpoints {
 		cps = cps[:MaxCheckpoints]
@@ -282,13 +279,9 @@ func ListScans() ([]ScanRecord, error) {
 		}
 		scans = append(scans, s)
 	}
-	for i := 0; i < len(scans); i++ {
-		for j := i + 1; j < len(scans); j++ {
-			if scans[j].Timestamp.After(scans[i].Timestamp) {
-				scans[i], scans[j] = scans[j], scans[i]
-			}
-		}
-	}
+	sort.Slice(scans, func(i, j int) bool {
+		return scans[i].Timestamp.After(scans[j].Timestamp)
+	})
 	if len(scans) > MaxScans {
 		scans = scans[:MaxScans]
 	}
@@ -316,13 +309,9 @@ func cleanupOldScans() {
 		}
 		files = append(files, fileInfo{name: e.Name(), modTime: info.ModTime()})
 	}
-	for i := 0; i < len(files); i++ {
-		for j := i + 1; j < len(files); j++ {
-			if files[j].modTime.Before(files[i].modTime) {
-				files[i], files[j] = files[j], files[i]
-			}
-		}
-	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.Before(files[j].modTime)
+	})
 	for _, f := range files[MaxScans:] {
 		os.Remove(filepath.Join(ScanDir, f.name))
 	}

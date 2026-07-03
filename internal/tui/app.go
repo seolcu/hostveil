@@ -281,8 +281,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.width <= 0 || m.height <= 0 {
 			return m, nil
 		}
-		headerH := lipgloss.Height(m.renderHeader())
-		metricsH := lipgloss.Height(m.renderMetrics())
+		headerH := m.headerH
+		metricsH := m.metricsH
 		if mouse.Y < headerH+metricsH {
 			return m, nil
 		}
@@ -371,6 +371,7 @@ func (m model) startRescan() model {
 	m.toast = "Rescanning..."
 	m.toastUntil = time.Time{}
 	go func() {
+		scan.RunSingleTool(m.live, m.fixReg, "compose")
 		scan.RunSingleTool(m.live, m.fixReg, "trivy")
 		scan.RunSingleTool(m.live, m.fixReg, "lynis")
 		m.live.Finalize()

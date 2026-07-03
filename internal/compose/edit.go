@@ -70,7 +70,12 @@ func (f *File) Diff() string {
 	if err == nil {
 		return ""
 	}
-	return string(out)
+	// diff exits 1 when files differ (the expected case), 2 for real errors
+	// (missing file, permission denied). Only return output for exit code 1.
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return string(out)
+	}
+	return ""
 }
 
 func (f *File) SetField(service, path string, value interface{}) error {
@@ -308,18 +313,29 @@ func (f *File) ServiceNames() ([]string, error) {
 	return names, nil
 }
 
-func (f *File) GetFieldStrings(service, path string) ([]string, error) {
+// walkPath resolves a dotted path inside a service's YAML node.
+// Returns nil if any step is missing.
+func (f *File) walkPath(service, path string) *yaml.Node {
 	svc, err := f.serviceNode(service, false)
 	if err != nil || svc == nil {
-		return nil, err
+		return nil
 	}
-	parts := strings.Split(path, ".")
 	node := svc
-	for _, part := range parts {
+	for _, part := range strings.Split(path, ".") {
 		node = findInMapping(node, part)
 		if node == nil {
-			return nil, nil
+			return nil
 		}
+	}
+	return node
+}
+
+// GetFieldStrings returns the string values of a dotted path inside a service.
+// The error is always nil after a successful Open — callers may safely ignore it.
+func (f *File) GetFieldStrings(service, path string) ([]string, error) {
+	node := f.walkPath(service, path)
+	if node == nil {
+		return nil, nil
 	}
 	switch node.Kind {
 	case yaml.ScalarNode:
@@ -337,18 +353,14 @@ func (f *File) GetFieldStrings(service, path string) ([]string, error) {
 	}
 }
 
+// GetFieldRaw returns the scalar value of a dotted path inside a service.
+// The error is always nil after a successful Open — serviceNode with
+// create=false returns (nil, nil) for a missing root, and walkPath
+// propagates that as a nil node. Callers may safely ignore the error.
 func (f *File) GetFieldRaw(service, path string) (string, error) {
-	svc, err := f.serviceNode(service, false)
-	if err != nil || svc == nil {
-		return "", err
-	}
-	parts := strings.Split(path, ".")
-	node := svc
-	for _, part := range parts {
-		node = findInMapping(node, part)
-		if node == nil {
-			return "", nil
-		}
+	node := f.walkPath(service, path)
+	if node == nil {
+		return "", nil
 	}
 	if node.Kind == yaml.ScalarNode {
 		return node.Value, nil
@@ -357,17 +369,5 @@ func (f *File) GetFieldRaw(service, path string) (string, error) {
 }
 
 func (f *File) GetFieldNode(service, path string) *yaml.Node {
-	svc, err := f.serviceNode(service, false)
-	if err != nil || svc == nil {
-		return nil
-	}
-	parts := strings.Split(path, ".")
-	node := svc
-	for _, part := range parts {
-		node = findInMapping(node, part)
-		if node == nil {
-			return nil
-		}
-	}
-	return node
+	return f.walkPath(service, path)
 }

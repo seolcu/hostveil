@@ -253,7 +253,7 @@ func listenWithReclaim(addr string) (net.Listener, error) {
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "  Port %d is in use; stopping process %d.\n", port, pid)
-		_ = syscall.Kill(pid, syscall.SIGTERM)
+		_ = syscall.Kill(pid, syscall.SIGTERM) // best-effort; fallback to SIGKILL below
 	}
 
 	deadline := time.Now().Add(2 * time.Second)
@@ -275,7 +275,7 @@ func listenWithReclaim(addr string) (net.Listener, error) {
 		if !isHostveilProcess(pid) {
 			continue
 		}
-		_ = syscall.Kill(pid, syscall.SIGKILL)
+		_ = syscall.Kill(pid, syscall.SIGKILL) // force-kill if SIGTERM didn't work
 	}
 	time.Sleep(200 * time.Millisecond)
 
@@ -419,7 +419,9 @@ type fixRequest struct {
 func handleFix(w http.ResponseWriter, r *http.Request, opts Options) {
 	reg := opts.Fixes
 	if reg == nil {
-		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"error":"fix engine not available"}`))
 		return
 	}
 	origin := r.Header.Get("Origin")
@@ -540,6 +542,7 @@ func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
 }
 
 func runRescan(opts Options) {
+	scan.RunSingleTool(opts.Live, opts.Fixes, "compose")
 	scan.RunSingleTool(opts.Live, opts.Fixes, "trivy")
 	scan.RunSingleTool(opts.Live, opts.Fixes, "lynis")
 	opts.Live.Finalize()
@@ -553,7 +556,9 @@ type fixBatchRequest struct {
 func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
 	reg := opts.Fixes
 	if reg == nil {
-		http.Error(w, `{"error":"fix engine not available"}`, http.StatusServiceUnavailable)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"error":"fix engine not available"}`))
 		return
 	}
 	origin := r.Header.Get("Origin")
@@ -582,7 +587,7 @@ func handleFixBatch(w http.ResponseWriter, r *http.Request, opts Options) {
 			continue
 		}
 
-		result := f.Run(fix.Context{Finding: &finding, Log: func(s string, args ...interface{}) {}}, req.ActionIndex)
+		result := history.ApplyWithCheckpoint(f, &finding, req.ActionIndex)
 		entry := map[string]interface{}{
 			"id":      finding.ID,
 			"success": result.Success,
@@ -644,21 +649,14 @@ func handleExport(w http.ResponseWriter, r *http.Request, live *domain.ScanProgr
 
 	switch format {
 	case "csv":
-		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.csv")
-		var buf strings.Builder
-		buf.WriteString("ID,Severity,Source,Service,Title,Description,Remediation,Fixed\n")
-		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%v\n",
-				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
-				domain.EscapeCSV(f.Title), domain.EscapeCSV(f.Description), f.Remediation.String(), f.Fixed))
-		}
-		_, _ = w.Write([]byte(buf.String()))
+		_, _ = w.Write([]byte(domain.RenderCSV(snap.Findings)))
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=hostveil-report.json")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(snap)
+		_ = enc.Encode(snap) // encode directly to response writer; partial write on error is acceptable
 	}
 }

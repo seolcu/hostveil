@@ -229,14 +229,7 @@ func (m *model) exportReport() {
 		}
 		content = string(data)
 	case "csv":
-		var buf strings.Builder
-		buf.WriteString("ID,Severity,Source,Service,Title,Description,Remediation,Fixed\n")
-		for _, f := range snap.Findings {
-			buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%v\n",
-				domain.EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), domain.EscapeCSV(f.Service),
-				domain.EscapeCSV(f.Title), domain.EscapeCSV(f.Description), f.Remediation.String(), f.Fixed))
-		}
-		content = buf.String()
+		content = domain.RenderCSV(snap.Findings)
 	case "md":
 		content = domain.RenderAIBrief(snap)
 	}

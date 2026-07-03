@@ -2,7 +2,6 @@ package fix
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -206,7 +205,7 @@ func composePortRestrict(ctx Context, bind string) error {
 	for _, svc := range svcs {
 		vals, err := f.GetFieldStrings(svc, "ports")
 		if err != nil {
-			log.Printf("fix: cannot read ports for service %q: %v", svc, err)
+			ctx.Log("fix: cannot read ports for service %q: %v", svc, err)
 			continue
 		}
 		if len(vals) == 0 {
@@ -222,7 +221,7 @@ func composePortRestrict(ctx Context, bind string) error {
 			fixed = append(fixed, newV)
 		}
 		if !changed {
-			log.Printf("fix: no host-bound port found for service %q (already restricted or no host port)", svc)
+			ctx.Log("fix: no host-bound port found for service %q (already restricted or no host port)", svc)
 		}
 		if err := f.SetField(svc, "ports", fixed); err != nil {
 			return err

@@ -65,7 +65,7 @@ func finalizeIfDone(live *domain.ScanProgress) {
 		// Save scan snapshot to history (best-effort)
 		go func() {
 			snap := live.Snapshot()
-			_ = history.SaveScan(snap)
+			_ = history.SaveScan(snap) // best-effort; scan already complete
 		}()
 	}
 }

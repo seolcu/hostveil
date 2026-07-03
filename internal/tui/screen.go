@@ -530,8 +530,8 @@ func (m model) renderListPane() string {
 
 	tbl := m.table
 	tableH := m.listHeight()
-	if visible := m.visibleFindings(); len(visible)+1 < tableH {
-		tableH = len(visible) + 1
+	if visLen := len(visible); visLen+1 < tableH {
+		tableH = visLen + 1
 	}
 	tbl.SetHeight(tableH)
 	tableView := tbl.View()

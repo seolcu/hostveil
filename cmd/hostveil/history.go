@@ -141,7 +141,7 @@ func runRollback(args []string) error {
 	if result.Restart != nil {
 		fmt.Println()
 		fmt.Printf("  %s may need to be restarted.\n", result.Restart.ServiceName)
-		fmt.Printf("  Command: %s\n", result.Restart.Command)
+		fmt.Printf("  Command: %s\n", strings.Join(result.Restart.Command, " "))
 		fmt.Print("  Restart now? [y/N] ")
 		var restartAnswer string
 		fmt.Scanln(&restartAnswer)
@@ -153,7 +153,7 @@ func runRollback(args []string) error {
 				fmt.Printf("  %s\n", msg)
 			}
 		} else {
-			fmt.Printf("  Skipped. Run manually: %s\n", result.Restart.Command)
+			fmt.Printf("  Skipped. Run manually: %s\n", strings.Join(result.Restart.Command, " "))
 		}
 	}
 

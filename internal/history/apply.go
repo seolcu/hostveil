@@ -40,12 +40,12 @@ func ApplyWithCheckpoint(f *fix.Fix, finding *domain.Finding, actionIdx int) fix
 		}
 		if editPath != "" {
 			checkpointDir := filepath.Join(CheckpointDir, cp.ID)
-			if err := EnsureDirs(); err == nil {
-				_ = os.MkdirAll(checkpointDir, 0700)
-				_ = os.MkdirAll(filepath.Join(checkpointDir, BackupSubdir), 0700)
-				if backup, err := BackupFile(checkpointDir, editPath); err == nil {
-					cp.Backups = append(cp.Backups, *backup)
-				}
+			// Best-effort checkpoint creation; the fix still applies
+			// even if the checkpoint directory can't be created.
+			_ = os.MkdirAll(checkpointDir, 0700)
+			_ = os.MkdirAll(filepath.Join(checkpointDir, BackupSubdir), 0700)
+			if backup, err := BackupFile(checkpointDir, editPath); err == nil {
+				cp.Backups = append(cp.Backups, *backup)
 			}
 		}
 	}
@@ -54,8 +54,7 @@ func ApplyWithCheckpoint(f *fix.Fix, finding *domain.Finding, actionIdx int) fix
 
 	if result.Success && len(cp.Backups) > 0 {
 		cp.Diff = result.Diff
-		cp.Restart = RestartForService(finding.Service)
-		_ = SaveCheckpoint(cp)
+		_ = SaveCheckpoint(cp) // best-effort; fix already applied
 	}
 
 	return result

@@ -1,7 +1,10 @@
 // Package domain defines core types: Finding, Severity, Source, and scan progress.
 package domain
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Severity int
 
@@ -127,4 +130,16 @@ func EscapeCSV(s string) string {
 		return `"` + s + `"`
 	}
 	return s
+}
+
+// RenderCSV returns a CSV string for the given findings with a fixed header.
+func RenderCSV(findings []Finding) string {
+	var buf strings.Builder
+	buf.WriteString("ID,Severity,Source,Service,Title,Description,Remediation,Fixed\n")
+	for _, f := range findings {
+		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%v\n",
+			EscapeCSV(f.ID), f.Severity.String(), f.Source.String(), EscapeCSV(f.Service),
+			EscapeCSV(f.Title), EscapeCSV(f.Description), f.Remediation.String(), f.Fixed))
+	}
+	return buf.String()
 }

@@ -553,8 +553,8 @@ func TestHandleExport_CSV(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rec.Code)
 	}
-	if ct := rec.Header().Get("Content-Type"); ct != "text/csv" {
-		t.Errorf("expected text/csv, got %q", ct)
+	if ct := rec.Header().Get("Content-Type"); ct != "text/csv; charset=utf-8" {
+		t.Errorf("expected text/csv; charset=utf-8, got %q", ct)
 	}
 	if cd := rec.Header().Get("Content-Disposition"); cd == "" {
 		t.Error("expected Content-Disposition header")

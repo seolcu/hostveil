@@ -125,15 +125,25 @@ func unifiedDiff(path string, before, after []byte) string {
 		return ""
 	}
 
+	// Write both sides of the diff to temp files. If these fail, the
+	// diff command below will produce an empty or partial result, which
+	// is acceptable for a diff utility.
 	_ = os.WriteFile(aFile.Name(), before, 0644)
 	_ = os.WriteFile(bFile.Name(), after, 0644)
 	aFile.Close()
 	bFile.Close()
 	defer func() {
+		// Best-effort cleanup of temp files; failure is safe to ignore.
 		_ = os.Remove(aFile.Name())
 		_ = os.Remove(bFile.Name())
 	}()
 
-	out, _ := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, aFile.Name(), bFile.Name()).Output()
-	return string(out)
+	out, err := exec.Command("diff", "-u", "--label", "a/"+path, "--label", "b/"+path, aFile.Name(), bFile.Name()).Output()
+	if err == nil {
+		return ""
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return string(out)
+	}
+	return ""
 }

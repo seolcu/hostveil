@@ -558,6 +558,7 @@ volumes:
 		"compose.ds005", "compose.ds006", "compose.ds007", "compose.ds008",
 		"compose.ds009", "compose.ds010", "compose.ds011", "compose.ds012",
 		"compose.ds013", "compose.ds014", "compose.ds015",
+		"compose.ds016", "compose.ds017", "compose.ds018", "compose.ds019",
 		"compose.dr001", "compose.dr002", "compose.dr003",
 	} {
 		if findingIDs[id] {

@@ -7,7 +7,6 @@ import (
 )
 
 func (m *model) rebuildTable() {
-	m.live.Recalculate()
 	m.snap = m.live.Snapshot()
 	m.snapOK = true
 	m.invalidateVisibleCache()

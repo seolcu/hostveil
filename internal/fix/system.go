@@ -249,7 +249,7 @@ install rds /bin/true
 install tipc /bin/true
 `
 				path := "/etc/modprobe.d/hv-disable-uncommon-protocols.conf"
-				if err := exec.Command("sh", "-c", fmt.Sprintf("mkdir -p /etc/modprobe.d && cat > %s <<'EOF'\n%sEOF\n", path, content)).Run(); err != nil {
+				if err := exec.Command("sh", "-c", fmt.Sprintf("mkdir -p /etc/modprobe.d && cat > %s <<'EOF'\n%sEOF\n", shellQuote(path), content)).Run(); err != nil {
 					return err
 				}
 				// Best-effort immediate removal of any currently loaded modules
