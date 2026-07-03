@@ -46,10 +46,10 @@ func TestView_BoundaryDimensionsPreserveVisibleStateAndWidth(t *testing.T) {
 		want     []string
 	}{
 		{
-		name:   "minimum clean snapshot",
-		width:  40,
-		height: 24,
-		want:   []string{"Clean", "0 visible"},
+			name:   "minimum clean snapshot",
+			width:  40,
+			height: 24,
+			want:   []string{"Clean", "0 visible"},
 		},
 		{
 			name:   "default active selection",
