@@ -4,6 +4,8 @@
   --panel: #111522;
   --panel-2: #171c2b;
   --surface-sunken: #0b0e17;
+  --text-dim: #b9c3dd;
+  --text-section: #dbe3f5;
   --line: rgba(139, 155, 191, 0.22);
   --text: #e7ecf8;
   --muted: #8390ad;
@@ -126,7 +128,7 @@ h1 {
 .metric {
   padding: 14px 16px;
   border: 1px solid var(--line);
-  background: rgba(17, 21, 34, 0.86);
+  background: rgba(17, 21, 34, 0.88);
 }
 
 .metric--total {
@@ -200,7 +202,7 @@ h1 {
 .score-axis {
   padding: 12px;
   border: 1px solid var(--line);
-  background: rgba(17, 21, 34, 0.86);
+  background: rgba(17, 21, 34, 0.88);
 }
 
 .score-axis-top {
@@ -371,7 +373,7 @@ tbody tr.disabled { cursor: pointer; opacity: 0.55; }
 tbody tr.disabled .row-check { cursor: not-allowed; }
 tbody tr.disabled:hover { background: inherit; color: inherit; }
 .row-check:disabled { opacity: 0.35; cursor: not-allowed; }
-.id { color: #b9c3dd; white-space: nowrap; }
+.id { color: var(--text-dim); white-space: nowrap; }
 th:nth-child(1) { width: 40px; }
 th:nth-child(2) { width: 90px; }
 th:nth-child(3) { width: 80px; }
@@ -396,7 +398,7 @@ th:nth-child(6) { width: 125px; }
 .detail-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .section { margin-top: 22px; }
 .section h3 { color: var(--accent); font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 10px; }
-.section p, .section pre, .evidence-details pre { color: #dbe3f5; line-height: 1.65; overflow-wrap: anywhere; }
+.section p, .section pre, .evidence-details pre { color: var(--text-section); line-height: 1.65; overflow-wrap: anywhere; }
 .section pre, .evidence-details pre { white-space: pre-wrap; word-break: break-word; padding: 14px; border: 1px solid var(--line); background: var(--surface-sunken); }
 .copy { margin-top: 10px; }
 
@@ -812,9 +814,9 @@ th.sortable.desc::after {
   margin: 16px 0 20px;
 }
 .help-section h3 {
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   color: var(--muted);
   margin-bottom: 8px;
   padding-bottom: 6px;
