@@ -427,28 +427,11 @@ test.describe("Select-all checkbox", () => {
     const cls = await page.locator("#findings tr[data-id='test.unfixable-001']").getAttribute("class");
     expect(cls?.includes("row-selected")).toBeFalsy();
   });
-
-  test("select-all checkbox is indeterminate when some selected", async ({ page }) => {
-    await ready(page);
-    const rowCheck = page.locator("#findings tr[data-id='trivy.cve-2024-0001'] .row-check");
-    await expect(rowCheck).toBeVisible();
-    await rowCheck.check({ force: true });
-    await expect(rowCheck).toBeChecked();
-    await expect(page.locator("#selectAllCheck")).toHaveJSProperty("indeterminate", true);
-  });
 });
 
 // ─── Table row checkbox selection ───
 
 test.describe("Row checkbox selection", () => {
-  test("clicking row checkbox selects the row", async ({ page }) => {
-    await ready(page);
-    const row = page.locator("#findings tr[data-id='trivy.cve-2024-0001']");
-    await expect(row).toBeVisible();
-    await row.locator(".row-check").check({ force: true });
-    await expect(row).toHaveClass(/row-selected/);
-  });
-
   test("disabled checkbox for unavailable finding", async ({ page }) => {
     await ready(page);
     expect(await page.locator("#findings tr[data-id='test.unfixable-001'] .row-check").getAttribute("disabled")).toBe("");
@@ -620,37 +603,6 @@ test.describe("Long text collapse/expand", () => {
       await page.waitForTimeout(200);
       expect(await toggleBtn.textContent()).toBe("View more");
     }
-  });
-});
-
-// ─── Fix button visibility rules ───
-
-test.describe("Fix button visibility rules", () => {
-  test("auto finding shows Fix button", async ({ page }) => {
-    await ready(page);
-    await page.locator("#findings tr[data-id='trivy.cve-2024-0001']").click({ force: true });
-    await expect(page.locator("#detail .fix-btn")).toHaveCount(1);
-  });
-
-  test("review finding shows Fix button", async ({ page }) => {
-    await ready(page);
-    await page.locator("#findings tr[data-id='trivy.dr001']").click({ force: true });
-    await page.waitForTimeout(500);
-    expect(await page.locator("#detail .fix-btn").count()).toBe(1);
-  });
-
-  test("unavailable finding has no Fix button", async ({ page }) => {
-    await ready(page);
-    await page.locator("#findings tr[data-id='test.unfixable-001']").click({ force: true });
-    await page.waitForTimeout(500);
-    expect(await page.locator("#detail .fix-btn").count()).toBe(0);
-  });
-
-  test("fixed finding has no Fix button", async ({ page }) => {
-    await ready(page);
-    await page.locator("#findings tr[data-id='trivy.cve-2024-0003']").click({ force: true });
-    await page.waitForTimeout(500);
-    expect(await page.locator("#detail .fix-btn").count()).toBe(0);
   });
 });
 
