@@ -63,6 +63,18 @@ else
     pass "unknown flag exits non-zero"
 fi
 
+if bash "$INSTALL_SH" --version >/dev/null 2>&1; then
+    fail "--version without value exits non-zero" "expected exit 1"
+else
+    pass "--version without value exits non-zero"
+fi
+
+if bash "$INSTALL_SH" --version v >/dev/null 2>&1; then
+    fail "empty --version value exits non-zero" "expected exit 1 for --version v"
+else
+    pass "empty --version value exits non-zero"
+fi
+
 if cd "$SCRIPT_DIR" && sha256sum -c install.sh.sha256 >/dev/null 2>&1; then
     pass "install.sh.sha256 matches install.sh"
 else

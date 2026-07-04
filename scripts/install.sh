@@ -2,6 +2,7 @@
 set -euo pipefail
 
 VERSION=""
+VERSION_EXPLICIT=false
 SKIP_TRIVY=false
 SKIP_LYNIS=false
 FORCE=false
@@ -23,7 +24,13 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --version requires a value" >&2
+        usage >&2
+        exit 1
+      fi
       VERSION="${2#v}"
+      VERSION_EXPLICIT=true
       shift 2
       ;;
     --no-trivy) SKIP_TRIVY=true; shift ;;
@@ -38,6 +45,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$VERSION_EXPLICIT" == true && -z "$VERSION" ]]; then
+  echo "ERROR: --version requires a non-empty version (e.g. v2.6.0)" >&2
+  exit 1
+fi
 
 # ─── OS / ARCH ────────────────────────────────────────────────────────────
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
