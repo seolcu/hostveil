@@ -92,7 +92,7 @@ def ansi_to_image(text: str, font_path: str, font_size: int = 13) -> Image.Image
                     continue
                 ch_w = font.getlength(ch)
                 if bg != DEFAULT_BG:
-                    draw.rectangle((x, y, x + ch_w, y + line_h - 2), fill=bg)
+                    draw.rectangle((x, y, x + ch_w, y + line_h), fill=bg)
                 if style["strike"]:
                     draw.text((x, y), ch, font=font, fill=fg)
                     mid = y + line_h // 2

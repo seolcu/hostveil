@@ -119,6 +119,19 @@ func TestPaintPanelLineBG_PreservesSelectionWidth(t *testing.T) {
 	}
 }
 
+func TestReanchorPanelBG_KeepsBackgroundAfterStyleReset(t *testing.T) {
+	t.Parallel()
+	theme := DefaultTheme()
+	styled := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Critical)).Bold(true).Render("CRITICAL")
+	line := paintPanelLineBG(theme, 24, " "+styled+"  tail", theme.SurfaceAlt)
+	if strings.Contains(line, "CRITICAL\x1b[m") {
+		t.Fatalf("bare reset after styled text leaves background gaps:\n%s", line)
+	}
+	if !strings.Contains(line, "48;") {
+		t.Fatalf("expected background SGR codes in output:\n%s", line)
+	}
+}
+
 func TestPaintTableView_HighlightsCursorRow(t *testing.T) {
 	t.Parallel()
 	m := readyModelForRenderRegression(t, makeTestFindings(3), 120, 32)
