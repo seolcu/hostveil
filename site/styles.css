@@ -732,18 +732,30 @@ figcaption {
   padding: 24px;
 }
 
+.flow-step-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
 .flow-list span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   height: 30px;
-  margin-bottom: 18px;
+  flex-shrink: 0;
   border: 1px solid var(--accent);
   border-radius: 999px;
   color: var(--accent);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.flow-list li strong {
+  margin: 0;
+  line-height: 1.2;
 }
 
 .flow-list code,

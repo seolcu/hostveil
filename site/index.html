@@ -168,10 +168,10 @@ hostveil</code></pre>
             <h2>Scan, decide, apply, recover.</h2>
           </div>
           <ol class="flow-list">
-            <li><span>01</span><strong>Scan locally</strong><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
-            <li><span>02</span><strong>Prioritize</strong><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of pretending at certainty.</p></li>
-            <li><span>03</span><strong>Apply fixes</strong><p>Use Auto for clear fixes, Review for alternatives, and Manual when the tool should guide instead of mutate.</p></li>
-            <li><span>04</span><strong>Rollback if needed</strong><p>Fix checkpoints keep edited files recoverable through <code>hostveil rollback</code>.</p></li>
+            <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
+            <li><div class="flow-step-head"><span>02</span><strong>Prioritize</strong></div><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of pretending at certainty.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Use Auto for clear fixes, Review for alternatives, and Manual when the tool should guide instead of mutate.</p></li>
+            <li><div class="flow-step-head"><span>04</span><strong>Rollback if needed</strong></div><p>Fix checkpoints keep edited files recoverable through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
       </section>
