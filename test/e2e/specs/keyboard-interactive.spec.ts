@@ -3,9 +3,11 @@ import { test, expect } from "@playwright/test";
 
 async function ready(page: Page): Promise<void> {
   await page.goto("/");
+  await expect(page.locator(".shell.loading")).toHaveCount(0, { timeout: 10000 });
   await expect(page.locator("#findings tr").first()).toBeVisible({
-    timeout: 5000,
+    timeout: 10000,
   });
+  await expect(page.locator("#score")).toHaveText(/^\d+\/100$/, { timeout: 10000 });
 }
 
 // ─── Keyboard: v, R, o, q, Ctrl+A, Ctrl+R, Ctrl+S, f ───
@@ -428,12 +430,11 @@ test.describe("Select-all checkbox", () => {
 
   test("select-all checkbox is indeterminate when some selected", async ({ page }) => {
     await ready(page);
-    await page.locator("#findings tr[data-id='trivy.cve-2024-0001'] .row-check").check({ force: true });
-    await page.waitForTimeout(200);
-    const indeterminate = await page.locator("#selectAllCheck").evaluate(
-      (el) => (el as HTMLInputElement).indeterminate
-    );
-    expect(indeterminate).toBe(true);
+    const rowCheck = page.locator("#findings tr[data-id='trivy.cve-2024-0001'] .row-check");
+    await expect(rowCheck).toBeVisible();
+    await rowCheck.check({ force: true });
+    await expect(rowCheck).toBeChecked();
+    await expect(page.locator("#selectAllCheck")).toHaveJSProperty("indeterminate", true);
   });
 });
 
@@ -443,9 +444,9 @@ test.describe("Row checkbox selection", () => {
   test("clicking row checkbox selects the row", async ({ page }) => {
     await ready(page);
     const row = page.locator("#findings tr[data-id='trivy.cve-2024-0001']");
+    await expect(row).toBeVisible();
     await row.locator(".row-check").check({ force: true });
-    await page.waitForTimeout(200);
-    expect((await row.getAttribute("class"))?.includes("row-selected")).toBeTruthy();
+    await expect(row).toHaveClass(/row-selected/);
   });
 
   test("disabled checkbox for unavailable finding", async ({ page }) => {
@@ -628,8 +629,7 @@ test.describe("Fix button visibility rules", () => {
   test("auto finding shows Fix button", async ({ page }) => {
     await ready(page);
     await page.locator("#findings tr[data-id='trivy.cve-2024-0001']").click({ force: true });
-    await page.waitForTimeout(500);
-    expect(await page.locator("#detail .fix-btn").count()).toBe(1);
+    await expect(page.locator("#detail .fix-btn")).toHaveCount(1);
   });
 
   test("review finding shows Fix button", async ({ page }) => {
