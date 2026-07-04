@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>hostveil</title>
+    <script>
+      (function () {
+        var saved = localStorage.getItem("hostveil-theme");
+        if (saved) document.documentElement.dataset.theme = saved;
+      })();
+    </script>
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
@@ -63,6 +69,11 @@
           <div class="filter-block">
             <h2>Service</h2>
             <div class="chips" id="serviceFilters"></div>
+          </div>
+
+          <div class="filter-block">
+            <h2>Color scheme</h2>
+            <select id="themeSelect" aria-label="Color scheme"></select>
           </div>
 
           <div class="filter-block">

@@ -124,7 +124,7 @@ func TestView_MainTooSmall(t *testing.T) {
 // the main view without crashing. The compositor centers the modal.
 func TestView_ModalOverlaysReady(t *testing.T) {
 	findings := makeTestFindings(3)
-	for _, mm := range []modalMode{modalHelp, modalFilter, modalExport, modalFixResult} {
+	for _, mm := range []modalMode{modalHelp, modalFilter, modalExport, modalFixResult, modalTheme} {
 		m := testModelWithFindings(t, findings)
 		m.width = 120
 		m.height = 40

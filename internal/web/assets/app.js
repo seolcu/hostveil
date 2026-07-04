@@ -1,6 +1,25 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 const toolLabels = { trivy: "Trivy", lynis: "Lynis", compose: "Compose", update: "Update" };
 const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
+const THEME_STORAGE_KEY = "hostveil-theme";
+const THEME_CATALOG = [
+  { id: "default", label: "Default" },
+  { id: "tokyo-night", label: "Tokyo Night" },
+  { id: "catppuccin", label: "Catppuccin" },
+  { id: "nord", label: "Nord" },
+  { id: "dracula", label: "Dracula" },
+  { id: "gruvbox", label: "Gruvbox" },
+  { id: "one-dark", label: "One Dark" },
+  { id: "solarized", label: "Solarized Dark" },
+  { id: "monokai", label: "Monokai" },
+  { id: "everforest", label: "Everforest" },
+  { id: "rose-pine", label: "Rosé Pine" },
+  { id: "kanagawa", label: "Kanagawa" },
+  { id: "github-dark", label: "GitHub Dark" },
+  { id: "ayu-dark", label: "Ayu Dark" },
+  { id: "night-owl", label: "Night Owl" },
+];
+const THEME_IDS = THEME_CATALOG.map((entry) => entry.id);
 
 const state = {
   live: null,
@@ -83,12 +102,60 @@ function invalidateFindingsCache() {
 }
 
 async function init() {
+  initTheme();
   await fetchResult();
   if (state.phase === "loading") {
     state.pollTimer = setInterval(fetchResult, 2000);
   }
   bindControls();
   bindVisibilityPause();
+}
+
+function normalizeThemeId(id) {
+  return THEME_IDS.includes(id) ? id : "default";
+}
+
+function currentThemeId() {
+  return normalizeThemeId(document.documentElement.dataset.theme || "default");
+}
+
+function applyTheme(id) {
+  const theme = normalizeThemeId(id);
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+  const select = $("themeSelect");
+  if (select && select.value !== theme) {
+    select.value = theme;
+  }
+}
+
+function initTheme() {
+  const select = $("themeSelect");
+  if (select && select.options.length === 0) {
+    for (const entry of THEME_CATALOG) {
+      const option = document.createElement("option");
+      option.value = entry.id;
+      option.textContent = entry.label;
+      select.appendChild(option);
+    }
+  }
+  applyTheme(currentThemeId());
+}
+
+function cycleTheme(step) {
+  const idx = THEME_IDS.indexOf(currentThemeId());
+  const next = (idx + step + THEME_IDS.length) % THEME_IDS.length;
+  applyTheme(THEME_IDS[next]);
+  showToast(`Theme: ${themeLabel(THEME_IDS[next])}`, "toast-info");
+}
+
+function themeLabel(id) {
+  const entry = THEME_CATALOG.find((item) => item.id === id);
+  return entry ? entry.label : id;
 }
 
 function bindVisibilityPause() {
@@ -118,6 +185,10 @@ function bindControls() {
   $("sortBy")?.addEventListener("change", (event) => {
     state.sortBy = event.target.value;
     render();
+  });
+  $("themeSelect")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value);
+    showToast(`Theme: ${themeLabel(currentThemeId())}`, "toast-info");
   });
   $("clearFilters")?.addEventListener("click", () => {
     $("clearFilters").blur();
@@ -373,6 +444,13 @@ function bindControls() {
       state.remediation = rems[(idx + 1) % rems.length];
       state.selected = 0;
       render();
+      return;
+    }
+
+    // t: cycle color scheme
+    if (e.key === "t" && !e.shiftKey) {
+      e.preventDefault();
+      cycleTheme(1);
       return;
     }
 
@@ -1452,6 +1530,13 @@ function showHelpModal() {
             <dt><kbd>Ctrl+A</kbd></dt><dd>Select all visible</dd>
             <dt><kbd>Ctrl+R</kbd></dt><dd>Recalculate score</dd>
             <dt><kbd>Ctrl+S</kbd></dt><dd>Rescan all tools</dd>
+          </dl>
+        </div>
+        <div class="help-section">
+          <h3>Appearance</h3>
+          <dl>
+            <dt><kbd>t</kbd></dt><dd>Cycle color scheme</dd>
+            <dt>Sidebar</dt><dd>Use the Color scheme dropdown</dd>
           </dl>
         </div>
         <div class="help-section">
