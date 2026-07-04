@@ -9,7 +9,7 @@ One binary, no config file, no cloud account.
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
 
-[Website](https://seolcu.github.io/hostveil/) · [Documentation](docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
+[Website](https://hostveil.seolcu.com/) · [Documentation](docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
 
 Point it at a Linux box running Docker Compose. It scans the compose
 files, the container images, and the host OS in parallel, merges
