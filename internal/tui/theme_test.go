@@ -6,6 +6,9 @@ func TestLookupTheme_KnownAndFallback(t *testing.T) {
 	if LookupTheme(ThemeTokyoNight).Accent != "#7aa2f7" {
 		t.Fatalf("tokyo night accent mismatch: %q", LookupTheme(ThemeTokyoNight).Accent)
 	}
+	if LookupTheme(ThemeDracula).Accent != "#bd93f9" {
+		t.Fatalf("dracula accent mismatch: %q", LookupTheme(ThemeDracula).Accent)
+	}
 	if LookupTheme("unknown-theme").Accent != DefaultTheme().Accent {
 		t.Fatalf("unknown theme should fall back to default")
 	}
@@ -20,20 +23,47 @@ func TestNormalizeThemeID(t *testing.T) {
 	}
 }
 
-func TestThemeIDs_IncludesPreferredThemes(t *testing.T) {
+func TestThemeIDs_IncludesPopularThemes(t *testing.T) {
 	ids := ThemeIDs()
-	want := map[string]bool{
-		ThemeDefault:    true,
-		ThemeTokyoNight: true,
-		ThemeCatppuccin: true,
-		ThemeNord:       true,
+	required := []string{
+		ThemeDefault,
+		ThemeTokyoNight,
+		ThemeCatppuccin,
+		ThemeNord,
+		ThemeDracula,
+		ThemeGruvbox,
+		ThemeOneDark,
+		ThemeSolarized,
+		ThemeMonokai,
+		ThemeEverforest,
+		ThemeRosePine,
+		ThemeKanagawa,
+		ThemeGitHubDark,
+		ThemeAyuDark,
+		ThemeNightOwl,
 	}
-	if len(ids) != len(want) {
-		t.Fatalf("expected %d themes, got %d", len(want), len(ids))
+	if len(ids) != len(required) {
+		t.Fatalf("expected %d themes, got %d", len(required), len(ids))
 	}
+	seen := make(map[string]bool, len(ids))
 	for _, id := range ids {
-		if !want[id] {
-			t.Fatalf("unexpected theme id %q", id)
+		if seen[id] {
+			t.Fatalf("duplicate theme id %q", id)
 		}
+		seen[id] = true
+	}
+	for _, id := range required {
+		if !seen[id] {
+			t.Fatalf("missing theme id %q", id)
+		}
+	}
+}
+
+func TestThemeLabel_KnownThemes(t *testing.T) {
+	if got := ThemeLabel(ThemeRosePine); got != "Rosé Pine" {
+		t.Fatalf("got label %q", got)
+	}
+	if got := ThemeLabel("missing"); got != "missing" {
+		t.Fatalf("unknown label should echo id, got %q", got)
 	}
 }

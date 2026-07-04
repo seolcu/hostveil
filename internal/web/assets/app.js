@@ -2,7 +2,24 @@ const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 const toolLabels = { trivy: "Trivy", lynis: "Lynis", compose: "Compose", update: "Update" };
 const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
 const THEME_STORAGE_KEY = "hostveil-theme";
-const THEME_IDS = ["default", "tokyo-night", "catppuccin", "nord"];
+const THEME_CATALOG = [
+  { id: "default", label: "Default" },
+  { id: "tokyo-night", label: "Tokyo Night" },
+  { id: "catppuccin", label: "Catppuccin" },
+  { id: "nord", label: "Nord" },
+  { id: "dracula", label: "Dracula" },
+  { id: "gruvbox", label: "Gruvbox" },
+  { id: "one-dark", label: "One Dark" },
+  { id: "solarized", label: "Solarized Dark" },
+  { id: "monokai", label: "Monokai" },
+  { id: "everforest", label: "Everforest" },
+  { id: "rose-pine", label: "Rosé Pine" },
+  { id: "kanagawa", label: "Kanagawa" },
+  { id: "github-dark", label: "GitHub Dark" },
+  { id: "ayu-dark", label: "Ayu Dark" },
+  { id: "night-owl", label: "Night Owl" },
+];
+const THEME_IDS = THEME_CATALOG.map((entry) => entry.id);
 
 const state = {
   live: null,
@@ -117,6 +134,15 @@ function applyTheme(id) {
 }
 
 function initTheme() {
+  const select = $("themeSelect");
+  if (select && select.options.length === 0) {
+    for (const entry of THEME_CATALOG) {
+      const option = document.createElement("option");
+      option.value = entry.id;
+      option.textContent = entry.label;
+      select.appendChild(option);
+    }
+  }
   applyTheme(currentThemeId());
 }
 
@@ -128,13 +154,8 @@ function cycleTheme(step) {
 }
 
 function themeLabel(id) {
-  const labels = {
-    default: "Default",
-    "tokyo-night": "Tokyo Night",
-    catppuccin: "Catppuccin",
-    nord: "Nord",
-  };
-  return labels[id] || id;
+  const entry = THEME_CATALOG.find((item) => item.id === id);
+  return entry ? entry.label : id;
 }
 
 function bindVisibilityPause() {

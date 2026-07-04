@@ -6,11 +6,8 @@
     <title>hostveil</title>
     <script>
       (function () {
-        var key = "hostveil-theme";
-        var allowed = { default: 1, "tokyo-night": 1, catppuccin: 1, nord: 1 };
-        var saved = localStorage.getItem(key) || "default";
-        if (!allowed[saved]) saved = "default";
-        document.documentElement.dataset.theme = saved;
+        var saved = localStorage.getItem("hostveil-theme");
+        if (saved) document.documentElement.dataset.theme = saved;
       })();
     </script>
     <link rel="stylesheet" href="/app.css" />
@@ -76,12 +73,7 @@
 
           <div class="filter-block">
             <h2>Color scheme</h2>
-            <select id="themeSelect" aria-label="Color scheme">
-              <option value="default">Default</option>
-              <option value="tokyo-night">Tokyo Night</option>
-              <option value="catppuccin">Catppuccin</option>
-              <option value="nord">Nord</option>
-            </select>
+            <select id="themeSelect" aria-label="Color scheme"></select>
           </div>
 
           <div class="filter-block">
