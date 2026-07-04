@@ -93,15 +93,11 @@ func TestView_ModalOverlayDimsUnderlyingContent(t *testing.T) {
 	}
 }
 
-func TestPadPanelBlockLines_PreservesContentAndFillsWidth(t *testing.T) {
+func TestPaintPanelBlock_FillsFullLineWidth(t *testing.T) {
 	t.Parallel()
 	theme := DefaultTheme()
-	const width = 30
-	highlight := lipgloss.NewStyle().Background(lipgloss.Color(theme.Border)).Render("selected")
-	block := padPanelBlockLines(theme, width, highlight)
-	if !strings.Contains(block, "selected") {
-		t.Fatalf("padding should preserve row content:\n%s", block)
-	}
+	const width = 40
+	block := paintPanelBlock(theme, width, "short")
 	for i, line := range strings.Split(block, "\n") {
 		if lipgloss.Width(line) != width {
 			t.Fatalf("line %d width = %d, want %d: %q", i+1, lipgloss.Width(line), width, line)
@@ -109,13 +105,32 @@ func TestPadPanelBlockLines_PreservesContentAndFillsWidth(t *testing.T) {
 	}
 }
 
-func TestPaintPanelLines_FillsFullLineWidth(t *testing.T) {
+func TestPaintPanelLineBG_PreservesSelectionWidth(t *testing.T) {
 	t.Parallel()
 	theme := DefaultTheme()
-	const width = 40
-	block := paintPanelLines(theme, width, "short")
-	if lipgloss.Width(block) != width {
-		t.Fatalf("painted line width = %d, want %d", lipgloss.Width(block), width)
+	const width = 30
+	highlight := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Text)).Bold(true).Render("selected")
+	line := paintPanelLineBG(theme, width, highlight, theme.Border)
+	if !strings.Contains(line, "selected") {
+		t.Fatalf("paint should preserve row content:\n%s", line)
+	}
+	if lipgloss.Width(line) != width {
+		t.Fatalf("painted line width = %d, want %d", lipgloss.Width(line), width)
+	}
+}
+
+func TestPaintTableView_HighlightsCursorRow(t *testing.T) {
+	t.Parallel()
+	m := readyModelForRenderRegression(t, makeTestFindings(3), 120, 32)
+	m.table.SetCursor(1)
+	raw := m.table.View()
+	painted := m.paintTableView(m.theme(), raw, 60)
+	lines := strings.Split(painted, "\n")
+	if len(lines) < 3 {
+		t.Fatalf("expected header plus data rows, got %d lines", len(lines))
+	}
+	if lipgloss.Width(lines[2]) != 60 {
+		t.Fatalf("row width = %d, want 60", lipgloss.Width(lines[2]))
 	}
 }
 
