@@ -58,18 +58,18 @@ test.describe("Fix modal internals", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("lynis fix modal may show diff preview or edit path", async ({ page }) => {
+  test("lynis fix modal shows apply controls", async ({ page }) => {
     await ready(page);
     const row = page.locator("#findings tr[data-id='lynis.AUTH-9286']");
     await row.click({ force: true });
     const fixBtn = page.locator("#detail .fix-btn");
     await expect(fixBtn).toHaveCount(1);
     await fixBtn.click();
-    await expect(page.locator("#fixModal")).toBeVisible({ timeout: 3000 });
-    const hasDiff = (await page.locator("#fixModal .diff-preview").count()) > 0;
-    const hasEditPath = (await page.locator("#fixModal .action-edit-path").count()) > 0;
-    const hasCommand = (await page.locator("#fixModal .action-command").count()) > 0;
-    expect(hasDiff || hasEditPath || hasCommand).toBeTruthy();
+    const modal = page.locator("#fixModal");
+    await expect(modal).toBeVisible({ timeout: 3000 });
+    await expect(modal.locator("h2")).toHaveText("Apply fix");
+    await expect(modal.locator(".action-type-badge")).toBeVisible();
+    await expect(modal.locator("#modalFixYes")).toBeVisible();
     await page.keyboard.press("Escape");
   });
 });
