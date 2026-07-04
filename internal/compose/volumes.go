@@ -139,3 +139,121 @@ func longVolumeRaw(source, target, mode, volType string) string {
 	}
 	return volType + ":" + target
 }
+
+// SetVolumeReadOnly marks the targeted volume mount read-only. When
+// targetVolume is empty every non-read-only mount on the service is
+// updated. Short-syntax scalars get a :ro suffix; long-syntax maps get
+// read_only: true. Returns true when at least one entry changed.
+func (f *File) SetVolumeReadOnly(service, targetVolume string) (bool, error) {
+	node := f.walkPath(service, "volumes")
+	if node == nil || node.Kind != yaml.SequenceNode {
+		return false, nil
+	}
+	changed := false
+	for _, item := range node.Content {
+		switch item.Kind {
+		case yaml.ScalarNode:
+			if !volumeScalarMatches(item.Value, targetVolume) {
+				continue
+			}
+			if strings.Contains(item.Value, ":ro") {
+				continue
+			}
+			item.Value = item.Value + ":ro"
+			changed = true
+		case yaml.MappingNode:
+			mount, ok := parseVolumeLong(item)
+			if !ok || !volumeMountMatches(mount, targetVolume) {
+				continue
+			}
+			if hasVolumeMode(mount.Mode, "ro") || fieldsTrue(item, "read_only") {
+				continue
+			}
+			setMappingScalar(item, "read_only", "true")
+			changed = true
+		}
+	}
+	if changed {
+		f.dirty = true
+	}
+	return changed, nil
+}
+
+// RemoveVolumeMount drops the volume entry matching targetVolume from
+// the service. Matching uses the same raw/source forms recorded in
+// finding evidence. Returns true when an entry was removed.
+func (f *File) RemoveVolumeMount(service, targetVolume string) (bool, error) {
+	if targetVolume == "" {
+		return false, nil
+	}
+	node := f.walkPath(service, "volumes")
+	if node == nil || node.Kind != yaml.SequenceNode {
+		return false, nil
+	}
+	var kept []*yaml.Node
+	removed := false
+	for _, item := range node.Content {
+		if volumeItemMatches(item, targetVolume) {
+			removed = true
+			continue
+		}
+		kept = append(kept, item)
+	}
+	if removed {
+		node.Content = kept
+		f.dirty = true
+	}
+	return removed, nil
+}
+
+func volumeItemMatches(item *yaml.Node, targetVolume string) bool {
+	switch item.Kind {
+	case yaml.ScalarNode:
+		return volumeScalarMatches(item.Value, targetVolume)
+	case yaml.MappingNode:
+		mount, ok := parseVolumeLong(item)
+		return ok && volumeMountMatches(mount, targetVolume)
+	default:
+		return false
+	}
+}
+
+func volumeScalarMatches(v, targetVolume string) bool {
+	if targetVolume == "" {
+		return true
+	}
+	if v == targetVolume {
+		return true
+	}
+	prefix := strings.Split(targetVolume, ":")[0]
+	return prefix != "" && strings.HasPrefix(v, prefix+":")
+}
+
+func volumeMountMatches(mount VolumeMount, targetVolume string) bool {
+	if targetVolume == "" {
+		return true
+	}
+	if mount.Raw == targetVolume {
+		return true
+	}
+	pair := mount.Source + ":" + mount.Target
+	if pair == targetVolume {
+		return true
+	}
+	prefix := strings.Split(targetVolume, ":")[0]
+	return prefix != "" && mount.Source == prefix
+}
+
+func fieldsTrue(item *yaml.Node, key string) bool {
+	fields := mappingFields(item)
+	return fields[key] == "true"
+}
+
+func hasVolumeMode(mode, want string) bool {
+	for _, part := range strings.Split(mode, ",") {
+		if strings.TrimSpace(part) == want {
+			return true
+		}
+	}
+	return false
+}

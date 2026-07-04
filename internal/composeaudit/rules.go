@@ -526,28 +526,34 @@ func checkPortBinding(f *compose.File, svc string, project Project) []domain.Fin
 }
 
 func checkVolumeRO(f *compose.File, svc string, project Project) []domain.Finding {
-	vols, err := f.GetFieldStrings(svc, "volumes")
-	if err != nil || len(vols) == 0 {
-		return nil
-	}
-	for _, v := range vols {
-		if !strings.Contains(v, ":ro") && !strings.Contains(v, ":") {
-			// Named volumes with no suffix are fine (Docker manages them)
+	mounts := f.GetVolumeMounts(svc)
+	for _, mount := range mounts {
+		if hasVolumeMode(mount.Mode, "ro") {
 			continue
-		} else if !strings.Contains(v, ":ro") {
-			return []domain.Finding{{
-				ID:          "compose.dr003",
-				Title:       "Container mounts volumes as read-write",
-				Description: fmt.Sprintf("Service %q mounts volume %q without :ro flag.", svc, v),
-				HowToFix:    `Append ":ro" to volume mount when write access is not required.`,
-				Severity:    domain.SeverityLow,
-				Source:      domain.SourceCompose,
-				Service:     svc,
-				Remediation: domain.RemediationUnavailable,
-				Evidence:    map[string]string{"volume": v},
-				Metadata:    composeMeta(project, svc),
-			}}
 		}
+		raw := mount.Raw
+		if raw == "" {
+			if mount.Target != "" {
+				raw = mount.Source + ":" + mount.Target
+			} else {
+				raw = mount.Source
+			}
+		}
+		if !strings.Contains(raw, ":") {
+			continue
+		}
+		return []domain.Finding{{
+			ID:          "compose.dr003",
+			Title:       "Container mounts volumes as read-write",
+			Description: fmt.Sprintf("Service %q mounts volume %q without :ro flag.", svc, raw),
+			HowToFix:    `Append ":ro" to volume mount when write access is not required.`,
+			Severity:    domain.SeverityLow,
+			Source:      domain.SourceCompose,
+			Service:     svc,
+			Remediation: domain.RemediationUnavailable,
+			Evidence:    map[string]string{"volume": raw},
+			Metadata:    composeMeta(project, svc),
+		}}
 	}
 	return nil
 }
