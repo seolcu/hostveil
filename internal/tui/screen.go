@@ -188,6 +188,7 @@ func (m model) renderFilterPanel(width int) string {
 		Foreground(lipgloss.Color(t.TextMuted)).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Padding(0, 1).
 		Width(width - 6).
 		Render(searchValue)
@@ -236,6 +237,7 @@ func (m model) renderFilterPanel(width int) string {
 		Foreground(lipgloss.Color(t.Text)).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Padding(0, 1).
 		Width(width - 6).
 		Render(sortDisplay)
@@ -262,6 +264,9 @@ func (m model) renderFilterPanel(width int) string {
 		clear,
 	}
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
+
+	innerW := panelContentWidth(width)
+	content = padPanelBlockLines(t, innerW, content)
 
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -404,7 +409,7 @@ func (m model) renderScorePlate() string {
 		Padding(vPad, 2).
 		Width(28).
 		Height(height).
-		Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
+		Render(padPanelBlockLines(t, 24, lipgloss.JoinVertical(lipgloss.Left, lines...)))
 }
 
 // brandHeight returns the number of text lines the brand area occupies:
@@ -554,6 +559,7 @@ func (m model) renderListPane() string {
 		Padding(1, 1).
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Render(lipgloss.JoinHorizontal(lipgloss.Top,
 			headLeft,
 			strings.Repeat(" ", max(1, headW-lipgloss.Width(headLeft)-lipgloss.Width(headRight)-4)),
@@ -589,6 +595,7 @@ func (m model) renderListPane() string {
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 2).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Render(lipgloss.JoinVertical(lipgloss.Top, footerEls...))
 
 	borderColor := t.Border
@@ -597,12 +604,15 @@ func (m model) renderListPane() string {
 	}
 
 	top := lipgloss.JoinVertical(lipgloss.Top, head, tableView)
+	panelInnerW := panelContentWidth(headW)
+	top = padPanelBlockLines(t, panelInnerW, top)
+	footerStyled = padPanelBlockLines(t, panelInnerW, footerStyled)
 	panelInnerH := m.bodyHeight() - 2 // minus border
 	emptyLines := panelInnerH - lipgloss.Height(top) - lipgloss.Height(footerStyled)
 	if emptyLines < 0 {
 		emptyLines = 0
 	}
-	body := joinVerticalWithGap(top, footerStyled, emptyLines)
+	body := joinPanelSections(t, panelInnerW, top, footerStyled, emptyLines)
 
 	return lipgloss.NewStyle().
 		Width(headW).
@@ -615,16 +625,20 @@ func (m model) renderListPane() string {
 
 func tableStyles(t Theme) table.Styles {
 	s := table.DefaultStyles()
+	fill := lipgloss.Color(t.SurfaceAlt)
 	s.Header = lipgloss.NewStyle().
 		BorderBottom(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Foreground(lipgloss.Color(t.TextMuted)).
+		Background(fill).
 		Bold(true).
 		Padding(0, 1)
-	s.Cell = lipgloss.NewStyle().Padding(0, 1)
+	s.Cell = lipgloss.NewStyle().
+		Padding(0, 1).
+		Background(fill)
 	s.Selected = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(t.Text)).
-		Background(lipgloss.Color(t.SurfaceAlt)).
+		Background(lipgloss.Color(selectionBackground(t))).
 		Bold(true)
 	return s
 }
@@ -662,6 +676,7 @@ func (m model) renderDetailPane() string {
 	detailContent := lipgloss.NewStyle().
 		Width(innerW).
 		Padding(1, 2).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Render(vp.View())
 
 	footer := m.footerHelp(paneDetail, innerW)
@@ -676,6 +691,7 @@ func (m model) renderDetailPane() string {
 		BorderTop(true).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(0, 2).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Render(lipgloss.JoinVertical(lipgloss.Top, footerEls...))
 
 	borderColor := t.Border
@@ -687,12 +703,15 @@ func (m model) renderDetailPane() string {
 	// between the content and the footer block. AlignVertical/Bottom
 	// is not enough on its own because it would also push the content
 	// down — we want content-at-top + footer-at-bottom.
+	panelInnerW := panelContentWidth(m.detailWidth())
+	detailContent = padPanelBlockLines(t, panelInnerW, detailContent)
+	footerStyled = padPanelBlockLines(t, panelInnerW, footerStyled)
 	panelInnerH := m.bodyHeight() - 2 // minus border
 	emptyLines := panelInnerH - lipgloss.Height(detailContent) - lipgloss.Height(footerStyled)
 	if emptyLines < 0 {
 		emptyLines = 0
 	}
-	body := joinVerticalWithGap(detailContent, footerStyled, emptyLines)
+	body := joinPanelSections(t, panelInnerW, detailContent, footerStyled, emptyLines)
 
 	return lipgloss.NewStyle().
 		Width(m.detailWidth()).
@@ -742,7 +761,6 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	meta := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
-		Background(lipgloss.Color(t.Background)).
 		Padding(1, 2).
 		Width(width).
 		Render(strings.Join(metaRows, "\n"))
@@ -770,7 +788,6 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
-				Background(lipgloss.Color(t.Background)).
 				Padding(0, 1).
 				Width(width).
 				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], blockInnerW, " ")))
@@ -789,7 +806,6 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
-				Background(lipgloss.Color(t.Background)).
 				Padding(0, 1).
 				Width(width).
 				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Metadata[k], blockInnerW, " ")))
@@ -1151,6 +1167,76 @@ func (m model) modalWidth(maxWidth int) int {
 
 func modalContentWidth(width int) int {
 	return max(1, width-6)
+}
+
+func joinPanelSections(t Theme, width int, top, bottom string, gap int) string {
+	if gap < 0 {
+		gap = 0
+	}
+	parts := []string{top}
+	for range gap {
+		parts = append(parts, panelGapLine(t, width))
+	}
+	parts = append(parts, bottom)
+	return strings.Join(parts, "\n")
+}
+
+// panelContentWidth returns the drawable inner width inside a bordered panel.
+func panelContentWidth(outer int) int {
+	return max(1, outer-2)
+}
+
+// selectionBackground returns a row highlight color distinct from SurfaceAlt.
+func selectionBackground(t Theme) string {
+	return t.Border
+}
+
+// padPanelLine extends a rendered line to the panel width without re-styling it.
+func padPanelLine(t Theme, width int, line string) string {
+	lineW := lipgloss.Width(line)
+	if lineW >= width {
+		return line
+	}
+	fill := lipgloss.NewStyle().
+		Background(lipgloss.Color(t.SurfaceAlt)).
+		Render(strings.Repeat(" ", width-lineW))
+	return line + fill
+}
+
+// padPanelBlockLines pads every line in a block to the same panel width.
+func padPanelBlockLines(t Theme, width int, block string) string {
+	if block == "" {
+		return panelGapLine(t, width)
+	}
+	lines := strings.Split(block, "\n")
+	for i, line := range lines {
+		lines[i] = padPanelLine(t, width, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// paintPanelLines fills every line in a block to the panel width with SurfaceAlt.
+func paintPanelLines(t Theme, width int, block string) string {
+	if block == "" {
+		return panelGapLine(t, width)
+	}
+	style := lipgloss.NewStyle().
+		Width(width).
+		Background(lipgloss.Color(t.SurfaceAlt))
+	lines := strings.Split(block, "\n")
+	painted := make([]string, len(lines))
+	for i, line := range lines {
+		painted[i] = style.Render(line)
+	}
+	return strings.Join(painted, "\n")
+}
+
+// panelGapLine renders a blank panel row with a solid background fill.
+func panelGapLine(t Theme, width int) string {
+	return lipgloss.NewStyle().
+		Width(width).
+		Background(lipgloss.Color(t.SurfaceAlt)).
+		Render("")
 }
 
 func joinVerticalWithGap(top, bottom string, gap int) string {

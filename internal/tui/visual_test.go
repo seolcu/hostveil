@@ -92,3 +92,45 @@ func TestView_ModalOverlayDimsUnderlyingContent(t *testing.T) {
 		t.Fatalf("overlay should still include modal content:\n%s", overlay)
 	}
 }
+
+func TestPadPanelBlockLines_PreservesContentAndFillsWidth(t *testing.T) {
+	t.Parallel()
+	theme := DefaultTheme()
+	const width = 30
+	highlight := lipgloss.NewStyle().Background(lipgloss.Color(theme.Border)).Render("selected")
+	block := padPanelBlockLines(theme, width, highlight)
+	if !strings.Contains(block, "selected") {
+		t.Fatalf("padding should preserve row content:\n%s", block)
+	}
+	for i, line := range strings.Split(block, "\n") {
+		if lipgloss.Width(line) != width {
+			t.Fatalf("line %d width = %d, want %d: %q", i+1, lipgloss.Width(line), width, line)
+		}
+	}
+}
+
+func TestPaintPanelLines_FillsFullLineWidth(t *testing.T) {
+	t.Parallel()
+	theme := DefaultTheme()
+	const width = 40
+	block := paintPanelLines(theme, width, "short")
+	if lipgloss.Width(block) != width {
+		t.Fatalf("painted line width = %d, want %d", lipgloss.Width(block), width)
+	}
+}
+
+func TestJoinPanelSections_GapLinesMatchPanelFill(t *testing.T) {
+	t.Parallel()
+	theme := DefaultTheme()
+	const width = 30
+	block := joinPanelSections(theme, width, "top", "bottom", 2)
+	lines := strings.Split(block, "\n")
+	if len(lines) != 4 {
+		t.Fatalf("expected top + 2 gaps + bottom, got %d lines", len(lines))
+	}
+	for i, line := range lines[1:3] {
+		if lipgloss.Width(line) != width {
+			t.Fatalf("gap line %d width = %d, want %d", i, lipgloss.Width(line), width)
+		}
+	}
+}
