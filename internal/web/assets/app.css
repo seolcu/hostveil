@@ -945,6 +945,7 @@ th.sortable.desc::after {
 }
 
 .fixed td { opacity: 0.65; }
+.fixed-title { text-decoration: line-through; }
 
 .fix-warning { color: var(--high); }
 

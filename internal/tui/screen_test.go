@@ -267,7 +267,7 @@ func TestUpdate_SpaceTogglesSelectionInRenderedTable(t *testing.T) {
 	}
 }
 
-func TestRebuildTable_RowsArePlainStrings(t *testing.T) {
+func TestRebuildTable_SeverityColumnIsColorCoded(t *testing.T) {
 	live := domain.NewScanProgress(true)
 	live.AddFindings([]domain.Finding{
 		{ID: "a", Title: "Plain finding", Severity: domain.SeverityCritical, Source: domain.SourceTrivy},
@@ -283,12 +283,15 @@ func TestRebuildTable_RowsArePlainStrings(t *testing.T) {
 	m.selectedSet["a"] = true
 	m.rebuildTable()
 
-	for rowIdx, row := range m.table.Rows() {
-		for colIdx, cell := range row {
-			if strings.Contains(cell, "\x1b[") {
-				t.Fatalf("row %d col %d contains ANSI styling: %q", rowIdx, colIdx, cell)
-			}
-		}
+	row := m.table.Rows()[0]
+	if !strings.Contains(row[1], "CRITICAL") {
+		t.Fatalf("severity column should include label, got %q", row[1])
+	}
+	if !strings.Contains(row[1], "\x1b[") {
+		t.Fatalf("severity column should be color-coded, got %q", row[1])
+	}
+	if strings.Contains(row[0], "\x1b[") {
+		t.Fatalf("checkbox column should stay unstyled, got %q", row[0])
 	}
 }
 
