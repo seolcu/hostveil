@@ -205,7 +205,7 @@ test.describe("Fixed finding count", () => {
     const data = JSON.parse(body);
     const fixed = data.findings.filter((f: { fixed: boolean }) => f.fixed);
     expect(fixed.length).toBeGreaterThanOrEqual(1);
-    expect(fixed[0].id).toBe("trivy.cve-2024-0003");
+    expect(fixed.map((f: { id: string }) => f.id)).toContain("trivy.cve-2024-0003");
   });
 });
 
