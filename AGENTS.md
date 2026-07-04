@@ -454,5 +454,5 @@ Non-obvious caveats for this VM:
   results — it re-execs via `sudo` for host scanning, which is neither
   useful nor available here.
 - Playwright browsers install to `~/.cache/ms-playwright`; only Chromium
-  is provisioned. The E2E run is long (~9 min, ~1900 specs). Remember the
+  is provisioned. The E2E run takes ~2–3 min (~126 tests). Remember the
   mandatory E2E cleanup listed under **Running tests**.
