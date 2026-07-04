@@ -104,6 +104,17 @@ func Serve(opts Options) error {
 		}
 		handleExport(w, r, opts.Live)
 	})
+	mux.HandleFunc("GET /api/history", func(w http.ResponseWriter, r *http.Request) {
+		handleHistory(w, r)
+	})
+	mux.HandleFunc("POST /api/rollback", func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && !sameOrigin(origin, r.Host) {
+			writeJSON(w, map[string]interface{}{"success": false, "error": "rejected: cross-origin request"})
+			return
+		}
+		handleRollback(w, r)
+	})
 	mux.Handle("/", http.FileServerFS(staticFS))
 
 	server := &http.Server{
@@ -542,10 +553,68 @@ func handleRescan(w http.ResponseWriter, r *http.Request, opts Options) {
 }
 
 func runRescan(opts Options) {
-	scan.RunSingleTool(opts.Live, opts.Fixes, "compose")
-	scan.RunSingleTool(opts.Live, opts.Fixes, "trivy")
-	scan.RunSingleTool(opts.Live, opts.Fixes, "lynis")
-	opts.Live.Finalize()
+	scan.RunAllTools(opts.Live, opts.Fixes)
+}
+
+type historyEntry struct {
+	ID        string `json:"id"`
+	Timestamp string `json:"timestamp"`
+	FindingID string `json:"finding_id"`
+	Service   string `json:"service,omitempty"`
+	Action    string `json:"action"`
+	FileCount int    `json:"file_count"`
+}
+
+func handleHistory(w http.ResponseWriter, r *http.Request) {
+	cps, err := history.ListCheckpoints()
+	if err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+	entries := make([]historyEntry, 0, len(cps))
+	for _, cp := range cps {
+		entries = append(entries, historyEntry{
+			ID:        cp.ID,
+			Timestamp: cp.Timestamp.Format(time.RFC3339),
+			FindingID: cp.FindingID,
+			Service:   cp.Service,
+			Action:    cp.Action,
+			FileCount: len(cp.Backups),
+		})
+	}
+	writeJSON(w, map[string]interface{}{"success": true, "checkpoints": entries})
+}
+
+type rollbackRequest struct {
+	ID string `json:"id"`
+}
+
+func handleRollback(w http.ResponseWriter, r *http.Request) {
+	var req rollbackRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "invalid request body"})
+		return
+	}
+	if req.ID == "" {
+		writeJSON(w, map[string]interface{}{"success": false, "error": "missing checkpoint id"})
+		return
+	}
+	cp, err := history.GetCheckpoint(req.ID)
+	if err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+	result, err := history.Rollback(*cp)
+	if err != nil {
+		writeJSON(w, map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"success":        true,
+		"message":        result.Message,
+		"restored_files": result.RestoredFiles,
+		"restart":        result.Restart,
+	})
 }
 
 type fixBatchRequest struct {

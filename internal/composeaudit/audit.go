@@ -29,13 +29,33 @@ func ScanAll(runner domain.CommandRunner) ([]domain.Finding, error) {
 }
 
 func scanProject(p Project) ([]domain.Finding, error) {
-	f, err := compose.Open(p.ComposePath)
-	if err != nil {
-		return nil, fmt.Errorf("open compose %q: %w", p.ComposePath, err)
+	paths := p.ComposePaths
+	if len(paths) == 0 && p.ComposePath != "" {
+		paths = []string{p.ComposePath}
 	}
 
-	var findings []domain.Finding
-	findings = append(findings, auditProject(f, p)...)
-	findings = append(findings, detectEnvFiles(f, p.ComposePath, p.Name)...)
-	return findings, nil
+	var all []domain.Finding
+	var errs []error
+	seen := make(map[string]bool)
+	for _, path := range paths {
+		f, err := compose.Open(path)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("open compose %q: %w", path, err))
+			continue
+		}
+
+		findings := auditProject(f, p)
+		findings = append(findings, detectEnvFiles(f, path, p.Name)...)
+		findings = append(findings, detectInlineSecrets(f, p)...)
+
+		for _, finding := range findings {
+			key := finding.ID + "|" + finding.Service
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			all = append(all, finding)
+		}
+	}
+	return all, errors.Join(errs...)
 }

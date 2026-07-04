@@ -174,6 +174,53 @@ func TestComposeDropVolume_NoEvidence(t *testing.T) {
 	}
 }
 
+func TestComposeAppendSecurityOpt_PreservesExisting(t *testing.T) {
+	yamlContent := `services:
+  web:
+    image: nginx
+    security_opt:
+      - seccomp:unconfined
+`
+	path := writeTestCompose(t, yamlContent)
+	ctx := testContext(t, path, "web")
+	if err := composeAppendSecurityOpt(ctx); err != nil {
+		t.Fatalf("composeAppendSecurityOpt: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "seccomp:unconfined") {
+		t.Errorf("expected existing security_opt preserved\n%s", content)
+	}
+	if !strings.Contains(content, "no-new-privileges:true") {
+		t.Errorf("expected no-new-privileges appended\n%s", content)
+	}
+}
+
+func TestComposeEnvToVariable(t *testing.T) {
+	yamlContent := `services:
+  db:
+    image: postgres:15
+    environment:
+      DB_PASSWORD: changeme
+`
+	path := writeTestCompose(t, yamlContent)
+	ctx := testContext(t, path, "db")
+	ctx.Finding.Evidence["env_key"] = "DB_PASSWORD"
+	if err := composeEnvToVariable(ctx); err != nil {
+		t.Fatalf("composeEnvToVariable: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "${DB_PASSWORD}") {
+		t.Errorf("expected ${DB_PASSWORD} placeholder\n%s", string(data))
+	}
+}
+
 func TestOpenComposeFile_MissingPath(t *testing.T) {
 	ctx := Context{
 		Finding: &domain.Finding{

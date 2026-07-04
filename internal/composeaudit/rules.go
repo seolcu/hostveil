@@ -596,29 +596,26 @@ func hasVolumeMode(mode, want string) bool {
 // every other container. Mounting it read-only does not mitigate this —
 // the socket is a bidirectional API channel, not a plain file.
 func checkDockerSocket(f *compose.File, svc string, project Project) []domain.Finding {
-	vols, err := f.GetFieldStrings(svc, "volumes")
-	if err != nil || len(vols) == 0 {
-		return nil
-	}
-	for _, v := range vols {
-		source, _, ok := hostVolumeSource(v)
-		if !ok {
-			continue
-		}
-		clean := strings.TrimSuffix(source, "/")
+	mounts := f.GetVolumeMounts(svc)
+	for _, mount := range mounts {
+		clean := strings.TrimSuffix(mount.Source, "/")
 		if clean != "/var/run/docker.sock" && clean != "/run/docker.sock" {
 			continue
+		}
+		raw := mount.Raw
+		if raw == "" {
+			raw = mount.Source + ":" + mount.Target
 		}
 		return []domain.Finding{{
 			ID:          "compose.ds016",
 			Title:       "Docker socket mounted into container",
-			Description: fmt.Sprintf("Service %q mounts the Docker socket (%s). A container with this mount can control the Docker daemon and every other container on the host — equivalent to root on the host, even when mounted read-only.", svc, source),
+			Description: fmt.Sprintf("Service %q mounts the Docker socket (%s). A container with this mount can control the Docker daemon and every other container on the host — equivalent to root on the host, even when mounted read-only.", svc, mount.Source),
 			HowToFix:    "Remove the Docker socket mount. If the service genuinely needs Docker API access (e.g. Traefik, Portainer, Watchtower), put a socket proxy such as tecnativa/docker-socket-proxy between it and the daemon so it only gets the specific API calls it needs.",
 			Severity:    domain.SeverityCritical,
 			Source:      domain.SourceCompose,
 			Service:     svc,
 			Remediation: domain.RemediationUnavailable,
-			Evidence:    map[string]string{"volume": v},
+			Evidence:    map[string]string{"volume": raw},
 			Metadata:    composeMeta(project, svc),
 		}}
 	}
@@ -645,33 +642,33 @@ var sensitiveHostRoots = map[string]bool{
 // the same paths are still informational-risk but are not flagged here —
 // the write access is what turns exposure into a host compromise path.
 func checkSensitiveHostMount(f *compose.File, svc string, project Project) []domain.Finding {
-	vols, err := f.GetFieldStrings(svc, "volumes")
-	if err != nil || len(vols) == 0 {
-		return nil
-	}
+	mounts := f.GetVolumeMounts(svc)
 	var findings []domain.Finding
-	for _, v := range vols {
-		source, mode, ok := hostVolumeSource(v)
-		if !ok || hasVolumeMode(mode, "ro") {
+	for _, mount := range mounts {
+		if hasVolumeMode(mount.Mode, "ro") {
 			continue
 		}
-		clean := strings.TrimSuffix(source, "/")
+		clean := strings.TrimSuffix(mount.Source, "/")
 		if clean == "" {
 			clean = "/"
 		}
 		if !sensitiveHostRoots[clean] && !strings.HasSuffix(clean, "/.ssh") && clean != ".ssh" {
 			continue
 		}
+		raw := mount.Raw
+		if raw == "" {
+			raw = mount.Source + ":" + mount.Target
+		}
 		findings = append(findings, domain.Finding{
 			ID:          "compose.ds017",
 			Title:       "Sensitive host directory mounted read-write",
-			Description: fmt.Sprintf("Service %q mounts host path %q read-write, letting the container modify sensitive host files.", svc, source),
+			Description: fmt.Sprintf("Service %q mounts host path %q read-write, letting the container modify sensitive host files.", svc, mount.Source),
 			HowToFix:    `Mount read-only by appending ":ro", or remove the mount if the container does not need it.`,
 			Severity:    domain.SeverityHigh,
 			Source:      domain.SourceCompose,
 			Service:     svc,
 			Remediation: domain.RemediationUnavailable,
-			Evidence:    map[string]string{"volume": v},
+			Evidence:    map[string]string{"volume": raw},
 			Metadata:    composeMeta(project, svc),
 		})
 	}

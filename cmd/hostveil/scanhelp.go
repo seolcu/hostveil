@@ -7,9 +7,7 @@ import (
 )
 
 func launchScanners(live *domain.ScanProgress, reg *fix.Registry) {
-	go scan.RunSingleTool(live, reg, "compose")
-	go scan.RunSingleTool(live, reg, "trivy")
-	go scan.RunSingleTool(live, reg, "lynis")
+	scan.RunAllTools(live, reg)
 }
 
 func skipScanners(live *domain.ScanProgress) {

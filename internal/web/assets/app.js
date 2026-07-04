@@ -130,6 +130,10 @@ function bindControls() {
     if ($("query")) $("query").value = "";
     render();
   });
+  $("historyRefreshBtn")?.addEventListener("click", () => {
+    $("historyRefreshBtn").blur();
+    loadHistory();
+  });
 
   const sortFields = { 1: "severity", 2: "source", 4: "title", 5: "remediation" };
   document.querySelectorAll("th.sortable").forEach((th) => {
@@ -221,6 +225,18 @@ function bindControls() {
   exportBtn.type = "button";
   exportBtn.textContent = "Export";
   actions.appendChild(exportBtn);
+
+  const historyBtn = document.createElement("button");
+  historyBtn.id = "historyBtn";
+  historyBtn.type = "button";
+  historyBtn.textContent = "History";
+  historyBtn.title = "View fix checkpoints and rollback";
+  actions.appendChild(historyBtn);
+  historyBtn.addEventListener("click", () => {
+    historyBtn.blur();
+    toggleHistoryPanel();
+  });
+
   exportBtn.addEventListener("click", () => {
     exportBtn.blur();
     showExportModal();
@@ -252,6 +268,7 @@ function bindControls() {
       closeFixModal();
       closeExportModal();
       closeHelpModal();
+      closeRollbackModal();
       return;
     }
 
@@ -1459,6 +1476,115 @@ function showHelpModal() {
 
 function closeHelpModal() {
   const overlay = document.getElementById("helpModal");
+  if (overlay) overlay.remove();
+}
+
+async function loadHistory() {
+  const panel = $("historyPanel");
+  const list = $("historyList");
+  if (!panel || !list) return;
+  list.innerHTML = `<p class="muted">Loading checkpoints…</p>`;
+  try {
+    const resp = await fetch("/api/history");
+    const data = await resp.json();
+    if (!data.success) {
+      list.innerHTML = `<p class="muted">${escapeHTML(data.error || "Failed to load history")}</p>`;
+      return;
+    }
+    renderHistoryList(data.checkpoints || []);
+  } catch (err) {
+    list.innerHTML = `<p class="muted">${escapeHTML(err.message || "Failed to load history")}</p>`;
+  }
+}
+
+function renderHistoryList(checkpoints) {
+  const list = $("historyList");
+  if (!list) return;
+  if (!checkpoints.length) {
+    list.innerHTML = `<p class="muted">No fix checkpoints yet. Apply a compose file fix to create a restore point.</p>`;
+    return;
+  }
+  list.innerHTML = checkpoints.map((cp) => {
+    const when = cp.timestamp ? new Date(cp.timestamp).toLocaleString() : "Unknown time";
+    const files = cp.file_count === 1 ? "1 file" : `${cp.file_count} files`;
+    return `<article class="history-item" data-id="${escapeHTML(cp.id)}">
+      <div class="history-item-top">
+        <strong>${escapeHTML(cp.finding_id || "unknown finding")}</strong>
+        <span class="muted">${escapeHTML(when)}</span>
+      </div>
+      <p class="history-item-action">${escapeHTML(cp.action || "Applied fix")}</p>
+      <div class="history-item-meta">
+        <span class="muted">${escapeHTML(files)}</span>
+        ${cp.service ? `<span class="muted">${escapeHTML(cp.service)}</span>` : ""}
+        <button type="button" class="chip history-rollback-btn" data-id="${escapeHTML(cp.id)}">Rollback</button>
+      </div>
+    </article>`;
+  }).join("");
+  list.querySelectorAll(".history-rollback-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      btn.blur();
+      confirmRollback(btn.dataset.id);
+    });
+  });
+}
+
+function toggleHistoryPanel() {
+  const panel = $("historyPanel");
+  if (!panel) return;
+  const show = panel.hidden;
+  panel.hidden = !show;
+  if (show) {
+    loadHistory();
+  }
+}
+
+function confirmRollback(id) {
+  if (!id) return;
+  closeRollbackModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "rollbackModal";
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <h2>Rollback checkpoint</h2>
+      <p>Restore files from checkpoint <code>${escapeHTML(id)}</code>? This cannot be undone automatically.</p>
+      <div class="modal-actions">
+        <button class="chip" id="rollbackCancel">Cancel</button>
+        <button class="chip critical" id="rollbackConfirm">Rollback</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#rollbackCancel").onclick = closeRollbackModal;
+  overlay.querySelector("#rollbackConfirm").onclick = async () => {
+    const btn = overlay.querySelector("#rollbackConfirm");
+    btn.disabled = true;
+    btn.textContent = "Rolling back…";
+    try {
+      const resp = await fetch("/api/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await resp.json();
+      closeRollbackModal();
+      if (!data.success) {
+        showToast(data.error || "Rollback failed", "toast-error");
+        return;
+      }
+      showToast(data.message || "Rollback complete", "toast-success");
+      loadHistory();
+    } catch (err) {
+      closeRollbackModal();
+      showToast(err.message || "Rollback failed", "toast-error");
+    }
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeRollbackModal();
+  });
+}
+
+function closeRollbackModal() {
+  const overlay = document.getElementById("rollbackModal");
   if (overlay) overlay.remove();
 }
 

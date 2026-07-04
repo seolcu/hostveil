@@ -18,6 +18,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 )
 
 func TestHealthEndpoint(t *testing.T) {
@@ -648,6 +649,54 @@ func TestHandleRescan(t *testing.T) {
 	}
 	if body["status"] != "rescanning" {
 		t.Errorf("expected status rescanning, got %q", body["status"])
+	}
+}
+
+func TestHandleHistory_Empty(t *testing.T) {
+	t.Setenv("HOSTVEIL_TEST", "1")
+	dir := t.TempDir()
+	history.BaseDir = dir
+	history.CheckpointDir = dir + "/checkpoints"
+	history.ScanDir = dir + "/scans"
+	t.Cleanup(func() {
+		history.BaseDir = "/var/lib/hostveil"
+		history.CheckpointDir = history.BaseDir + "/checkpoints"
+		history.ScanDir = history.BaseDir + "/scans"
+	})
+
+	req := httptest.NewRequest("GET", "/api/history", nil)
+	rec := httptest.NewRecorder()
+	handleHistory(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	var body struct {
+		Success     bool           `json:"success"`
+		Checkpoints []historyEntry `json:"checkpoints"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Success {
+		t.Error("expected success=true")
+	}
+	if len(body.Checkpoints) != 0 {
+		t.Errorf("expected empty checkpoints, got %d", len(body.Checkpoints))
+	}
+}
+
+func TestHandleRollback_MissingID(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/rollback", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	handleRollback(rec, req)
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["success"] != false {
+		t.Error("expected success=false for missing id")
 	}
 }
 

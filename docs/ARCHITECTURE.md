@@ -14,7 +14,7 @@ cmd/hostveil/         main package, subcommands, signal handling
 internal/
   domain/             shared types, scoring, scan progress
   scan/               single-tool dispatcher
-  trivy/              Trivy adapter (config and image scan)
+  trivy/              Trivy adapter (container image CVE scan)
   lynis/              Lynis adapter (host hardening)
   composeaudit/       native Docker Compose audit
   compose/            YAML AST editing primitives

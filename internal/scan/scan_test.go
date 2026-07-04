@@ -3,10 +3,38 @@ package scan
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
 )
+
+func TestRunAllTools_CompletesAllTools(t *testing.T) {
+	live := domain.NewScanProgress(true)
+	live.ResetForRescan()
+	reg := fix.New()
+
+	RunAllTools(live, reg)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if live.AllToolsDone() {
+			for _, tool := range []string{"compose", "trivy", "lynis"} {
+				ts := live.ToolState(tool)
+				if ts.Status == domain.ToolPending || ts.Status == domain.ToolRunning {
+					goto wait
+				}
+			}
+			if live.Phase != "complete" {
+				t.Errorf("expected phase complete, got %q", live.Phase)
+			}
+			return
+		}
+	wait:
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timeout waiting for rescan tools to finish")
+}
 
 func TestScanningMessage(t *testing.T) {
 	tests := []struct {

@@ -13,6 +13,13 @@ import (
 	"github.com/seolcu/hostveil/internal/trivy"
 )
 
+// RunAllTools launches compose, trivy, and lynis scans concurrently.
+func RunAllTools(live *domain.ScanProgress, fixes *fix.Registry) {
+	go RunSingleTool(live, fixes, "compose")
+	go RunSingleTool(live, fixes, "trivy")
+	go RunSingleTool(live, fixes, "lynis")
+}
+
 func RunSingleTool(live *domain.ScanProgress, fixes *fix.Registry, tool string) {
 	if tool != "compose" {
 		if _, err := exec.LookPath(tool); err != nil {

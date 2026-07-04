@@ -31,10 +31,13 @@ as you would any other host audit report.
 
 - **CSRF on state-changing endpoints.** `POST /api/fix`,
   `/api/fix/batch`, `/api/rescan`, `/api/recalc`, and
-  `/api/export` reject requests whose `Origin` does not match
+  `POST /api/rollback` reject requests whose `Origin` does not match
   the `Host` header. Browsers always send `Origin` on
   cross-origin POSTs, so a malicious site open in another tab
   cannot trigger fix application.
+- **Origin check on export.** `GET /api/export` rejects requests
+  whose `Origin` does not match the `Host` header when an
+  `Origin` header is present.
 - **DNS rebinding protection.** Every route — including `GET
   /api/result`, which has no other access control — is wrapped
   in a Host-header allowlist derived from how the server was
