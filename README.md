@@ -135,6 +135,16 @@ All three backends scan in parallel. A missing `trivy` or `lynis`
 binary just skips that backend — it never blocks the other two or
 crashes the scan.
 
+### Compose audit limitations
+
+The native compose audit reads the YAML files Docker Compose reports
+for each project. It does **not** evaluate `${VAR}` or
+`${VAR:-default}` interpolation — a risky port or secret hidden
+behind a variable will not be detected until the resolved value is
+present in the file. When a project uses multiple compose files
+(`compose.yaml` + `compose.override.yaml`, or `-f` merges),
+hostveil audits **every** file Docker reports, not just the first.
+
 ## Understanding the score
 
 <details>

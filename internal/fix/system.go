@@ -309,6 +309,111 @@ install tipc /bin/true
 		Kind:      domain.RemediationManual,
 		Actions:   nil,
 	})
+
+	// ── Additional Lynis 3.1.6 reference IDs ─────────────────────────
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9216",
+		Label:     "Run grpck to verify group file consistency (grpck -r /etc/group). Fix any duplicate GIDs or orphaned entries reported. This is site-specific — review each warning before editing /etc/group.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.AUTH-9230",
+		Label:     "Increase password hashing rounds",
+		Actions: []Action{{
+			Type:     ActionEdit,
+			Label:    "Set SHA_CRYPT_MIN_ROUNDS to 5000 in /etc/login.defs",
+			FilePath: "/etc/login.defs",
+			Warning:  "Higher rounds slow password hashing and may affect login performance on low-end hardware.",
+			Apply:    loginDefsSet("SHA_CRYPT_MIN_ROUNDS", "5000"),
+		}},
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.FILE-6310",
+		Label:     "/home should be on a separate partition. This requires disk layout changes during provisioning or migration — back up data, create a new partition or volume, copy /home, update /etc/fstab, and reboot.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.FINT-4350",
+		Label:     "Install a file integrity tool (AIDE or Tripwire)",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install AIDE",
+			Warning: "AIDE requires periodic baseline updates after system changes. Initial database creation can take several minutes.",
+			Apply: func(ctx Context) error {
+				return installPackage("aide")
+			},
+		}},
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.HRDN-7230",
+		Label:     "Install a malware scanner (ClamAV or rkhunter)",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install ClamAV",
+			Warning: "ClamAV requires regular signature updates (freshclam). Scanning large filesystems can be CPU-intensive.",
+			Apply: func(ctx Context) error {
+				return runInstallAndStart("clamav", "clamav-daemon", "clamav-update", "clamd")
+			},
+		}},
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.LOGG-2138",
+		Label:     "Install and enable klogd for kernel logging",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Install klogd",
+			Warning: "klogd is legacy on many modern distros where the kernel logs directly to syslog/journald. Verify your distro still ships it before applying.",
+			Apply: func(ctx Context) error {
+				return runInstallAndStart("klogd", "klogd", "klogd", "klogd")
+			},
+		}},
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.NAME-4028",
+		Label:     "Configure DNS properly in /etc/resolv.conf or via systemd-resolved/NetworkManager. Ensure at least one working nameserver is configured and that search domains match your network.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.PKGS-7398",
+		Label:     "Enable automatic security updates. On Debian/Ubuntu install unattended-upgrades; on RHEL/Fedora enable dnf-automatic; on Alpine review apk upgrade scheduling via cron.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.TOOL-5002",
+		Label:     "Review installed automation tools (Ansible, Puppet, Chef, Salt). Remove unused agents and restrict credentials for tools that remain. Ensure automation runs over SSH keys, not passwords.",
+		Kind:      domain.RemediationManual,
+		Actions:   nil,
+	})
+
+	r.Register(&Fix{
+		FindingID: "lynis.USB-1000",
+		Label:     "Disable USB storage to prevent unauthorized data exfiltration",
+		Actions: []Action{{
+			Type:    ActionExec,
+			Label:   "Blacklist usb-storage module",
+			Warning: "Disabling USB storage prevents using USB flash drives and some external devices. Review whether your environment needs USB storage before applying.",
+			Apply: func(ctx Context) error {
+				content := `# Disabled by hostveil
+install usb-storage /bin/true
+blacklist usb-storage
+`
+				path := "/etc/modprobe.d/hv-disable-usb-storage.conf"
+				return exec.Command("sh", "-c", fmt.Sprintf("mkdir -p /etc/modprobe.d && cat > %s <<'EOF'\n%sEOF\n", shellQuote(path), content)).Run()
+			},
+		}},
+	})
 }
 
 // ── Helpers (extracted for unit-testability) ──────────────────────────

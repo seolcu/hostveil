@@ -355,9 +355,31 @@ func (m model) renderScorePlate() string {
 		Foreground(lipgloss.Color(t.TextMuted)).
 		Render("SECURITY SCORE")
 
+	lines := []string{label, scoreStr}
+	if axes := m.snap.ScoreBreakdown.Axes; len(axes) > 0 {
+		lines = append(lines, "")
+		for _, axis := range axes {
+			axisLabel := fit(axis.Label, 14)
+			penalty := axis.Penalty
+			if penalty > axis.MaxPenalty {
+				penalty = axis.MaxPenalty
+			}
+			meta := fmt.Sprintf("%d/%d", penalty, axis.MaxPenalty)
+			line := fmt.Sprintf("%s %3d  %s",
+				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(axisLabel),
+				axis.Score,
+				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(meta),
+			)
+			lines = append(lines, line)
+		}
+	}
+
 	// Match the brand area's height so the card stretches to align with the
 	// sysinfo line (mirrors the Web UI's `align-items: stretch` on `.topbar`).
 	height := max(6, m.brandHeight())
+	if len(lines) > 2 {
+		height = max(height, len(lines)+2)
+	}
 
 	// When the card is stretched to 7+ lines, center the content vertically
 	// so the extra space distributes above and below instead of leaving an
@@ -371,9 +393,9 @@ func (m model) renderScorePlate() string {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
 		Padding(vPad, 2).
-		Width(24).
+		Width(28).
 		Height(height).
-		Render(lipgloss.JoinVertical(lipgloss.Left, label, scoreStr))
+		Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
 }
 
 // brandHeight returns the number of text lines the brand area occupies:

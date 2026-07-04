@@ -144,3 +144,17 @@ func TestLynis316_CommonIDsHaveFixes(t *testing.T) {
 		}
 	}
 }
+
+// TestLynis316_AllReferenceIDsHaveFixes ensures every ID from the Lynis
+// 3.1.6 reference run has at least a Manual fix registered so findings
+// are not silently dropped as RemediationUnavailable after Classify.
+func TestLynis316_AllReferenceIDsHaveFixes(t *testing.T) {
+	r := New()
+	RegisterAll(r)
+
+	for id := range lynis316IDs {
+		if r.Lookup("lynis."+id) == nil {
+			t.Errorf("lynis.%s is in the reference run but has no registered fix", id)
+		}
+	}
+}

@@ -44,7 +44,11 @@ func registerComposeFixes(r *Registry) {
 			})
 		},
 	}}})
-	r.Register(&Fix{FindingID: "compose.ds006", Label: "Add no-new-privileges", Actions: []Action{edit("security_opt", []interface{}{"no-new-privileges:true"})}})
+	r.Register(&Fix{FindingID: "compose.ds006", Label: "Add no-new-privileges", Actions: []Action{{
+		Type:  ActionEdit,
+		Label: "Add no-new-privileges:true",
+		Apply: composeAppendSecurityOpt,
+	}}})
 	r.Register(&Fix{FindingID: "compose.ds007", Label: "Remove userns_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove userns_mode: host", Warning: "Container loses host user namespace access.", Apply: func(ctx Context) error { return composeDel(ctx, "userns_mode") }}}})
 	r.Register(&Fix{FindingID: "compose.ds008", Label: "Change restart to unless-stopped", Actions: []Action{edit("restart", "unless-stopped")}})
 	r.Register(&Fix{
@@ -115,6 +119,14 @@ func registerComposeFixes(r *Registry) {
 				}
 				return exec.Command("chmod", "600", envPath).Run()
 			}},
+		},
+	})
+	r.Register(&Fix{
+		FindingID: "compose.dr005",
+		Label:     "Remove hardcoded secret from environment",
+		Actions: []Action{
+			{Type: ActionEdit, Label: "Replace with ${VAR} placeholder", Apply: composeEnvToVariable},
+			{Type: ActionEdit, Label: "Remove environment key", Apply: composeDelEnvKey},
 		},
 	})
 	r.Register(&Fix{
@@ -344,6 +356,86 @@ func composeDropBatch(ctx Context, field string, values []interface{}) error {
 			if err := f.RemoveFromList(svc, field, v); err != nil {
 				return err
 			}
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeAppendSecurityOpt(ctx Context) error {
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	const opt = "no-new-privileges:true"
+	for _, svc := range svcs {
+		existing, _ := f.GetFieldStrings(svc, "security_opt")
+		hasOpt := false
+		for _, item := range existing {
+			if item == opt {
+				hasOpt = true
+				break
+			}
+		}
+		if hasOpt {
+			continue
+		}
+		merged := make([]interface{}, 0, len(existing)+1)
+		for _, item := range existing {
+			merged = append(merged, item)
+		}
+		merged = append(merged, opt)
+		if err := f.SetField(svc, "security_opt", merged); err != nil {
+			return err
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeEnvToVariable(ctx Context) error {
+	key := ctx.Finding.Evidence["env_key"]
+	if key == "" {
+		return fmt.Errorf("env_key not found in finding evidence")
+	}
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	placeholder := "${" + strings.ToUpper(key) + "}"
+	for _, svc := range svcs {
+		if err := f.SetEnvironmentValue(svc, key, placeholder); err != nil {
+			return err
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeDelEnvKey(ctx Context) error {
+	key := ctx.Finding.Evidence["env_key"]
+	if key == "" {
+		return fmt.Errorf("env_key not found in finding evidence")
+	}
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	for _, svc := range svcs {
+		if err := f.DeleteEnvironmentKey(svc, key); err != nil {
+			return err
 		}
 	}
 	ctx.Diff = f.Diff()

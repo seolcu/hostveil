@@ -108,7 +108,7 @@ func TestRenderMain_WideLayoutKeepsFilterListAndDetailSeparated(t *testing.T) {
 			Remediation: domain.RemediationAuto,
 		},
 	}
-	m := readyModelForRenderRegression(t, findings, 220, 44)
+	m := readyModelForRenderRegression(t, findings, 220, 52)
 
 	output := m.renderMain()
 	for _, want := range []string{"SEARCH FINDINGS", "FINDINGS", "SSH password authentication remains enabled", "HOW TO FIX"} {
