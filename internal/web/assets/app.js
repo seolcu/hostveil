@@ -813,7 +813,7 @@ function isBatchSelectable(f) {
 
 function renderDetail(f) {
   if (!f) {
-    $("detail").innerHTML = `<div class="empty-detail"><div class="empty-detail-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></div><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
+    $("detail").innerHTML = `<div class="empty-detail"><span>&gt;</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
     return;
   }
   const evidence = f.evidence || {};
