@@ -148,6 +148,10 @@ func (m model) updateMain(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.exportIdx = 0
 		m.modal = modalExport
 		return m, nil
+	case "t":
+		m.themeIdx = themeIndex(m.themeName)
+		m.modal = modalTheme
+		return m, nil
 	}
 
 	if m.mode == paneDetail {
@@ -286,6 +290,24 @@ func (m model) updateModal(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "enter", "l":
 			m.modal = modalNone
 			m.exportReport()
+		case "q", "esc":
+			m.modal = modalNone
+		}
+	case modalTheme:
+		switch msg.String() {
+		case "up", "k":
+			if m.themeIdx > 0 {
+				m.themeIdx--
+			}
+		case "down", "j":
+			if m.themeIdx < len(ThemeIDs())-1 {
+				m.themeIdx++
+			}
+		case "enter", "l":
+			m = m.applyTheme(ThemeIDs()[m.themeIdx])
+			m.modal = modalNone
+			m.toast = "Theme: " + ThemeLabel(m.themeName)
+			m.toastUntil = time.Now().Add(3 * time.Second)
 		case "q", "esc":
 			m.modal = modalNone
 		}

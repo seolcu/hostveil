@@ -806,6 +806,8 @@ func (m model) renderWithModal(base string) string {
 		modal = m.renderFixProgressModal()
 	case modalExport:
 		modal = m.renderExportModal()
+	case modalTheme:
+		modal = m.renderThemeModal()
 	default:
 		return base
 	}
@@ -847,6 +849,7 @@ func (m model) renderHelpModal() string {
 			"  O             Toggle sort direction",
 			"  R             Clear all filters",
 			"  e             Export report (JSON/CSV/AI)",
+			"  t             Color scheme",
 			"  ?             This help",
 			"  q             Quit",
 		)
@@ -862,6 +865,7 @@ func (m model) renderHelpModal() string {
 			"  Ctrl+S        Rescan all tools",
 			"  Ctrl+A        Select/deselect all visible",
 			"  ?             This help",
+			"  t             Color scheme",
 			"  q             Quit",
 		)
 	}
@@ -1071,6 +1075,39 @@ func (m model) renderExportModal() string {
 	lines = append(lines,
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter export · Esc cancel"),
+	)
+	return s.Width(m.modalWidth(64)).Render(strings.Join(lines, "\n"))
+}
+
+func (m model) renderThemeModal() string {
+	t := m.theme()
+	s := m.modalStyle()
+
+	var items []string
+	for i, id := range ThemeIDs() {
+		mark := "  "
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
+		if i == m.themeIdx {
+			mark = "> "
+			style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
+		}
+		label := ThemeLabel(id)
+		if id == m.themeName {
+			label += " (current)"
+		}
+		items = append(items, "  "+mark+style.Render(label))
+	}
+
+	lines := []string{
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Color scheme"),
+		"",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Choose palette:"),
+		"",
+	}
+	lines = append(lines, items...)
+	lines = append(lines,
+		"",
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("↑/↓ select · Enter apply · Esc cancel"),
 	)
 	return s.Width(m.modalWidth(64)).Render(strings.Join(lines, "\n"))
 }

@@ -1,6 +1,8 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 const toolLabels = { trivy: "Trivy", lynis: "Lynis", compose: "Compose", update: "Update" };
 const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
+const THEME_STORAGE_KEY = "hostveil-theme";
+const THEME_IDS = ["default", "tokyo-night", "catppuccin", "nord"];
 
 const state = {
   live: null,
@@ -83,12 +85,56 @@ function invalidateFindingsCache() {
 }
 
 async function init() {
+  initTheme();
   await fetchResult();
   if (state.phase === "loading") {
     state.pollTimer = setInterval(fetchResult, 2000);
   }
   bindControls();
   bindVisibilityPause();
+}
+
+function normalizeThemeId(id) {
+  return THEME_IDS.includes(id) ? id : "default";
+}
+
+function currentThemeId() {
+  return normalizeThemeId(document.documentElement.dataset.theme || "default");
+}
+
+function applyTheme(id) {
+  const theme = normalizeThemeId(id);
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+  const select = $("themeSelect");
+  if (select && select.value !== theme) {
+    select.value = theme;
+  }
+}
+
+function initTheme() {
+  applyTheme(currentThemeId());
+}
+
+function cycleTheme(step) {
+  const idx = THEME_IDS.indexOf(currentThemeId());
+  const next = (idx + step + THEME_IDS.length) % THEME_IDS.length;
+  applyTheme(THEME_IDS[next]);
+  showToast(`Theme: ${themeLabel(THEME_IDS[next])}`, "toast-info");
+}
+
+function themeLabel(id) {
+  const labels = {
+    default: "Default",
+    "tokyo-night": "Tokyo Night",
+    catppuccin: "Catppuccin",
+    nord: "Nord",
+  };
+  return labels[id] || id;
 }
 
 function bindVisibilityPause() {
@@ -118,6 +164,10 @@ function bindControls() {
   $("sortBy")?.addEventListener("change", (event) => {
     state.sortBy = event.target.value;
     render();
+  });
+  $("themeSelect")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value);
+    showToast(`Theme: ${themeLabel(currentThemeId())}`, "toast-info");
   });
   $("clearFilters")?.addEventListener("click", () => {
     $("clearFilters").blur();
@@ -373,6 +423,13 @@ function bindControls() {
       state.remediation = rems[(idx + 1) % rems.length];
       state.selected = 0;
       render();
+      return;
+    }
+
+    // t: cycle color scheme
+    if (e.key === "t" && !e.shiftKey) {
+      e.preventDefault();
+      cycleTheme(1);
       return;
     }
 
@@ -1452,6 +1509,13 @@ function showHelpModal() {
             <dt><kbd>Ctrl+A</kbd></dt><dd>Select all visible</dd>
             <dt><kbd>Ctrl+R</kbd></dt><dd>Recalculate score</dd>
             <dt><kbd>Ctrl+S</kbd></dt><dd>Rescan all tools</dd>
+          </dl>
+        </div>
+        <div class="help-section">
+          <h3>Appearance</h3>
+          <dl>
+            <dt><kbd>t</kbd></dt><dd>Cycle color scheme</dd>
+            <dt>Sidebar</dt><dd>Use the Color scheme dropdown</dd>
           </dl>
         </div>
         <div class="help-section">
