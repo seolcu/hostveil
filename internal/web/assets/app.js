@@ -635,10 +635,10 @@ function renderMetrics() {
   const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
   const metrics = [
     ["Total", items.length, "", "metric--total"],
-    ["Critical", counts.critical || 0, "critical"],
-    ["High", counts.high || 0, "high"],
-    ["Medium", counts.medium || 0, "medium"],
-    ["Low", counts.low || 0, "low"],
+    ["Critical", counts.critical || 0, "critical", "metric--critical"],
+    ["High", counts.high || 0, "high", "metric--high"],
+    ["Medium", counts.medium || 0, "medium", "metric--medium"],
+    ["Low", counts.low || 0, "low", "metric--low"],
     ["Fixable", fixable, "", "metric--fixable"],
   ];
   $("metrics").innerHTML = metrics.map(([label, value, cls = "", extra = ""]) => `<article class="metric ${extra}"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
@@ -735,7 +735,8 @@ function renderTable(visible) {
     const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
     const checked = selectableRow && state.selectedSet.has(f.id) ? "checked" : "";
     const disabledAttr = !selectableRow ? "disabled" : "";
-    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}">
+    const sevAttr = f.fixed ? "" : ` data-severity="${severity(f)}"`;
+    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}"${sevAttr}>
       <td class="check-cell"><input type="checkbox" ${checked} ${disabledAttr} data-id="${escapeHTML(f.id)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
@@ -812,7 +813,7 @@ function isBatchSelectable(f) {
 
 function renderDetail(f) {
   if (!f) {
-    $("detail").innerHTML = `<div class="empty-detail"><span>\u26C5</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
+    $("detail").innerHTML = `<div class="empty-detail"><span>&gt;</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
     return;
   }
   const evidence = f.evidence || {};
