@@ -106,10 +106,10 @@ test.describe("Export", () => {
     const sevCell = fixedRow.first().locator("td:nth-child(2)");
     await expect(sevCell).toContainText("✓");
 
-    // The title should have line-through styling (opacity:0.5 + text-decoration:line-through)
-    const titleCell = fixedRow.first().locator("td.title");
-    const titleHtml = await titleCell.innerHTML();
-    expect(titleHtml).toContain("line-through");
+    // The title should use the shared fixed-title styling.
+    const titleCell = fixedRow.first().locator("td.title .fixed-title");
+    await expect(titleCell).toBeVisible();
+    await expect(titleCell).toHaveCSS("text-decoration-line", "line-through");
   });
 
   test("JSON export contains all required Snapshot fields", async ({

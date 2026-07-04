@@ -116,7 +116,11 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 		}
 	}
 
-	s := spinner.New(spinner.WithSpinner(spinner.Dot))
+	theme := LookupTheme(themeName)
+	s := spinner.New(
+		spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))),
+	)
 
 	t := table.New(
 		table.WithColumns([]table.Column{
@@ -129,12 +133,13 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 		}),
 		table.WithFocused(true),
 		table.WithHeight(10),
-		table.WithStyles(tableStyles(LookupTheme(themeName))),
+		table.WithStyles(tableStyles(theme)),
 	)
 
 	search := textinput.New()
 	search.Placeholder = "Search findings..."
 	search.CharLimit = 64
+	search.SetStyles(inputStyles(theme))
 
 	vp := viewport.New()
 	vp.SoftWrap = true
@@ -390,7 +395,10 @@ func (m model) applyTheme(name string) model {
 			break
 		}
 	}
-	m.table.SetStyles(tableStyles(m.theme()))
+	t := m.theme()
+	m.table.SetStyles(tableStyles(t))
+	m.searchBox.SetStyles(inputStyles(t))
+	m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent))
 	_ = SaveConfig(Config{Theme: m.themeName})
 	return m
 }

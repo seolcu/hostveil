@@ -810,7 +810,7 @@ function renderTable(visible) {
     const sevDisplay = f.fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
     const srcDisplay = f.fixed ? "" : `<span class="muted">${source(f)}</span>`;
     const fixDisplay = f.fixed ? "Fixed" : label(remediation(f));
-    const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
+    const titleDisplay = f.fixed ? `<span class="fixed-title">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
     const checked = selectableRow && state.selectedSet.has(f.id) ? "checked" : "";
     const disabledAttr = !selectableRow ? "disabled" : "";
     const sevAttr = f.fixed ? "" : ` data-severity="${severity(f)}"`;

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/seolcu/hostveil/internal/domain"
 )
@@ -97,6 +99,7 @@ func (m model) renderLoading() string {
 	panel := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Padding(1, 2).
 		Width(panelW).
 		Render(content)
@@ -263,6 +266,7 @@ func (m model) renderFilterPanel(width int) string {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Width(width).
 		Height(m.bodyHeight()).
 		Padding(1, 2).
@@ -365,9 +369,13 @@ func (m model) renderScorePlate() string {
 				penalty = axis.MaxPenalty
 			}
 			meta := fmt.Sprintf("%d/%d", penalty, axis.MaxPenalty)
-			line := fmt.Sprintf("%s %3d  %s",
+			scoreStyled := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(scoreColor(uint8(axis.Score), t))).
+				Bold(true).
+				Render(fmt.Sprintf("%3d", axis.Score))
+			line := fmt.Sprintf("%s %s  %s",
 				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(axisLabel),
-				axis.Score,
+				scoreStyled,
 				lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render(meta),
 			)
 			lines = append(lines, line)
@@ -392,6 +400,7 @@ func (m model) renderScorePlate() string {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Padding(vPad, 2).
 		Width(28).
 		Height(height).
@@ -480,6 +489,7 @@ func (m model) renderMetrics() string {
 		card := lipgloss.NewStyle().
 			Border(border).
 			BorderForeground(lipgloss.Color(borderColor)).
+			Background(lipgloss.Color(t.SurfaceAlt)).
 			Width(cardW).
 			Padding(1, 2).
 			Render(
@@ -597,6 +607,7 @@ func (m model) renderListPane() string {
 	return lipgloss.NewStyle().
 		Width(headW).
 		Height(m.bodyHeight()).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(borderColor)).
 		Render(body)
@@ -686,6 +697,7 @@ func (m model) renderDetailPane() string {
 	return lipgloss.NewStyle().
 		Width(m.detailWidth()).
 		Height(m.bodyHeight()).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(borderColor)).
 		Render(body)
@@ -730,6 +742,7 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 	meta := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.Background)).
 		Padding(1, 2).
 		Width(width).
 		Render(strings.Join(metaRows, "\n"))
@@ -757,6 +770,7 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
+				Background(lipgloss.Color(t.Background)).
 				Padding(0, 1).
 				Width(width).
 				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Evidence[k], blockInnerW, " ")))
@@ -775,6 +789,7 @@ func renderDetailContent(t Theme, f *domain.Finding, width int) string {
 			block := lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color(t.Border)).
+				Background(lipgloss.Color(t.Background)).
 				Padding(0, 1).
 				Width(width).
 				Render(muted.Render(fit(k, blockInnerW)) + "\n" + text.Render(lipgloss.Wrap(f.Metadata[k], blockInnerW, " ")))
@@ -815,8 +830,9 @@ func (m model) renderWithModal(base string) string {
 	mw, mh := lipgloss.Size(modal)
 	x := max(0, (m.width-mw)/2)
 	y := max(0, (m.height-mh)/2)
+	dimmed := lipgloss.NewStyle().Faint(true).Render(base)
 	return lipgloss.NewCompositor(
-		lipgloss.NewLayer(base).X(0).Y(0).Z(0),
+		lipgloss.NewLayer(dimmed).X(0).Y(0).Z(0),
 		lipgloss.NewLayer(modal).X(x).Y(y).Z(10),
 	).Render()
 }
@@ -901,7 +917,7 @@ func (m model) renderFixDryRunModal() string {
 	lines := []string{
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render(title),
 		"",
-		lipgloss.NewStyle().Bold(true).Render(label),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(label),
 		"",
 	}
 
@@ -917,7 +933,7 @@ func (m model) renderFixDryRunModal() string {
 		}
 		actionLine := fmt.Sprintf("%s%s%s%s", prefix, info.label, typeTag, warn)
 		if !multi || i == m.dryRunApplyIdx {
-			style := lipgloss.NewStyle()
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
 			if multi && i == m.dryRunApplyIdx {
 				style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
 			}
@@ -960,7 +976,7 @@ func (m model) renderFixConfirmModal() string {
 		"",
 	}
 	if m.fixTarget != nil && len(m.fixTarget.Actions) > 0 {
-		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.fixTarget.Label))
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)).Bold(true).Render(m.fixTarget.Label))
 
 		// Clamp the action index so a stale value (e.g. left over from a
 		// previous multi-action fix) cannot index past the end.
@@ -979,14 +995,16 @@ func (m model) renderFixConfirmModal() string {
 			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Actions:"))
 			for i, a := range m.fixTarget.Actions {
 				mark := "  "
-				if i == m.fixActionIdx {
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
+				if i == idx {
 					mark = "> "
+					style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
 				}
 				warn := ""
 				if a.Warning != "" {
 					warn = " ⚠"
 				}
-				lines = append(lines, fmt.Sprintf("  %s%s%s", mark, a.Label, warn))
+				lines = append(lines, style.Render(fmt.Sprintf("%s%s%s", mark, a.Label, warn)))
 			}
 		}
 	}
@@ -999,10 +1017,27 @@ func (m model) renderFixResultModal() string {
 	t := m.theme()
 	s := m.modalStyle()
 
+	resultBody := m.fixResult
+	if strings.HasPrefix(m.fixResult, "✓") {
+		resultBody = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Success)).Render(m.fixResult)
+	} else if strings.HasPrefix(m.fixResult, "✗") {
+		resultBody = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Critical)).Render(m.fixResult)
+	} else if strings.Contains(m.fixResult, "\n\n") {
+		parts := strings.SplitN(m.fixResult, "\n\n", 2)
+		head := parts[0]
+		diff := parts[1]
+		headStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Success))
+		if strings.HasPrefix(head, "✗") {
+			headStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Critical))
+		}
+		diffStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted))
+		resultBody = headStyle.Render(head) + "\n\n" + diffStyle.Render(diff)
+	}
+
 	lines := []string{
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Fix result"),
 		"",
-		m.fixResult,
+		resultBody,
 		"",
 		lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)).Render("Press any key to close"),
 	}
@@ -1019,18 +1054,15 @@ func (m model) renderFixProgressModal() string {
 	}
 	modalW := m.modalWidth(64)
 	barW := min(30, max(10, modalContentWidth(modalW)-6))
-	filled := barW * pct / 100
-	if filled > barW {
-		filled = barW
+	bar := renderProgressBar(float64(pct)/100.0, barW)
+	if bar == "" {
+		bar = strings.Repeat("░", barW)
 	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", barW-filled)
 
 	title := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Bold(true).Render("Applying fixes")
 	header := fmt.Sprintf("%d / %d", m.fixProgress, m.fixProgressTotal)
-	pctStr := fmt.Sprintf("%d%%", pct)
 
 	barLine := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)).Render(bar)
-	pctLine := lipgloss.JoinHorizontal(lipgloss.Top, " ", barLine, " ", pctStr)
 
 	var labelLine string
 	if m.fixProgressLabel != "" {
@@ -1041,7 +1073,7 @@ func (m model) renderFixProgressModal() string {
 		title,
 		"",
 		header,
-		pctLine,
+		barLine,
 	}
 	if labelLine != "" {
 		lines = append(lines, labelLine)
@@ -1056,13 +1088,7 @@ func (m model) renderExportModal() string {
 
 	var items []string
 	for i, f := range exportFormats {
-		mark := "  "
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
-		if i == m.exportIdx {
-			mark = "> "
-			style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
-		}
-		items = append(items, "  "+mark+style.Render(f.label))
+		items = append(items, renderSelectableItem(t, f.label, i == m.exportIdx))
 	}
 
 	lines := []string{
@@ -1085,17 +1111,11 @@ func (m model) renderThemeModal() string {
 
 	var items []string
 	for i, id := range ThemeIDs() {
-		mark := "  "
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
-		if i == m.themeIdx {
-			mark = "> "
-			style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
-		}
 		label := ThemeLabel(id)
 		if id == m.themeName {
 			label += " (current)"
 		}
-		items = append(items, "  "+mark+style.Render(label))
+		items = append(items, renderSelectableItem(t, label, i == m.themeIdx))
 	}
 
 	lines := []string{
@@ -1117,6 +1137,7 @@ func (m model) modalStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(t.Border)).
+		Background(lipgloss.Color(t.SurfaceAlt)).
 		Padding(1, 2)
 }
 
@@ -1144,6 +1165,60 @@ func severityBadgeStr(label, color string) string {
 		Foreground(lipgloss.Color(color)).
 		Bold(true).
 		Render("[" + label + "]")
+}
+
+// inputStyles returns themed textinput styles for the search modal.
+func inputStyles(t Theme) textinput.Styles {
+	state := textinput.StyleState{
+		Text:        lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text)),
+		Placeholder: lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)),
+		Suggestion:  lipgloss.NewStyle().Foreground(lipgloss.Color(t.TextMuted)),
+		Prompt:      lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent)),
+	}
+	return textinput.Styles{
+		Focused: state,
+		Blurred: state,
+		Cursor: textinput.CursorStyle{
+			Color: lipgloss.Color(t.Accent),
+			Shape: tea.CursorBlock,
+			Blink: true,
+		},
+	}
+}
+
+// styledTableSeverity returns a color-coded severity cell for the findings table.
+func styledTableSeverity(t Theme, f domain.Finding) string {
+	if f.Fixed {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color(t.Success)).Bold(true).Render("✓")
+	}
+	sev := strings.ToUpper(f.Severity.String())
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(severityColor(f.Severity, t))).
+		Bold(true).
+		Render(fit(sev, 8))
+}
+
+// styledTableTitle returns a table title cell, dimming and striking through fixed findings.
+func styledTableTitle(t Theme, f domain.Finding, maxWidth int) string {
+	title := findingTitle(f)
+	if f.Fixed {
+		title = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(t.TextMuted)).
+			Strikethrough(true).
+			Render(title)
+	}
+	return fit(title, maxWidth)
+}
+
+// renderSelectableItem renders one highlighted option row for export/theme modals.
+func renderSelectableItem(t Theme, label string, selected bool) string {
+	mark := "  "
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Text))
+	if selected {
+		mark = "> "
+		style = style.Foreground(lipgloss.Color(t.Accent)).Bold(true)
+	}
+	return mark + style.Render(label)
 }
 
 // ── Utility functions ──
