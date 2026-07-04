@@ -18,7 +18,7 @@ import (
 	"github.com/seolcu/hostveil/internal/scan"
 )
 
-var Version = "v2.5.2"
+var Version = "v2.6.0"
 
 type paneMode int
 

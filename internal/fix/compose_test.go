@@ -329,3 +329,80 @@ func TestComposePortRestrict_LongForm(t *testing.T) {
 		t.Errorf("compose file should not contain 0.0.0.0:8080:80\n%s", content)
 	}
 }
+
+func TestComposePortRestrict_LongSyntaxMapping(t *testing.T) {
+	const yml = `services:
+  web:
+    image: nginx:alpine
+    ports:
+      - target: 80
+        published: 8080
+        host_ip: 0.0.0.0
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "web")
+	if err := composePortRestrict(ctx, "127.0.0.1"); err != nil {
+		t.Fatalf("composePortRestrict: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "127.0.0.1") {
+		t.Errorf("compose file should restrict long-syntax host_ip\n%s", content)
+	}
+}
+
+func TestComposeVolumeRO_LongSyntax(t *testing.T) {
+	const yml = `services:
+  web:
+    image: nginx
+    volumes:
+      - type: bind
+        source: /etc
+        target: /host-etc
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "web")
+	ctx.Finding.Evidence["volume"] = "/etc:/host-etc"
+	if err := composeVolumeRO(ctx); err != nil {
+		t.Fatalf("composeVolumeRO: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "read_only:") {
+		t.Errorf("compose file should set read_only\n%s", string(data))
+	}
+}
+
+func TestComposeDropVolume_LongSyntax(t *testing.T) {
+	const yml = `services:
+  agent:
+    image: portainer/agent
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+      - data:/data
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "agent")
+	ctx.Finding.Evidence["volume"] = "/var/run/docker.sock:/var/run/docker.sock"
+	if err := composeDropVolume(ctx); err != nil {
+		t.Fatalf("composeDropVolume: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if strings.Contains(content, "docker.sock") {
+		t.Errorf("docker.sock mount should be removed\n%s", content)
+	}
+	if !strings.Contains(content, "data:/data") {
+		t.Errorf("unrelated volume should remain\n%s", content)
+	}
+}

@@ -55,3 +55,18 @@ func TestCheckSensitiveHostMount_LongSyntax(t *testing.T) {
 		t.Error("expected compose.ds017 for long-syntax /etc mount")
 	}
 }
+
+func TestCheckVolumeRO_LongSyntax(t *testing.T) {
+	f := openCompose(t, `services:
+  web:
+    image: nginx
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+`)
+	findings := checkVolumeRO(f, "web", Project{Name: "test", ComposePath: "test.yml"})
+	if !hasFinding(findings, "compose.dr003") {
+		t.Error("expected compose.dr003 for long-syntax read-write mount")
+	}
+}
