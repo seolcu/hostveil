@@ -207,6 +207,61 @@ test.describe("Responsive visual regressions", () => {
     await expect(page.locator("#fixSelectedBtn")).not.toContainText("14");
   });
 
+  test("severity badges use severity classes on visible rows", async ({ page }) => {
+    await gotoReady(page, { width: 1280, height: 720 });
+
+    const rows = page.locator("#findings tr[data-id]:not(.fixed)");
+    const count = await rows.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < Math.min(count, 6); i++) {
+      const badge = rows.nth(i).locator("td:nth-child(2) .badge");
+      await expect(badge).toBeVisible();
+      const className = await badge.getAttribute("class");
+      expect(className).toMatch(/\b(critical|high|medium|low)\b/);
+    }
+  });
+
+  test("fix modal stays inside a short viewport", async ({ page }) => {
+    await gotoReady(page, { width: 640, height: 360 });
+
+    const fixableRow = page.locator('#findings tr[data-id="lynis.AUTH-9286"]');
+    await fixableRow.click();
+    await page.keyboard.press("f");
+    const modal = page.locator(".modal-overlay .modal-content");
+    await expect(modal).toBeVisible();
+
+    const metrics = await modal.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      };
+    });
+
+    expect(metrics.left).toBeGreaterThanOrEqual(0);
+    expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+    expect(metrics.top).toBeGreaterThanOrEqual(0);
+    expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight + 1);
+  });
+
+  test("fixed findings use shared title styling instead of inline opacity", async ({
+    page,
+  }) => {
+    await gotoReady(page, { width: 1280, height: 720 });
+
+    const fixedTitle = page.locator('#findings tr[data-id="trivy.cve-2024-0003"] td.title .fixed-title');
+    await expect(fixedTitle).toBeVisible();
+    await expect(fixedTitle).toHaveCSS("text-decoration-line", "line-through");
+
+    const inlineOpacity = await fixedTitle.evaluate((el) => el.getAttribute("style"));
+    expect(inlineOpacity).toBeNull();
+  });
+
   test("rescan button stays in loading state while the rescan request is pending", async ({
     page,
   }) => {

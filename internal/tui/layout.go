@@ -1,9 +1,8 @@
 package tui
 
 import (
-	"strings"
-
 	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
 )
 
 func (m *model) rebuildTable() {
@@ -14,6 +13,7 @@ func (m *model) rebuildTable() {
 	rows := make([]table.Row, len(visible))
 	layout := m.tableLayout()
 	cursor := m.table.Cursor()
+	t := m.theme()
 	for i, f := range visible {
 		checkbox := "◇"
 		if !isBatchFixableFinding(f) {
@@ -21,24 +21,22 @@ func (m *model) rebuildTable() {
 		} else if m.selectedSet[f.ID] {
 			checkbox = "◆"
 		}
-		sevText := strings.ToUpper(f.Severity.String())
+		sevText := styledTableSeverity(t, f)
 		src := f.Source.String()
 		id := shortID(f.ID)
-		title := findingTitle(f)
+		title := styledTableTitle(t, f, m.findingColumnWidth(layout))
 		fixLabel := remediationShortLabel(f.Remediation)
 		if f.Fixed {
-			sevText = "✓"
 			src = ""
-			title = "✓ " + title
-			fixLabel = "Fixed"
+			fixLabel = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Success)).Render("Fixed")
 		}
 		switch layout {
 		case "compact":
-			rows[i] = table.Row{checkbox, sevText, fit(title, m.findingColumnWidth(layout))}
+			rows[i] = table.Row{checkbox, sevText, title}
 		case "medium":
-			rows[i] = table.Row{checkbox, sevText, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
+			rows[i] = table.Row{checkbox, sevText, id, title, fixLabel}
 		default:
-			rows[i] = table.Row{checkbox, sevText, src, id, fit(title, m.findingColumnWidth(layout)), fixLabel}
+			rows[i] = table.Row{checkbox, sevText, src, id, title, fixLabel}
 		}
 	}
 	m.table.SetRows(nil)

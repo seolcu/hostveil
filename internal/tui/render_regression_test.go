@@ -73,7 +73,7 @@ func TestView_BoundaryDimensionsPreserveVisibleStateAndWidth(t *testing.T) {
 				{ID: "fixed.001", Title: "Fixed SSH hardening", Severity: domain.SeverityCritical, Source: domain.SourceLynis, Remediation: domain.RemediationAuto, Fixed: true},
 				{ID: "fixed.002", Title: "Fixed compose hardening", Severity: domain.SeverityHigh, Source: domain.SourceCompose, Remediation: domain.RemediationReview, Fixed: true},
 			},
-			want: []string{"SEARCH FINDINGS", "Fixed", "✓ Fixed SSH hardening"},
+			want: []string{"SEARCH FINDINGS", "Fixed", "Fixed SSH hardening"},
 		},
 	}
 
