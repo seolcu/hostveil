@@ -373,19 +373,20 @@ a way that goes unnoticed. These rules are enforced by tests in
 ### Test layout
 - 36 Go test files across 11 packages, ~376 test functions
   (including fuzz targets and benchmarks).
-- 13 Playwright spec files in `test/e2e/specs/`:
+- 16 Playwright spec files in `test/e2e/specs/` (~126 tests):
   - `dashboard.spec.ts`, `keyboard.spec.ts`, `filters.spec.ts`,
     `selection.spec.ts` — UI navigation and key handling
-  - `api-contract.spec.ts` — server contract
+  - `api-contract.spec.ts`, `api-edge-cases.spec.ts` — server contract
   - `fix-flow.spec.ts`, `fix-classification.spec.ts` — fix dispatch
   - `rescan.spec.ts`, `recalc.spec.ts` — server actions
   - `export.spec.ts` — JSON/CSV export
   - `xss.spec.ts` — **XSS regression** (the `data-*` decoding
     bug covered the detail panel and the "View more" toggle)
-  - `extensive-coverage.spec.ts` — modal click-to-close,
-    selection edge cases, layout/wrapping/spacing visual checks,
-    filter combinations, sort interactions, rescan lifecycle,
-    and empty/edge-case states
+  - `ui-states.spec.ts` — clean/empty state, loading phase,
+    visibility pause, connection lost, recalc failure toast
+  - `loading-error-modal.spec.ts` — fix modal internals
+  - `extensive-coverage.spec.ts` — modal click-to-close and
+    selection edge cases
   - `responsive-visual-regressions.spec.ts` — table header
     visibility and no-document-overflow checks across viewport
     breakpoints
@@ -453,5 +454,5 @@ Non-obvious caveats for this VM:
   results — it re-execs via `sudo` for host scanning, which is neither
   useful nor available here.
 - Playwright browsers install to `~/.cache/ms-playwright`; only Chromium
-  is provisioned. The E2E run is long (~9 min, ~1900 specs). Remember the
+  is provisioned. The E2E run takes ~2–3 min (~126 tests). Remember the
   mandatory E2E cleanup listed under **Running tests**.

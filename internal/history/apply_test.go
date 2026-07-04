@@ -14,14 +14,8 @@ import (
 // tests never touch the real /var/lib/hostveil.
 func withTempHistoryDirs(t *testing.T) {
 	t.Helper()
-	origBase, origCP, origScan := BaseDir, CheckpointDir, ScanDir
 	dir := t.TempDir()
-	BaseDir = dir
-	CheckpointDir = filepath.Join(dir, "checkpoints")
-	ScanDir = filepath.Join(dir, "scans")
-	t.Cleanup(func() {
-		BaseDir, CheckpointDir, ScanDir = origBase, origCP, origScan
-	})
+	t.Cleanup(SetDirsForTest(dir, filepath.Join(dir, "checkpoints"), filepath.Join(dir, "scans")))
 }
 
 func TestApplyWithCheckpoint_EditActionCreatesRestorableCheckpoint(t *testing.T) {

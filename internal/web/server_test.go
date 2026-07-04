@@ -15,6 +15,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
@@ -633,6 +634,20 @@ func TestHandleExport_AI(t *testing.T) {
 	}
 }
 
+func waitForScanComplete(t *testing.T, live *domain.ScanProgress) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if live.AllToolsDone() {
+			// finalizeIfDone saves the scan snapshot in a follow-up goroutine.
+			time.Sleep(100 * time.Millisecond)
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timeout waiting for rescan tools to finish")
+}
+
 func TestHandleRescan(t *testing.T) {
 	live := domain.NewScanProgress(true)
 	reg := fix.New()
@@ -650,20 +665,13 @@ func TestHandleRescan(t *testing.T) {
 	if body["status"] != "rescanning" {
 		t.Errorf("expected status rescanning, got %q", body["status"])
 	}
+	waitForScanComplete(t, live)
 }
 
 func TestHandleHistory_Empty(t *testing.T) {
 	t.Setenv("HOSTVEIL_TEST", "1")
 	dir := t.TempDir()
-	history.BaseDir = dir
-	history.CheckpointDir = dir + "/checkpoints"
-	history.ScanDir = dir + "/scans"
-	t.Cleanup(func() {
-		history.BaseDir = "/var/lib/hostveil"
-		history.CheckpointDir = history.BaseDir + "/checkpoints"
-		history.ScanDir = history.BaseDir + "/scans"
-	})
-
+	t.Cleanup(history.SetDirsForTest(dir, dir+"/checkpoints", dir+"/scans"))
 	req := httptest.NewRequest("GET", "/api/history", nil)
 	rec := httptest.NewRecorder()
 	handleHistory(rec, req)

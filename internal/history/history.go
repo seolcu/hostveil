@@ -22,7 +22,29 @@ var (
 	BaseDir       = "/var/lib/hostveil"
 	CheckpointDir = BaseDir + "/checkpoints"
 	ScanDir       = BaseDir + "/scans"
+
+	dirsMu sync.RWMutex
 )
+
+// SetDirsForTest points BaseDir/CheckpointDir/ScanDir at test paths for the
+// duration of a test. Production code must never call this.
+func SetDirsForTest(base, cp, scan string) func() {
+	dirsMu.Lock()
+	origBase, origCP, origScan := BaseDir, CheckpointDir, ScanDir
+	BaseDir, CheckpointDir, ScanDir = base, cp, scan
+	dirsMu.Unlock()
+	return func() {
+		dirsMu.Lock()
+		BaseDir, CheckpointDir, ScanDir = origBase, origCP, origScan
+		dirsMu.Unlock()
+	}
+}
+
+func dirSnapshot() (base, cp, scan string) {
+	dirsMu.RLock()
+	defer dirsMu.RUnlock()
+	return BaseDir, CheckpointDir, ScanDir
+}
 
 const (
 	BackupSubdir   = "files"
@@ -90,7 +112,8 @@ func hex8(b []byte) string {
 // exists, so an explicit os.Chmod is needed to tighten permissions left
 // behind by a hostveil version older than this check.
 func EnsureDirs() error {
-	for _, dir := range []string{BaseDir, CheckpointDir, ScanDir} {
+	base, cpDir, scanDir := dirSnapshot()
+	for _, dir := range []string{base, cpDir, scanDir} {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create %s: %w", dir, err)
 		}
@@ -106,7 +129,8 @@ func SaveCheckpoint(cp Checkpoint) error {
 	if err := EnsureDirs(); err != nil {
 		return err
 	}
-	dir := filepath.Join(CheckpointDir, cp.ID)
+	_, cpDir, _ := dirSnapshot()
+	dir := filepath.Join(cpDir, cp.ID)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
@@ -167,7 +191,8 @@ func ListCheckpoints() ([]Checkpoint, error) {
 	if err := EnsureDirs(); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(CheckpointDir)
+	_, cpDir, _ := dirSnapshot()
+	entries, err := os.ReadDir(cpDir)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +201,7 @@ func ListCheckpoints() ([]Checkpoint, error) {
 		if !e.IsDir() {
 			continue
 		}
-		metaPath := filepath.Join(CheckpointDir, e.Name(), "meta.json")
+		metaPath := filepath.Join(cpDir, e.Name(), "meta.json")
 		data, err := os.ReadFile(metaPath)
 		if err != nil {
 			continue
@@ -200,7 +225,8 @@ func ListCheckpoints() ([]Checkpoint, error) {
 
 // GetCheckpoint returns a specific checkpoint by ID.
 func GetCheckpoint(id string) (*Checkpoint, error) {
-	metaPath := filepath.Join(CheckpointDir, id, "meta.json")
+	_, cpDir, _ := dirSnapshot()
+	metaPath := filepath.Join(cpDir, id, "meta.json")
 	data, err := os.ReadFile(metaPath)
 	if err != nil {
 		return nil, fmt.Errorf("checkpoint %s not found: %w", id, err)
@@ -226,7 +252,8 @@ func SaveScan(snap domain.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(ScanDir, record.ID+".json")
+	_, _, scanDir := dirSnapshot()
+	path := filepath.Join(scanDir, record.ID+".json")
 	// The full Snapshot (every finding, its evidence, and description) is a
 	// host audit report — treat it like the exported JSON/CSV reports
 	// described in SECURITY.md and keep it owner-only.
@@ -260,7 +287,8 @@ func ListScans() ([]ScanRecord, error) {
 	if err := EnsureDirs(); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(ScanDir)
+	_, _, scanDir := dirSnapshot()
+	entries, err := os.ReadDir(scanDir)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +297,7 @@ func ListScans() ([]ScanRecord, error) {
 		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(ScanDir, e.Name()))
+		data, err := os.ReadFile(filepath.Join(scanDir, e.Name()))
 		if err != nil {
 			continue
 		}
@@ -289,7 +317,8 @@ func ListScans() ([]ScanRecord, error) {
 }
 
 func cleanupOldScans() {
-	entries, err := os.ReadDir(ScanDir)
+	_, _, scanDir := dirSnapshot()
+	entries, err := os.ReadDir(scanDir)
 	if err != nil {
 		return
 	}
@@ -313,6 +342,6 @@ func cleanupOldScans() {
 		return files[i].modTime.Before(files[j].modTime)
 	})
 	for _, f := range files[MaxScans:] {
-		os.Remove(filepath.Join(ScanDir, f.name))
+		os.Remove(filepath.Join(scanDir, f.name))
 	}
 }

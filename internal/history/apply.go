@@ -39,7 +39,8 @@ func ApplyWithCheckpoint(f *fix.Fix, finding *domain.Finding, actionIdx int) fix
 			editPath = finding.Metadata["compose_path"]
 		}
 		if editPath != "" {
-			checkpointDir := filepath.Join(CheckpointDir, cp.ID)
+			_, cpDir, _ := dirSnapshot()
+			checkpointDir := filepath.Join(cpDir, cp.ID)
 			// Best-effort checkpoint creation; the fix still applies
 			// even if the checkpoint directory can't be created.
 			_ = os.MkdirAll(checkpointDir, 0700)
