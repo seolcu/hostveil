@@ -432,3 +432,26 @@ a way that goes unnoticed. These rules are enforced by tests in
   report uploaded as an artifact on failure.
 
 All three jobs must be green before a PR can be merged.
+
+## Cursor Cloud specific instructions
+
+Environment setup (Go 1.26, Node 22, `go mod download`, `npm ci`, and
+Playwright Chromium) is handled by the startup update script; the four
+development checks in **Development Commands** work as documented.
+
+Non-obvious caveats for this VM:
+
+- **Docker, `trivy`, and `lynis` are NOT installed** and root is not
+  available for host scanning. All three are optional runtime deps that
+  hostveil skips gracefully, so a plain `./hostveil` / `./hostveil serve`
+  scan simply produces zero real findings here. To run and demo the Web
+  UI (or TUI) with realistic data, use fixture mode:
+  `./hostveil serve --fixture test/e2e/fixtures/mock-snapshot.json --addr 127.0.0.1:8787`
+  (this is also exactly what the E2E suite runs). This is the recommended
+  way to exercise the app end-to-end in the cloud environment.
+- Do not run the live TUI (`./hostveil` with no `--no-scan`) expecting
+  results — it re-execs via `sudo` for host scanning, which is neither
+  useful nor available here.
+- Playwright browsers install to `~/.cache/ms-playwright`; only Chromium
+  is provisioned. The E2E run is long (~9 min, ~1900 specs). Remember the
+  mandatory E2E cleanup listed under **Running tests**.
