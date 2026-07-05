@@ -1,5 +1,7 @@
 # hostveil
 
+> 2026-1 Ajou SoftCon 개발부문 최우수상 수상작
+
 **hostveil finds security problems on your self-hosted Docker host, and fixes them.**
 One binary, no config file, no cloud account.
 
@@ -310,3 +312,5 @@ and `hostveil rollback` work later, but nothing runs between scans.
 ## License
 
 [GPL-3.0](LICENSE)
+
+> Team 내컴퓨터누가해킹했어 (@gkdms04, @seolcu)
