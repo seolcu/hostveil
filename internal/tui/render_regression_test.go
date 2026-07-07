@@ -73,7 +73,7 @@ func TestView_BoundaryDimensionsPreserveVisibleStateAndWidth(t *testing.T) {
 				{ID: "fixed.001", Title: "Fixed SSH hardening", Severity: domain.SeverityCritical, Source: domain.SourceLynis, Remediation: domain.RemediationAuto, Fixed: true},
 				{ID: "fixed.002", Title: "Fixed compose hardening", Severity: domain.SeverityHigh, Source: domain.SourceCompose, Remediation: domain.RemediationReview, Fixed: true},
 			},
-			want: []string{"SEARCH FINDINGS", "Fixed", "✓ Fixed SSH hardening"},
+			want: []string{"SEARCH FINDINGS", "Fixed", "Fixed SSH hardening"},
 		},
 	}
 
@@ -108,7 +108,7 @@ func TestRenderMain_WideLayoutKeepsFilterListAndDetailSeparated(t *testing.T) {
 			Remediation: domain.RemediationAuto,
 		},
 	}
-	m := readyModelForRenderRegression(t, findings, 220, 44)
+	m := readyModelForRenderRegression(t, findings, 220, 52)
 
 	output := m.renderMain()
 	for _, want := range []string{"SEARCH FINDINGS", "FINDINGS", "SSH password authentication remains enabled", "HOW TO FIX"} {

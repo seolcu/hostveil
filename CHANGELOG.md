@@ -5,6 +5,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-07-04
+
 ### Added
 - **`compose.ds016`: Docker socket mount detection.** Flags any service
   that bind-mounts `/var/run/docker.sock` or `/run/docker.sock` —
@@ -143,6 +145,16 @@ Versions follow [Semantic Versioning](https://semver.org/).
   `Snapshot()` caller — e.g. the Web UI's HTTP handlers in `hostveil
   tui-web`, which runs the TUI and Web server against one shared
   `ScanProgress`. Now goes through the mutex-protected `MarkFixed`.
+- **Compose fixes ignored long-syntax YAML and could drop mixed entries.**
+  Port restrict, volume `:ro`, and volume-remove fixes rebuilt the
+  entire `ports`/`volumes` list from short-syntax scalars only, so
+  mapping-form entries (`target:`/`published:`/`host_ip:`, `type:`/
+  `source:`/`target:`) were silently skipped or erased when a service
+  mixed short and long syntax. Fixes now edit YAML nodes in place via
+  `RestrictPortBindings`, `SetVolumeReadOnly`, and `RemoveVolumeMount`,
+  and return an error when nothing changed (per the fix-engine
+  success-must-reflect-change rule). `compose.dr003` detection now uses
+  `GetVolumeMounts` so long-syntax read-write mounts are flagged too.
 
 ### Security
 - **`GET /api/result` was vulnerable to DNS rebinding.** Unlike the
@@ -194,7 +206,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
   (`sha256sum -c scripts/install.sh.sha256`) so it can never silently
   drift again.
 
-## [2.5.2] — 2025-xx-xx
+## [2.5.2] — 2026-06-11
 
 ### Changed
 - TUI and Web UI share the same in-memory snapshot via `domain.Snapshot`.
@@ -221,7 +233,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Cross-platform installer (`scripts/install.sh`) tested against
   Ubuntu, Debian, Fedora, Arch, Alpine, and openSUSE.
 
-[Unreleased]: https://github.com/seolcu/hostveil/compare/v2.5.2...HEAD
+[Unreleased]: https://github.com/seolcu/hostveil/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/seolcu/hostveil/compare/v2.5.2...v2.6.0
 [2.5.2]: https://github.com/seolcu/hostveil/compare/v2.5.0...v2.5.2
 [2.5.0]: https://github.com/seolcu/hostveil/compare/v2.0.0...v2.5.0
 [2.0.0]: https://github.com/seolcu/hostveil/releases/tag/v2.0.0

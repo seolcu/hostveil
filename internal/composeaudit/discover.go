@@ -11,8 +11,9 @@ import (
 )
 
 type Project struct {
-	Name        string
-	ComposePath string
+	Name         string
+	ComposePath  string
+	ComposePaths []string
 }
 
 type composeLSProject struct {
@@ -38,11 +39,21 @@ func DiscoverProjects(runner domain.CommandRunner) ([]Project, error) {
 	var projects []Project
 	for _, r := range raw {
 		files := strings.Split(r.ConfigFiles, ",")
-		path := strings.TrimSpace(files[0])
-		if path == "" {
+		var paths []string
+		for _, f := range files {
+			path := strings.TrimSpace(f)
+			if path != "" {
+				paths = append(paths, path)
+			}
+		}
+		if len(paths) == 0 {
 			continue
 		}
-		projects = append(projects, Project{Name: r.Name, ComposePath: path})
+		projects = append(projects, Project{
+			Name:         r.Name,
+			ComposePath:  paths[0],
+			ComposePaths: paths,
+		})
 	}
 	return projects, nil
 }

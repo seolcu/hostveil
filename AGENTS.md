@@ -373,19 +373,20 @@ a way that goes unnoticed. These rules are enforced by tests in
 ### Test layout
 - 36 Go test files across 11 packages, ~376 test functions
   (including fuzz targets and benchmarks).
-- 13 Playwright spec files in `test/e2e/specs/`:
+- 16 Playwright spec files in `test/e2e/specs/` (~126 tests):
   - `dashboard.spec.ts`, `keyboard.spec.ts`, `filters.spec.ts`,
     `selection.spec.ts` — UI navigation and key handling
-  - `api-contract.spec.ts` — server contract
+  - `api-contract.spec.ts`, `api-edge-cases.spec.ts` — server contract
   - `fix-flow.spec.ts`, `fix-classification.spec.ts` — fix dispatch
   - `rescan.spec.ts`, `recalc.spec.ts` — server actions
   - `export.spec.ts` — JSON/CSV export
   - `xss.spec.ts` — **XSS regression** (the `data-*` decoding
     bug covered the detail panel and the "View more" toggle)
-  - `extensive-coverage.spec.ts` — modal click-to-close,
-    selection edge cases, layout/wrapping/spacing visual checks,
-    filter combinations, sort interactions, rescan lifecycle,
-    and empty/edge-case states
+  - `ui-states.spec.ts` — clean/empty state, loading phase,
+    visibility pause, connection lost, recalc failure toast
+  - `loading-error-modal.spec.ts` — fix modal internals
+  - `extensive-coverage.spec.ts` — modal click-to-close and
+    selection edge cases
   - `responsive-visual-regressions.spec.ts` — table header
     visibility and no-document-overflow checks across viewport
     breakpoints
@@ -432,3 +433,26 @@ a way that goes unnoticed. These rules are enforced by tests in
   report uploaded as an artifact on failure.
 
 All three jobs must be green before a PR can be merged.
+
+## Cursor Cloud specific instructions
+
+Environment setup (Go 1.26, Node 22, `go mod download`, `npm ci`, and
+Playwright Chromium) is handled by the startup update script; the four
+development checks in **Development Commands** work as documented.
+
+Non-obvious caveats for this VM:
+
+- **Docker, `trivy`, and `lynis` are NOT installed** and root is not
+  available for host scanning. All three are optional runtime deps that
+  hostveil skips gracefully, so a plain `./hostveil` / `./hostveil serve`
+  scan simply produces zero real findings here. To run and demo the Web
+  UI (or TUI) with realistic data, use fixture mode:
+  `./hostveil serve --fixture test/e2e/fixtures/mock-snapshot.json --addr 127.0.0.1:8787`
+  (this is also exactly what the E2E suite runs). This is the recommended
+  way to exercise the app end-to-end in the cloud environment.
+- Do not run the live TUI (`./hostveil` with no `--no-scan`) expecting
+  results — it re-execs via `sudo` for host scanning, which is neither
+  useful nor available here.
+- Playwright browsers install to `~/.cache/ms-playwright`; only Chromium
+  is provisioned. The E2E run takes ~2–3 min (~126 tests). Remember the
+  mandatory E2E cleanup listed under **Running tests**.

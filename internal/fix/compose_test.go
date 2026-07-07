@@ -174,6 +174,53 @@ func TestComposeDropVolume_NoEvidence(t *testing.T) {
 	}
 }
 
+func TestComposeAppendSecurityOpt_PreservesExisting(t *testing.T) {
+	yamlContent := `services:
+  web:
+    image: nginx
+    security_opt:
+      - seccomp:unconfined
+`
+	path := writeTestCompose(t, yamlContent)
+	ctx := testContext(t, path, "web")
+	if err := composeAppendSecurityOpt(ctx); err != nil {
+		t.Fatalf("composeAppendSecurityOpt: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "seccomp:unconfined") {
+		t.Errorf("expected existing security_opt preserved\n%s", content)
+	}
+	if !strings.Contains(content, "no-new-privileges:true") {
+		t.Errorf("expected no-new-privileges appended\n%s", content)
+	}
+}
+
+func TestComposeEnvToVariable(t *testing.T) {
+	yamlContent := `services:
+  db:
+    image: postgres:15
+    environment:
+      DB_PASSWORD: changeme
+`
+	path := writeTestCompose(t, yamlContent)
+	ctx := testContext(t, path, "db")
+	ctx.Finding.Evidence["env_key"] = "DB_PASSWORD"
+	if err := composeEnvToVariable(ctx); err != nil {
+		t.Fatalf("composeEnvToVariable: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "${DB_PASSWORD}") {
+		t.Errorf("expected ${DB_PASSWORD} placeholder\n%s", string(data))
+	}
+}
+
 func TestOpenComposeFile_MissingPath(t *testing.T) {
 	ctx := Context{
 		Finding: &domain.Finding{
@@ -280,5 +327,82 @@ func TestComposePortRestrict_LongForm(t *testing.T) {
 	}
 	if strings.Contains(content, "0.0.0.0:8080:80") {
 		t.Errorf("compose file should not contain 0.0.0.0:8080:80\n%s", content)
+	}
+}
+
+func TestComposePortRestrict_LongSyntaxMapping(t *testing.T) {
+	const yml = `services:
+  web:
+    image: nginx:alpine
+    ports:
+      - target: 80
+        published: 8080
+        host_ip: 0.0.0.0
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "web")
+	if err := composePortRestrict(ctx, "127.0.0.1"); err != nil {
+		t.Fatalf("composePortRestrict: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "127.0.0.1") {
+		t.Errorf("compose file should restrict long-syntax host_ip\n%s", content)
+	}
+}
+
+func TestComposeVolumeRO_LongSyntax(t *testing.T) {
+	const yml = `services:
+  web:
+    image: nginx
+    volumes:
+      - type: bind
+        source: /etc
+        target: /host-etc
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "web")
+	ctx.Finding.Evidence["volume"] = "/etc:/host-etc"
+	if err := composeVolumeRO(ctx); err != nil {
+		t.Fatalf("composeVolumeRO: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "read_only:") {
+		t.Errorf("compose file should set read_only\n%s", string(data))
+	}
+}
+
+func TestComposeDropVolume_LongSyntax(t *testing.T) {
+	const yml = `services:
+  agent:
+    image: portainer/agent
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+      - data:/data
+`
+	path := writeTestCompose(t, yml)
+	ctx := testContext(t, path, "agent")
+	ctx.Finding.Evidence["volume"] = "/var/run/docker.sock:/var/run/docker.sock"
+	if err := composeDropVolume(ctx); err != nil {
+		t.Fatalf("composeDropVolume: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if strings.Contains(content, "docker.sock") {
+		t.Errorf("docker.sock mount should be removed\n%s", content)
+	}
+	if !strings.Contains(content, "data:/data") {
+		t.Errorf("unrelated volume should remain\n%s", content)
 	}
 }

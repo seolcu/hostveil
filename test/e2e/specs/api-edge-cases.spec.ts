@@ -422,3 +422,19 @@ test.describe("Score consistency", () => {
     expect(recalcData.score).toBe(originalScore);
   });
 });
+
+test.describe("POST /api/fix with large body", () => {
+  test("fix request with very large body is rejected", async ({ page }) => {
+    await waitForReady(page);
+    const largeId = "x".repeat(2 * 1024 * 1024);
+    const r = await page.evaluate(async (id) => {
+      const resp = await fetch("/api/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action_index: 0 }),
+      });
+      return { status: resp.status, body: await resp.json() };
+    }, largeId);
+    expect(r.body.success).toBe(false);
+  });
+});

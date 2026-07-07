@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>hostveil</title>
+    <script>
+      (function () {
+        var saved = localStorage.getItem("hostveil-theme");
+        if (saved) document.documentElement.dataset.theme = saved;
+      })();
+    </script>
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
@@ -23,6 +29,17 @@
       <section class="metrics" id="metrics"></section>
 
       <section class="score-breakdown" id="scoreBreakdown" aria-label="Score breakdown" hidden></section>
+
+      <section class="history-panel" id="historyPanel" aria-label="Fix history" hidden>
+        <div class="history-head">
+          <div>
+            <p class="eyebrow">Checkpoints</p>
+            <h2>Fix history</h2>
+          </div>
+          <button id="historyRefreshBtn" type="button" class="chip">Refresh</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
 
       <main class="workspace">
         <aside class="filters">
@@ -52,6 +69,11 @@
           <div class="filter-block">
             <h2>Service</h2>
             <div class="chips" id="serviceFilters"></div>
+          </div>
+
+          <div class="filter-block">
+            <h2>Color scheme</h2>
+            <select id="themeSelect" aria-label="Color scheme"></select>
           </div>
 
           <div class="filter-block">
@@ -95,7 +117,7 @@
 
         <aside class="detail" id="detail">
           <div class="empty-detail">
-            <span></span>
+            <span>&gt;</span>
             <h2>Select a finding</h2>
             <p>Choose an item from the table to inspect evidence and remediation guidance.</p>
           </div>

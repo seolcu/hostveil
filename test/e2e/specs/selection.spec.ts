@@ -52,19 +52,27 @@ test.describe("Selection", () => {
     expect(uncheckedCount).toBe(0);
   });
 
+  test("Select-all checkbox is indeterminate when some rows selected", async ({
+    page,
+  }) => {
+    const firstCheck = page.locator("#findings .row-check:not(:disabled)").first();
+    await expect(firstCheck).toBeVisible();
+    await firstCheck.click({ force: true });
+    await expect(page.locator("#selectAllCheck")).toHaveJSProperty(
+      "indeterminate",
+      true
+    );
+  });
+
   test("Double-click toggles row-selected class", async ({ page }) => {
-    const firstRow = page.locator("#findings tr[data-index]:not(.disabled)").first();
-    await expect(firstRow).toBeVisible();
+    const row = page.locator("#findings tr[data-id='trivy.cve-2024-0001']");
+    await expect(row).toBeVisible();
 
-    // double-click to select
-    await firstRow.dblclick({ force: true });
-    await page.waitForTimeout(200);
-    await expect(firstRow).toHaveClass(/row-selected/);
+    await row.dblclick({ force: true });
+    await expect(row).toHaveClass(/row-selected/);
 
-    // double-click again to deselect
-    await firstRow.dblclick({ force: true });
-    await page.waitForTimeout(200);
-    await expect(firstRow).not.toHaveClass(/row-selected/);
+    await row.dblclick({ force: true });
+    await expect(row).not.toHaveClass(/row-selected/);
   });
 
   test("Unfixable finding has no fix button in detail panel", async ({

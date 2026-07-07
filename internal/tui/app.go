@@ -18,7 +18,7 @@ import (
 	"github.com/seolcu/hostveil/internal/scan"
 )
 
-var Version = "v2.5.2"
+var Version = "v2.6.0"
 
 type paneMode int
 
@@ -38,6 +38,7 @@ const (
 	modalFixResult
 	modalFixProgress
 	modalExport
+	modalTheme
 )
 
 type model struct {
@@ -90,6 +91,10 @@ type model struct {
 	// confirm reset
 	confirmReset bool
 
+	// theme
+	themeName string
+	themeIdx  int
+
 	// cached render heights
 	headerH  int
 	metricsH int
@@ -101,7 +106,21 @@ type model struct {
 type tickMsg struct{}
 
 func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
-	s := spinner.New(spinner.WithSpinner(spinner.Dot))
+	cfg := LoadConfig()
+	themeName := cfg.Theme
+	themeIdx := 0
+	for i, id := range ThemeIDs() {
+		if id == themeName {
+			themeIdx = i
+			break
+		}
+	}
+
+	theme := LookupTheme(themeName)
+	s := spinner.New(
+		spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))),
+	)
 
 	t := table.New(
 		table.WithColumns([]table.Column{
@@ -114,12 +133,13 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 		}),
 		table.WithFocused(true),
 		table.WithHeight(10),
-		table.WithStyles(tableStyles(DefaultTheme())),
+		table.WithStyles(tableStyles(theme)),
 	)
 
 	search := textinput.New()
 	search.Placeholder = "Search findings..."
 	search.CharLimit = 64
+	search.SetStyles(inputStyles(theme))
 
 	vp := viewport.New()
 	vp.SoftWrap = true
@@ -141,7 +161,9 @@ func NewApp(live *domain.ScanProgress, reg *fix.Registry) *model {
 			sortDir:     "asc",
 			service:     "all",
 		},
-		phase: "loading",
+		phase:     "loading",
+		themeName: themeName,
+		themeIdx:  themeIdx,
 	}
 }
 
@@ -362,7 +384,23 @@ func (m model) View() tea.View {
 }
 
 func (m model) theme() Theme {
-	return DefaultTheme()
+	return LookupTheme(m.themeName)
+}
+
+func (m model) applyTheme(name string) model {
+	m.themeName = NormalizeThemeID(name)
+	for i, id := range ThemeIDs() {
+		if id == m.themeName {
+			m.themeIdx = i
+			break
+		}
+	}
+	t := m.theme()
+	m.table.SetStyles(tableStyles(t))
+	m.searchBox.SetStyles(inputStyles(t))
+	m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent))
+	_ = SaveConfig(Config{Theme: m.themeName})
+	return m
 }
 
 func (m model) startRescan() model {

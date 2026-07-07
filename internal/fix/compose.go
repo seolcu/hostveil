@@ -44,7 +44,11 @@ func registerComposeFixes(r *Registry) {
 			})
 		},
 	}}})
-	r.Register(&Fix{FindingID: "compose.ds006", Label: "Add no-new-privileges", Actions: []Action{edit("security_opt", []interface{}{"no-new-privileges:true"})}})
+	r.Register(&Fix{FindingID: "compose.ds006", Label: "Add no-new-privileges", Actions: []Action{{
+		Type:  ActionEdit,
+		Label: "Add no-new-privileges:true",
+		Apply: composeAppendSecurityOpt,
+	}}})
 	r.Register(&Fix{FindingID: "compose.ds007", Label: "Remove userns_mode: host", Actions: []Action{{Type: ActionEdit, Label: "Remove userns_mode: host", Warning: "Container loses host user namespace access.", Apply: func(ctx Context) error { return composeDel(ctx, "userns_mode") }}}})
 	r.Register(&Fix{FindingID: "compose.ds008", Label: "Change restart to unless-stopped", Actions: []Action{edit("restart", "unless-stopped")}})
 	r.Register(&Fix{
@@ -115,6 +119,14 @@ func registerComposeFixes(r *Registry) {
 				}
 				return exec.Command("chmod", "600", envPath).Run()
 			}},
+		},
+	})
+	r.Register(&Fix{
+		FindingID: "compose.dr005",
+		Label:     "Remove hardcoded secret from environment",
+		Actions: []Action{
+			{Type: ActionEdit, Label: "Replace with ${VAR} placeholder", Apply: composeEnvToVariable},
+			{Type: ActionEdit, Label: "Remove environment key", Apply: composeDelEnvKey},
 		},
 	})
 	r.Register(&Fix{
@@ -202,30 +214,18 @@ func composePortRestrict(ctx Context, bind string) error {
 	if err != nil {
 		return err
 	}
+	changed := false
 	for _, svc := range svcs {
-		vals, err := f.GetFieldStrings(svc, "ports")
+		ok, err := f.RestrictPortBindings(svc, bind)
 		if err != nil {
-			ctx.Log("fix: cannot read ports for service %q: %v", svc, err)
-			continue
-		}
-		if len(vals) == 0 {
-			continue
-		}
-		changed := false
-		fixed := make([]interface{}, 0, len(vals))
-		for _, v := range vals {
-			newV, ok := restrictPort(v, bind)
-			if ok {
-				changed = true
-			}
-			fixed = append(fixed, newV)
-		}
-		if !changed {
-			ctx.Log("fix: no host-bound port found for service %q (already restricted or no host port)", svc)
-		}
-		if err := f.SetField(svc, "ports", fixed); err != nil {
 			return err
 		}
+		if ok {
+			changed = true
+		}
+	}
+	if !changed {
+		return fmt.Errorf("no host-bound port mapping was restricted")
 	}
 	ctx.Diff = f.Diff()
 	return f.Save()
@@ -241,24 +241,18 @@ func composeVolumeRO(ctx Context) error {
 		return err
 	}
 	targetVol := ctx.Finding.Evidence["volume"]
+	changed := false
 	for _, svc := range svcs {
-		vols, err := f.GetFieldStrings(svc, "volumes")
-		if err != nil || len(vols) == 0 {
-			return fmt.Errorf("no volumes found for service %q", svc)
-		}
-		fixed := make([]interface{}, len(vols))
-		for i, v := range vols {
-			if strings.Contains(v, ":ro") {
-				fixed[i] = v
-			} else if targetVol == "" || strings.HasPrefix(v, strings.Split(targetVol, ":")[0]) {
-				fixed[i] = v + ":ro"
-			} else {
-				fixed[i] = v
-			}
-		}
-		if err := f.SetField(svc, "volumes", fixed); err != nil {
+		ok, err := f.SetVolumeReadOnly(svc, targetVol)
+		if err != nil {
 			return fmt.Errorf("failed to set read-only volumes: %w", err)
 		}
+		if ok {
+			changed = true
+		}
+	}
+	if !changed {
+		return fmt.Errorf("no volume mount was updated to read-only")
 	}
 	ctx.Diff = f.Diff()
 	return f.Save()
@@ -273,7 +267,29 @@ func composeDropVolume(ctx Context) error {
 	if targetVol == "" {
 		return fmt.Errorf("no volume recorded in finding evidence")
 	}
-	return composeDrop(ctx, "volumes", targetVol)
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	changed := false
+	for _, svc := range svcs {
+		ok, err := f.RemoveVolumeMount(svc, targetVol)
+		if err != nil {
+			return err
+		}
+		if ok {
+			changed = true
+		}
+	}
+	if !changed {
+		return fmt.Errorf("volume mount %q was not found", targetVol)
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
 }
 
 func composeEdit(ctx Context, field string, value interface{}) error {
@@ -344,6 +360,86 @@ func composeDropBatch(ctx Context, field string, values []interface{}) error {
 			if err := f.RemoveFromList(svc, field, v); err != nil {
 				return err
 			}
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeAppendSecurityOpt(ctx Context) error {
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	const opt = "no-new-privileges:true"
+	for _, svc := range svcs {
+		existing, _ := f.GetFieldStrings(svc, "security_opt")
+		hasOpt := false
+		for _, item := range existing {
+			if item == opt {
+				hasOpt = true
+				break
+			}
+		}
+		if hasOpt {
+			continue
+		}
+		merged := make([]interface{}, 0, len(existing)+1)
+		for _, item := range existing {
+			merged = append(merged, item)
+		}
+		merged = append(merged, opt)
+		if err := f.SetField(svc, "security_opt", merged); err != nil {
+			return err
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeEnvToVariable(ctx Context) error {
+	key := ctx.Finding.Evidence["env_key"]
+	if key == "" {
+		return fmt.Errorf("env_key not found in finding evidence")
+	}
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	placeholder := "${" + strings.ToUpper(key) + "}"
+	for _, svc := range svcs {
+		if err := f.SetEnvironmentValue(svc, key, placeholder); err != nil {
+			return err
+		}
+	}
+	ctx.Diff = f.Diff()
+	return f.Save()
+}
+
+func composeDelEnvKey(ctx Context) error {
+	key := ctx.Finding.Evidence["env_key"]
+	if key == "" {
+		return fmt.Errorf("env_key not found in finding evidence")
+	}
+	f, err := openComposeFile(ctx)
+	if err != nil {
+		return err
+	}
+	svcs, err := targetServices(f, ctx.Finding.Service)
+	if err != nil {
+		return err
+	}
+	for _, svc := range svcs {
+		if err := f.DeleteEnvironmentKey(svc, key); err != nil {
+			return err
 		}
 	}
 	ctx.Diff = f.Diff()

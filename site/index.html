@@ -9,9 +9,10 @@
     <meta property="og:title" content="hostveil — security scanner with fixes">
     <meta property="og:description" content="One local binary for Docker Compose misconfigurations, image CVEs, host hardening, scoring, fixes, rollback, and AI-ready remediation briefs.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://seolcu.github.io/hostveil/">
-    <meta property="og:image" content="https://seolcu.github.io/hostveil/assets/web.png">
-    <link rel="canonical" href="https://seolcu.github.io/hostveil/">
+    <meta property="og:url" content="https://hostveil.seolcu.com/">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js" defer></script>
   </head>
@@ -40,10 +41,10 @@
           <div class="hero-copy">
             <p class="eyebrow">Local security scanner for self-hosters</p>
             <h1>Find security problems on your Docker host, then fix them.</h1>
-            <p class="lede">hostveil combines Docker Compose audits, Trivy image CVEs, and Lynis host hardening into one scored snapshot. It runs locally, needs no cloud account, and ships fixes with rollback.</p>
+            <p class="lede">Compose audits, Trivy CVEs, and Lynis hardening in one scored snapshot. One binary, no cloud account, fixes with rollback.</p>
             <div class="hero-actions" aria-label="Primary actions">
-              <a class="button primary" href="#install">Install hostveil</a>
-              <a class="button secondary" href="https://github.com/seolcu/hostveil">View on GitHub</a>
+              <a class="button primary" href="#install">Install</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil">Source</a>
             </div>
           </div>
 
@@ -79,29 +80,29 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">Why hostveil</p>
-            <h2>Built for operators who want action, not another report.</h2>
-            <p>Successful security tools make the next step obvious. hostveil turns scan output into a prioritized queue with concrete fixes, warnings, and recovery points.</p>
+            <h2>Action, not another report.</h2>
+            <p>Scan output becomes a prioritized queue with concrete fixes, warnings, and recovery points.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-kicker">One scored list</span>
               <h3>Stop cross-referencing scanner output.</h3>
-              <p>Trivy, Lynis, and Compose findings land in one table with severity, source, service, remediation kind, and a capped 0-100 score.</p>
+              <p>Trivy, Lynis, and Compose findings land in one table with severity, source, service, remediation kind, and a capped 0–100 score.</p>
             </article>
             <article class="feature-card">
               <span class="card-kicker">Auto-fix with guardrails</span>
               <h3>Apply the safe fix from TUI or browser.</h3>
-              <p>Every automated fix shows the action first. File edits save checkpoints, and risky choices are marked for review instead of hidden behind a magic button.</p>
+              <p>Every automated fix shows the action first. File edits save checkpoints; risky choices stay in Review, not behind a magic button.</p>
             </article>
             <article class="feature-card">
               <span class="card-kicker">Self-hosted by design</span>
               <h3>No agents, no cloud upload, no account.</h3>
-              <p>The scanner reads local Compose files, image metadata, and host configuration. Results stay on the machine unless you export them.</p>
+              <p>Reads local Compose files, image metadata, and host configuration. Results stay on the machine unless you export them.</p>
             </article>
             <article class="feature-card accent-card">
-              <span class="card-kicker">AI-ready</span>
-              <h3>Export a remediation brief, not raw secrets.</h3>
-              <p>The AI brief is a local Markdown prompt with prioritized findings, prompt-injection guidance, and redacted evidence for ChatGPT, Claude, or a local LLM.</p>
+              <span class="card-kicker">Export brief</span>
+              <h3>Markdown remediation brief, not raw secrets.</h3>
+              <p>Prioritized findings, prompt-injection guidance, and redacted evidence for ChatGPT, Claude, or a local LLM.</p>
             </article>
           </div>
         </div>
@@ -112,7 +113,7 @@
           <div>
             <p class="eyebrow">Coverage</p>
             <h2>Three independent views of the same host.</h2>
-            <p>Most self-hosting incidents are boring: a privileged container, a public admin panel, an unpatched image, SSH left too open. hostveil checks those paths together.</p>
+            <p>Privileged containers, public admin panels, unpatched images, SSH left too open — hostveil checks those paths together.</p>
           </div>
           <div class="check-stack">
             <article>
@@ -133,7 +134,7 @@
 
       <section class="section dark-section" id="screenshots">
         <div class="container">
-          <div class="section-heading narrow">
+          <div class="section-heading">
             <p class="eyebrow">Product</p>
             <h2>Terminal-first, browser-friendly.</h2>
             <p>Run the TUI by default, or serve the same scan state over localhost when a browser is better for review.</p>
@@ -153,15 +154,15 @@
 
       <section class="section flow-section">
         <div class="container">
-          <div class="section-heading narrow">
+          <div class="section-heading">
             <p class="eyebrow">Workflow</p>
             <h2>Scan, decide, apply, recover.</h2>
           </div>
           <ol class="flow-list">
-            <li><span>01</span><strong>Scan locally</strong><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
-            <li><span>02</span><strong>Prioritize</strong><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of pretending at certainty.</p></li>
-            <li><span>03</span><strong>Apply fixes</strong><p>Use Auto for clear fixes, Review for alternatives, and Manual when the tool should guide instead of mutate.</p></li>
-            <li><span>04</span><strong>Rollback if needed</strong><p>Fix checkpoints keep edited files recoverable<br>through <code>hostveil rollback</code>.</p></li>
+            <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
+            <li><div class="flow-step-head"><span>02</span><strong>Prioritize</strong></div><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of 100/100.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for clear fixes, Review for alternatives, Manual when the tool should guide instead of mutate.</p></li>
+            <li><div class="flow-step-head"><span>04</span><strong>Rollback if needed</strong></div><p>Fix checkpoints keep edited files recoverable<br>through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
       </section>
@@ -174,7 +175,7 @@
             <p>The installer downloads the release binary, verifies checksums, installs hostveil, and sets up Trivy and Lynis when possible.</p>
             <div class="button-row">
               <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">Latest release</a>
-              <a class="button secondary" href="https://github.com/seolcu/hostveil/tree/main/docs">Read the docs</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil/tree/main/docs">Docs</a>
             </div>
           </div>
           <div class="code-block">
@@ -192,9 +193,9 @@ hostveil serve</code></pre>
 
       <section class="section faq-section" id="faq">
         <div class="container">
-          <div class="section-heading narrow">
+          <div class="section-heading">
             <p class="eyebrow">FAQ</p>
-            <h2>Designed for real self-hosting constraints.</h2>
+            <h2>Common questions.</h2>
           </div>
           <div class="faq-grid">
             <article>

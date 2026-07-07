@@ -15,9 +15,11 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/domain"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 )
 
 func TestHealthEndpoint(t *testing.T) {
@@ -632,6 +634,20 @@ func TestHandleExport_AI(t *testing.T) {
 	}
 }
 
+func waitForScanComplete(t *testing.T, live *domain.ScanProgress) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if live.AllToolsDone() {
+			// finalizeIfDone saves the scan snapshot in a follow-up goroutine.
+			time.Sleep(100 * time.Millisecond)
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timeout waiting for rescan tools to finish")
+}
+
 func TestHandleRescan(t *testing.T) {
 	live := domain.NewScanProgress(true)
 	reg := fix.New()
@@ -648,6 +664,47 @@ func TestHandleRescan(t *testing.T) {
 	}
 	if body["status"] != "rescanning" {
 		t.Errorf("expected status rescanning, got %q", body["status"])
+	}
+	waitForScanComplete(t, live)
+}
+
+func TestHandleHistory_Empty(t *testing.T) {
+	t.Setenv("HOSTVEIL_TEST", "1")
+	dir := t.TempDir()
+	t.Cleanup(history.SetDirsForTest(dir, dir+"/checkpoints", dir+"/scans"))
+	req := httptest.NewRequest("GET", "/api/history", nil)
+	rec := httptest.NewRecorder()
+	handleHistory(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	var body struct {
+		Success     bool           `json:"success"`
+		Checkpoints []historyEntry `json:"checkpoints"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Success {
+		t.Error("expected success=true")
+	}
+	if len(body.Checkpoints) != 0 {
+		t.Errorf("expected empty checkpoints, got %d", len(body.Checkpoints))
+	}
+}
+
+func TestHandleRollback_MissingID(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/rollback", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	handleRollback(rec, req)
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["success"] != false {
+		t.Error("expected success=false for missing id")
 	}
 }
 

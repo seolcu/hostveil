@@ -1,6 +1,25 @@
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 const toolLabels = { trivy: "Trivy", lynis: "Lynis", compose: "Compose", update: "Update" };
 const statusIcons = ["○", "◌", "✓", "−", "✗", "◪"];
+const THEME_STORAGE_KEY = "hostveil-theme";
+const THEME_CATALOG = [
+  { id: "default", label: "Default" },
+  { id: "tokyo-night", label: "Tokyo Night" },
+  { id: "catppuccin", label: "Catppuccin" },
+  { id: "nord", label: "Nord" },
+  { id: "dracula", label: "Dracula" },
+  { id: "gruvbox", label: "Gruvbox" },
+  { id: "one-dark", label: "One Dark" },
+  { id: "solarized", label: "Solarized Dark" },
+  { id: "monokai", label: "Monokai" },
+  { id: "everforest", label: "Everforest" },
+  { id: "rose-pine", label: "Rosé Pine" },
+  { id: "kanagawa", label: "Kanagawa" },
+  { id: "github-dark", label: "GitHub Dark" },
+  { id: "ayu-dark", label: "Ayu Dark" },
+  { id: "night-owl", label: "Night Owl" },
+];
+const THEME_IDS = THEME_CATALOG.map((entry) => entry.id);
 
 const state = {
   live: null,
@@ -83,12 +102,60 @@ function invalidateFindingsCache() {
 }
 
 async function init() {
+  initTheme();
   await fetchResult();
   if (state.phase === "loading") {
     state.pollTimer = setInterval(fetchResult, 2000);
   }
   bindControls();
   bindVisibilityPause();
+}
+
+function normalizeThemeId(id) {
+  return THEME_IDS.includes(id) ? id : "default";
+}
+
+function currentThemeId() {
+  return normalizeThemeId(document.documentElement.dataset.theme || "default");
+}
+
+function applyTheme(id) {
+  const theme = normalizeThemeId(id);
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+  const select = $("themeSelect");
+  if (select && select.value !== theme) {
+    select.value = theme;
+  }
+}
+
+function initTheme() {
+  const select = $("themeSelect");
+  if (select && select.options.length === 0) {
+    for (const entry of THEME_CATALOG) {
+      const option = document.createElement("option");
+      option.value = entry.id;
+      option.textContent = entry.label;
+      select.appendChild(option);
+    }
+  }
+  applyTheme(currentThemeId());
+}
+
+function cycleTheme(step) {
+  const idx = THEME_IDS.indexOf(currentThemeId());
+  const next = (idx + step + THEME_IDS.length) % THEME_IDS.length;
+  applyTheme(THEME_IDS[next]);
+  showToast(`Theme: ${themeLabel(THEME_IDS[next])}`, "toast-info");
+}
+
+function themeLabel(id) {
+  const entry = THEME_CATALOG.find((item) => item.id === id);
+  return entry ? entry.label : id;
 }
 
 function bindVisibilityPause() {
@@ -119,6 +186,10 @@ function bindControls() {
     state.sortBy = event.target.value;
     render();
   });
+  $("themeSelect")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value);
+    showToast(`Theme: ${themeLabel(currentThemeId())}`, "toast-info");
+  });
   $("clearFilters")?.addEventListener("click", () => {
     $("clearFilters").blur();
     state.query = "";
@@ -129,6 +200,10 @@ function bindControls() {
     state.selected = 0;
     if ($("query")) $("query").value = "";
     render();
+  });
+  $("historyRefreshBtn")?.addEventListener("click", () => {
+    $("historyRefreshBtn").blur();
+    loadHistory();
   });
 
   const sortFields = { 1: "severity", 2: "source", 4: "title", 5: "remediation" };
@@ -221,6 +296,18 @@ function bindControls() {
   exportBtn.type = "button";
   exportBtn.textContent = "Export";
   actions.appendChild(exportBtn);
+
+  const historyBtn = document.createElement("button");
+  historyBtn.id = "historyBtn";
+  historyBtn.type = "button";
+  historyBtn.textContent = "History";
+  historyBtn.title = "View fix checkpoints and rollback";
+  actions.appendChild(historyBtn);
+  historyBtn.addEventListener("click", () => {
+    historyBtn.blur();
+    toggleHistoryPanel();
+  });
+
   exportBtn.addEventListener("click", () => {
     exportBtn.blur();
     showExportModal();
@@ -252,6 +339,7 @@ function bindControls() {
       closeFixModal();
       closeExportModal();
       closeHelpModal();
+      closeRollbackModal();
       return;
     }
 
@@ -356,6 +444,13 @@ function bindControls() {
       state.remediation = rems[(idx + 1) % rems.length];
       state.selected = 0;
       render();
+      return;
+    }
+
+    // t: cycle color scheme
+    if (e.key === "t" && !e.shiftKey) {
+      e.preventDefault();
+      cycleTheme(1);
       return;
     }
 
@@ -618,10 +713,10 @@ function renderMetrics() {
   const fixable = items.filter((f) => ["auto", "review"].includes(remediation(f))).length;
   const metrics = [
     ["Total", items.length, "", "metric--total"],
-    ["Critical", counts.critical || 0, "critical"],
-    ["High", counts.high || 0, "high"],
-    ["Medium", counts.medium || 0, "medium"],
-    ["Low", counts.low || 0, "low"],
+    ["Critical", counts.critical || 0, "critical", "metric--critical"],
+    ["High", counts.high || 0, "high", "metric--high"],
+    ["Medium", counts.medium || 0, "medium", "metric--medium"],
+    ["Low", counts.low || 0, "low", "metric--low"],
     ["Fixable", fixable, "", "metric--fixable"],
   ];
   $("metrics").innerHTML = metrics.map(([label, value, cls = "", extra = ""]) => `<article class="metric ${extra}"><span>${label}</span><strong class="${cls}">${value}</strong></article>`).join("");
@@ -715,10 +810,11 @@ function renderTable(visible) {
     const sevDisplay = f.fixed ? "&#10003;" : `<span class="badge ${severity(f)}">${severity(f)}</span>`;
     const srcDisplay = f.fixed ? "" : `<span class="muted">${source(f)}</span>`;
     const fixDisplay = f.fixed ? "Fixed" : label(remediation(f));
-    const titleDisplay = f.fixed ? `<span style="opacity:0.5;text-decoration:line-through">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
+    const titleDisplay = f.fixed ? `<span class="fixed-title">${escapeHTML(title(f))}</span>` : escapeHTML(title(f));
     const checked = selectableRow && state.selectedSet.has(f.id) ? "checked" : "";
     const disabledAttr = !selectableRow ? "disabled" : "";
-    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}">
+    const sevAttr = f.fixed ? "" : ` data-severity="${severity(f)}"`;
+    return `<tr class="${rowClass}" data-index="${index}" data-id="${escapeHTML(f.id)}"${sevAttr}>
       <td class="check-cell"><input type="checkbox" ${checked} ${disabledAttr} data-id="${escapeHTML(f.id)}" class="row-check"></td>
       <td>${sevDisplay}</td>
       <td>${srcDisplay}</td>
@@ -795,7 +891,7 @@ function isBatchSelectable(f) {
 
 function renderDetail(f) {
   if (!f) {
-    $("detail").innerHTML = `<div class="empty-detail"><span>\u26C5</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
+    $("detail").innerHTML = `<div class="empty-detail"><span>&gt;</span><h2>Select a finding</h2><p>Choose an item from the table to inspect evidence and remediation guidance.</p></div>`;
     return;
   }
   const evidence = f.evidence || {};
@@ -1437,6 +1533,13 @@ function showHelpModal() {
           </dl>
         </div>
         <div class="help-section">
+          <h3>Appearance</h3>
+          <dl>
+            <dt><kbd>t</kbd></dt><dd>Cycle color scheme</dd>
+            <dt>Sidebar</dt><dd>Use the Color scheme dropdown</dd>
+          </dl>
+        </div>
+        <div class="help-section">
           <h3>Other</h3>
           <dl>
             <dt><kbd>?</kbd></dt><dd>Show this help</dd>
@@ -1459,6 +1562,115 @@ function showHelpModal() {
 
 function closeHelpModal() {
   const overlay = document.getElementById("helpModal");
+  if (overlay) overlay.remove();
+}
+
+async function loadHistory() {
+  const panel = $("historyPanel");
+  const list = $("historyList");
+  if (!panel || !list) return;
+  list.innerHTML = `<p class="muted">Loading checkpoints…</p>`;
+  try {
+    const resp = await fetch("/api/history");
+    const data = await resp.json();
+    if (!data.success) {
+      list.innerHTML = `<p class="muted">${escapeHTML(data.error || "Failed to load history")}</p>`;
+      return;
+    }
+    renderHistoryList(data.checkpoints || []);
+  } catch (err) {
+    list.innerHTML = `<p class="muted">${escapeHTML(err.message || "Failed to load history")}</p>`;
+  }
+}
+
+function renderHistoryList(checkpoints) {
+  const list = $("historyList");
+  if (!list) return;
+  if (!checkpoints.length) {
+    list.innerHTML = `<p class="muted">No fix checkpoints yet. Apply a compose file fix to create a restore point.</p>`;
+    return;
+  }
+  list.innerHTML = checkpoints.map((cp) => {
+    const when = cp.timestamp ? new Date(cp.timestamp).toLocaleString() : "Unknown time";
+    const files = cp.file_count === 1 ? "1 file" : `${cp.file_count} files`;
+    return `<article class="history-item" data-id="${escapeHTML(cp.id)}">
+      <div class="history-item-top">
+        <strong>${escapeHTML(cp.finding_id || "unknown finding")}</strong>
+        <span class="muted">${escapeHTML(when)}</span>
+      </div>
+      <p class="history-item-action">${escapeHTML(cp.action || "Applied fix")}</p>
+      <div class="history-item-meta">
+        <span class="muted">${escapeHTML(files)}</span>
+        ${cp.service ? `<span class="muted">${escapeHTML(cp.service)}</span>` : ""}
+        <button type="button" class="chip history-rollback-btn" data-id="${escapeHTML(cp.id)}">Rollback</button>
+      </div>
+    </article>`;
+  }).join("");
+  list.querySelectorAll(".history-rollback-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      btn.blur();
+      confirmRollback(btn.dataset.id);
+    });
+  });
+}
+
+function toggleHistoryPanel() {
+  const panel = $("historyPanel");
+  if (!panel) return;
+  const show = panel.hidden;
+  panel.hidden = !show;
+  if (show) {
+    loadHistory();
+  }
+}
+
+function confirmRollback(id) {
+  if (!id) return;
+  closeRollbackModal();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "rollbackModal";
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <h2>Rollback checkpoint</h2>
+      <p>Restore files from checkpoint <code>${escapeHTML(id)}</code>? This cannot be undone automatically.</p>
+      <div class="modal-actions">
+        <button class="chip" id="rollbackCancel">Cancel</button>
+        <button class="chip critical" id="rollbackConfirm">Rollback</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#rollbackCancel").onclick = closeRollbackModal;
+  overlay.querySelector("#rollbackConfirm").onclick = async () => {
+    const btn = overlay.querySelector("#rollbackConfirm");
+    btn.disabled = true;
+    btn.textContent = "Rolling back…";
+    try {
+      const resp = await fetch("/api/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await resp.json();
+      closeRollbackModal();
+      if (!data.success) {
+        showToast(data.error || "Rollback failed", "toast-error");
+        return;
+      }
+      showToast(data.message || "Rollback complete", "toast-success");
+      loadHistory();
+    } catch (err) {
+      closeRollbackModal();
+      showToast(err.message || "Rollback failed", "toast-error");
+    }
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeRollbackModal();
+  });
+}
+
+function closeRollbackModal() {
+  const overlay = document.getElementById("rollbackModal");
   if (overlay) overlay.remove();
 }
 

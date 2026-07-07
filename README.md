@@ -1,5 +1,7 @@
 # hostveil
 
+> 2026-1 Ajou SoftCon 개발부문 최우수상 수상
+
 **hostveil finds security problems on your self-hosted Docker host, and fixes them.**
 One binary, no config file, no cloud account.
 
@@ -9,7 +11,7 @@ One binary, no config file, no cloud account.
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
 
-[Website](https://seolcu.github.io/hostveil/) · [Documentation](docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
+[Website](https://hostveil.seolcu.com/) · [Documentation](docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
 
 Point it at a Linux box running Docker Compose. It scans the compose
 files, the container images, and the host OS in parallel, merges
@@ -134,6 +136,16 @@ flowchart LR
 All three backends scan in parallel. A missing `trivy` or `lynis`
 binary just skips that backend — it never blocks the other two or
 crashes the scan.
+
+### Compose audit limitations
+
+The native compose audit reads the YAML files Docker Compose reports
+for each project. It does **not** evaluate `${VAR}` or
+`${VAR:-default}` interpolation — a risky port or secret hidden
+behind a variable will not be detected until the resolved value is
+present in the file. When a project uses multiple compose files
+(`compose.yaml` + `compose.override.yaml`, or `-f` merges),
+hostveil audits **every** file Docker reports, not just the first.
 
 ## Understanding the score
 
@@ -300,3 +312,5 @@ and `hostveil rollback` work later, but nothing runs between scans.
 ## License
 
 [GPL-3.0](LICENSE)
+
+> Team 내컴퓨터누가해킹했어 ([@gkdms04](https://github.com/gkdms04), [@seolcu](https://github.com/seolcu)
