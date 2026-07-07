@@ -60,6 +60,7 @@ pre,
 .eyebrow,
 .card-kicker,
 .score-card span,
+.score-card small,
 .finding span,
 .finding small,
 .flow-list span,
@@ -199,9 +200,9 @@ p {
 h1 {
   max-width: 790px;
   margin-bottom: 22px;
-  font-size: clamp(3.5rem, 8.2vw, 7rem);
-  line-height: 0.9;
-  letter-spacing: -0.085em;
+  font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.06em;
   text-wrap: balance;
 }
 
@@ -246,13 +247,12 @@ h3 {
   font-size: 0.86rem;
   font-weight: 900;
   text-transform: uppercase;
-  transition: transform 120ms ease, box-shadow 120ms ease, color 120ms ease, background 120ms ease;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .button:hover,
 .button:focus-visible {
-  transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 var(--shadow-cut);
+  box-shadow: 3px 3px 0 var(--shadow-cut);
 }
 
 .button.primary {
@@ -262,9 +262,21 @@ h3 {
   box-shadow: 4px 4px 0 var(--shadow-cut);
 }
 
+.button.primary:hover,
+.button.primary:focus-visible {
+  background: #e0ca84;
+  border-color: #e0ca84;
+}
+
 .button.secondary {
   color: var(--paper);
   background: transparent;
+}
+
+.button.secondary:hover,
+.button.secondary:focus-visible {
+  background: var(--panel-strong);
+  border-color: var(--line);
 }
 
 .terminal-card,
@@ -327,8 +339,8 @@ pre {
   content: "SCAN SHEET";
   position: absolute;
   top: 0;
-  right: 0;
-  padding: 5px 9px;
+  right: 22px;
+  padding: 5px 12px;
   background: var(--paper);
   color: var(--bg);
   font: 900 0.68rem/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -349,10 +361,14 @@ pre {
 .finding span,
 .card-kicker {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 900;
   letter-spacing: 0.11em;
   text-transform: uppercase;
+}
+
+.finding span {
+  margin-bottom: 2px;
 }
 
 .score-card strong {
@@ -393,7 +409,7 @@ pre {
 
 .finding strong {
   display: block;
-  margin: 4px 0;
+  margin: 4px 0 1px;
 }
 
 .trust-strip {
@@ -446,7 +462,7 @@ figcaption span {
 }
 
 .section-heading.narrow {
-  max-width: 680px;
+  max-width: 780px;
   margin-inline: auto;
   text-align: center;
 }
@@ -484,9 +500,34 @@ figcaption span {
 
 .split-section,
 .install-section {
+  position: relative;
   border-block: 1px solid var(--line);
   background: var(--paper);
   color: var(--bg);
+}
+
+.split-section::before,
+.install-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, var(--bg-alt), transparent);
+  pointer-events: none;
+}
+
+.split-section::after,
+.install-section::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to top, var(--bg), transparent);
+  pointer-events: none;
 }
 
 .split-section .eyebrow,
@@ -552,11 +593,18 @@ figcaption span {
   border: 1px solid var(--line-strong);
   background: var(--panel-strong);
   box-shadow: 9px 9px 0 var(--shadow-cut);
+  cursor: pointer;
+  transition: box-shadow 150ms ease;
+}
+
+.screenshot-card:hover {
+  box-shadow: 6px 6px 0 var(--shadow-cut);
 }
 
 .screenshot-card img {
   aspect-ratio: 16 / 10;
   width: 100%;
+  max-height: 340px;
   object-fit: cover;
   object-position: top left;
   border-bottom: 1px solid var(--line);
@@ -620,9 +668,8 @@ figcaption {
 
 .install-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
-  gap: clamp(32px, 6vw, 78px);
-  align-items: center;
+  grid-template-columns: 1fr;
+  gap: clamp(28px, 5vw, 48px);
 }
 
 .code-block pre {
@@ -704,9 +751,6 @@ figcaption {
     padding-top: 54px;
   }
 
-  h1 {
-    font-size: clamp(3rem, 16vw, 4.5rem);
-  }
 
   .hero-panel {
     min-width: 0;
@@ -740,4 +784,104 @@ figcaption {
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+.dark-section {
+  padding-top: clamp(74px, 10vw, 124px);
+  padding-bottom: clamp(74px, 10vw, 124px);
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel-strong);
+  color: var(--muted);
+  font: 600 0.75rem/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.copy-btn:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.copy-btn.copied {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.command-box {
+  position: relative;
+  margin-top: 8px;
+  border: 1px solid var(--line-strong);
+  background: #050a09;
+  overflow: hidden;
+}
+
+.command-box pre {
+  margin: 0;
+  padding: 16px 18px;
+  padding-right: 90px;
+  overflow-x: auto;
+  color: var(--paper);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(7, 16, 15, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: zoom-out;
+}
+
+.lightbox-overlay.active {
+  display: flex;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 1100px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-caption {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--paper-muted);
+  font-size: 0.9rem;
+}
+
+.lightbox-caption strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--paper);
+  font-size: 1.1rem;
 }

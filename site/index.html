@@ -13,6 +13,7 @@
     <meta property="og:image" content="https://seolcu.github.io/hostveil/assets/web.png">
     <link rel="canonical" href="https://seolcu.github.io/hostveil/">
     <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -44,11 +45,6 @@
               <a class="button primary" href="#install">Install hostveil</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">View on GitHub</a>
             </div>
-            <div class="terminal-card" aria-label="Install command">
-              <div class="terminal-bar"><span></span><span></span><span></span></div>
-              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
-hostveil</code></pre>
-            </div>
           </div>
 
           <div class="hero-panel" aria-label="hostveil product summary">
@@ -63,6 +59,10 @@ hostveil</code></pre>
               <div class="finding medium"><span>Medium</span><strong>Image CVE with patch</strong><small>trivy.cve-2024-0001</small></div>
             </div>
           </div>
+        </div>
+        <div class="command-box container" aria-label="Install command">
+          <button class="copy-btn" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash &amp;&amp; hostveil">Copy</button>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash &amp;&amp; hostveil</code></pre>
         </div>
       </section>
 
@@ -139,11 +139,11 @@ hostveil</code></pre>
             <p>Run the TUI by default, or serve the same scan state over localhost when a browser is better for review.</p>
           </div>
           <div class="screens-grid">
-            <figure class="screenshot-card">
+            <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="Enlarge TUI screenshot">
               <img src="assets/tui.png" alt="hostveil terminal UI showing score cards and findings table" width="1200" height="760" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings, detail panel, dry-run fixes, export, and rollback workflow.</span></figcaption>
             </figure>
-            <figure class="screenshot-card">
+            <figure class="screenshot-card" data-lightbox="web" role="button" tabindex="0" aria-label="Enlarge Web UI screenshot">
               <img src="assets/web.png" alt="hostveil Web UI showing dashboard filters and detail panel" width="1200" height="760" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard with filters, batch fixes, JSON/CSV/AI brief export, and live scan status.</span></figcaption>
             </figure>
@@ -161,7 +161,7 @@ hostveil</code></pre>
             <li><span>01</span><strong>Scan locally</strong><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
             <li><span>02</span><strong>Prioritize</strong><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of pretending at certainty.</p></li>
             <li><span>03</span><strong>Apply fixes</strong><p>Use Auto for clear fixes, Review for alternatives, and Manual when the tool should guide instead of mutate.</p></li>
-            <li><span>04</span><strong>Rollback if needed</strong><p>Fix checkpoints keep edited files recoverable through <code>hostveil rollback</code>.</p></li>
+            <li><span>04</span><strong>Rollback if needed</strong><p>Fix checkpoints keep edited files recoverable<br>through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
       </section>
@@ -199,24 +199,31 @@ hostveil serve</code></pre>
           <div class="faq-grid">
             <article>
               <h3>Does it upload scan data?</h3>
-              <p>No. hostveil runs locally. Exports are files you explicitly download or save.</p>
+              <p>No. hostveil runs locally. Exports are<br>files you explicitly download or save.</p>
             </article>
             <article>
               <h3>Why not just run Trivy and Lynis?</h3>
-              <p>You can. hostveil adds Compose checks, one scored snapshot, UI workflows, registered fixes, and rollback.</p>
+              <p>You can. hostveil adds Compose checks, one scored snapshot,<br>UI workflows, registered fixes, and rollback.</p>
             </article>
             <article>
               <h3>What if a fix has tradeoffs?</h3>
-              <p>It is a Review fix, not Auto. hostveil shows independent alternatives and makes you choose.</p>
+              <p>It is a Review fix, not Auto. hostveil shows independent<br>alternatives and makes you choose.</p>
             </article>
             <article>
               <h3>Can I use it in a browser?</h3>
-              <p>Yes. <code>hostveil serve</code> starts the Web UI on <code>127.0.0.1:8787</code> by default.</p>
+              <p>Yes. <code>hostveil serve</code> starts the Web UI on <code>127.0.0.1:8787</code><br>by default.</p>
             </article>
           </div>
         </div>
       </section>
     </main>
+
+    <div class="lightbox-overlay" id="lightbox" role="dialog" aria-label="Enlarged screenshot" aria-hidden="true">
+      <div class="lightbox-content">
+        <img alt="" id="lightbox-img">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+      </div>
+    </div>
 
     <footer class="site-footer">
       <div class="container footer-grid">
