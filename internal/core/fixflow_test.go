@@ -134,6 +134,35 @@ func TestSSHFixRoundTrip(t *testing.T) {
 
 // TestApplyBacksUpBeforeWriting ensures a failed write still leaves a
 // recoverable checkpoint (backup happens before the write).
+// TestApplyBatchOnlyAppliesAuto verifies the batch path applies Auto fixes
+// and skips Review/Manual, leaving those for individual handling.
+func TestApplyBatchOnlyAppliesAuto(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  app:\n    image: myapp\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine := fixEngine(t)
+
+	auto := model.NewFinding("compose.ds006", "nnp", model.SeverityMedium, model.SourceCompose,
+		model.RemediationAuto, model.WithService("app"), model.WithMetadata("file", path))
+	manual := model.NewFinding("compose.ds001", "priv", model.SeverityHigh, model.SourceCompose,
+		model.RemediationManual, model.WithService("app"), model.WithMetadata("file", path))
+
+	out := engine.ApplyBatch(context.Background(), []model.Finding{auto, manual})
+	if len(out.Applied) != 1 || out.Applied[0] != "compose.ds006" {
+		t.Errorf("applied = %v, want [compose.ds006]", out.Applied)
+	}
+	if len(out.Skipped) != 1 || out.Skipped[0] != "compose.ds001" {
+		t.Errorf("skipped = %v, want [compose.ds001]", out.Skipped)
+	}
+	applied, _ := os.ReadFile(path)
+	if !strings.Contains(string(applied), "no-new-privileges") {
+		t.Errorf("auto fix not applied:\n%s", applied)
+	}
+}
+
 func TestNoFixForUnfixable(t *testing.T) {
 	engine := fixEngine(t)
 	f := model.NewFinding("compose.ds001", "privileged", model.SeverityHigh,

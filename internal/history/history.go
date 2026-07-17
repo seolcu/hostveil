@@ -161,6 +161,11 @@ func NewID(findingID string) string {
 	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8]
 }
 
+// NewScanID returns a sortable ID for a scan snapshot.
+func NewScanID() string {
+	return time.Now().UTC().Format("20060102-150405.000")
+}
+
 // blobName returns a filesystem-safe name derived from a path.
 func blobName(path string) string {
 	sum := sha256.Sum256([]byte(path))

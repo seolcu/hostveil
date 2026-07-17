@@ -25,7 +25,8 @@ func cmdScan(args []string) int {
 		return 2
 	}
 
-	report := buildEngine().Scan(context.Background(), nil)
+	engine := buildEngine()
+	report := engine.Scan(context.Background(), nil)
 
 	if jsonOut {
 		out, err := clirender.JSON(report)
@@ -39,6 +40,9 @@ func cmdScan(args []string) int {
 
 	opts := clirender.Options{Color: !noColor && colorEnabled(), Verbose: verbose}
 	fmt.Print(clirender.Text(report, opts))
+	if delta := engine.LastDelta(); delta.HasChanges() {
+		fmt.Print(clirender.DeltaSummary(delta))
+	}
 	return exitCode(report)
 }
 

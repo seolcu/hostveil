@@ -71,6 +71,20 @@ func Text(r model.Report, opts Options) string {
 	return b.String()
 }
 
+// DeltaSummary renders a short "since last scan" summary line.
+func DeltaSummary(d model.Delta) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d still present.\n",
+		len(d.Resolved), len(d.New), d.StillPresent)
+	for _, f := range d.Resolved {
+		fmt.Fprintf(&b, "  ✓ resolved: %s (%s)\n", f.ID, f.Service)
+	}
+	for _, f := range d.New {
+		fmt.Fprintf(&b, "  + new: %s (%s)\n", f.ID, f.Service)
+	}
+	return b.String()
+}
+
 // JSON renders the report as indented JSON.
 func JSON(r model.Report) (string, error) {
 	out, err := json.MarshalIndent(r, "", "  ")

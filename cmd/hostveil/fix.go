@@ -17,11 +17,13 @@ func cmdFix(args []string) int {
 		service string
 		action  int
 		yes     bool
+		all     bool
 		noColor bool
 	)
 	fs.StringVar(&service, "service", "", "disambiguate a finding by service name")
 	fs.IntVar(&action, "action", -1, "for Review fixes, the alternative to apply (0-based)")
 	fs.BoolVar(&yes, "yes", false, "apply without an interactive confirmation")
+	fs.BoolVar(&all, "all", false, "apply every safe (Auto) fix at once")
 	fs.BoolVar(&noColor, "no-color", false, "disable colored output")
 
 	// Allow the finding ID to come before flags ("fix <id> --yes"), which
@@ -32,6 +34,10 @@ func cmdFix(args []string) int {
 	}
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+
+	if all {
+		return fixAll(yes)
 	}
 	if findingID == "" {
 		if fs.NArg() < 1 {
@@ -80,6 +86,45 @@ func cmdFix(args []string) int {
 		return 1
 	}
 	printOutcome(outcome)
+	return 0
+}
+
+// fixAll previews and applies every safe (Auto) fix in one pass.
+func fixAll(yes bool) int {
+	engine := buildEngine()
+	report := engine.Scan(context.Background(), nil)
+
+	var auto []model.Finding
+	for _, f := range report.Findings {
+		if !f.Fixed && f.Remediation == model.RemediationAuto {
+			auto = append(auto, f)
+		}
+	}
+	if len(auto) == 0 {
+		fmt.Println("No auto-fixable findings. Nothing to do.")
+		return 0
+	}
+
+	fmt.Printf("Will apply %d safe (Auto) fixes:\n", len(auto))
+	for _, f := range auto {
+		fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+	}
+	fmt.Println("\nReview/Manual findings are left for you to handle individually.")
+	if !yes && !promptYesNo("Apply all of the above?") {
+		fmt.Println("Aborted. Nothing changed.")
+		return 0
+	}
+
+	out := engine.ApplyBatch(context.Background(), auto)
+	fmt.Printf("\n✓ Applied %d fixes", len(out.Applied))
+	if len(out.Failed) > 0 {
+		fmt.Printf(", %d failed", len(out.Failed))
+	}
+	fmt.Printf(". New security score: %d/100\n", out.NewScore.Overall)
+	for id, msg := range out.Failed {
+		fmt.Printf("  ✗ %s: %s\n", id, msg)
+	}
+	fmt.Println("Roll back any change with: hostveil history")
 	return 0
 }
 

@@ -156,6 +156,32 @@ func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	return model.FixOutcome{}, nil
 }
 
+// ApplyBatch applies every Auto (single-action) fix among the given
+// findings in one call, skipping Review fixes (which need a choice) and
+// anything without an auto fix. It is the shared implementation behind
+// "fix everything safe", so no UI reimplements the batch loop.
+func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model.BatchOutcome {
+	out := model.BatchOutcome{Failed: map[string]string{}}
+	for _, f := range findings {
+		if f.Fixed || f.Remediation != model.RemediationAuto {
+			out.Skipped = append(out.Skipped, f.ID)
+			continue
+		}
+		fx, ok, err := e.buildFix(f)
+		if !ok || err != nil || len(fx.Actions) != 1 {
+			out.Skipped = append(out.Skipped, f.ID)
+			continue
+		}
+		if _, err := e.ApplyFix(ctx, f, 0); err != nil {
+			out.Failed[f.ID] = err.Error()
+			continue
+		}
+		out.Applied = append(out.Applied, f.ID)
+	}
+	out.NewScore = e.rescore()
+	return out
+}
+
 // Rollback restores a checkpoint's files and rescans nothing; the caller
 // (or a re-scan) reflects the restored state.
 func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {

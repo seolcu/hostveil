@@ -32,6 +32,14 @@ type FixOutcome struct {
 	NewScore     ScoreBreakdown `json:"new_score"`
 }
 
+// BatchOutcome is the result of applying every eligible Auto fix at once.
+type BatchOutcome struct {
+	Applied  []string          `json:"applied"` // finding IDs fixed
+	Skipped  []string          `json:"skipped"` // needed a choice or had no auto fix
+	Failed   map[string]string `json:"failed"`  // finding ID -> error
+	NewScore ScoreBreakdown    `json:"new_score"`
+}
+
 // RollbackOutcome is the result of rolling back a checkpoint.
 type RollbackOutcome struct {
 	CheckpointID   string   `json:"checkpoint_id"`

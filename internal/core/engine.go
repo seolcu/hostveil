@@ -6,6 +6,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -31,9 +32,10 @@ type Engine struct {
 	store    *history.Store
 	runner   platform.CommandRunner
 
-	mu      sync.RWMutex
-	current model.Report
-	hasRun  bool
+	mu        sync.RWMutex
+	current   model.Report
+	hasRun    bool
+	lastDelta model.Delta
 }
 
 // New builds an Engine from cfg.
@@ -81,12 +83,48 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 		Domains:  domains,
 	}
 
+	// Compute the delta against the previous saved scan (for the re-check
+	// loop), then persist this one.
+	delta := e.deltaAgainstLast(report)
+	e.persist(report)
+
 	e.mu.Lock()
 	e.current = report
 	e.hasRun = true
+	e.lastDelta = delta
 	e.mu.Unlock()
 
 	return report
+}
+
+// LastDelta returns how the most recent scan differed from the one before
+// it (resolved / new / still-present findings).
+func (e *Engine) LastDelta() model.Delta {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.lastDelta
+}
+
+// deltaAgainstLast loads the previously saved scan and diffs it against the
+// fresh report. A missing or unreadable prior scan yields an empty delta.
+func (e *Engine) deltaAgainstLast(curr model.Report) model.Delta {
+	data, ok, err := e.store.LastReport()
+	if err != nil || !ok {
+		return model.Delta{}
+	}
+	var prev model.Report
+	if json.Unmarshal(data, &prev) != nil {
+		return model.Delta{}
+	}
+	return model.ComputeDelta(prev, curr)
+}
+
+func (e *Engine) persist(r model.Report) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return
+	}
+	_ = e.store.SaveReport(history.NewScanID(), data)
 }
 
 // Current returns the last stored report and whether a scan has run.
