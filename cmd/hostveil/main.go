@@ -36,6 +36,8 @@ func run(args []string) int {
 		return cmdTUI(args)
 	case "fix":
 		return cmdFix(args)
+	case "serve", "web":
+		return cmdServe(args)
 	case "rollback":
 		return cmdRollback(args)
 	case "history":
@@ -61,6 +63,7 @@ Usage:
   hostveil scan [flags]          Scan the host and report security findings
   hostveil tui                   Open the interactive TUI explicitly
   hostveil fix <id> [flags]      Preview and apply the fix for a finding
+  hostveil serve [--addr]        Serve the localhost web dashboard
   hostveil rollback <id>         Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
   hostveil version               Print the version
