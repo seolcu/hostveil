@@ -1,373 +1,182 @@
-// Package compose provides YAML editing primitives for Docker Compose files.
 package compose
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-type File struct {
-	path     string
-	doc      yaml.Node
-	original []byte
-	dirty    bool
+// Doc is a mutable, comment-preserving view of a compose file used by
+// fixes. Every mutation operates in memory; callers render back to bytes
+// with Bytes() and decide when (or whether) to write. This is what lets
+// fix previews compute an exact diff without ever touching the live file.
+type Doc struct {
+	root *yaml.Node // document node
 }
 
-func Open(path string) (*File, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
+// Load parses compose bytes into an editable Doc, preserving comments and
+// formatting as far as yaml.v3 allows.
+func Load(data []byte) (*Doc, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
 		return nil, err
 	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("yaml parse: %w", err)
+	if len(root.Content) == 0 {
+		return nil, fmt.Errorf("empty compose document")
 	}
-	return &File{path: path, doc: doc, original: data}, nil
+	if root.Content[0].Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("compose file is not a YAML mapping")
+	}
+	return &Doc{root: &root}, nil
 }
 
-func (f *File) Backup() error {
-	return os.WriteFile(f.path+".bak", f.original, 0644)
-}
-
-func (f *File) Save() error {
-	if !f.dirty {
-		return nil
-	}
-	out, err := yaml.Marshal(&f.doc)
-	if err != nil {
-		return err
-	}
-	mode := os.FileMode(0644)
-	if info, statErr := os.Stat(f.path); statErr == nil {
-		mode = info.Mode()
-	}
-	return os.WriteFile(f.path, out, mode)
-}
-
-func (f *File) Diff() string {
-	tmp, err := os.CreateTemp("", "hostveil-*.yml")
-	if err != nil {
-		return ""
-	}
-	defer os.Remove(tmp.Name())
-	enc := yaml.NewEncoder(tmp)
-	if err := enc.Encode(&f.doc); err != nil {
-		enc.Close()
-		tmp.Close()
-		return ""
+// Bytes renders the (possibly mutated) document back to YAML.
+func (d *Doc) Bytes() ([]byte, error) {
+	var b strings.Builder
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(d.root); err != nil {
+		return nil, err
 	}
 	if err := enc.Close(); err != nil {
-		tmp.Close()
-		return ""
+		return nil, err
 	}
-	tmp.Close()
-	out, err := exec.Command("diff", "-u", f.path+".bak", tmp.Name()).CombinedOutput()
-	if err == nil {
-		return ""
-	}
-	// diff exits 1 when files differ (the expected case), 2 for real errors
-	// (missing file, permission denied). Only return output for exit code 1.
-	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-		return string(out)
-	}
-	return ""
+	return []byte(b.String()), nil
 }
 
-func (f *File) SetField(service, path string, value interface{}) error {
-	svc, err := f.serviceNode(service, true)
-	if err != nil {
-		return err
-	}
-	parts := strings.Split(path, ".")
-	if err := setNested(svc, parts, value); err != nil {
-		return err
-	}
-	f.dirty = true
-	return nil
-}
-
-func (f *File) DeleteField(service, path string) error {
-	svc, err := f.serviceNode(service, false)
-	if err != nil {
-		return err
-	}
-	if svc == nil {
-		return nil
-	}
-	parts := strings.Split(path, ".")
-	if err := deleteNested(svc, parts); err != nil {
-		return err
-	}
-	f.dirty = true
-	return nil
-}
-
-func (f *File) RemoveFromList(service, path string, value interface{}) error {
-	svc, err := f.serviceNode(service, false)
-	if err != nil {
-		return err
-	}
-	if svc == nil {
-		return nil
-	}
-	parts := strings.Split(path, ".")
-	if err := removeFromListNested(svc, parts, fmt.Sprint(value)); err != nil {
-		return err
-	}
-	f.dirty = true
-	return nil
-}
-
-func (f *File) serviceNode(service string, create bool) (*yaml.Node, error) {
-	// doc is DocumentNode, Content[0] is the root mapping
-	if len(f.doc.Content) == 0 || f.doc.Content[0] == nil {
-		if !create {
-			return nil, nil
-		}
-		root := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		f.doc.Content = append(f.doc.Content, root)
-	}
-	root := f.doc.Content[0]
-
-	services := getOrCreateMappingEntry(root, "services", create)
+// service returns the mapping node for a named service, or nil.
+func (d *Doc) service(name string) *yaml.Node {
+	top := d.root.Content[0]
+	services := mapGet(top, "services")
 	if services == nil {
-		return nil, nil
+		return nil
 	}
-	svc := getOrCreateMappingEntry(services, service, create)
-	return svc, nil
+	return mapGet(services, name)
 }
 
-func getOrCreateMappingEntry(mapping *yaml.Node, key string, create bool) *yaml.Node {
-	for i := 0; i < len(mapping.Content)-1; i += 2 {
-		if mapping.Content[i].Value == key {
-			return mapping.Content[i+1]
-		}
+// AddSecurityOpt appends opt to a service's security_opt list, creating
+// the list if needed. It is a no-op if opt is already present.
+func (d *Doc) AddSecurityOpt(service, opt string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
 	}
-	if !create {
-		return nil
+	seq := mapGet(svc, "security_opt")
+	if seq == nil {
+		seq = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		mapSet(svc, "security_opt", seq)
 	}
-	if mapping.Kind != yaml.MappingNode {
-		mapping.Kind = yaml.MappingNode
-		mapping.Tag = "!!map"
-	}
-	kn := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
-	vn := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	mapping.Content = append(mapping.Content, kn, vn)
-	return vn
-}
-
-func findInMapping(mapping *yaml.Node, key string) *yaml.Node {
-	for i := 0; i < len(mapping.Content)-1; i += 2 {
-		if mapping.Content[i].Value == key {
-			return mapping.Content[i+1]
-		}
-	}
-	return nil
-}
-
-func setNested(parent *yaml.Node, parts []string, value interface{}) error {
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		insertOrUpdateEntry(parent, parts[0], toNode(value))
-		return nil
-	}
-	next := findInMapping(parent, parts[0])
-	if next == nil {
-		next = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		insertOrUpdateEntry(parent, parts[0], next)
-	}
-	return setNested(next, parts[1:], value)
-}
-
-func deleteNested(parent *yaml.Node, parts []string) error {
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		deleteEntry(parent, parts[0])
-		return nil
-	}
-	next := findInMapping(parent, parts[0])
-	if next == nil {
-		return nil
-	}
-	return deleteNested(next, parts[1:])
-}
-
-func removeFromListNested(parent *yaml.Node, parts []string, value string) error {
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		removeSequenceEntry(parent, parts[0], value)
-		return nil
-	}
-	next := findInMapping(parent, parts[0])
-	if next == nil {
-		return nil
-	}
-	return removeFromListNested(next, parts[1:], value)
-}
-
-func insertOrUpdateEntry(mapping *yaml.Node, key string, val *yaml.Node) {
-	if mapping.Kind != yaml.MappingNode {
-		mapping.Kind = yaml.MappingNode
-		mapping.Tag = "!!map"
-		mapping.Content = nil
-	}
-	for i := 0; i < len(mapping.Content)-1; i += 2 {
-		if mapping.Content[i].Value == key {
-			mapping.Content[i+1] = val
-			return
-		}
-	}
-	kn := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
-	mapping.Content = append(mapping.Content, kn, val)
-}
-
-func deleteEntry(mapping *yaml.Node, key string) {
-	for i := 0; i < len(mapping.Content)-1; i += 2 {
-		if mapping.Content[i].Value == key {
-			mapping.Content = append(mapping.Content[:i], mapping.Content[i+2:]...)
-			return
-		}
-	}
-}
-
-func removeSequenceEntry(mapping *yaml.Node, key string, value string) {
-	seq := findInMapping(mapping, key)
-	if seq == nil || seq.Kind != yaml.SequenceNode {
-		return
-	}
-	var kept []*yaml.Node
 	for _, item := range seq.Content {
-		if item.Value != value {
-			kept = append(kept, item)
+		if normalizeOpt(item.Value) == normalizeOpt(opt) {
+			return nil // already present
 		}
 	}
-	seq.Content = kept
+	seq.Content = append(seq.Content, scalar(opt))
+	return nil
 }
 
-func toNode(v interface{}) *yaml.Node {
-	n := &yaml.Node{}
-	switch val := v.(type) {
-	case bool:
-		n.Kind = yaml.ScalarNode
-		n.Tag = "!!bool"
-		n.Value = strconv.FormatBool(val)
-	case int:
-		n.Kind = yaml.ScalarNode
-		n.Tag = "!!int"
-		n.Value = strconv.Itoa(val)
-	case float64:
-		n.Kind = yaml.ScalarNode
-		n.Tag = "!!float"
-		n.Value = strconv.FormatFloat(val, 'f', -1, 64)
-	case string:
-		n.Kind = yaml.ScalarNode
-		n.Tag = "!!str"
-		n.Value = val
-	case []interface{}:
-		n.Kind = yaml.SequenceNode
-		n.Tag = "!!seq"
-		for _, item := range val {
-			n.Content = append(n.Content, toNode(item))
-		}
-	case map[string]interface{}:
-		n.Kind = yaml.MappingNode
-		n.Tag = "!!map"
-		for k, v := range val {
-			n.Content = append(n.Content, toNode(k), toNode(v))
-		}
-	default:
-		n.Kind = yaml.ScalarNode
-		n.Tag = "!!str"
-		n.Value = fmt.Sprint(v)
+// SetScalar sets service.<key> to a scalar value, replacing any existing
+// value.
+func (d *Doc) SetScalar(service, key, value string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
 	}
-	return n
+	mapSet(svc, key, scalar(value))
+	return nil
 }
 
-func (f *File) ServiceNames() ([]string, error) {
-	if len(f.doc.Content) == 0 || f.doc.Content[0] == nil {
-		return nil, nil
+// BindPortLoopback rewrites a published port whose host port matches
+// hostPort so it binds to 127.0.0.1 instead of all interfaces. It handles
+// both short ("6379:6379") and long-form port entries.
+func (d *Doc) BindPortLoopback(service, hostPort string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
 	}
-	root := f.doc.Content[0]
-	if root == nil {
-		return nil, nil
+	ports := mapGet(svc, "ports")
+	if ports == nil {
+		return fmt.Errorf("service %q has no ports", service)
 	}
-	services := findInMapping(root, "services")
-	if services == nil {
-		return nil, nil
-	}
-	var names []string
-	for i := 0; i < len(services.Content)-1; i += 2 {
-		names = append(names, services.Content[i].Value)
-	}
-	return names, nil
-}
-
-// walkPath resolves a dotted path inside a service's YAML node.
-// Returns nil if any step is missing.
-func (f *File) walkPath(service, path string) *yaml.Node {
-	svc, err := f.serviceNode(service, false)
-	if err != nil || svc == nil {
-		return nil
-	}
-	node := svc
-	for _, part := range strings.Split(path, ".") {
-		node = findInMapping(node, part)
-		if node == nil {
-			return nil
-		}
-	}
-	return node
-}
-
-// GetFieldStrings returns the string values of a dotted path inside a service.
-// The error is always nil after a successful Open — callers may safely ignore it.
-func (f *File) GetFieldStrings(service, path string) ([]string, error) {
-	node := f.walkPath(service, path)
-	if node == nil {
-		return nil, nil
-	}
-	switch node.Kind {
-	case yaml.ScalarNode:
-		return []string{node.Value}, nil
-	case yaml.SequenceNode:
-		var vals []string
-		for _, item := range node.Content {
-			if item.Kind == yaml.ScalarNode {
-				vals = append(vals, item.Value)
+	for _, entry := range ports.Content {
+		switch entry.Kind {
+		case yaml.ScalarNode:
+			if rewritten, ok := rewriteShortPort(entry.Value, hostPort); ok {
+				entry.Value = rewritten
+				entry.Style = yaml.DoubleQuotedStyle
+				return nil
+			}
+		case yaml.MappingNode:
+			if hp := mapGet(entry, "published"); hp != nil && strings.Trim(hp.Value, `"`) == hostPort {
+				mapSet(entry, "host_ip", scalar("127.0.0.1"))
+				return nil
 			}
 		}
-		return vals, nil
+	}
+	return fmt.Errorf("port %s not found on service %q", hostPort, service)
+}
+
+// rewriteShortPort turns "6379:6379" or "0.0.0.0:6379:6379" into
+// "127.0.0.1:6379:6379" when the host port matches. Returns ok=false if
+// the entry does not match or is already loopback-bound.
+func rewriteShortPort(value, hostPort string) (string, bool) {
+	proto := ""
+	base := value
+	if i := strings.LastIndex(value, "/"); i >= 0 {
+		base, proto = value[:i], value[i:]
+	}
+	parts := strings.Split(base, ":")
+	switch len(parts) {
+	case 2:
+		if parts[0] != hostPort {
+			return "", false
+		}
+		return "127.0.0.1:" + parts[0] + ":" + parts[1] + proto, true
+	case 3:
+		if parts[1] != hostPort {
+			return "", false
+		}
+		if parts[0] == "127.0.0.1" || parts[0] == "localhost" {
+			return "", false // already loopback
+		}
+		return "127.0.0.1:" + parts[1] + ":" + parts[2] + proto, true
 	default:
-		return nil, nil
+		return "", false
 	}
 }
 
-// GetFieldRaw returns the scalar value of a dotted path inside a service.
-// The error is always nil after a successful Open — serviceNode with
-// create=false returns (nil, nil) for a missing root, and walkPath
-// propagates that as a nil node. Callers may safely ignore the error.
-func (f *File) GetFieldRaw(service, path string) (string, error) {
-	node := f.walkPath(service, path)
-	if node == nil {
-		return "", nil
+// --- yaml.Node helpers ---
+
+// mapGet returns the value node for key in a mapping node, or nil.
+func mapGet(m *yaml.Node, key string) *yaml.Node {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return nil
 	}
-	if node.Kind == yaml.ScalarNode {
-		return node.Value, nil
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i+1]
+		}
 	}
-	return "", nil
+	return nil
 }
 
-func (f *File) GetFieldNode(service, path string) *yaml.Node {
-	return f.walkPath(service, path)
+// mapSet sets key to val in a mapping node, replacing an existing value or
+// appending a new key/value pair.
+func mapSet(m *yaml.Node, key string, val *yaml.Node) {
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			m.Content[i+1] = val
+			return
+		}
+	}
+	m.Content = append(m.Content, scalar(key), val)
+}
+
+func scalar(v string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v}
+}
+
+func normalizeOpt(s string) string {
+	return strings.ReplaceAll(strings.TrimSpace(s), " ", "")
 }

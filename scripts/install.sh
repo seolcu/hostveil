@@ -4,7 +4,6 @@ set -euo pipefail
 VERSION=""
 VERSION_EXPLICIT=false
 SKIP_TRIVY=false
-SKIP_LYNIS=false
 FORCE=false
 
 usage() {
@@ -13,10 +12,9 @@ Usage: install.sh [options]
 
 Options:
   --version vX.Y.Z   Install a specific hostveil release (v prefix optional)
-  --no-trivy         Skip trivy installation
-  --no-lynis         Skip lynis installation
-  --no-deps          Skip trivy and lynis (hostveil only)
-  --yes, -y          Non-interactive mode (install all dependencies)
+  --no-trivy         Skip the optional trivy (image CVE scanner) install
+  --no-deps          Install hostveil only (same as --no-trivy)
+  --yes, -y          Non-interactive mode (install optional dependencies)
   --help, -h         Show this help
 EOF
 }
@@ -34,8 +32,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --no-trivy) SKIP_TRIVY=true; shift ;;
-    --no-lynis) SKIP_LYNIS=true; shift ;;
-    --no-deps) SKIP_TRIVY=true; SKIP_LYNIS=true; shift ;;
+    --no-deps) SKIP_TRIVY=true; shift ;;
     --yes|-y) FORCE=true; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
@@ -143,59 +140,16 @@ elif command -v zypper &>/dev/null; then PM="zypper"
 elif command -v brew &>/dev/null; then PM="brew"
 fi
 
-# ─── INTERACTIVE CHECKBOX ─────────────────────────────────────────────────
+# ─── OPTIONAL DEPENDENCY: TRIVY ───────────────────────────────────────────
+# Trivy enables image CVE scanning. hostveil works fully without it, so it
+# is entirely optional and can be added later.
 DEP_TRIVY=true
-DEP_LYNIS=true
-
-if $FORCE; then
-  DEP_TRIVY=true
-  DEP_LYNIS=true
-elif ! [[ -t 0 ]]; then
-  DEP_TRIVY=true
-  DEP_LYNIS=true
-else
-  prompt_deps() {
-    local sel=$1
-    printf "\033[2J\033[H"
-    echo "  hostveil installer"
-    echo ""
-    echo "  Select dependencies (Space to toggle, Enter to confirm):"
-    echo ""
-    local items=("trivy" "lynis")
-    local descs=("Compose/IaC + CVE scanner" "Host hardening auditor")
-    for i in 0 1; do
-      local marker="${items[$i]}"
-      local checked=false
-      [[ $i == 0 ]] && checked=$DEP_TRIVY
-      [[ $i == 1 ]] && checked=$DEP_LYNIS
-      local box="[ ]"
-      $checked && box="[*]"
-      local ptr="  "
-      [[ $sel == $i ]] && ptr=" >"
-      printf "%s %s %s    %s\n" "$ptr" "$box" "${items[$i]}" "${descs[$i]}"
-    done
-    echo ""
-    echo "  ↑/↓ navigate · Space toggle · Enter install"
-  }
-
-  sel=0
-  prompt_deps $sel
-  while true; do
-    IFS= read -rsn1 key
-    if [[ $key == " " ]]; then
-      [[ $sel == 0 ]] && DEP_TRIVY=$([ "$DEP_TRIVY" = true ] && echo false || echo true)
-      [[ $sel == 1 ]] && DEP_LYNIS=$([ "$DEP_LYNIS" = true ] && echo false || echo true)
-      prompt_deps $sel
-    elif [[ $key == $'\x1b' ]]; then
-      read -rsn2 key2
-      if [[ $key2 == "[A" && $sel -gt 0 ]]; then sel=$((sel-1)); prompt_deps $sel
-      elif [[ $key2 == "[B" && $sel -lt 1 ]]; then sel=$((sel+1)); prompt_deps $sel
-      fi
-    elif [[ $key == "" || $key == $'\n' ]]; then
-      break
-    fi
-  done
-  printf "\033[2J\033[H"
+if ! $FORCE && [[ -t 0 ]]; then
+  printf "  Install Trivy for optional image CVE scanning? [Y/n] "
+  IFS= read -r answer
+  case "$answer" in
+    n|N|no|NO) DEP_TRIVY=false ;;
+  esac
 fi
 
 # ─── INSTALL DEPENDENCIES ─────────────────────────────────────────────────
@@ -242,37 +196,12 @@ install_tool() {
         return 1
       fi
       ;;
-    lynis)
-      LYNIS_VER=$(github_latest_tag CISOfy/lynis) || {
-        echo "  ERROR: failed to determine latest lynis version" >&2
-        return 1
-      }
-      curl -fsSL --retry 3 \
-        "https://github.com/CISOfy/lynis/archive/refs/tags/${LYNIS_VER}.tar.gz" \
-        -o "${TMPDIR}/lynis.tar.gz"
-      tar xzf "${TMPDIR}/lynis.tar.gz" -C "$TMPDIR" || {
-        echo "  ERROR: lynis extraction failed" >&2
-        return 1
-      }
-      LYNIS_DIR=$(find "$TMPDIR" -maxdepth 1 -name 'lynis-*' -type d 2>/dev/null | head -1)
-      if [[ -n "$LYNIS_DIR" ]]; then
-        sudo rm -rf /usr/share/lynis
-        sudo mv "$LYNIS_DIR" /usr/share/lynis
-        sudo ln -sf /usr/share/lynis/lynis /usr/bin/lynis
-        sudo chmod +x /usr/share/lynis/lynis
-      else
-        echo "  ERROR: lynis directory not found after extraction" >&2
-        return 1
-      fi
-      ;;
   esac
 }
 
 if [[ "$SKIP_TRIVY" != true && "$DEP_TRIVY" == true ]]; then
-  install_tool trivy trivy || exit 1
-fi
-if [[ "$SKIP_LYNIS" != true && "$DEP_LYNIS" == true ]]; then
-  install_tool lynis lynis || exit 1
+  # Trivy is optional: a failed install must not abort hostveil's install.
+  install_tool trivy trivy || echo "  ⚠ trivy not installed; CVE scanning will be skipped"
 fi
 
 # ─── INSTALL HOSTVEIL ────────────────────────────────────────────────────

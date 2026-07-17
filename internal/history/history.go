@@ -1,199 +1,108 @@
-// Package history provides scan history and fix checkpoint management.
+// Package history is hostveil's recovery layer: before any fix changes a
+// file, the engine backs the original up here as a checkpoint, so any
+// applied change — made from any UI — can be rolled back with one command.
+// The checkpoint is the ONLY backup mechanism, which is what makes
+// cross-UI rollback correct.
 package history
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
-	"sync"
 	"time"
-
-	"github.com/seolcu/hostveil/internal/domain"
 )
 
-// BaseDir, CheckpointDir, and ScanDir are vars (not const) so tests in
-// this package can point them at a t.TempDir() instead of writing to the
-// real /var/lib/hostveil. Production code must never reassign them.
-var (
-	BaseDir       = "/var/lib/hostveil"
-	CheckpointDir = BaseDir + "/checkpoints"
-	ScanDir       = BaseDir + "/scans"
-
-	dirsMu sync.RWMutex
-)
-
-// SetDirsForTest points BaseDir/CheckpointDir/ScanDir at test paths for the
-// duration of a test. Production code must never call this.
-func SetDirsForTest(base, cp, scan string) func() {
-	dirsMu.Lock()
-	origBase, origCP, origScan := BaseDir, CheckpointDir, ScanDir
-	BaseDir, CheckpointDir, ScanDir = base, cp, scan
-	dirsMu.Unlock()
-	return func() {
-		dirsMu.Lock()
-		BaseDir, CheckpointDir, ScanDir = origBase, origCP, origScan
-		dirsMu.Unlock()
-	}
+// BackedFile records one file captured in a checkpoint.
+type BackedFile struct {
+	Path string      `json:"path"` // original absolute path
+	Blob string      `json:"blob"` // filename of the backup blob within the checkpoint
+	Mode os.FileMode `json:"mode"`
 }
 
-func dirSnapshot() (base, cp, scan string) {
-	dirsMu.RLock()
-	defer dirsMu.RUnlock()
-	return BaseDir, CheckpointDir, ScanDir
-}
-
-const (
-	BackupSubdir   = "files"
-	MaxScans       = 30
-	MaxCheckpoints = 100
-)
-
-// Checkpoint represents a restore point created before a fix is applied.
+// Checkpoint is a restore point created when a fix is applied.
 type Checkpoint struct {
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	FindingID string    `json:"finding_id"`
-	Service   string    `json:"service"`
-	Action    string    `json:"action"`
-	ActionIdx int       `json:"action_idx"`
-	Diff      string    `json:"diff"`
-	Backups   []Backup  `json:"backups"`
-	Restart   *Restart  `json:"restart,omitempty"`
+	ID             string       `json:"id"`
+	FindingID      string       `json:"finding_id"`
+	Label          string       `json:"label"`
+	CreatedAt      time.Time    `json:"created_at"`
+	Files          []BackedFile `json:"files"`
+	Diff           string       `json:"diff,omitempty"`
+	RestartService string       `json:"restart_service,omitempty"`
+	// Commands records exec-fix commands for the record; exec fixes cannot
+	// be auto-rolled-back (Files is empty for them).
+	Commands [][]string `json:"commands,omitempty"`
 }
 
-// Backup records a file that was backed up before modification.
-type Backup struct {
-	OriginalPath string `json:"original_path"`
-	BackupPath   string `json:"backup_path"`
-	Mode         uint32 `json:"mode"`
+// Reversible reports whether the checkpoint can be rolled back (i.e. it
+// backed up files).
+func (c Checkpoint) Reversible() bool { return len(c.Files) > 0 }
+
+// Store persists checkpoints under a directory.
+type Store struct {
+	dir string
 }
 
-// Restart records a service that may need restarting after rollback.
-// Command is a list of arguments passed directly to exec.Command — no
-// shell interpretation. The first element is the program; the rest are
-// its arguments.
-type Restart struct {
-	ServiceName string   `json:"service_name"`
-	Command     []string `json:"command"`
-	Description string   `json:"description"`
+// NewStore returns a Store rooted at dir.
+func NewStore(dir string) *Store { return &Store{dir: dir} }
+
+// DefaultDir returns the per-user (or system, when root) hostveil data
+// directory for checkpoints and reports.
+func DefaultDir() string {
+	if os.Geteuid() == 0 {
+		return "/var/lib/hostveil"
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, ".local", "share", "hostveil")
+	}
+	return filepath.Join(os.TempDir(), "hostveil")
 }
 
-// ScanRecord stores a scan snapshot for history comparison.
-type ScanRecord struct {
-	ID        string          `json:"id"`
-	Timestamp time.Time       `json:"timestamp"`
-	Snapshot  domain.Snapshot `json:"snapshot"`
-}
+func (s *Store) checkpointsDir() string { return filepath.Join(s.dir, "checkpoints") }
 
-// CheckpointID generates a short ID from timestamp and finding ID.
-func CheckpointID(findingID string) string {
-	now := time.Now()
-	hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%s-%d", findingID, now.Format(time.RFC3339Nano), now.UnixNano())))
-	return fmt.Sprintf("%s-%s", now.Format("20060102-150405"), hex8(hash[:]))
-}
+// Save writes a checkpoint: the backup blobs plus a meta.json. backups
+// maps each original file path to its original bytes. The stored
+// Checkpoint (with resolved blob names) is returned.
+func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, error) {
+	dir := filepath.Join(s.checkpointsDir(), cp.ID)
+	if err := os.MkdirAll(filepath.Join(dir, "files"), 0o700); err != nil {
+		return Checkpoint{}, err
+	}
 
-func hex8(b []byte) string {
-	return fmt.Sprintf("%x", b[:4])
-}
-
-// EnsureDirs creates the base directory structure. Every directory is
-// owner-only (0700): hostveil always runs as root, and checkpoints/scans
-// can contain the contents of files a finding flagged as sensitive (e.g.
-// an .env referenced by compose.dr004, or a diff whose context lines
-// happen to include a secret next to an unrelated change). A world-
-// readable directory here would let any local user read that content
-// regardless of the backed-up file's own permissions.
-//
-// os.MkdirAll does not change the mode of a directory that already
-// exists, so an explicit os.Chmod is needed to tighten permissions left
-// behind by a hostveil version older than this check.
-func EnsureDirs() error {
-	base, cpDir, scanDir := dirSnapshot()
-	for _, dir := range []string{base, cpDir, scanDir} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			return fmt.Errorf("create %s: %w", dir, err)
+	cp.Files = cp.Files[:0]
+	for path, data := range backups {
+		blob := blobName(path)
+		mode := os.FileMode(0o600)
+		if fi, err := os.Stat(path); err == nil {
+			mode = fi.Mode().Perm()
 		}
-		if err := os.Chmod(dir, 0700); err != nil {
-			return fmt.Errorf("chmod %s: %w", dir, err)
+		if err := os.WriteFile(filepath.Join(dir, "files", blob), data, 0o600); err != nil {
+			return Checkpoint{}, err
 		}
+		cp.Files = append(cp.Files, BackedFile{Path: path, Blob: blob, Mode: mode})
 	}
-	return nil
+	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
+
+	meta, err := json.MarshalIndent(cp, "", "  ")
+	if err != nil {
+		return Checkpoint{}, err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
+		return Checkpoint{}, err
+	}
+	return cp, nil
 }
 
-// SaveCheckpoint persists a checkpoint to disk.
-func SaveCheckpoint(cp Checkpoint) error {
-	if err := EnsureDirs(); err != nil {
-		return err
-	}
-	_, cpDir, _ := dirSnapshot()
-	dir := filepath.Join(cpDir, cp.ID)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Join(dir, BackupSubdir), 0700); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(cp, "", "  ")
+// List returns all checkpoints, newest first.
+func (s *Store) List() ([]Checkpoint, error) {
+	entries, err := os.ReadDir(s.checkpointsDir())
 	if err != nil {
-		return err
-	}
-	// meta.json embeds cp.Diff, a unified diff of the edited file. That diff
-	// can contain secrets that were sitting near an unrelated change (e.g.
-	// a compose file's hardcoded password a few lines from a fixed
-	// "privileged: true"), so this must never be world-readable.
-	return os.WriteFile(filepath.Join(dir, "meta.json"), data, 0600)
-}
-
-// BackupFile copies a file to the checkpoint's backup directory.
-// Returns a Backup record.
-func BackupFile(checkpointDir, originalPath string) (*Backup, error) {
-	info, err := os.Stat(originalPath)
-	if err != nil {
-		return nil, fmt.Errorf("stat %s: %w", originalPath, err)
-	}
-	data, err := os.ReadFile(originalPath)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", originalPath, err)
-	}
-	backupName := sanitizePath(originalPath)
-	backupPath := filepath.Join(checkpointDir, BackupSubdir, backupName)
-	if err := os.WriteFile(backupPath, data, info.Mode()); err != nil {
-		return nil, fmt.Errorf("write backup %s: %w", backupPath, err)
-	}
-	return &Backup{
-		OriginalPath: originalPath,
-		BackupPath:   backupPath,
-		Mode:         uint32(info.Mode()),
-	}, nil
-}
-
-// sanitizePath converts an absolute path to a safe filename.
-func sanitizePath(p string) string {
-	result := make([]rune, 0, len(p))
-	for _, c := range p {
-		if c == '/' {
-			result = append(result, '_')
-		} else if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.' {
-			result = append(result, c)
-		} else {
-			result = append(result, '_')
+		if os.IsNotExist(err) {
+			return nil, nil
 		}
-	}
-	return string(result)
-}
-
-// ListCheckpoints returns all checkpoints sorted by time (newest first).
-func ListCheckpoints() ([]Checkpoint, error) {
-	if err := EnsureDirs(); err != nil {
-		return nil, err
-	}
-	_, cpDir, _ := dirSnapshot()
-	entries, err := os.ReadDir(cpDir)
-	if err != nil {
 		return nil, err
 	}
 	var cps []Checkpoint
@@ -201,147 +110,64 @@ func ListCheckpoints() ([]Checkpoint, error) {
 		if !e.IsDir() {
 			continue
 		}
-		metaPath := filepath.Join(cpDir, e.Name(), "meta.json")
-		data, err := os.ReadFile(metaPath)
-		if err != nil {
-			continue
+		if cp, err := s.Get(e.Name()); err == nil {
+			cps = append(cps, cp)
 		}
-		var cp Checkpoint
-		if err := json.Unmarshal(data, &cp); err != nil {
-			continue
-		}
-		cps = append(cps, cp)
 	}
-	// Sort newest first
-	sort.Slice(cps, func(i, j int) bool {
-		return cps[i].Timestamp.After(cps[j].Timestamp)
-	})
-	// Trim to max
-	if len(cps) > MaxCheckpoints {
-		cps = cps[:MaxCheckpoints]
-	}
+	sort.Slice(cps, func(i, j int) bool { return cps[i].CreatedAt.After(cps[j].CreatedAt) })
 	return cps, nil
 }
 
-// GetCheckpoint returns a specific checkpoint by ID.
-func GetCheckpoint(id string) (*Checkpoint, error) {
-	_, cpDir, _ := dirSnapshot()
-	metaPath := filepath.Join(cpDir, id, "meta.json")
-	data, err := os.ReadFile(metaPath)
+// Get loads one checkpoint by ID.
+func (s *Store) Get(id string) (Checkpoint, error) {
+	data, err := os.ReadFile(filepath.Join(s.checkpointsDir(), id, "meta.json"))
 	if err != nil {
-		return nil, fmt.Errorf("checkpoint %s not found: %w", id, err)
+		return Checkpoint{}, err
 	}
 	var cp Checkpoint
 	if err := json.Unmarshal(data, &cp); err != nil {
-		return nil, err
+		return Checkpoint{}, err
 	}
-	return &cp, nil
+	return cp, nil
 }
 
-// SaveScan persists a scan snapshot to disk.
-func SaveScan(snap domain.Snapshot) error {
-	if err := EnsureDirs(); err != nil {
-		return err
-	}
-	record := ScanRecord{
-		ID:        ScanID(),
-		Timestamp: time.Now(),
-		Snapshot:  snap,
-	}
-	data, err := json.MarshalIndent(record, "", "  ")
+// Rollback restores every backed-up file in a checkpoint to its original
+// bytes and mode. It returns the checkpoint so the caller can surface any
+// service restart the user should run.
+func (s *Store) Rollback(id string) (Checkpoint, error) {
+	cp, err := s.Get(id)
 	if err != nil {
-		return err
+		return Checkpoint{}, err
 	}
-	_, _, scanDir := dirSnapshot()
-	path := filepath.Join(scanDir, record.ID+".json")
-	// The full Snapshot (every finding, its evidence, and description) is a
-	// host audit report — treat it like the exported JSON/CSV reports
-	// described in SECURITY.md and keep it owner-only.
-	if err := os.WriteFile(path, data, 0600); err != nil {
-		return err
+	if !cp.Reversible() {
+		return cp, fmt.Errorf("checkpoint %s has no backed-up files to restore", id)
 	}
-	cleanupOldScans()
-	return nil
-}
-
-// ScanID is monotonic within a process: even if two scans land in the
-// same second, the in-process counter disambiguates them so we never
-// overwrite a previously-saved scan record.
-func ScanID() string {
-	return time.Now().Format("20060102-150405.000") + "-" + scanSeq()
-}
-
-var scanSeqMu sync.Mutex
-var scanSeqCount uint64
-
-func scanSeq() string {
-	scanSeqMu.Lock()
-	scanSeqCount++
-	n := scanSeqCount
-	scanSeqMu.Unlock()
-	return strconv.FormatUint(n, 36)
-}
-
-// ListScans returns all scan records sorted by time (newest first).
-func ListScans() ([]ScanRecord, error) {
-	if err := EnsureDirs(); err != nil {
-		return nil, err
-	}
-	_, _, scanDir := dirSnapshot()
-	entries, err := os.ReadDir(scanDir)
-	if err != nil {
-		return nil, err
-	}
-	var scans []ScanRecord
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(scanDir, e.Name()))
+	dir := filepath.Join(s.checkpointsDir(), id, "files")
+	for _, bf := range cp.Files {
+		data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
 		if err != nil {
-			continue
+			return cp, err
 		}
-		var s ScanRecord
-		if err := json.Unmarshal(data, &s); err != nil {
-			continue
+		if err := os.WriteFile(bf.Path, data, bf.Mode); err != nil {
+			return cp, err
 		}
-		scans = append(scans, s)
 	}
-	sort.Slice(scans, func(i, j int) bool {
-		return scans[i].Timestamp.After(scans[j].Timestamp)
-	})
-	if len(scans) > MaxScans {
-		scans = scans[:MaxScans]
-	}
-	return scans, nil
+	return cp, nil
 }
 
-func cleanupOldScans() {
-	_, _, scanDir := dirSnapshot()
-	entries, err := os.ReadDir(scanDir)
-	if err != nil {
-		return
-	}
-	if len(entries) <= MaxScans {
-		return
-	}
-	// Remove oldest files
-	type fileInfo struct {
-		name    string
-		modTime time.Time
-	}
-	var files []fileInfo
-	for _, e := range entries {
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		files = append(files, fileInfo{name: e.Name(), modTime: info.ModTime()})
-	}
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].modTime.Before(files[j].modTime)
-	})
-	for _, f := range files[MaxScans:] {
-		os.Remove(filepath.Join(scanDir, f.name))
-	}
+// NewID returns a sortable checkpoint ID based on the current time and the
+// finding it fixes.
+func NewID(findingID string) string {
+	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8]
+}
+
+// NewScanID returns a sortable ID for a scan snapshot.
+func NewScanID() string {
+	return time.Now().UTC().Format("20060102-150405.000")
+}
+
+// blobName returns a filesystem-safe name derived from a path.
+func blobName(path string) string {
+	sum := sha256.Sum256([]byte(path))
+	return hex.EncodeToString(sum[:])
 }

@@ -1,309 +1,100 @@
 package compose
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
-const testCompose = `services:
-  web:
-    image: nginx:latest
-    privileged: true
-    ports:
-      - "80:80"
-    cap_add:
-      - SYS_ADMIN
-    environment:
-      - FOO=bar
-
-  db:
-    image: postgres:15
-    restart: always
-`
-
-func writeTestCompose(t *testing.T, content string) string {
+func loadOrFail(t *testing.T, yaml string) *Doc {
 	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "docker-compose.yml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	d, err := Load([]byte(yaml))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	return d
+}
+
+func TestAddSecurityOpt(t *testing.T) {
+	d := loadOrFail(t, "services:\n  app:\n    image: myapp\n")
+	if err := d.AddSecurityOpt("app", "no-new-privileges:true"); err != nil {
 		t.Fatal(err)
 	}
-	return path
-}
-
-func mustOpen(t *testing.T, path string) *File {
-	t.Helper()
-	f, err := Open(path)
-	if err != nil {
-		t.Fatalf("Open(%q): %v", path, err)
+	out, _ := d.Bytes()
+	if !strings.Contains(string(out), "no-new-privileges:true") {
+		t.Errorf("security_opt not added:\n%s", out)
 	}
-	return f
+	// Idempotent: applying again does not duplicate.
+	_ = d.AddSecurityOpt("app", "no-new-privileges:true")
+	out2, _ := d.Bytes()
+	if strings.Count(string(out2), "no-new-privileges") != 1 {
+		t.Errorf("security_opt duplicated:\n%s", out2)
+	}
 }
 
-func readFile(t *testing.T, path string) string {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
+func TestSetScalarRestart(t *testing.T) {
+	d := loadOrFail(t, "services:\n  app:\n    image: myapp\n")
+	if err := d.SetScalar("app", "restart", "unless-stopped"); err != nil {
 		t.Fatal(err)
 	}
-	return string(data)
-}
-
-func TestOpen(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if f == nil {
-		t.Fatal("Open returned nil")
+	out, _ := d.Bytes()
+	if !strings.Contains(string(out), "restart: unless-stopped") {
+		t.Errorf("restart not set:\n%s", out)
 	}
 }
 
-func TestOpen_InvalidYAML(t *testing.T) {
-	path := writeTestCompose(t, "invalid: [yaml: broken\n  indentation")
-	_, err := Open(path)
-	if err == nil {
-		t.Error("Open of invalid YAML should return error")
+func TestBindPortLoopback(t *testing.T) {
+	d := loadOrFail(t, "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n")
+	if err := d.BindPortLoopback("cache", "6379"); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestOpen_MissingFile(t *testing.T) {
-	_, err := Open("/nonexistent/compose.yml")
-	if err == nil {
-		t.Error("Open of missing file should return error")
+	out, _ := d.Bytes()
+	if !strings.Contains(string(out), "127.0.0.1:6379:6379") {
+		t.Errorf("port not rebound to loopback:\n%s", out)
 	}
-}
-
-func TestSetField_Scalar(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.SetField("web", "privileged", false); err != nil {
-		t.Fatalf("SetField: %v", err)
+	// The edited file must still parse and no longer be exposed.
+	proj, err := Parse("x.yml", out)
+	if err != nil {
+		t.Fatalf("edited file no longer parses: %v", err)
 	}
-	if err := f.Save(); err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-	out := readFile(t, f.path)
-	if !strings.Contains(out, "privileged: false") {
-		t.Errorf("output should contain 'privileged: false'\n%s", out)
-	}
-}
-
-func TestSetField_NewField(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.SetField("web", "read_only", true); err != nil {
-		t.Fatalf("SetField: %v", err)
-	}
-	f.Save()
-	out := readFile(t, f.path)
-	if !strings.Contains(out, "read_only: true") {
-		t.Errorf("output should contain 'read_only: true'\n%s", out)
-	}
-}
-
-func TestSetField_NestedPath(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.SetField("web", "deploy.resources.limits.memory", "512M"); err != nil {
-		t.Fatalf("SetField nested: %v", err)
-	}
-	f.Save()
-	out := readFile(t, f.path)
-	if !strings.Contains(out, "memory: 512M") {
-		t.Errorf("output should contain 'memory: 512M'\n%s", out)
-	}
-}
-
-func TestSetField_MapValue(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	hc := map[string]interface{}{
-		"test":     []interface{}{"CMD", "curl", "-f", "/"},
-		"interval": "30s",
-	}
-	if err := f.SetField("web", "healthcheck", hc); err != nil {
-		t.Fatalf("SetField healthcheck: %v", err)
-	}
-	f.Save()
-	out := readFile(t, f.path)
-	checks := []string{"healthcheck", "interval: 30s", "curl"}
-	for _, c := range checks {
-		if !strings.Contains(out, c) {
-			t.Errorf("output should contain %q\n%s", c, out)
+	for _, p := range proj.Services["cache"].Ports {
+		if p.ExposedOnAllInterfaces() {
+			t.Error("port still exposed after loopback bind")
 		}
 	}
 }
 
-func TestSetField_BoolTrue(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.SetField("web", "read_only", true); err != nil {
-		t.Fatal(err)
-	}
-	f.Save()
-	if !strings.Contains(readFile(t, f.path), "true") {
-		t.Error("bool true should render as 'true'")
+func TestEditMissingServiceErrors(t *testing.T) {
+	d := loadOrFail(t, "services:\n  app:\n    image: myapp\n")
+	if err := d.SetScalar("nope", "restart", "always"); err == nil {
+		t.Error("expected error for missing service")
 	}
 }
 
-func TestSetField_Integer(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.SetField("web", "replicas", 3); err != nil {
-		t.Fatal(err)
-	}
-	f.Save()
-	if !strings.Contains(readFile(t, f.path), "replicas: 3") {
-		t.Error("int should render as '3'")
-	}
-}
-
-func TestDeleteField(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.DeleteField("web", "privileged"); err != nil {
-		t.Fatalf("DeleteField: %v", err)
-	}
-	f.Save()
-	out := readFile(t, f.path)
-	if strings.Contains(out, "privileged: true") {
-		t.Errorf("output should not contain privileged\n%s", out)
-	}
-}
-
-func TestDeleteField_NonExistent(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.DeleteField("web", "nonexistent"); err != nil {
-		t.Errorf("DeleteField nonexistent should not error: %v", err)
-	}
-}
-
-func TestDeleteField_NonExistentService(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.DeleteField("nonexistent", "foo"); err != nil {
-		t.Errorf("DeleteField nonexistent service should not error: %v", err)
-	}
-}
-
-func TestRemoveFromList(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.RemoveFromList("web", "cap_add", "SYS_ADMIN"); err != nil {
-		t.Fatalf("RemoveFromList: %v", err)
-	}
-	f.Save()
-	out := readFile(t, f.path)
-	if strings.Contains(out, "SYS_ADMIN") {
-		t.Errorf("SYS_ADMIN should be removed from cap_add\n%s", out)
-	}
-}
-
-func TestRemoveFromList_NonExistentValue(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.RemoveFromList("web", "cap_add", "NOT_EXIST"); err != nil {
-		t.Errorf("RemoveFromList nonexistent value should not error: %v", err)
-	}
-}
-
-func TestRemoveFromList_NonExistentField(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.RemoveFromList("web", "nonexistent", "x"); err != nil {
-		t.Errorf("RemoveFromList nonexistent field should not error: %v", err)
-	}
-}
-
-func TestServiceNames(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	names, err := f.ServiceNames()
-	if err != nil {
-		t.Fatalf("ServiceNames: %v", err)
-	}
-	if len(names) != 2 {
-		t.Fatalf("ServiceNames = %v, want [web, db]", names)
-	}
-	if names[0] != "web" || names[1] != "db" {
-		t.Errorf("ServiceNames = %v, want [web, db]", names)
-	}
-}
-
-func TestServiceNames_Empty(t *testing.T) {
-	path := writeTestCompose(t, "version: '3'")
-	f := mustOpen(t, path)
-	names, err := f.ServiceNames()
-	if err != nil {
-		t.Fatalf("ServiceNames: %v", err)
-	}
-	if len(names) != 0 {
-		t.Errorf("no services should return empty slice, got %v", names)
-	}
-}
-
-func TestBackup(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	if err := f.Backup(); err != nil {
-		t.Fatalf("Backup: %v", err)
-	}
-	bakPath := path + ".bak"
-	if _, err := os.Stat(bakPath); os.IsNotExist(err) {
-		t.Error(".bak file was not created")
-	}
-}
-
-func TestMultipleEdits(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-
-	if err := f.SetField("web", "privileged", false); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.SetField("web", "read_only", true); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.RemoveFromList("web", "cap_add", "SYS_ADMIN"); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Save(); err != nil {
-		t.Fatal(err)
-	}
-
-	out := readFile(t, f.path)
-	for _, want := range []string{"privileged: false", "read_only: true"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing %q in output\n%s", want, out)
+// FuzzEdit ensures the AST editors never panic and always render parseable
+// YAML, even on odd-but-valid compose inputs.
+func FuzzEdit(f *testing.F) {
+	f.Add("services:\n  a:\n    image: x\n    ports:\n      - \"80:80\"\n")
+	f.Add("services:\n  a:\n    image: x\n    security_opt:\n      - seccomp:unconfined\n")
+	f.Fuzz(func(t *testing.T, yaml string) {
+		d, err := Load([]byte(yaml))
+		if err != nil {
+			return
 		}
-	}
-	if strings.Contains(out, "SYS_ADMIN") {
-		t.Errorf("SYS_ADMIN should be removed\n%s", out)
-	}
-}
-
-func TestGetFieldRaw(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	val, err := f.GetFieldRaw("web", "image")
-	if err != nil {
-		t.Fatalf("GetFieldRaw: %v", err)
-	}
-	if val != "nginx:latest" {
-		t.Errorf("GetFieldRaw(image) = %q, want nginx:latest", val)
-	}
-}
-
-func TestGetFieldRaw_Missing(t *testing.T) {
-	path := writeTestCompose(t, testCompose)
-	f := mustOpen(t, path)
-	val, err := f.GetFieldRaw("web", "nonexistent")
-	if err != nil {
-		t.Fatalf("GetFieldRaw: %v", err)
-	}
-	if val != "" {
-		t.Errorf("GetFieldRaw(nonexistent) = %q, want empty", val)
-	}
+		if len(d.root.Content) == 0 {
+			return
+		}
+		_ = d.AddSecurityOpt("a", "no-new-privileges:true")
+		_ = d.SetScalar("a", "restart", "unless-stopped")
+		_ = d.BindPortLoopback("a", "80")
+		out, err := d.Bytes()
+		if err != nil {
+			return
+		}
+		// The editor's invariant: whatever it renders must round-trip back
+		// through the editor (valid YAML mapping), so a later fix never
+		// reads a corrupted document.
+		if _, err := Load(out); err != nil {
+			t.Fatalf("edit produced un-reloadable YAML: %v\ninput:\n%s\noutput:\n%s", err, yaml, out)
+		}
+	})
 }
