@@ -18,14 +18,22 @@ func main() {
 }
 
 func run(args []string) int {
+	// With an explicit subcommand, dispatch to it. With none, open the TUI
+	// on an interactive terminal, otherwise print a scan (script-friendly).
+	explicit := len(args) > 0 && !strings.HasPrefix(args[0], "-")
 	cmd := "scan"
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+	switch {
+	case explicit:
 		cmd, args = args[0], args[1:]
+	case isInteractive():
+		cmd = "tui"
 	}
 
 	switch cmd {
 	case "scan":
 		return cmdScan(args)
+	case "tui":
+		return cmdTUI(args)
 	case "fix":
 		return cmdFix(args)
 	case "rollback":
@@ -49,7 +57,9 @@ func printUsage(w *os.File) {
 	fmt.Fprint(w, `hostveil — guided hardening for self-hosted Linux servers
 
 Usage:
-  hostveil [scan] [flags]        Scan the host and report security findings
+  hostveil                       Open the interactive TUI (on a terminal)
+  hostveil scan [flags]          Scan the host and report security findings
+  hostveil tui                   Open the interactive TUI explicitly
   hostveil fix <id> [flags]      Preview and apply the fix for a finding
   hostveil rollback <id>         Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
