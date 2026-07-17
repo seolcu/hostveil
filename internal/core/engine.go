@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -16,12 +18,17 @@ import (
 // Config wires an Engine's dependencies.
 type Config struct {
 	Registry *check.Registry
+	Fixes    *fix.Registry          // nil = no fixes; all fixable findings become Manual
+	Store    *history.Store         // nil = default per-user dir
 	Runner   platform.CommandRunner // nil = platform.DefaultRunner
 }
 
-// Engine holds the checker registry and the most recent scan result.
+// Engine holds the checker registry, fix registry, recovery store, and the
+// most recent scan result.
 type Engine struct {
 	registry *check.Registry
+	fixes    *fix.Registry
+	store    *history.Store
 	runner   platform.CommandRunner
 
 	mu      sync.RWMutex
@@ -35,7 +42,11 @@ func New(cfg Config) *Engine {
 	if runner == nil {
 		runner = platform.DefaultRunner{}
 	}
-	return &Engine{registry: cfg.Registry, runner: runner}
+	store := cfg.Store
+	if store == nil {
+		store = history.NewStore(history.DefaultDir())
+	}
+	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner}
 }
 
 // Scan runs every checker concurrently, scores the merged findings, stores
@@ -62,6 +73,7 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 		})
 	}
 
+	e.classify(findings)
 	model.SortFindings(findings)
 	report := model.Report{
 		Findings: findings,
@@ -82,6 +94,25 @@ func (e *Engine) Current() (model.Report, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.current, e.hasRun
+}
+
+// classify makes the fix registry authoritative for remediation: a
+// finding is Auto/Review exactly when a matching fix is registered (its
+// Kind wins). A finding whose checker intended a fix but has none
+// registered is demoted to Manual, so the UI never shows a fix button
+// that leads nowhere. Unavailable/Manual intents are left as-is.
+func (e *Engine) classify(findings []model.Finding) {
+	for i := range findings {
+		if e.fixes != nil {
+			if fx, ok, err := e.fixes.Build(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
+				findings[i].Remediation = fx.Kind
+				continue
+			}
+		}
+		if findings[i].Remediation.IsFixable() {
+			findings[i].Remediation = model.RemediationManual
+		}
+	}
 }
 
 // validFindings drops any malformed finding so an unclassified or

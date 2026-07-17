@@ -6,14 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/seolcu/hostveil/internal/check"
-	composecheck "github.com/seolcu/hostveil/internal/check/compose"
-	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
-	firewallcheck "github.com/seolcu/hostveil/internal/check/firewall"
-	sshcheck "github.com/seolcu/hostveil/internal/check/ssh"
-	updatescheck "github.com/seolcu/hostveil/internal/check/updates"
 	"github.com/seolcu/hostveil/internal/clirender"
-	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -32,17 +25,7 @@ func cmdScan(args []string) int {
 		return 2
 	}
 
-	engine := core.New(core.Config{
-		Registry: check.NewRegistry(
-			composecheck.New(),
-			sshcheck.New(),
-			firewallcheck.New(),
-			updatescheck.New(),
-			cvecheck.New(),
-		),
-	})
-
-	report := engine.Scan(context.Background(), nil)
+	report := buildEngine().Scan(context.Background(), nil)
 
 	if jsonOut {
 		out, err := clirender.JSON(report)

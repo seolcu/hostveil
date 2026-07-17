@@ -40,10 +40,27 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	var findings []model.Finding
 	for _, p := range projects {
 		for _, name := range sortedServiceNames(p) {
-			findings = append(findings, auditService(p.Services[name])...)
+			for _, fnd := range auditService(p.Services[name]) {
+				// Record where the fix layer should apply the change.
+				fnd.Metadata = mergeMeta(fnd.Metadata, map[string]string{
+					"file":    p.File,
+					"service": name,
+				})
+				findings = append(findings, fnd)
+			}
 		}
 	}
 	return findings, nil
+}
+
+func mergeMeta(base, add map[string]string) map[string]string {
+	if base == nil {
+		base = map[string]string{}
+	}
+	for k, v := range add {
+		base[k] = v
+	}
+	return base
 }
 
 func sortedServiceNames(p compose.Project) []string {

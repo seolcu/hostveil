@@ -26,6 +26,12 @@ func run(args []string) int {
 	switch cmd {
 	case "scan":
 		return cmdScan(args)
+	case "fix":
+		return cmdFix(args)
+	case "rollback":
+		return cmdRollback(args)
+	case "history":
+		return cmdHistory(args)
 	case "version", "--version", "-v":
 		fmt.Println("hostveil", version)
 		return 0
@@ -43,13 +49,21 @@ func printUsage(w *os.File) {
 	fmt.Fprint(w, `hostveil — guided hardening for self-hosted Linux servers
 
 Usage:
-  hostveil [scan] [flags]   Scan the host and report security findings
-  hostveil version          Print the version
-  hostveil help             Show this help
+  hostveil [scan] [flags]        Scan the host and report security findings
+  hostveil fix <id> [flags]      Preview and apply the fix for a finding
+  hostveil rollback <id>         Undo a previously applied fix
+  hostveil history               List applied fixes and their rollback IDs
+  hostveil version               Print the version
+  hostveil help                  Show this help
 
 Scan flags:
   -v, --verbose   Show each finding's description and fix guidance
   --json          Output the report as JSON
   --no-color      Disable colored output
+
+Fix flags:
+  --service NAME  Disambiguate a finding that affects multiple services
+  --action N      For Review fixes, pick alternative N (0-based)
+  --yes           Apply without an interactive confirmation
 `)
 }
