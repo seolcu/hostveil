@@ -32,7 +32,7 @@ const (
 // Env is the detected host environment passed to every checker. It
 // carries the CommandRunner so checkers never construct their own.
 type Env struct {
-	DistroID       string         // /etc/os-release ID, e.g. "debian", "fedora"
+	DistroID       string // /etc/os-release ID, e.g. "debian", "fedora"
 	PackageManager PackageManager
 	ServiceManager ServiceManager
 	Hostname       string

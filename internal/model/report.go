@@ -64,9 +64,9 @@ type Report struct {
 
 // Filter selects a subset of findings for display.
 type Filter struct {
-	Source      Source // SourceUnset = any
-	MinSeverity *Severity
-	FixableOnly bool
+	Source       Source // SourceUnset = any
+	MinSeverity  *Severity
+	FixableOnly  bool
 	IncludeFixed bool
 }
 
