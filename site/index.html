@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>hostveil — find and fix security drift on self-hosted Docker hosts</title>
-    <meta name="description" content="hostveil scans Docker Compose, container images, and Linux host hardening in one local binary, then applies safe fixes with rollback.">
+    <title>hostveil — guided security hardening for self-hosted Linux servers</title>
+    <meta name="description" content="hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.">
     <meta name="theme-color" content="#07100f">
-    <meta property="og:title" content="hostveil — security scanner with fixes">
-    <meta property="og:description" content="One local binary for Docker Compose misconfigurations, image CVEs, host hardening, scoring, fixes, rollback, and AI-ready remediation briefs.">
+    <meta property="og:title" content="hostveil — guided hardening for self-hosters">
+    <meta property="og:description" content="One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hostveil.seolcu.com/">
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
@@ -39,9 +39,9 @@
       <section class="hero" id="top">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">Local security scanner for self-hosters</p>
-            <h1>Find security problems on your Docker host, then fix them.</h1>
-            <p class="lede">Compose audits, Trivy CVEs, and Lynis hardening in one scored snapshot. One binary, no cloud account, fixes with rollback.</p>
+            <p class="eyebrow">Guided security hardening for self-hosters</p>
+            <h1>The security mistakes on your home server, found and fixed for you.</h1>
+            <p class="lede">You self-host on Linux. You are not a security expert. hostveil finds the misconfigurations that get people hacked, explains them in plain language, and fixes them — with a preview, a backup, and one-command rollback.</p>
             <div class="hero-actions" aria-label="Primary actions">
               <a class="button primary" href="#install">Install</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">Source</a>
@@ -52,12 +52,12 @@
             <div class="score-card">
               <span>Security score</span>
               <strong>68/100</strong>
-              <small>Fixes raise the score immediately</small>
+              <small>Every fix raises the score immediately</small>
             </div>
             <div class="finding-list" aria-label="Example findings">
-              <div class="finding critical"><span>Critical</span><strong>Docker socket mounted</strong><small>compose.ds016</small></div>
-              <div class="finding high"><span>High</span><strong>SSH password auth enabled</strong><small>lynis.AUTH-9286</small></div>
-              <div class="finding medium"><span>Medium</span><strong>Image CVE with patch</strong><small>trivy.cve-2024-0001</small></div>
+              <div class="finding critical"><span>Critical</span><strong>Database exposed to the internet</strong><small>compose.ds018</small></div>
+              <div class="finding high"><span>High</span><strong>SSH permits root login</strong><small>ssh.rootlogin</small></div>
+              <div class="finding medium"><span>Medium</span><strong>Automatic updates are off</strong><small>updates.disabled</small></div>
             </div>
           </div>
         </div>
@@ -70,9 +70,9 @@
       <section class="trust-strip" aria-label="Project facts">
         <div class="container stats-grid">
           <div><strong>1 binary</strong><span>No SaaS, no database, no frontend build</span></div>
-          <div><strong>3 scanners</strong><span>Compose, Trivy, and Lynis in one snapshot</span></div>
+          <div><strong>Native checks</strong><span>SSH, firewall, and updates without extra tools</span></div>
           <div><strong>0 cloud accounts</strong><span>Everything runs on the host you control</span></div>
-          <div><strong>Rollback ready</strong><span>Fix checkpoints keep changes reversible</span></div>
+          <div><strong>Rollback ready</strong><span>Every fix backs up first and can be undone</span></div>
         </div>
       </section>
 
@@ -80,29 +80,29 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">Why hostveil</p>
-            <h2>Action, not another report.</h2>
-            <p>Scan output becomes a prioritized queue with concrete fixes, warnings, and recovery points.</p>
+            <h2>A guide, not another report.</h2>
+            <p>hostveil turns opaque host state into a prioritized list of concrete problems a non-expert can understand — and then walks you through fixing them safely.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-kicker">One scored list</span>
-              <h3>Stop cross-referencing scanner output.</h3>
-              <p>Trivy, Lynis, and Compose findings land in one table with severity, source, service, remediation kind, and a capped 0–100 score.</p>
+              <span class="card-kicker">Plain language</span>
+              <h3>Understand the risk without the jargon.</h3>
+              <p>Each finding says what is wrong, why it matters, and how to fix it — in one scored 0–100 snapshot across every checked area.</p>
             </article>
             <article class="feature-card">
-              <span class="card-kicker">Auto-fix with guardrails</span>
-              <h3>Apply the safe fix from TUI or browser.</h3>
-              <p>Every automated fix shows the action first. File edits save checkpoints; risky choices stay in Review, not behind a magic button.</p>
+              <span class="card-kicker">Fix with a safety net</span>
+              <h3>Preview, back up, apply, roll back.</h3>
+              <p>Every automated fix shows the exact change first and backs up the file before touching it. Changed your mind? <code>hostveil rollback</code> restores the original.</p>
             </article>
             <article class="feature-card">
               <span class="card-kicker">Self-hosted by design</span>
               <h3>No agents, no cloud upload, no account.</h3>
-              <p>Reads local Compose files, image metadata, and host configuration. Results stay on the machine unless you export them.</p>
+              <p>Reads your Compose files and host configuration locally. Native checks mean nothing extra to install for SSH, firewall, and update hardening.</p>
             </article>
             <article class="feature-card accent-card">
-              <span class="card-kicker">Export brief</span>
-              <h3>Markdown remediation brief, not raw secrets.</h3>
-              <p>Prioritized findings, prompt-injection guidance, and redacted evidence for ChatGPT, Claude, or a local LLM.</p>
+              <span class="card-kicker">Optional, on your terms</span>
+              <h3>Add CVE scanning and local AI when you want.</h3>
+              <p>Trivy image scanning is used if present and skipped cleanly if not. AI explanations are opt-in and default to a local model — nothing leaves the host.</p>
             </article>
           </div>
         </div>
@@ -112,21 +112,21 @@
         <div class="container split-grid">
           <div>
             <p class="eyebrow">Coverage</p>
-            <h2>Three independent views of the same host.</h2>
-            <p>Privileged containers, public admin panels, unpatched images, SSH left too open — hostveil checks those paths together.</p>
+            <h2>The home-server mistakes that actually get you hacked.</h2>
+            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages — hostveil checks the highest-impact paths together, deeply.</p>
           </div>
           <div class="check-stack">
             <article>
-              <strong>Compose audit</strong>
-              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores/admin panels, missing no-new-privileges, unsafe bind mounts, missing healthchecks, and hardcoded secrets.</p>
+              <strong>Docker &amp; Compose</strong>
+              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores and admin panels, missing no-new-privileges, unsafe bind mounts, and hardcoded secrets — from a native audit of your Compose files.</p>
             </article>
             <article>
-              <strong>Image CVEs</strong>
-              <p>Trivy scans the container images your Compose services actually run and maps patched versions into fix guidance.</p>
+              <strong>SSH, firewall &amp; updates</strong>
+              <p>Native checks for root login and password auth in sshd_config, whether a firewall is actually active, and whether automatic security updates are enabled. No external audit tool required.</p>
             </article>
             <article>
-              <strong>Host hardening</strong>
-              <p>Lynis checks SSH, firewall, kernel settings, file permissions, audit/logging, and other Linux host controls.</p>
+              <strong>Image CVEs (optional)</strong>
+              <p>When Trivy is installed, hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state — no misleading perfect score when the scan didn't run.</p>
             </article>
           </div>
         </div>
@@ -137,16 +137,16 @@
           <div class="section-heading">
             <p class="eyebrow">Product</p>
             <h2>Terminal-first, browser-friendly.</h2>
-            <p>Run the TUI by default, or serve the same scan state over localhost when a browser is better for review.</p>
+            <p>Run the TUI by default, or serve the same scan over localhost when a browser is better for review. Both drive the exact same fix-and-rollback engine.</p>
           </div>
           <div class="screens-grid">
             <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="Enlarge TUI screenshot">
-              <img src="assets/tui.png" alt="hostveil terminal UI showing score cards and findings table" width="1200" height="760" loading="lazy">
-              <figcaption><strong>TUI</strong><span>Keyboard-driven findings, detail panel, dry-run fixes, export, and rollback workflow.</span></figcaption>
+              <img src="assets/tui.png" alt="hostveil terminal UI showing the security score and findings list" width="1200" height="760" loading="lazy">
+              <figcaption><strong>TUI</strong><span>Keyboard-driven findings, plain-language detail, fix preview, apply, and rollback.</span></figcaption>
             </figure>
             <figure class="screenshot-card" data-lightbox="web" role="button" tabindex="0" aria-label="Enlarge Web UI screenshot">
-              <img src="assets/web.png" alt="hostveil Web UI showing dashboard filters and detail panel" width="1200" height="760" loading="lazy">
-              <figcaption><strong>Web UI</strong><span>Localhost dashboard with filters, batch fixes, JSON/CSV/AI brief export, and live scan status.</span></figcaption>
+              <img src="assets/web.png" alt="hostveil Web UI showing the dashboard and detail panel" width="1200" height="760" loading="lazy">
+              <figcaption><strong>Web UI</strong><span>Localhost dashboard with the score, findings, fix preview, batch fixes, and rollback.</span></figcaption>
             </figure>
           </div>
         </div>
@@ -156,13 +156,13 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">Workflow</p>
-            <h2>Scan, decide, apply, recover.</h2>
+            <h2>Scan, understand, apply, recover.</h2>
           </div>
           <ol class="flow-list">
-            <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on a Linux Docker Compose host. Missing Trivy or Lynis is skipped gracefully.</p></li>
-            <li><div class="flow-step-head"><span>02</span><strong>Prioritize</strong></div><p>Sort by severity, source, service, remediation kind, or score impact. Clean scans show Clean instead of 100/100.</p></li>
-            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for clear fixes, Review for alternatives, Manual when the tool should guide instead of mutate.</p></li>
-            <li><div class="flow-step-head"><span>04</span><strong>Rollback if needed</strong></div><p>Fix checkpoints keep edited files recoverable<br>through <code>hostveil rollback</code>.</p></li>
+            <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on your Linux server. Docker or Trivy absent? Those areas are skipped gracefully.</p></li>
+            <li><div class="flow-step-head"><span>02</span><strong>Understand</strong></div><p>Findings are prioritized by severity with a plain-language explanation of what and why. A clean host shows Clean, not a hollow 100.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for the clearly-safe fix, Review when there are real alternatives, Manual when the tool should guide instead of mutate.</p></li>
+            <li><div class="flow-step-head"><span>04</span><strong>Roll back anytime</strong></div><p>Every applied fix is backed up first and reversible<br>through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
       </section>
@@ -172,21 +172,25 @@
           <div>
             <p class="eyebrow">Install</p>
             <h2>One command, then scan.</h2>
-            <p>The installer downloads the release binary, verifies checksums, installs hostveil, and sets up Trivy and Lynis when possible.</p>
+            <p>The installer downloads the release binary, verifies checksums, and installs hostveil. Trivy is optional — install it later if you want image CVE scanning.</p>
             <div class="button-row">
               <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">Latest release</a>
-              <a class="button secondary" href="https://github.com/seolcu/hostveil/tree/main/docs">Docs</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil#readme">Docs</a>
             </div>
           </div>
           <div class="code-block">
             <pre><code># Install or update hostveil
 curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
 
-# Terminal UI
+# Terminal UI (default)
 hostveil
 
 # Web UI on localhost
-hostveil serve</code></pre>
+hostveil serve
+
+# Scan, then fix everything safe
+hostveil scan
+hostveil fix --all</code></pre>
           </div>
         </div>
       </section>
@@ -199,20 +203,20 @@ hostveil serve</code></pre>
           </div>
           <div class="faq-grid">
             <article>
-              <h3>Does it upload scan data?</h3>
-              <p>No. hostveil runs locally. Exports are<br>files you explicitly download or save.</p>
+              <h3>Does it upload my data?</h3>
+              <p>No. hostveil runs locally. Even the optional AI<br>explanations default to a model on your own machine.</p>
             </article>
             <article>
-              <h3>Why not just run Trivy and Lynis?</h3>
-              <p>You can. hostveil adds Compose checks, one scored snapshot,<br>UI workflows, registered fixes, and rollback.</p>
+              <h3>Will a fix break my server?</h3>
+              <p>You see the exact change before it applies, the original is<br>backed up first, and <code>hostveil rollback</code> undoes it.</p>
             </article>
             <article>
               <h3>What if a fix has tradeoffs?</h3>
               <p>It is a Review fix, not Auto. hostveil shows independent<br>alternatives and makes you choose.</p>
             </article>
             <article>
-              <h3>Can I use it in a browser?</h3>
-              <p>Yes. <code>hostveil serve</code> starts the Web UI on <code>127.0.0.1:8787</code><br>by default.</p>
+              <h3>Do I need Docker or Trivy?</h3>
+              <p>No. SSH, firewall, and update checks run natively. Docker<br>and Trivy checks are used when present and skipped if not.</p>
             </article>
           </div>
         </div>
@@ -230,13 +234,12 @@ hostveil serve</code></pre>
       <div class="container footer-grid">
         <div>
           <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
-          <p>Find and fix security drift on self-hosted Docker hosts.</p>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
         </div>
         <nav aria-label="Footer links">
           <a href="https://github.com/seolcu/hostveil">GitHub</a>
           <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
-          <a href="https://github.com/seolcu/hostveil/tree/main/docs">Docs</a>
-          <a href="https://github.com/seolcu/hostveil/blob/main/SECURITY.md">Security</a>
+          <a href="https://github.com/seolcu/hostveil#readme">Docs</a>
         </nav>
       </div>
     </footer>
