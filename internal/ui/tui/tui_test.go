@@ -59,6 +59,36 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 	return next
 }
 
+// TestSnapshotDump writes the rendered TUI frame to the path in
+// HOSTVEIL_SNAPSHOT when set, for generating documentation screenshots. It
+// is a no-op in normal test runs.
+func TestSnapshotDump(t *testing.T) {
+	path := os.Getenv("HOSTVEIL_SNAPSHOT")
+	if path == "" {
+		t.Skip("set HOSTVEIL_SNAPSHOT to dump a frame")
+	}
+	findings := []model.Finding{
+		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
+		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityCritical, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
+		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview),
+		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
+		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("app")),
+		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
+		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("db")),
+	}
+	ran := map[model.Source]bool{model.SourceCompose: true, model.SourceSSH: true, model.SourceFirewall: true, model.SourceUpdates: true}
+	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, ran), Domains: []model.DomainResult{
+		{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
+	}}
+
+	m := tea.Model(&appModel{mode: modeList})
+	m = send(m, tea.WindowSizeMsg{Width: 96, Height: 34})
+	m = send(m, scannedMsg{report: rep})
+	if err := os.WriteFile(path, []byte(m.(*appModel).View().Content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestListRenders(t *testing.T) {
 	m := &appModel{engine: nil, mode: modeList}
 	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40}).(*appModel)
