@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
@@ -22,6 +23,7 @@ type Config struct {
 	Fixes    *fix.Registry          // nil = no fixes; all fixable findings become Manual
 	Store    *history.Store         // nil = default per-user dir
 	Runner   platform.CommandRunner // nil = platform.DefaultRunner
+	AI       ai.Explainer           // nil = ai.Noop (advisory AI disabled)
 }
 
 // Engine holds the checker registry, fix registry, recovery store, and the
@@ -31,6 +33,7 @@ type Engine struct {
 	fixes    *fix.Registry
 	store    *history.Store
 	runner   platform.CommandRunner
+	ai       ai.Explainer
 
 	mu        sync.RWMutex
 	current   model.Report
@@ -48,7 +51,11 @@ func New(cfg Config) *Engine {
 	if store == nil {
 		store = history.NewStore(history.DefaultDir())
 	}
-	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner}
+	explainer := cfg.AI
+	if explainer == nil {
+		explainer = ai.Noop{}
+	}
+	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer}
 }
 
 // Scan runs every checker concurrently, scores the merged findings, stores
