@@ -75,12 +75,41 @@ func TestFirewallFirewalld(t *testing.T) {
 	}
 }
 
-func TestFirewallNftables(t *testing.T) {
+func TestFirewallNftablesActive(t *testing.T) {
+	// A real host firewall: an input base chain that drops by default.
+	ruleset := `table inet filter {
+	chain input {
+		type filter hook input priority 0; policy drop;
+		ct state established,related accept
+	}
+}`
 	r := fakeRunner{
 		present: map[string]bool{"nft": true},
-		outputs: map[string]string{"nft list ruleset": "table inet filter {\n  chain input {\n  }\n}\n"},
+		outputs: map[string]string{"nft list ruleset": ruleset},
 	}
 	if n := check(t, r); n != 0 {
-		t.Errorf("nftables with a table should yield no finding, got %d", n)
+		t.Errorf("an active input-dropping nftables firewall should yield no finding, got %d", n)
+	}
+}
+
+// TestFirewallDockerRulesNotCountedAsFirewall is the regression guard for
+// the false-negative found by the demo VM: Docker installs nftables tables
+// for container networking, but they are NOT a host firewall, so a Docker
+// host with no ufw/firewalld must still be flagged.
+func TestFirewallDockerRulesNotCountedAsFirewall(t *testing.T) {
+	dockerRuleset := `table ip nat {
+	chain DOCKER { }
+	chain POSTROUTING { type nat hook postrouting priority srcnat; policy accept; }
+}
+table ip filter {
+	chain DOCKER { }
+	chain FORWARD { type filter hook forward priority filter; policy accept; }
+}`
+	r := fakeRunner{
+		present: map[string]bool{"nft": true},
+		outputs: map[string]string{"nft list ruleset": dockerRuleset},
+	}
+	if n := check(t, r); n != 1 {
+		t.Errorf("Docker's nftables tables must not count as a firewall; expected 1 finding, got %d", n)
 	}
 }

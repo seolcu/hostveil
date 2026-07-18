@@ -59,17 +59,37 @@ func activeFirewall(ctx context.Context, r platform.CommandRunner) (bool, string
 		}
 	}
 	if platform.Has(r, "nft") {
-		if out, err := r.Run(ctx, "nft", "list", "ruleset"); err == nil && hasNftRules(string(out)) {
+		if out, err := r.Run(ctx, "nft", "list", "ruleset"); err == nil && hasHostFirewall(string(out)) {
 			return true, "nftables"
 		}
 	}
 	return false, ""
 }
 
-// hasNftRules reports whether an nft ruleset actually defines tables (an
-// empty ruleset means no filtering).
-func hasNftRules(out string) bool {
-	return strings.Contains(out, "table ")
+// hasHostFirewall reports whether an nft ruleset contains an actual
+// host-level input firewall — a base chain hooked at input whose default
+// policy drops or rejects traffic (what ufw, firewalld, and hand-written
+// nftables firewalls install). It deliberately does NOT count the tables
+// Docker adds for container networking: those hook prerouting/forward/
+// postrouting and never set an input drop policy, so a plain Docker host
+// with no firewall must still be flagged. Matching any "table " (the old
+// behavior) silently suppressed the finding on every Docker host.
+func hasHostFirewall(out string) bool {
+	lower := strings.ToLower(out)
+	inChain := false
+	for _, line := range strings.Split(lower, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "chain ") {
+			inChain = false
+		}
+		if strings.Contains(line, "hook input") {
+			inChain = true
+		}
+		if inChain && (strings.Contains(line, "policy drop") || strings.Contains(line, "policy reject")) {
+			return true
+		}
+	}
+	return false
 }
 
 func availableTools(r platform.CommandRunner) []string {
