@@ -113,7 +113,7 @@
             <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev critical">Critical</span> or <span class="sev high">High</span> — useful as a CI or cron gate.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
-            <p>Parsed natively from <code>sshd_config</code>. Run with <code>sudo</code> to read it.</p>
+            <p>Parsed natively from <code>sshd_config</code>. Reading it needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>

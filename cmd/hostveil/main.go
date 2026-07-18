@@ -29,6 +29,8 @@ func run(args []string) int {
 		cmd = "tui"
 	}
 
+	maybeElevate(cmd) // on success the process is replaced by sudo and does not return
+
 	switch cmd {
 	case "scan":
 		return cmdScan(args)

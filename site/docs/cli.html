@@ -80,7 +80,7 @@
           <article class="docs-prose">
             <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / CLI reference</p>
             <h1>CLI reference</h1>
-            <p class="lead">Every subcommand, flag, and default. Commands that read root-owned files (SSH, firewall) or write to protected paths need <code>sudo</code>.</p>
+            <p class="lead">Every subcommand, flag, and default. Commands that read root-owned files (SSH, firewall) or write to protected paths need root, so <code>hostveil</code> re-runs itself under <code>sudo</code> automatically (except <code>version</code>/<code>help</code>); set <code>HOSTVEIL_NO_SUDO=1</code> to opt out.</p>
 
             <h2>Synopsis</h2>
             <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>

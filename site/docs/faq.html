@@ -95,7 +95,7 @@
             <p>No. The SSH, firewall, and auto-update checks run natively with no extra tooling. The Docker/Compose audit needs Docker, and image CVE scanning needs Trivy — each is used when present and skipped cleanly when not, with the score renormalized so a skipped domain doesn't inflate your result.</p>
 
             <h2>Why does it ask for sudo?</h2>
-            <p>Some checks read root-owned files such as <code>sshd_config</code>, and applying a fix writes to protected paths. Run scans and fixes with <code>sudo</code> for full coverage; without it, those domains are skipped with a clear message.</p>
+            <p>Some checks read root-owned files such as <code>sshd_config</code>, and applying a fix writes to protected paths. So <code>hostveil</code> elevates itself with <code>sudo</code> automatically — the prompt you see is sudo's own, identical to running <code>sudo hostveil</code>, and it continues in the same terminal once you authenticate. <code>version</code> and <code>help</code> never prompt. To run unprivileged (scripts/CI), set <code>HOSTVEIL_NO_SUDO=1</code>; the root-owned domains are then skipped with a clear message.</p>
 
             <h2>Is the web dashboard exposed to my network?</h2>
             <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only) by default. You can change the bind address with <code>--addr</code>, but pointing it at a non-loopback address prints a warning first. See <a href="interfaces">Interfaces</a>.</p>
