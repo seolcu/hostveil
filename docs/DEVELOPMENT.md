@@ -43,6 +43,7 @@ go test -race ./...
 
 ```
 cmd/hostveil/        entry point + subcommand wiring
+cmd/sitegen/         static-site generator for site/ (templates + content + pages.json)
 internal/
   core/              the shared engine — the only thing the UIs call
   check/             detection domains (compose, ssh, firewall, updates, cve)
@@ -50,9 +51,36 @@ internal/
   model/ platform/   pure value types; the OS/command seam
   ui/{cli,tui,web}/  thin UIs over the engine
 demo/                the reproducible vulnerable-server VM (Vagrant)
-site/                the marketing site (static)
+site/                the marketing site (static, generated — see below)
 docs/                these docs
 ```
+
+## Editing the website
+
+`site/` is a static site (landing page + docs, mirrored under `site/ko/`), but
+its HTML is **generated** — don't hand-edit `site/**/*.html`. The single source
+of truth lives in `cmd/sitegen/`:
+
+```
+cmd/sitegen/
+  pages.json         per-page/per-language metadata; drives the sidebar + head
+  templates/*.tmpl   shared head, nav, sidebar, footer, and the two layouts
+  content/{en,ko}/   per-page body fragments (the actual prose)
+  main.go            resolves each page's chrome/URLs and renders it
+```
+
+Edit a fragment, template, or `pages.json`, then regenerate and commit the
+result:
+
+```bash
+go run ./cmd/sitegen      # writes into site/
+git diff site/            # review, then commit the regenerated HTML
+```
+
+CSS/JS (`site/styles.css`, `docs.css`, `script.js`, `docs.js`,
+`lang-suggest.js`) and `site/assets/` are shared by every page and are *not*
+generated — edit them directly. CI runs the generator and fails if `site/`
+drifts from the source, so always commit the regenerated output.
 
 Architectural rule: UIs depend only on `core` (an import-lint test enforces
 that `ui/*` never imports `fix`/`history`/`check`/`compose`). Adding a

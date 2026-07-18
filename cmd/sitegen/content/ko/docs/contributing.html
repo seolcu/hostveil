@@ -1,0 +1,25 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 기여하기</p>
+            <h1>기여하기</h1>
+            <p class="lead">hostveil은 Go로 작성되었으며, 의존성 트리가 작고 아키텍처 규칙이 엄격합니다. 이 페이지는 빠른 안내이며, 정식 개발자 가이드는 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, 데모 VM은 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 정리되어 있습니다.</p>
+
+            <h2>시작하기</h2>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil.git
+cd hostveil
+go build ./cmd/hostveil     # produces ./hostveil
+go test ./...</code></pre></div>
+            <p>PR를 열기 전에 CI가 실행하는 전체 점검을 돌리세요 — <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, 그리고 <code>go test -race ./...</code>입니다. 정확한 명령과 고정된 Go 버전은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
+            <div class="callout">
+              <span class="callout-label">리눅스 도구, 이식 가능한 테스트</span>
+              <p>hostveil은 <strong>어떤 OS에서도 빌드되고 테스트가 통과</strong>하지만, 바이너리를 의미 있게 실행하려면 관련 도구가 설치된 리눅스가 필요합니다 — 본인의 머신 대신 데모 VM을 사용하세요.</p>
+            </div>
+
+            <h2>구조</h2>
+            <p>엔진은 <code>internal/core</code>에 있고, CLI·TUI·웹 UI는 그 위의 얇은 계층입니다. import-lint <strong>테스트</strong>가 <code>ui/*</code>가 <code>fix</code>, <code>history</code>, <code>check</code>, <code>compose</code>를 절대 import하지 않도록 강제하며, 이것이 세 인터페이스를 동일하게 동작하게 만듭니다. 탐지 도메인을 추가하려면 <code>internal/check/</code> 아래에 <code>Checker</code> 인터페이스를 구현하는 패키지 하나를 작성해 등록하면 됩니다(<a href="checks">점검 항목</a>과 <a href="fixing">수정 및 롤백</a> 참고). 전체 저장소 구조와 아키텍처 설명은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
+
+            <h2>실제로 실행해 보기: 데모 VM</h2>
+            <p><code>demo/</code>는 코드로 정의된, 의도적으로 취약하게 만든 Ubuntu 서버입니다. hostveil은 VM <em>내부</em>에서 여러분의 작업 트리로부터 빌드되므로 항상 현재 코드를 반영합니다. <code>./run.sh up</code>으로 띄우고 <code>./run.sh scan</code>으로 스캔하세요. 플랫폼별 프로바이더 설정, 5분 데모 스크립트, 초기화 절차, 문제 해결은 모두 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 있습니다.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="faq">← 자주 묻는 질문</a>
+              <a class="button primary" href="https://github.com/seolcu/hostveil">GitHub 저장소 →</a>
+            </div>

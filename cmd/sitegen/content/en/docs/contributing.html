@@ -1,0 +1,25 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Contributing</p>
+            <h1>Contributing</h1>
+            <p class="lead">hostveil is Go, with a small dependency tree and a strict architecture. This page is a quick orientation — the canonical developer guide is <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, and the demo VM is documented in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
+
+            <h2>Start here</h2>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil.git
+cd hostveil
+go build ./cmd/hostveil     # produces ./hostveil
+go test ./...</code></pre></div>
+            <p>Before opening a PR, run the full suite CI runs — <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, and <code>go test -race ./...</code>. The exact commands and the pinned Go version are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+            <div class="callout">
+              <span class="callout-label">Linux tool, portable tests</span>
+              <p>hostveil <strong>builds and its tests pass on any OS</strong>, but running the binary meaningfully needs Linux with the relevant tools present — use the demo VM rather than your own machine.</p>
+            </div>
+
+            <h2>How it's built</h2>
+            <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code> — that is what keeps the three interfaces behaving identically. Adding a detection domain means writing one package under <code>internal/check/</code> that implements the <code>Checker</code> interface and registering it (see <a href="checks">What it checks</a> and <a href="fixing">Fixing &amp; rollback</a>). The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+
+            <h2>Running it for real: the demo VM</h2>
+            <p><code>demo/</code> is a code-defined, deliberately vulnerable Ubuntu server; hostveil is built from your working tree <em>inside</em> the VM, so it always reflects your current code. Bring it up with <code>./run.sh up</code> and scan with <code>./run.sh scan</code>. Per-platform provider setup, the 5-minute demo script, the reset workflow, and troubleshooting all live in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="faq">← FAQ</a>
+              <a class="button primary" href="https://github.com/seolcu/hostveil">GitHub repository →</a>
+            </div>

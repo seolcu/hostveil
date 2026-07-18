@@ -1,0 +1,105 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 점검 항목</p>
+            <h1>점검 항목</h1>
+            <p class="lead">hostveil은 셀프호스터가 실제로 침해당하는 영향이 가장 큰 경로들을 점검한 뒤, 모든 것을 하나의 0–100 점수로 합칩니다. 각 발견 항목은 <code>domain.rule</code> 형태의 고정된 ID를 가지며, <code>explain</code>, <code>fix</code>, <code>rollback</code>과 함께 사용합니다.</p>
+
+            <h2>영역 한눈에 보기</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>영역</th><th>접두사</th><th>필요 조건</th></tr></thead>
+                <tbody>
+                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker + Compose 파일</td></tr>
+                  <tr><td>SSH</td><td><code>ssh.</code></td><td>—</td></tr>
+                  <tr><td>방화벽</td><td><code>firewall.</code></td><td>—</td></tr>
+                  <tr><td>자동 업데이트</td><td><code>updates.</code></td><td>—</td></tr>
+                  <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
+
+            <h2>심각도와 점수</h2>
+            <p>모든 발견 항목은 네 가지 심각도 중 하나를 가집니다. 점수는 100에서 시작하며, 수정되지 않은 발견 항목마다 심각도별 감점이 적용됩니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>심각도</th><th>감점</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sev critical">심각</span></td><td>8</td></tr>
+                  <tr><td><span class="sev high">높음</span></td><td>5</td></tr>
+                  <tr><td><span class="sev medium">보통</span></td><td>2</td></tr>
+                  <tr><td><span class="sev low">낮음</span></td><td>1</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>hostveil scan</code>은 수정되지 않은 발견 항목 중 <span class="sev critical">심각</span> 또는 <span class="sev high">높음</span>이 하나라도 있으면 0이 아닌 값으로 종료합니다 — CI나 cron 게이트로 유용합니다.</p>
+
+            <h2 id="ssh">SSH <code>ssh.</code></h2>
+            <p><code>sshd_config</code>에서 직접 파싱합니다. 읽으려면 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 상승하여 이를 얻습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>ssh.emptypasswords</code></td><td>빈 비밀번호가 허용됨</td><td><span class="sev critical">심각</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td>비밀번호를 사용한 root 로그인이 허용됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td>비밀번호 인증이 허용됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="compose">Docker / Compose <code>compose.</code></h2>
+            <p>Compose 파일에 대한 네이티브 감사입니다 — 외부 스캐너가 필요 없습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="firewall">방화벽 <code>firewall.</code></h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, 또는 nftables)</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="updates">자동 업데이트 <code>updates.</code></h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>
+            <p>Trivy가 설치되어 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 각 고유 취약점은 <code>cve.&lt;vulnerability-id&gt;</code> 형태의 ID를 가진 발견 항목이 되며 (예: <code>cve.cve-2023-1234</code>), 심각도는 Trivy의 등급에서 매핑됩니다.</p>
+            <div class="callout">
+              <span class="callout-label">"아직 패치가 없음"에 대한 솔직함</span>
+              <p>수정된 버전이 존재하면 해당 발견 항목은 <strong>검토</strong> 수정입니다 (이미지 업데이트). 아직 패치가 없다면, hostveil은 이를 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다 — 스캔이 정직함을 유지하도록.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="quickstart">← 빠른 시작</a>
+              <a class="button primary" href="fixing">수정 및 롤백 →</a>
+            </div>

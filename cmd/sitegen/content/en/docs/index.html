@@ -1,0 +1,71 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / Docs</p>
+            <h1>hostveil documentation</h1>
+            <p class="lead">hostveil finds the security mistakes on your self-hosted Linux server, explains them in plain language, and fixes them safely — with a preview, a backup, and one-command rollback. One binary, no config file, no cloud account.</p>
+
+            <p>Self-hosting is booming, but most people running Jellyfin, Nextcloud, a game server, or a local LLM are not security experts — and a single misconfiguration can turn into a serious breach. hostveil is a <strong>guided hardening tool</strong> for exactly those people. Point it at a Linux server: it scans the highest-impact areas, merges everything into one 0–100 score, explains each finding without jargon, and walks you through fixing it — showing the exact change, backing up the original first, and letting you undo any fix with one command.</p>
+
+            <div class="callout">
+              <span class="callout-label">The safety model</span>
+              <p>Nothing is changed blindly. Every fix is <strong>previewed</strong> before it runs, the original file is <strong>backed up to a checkpoint</strong>, and <code>hostveil rollback</code> restores it byte-for-byte. Every interface drives the same engine, so a fix applied anywhere is reversible everywhere.</p>
+            </div>
+
+            <h2>New here? Start with these</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="installation">
+                  <strong>Installation →</strong>
+                  <span>One command to install, plus optional tools (Docker, Trivy, Ollama) and what each unlocks.</span>
+                </a>
+              </li>
+              <li>
+                <a href="quickstart">
+                  <strong>Quick start →</strong>
+                  <span>Scan, understand a finding, apply a fix, and roll it back — the full loop in a few minutes.</span>
+                </a>
+              </li>
+              <li>
+                <a href="checks">
+                  <strong>What it checks →</strong>
+                  <span>Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — what each looks at.</span>
+                </a>
+              </li>
+              <li>
+                <a href="fixing">
+                  <strong>Fixing &amp; rollback →</strong>
+                  <span>Auto, Review, and Manual fixes; how preview, backup, history, and rollback work.</span>
+                </a>
+              </li>
+            </ul>
+
+            <h2>Reference</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="interfaces">
+                  <strong>Interfaces →</strong>
+                  <span>The TUI, the localhost web dashboard, and the scriptable CLI — one shared engine.</span>
+                </a>
+              </li>
+              <li>
+                <a href="cli">
+                  <strong>CLI reference →</strong>
+                  <span>Every subcommand and flag: scan, fix, rollback, history, explain, and serve.</span>
+                </a>
+              </li>
+              <li>
+                <a href="ai">
+                  <strong>AI explanations →</strong>
+                  <span>Optional, advisory-only, local-first second opinions with <code>explain --ai</code>.</span>
+                </a>
+              </li>
+              <li>
+                <a href="contributing">
+                  <strong>Contributing →</strong>
+                  <span>Build from source, run the checks, the repo layout, and how to add a new check.</span>
+                </a>
+              </li>
+            </ul>
+
+            <div class="docs-pager">
+              <a class="button primary" href="installation">Install hostveil</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil">Source on GitHub</a>
+            </div>

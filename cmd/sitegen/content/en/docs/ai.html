@@ -1,0 +1,43 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / AI explanations</p>
+            <h1>AI explanations</h1>
+            <p class="lead">AI in hostveil is optional, advisory-only, and local-first. It can add a second opinion in plain words — but it never applies changes, and everything works with no AI at all.</p>
+
+            <h2>Using it</h2>
+            <p>Add <code>--ai</code> to <code>explain</code> for an advisory explanation of a finding:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil explain ssh.rootlogin --ai">Copy</button>
+              <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
+            </div>
+            <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, hostveil says so and continues — the command never fails because AI is unavailable.</p>
+
+            <h2>Local by default</h2>
+            <p>The default provider is <strong>Ollama</strong>, running on your own machine — nothing leaves the host. Defaults:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Setting</th><th>Default</th><th>Override</th></tr></thead>
+                <tbody>
+                  <tr><td>Host</td><td><code>http://127.0.0.1:11434</code></td><td><code>HOSTVEIL_OLLAMA_HOST</code></td></tr>
+                  <tr><td>Model</td><td><code>llama3.2</code></td><td><code>HOSTVEIL_OLLAMA_MODEL</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Install <a href="https://ollama.com">Ollama</a> and pull the model once:</p>
+            <div class="code-block"><pre><code>ollama pull llama3.2
+hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>To use a different local model:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
+
+            <h2>Advisory only, and private by design</h2>
+            <div class="callout">
+              <span class="callout-label">What the model can and can't do</span>
+              <p>The AI can only <strong>explain</strong> — it has no ability to apply, change, or drive any fix. Scores, findings, and fixes are computed entirely without it.</p>
+            </div>
+            <div class="callout warn">
+              <span class="callout-label">Privacy</span>
+              <p>Only human-readable fields are sent to the model — a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="interfaces">← Interfaces</a>
+              <a class="button primary" href="cli">CLI reference →</a>
+            </div>

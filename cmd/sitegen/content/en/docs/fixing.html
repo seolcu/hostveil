@@ -1,0 +1,53 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Fixing &amp; rollback</p>
+            <h1>Fixing &amp; rollback</h1>
+            <p class="lead">hostveil never mutates blindly. Every fix is classified by how safely it can be automated, always shows the exact change first, backs up the original to a checkpoint, and can be undone with one command.</p>
+
+            <h2>How a finding is classified</h2>
+            <p>Each finding is tagged with a remediation kind that decides how much automation is appropriate:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Kind</th><th>Meaning</th><th>Fixable?</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Auto-fix</strong></td><td>One clearly-correct change. You still see it before it applies.</td><td>Yes</td></tr>
+                  <tr><td><strong>Review</strong></td><td>Several valid alternatives; you choose which one to apply.</td><td>Yes</td></tr>
+                  <tr><td><strong>Manual</strong></td><td>No safe automation — hostveil explains what to do instead.</td><td>No</td></tr>
+                  <tr><td><strong>Unavailable</strong></td><td>Known issue with no fix yet (e.g. a CVE with no patch).</td><td>No</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Only <strong>Auto-fix</strong> and <strong>Review</strong> findings can be applied by hostveil. <code>fix --all</code> applies only the Auto-fix ones, leaving anything that needs a decision to you.</p>
+
+            <h2>Applying a fix</h2>
+            <p>Preview and apply a single finding by its ID:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil fix ssh.rootlogin">Copy</button>
+              <pre><code>hostveil fix ssh.rootlogin</code></pre>
+            </div>
+            <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, then <strong>3)</strong> applies the change. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
+
+            <h3>Choosing a Review alternative</h3>
+            <p>Review findings offer independent alternatives. Pass the 0-based index with <code>--action</code>:</p>
+            <div class="code-block"><pre><code>hostveil fix ssh.passwordauth --action 0</code></pre></div>
+
+            <h3>Disambiguating by service</h3>
+            <p>When the same Compose rule fires for more than one service, narrow it with <code>--service</code>:</p>
+            <div class="code-block"><pre><code>hostveil fix compose.ds018 --service db</code></pre></div>
+
+            <h3>Applying every safe fix</h3>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
+            <p>Applies each Auto-fix finding, each with its own checkpoint so any of them can be rolled back individually.</p>
+
+            <h2>History &amp; rollback</h2>
+            <p>Every applied fix is recorded as a checkpoint. List them newest-first:</p>
+            <div class="code-block"><pre><code>hostveil history</code></pre></div>
+            <p>Each entry shows a timestamp, the finding ID, a label, and the exact rollback command. Undo one by its checkpoint ID:</p>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <div class="callout">
+              <span class="callout-label">Reversible everywhere</span>
+              <p>Rollback restores the backed-up file byte-for-byte. Because the TUI, web dashboard, and CLI all go through one shared engine, a fix applied in any of them is listed in <code>history</code> and reversible from any of them. (A few actions are inherently not reversible; <code>history</code> marks those <em>not reversible</em>.)</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="checks">← What it checks</a>
+              <a class="button primary" href="interfaces">Interfaces →</a>
+            </div>

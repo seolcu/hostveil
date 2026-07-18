@@ -1,0 +1,40 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 빠른 시작</p>
+            <h1>빠른 시작</h1>
+            <p class="lead">스캔하고, 이해하고, 적용하고, 복구하기. 여기서는 명령줄로 전체 흐름을 따라가지만, 원한다면 TUI와 웹 대시보드도 정확히 같은 엔진으로 동작합니다.</p>
+
+            <h2>1. 로컬에서 스캔하기</h2>
+            <p>스캔을 실행하기만 하면 됩니다 — <code>hostveil</code>은 SSH와 방화벽 점검이 root 소유 파일을 읽을 수 있도록 <code>sudo</code>로 자동으로 권한을 상승시킵니다. <code>sudo hostveil</code>과 동일한 sudo 비밀번호 프롬프트가 표시됩니다:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil scan">Copy</button>
+              <pre><code>hostveil scan</code></pre>
+            </div>
+            <p>0–100 사이의 단일 보안 점수와 심각도순으로 정렬된 발견 항목 목록을 받게 됩니다. 도구가 없는 영역(Docker 없음, Trivy 없음)은 건너뛰어지고 점수가 재정규화됩니다 — 깨끗한 호스트는 속 빈 100점이 아니라 <strong>Clean</strong>으로 표시됩니다.</p>
+            <div class="callout">
+              <span class="callout-label">팁</span>
+              <p>대화형 터미널에서는 인자 없이 <code>hostveil</code>을 실행하면 대신 <a href="interfaces">TUI</a>가 열립니다. 파이프되거나 리디렉션된 경우에는 스캔 결과를 출력합니다 — 스크립트에서 유용합니다.</p>
+            </div>
+
+            <h2>2. 발견 항목 이해하기</h2>
+            <p><code>-v</code>를 추가하면 각 발견 항목의 쉬운 말 설명과 수정 안내를 바로 볼 수 있습니다:</p>
+            <div class="code-block"><pre><code>hostveil scan -v</code></pre></div>
+            <p>또는 ID로 하나의 발견 항목을 자세히 살펴볼 수 있습니다(예: <code>ssh.rootlogin</code>):</p>
+            <div class="code-block"><pre><code>hostveil explain ssh.rootlogin</code></pre></div>
+            <p>내 방식으로 된 second opinion이 필요하신가요? <code>--ai</code>를 추가하면 로컬 모델의 조언성 설명을 받을 수 있습니다 — <a href="ai">AI 설명</a>을 참고하세요. 모든 발견 항목 ID와 그 의미는 <a href="checks">점검 항목</a>에 정리되어 있습니다.</p>
+
+            <h2>3. 수정 적용하기</h2>
+            <p>수정은 항상 무엇이든 건드리기 전에 정확한 변경 내용을 먼저 보여 주고 원본을 백업합니다. 하나의 발견 항목을 미리 보고 적용하려면:</p>
+            <div class="code-block"><pre><code>hostveil fix ssh.rootlogin</code></pre></div>
+            <p>또는 명백히 안전한(자동) 수정을 한 번에 모두 적용할 수도 있습니다 — 검토와 수동 발견 항목은 직접 결정하도록 남겨집니다:</p>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
+            <p>자동·검토·수동이 어떻게 다른지는 <a href="fixing">수정 및 롤백</a>을 참고하세요.</p>
+
+            <h2>4. 언제든 롤백하기</h2>
+            <p>적용된 모든 수정은 체크포인트가 됩니다. 목록을 확인한 뒤 ID로 하나를 되돌리세요:</p>
+            <div class="code-block"><pre><code>hostveil history
+hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>롤백은 백업된 파일을 바이트 단위 그대로 복원합니다. 모든 인터페이스가 하나의 공유 엔진을 거치므로, TUI나 웹 대시보드에서 적용한 수정도 여기서 되돌릴 수 있습니다.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="installation">← 설치</a>
+              <a class="button primary" href="checks">점검 항목 →</a>
+            </div>

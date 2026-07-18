@@ -1,0 +1,99 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / CLI 레퍼런스</p>
+            <h1>CLI 레퍼런스</h1>
+            <p class="lead">모든 하위 명령, 플래그, 기본값입니다. root 소유 파일(SSH, 방화벽)을 읽거나 보호된 경로에 쓰는 명령은 root 권한이 필요하므로, <code>hostveil</code>은 (<code>version</code>/<code>help</code>를 제외하고) <code>sudo</code> 아래에서 자동으로 자신을 다시 실행합니다. 이를 원하지 않으면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요.</p>
+
+            <h2>개요</h2>
+            <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>
+            <p>대화형 터미널에서 명령 없이 실행하면 hostveil은 <a href="interfaces">TUI</a>를 엽니다. stdin/stdout이 터미널이 아니면 대신 <code>scan</code>을 실행합니다. <code>hostveil version</code>(또는 <code>--version</code>)은 버전을 출력하고, <code>hostveil help</code>(또는 <code>--help</code>)는 사용법을 출력합니다.</p>
+
+            <h2 id="scan">scan</h2>
+            <p>호스트를 스캔하고 보안 발견 항목을 보고합니다.</p>
+            <div class="code-block"><pre><code>hostveil scan [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--json</code></td><td><code>false</code></td><td>보고서를 JSON으로 출력합니다.</td></tr>
+                  <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>설명과 수정 안내를 표시합니다.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>색상 출력을 비활성화합니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>종료 코드: 수정되지 않은 발견 항목 중 심각 또는 높음이 있으면 <code>1</code>, 그렇지 않으면 <code>0</code>입니다. 색상은 터미널에만 출력되며 <code>NO_COLOR</code>가 설정되면 억제됩니다.</p>
+
+            <h2 id="fix">fix</h2>
+            <p>발견 항목에 대한 수정을 미리 보고 적용합니다.</p>
+            <div class="code-block"><pre><code>hostveil fix &lt;finding-id&gt; [flags]
+hostveil fix --all [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--all</code></td><td><code>false</code></td><td>안전한(자동 수정) 발견 항목을 모두 한 번에 적용합니다.</td></tr>
+                  <tr><td><code>--action N</code></td><td><code>-1</code></td><td>검토 수정에서 적용할, 0부터 시작하는 대안의 번호입니다.</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>서비스 이름으로 발견 항목을 구분합니다.</td></tr>
+                  <tr><td><code>--yes</code></td><td><code>false</code></td><td>대화형 확인 없이 적용합니다.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>색상 출력을 비활성화합니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>적용 시에는 항상 diff/명령을 먼저 보여 주고, 원본을 체크포인트로 백업한 뒤 적용합니다. <a href="fixing">수정 및 롤백</a>을 참고하세요.</p>
+
+            <h2 id="rollback">rollback</h2>
+            <p>이전에 적용한 수정을 되돌립니다.</p>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>(<code>hostveil history</code>에서 얻은) 체크포인트 ID 하나를 받아 백업된 파일을 바이트 단위 그대로 복원합니다. 플래그는 없습니다.</p>
+
+            <h2 id="history">history</h2>
+            <p>적용된 수정과 그 롤백 ID를 나열합니다.</p>
+            <div class="code-block"><pre><code>hostveil history</code></pre></div>
+            <p>체크포인트를 최신순으로 나열하며, 타임스탬프, 발견 항목 ID, 레이블, 그리고 정확한 <code>hostveil rollback &lt;id&gt;</code> 명령 또는 <em>되돌릴 수 없음</em> 표시가 함께 나옵니다. 플래그는 없습니다.</p>
+
+            <h2 id="explain">explain</h2>
+            <p>발견 항목을 쉬운 말로 설명합니다.</p>
+            <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>로컬 LLM(Ollama)의 조언성 설명을 덧붙입니다.</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>서비스 이름으로 발견 항목을 구분합니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>내장된 쉬운 말 설명은 항상 출력되며, <code>--ai</code>는 조언 섹션을 추가합니다. <a href="ai">AI 설명</a>을 참고하세요.</p>
+
+            <h2 id="serve">serve</h2>
+            <p>localhost 웹 대시보드를 실행합니다. <code>hostveil web</code>은 별칭입니다.</p>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>대시보드를 바인딩할 주소입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>루프백이 아닌 주소에 바인딩하면 대시보드가 네트워크에 노출된다는 경고가 출력됩니다.</p>
+
+            <h2 id="tui">tui</h2>
+            <p>대화형 터미널 UI를 엽니다(터미널에서 명령 없이 실행할 때의 기본값이기도 합니다).</p>
+            <div class="code-block"><pre><code>hostveil tui</code></pre></div>
+            <p>플래그는 없습니다. 대화형 터미널이 필요하며, 그렇지 않으면 <code>hostveil scan</code>을 사용하라고 안내합니다.</p>
+
+            <h2 id="exit-codes">종료 코드</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>코드</th><th>의미</th></tr></thead>
+                <tbody>
+                  <tr><td><code>0</code></td><td>성공(<code>scan</code>의 경우, 수정되지 않은 심각/높음 발견 항목이 없음).</td></tr>
+                  <tr><td><code>1</code></td><td><code>scan</code>이 수정되지 않은 심각 또는 높음 발견 항목을 찾았거나, 명령이 실패했습니다.</td></tr>
+                  <tr><td><code>2</code></td><td>사용법 오류 — 알 수 없는 명령이거나 필수 인자가 누락되었습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="ai">← AI 설명</a>
+              <a class="button primary" href="faq">자주 묻는 질문 →</a>
+            </div>

@@ -1,0 +1,71 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Installation</p>
+            <h1>Installation</h1>
+            <p class="lead">One command installs a single binary. There is no config file to write and no account to create — after installing, you can scan immediately.</p>
+
+            <h2>Quick install</h2>
+            <p>The installer detects your OS and architecture, downloads the release binary, verifies its checksum, and installs it to <code>/usr/bin/hostveil</code>:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://hostveil.seolcu.com/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash</code></pre>
+            </div>
+            <p>Run the same command any time to update to the latest release. Then verify:</p>
+            <div class="code-block"><pre><code>hostveil version</code></pre></div>
+
+            <div class="callout">
+              <span class="callout-label">Supported platforms</span>
+              <p>Prebuilt binaries are published for <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is designed for self-hosted Linux servers; the SSH, firewall, and auto-update checks target Linux.</p>
+            </div>
+
+            <h2>What the installer does</h2>
+            <ul>
+              <li>Detects your OS (<code>linux</code>/<code>darwin</code>) and architecture (<code>amd64</code>/<code>arm64</code>).</li>
+              <li>Downloads the release tarball and <code>hostveil-checksums.txt</code>, then verifies the SHA-256 checksum. On a mismatch it aborts.</li>
+              <li>Installs the binary to <code>/usr/bin/hostveil</code> with <code>sudo</code> (mode 0755) and runs <code>hostveil --version</code> as a sanity check.</li>
+              <li>Offers to install <strong>Trivy</strong> for optional image CVE scanning. Declining never blocks the hostveil install.</li>
+            </ul>
+
+            <h3>Installer options</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--version vX.Y.Z</code></td><td>Install a specific release instead of the latest.</td></tr>
+                  <tr><td><code>--no-trivy</code></td><td>Skip the optional Trivy prompt entirely.</td></tr>
+                  <tr><td><code>--yes</code> / <code>-y</code></td><td>Run non-interactively (accept prompts).</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Pass options through the pipe with <code>bash -s --</code>, for example:</p>
+            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --no-trivy</code></pre></div>
+
+            <h2>Elevation is automatic</h2>
+            <div class="callout">
+              <span class="callout-label">Heads up</span>
+              <p>The SSH and firewall checks read root-owned files (such as <code>sshd_config</code>), and applying fixes writes to protected paths. So <code>hostveil</code> re-runs itself under <code>sudo</code> automatically — you'll see the same sudo password prompt as <code>sudo hostveil</code>, and after authenticating it continues in the same terminal. <code>version</code> and <code>help</code> never prompt. To run unprivileged (scripts/CI), set <code>HOSTVEIL_NO_SUDO=1</code>; the root-owned domains are then skipped with a clear message and the score is renormalized so you are not handed a misleadingly perfect result.</p>
+            </div>
+
+            <h2>Optional tools</h2>
+            <p>Every domain is skipped cleanly if its tooling is absent. Add these when you want the extra coverage:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Tool</th><th>Unlocks</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Docker</strong></td><td>The Docker / Compose audit</td><td>hostveil reads your Compose files to audit services.</td></tr>
+                  <tr><td><strong>Trivy</strong></td><td>Image CVE scanning</td><td>Used if present; the installer can set it up for you.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI explanations (<code>explain --ai</code>)</td><td>Local by default — nothing leaves your host. See <a href="ai">AI explanations</a>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2>Build from source</h2>
+            <p>With a recent Go toolchain installed:</p>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil
+cd hostveil
+go build ./cmd/hostveil
+go test ./...</code></pre></div>
+            <p>See <a href="contributing">Contributing</a> for the full development setup, including the reproducible demo VM.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="./">← Introduction</a>
+              <a class="button primary" href="quickstart">Quick start →</a>
+            </div>
