@@ -50,13 +50,22 @@
   }
 
   /* ── active link highlight ────────────────────────────── */
-  /* Mark the sidebar link matching the current page. Works even if
-     the authored `.active` class drifts from the served filename. */
+  /* Mark the sidebar link matching the current page. Robust to both
+     extensionless (/docs/installation) and .html (/docs/installation.html)
+     forms, and to the directory index (/docs/ or /docs/index). */
 
-  var here = location.pathname.replace(/\/index\.html$/, "/").split("/").pop() || "index.html";
+  function pageKey(path) {
+    return path
+      .replace(/\/index(\.html)?$/, "/") // treat /docs/index[.html] as the dir
+      .replace(/\.html$/, "")            // drop a trailing .html
+      .split("/")
+      .pop() || "index";                 // "" (dir root) -> "index"
+  }
+
+  var here = pageKey(location.pathname);
   document.querySelectorAll(".docs-nav-group a").forEach(function (a) {
     var href = a.getAttribute("href") || "";
-    var target = href.replace(/\/index\.html$/, "/").split("/").pop() || "index.html";
+    var target = pageKey(href.replace(/\/$/, "/index")); // "./" or "" -> index
     if (target === here) {
       a.classList.add("active");
       a.setAttribute("aria-current", "page");
