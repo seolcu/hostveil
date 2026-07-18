@@ -7,25 +7,25 @@
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-  <header>
-    <div class="brand">hostveil</div>
-    <div class="score" id="score">—</div>
+  <div class="statusbar">
+    <div class="brand"><b>hostveil</b></div>
+    <div class="gauge" id="gauge"></div>
     <div class="actions">
       <button id="rescan">Rescan</button>
       <button id="fixall" class="primary">Fix all safe</button>
     </div>
-  </header>
+  </div>
 
-  <div id="axes" class="axes"></div>
-  <div id="status" class="status" hidden></div>
+  <div class="axes" id="axes"></div>
+  <div class="status" id="status" hidden></div>
 
   <main>
     <section class="findings">
-      <h2 id="findings-title">Findings</h2>
+      <div class="pane-head" id="findings-title">Findings</div>
       <ul id="findings"></ul>
     </section>
     <section class="detail" id="detail">
-      <p class="empty">Select a finding to see details.</p>
+      <p class="empty">Select a finding to inspect it.</p>
     </section>
   </main>
 
