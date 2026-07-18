@@ -40,7 +40,7 @@ renormalized so you are never handed a misleadingly perfect result.
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
+curl -fsSL https://hostveil.seolcu.com/install.sh | bash
 ```
 
 Trivy is optional — install it any time to enable image CVE scanning.

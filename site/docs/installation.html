@@ -85,8 +85,8 @@
             <h2>Quick install</h2>
             <p>The installer detects your OS and architecture, downloads the release binary, verifies its checksum, and installs it to <code>/usr/bin/hostveil</code>:</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash">Copy</button>
-              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash</code></pre>
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://hostveil.seolcu.com/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash</code></pre>
             </div>
             <p>Run the same command any time to update to the latest release. Then verify:</p>
             <div class="code-block"><pre><code>hostveil version</code></pre></div>
@@ -116,7 +116,7 @@
               </table>
             </div>
             <p>Pass options through the pipe with <code>bash -s --</code>, for example:</p>
-            <div class="code-block"><pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --no-trivy</code></pre></div>
+            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --no-trivy</code></pre></div>
 
             <h2>Elevation is automatic</h2>
             <div class="callout">
