@@ -1,0 +1,21 @@
+# A personal-cloud stack (Nextcloud + Postgres) — files, photos, contacts.
+# Seeded with the mistakes self-hosters commonly make.
+services:
+  nextcloud:
+    image: nextcloud:24                # intentionally old → image CVEs
+    ports:
+      - "8080:80"                      # published on 0.0.0.0 → compose.dr002
+    environment:
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: supersecret123   # hardcoded secret → compose.dr005
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13                 # intentionally old → image CVEs
+    ports:
+      - "5432:5432"                    # database on 0.0.0.0 → compose.ds018 (Critical)
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: hunter2password          # hardcoded secret → compose.dr005

@@ -1,0 +1,16 @@
+# A media server stack — the kind a self-hoster runs for movies and TV.
+# Deliberately misconfigured so hostveil has real findings to demonstrate.
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:10.8.0   # intentionally old → image CVEs (cve.*)
+    ports:
+      - "8096:8096"                    # published on 0.0.0.0 → compose.dr002
+    volumes:
+      - ./media:/media
+    # no restart / healthcheck / resource limits / no-new-privileges / user
+    # → compose.ds008/ds012/ds010/ds006/ds009
+
+  redis:
+    image: redis:6.0                   # intentionally old → image CVEs
+    ports:
+      - "6379:6379"                    # datastore on 0.0.0.0 → compose.ds018 (Critical)

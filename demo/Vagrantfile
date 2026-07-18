@@ -1,0 +1,34 @@
+# hostveil demo — a deliberately vulnerable Ubuntu 24.04 "home server".
+#
+# One command on any OS:  vagrant up
+# Works with libvirt/KVM (Linux, fast) and VirtualBox (macOS/Windows/Linux).
+# See README.md for one-time setup per platform.
+
+Vagrant.configure("2") do |config|
+  # generic/* (roboxes) ships images for both libvirt and virtualbox.
+  config.vm.box = "generic/ubuntu2404"
+  config.vm.hostname = "homelab"
+
+  # The web dashboard: reach it at http://localhost:8787 on the host.
+  config.vm.network "forwarded_port", guest: 8787, host: 8787, auto_correct: true
+
+  # Mount the repo at /hostveil so provisioning builds the CURRENT source.
+  # rsync works identically across providers (virtualbox/libvirt).
+  config.vm.synced_folder "..", "/hostveil",
+    type: "rsync",
+    rsync__exclude: [".git/", "demo/.vagrant/"]
+
+  config.vm.provider "libvirt" do |lv|
+    lv.memory = 2048
+    lv.cpus = 2
+  end
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "hostveil-homelab"
+    vb.memory = 2048
+    vb.cpus = 2
+  end
+
+  # Provision the vulnerable server and build hostveil from /hostveil.
+  config.vm.provision "shell", path: "provision.sh"
+end
