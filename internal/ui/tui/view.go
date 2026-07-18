@@ -123,18 +123,33 @@ func (m *appModel) axesLine() string {
 	return strings.Join(parts, styleDim.Render("   "))
 }
 
+const listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
+	"s severity   d domain   x fixable   c clear   r rescan   q quit"
+
 func (m *appModel) viewList() string {
 	var b strings.Builder
 	b.WriteString(m.header())
 	b.WriteString(m.rule() + "\n")
 
+	fl := m.filterLine()
+
+	// Empty list: distinguish a clean host from a too-narrow filter.
 	if len(m.active) == 0 {
-		b.WriteString("\n" + styleSafe.Render("  No problems found. Clean.") + "\n")
-		b.WriteString(m.footer("r rescan   q quit"))
+		if fl != "" {
+			b.WriteString(fl + "\n")
+			b.WriteString("\n" + styleDim.Render("  No findings match the filter.") + "\n")
+		} else {
+			b.WriteString("\n" + styleSafe.Render("  No problems found. Clean.") + "\n")
+		}
+		b.WriteString(m.footer("c clear   r rescan   q quit"))
 		return b.String()
 	}
 
-	visible := m.height - 7
+	reserved := 8
+	if fl != "" {
+		reserved++
+	}
+	visible := m.height - reserved
 	if visible < 1 {
 		visible = 1
 	}
@@ -144,31 +159,101 @@ func (m *appModel) viewList() string {
 		end = len(m.active)
 	}
 
-	head := styleDim.Render(fmt.Sprintf("FINDINGS · %d", len(m.active)))
+	// Head: shown[/total] · selected · scroll range.
+	count := fmt.Sprintf("FINDINGS · %d", len(m.active))
+	if total := m.activeTotal(); total != len(m.active) {
+		count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), total)
+	}
+	head := styleDim.Render(count)
+	if n := len(m.selected); n > 0 {
+		head += styleSafe.Render(fmt.Sprintf("   ✓ %d marked", n))
+	}
 	if len(m.active) > visible {
 		head += styleDim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
 	}
 	b.WriteString(head + "\n")
+	if fl != "" {
+		b.WriteString(fl + "\n")
+	}
 
 	for i := m.offset; i < end; i++ {
 		b.WriteString(m.findingRow(m.active[i], i == m.cursor) + "\n")
 	}
-	b.WriteString(m.footer("↑/↓ move   enter details   f fix   r rescan   q quit"))
+	b.WriteString(m.footer(listHint))
 	return b.String()
 }
 
-// findingRow renders one heat-gutter row: severity gutter + label + id +
-// title + service. The selected row is inverse-video.
-func (m *appModel) findingRow(f model.Finding, selected bool) string {
+// activeTotal counts findings that are not fixed, ignoring the filter — the
+// denominator for the "shown/total" indicator.
+func (m *appModel) activeTotal() int {
+	n := 0
+	for _, f := range m.report.Findings {
+		if !f.Fixed {
+			n++
+		}
+	}
+	return n
+}
+
+// findingRow renders one heat-gutter row: pick marker + severity gutter +
+// label + id + title + service. The cursor row is inverse-video. The pick
+// marker (✓ / ·) is only shown on auto-fixable rows, since only those can be
+// batch-selected.
+func (m *appModel) findingRow(f model.Finding, cursor bool) string {
 	sevC := severityColor(f.Severity)
 	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
-	sev := sevAbbr(f.Severity)
-	title := truncate(f.Title, m.width-42)
-	if selected {
-		return gutter + styleSel.Render(" "+padRight(fmt.Sprintf("%-4s %-13s %s", sev, f.ID, title), m.width-3))
+	mark := "  "
+	if f.Remediation == model.RemediationAuto {
+		if m.selected[f.Key()] {
+			mark = styleSafe.Render("✓ ")
+		} else {
+			mark = styleDim.Render("· ")
+		}
 	}
-	return gutter + " " + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
+	sev := sevAbbr(f.Severity)
+	title := truncate(f.Title, m.width-46)
+	if cursor {
+		return gutter + mark + styleSel.Render(padRight(fmt.Sprintf("%-4s %-13s %s", sev, f.ID, title), m.width-3))
+	}
+	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
 		styleDim.Render(fmt.Sprintf(" %-13s ", f.ID)) + styleBone.Render(title) + serviceSuffixTUI(f)
+}
+
+// sourceLabel is the short domain name shown in the filter line, matching
+// the score axis labels.
+func sourceLabel(s model.Source) string {
+	switch s {
+	case model.SourceCompose:
+		return "Container"
+	case model.SourceSSH:
+		return "SSH"
+	case model.SourceFirewall:
+		return "Firewall"
+	case model.SourceUpdates:
+		return "Updates"
+	case model.SourceCVE:
+		return "CVEs"
+	default:
+		return s.String()
+	}
+}
+
+// filterLine describes the active filter, or "" when nothing is filtered.
+func (m *appModel) filterLine() string {
+	var parts []string
+	if m.filter.MinSeverity != nil {
+		parts = append(parts, "sev≥"+strings.ToUpper(m.filter.MinSeverity.String()))
+	}
+	if m.filter.Source != model.SourceUnset {
+		parts = append(parts, sourceLabel(m.filter.Source))
+	}
+	if m.filter.FixableOnly {
+		parts = append(parts, "fixable")
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return styleDim.Render("FILTER  ") + styleBone.Render(strings.Join(parts, " · "))
 }
 
 func sevAbbr(s model.Severity) string {

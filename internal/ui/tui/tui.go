@@ -7,6 +7,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -28,7 +29,10 @@ const (
 type appModel struct {
 	engine *core.Engine
 	report model.Report
-	active []model.Finding
+	active []model.Finding // report findings after m.filter
+
+	filter   model.Filter    // classification/narrowing (empty = all active)
+	selected map[string]bool // finding.Key() → picked for a batch fix
 
 	cursor        int
 	offset        int // first visible finding index (list scrolling)
@@ -42,7 +46,15 @@ type appModel struct {
 
 // New builds the TUI model around an engine.
 func New(engine *core.Engine) tea.Model {
-	return &appModel{engine: engine, mode: modeScanning, status: "Scanning…"}
+	return &appModel{engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{}}
+}
+
+// rebuildActive re-derives the visible list from the current report and
+// filter, keeping the cursor in range. The single place both scan and fix
+// refresh the list through.
+func (m *appModel) rebuildActive() {
+	m.active = m.report.Select(m.filter)
+	m.cursor = clamp(m.cursor, 0, len(m.active)-1)
 }
 
 // Run starts the TUI event loop.
@@ -81,6 +93,14 @@ func applyCmd(e *core.Engine, f model.Finding, action int) tea.Cmd {
 	}
 }
 
+type batchAppliedMsg struct{ outcome model.BatchOutcome }
+
+func batchCmd(e *core.Engine, fs []model.Finding) tea.Cmd {
+	return func() tea.Msg {
+		return batchAppliedMsg{outcome: e.ApplyBatch(context.Background(), fs)}
+	}
+}
+
 // --- tea.Model ---
 
 func (m *appModel) Init() tea.Cmd { return scanCmd(m.engine) }
@@ -93,8 +113,8 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case scannedMsg:
 		m.report = msg.report
-		m.active = m.report.Select(model.Filter{})
-		m.cursor = clamp(m.cursor, 0, len(m.active)-1)
+		m.selected = map[string]bool{} // a fresh scan invalidates old picks
+		m.rebuildActive()
 		m.offset = 0
 		m.mode = modeList
 		return m, nil
@@ -118,10 +138,19 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Refresh from the engine's authoritative state.
 			if cur, ok := m.engine.Current(); ok {
 				m.report = cur
-				m.active = m.report.Select(model.Filter{})
-				m.cursor = clamp(m.cursor, 0, len(m.active)-1)
+				m.rebuildActive()
 			}
 		}
+		m.mode = modeMessage
+		return m, nil
+
+	case batchAppliedMsg:
+		m.status = batchSummary(msg.outcome)
+		if cur, ok := m.engine.Current(); ok {
+			m.report = cur
+			m.rebuildActive()
+		}
+		m.selected = map[string]bool{}
 		m.mode = modeMessage
 		return m, nil
 
@@ -169,12 +198,127 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		}
 	case "f":
 		return m, m.startPreview()
+	case " ", "space":
+		m.toggleSelect()
+	case "a":
+		return m, m.startBatch()
+	case "esc":
+		m.selected = map[string]bool{}
+	case "s":
+		m.filter.MinSeverity = cycleSeverity(m.filter.MinSeverity)
+		m.rebuildActive()
+	case "d":
+		m.filter.Source = cycleSource(m.filter.Source, m.presentSources())
+		m.rebuildActive()
+	case "x":
+		m.filter.FixableOnly = !m.filter.FixableOnly
+		m.rebuildActive()
+	case "c":
+		m.filter = model.Filter{}
+		m.rebuildActive()
 	case "r":
 		m.mode = modeScanning
 		m.status = "Rescanning…"
 		return m, scanCmd(m.engine)
 	}
 	return m, nil
+}
+
+// toggleSelect marks/unmarks the current finding for a batch fix. Only
+// auto-fixable findings can be batched, so others are left alone.
+func (m *appModel) toggleSelect() {
+	if len(m.active) == 0 {
+		return
+	}
+	f := m.active[m.cursor]
+	if f.Remediation != model.RemediationAuto {
+		return
+	}
+	k := f.Key()
+	if m.selected[k] {
+		delete(m.selected, k)
+	} else {
+		m.selected[k] = true
+	}
+}
+
+// startBatch applies the marked findings, or every active auto-fix when
+// nothing is marked (the TUI's "fix all safe").
+func (m *appModel) startBatch() tea.Cmd {
+	var sel []model.Finding
+	if len(m.selected) > 0 {
+		for _, f := range m.active {
+			if m.selected[f.Key()] {
+				sel = append(sel, f)
+			}
+		}
+	} else {
+		for _, f := range m.active {
+			if f.Remediation == model.RemediationAuto {
+				sel = append(sel, f)
+			}
+		}
+	}
+	if len(sel) == 0 {
+		m.status = "No auto-fixable findings to apply."
+		m.mode = modeMessage
+		return nil
+	}
+	return batchCmd(m.engine, sel)
+}
+
+// presentSources lists the distinct sources among active findings, sorted,
+// so the domain filter only cycles through domains that actually appear.
+func (m *appModel) presentSources() []model.Source {
+	seen := map[model.Source]bool{}
+	var out []model.Source
+	for _, f := range m.report.Findings {
+		if f.Fixed || seen[f.Source] {
+			continue
+		}
+		seen[f.Source] = true
+		out = append(out, f.Source)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+// cycleSeverity advances the minimum-severity filter: off → Critical → High
+// → Medium → Low → off.
+func cycleSeverity(cur *model.Severity) *model.Severity {
+	next := func(s model.Severity) *model.Severity { return &s }
+	switch {
+	case cur == nil:
+		return next(model.SeverityCritical)
+	case *cur == model.SeverityCritical:
+		return next(model.SeverityHigh)
+	case *cur == model.SeverityHigh:
+		return next(model.SeverityMedium)
+	case *cur == model.SeverityMedium:
+		return next(model.SeverityLow)
+	default:
+		return nil
+	}
+}
+
+// cycleSource advances the domain filter through the present sources and
+// back to "all" (SourceUnset).
+func cycleSource(cur model.Source, present []model.Source) model.Source {
+	if cur == model.SourceUnset {
+		if len(present) > 0 {
+			return present[0]
+		}
+		return model.SourceUnset
+	}
+	for i, s := range present {
+		if s == cur {
+			if i+1 < len(present) {
+				return present[i+1]
+			}
+			return model.SourceUnset
+		}
+	}
+	return model.SourceUnset
 }
 
 func (m *appModel) keyPreview(key string) (tea.Model, tea.Cmd) {
@@ -233,5 +377,18 @@ func applySummary(o model.FixOutcome) string {
 	if o.RestartHint != "" {
 		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartHint)
 	}
+	return b.String()
+}
+
+func batchSummary(o model.BatchOutcome) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "✓ Applied %d", len(o.Applied))
+	if len(o.Skipped) > 0 {
+		fmt.Fprintf(&b, " · skipped %d", len(o.Skipped))
+	}
+	if len(o.Failed) > 0 {
+		fmt.Fprintf(&b, " · failed %d", len(o.Failed))
+	}
+	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
 	return b.String()
 }

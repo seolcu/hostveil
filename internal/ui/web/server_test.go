@@ -124,6 +124,34 @@ func TestFixThroughAPI(t *testing.T) {
 	}
 }
 
+func TestFixBatchThroughAPI(t *testing.T) {
+	s, path := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	body := strings.NewReader(`{"findings":[{"id":"compose.ds018","service":"cache"}]}`)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/fix/batch", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", srv.URL)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("batch fix returned %d", resp.StatusCode)
+	}
+	var outcome model.BatchOutcome
+	_ = json.NewDecoder(resp.Body).Decode(&outcome)
+	if len(outcome.Applied) != 1 || outcome.Applied[0] != "compose.ds018" {
+		t.Errorf("expected ds018 applied, got %+v", outcome)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "127.0.0.1:6379:6379") {
+		t.Errorf("batch fix not applied to file:\n%s", data)
+	}
+}
+
 func TestDashboardServed(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())

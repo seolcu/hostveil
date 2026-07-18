@@ -1,8 +1,18 @@
 "use strict";
 
 const SEV = ["critical", "high", "medium", "low"];
+// Finding.source (int) -> short domain label, mirrors the score axes.
+const SRC = { 1: "Container", 2: "SSH", 3: "Firewall", 4: "Updates", 5: "CVEs" };
+const REM_AUTO = 1;
+
 let report = null;
-let selected = null; // {id, service}
+let selected = null; // {id, service} — the inspected finding (single-select)
+
+// Filter + multi-select state.
+const filters = { sev: new Set(), domain: new Set(), fixable: false };
+const marked = new Set(); // keys of findings picked for a batch fix
+
+function fkey(f) { return f.id + "|" + (f.service || ""); }
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -27,6 +37,7 @@ function sevName(f) { return SEV[f.severity] || "low"; }
 function sevAbbr(f) { return ["crit", "high", "med", "low"][f.severity] || "low"; }
 function remLabel(r) { return ["Unclassified", "Auto-fix", "Review", "Manual", "Unavailable"][r] || "?"; }
 function isFixable(f) { return f.remediation === 1 || f.remediation === 2; }
+function isAuto(f) { return f.remediation === REM_AUTO; }
 function active(findings) { return findings.filter((x) => !x.fixed); }
 
 // A finding row's grid class → the severity class also used for the gutter.
@@ -41,6 +52,109 @@ function meter(pct, bandClass) {
   return m;
 }
 
+// ── filtering ──────────────────────────────────────────────────────────
+function applyFilters(items) {
+  return items.filter((f) => {
+    if (filters.sev.size && !filters.sev.has(f.severity)) return false;
+    if (filters.domain.size && !filters.domain.has(f.source)) return false;
+    if (filters.fixable && !isFixable(f)) return false;
+    return true;
+  });
+}
+
+function filterActive() {
+  return filters.sev.size || filters.domain.size || filters.fixable;
+}
+
+function chip(label, on, onclick, sevClass) {
+  return el("button", { class: "chip" + (on ? " on" : "") + (sevClass ? " " + sevClass : ""), onclick }, label);
+}
+
+function renderFilterbar(all) {
+  const bar = document.getElementById("filterbar");
+  const kids = [];
+
+  // Severity chips (only those present), each with a live count.
+  const sevCounts = [0, 0, 0, 0];
+  all.forEach((f) => { if (f.severity >= 0 && f.severity < 4) sevCounts[f.severity]++; });
+  ["crit", "high", "med", "low"].forEach((abbr, i) => {
+    if (!sevCounts[i]) return;
+    kids.push(chip(`${abbr.toUpperCase()} ${sevCounts[i]}`, filters.sev.has(i), () => {
+      filters.sev.has(i) ? filters.sev.delete(i) : filters.sev.add(i);
+      render();
+    }, "c-" + abbr));
+  });
+
+  // Domain chips (only sources present in the report).
+  const domains = [...new Set(all.map((f) => f.source))].filter((s) => SRC[s]).sort((a, b) => a - b);
+  domains.forEach((s) => {
+    kids.push(chip(SRC[s], filters.domain.has(s), () => {
+      filters.domain.has(s) ? filters.domain.delete(s) : filters.domain.add(s);
+      render();
+    }));
+  });
+
+  // Fixable-only toggle + clear.
+  kids.push(chip("Fixable", filters.fixable, () => { filters.fixable = !filters.fixable; render(); }));
+  if (filterActive()) {
+    kids.push(chip("Clear", false, () => {
+      filters.sev.clear(); filters.domain.clear(); filters.fixable = false; render();
+    }));
+  }
+  bar.replaceChildren(...kids);
+}
+
+// ── multi-select ───────────────────────────────────────────────────────
+function checkbox(f) {
+  const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: marked.has(fkey(f)) });
+  box.className = "pick";
+  box.setAttribute("aria-label", "Select for batch fix");
+  box.onclick = (e) => e.stopPropagation();
+  box.onchange = () => {
+    box.checked ? marked.add(fkey(f)) : marked.delete(fkey(f));
+    renderBatchbar();
+  };
+  return box;
+}
+
+function renderBatchbar() {
+  const bar = document.getElementById("batchbar");
+  if (marked.size === 0) { bar.hidden = true; bar.replaceChildren(); return; }
+  bar.hidden = false;
+  bar.replaceChildren(
+    el("button", { class: "primary", onclick: applyBatch }, `Fix selected (${marked.size})`),
+    el("button", { onclick: selectAllAuto }, "Select all auto"),
+    el("button", { onclick: clearMarked }, "Clear")
+  );
+}
+
+function selectAllAuto() {
+  applyFilters(active(report.findings)).forEach((f) => { if (isAuto(f)) marked.add(fkey(f)); });
+  render();
+}
+
+function clearMarked() { marked.clear(); render(); }
+
+async function applyBatch() {
+  const findings = active(report.findings)
+    .filter((f) => marked.has(fkey(f)))
+    .map((f) => ({ id: f.id, service: f.service || "" }));
+  if (!findings.length) return;
+  try {
+    const o = await api("/api/fix/batch", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ findings }),
+    });
+    const parts = [`Applied ${o.applied ? o.applied.length : 0}`];
+    if (o.skipped && o.skipped.length) parts.push(`skipped ${o.skipped.length}`);
+    if (o.failed && Object.keys(o.failed).length) parts.push(`failed ${Object.keys(o.failed).length}`);
+    flash(parts.join(" · ") + `. Score ${o.new_score.overall}/100.`);
+    marked.clear();
+    await refresh();
+  } catch (e) { flash("Batch fix failed: " + e.message, true); }
+}
+
+// ── main render ────────────────────────────────────────────────────────
 function render() {
   const score = report.score;
 
@@ -65,17 +179,29 @@ function render() {
 
   // Findings list.
   const list = document.getElementById("findings");
-  const items = active(report.findings);
-  document.getElementById("findings-title").textContent = `Findings · ${items.length}`;
-  if (items.length === 0) {
+  const all = active(report.findings);
+  renderFilterbar(all);
+  const items = applyFilters(all).sort((a, b) => a.severity - b.severity);
+  document.getElementById("findings-title").textContent =
+    filterActive() ? `Findings · ${items.length}/${all.length}` : `Findings · ${all.length}`;
+
+  if (all.length === 0) {
+    marked.clear();
+    renderBatchbar();
     list.replaceChildren(el("li", { class: "clean" }, "No problems found. Clean."));
     document.getElementById("detail").replaceChildren(el("p", { class: "empty" }, "Nothing to fix."));
     return;
   }
-  items.sort((a, b) => a.severity - b.severity);
+  if (items.length === 0) {
+    renderBatchbar();
+    list.replaceChildren(el("li", { class: "clean muted" }, "No findings match the filter."));
+    return;
+  }
+
   list.replaceChildren(
     ...items.map((f) => {
-      const li = el("li", { class: "finding " + rowSevClass(f) },
+      const li = el("li", { class: "finding " + rowSevClass(f) + (isAuto(f) ? " pickable" : "") },
+        isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
         el("span", { class: "sev" }, sevAbbr(f)),
         el("div", { class: "title" },
           el("div", { class: "name" }, f.title),
@@ -88,6 +214,7 @@ function render() {
       return li;
     })
   );
+  renderBatchbar();
 }
 
 function selectFinding(f, li) {
@@ -192,6 +319,7 @@ function flash(msg, isErr) {
 
 document.getElementById("rescan").onclick = async () => {
   flash("Rescanning…");
+  marked.clear();
   report = await api("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
   render();
   flash("Rescan complete.");
@@ -202,6 +330,7 @@ document.getElementById("fixall").onclick = async () => {
   try {
     const o = await api("/api/fix/all", { method: "POST", headers: { "Content-Type": "application/json" } });
     flash(`Applied ${o.applied ? o.applied.length : 0} fixes. Score ${o.new_score.overall}/100.`);
+    marked.clear();
     await refresh();
   } catch (e) { flash("Batch fix failed: " + e.message, true); }
 };
