@@ -96,6 +96,9 @@ go build ./cmd/hostveil
 go test ./...
 ```
 
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for full setup (per-platform
+demo VM, repo layout, contributing checklist).
+
 ## License
 
 [GPL-3.0](LICENSE)
