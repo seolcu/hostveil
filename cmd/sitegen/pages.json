@@ -78,16 +78,16 @@
       "ogType": "article",
       "en": {
         "title": "What it checks — hostveil docs",
-        "description": "hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.",
+        "description": "hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.",
         "ogTitle": "What it checks — hostveil docs",
-        "ogDescription": "Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — finding IDs, severities, and the score model.",
+        "ogDescription": "Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — finding IDs, severities, and the score model.",
         "nav": "What it checks"
       },
       "ko": {
         "title": "점검 항목 — hostveil 문서",
-        "description": "hostveil의 점검 범위: Docker/Compose, SSH, 방화벽, 자동 업데이트, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 0–100 점수가 만들어지는 방식.",
+        "description": "hostveil의 점검 범위: Docker/Compose, SSH, 방화벽, 자동 업데이트, 노출된 서비스, 계정, 파일 권한, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 0–100 점수가 만들어지는 방식.",
         "ogTitle": "점검 항목 — hostveil 문서",
-        "ogDescription": "Docker/Compose, SSH, 방화벽, 자동 업데이트, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 점수 모델.",
+        "ogDescription": "Docker/Compose, SSH, 방화벽, 자동 업데이트, 노출된 서비스, 계정, 파일 권한, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 점수 모델.",
         "nav": "점검 항목"
       }
     },
