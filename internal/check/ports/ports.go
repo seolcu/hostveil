@@ -8,6 +8,7 @@ package ports
 import (
 	"context"
 	"fmt"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,7 +70,10 @@ type listener struct {
 
 // Check reads listening TCP sockets and flags non-loopback exposure.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	out, err := env.Runner.Run(ctx, "ss", "-H", "-tlnp")
+	// No `-H`: it is a relatively recent flag, so we skip the header row
+	// ourselves (parseListener rejects it) and stay compatible with older
+	// iproute2 rather than hard-erroring on an unknown flag.
+	out, err := env.Runner.Run(ctx, "ss", "-tlnp")
 	if err != nil {
 		return nil, fmt.Errorf("listing listening sockets with ss: %w", err)
 	}
@@ -179,12 +183,13 @@ func portLabel(l listener) string {
 	return "port " + strconv.Itoa(l.port)
 }
 
-// parseListener parses one `ss -H -tlnp` row into a listener. The local
+// parseListener parses one `ss -tlnp` row into a listener. The local
 // address:port is the 4th whitespace-separated field; the process column
-// (from -p) is the last. A malformed row is skipped, never an error.
+// (from -p) is the last. The header row and any malformed row are skipped,
+// never an error.
 func parseListener(line string) (listener, bool) {
 	fields := strings.Fields(line)
-	if len(fields) < 4 {
+	if len(fields) < 4 || fields[0] == "State" { // "State" == header row
 		return listener{}, false
 	}
 	addr, portStr, ok := splitHostPort(fields[3])
@@ -202,28 +207,30 @@ func parseListener(line string) (listener, bool) {
 	return l, true
 }
 
-// splitHostPort splits a "host:port" where host may be a bracketed IPv6
-// literal ("[::]:22") or a wildcard ("*:22"). Port is taken after the last
-// colon so IPv6 addresses split correctly.
+// splitHostPort splits ss's "host:port" local-address field. It defers to
+// net.SplitHostPort, which correctly handles bracketed IPv6 literals
+// ("[::]:22", "[fe80::1%lo]:6379") and wildcards ("*:22"). A field it cannot
+// parse is rejected rather than turned into a malformed address.
 func splitHostPort(s string) (host, port string, ok bool) {
-	i := strings.LastIndex(s, ":")
-	if i < 0 || i == len(s)-1 {
+	h, p, err := net.SplitHostPort(s)
+	if err != nil || p == "" {
 		return "", "", false
 	}
-	host = strings.Trim(s[:i], "[]")
-	port = s[i+1:]
-	return host, port, true
+	return h, p, true
 }
 
 // isLoopback reports whether an address is a loopback / host-only bind that
 // is not reachable from the network. Everything else — the 0.0.0.0/:: /*
-// wildcards and specific LAN/public IPs — counts as exposed.
+// wildcards and specific LAN/public IPs — counts as exposed. An IPv6 zone
+// suffix (e.g. "::1%lo") is stripped before parsing.
 func isLoopback(addr string) bool {
-	switch addr {
-	case "127.0.0.1", "::1", "%lo":
-		return true
+	if i := strings.IndexByte(addr, '%'); i >= 0 {
+		addr = addr[:i]
 	}
-	return strings.HasPrefix(addr, "127.")
+	if ip := net.ParseIP(addr); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 // procName extracts the program name from ss's process column, e.g.

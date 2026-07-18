@@ -233,6 +233,12 @@ func sourceLabel(s model.Source) string {
 		return "Updates"
 	case model.SourceCVE:
 		return "CVEs"
+	case model.SourcePorts:
+		return "Ports"
+	case model.SourceAccounts:
+		return "Accounts"
+	case model.SourceFilePerms:
+		return "File perms"
 	default:
 		return s.String()
 	}

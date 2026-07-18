@@ -165,6 +165,37 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 	}
 }
 
+func TestZoneScopedLoopbackIgnored(t *testing.T) {
+	// A zone-scoped IPv6 loopback ([::1%lo]) is host-only and must not be
+	// reported as network-exposed.
+	ss := `LISTEN 0 128 [::1%lo]:6379 [::]:* users:(("redis-server",pid=9,fd=6))`
+	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss, missing: map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 0 {
+		t.Errorf("zone-scoped loopback bind should not be flagged, got %v", fs)
+	}
+}
+
+func TestHeaderRowSkipped(t *testing.T) {
+	// `ss` without -H prints a header row; it must be ignored, not parsed.
+	ss := `State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
+LISTEN 0      511    0.0.0.0:6379       0.0.0.0:*         users:(("redis-server",pid=1,fd=6))`
+	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !findByIDok(fs, "ports.exposed-datastore") {
+		t.Errorf("expected the redis listener parsed past the header, got %v", fs)
+	}
+}
+
+func findByIDok(fs []model.Finding, id string) bool {
+	_, ok := findByID(fs, id)
+	return ok
+}
+
 func TestMalformedLinesSkipped(t *testing.T) {
 	ss := "garbage line without enough fields\nLISTEN\n\n"
 	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss, missing: map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}}})

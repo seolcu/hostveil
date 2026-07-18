@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -33,9 +34,11 @@ func (*Checker) Source() model.Source { return model.SourceAccounts }
 // unreadable without root; Check handles that by running the passwd-only
 // checks and skipping the password check.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
-	if _, err := os.ReadFile(c.PasswdPath); err != nil { //nolint:gosec // fixed system path
+	f, err := os.Open(c.PasswdPath) //nolint:gosec // fixed system path
+	if err != nil {
 		return false, "cannot read " + c.PasswdPath
 	}
+	_ = f.Close()
 	return true, ""
 }
 
@@ -64,9 +67,12 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		if len(fields) < 7 {
 			continue
 		}
-		name, uid, shell := fields[0], fields[2], fields[6]
+		name, shell := fields[0], fields[6]
 		loginShell[name] = !nonLoginShells[strings.TrimSpace(shell)]
-		if uid == "0" && name != "root" {
+		// Compare the UID numerically: the kernel parses "00"/"000" as 0, so
+		// a string compare against "0" would let a leading-zero UID-0
+		// backdoor slip past the very check that exists to catch it.
+		if uid, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil && uid == 0 && name != "root" {
 			rogueRoot = append(rogueRoot, name)
 		}
 	}

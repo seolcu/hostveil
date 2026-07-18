@@ -69,6 +69,21 @@ func TestRogueUID0(t *testing.T) {
 	}
 }
 
+func TestRogueUID0LeadingZero(t *testing.T) {
+	// The kernel parses "00" as UID 0, so a leading-zero backdoor must still
+	// be caught — a naive string compare against "0" would miss it.
+	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:00:0::/root:/bin/bash\n")
+	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\n")
+	c := &Checker{PasswdPath: pw, ShadowPath: sh}
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has(fs, "accounts.uid0") {
+		t.Fatalf("leading-zero UID-0 account must be flagged, got %v", fs)
+	}
+}
+
 func TestEmptyPasswordLoginAccount(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd)
 	// alice has an empty password field and a login shell -> flagged.

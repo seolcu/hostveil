@@ -80,39 +80,30 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			}
 			paths = matches
 		}
-		var bad []string
+		var badPaths []string
+		var badEvidence []string
 		for _, p := range paths {
 			fi, err := os.Stat(p)
 			if err != nil || fi.IsDir() {
 				continue // missing files (e.g. no SSH server) are not findings
 			}
 			if fi.Mode().Perm()&^rule.MaxMode != 0 {
-				bad = append(bad, fmt.Sprintf("%s (%#o)", p, fi.Mode().Perm()))
+				badPaths = append(badPaths, p)
+				badEvidence = append(badEvidence, fmt.Sprintf("%s (%#o)", p, fi.Mode().Perm()))
 			}
 		}
-		if len(bad) == 0 {
+		if len(badPaths) == 0 {
 			continue
 		}
-		sort.Strings(bad)
+		sort.Strings(badPaths)
+		sort.Strings(badEvidence)
 		findings = append(findings, model.NewFinding(rule.ID, rule.Title, rule.Sev,
 			model.SourceFilePerms, model.RemediationManual,
 			model.WithDescription(rule.Desc),
-			model.WithHowToFix(fmt.Sprintf("Tighten the mode to %#o or stricter, e.g. `chmod %#o %s`.", rule.MaxMode, rule.MaxMode, firstPath(bad))),
-			model.WithEvidence("files", strings.Join(bad, ", ")),
+			model.WithHowToFix(fmt.Sprintf("Tighten the mode to %#o or stricter, e.g. `chmod %#o %s`.", rule.MaxMode, rule.MaxMode, badPaths[0])),
+			model.WithEvidence("files", strings.Join(badEvidence, ", ")),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
 	}
 	return findings, nil
-}
-
-// firstPath returns the path portion of the first "path (mode)" entry, for
-// use in an example chmod command.
-func firstPath(bad []string) string {
-	if len(bad) == 0 {
-		return ""
-	}
-	if i := strings.Index(bad[0], " ("); i >= 0 {
-		return bad[0][:i]
-	}
-	return bad[0]
 }
