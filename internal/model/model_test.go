@@ -60,6 +60,44 @@ func TestFindingValidate(t *testing.T) {
 	}
 }
 
+// TestAxisCapsSumTo100 guards the unenforced scoring invariant: when every
+// axis runs, the overall score is a plain 100 − Σpenalty, which only holds
+// if the axis caps sum to exactly 100. A future axis edit that breaks this
+// silently distorts renormalization, so pin it here.
+func TestAxisCapsSumTo100(t *testing.T) {
+	sum := 0
+	for _, def := range axisDefs {
+		sum += def.cap
+	}
+	if sum != 100 {
+		t.Errorf("axisDefs caps sum to %d, want 100", sum)
+	}
+}
+
+// TestAllSourcesConsistent guards the source.go three-function contract:
+// every real domain in AllSources must be Valid, must have a concrete (not
+// "unset") String, and must own a scoring axis.
+func TestAllSourcesConsistent(t *testing.T) {
+	axisSources := make(map[Source]bool, len(axisDefs))
+	for _, def := range axisDefs {
+		axisSources[def.source] = true
+	}
+	for _, src := range AllSources() {
+		if !src.Valid() {
+			t.Errorf("AllSources contains invalid source %d", int(src))
+		}
+		if src.String() == "unset" {
+			t.Errorf("source %d has no String() name", int(src))
+		}
+		if !axisSources[src] {
+			t.Errorf("source %q (%d) has no scoring axis", src.String(), int(src))
+		}
+	}
+	if got := len(AllSources()); got != len(axisDefs) {
+		t.Errorf("AllSources has %d entries, axisDefs has %d", got, len(axisDefs))
+	}
+}
+
 func TestScoreCleanHostIsPerfect(t *testing.T) {
 	got := ScoreReport(nil, nil)
 	if got.Overall != 100 {
