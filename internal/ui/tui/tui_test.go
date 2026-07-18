@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +87,33 @@ func TestSnapshotDump(t *testing.T) {
 	m = send(m, scannedMsg{report: rep})
 	if err := os.WriteFile(path, []byte(m.(*appModel).View().Content), 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestListScrolls verifies the list viewport follows the cursor when there
+// are more findings than fit on screen.
+func TestListScrolls(t *testing.T) {
+	var fs []model.Finding
+	for i := 0; i < 20; i++ {
+		fs = append(fs, model.NewFinding(fmt.Sprintf("compose.d%03d", i),
+			fmt.Sprintf("finding number %d", i), model.SeverityMedium,
+			model.SourceCompose, model.RemediationManual))
+	}
+	rep := model.Report{Findings: fs, Score: model.ScoreReport(fs, nil)}
+
+	m := tea.Model(&appModel{mode: modeList})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 12}) // only a few rows fit
+	m = send(m, scannedMsg{report: rep})
+	for i := 0; i < 19; i++ { // move to the last finding
+		m = send(m, tea.KeyPressMsg(tea.Key{Text: "j"}))
+	}
+
+	view := m.(*appModel).View().Content
+	if !strings.Contains(view, "compose.d019") {
+		t.Error("the cursor's (last) finding should be visible after scrolling")
+	}
+	if strings.Contains(view, "compose.d000") {
+		t.Error("the first finding should have scrolled out of view")
 	}
 }
 
