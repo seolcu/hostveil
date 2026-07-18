@@ -9,9 +9,9 @@
     <meta property="og:title" content="FAQ — hostveil docs">
     <meta property="og:description" content="Common questions about hostveil — privacy, safety, tradeoffs, sudo, and optional tooling.">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://hostveil.seolcu.com/docs/faq.html">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/faq">
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
-    <link rel="canonical" href="https://hostveil.seolcu.com/docs/faq.html">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/faq">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../docs.css">
@@ -45,26 +45,26 @@
           <div class="docs-nav-group">
             <p>Getting started</p>
             <ul>
-              <li><a href="index.html">Introduction</a></li>
-              <li><a href="installation.html">Installation</a></li>
-              <li><a href="quickstart.html">Quick start</a></li>
+              <li><a href="./">Introduction</a></li>
+              <li><a href="installation">Installation</a></li>
+              <li><a href="quickstart">Quick start</a></li>
             </ul>
           </div>
           <div class="docs-nav-group">
             <p>Guide</p>
             <ul>
-              <li><a href="checks.html">What it checks</a></li>
-              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
-              <li><a href="interfaces.html">Interfaces</a></li>
-              <li><a href="ai.html">AI explanations</a></li>
+              <li><a href="checks">What it checks</a></li>
+              <li><a href="fixing">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces">Interfaces</a></li>
+              <li><a href="ai">AI explanations</a></li>
             </ul>
           </div>
           <div class="docs-nav-group">
             <p>Reference</p>
             <ul>
-              <li><a href="cli.html">CLI reference</a></li>
-              <li><a href="faq.html" class="active">FAQ</a></li>
-              <li><a href="contributing.html">Contributing</a></li>
+              <li><a href="cli">CLI reference</a></li>
+              <li><a href="faq" class="active">FAQ</a></li>
+              <li><a href="contributing">Contributing</a></li>
             </ul>
           </div>
         </aside>
@@ -76,10 +76,10 @@
             <p class="lead">The questions self-hosters ask most before trusting a tool with their server.</p>
 
             <h2>Does it upload my data?</h2>
-            <p>No. hostveil runs entirely locally — no SaaS, no database, no account. Even the optional AI explanations default to a model on your own machine, and only human-readable fields (never raw secrets or paths) are ever sent to it. See <a href="ai.html">AI explanations</a>.</p>
+            <p>No. hostveil runs entirely locally — no SaaS, no database, no account. Even the optional AI explanations default to a model on your own machine, and only human-readable fields (never raw secrets or paths) are ever sent to it. See <a href="ai">AI explanations</a>.</p>
 
             <h2>Will a fix break my server?</h2>
-            <p>You see the exact change before it applies, the original file is backed up to a checkpoint first, and <code>hostveil rollback</code> restores it byte-for-byte. Fixes that can't be automated safely are classified <strong>Manual</strong> and only explained, never applied. See <a href="fixing.html">Fixing &amp; rollback</a>.</p>
+            <p>You see the exact change before it applies, the original file is backed up to a checkpoint first, and <code>hostveil rollback</code> restores it byte-for-byte. Fixes that can't be automated safely are classified <strong>Manual</strong> and only explained, never applied. See <a href="fixing">Fixing &amp; rollback</a>.</p>
 
             <h2>What if a fix has tradeoffs?</h2>
             <p>Then it's a <strong>Review</strong> fix, not Auto-fix. hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you.</p>
@@ -91,17 +91,17 @@
             <p>Some checks read root-owned files such as <code>sshd_config</code>, and applying a fix writes to protected paths. Run scans and fixes with <code>sudo</code> for full coverage; without it, those domains are skipped with a clear message.</p>
 
             <h2>Is the web dashboard exposed to my network?</h2>
-            <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only) by default. You can change the bind address with <code>--addr</code>, but pointing it at a non-loopback address prints a warning first. See <a href="interfaces.html">Interfaces</a>.</p>
+            <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only) by default. You can change the bind address with <code>--addr</code>, but pointing it at a non-loopback address prints a warning first. See <a href="interfaces">Interfaces</a>.</p>
 
             <h2>What does the 0–100 score mean?</h2>
-            <p>It starts at 100 and subtracts a penalty for each unfixed finding by severity (Critical 8, High 5, Medium 2, Low 1). A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High. See <a href="checks.html">What it checks</a>.</p>
+            <p>It starts at 100 and subtracts a penalty for each unfixed finding by severity (Critical 8, High 5, Medium 2, Low 1). A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High. See <a href="checks">What it checks</a>.</p>
 
             <h2>Which platforms are supported?</h2>
             <p>Prebuilt binaries target <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is built for self-hosted Linux servers.</p>
 
             <div class="docs-pager">
-              <a class="button secondary" href="cli.html">← CLI reference</a>
-              <a class="button primary" href="contributing.html">Contributing →</a>
+              <a class="button secondary" href="cli">← CLI reference</a>
+              <a class="button primary" href="contributing">Contributing →</a>
             </div>
           </article>
         </main>
