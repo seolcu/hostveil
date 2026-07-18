@@ -105,28 +105,28 @@
             <h2>Applying a fix</h2>
             <p>Preview and apply a single finding by its ID:</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="sudo hostveil fix ssh.rootlogin">Copy</button>
-              <pre><code>sudo hostveil fix ssh.rootlogin</code></pre>
+              <button class="copy-btn" type="button" data-copy="hostveil fix ssh.rootlogin">Copy</button>
+              <pre><code>hostveil fix ssh.rootlogin</code></pre>
             </div>
             <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, then <strong>3)</strong> applies the change. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
 
             <h3>Choosing a Review alternative</h3>
             <p>Review findings offer independent alternatives. Pass the 0-based index with <code>--action</code>:</p>
-            <div class="code-block"><pre><code>sudo hostveil fix ssh.passwordauth --action 0</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix ssh.passwordauth --action 0</code></pre></div>
 
             <h3>Disambiguating by service</h3>
             <p>When the same Compose rule fires for more than one service, narrow it with <code>--service</code>:</p>
-            <div class="code-block"><pre><code>sudo hostveil fix compose.ds018 --service db</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix compose.ds018 --service db</code></pre></div>
 
             <h3>Applying every safe fix</h3>
-            <div class="code-block"><pre><code>sudo hostveil fix --all</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
             <p>Applies each Auto-fix finding, each with its own checkpoint so any of them can be rolled back individually.</p>
 
             <h2>History &amp; rollback</h2>
             <p>Every applied fix is recorded as a checkpoint. List them newest-first:</p>
             <div class="code-block"><pre><code>hostveil history</code></pre></div>
             <p>Each entry shows a timestamp, the finding ID, a label, and the exact rollback command. Undo one by its checkpoint ID:</p>
-            <div class="code-block"><pre><code>sudo hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
             <div class="callout">
               <span class="callout-label">Reversible everywhere</span>
               <p>Rollback restores the backed-up file byte-for-byte. Because the TUI, web dashboard, and CLI all go through one shared engine, a fix applied in any of them is listed in <code>history</code> and reversible from any of them. (A few actions are inherently not reversible; <code>history</code> marks those <em>not reversible</em>.)</p>
