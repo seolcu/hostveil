@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>설치 — hostveil 문서</title>
+    <meta name="description" content="한 줄 명령으로 hostveil을 설치하거나 소스에서 빌드하세요. 선택 도구인 Docker, Trivy, Ollama가 각각 무엇을 열어 주는지 알아보세요.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="설치 — hostveil 문서">
+    <meta property="og:description" content="한 줄 명령으로 hostveil을 설치하거나 소스에서 빌드하세요. 선택적인 Docker, Trivy, Ollama 연동.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/installation">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:locale" content="ko_KR">
+    <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/installation">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/installation">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/installation">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/installation">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../../docs.css">
+    <script src="../../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="주요 내비게이션">
+        <a class="brand" href="../" aria-label="hostveil 홈">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">문서</a>
+          <a href="../#features">기능</a>
+          <a href="../#install">설치</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/docs/installation" lang="en" hreflang="en">English</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        문서 메뉴
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="문서 내비게이션">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="문서 검색…" aria-label="문서 검색"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="검색 결과" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>시작하기</p>
+            <ul>
+              <li><a href="./">소개</a></li>
+              <li><a href="installation" class="active">설치</a></li>
+              <li><a href="quickstart">빠른 시작</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>가이드</p>
+            <ul>
+              <li><a href="checks">점검 항목</a></li>
+              <li><a href="fixing">수정 및 롤백</a></li>
+              <li><a href="interfaces">인터페이스</a></li>
+              <li><a href="ai">AI 설명</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>레퍼런스</p>
+            <ul>
+              <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="faq">자주 묻는 질문</a></li>
+              <li><a href="contributing">기여하기</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 설치</p>
+            <h1>설치</h1>
+            <p class="lead">한 줄 명령이면 바이너리 하나가 설치됩니다. 작성해야 할 설정 파일도, 만들어야 할 계정도 없습니다 — 설치 후 바로 스캔할 수 있습니다.</p>
+
+            <h2>빠른 설치</h2>
+            <p>설치 스크립트는 OS와 아키텍처를 감지하고, 릴리스 바이너리를 내려받아 체크섬을 검증한 뒤 <code>/usr/bin/hostveil</code>에 설치합니다:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash</code></pre>
+            </div>
+            <p>같은 명령을 언제든 다시 실행하면 최신 릴리스로 업데이트됩니다. 그런 다음 확인하세요:</p>
+            <div class="code-block"><pre><code>hostveil version</code></pre></div>
+
+            <div class="callout">
+              <span class="callout-label">지원 플랫폼</span>
+              <p><strong>Linux</strong>와 <strong>macOS</strong>의 <code>amd64</code>·<code>arm64</code> 아키텍처용 사전 빌드 바이너리가 제공됩니다. hostveil은 셀프호스팅 리눅스 서버를 위해 설계되었으며, SSH·방화벽·자동 업데이트 점검은 리눅스를 대상으로 합니다.</p>
+            </div>
+
+            <h2>설치 스크립트가 하는 일</h2>
+            <ul>
+              <li>OS(<code>linux</code>/<code>darwin</code>)와 아키텍처(<code>amd64</code>/<code>arm64</code>)를 감지합니다.</li>
+              <li>릴리스 tarball과 <code>hostveil-checksums.txt</code>를 내려받은 뒤 SHA-256 체크섬을 검증합니다. 일치하지 않으면 중단합니다.</li>
+              <li><code>sudo</code>로 바이너리를 <code>/usr/bin/hostveil</code>에 설치(권한 0755)하고, <code>hostveil --version</code>을 실행해 정상 동작을 확인합니다.</li>
+              <li>선택적 이미지 CVE 스캔을 위한 <strong>Trivy</strong> 설치를 제안합니다. 거절해도 hostveil 설치를 막지 않습니다.</li>
+            </ul>
+
+            <h3>설치 스크립트 옵션</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>옵션</th><th>효과</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--version vX.Y.Z</code></td><td>최신 대신 특정 릴리스를 설치합니다.</td></tr>
+                  <tr><td><code>--no-trivy</code></td><td>선택적 Trivy 안내를 아예 건너뜁니다.</td></tr>
+                  <tr><td><code>--yes</code> / <code>-y</code></td><td>비대화형으로 실행합니다(모든 확인을 수락).</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>파이프를 통해 옵션을 전달하려면 <code>bash -s --</code>를 사용하세요. 예:</p>
+            <div class="code-block"><pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --no-trivy</code></pre></div>
+
+            <h2>권한 상승은 자동입니다</h2>
+            <div class="callout">
+              <span class="callout-label">참고</span>
+              <p>SSH와 방화벽 점검은 <code>sshd_config</code> 같은 root 소유 파일을 읽어야 하고, 수정을 적용하려면 보호된 경로에 써야 합니다. 그래서 <code>hostveil</code>은 <code>sudo</code> 아래에서 자동으로 자신을 다시 실행합니다 — <code>sudo hostveil</code>과 동일한 sudo 비밀번호 프롬프트가 표시되며, 인증 후 같은 터미널에서 계속 진행됩니다. <code>version</code>과 <code>help</code>는 절대 프롬프트를 띄우지 않습니다. 권한 없이(스크립트·CI에서) 실행하려면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요. 그러면 root 소유 영역은 명확한 메시지와 함께 건너뛰어지고, 점수는 오해를 부르는 완벽한 결과를 주지 않도록 재정규화됩니다.</p>
+            </div>
+
+            <h2>선택 도구</h2>
+            <p>해당 도구가 없으면 각 영역은 깔끔하게 건너뛰어집니다. 추가 범위를 원한다면 다음을 추가하세요:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>도구</th><th>열어 주는 기능</th><th>참고</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Docker</strong></td><td>Docker / Compose 점검</td><td>hostveil은 Compose 파일을 읽어 서비스를 점검합니다.</td></tr>
+                  <tr><td><strong>Trivy</strong></td><td>이미지 CVE 스캔</td><td>있으면 사용되며, 설치 스크립트가 대신 설정해 줄 수 있습니다.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI 설명(<code>explain --ai</code>)</td><td>기본적으로 로컬에서 동작하며 — 호스트 밖으로 아무것도 나가지 않습니다. <a href="ai">AI 설명</a>을 참고하세요.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2>소스에서 빌드하기</h2>
+            <p>최신 Go 툴체인이 설치되어 있다면:</p>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil
+cd hostveil
+go build ./cmd/hostveil
+go test ./...</code></pre></div>
+            <p>재현 가능한 데모 VM을 포함한 전체 개발 환경 설정은 <a href="contributing">기여하기</a>를 참고하세요.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="./">← 소개</a>
+              <a class="button primary" href="quickstart">빠른 시작 →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+        </div>
+        <nav aria-label="푸터 링크">
+          <a href="./">문서</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">릴리스</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

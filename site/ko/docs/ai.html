@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI 설명 — hostveil 문서</title>
+    <meta name="description" content="hostveil의 선택적·조언 전용 AI: 기본값은 로컬 Ollama이며, 절대 변경을 적용하지 않고, 사람이 읽을 수 있는 필드만 전송합니다 — 원본 비밀 값이나 경로는 절대 보내지 않습니다.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="AI 설명 — hostveil 문서">
+    <meta property="og:description" content="explain --ai로 얻는 선택적·조언 전용·로컬 우선 AI second opinion.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/ai">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:locale" content="ko_KR">
+    <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/ai">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/ai">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/ai">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/ai">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../../docs.css">
+    <script src="../../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="주요 내비게이션">
+        <a class="brand" href="../" aria-label="hostveil 홈">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">문서</a>
+          <a href="../#features">기능</a>
+          <a href="../#install">설치</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/docs/ai" lang="en" hreflang="en">English</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        문서 메뉴
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="문서 내비게이션">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="문서 검색…" aria-label="문서 검색"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="검색 결과" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>시작하기</p>
+            <ul>
+              <li><a href="./">소개</a></li>
+              <li><a href="installation">설치</a></li>
+              <li><a href="quickstart">빠른 시작</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>가이드</p>
+            <ul>
+              <li><a href="checks">점검 항목</a></li>
+              <li><a href="fixing">수정 및 롤백</a></li>
+              <li><a href="interfaces">인터페이스</a></li>
+              <li><a href="ai" class="active">AI 설명</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>레퍼런스</p>
+            <ul>
+              <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="faq">자주 묻는 질문</a></li>
+              <li><a href="contributing">기여하기</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / AI 설명</p>
+            <h1>AI 설명</h1>
+            <p class="lead">hostveil의 AI는 선택 사항이며, 조언 전용이고, 로컬 우선입니다. 쉬운 말로 second opinion을 더해 줄 수 있지만, 절대 변경을 적용하지 않으며, AI 없이도 모든 기능이 그대로 동작합니다.</p>
+
+            <h2>사용 방법</h2>
+            <p>발견 항목에 대한 조언성 설명을 얻으려면 <code>explain</code>에 <code>--ai</code>를 추가하세요:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil explain ssh.rootlogin --ai">Copy</button>
+              <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
+            </div>
+            <p>내장된 쉬운 말 설명은 항상 먼저 출력되며, <code>--ai</code>는 <em>AI 설명(조언)</em> 섹션을 뒤에 덧붙입니다. 모델에 연결할 수 없으면 hostveil은 그 사실을 알리고 계속 진행합니다 — AI를 사용할 수 없다고 해서 명령이 실패하는 일은 없습니다.</p>
+
+            <h2>기본은 로컬</h2>
+            <p>기본 제공자는 <strong>Ollama</strong>이며, 사용자 본인의 머신에서 실행됩니다 — 아무것도 호스트 밖으로 나가지 않습니다. 기본값:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>설정</th><th>기본값</th><th>재정의</th></tr></thead>
+                <tbody>
+                  <tr><td>호스트</td><td><code>http://127.0.0.1:11434</code></td><td><code>HOSTVEIL_OLLAMA_HOST</code></td></tr>
+                  <tr><td>모델</td><td><code>llama3.2</code></td><td><code>HOSTVEIL_OLLAMA_MODEL</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><a href="https://ollama.com">Ollama</a>를 설치하고 모델을 한 번 내려받으세요:</p>
+            <div class="code-block"><pre><code>ollama pull llama3.2
+hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>다른 로컬 모델을 사용하려면:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
+
+            <h2>조언 전용이며, 설계상 비공개</h2>
+            <div class="callout">
+              <span class="callout-label">모델이 할 수 있는 것과 할 수 없는 것</span>
+              <p>AI는 오직 <strong>설명</strong>만 할 수 있습니다 — 어떤 수정도 적용·변경·주도할 능력이 없습니다. 점수, 발견 항목, 수정은 전적으로 AI 없이 계산됩니다.</p>
+            </div>
+            <div class="callout warn">
+              <span class="callout-label">개인정보 보호</span>
+              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다 — 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 선택적으로 참여하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="interfaces">← 인터페이스</a>
+              <a class="button primary" href="cli">CLI 레퍼런스 →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+        </div>
+        <nav aria-label="푸터 링크">
+          <a href="./">문서</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">릴리스</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

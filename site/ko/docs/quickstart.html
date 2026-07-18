@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>빠른 시작 — hostveil 문서</title>
+    <meta name="description" content="서버를 스캔하고, 발견 항목을 이해하고, 미리보기와 백업으로 수정을 적용한 뒤 되돌리세요 — 몇 분 만에 익히는 hostveil의 전체 흐름.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="빠른 시작 — hostveil 문서">
+    <meta property="og:description" content="스캔, 이해, 적용, 롤백 — 몇 분 만에 익히는 hostveil의 전체 흐름.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/quickstart">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:locale" content="ko_KR">
+    <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/quickstart">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/quickstart">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/quickstart">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/quickstart">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../../docs.css">
+    <script src="../../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="주요 내비게이션">
+        <a class="brand" href="../" aria-label="hostveil 홈">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">문서</a>
+          <a href="../#features">기능</a>
+          <a href="../#install">설치</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/docs/quickstart" lang="en" hreflang="en">English</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        문서 메뉴
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="문서 내비게이션">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="문서 검색…" aria-label="문서 검색"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="검색 결과" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>시작하기</p>
+            <ul>
+              <li><a href="./">소개</a></li>
+              <li><a href="installation">설치</a></li>
+              <li><a href="quickstart" class="active">빠른 시작</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>가이드</p>
+            <ul>
+              <li><a href="checks">점검 항목</a></li>
+              <li><a href="fixing">수정 및 롤백</a></li>
+              <li><a href="interfaces">인터페이스</a></li>
+              <li><a href="ai">AI 설명</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>레퍼런스</p>
+            <ul>
+              <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="faq">자주 묻는 질문</a></li>
+              <li><a href="contributing">기여하기</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 빠른 시작</p>
+            <h1>빠른 시작</h1>
+            <p class="lead">스캔하고, 이해하고, 적용하고, 복구하기. 여기서는 명령줄로 전체 흐름을 따라가지만, 원한다면 TUI와 웹 대시보드도 정확히 같은 엔진으로 동작합니다.</p>
+
+            <h2>1. 로컬에서 스캔하기</h2>
+            <p>스캔을 실행하기만 하면 됩니다 — <code>hostveil</code>은 SSH와 방화벽 점검이 root 소유 파일을 읽을 수 있도록 <code>sudo</code>로 자동으로 권한을 상승시킵니다. <code>sudo hostveil</code>과 동일한 sudo 비밀번호 프롬프트가 표시됩니다:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil scan">Copy</button>
+              <pre><code>hostveil scan</code></pre>
+            </div>
+            <p>0–100 사이의 단일 보안 점수와 심각도순으로 정렬된 발견 항목 목록을 받게 됩니다. 도구가 없는 영역(Docker 없음, Trivy 없음)은 건너뛰어지고 점수가 재정규화됩니다 — 깨끗한 호스트는 속 빈 100점이 아니라 <strong>Clean</strong>으로 표시됩니다.</p>
+            <div class="callout">
+              <span class="callout-label">팁</span>
+              <p>대화형 터미널에서는 인자 없이 <code>hostveil</code>을 실행하면 대신 <a href="interfaces">TUI</a>가 열립니다. 파이프되거나 리디렉션된 경우에는 스캔 결과를 출력합니다 — 스크립트에서 유용합니다.</p>
+            </div>
+
+            <h2>2. 발견 항목 이해하기</h2>
+            <p><code>-v</code>를 추가하면 각 발견 항목의 쉬운 말 설명과 수정 안내를 바로 볼 수 있습니다:</p>
+            <div class="code-block"><pre><code>hostveil scan -v</code></pre></div>
+            <p>또는 ID로 하나의 발견 항목을 자세히 살펴볼 수 있습니다(예: <code>ssh.rootlogin</code>):</p>
+            <div class="code-block"><pre><code>hostveil explain ssh.rootlogin</code></pre></div>
+            <p>내 방식으로 된 second opinion이 필요하신가요? <code>--ai</code>를 추가하면 로컬 모델의 조언성 설명을 받을 수 있습니다 — <a href="ai">AI 설명</a>을 참고하세요. 모든 발견 항목 ID와 그 의미는 <a href="checks">점검 항목</a>에 정리되어 있습니다.</p>
+
+            <h2>3. 수정 적용하기</h2>
+            <p>수정은 항상 무엇이든 건드리기 전에 정확한 변경 내용을 먼저 보여 주고 원본을 백업합니다. 하나의 발견 항목을 미리 보고 적용하려면:</p>
+            <div class="code-block"><pre><code>hostveil fix ssh.rootlogin</code></pre></div>
+            <p>또는 명백히 안전한(자동) 수정을 한 번에 모두 적용할 수도 있습니다 — 검토와 수동 발견 항목은 직접 결정하도록 남겨집니다:</p>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
+            <p>자동·검토·수동이 어떻게 다른지는 <a href="fixing">수정 및 롤백</a>을 참고하세요.</p>
+
+            <h2>4. 언제든 롤백하기</h2>
+            <p>적용된 모든 수정은 체크포인트가 됩니다. 목록을 확인한 뒤 ID로 하나를 되돌리세요:</p>
+            <div class="code-block"><pre><code>hostveil history
+hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>롤백은 백업된 파일을 바이트 단위 그대로 복원합니다. 모든 인터페이스가 하나의 공유 엔진을 거치므로, TUI나 웹 대시보드에서 적용한 수정도 여기서 되돌릴 수 있습니다.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="installation">← 설치</a>
+              <a class="button primary" href="checks">점검 항목 →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+        </div>
+        <nav aria-label="푸터 링크">
+          <a href="./">문서</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">릴리스</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
