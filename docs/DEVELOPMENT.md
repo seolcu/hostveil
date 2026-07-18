@@ -70,7 +70,7 @@ cd demo
 ./run.sh up        # boot + provision + start the vulnerable stacks
 ./run.sh scan      # run hostveil against the server
 ./run.sh web       # dashboard at http://localhost:8787
-./run.sh shell     # a shell on the server (then: sudo hostveil ...)
+./run.sh shell     # a shell on the server (then: hostveil ...)
 ./run.sh halt      # shut it down — nothing keeps running
 ```
 

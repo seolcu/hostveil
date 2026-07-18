@@ -12,7 +12,7 @@ from a `git clone`.
 cd demo
 vagrant up            # boots + provisions the vulnerable server (first run: a few minutes)
 vagrant ssh           # you're now on the "home server"
-  sudo hostveil scan  # see the findings
+  hostveil scan       # see the findings (auto-elevates with sudo)
 ```
 
 Everything is **real** — real Docker with real running stacks, real weak SSH
@@ -55,7 +55,7 @@ cd demo
 ./run.sh up        # boot the VM + start the vulnerable stacks (first run downloads the box + images)
 ./run.sh scan      # scored report across all domains
 ./run.sh web       # dashboard at http://localhost:8787 (Ctrl-C to stop)
-./run.sh shell     # a shell on the demo server — then e.g. `sudo hostveil`
+./run.sh shell     # a shell on the demo server — then e.g. `hostveil`
 ./run.sh halt      # shut the VM down; nothing keeps running
 ```
 
@@ -63,9 +63,12 @@ Prefer raw Vagrant? `vagrant up` / `vagrant ssh` work too (run
 `./run.sh up` once after a boot to start the stacks — they intentionally
 have no restart policy, so they don't come back on their own).
 
-> Run hostveil with **sudo** inside the VM so it can read root-owned config
-> (`/etc/ssh/sshd_config`) and apply fixes. Without sudo, those domains are
-> skipped with a clear message — which is itself a nice thing to show.
+> Inside the VM, plain `hostveil` re-executes itself under **sudo**
+> automatically so it can read root-owned config (`/etc/ssh/sshd_config`) and
+> apply fixes — the prompt you see is sudo's own. To instead show the graceful
+> non-root behaviour, run `HOSTVEIL_NO_SUDO=1 hostveil scan`: the root-owned
+> domains are skipped with a clear message and the score is renormalized —
+> itself a nice thing to demo.
 
 **Web dashboard**: port 8787 is forwarded to the host, so while
 `./run.sh web` is running, open **<http://localhost:8787>** in your browser.
@@ -78,18 +81,18 @@ rebuild inside: `cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/b
 
 ## Suggested demo script (5 minutes)
 
-1. **Scan** — `sudo hostveil scan`
+1. **Scan** — `hostveil scan`
    Score is low; findings are grouped by severity with plain-language
    descriptions across Docker/Compose, SSH, firewall, auto-updates, and CVEs.
-2. **Explain one** — `sudo hostveil explain compose.ds018 --service redis`
+2. **Explain one** — `hostveil explain compose.ds018 --service redis`
    ("a database exposed to the whole internet").
-3. **Fix with a preview** — `sudo hostveil fix ssh.rootlogin`
+3. **Fix with a preview** — `hostveil fix ssh.rootlogin`
    Shows the exact diff, backs up the file, applies it. Then
-   `sudo hostveil rollback <id>` restores it byte-for-byte.
-4. **Fix everything safe** — `sudo hostveil fix --all`
+   `hostveil rollback <id>` restores it byte-for-byte.
+4. **Fix everything safe** — `hostveil fix --all`
    Watch the score jump.
-5. **Re-scan** — `sudo hostveil scan` shows what's now *resolved*.
-6. **(Optional) Web** — `sudo hostveil serve --addr 0.0.0.0:8787`, open
+5. **Re-scan** — `hostveil scan` shows what's now *resolved*.
+6. **(Optional) Web** — `hostveil serve --addr 0.0.0.0:8787`, open
    <http://localhost:8787>, click a finding, preview + apply from the browser.
 
 Judges can poke around and see it's a real server: `docker ps`,
