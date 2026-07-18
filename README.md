@@ -11,7 +11,7 @@ One binary, no config file, no cloud account.
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
 
-[Website](https://hostveil.seolcu.com/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
+[Website](https://hostveil.seolcu.com/) · [Docs](https://hostveil.seolcu.com/docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
 
 ---
 

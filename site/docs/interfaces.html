@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interfaces — hostveil docs</title>
+    <meta name="description" content="hostveil's three interfaces — the keyboard-driven TUI, the localhost web dashboard, and the scriptable CLI — all drive one shared fix-and-rollback engine.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Interfaces — hostveil docs">
+    <meta property="og:description" content="The TUI, the localhost web dashboard, and the scriptable CLI — one shared engine.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/interfaces.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/interfaces.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html" class="active">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Interfaces</p>
+            <h1>Interfaces</h1>
+            <p class="lead">hostveil has three faces — a terminal UI, a localhost web dashboard, and a scriptable CLI — and all three are thin layers over one shared engine. Whatever you scan, fix, or roll back in one is reflected in the others.</p>
+
+            <h2>TUI — the default</h2>
+            <p>Running <code>hostveil</code> with no arguments on an interactive terminal opens the keyboard-driven TUI. You can also launch it explicitly:</p>
+            <div class="code-block"><pre><code>sudo hostveil        # or: sudo hostveil tui</code></pre></div>
+            <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied.</p>
+            <figure>
+              <img src="../assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1200" height="478" loading="lazy">
+              <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
+            </figure>
+            <div class="callout">
+              <span class="callout-label">Needs a terminal</span>
+              <p>The TUI requires an interactive terminal. If stdin/stdout are piped or redirected, use <code>hostveil scan</code> instead — it prints a plain report.</p>
+            </div>
+
+            <h2>Web — localhost dashboard</h2>
+            <p>Serve the same scan over HTTP when a browser is better for review:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="sudo hostveil serve">Copy</button>
+              <pre><code>sudo hostveil serve</code></pre>
+            </div>
+            <p>By default it binds to <code>127.0.0.1:8787</code> — loopback only. Change it with <code>--addr</code>; if you point it at a non-loopback address, hostveil prints a warning about exposing the dashboard. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
+            <figure>
+              <img src="../assets/web.png" alt="hostveil web dashboard — filter chips, multi-select, and fix detail" width="1200" height="456" loading="lazy">
+              <figcaption><strong>Web UI</strong><span>Localhost dashboard: score, filterable findings, multi-select batch fixes, preview, and rollback.</span></figcaption>
+            </figure>
+
+            <h2>CLI — scriptable</h2>
+            <p>The <code>scan</code>, <code>fix</code>, <code>rollback</code>, and <code>history</code> subcommands work non-interactively. <code>scan --json</code> emits machine-readable output, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High — so it slots into CI or a cron job:</p>
+            <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
+sudo hostveil fix --all --yes</code></pre></div>
+            <p>See the <a href="cli.html">CLI reference</a> for every command and flag.</p>
+
+            <div class="callout">
+              <span class="callout-label">One engine, three faces</span>
+              <p>Because the interfaces share a single fix-and-rollback engine, behavior is identical across them: a fix applied in the browser shows up in <code>hostveil history</code> and is reversible from the terminal, and vice versa.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="fixing.html">← Fixing &amp; rollback</a>
+              <a class="button primary" href="ai.html">AI explanations →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

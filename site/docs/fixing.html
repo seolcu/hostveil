@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fixing &amp; rollback — hostveil docs</title>
+    <meta name="description" content="How hostveil fixes findings: Auto-fix, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Fixing &amp; rollback — hostveil docs">
+    <meta property="og:description" content="Auto-fix, Review, and Manual fixes; preview, backup, history, and one-command rollback.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/fixing.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/fixing.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html" class="active">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Fixing &amp; rollback</p>
+            <h1>Fixing &amp; rollback</h1>
+            <p class="lead">hostveil never mutates blindly. Every fix is classified by how safely it can be automated, always shows the exact change first, backs up the original to a checkpoint, and can be undone with one command.</p>
+
+            <h2>How a finding is classified</h2>
+            <p>Each finding is tagged with a remediation kind that decides how much automation is appropriate:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Kind</th><th>Meaning</th><th>Fixable?</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Auto-fix</strong></td><td>One clearly-correct change. You still see it before it applies.</td><td>Yes</td></tr>
+                  <tr><td><strong>Review</strong></td><td>Several valid alternatives; you choose which one to apply.</td><td>Yes</td></tr>
+                  <tr><td><strong>Manual</strong></td><td>No safe automation — hostveil explains what to do instead.</td><td>No</td></tr>
+                  <tr><td><strong>Unavailable</strong></td><td>Known issue with no fix yet (e.g. a CVE with no patch).</td><td>No</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Only <strong>Auto-fix</strong> and <strong>Review</strong> findings can be applied by hostveil. <code>fix --all</code> applies only the Auto-fix ones, leaving anything that needs a decision to you.</p>
+
+            <h2>Applying a fix</h2>
+            <p>Preview and apply a single finding by its ID:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="sudo hostveil fix ssh.rootlogin">Copy</button>
+              <pre><code>sudo hostveil fix ssh.rootlogin</code></pre>
+            </div>
+            <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, then <strong>3)</strong> applies the change. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
+
+            <h3>Choosing a Review alternative</h3>
+            <p>Review findings offer independent alternatives. Pass the 0-based index with <code>--action</code>:</p>
+            <div class="code-block"><pre><code>sudo hostveil fix ssh.passwordauth --action 0</code></pre></div>
+
+            <h3>Disambiguating by service</h3>
+            <p>When the same Compose rule fires for more than one service, narrow it with <code>--service</code>:</p>
+            <div class="code-block"><pre><code>sudo hostveil fix compose.ds018 --service db</code></pre></div>
+
+            <h3>Applying every safe fix</h3>
+            <div class="code-block"><pre><code>sudo hostveil fix --all</code></pre></div>
+            <p>Applies each Auto-fix finding, each with its own checkpoint so any of them can be rolled back individually.</p>
+
+            <h2>History &amp; rollback</h2>
+            <p>Every applied fix is recorded as a checkpoint. List them newest-first:</p>
+            <div class="code-block"><pre><code>hostveil history</code></pre></div>
+            <p>Each entry shows a timestamp, the finding ID, a label, and the exact rollback command. Undo one by its checkpoint ID:</p>
+            <div class="code-block"><pre><code>sudo hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <div class="callout">
+              <span class="callout-label">Reversible everywhere</span>
+              <p>Rollback restores the backed-up file byte-for-byte. Because the TUI, web dashboard, and CLI all go through one shared engine, a fix applied in any of them is listed in <code>history</code> and reversible from any of them. (A few actions are inherently not reversible; <code>history</code> marks those <em>not reversible</em>.)</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="checks.html">← What it checks</a>
+              <a class="button primary" href="interfaces.html">Interfaces →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Contributing — hostveil docs</title>
+    <meta name="description" content="Build hostveil from source, run the checks CI runs, learn the repository layout and architecture rule, add a new check, and use the demo VM.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Contributing — hostveil docs">
+    <meta property="og:description" content="Build from source, run the checks, the repo layout, adding a check, and the demo VM.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/contributing.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/contributing.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html" class="active">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Contributing</p>
+            <h1>Contributing</h1>
+            <p class="lead">hostveil is Go, with a small dependency tree and a strict architecture. This is the short version; the canonical developer guide is <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>.</p>
+
+            <h2>Prerequisites</h2>
+            <ul>
+              <li><strong>Go</strong> — the version pinned in <code>go.mod</code> or newer.</li>
+              <li><strong>git</strong>.</li>
+              <li><em>Optional:</em> Vagrant + a provider (libvirt on Linux, VirtualBox on macOS/Windows) to run the demo VM.</li>
+            </ul>
+
+            <h2>Build &amp; test</h2>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil.git
+cd hostveil
+go build ./cmd/hostveil     # produces ./hostveil
+go test ./...               # unit + fuzz + property tests</code></pre></div>
+            <p>Before sending a change, run the same checks CI runs:</p>
+            <div class="code-block"><pre><code>go build ./...
+go vet ./...
+gofmt -l .                  # must print nothing
+go mod tidy                 # must leave go.mod/go.sum unchanged
+go test -race ./...</code></pre></div>
+            <div class="callout">
+              <span class="callout-label">Linux tool, portable tests</span>
+              <p>hostveil <strong>builds and its tests pass on any OS</strong>, but running the binary meaningfully needs Linux with the relevant tools present. Use the demo VM rather than running it against your own machine.</p>
+            </div>
+
+            <h2>Repository layout</h2>
+            <div class="code-block"><pre><code>cmd/hostveil/        entry point + subcommand wiring
+internal/
+  core/              the shared engine — the only thing the UIs call
+  check/             detection domains (compose, ssh, firewall, updates, cve)
+  fix/ compose/ history/   fix registry, YAML editing, backup/rollback
+  model/ platform/   pure value types; the OS/command seam
+  ui/{cli,tui,web}/  thin UIs over the engine
+demo/                the reproducible vulnerable-server VM (Vagrant)
+site/                the marketing site + these docs (static)
+docs/                developer documentation</code></pre></div>
+
+            <h2>Architecture rule</h2>
+            <div class="callout warn">
+              <span class="callout-label">Enforced by a test</span>
+              <p>UIs depend only on <code>core</code>. An import-lint test enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code>. This is what keeps the TUI, web, and CLI behaving identically — they all go through the one engine.</p>
+            </div>
+
+            <h2>Adding a check</h2>
+            <p>Adding a detection domain means writing one package under <code>internal/check/</code> that implements the <code>Checker</code> interface and registering it. Findings are created with a stable <code>domain.rule</code> ID, a severity, and a remediation kind (see <a href="checks.html">What it checks</a> and <a href="fixing.html">Fixing &amp; rollback</a>).</p>
+
+            <h2>Running it for real: the demo VM</h2>
+            <p><code>demo/</code> is a code-defined, deliberately vulnerable Ubuntu server. hostveil is built from your working tree <em>inside</em> the VM, so it always reflects your current code:</p>
+            <div class="code-block"><pre><code>cd demo
+./run.sh up        # boot + provision + start the vulnerable stacks
+./run.sh scan      # run hostveil against the server
+./run.sh web       # dashboard at http://localhost:8787
+./run.sh shell     # a shell on the server (then: sudo hostveil ...)
+./run.sh halt      # shut it down</code></pre></div>
+            <p>The full walkthrough, per-platform provider setup, demo script, and reset workflow live in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="faq.html">← FAQ</a>
+              <a class="button primary" href="https://github.com/seolcu/hostveil">GitHub repository →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
