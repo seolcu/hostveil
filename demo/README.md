@@ -141,6 +141,9 @@ NAT is independent of the host firewall.
 | SSH | root login, password auth, empty passwords, weak `MaxAuthTries`, X11 forwarding | `ssh.rootlogin`, `ssh.passwordauth`, … |
 | Firewall | `ufw` installed but inactive | `firewall.inactive` |
 | Auto-updates | unattended-upgrades disabled | `updates.disabled` |
+| Exposed services | a native (non-Docker) Redis bound to `0.0.0.0` | `ports.exposed-datastore` |
+| Accounts | a second UID-0 account (`backdoor`) and a passwordless login account (`demo_nopass`) | `accounts.uid0`, `accounts.emptypassword` |
+| File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
 | CVEs | old image tags (redis 6.0, postgres 13, jellyfin 10.8, nextcloud 24, portainer 2.9) | `cve.*` (needs Trivy, installed in the VM) |
 
 The stacks live in `stacks/`, the weak SSH snippet in `seed/`, and the whole

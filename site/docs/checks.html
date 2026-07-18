@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>What it checks — hostveil docs</title>
-    <meta name="description" content="hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.">
+    <meta name="description" content="hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.">
     <meta name="theme-color" content="#07100f">
     <meta property="og:title" content="What it checks — hostveil docs">
-    <meta property="og:description" content="Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — finding IDs, severities, and the score model.">
+    <meta property="og:description" content="Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — finding IDs, severities, and the score model.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/docs/checks">
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
@@ -96,6 +96,9 @@
                   <tr><td>SSH</td><td><code>ssh.</code></td><td>—</td></tr>
                   <tr><td>Firewall</td><td><code>firewall.</code></td><td>—</td></tr>
                   <tr><td>Auto-updates</td><td><code>updates.</code></td><td>—</td></tr>
+                  <tr><td>Exposed services</td><td><code>ports.</code></td><td><code>ss</code></td></tr>
+                  <tr><td>Accounts</td><td><code>accounts.</code></td><td>root (for <code>/etc/shadow</code>)</td></tr>
+                  <tr><td>File permissions</td><td><code>fileperms.</code></td><td>—</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -173,6 +176,46 @@
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="ports">Exposed services <code>ports.</code></h2>
+            <p>Reads the host's listening TCP sockets with <code>ss</code> and flags services bound to a non-loopback address — the natively-installed database, admin panel, or app that a Compose-file audit can't see because it isn't a container. Loopback-only binds are ignored; SSH is expected and never flagged here.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="accounts">Accounts <code>accounts.</code></h2>
+            <p>Parsed natively from <code>/etc/passwd</code> and <code>/etc/shadow</code>. Reading <code>/etc/shadow</code> needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>; without it, the empty-password check is skipped and the UID-0 check still runs.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="fileperms">File permissions <code>fileperms.</code></h2>
+            <p>Stats a curated set of security-critical files and flags any whose permission bits are looser than they should ever be.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code> is more permissive than <code>0640</code></td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code> is writable by non-root users</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

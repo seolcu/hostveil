@@ -35,11 +35,14 @@ type axisDef struct {
 // axisDefs maps each detection domain to a scoring axis. The caps sum to
 // 100 so, when every axis runs, the score is a plain 100 − Σpenalty.
 var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 30},
-	{"ssh", "SSH hardening", SourceSSH, 25},
-	{"firewall", "Host firewall", SourceFirewall, 20},
-	{"updates", "Auto-updates", SourceUpdates, 10},
-	{"cve", "Vulnerabilities", SourceCVE, 15},
+	{"container", "Container exposure", SourceCompose, 22},
+	{"ssh", "SSH hardening", SourceSSH, 18},
+	{"firewall", "Host firewall", SourceFirewall, 14},
+	{"updates", "Auto-updates", SourceUpdates, 8},
+	{"cve", "Vulnerabilities", SourceCVE, 10},
+	{"ports", "Exposed services", SourcePorts, 12},
+	{"accounts", "Account hygiene", SourceAccounts, 10},
+	{"fileperms", "File permissions", SourceFilePerms, 6},
 }
 
 // ScoreReport computes the security score from findings. ran reports which

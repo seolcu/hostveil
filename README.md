@@ -32,6 +32,9 @@ undo any fix with one command.
 | **SSH** | Root login, password authentication, empty passwords, weak brute-force limits, X11 forwarding — parsed natively from `sshd_config` | — |
 | **Firewall** | Whether ufw, firewalld, or nftables is actually active | — |
 | **Auto-updates** | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
+| **Exposed services** | Host processes listening on a non-loopback address — the natively-installed database, admin panel, or app your Compose audit can't see, read from `ss` | `ss` |
+| **Accounts** | Non-root accounts with root's UID (0) and login accounts with an empty password, parsed from `/etc/passwd` and `/etc/shadow` | root (for `/etc/shadow`) |
+| **File permissions** | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
 | **Image CVEs** *(optional)* | Known vulnerabilities in the images your Compose services run | Trivy |
 
 Missing Docker or Trivy? Those domains are skipped cleanly and the score is
