@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "scripts/install.sh"
+      - "scripts/install.sh.sha256"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,6 +30,11 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
+
+      - name: Copy installer into site
+        run: |
+          cp scripts/install.sh site/install.sh
+          cp scripts/install.sh.sha256 site/install.sh.sha256
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v5
