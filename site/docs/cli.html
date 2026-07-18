@@ -42,6 +42,13 @@
 
       <div class="docs-layout">
         <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="Search the docs…" aria-label="Search documentation"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="Search results" hidden></ul>
+          </form>
           <div class="docs-nav-group">
             <p>Getting started</p>
             <ul>
