@@ -126,7 +126,7 @@ func TestListRenders(t *testing.T) {
 	if !strings.Contains(view, "compose.ds018") || !strings.Contains(view, "compose.ds001") {
 		t.Errorf("list view missing findings:\n%s", view)
 	}
-	if !strings.Contains(view, "Security score") {
+	if !strings.Contains(view, "SECURITY") {
 		t.Error("list view missing score header")
 	}
 }

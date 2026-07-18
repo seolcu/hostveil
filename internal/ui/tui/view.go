@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -10,32 +11,71 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
+// Palette — identical hex to the web UI ("Instrument" system). lipgloss v2
+// renders these as truecolor and degrades gracefully on limited terminals.
 var (
-	styleBold   = lipgloss.NewStyle().Bold(true)
-	styleDim    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	styleGreen  = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	styleSel    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("45"))
-	styleHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("45"))
+	cLine  = lipgloss.Color("#333b46")
+	cBone  = lipgloss.Color("#e7e3d8")
+	cSlate = lipgloss.Color("#7c8692")
+	cCrit  = lipgloss.Color("#e5484d")
+	cHigh  = lipgloss.Color("#e8843c")
+	cMed   = lipgloss.Color("#e6c14a")
+	cLow   = lipgloss.Color("#6b7480")
+	cSafe  = lipgloss.Color("#46c69a")
 )
 
-func severityStyle(s model.Severity) lipgloss.Style {
+var (
+	styleBone  = lipgloss.NewStyle().Foreground(cBone)
+	styleDim   = lipgloss.NewStyle().Foreground(cSlate)
+	styleSafe  = lipgloss.NewStyle().Foreground(cSafe)
+	styleBrand = lipgloss.NewStyle().Foreground(cBone).Bold(true)
+	styleSel   = lipgloss.NewStyle().Foreground(cBone).Background(cLine).Bold(true)
+	styleTrack = lipgloss.NewStyle().Foreground(cLine)
+)
+
+func severityColor(s model.Severity) color.Color {
 	switch s {
 	case model.SeverityCritical:
-		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+		return cCrit
 	case model.SeverityHigh:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
+		return cHigh
 	case model.SeverityMedium:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+		return cMed
 	default:
-		return styleDim
+		return cLow
 	}
+}
+
+// band maps a 0-100 health score to its meter color (safe→crit heat).
+func band(v uint8) color.Color {
+	switch {
+	case v >= 80:
+		return cSafe
+	case v >= 50:
+		return cMed
+	case v >= 25:
+		return cHigh
+	default:
+		return cCrit
+	}
+}
+
+// meter renders a segmented bar: filled blocks in c, empty in the track.
+func meter(pct uint8, width int, c color.Color) string {
+	filled := int(pct) * width / 100
+	if filled > width {
+		filled = width
+	}
+	on := lipgloss.NewStyle().Foreground(c).Render(strings.Repeat("█", filled))
+	off := styleTrack.Render(strings.Repeat("░", width-filled))
+	return on + off
 }
 
 func (m *appModel) View() tea.View {
 	var content string
 	switch m.mode {
 	case modeScanning:
-		content = "\n  " + m.status + "\n"
+		content = "\n  " + styleDim.Render(m.status) + "\n"
 	case modeList:
 		content = m.viewList()
 	case modeDetail:
@@ -48,40 +88,53 @@ func (m *appModel) View() tea.View {
 	return tea.View{Content: content, AltScreen: true}
 }
 
-func (m *appModel) header() string {
-	score := m.report.Score.Overall
-	return styleHeader.Render("hostveil") + "   " +
-		styleBold.Render(fmt.Sprintf("Security score: %d/100", score)) + "\n" +
-		styleDim.Render(m.scoreAxes()) + "\n"
+func (m *appModel) rule() string {
+	w := m.width
+	if w < 1 {
+		w = 1
+	}
+	return styleTrack.Render(strings.Repeat("─", w))
 }
 
-func (m *appModel) scoreAxes() string {
+// header renders the status bar: brand + the exposure gauge (SECURITY
+// meter + score), then the per-axis bars.
+func (m *appModel) header() string {
+	var b strings.Builder
+	sc := m.report.Score.Overall
+	b.WriteString(styleDim.Render("▚ ") + styleBrand.Render("hostveil"))
+	b.WriteString("   " + styleDim.Render("SECURITY ") + meter(sc, 18, band(sc)) +
+		styleBone.Render(fmt.Sprintf(" %d", sc)) + styleDim.Render("/100"))
+	b.WriteString("\n")
+	b.WriteString(m.axesLine())
+	b.WriteString("\n")
+	return b.String()
+}
+
+func (m *appModel) axesLine() string {
 	var parts []string
 	for _, ax := range m.report.Score.Axes {
-		if !ax.Applicable {
-			parts = append(parts, ax.Label+": N/A")
-			continue
+		label := styleDim.Render(fmt.Sprintf("%-9s", ax.ID))
+		if ax.Applicable {
+			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
+		} else {
+			parts = append(parts, label+styleTrack.Render(strings.Repeat("░", 8))+styleDim.Render(" N/A"))
 		}
-		parts = append(parts, fmt.Sprintf("%s: %d", ax.Label, ax.Score))
 	}
-	return strings.Join(parts, "  ·  ")
+	return strings.Join(parts, styleDim.Render("   "))
 }
 
 func (m *appModel) viewList() string {
 	var b strings.Builder
 	b.WriteString(m.header())
-	b.WriteString("\n")
+	b.WriteString(m.rule() + "\n")
 
 	if len(m.active) == 0 {
-		b.WriteString(styleGreen.Render("  No problems found. Clean.") + "\n")
+		b.WriteString("\n" + styleSafe.Render("  No problems found. Clean.") + "\n")
 		b.WriteString(m.footer("r rescan   q quit"))
 		return b.String()
 	}
 
-	// Scroll a window of the list so the cursor stays visible even when
-	// there are more findings than fit on screen. The overhead is the
-	// header (2), the blank line, the title, and the footer (2).
-	visible := m.height - 6
+	visible := m.height - 7
 	if visible < 1 {
 		visible = 1
 	}
@@ -91,26 +144,137 @@ func (m *appModel) viewList() string {
 		end = len(m.active)
 	}
 
-	title := styleBold.Render(fmt.Sprintf("Findings (%d)", len(m.active)))
+	head := styleDim.Render(fmt.Sprintf("FINDINGS · %d", len(m.active)))
 	if len(m.active) > visible {
-		title += styleDim.Render(fmt.Sprintf("   showing %d–%d", m.offset+1, end))
+		head += styleDim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
 	}
-	fmt.Fprintf(&b, "%s\n", title)
+	b.WriteString(head + "\n")
 
 	for i := m.offset; i < end; i++ {
-		f := m.active[i]
-		row := fmt.Sprintf("%-9s %-11s %-13s %s",
-			strings.ToUpper(f.Severity.String()), f.ID, f.Remediation.Label(), truncate(f.Title, m.width-40))
-		if f.Service != "" {
-			row += " (" + f.Service + ")"
-		}
-		if i == m.cursor {
-			b.WriteString(styleSel.Render("› "+row) + "\n")
-		} else {
-			b.WriteString("  " + severityStyle(f.Severity).Render(row) + "\n")
-		}
+		b.WriteString(m.findingRow(m.active[i], i == m.cursor) + "\n")
 	}
 	b.WriteString(m.footer("↑/↓ move   enter details   f fix   r rescan   q quit"))
+	return b.String()
+}
+
+// findingRow renders one heat-gutter row: severity gutter + label + id +
+// title + service. The selected row is inverse-video.
+func (m *appModel) findingRow(f model.Finding, selected bool) string {
+	sevC := severityColor(f.Severity)
+	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
+	sev := sevAbbr(f.Severity)
+	title := truncate(f.Title, m.width-42)
+	if selected {
+		return gutter + styleSel.Render(" "+padRight(fmt.Sprintf("%-4s %-13s %s", sev, f.ID, title), m.width-3))
+	}
+	return gutter + " " + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
+		styleDim.Render(fmt.Sprintf(" %-13s ", f.ID)) + styleBone.Render(title) + serviceSuffixTUI(f)
+}
+
+func sevAbbr(s model.Severity) string {
+	switch s {
+	case model.SeverityCritical:
+		return "CRIT"
+	case model.SeverityHigh:
+		return "HIGH"
+	case model.SeverityMedium:
+		return "MED"
+	default:
+		return "LOW"
+	}
+}
+
+func serviceSuffixTUI(f model.Finding) string {
+	if f.Service == "" {
+		return ""
+	}
+	return styleDim.Render("  (" + f.Service + ")")
+}
+
+func (m *appModel) viewDetail() string {
+	f := m.active[m.cursor]
+	var b strings.Builder
+	b.WriteString(m.header())
+	b.WriteString(m.rule() + "\n\n")
+	b.WriteString(lipgloss.NewStyle().Foreground(severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
+		"  " + styleBrand.Render(f.Title) + "\n")
+	meta := strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
+	if f.Service != "" {
+		meta += "  ·  SERVICE: " + f.Service
+	}
+	b.WriteString(styleDim.Render(meta) + "\n\n")
+	b.WriteString(styleBone.Render(wrap(f.Description, min(m.width-4, 78))) + "\n\n")
+	if f.HowToFix != "" {
+		b.WriteString(styleDim.Render("HOW TO FIX") + "\n")
+		b.WriteString(styleBone.Render(wrap(f.HowToFix, min(m.width-4, 78))) + "\n")
+	}
+	hint := "esc back   q list"
+	if f.IsFixable() {
+		hint = "f apply fix   " + hint
+	}
+	b.WriteString(m.footer(hint))
+	return b.String()
+}
+
+func (m *appModel) viewPreview() string {
+	var b strings.Builder
+	b.WriteString(styleDim.Render("FIX PREVIEW") + "\n")
+	b.WriteString(styleBrand.Render(m.preview.Label) + "\n")
+	b.WriteString(m.rule() + "\n\n")
+
+	if len(m.preview.Actions) > 1 {
+		b.WriteString(styleDim.Render("Alternatives (press a number):") + "\n")
+		for _, a := range m.preview.Actions {
+			marker := "  "
+			if a.Index == m.previewAction {
+				marker = lipgloss.NewStyle().Foreground(cBone).Render("› ")
+			}
+			b.WriteString(marker + styleBone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	a := m.preview.Actions[m.previewAction]
+	if a.Warning != "" {
+		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).Render("⚠  "+a.Warning) + "\n\n")
+	}
+	switch a.Type {
+	case "edit":
+		b.WriteString(renderDiff(a.Diff))
+	case "exec":
+		b.WriteString(styleDim.Render("These commands will run:") + "\n")
+		for _, cmd := range a.Commands {
+			b.WriteString(styleDim.Render("  $ "+strings.Join(cmd, " ")) + "\n")
+		}
+	}
+	b.WriteString(m.footer("y apply   n cancel"))
+	return b.String()
+}
+
+func (m *appModel) viewMessage() string {
+	var b strings.Builder
+	b.WriteString(m.header())
+	b.WriteString(m.rule() + "\n\n  " + styleBone.Render(m.status) + "\n")
+	b.WriteString(m.footer("press any key to continue"))
+	return b.String()
+}
+
+func (m *appModel) footer(hint string) string {
+	return "\n" + m.rule() + "\n" + styleDim.Render(hint)
+}
+
+func renderDiff(diff string) string {
+	var b strings.Builder
+	for _, line := range strings.Split(strings.TrimRight(diff, "\n"), "\n") {
+		switch {
+		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++"):
+			b.WriteString(styleSafe.Render(line) + "\n")
+		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---"):
+			b.WriteString(lipgloss.NewStyle().Foreground(cCrit).Render(line) + "\n")
+		default:
+			b.WriteString(styleDim.Render(line) + "\n")
+		}
+	}
 	return b.String()
 }
 
@@ -132,99 +296,18 @@ func scrollOffset(cursor, total, visible, offset int) int {
 	return offset
 }
 
-func (m *appModel) viewDetail() string {
-	f := m.active[m.cursor]
-	var b strings.Builder
-	b.WriteString(m.header())
-	b.WriteString("\n")
-	fmt.Fprintf(&b, "%s %s\n", severityStyle(f.Severity).Render("["+strings.ToUpper(f.Severity.String())+"]"), styleBold.Render(f.Title))
-	fmt.Fprintf(&b, "%s\n\n", styleDim.Render(f.ID+"   "+f.Remediation.Label()+serviceTag(f)))
-	b.WriteString(wrap(f.Description, min(m.width-4, 76)) + "\n\n")
-	if f.HowToFix != "" {
-		b.WriteString(styleGreen.Render("How to fix:") + "\n")
-		b.WriteString(wrap(f.HowToFix, min(m.width-4, 76)) + "\n")
-	}
-	hint := "esc back   q list"
-	if f.IsFixable() {
-		hint = "f apply fix   " + hint
-	}
-	b.WriteString(m.footer(hint))
-	return b.String()
-}
-
-func (m *appModel) viewPreview() string {
-	var b strings.Builder
-	b.WriteString(styleHeader.Render("Fix preview") + "\n")
-	fmt.Fprintf(&b, "%s\n\n", styleBold.Render(m.preview.Label))
-
-	if len(m.preview.Actions) > 1 {
-		b.WriteString(styleDim.Render("Alternatives (press a number to choose):") + "\n")
-		for _, a := range m.preview.Actions {
-			marker := "  "
-			if a.Index == m.previewAction {
-				marker = "› "
-			}
-			fmt.Fprintf(&b, "%s[%d] %s\n", marker, a.Index, a.Label)
-		}
-		b.WriteString("\n")
-	}
-
-	a := m.preview.Actions[m.previewAction]
-	if a.Warning != "" {
-		b.WriteString(severityStyle(model.SeverityHigh).Render("⚠  "+a.Warning) + "\n\n")
-	}
-	switch a.Type {
-	case "edit":
-		b.WriteString(renderDiff(a.Diff))
-	case "exec":
-		b.WriteString(styleDim.Render("These commands will run:") + "\n")
-		for _, cmd := range a.Commands {
-			b.WriteString("  $ " + strings.Join(cmd, " ") + "\n")
-		}
-	}
-	b.WriteString(m.footer("y apply   n cancel"))
-	return b.String()
-}
-
-func (m *appModel) viewMessage() string {
-	var b strings.Builder
-	b.WriteString(m.header())
-	b.WriteString("\n  " + m.status + "\n")
-	b.WriteString(m.footer("press any key to continue"))
-	return b.String()
-}
-
-func (m *appModel) footer(hint string) string {
-	return "\n" + styleDim.Render(hint)
-}
-
-func renderDiff(diff string) string {
-	var b strings.Builder
-	for _, line := range strings.Split(strings.TrimRight(diff, "\n"), "\n") {
-		switch {
-		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++"):
-			b.WriteString(styleGreen.Render(line) + "\n")
-		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---"):
-			b.WriteString(severityStyle(model.SeverityCritical).Render(line) + "\n")
-		default:
-			b.WriteString(styleDim.Render(line) + "\n")
-		}
-	}
-	return b.String()
-}
-
-func serviceTag(f model.Finding) string {
-	if f.Service == "" {
-		return ""
-	}
-	return "   service: " + f.Service
-}
-
 func truncate(s string, max int) string {
 	if max < 4 || len(s) <= max {
 		return s
 	}
 	return s[:max-1] + "…"
+}
+
+func padRight(s string, n int) string {
+	if lipgloss.Width(s) >= n || n < 0 {
+		return s
+	}
+	return s + strings.Repeat(" ", n-lipgloss.Width(s))
 }
 
 func wrap(s string, width int) string {
@@ -246,4 +329,11 @@ func wrap(s string, width int) string {
 		ll += len(w)
 	}
 	return b.String()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
