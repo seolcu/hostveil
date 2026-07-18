@@ -118,10 +118,10 @@
             <p>Pass options through the pipe with <code>bash -s --</code>, for example:</p>
             <div class="code-block"><pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --no-trivy</code></pre></div>
 
-            <h2>Run with sudo for full coverage</h2>
-            <div class="callout warn">
+            <h2>Elevation is automatic</h2>
+            <div class="callout">
               <span class="callout-label">Heads up</span>
-              <p>The SSH and firewall checks read root-owned files (such as <code>sshd_config</code>). Run scans with <code>sudo</code> for complete coverage — without it, those domains are skipped with a clear message and the score is renormalized so you are not handed a misleadingly perfect result.</p>
+              <p>The SSH and firewall checks read root-owned files (such as <code>sshd_config</code>), and applying fixes writes to protected paths. So <code>hostveil</code> re-runs itself under <code>sudo</code> automatically — you'll see the same sudo password prompt as <code>sudo hostveil</code>, and after authenticating it continues in the same terminal. <code>version</code> and <code>help</code> never prompt. To run unprivileged (scripts/CI), set <code>HOSTVEIL_NO_SUDO=1</code>; the root-owned domains are then skipped with a clear message and the score is renormalized so you are not handed a misleadingly perfect result.</p>
             </div>
 
             <h2>Optional tools</h2>

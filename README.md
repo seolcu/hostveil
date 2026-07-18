@@ -58,8 +58,13 @@ hostveil explain <id>    # explain a finding (add --ai for a local-LLM second op
 hostveil serve           # web dashboard on 127.0.0.1:8787
 ```
 
-Some checks (SSH, firewall) read root-owned files. Run with `sudo` for full
-coverage; without it, those domains are skipped with a clear message.
+Some checks (SSH, firewall) read root-owned files, and applying fixes needs
+root too. So `hostveil` **elevates itself with `sudo` automatically** — you'll
+see the same sudo password prompt as `sudo hostveil`, and after authenticating
+it continues in the same terminal. `version` and `help` never prompt.
+
+To run unprivileged (scripts/CI), set `HOSTVEIL_NO_SUDO=1`; the root-owned
+domains are then skipped with a clear message.
 
 ## How fixing works
 

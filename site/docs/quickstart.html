@@ -83,10 +83,10 @@
             <p class="lead">Scan, understand, apply, recover. This walks the whole loop on the command line; the TUI and web dashboard drive the exact same engine if you prefer them.</p>
 
             <h2>1. Scan locally</h2>
-            <p>Run a scan with <code>sudo</code> so the SSH and firewall checks have access to root-owned files:</p>
+            <p>Just run a scan — <code>hostveil</code> elevates itself with <code>sudo</code> automatically so the SSH and firewall checks can read root-owned files. You'll see the same sudo password prompt as <code>sudo hostveil</code>:</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="sudo hostveil scan">Copy</button>
-              <pre><code>sudo hostveil scan</code></pre>
+              <button class="copy-btn" type="button" data-copy="hostveil scan">Copy</button>
+              <pre><code>hostveil scan</code></pre>
             </div>
             <p>You get a single 0–100 security score and a list of findings ordered by severity. Areas whose tooling is absent (no Docker, no Trivy) are skipped and the score is renormalized — a clean host shows <strong>Clean</strong>, not a hollow 100.</p>
             <div class="callout">
@@ -96,22 +96,22 @@
 
             <h2>2. Understand a finding</h2>
             <p>Add <code>-v</code> to see each finding's plain-language description and fix guidance inline:</p>
-            <div class="code-block"><pre><code>sudo hostveil scan -v</code></pre></div>
+            <div class="code-block"><pre><code>hostveil scan -v</code></pre></div>
             <p>Or dig into one finding by its ID (for example <code>ssh.rootlogin</code>):</p>
             <div class="code-block"><pre><code>hostveil explain ssh.rootlogin</code></pre></div>
             <p>Want a second opinion in your own words? Add <code>--ai</code> for an advisory explanation from a local model — see <a href="ai">AI explanations</a>. Every finding ID and what it means is listed in <a href="checks">What it checks</a>.</p>
 
             <h2>3. Apply a fix</h2>
             <p>Fixing always shows the exact change first and backs up the original before touching anything. Preview and apply one finding:</p>
-            <div class="code-block"><pre><code>sudo hostveil fix ssh.rootlogin</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix ssh.rootlogin</code></pre></div>
             <p>Or apply every clearly-safe (Auto) fix at once — Review and Manual findings are left for you to decide:</p>
-            <div class="code-block"><pre><code>sudo hostveil fix --all</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
             <p>See <a href="fixing">Fixing &amp; rollback</a> for how Auto, Review, and Manual differ.</p>
 
             <h2>4. Roll back anytime</h2>
             <p>Every applied fix is a checkpoint. List them, then undo one by its ID:</p>
             <div class="code-block"><pre><code>hostveil history
-sudo hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
             <p>Rollback restores the backed-up file byte-for-byte. Because every interface goes through one shared engine, a fix applied in the TUI or web dashboard is reversible here too.</p>
 
             <div class="docs-pager">
