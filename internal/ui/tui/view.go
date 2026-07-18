@@ -78,8 +78,27 @@ func (m *appModel) viewList() string {
 		return b.String()
 	}
 
-	fmt.Fprintf(&b, "%s\n", styleBold.Render(fmt.Sprintf("Findings (%d)", len(m.active))))
-	for i, f := range m.active {
+	// Scroll a window of the list so the cursor stays visible even when
+	// there are more findings than fit on screen. The overhead is the
+	// header (2), the blank line, the title, and the footer (2).
+	visible := m.height - 6
+	if visible < 1 {
+		visible = 1
+	}
+	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
+	end := m.offset + visible
+	if end > len(m.active) {
+		end = len(m.active)
+	}
+
+	title := styleBold.Render(fmt.Sprintf("Findings (%d)", len(m.active)))
+	if len(m.active) > visible {
+		title += styleDim.Render(fmt.Sprintf("   showing %d–%d", m.offset+1, end))
+	}
+	fmt.Fprintf(&b, "%s\n", title)
+
+	for i := m.offset; i < end; i++ {
+		f := m.active[i]
 		row := fmt.Sprintf("%-9s %-11s %-13s %s",
 			strings.ToUpper(f.Severity.String()), f.ID, f.Remediation.Label(), truncate(f.Title, m.width-40))
 		if f.Service != "" {
@@ -93,6 +112,24 @@ func (m *appModel) viewList() string {
 	}
 	b.WriteString(m.footer("↑/↓ move   enter details   f fix   r rescan   q quit"))
 	return b.String()
+}
+
+// scrollOffset returns a new window start that keeps cursor within the
+// visible rows, clamped to the list bounds.
+func scrollOffset(cursor, total, visible, offset int) int {
+	if cursor < offset {
+		offset = cursor
+	}
+	if cursor >= offset+visible {
+		offset = cursor - visible + 1
+	}
+	if max := total - visible; offset > max {
+		offset = max
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return offset
 }
 
 func (m *appModel) viewDetail() string {

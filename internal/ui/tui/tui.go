@@ -31,6 +31,7 @@ type appModel struct {
 	active []model.Finding
 
 	cursor        int
+	offset        int // first visible finding index (list scrolling)
 	width, height int
 	mode          mode
 
@@ -94,6 +95,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.report = msg.report
 		m.active = m.report.Select(model.Filter{})
 		m.cursor = clamp(m.cursor, 0, len(m.active)-1)
+		m.offset = 0
 		m.mode = modeList
 		return m, nil
 

@@ -4,14 +4,17 @@
   --low: #6b7280; --ok: #35d07f; --accent: #4aa3ff;
 }
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Fixed header/axes; the two panels below scroll independently. */
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
 }
 header {
+  flex: 0 0 auto;
   display: flex; align-items: center; gap: 20px;
   padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel);
-  position: sticky; top: 0; z-index: 5;
 }
 .brand { font-weight: 700; font-size: 18px; letter-spacing: .5px; color: var(--accent); }
 .score { font-weight: 700; font-size: 20px; }
@@ -24,12 +27,18 @@ button {
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: #06101f; border-color: var(--accent); font-weight: 600; }
 button:disabled { opacity: .5; cursor: default; }
-.axes { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 22px; color: var(--dim); border-bottom: 1px solid var(--line); }
+.axes { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 22px; color: var(--dim); border-bottom: 1px solid var(--line); }
 .axes .na { opacity: .55; }
-.status { margin: 12px 22px 0; padding: 10px 14px; border-radius: 6px; background: #10261b; border: 1px solid #1f4d36; color: var(--ok); }
-main { display: grid; grid-template-columns: minmax(340px, 1.2fr) 1.4fr; gap: 0; min-height: calc(100vh - 120px); }
-@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-.findings { border-right: 1px solid var(--line); padding: 10px 0; overflow-x: auto; }
+.status { flex: 0 0 auto; margin: 12px 22px 0; padding: 10px 14px; border-radius: 6px; background: #10261b; border: 1px solid #1f4d36; color: var(--ok); }
+main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(340px, 1.2fr) 1.4fr; gap: 0; overflow: hidden; }
+.findings { border-right: 1px solid var(--line); padding: 10px 0; overflow-y: auto; min-height: 0; }
+.detail { overflow-y: auto; min-height: 0; }
+@media (max-width: 800px) {
+  /* On narrow screens stack the panels and let the page scroll normally. */
+  body { height: auto; overflow: visible; }
+  main { grid-template-columns: 1fr; overflow: visible; }
+  .findings, .detail { overflow: visible; }
+}
 .findings h2, .detail h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); margin: 8px 22px; }
 ul { list-style: none; margin: 0; padding: 0; }
 .finding { padding: 10px 22px; border-left: 3px solid transparent; cursor: pointer; display: flex; gap: 10px; align-items: baseline; }
