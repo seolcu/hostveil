@@ -43,6 +43,15 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}, nil
 }
 
+// Active reports whether any supported host firewall is actively filtering.
+// It is exported so other checkers (e.g. the ports checker) can treat an
+// active firewall as a backstop when deciding how loudly to flag an exposed
+// listener, reusing this package's probing rather than duplicating it.
+func Active(ctx context.Context, r platform.CommandRunner) bool {
+	active, _ := activeFirewall(ctx, r)
+	return active
+}
+
 // activeFirewall returns whether any supported firewall is actively
 // filtering, and which one.
 func activeFirewall(ctx context.Context, r platform.CommandRunner) (bool, string) {

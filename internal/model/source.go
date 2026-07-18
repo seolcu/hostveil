@@ -17,6 +17,9 @@ const (
 	SourceFirewall
 	SourceUpdates
 	SourceCVE
+	SourcePorts
+	SourceAccounts
+	SourceFilePerms
 )
 
 // String returns the stable lowercase domain name, also used as the
@@ -33,6 +36,12 @@ func (s Source) String() string {
 		return "updates"
 	case SourceCVE:
 		return "cve"
+	case SourcePorts:
+		return "ports"
+	case SourceAccounts:
+		return "accounts"
+	case SourceFilePerms:
+		return "fileperms"
 	default:
 		return "unset"
 	}
@@ -40,10 +49,13 @@ func (s Source) String() string {
 
 // Valid reports whether the source was set to a real domain.
 func (s Source) Valid() bool {
-	return s >= SourceCompose && s <= SourceCVE
+	return s >= SourceCompose && s <= SourceFilePerms
 }
 
 // AllSources lists every real detection domain in scan/report order.
 func AllSources() []Source {
-	return []Source{SourceCompose, SourceSSH, SourceFirewall, SourceUpdates, SourceCVE}
+	return []Source{
+		SourceCompose, SourceSSH, SourceFirewall, SourceUpdates, SourceCVE,
+		SourcePorts, SourceAccounts, SourceFilePerms,
+	}
 }

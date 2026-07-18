@@ -3,9 +3,12 @@ package main
 import (
 	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/check"
+	accountscheck "github.com/seolcu/hostveil/internal/check/accounts"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
+	filepermscheck "github.com/seolcu/hostveil/internal/check/fileperms"
 	firewallcheck "github.com/seolcu/hostveil/internal/check/firewall"
+	portscheck "github.com/seolcu/hostveil/internal/check/ports"
 	sshcheck "github.com/seolcu/hostveil/internal/check/ssh"
 	updatescheck "github.com/seolcu/hostveil/internal/check/updates"
 	"github.com/seolcu/hostveil/internal/core"
@@ -27,6 +30,9 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 			firewallcheck.New(),
 			updatescheck.New(),
 			cvecheck.New(),
+			portscheck.New(),
+			accountscheck.New(),
+			filepermscheck.New(),
 		),
 		Fixes: fix.Default(),
 	}
