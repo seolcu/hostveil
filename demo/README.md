@@ -47,25 +47,28 @@ That's it — the same `Vagrantfile` picks libvirt or VirtualBox automatically.
 
 ## Run it
 
+Nothing auto-starts — you bring the demo up **only when you want it** with
+the `run.sh` helper, and shut it down when you're done:
+
 ```bash
 cd demo
-vagrant up                 # build + provision (first run downloads the box + images)
-vagrant ssh                # SSH into the vulnerable server
+./run.sh up        # boot the VM + start the vulnerable stacks (first run downloads the box + images)
+./run.sh scan      # scored report across all domains
+./run.sh web       # dashboard at http://localhost:8787 (Ctrl-C to stop)
+./run.sh shell     # a shell on the demo server — then e.g. `sudo hostveil`
+./run.sh halt      # shut the VM down; nothing keeps running
 ```
 
-Inside the VM:
-```bash
-sudo hostveil scan                 # scored report across all domains
-sudo hostveil                      # interactive TUI
-sudo hostveil serve --addr 0.0.0.0:8787   # web dashboard (see below)
-```
-> Run hostveil with **sudo** so it can read root-owned config
+Prefer raw Vagrant? `vagrant up` / `vagrant ssh` work too (run
+`./run.sh up` once after a boot to start the stacks — they intentionally
+have no restart policy, so they don't come back on their own).
+
+> Run hostveil with **sudo** inside the VM so it can read root-owned config
 > (`/etc/ssh/sshd_config`) and apply fixes. Without sudo, those domains are
 > skipped with a clear message — which is itself a nice thing to show.
 
-**Web dashboard**: port 8787 is forwarded to the host, so once
-`hostveil serve` is running in the VM, open **<http://localhost:8787>** in
-your normal browser.
+**Web dashboard**: port 8787 is forwarded to the host, so while
+`./run.sh web` is running, open **<http://localhost:8787>** in your browser.
 
 hostveil is built from the mounted repo (`/hostveil`), so it always reflects
 your **current local source**. Changed the code? `vagrant provision` (or just
@@ -96,16 +99,16 @@ Judges can poke around and see it's a real server: `docker ps`,
 
 ## Reset between demo runs
 
-Take a snapshot right after the first provision, then restore it to get a
-pristine vulnerable server every time:
+Take a snapshot once the server is up, then restore it to get a pristine
+vulnerable server every time:
 
 ```bash
-vagrant snapshot save clean       # once, after the first `vagrant up`
+./run.sh snapshot     # once, after `./run.sh up` — saves the "clean" baseline
 # ... demo, apply fixes ...
-vagrant snapshot restore clean    # back to the original vulnerable state
+./run.sh reset        # back to the original vulnerable state + stacks restarted
 ```
 
-Tear it down completely with `vagrant destroy`.
+Tear it down completely with `./run.sh destroy`.
 
 ---
 

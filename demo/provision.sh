@@ -63,6 +63,9 @@ ufw --force disable || true
 echo "==> [7/8] deploy vulnerable compose stacks"
 mkdir -p /opt/stacks
 cp -r "$DEMO/stacks/." /opt/stacks/
+# Bring the stacks up once now. They have no restart policy on purpose, so
+# they do NOT come back on their own after a reboot — nothing auto-starts.
+# Use `demo/run.sh up` on the host to start the demo whenever you want it.
 for dir in /opt/stacks/*/; do
   name=$(basename "$dir")
   echo "   • bringing up stack: $name"
