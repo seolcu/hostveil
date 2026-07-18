@@ -117,6 +117,121 @@ func TestListScrolls(t *testing.T) {
 	}
 }
 
+func TestFilterNarrowsList(t *testing.T) {
+	fs := []model.Finding{
+		model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
+		model.NewFinding("compose.ds001", "Privileged", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("app")),
+		model.NewFinding("updates.disabled", "Auto-updates off", model.SeverityMedium, model.SourceUpdates, model.RemediationReview),
+	}
+	rep := model.Report{Findings: fs, Score: model.ScoreReport(fs, nil)}
+
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = send(m, scannedMsg{report: rep})
+	if got := len(m.(*appModel).active); got != 3 {
+		t.Fatalf("want 3 active, got %d", got)
+	}
+
+	// s once → minimum severity Critical → only the crit finding.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "s"}))
+	if got := len(m.(*appModel).active); got != 1 {
+		t.Errorf("severity filter: want 1, got %d", got)
+	}
+	// c → clear.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "c"}))
+	if got := len(m.(*appModel).active); got != 3 {
+		t.Errorf("clear: want 3, got %d", got)
+	}
+	// d once → first present domain (compose) → 2 compose findings.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "d"}))
+	if got := len(m.(*appModel).active); got != 2 {
+		t.Errorf("domain filter: want 2 compose, got %d", got)
+	}
+	// x → fixable-only, on top of compose → only the Auto ds018.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "x"}))
+	am := m.(*appModel)
+	if len(am.active) != 1 || am.active[0].ID != "compose.ds018" {
+		t.Errorf("fixable filter: want [compose.ds018], got %d findings", len(am.active))
+	}
+}
+
+// TestMultiSelectBatchApply marks two auto-fixable findings and applies them
+// as a batch through a real engine, confirming both files are edited.
+func TestMultiSelectBatchApply(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	yaml := "services:\n" +
+		"  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n" +
+		"  store:\n    image: redis\n    ports:\n      - \"6380:6380\"\n"
+	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine := core.New(core.Config{
+		Registry: check.NewRegistry(composecheck.New()),
+		Fixes:    fix.Default(),
+		Store:    history.NewStore(t.TempDir()),
+		Runner:   fakeRunner{present: map[string]bool{"docker": true}, lsJSON: `[{"Name":"demo","ConfigFiles":"` + path + `"}]`},
+	})
+	rep := engine.Scan(context.Background(), nil)
+
+	m := tea.Model(&appModel{engine: engine, mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = send(m, scannedMsg{report: rep})
+
+	// Mark every auto-fixable exposed-datastore finding.
+	am := m.(*appModel)
+	marked := 0
+	for _, f := range am.active {
+		if f.ID == "compose.ds018" && f.Remediation == model.RemediationAuto {
+			am.selected[f.Key()] = true
+			marked++
+		}
+	}
+	if marked != 2 {
+		t.Fatalf("expected 2 exposed datastores to mark, got %d", marked)
+	}
+
+	// a → batch command; run it and feed the result back.
+	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "a"}))
+	if cmd == nil {
+		t.Fatal("a should issue a batch command")
+	}
+	m = send(m, cmd())
+	am = m.(*appModel)
+	if !strings.Contains(am.status, "Applied 2") {
+		t.Errorf("expected 'Applied 2' status, got %q", am.status)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "127.0.0.1:6379:6379") || !strings.Contains(string(data), "127.0.0.1:6380:6380") {
+		t.Errorf("both datastores should be bound to loopback:\n%s", data)
+	}
+	for _, f := range am.active {
+		if f.ID == "compose.ds018" {
+			t.Error("fixed datastores should be gone from the refreshed list")
+		}
+	}
+	if len(am.selected) != 0 {
+		t.Error("selection should be cleared after a batch apply")
+	}
+}
+
+// TestSpaceTogglesOnlyAuto verifies space marks auto rows and ignores others.
+func TestSpaceTogglesOnlyAuto(t *testing.T) {
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = send(m, scannedMsg{report: sampleReport()}) // ds018 Auto (cursor 0), ds001 Manual
+
+	m = send(m, tea.KeyPressMsg(tea.Key{Code: tea.KeySpace})) // mark the Auto finding
+	if got := len(m.(*appModel).selected); got != 1 {
+		t.Fatalf("space on auto row: want 1 marked, got %d", got)
+	}
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "j"}))          // to the Manual finding
+	m = send(m, tea.KeyPressMsg(tea.Key{Code: tea.KeySpace})) // should be a no-op
+	if got := len(m.(*appModel).selected); got != 1 {
+		t.Errorf("space on manual row must not mark: want 1, got %d", got)
+	}
+}
+
 func TestListRenders(t *testing.T) {
 	m := &appModel{engine: nil, mode: modeList}
 	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40}).(*appModel)

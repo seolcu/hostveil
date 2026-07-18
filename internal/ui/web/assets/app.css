@@ -79,18 +79,41 @@ button:disabled { opacity: .45; cursor: default; }
 /* ── body: two panes, independent scroll ── */
 main { flex: 1 1 auto; min-height: 0; display: grid;
   grid-template-columns: minmax(360px, 1.1fr) 1.5fr; overflow: hidden; }
-.findings { border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
+.findings { border-right: 1px solid var(--line); display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden; }
 .detail { overflow-y: auto; min-height: 0; padding: 16px 22px; }
 
-.pane-head { position: sticky; top: 0; background: var(--ink);
-  padding: 10px 18px; border-bottom: 1px solid var(--line);
+.pane-head { background: var(--ink); padding: 10px 18px; border-bottom: 1px solid var(--line);
   font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--slate); }
+#findings { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 ul { list-style: none; margin: 0; padding: 0; }
 
+/* ── filter chips ── */
+.filterbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px 14px; border-bottom: 1px solid var(--line); }
+.filterbar:empty { display: none; }
+.chip { font: 600 10px/1 var(--mono); letter-spacing: .6px; text-transform: uppercase;
+  color: var(--slate); background: transparent; border: 1px solid var(--line-2); border-radius: 0;
+  padding: 5px 9px; cursor: pointer; }
+.chip:hover { border-color: var(--bone); color: var(--bone); }
+.chip.on { color: var(--ink); background: var(--slate); border-color: var(--slate); }
+.chip.c-crit { color: var(--crit); } .chip.c-high { color: var(--high); }
+.chip.c-med { color: var(--med); } .chip.c-low { color: var(--low); }
+.chip.c-crit.on { background: var(--crit); border-color: var(--crit); color: var(--ink); }
+.chip.c-high.on { background: var(--high); border-color: var(--high); color: var(--ink); }
+.chip.c-med.on { background: var(--med); border-color: var(--med); color: var(--ink); }
+.chip.c-low.on { background: var(--low); border-color: var(--low); color: var(--ink); }
+
+/* ── batch action bar ── */
+.batchbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 14px;
+  border-bottom: 1px solid var(--line); background: var(--ink-3); }
+.batchbar[hidden] { display: none; }
+
 /* ── finding row: heat gutter + dense mono ── */
-.finding { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline;
+.finding { display: grid; grid-template-columns: auto auto 1fr auto; gap: 12px; align-items: baseline;
   padding: 9px 18px 9px 15px; border-left: 3px solid transparent; cursor: pointer;
   border-bottom: 1px solid var(--ink-2); }
+.pick { accent-color: var(--safe); width: 14px; height: 14px; cursor: pointer; align-self: center; margin: 0; }
+.pick-spacer { display: inline-block; width: 14px; }
 .finding:hover { background: var(--ink-2); }
 .finding.active { background: var(--ink-2); border-left-color: var(--bone); }
 .sev { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
@@ -103,6 +126,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
 .finding .svc { color: var(--slate); font-size: 11px; white-space: nowrap; }
 .clean { padding: 22px 18px; color: var(--safe); }
+.clean.muted { color: var(--slate); }
 
 /* ── detail / console ── */
 .detail .empty { color: var(--slate); }

@@ -43,6 +43,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/preview", s.handlePreview)
 	mux.HandleFunc("/api/fix", s.handleFix)
 	mux.HandleFunc("/api/fix/all", s.handleFixAll)
+	mux.HandleFunc("/api/fix/batch", s.handleFixBatch)
 	mux.HandleFunc("/api/rescan", s.handleRescan)
 	mux.HandleFunc("/api/history", s.handleHistory)
 	mux.HandleFunc("/api/rollback", s.handleRollback)
@@ -183,6 +184,33 @@ func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, s.engine.ApplyBatch(r.Context(), auto))
+}
+
+type fixRef struct {
+	ID      string `json:"id"`
+	Service string `json:"service"`
+}
+
+type batchRequest struct {
+	Findings []fixRef `json:"findings"`
+}
+
+// handleFixBatch applies exactly the findings the client selected. Each is
+// resolved against the current report; ApplyBatch itself skips anything that
+// is not a single-action Auto fix, reporting it under Skipped.
+func (s *Server) handleFixBatch(w http.ResponseWriter, r *http.Request) {
+	var req batchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	var sel []model.Finding
+	for _, ref := range req.Findings {
+		if f, ok := s.lookup(ref.ID, ref.Service); ok {
+			sel = append(sel, f)
+		}
+	}
+	writeJSON(w, s.engine.ApplyBatch(r.Context(), sel))
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
