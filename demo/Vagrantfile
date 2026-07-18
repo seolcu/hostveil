@@ -5,8 +5,9 @@
 # See README.md for one-time setup per platform.
 
 Vagrant.configure("2") do |config|
-  # generic/* (roboxes) ships images for both libvirt and virtualbox.
-  config.vm.box = "generic/ubuntu2404"
+  # Canonical's official Ubuntu 24.04 cloud image — published for libvirt,
+  # virtualbox, and qemu, so one box works across Linux/macOS/Windows.
+  config.vm.box = "cloud-image/ubuntu-24.04"
   config.vm.hostname = "homelab"
 
   # The web dashboard: reach it at http://localhost:8787 on the host.

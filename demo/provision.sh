@@ -10,8 +10,13 @@ DEMO="$REPO/demo"
 GO_VERSION=1.26.3
 export DEBIAN_FRONTEND=noninteractive
 
+echo "==> [0/8] prefer IPv4 (libvirt NAT usually has no IPv6 egress → apt/curl/docker fail on IPv6)"
+sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 echo "==> [1/8] base packages"
-apt-get update -y
+apt-get update -y || true
 apt-get install -y ca-certificates curl git ufw openssh-server
 
 echo "==> [2/8] Docker (official convenience script — gives 'docker compose')"

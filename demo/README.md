@@ -109,6 +109,24 @@ Tear it down completely with `vagrant destroy`.
 
 ---
 
+## Troubleshooting
+
+**The VM has no internet during `vagrant up` (Linux + libvirt + Docker on the host).**
+If the host also runs Docker, Docker sets the kernel's `FORWARD` policy to
+DROP, which blocks the libvirt VM's NAT traffic (you'll see apt/curl time
+out inside the VM). Allow the VM's bridge to forward and masquerade out:
+
+```bash
+sudo firewall-cmd --zone="$(firewall-cmd --get-default-zone)" --add-masquerade
+sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -i virbr0 -j ACCEPT
+sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -o virbr0 -j ACCEPT
+```
+
+These apply immediately. To keep them across reboots, append `--permanent`
+to each (then `sudo firewall-cmd --reload`). Then re-run `vagrant provision`.
+This does **not** affect teammates using VirtualBox (macOS/Windows), whose
+NAT is independent of the host firewall.
+
 ## What's deliberately vulnerable
 
 | Domain | Seeded problem | Example finding |
