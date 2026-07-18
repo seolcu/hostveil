@@ -3,6 +3,14 @@
 (function () {
   "use strict";
 
+  var KO = document.documentElement.lang === "ko";
+  var T = {
+    copy: KO ? "복사" : "Copy",
+    copied: KO ? "복사됨" : "Copied",
+    noMatches: KO ? "검색 결과 없음" : "No matches",
+    inSection: KO ? "이 섹션" : "In this section",
+  };
+
   /* ── copy-to-clipboard ────────────────────────────────── */
 
   document.addEventListener("click", function (e) {
@@ -11,10 +19,10 @@
     var text = btn.getAttribute("data-copy");
     if (!text || !navigator.clipboard) return;
     navigator.clipboard.writeText(text).then(function () {
-      btn.textContent = "Copied";
+      btn.textContent = T.copied;
       btn.classList.add("copied");
       setTimeout(function () {
-        btn.textContent = "Copy";
+        btn.textContent = T.copy;
         btn.classList.remove("copied");
       }, 1500);
     });
@@ -183,11 +191,11 @@
       active = -1;
       if (!sInput.value.trim()) { close(); return; }
       if (!items.length) {
-        sResults.innerHTML = '<li class="docs-search-empty">No matches</li>';
+        sResults.innerHTML = '<li class="docs-search-empty">' + T.noMatches + "</li>";
       } else {
         sResults.innerHTML = items.map(function (r, i) {
           var href = r.url + (r.anchor ? "#" + r.anchor : "");
-          var sub = r.heading && r.heading !== r.title ? r.title : "In this section";
+          var sub = r.heading && r.heading !== r.title ? r.title : T.inSection;
           return '<li role="option" id="ds-opt-' + i + '">' +
             '<a href="' + esc(href) + '"><strong>' + esc(r.heading) + "</strong>" +
             "<span>" + esc(sub) + "</span></a></li>";

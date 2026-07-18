@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>인터페이스 — hostveil 문서</title>
+    <meta name="description" content="hostveil의 세 가지 인터페이스 — 키보드 기반 TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 모두 하나의 공유 수정·롤백 엔진을 구동합니다.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="인터페이스 — hostveil 문서">
+    <meta property="og:description" content="TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 하나의 공유 엔진.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/interfaces">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:locale" content="ko_KR">
+    <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/interfaces">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/interfaces">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/interfaces">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/interfaces">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../../docs.css">
+    <script src="../../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="주요 내비게이션">
+        <a class="brand" href="../" aria-label="hostveil 홈">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">문서</a>
+          <a href="../#features">기능</a>
+          <a href="../#install">설치</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/docs/interfaces" lang="en" hreflang="en">English</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        문서 메뉴
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="문서 내비게이션">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="문서 검색…" aria-label="문서 검색"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="검색 결과" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>시작하기</p>
+            <ul>
+              <li><a href="./">소개</a></li>
+              <li><a href="installation">설치</a></li>
+              <li><a href="quickstart">빠른 시작</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>가이드</p>
+            <ul>
+              <li><a href="checks">점검 항목</a></li>
+              <li><a href="fixing">수정 및 롤백</a></li>
+              <li><a href="interfaces" class="active">인터페이스</a></li>
+              <li><a href="ai">AI 설명</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>레퍼런스</p>
+            <ul>
+              <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="faq">자주 묻는 질문</a></li>
+              <li><a href="contributing">기여하기</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 인터페이스</p>
+            <h1>인터페이스</h1>
+            <p class="lead">hostveil에는 세 가지 얼굴이 있습니다 — 터미널 UI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 그리고 셋 모두 하나의 공유 엔진 위의 얇은 계층입니다. 어느 하나에서 스캔하거나, 고치거나, 되돌리든 다른 곳에도 반영됩니다.</p>
+
+            <h2>TUI — 기본값</h2>
+            <p>인수 없이 대화형 터미널에서 <code>hostveil</code>을 실행하면 키보드 기반 TUI가 열립니다. 명시적으로 실행할 수도 있습니다.</p>
+            <div class="code-block"><pre><code>sudo hostveil        # or: sudo hostveil tui</code></pre></div>
+            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다.</p>
+            <figure>
+              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="478" loading="lazy">
+              <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
+            </figure>
+            <div class="callout">
+              <span class="callout-label">터미널이 필요함</span>
+              <p>TUI는 대화형 터미널이 필요합니다. stdin/stdout이 파이프되거나 리다이렉트된 경우, 대신 <code>hostveil scan</code>을 사용하세요 — 일반 텍스트 보고서를 출력합니다.</p>
+            </div>
+
+            <h2>웹 — localhost 대시보드</h2>
+            <p>브라우저로 검토하는 편이 나을 때 동일한 스캔을 HTTP로 제공합니다.</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="sudo hostveil serve">Copy</button>
+              <pre><code>sudo hostveil serve</code></pre>
+            </div>
+            <p>기본적으로 <code>127.0.0.1:8787</code>에 바인딩됩니다 — loopback 전용입니다. <code>--addr</code>로 변경할 수 있으며, non-loopback 주소를 지정하면 hostveil이 대시보드 노출에 관한 경고를 출력합니다. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
+            <figure>
+              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 필터 칩, 다중 선택, 수정 상세" width="1200" height="456" loading="lazy">
+              <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수, 필터 가능한 발견 항목, 다중 선택 일괄 수정, 미리보기, 롤백.</span></figcaption>
+            </figure>
+
+            <h2>CLI — 스크립트 가능</h2>
+            <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 심각 또는 높음이 하나라도 있으면 0이 아닌 값으로 종료합니다 — 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>
+            <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
+sudo hostveil fix --all --yes</code></pre></div>
+            <p>모든 명령과 플래그는 <a href="cli">CLI 레퍼런스</a>를 참고하세요.</p>
+
+            <div class="callout">
+              <span class="callout-label">엔진 하나, 얼굴 셋</span>
+              <p>인터페이스들이 하나의 수정·롤백 엔진을 공유하기 때문에, 동작은 어디서나 동일합니다 — 브라우저에서 적용한 수정은 <code>hostveil history</code>에 나타나고 터미널에서 되돌릴 수 있으며, 그 반대도 마찬가지입니다.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="fixing">← 수정 및 롤백</a>
+              <a class="button primary" href="ai">AI 설명 →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+        </div>
+        <nav aria-label="푸터 링크">
+          <a href="./">문서</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">릴리스</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

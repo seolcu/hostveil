@@ -2,6 +2,12 @@
 (function () {
   "use strict";
 
+  var KO = document.documentElement.lang === "ko";
+  var T = {
+    copy: KO ? "복사" : "Copy",
+    copied: KO ? "복사됨" : "Copied",
+  };
+
   /* ── copy-to-clipboard ────────────────────────────────── */
 
   document.addEventListener("click", function (e) {
@@ -10,10 +16,10 @@
     var text = btn.getAttribute("data-copy");
     if (!text) return;
     navigator.clipboard.writeText(text).then(function () {
-      btn.textContent = "Copied";
+      btn.textContent = T.copied;
       btn.classList.add("copied");
       setTimeout(function () {
-        btn.textContent = "Copy";
+        btn.textContent = T.copy;
         btn.classList.remove("copied");
       }, 1500);
     });

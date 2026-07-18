@@ -17,8 +17,8 @@
   --warning: #d6ae58;
   --shadow-cut: #020504;
   --max: 1080px;
-  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", monospace;
 }
 
 * {
@@ -926,4 +926,65 @@ figcaption strong {
   margin-bottom: 4px;
   color: var(--paper);
   font-size: 1.1rem;
+}
+
+/* ── language switch (header) ─────────────────────────── */
+
+.nav-links a.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid var(--line-strong);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.nav-links a.lang-switch::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+}
+
+.nav-links a.lang-switch:hover,
+.nav-links a.lang-switch:focus-visible {
+  border-color: var(--accent);
+}
+
+/* ── language suggestion banner ───────────────────────── */
+
+.lang-suggest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--accent);
+  background: var(--panel-strong);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.lang-suggest a {
+  color: var(--accent);
+  font-weight: 700;
+  border-bottom: 1px solid currentColor;
+}
+
+.lang-suggest button {
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lang-suggest button:hover,
+.lang-suggest button:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
 }

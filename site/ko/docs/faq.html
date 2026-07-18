@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>자주 묻는 질문 — hostveil 문서</title>
+    <meta name="description" content="hostveil에 대한 흔한 질문들: 데이터 프라이버시, 수정이 서버를 망가뜨릴 수 있는지, 검토(Review) 절충안, sudo, 선택적 Docker/Trivy/AI 도구.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="자주 묻는 질문 — hostveil 문서">
+    <meta property="og:description" content="hostveil에 대한 흔한 질문들 — 프라이버시, 안전성, 절충안, sudo, 선택적 도구.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/faq">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:locale" content="ko_KR">
+    <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/faq">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/faq">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/faq">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/faq">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../../docs.css">
+    <script src="../../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="주요 내비게이션">
+        <a class="brand" href="../" aria-label="hostveil 홈">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">문서</a>
+          <a href="../#features">기능</a>
+          <a href="../#install">설치</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/docs/faq" lang="en" hreflang="en">English</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        문서 메뉴
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="문서 내비게이션">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="문서 검색…" aria-label="문서 검색"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="검색 결과" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>시작하기</p>
+            <ul>
+              <li><a href="./">소개</a></li>
+              <li><a href="installation">설치</a></li>
+              <li><a href="quickstart">빠른 시작</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>가이드</p>
+            <ul>
+              <li><a href="checks">점검 항목</a></li>
+              <li><a href="fixing">수정 및 롤백</a></li>
+              <li><a href="interfaces">인터페이스</a></li>
+              <li><a href="ai">AI 설명</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>레퍼런스</p>
+            <ul>
+              <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="faq" class="active">자주 묻는 질문</a></li>
+              <li><a href="contributing">기여하기</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 자주 묻는 질문</p>
+            <h1>자주 묻는 질문</h1>
+            <p class="lead">셀프호스터들이 자신의 서버를 도구에 맡기기 전에 가장 많이 묻는 질문들입니다.</p>
+
+            <h2>내 데이터를 업로드하나요?</h2>
+            <p>아니요. hostveil은 전적으로 로컬에서 동작합니다 — SaaS도, 데이터베이스도, 계정도 없습니다. 선택적인 AI 설명조차 기본값은 사용자 자신의 컴퓨터에 있는 모델이며, 사람이 읽을 수 있는 필드만(원본 비밀값이나 경로는 절대 아님) 전달됩니다. <a href="ai">AI 설명</a>을 참고하세요.</p>
+
+            <h2>수정이 서버를 망가뜨리지는 않나요?</h2>
+            <p>적용되기 전에 정확한 변경 내용을 볼 수 있고, 원본 파일은 먼저 체크포인트로 백업되며, <code>hostveil rollback</code>이 이를 바이트 단위 그대로 복원합니다. 안전하게 자동화할 수 없는 수정은 <strong>수동</strong>으로 분류되어 설명만 되고 절대 적용되지 않습니다. <a href="fixing">수정 및 롤백</a>을 참고하세요.</p>
+
+            <h2>수정에 절충안이 있다면요?</h2>
+            <p>그런 경우는 자동 수정이 아니라 <strong>검토</strong> 수정입니다. hostveil은 독립적인 대안들을 제시하고 <code>--action</code>으로 직접 선택하게 합니다. <code>fix --all</code>은 명백히 안전한 자동 수정 발견 항목만 건드리고 나머지는 모두 사용자에게 맡깁니다.</p>
+
+            <h2>Docker나 Trivy가 필요한가요?</h2>
+            <p>아니요. SSH, 방화벽, 자동 업데이트 점검은 추가 도구 없이 네이티브로 실행됩니다. Docker/Compose 점검은 Docker가, 이미지 CVE 스캔은 Trivy가 필요합니다 — 각각 있으면 사용되고 없으면 깔끔하게 건너뛰어지며, 건너뛴 영역이 결과를 부풀리지 않도록 점수가 재정규화됩니다.</p>
+
+            <h2>왜 sudo를 요구하나요?</h2>
+            <p>일부 점검은 <code>sshd_config</code> 같은 root 소유 파일을 읽어야 하고, 수정을 적용하려면 보호된 경로에 써야 합니다. 그래서 <code>hostveil</code>은 <code>sudo</code>로 자동으로 권한을 상승시킵니다 — 표시되는 프롬프트는 sudo 자체의 것으로 <code>sudo hostveil</code>을 실행할 때와 동일하며, 인증하면 같은 터미널에서 계속 진행됩니다. <code>version</code>과 <code>help</code>는 절대 프롬프트를 띄우지 않습니다. 권한 없이(스크립트·CI에서) 실행하려면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요. 그러면 root 소유 영역은 명확한 메시지와 함께 건너뛰어집니다.</p>
+
+            <h2>웹 대시보드가 네트워크에 노출되나요?</h2>
+            <p>아니요 — <code>hostveil serve</code>는 기본적으로 <code>127.0.0.1:8787</code>(루프백 전용)에 바인딩됩니다. <code>--addr</code>로 바인드 주소를 바꿀 수 있지만, 루프백이 아닌 주소를 지정하면 먼저 경고가 표시됩니다. <a href="interfaces">인터페이스</a>를 참고하세요.</p>
+
+            <h2>0–100 점수는 무엇을 의미하나요?</h2>
+            <p>100점에서 시작해 수정되지 않은 발견 항목마다 심각도에 따라 점수를 뺍니다(심각 8, 높음 5, 보통 2, 낮음 1). 지적할 것이 없는 호스트는 속 빈 100점이 아니라 <strong>Clean</strong>으로 표시되며, 수정되지 않은 발견 항목 중 심각 또는 높음이 하나라도 있으면 <code>scan</code>은 0이 아닌 값으로 종료됩니다. <a href="checks">점검 항목</a>을 참고하세요.</p>
+
+            <h2>어떤 플랫폼을 지원하나요?</h2>
+            <p>사전 빌드 바이너리는 <strong>Linux</strong>와 <strong>macOS</strong>의 <code>amd64</code>·<code>arm64</code>를 대상으로 합니다. hostveil은 셀프호스팅 리눅스 서버를 위해 만들어졌습니다.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="cli">← CLI 레퍼런스</a>
+              <a class="button primary" href="contributing">기여하기 →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+        </div>
+        <nav aria-label="푸터 링크">
+          <a href="./">문서</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">릴리스</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
