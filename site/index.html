@@ -5,25 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>hostveil — guided security hardening for self-hosted Linux servers</title>
     <meta name="description" content="hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.">
-    <meta name="theme-color" content="#0b0d10">
+    <meta name="theme-color" content="#07100f">
     <meta property="og:title" content="hostveil — guided hardening for self-hosters">
     <meta property="og:description" content="One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hostveil.seolcu.com/">
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <link rel="canonical" href="https://hostveil.seolcu.com/">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0d10'/%3E%3Crect x='6' y='15' width='4' height='7' fill='%23e7e3d8'/%3E%3Crect x='12' y='11' width='4' height='11' fill='%23e7e3d8'/%3E%3Crect x='18' y='7' width='4' height='15' fill='%2346c69a'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="styles.css">
-    <script>
-      // Set the theme before first paint to avoid a flash.
-      (function () {
-        try {
-          var t = localStorage.getItem("hv-theme") ||
-            (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-          document.documentElement.setAttribute("data-theme", t);
-        } catch (e) {}
-      })();
-    </script>
     <script src="script.js" defer></script>
   </head>
   <body>
@@ -41,7 +31,6 @@
           <a href="#screenshots">Screenshots</a>
           <a href="#install">Install</a>
           <a href="https://github.com/seolcu/hostveil">GitHub</a>
-          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch color theme">☀</button>
         </div>
       </nav>
     </header>
@@ -59,25 +48,17 @@
             </div>
           </div>
 
-          <div class="hero-panel" aria-label="Example scan readout">
-            <div class="panel-head" aria-hidden="true">Scan readout</div>
-            <div class="gauge">
-              <span class="gauge-label">Security</span>
-              <div class="meter b-med" style="--w: 68%"></div>
-              <span class="gauge-score">68<small>/100</small></span>
+          <div class="hero-panel" aria-label="hostveil product summary">
+            <div class="score-card">
+              <span>Security score</span>
+              <strong>68/100</strong>
+              <small>Every fix raises the score immediately</small>
             </div>
-            <div class="axes" aria-hidden="true">
-              <div class="axis"><span class="axis-label">Container</span><div class="meter b-high" style="--w: 45%"></div><span class="axis-val">45</span></div>
-              <div class="axis"><span class="axis-label">SSH</span><div class="meter b-med" style="--w: 55%"></div><span class="axis-val">55</span></div>
-              <div class="axis"><span class="axis-label">Firewall</span><div class="meter b-crit" style="--w: 15%"></div><span class="axis-val">15</span></div>
-              <div class="axis"><span class="axis-label">Updates</span><div class="meter b-med" style="--w: 70%"></div><span class="axis-val">70</span></div>
-              <div class="axis na"><span class="axis-label">CVEs</span><div class="meter b-na" style="--w: 0%"></div><span class="axis-val">N/A</span></div>
+            <div class="finding-list" aria-label="Example findings">
+              <div class="finding critical"><span>Critical</span><strong>Database exposed to the internet</strong><small>compose.ds018</small></div>
+              <div class="finding high"><span>High</span><strong>SSH permits root login</strong><small>ssh.rootlogin</small></div>
+              <div class="finding medium"><span>Medium</span><strong>Automatic updates are off</strong><small>updates.disabled</small></div>
             </div>
-            <ul class="finding-list" aria-label="Example findings">
-              <li class="finding critical"><span class="sev">Crit</span><div class="title"><div class="name">Database exposed to the internet</div><div class="rem">compose.ds018 · Auto-fix</div></div><span class="svc">cache</span></li>
-              <li class="finding high"><span class="sev">High</span><div class="title"><div class="name">SSH permits root login</div><div class="rem">ssh.rootlogin · Review</div></div><span class="svc">sshd</span></li>
-              <li class="finding medium"><span class="sev">Med</span><div class="title"><div class="name">Automatic security updates are off</div><div class="rem">updates.disabled · Auto-fix</div></div><span class="svc"></span></li>
-            </ul>
           </div>
         </div>
         <div class="command-box container" aria-label="Install command">
