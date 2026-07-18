@@ -1,0 +1,37 @@
+{{define "page" -}}
+{{template "head" .}}
+  <body>
+    <a class="skip-link" href="#main">{{.SkipLink}}</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="{{.NavAria}}">
+        <a class="brand" href="{{.BrandHref}}" aria-label="{{.BrandAria}}">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">{{.LNavFeatures}}</a>
+          <a href="#checks">{{.LNavChecks}}</a>
+          <a href="#screenshots">{{.LNavScreenshots}}</a>
+          <a href="#install">{{.LNavInstall}}</a>
+          <a href="{{.LDocsHref}}">{{.LNavDocs}}</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="{{.LangHref}}" lang="{{.LangLang}}" hreflang="{{.LangLang}}">{{.LangLabel}}</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+{{.Content}}
+    </main>
+
+    <div class="lightbox-overlay" id="lightbox" role="dialog" aria-label="{{.LightboxAria}}" aria-hidden="true">
+      <div class="lightbox-content">
+        <img alt="" id="lightbox-img">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+      </div>
+    </div>
+{{template "footer" .}}
+  </body>
+</html>
+{{- end}}

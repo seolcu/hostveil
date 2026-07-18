@@ -1,0 +1,21 @@
+{{define "head" -}}
+<!doctype html>
+<html lang="{{.Lang}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.Title}}</title>
+    <meta name="description" content="{{.Description}}">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="{{.OGTitle}}">
+    <meta property="og:description" content="{{.OGDescription}}">
+    <meta property="og:type" content="{{.OGType}}">
+    <meta property="og:url" content="{{.Canonical}}">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+{{.OGLocaleLine}}    <link rel="canonical" href="{{.Canonical}}">
+    <link rel="alternate" hreflang="en" href="{{.HrefEn}}">
+    <link rel="alternate" hreflang="ko" href="{{.HrefKo}}">
+    <link rel="alternate" hreflang="x-default" href="{{.HrefEn}}">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+{{.AssetLinks}}  </head>
+{{- end}}

@@ -26,6 +26,17 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Verify site/ is up to date with sitegen
+        run: |
+          go run ./cmd/sitegen
+          changes=$(git status --porcelain site/)
+          if [ -n "$changes" ]; then
+            echo "site/ is out of date (modified, added, or removed files):"
+            echo "$changes"
+            echo "Run 'go run ./cmd/sitegen' and commit the result."
+            exit 1
+          fi
+
       - name: Check formatting
         run: |
           unformatted=$(gofmt -l .)

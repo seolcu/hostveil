@@ -1,0 +1,58 @@
+{{define "docs" -}}
+{{template "head" .}}
+  <body>
+    <a class="skip-link" href="#main">{{.SkipLink}}</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="{{.NavAria}}">
+        <a class="brand" href="{{.BrandHref}}" aria-label="{{.BrandAria}}">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./"{{.DocsCurrentAttr}}>{{.NavDocs}}</a>
+          <a href="../#features">{{.NavFeatures}}</a>
+          <a href="../#install">{{.NavInstall}}</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="{{.LangHref}}" lang="{{.LangLang}}" hreflang="{{.LangLang}}">{{.LangLabel}}</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        {{.SidebarToggle}}
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="{{.SidebarAria}}">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="{{.SearchPlaceholder}}" aria-label="{{.SearchAria}}"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="{{.SearchResultsAria}}" hidden></ul>
+          </form>
+{{- range .Groups}}
+          <div class="docs-nav-group">
+            <p>{{.Heading}}</p>
+            <ul>
+{{- range .Items}}
+              <li><a href="{{.Href}}"{{.ActiveAttr}}>{{.Label}}</a></li>
+{{- end}}
+            </ul>
+          </div>
+{{- end}}
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+{{.Content}}
+          </article>
+        </main>
+      </div>
+    </div>
+{{template "footer" .}}
+  </body>
+</html>
+{{- end}}

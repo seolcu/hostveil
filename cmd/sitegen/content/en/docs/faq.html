@@ -1,0 +1,32 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / FAQ</p>
+            <h1>Frequently asked questions</h1>
+            <p class="lead">The questions self-hosters ask most before trusting a tool with their server.</p>
+
+            <h2>Does it upload my data?</h2>
+            <p>No. hostveil runs entirely locally — no SaaS, no database, no account. Even the optional AI explanations default to a model on your own machine, and only human-readable fields (never raw secrets or paths) are ever sent to it. See <a href="ai">AI explanations</a>.</p>
+
+            <h2>Will a fix break my server?</h2>
+            <p>You see the exact change before it applies, the original file is backed up to a checkpoint first, and <code>hostveil rollback</code> restores it byte-for-byte. Fixes that can't be automated safely are classified <strong>Manual</strong> and only explained, never applied. See <a href="fixing">Fixing &amp; rollback</a>.</p>
+
+            <h2>What if a fix has tradeoffs?</h2>
+            <p>Then it's a <strong>Review</strong> fix, not Auto-fix. hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you.</p>
+
+            <h2>Do I need Docker or Trivy?</h2>
+            <p>No. The SSH, firewall, and auto-update checks run natively with no extra tooling. The Docker/Compose audit needs Docker, and image CVE scanning needs Trivy — each is used when present and skipped cleanly when not, with the score renormalized so a skipped domain doesn't inflate your result.</p>
+
+            <h2>Why does it ask for sudo?</h2>
+            <p>Some checks read root-owned files such as <code>sshd_config</code>, and applying a fix writes to protected paths. So <code>hostveil</code> elevates itself with <code>sudo</code> automatically — the prompt you see is sudo's own, identical to running <code>sudo hostveil</code>, and it continues in the same terminal once you authenticate. <code>version</code> and <code>help</code> never prompt. To run unprivileged (scripts/CI), set <code>HOSTVEIL_NO_SUDO=1</code>; the root-owned domains are then skipped with a clear message.</p>
+
+            <h2>Is the web dashboard exposed to my network?</h2>
+            <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only) by default. You can change the bind address with <code>--addr</code>, but pointing it at a non-loopback address prints a warning first. See <a href="interfaces">Interfaces</a>.</p>
+
+            <h2>What does the 0–100 score mean?</h2>
+            <p>It starts at 100 and subtracts a penalty for each unfixed finding by severity (Critical 8, High 5, Medium 2, Low 1). A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High. See <a href="checks">What it checks</a>.</p>
+
+            <h2>Which platforms are supported?</h2>
+            <p>Prebuilt binaries target <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is built for self-hosted Linux servers.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="cli">← CLI reference</a>
+              <a class="button primary" href="contributing">Contributing →</a>
+            </div>

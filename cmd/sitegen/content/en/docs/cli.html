@@ -1,0 +1,99 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / CLI reference</p>
+            <h1>CLI reference</h1>
+            <p class="lead">Every subcommand, flag, and default. Commands that read root-owned files (SSH, firewall) or write to protected paths need root, so <code>hostveil</code> re-runs itself under <code>sudo</code> automatically (except <code>version</code>/<code>help</code>); set <code>HOSTVEIL_NO_SUDO=1</code> to opt out.</p>
+
+            <h2>Synopsis</h2>
+            <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>
+            <p>With no command on an interactive terminal, hostveil opens the <a href="interfaces">TUI</a>; when stdin/stdout are not a terminal, it runs <code>scan</code> instead. <code>hostveil version</code> (or <code>--version</code>) prints the version; <code>hostveil help</code> (or <code>--help</code>) prints usage.</p>
+
+            <h2 id="scan">scan</h2>
+            <p>Scan the host and report security findings.</p>
+            <div class="code-block"><pre><code>hostveil scan [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--json</code></td><td><code>false</code></td><td>Output the report as JSON.</td></tr>
+                  <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Exit code: <code>1</code> if any unfixed finding is Critical or High, otherwise <code>0</code>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
+
+            <h2 id="fix">fix</h2>
+            <p>Preview and apply the fix for a finding.</p>
+            <div class="code-block"><pre><code>hostveil fix &lt;finding-id&gt; [flags]
+hostveil fix --all [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--all</code></td><td><code>false</code></td><td>Apply every safe (Auto-fix) finding at once.</td></tr>
+                  <tr><td><code>--action N</code></td><td><code>-1</code></td><td>For a Review fix, the 0-based alternative to apply.</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
+                  <tr><td><code>--yes</code></td><td><code>false</code></td><td>Apply without the interactive confirmation.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Applying always shows the diff/command, backs up the original to a checkpoint, then applies. See <a href="fixing">Fixing &amp; rollback</a>.</p>
+
+            <h2 id="rollback">rollback</h2>
+            <p>Undo a previously applied fix.</p>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. No flags.</p>
+
+            <h2 id="history">history</h2>
+            <p>List applied fixes and their rollback IDs.</p>
+            <div class="code-block"><pre><code>hostveil history</code></pre></div>
+            <p>Lists checkpoints newest-first with a timestamp, the finding ID, a label, and either the exact <code>hostveil rollback &lt;id&gt;</code> command or <em>not reversible</em>. No flags.</p>
+
+            <h2 id="explain">explain</h2>
+            <p>Explain a finding in plain language.</p>
+            <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>Append an advisory explanation from a local LLM (Ollama).</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The built-in plain explanation always prints; <code>--ai</code> adds an advisory section. See <a href="ai">AI explanations</a>.</p>
+
+            <h2 id="serve">serve</h2>
+            <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>Address to bind the dashboard to.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Binding to a non-loopback address prints a warning about exposing the dashboard on the network.</p>
+
+            <h2 id="tui">tui</h2>
+            <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>
+            <div class="code-block"><pre><code>hostveil tui</code></pre></div>
+            <p>No flags. Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>.</p>
+
+            <h2 id="exit-codes">Exit codes</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed Critical/High findings).</td></tr>
+                  <tr><td><code>1</code></td><td><code>scan</code> found unfixed Critical or High findings, or a command failed.</td></tr>
+                  <tr><td><code>2</code></td><td>Usage error — unknown command or missing required argument.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="ai">← AI explanations</a>
+              <a class="button primary" href="faq">FAQ →</a>
+            </div>

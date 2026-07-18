@@ -1,0 +1,71 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / 문서</p>
+            <h1>hostveil 문서</h1>
+            <p class="lead">hostveil은 셀프호스팅 리눅스 서버의 보안 실수를 찾아, 쉬운 말로 설명하고, 미리보기·백업·한 번의 명령 롤백과 함께 안전하게 고쳐 줍니다. 바이너리 하나, 설정 파일 없음, 클라우드 계정 없음.</p>
+
+            <p>셀프호스팅이 빠르게 늘고 있지만, Jellyfin·Nextcloud·게임 서버·로컬 LLM을 돌리는 대부분의 사람은 보안 전문가가 아닙니다 — 그리고 단 하나의 잘못된 설정이 심각한 침해로 이어질 수 있습니다. hostveil은 바로 그런 사람들을 위한 <strong>가이드형 보안 강화 도구</strong>입니다. 리눅스 서버를 가리키면, 영향이 가장 큰 영역들을 스캔하고, 모든 것을 하나의 0–100 점수로 합치고, 각 발견 항목을 전문 용어 없이 설명하고, 고치는 과정을 안내합니다 — 정확한 변경 내용을 보여 주고, 원본을 먼저 백업하고, 어떤 수정이든 명령 한 줄로 되돌릴 수 있게 하면서.</p>
+
+            <div class="callout">
+              <span class="callout-label">안전 모델</span>
+              <p>아무것도 눈감고 바꾸지 않습니다. 모든 수정은 실행 전에 <strong>미리보기</strong>되고, 원본 파일은 <strong>체크포인트로 백업</strong>되며, <code>hostveil rollback</code>이 바이트 단위 그대로 복원합니다. 모든 인터페이스가 같은 엔진을 구동하므로, 어디서 적용한 수정이든 어디서나 되돌릴 수 있습니다.</p>
+            </div>
+
+            <h2>처음이신가요? 여기서 시작하세요</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="installation">
+                  <strong>설치 →</strong>
+                  <span>설치 명령 한 줄과, 선택 도구(Docker, Trivy, Ollama) 및 각각이 무엇을 열어 주는지.</span>
+                </a>
+              </li>
+              <li>
+                <a href="quickstart">
+                  <strong>빠른 시작 →</strong>
+                  <span>스캔하고, 발견 항목을 이해하고, 수정을 적용하고, 되돌리기 — 전체 흐름을 몇 분 만에.</span>
+                </a>
+              </li>
+              <li>
+                <a href="checks">
+                  <strong>점검 항목 →</strong>
+                  <span>Docker/Compose, SSH, 방화벽, 자동 업데이트, 선택적 이미지 CVE — 각각이 무엇을 보는지.</span>
+                </a>
+              </li>
+              <li>
+                <a href="fixing">
+                  <strong>수정 및 롤백 →</strong>
+                  <span>자동·검토·수동 수정과, 미리보기·백업·이력·롤백이 어떻게 동작하는지.</span>
+                </a>
+              </li>
+            </ul>
+
+            <h2>레퍼런스</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="interfaces">
+                  <strong>인터페이스 →</strong>
+                  <span>TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 하나의 공유 엔진.</span>
+                </a>
+              </li>
+              <li>
+                <a href="cli">
+                  <strong>CLI 레퍼런스 →</strong>
+                  <span>모든 하위 명령과 플래그: scan, fix, rollback, history, explain, serve.</span>
+                </a>
+              </li>
+              <li>
+                <a href="ai">
+                  <strong>AI 설명 →</strong>
+                  <span><code>explain --ai</code>로 얻는 선택적·조언 전용·로컬 우선의 second opinion.</span>
+                </a>
+              </li>
+              <li>
+                <a href="contributing">
+                  <strong>기여하기 →</strong>
+                  <span>소스에서 빌드하기, 점검 실행, 저장소 구조, 새 점검 항목 추가하는 법.</span>
+                </a>
+              </li>
+            </ul>
+
+            <div class="docs-pager">
+              <a class="button primary" href="installation">hostveil 설치</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil">GitHub에서 소스 보기</a>
+            </div>

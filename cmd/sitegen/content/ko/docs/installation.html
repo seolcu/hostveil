@@ -1,0 +1,71 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 설치</p>
+            <h1>설치</h1>
+            <p class="lead">한 줄 명령이면 바이너리 하나가 설치됩니다. 작성해야 할 설정 파일도, 만들어야 할 계정도 없습니다 — 설치 후 바로 스캔할 수 있습니다.</p>
+
+            <h2>빠른 설치</h2>
+            <p>설치 스크립트는 OS와 아키텍처를 감지하고, 릴리스 바이너리를 내려받아 체크섬을 검증한 뒤 <code>/usr/bin/hostveil</code>에 설치합니다:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://hostveil.seolcu.com/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash</code></pre>
+            </div>
+            <p>같은 명령을 언제든 다시 실행하면 최신 릴리스로 업데이트됩니다. 그런 다음 확인하세요:</p>
+            <div class="code-block"><pre><code>hostveil version</code></pre></div>
+
+            <div class="callout">
+              <span class="callout-label">지원 플랫폼</span>
+              <p><strong>Linux</strong>와 <strong>macOS</strong>의 <code>amd64</code>·<code>arm64</code> 아키텍처용 사전 빌드 바이너리가 제공됩니다. hostveil은 셀프호스팅 리눅스 서버를 위해 설계되었으며, SSH·방화벽·자동 업데이트 점검은 리눅스를 대상으로 합니다.</p>
+            </div>
+
+            <h2>설치 스크립트가 하는 일</h2>
+            <ul>
+              <li>OS(<code>linux</code>/<code>darwin</code>)와 아키텍처(<code>amd64</code>/<code>arm64</code>)를 감지합니다.</li>
+              <li>릴리스 tarball과 <code>hostveil-checksums.txt</code>를 내려받은 뒤 SHA-256 체크섬을 검증합니다. 일치하지 않으면 중단합니다.</li>
+              <li><code>sudo</code>로 바이너리를 <code>/usr/bin/hostveil</code>에 설치(권한 0755)하고, <code>hostveil --version</code>을 실행해 정상 동작을 확인합니다.</li>
+              <li>선택적 이미지 CVE 스캔을 위한 <strong>Trivy</strong> 설치를 제안합니다. 거절해도 hostveil 설치를 막지 않습니다.</li>
+            </ul>
+
+            <h3>설치 스크립트 옵션</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>옵션</th><th>효과</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--version vX.Y.Z</code></td><td>최신 대신 특정 릴리스를 설치합니다.</td></tr>
+                  <tr><td><code>--no-trivy</code></td><td>선택적 Trivy 안내를 아예 건너뜁니다.</td></tr>
+                  <tr><td><code>--yes</code> / <code>-y</code></td><td>비대화형으로 실행합니다(모든 확인을 수락).</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>파이프를 통해 옵션을 전달하려면 <code>bash -s --</code>를 사용하세요. 예:</p>
+            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --no-trivy</code></pre></div>
+
+            <h2>권한 상승은 자동입니다</h2>
+            <div class="callout">
+              <span class="callout-label">참고</span>
+              <p>SSH와 방화벽 점검은 <code>sshd_config</code> 같은 root 소유 파일을 읽어야 하고, 수정을 적용하려면 보호된 경로에 써야 합니다. 그래서 <code>hostveil</code>은 <code>sudo</code> 아래에서 자동으로 자신을 다시 실행합니다 — <code>sudo hostveil</code>과 동일한 sudo 비밀번호 프롬프트가 표시되며, 인증 후 같은 터미널에서 계속 진행됩니다. <code>version</code>과 <code>help</code>는 절대 프롬프트를 띄우지 않습니다. 권한 없이(스크립트·CI에서) 실행하려면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요. 그러면 root 소유 영역은 명확한 메시지와 함께 건너뛰어지고, 점수는 오해를 부르는 완벽한 결과를 주지 않도록 재정규화됩니다.</p>
+            </div>
+
+            <h2>선택 도구</h2>
+            <p>해당 도구가 없으면 각 영역은 깔끔하게 건너뛰어집니다. 추가 범위를 원한다면 다음을 추가하세요:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>도구</th><th>열어 주는 기능</th><th>참고</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Docker</strong></td><td>Docker / Compose 점검</td><td>hostveil은 Compose 파일을 읽어 서비스를 점검합니다.</td></tr>
+                  <tr><td><strong>Trivy</strong></td><td>이미지 CVE 스캔</td><td>있으면 사용되며, 설치 스크립트가 대신 설정해 줄 수 있습니다.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI 설명(<code>explain --ai</code>)</td><td>기본적으로 로컬에서 동작하며 — 호스트 밖으로 아무것도 나가지 않습니다. <a href="ai">AI 설명</a>을 참고하세요.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2>소스에서 빌드하기</h2>
+            <p>최신 Go 툴체인이 설치되어 있다면:</p>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil
+cd hostveil
+go build ./cmd/hostveil
+go test ./...</code></pre></div>
+            <p>재현 가능한 데모 VM을 포함한 전체 개발 환경 설정은 <a href="contributing">기여하기</a>를 참고하세요.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="./">← 소개</a>
+              <a class="button primary" href="quickstart">빠른 시작 →</a>
+            </div>

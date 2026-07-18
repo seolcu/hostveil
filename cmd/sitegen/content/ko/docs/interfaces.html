@@ -1,0 +1,44 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 인터페이스</p>
+            <h1>인터페이스</h1>
+            <p class="lead">hostveil에는 세 가지 얼굴이 있습니다 — 터미널 UI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 그리고 셋 모두 하나의 공유 엔진 위의 얇은 계층입니다. 어느 하나에서 스캔하거나, 고치거나, 되돌리든 다른 곳에도 반영됩니다.</p>
+
+            <h2>TUI — 기본값</h2>
+            <p>인수 없이 대화형 터미널에서 <code>hostveil</code>을 실행하면 키보드 기반 TUI가 열립니다. 명시적으로 실행할 수도 있습니다.</p>
+            <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
+            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다.</p>
+            <figure>
+              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="478" loading="lazy">
+              <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
+            </figure>
+            <div class="callout">
+              <span class="callout-label">터미널이 필요함</span>
+              <p>TUI는 대화형 터미널이 필요합니다. stdin/stdout이 파이프되거나 리다이렉트된 경우, 대신 <code>hostveil scan</code>을 사용하세요 — 일반 텍스트 보고서를 출력합니다.</p>
+            </div>
+
+            <h2>웹 — localhost 대시보드</h2>
+            <p>브라우저로 검토하는 편이 나을 때 동일한 스캔을 HTTP로 제공합니다.</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil serve">Copy</button>
+              <pre><code>hostveil serve</code></pre>
+            </div>
+            <p>기본적으로 <code>127.0.0.1:8787</code>에 바인딩됩니다 — loopback 전용입니다. <code>--addr</code>로 변경할 수 있으며, non-loopback 주소를 지정하면 hostveil이 대시보드 노출에 관한 경고를 출력합니다. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
+            <figure>
+              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 필터 칩, 다중 선택, 수정 상세" width="1200" height="456" loading="lazy">
+              <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수, 필터 가능한 발견 항목, 다중 선택 일괄 수정, 미리보기, 롤백.</span></figcaption>
+            </figure>
+
+            <h2>CLI — 스크립트 가능</h2>
+            <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 심각 또는 높음이 하나라도 있으면 0이 아닌 값으로 종료합니다 — 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>
+            <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
+hostveil fix --all --yes</code></pre></div>
+            <p>모든 명령과 플래그는 <a href="cli">CLI 레퍼런스</a>를 참고하세요.</p>
+
+            <div class="callout">
+              <span class="callout-label">엔진 하나, 얼굴 셋</span>
+              <p>인터페이스들이 하나의 수정·롤백 엔진을 공유하기 때문에, 동작은 어디서나 동일합니다 — 브라우저에서 적용한 수정은 <code>hostveil history</code>에 나타나고 터미널에서 되돌릴 수 있으며, 그 반대도 마찬가지입니다.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="fixing">← 수정 및 롤백</a>
+              <a class="button primary" href="ai">AI 설명 →</a>
+            </div>
