@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CLI reference — hostveil docs</title>
+    <meta name="description" content="Complete hostveil command-line reference: scan, fix, rollback, history, explain, serve, and tui — every flag, default, and exit code.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="CLI reference — hostveil docs">
+    <meta property="og:description" content="Every hostveil subcommand and flag: scan, fix, rollback, history, explain, serve, tui.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/cli.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/cli.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html" class="active">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / CLI reference</p>
+            <h1>CLI reference</h1>
+            <p class="lead">Every subcommand, flag, and default. Commands that read root-owned files (SSH, firewall) or write to protected paths need <code>sudo</code>.</p>
+
+            <h2>Synopsis</h2>
+            <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>
+            <p>With no command on an interactive terminal, hostveil opens the <a href="interfaces.html">TUI</a>; when stdin/stdout are not a terminal, it runs <code>scan</code> instead. <code>hostveil version</code> (or <code>--version</code>) prints the version; <code>hostveil help</code> (or <code>--help</code>) prints usage.</p>
+
+            <h2 id="scan">scan</h2>
+            <p>Scan the host and report security findings.</p>
+            <div class="code-block"><pre><code>hostveil scan [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--json</code></td><td><code>false</code></td><td>Output the report as JSON.</td></tr>
+                  <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Exit code: <code>1</code> if any unfixed finding is Critical or High, otherwise <code>0</code>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
+
+            <h2 id="fix">fix</h2>
+            <p>Preview and apply the fix for a finding.</p>
+            <div class="code-block"><pre><code>hostveil fix &lt;finding-id&gt; [flags]
+hostveil fix --all [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--all</code></td><td><code>false</code></td><td>Apply every safe (Auto-fix) finding at once.</td></tr>
+                  <tr><td><code>--action N</code></td><td><code>-1</code></td><td>For a Review fix, the 0-based alternative to apply.</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
+                  <tr><td><code>--yes</code></td><td><code>false</code></td><td>Apply without the interactive confirmation.</td></tr>
+                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Applying always shows the diff/command, backs up the original to a checkpoint, then applies. See <a href="fixing.html">Fixing &amp; rollback</a>.</p>
+
+            <h2 id="rollback">rollback</h2>
+            <p>Undo a previously applied fix.</p>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. No flags.</p>
+
+            <h2 id="history">history</h2>
+            <p>List applied fixes and their rollback IDs.</p>
+            <div class="code-block"><pre><code>hostveil history</code></pre></div>
+            <p>Lists checkpoints newest-first with a timestamp, the finding ID, a label, and either the exact <code>hostveil rollback &lt;id&gt;</code> command or <em>not reversible</em>. No flags.</p>
+
+            <h2 id="explain">explain</h2>
+            <p>Explain a finding in plain language.</p>
+            <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>Append an advisory explanation from a local LLM (Ollama).</td></tr>
+                  <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The built-in plain explanation always prints; <code>--ai</code> adds an advisory section. See <a href="ai.html">AI explanations</a>.</p>
+
+            <h2 id="serve">serve</h2>
+            <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>Address to bind the dashboard to.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Binding to a non-loopback address prints a warning about exposing the dashboard on the network.</p>
+
+            <h2 id="tui">tui</h2>
+            <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>
+            <div class="code-block"><pre><code>hostveil tui</code></pre></div>
+            <p>No flags. Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>.</p>
+
+            <h2 id="exit-codes">Exit codes</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed Critical/High findings).</td></tr>
+                  <tr><td><code>1</code></td><td><code>scan</code> found unfixed Critical or High findings, or a command failed.</td></tr>
+                  <tr><td><code>2</code></td><td>Usage error — unknown command or missing required argument.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="ai.html">← AI explanations</a>
+              <a class="button primary" href="faq.html">FAQ →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

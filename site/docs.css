@@ -1,0 +1,404 @@
+/* hostveil docs — layout + long-form prose.
+   Loaded AFTER styles.css; inherits all :root custom properties. */
+
+:root {
+  --docs-max: 1240px;
+  --sidebar-w: 244px;
+  --toc-w: 200px;
+}
+
+/* ── shell ────────────────────────────────────────────── */
+
+.docs-container {
+  width: min(100% - 40px, var(--docs-max));
+  margin-inline: auto;
+}
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+  padding: clamp(32px, 5vw, 56px) 0 96px;
+}
+
+/* ── sidebar ──────────────────────────────────────────── */
+
+.docs-sidebar {
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 108px);
+  overflow-y: auto;
+  padding-right: 8px;
+  font-family: var(--font-mono);
+}
+
+.docs-nav-group {
+  margin-bottom: 22px;
+}
+
+.docs-nav-group > p {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.docs-nav-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+}
+
+.docs-nav-group a {
+  display: block;
+  padding: 7px 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.86rem;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.docs-nav-group a:hover,
+.docs-nav-group a:focus-visible {
+  color: var(--text);
+  border-left-color: var(--line-strong);
+  background: var(--panel);
+}
+
+.docs-nav-group a.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--panel);
+  font-weight: 700;
+}
+
+/* ── mobile sidebar toggle (hidden on desktop) ────────── */
+
+.docs-sidebar-toggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--text);
+  font: 800 0.78rem/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.docs-sidebar-toggle::after {
+  content: "▾";
+  color: var(--accent);
+  transition: transform 150ms ease;
+}
+
+.docs-sidebar-toggle[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+
+/* ── content column ───────────────────────────────────── */
+
+.docs-content {
+  min-width: 0;
+}
+
+.docs-breadcrumb {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font: 700 0.72rem/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-breadcrumb a:hover {
+  color: var(--accent);
+}
+
+/* ── prose typography ─────────────────────────────────── */
+
+.docs-prose {
+  max-width: 760px;
+}
+
+.docs-prose > h1 {
+  font-size: clamp(2rem, 4.5vw, 2.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  margin-bottom: 14px;
+}
+
+.docs-prose .lead {
+  color: var(--paper-muted);
+  font-size: 1.14rem;
+  margin-bottom: 34px;
+}
+
+.docs-prose h2 {
+  margin: 46px 0 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: clamp(1.5rem, 3vw, 1.95rem);
+  letter-spacing: -0.02em;
+  scroll-margin-top: 88px;
+}
+
+.docs-prose h3 {
+  margin: 30px 0 10px;
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
+  color: var(--paper);
+  scroll-margin-top: 88px;
+}
+
+.docs-prose p {
+  margin: 0 0 16px;
+  color: var(--paper-muted);
+}
+
+.docs-prose strong {
+  color: var(--text);
+}
+
+.docs-prose a:not(.button) {
+  color: var(--accent);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.docs-prose a:not(.button):hover {
+  border-bottom-color: var(--accent);
+}
+
+.docs-prose ul,
+.docs-prose ol {
+  margin: 0 0 18px;
+  padding-left: 22px;
+  color: var(--paper-muted);
+}
+
+.docs-prose li {
+  margin-bottom: 8px;
+}
+
+.docs-prose li::marker {
+  color: var(--accent);
+}
+
+.docs-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--text);
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  padding: 0.08rem 0.36rem;
+}
+
+.docs-prose pre code {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* code blocks reuse .command-box / .code-block from styles.css */
+.docs-prose .command-box,
+.docs-prose .code-block {
+  margin: 0 0 22px;
+}
+
+.docs-prose .code-block pre {
+  white-space: pre;
+}
+
+/* ── callout / note boxes ─────────────────────────────── */
+
+.callout {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  background: var(--panel);
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+.callout .callout-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent);
+  font: 800 0.72rem/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.callout.warn {
+  border-left-color: var(--orange);
+}
+
+.callout.warn .callout-label {
+  color: var(--orange);
+}
+
+/* ── tables ───────────────────────────────────────────── */
+
+.docs-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+}
+
+.docs-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.docs-prose thead th {
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--panel-strong);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.docs-prose tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--paper-muted);
+  vertical-align: top;
+}
+
+.docs-prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.docs-prose tbody code {
+  white-space: nowrap;
+}
+
+/* ── doc-map grid (index page) ────────────────────────── */
+
+.docs-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-cards li {
+  margin: 0;
+}
+
+.docs-cards a {
+  display: block;
+  height: 100%;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 6px 6px 0 var(--shadow-cut);
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.docs-cards a:hover {
+  border-color: var(--line-strong);
+  box-shadow: 3px 3px 0 var(--shadow-cut);
+}
+
+.docs-cards strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.docs-cards span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── page footer nav (prev / next-ish) ────────────────── */
+
+.docs-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 48px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── severity chips (reuse .finding look inline) ──────── */
+
+.sev {
+  display: inline-block;
+  padding: 2px 8px;
+  font: 800 0.72rem/1.5 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+}
+
+.sev.critical { color: var(--danger); border-color: var(--danger); }
+.sev.high { color: var(--orange); border-color: var(--orange); }
+.sev.medium { color: var(--warning); border-color: var(--warning); }
+.sev.low { color: var(--signal); border-color: var(--signal); }
+
+/* ── responsive ───────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .docs-sidebar-toggle {
+    display: flex;
+  }
+
+  .docs-sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding: 16px;
+    border: 1px solid var(--line);
+    background: var(--bg-alt);
+  }
+
+  .docs-sidebar[hidden] {
+    display: none;
+  }
+
+  .docs-prose {
+    max-width: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .docs-container {
+    width: min(100% - 28px, var(--docs-max));
+  }
+
+  .docs-cards {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI explanations — hostveil docs</title>
+    <meta name="description" content="hostveil's optional, advisory-only AI: local Ollama by default, never applies changes, and sends only human-readable fields — never raw secrets or paths.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="AI explanations — hostveil docs">
+    <meta property="og:description" content="Optional, advisory-only, local-first AI second opinions with explain --ai.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/ai.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/ai.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html" class="active">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / AI explanations</p>
+            <h1>AI explanations</h1>
+            <p class="lead">AI in hostveil is optional, advisory-only, and local-first. It can add a second opinion in plain words — but it never applies changes, and everything works with no AI at all.</p>
+
+            <h2>Using it</h2>
+            <p>Add <code>--ai</code> to <code>explain</code> for an advisory explanation of a finding:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil explain ssh.rootlogin --ai">Copy</button>
+              <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
+            </div>
+            <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, hostveil says so and continues — the command never fails because AI is unavailable.</p>
+
+            <h2>Local by default</h2>
+            <p>The default provider is <strong>Ollama</strong>, running on your own machine — nothing leaves the host. Defaults:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Setting</th><th>Default</th><th>Override</th></tr></thead>
+                <tbody>
+                  <tr><td>Host</td><td><code>http://127.0.0.1:11434</code></td><td><code>HOSTVEIL_OLLAMA_HOST</code></td></tr>
+                  <tr><td>Model</td><td><code>llama3.2</code></td><td><code>HOSTVEIL_OLLAMA_MODEL</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Install <a href="https://ollama.com">Ollama</a> and pull the model once:</p>
+            <div class="code-block"><pre><code>ollama pull llama3.2
+hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>To use a different local model:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
+
+            <h2>Advisory only, and private by design</h2>
+            <div class="callout">
+              <span class="callout-label">What the model can and can't do</span>
+              <p>The AI can only <strong>explain</strong> — it has no ability to apply, change, or drive any fix. Scores, findings, and fixes are computed entirely without it.</p>
+            </div>
+            <div class="callout warn">
+              <span class="callout-label">Privacy</span>
+              <p>Only human-readable fields are sent to the model — a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="interfaces.html">← Interfaces</a>
+              <a class="button primary" href="cli.html">CLI reference →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>What it checks — hostveil docs</title>
+    <meta name="description" content="hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="What it checks — hostveil docs">
+    <meta property="og:description" content="Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — finding IDs, severities, and the score model.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/checks.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/checks.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html" class="active">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / What it checks</p>
+            <h1>What it checks</h1>
+            <p class="lead">hostveil checks the highest-impact paths that actually get self-hosters breached, then merges everything into one 0–100 score. Each finding has a stable ID of the form <code>domain.rule</code> — use it with <code>explain</code>, <code>fix</code>, and <code>rollback</code>.</p>
+
+            <h2>Domains at a glance</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Domain</th><th>Prefix</th><th>Needs</th></tr></thead>
+                <tbody>
+                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker + Compose files</td></tr>
+                  <tr><td>SSH</td><td><code>ssh.</code></td><td>—</td></tr>
+                  <tr><td>Firewall</td><td><code>firewall.</code></td><td>—</td></tr>
+                  <tr><td>Auto-updates</td><td><code>updates.</code></td><td>—</td></tr>
+                  <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
+
+            <h2>Severity &amp; the score</h2>
+            <p>Every finding carries one of four severities. The score starts at 100 and each unfixed finding subtracts a penalty by severity:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Severity</th><th>Penalty</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sev critical">Critical</span></td><td>8</td></tr>
+                  <tr><td><span class="sev high">High</span></td><td>5</td></tr>
+                  <tr><td><span class="sev medium">Medium</span></td><td>2</td></tr>
+                  <tr><td><span class="sev low">Low</span></td><td>1</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev critical">Critical</span> or <span class="sev high">High</span> — useful as a CI or cron gate.</p>
+
+            <h2 id="ssh">SSH <code>ssh.</code></h2>
+            <p>Parsed natively from <code>sshd_config</code>. Run with <code>sudo</code> to read it.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>ssh.emptypasswords</code></td><td>Empty passwords are permitted</td><td><span class="sev critical">Critical</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td>Root login with a password is allowed</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td>Password authentication is allowed</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td>Too many auth attempts per connection</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="compose">Docker / Compose <code>compose.</code></h2>
+            <p>A native audit of your Compose files — no external scanner required.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">Low</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="firewall">Firewall <code>firewall.</code></h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, or nftables)</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="updates">Auto-updates <code>updates.</code></h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
+            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Each unique vulnerability becomes a finding whose ID is <code>cve.&lt;vulnerability-id&gt;</code> (for example <code>cve.cve-2023-1234</code>), with severity mapped from Trivy's rating.</p>
+            <div class="callout">
+              <span class="callout-label">Honest about "no patch yet"</span>
+              <p>If a fixed version exists, the finding is a <strong>Review</strong> fix (update the image). If there is no patch available yet, hostveil models that as a first-class <strong>Unavailable</strong> state rather than pretending it can be fixed — so the scan stays truthful.</p>
+            </div>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="quickstart.html">← Quick start</a>
+              <a class="button primary" href="fixing.html">Fixing &amp; rollback →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

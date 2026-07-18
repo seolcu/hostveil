@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Installation — hostveil docs</title>
+    <meta name="description" content="Install hostveil with one command, or build from source. Optional tools — Docker, Trivy, and Ollama — and what each one unlocks.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Installation — hostveil docs">
+    <meta property="og:description" content="Install hostveil with one command, or build from source. Optional Docker, Trivy, and Ollama integrations.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/installation.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/installation.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html" class="active">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Installation</p>
+            <h1>Installation</h1>
+            <p class="lead">One command installs a single binary. There is no config file to write and no account to create — after installing, you can scan immediately.</p>
+
+            <h2>Quick install</h2>
+            <p>The installer detects your OS and architecture, downloads the release binary, verifies its checksum, and installs it to <code>/usr/bin/hostveil</code>:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash</code></pre>
+            </div>
+            <p>Run the same command any time to update to the latest release. Then verify:</p>
+            <div class="code-block"><pre><code>hostveil version</code></pre></div>
+
+            <div class="callout">
+              <span class="callout-label">Supported platforms</span>
+              <p>Prebuilt binaries are published for <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is designed for self-hosted Linux servers; the SSH, firewall, and auto-update checks target Linux.</p>
+            </div>
+
+            <h2>What the installer does</h2>
+            <ul>
+              <li>Detects your OS (<code>linux</code>/<code>darwin</code>) and architecture (<code>amd64</code>/<code>arm64</code>).</li>
+              <li>Downloads the release tarball and <code>hostveil-checksums.txt</code>, then verifies the SHA-256 checksum. On a mismatch it aborts.</li>
+              <li>Installs the binary to <code>/usr/bin/hostveil</code> with <code>sudo</code> (mode 0755) and runs <code>hostveil --version</code> as a sanity check.</li>
+              <li>Offers to install <strong>Trivy</strong> for optional image CVE scanning. Declining never blocks the hostveil install.</li>
+            </ul>
+
+            <h3>Installer options</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--version vX.Y.Z</code></td><td>Install a specific release instead of the latest.</td></tr>
+                  <tr><td><code>--no-trivy</code></td><td>Skip the optional Trivy prompt entirely.</td></tr>
+                  <tr><td><code>--yes</code> / <code>-y</code></td><td>Run non-interactively (accept prompts).</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Pass options through the pipe with <code>bash -s --</code>, for example:</p>
+            <div class="code-block"><pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --no-trivy</code></pre></div>
+
+            <h2>Run with sudo for full coverage</h2>
+            <div class="callout warn">
+              <span class="callout-label">Heads up</span>
+              <p>The SSH and firewall checks read root-owned files (such as <code>sshd_config</code>). Run scans with <code>sudo</code> for complete coverage — without it, those domains are skipped with a clear message and the score is renormalized so you are not handed a misleadingly perfect result.</p>
+            </div>
+
+            <h2>Optional tools</h2>
+            <p>Every domain is skipped cleanly if its tooling is absent. Add these when you want the extra coverage:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Tool</th><th>Unlocks</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Docker</strong></td><td>The Docker / Compose audit</td><td>hostveil reads your Compose files to audit services.</td></tr>
+                  <tr><td><strong>Trivy</strong></td><td>Image CVE scanning</td><td>Used if present; the installer can set it up for you.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI explanations (<code>explain --ai</code>)</td><td>Local by default — nothing leaves your host. See <a href="ai.html">AI explanations</a>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2>Build from source</h2>
+            <p>With a recent Go toolchain installed:</p>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil
+cd hostveil
+go build ./cmd/hostveil
+go test ./...</code></pre></div>
+            <p>See <a href="contributing.html">Contributing</a> for the full development setup, including the reproducible demo VM.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="index.html">← Introduction</a>
+              <a class="button primary" href="quickstart.html">Quick start →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

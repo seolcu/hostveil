@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quick start — hostveil docs</title>
+    <meta name="description" content="Scan your server, understand a finding, apply a fix with preview and backup, then roll it back — the full hostveil loop in a few minutes.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Quick start — hostveil docs">
+    <meta property="og:description" content="Scan, understand, apply, and roll back — the full hostveil loop in a few minutes.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/quickstart.html">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/quickstart.html">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html" class="active">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Quick start</p>
+            <h1>Quick start</h1>
+            <p class="lead">Scan, understand, apply, recover. This walks the whole loop on the command line; the TUI and web dashboard drive the exact same engine if you prefer them.</p>
+
+            <h2>1. Scan locally</h2>
+            <p>Run a scan with <code>sudo</code> so the SSH and firewall checks have access to root-owned files:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="sudo hostveil scan">Copy</button>
+              <pre><code>sudo hostveil scan</code></pre>
+            </div>
+            <p>You get a single 0–100 security score and a list of findings ordered by severity. Areas whose tooling is absent (no Docker, no Trivy) are skipped and the score is renormalized — a clean host shows <strong>Clean</strong>, not a hollow 100.</p>
+            <div class="callout">
+              <span class="callout-label">Tip</span>
+              <p>On an interactive terminal, running <code>hostveil</code> with no arguments opens the <a href="interfaces.html">TUI</a> instead. Piped or redirected, it prints a scan — handy in scripts.</p>
+            </div>
+
+            <h2>2. Understand a finding</h2>
+            <p>Add <code>-v</code> to see each finding's plain-language description and fix guidance inline:</p>
+            <div class="code-block"><pre><code>sudo hostveil scan -v</code></pre></div>
+            <p>Or dig into one finding by its ID (for example <code>ssh.rootlogin</code>):</p>
+            <div class="code-block"><pre><code>hostveil explain ssh.rootlogin</code></pre></div>
+            <p>Want a second opinion in your own words? Add <code>--ai</code> for an advisory explanation from a local model — see <a href="ai.html">AI explanations</a>. Every finding ID and what it means is listed in <a href="checks.html">What it checks</a>.</p>
+
+            <h2>3. Apply a fix</h2>
+            <p>Fixing always shows the exact change first and backs up the original before touching anything. Preview and apply one finding:</p>
+            <div class="code-block"><pre><code>sudo hostveil fix ssh.rootlogin</code></pre></div>
+            <p>Or apply every clearly-safe (Auto) fix at once — Review and Manual findings are left for you to decide:</p>
+            <div class="code-block"><pre><code>sudo hostveil fix --all</code></pre></div>
+            <p>See <a href="fixing.html">Fixing &amp; rollback</a> for how Auto, Review, and Manual differ.</p>
+
+            <h2>4. Roll back anytime</h2>
+            <p>Every applied fix is a checkpoint. List them, then undo one by its ID:</p>
+            <div class="code-block"><pre><code>hostveil history
+sudo hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <p>Rollback restores the backed-up file byte-for-byte. Because every interface goes through one shared engine, a fix applied in the TUI or web dashboard is reversible here too.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="installation.html">← Installation</a>
+              <a class="button primary" href="checks.html">What it checks →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>hostveil docs — guided security hardening for self-hosted Linux</title>
+    <meta name="description" content="Official documentation for hostveil: install it, run a scan, understand the findings, and fix them safely with preview, backup, and one-command rollback.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="hostveil documentation">
+    <meta property="og:description" content="Install, scan, understand, and safely fix the security misconfigurations on your self-hosted Linux server.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./" aria-current="page">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="index.html" class="active">Introduction</a></li>
+              <li><a href="installation.html">Installation</a></li>
+              <li><a href="quickstart.html">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks.html">What it checks</a></li>
+              <li><a href="fixing.html">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces.html">Interfaces</a></li>
+              <li><a href="ai.html">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli.html">CLI reference</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="contributing.html">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / Docs</p>
+            <h1>hostveil documentation</h1>
+            <p class="lead">hostveil finds the security mistakes on your self-hosted Linux server, explains them in plain language, and fixes them safely — with a preview, a backup, and one-command rollback. One binary, no config file, no cloud account.</p>
+
+            <p>Self-hosting is booming, but most people running Jellyfin, Nextcloud, a game server, or a local LLM are not security experts — and a single misconfiguration can turn into a serious breach. hostveil is a <strong>guided hardening tool</strong> for exactly those people. Point it at a Linux server: it scans the highest-impact areas, merges everything into one 0–100 score, explains each finding without jargon, and walks you through fixing it — showing the exact change, backing up the original first, and letting you undo any fix with one command.</p>
+
+            <div class="callout">
+              <span class="callout-label">The safety model</span>
+              <p>Nothing is changed blindly. Every fix is <strong>previewed</strong> before it runs, the original file is <strong>backed up to a checkpoint</strong>, and <code>hostveil rollback</code> restores it byte-for-byte. Every interface drives the same engine, so a fix applied anywhere is reversible everywhere.</p>
+            </div>
+
+            <h2>New here? Start with these</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="installation.html">
+                  <strong>Installation →</strong>
+                  <span>One command to install, plus optional tools (Docker, Trivy, Ollama) and what each unlocks.</span>
+                </a>
+              </li>
+              <li>
+                <a href="quickstart.html">
+                  <strong>Quick start →</strong>
+                  <span>Scan, understand a finding, apply a fix, and roll it back — the full loop in a few minutes.</span>
+                </a>
+              </li>
+              <li>
+                <a href="checks.html">
+                  <strong>What it checks →</strong>
+                  <span>Docker/Compose, SSH, firewall, auto-updates, and optional image CVEs — what each looks at.</span>
+                </a>
+              </li>
+              <li>
+                <a href="fixing.html">
+                  <strong>Fixing &amp; rollback →</strong>
+                  <span>Auto, Review, and Manual fixes; how preview, backup, history, and rollback work.</span>
+                </a>
+              </li>
+            </ul>
+
+            <h2>Reference</h2>
+            <ul class="docs-cards">
+              <li>
+                <a href="interfaces.html">
+                  <strong>Interfaces →</strong>
+                  <span>The TUI, the localhost web dashboard, and the scriptable CLI — one shared engine.</span>
+                </a>
+              </li>
+              <li>
+                <a href="cli.html">
+                  <strong>CLI reference →</strong>
+                  <span>Every subcommand and flag: scan, fix, rollback, history, explain, and serve.</span>
+                </a>
+              </li>
+              <li>
+                <a href="ai.html">
+                  <strong>AI explanations →</strong>
+                  <span>Optional, advisory-only, local-first second opinions with <code>explain --ai</code>.</span>
+                </a>
+              </li>
+              <li>
+                <a href="contributing.html">
+                  <strong>Contributing →</strong>
+                  <span>Build from source, run the checks, the repo layout, and how to add a new check.</span>
+                </a>
+              </li>
+            </ul>
+
+            <div class="docs-pager">
+              <a class="button primary" href="installation.html">Install hostveil</a>
+              <a class="button secondary" href="https://github.com/seolcu/hostveil">Source on GitHub</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
