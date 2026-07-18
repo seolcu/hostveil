@@ -90,8 +90,8 @@
             <h2>빠른 설치</h2>
             <p>설치 스크립트는 OS와 아키텍처를 감지하고, 릴리스 바이너리를 내려받아 체크섬을 검증한 뒤 <code>/usr/bin/hostveil</code>에 설치합니다:</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash">Copy</button>
-              <pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash</code></pre>
+              <button class="copy-btn" type="button" data-copy="curl -fsSL https://hostveil.seolcu.com/install.sh | bash">Copy</button>
+              <pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash</code></pre>
             </div>
             <p>같은 명령을 언제든 다시 실행하면 최신 릴리스로 업데이트됩니다. 그런 다음 확인하세요:</p>
             <div class="code-block"><pre><code>hostveil version</code></pre></div>
@@ -121,7 +121,7 @@
               </table>
             </div>
             <p>파이프를 통해 옵션을 전달하려면 <code>bash -s --</code>를 사용하세요. 예:</p>
-            <div class="code-block"><pre><code>curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash -s -- --no-trivy</code></pre></div>
+            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --no-trivy</code></pre></div>
 
             <h2>권한 상승은 자동입니다</h2>
             <div class="callout">
