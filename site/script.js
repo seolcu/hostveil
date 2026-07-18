@@ -1,6 +1,37 @@
-/* hostveil landing page — copy-to-clipboard + lightbox */
+/* hostveil landing page — theme toggle + copy-to-clipboard + lightbox */
 (function () {
   "use strict";
+
+  /* ── theme toggle ─────────────────────────────────────── */
+
+  var root = document.documentElement;
+  var themeBtn = document.getElementById("theme-toggle");
+  var themeMeta = document.querySelector('meta[name="theme-color"]');
+  var THEME_BG = { dark: "#0b0d10", light: "#e7e0cc" };
+
+  function paintTheme(t) {
+    if (themeBtn) {
+      themeBtn.textContent = t === "dark" ? "☀" : "☾";
+      themeBtn.setAttribute(
+        "aria-label",
+        t === "dark" ? "Switch to light theme" : "Switch to dark theme"
+      );
+    }
+    if (themeMeta) themeMeta.setAttribute("content", THEME_BG[t] || THEME_BG.dark);
+  }
+
+  paintTheme(root.getAttribute("data-theme") === "light" ? "light" : "dark");
+
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("hv-theme", next);
+      } catch (e) {}
+      paintTheme(next);
+    });
+  }
 
   /* ── copy-to-clipboard ────────────────────────────────── */
 

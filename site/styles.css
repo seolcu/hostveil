@@ -128,6 +128,22 @@ a { color: inherit; text-decoration: none; }
 .site-footer a:hover,
 .site-footer a:focus-visible { color: var(--bone); border-bottom-color: currentColor; }
 .nav-links a[href*="github"] { color: var(--bone); }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--slate);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.theme-toggle:hover, .theme-toggle:focus-visible { color: var(--bone); border-color: var(--bone); }
 
 /* ── shared type ──────────────────────────────────────────────────────── */
 h1, h2, h3, p { margin-top: 0; }
@@ -386,7 +402,7 @@ figcaption span { color: var(--slate); font-size: 0.86rem; }
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: color-mix(in srgb, var(--ink) 92%, transparent);
+  background: rgba(9, 11, 14, 0.9); /* dark scrim in both themes — app shots are dark */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   align-items: center;
@@ -426,4 +442,45 @@ figcaption span { color: var(--slate); font-size: 0.86rem; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .meter::before { animation: none; }
+}
+
+/* ── light theme: the old warm "paper" identity (gold · deep green · cream) ──
+   Structure is unchanged — only the tokens swap. Dark stays the Instrument
+   look that matches the app; light revives hostveil's original brand. The
+   theme is set on <html data-theme> by an inline script (no flash) and the
+   nav toggle; specificity keeps these ahead of the base rules regardless of
+   source order. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #e7e0cc;    /* paper — page background */
+  --ink-2: #f1ecdb;  /* raised — cards, panels, header, code */
+  --ink-3: #dcd2b8;  /* recessed — meter track, code chips */
+  --line: #ccc09e;
+  --line-2: #b0a37b;
+  --bone: #1b241f;   /* deep green ink — primary text */
+  --bone-2: #3c463c; /* secondary text */
+  --slate: #625a40;  /* warm muted labels */
+  --crit: #bf3a2f;   /* severity, retuned for contrast on cream */
+  --high: #ac5f16;
+  --med: #8f7314;
+  --low: #6f6750;
+  --safe: #2f8b60;   /* safety stays green */
+}
+/* Gold/bronze is the returning brand accent. As text on cream it must be a
+   dark bronze for contrast; as the primary button it is solid gold (the old
+   signature) with dark ink text. */
+:root[data-theme="light"] .eyebrow { color: #6e5518; }
+:root[data-theme="light"] .eyebrow::before { border-top-color: #6e5518; }
+:root[data-theme="light"] .brand-mark { color: #6e5518; }
+:root[data-theme="light"] .command-box::before { color: #6e5518; }
+:root[data-theme="light"] .button.primary {
+  background: #c9a94a;
+  border-color: #c9a94a;
+  color: #241d09;
+}
+:root[data-theme="light"] .button.primary:hover,
+:root[data-theme="light"] .button.primary:focus-visible {
+  background: #d8b962;
+  border-color: #d8b962;
+  color: #241d09;
 }
