@@ -105,28 +105,28 @@
             <h2>수정 적용하기</h2>
             <p>단일 발견 항목을 ID로 미리보고 적용합니다.</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="sudo hostveil fix ssh.rootlogin">Copy</button>
-              <pre><code>sudo hostveil fix ssh.rootlogin</code></pre>
+              <button class="copy-btn" type="button" data-copy="hostveil fix ssh.rootlogin">Copy</button>
+              <pre><code>hostveil fix ssh.rootlogin</code></pre>
             </div>
             <p>적용은 항상 <strong>1)</strong> 정확한 diff나 명령을 보여 주고, <strong>2)</strong> 원본 파일을 체크포인트로 백업한 뒤, <strong>3)</strong> 변경을 적용합니다. <code>--yes</code>를 넘기지 않는 한 <code>[y/N]</code> 프롬프트에서 확인합니다.</p>
 
             <h3>검토 대안 선택하기</h3>
             <p>검토 발견 항목은 독립적인 대안을 제공합니다. 0부터 시작하는 인덱스를 <code>--action</code>으로 넘깁니다.</p>
-            <div class="code-block"><pre><code>sudo hostveil fix ssh.passwordauth --action 0</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix ssh.passwordauth --action 0</code></pre></div>
 
             <h3>서비스별로 구분하기</h3>
             <p>동일한 Compose 규칙이 둘 이상의 서비스에서 발생하면, <code>--service</code>로 범위를 좁힙니다.</p>
-            <div class="code-block"><pre><code>sudo hostveil fix compose.ds018 --service db</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix compose.ds018 --service db</code></pre></div>
 
             <h3>안전한 모든 수정 적용하기</h3>
-            <div class="code-block"><pre><code>sudo hostveil fix --all</code></pre></div>
+            <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
             <p>각 자동 수정 발견 항목을 적용하며, 각각 자체 체크포인트를 가지므로 개별적으로 롤백할 수 있습니다.</p>
 
             <h2>이력 및 롤백</h2>
             <p>적용된 모든 수정은 체크포인트로 기록됩니다. 최신순으로 나열합니다.</p>
             <div class="code-block"><pre><code>hostveil history</code></pre></div>
             <p>각 항목은 타임스탬프, 발견 항목 ID, 레이블, 정확한 롤백 명령을 보여 줍니다. 체크포인트 ID로 하나를 되돌립니다.</p>
-            <div class="code-block"><pre><code>sudo hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
             <div class="callout">
               <span class="callout-label">어디서나 되돌릴 수 있음</span>
               <p>롤백은 백업된 파일을 바이트 단위 그대로 복원합니다. TUI, 웹 대시보드, CLI가 모두 하나의 공유 엔진을 거치기 때문에, 어느 곳에서 적용한 수정이든 <code>history</code>에 나열되고 어디서나 되돌릴 수 있습니다. (일부 작업은 본질적으로 되돌릴 수 없으며, <code>history</code>는 이를 <em>되돌릴 수 없음</em>으로 표시합니다.)</p>

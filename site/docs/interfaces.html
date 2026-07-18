@@ -89,7 +89,7 @@
 
             <h2>TUI — the default</h2>
             <p>Running <code>hostveil</code> with no arguments on an interactive terminal opens the keyboard-driven TUI. You can also launch it explicitly:</p>
-            <div class="code-block"><pre><code>sudo hostveil        # or: sudo hostveil tui</code></pre></div>
+            <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
             <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied.</p>
             <figure>
               <img src="../assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1200" height="478" loading="lazy">
@@ -103,8 +103,8 @@
             <h2>Web — localhost dashboard</h2>
             <p>Serve the same scan over HTTP when a browser is better for review:</p>
             <div class="command-box">
-              <button class="copy-btn" type="button" data-copy="sudo hostveil serve">Copy</button>
-              <pre><code>sudo hostveil serve</code></pre>
+              <button class="copy-btn" type="button" data-copy="hostveil serve">Copy</button>
+              <pre><code>hostveil serve</code></pre>
             </div>
             <p>By default it binds to <code>127.0.0.1:8787</code> — loopback only. Change it with <code>--addr</code>; if you point it at a non-loopback address, hostveil prints a warning about exposing the dashboard. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
             <figure>
@@ -115,7 +115,7 @@
             <h2>CLI — scriptable</h2>
             <p>The <code>scan</code>, <code>fix</code>, <code>rollback</code>, and <code>history</code> subcommands work non-interactively. <code>scan --json</code> emits machine-readable output, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High — so it slots into CI or a cron job:</p>
             <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
-sudo hostveil fix --all --yes</code></pre></div>
+hostveil fix --all --yes</code></pre></div>
             <p>See the <a href="cli">CLI reference</a> for every command and flag.</p>
 
             <div class="callout">
