@@ -1,18 +1,17 @@
 {
   "landing": {
+    "ogType": "website",
     "en": {
       "title": "hostveil — guided security hardening for self-hosted Linux servers",
       "description": "hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.",
       "ogTitle": "hostveil — guided hardening for self-hosters",
-      "ogDescription": "One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI.",
-      "ogType": "website"
+      "ogDescription": "One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI."
     },
     "ko": {
       "title": "hostveil — 셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화",
       "description": "hostveil은 셀프호스터가 해킹당하는 보안 실수 — Docker Compose, SSH, 방화벽, 자동 업데이트 — 를 리눅스 홈 서버에서 찾아, 쉬운 말로 설명하고, 미리보기·백업·한 번의 명령으로 되돌리는 롤백과 함께 고쳐 줍니다.",
       "ogTitle": "hostveil — 셀프호스터를 위한 가이드형 보안 강화",
-      "ogDescription": "리눅스 홈 서버의 보안 실수를 찾아 쉽게 설명하고 안전하게 고치는 로컬 바이너리 하나 — 미리보기, 백업, 롤백. 선택적 CVE 스캔과 로컬 AI 지원.",
-      "ogType": "website"
+      "ogDescription": "리눅스 홈 서버의 보안 실수를 찾아 쉽게 설명하고 안전하게 고치는 로컬 바이너리 하나 — 미리보기, 백업, 롤백. 선택적 CVE 스캔과 로컬 AI 지원."
     }
   },
   "docs": [
@@ -97,11 +96,11 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "Fixing &amp; rollback — hostveil docs",
+        "title": "Fixing & rollback — hostveil docs",
         "description": "How hostveil fixes findings: Auto-fix, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.",
-        "ogTitle": "Fixing &amp; rollback — hostveil docs",
+        "ogTitle": "Fixing & rollback — hostveil docs",
         "ogDescription": "Auto-fix, Review, and Manual fixes; preview, backup, history, and one-command rollback.",
-        "nav": "Fixing &amp; rollback"
+        "nav": "Fixing & rollback"
       },
       "ko": {
         "title": "수정 및 롤백 — hostveil 문서",

@@ -29,10 +29,13 @@ jobs:
       - name: Verify site/ is up to date with sitegen
         run: |
           go run ./cmd/sitegen
-          git diff --exit-code site/ || {
-            echo "site/ is out of date. Run 'go run ./cmd/sitegen' and commit the result."
+          changes=$(git status --porcelain site/)
+          if [ -n "$changes" ]; then
+            echo "site/ is out of date (modified, added, or removed files):"
+            echo "$changes"
+            echo "Run 'go run ./cmd/sitegen' and commit the result."
             exit 1
-          }
+          fi
 
       - name: Check formatting
         run: |

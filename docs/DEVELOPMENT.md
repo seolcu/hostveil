@@ -69,6 +69,10 @@ cmd/sitegen/
   main.go            resolves each page's chrome/URLs and renders it
 ```
 
+Metadata in `pages.json` (titles, descriptions, nav labels) is **plain text** —
+the generator HTML-escapes it at render time, so write `Fixing & rollback`, not
+`Fixing &amp; rollback`. Content fragments under `content/` are raw HTML.
+
 Edit a fragment, template, or `pages.json`, then regenerate and commit the
 result:
 

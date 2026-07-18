@@ -1,0 +1,15 @@
+{{define "footer"}}
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="{{.BrandHref}}"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>{{.FooterTagline}}</p>
+        </div>
+        <nav aria-label="{{.FooterNavAria}}">
+          <a href="{{.FooterDocsHref}}">{{.FooterDocs}}</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">{{.FooterReleases}}</a>
+        </nav>
+      </div>
+    </footer>
+{{- end}}

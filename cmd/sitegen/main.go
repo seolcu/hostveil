@@ -8,7 +8,7 @@
 //	go run ./cmd/sitegen out     # writes into ./out
 //
 // The output is meant to stay byte-identical unless a template, fragment, or
-// manifest entry changes — CI can enforce that with `git diff --exit-code site`.
+// manifest entry changes — CI enforces that with a git status check on site/.
 package main
 
 import (
@@ -29,14 +29,32 @@ const siteURL = "https://hostveil.seolcu.com"
 //go:embed all:content
 var assets embed.FS
 
-// Meta is one page's per-language head metadata (from pages.json).
+// Metadata scalars in pages.json are plain text; these re-escape them for the
+// two HTML contexts they land in. Apostrophes are intentionally left literal
+// (as the original hand-written site had them).
+var (
+	textReplacer = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+	attrReplacer = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+)
+
+func escText(s string) string { return textReplacer.Replace(s) }
+func escAttr(s string) string { return attrReplacer.Replace(s) }
+
+var knownGroups = map[string]bool{"getting-started": true, "guide": true, "reference": true}
+
+// Meta is one page's per-language head metadata (plain text, from pages.json).
 type Meta struct {
 	Title         string `json:"title"`
 	Description   string `json:"description"`
 	OGTitle       string `json:"ogTitle"`
 	OGDescription string `json:"ogDescription"`
-	OGType        string `json:"ogType,omitempty"`
 	Nav           string `json:"nav,omitempty"`
+}
+
+type Landing struct {
+	OGType string `json:"ogType"`
+	En     Meta   `json:"en"`
+	Ko     Meta   `json:"ko"`
 }
 
 type DocPage struct {
@@ -48,8 +66,8 @@ type DocPage struct {
 }
 
 type Manifest struct {
-	Landing map[string]Meta `json:"landing"`
-	Docs    []DocPage       `json:"docs"`
+	Landing Landing   `json:"landing"`
+	Docs    []DocPage `json:"docs"`
 }
 
 // Strings holds every piece of localized site chrome.
@@ -64,7 +82,7 @@ type Strings struct {
 	LightboxAria                                                     string
 }
 
-var strings_ = map[string]Strings{
+var chrome = map[string]Strings{
 	"en": {
 		SkipLink: "Skip to content", NavAria: "Primary navigation", BrandAria: "hostveil home",
 		NavDocs: "Docs", NavFeatures: "Features", NavInstall: "Install",
@@ -105,8 +123,8 @@ type View struct {
 	Title, Description, OGTitle, OGDescription, OGType string
 	Canonical, HrefEn, HrefKo                          string
 	OGLocaleLine, AssetLinks                           string
-	DocsCurrentAttr                                    string
-	LDocsHref                                          string
+	BrandHref, DocsCurrentAttr                         string
+	LDocsHref, FooterDocsHref                          string
 	LangHref, LangLang, LangLabel                      string
 	Groups                                             []Group
 	Content                                            string
@@ -141,10 +159,15 @@ func landingPath(lang string) string {
 // assetLinks builds the <link>/<script> block for a page type and language,
 // matching the exact ordering and per-language depth of the original site.
 func assetLinks(kind, lang string) string {
-	prefix := map[[2]string]string{
-		{"landing", "en"}: "", {"landing", "ko"}: "../",
-		{"docs", "en"}: "../", {"docs", "ko"}: "../../",
-	}[[2]string{kind, lang}]
+	var prefix string
+	switch {
+	case kind == "docs" && lang == "ko":
+		prefix = "../../"
+	case kind == "docs" || lang == "ko":
+		prefix = "../"
+	default:
+		prefix = ""
+	}
 	var b strings.Builder
 	link := func(href string) { fmt.Fprintf(&b, "    <link rel=\"stylesheet\" href=\"%s\">\n", href) }
 	script := func(src string) { fmt.Fprintf(&b, "    <script src=\"%s\" defer></script>\n", src) }
@@ -181,7 +204,7 @@ func groupHeading(s Strings, key string) string {
 
 // sidebar builds the three grouped sections, marking the current slug active.
 func sidebar(m Manifest, lang, current string) []Group {
-	s := strings_[lang]
+	s := chrome[lang]
 	order := []string{"getting-started", "guide", "reference"}
 	groups := make([]Group, 0, len(order))
 	for _, key := range order {
@@ -194,15 +217,15 @@ func sidebar(m Manifest, lang, current string) []Group {
 			if d.Slug == "index" {
 				href = "./"
 			}
-			label := d.En.Nav
+			nav := d.En.Nav
 			if lang == "ko" {
-				label = d.Ko.Nav
+				nav = d.Ko.Nav
 			}
 			active := ""
 			if d.Slug == current {
 				active = ` class="active"`
 			}
-			g.Items = append(g.Items, Item{Href: href, Label: label, ActiveAttr: active})
+			g.Items = append(g.Items, Item{Href: href, Label: escText(nav), ActiveAttr: active})
 		}
 		groups = append(groups, g)
 	}
@@ -212,12 +235,12 @@ func sidebar(m Manifest, lang, current string) []Group {
 func base(lang string, meta Meta, ogType string) View {
 	oth := other(lang)
 	return View{
-		Strings:       strings_[lang],
+		Strings:       chrome[lang],
 		Lang:          lang,
-		Title:         meta.Title,
-		Description:   meta.Description,
-		OGTitle:       meta.OGTitle,
-		OGDescription: meta.OGDescription,
+		Title:         escText(meta.Title),
+		Description:   escAttr(meta.Description),
+		OGTitle:       escAttr(meta.OGTitle),
+		OGDescription: escAttr(meta.OGDescription),
 		OGType:        ogType,
 		OGLocaleLine:  ogLocaleLine(lang),
 		LangLang:      oth,
@@ -251,6 +274,24 @@ func fragment(kind, lang, slug string) (string, error) {
 	return strings.TrimRight(string(b), "\n"), nil
 }
 
+// prune removes previously-generated HTML so a removed or renamed slug does not
+// leave an orphaned page behind. It only touches the generated locations;
+// styles.css/docs.js/assets/ etc. live outside these globs and are untouched.
+func prune(outDir string) error {
+	for _, g := range []string{"*.html", "ko/*.html", "docs/*.html", "ko/docs/*.html"} {
+		matches, err := filepath.Glob(filepath.Join(outDir, g))
+		if err != nil {
+			return err
+		}
+		for _, m := range matches {
+			if err := os.Remove(m); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func main() {
 	outDir := "site"
 	if len(os.Args) > 1 {
@@ -261,17 +302,29 @@ func main() {
 	must(err)
 	var m Manifest
 	must(json.Unmarshal(raw, &m))
+	for _, d := range m.Docs {
+		if !knownGroups[d.Group] {
+			must(fmt.Errorf("slug %q has unknown group %q (want one of getting-started/guide/reference)", d.Slug, d.Group))
+		}
+	}
 
 	t := template.Must(template.ParseFS(assets, "templates/*.tmpl"))
+	must(prune(outDir))
 
 	count := 0
 	for _, lang := range []string{"en", "ko"} {
-		// landing
-		v := base(lang, m.Landing[lang], m.Landing[lang].OGType)
+		landingMeta := m.Landing.En
+		if lang == "ko" {
+			landingMeta = m.Landing.Ko
+		}
+		v := base(lang, landingMeta, m.Landing.OGType)
 		v.Canonical = siteURL + landingPath(lang)
-		v.HrefEn, v.HrefKo = siteURL+"/", siteURL+"/ko/"
+		v.HrefEn = siteURL + landingPath("en")
+		v.HrefKo = siteURL + landingPath("ko")
 		v.LangHref = landingPath(other(lang))
+		v.BrandHref = "#top"
 		v.LDocsHref = docsPath(lang, "index")
+		v.FooterDocsHref = v.LDocsHref
 		v.AssetLinks = assetLinks("landing", lang)
 		frag, err := fragment("landing", lang, "")
 		must(err)
@@ -283,7 +336,6 @@ func main() {
 		must(render(t, "page", out, v))
 		count++
 
-		// docs
 		for _, d := range m.Docs {
 			meta := d.En
 			if lang == "ko" {
@@ -294,6 +346,8 @@ func main() {
 			v.HrefEn = siteURL + docsPath("en", d.Slug)
 			v.HrefKo = siteURL + docsPath("ko", d.Slug)
 			v.LangHref = docsPath(other(lang), d.Slug)
+			v.BrandHref = "../"
+			v.FooterDocsHref = "./"
 			v.AssetLinks = assetLinks("docs", lang)
 			v.Groups = sidebar(m, lang, d.Slug)
 			if d.Slug == "index" {
@@ -302,11 +356,9 @@ func main() {
 			frag, err := fragment("docs", lang, d.Slug)
 			must(err)
 			v.Content = frag
-			var out string
+			out := filepath.Join(outDir, "docs", d.Slug+".html")
 			if lang == "ko" {
 				out = filepath.Join(outDir, "ko", "docs", d.Slug+".html")
-			} else {
-				out = filepath.Join(outDir, "docs", d.Slug+".html")
 			}
 			must(render(t, "docs", out, v))
 			count++
