@@ -19,9 +19,15 @@ import (
 )
 
 // BackedFile records one file captured in a checkpoint.
+//
+// Blob is empty for a mode-only entry, written when a fix changed a file's
+// permissions without touching its contents. Copying the bytes anyway would
+// mean spilling the contents of files like /etc/shadow into the checkpoint
+// directory to undo a chmod — a second copy of every password hash, to
+// restore nine bits.
 type BackedFile struct {
 	Path string      `json:"path"` // original absolute path
-	Blob string      `json:"blob"` // filename of the backup blob within the checkpoint
+	Blob string      `json:"blob,omitempty"`
 	Mode os.FileMode `json:"mode"`
 }
 
@@ -104,6 +110,34 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 	return cp, nil
 }
 
+// SaveModes writes a checkpoint that restores permissions only. modes maps
+// each path to the mode it had before the fix ran.
+//
+// It is the counterpart to Save for fixes that change a file's mode without
+// changing its bytes. The resulting checkpoint is Reversible — Files is
+// non-empty — but stores no blobs.
+func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoint, error) {
+	dir := filepath.Join(s.checkpointsDir(), cp.ID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return Checkpoint{}, err
+	}
+
+	cp.Files = cp.Files[:0]
+	for path, mode := range modes {
+		cp.Files = append(cp.Files, BackedFile{Path: path, Mode: mode})
+	}
+	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
+
+	meta, err := json.MarshalIndent(cp, "", "  ")
+	if err != nil {
+		return Checkpoint{}, err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
+		return Checkpoint{}, err
+	}
+	return cp, nil
+}
+
 // List returns all checkpoints, newest first.
 func (s *Store) List() ([]Checkpoint, error) {
 	entries, err := os.ReadDir(s.checkpointsDir())
@@ -161,11 +195,22 @@ func (s *Store) Rollback(id string) (Checkpoint, error) {
 	}
 	dir := filepath.Join(s.checkpointsDir(), id, "files")
 	for _, bf := range cp.Files {
-		data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
-		if err != nil {
-			return cp, err
+		// A mode-only entry carries no blob: the fix changed permissions and
+		// never touched the contents, so there is nothing to write back.
+		if bf.Blob != "" {
+			data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
+			if err != nil {
+				return cp, err
+			}
+			if err := os.WriteFile(bf.Path, data, bf.Mode); err != nil {
+				return cp, err
+			}
 		}
-		if err := os.WriteFile(bf.Path, data, bf.Mode); err != nil {
+		// os.WriteFile applies its perm argument only when it creates the
+		// file, so restoring the mode of a file that still exists needs an
+		// explicit chmod. Without this the Mode recorded on every checkpoint
+		// was never applied to anything.
+		if err := os.Chmod(bf.Path, bf.Mode); err != nil {
 			return cp, err
 		}
 	}

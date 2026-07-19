@@ -231,11 +231,11 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
+                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>

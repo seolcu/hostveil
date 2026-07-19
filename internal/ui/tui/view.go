@@ -339,13 +339,16 @@ func (m *appModel) viewPreview() string {
 		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).Render("⚠  "+a.Warning) + "\n\n")
 	}
 	switch a.Type {
-	case "edit":
+	case "edit", "mode":
 		b.WriteString(renderDiff(a.Diff))
 	case "exec":
 		b.WriteString(styleDim.Render("These commands will run:") + "\n")
 		for _, cmd := range a.Commands {
 			b.WriteString(styleDim.Render("  $ "+strings.Join(cmd, " ")) + "\n")
 		}
+	default:
+		// Never leave the apply/cancel footer with an empty body above it.
+		b.WriteString(styleDim.Render("(no preview available for action type "+a.Type+")") + "\n")
 	}
 	b.WriteString(m.footer("y apply   n cancel"))
 	return b.String()

@@ -10,10 +10,11 @@ package fix
 // safe", is defensible without the user having looked at it. That requires
 // all three of:
 //
-//  1. Reversible. The action is a file edit, so applying it writes a backup
-//     checkpoint that restores the original bytes exactly. Exec actions are
-//     never Auto: applyExec has nothing file-backed to check point, so
-//     there is no undo.
+//  1. Reversible. The action leaves a checkpoint that restores exactly what
+//     it changed — an edit stores the original bytes, a mode change stores
+//     the original permission bits. Exec actions are never Auto, and the
+//     reason is that nothing about them can be recorded to undo, not that
+//     they fail to be file edits: applyExec has no checkpoint at all.
 //  2. Recoverable in practice, not just on disk. If the change is wrong,
 //     the user must still be able to reach the machine to roll it back.
 //     Anything that can sever the operator's own access — SSH
@@ -132,6 +133,7 @@ package fix
 func Default() *Registry {
 	r := NewRegistry()
 	registerCompose(r)
+	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)
 	return r

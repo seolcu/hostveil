@@ -98,10 +98,14 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		sort.Strings(badPaths)
 		sort.Strings(badEvidence)
 		findings = append(findings, model.NewFinding(rule.ID, rule.Title, rule.Sev,
-			model.SourceFilePerms, model.RemediationManual,
+			model.SourceFilePerms, model.RemediationAuto,
 			model.WithDescription(rule.Desc),
 			model.WithHowToFix(fmt.Sprintf("Tighten the mode to %#o or stricter, e.g. `chmod %#o %s`.", rule.MaxMode, rule.MaxMode, badPaths[0])),
-			model.WithEvidence("files", strings.Join(badEvidence, ", ")),
+			model.WithEvidence("files", strings.Join(badEvidence, model.EvidenceSeparator)),
+			// The machine-readable twin of "files": the fix needs the paths
+			// alone, and parsing them back out of "/etc/shadow (0644), …"
+			// breaks on any path containing ", " or " (".
+			model.WithEvidence("paths", strings.Join(badPaths, model.EvidenceSeparator)),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
 	}
