@@ -136,24 +136,25 @@
             </div>
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
-            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Each unique vulnerability becomes a finding whose ID is <code>cve.&lt;vulnerability-id&gt;</code> (for example <code>cve.cve-2023-1234</code>), with severity mapped from Trivy's rating.</p>
-            <p>Alongside those, each scanned image gets one <code>cve.outdated-image</code> finding summarising the vulnerabilities that do have a published fix. That is the finding you can act on: it carries the fix, while the per-CVE findings stay informational.</p>
+            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>, not per vulnerability — a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>
+            <p>Each scanned image produces up to two findings, split by what you can actually do about them:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>cve.outdated-image</code></td><td>An image ships vulnerabilities that are fixed upstream</td><td>Worst fixable CVE</td><td>Review</td></tr>
-                  <tr><td><code>cve.&lt;vulnerability-id&gt;</code></td><td>One known vulnerability in one image</td><td>From Trivy</td><td>Manual</td></tr>
+                  <tr><td><code>cve.outdated-image</code></td><td>Vulnerabilities that are already fixed upstream</td><td>Worst in that group</td><td>Review</td></tr>
+                  <tr><td><code>cve.unpatched-image</code></td><td>Vulnerabilities nobody has published a fix for</td><td>Worst in that group</td><td>Unavailable</td></tr>
                 </tbody>
               </table>
             </div>
+            <p>Each finding names the severity counts and its worst few CVEs. The complete list of vulnerability IDs is in the finding's evidence — use <code>hostveil scan --json</code> to read it.</p>
             <div class="callout">
-              <span class="callout-label">Why individual CVEs have no fix button</span>
-              <p>Trivy tells you a package must reach version <code>3.0.11-1~deb12u2</code>. That is an OS package version <em>inside</em> the image, not an image tag, and there is no mapping from one to the other — so a per-CVE fix would have to invent one. The per-image rollup avoids the problem entirely: re-pulling the tag you already chose needs no version mapping, and it promises only that it re-resolves the tag, not that any particular CVE is gone. Images pinned by digest get no fix either, because pulling a digest cannot change anything.</p>
+              <span class="callout-label">Why not one finding per CVE</span>
+              <p>Trivy tells you a package must reach version <code>3.0.11-1~deb12u2</code>. That is an OS package version <em>inside</em> the image, not an image tag, and there is no mapping from one to the other — so a per-CVE fix would have to invent one. There is nothing you can do about a single CVE that you would not do about all of them at once, so the image is the honest unit. Re-pulling the tag you already chose needs no version mapping, and it promises only that it re-resolves the tag, not that any particular CVE is gone. Images pinned by digest get no fix, because pulling a digest cannot change anything.</p>
             </div>
             <div class="callout">
               <span class="callout-label">Honest about "no patch yet"</span>
-              <p>If there is no patch available yet, hostveil models that as a first-class <strong>Unavailable</strong> state rather than pretending it can be fixed — so the scan stays truthful.</p>
+              <p>Vulnerabilities with no available patch get their own finding rather than being folded into the fixable ones or dropped. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong> instead of pretending it can be fixed.</p>
             </div>
 
             <div class="docs-pager">
