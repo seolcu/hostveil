@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/diff"
@@ -44,6 +46,15 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 		case fix.ActionExec:
 			ap.Type = "exec"
 			ap.Commands = a.Commands
+		case fix.ActionMode:
+			ap.Type = "mode"
+			d, err := previewMode(a)
+			if err != nil {
+				return model.FixPreview{}, err
+			}
+			ap.Diff = d
+		default:
+			return model.FixPreview{}, fmt.Errorf("action %d of %s has unknown kind %v", i, f.ID, a.Kind)
 		}
 		preview.Actions = append(preview.Actions, ap)
 	}
@@ -62,6 +73,61 @@ func previewEdit(a fix.Action) (string, error) {
 		return "", err
 	}
 	return diff.Unified(a.Path, string(orig), string(next)), nil
+}
+
+// modeChange is one file whose permission bits a mode action would alter.
+type modeChange struct {
+	path     string
+	from, to fs.FileMode
+}
+
+// planModes stats every path and computes its new mode, purely. It reports
+// only the paths that would actually change, so a fix cannot claim credit
+// for files that were already compliant.
+//
+// A stat failure aborts the whole plan rather than skipping the file: a fix
+// that silently tightened three of four files would report success while
+// leaving the fourth exposed.
+func planModes(a fix.Action) ([]modeChange, error) {
+	var changes []modeChange
+	for _, p := range a.Paths {
+		fi, err := os.Stat(p)
+		if err != nil {
+			return nil, err
+		}
+		cur := fi.Mode()
+		next := a.Mode(cur)
+		if next != cur {
+			changes = append(changes, modeChange{path: p, from: cur, to: next})
+		}
+	}
+	return changes, nil
+}
+
+// previewMode renders a mode action as a table. It only stats; the live
+// files are never chmod'ed, mirroring previewEdit's purity.
+//
+// diff.Unified is no use here — it returns "" when the bytes match, and a
+// mode change leaves them identical.
+func previewMode(a fix.Action) (string, error) {
+	changes, err := planModes(a)
+	if err != nil {
+		return "", err
+	}
+	if len(changes) == 0 {
+		return "Permissions are already as strict as required.", nil
+	}
+	width := 0
+	for _, c := range changes {
+		if len(c.path) > width {
+			width = len(c.path)
+		}
+	}
+	var b strings.Builder
+	for _, c := range changes {
+		fmt.Fprintf(&b, "%-*s  %#o → %#o\n", width, c.path, c.from.Perm(), c.to.Perm())
+	}
+	return b.String(), nil
 }
 
 // ApplyFix applies one action of a finding's fix through the single
@@ -86,6 +152,10 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		outcome, err = e.applyEdit(f, fx, action)
 	case fix.ActionExec:
 		outcome, err = e.applyExec(ctx, f, fx, action)
+	case fix.ActionMode:
+		outcome, err = e.applyMode(f, fx, action)
+	default:
+		err = fmt.Errorf("action %d of %s has unknown kind %v", actionIdx, f.ID, action.Kind)
 	}
 	if err != nil {
 		return model.FixOutcome{Success: false, Error: err.Error()}, err
@@ -134,6 +204,52 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 
 	return model.FixOutcome{Diff: d, CheckpointID: saved.ID, RestartHint: f.Service}, nil
+}
+
+// applyMode tightens permission bits, following applyEdit's order: record
+// what is needed to undo it, refuse to proceed if that record cannot be
+// written, and only then touch the host.
+//
+// The checkpoint stores modes without blobs. Backing up the contents just to
+// undo a chmod would copy files like /etc/shadow into the checkpoint
+// directory, which is a worse outcome than the finding.
+func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
+	changes, err := planModes(a)
+	if err != nil {
+		return model.FixOutcome{}, err
+	}
+	if len(changes) == 0 {
+		return model.FixOutcome{}, fmt.Errorf("permissions on %v are already as strict as required", a.Paths)
+	}
+
+	summary, err := previewMode(a)
+	if err != nil {
+		return model.FixOutcome{}, err
+	}
+
+	prior := make(map[string]os.FileMode, len(changes))
+	for _, c := range changes {
+		prior[c.path] = c.from
+	}
+	cp := history.Checkpoint{
+		ID:         history.NewID(f.ID),
+		FindingID:  f.ID,
+		FindingKey: f.Key(),
+		Label:      fx.Label,
+		CreatedAt:  time.Now(),
+		Diff:       summary,
+	}
+	saved, err := e.store.SaveModes(cp, prior)
+	if err != nil {
+		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
+	}
+
+	for _, c := range changes {
+		if err := os.Chmod(c.path, c.to); err != nil {
+			return model.FixOutcome{}, err
+		}
+	}
+	return model.FixOutcome{Diff: summary, CheckpointID: saved.ID}, nil
 }
 
 func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {

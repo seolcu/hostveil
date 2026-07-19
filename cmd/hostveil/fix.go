@@ -177,7 +177,7 @@ func printPreview(f model.Finding, p model.FixPreview, idx int) {
 		fmt.Printf("\n⚠  %s\n", a.Warning)
 	}
 	switch a.Type {
-	case "edit":
+	case "edit", "mode":
 		fmt.Printf("\n%s\n", a.Diff)
 	case "exec":
 		fmt.Println("\nThe following commands will run:")
@@ -185,6 +185,10 @@ func printPreview(f model.Finding, p model.FixPreview, idx int) {
 			fmt.Printf("  $ %s\n", strings.Join(cmd, " "))
 		}
 		fmt.Println()
+	default:
+		// Never leave a confirmation prompt with nothing above it: an empty
+		// preview beside a live "apply?" reads as "this changes nothing".
+		fmt.Printf("\n(no preview available for action type %q)\n\n", a.Type)
 	}
 }
 

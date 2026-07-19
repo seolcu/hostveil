@@ -7,6 +7,7 @@ package fix
 
 import (
 	"fmt"
+	"io/fs"
 	"path"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -18,6 +19,7 @@ type ActionKind int
 const (
 	ActionEdit ActionKind = iota // mutate a file via Transform
 	ActionExec                   // run a command
+	ActionMode                   // change permission bits via Mode
 )
 
 // Action is one step of a fix. For ActionEdit, Path + Transform are set
@@ -34,6 +36,16 @@ type Action struct {
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string
+
+	// Mode: the files whose permission bits change, and a PURE function from
+	// a file's current mode to its desired one. Same contract as Transform —
+	// preview and apply share it, and preview never touches disk.
+	//
+	// Paths is a slice because one finding can cover several files (the
+	// fileperms host-key rule is a glob), and an Auto fix is allowed exactly
+	// one action.
+	Paths []string
+	Mode  func(current fs.FileMode) fs.FileMode
 }
 
 // Fix is the remediation for one finding: a label, an explicit
@@ -136,6 +148,14 @@ func Validate(fx Fix) error {
 		}
 		if a.Kind == ActionExec && len(a.Commands) == 0 {
 			return fmt.Errorf("fix %q action %d is an exec with no command", fx.FindingID, i)
+		}
+		if a.Kind == ActionMode {
+			if len(a.Paths) == 0 {
+				return fmt.Errorf("fix %q action %d is a mode change with no paths", fx.FindingID, i)
+			}
+			if a.Mode == nil {
+				return fmt.Errorf("fix %q action %d is a mode change with no Mode function", fx.FindingID, i)
+			}
 		}
 	}
 	return nil

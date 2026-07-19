@@ -284,7 +284,7 @@ function showPreview(f, p) {
     body.replaceChildren(
       p.actions.length > 1 ? altPicker(p, chosen, (i) => { chosen = i; draw(); }) : "",
       a.warning ? el("div", { class: "warn" }, "⚠  " + a.warning) : "",
-      a.type === "edit" ? diffPre(a.diff) : cmdList(a.commands),
+      actionBody(a),
       el("div", { class: "row" },
         el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply"),
         el("button", { onclick: () => selectFinding(f, document.querySelector(".finding.active")) }, "Cancel")
@@ -304,6 +304,14 @@ function altPicker(p, chosen, onpick) {
       return el("label", {}, input, " " + a.label);
     })
   );
+}
+
+// An unrecognised action type must never render as an empty box beside a
+// live Apply button — that reads as "this fix changes nothing".
+function actionBody(a) {
+  if (a.type === "edit" || a.type === "mode") return diffPre(a.diff);
+  if (a.type === "exec") return cmdList(a.commands);
+  return el("pre", { class: "diff" }, `(no preview available for action type ${a.type})`);
 }
 
 function diffPre(diff) {

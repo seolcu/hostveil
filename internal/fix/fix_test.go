@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"io/fs"
 	"slices"
 	"strings"
 	"testing"
@@ -22,6 +23,8 @@ func representative(id string) model.Finding {
 		model.WithEvidence("fixable_count", "3"),
 		model.WithEvidence("worst_cve", "CVE-2021-1234"),
 		model.WithEvidence("reference", "tag"),
+		model.WithEvidence("paths", "/etc/shadow"),
+		model.WithEvidence("expected", "0640"),
 	)
 	return f
 }
@@ -226,6 +229,8 @@ func TestRepullUsesTheUnqualifiedServiceName(t *testing.T) {
 		model.WithMetadata("file", "/opt/cloud/docker-compose.yml"),
 		model.WithMetadata("service", "db"),
 		model.WithEvidence("reference", "tag"),
+		model.WithEvidence("paths", "/etc/shadow"),
+		model.WithEvidence("expected", "0640"),
 	)
 	fx, ok, err := Default().Build(f)
 	if err != nil || !ok {
@@ -309,5 +314,91 @@ func TestExecFixTransformsPure(t *testing.T) {
 	out2, _ := fx.Actions[0].Transform(in)
 	if string(out) != string(out2) {
 		t.Error("transform is not deterministic")
+	}
+}
+
+// The property that makes this fix safe to apply unattended: it only ever
+// removes permission bits. Assigning the rule's MaxMode outright would GRANT
+// access — /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
+// hands the shadow group a read bit the file never had.
+func TestTightenOnlyRemovesBits(t *testing.T) {
+	cases := []struct {
+		current, mask, want fs.FileMode
+		why                 string
+	}{
+		{0o666, 0o644, 0o644, "world-writable stripped to the rule"},
+		{0o644, 0o640, 0o640, "other-read stripped"},
+		{0o604, 0o640, 0o600, "must NOT become 0640 — that would grant group read"},
+		{0o600, 0o640, 0o600, "already stricter than the rule is left alone"},
+		{0o400, 0o644, 0o400, "stricter in every bit, untouched"},
+	}
+	for _, c := range cases {
+		if got := tighten(c.current, c.mask); got != c.want {
+			t.Errorf("tighten(%#o, %#o) = %#o, want %#o — %s", c.current, c.mask, got, c.want, c.why)
+		}
+		// Whatever the inputs, no bit may appear that was not already set.
+		if got := tighten(c.current, c.mask); got&^c.current != 0 {
+			t.Errorf("tighten(%#o, %#o) = %#o added bits %#o", c.current, c.mask, got, got&^c.current)
+		}
+	}
+}
+
+// Perm() is only the low nine bits, so rebuilding a mode from it alone would
+// silently clear setuid/setgid/sticky. The checker judged the file on its
+// permission bits; those are the only bits this fix may touch.
+func TestTightenPreservesSpecialBits(t *testing.T) {
+	got := tighten(fs.ModeSetuid|fs.ModeSticky|0o666, 0o644)
+	if got&fs.ModeSetuid == 0 || got&fs.ModeSticky == 0 {
+		t.Errorf("tighten dropped special bits: %v", got)
+	}
+	if got.Perm() != 0o644 {
+		t.Errorf("perm = %#o, want 0644", got.Perm())
+	}
+}
+
+func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
+	f := model.NewFinding("fileperms.hostkey", "t", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", "/etc/ssh/ssh_host_rsa_key, /etc/ssh/ssh_host_ed25519_key"),
+		model.WithEvidence("expected", "0640"),
+	)
+	fx, ok, err := Default().Build(f)
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	if fx.Kind != model.RemediationAuto {
+		t.Errorf("kind = %v, want Auto", fx.Kind)
+	}
+	if err := Validate(fx); err != nil {
+		t.Fatal(err)
+	}
+	a := fx.Actions[0]
+	if a.Kind != ActionMode {
+		t.Fatalf("action kind = %v, want ActionMode", a.Kind)
+	}
+	// A glob rule covers several files, and an Auto fix gets exactly one
+	// action — so the one action has to carry them all.
+	if len(a.Paths) != 2 {
+		t.Errorf("paths = %v, want both host keys", a.Paths)
+	}
+	if got := a.Mode(0o644); got != 0o640 {
+		t.Errorf("Mode(0644) = %#o, want 0640", got)
+	}
+}
+
+func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
+	for _, ev := range []map[string]string{
+		{"expected": "0640"},     // no paths
+		{"paths": "/etc/shadow"}, // no expected mode
+		{"paths": "/etc/shadow", "expected": "not-a-mode"},
+	} {
+		f := model.NewFinding("fileperms.shadow", "t", model.SeverityHigh,
+			model.SourceFilePerms, model.RemediationAuto)
+		for k, v := range ev {
+			model.WithEvidence(k, v)(&f)
+		}
+		if _, _, err := Default().Build(f); err == nil {
+			t.Errorf("expected a build error for evidence %v", ev)
+		}
 	}
 }

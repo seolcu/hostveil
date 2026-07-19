@@ -95,9 +95,49 @@ func TestApplyRollbackRoundTrip(t *testing.T) {
 	if string(restored) != orig {
 		t.Errorf("rollback did not restore original bytes:\nwant:\n%s\ngot:\n%s", orig, restored)
 	}
-	// Mode preserved.
+	// Mode restored. This used to pass vacuously: nothing had changed the
+	// mode, so "preserved" was true by default. Loosen it between apply and
+	// rollback so the assertion has something to catch — os.WriteFile
+	// ignores its perm argument on an existing file, which is why rollback
+	// needs an explicit chmod.
 	if fi, err := os.Stat(path); err == nil && fi.Mode().Perm() != 0o640 {
-		t.Errorf("rollback did not preserve mode: %v", fi.Mode().Perm())
+		t.Errorf("rollback did not restore mode: %v", fi.Mode().Perm())
+	}
+}
+
+// The regression guard for that vacuity: a mode changed after the checkpoint
+// was written must be put back by rollback.
+func TestRollbackRestoresAChangedMode(t *testing.T) {
+	engine := fixEngine(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(path, []byte("services:\n  cache:\n    image: redis:7\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
+		model.SourceCompose, model.RemediationAuto,
+		model.WithService("cache"), model.WithMetadata("file", path))
+
+	out, err := engine.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	// Something else loosens the file after the fix was applied.
+	if err := os.Chmod(path, 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := engine.Rollback(out.CheckpointID); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o640 {
+		t.Errorf("mode = %#o, want 0640 — the checkpoint recorded it and rollback must apply it", fi.Mode().Perm())
 	}
 }
 
@@ -317,5 +357,127 @@ func TestNoFixForUnfixable(t *testing.T) {
 		model.SourceCompose, model.RemediationManual, model.WithService("app"))
 	if _, err := engine.PreviewFix(f); err == nil {
 		t.Error("expected error previewing an unfixable finding")
+	}
+}
+
+// permFinding builds a fileperms finding pointing at a real temp file.
+func permFinding(t *testing.T, mode os.FileMode, expected string) (model.Finding, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "shadow")
+	if err := os.WriteFile(path, []byte("root:!:1::::::\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
+	}
+	return model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", path),
+		model.WithEvidence("expected", expected),
+	), path
+}
+
+func TestModeFixRoundTrip(t *testing.T) {
+	engine := fixEngine(t)
+	f, path := permFinding(t, 0o666, "0640")
+
+	out, err := engine.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o640 {
+		t.Fatalf("mode after apply = %#o, want 0640", fi.Mode().Perm())
+	}
+	if out.CheckpointID == "" {
+		t.Fatal("a mode change is reversible and must leave a checkpoint")
+	}
+
+	if _, err := engine.Rollback(out.CheckpointID); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o666 {
+		t.Errorf("mode after rollback = %#o, want the original 0666", fi.Mode().Perm())
+	}
+}
+
+// The contents are not the fix's business, and copying them into the
+// checkpoint would spill /etc/shadow's hashes into another file.
+func TestModeCheckpointStoresNoContents(t *testing.T) {
+	engine := fixEngine(t)
+	f, _ := permFinding(t, 0o666, "0640")
+
+	out, err := engine.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	cps, err := engine.ListCheckpoints()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, cp := range cps {
+		if cp.ID != out.CheckpointID {
+			continue
+		}
+		found = true
+		// Still reversible — it restores modes, not bytes.
+		if !cp.Reversible {
+			t.Error("a mode checkpoint must be reversible")
+		}
+	}
+	if !found {
+		t.Fatal("checkpoint not listed")
+	}
+}
+
+// Preview must never touch the host — the same contract previewEdit has.
+func TestModePreviewIsPure(t *testing.T) {
+	engine := fixEngine(t)
+	f, path := permFinding(t, 0o666, "0640")
+
+	p, err := engine.PreviewFix(f)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o666 {
+		t.Errorf("preview changed the mode on disk: %#o", fi.Mode().Perm())
+	}
+	if p.Actions[0].Type != "mode" {
+		t.Errorf("action type = %q, want mode", p.Actions[0].Type)
+	}
+	if !strings.Contains(p.Actions[0].Diff, "0666") || !strings.Contains(p.Actions[0].Diff, "0640") {
+		t.Errorf("preview should show the transition, got %q", p.Actions[0].Diff)
+	}
+}
+
+// A fix that tightened three of four files while silently skipping the one
+// it could not stat would report success and leave the host exposed.
+func TestModeFixAbortsWhenAPathIsMissing(t *testing.T) {
+	engine := fixEngine(t)
+	f, path := permFinding(t, 0o666, "0640")
+	model.WithEvidence("paths", path+", "+path+".missing")(&f)
+
+	if _, err := engine.ApplyFix(context.Background(), f, 0); err == nil {
+		t.Fatal("expected an error when a path cannot be stat'ed")
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o666 {
+		t.Errorf("mode changed despite the abort: %#o", fi.Mode().Perm())
+	}
+}
+
+// Auto means "safe to apply unattended", so `fix --all` must actually pick
+// a mode fix up. ApplyBatch takes only single-action Auto fixes, which is
+// exactly the shape ActionMode produces.
+func TestApplyBatchIncludesModeFixes(t *testing.T) {
+	engine := fixEngine(t)
+	f, path := permFinding(t, 0o666, "0640")
+
+	out := engine.ApplyBatch(context.Background(), []model.Finding{f})
+	if len(out.Applied) != 1 || out.Applied[0] != "fileperms.shadow" {
+		t.Fatalf("batch did not apply the mode fix: applied=%v skipped=%v failed=%v",
+			out.Applied, out.Skipped, out.Failed)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o640 {
+		t.Errorf("mode = %#o, want 0640", fi.Mode().Perm())
 	}
 }

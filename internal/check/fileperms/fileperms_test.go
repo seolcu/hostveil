@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -96,5 +97,46 @@ func TestDefaultRulesConstructible(t *testing.T) {
 		if r.ID == "" || r.Title == "" {
 			t.Errorf("default rule missing id/title: %+v", r)
 		}
+	}
+}
+
+// The checker's declared kind is half of how remediation is settled — the
+// registry is the other half, and classify takes the stricter. Declaring
+// Manual here would keep these Manual no matter what the registry offers.
+func TestFilePermsDeclaresAutoAndCarriesPaths(t *testing.T) {
+	// writeMode mints its own TempDir per call, so a glob rule needs the
+	// files placed side by side here.
+	dir := t.TempDir()
+	a := filepath.Join(dir, "one")
+	b := filepath.Join(dir, "two")
+	for _, p := range []string{a, b} {
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(p, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	fs := run(t, []Rule{{Path: filepath.Join(dir, "*"), Glob: true, MaxMode: 0o640,
+		Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "t"}})
+	if len(fs) != 1 {
+		t.Fatalf("expected one aggregated finding, got %d", len(fs))
+	}
+	f := fs[0]
+	if f.Remediation != model.RemediationAuto {
+		t.Errorf("remediation = %v, want Auto", f.Remediation)
+	}
+	// The machine-readable twin of "files": bare paths, joined by the shared
+	// evidence separator, so a fix does not have to parse "/x (0644)" prose.
+	paths := f.Evidence["paths"]
+	if !strings.Contains(paths, a) || !strings.Contains(paths, b) {
+		t.Errorf("paths evidence = %q, want both files", paths)
+	}
+	if strings.Contains(paths, "(") {
+		t.Errorf("paths evidence must carry bare paths, got %q", paths)
+	}
+	if f.Evidence["expected"] != "0640" {
+		t.Errorf("expected = %q, want 0640", f.Evidence["expected"])
 	}
 }
