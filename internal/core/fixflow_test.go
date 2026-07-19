@@ -464,3 +464,20 @@ func TestModeFixAbortsWhenAPathIsMissing(t *testing.T) {
 		t.Errorf("mode changed despite the abort: %#o", fi.Mode().Perm())
 	}
 }
+
+// Auto means "safe to apply unattended", so `fix --all` must actually pick
+// a mode fix up. ApplyBatch takes only single-action Auto fixes, which is
+// exactly the shape ActionMode produces.
+func TestApplyBatchIncludesModeFixes(t *testing.T) {
+	engine := fixEngine(t)
+	f, path := permFinding(t, 0o666, "0640")
+
+	out := engine.ApplyBatch(context.Background(), []model.Finding{f})
+	if len(out.Applied) != 1 || out.Applied[0] != "fileperms.shadow" {
+		t.Fatalf("batch did not apply the mode fix: applied=%v skipped=%v failed=%v",
+			out.Applied, out.Skipped, out.Failed)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o640 {
+		t.Errorf("mode = %#o, want 0640", fi.Mode().Perm())
+	}
+}
