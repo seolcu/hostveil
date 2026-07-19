@@ -21,15 +21,35 @@
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
 
             <h2>심각도와 점수</h2>
-            <p>모든 발견 항목은 네 가지 심각도 중 하나를 가집니다. 점수는 100에서 시작하며, 수정되지 않은 발견 항목마다 심각도별 감점이 적용됩니다.</p>
+            <p>도메인마다 별도의 축이 있고, 각 축은 100에서 시작합니다. <span class="sev critical">심각</span> 항목 하나는 그 축에 <strong>남아 있는 점수의 절반</strong>을 가져가며, 나머지 심각도는 여기에 비례합니다.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>심각도</th><th>감점</th></tr></thead>
+                <thead><tr><th>심각도</th><th>가져가는 몫</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev critical">심각</span></td><td>8</td></tr>
-                  <tr><td><span class="sev high">높음</span></td><td>5</td></tr>
-                  <tr><td><span class="sev medium">보통</span></td><td>2</td></tr>
-                  <tr><td><span class="sev low">낮음</span></td><td>1</td></tr>
+                  <tr><td><span class="sev critical">심각</span></td><td>남은 점수의 1/2</td></tr>
+                  <tr><td><span class="sev high">높음</span></td><td>약 1/3</td></tr>
+                  <tr><td><span class="sev medium">보통</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">낮음</span></td><td>1/16</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다.</p>
+            <p>hostveil이 <strong>사용 불가</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
+
+            <h3>도메인별 비중</h3>
+            <p>축은 셀프호스트 서버에서 얼마나 중요한지에 따라 가중치를 갖고, 합은 100입니다. 실행되지 않은 도메인은 가중치가 총합에서 빠지고 나머지가 재정규화됩니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>축</th><th>가중치</th></tr></thead>
+                <tbody>
+                  <tr><td>컨테이너 노출</td><td>20</td></tr>
+                  <tr><td>SSH 하드닝</td><td>18</td></tr>
+                  <tr><td>취약점</td><td>15</td></tr>
+                  <tr><td>호스트 방화벽</td><td>13</td></tr>
+                  <tr><td>노출된 서비스</td><td>11</td></tr>
+                  <tr><td>계정 위생</td><td>9</td></tr>
+                  <tr><td>자동 업데이트</td><td>8</td></tr>
+                  <tr><td>파일 권한</td><td>6</td></tr>
                 </tbody>
               </table>
             </div>

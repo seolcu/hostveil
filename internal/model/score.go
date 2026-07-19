@@ -1,5 +1,7 @@
 package model
 
+import "math"
+
 // ScoreBreakdown is the 0-100 security score plus its per-axis detail.
 // It is pure data so every UI renders it identically.
 type ScoreBreakdown struct {
@@ -39,17 +41,45 @@ type axisDef struct {
 	cap    int
 }
 
-// axisDefs maps each detection domain to a scoring axis. The caps sum to
-// 100 so, when every axis runs, the score is a plain 100 − Σpenalty.
+// axisDefs maps each detection domain to a scoring axis. A cap is the
+// axis's share of the overall score and nothing else — it is purely how
+// much this domain matters, never a threshold. The caps sum to 100 so the
+// overall is a weighted average of the axes that ran.
 var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 22},
+	{"container", "Container exposure", SourceCompose, 20},
 	{"ssh", "SSH hardening", SourceSSH, 18},
-	{"firewall", "Host firewall", SourceFirewall, 14},
+	{"firewall", "Host firewall", SourceFirewall, 13},
 	{"updates", "Auto-updates", SourceUpdates, 8},
-	{"cve", "Vulnerabilities", SourceCVE, 10},
-	{"ports", "Exposed services", SourcePorts, 12},
-	{"accounts", "Account hygiene", SourceAccounts, 10},
+	{"cve", "Vulnerabilities", SourceCVE, 15},
+	{"ports", "Exposed services", SourcePorts, 11},
+	{"accounts", "Account hygiene", SourceAccounts, 9},
 	{"fileperms", "File permissions", SourceFilePerms, 6},
+}
+
+// criticalHalves is the anchor of the whole penalty model: one Critical
+// finding takes half of whatever credit an axis has left. Every other
+// severity follows from it, since a finding's weight is its severity
+// penalty over this constant (Critical 8/16 = 0.5, High 0.3125, Medium
+// 0.125, Low 0.0625).
+const criticalHalves = 16
+
+// unavailableRelief divides the weight of a finding nothing can fix.
+//
+// It is not zero — the risk is real and claiming otherwise would be the
+// same lie as scoring an unscanned domain 100. But it cannot be full
+// either: every Debian-based image ships vulnerabilities with no upstream
+// patch, so charging them like actionable findings pins the axis at zero
+// for a perfectly maintained host. A score you cannot improve by doing
+// everything right is not measuring your hardening.
+const unavailableRelief = 4
+
+// weight returns the share of an axis's remaining credit a finding takes.
+func weight(f Finding) float64 {
+	w := float64(f.Severity.Penalty()) / criticalHalves
+	if f.Remediation == RemediationUnavailable {
+		w /= unavailableRelief
+	}
+	return w
 }
 
 // ScoreReport computes the security score from findings. states reports the
@@ -78,6 +108,21 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		idxBySource[def.source] = i
 	}
 
+	// remaining[i] is the share of axis i still standing. Findings erode it
+	// multiplicatively rather than adding up: each one takes a share of what
+	// is left, so the tenth Critical still hurts but cannot hurt more than
+	// there is left to lose.
+	//
+	// Summing severities instead — the model this replaces — meant two
+	// Criticals exhausted most axes and every finding after that was free.
+	// A host with 27 container findings scored identically to one with 3,
+	// and the axis was pinned at 0 for anyone running more than a couple of
+	// services.
+	remaining := make([]float64, len(axes))
+	for i := range remaining {
+		remaining[i] = 1
+	}
+
 	seen := make(map[string]bool, len(findings))
 	for _, f := range findings {
 		if f.Fixed {
@@ -92,8 +137,9 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		}
 		seen[f.Key()] = true
 
+		remaining[idx] *= 1 - weight(f)
+
 		axis := &axes[idx]
-		axis.Penalty += f.Severity.Penalty()
 		switch f.Severity {
 		case SeverityCritical:
 			axis.Critical++
@@ -106,15 +152,17 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		}
 	}
 
-	totalPenalty := 0
+	totalPenalty := 0.0
 	ranCapSum := 0
 	for i := range axes {
-		if axes[i].Penalty > axes[i].MaxPenalty {
-			axes[i].Penalty = axes[i].MaxPenalty
-		}
-		axes[i].Score = axisScore(axes[i].Penalty, axes[i].MaxPenalty)
+		lost := 1 - remaining[i]
+		// Score comes from the fraction directly, not from the rounded
+		// penalty. Deriving it from penalty/cap would give a cap-6 axis
+		// only seven distinct scores.
+		axes[i].Score = uint8(math.Round(100 * remaining[i])) //nolint:gosec // remaining is 0-1
+		axes[i].Penalty = int(math.Round(float64(axes[i].MaxPenalty) * lost))
 		if axes[i].Applicable {
-			totalPenalty += axes[i].Penalty
+			totalPenalty += float64(axes[i].MaxPenalty) * lost
 			ranCapSum += axes[i].MaxPenalty
 		}
 	}
@@ -124,23 +172,16 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 
 // renormalize scales the summed penalty against the caps of the axes that
 // actually ran, yielding a 0-100 score even when some axes are N/A.
-func renormalize(penalty, ranCapSum int) uint8 {
+func renormalize(penalty float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
 		return 100
 	}
-	scaled := penalty * 100 / ranCapSum
+	scaled := math.Round(penalty * 100 / float64(ranCapSum))
 	if scaled > 100 {
 		scaled = 100
 	}
+	if scaled < 0 {
+		scaled = 0
+	}
 	return uint8(100 - scaled) //nolint:gosec // bounded 0-100
-}
-
-func axisScore(penalty, maxPenalty int) uint8 {
-	if maxPenalty <= 0 || penalty <= 0 {
-		return 100
-	}
-	if penalty >= maxPenalty {
-		return 0
-	}
-	return uint8(100 - penalty*100/maxPenalty) //nolint:gosec // bounded 0-100
 }

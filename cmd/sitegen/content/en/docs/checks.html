@@ -21,15 +21,35 @@
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
 
             <h2>Severity &amp; the score</h2>
-            <p>Every finding carries one of four severities. The score starts at 100 and each unfixed finding subtracts a penalty by severity:</p>
+            <p>Each domain gets its own axis, scored from 100 down. One <span class="sev critical">Critical</span> finding takes <strong>half</strong> of whatever an axis has left; the other severities are proportional to that:</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>Severity</th><th>Penalty</th></tr></thead>
+                <thead><tr><th>Severity</th><th>Takes</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev critical">Critical</span></td><td>8</td></tr>
-                  <tr><td><span class="sev high">High</span></td><td>5</td></tr>
-                  <tr><td><span class="sev medium">Medium</span></td><td>2</td></tr>
-                  <tr><td><span class="sev low">Low</span></td><td>1</td></tr>
+                  <tr><td><span class="sev critical">Critical</span></td><td>1/2 of what remains</td></tr>
+                  <tr><td><span class="sev high">High</span></td><td>about 1/3</td></tr>
+                  <tr><td><span class="sev medium">Medium</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">Low</span></td><td>1/16</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three.</p>
+            <p>A finding hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
+
+            <h3>What each domain is worth</h3>
+            <p>The axes are weighted by how much they matter to a self-hosted server, and the weights sum to 100. When a domain does not run, its weight leaves the total and the rest are renormalized.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
+                <tbody>
+                  <tr><td>Container exposure</td><td>20</td></tr>
+                  <tr><td>SSH hardening</td><td>18</td></tr>
+                  <tr><td>Vulnerabilities</td><td>15</td></tr>
+                  <tr><td>Host firewall</td><td>13</td></tr>
+                  <tr><td>Exposed services</td><td>11</td></tr>
+                  <tr><td>Account hygiene</td><td>9</td></tr>
+                  <tr><td>Auto-updates</td><td>8</td></tr>
+                  <tr><td>File permissions</td><td>6</td></tr>
                 </tbody>
               </table>
             </div>

@@ -114,21 +114,30 @@ func TestScorePenalizesCorrectAxis(t *testing.T) {
 		NewFinding("ssh.rootlogin", "root login", SeverityCritical, SourceSSH, RemediationReview),
 	}
 	sb := ScoreReport(findings, nil)
+	var compose, ssh ScoreAxis
 	for _, ax := range sb.Axes {
 		switch ax.Source {
 		case SourceCompose:
-			if ax.Penalty != SeverityHigh.Penalty() || ax.High != 1 {
+			compose = ax
+			if ax.Penalty <= 0 || ax.High != 1 {
 				t.Errorf("container axis penalty=%d high=%d", ax.Penalty, ax.High)
 			}
 		case SourceSSH:
-			if ax.Penalty != SeverityCritical.Penalty() || ax.Critical != 1 {
+			ssh = ax
+			if ax.Penalty <= 0 || ax.Critical != 1 {
 				t.Errorf("ssh axis penalty=%d crit=%d", ax.Penalty, ax.Critical)
 			}
 		default:
-			if ax.Penalty != 0 {
+			if ax.Penalty != 0 || ax.Score != 100 {
 				t.Errorf("%s axis unexpectedly penalized: %d", ax.ID, ax.Penalty)
 			}
 		}
+	}
+	// Penalties are a share of each axis's own cap, so they are not
+	// comparable across axes. Scores are: a Critical must cost more of its
+	// axis than a High costs of its own.
+	if ssh.Score >= compose.Score {
+		t.Errorf("critical axis scored %d, high axis %d — critical must cost more", ssh.Score, compose.Score)
 	}
 	if sb.Overall >= 100 {
 		t.Errorf("score should be reduced, got %d", sb.Overall)
@@ -222,4 +231,103 @@ func axesBySource(s ScoreBreakdown) map[Source]ScoreAxis {
 		m[ax.Source] = ax
 	}
 	return m
+}
+
+// The regression this whole model exists for: summing severities meant two
+// Criticals exhausted an axis and every finding after that was free. An
+// axis pinned at 0 cannot tell a bad host from a catastrophic one.
+func TestScoreDoesNotSaturateOnASecondCritical(t *testing.T) {
+	one := ScoreReport([]Finding{
+		NewFinding("cve.outdated-image", "a", SeverityCritical, SourceCVE, RemediationReview, WithService("a")),
+	}, nil)
+	two := ScoreReport([]Finding{
+		NewFinding("cve.outdated-image", "a", SeverityCritical, SourceCVE, RemediationReview, WithService("a")),
+		NewFinding("cve.outdated-image", "b", SeverityCritical, SourceCVE, RemediationReview, WithService("b")),
+	}, nil)
+
+	got := func(sb ScoreBreakdown) uint8 {
+		for _, ax := range sb.Axes {
+			if ax.Source == SourceCVE {
+				return ax.Score
+			}
+		}
+		t.Fatal("no cve axis")
+		return 0
+	}
+	if got(two) == 0 {
+		t.Error("two criticals must not zero an axis; that is the saturation bug")
+	}
+	if got(two) >= got(one) {
+		t.Errorf("second critical did not cost anything: %d then %d", got(one), got(two))
+	}
+}
+
+// Every finding must cost something, no matter how many precede it.
+func TestScoreIsMonotonic(t *testing.T) {
+	var findings []Finding
+	prev := uint8(100)
+	for i := range 12 {
+		findings = append(findings, NewFinding("compose.ds001", "x", SeverityHigh,
+			SourceCompose, RemediationManual, WithService(string(rune('a'+i)))))
+		got := ScoreReport(findings, nil).Overall
+		if got > prev {
+			t.Fatalf("adding finding %d raised the score: %d → %d", i, prev, got)
+		}
+		prev = got
+	}
+	if prev == 0 {
+		t.Error("12 High findings on one axis should still leave a nonzero overall")
+	}
+}
+
+// A finding nobody can fix still counts — claiming otherwise would be its
+// own lie — but must not cost as much as one the user could act on.
+func TestScoreWeighsUnavailableLighter(t *testing.T) {
+	actionable := ScoreReport([]Finding{
+		NewFinding("cve.outdated-image", "a", SeverityCritical, SourceCVE, RemediationReview),
+	}, nil).Overall
+	unfixable := ScoreReport([]Finding{
+		NewFinding("cve.unpatched-image", "a", SeverityCritical, SourceCVE, RemediationUnavailable),
+	}, nil).Overall
+
+	if unfixable <= actionable {
+		t.Errorf("unavailable finding cost %d, actionable cost %d — unavailable must cost less",
+			100-unfixable, 100-actionable)
+	}
+	if unfixable >= 100 {
+		t.Error("an unavailable finding must still cost something; the risk is real")
+	}
+}
+
+// The point of the change: a host doing everything right still carries
+// vulnerabilities with no upstream patch, and must not be scored as if it
+// had done nothing. Under the additive model this axis read 0.
+func TestScoreRewardsAWellMaintainedHost(t *testing.T) {
+	var findings []Finding
+	for i := range 4 {
+		findings = append(findings, NewFinding("cve.unpatched-image", "no patch yet",
+			SeverityCritical, SourceCVE, RemediationUnavailable, WithService(string(rune('a'+i)))))
+	}
+	sb := ScoreReport(findings, nil)
+	for _, ax := range sb.Axes {
+		if ax.Source != SourceCVE {
+			continue
+		}
+		if ax.Score < 40 {
+			t.Errorf("cve axis = %d; a host with only unpatchable CVEs is not a neglected one", ax.Score)
+		}
+	}
+}
+
+// A small cap used to be its own bug: fileperms caps at 6, so one Critical
+// (penalty 8) clamped past the cap and zeroed the axis outright.
+func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
+	sb := ScoreReport([]Finding{
+		NewFinding("fileperms.shadow", "world-readable", SeverityCritical, SourceFilePerms, RemediationManual),
+	}, nil)
+	for _, ax := range sb.Axes {
+		if ax.Source == SourceFilePerms && ax.Score == 0 {
+			t.Error("one finding zeroed the smallest axis; cap must be a weight, not a threshold")
+		}
+	}
 }

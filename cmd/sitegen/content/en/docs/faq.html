@@ -21,7 +21,7 @@
             <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only) by default. You can change the bind address with <code>--addr</code>, but pointing it at a non-loopback address prints a warning first. See <a href="interfaces">Interfaces</a>.</p>
 
             <h2>What does the 0–100 score mean?</h2>
-            <p>It starts at 100 and subtracts a penalty for each unfixed finding by severity (Critical 8, High 5, Medium 2, Low 1). A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High. See <a href="checks">What it checks</a>.</p>
+            <p>Each domain is scored on its own axis, and the axes are combined by weight. Every unfixed finding takes a share of what its axis still has: a Critical takes half of the remainder, lesser severities proportionally less, and a vulnerability with no upstream patch a quarter as much as one you could act on. Because the shares compound rather than add, an axis never bottoms out after two findings. A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High. See <a href="checks">What it checks</a>.</p>
 
             <h2>Which platforms are supported?</h2>
             <p>Prebuilt binaries target <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is built for self-hosted Linux servers.</p>
