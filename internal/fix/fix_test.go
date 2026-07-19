@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -112,6 +113,24 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 	}
 }
 
+// TestCVERollupIsFixableButPerCVEIsNot asserts both halves of the CVE
+// decision at once, which is the point of having it in one test: a "cve.*"
+// glob would satisfy the first assertion and break the second. Per-CVE
+// findings stay unfixable because a package version is not an image tag;
+// the per-image rollup is fixable because re-pulling a mutable tag needs no
+// version mapping at all.
+func TestCVERollupIsFixableButPerCVEIsNot(t *testing.T) {
+	r := Default()
+	if !r.Has("cve.outdated-image") {
+		t.Error("the per-image rollup should have a registered fix")
+	}
+	for _, id := range []string{"cve.cve-2021-1234", "cve.cve-2024-9999"} {
+		if r.Has(id) {
+			t.Errorf("%s matched a fix; a per-CVE finding must never resolve to one", id)
+		}
+	}
+}
+
 // TestReviewIntentSurvivesAnAutoShapedFix guards the rule that a fix
 // registered as Auto describes the fix's shape (one mechanical action) and
 // does not overrule a checker that asked for Review. ssh.passwordauth is
@@ -129,6 +148,113 @@ func TestReviewIntentSurvivesAnAutoShapedFix(t *testing.T) {
 		// resolution has something to work with.
 		if !fx.Kind.IsFixable() {
 			t.Errorf("%s: kind %v is not fixable", id, fx.Kind)
+		}
+	}
+}
+
+// The two alternatives must be independent choices, not two halves of one
+// procedure: action 1 is the zero-downtime option for anyone who cannot
+// take an unplanned restart, at the cost of not remediating yet.
+func TestRepullFixHasTwoIndependentAlternatives(t *testing.T) {
+	fx, ok, err := Default().Build(representative("cve.outdated-image"))
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	if fx.Kind != model.RemediationReview {
+		t.Errorf("kind = %v, want Review — exec fixes are never Auto", fx.Kind)
+	}
+	if len(fx.Actions) != 2 {
+		t.Fatalf("expected 2 alternatives, got %d", len(fx.Actions))
+	}
+	if len(fx.Actions[0].Commands) != 2 {
+		t.Errorf("pull-and-recreate should be one action of 2 commands, got %d", len(fx.Actions[0].Commands))
+	}
+	if len(fx.Actions[1].Commands) != 1 {
+		t.Errorf("pull-only should be a single command, got %d", len(fx.Actions[1].Commands))
+	}
+	for i, a := range fx.Actions {
+		if a.Kind != ActionExec {
+			t.Errorf("action %d is not an exec", i)
+		}
+		// Exec fixes have no checkpoint; the preview is the only place a
+		// user learns that before committing to it.
+		if !strings.Contains(a.Warning, "no rollback checkpoint") {
+			t.Errorf("action %d warning does not mention the absence of rollback: %q", i, a.Warning)
+		}
+	}
+}
+
+// applyExec runs argv with no shell and no working directory, so a bare
+// "docker compose" would resolve against whatever cwd the daemon happened
+// to have. Pin the -f.
+func TestRepullFixTargetsTheComposeFile(t *testing.T) {
+	f := representative("cve.outdated-image")
+	fx, _, err := Default().Build(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, a := range fx.Actions {
+		for j, cmd := range a.Commands {
+			idx := slices.Index(cmd, "-f")
+			if idx < 0 || idx+1 >= len(cmd) {
+				t.Errorf("action %d command %d has no -f: %v", i, j, cmd)
+				continue
+			}
+			if cmd[idx+1] != f.Metadata["file"] {
+				t.Errorf("action %d command %d targets %q, want %q", i, j, cmd[idx+1], f.Metadata["file"])
+			}
+			if cmd[len(cmd)-1] != f.Service {
+				t.Errorf("action %d command %d does not end with the service: %v", i, j, cmd)
+			}
+		}
+	}
+}
+
+// A pull on a digest is a no-op by construction. The builder refuses, and a
+// build error is how classify learns there is no fix.
+func TestRepullRefusesDigestPinnedImages(t *testing.T) {
+	f := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+		model.SourceCVE, model.RemediationManual,
+		model.WithService("app"),
+		model.WithMetadata("file", "/tmp/docker-compose.yml"),
+		model.WithEvidence("reference", "digest"),
+	)
+	if _, _, err := Default().Build(f); err == nil {
+		t.Error("expected a build error for a digest-pinned image")
+	}
+}
+
+func TestMemLimitFixOffersSeveralValues(t *testing.T) {
+	fx, ok, err := Default().Build(representative("compose.ds010"))
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	if fx.Kind != model.RemediationReview {
+		t.Errorf("kind = %v, want Review", fx.Kind)
+	}
+	if len(fx.Actions) < 2 {
+		t.Fatalf("expected >= 2 alternatives, got %d", len(fx.Actions))
+	}
+	in := []byte("services:\n  app:\n    image: myapp\n")
+	seen := map[string]bool{}
+	for i, a := range fx.Actions {
+		out, err := a.Transform(in)
+		if err != nil {
+			t.Fatalf("action %d: %v", i, err)
+		}
+		if !strings.Contains(string(out), "mem_limit") {
+			t.Errorf("action %d did not set mem_limit: %s", i, out)
+		}
+		// Each alternative must be a distinct choice, not the same edit
+		// relabelled — the loop variable capture bug this guards is easy to
+		// reintroduce.
+		if seen[string(out)] {
+			t.Errorf("action %d produced an output identical to an earlier alternative", i)
+		}
+		seen[string(out)] = true
+
+		if again, _ := a.Transform(in); string(again) != string(out) {
+			t.Errorf("action %d transform is not deterministic", i)
 		}
 	}
 }
