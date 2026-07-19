@@ -78,12 +78,14 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		}
 	}
 
-	switch {
-	case failed == 0:
+	// Case order matters: with no images at all, failed and attempted are both
+	// zero and the clean case must win.
+	switch failed {
+	case 0:
 		// Includes the no-images case: a host with no containers genuinely
 		// has no image vulnerabilities.
 		return findings, nil
-	case failed == attempted:
+	case attempted:
 		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
 	default:
 		return findings, &check.PartialError{
