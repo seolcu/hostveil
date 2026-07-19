@@ -13,4 +13,7 @@ services:
   redis:
     image: redis:6.0                   # intentionally old → image CVEs
     ports:
-      - "6379:6379"                    # datastore on 0.0.0.0 → compose.ds018 (Critical)
+      # Host port 6380 (not 6379) so it doesn't clash with the native
+      # redis-server provision.sh binds on 6379; still published on 0.0.0.0
+      # → compose.ds018 (Critical) fires all the same.
+      - "6380:6379"                    # datastore on 0.0.0.0 → compose.ds018 (Critical)
