@@ -25,7 +25,11 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 		return model.FixPreview{}, fmt.Errorf("no fix available for %s", f.ID)
 	}
 
-	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: fx.Kind}
+	// Report the classified kind, not the registry's raw one: classify may
+	// hold a fix at Review that the registry shapes as Auto, and a preview
+	// labelled "Auto-fix" next to a finding labelled "Review" would be a
+	// contradiction the user has to resolve.
+	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: classifiedKind(f.Remediation, fx.Kind)}
 	for i, a := range fx.Actions {
 		ap := model.ActionPreview{Index: i, Label: a.Label, Warning: a.Warning}
 		switch a.Kind {

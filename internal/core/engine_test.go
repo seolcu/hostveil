@@ -10,6 +10,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/check"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
+	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -120,5 +121,73 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 	}
 	if report.Score.Overall != 100 {
 		t.Errorf("score with nothing scannable = %d, want 100", report.Score.Overall)
+	}
+}
+
+// TestClassifyTakesTheMoreCautiousKind pins both directions of the rule
+// that settles a finding's remediation.
+//
+// Down: the registry decides whether a fix exists at all, so a finding
+// whose checker wanted a fix but has none registered becomes Manual and no
+// UI can offer a button that leads nowhere.
+//
+// Up: the checker decides how much human judgment applying it needs, and a
+// fix registered as Auto — a statement about its shape, one mechanical
+// action — cannot talk it down. Without this, ssh.passwordauth ships as
+// Auto and "fix all safe" disables password logins unattended on a host
+// the user may only reach by password.
+func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
+	e := New(Config{Fixes: fix.Default()})
+
+	cases := []struct {
+		name    string
+		finding model.Finding
+		want    model.RemediationKind
+		why     string
+	}{
+		{
+			name: "checker Review beats registered Auto",
+			finding: model.NewFinding("ssh.passwordauth", "password auth", model.SeverityMedium,
+				model.SourceSSH, model.RemediationReview,
+				model.WithEvidence("config", "/etc/ssh/sshd_config")),
+			want: model.RemediationReview,
+			why:  "a lockout risk must not be batch-applied",
+		},
+		{
+			name: "checker Auto and registered Auto stays Auto",
+			finding: model.NewFinding("compose.ds018", "exposed datastore", model.SeverityCritical,
+				model.SourceCompose, model.RemediationAuto,
+				model.WithService("cache"),
+				model.WithMetadata("file", "/tmp/docker-compose.yml"),
+				model.WithEvidence("port", "6379")),
+			want: model.RemediationAuto,
+			why:  "a reversible, unambiguous compose edit is safe unattended",
+		},
+		{
+			name: "fixable but unregistered is demoted to Manual",
+			finding: model.NewFinding("compose.ds016", "docker socket", model.SeverityCritical,
+				model.SourceCompose, model.RemediationReview,
+				model.WithService("app"),
+				model.WithMetadata("file", "/tmp/docker-compose.yml")),
+			want: model.RemediationManual,
+			why:  "no registered fix means no fix button",
+		},
+		{
+			name: "firewall has no fix at all",
+			finding: model.NewFinding("firewall.inactive", "no firewall", model.SeverityHigh,
+				model.SourceFirewall, model.RemediationReview),
+			want: model.RemediationManual,
+			why:  "enabling a firewall over SSH is not automatable safely",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			findings := []model.Finding{tc.finding}
+			e.classify(findings)
+			if got := findings[0].Remediation; got != tc.want {
+				t.Errorf("%s: remediation = %v, want %v (%s)", tc.finding.ID, got, tc.want, tc.why)
+			}
+		})
 	}
 }
