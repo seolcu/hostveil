@@ -6,7 +6,6 @@
 One binary, no config file, no cloud account.
 
 [![CI](https://github.com/seolcu/hostveil/actions/workflows/ci.yml/badge.svg)](https://github.com/seolcu/hostveil/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/seolcu/hostveil)](https://goreportcard.com/report/github.com/seolcu/hostveil)
 [![Release](https://img.shields.io/github/v/release/seolcu/hostveil)](https://github.com/seolcu/hostveil/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
