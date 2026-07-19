@@ -18,6 +18,22 @@ func main() {
 }
 
 func run(args []string) int {
+	// Top-level help/version flags are handled before subcommand dispatch so
+	// they behave like the bare-word `help`/`version` subcommands. Otherwise a
+	// leading dash-flag is never promoted to a command and leaks into the
+	// default `scan` flag set — `hostveil --help` would print scan's usage and
+	// `hostveil --version` would error with "flag provided but not defined".
+	if len(args) > 0 {
+		switch args[0] {
+		case "-h", "--help":
+			printUsage(os.Stdout)
+			return 0
+		case "-V", "--version":
+			fmt.Println("hostveil", version)
+			return 0
+		}
+	}
+
 	// With an explicit subcommand, dispatch to it. With none, open the TUI
 	// on an interactive terminal, otherwise print a scan (script-friendly).
 	explicit := len(args) > 0 && !strings.HasPrefix(args[0], "-")
@@ -46,10 +62,10 @@ func run(args []string) int {
 		return cmdRollback(args)
 	case "history":
 		return cmdHistory(args)
-	case "version", "--version", "-v":
+	case "version":
 		fmt.Println("hostveil", version)
 		return 0
-	case "help", "--help", "-h":
+	case "help":
 		printUsage(os.Stdout)
 		return 0
 	default:
@@ -71,8 +87,8 @@ Usage:
   hostveil serve [--addr]        Serve the localhost web dashboard
   hostveil rollback <id>         Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
-  hostveil version               Print the version
-  hostveil help                  Show this help
+  hostveil version               Print the version (also: --version, -V)
+  hostveil help                  Show this help (also: --help, -h)
 
 Scan flags:
   -v, --verbose   Show each finding's description and fix guidance
