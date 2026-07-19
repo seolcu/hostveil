@@ -11,11 +11,18 @@ type ScoreBreakdown struct {
 // domain did not run (e.g. the optional CVE checker was skipped); such an
 // axis is reported as N/A and excluded from the overall renormalization
 // rather than counted as a misleading perfect 100.
+//
+// Degraded marks an axis whose domain ran but covered only part of its
+// ground (ScanDegraded). Such an axis *is* scored — partial evidence still
+// beats none — but its score is drawn from an incomplete picture, so every
+// UI must render the flag. An unlabelled 100 on a partial axis is the same
+// lie Applicable exists to prevent, just in smaller print.
 type ScoreAxis struct {
 	ID         string `json:"id"`
 	Label      string `json:"label"`
 	Source     Source `json:"source"`
 	Applicable bool   `json:"applicable"`
+	Degraded   bool   `json:"degraded,omitempty"`
 	Score      uint8  `json:"score"`
 	Penalty    int    `json:"penalty"`
 	MaxPenalty int    `json:"max_penalty"`
@@ -45,21 +52,26 @@ var axisDefs = []axisDef{
 	{"fileperms", "File permissions", SourceFilePerms, 6},
 }
 
-// ScoreReport computes the security score from findings. ran reports which
-// domains actually executed; an axis whose domain did not run is marked
-// N/A and excluded, and the overall is renormalized over the axes that did
-// run so a host without the optional CVE scan is neither penalized for it
-// nor handed a falsely perfect vulnerability score.
-func ScoreReport(findings []Finding, ran map[Source]bool) ScoreBreakdown {
+// ScoreReport computes the security score from findings. states reports the
+// outcome of each domain's checker; an axis whose domain did not run is
+// marked N/A and excluded, and the overall is renormalized over the axes
+// that did run so a host without the optional CVE scan is neither penalized
+// for it nor handed a falsely perfect vulnerability score. A domain that ran
+// but covered only part of its ground is scored with Degraded set.
+//
+// A nil states map means "every domain ran", the convention used by callers
+// that score a bare set of findings with no scan behind them.
+func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	axes := make([]ScoreAxis, len(axisDefs))
 	idxBySource := make(map[Source]int, len(axisDefs))
 	for i, def := range axisDefs {
-		applicable := ran == nil || ran[def.source]
+		st, known := states[def.source]
 		axes[i] = ScoreAxis{
 			ID:         def.id,
 			Label:      def.label,
 			Source:     def.source,
-			Applicable: applicable,
+			Applicable: states == nil || st.Ran(),
+			Degraded:   known && st == ScanDegraded,
 			Score:      100,
 			MaxPenalty: def.cap,
 		}

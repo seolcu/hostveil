@@ -50,7 +50,7 @@ func sampleReport() model.Report {
 	}
 	return model.Report{
 		Findings: findings,
-		Score:    model.ScoreReport(findings, map[model.Source]bool{model.SourceCompose: true}),
+		Score:    model.ScoreReport(findings, map[model.Source]model.ScanState{model.SourceCompose: model.ScanDone}),
 	}
 }
 
@@ -77,8 +77,8 @@ func TestSnapshotDump(t *testing.T) {
 		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
 		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("db")),
 	}
-	ran := map[model.Source]bool{model.SourceCompose: true, model.SourceSSH: true, model.SourceFirewall: true, model.SourceUpdates: true}
-	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, ran), Domains: []model.DomainResult{
+	states := map[model.Source]model.ScanState{model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone, model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone}
+	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states), Domains: []model.DomainResult{
 		{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
 	}}
 

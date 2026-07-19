@@ -160,13 +160,13 @@ func TestScoreRenormalizesWhenCVESkipped(t *testing.T) {
 	findings := []Finding{
 		NewFinding("compose.ds016", "docker socket", SeverityCritical, SourceCompose, RemediationReview),
 	}
-	ranAll := map[Source]bool{
-		SourceCompose: true, SourceSSH: true, SourceFirewall: true,
-		SourceUpdates: true, SourceCVE: true,
+	ranAll := map[Source]ScanState{
+		SourceCompose: ScanDone, SourceSSH: ScanDone, SourceFirewall: ScanDone,
+		SourceUpdates: ScanDone, SourceCVE: ScanDone,
 	}
-	ranNoCVE := map[Source]bool{
-		SourceCompose: true, SourceSSH: true, SourceFirewall: true,
-		SourceUpdates: true, SourceCVE: false,
+	ranNoCVE := map[Source]ScanState{
+		SourceCompose: ScanDone, SourceSSH: ScanDone, SourceFirewall: ScanDone,
+		SourceUpdates: ScanDone, SourceCVE: ScanSkipped,
 	}
 
 	full := ScoreReport(findings, ranAll)
@@ -180,4 +180,46 @@ func TestScoreRenormalizesWhenCVESkipped(t *testing.T) {
 	if skipped.Overall >= full.Overall {
 		t.Errorf("renormalized score %d should be below full-cap score %d", skipped.Overall, full.Overall)
 	}
+}
+
+// A domain that ran but covered only part of its ground is scored — partial
+// evidence beats none — but flagged, so a UI never presents an incomplete
+// axis as a plain clean result.
+func TestScoreFlagsDegradedAxis(t *testing.T) {
+	states := map[Source]ScanState{SourceCompose: ScanDone, SourceCVE: ScanDegraded}
+	axes := axesBySource(ScoreReport(nil, states))
+
+	if cve := axes[SourceCVE]; !cve.Applicable || !cve.Degraded {
+		t.Errorf("degraded CVE axis: applicable=%v degraded=%v, want true/true", cve.Applicable, cve.Degraded)
+	}
+	if compose := axes[SourceCompose]; compose.Degraded {
+		t.Error("a domain that completed must not be flagged degraded")
+	}
+}
+
+// Error and Skipped both mean "did not run", so both drop out of scoring
+// rather than being handed a perfect 100.
+func TestScoreExcludesErroredAxis(t *testing.T) {
+	states := map[Source]ScanState{SourceCompose: ScanDone, SourceCVE: ScanError}
+	if cve := axesBySource(ScoreReport(nil, states))[SourceCVE]; cve.Applicable {
+		t.Error("an errored domain's axis must be N/A, not a perfect score")
+	}
+}
+
+// A nil map keeps the "score a bare set of findings" convention: every axis
+// applicable, nothing degraded.
+func TestScoreNilStatesMeansEverythingRan(t *testing.T) {
+	for _, ax := range ScoreReport(nil, nil).Axes {
+		if !ax.Applicable || ax.Degraded {
+			t.Errorf("axis %s: applicable=%v degraded=%v, want true/false", ax.ID, ax.Applicable, ax.Degraded)
+		}
+	}
+}
+
+func axesBySource(s ScoreBreakdown) map[Source]ScoreAxis {
+	m := make(map[Source]ScoreAxis, len(s.Axes))
+	for _, ax := range s.Axes {
+		m[ax.Source] = ax
+	}
+	return m
 }
