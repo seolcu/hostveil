@@ -4,6 +4,8 @@ const SEV = ["critical", "high", "medium", "low"];
 // Finding.source (int) -> short domain label, mirrors the score axes.
 const SRC = { 1: "Container", 2: "SSH", 3: "Firewall", 4: "Updates", 5: "CVEs", 6: "Ports", 7: "Accounts", 8: "File perms" };
 const REM_AUTO = 1;
+// model.ScanState (int), in declaration order.
+const SCAN_DONE = 2, SCAN_SKIPPED = 3, SCAN_DEGRADED = 4, SCAN_ERROR = 5;
 
 let report = null;
 let selected = null; // {id, service} — the inspected finding (single-select)
@@ -154,6 +156,28 @@ async function applyBatch() {
   } catch (e) { flash("Batch fix failed: " + e.message, true); }
 }
 
+// Show which checkers did not fully cover their domain. Without this the
+// dashboard renders a score built from a partial scan exactly like one built
+// from a complete scan — the CVE axis reading a confident 100 because Trivy
+// could not reach a single image is the case that motivated it.
+function renderDomainNotice() {
+  const box = document.getElementById("domains");
+  const bad = (report.domains || []).filter((d) => d.state !== SCAN_DONE);
+  if (!bad.length) {
+    box.hidden = true;
+    box.replaceChildren();
+    return;
+  }
+  box.hidden = false;
+  box.replaceChildren(...bad.map((d) => {
+    const name = SRC[d.source] || d.source;
+    if (d.state === SCAN_ERROR) return el("span", { class: "dom-err" }, `! ${name} failed: ${d.reason || "unknown error"}`);
+    if (d.state === SCAN_DEGRADED) return el("span", {}, `~ ${name} partial: ${d.reason || ""}`);
+    if (d.state === SCAN_SKIPPED) return el("span", { class: "dom-skip" }, `· ${name} skipped: ${d.reason || ""}`);
+    return el("span", { class: "dom-skip" }, `· ${name} did not run`);
+  }));
+}
+
 // ── main render ────────────────────────────────────────────────────────
 function render() {
   const score = report.score;
@@ -169,13 +193,18 @@ function render() {
   const AX = { container: "Container", ssh: "SSH", firewall: "Firewall", updates: "Updates", cve: "CVEs", ports: "Ports", accounts: "Accounts", fileperms: "File perms" };
   document.getElementById("axes").replaceChildren(
     ...score.axes.map((ax) =>
-      el("div", { class: "axis" + (ax.applicable ? "" : " na") },
+      el("div", { class: "axis" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") },
         el("span", { class: "axis-label" }, AX[ax.id] || ax.label),
         ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
-        el("span", { class: "axis-val" }, ax.applicable ? String(ax.score) : "N/A")
+        // A degraded axis is scored from an incomplete picture; the "~" keeps
+        // it from reading as a full clean result.
+        el("span", { class: "axis-val" },
+          !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score))
       )
     )
   );
+
+  renderDomainNotice();
 
   // Findings list.
   const list = document.getElementById("findings");

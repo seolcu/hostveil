@@ -67,11 +67,11 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 	results := e.registry.Run(ctx, env, progress)
 
 	var findings []model.Finding
-	ran := make(map[model.Source]bool, len(results))
+	states := make(map[model.Source]model.ScanState, len(results))
 	domains := make([]model.DomainResult, 0, len(results))
 
 	for _, r := range results {
-		ran[r.Source] = r.State.Ran()
+		states[r.Source] = r.State
 		valid := validFindings(r.Findings)
 		findings = append(findings, valid...)
 		domains = append(domains, model.DomainResult{
@@ -86,7 +86,7 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 	model.SortFindings(findings)
 	report := model.Report{
 		Findings: findings,
-		Score:    model.ScoreReport(findings, ran),
+		Score:    model.ScoreReport(findings, states),
 		Domains:  domains,
 	}
 

@@ -62,12 +62,73 @@ package fix
 //     read-only mount still permits container creation and host mounts. A
 //     fix that improves the score while changing nothing is worse than no
 //     fix.
-//   - cve.* — Trivy's fixed_version is the OS package version inside the
-//     image (`3.0.11-1~deb12u2`), not an image tag. There is no mapping
-//     from one to the other; treating them as interchangeable is what
-//     issue #473 was. The real remediation is repinning to an image whose
-//     base layer ships the patched package, which needs data the per-image
-//     report does not contain.
+//   - cve.<vulnerability-id> — no longer emitted at all, and must never
+//     become fixable if it returns. Trivy's fixed_version is the OS package
+//     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
+//     There is no mapping from one to the other; treating them as
+//     interchangeable is what issue #473 was. Nothing hostveil can compute
+//     turns "openssl must reach 3.0.11-1~deb12u2" into an image reference,
+//     so a per-CVE fix would have to invent one. That is also why the
+//     checker stopped emitting one finding per vulnerability: a finding is
+//     a thing you can act on, and every CVE in an image shares the single
+//     remediation that cve.outdated-image now carries. The registry matches
+//     that ID exactly, so no cve.* glob can sweep the old shape back in.
+//   - compose.ds009 — the only remediation is setting `user:`, and the
+//     finding carries no evidence about which UID the image supports.
+//     Images that drop privileges in their own entrypoint fail to start
+//     when a UID is forced on them (postgres needs root to chown its data
+//     directory; nginx needs root to bind :80 before demoting itself), and
+//     an image with a baked-in USER already has the right answer that an
+//     override would clobber. Every candidate UID is a guess, so this is
+//     not even a Review: there is no pair of defensible alternatives, only
+//     a pair of equally arbitrary ones, and offering 1000:1000 next to
+//     65534:65534 would dress a coin flip as a choice.
+//   - compose.ds017 — adding `:ro` is the one mechanical remediation, and
+//     for a service that legitimately writes to the mount it breaks the
+//     service outright. The other remediation the finding names, mounting
+//     a narrower subdirectory, requires knowing which paths the service
+//     actually touches, which a static audit cannot learn. That leaves one
+//     alternative where Review requires two. Revisit if the checker can
+//     ever tell a written mount from a read one.
+//   - compose.ds001, compose.ds005, compose.dr001 — all three are
+//     removal-shaped: delete `privileged: true`, drop a capability from
+//     cap_add, delete `network_mode: host`. Each removes something the
+//     author added deliberately, and hostveil cannot tell a needless one
+//     from a load-bearing one. dr001 is the clearest: removing host
+//     networking without knowing which ports to publish in its place
+//     leaves the service unreachable, and the finding does not carry them.
+//   - compose.dr005 — moving a value into an env_file is a two-file change
+//     where Action carries one Path, and a move that does not delete the
+//     original improves nothing. More to the point, by the time the secret
+//     is found it has already leaked into backups and git history, so the
+//     real remediation is rotating it, which hostveil cannot do.
+//
+// # The one CVE finding that does have a fix
+//
+// cve.outdated-image, the per-image rollup, IS registered, because its
+// remediation differs in kind from the per-CVE one rather than being a
+// softer version of it. Re-pulling a mutable tag needs no version mapping
+// at all — only the tag the user already chose — and it claims nothing
+// about which CVEs the new image happens to fix. Its how-to-fix says only
+// that it re-resolves the tag, which is the whole of what it can promise.
+//
+// It is declined for digest-pinned references, where a pull is a no-op by
+// construction and the honest remediation, repinning to a newer digest,
+// needs exactly the data the per-image report does not have. Digest-vs-tag
+// is the only split drawn: every non-digest reference is a mutable pointer,
+// and guessing which tags are "really" pinned from their spelling would be
+// wrong for :2024-01-15 and :stable — and wrong in the direction that
+// suppresses a real fix.
+//
+// Being exec, it is Review and can never be Auto, so "fix all safe" does
+// not touch it. ApplyBatch excludes it twice over: not Auto, and more than
+// one action.
+//
+// Its sibling cve.unpatched-image is Unavailable and has no fix by
+// construction: it collects exactly the vulnerabilities nobody has
+// published a fix for. It exists so that an image whose vulnerabilities are
+// all unfixed still produces a finding rather than vanishing into a clean
+// report.
 func Default() *Registry {
 	r := NewRegistry()
 	registerCompose(r)

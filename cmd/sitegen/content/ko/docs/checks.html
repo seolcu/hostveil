@@ -21,15 +21,35 @@
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
 
             <h2>심각도와 점수</h2>
-            <p>모든 발견 항목은 네 가지 심각도 중 하나를 가집니다. 점수는 100에서 시작하며, 수정되지 않은 발견 항목마다 심각도별 감점이 적용됩니다.</p>
+            <p>도메인마다 별도의 축이 있고, 각 축은 100에서 시작합니다. <span class="sev critical">심각</span> 항목 하나는 그 축에 <strong>남아 있는 점수의 절반</strong>을 가져가며, 나머지 심각도는 여기에 비례합니다.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>심각도</th><th>감점</th></tr></thead>
+                <thead><tr><th>심각도</th><th>가져가는 몫</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev critical">심각</span></td><td>8</td></tr>
-                  <tr><td><span class="sev high">높음</span></td><td>5</td></tr>
-                  <tr><td><span class="sev medium">보통</span></td><td>2</td></tr>
-                  <tr><td><span class="sev low">낮음</span></td><td>1</td></tr>
+                  <tr><td><span class="sev critical">심각</span></td><td>남은 점수의 1/2</td></tr>
+                  <tr><td><span class="sev high">높음</span></td><td>약 1/3</td></tr>
+                  <tr><td><span class="sev medium">보통</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">낮음</span></td><td>1/16</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다.</p>
+            <p>hostveil이 <strong>사용 불가</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
+
+            <h3>도메인별 비중</h3>
+            <p>축은 셀프호스트 서버에서 얼마나 중요한지에 따라 가중치를 갖고, 합은 100입니다. 실행되지 않은 도메인은 가중치가 총합에서 빠지고 나머지가 재정규화됩니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>축</th><th>가중치</th></tr></thead>
+                <tbody>
+                  <tr><td>컨테이너 노출</td><td>20</td></tr>
+                  <tr><td>SSH 하드닝</td><td>18</td></tr>
+                  <tr><td>취약점</td><td>15</td></tr>
+                  <tr><td>호스트 방화벽</td><td>13</td></tr>
+                  <tr><td>노출된 서비스</td><td>11</td></tr>
+                  <tr><td>계정 위생</td><td>9</td></tr>
+                  <tr><td>자동 업데이트</td><td>8</td></tr>
+                  <tr><td>파일 권한</td><td>6</td></tr>
                 </tbody>
               </table>
             </div>
@@ -56,17 +76,17 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev critical">심각</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev critical">심각</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
@@ -80,7 +100,7 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, 또는 nftables)</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, 또는 nftables)</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -101,8 +121,8 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
                 </tbody>
               </table>
@@ -136,10 +156,25 @@
             </div>
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>
-            <p>Trivy가 설치되어 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 각 고유 취약점은 <code>cve.&lt;vulnerability-id&gt;</code> 형태의 ID를 가진 발견 항목이 되며 (예: <code>cve.cve-2023-1234</code>), 심각도는 Trivy의 등급에서 매핑됩니다.</p>
+            <p>Trivy가 설치되어 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 발견 항목은 취약점 단위가 아니라 <strong>이미지 단위</strong>로 보고됩니다 — 이미지 하나가 CVE 수백 개를 싣고 있는 건 흔한 일이고, 그 전부가 같은 조치 하나를 공유하기 때문입니다.</p>
+            <p>스캔된 이미지마다 최대 2개의 발견 항목이 생기며, 실제로 할 수 있는 조치를 기준으로 나뉩니다:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>탐지 내용</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>cve.outdated-image</code></td><td>업스트림에 이미 패치가 나온 취약점들</td><td>해당 묶음 중 최악</td><td>검토</td></tr>
+                  <tr><td><code>cve.unpatched-image</code></td><td>아직 아무도 패치를 내놓지 않은 취약점들</td><td>해당 묶음 중 최악</td><td>사용 불가</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>각 항목은 심각도별 개수와 가장 심각한 CVE 몇 개를 함께 보여줍니다. 전체 취약점 ID 목록은 항목의 evidence에 들어 있으며 <code>hostveil scan --json</code>으로 확인할 수 있습니다.</p>
+            <div class="callout">
+              <span class="callout-label">왜 CVE 하나당 항목 하나가 아닌가</span>
+              <p>Trivy는 패키지가 <code>3.0.11-1~deb12u2</code> 버전에 도달해야 한다고 알려줍니다. 이건 이미지 <em>안</em>에 있는 OS 패키지 버전이지 이미지 태그가 아니고, 둘 사이를 잇는 매핑은 존재하지 않습니다 — 개별 CVE 수정을 만들려면 그 매핑을 지어내야 합니다. 애초에 CVE 하나에 대해 할 수 있는 일이 전체에 대해 할 일과 다르지 않으므로, 정직한 단위는 이미지입니다. 이미 사용자가 고른 태그를 다시 받는 데는 버전 매핑이 필요 없고, 약속하는 것도 "태그를 다시 해석한다"까지일 뿐 특정 CVE가 사라진다고 말하지 않습니다. 다이제스트로 고정된 이미지에는 수정이 붙지 않습니다 — 다이제스트를 pull해봐야 아무것도 바뀌지 않기 때문입니다.</p>
+            </div>
             <div class="callout">
               <span class="callout-label">"아직 패치가 없음"에 대한 솔직함</span>
-              <p>수정된 버전이 존재하면 해당 발견 항목은 <strong>검토</strong> 수정입니다 (이미지 업데이트). 아직 패치가 없다면, hostveil은 이를 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다 — 스캔이 정직함을 유지하도록.</p>
+              <p>패치가 없는 취약점은 수정 가능한 쪽에 섞거나 버리지 않고 별도 항목으로 남깁니다. 이걸 뭉개버리면 취약점이 <em>전부</em> 미패치인 이미지는 리포트에서 통째로 사라지고, hostveil은 그저 손쓸 방법이 없을 뿐인 호스트를 깨끗하다고 말하게 됩니다. 그래서 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다.</p>
             </div>
 
             <div class="docs-pager">

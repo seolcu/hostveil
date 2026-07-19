@@ -106,15 +106,35 @@
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
 
             <h2>Severity &amp; the score</h2>
-            <p>Every finding carries one of four severities. The score starts at 100 and each unfixed finding subtracts a penalty by severity:</p>
+            <p>Each domain gets its own axis, scored from 100 down. One <span class="sev critical">Critical</span> finding takes <strong>half</strong> of whatever an axis has left; the other severities are proportional to that:</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>Severity</th><th>Penalty</th></tr></thead>
+                <thead><tr><th>Severity</th><th>Takes</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev critical">Critical</span></td><td>8</td></tr>
-                  <tr><td><span class="sev high">High</span></td><td>5</td></tr>
-                  <tr><td><span class="sev medium">Medium</span></td><td>2</td></tr>
-                  <tr><td><span class="sev low">Low</span></td><td>1</td></tr>
+                  <tr><td><span class="sev critical">Critical</span></td><td>1/2 of what remains</td></tr>
+                  <tr><td><span class="sev high">High</span></td><td>about 1/3</td></tr>
+                  <tr><td><span class="sev medium">Medium</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">Low</span></td><td>1/16</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three.</p>
+            <p>A finding hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
+
+            <h3>What each domain is worth</h3>
+            <p>The axes are weighted by how much they matter to a self-hosted server, and the weights sum to 100. When a domain does not run, its weight leaves the total and the rest are renormalized.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
+                <tbody>
+                  <tr><td>Container exposure</td><td>20</td></tr>
+                  <tr><td>SSH hardening</td><td>18</td></tr>
+                  <tr><td>Vulnerabilities</td><td>15</td></tr>
+                  <tr><td>Host firewall</td><td>13</td></tr>
+                  <tr><td>Exposed services</td><td>11</td></tr>
+                  <tr><td>Account hygiene</td><td>9</td></tr>
+                  <tr><td>Auto-updates</td><td>8</td></tr>
+                  <tr><td>File permissions</td><td>6</td></tr>
                 </tbody>
               </table>
             </div>
@@ -141,17 +161,17 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev critical">Critical</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">Low</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
@@ -165,7 +185,7 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, or nftables)</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, or nftables)</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -186,8 +206,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
@@ -221,10 +241,25 @@
             </div>
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
-            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Each unique vulnerability becomes a finding whose ID is <code>cve.&lt;vulnerability-id&gt;</code> (for example <code>cve.cve-2023-1234</code>), with severity mapped from Trivy's rating.</p>
+            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>, not per vulnerability — a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>
+            <p>Each scanned image produces up to two findings, split by what you can actually do about them:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>cve.outdated-image</code></td><td>Vulnerabilities that are already fixed upstream</td><td>Worst in that group</td><td>Review</td></tr>
+                  <tr><td><code>cve.unpatched-image</code></td><td>Vulnerabilities nobody has published a fix for</td><td>Worst in that group</td><td>Unavailable</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Each finding names the severity counts and its worst few CVEs. The complete list of vulnerability IDs is in the finding's evidence — use <code>hostveil scan --json</code> to read it.</p>
+            <div class="callout">
+              <span class="callout-label">Why not one finding per CVE</span>
+              <p>Trivy tells you a package must reach version <code>3.0.11-1~deb12u2</code>. That is an OS package version <em>inside</em> the image, not an image tag, and there is no mapping from one to the other — so a per-CVE fix would have to invent one. There is nothing you can do about a single CVE that you would not do about all of them at once, so the image is the honest unit. Re-pulling the tag you already chose needs no version mapping, and it promises only that it re-resolves the tag, not that any particular CVE is gone. Images pinned by digest get no fix, because pulling a digest cannot change anything.</p>
+            </div>
             <div class="callout">
               <span class="callout-label">Honest about "no patch yet"</span>
-              <p>If a fixed version exists, the finding is a <strong>Review</strong> fix (update the image). If there is no patch available yet, hostveil models that as a first-class <strong>Unavailable</strong> state rather than pretending it can be fixed — so the scan stays truthful.</p>
+              <p>Vulnerabilities with no available patch get their own finding rather than being folded into the fixable ones or dropped. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong> instead of pretending it can be fixed.</p>
             </div>
 
             <div class="docs-pager">

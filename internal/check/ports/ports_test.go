@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -204,5 +205,27 @@ func TestMalformedLinesSkipped(t *testing.T) {
 	}
 	if len(fs) != 0 {
 		t.Errorf("malformed ss output should yield no findings, got %v", fs)
+	}
+}
+
+// The generic-exposure finding hinges on whether a firewall is shielding
+// those ports. When that cannot be determined (its probes need root), neither
+// answer is safe: flagging invents noise on a firewalled host, staying silent
+// hides real exposure. The domain must say it could not tell instead of
+// quietly picking one.
+func TestGenericExposureWhenFirewallStateUnreadable(t *testing.T) {
+	ss := `LISTEN 0 128 0.0.0.0:8080 0.0.0.0:*
+LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
+	// ufw is installed but will not answer — the fake has no scripted output.
+	r := fakeRunner{ss: ss, missing: map[string]bool{"firewall-cmd": true, "nft": true}}
+
+	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("expected a PartialError so the domain reports Degraded, got %v", err)
+	}
+	if _, ok := findByID(fs, "ports.exposed"); ok {
+		t.Error("must not claim generic exposure when the firewall state is unknown")
 	}
 }

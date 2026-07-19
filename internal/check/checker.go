@@ -6,6 +6,7 @@ package check
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -24,8 +25,33 @@ type Checker interface {
 	// never an error.
 	Available(ctx context.Context, env platform.Env) (ok bool, reason string)
 	// Check runs detection and returns findings. "Nothing found" is
-	// (nil, nil); an error signals a genuine failure.
+	// (nil, nil); an error signals a genuine failure. To report findings
+	// that cover only part of the domain, return them alongside a
+	// *PartialError — the orchestrator records Degraded and keeps them.
 	Check(ctx context.Context, env platform.Env) ([]model.Finding, error)
+}
+
+// PartialError is returned by a Checker that ran and produced usable
+// findings but could not cover everything it should have — for example a CVE
+// scan where some images were unreadable. The orchestrator maps it to
+// model.ScanDegraded and keeps the findings.
+//
+// It is for *partial* coverage only. A checker that could not run at all
+// reports (false, reason) from Available (→ Skipped), and one whose work
+// failed outright returns an ordinary error (→ Error). Both leave the domain
+// out of scoring; a Degraded domain is still scored, so returning this when
+// nothing was actually covered would hand back a falsely perfect axis.
+type PartialError struct {
+	Reason  string // plain-language explanation, shown in every UI
+	Covered int    // units successfully examined
+	Total   int    // units that should have been examined
+}
+
+func (e *PartialError) Error() string {
+	if e.Total > 0 {
+		return fmt.Sprintf("%s (covered %d of %d)", e.Reason, e.Covered, e.Total)
+	}
+	return e.Reason
 }
 
 // Registry holds the set of checkers to run.
@@ -90,6 +116,14 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 	}
 
 	findings, err := c.Check(ctx, env)
+	// Checked before the plain error case: a PartialError carries findings
+	// worth keeping, so it must not be swallowed as an outright failure.
+	var partial *PartialError
+	if errors.As(err, &partial) {
+		res = Result{Source: src, State: model.ScanDegraded, Reason: partial.Error(), Findings: findings}
+		emit(events, model.ScanEvent{Source: src, State: model.ScanDegraded, Reason: res.Reason})
+		return res
+	}
 	if err != nil {
 		res = Result{Source: src, State: model.ScanError, Reason: err.Error(), Findings: findings}
 		emit(events, model.ScanEvent{Source: src, State: model.ScanError, Reason: err.Error()})

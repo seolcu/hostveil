@@ -3,6 +3,7 @@ package compose
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/platform"
@@ -15,7 +16,7 @@ import (
 func Discover(ctx context.Context, r platform.CommandRunner) ([]Project, error) {
 	out, err := r.Run(ctx, "docker", "compose", "ls", "--all", "--format", "json")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list compose projects: %w", err)
 	}
 	return parseDiscovery(out)
 }

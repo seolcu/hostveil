@@ -52,7 +52,8 @@ the `run.sh` helper, and shut it down when you're done:
 
 ```bash
 cd demo
-./run.sh up        # boot the VM + start the vulnerable stacks (first run downloads the box + images)
+./run.sh up        # boot the VM + rebuild hostveil + start the stacks (first run downloads the box + images)
+./run.sh build     # re-sync the repo and rebuild hostveil in the VM (after editing code)
 ./run.sh scan      # scored report across all domains
 ./run.sh web       # dashboard at http://localhost:8787 (Ctrl-C to stop)
 ./run.sh shell     # a shell on the demo server — then e.g. `hostveil`
@@ -74,20 +75,25 @@ have no restart policy, so they don't come back on their own).
 `./run.sh web` is running, open **<http://localhost:8787>** in your browser.
 
 hostveil is built from the synced repo at `/hostveil`, so it reflects your
-local source **as of the last sync**. The repo is an **rsync** synced folder:
-Vagrant copies it in on `up` and `reload`, but **not** on `provision`. So after
-editing code on the host, re-sync first — otherwise a rebuild just recompiles
-the previously-synced source:
+local source **as of the last sync and rebuild**. After editing code on the
+host:
+
+```bash
+./run.sh build     # re-sync + rebuild in one shot
+```
+
+`./run.sh up` does this for you on every boot. That matters because the build
+lives in `provision.sh`, and **`vagrant up` only runs provisioners the first
+time a VM is created** — so a plain `vagrant up` on an existing VM re-syncs
+your source but leaves the *original* binary in place. You then test stale code
+with no warning: the giveaway is `==> default: Machine already provisioned.`
+in the `up` output.
+
+Raw Vagrant equivalents, if you prefer them:
 
 ```bash
 vagrant rsync && vagrant provision     # sync, then re-provision + rebuild
-```
-
-To skip the full re-provision, sync and rebuild in one shot:
-
-```bash
-vagrant rsync
-vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil'
+vagrant rsync && vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil'
 ```
 
 (Or run `vagrant rsync-auto` in a separate terminal to sync on every save.)

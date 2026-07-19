@@ -36,6 +36,9 @@ fi
 export PATH="$PATH:/usr/local/go/bin"
 
 echo "==> [4/9] Trivy (optional CVE scanner) + vuln DB"
+# NOTE: this provisioner runs as root, so --download-db-only warms only
+# /root/.cache/trivy. A non-root `hostveil` scan uses ~vagrant/.cache/trivy and
+# will download the DB itself on first use.
 if ! command -v trivy >/dev/null 2>&1; then
   curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
     | sh -s -- -b /usr/local/bin

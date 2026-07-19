@@ -291,10 +291,10 @@ func (e *Engine) markFixed(target model.Finding) []string {
 func (e *Engine) rescore() model.ScoreBreakdown {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	ran := make(map[model.Source]bool, len(e.current.Domains))
+	states := make(map[model.Source]model.ScanState, len(e.current.Domains))
 	for _, d := range e.current.Domains {
-		ran[d.Source] = d.State.Ran()
+		states[d.Source] = d.State
 	}
-	e.current.Score = model.ScoreReport(e.current.Findings, ran)
+	e.current.Score = model.ScoreReport(e.current.Findings, states)
 	return e.current.Score
 }

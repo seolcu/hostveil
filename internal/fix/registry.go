@@ -85,6 +85,17 @@ func (r *Registry) Build(f model.Finding) (Fix, bool, error) {
 	return Fix{}, false, nil
 }
 
+// Patterns returns every registered pattern. Tests enumerate the registry
+// through this rather than a hand-maintained list of IDs, which silently
+// drifts out of date the moment a registration is added without one.
+func (r *Registry) Patterns() []string {
+	out := make([]string, 0, len(r.regs))
+	for _, reg := range r.regs {
+		out = append(out, reg.pattern)
+	}
+	return out
+}
+
 // Has reports whether a fix is registered for a finding ID pattern.
 func (r *Registry) Has(id string) bool {
 	for _, reg := range r.regs {

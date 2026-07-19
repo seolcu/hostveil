@@ -70,6 +70,15 @@ button:disabled { opacity: .45; cursor: default; }
 .axis .meter { width: 92px; height: 8px; flex: 0 0 auto; }
 .axis-val { font-size: 11px; min-width: 30px; }
 .axis.na .axis-val { color: var(--slate); }
+.axis.partial .axis-val { color: var(--med); }
+
+/* ── domain coverage notice: which checkers did not fully run ──
+   Persistent, unlike .status — a score drawn from a partial scan must keep
+   saying so, not flash once and vanish. */
+.domains { flex: 0 0 auto; padding: 8px 18px; border-bottom: 1px solid var(--line);
+  color: var(--med); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.domains .dom-err { color: var(--crit); }
+.domains .dom-skip { color: var(--slate); }
 
 /* ── transient status line ── */
 .status { flex: 0 0 auto; margin: 0; padding: 9px 18px; border-bottom: 1px solid var(--line);
