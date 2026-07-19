@@ -3,6 +3,7 @@ package model
 import (
 	"maps"
 	"sort"
+	"strings"
 )
 
 // Delta compares two scans so a re-run can show progress: what got fixed,
@@ -47,6 +48,52 @@ func (c FindingChange) ChangedEvidence() []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// EvidenceSeparator is the convention for list-valued evidence: checkers
+// join multiple items with it (accounts' account names, fileperms' file
+// list, firewall's available tools, cve's vulnerability IDs). The space is
+// load-bearing — clirender wraps on whitespace, so a comma-only join would
+// be one unbreakable word that overflows a terminal.
+const EvidenceSeparator = ", "
+
+// EvidenceListDelta reports which items entered and left a list-valued
+// evidence entry, sorted. Both slices are empty when the value is not a
+// list, or when it changed without its membership changing.
+//
+// This is what makes an aggregate finding's movement legible: cve.
+// outdated-image keeps one key while the set of vulnerabilities behind it
+// changes, and "which three CVEs are new" is the question the old per-CVE
+// findings used to answer.
+func (c FindingChange) EvidenceListDelta(key string) (added, removed []string) {
+	before := splitEvidenceList(c.Previous.Evidence[key])
+	after := splitEvidenceList(c.Current.Evidence[key])
+	for item := range after {
+		if !before[item] {
+			added = append(added, item)
+		}
+	}
+	for item := range before {
+		if !after[item] {
+			removed = append(removed, item)
+		}
+	}
+	sort.Strings(added)
+	sort.Strings(removed)
+	return added, removed
+}
+
+func splitEvidenceList(s string) map[string]bool {
+	out := map[string]bool{}
+	if s == "" {
+		return out
+	}
+	for _, item := range strings.Split(s, EvidenceSeparator) {
+		if item = strings.TrimSpace(item); item != "" {
+			out[item] = true
+		}
+	}
+	return out
 }
 
 // changed reports whether two findings sharing a key differ in substance.

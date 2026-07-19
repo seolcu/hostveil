@@ -104,3 +104,55 @@ func TestComputeDeltaIgnoresProse(t *testing.T) {
 		t.Errorf("still present = %d, want 1", d.StillPresent)
 	}
 }
+
+// The question the per-CVE findings used to answer: which ones are new.
+func TestEvidenceListDeltaNamesMembers(t *testing.T) {
+	before := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE,
+		RemediationReview, WithService("cloud/nextcloud"),
+		WithEvidence("cves", "CVE-1, CVE-2, CVE-3"))
+	after := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE,
+		RemediationReview, WithService("cloud/nextcloud"),
+		WithEvidence("cves", "CVE-2, CVE-3, CVE-4, CVE-5"))
+
+	d := ComputeDelta(report(before), report(after))
+	if len(d.Changed) != 1 {
+		t.Fatalf("expected 1 changed, got %+v", d)
+	}
+	added, removed := d.Changed[0].EvidenceListDelta("cves")
+	if len(added) != 2 || added[0] != "CVE-4" || added[1] != "CVE-5" {
+		t.Errorf("added = %v, want [CVE-4 CVE-5] sorted", added)
+	}
+	if len(removed) != 1 || removed[0] != "CVE-1" {
+		t.Errorf("removed = %v, want [CVE-1]", removed)
+	}
+}
+
+// Reordering the same members is not a membership change, and must not be
+// reported as one.
+func TestEvidenceListDeltaIgnoresReordering(t *testing.T) {
+	c := FindingChange{
+		Previous: NewFinding("x", "t", SeverityHigh, SourceCVE, RemediationManual,
+			WithEvidence("cves", "CVE-1, CVE-2")),
+		Current: NewFinding("x", "t", SeverityHigh, SourceCVE, RemediationManual,
+			WithEvidence("cves", "CVE-2, CVE-1")),
+	}
+	added, removed := c.EvidenceListDelta("cves")
+	if len(added) != 0 || len(removed) != 0 {
+		t.Errorf("reorder reported as membership change: +%v -%v", added, removed)
+	}
+}
+
+// The convention is shared: a new passwordless account should be as legible
+// as a new CVE, with no per-domain knowledge in the diff.
+func TestEvidenceListDeltaIsNotCVESpecific(t *testing.T) {
+	c := FindingChange{
+		Previous: NewFinding("accounts.emptypassword", "t", SeverityCritical,
+			SourceAccounts, RemediationManual, WithEvidence("accounts", "guest")),
+		Current: NewFinding("accounts.emptypassword", "t", SeverityCritical,
+			SourceAccounts, RemediationManual, WithEvidence("accounts", "guest, backup")),
+	}
+	added, _ := c.EvidenceListDelta("accounts")
+	if len(added) != 1 || added[0] != "backup" {
+		t.Errorf("added = %v, want [backup]", added)
+	}
+}

@@ -140,11 +140,48 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	if !strings.Contains(out, "severity high → critical") {
 		t.Errorf("summary does not report the severity move:\n%s", out)
 	}
-	// The oversized value is summarised by the counts beside it, not dumped.
+	// An oversized list reports its membership change, not its payload.
+	if !strings.Contains(out, "cves +1 (CVE-2024-9999)") {
+		t.Errorf("summary does not name the added item:\n%s", out)
+	}
 	if strings.Contains(out, "CVE-2024-0001, CVE-2024-0001") {
 		t.Errorf("summary dumped an oversized evidence value:\n%s", out)
 	}
 	if !strings.Contains(out, "1 changed") {
 		t.Errorf("summary line does not count changes:\n%s", out)
+	}
+}
+
+// Naming every new item defeats the point when hundreds arrive at once.
+func TestDeltaSummaryBoundsNamedListMembers(t *testing.T) {
+	var before, after []string
+	for i := range 400 {
+		id := fmt.Sprintf("CVE-2024-%04d", i)
+		after = append(after, id)
+		if i < 100 {
+			before = append(before, id)
+		}
+	}
+	prev := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
+		model.WithEvidence("cves", strings.Join(before, ", ")))
+	curr := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
+		model.WithEvidence("cves", strings.Join(after, ", ")))
+
+	out := DeltaSummary(model.ComputeDelta(
+		model.Report{Findings: []model.Finding{prev}},
+		model.Report{Findings: []model.Finding{curr}},
+	))
+
+	// The true count leads; only a handful are named.
+	if !strings.Contains(out, "cves +300 (") {
+		t.Errorf("summary does not lead with the real count:\n%s", out)
+	}
+	if !strings.Contains(out, "and 295 more") {
+		t.Errorf("summary does not say how many it left unnamed:\n%s", out)
+	}
+	if n := strings.Count(out, "CVE-2024-"); n > 6 {
+		t.Errorf("summary named %d items; it must be bounded:\n%s", n, out)
 	}
 }

@@ -131,15 +131,46 @@ func changeDetail(c model.FindingChange) string {
 	}
 	for _, k := range c.ChangedEvidence() {
 		before, after := c.Previous.Evidence[k], c.Current.Evidence[k]
-		if len(before) > maxChangedValue || len(after) > maxChangedValue {
-			continue // e.g. the full CVE list; the counts beside it say enough
+		if len(before) <= maxChangedValue && len(after) <= maxChangedValue {
+			parts = append(parts, fmt.Sprintf("%s %s → %s", k, orNone(before), orNone(after)))
+			continue
 		}
-		parts = append(parts, fmt.Sprintf("%s %s → %s", k, orNone(before), orNone(after)))
+		// Too long to show whole — it is a list (the "a, b, c" convention
+		// checkers use for multi-item evidence), so report what entered and
+		// left it instead of the payload.
+		parts = append(parts, k+" "+membership(c.EvidenceListDelta(k)))
 	}
 	if len(parts) == 0 {
 		return ""
 	}
 	return ": " + strings.Join(parts, ", ")
+}
+
+// maxNamedItems bounds how many list members are named per direction.
+const maxNamedItems = 5
+
+// membership renders "+3 (CVE-A, CVE-B, CVE-C), -1 (CVE-X)".
+func membership(added, removed []string) string {
+	var parts []string
+	if len(added) > 0 {
+		parts = append(parts, fmt.Sprintf("+%d (%s)", len(added), nameSome(added)))
+	}
+	if len(removed) > 0 {
+		parts = append(parts, fmt.Sprintf("-%d (%s)", len(removed), nameSome(removed)))
+	}
+	if len(parts) == 0 {
+		// The value moved without its membership doing so — reordered, or
+		// reformatted. Say that rather than claiming a change we cannot show.
+		return "changed"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func nameSome(items []string) string {
+	if len(items) <= maxNamedItems {
+		return strings.Join(items, ", ")
+	}
+	return fmt.Sprintf("%s, and %d more", strings.Join(items[:maxNamedItems], ", "), len(items)-maxNamedItems)
 }
 
 func orNone(s string) string {
