@@ -23,10 +23,13 @@ func New() *Checker { return &Checker{} }
 // Source identifies the compose domain.
 func (*Checker) Source() model.Source { return model.SourceCompose }
 
-// Available requires the docker CLI; without it there is nothing to audit.
-func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
-	if !platform.Has(env.Runner, "docker") {
-		return false, "Docker not installed — nothing to audit"
+// Available requires a reachable Docker daemon; without one there is nothing
+// to audit. Probing the daemon rather than just the CLI turns an
+// unreachable socket into a clean skip with an actionable reason, instead of
+// a domain error reading "exit status 1".
+func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
+	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
+		return false, reason + " — nothing to audit"
 	}
 	return true, ""
 }

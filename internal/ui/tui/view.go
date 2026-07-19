@@ -118,10 +118,15 @@ func (m *appModel) axesLine() string {
 	var parts []string
 	for _, ax := range m.report.Score.Axes {
 		label := styleDim.Render(fmt.Sprintf("%-9s", ax.ID))
-		if ax.Applicable {
-			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
-		} else {
+		switch {
+		case !ax.Applicable:
 			parts = append(parts, label+styleTrack.Render(strings.Repeat("░", 8))+styleDim.Render(" N/A"))
+		case ax.Degraded:
+			// Scored, but from an incomplete picture — the "~" says so, since
+			// a bare number here reads as a full result.
+			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %d~", ax.Score)))
+		default:
+			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
 		}
 	}
 	return strings.Join(parts, styleDim.Render("   "))

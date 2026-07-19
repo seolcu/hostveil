@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
@@ -25,19 +27,28 @@ func New() *Checker { return &Checker{} }
 // Source identifies the CVE domain.
 func (*Checker) Source() model.Source { return model.SourceCVE }
 
-// Available requires both Trivy (the scanner) and Docker (to enumerate the
-// images to scan). Missing either yields a clean skip.
-func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
+// Available requires both Trivy (the scanner) and a reachable Docker daemon
+// (to enumerate the images to scan). Missing either yields a clean skip.
+//
+// The daemon is probed, not merely looked up on PATH: an unreachable socket
+// would otherwise let the scan proceed, fail on every image, and report zero
+// vulnerabilities — a perfect CVE score for a scan that never happened.
+func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if !platform.Has(env.Runner, "trivy") {
 		return false, "Trivy not installed — CVE scan skipped (install it to enable image vulnerability scanning)"
 	}
-	if !platform.Has(env.Runner, "docker") {
-		return false, "Docker not installed — no images to scan"
+	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
+		return false, reason + " — no images to scan"
 	}
 	return true, ""
 }
 
 // Check enumerates compose images and scans each with Trivy.
+//
+// Per-image failures are counted rather than swallowed, because "no
+// vulnerabilities found" and "nothing could be examined" score identically
+// but mean opposite things. Some images unscannable is Degraded; all of them
+// is an outright error, which drops the axis from scoring entirely.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	projects, err := compose.Discover(ctx, env.Runner)
 	if err != nil {
@@ -45,6 +56,8 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 
 	var findings []model.Finding
+	var attempted, failed int
+	var firstErr error
 	scanned := map[string]bool{}
 	for _, p := range projects {
 		for _, svc := range p.Services {
@@ -52,15 +65,33 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 				continue
 			}
 			scanned[svc.Image] = true
+			attempted++
 			fs, err := scanImage(ctx, env.Runner, svc.Image, svc.Name)
 			if err != nil {
-				// One unscannable image should not fail the whole domain.
+				failed++
+				if firstErr == nil {
+					firstErr = err
+				}
 				continue
 			}
 			findings = append(findings, fs...)
 		}
 	}
-	return findings, nil
+
+	switch {
+	case failed == 0:
+		// Includes the no-images case: a host with no containers genuinely
+		// has no image vulnerabilities.
+		return findings, nil
+	case failed == attempted:
+		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
+	default:
+		return findings, &check.PartialError{
+			Reason:  fmt.Sprintf("some images could not be scanned (first failure: %v)", firstErr),
+			Covered: attempted - failed,
+			Total:   attempted,
+		}
+	}
 }
 
 type trivyReport struct {
@@ -79,9 +110,20 @@ type trivyVuln struct {
 	PrimaryURL       string `json:"PrimaryURL"`
 }
 
+// imageTimeout bounds a single image scan. Trivy downloads its vulnerability
+// DB on first use and falls back to pulling from a remote registry when it
+// cannot read an image locally, so an unbounded scan can hang for as long as
+// the network allows — the flag makes Trivy exit with a legible message, and
+// the context guarantees termination if it hangs before parsing its own flags.
+const imageTimeout = 5 * time.Minute
+
 func scanImage(ctx context.Context, r platform.CommandRunner, image, service string) ([]model.Finding, error) {
+	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
+	defer cancel()
+
 	out, err := r.Run(ctx, "trivy", "image",
 		"--severity", "CRITICAL,HIGH,MEDIUM",
+		"--timeout", imageTimeout.String(),
 		"--format", "json", "--quiet", "--no-progress", image)
 	if err != nil {
 		return nil, err

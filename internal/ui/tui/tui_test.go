@@ -32,8 +32,12 @@ func (f fakeRunner) LookPath(name string) (string, error) {
 	return "", errors.New("not found")
 }
 func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	if name == "docker" && strings.Join(args, " ") == "compose ls --all --format json" {
+	switch {
+	case name == "docker" && strings.Join(args, " ") == "compose ls --all --format json":
 		return []byte(f.lsJSON), nil
+	// Checkers probe the daemon before trusting the CLI's presence.
+	case name == "docker" && strings.Join(args, " ") == "version --format {{.Server.Version}}":
+		return []byte("27.0.3\n"), nil
 	}
 	return nil, errors.New("unexpected: " + name)
 }

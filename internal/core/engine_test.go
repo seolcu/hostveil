@@ -10,6 +10,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/check"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
+	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -17,8 +18,9 @@ import (
 // fakeRunner scripts LookPath and Run so the compose checker can be driven
 // end-to-end without a real Docker daemon.
 type fakeRunner struct {
-	present map[string]bool
-	lsJSON  string
+	present    map[string]bool
+	lsJSON     string
+	daemonDown bool
 }
 
 func (f fakeRunner) LookPath(name string) (string, error) {
@@ -29,8 +31,15 @@ func (f fakeRunner) LookPath(name string) (string, error) {
 }
 
 func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	if name == "docker" && strings.Join(args, " ") == "compose ls --all --format json" {
+	switch {
+	case name == "docker" && strings.Join(args, " ") == "compose ls --all --format json":
 		return []byte(f.lsJSON), nil
+	// Checkers probe the daemon before trusting the CLI's presence.
+	case name == "docker" && strings.Join(args, " ") == "version --format {{.Server.Version}}":
+		if f.daemonDown {
+			return nil, errors.New("Cannot connect to the Docker daemon at unix:///var/run/docker.sock")
+		}
+		return []byte("27.0.3\n"), nil
 	}
 	return nil, errors.New("unexpected command: " + name + " " + strings.Join(args, " "))
 }
@@ -121,6 +130,40 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 	}
 	if report.Score.Overall != 100 {
 		t.Errorf("score with nothing scannable = %d, want 100", report.Score.Overall)
+	}
+}
+
+// TestEngineSkipsDockerDomainsWhenDaemonUnreachable is the regression guard
+// for the bug that motivated PartialError and the daemon probe: running
+// without access to the Docker socket (no sudo, not in the docker group) used
+// to leave the CLI on PATH, so Available() said yes, every check quietly found
+// nothing, and the domain reported Done. Its axis was then scored a perfect
+// 100 — the CVE scan in particular claiming a clean bill of health for a host
+// it had never looked at.
+//
+// The axis must be N/A, not perfect, and the reason must be actionable.
+func TestEngineSkipsDockerDomainsWhenDaemonUnreachable(t *testing.T) {
+	engine := New(Config{
+		Registry: check.NewRegistry(composecheck.New(), cvecheck.New()),
+		Runner: fakeRunner{
+			present:    map[string]bool{"docker": true, "trivy": true},
+			daemonDown: true,
+		},
+	})
+	report := engine.Scan(context.Background(), nil)
+
+	for _, d := range report.Domains {
+		if d.State != model.ScanSkipped {
+			t.Errorf("%s domain state = %v, want skipped", d.Source, d.State)
+		}
+		if !strings.Contains(d.Reason, "sudo") {
+			t.Errorf("%s reason should tell the user how to fix it, got %q", d.Source, d.Reason)
+		}
+	}
+	for _, ax := range report.Score.Axes {
+		if (ax.Source == model.SourceCompose || ax.Source == model.SourceCVE) && ax.Applicable {
+			t.Errorf("%s axis must be N/A when the daemon is unreachable, not scored", ax.Source)
+		}
 	}
 }
 

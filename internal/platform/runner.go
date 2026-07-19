@@ -76,3 +76,21 @@ func Has(r CommandRunner, name string) bool {
 	_, err := r.LookPath(name)
 	return err == nil
 }
+
+// DockerReachable reports whether the Docker daemon actually answers, and if
+// not, why in plain language.
+//
+// Checkers must not settle for Has(r, "docker"): the client binary being on
+// PATH says nothing about whether this user may talk to the socket. Without
+// that distinction a non-root scan enumerates no containers, finds nothing,
+// and reports a clean result — which for the CVE domain means a perfect
+// vulnerability score on a host nobody actually scanned.
+func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
+	if !Has(r, "docker") {
+		return false, "Docker not installed"
+	}
+	if _, err := r.Run(ctx, "docker", "version", "--format", "{{.Server.Version}}"); err != nil {
+		return false, "cannot reach the Docker daemon — add your user to the docker group, or re-run with sudo"
+	}
+	return true, ""
+}

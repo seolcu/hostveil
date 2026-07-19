@@ -30,15 +30,23 @@ func Text(r model.Report, opts Options) string {
 			continue
 		}
 		counts := severityCounts(ax)
-		fmt.Fprintf(&b, "  %-22s %3d/100  %s\n", ax.Label, ax.Score, counts)
+		// A degraded axis is scored from an incomplete picture, so it is
+		// marked: an unlabelled score here reads as a clean result.
+		partial := ""
+		if ax.Degraded {
+			partial = c.yellow + " (partial)" + c.reset
+		}
+		fmt.Fprintf(&b, "  %-22s %3d/100  %s%s\n", ax.Label, ax.Score, counts, partial)
 	}
 	b.WriteString("\n")
 
-	// Domain status (skipped/errored checkers).
+	// Domain status (skipped/degraded/errored checkers).
 	for _, d := range r.Domains {
 		switch d.State {
 		case model.ScanSkipped:
 			fmt.Fprintf(&b, "  %s· %s skipped: %s%s\n", c.dim, d.Source, d.Reason, c.reset)
+		case model.ScanDegraded:
+			fmt.Fprintf(&b, "  %s~ %s partial: %s%s\n", c.yellow, d.Source, d.Reason, c.reset)
 		case model.ScanError:
 			fmt.Fprintf(&b, "  %s! %s error: %s%s\n", c.red, d.Source, d.Reason, c.reset)
 		}
@@ -46,7 +54,14 @@ func Text(r model.Report, opts Options) string {
 
 	active := r.Select(model.Filter{})
 	if len(active) == 0 {
-		fmt.Fprintf(&b, "\n%sNo problems found. Clean.%s\n", c.green, c.reset)
+		// "Clean" is a claim about the whole host, so it may only be made
+		// when the whole host was actually examined.
+		if n := incompleteDomains(r); n > 0 {
+			fmt.Fprintf(&b, "\n%sNo problems found in the domains that ran — but %d did not complete (see above).%s\n",
+				c.yellow, n, c.reset)
+		} else {
+			fmt.Fprintf(&b, "\n%sNo problems found. Clean.%s\n", c.green, c.reset)
+		}
 		return b.String()
 	}
 
@@ -116,6 +131,18 @@ func severityCounts(ax model.ScoreAxis) string {
 
 type colors struct {
 	bold, dim, reset, red, green, yellow, orange string
+}
+
+// incompleteDomains counts domains that did not fully cover their ground —
+// skipped, degraded, or errored.
+func incompleteDomains(r model.Report) int {
+	n := 0
+	for _, d := range r.Domains {
+		if d.State != model.ScanDone {
+			n++
+		}
+	}
+	return n
 }
 
 func palette(on bool) colors {
