@@ -73,9 +73,24 @@ have no restart policy, so they don't come back on their own).
 **Web dashboard**: port 8787 is forwarded to the host, so while
 `./run.sh web` is running, open **<http://localhost:8787>** in your browser.
 
-hostveil is built from the mounted repo (`/hostveil`), so it always reflects
-your **current local source**. Changed the code? `vagrant provision` (or just
-rebuild inside: `cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil`).
+hostveil is built from the synced repo at `/hostveil`, so it reflects your
+local source **as of the last sync**. The repo is an **rsync** synced folder:
+Vagrant copies it in on `up` and `reload`, but **not** on `provision`. So after
+editing code on the host, re-sync first — otherwise a rebuild just recompiles
+the previously-synced source:
+
+```bash
+vagrant rsync && vagrant provision     # sync, then re-provision + rebuild
+```
+
+To skip the full re-provision, sync and rebuild in one shot:
+
+```bash
+vagrant rsync
+vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil'
+```
+
+(Or run `vagrant rsync-auto` in a separate terminal to sync on every save.)
 
 ---
 

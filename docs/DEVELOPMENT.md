@@ -94,8 +94,10 @@ implements the `Checker` interface and registering it.
 ## Running it for real: the demo VM
 
 `demo/` is a code-defined, deliberately vulnerable Ubuntu server you can
-bring up on any machine. hostveil is built from your working tree *inside*
-the VM, so it always reflects your current code.
+bring up on any machine. hostveil is built from your working tree, which is
+rsync-synced *into* the VM, so a freshly booted VM reflects your current code.
+(After editing code, re-sync before rebuilding — the repo syncs on `up`/`reload`
+but not on `provision`; see [demo/README.md](../demo/README.md).)
 
 ```bash
 cd demo
