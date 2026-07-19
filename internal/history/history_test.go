@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestNewIDIsUniquePerCall guards the checkpoint-ID collision directly.
@@ -88,6 +89,50 @@ func TestExecCheckpointIsNotReversible(t *testing.T) {
 	}
 	if _, err := store.Rollback(cp.ID); err == nil {
 		t.Error("rolling back a non-reversible checkpoint should fail loudly")
+	}
+}
+
+// TestListOrderIsDeterministicWithinAMillisecond: CreatedAt resolves to a
+// millisecond, so a batch fix produces several checkpoints with an
+// identical timestamp. sort.Slice is not stable, so without a tiebreak the
+// history list would come back in a different order on each call and rows
+// would appear to shuffle themselves under the cursor.
+func TestListOrderIsDeterministicWithinAMillisecond(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	path := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(path, []byte("a\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Same finding ID and the same instant — exactly what `fix --all` over
+	// several services produces.
+	stamp := time.Now().UTC()
+	for i := 0; i < 8; i++ {
+		cp := Checkpoint{ID: NewID("compose.ds018"), FindingID: "compose.ds018", CreatedAt: stamp}
+		if _, err := store.Save(cp, map[string][]byte{path: []byte("a\n")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 8 {
+		t.Fatalf("want 8 checkpoints, got %d", len(first))
+	}
+	for i := 0; i < 20; i++ {
+		again, err := store.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for j := range first {
+			if first[j].ID != again[j].ID {
+				t.Fatalf("List order changed between calls at index %d: %s then %s",
+					j, first[j].ID, again[j].ID)
+			}
+		}
 	}
 }
 

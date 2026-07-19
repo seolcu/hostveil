@@ -35,4 +35,5 @@ jobs:
         with:
           subject-path: |
             dist/*.tar.gz
+            dist/*.sbom.json
             dist/hostveil-checksums.txt

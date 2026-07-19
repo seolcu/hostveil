@@ -122,7 +122,16 @@ func (s *Store) List() ([]Checkpoint, error) {
 			cps = append(cps, cp)
 		}
 	}
-	sort.Slice(cps, func(i, j int) bool { return cps[i].CreatedAt.After(cps[j].CreatedAt) })
+	// Newest first, breaking ties on ID. CreatedAt resolves to a
+	// millisecond, so a batch fix produces several checkpoints with the same
+	// timestamp; without a tiebreak sort.Slice (which is not stable) would
+	// order the history list differently on each call.
+	sort.Slice(cps, func(i, j int) bool {
+		if !cps[i].CreatedAt.Equal(cps[j].CreatedAt) {
+			return cps[i].CreatedAt.After(cps[j].CreatedAt)
+		}
+		return cps[i].ID > cps[j].ID
+	})
 	return cps, nil
 }
 

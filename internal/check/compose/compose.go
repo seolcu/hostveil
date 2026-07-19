@@ -172,6 +172,9 @@ func ruleExposedAdminPanel(s compose.Service) (model.Finding, bool) {
 				model.WithDescription("Management UIs like this one are high-value targets. Exposed to the internet they invite credential-stuffing and known-CVE exploitation that can hand over your whole stack."),
 				model.WithHowToFix("Bind the port to 127.0.0.1 and reach it over a VPN or SSH tunnel, or put it behind an authenticating reverse proxy."),
 				model.WithEvidence("image", s.Image),
+				// buildBindLoopback needs the host port; without it the fix
+				// fails to build and classify silently demotes ds019 to Manual.
+				model.WithEvidence("port", p.HostPort),
 			), true
 		}
 	}

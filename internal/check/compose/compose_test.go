@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/compose"
+	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -184,5 +185,56 @@ func TestLongFormPortParsing(t *testing.T) {
 	}
 	if !strings.HasPrefix("compose.ds018", "compose.") {
 		t.Fatal("sanity")
+	}
+}
+
+// TestEmittedFindingsCarryWhatTheirFixNeeds catches a whole class of silent
+// failure. classify swallows a fix-builder error and demotes the finding to
+// Manual, so a checker that forgets a piece of evidence its builder reads
+// produces a finding that looks correct, scores correctly, and simply never
+// offers the fix that is registered for it. ds019 shipped that way: it
+// recorded the image but not the host port that buildBindLoopback requires.
+func TestEmittedFindingsCarryWhatTheirFixNeeds(t *testing.T) {
+	// One service per rule that has a registered fix.
+	yaml := `services:
+  panel:
+    image: portainer/portainer-ce
+    ports:
+      - "9000:9000"
+  cache:
+    image: redis
+    ports:
+      - "6379:6379"
+  app:
+    image: myapp
+    ports:
+      - "8080:80"
+`
+	proj, err := compose.Parse("/tmp/docker-compose.yml", []byte(yaml))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	registry := fix.Default()
+	var checked int
+	for _, name := range sortedServiceNames(proj) {
+		for _, f := range auditService(proj.Services[name]) {
+			// Mirror what Checker.Check attaches before the engine sees it.
+			f.Metadata = mergeMeta(f.Metadata, map[string]string{
+				"file":    "/tmp/docker-compose.yml",
+				"service": name,
+			})
+			if !registry.Has(f.ID) {
+				continue
+			}
+			checked++
+			if _, ok, err := registry.Build(f); err != nil || !ok {
+				t.Errorf("%s (%s): a fix is registered but will not build, so classify "+
+					"silently demotes it to Manual: ok=%v err=%v", f.ID, name, ok, err)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no findings with registered fixes were exercised — the check is vacuous")
 	}
 }
