@@ -131,7 +131,9 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 	if partial.Covered != 1 || partial.Total != 2 {
 		t.Errorf("coverage = %d/%d, want 1/2", partial.Covered, partial.Total)
 	}
-	if len(findings) != 1 {
+	// The one image that did scan contributes its CVE and its rollup; the
+	// rollup for the image that failed must not be invented.
+	if len(findings) != 2 {
 		t.Errorf("partial scan should keep the findings it did get, got %d", len(findings))
 	}
 }
@@ -206,12 +208,14 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
         ]}
       ]
     }`
-	fs, err := parseTrivy([]byte(out), "myimage:1", "web")
+	fs, err := parseTrivy([]byte(out), "myimage:1", "web", "/tmp/docker-compose.yml", "stack")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fs) != 2 {
-		t.Fatalf("expected 2 findings, got %d", len(fs))
+	// Two per-CVE findings plus the per-image rollup, which is emitted
+	// because one of the two has a published fix.
+	if len(fs) != 3 {
+		t.Fatalf("expected 3 findings, got %d", len(fs))
 	}
 	byID := map[string]model.Finding{}
 	for _, f := range fs {
@@ -237,8 +241,134 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	}
 }
 
+// rollupOf returns the single cve.outdated-image finding in fs, or fails.
+func rollupOf(t *testing.T, fs []model.Finding) model.Finding {
+	t.Helper()
+	var found []model.Finding
+	for _, f := range fs {
+		if f.ID == "cve.outdated-image" {
+			found = append(found, f)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("expected exactly 1 rollup, got %d", len(found))
+	}
+	return found[0]
+}
+
+// The rollup's severity comes from the worst *fixable* CVE, not the worst
+// overall. An unfixable Critical must not inflate a finding whose only
+// remediation cannot touch it.
+func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"MEDIUM"},
+      {"VulnerabilityID":"CVE-2","PkgName":"b","FixedVersion":"","Severity":"CRITICAL"}
+    ]}]}`
+	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "/stack/docker-compose.yml", "stack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := rollupOf(t, fs)
+	if r.Severity != model.SeverityMedium {
+		t.Errorf("severity = %v, want medium (the worst fixable), not the unfixable critical", r.Severity)
+	}
+	if r.Evidence["fixable_count"] != "1" {
+		t.Errorf("fixable_count = %q, want 1", r.Evidence["fixable_count"])
+	}
+	if r.Evidence["worst_cve"] != "CVE-1" {
+		t.Errorf("worst_cve = %q, want CVE-1", r.Evidence["worst_cve"])
+	}
+	if r.Remediation != model.RemediationReview {
+		t.Errorf("remediation = %v, want Review", r.Remediation)
+	}
+}
+
+// With nothing fixable there is no action to offer, so there is no rollup —
+// the per-CVE findings still stand on their own.
+func TestNoRollupWhenNothingIsFixable(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"","Severity":"CRITICAL"}
+    ]}]}`
+	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 1 {
+		t.Fatalf("expected only the per-CVE finding, got %d", len(fs))
+	}
+	if fs[0].ID == "cve.outdated-image" {
+		t.Error("a rollup was emitted with no fixable CVE to act on")
+	}
+}
+
+// A digest pin cannot be improved by pulling, and the honest remediation
+// (repin to a newer digest) needs data the report does not carry. The
+// finding is still emitted — the image really is outdated, and hiding a real
+// problem because its remediation is awkward is the worse failure.
+func TestRollupForDigestPinnedImageIsManual(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"HIGH"}
+    ]}]}`
+	fs, err := parseTrivy([]byte(out), "redis@sha256:abc123", "cache", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := rollupOf(t, fs)
+	if r.Remediation != model.RemediationManual {
+		t.Errorf("remediation = %v, want Manual for a digest pin", r.Remediation)
+	}
+	if r.Evidence["reference"] != "digest" {
+		t.Errorf("reference = %q, want digest", r.Evidence["reference"])
+	}
+}
+
+// The regression test for the plumbing gap: Check iterates compose projects
+// but used to drop Project.File one frame down, leaving the fix builder with
+// no file to point docker compose at.
+func TestRollupCarriesComposeFilePath(t *testing.T) {
+	r := composeProject(t)
+	r.trivy["redis:7"] = oneVuln
+	r.trivy["postgres:13"] = `{"Results":[]}`
+
+	findings, err := New().Check(context.Background(), platform.Env{Runner: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	roll := rollupOf(t, findings)
+	if roll.Metadata["file"] == "" || !strings.HasSuffix(roll.Metadata["file"], "docker-compose.yml") {
+		t.Errorf("rollup metadata file = %q, want the discovered compose path", roll.Metadata["file"])
+	}
+	if roll.Metadata["project"] != "stack" {
+		t.Errorf("rollup metadata project = %q, want stack", roll.Metadata["project"])
+	}
+	if roll.Service != "cache" {
+		t.Errorf("rollup service = %q, want cache", roll.Service)
+	}
+}
+
+// One rollup per image, not per CVE and not per service.
+func TestOneRollupPerImage(t *testing.T) {
+	r := composeProject(t)
+	r.trivy["redis:7"] = oneVuln
+	r.trivy["postgres:13"] = oneVuln
+
+	findings, err := New().Check(context.Background(), platform.Env{Runner: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, f := range findings {
+		if f.ID == "cve.outdated-image" {
+			n++
+		}
+	}
+	if n != 2 {
+		t.Errorf("got %d rollups for 2 images, want 2", n)
+	}
+}
+
 func TestParseTrivyGarbageErrors(t *testing.T) {
-	if _, err := parseTrivy([]byte("not json"), "img", "svc"); err == nil {
+	if _, err := parseTrivy([]byte("not json"), "img", "svc", "f", "p"); err == nil {
 		t.Error("expected error on non-JSON trivy output")
 	}
 }
@@ -249,6 +379,6 @@ func FuzzParseTrivy(f *testing.F) {
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`garbage`))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseTrivy(data, "img", "svc")
+		_, _ = parseTrivy(data, "img", "svc", "f", "p")
 	})
 }
