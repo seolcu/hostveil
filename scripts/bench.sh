@@ -11,8 +11,9 @@
 # to keep a record for `benchstat` comparison.
 #
 # Why a script and not a Makefile: the project intentionally has no
-# Makefile (see AGENTS.md and DEVELOPMENT.md). This script is the
-# one entry point for "run the benchmarks".
+# Makefile — plain `go` commands (see docs/DEVELOPMENT.md) cover build,
+# test, and lint. This script is the one entry point for "run the
+# benchmarks".
 
 set -euo pipefail
 
