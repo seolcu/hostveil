@@ -218,11 +218,11 @@ h3 {
 }
 
 h1 {
-  max-width: 790px;
+  max-width: 620px;
   margin-bottom: 22px;
-  font-size: clamp(2.4rem, 5.5vw, 4.2rem);
-  line-height: 1.05;
-  letter-spacing: -0.06em;
+  font-size: clamp(2rem, 3.7vw, 3rem);
+  line-height: 1.12;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
@@ -379,8 +379,13 @@ pre {
 }
 
 .finding span {
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  font-size: 0.92rem;
 }
+
+.finding.critical span { color: var(--danger); }
+.finding.high span { color: var(--orange); }
+.finding.medium span { color: var(--warning); }
 
 .score-card strong {
   display: block;
