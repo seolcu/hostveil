@@ -116,3 +116,35 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 		t.Errorf("summary lost the real total:\n%s", out)
 	}
 }
+
+// A bare "changed" is not actionable. The useful part is what moved, and
+// for an aggregate finding that is the counts — never the payload behind
+// them, which can be thousands of IDs long.
+func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
+	longList := strings.Repeat("CVE-2024-0001, ", 300)
+	before := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
+		model.WithEvidence("count", "3627"), model.WithEvidence("cves", longList))
+	after := model.NewFinding("cve.outdated-image", "t", model.SeverityCritical,
+		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
+		model.WithEvidence("count", "3630"), model.WithEvidence("cves", longList+"CVE-2024-9999"))
+
+	out := DeltaSummary(model.ComputeDelta(
+		model.Report{Findings: []model.Finding{before}},
+		model.Report{Findings: []model.Finding{after}},
+	))
+
+	if !strings.Contains(out, "count 3627 → 3630") {
+		t.Errorf("summary does not say what moved:\n%s", out)
+	}
+	if !strings.Contains(out, "severity high → critical") {
+		t.Errorf("summary does not report the severity move:\n%s", out)
+	}
+	// The oversized value is summarised by the counts beside it, not dumped.
+	if strings.Contains(out, "CVE-2024-0001, CVE-2024-0001") {
+		t.Errorf("summary dumped an oversized evidence value:\n%s", out)
+	}
+	if !strings.Contains(out, "1 changed") {
+		t.Errorf("summary line does not count changes:\n%s", out)
+	}
+}

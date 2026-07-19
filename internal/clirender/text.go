@@ -95,11 +95,58 @@ const maxDeltaLines = 10
 // DeltaSummary renders a short "since last scan" summary line.
 func DeltaSummary(d model.Delta) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d still present.\n",
-		len(d.Resolved), len(d.New), d.StillPresent)
+	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d changed, %d still present.\n",
+		len(d.Resolved), len(d.New), len(d.Changed), d.StillPresent)
 	deltaLines(&b, "  ✓ resolved: ", d.Resolved)
 	deltaLines(&b, "  + new: ", d.New)
+	changedLines(&b, d.Changed)
 	return b.String()
+}
+
+// maxChangedValue bounds how long an evidence value may be before it is
+// summarised rather than printed. An aggregate finding can carry thousands
+// of IDs in one value; the point of the line is what moved, not the payload.
+const maxChangedValue = 40
+
+// changedLines names findings that persisted but moved, and says how. A bare
+// "changed" is not actionable — the useful part is "count 3627 → 3630".
+func changedLines(b *strings.Builder, cs []model.FindingChange) {
+	shown := cs
+	if len(shown) > maxDeltaLines {
+		shown = shown[:maxDeltaLines]
+	}
+	for _, c := range shown {
+		fmt.Fprintf(b, "  ~ changed: %s (%s)%s\n", c.Current.ID, c.Current.Service, changeDetail(c))
+	}
+	if rest := len(cs) - len(shown); rest > 0 {
+		fmt.Fprintf(b, "  ~ changed: … and %d more\n", rest)
+	}
+}
+
+func changeDetail(c model.FindingChange) string {
+	var parts []string
+	if c.Previous.Severity != c.Current.Severity {
+		parts = append(parts, fmt.Sprintf("severity %s → %s",
+			strings.ToLower(c.Previous.Severity.String()), strings.ToLower(c.Current.Severity.String())))
+	}
+	for _, k := range c.ChangedEvidence() {
+		before, after := c.Previous.Evidence[k], c.Current.Evidence[k]
+		if len(before) > maxChangedValue || len(after) > maxChangedValue {
+			continue // e.g. the full CVE list; the counts beside it say enough
+		}
+		parts = append(parts, fmt.Sprintf("%s %s → %s", k, orNone(before), orNone(after)))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return ": " + strings.Join(parts, ", ")
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "(none)"
+	}
+	return s
 }
 
 // deltaLines names up to maxDeltaLines findings and always says how many it
