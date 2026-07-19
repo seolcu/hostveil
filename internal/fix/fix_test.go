@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -15,6 +16,10 @@ func representative(id string) model.Finding {
 		model.WithEvidence("port", "6379"),
 		model.WithEvidence("config", "/etc/ssh/sshd_config"),
 		model.WithEvidence("mechanism", "dnf-automatic"),
+		model.WithEvidence("image", "redis:7"),
+		model.WithEvidence("fixable_count", "3"),
+		model.WithEvidence("worst_cve", "CVE-2021-1234"),
+		model.WithEvidence("reference", "tag"),
 	)
 	return f
 }
@@ -23,14 +28,20 @@ func representative(id string) model.Finding {
 // representative finding and asserts it passes Validate — Auto has exactly
 // one action, Review has independent alternatives, every edit has a
 // Transform, every exec has commands.
+// It enumerates the registry itself rather than a hand-kept list, so a new
+// registration cannot slip in unvalidated.
 func TestEveryRegisteredFixIsValid(t *testing.T) {
 	r := Default()
-	ids := []string{
-		"compose.ds006", "compose.ds008", "compose.ds018", "compose.ds019", "compose.dr002",
-		"ssh.emptypasswords", "ssh.maxauthtries", "ssh.x11forwarding", "ssh.passwordauth", "ssh.rootlogin",
-		"updates.disabled",
-	}
-	for _, id := range ids {
+	for _, id := range r.Patterns() {
+		// A glob has no single representative finding to build from, so it
+		// would silently skip this test's coverage. Nothing registers one
+		// today, and the CVE decision depends on that staying true: a
+		// "cve.*" pattern would sweep up every per-CVE finding the registry
+		// deliberately declines. Make introducing one a visible act.
+		if strings.ContainsAny(id, "*?") {
+			t.Errorf("glob pattern %q has no representative finding; register an exact ID, or extend this test deliberately", id)
+			continue
+		}
 		f := representative(id)
 		fx, ok, err := r.Build(f)
 		if err != nil {
@@ -81,7 +92,17 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
 		"ports.exposed-admin":     "same as ports.exposed-datastore",
 		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
-		"cve.CVE-2023-12345":      "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
+		// vulnFinding builds IDs as "cve."+strings.ToLower(id), so this must
+		// be the lowercased form. The entry here used to be the mixed-case
+		// "cve.CVE-2023-12345", a string no scan ever emits, which made the
+		// assertion pass vacuously.
+		"cve.cve-2021-1234": "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
+		"compose.ds009":     "the finding carries no evidence about which UID the image supports, and every candidate is a guess",
+		"compose.ds017":     ":ro is the only computable remediation, and Review requires two alternatives",
+		"compose.ds001":     "removal-shaped: hostveil cannot tell a needless privileged flag from a load-bearing one",
+		"compose.ds005":     "removal-shaped: same, for cap_add",
+		"compose.dr001":     "removing host networking without knowing which ports to publish leaves the service unreachable",
+		"compose.dr005":     "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 	}
 	r := Default()
 	for id, why := range declined {
