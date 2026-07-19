@@ -84,6 +84,10 @@ func (m *appModel) View() tea.View {
 		content = m.viewPreview()
 	case modeMessage:
 		content = m.viewMessage()
+	case modeHistory:
+		content = m.viewHistory()
+	case modeRollbackConfirm:
+		content = m.viewRollbackConfirm()
 	}
 	return tea.View{Content: content, AltScreen: true}
 }
@@ -124,7 +128,7 @@ func (m *appModel) axesLine() string {
 }
 
 const listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-	"s severity   d domain   x fixable   c clear   r rescan   q quit"
+	"s severity   d domain   x fixable   c clear   h history   r rescan   q quit"
 
 func (m *appModel) viewList() string {
 	var b strings.Builder
@@ -339,6 +343,78 @@ func (m *appModel) viewPreview() string {
 		}
 	}
 	b.WriteString(m.footer("y apply   n cancel"))
+	return b.String()
+}
+
+// viewHistory lists every applied fix, newest first, so a fix applied here
+// can be undone here rather than only from the CLI. Non-reversible
+// (command) fixes are dimmed: they are part of the record but there is
+// nothing file-backed to restore.
+func (m *appModel) viewHistory() string {
+	var b strings.Builder
+	b.WriteString(m.header())
+	b.WriteString(m.rule() + "\n")
+
+	reserved := 8
+	visible := m.height - reserved
+	if visible < 1 {
+		visible = 1
+	}
+	m.cpOffset = scrollOffset(m.cpCursor, len(m.checkpoints), visible, m.cpOffset)
+	end := m.cpOffset + visible
+	if end > len(m.checkpoints) {
+		end = len(m.checkpoints)
+	}
+
+	head := styleDim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
+	if len(m.checkpoints) > visible {
+		head += styleDim.Render(fmt.Sprintf("      %d–%d", m.cpOffset+1, end))
+	}
+	b.WriteString(head + "\n")
+
+	for i := m.cpOffset; i < end; i++ {
+		b.WriteString(m.checkpointRow(m.checkpoints[i], i == m.cpCursor) + "\n")
+	}
+	b.WriteString(m.footer("↑/↓ move   enter roll back   esc back   q list"))
+	return b.String()
+}
+
+func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
+	when := cp.CreatedAt.Local().Format("01-02 15:04")
+	label := truncate(cp.Label, m.width-40)
+	line := fmt.Sprintf("%-11s %-15s %s", when, cp.FindingID, label)
+	if cursor {
+		return styleSel.Render(padRight(line, m.width-1))
+	}
+	if !cp.Reversible {
+		return styleDim.Render(line)
+	}
+	return styleDim.Render(when+" ") + styleBone.Render(fmt.Sprintf("%-15s ", cp.FindingID)) +
+		styleBone.Render(label)
+}
+
+// viewRollbackConfirm mirrors viewPreview's y/n gesture, showing the diff
+// the rollback would revert so the decision is made on evidence.
+func (m *appModel) viewRollbackConfirm() string {
+	cp := m.checkpoints[m.cpCursor]
+	var b strings.Builder
+	b.WriteString(styleDim.Render("ROLL BACK") + "\n")
+	b.WriteString(styleBrand.Render(cp.Label) + "\n")
+	b.WriteString(m.rule() + "\n\n")
+	b.WriteString(styleDim.Render("Restores:") + "\n")
+	for _, p := range cp.Files {
+		b.WriteString(styleBone.Render("  "+p) + "\n")
+	}
+	b.WriteString("\n")
+	if cp.RestartService != "" {
+		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).
+			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards.") + "\n\n")
+	}
+	if cp.Diff != "" {
+		b.WriteString(styleDim.Render("This change will be reverted:") + "\n")
+		b.WriteString(renderDiff(cp.Diff))
+	}
+	b.WriteString(m.footer("y roll back   n cancel"))
 	return b.String()
 }
 
