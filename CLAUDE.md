@@ -22,6 +22,7 @@ Full CI gate, run all of these before sending a change:
 
 ```bash
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
+golangci-lint run ./...
 go run ./cmd/sitegen && git diff --exit-code site/
 (cd scripts && sha256sum -c install.sh.sha256)   # regenerate the .sha256 if install.sh changed
 ```
