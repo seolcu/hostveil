@@ -62,14 +62,17 @@ package fix
 //     read-only mount still permits container creation and host mounts. A
 //     fix that improves the score while changing nothing is worse than no
 //     fix.
-//   - cve.<vulnerability-id> — the per-CVE findings. Trivy's fixed_version
-//     is the OS package version inside the image (`3.0.11-1~deb12u2`), not
-//     an image tag. There is no mapping from one to the other; treating
-//     them as interchangeable is what issue #473 was. Nothing hostveil can
-//     compute turns "openssl must reach 3.0.11-1~deb12u2" into an image
-//     reference, so a per-CVE fix would have to invent one. These stay
-//     Manual, and cve.outdated-image is registered by its exact ID
-//     precisely so that no cve.* glob can ever sweep them up.
+//   - cve.<vulnerability-id> — no longer emitted at all, and must never
+//     become fixable if it returns. Trivy's fixed_version is the OS package
+//     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
+//     There is no mapping from one to the other; treating them as
+//     interchangeable is what issue #473 was. Nothing hostveil can compute
+//     turns "openssl must reach 3.0.11-1~deb12u2" into an image reference,
+//     so a per-CVE fix would have to invent one. That is also why the
+//     checker stopped emitting one finding per vulnerability: a finding is
+//     a thing you can act on, and every CVE in an image shares the single
+//     remediation that cve.outdated-image now carries. The registry matches
+//     that ID exactly, so no cve.* glob can sweep the old shape back in.
 //   - compose.ds009 — the only remediation is setting `user:`, and the
 //     finding carries no evidence about which UID the image supports.
 //     Images that drop privileges in their own entrypoint fail to start
@@ -120,6 +123,12 @@ package fix
 // Being exec, it is Review and can never be Auto, so "fix all safe" does
 // not touch it. ApplyBatch excludes it twice over: not Auto, and more than
 // one action.
+//
+// Its sibling cve.unpatched-image is Unavailable and has no fix by
+// construction: it collects exactly the vulnerabilities nobody has
+// published a fix for. It exists so that an image whose vulnerabilities are
+// all unfixed still produces a finding rather than vanishing into a clean
+// report.
 func Default() *Registry {
 	r := NewRegistry()
 	registerCompose(r)

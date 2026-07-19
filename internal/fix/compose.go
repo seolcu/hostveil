@@ -124,7 +124,11 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 	if err != nil {
 		return Fix{}, err
 	}
-	svc := f.Service
+	// The bare service name, not f.Service: CVE image findings qualify the
+	// service with its compose project to keep two projects' same-named
+	// services distinct in Finding.Key(), and `docker compose -f <file>` wants
+	// the name as written in that file.
+	svc := f.Metadata["service"]
 	if svc == "" {
 		return Fix{}, fmt.Errorf("finding %s has no service to update", f.ID)
 	}

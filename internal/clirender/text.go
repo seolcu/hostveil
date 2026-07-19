@@ -86,18 +86,35 @@ func Text(r model.Report, opts Options) string {
 	return b.String()
 }
 
+// maxDeltaLines bounds how many changed findings DeltaSummary names. A
+// "short summary" that lists every change is not short: bringing up one new
+// stack already produces hundreds of lines, and a release that changes how a
+// domain represents its findings can retire thousands of keys at once.
+const maxDeltaLines = 10
+
 // DeltaSummary renders a short "since last scan" summary line.
 func DeltaSummary(d model.Delta) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d still present.\n",
 		len(d.Resolved), len(d.New), d.StillPresent)
-	for _, f := range d.Resolved {
-		fmt.Fprintf(&b, "  ✓ resolved: %s (%s)\n", f.ID, f.Service)
-	}
-	for _, f := range d.New {
-		fmt.Fprintf(&b, "  + new: %s (%s)\n", f.ID, f.Service)
-	}
+	deltaLines(&b, "  ✓ resolved: ", d.Resolved)
+	deltaLines(&b, "  + new: ", d.New)
 	return b.String()
+}
+
+// deltaLines names up to maxDeltaLines findings and always says how many it
+// left out. Silently truncating would read as "that was all of them".
+func deltaLines(b *strings.Builder, prefix string, fs []model.Finding) {
+	shown := fs
+	if len(shown) > maxDeltaLines {
+		shown = shown[:maxDeltaLines]
+	}
+	for _, f := range shown {
+		fmt.Fprintf(b, "%s%s (%s)\n", prefix, f.ID, f.Service)
+	}
+	if rest := len(fs) - len(shown); rest > 0 {
+		fmt.Fprintf(b, "%s… and %d more\n", prefix, rest)
+	}
 }
 
 // JSON renders the report as indented JSON.

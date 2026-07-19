@@ -14,6 +14,7 @@ func representative(id string) model.Finding {
 	f := model.NewFinding(id, "t", model.SeverityHigh, model.SourceCompose, model.RemediationReview,
 		model.WithService("app"),
 		model.WithMetadata("file", "/tmp/docker-compose.yml"),
+		model.WithMetadata("service", "app"),
 		model.WithEvidence("port", "6379"),
 		model.WithEvidence("config", "/etc/ssh/sshd_config"),
 		model.WithEvidence("mechanism", "dnf-automatic"),
@@ -93,17 +94,20 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
 		"ports.exposed-admin":     "same as ports.exposed-datastore",
 		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
-		// vulnFinding builds IDs as "cve."+strings.ToLower(id), so this must
-		// be the lowercased form. The entry here used to be the mixed-case
-		// "cve.CVE-2023-12345", a string no scan ever emits, which made the
-		// assertion pass vacuously.
-		"cve.cve-2021-1234": "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
-		"compose.ds009":     "the finding carries no evidence about which UID the image supports, and every candidate is a guess",
-		"compose.ds017":     ":ro is the only computable remediation, and Review requires two alternatives",
-		"compose.ds001":     "removal-shaped: hostveil cannot tell a needless privileged flag from a load-bearing one",
-		"compose.ds005":     "removal-shaped: same, for cap_add",
-		"compose.dr001":     "removing host networking without knowing which ports to publish leaves the service unreachable",
-		"compose.dr005":     "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
+		// The checker no longer emits per-CVE findings at all — they were
+		// aggregated into cve.outdated-image / cve.unpatched-image. The pin
+		// stays as a guard: a cve.* glob would make this shape fixable again
+		// if anyone reintroduced it. The lowercased form is what vulnFinding
+		// used to build; the mixed-case entry that lived here before matched
+		// nothing and passed vacuously.
+		"cve.cve-2021-1234":   "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
+		"cve.unpatched-image": "collects exactly the vulnerabilities with no published fix; there is nothing to update to",
+		"compose.ds009":       "the finding carries no evidence about which UID the image supports, and every candidate is a guess",
+		"compose.ds017":       ":ro is the only computable remediation, and Review requires two alternatives",
+		"compose.ds001":       "removal-shaped: hostveil cannot tell a needless privileged flag from a load-bearing one",
+		"compose.ds005":       "removal-shaped: same, for cap_add",
+		"compose.dr001":       "removing host networking without knowing which ports to publish leaves the service unreachable",
+		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 	}
 	r := Default()
 	for id, why := range declined {
@@ -203,8 +207,34 @@ func TestRepullFixTargetsTheComposeFile(t *testing.T) {
 			if cmd[idx+1] != f.Metadata["file"] {
 				t.Errorf("action %d command %d targets %q, want %q", i, j, cmd[idx+1], f.Metadata["file"])
 			}
-			if cmd[len(cmd)-1] != f.Service {
-				t.Errorf("action %d command %d does not end with the service: %v", i, j, cmd)
+			// The unqualified name, as written in the compose file — never
+			// the project-qualified f.Service.
+			if cmd[len(cmd)-1] != f.Metadata["service"] {
+				t.Errorf("action %d command %d does not end with the bare service: %v", i, j, cmd)
+			}
+		}
+	}
+}
+
+// CVE image findings qualify Service with the compose project so two
+// projects' same-named services stay distinct in Key(). The docker command
+// must still use the bare name from the compose file.
+func TestRepullUsesTheUnqualifiedServiceName(t *testing.T) {
+	f := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+		model.SourceCVE, model.RemediationReview,
+		model.WithService("cloud/db"),
+		model.WithMetadata("file", "/opt/cloud/docker-compose.yml"),
+		model.WithMetadata("service", "db"),
+		model.WithEvidence("reference", "tag"),
+	)
+	fx, ok, err := Default().Build(f)
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	for i, a := range fx.Actions {
+		for j, cmd := range a.Commands {
+			if last := cmd[len(cmd)-1]; last != "db" {
+				t.Errorf("action %d command %d targets %q, want the bare db", i, j, last)
 			}
 		}
 	}
@@ -217,6 +247,7 @@ func TestRepullRefusesDigestPinnedImages(t *testing.T) {
 		model.SourceCVE, model.RemediationManual,
 		model.WithService("app"),
 		model.WithMetadata("file", "/tmp/docker-compose.yml"),
+		model.WithMetadata("service", "app"),
 		model.WithEvidence("reference", "digest"),
 	)
 	if _, _, err := Default().Build(f); err == nil {

@@ -3,6 +3,7 @@ package cve
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -131,9 +132,9 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 	if partial.Covered != 1 || partial.Total != 2 {
 		t.Errorf("coverage = %d/%d, want 1/2", partial.Covered, partial.Total)
 	}
-	// The one image that did scan contributes its CVE and its rollup; the
-	// rollup for the image that failed must not be invented.
-	if len(findings) != 2 {
+	// The one image that did scan contributes its finding; nothing may be
+	// invented for the image that failed.
+	if len(findings) != 1 {
 		t.Errorf("partial scan should keep the findings it did get, got %d", len(findings))
 	}
 }
@@ -212,10 +213,9 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Two per-CVE findings plus the per-image rollup, which is emitted
-	// because one of the two has a published fix.
-	if len(fs) != 3 {
-		t.Fatalf("expected 3 findings, got %d", len(fs))
+	// One finding per remediation class, not per CVE.
+	if len(fs) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(fs))
 	}
 	byID := map[string]model.Finding{}
 	for _, f := range fs {
@@ -225,19 +225,140 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 		byID[f.ID] = f
 	}
 
-	fixed := byID["cve.cve-2021-1234"]
+	fixed := byID["cve.outdated-image"]
 	if fixed.Remediation != model.RemediationReview {
-		t.Errorf("fixable CVE should be Review, got %v", fixed.Remediation)
+		t.Errorf("fixable group should be Review, got %v", fixed.Remediation)
 	}
+	// High, from its own group — not the Critical sitting in the other one.
 	if fixed.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", fixed.Severity)
 	}
 
-	// A CVE with no upstream fix is Unavailable — set at the source, no
-	// post-scan override band-aid.
-	unfixed := byID["cve.cve-2022-9999"]
+	// Vulnerabilities with no upstream fix are Unavailable — set at the
+	// source, no post-scan override band-aid.
+	unfixed := byID["cve.unpatched-image"]
 	if unfixed.Remediation != model.RemediationUnavailable {
-		t.Errorf("unfixable CVE should be Unavailable, got %v", unfixed.Remediation)
+		t.Errorf("unpatched group should be Unavailable, got %v", unfixed.Remediation)
+	}
+	if unfixed.Severity != model.SeverityCritical {
+		t.Errorf("severity = %v, want critical", unfixed.Severity)
+	}
+}
+
+// The whole point of aggregating: no finding may be named after a single
+// vulnerability, because there is no remediation at that granularity.
+func TestNoPerCVEFindings(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-2021-1234","PkgName":"openssl","FixedVersion":"1.1","Severity":"HIGH"},
+      {"VulnerabilityID":"CVE-2022-9999","PkgName":"zlib","FixedVersion":"","Severity":"CRITICAL"}
+    ]}]}`
+	fs, err := parseTrivy([]byte(out), "myimage:1", "web", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fs {
+		if strings.HasPrefix(f.ID, "cve.cve-") {
+			t.Errorf("finding %s is named after one vulnerability", f.ID)
+		}
+	}
+}
+
+// An image whose vulnerabilities are ALL unfixed must still produce a
+// finding. Aggregating them away would make the host look clean, which is
+// the same "couldn't look means nothing there" lie this domain told once
+// before, reached from the other direction.
+func TestAllUnfixableStillReportsTheImage(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"","Severity":"CRITICAL"},
+      {"VulnerabilityID":"CVE-2","PkgName":"b","FixedVersion":"","Severity":"HIGH"}
+    ]}]}`
+	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 1 {
+		t.Fatalf("expected exactly the unpatched finding, got %d", len(fs))
+	}
+	if fs[0].ID != "cve.unpatched-image" {
+		t.Fatalf("got %s, want cve.unpatched-image", fs[0].ID)
+	}
+	// Severity must survive aggregation, or `hostveil scan` stops exiting
+	// non-zero for an image whose only Critical has no patch.
+	if fs[0].Severity != model.SeverityCritical {
+		t.Errorf("severity = %v, want critical", fs[0].Severity)
+	}
+}
+
+// A genuinely clean image produces nothing at all.
+func TestCleanImageProducesNoFindings(t *testing.T) {
+	fs, err := parseTrivy([]byte(`{"Results":[]}`), "redis:7", "cache", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 0 {
+		t.Errorf("expected no findings for a clean image, got %d", len(fs))
+	}
+}
+
+// The named-worst list feeds a description that would otherwise reshuffle on
+// every scan (Go map order) and read as a change that never happened.
+func TestWorstListIsDeterministic(t *testing.T) {
+	var vulns []string
+	for i := range 12 {
+		vulns = append(vulns, fmt.Sprintf(`{"VulnerabilityID":"CVE-2024-%04d","PkgName":"p","FixedVersion":"2","Severity":"HIGH"}`, i))
+	}
+	out := `{"Results":[{"Vulnerabilities":[` + strings.Join(vulns, ",") + `]}]}`
+
+	first, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 5 {
+		again, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if again[0].Description != first[0].Description {
+			t.Fatalf("description is not stable across parses:\n %q\n %q", first[0].Description, again[0].Description)
+		}
+	}
+	// Only a bounded handful is named; the TUI detail view does not scroll.
+	if !strings.Contains(first[0].Description, "and 7 more") {
+		t.Errorf("description should say how many were not named, got %q", first[0].Description)
+	}
+	if got := first[0].Evidence["count"]; got != "12" {
+		t.Errorf("count = %q, want 12", got)
+	}
+	if n := strings.Count(first[0].Evidence["cves"], "CVE-"); n != 12 {
+		t.Errorf("evidence should carry all 12 CVE IDs, got %d", n)
+	}
+	// clirender's wrap splits on whitespace, so the separator must contain a
+	// space or the list becomes one unbreakable word.
+	if strings.Contains(first[0].Evidence["cves"], ",CVE") {
+		t.Error("CVE list must be separated by comma+space, not comma alone")
+	}
+}
+
+// Two images whose services share a name in different projects must not
+// collide on Key(), which would silently dedup one image out of the report.
+func TestImageFindingsAreUniquePerProject(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+      {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"HIGH"}
+    ]}]}`
+	a, err := parseTrivy([]byte(out), "postgres:13", "db", "/cloud/compose.yml", "cloud")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := parseTrivy([]byte(out), "mysql:8", "db", "/mgmt/compose.yml", "mgmt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a[0].Key() == b[0].Key() {
+		t.Errorf("two images collided on key %q", a[0].Key())
+	}
+	// The fix needs the bare service name for `docker compose pull <svc>`.
+	if a[0].Metadata["service"] != "db" {
+		t.Errorf("metadata service = %q, want the unqualified db", a[0].Metadata["service"])
 	}
 }
 
@@ -272,8 +393,8 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	if r.Severity != model.SeverityMedium {
 		t.Errorf("severity = %v, want medium (the worst fixable), not the unfixable critical", r.Severity)
 	}
-	if r.Evidence["fixable_count"] != "1" {
-		t.Errorf("fixable_count = %q, want 1", r.Evidence["fixable_count"])
+	if r.Evidence["count"] != "1" {
+		t.Errorf("count = %q, want 1", r.Evidence["count"])
 	}
 	if r.Evidence["worst_cve"] != "CVE-1" {
 		t.Errorf("worst_cve = %q, want CVE-1", r.Evidence["worst_cve"])
@@ -341,8 +462,12 @@ func TestRollupCarriesComposeFilePath(t *testing.T) {
 	if roll.Metadata["project"] != "stack" {
 		t.Errorf("rollup metadata project = %q, want stack", roll.Metadata["project"])
 	}
-	if roll.Service != "cache" {
-		t.Errorf("rollup service = %q, want cache", roll.Service)
+	// Project-qualified so two projects' same-named services stay distinct.
+	if roll.Service != "stack/cache" {
+		t.Errorf("rollup service = %q, want stack/cache", roll.Service)
+	}
+	if roll.Metadata["service"] != "cache" {
+		t.Errorf("metadata service = %q, want the unqualified cache", roll.Metadata["service"])
 	}
 }
 

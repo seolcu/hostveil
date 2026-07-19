@@ -1,6 +1,7 @@
 package clirender
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -86,5 +87,32 @@ func TestTextClaimsCleanWhenEveryDomainRan(t *testing.T) {
 	})
 	if !strings.Contains(out, "Clean.") {
 		t.Errorf("a complete scan with no findings should read as clean:\n%s", out)
+	}
+}
+
+// A "short summary" that names every change is not short. Bringing up one
+// new stack already produces hundreds of entries, and a release that changes
+// how a domain represents its findings can retire thousands of keys at once.
+func TestDeltaSummaryBoundsItsListing(t *testing.T) {
+	var resolved []model.Finding
+	for i := range 6400 {
+		resolved = append(resolved, model.NewFinding(
+			fmt.Sprintf("cve.cve-2024-%04d", i), "t", model.SeverityHigh,
+			model.SourceCVE, model.RemediationManual))
+	}
+
+	out := DeltaSummary(model.Delta{Resolved: resolved})
+
+	if n := strings.Count(out, "✓ resolved:"); n > 12 {
+		t.Errorf("summary listed %d resolved lines; it must be bounded", n)
+	}
+	// The count that was truncated must be stated: a silent cut reads as
+	// "that was all of them".
+	if !strings.Contains(out, "and 6390 more") {
+		t.Errorf("summary does not say how many it left out:\n%s", out)
+	}
+	// The true total still has to appear.
+	if !strings.Contains(out, "6400 resolved") {
+		t.Errorf("summary lost the real total:\n%s", out)
 	}
 }
