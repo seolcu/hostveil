@@ -141,16 +141,24 @@ func (e *Engine) Current() (model.Report, bool) {
 	return e.current, e.hasRun
 }
 
-// classify makes the fix registry authoritative for remediation: a
-// finding is Auto/Review exactly when a matching fix is registered (its
-// Kind wins). A finding whose checker intended a fix but has none
-// registered is demoted to Manual, so the UI never shows a fix button
-// that leads nowhere. Unavailable/Manual intents are left as-is.
+// classify settles a finding's remediation between two sources of truth.
+//
+// The fix registry decides whether a fix exists at all: a finding whose
+// checker intended a fix but has none registered is demoted to Manual, so
+// a UI never shows a fix button that leads nowhere. That direction is
+// absolute.
+//
+// The checker decides how much human judgment applying it needs, and the
+// registry cannot talk it down. A registered fix is shaped Auto when it
+// has a single mechanical action, which is a statement about the fix's
+// *form*, not about whether it is safe to run unattended in a batch. Where
+// the checker asked for Review, Review wins — see the standard in
+// internal/fix/register.go for what each kind means.
 func (e *Engine) classify(findings []model.Finding) {
 	for i := range findings {
 		if e.fixes != nil {
 			if fx, ok, err := e.fixes.Build(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
-				findings[i].Remediation = fx.Kind
+				findings[i].Remediation = classifiedKind(findings[i].Remediation, fx.Kind)
 				continue
 			}
 		}
@@ -158,6 +166,23 @@ func (e *Engine) classify(findings []model.Finding) {
 			findings[i].Remediation = model.RemediationManual
 		}
 	}
+}
+
+// classifiedKind resolves a checker's declared remediation against the
+// registered fix's kind, taking whichever demands more human involvement.
+// RemediationKind is ordered by caution (Auto < Review < Manual <
+// Unavailable), so that is simply the larger of the two. A checker that
+// declared no opinion (or something unfixable, which only happens if a fix
+// is registered for a finding the checker considers manual) defers to the
+// registry.
+func classifiedKind(declared, registered model.RemediationKind) model.RemediationKind {
+	if !declared.IsFixable() {
+		return registered
+	}
+	if declared > registered {
+		return declared
+	}
+	return registered
 }
 
 // validFindings drops any malformed finding so an unclassified or

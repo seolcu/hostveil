@@ -6,6 +6,7 @@
 package history
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -25,8 +27,14 @@ type BackedFile struct {
 
 // Checkpoint is a restore point created when a fix is applied.
 type Checkpoint struct {
-	ID             string       `json:"id"`
-	FindingID      string       `json:"finding_id"`
+	ID        string `json:"id"`
+	FindingID string `json:"finding_id"`
+	// FindingKey is the finding's full source|id|service key, which is what
+	// identifies it uniquely — FindingID alone collides across services
+	// (two exposed datastores share an ID). Rollback needs it to un-mark the
+	// right finding. Omitempty: checkpoints written before this field
+	// existed deserialize to "" and fall back to matching on FindingID.
+	FindingKey     string       `json:"finding_key,omitempty"`
 	Label          string       `json:"label"`
 	CreatedAt      time.Time    `json:"created_at"`
 	Files          []BackedFile `json:"files"`
@@ -114,7 +122,16 @@ func (s *Store) List() ([]Checkpoint, error) {
 			cps = append(cps, cp)
 		}
 	}
-	sort.Slice(cps, func(i, j int) bool { return cps[i].CreatedAt.After(cps[j].CreatedAt) })
+	// Newest first, breaking ties on ID. CreatedAt resolves to a
+	// millisecond, so a batch fix produces several checkpoints with the same
+	// timestamp; without a tiebreak sort.Slice (which is not stable) would
+	// order the history list differently on each call.
+	sort.Slice(cps, func(i, j int) bool {
+		if !cps[i].CreatedAt.Equal(cps[j].CreatedAt) {
+			return cps[i].CreatedAt.After(cps[j].CreatedAt)
+		}
+		return cps[i].ID > cps[j].ID
+	})
 	return cps, nil
 }
 
@@ -157,8 +174,29 @@ func (s *Store) Rollback(id string) (Checkpoint, error) {
 
 // NewID returns a sortable checkpoint ID based on the current time and the
 // finding it fixes.
+//
+// The trailing random component is load-bearing, not decoration. The
+// timestamp resolves to a millisecond and the finding hash is constant for
+// a given finding ID, so without it a batch fix that raises the same
+// finding for several services (three exposed datastores in one compose
+// file, say) mints one ID for all of them. Colliding IDs share a
+// checkpoint directory, so each Save overwrites the previous backup with
+// the already-modified file — the original bytes are lost and rollback
+// restores an intermediate state. Checkpoints are the only backup there
+// is, so an ID collision is silent data loss.
 func NewID(findingID string) string {
-	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8]
+	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8] + "-" + randomSuffix()
+}
+
+// randomSuffix returns 4 bytes of hex. On the (practically impossible)
+// failure of the system CSPRNG it falls back to the nanosecond clock,
+// which still separates same-millisecond checkpoints.
+func randomSuffix() string {
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano()%0xffffffff, 16)
+	}
+	return hex.EncodeToString(b[:])
 }
 
 // NewScanID returns a sortable ID for a scan snapshot.

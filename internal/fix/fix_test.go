@@ -70,6 +70,48 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 	}
 }
 
+// TestKnownUnregisteredFindings pins the findings that are fixable in
+// principle but deliberately have no builder, each for a reason recorded
+// in Default's doc comment. Registering one of these means deleting an
+// assertion here, which is the point: the decision should be argued with,
+// not quietly reversed.
+func TestKnownUnregisteredFindings(t *testing.T) {
+	declined := map[string]string{
+		"firewall.inactive":       "enabling a default-deny firewall over SSH can lock the user out, and exec fixes have no rollback",
+		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
+		"ports.exposed-admin":     "same as ports.exposed-datastore",
+		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
+		"cve.CVE-2023-12345":      "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
+	}
+	r := Default()
+	for id, why := range declined {
+		if r.Has(id) {
+			t.Errorf("%s has a registered fix, but is documented as deliberately unfixed: %s", id, why)
+		}
+	}
+}
+
+// TestReviewIntentSurvivesAnAutoShapedFix guards the rule that a fix
+// registered as Auto describes the fix's shape (one mechanical action) and
+// does not overrule a checker that asked for Review. ssh.passwordauth is
+// the case that matters: the edit is reversible on disk, but a user
+// without a working key loses the session and cannot get back in to roll
+// it back, so it must never be swept up by "fix all safe".
+func TestReviewIntentSurvivesAnAutoShapedFix(t *testing.T) {
+	for _, id := range []string{"ssh.passwordauth", "updates.disabled"} {
+		fx, ok, err := Default().Build(representative(id))
+		if err != nil || !ok {
+			t.Fatalf("%s: build: ok=%v err=%v", id, ok, err)
+		}
+		// The registry may shape these as Auto; Engine.classify is what holds
+		// them at Review. This asserts the registry stays buildable so that
+		// resolution has something to work with.
+		if !fx.Kind.IsFixable() {
+			t.Errorf("%s: kind %v is not fixable", id, fx.Kind)
+		}
+	}
+}
+
 func TestExecFixTransformsPure(t *testing.T) {
 	// An edit fix's Transform must not touch disk when called; verify it is
 	// a pure byte transform.

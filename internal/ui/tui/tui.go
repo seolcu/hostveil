@@ -24,6 +24,8 @@ const (
 	modeDetail
 	modePreview
 	modeMessage
+	modeHistory
+	modeRollbackConfirm
 )
 
 type appModel struct {
@@ -42,6 +44,10 @@ type appModel struct {
 	preview       model.FixPreview
 	previewAction int
 	status        string
+
+	checkpoints []model.Checkpoint // applied-fix log, newest first
+	cpCursor    int
+	cpOffset    int
 }
 
 // New builds the TUI model around an engine.
@@ -101,6 +107,29 @@ func batchCmd(e *core.Engine, fs []model.Finding) tea.Cmd {
 	}
 }
 
+type historyMsg struct {
+	checkpoints []model.Checkpoint
+	err         error
+}
+type rolledBackMsg struct {
+	outcome model.RollbackOutcome
+	err     error
+}
+
+func historyCmd(e *core.Engine) tea.Cmd {
+	return func() tea.Msg {
+		cps, err := e.ListCheckpoints()
+		return historyMsg{checkpoints: cps, err: err}
+	}
+}
+
+func rollbackCmd(e *core.Engine, id string) tea.Cmd {
+	return func() tea.Msg {
+		o, err := e.Rollback(id)
+		return rolledBackMsg{outcome: o, err: err}
+	}
+}
+
 // --- tea.Model ---
 
 func (m *appModel) Init() tea.Cmd { return scanCmd(m.engine) }
@@ -154,6 +183,38 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = modeMessage
 		return m, nil
 
+	case historyMsg:
+		if msg.err != nil {
+			m.status = "Cannot read history: " + msg.err.Error()
+			m.mode = modeMessage
+			return m, nil
+		}
+		if len(msg.checkpoints) == 0 {
+			m.status = "No fixes have been applied yet."
+			m.mode = modeMessage
+			return m, nil
+		}
+		m.checkpoints = msg.checkpoints
+		m.cpCursor, m.cpOffset = 0, 0
+		m.mode = modeHistory
+		return m, nil
+
+	case rolledBackMsg:
+		if msg.err != nil {
+			m.status = "Rollback failed: " + msg.err.Error()
+			m.mode = modeMessage
+			return m, nil
+		}
+		m.status = rollbackSummary(msg.outcome)
+		// Refresh from the engine, which has already un-marked the finding
+		// and rescored, so the restored finding reappears in the list.
+		if cur, ok := m.engine.Current(); ok {
+			m.report = cur
+			m.rebuildActive()
+		}
+		m.mode = modeMessage
+		return m, nil
+
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}
@@ -178,6 +239,10 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case modePreview:
 		return m.keyPreview(key)
+	case modeHistory:
+		return m.keyHistory(key)
+	case modeRollbackConfirm:
+		return m.keyRollbackConfirm(key)
 	case modeMessage:
 		m.mode = modeList
 	}
@@ -220,6 +285,44 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		m.mode = modeScanning
 		m.status = "Rescanning…"
 		return m, scanCmd(m.engine)
+	case "h":
+		return m, historyCmd(m.engine)
+	}
+	return m, nil
+}
+
+func (m *appModel) keyHistory(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc", "q", "backspace", "h":
+		m.mode = modeList
+	case "up", "k":
+		m.cpCursor = clamp(m.cpCursor-1, 0, len(m.checkpoints)-1)
+	case "down", "j":
+		m.cpCursor = clamp(m.cpCursor+1, 0, len(m.checkpoints)-1)
+	case "enter", "r":
+		if len(m.checkpoints) == 0 {
+			return m, nil
+		}
+		if !m.checkpoints[m.cpCursor].Reversible {
+			m.status = "That fix ran a command rather than editing a file, so there is nothing to restore automatically."
+			m.mode = modeMessage
+			return m, nil
+		}
+		m.mode = modeRollbackConfirm
+	}
+	return m, nil
+}
+
+func (m *appModel) keyRollbackConfirm(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y", "enter":
+		if len(m.checkpoints) == 0 {
+			m.mode = modeList
+			return m, nil
+		}
+		return m, rollbackCmd(m.engine, m.checkpoints[m.cpCursor].ID)
+	default:
+		m.mode = modeHistory
 	}
 	return m, nil
 }
@@ -371,11 +474,27 @@ func applySummary(o model.FixOutcome) string {
 	var b strings.Builder
 	b.WriteString("✓ Fix applied. ")
 	if o.CheckpointID != "" {
-		fmt.Fprintf(&b, "Rollback id: %s. ", o.CheckpointID)
+		// The checkpoint ID used to be printed here, which was a dead end:
+		// acting on it meant quitting to the CLI. Point at the history
+		// screen instead, where it can be rolled back in place.
+		b.WriteString("Press h to undo it. ")
 	}
 	fmt.Fprintf(&b, "New score: %d/100.", o.NewScore.Overall)
 	if o.RestartHint != "" {
 		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartHint)
+	}
+	return b.String()
+}
+
+func rollbackSummary(o model.RollbackOutcome) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "✓ Rolled back. Restored %d file", len(o.RestoredFiles))
+	if len(o.RestoredFiles) != 1 {
+		b.WriteString("s")
+	}
+	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
+	if o.RestartService != "" {
+		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartService)
 	}
 	return b.String()
 }

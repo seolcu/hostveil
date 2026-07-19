@@ -5,6 +5,11 @@ on:
 
 permissions:
   contents: write
+  # Required to mint a build-provenance attestation for the release
+  # artifacts: id-token to request the OIDC token that identifies this
+  # workflow, attestations to record the signed statement.
+  id-token: write
+  attestations: write
 
 jobs:
   goreleaser:
@@ -18,8 +23,17 @@ jobs:
           go-version: "1.26"
       - name: Verify
         run: go build ./... && go vet ./...
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
       - uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.sbom.json
+            dist/hostveil-checksums.txt

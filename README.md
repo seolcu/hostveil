@@ -47,6 +47,17 @@ curl -fsSL https://hostveil.seolcu.com/install.sh | bash
 
 Trivy is optional — install it any time to enable image CVE scanning.
 
+Release archives are built by GitHub Actions and carry a signed build
+provenance attestation, so you can confirm a download really came from this
+repo's release workflow before running it:
+
+```bash
+gh attestation verify hostveil-linux-amd64.tar.gz --repo seolcu/hostveil
+```
+
+Each archive also ships an SBOM (`.sbom.json`) listing what went into the
+binary.
+
 ## Usage
 
 ```bash

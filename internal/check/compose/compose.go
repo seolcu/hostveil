@@ -146,7 +146,7 @@ func ruleExposedDatastore(s compose.Service) (model.Finding, bool) {
 	}
 	for _, p := range s.Ports {
 		if p.ExposedOnAllInterfaces() {
-			return f("ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.RemediationReview, s.Name,
+			return f("ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.RemediationAuto, s.Name,
 				model.WithDescription("A database or cache published on 0.0.0.0 is reachable from the internet if the host has a public IP. Many datastores have no authentication by default, so anyone can read, wipe, or plant data — a common route to full host takeover."),
 				model.WithHowToFix("Bind the port to 127.0.0.1 (e.g. `127.0.0.1:6379:6379`) so only the host can reach it, and set a strong password. Do not expose datastores to the internet."),
 				model.WithEvidence("image", s.Image),
@@ -168,10 +168,13 @@ func ruleExposedAdminPanel(s compose.Service) (model.Finding, bool) {
 	}
 	for _, p := range s.Ports {
 		if p.ExposedOnAllInterfaces() {
-			return f("ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.RemediationReview, s.Name,
+			return f("ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.RemediationAuto, s.Name,
 				model.WithDescription("Management UIs like this one are high-value targets. Exposed to the internet they invite credential-stuffing and known-CVE exploitation that can hand over your whole stack."),
 				model.WithHowToFix("Bind the port to 127.0.0.1 and reach it over a VPN or SSH tunnel, or put it behind an authenticating reverse proxy."),
 				model.WithEvidence("image", s.Image),
+				// buildBindLoopback needs the host port; without it the fix
+				// fails to build and classify silently demotes ds019 to Manual.
+				model.WithEvidence("port", p.HostPort),
 			), true
 		}
 	}
@@ -268,7 +271,7 @@ func rulePortAllInterfaces(s compose.Service) (model.Finding, bool) {
 	}
 	for _, p := range s.Ports {
 		if p.ExposedOnAllInterfaces() {
-			return f("dr002", "Port published on all network interfaces", model.SeverityMedium, model.RemediationReview, s.Name,
+			return f("dr002", "Port published on all network interfaces", model.SeverityMedium, model.RemediationAuto, s.Name,
 				model.WithDescription("A port bound to 0.0.0.0 is reachable from any network the host is on, including the internet if the host has a public IP. Only expose what needs to be public."),
 				model.WithHowToFix("If the service is only used locally or behind a reverse proxy, bind the port to 127.0.0.1 (e.g. `127.0.0.1:8080:80`)."),
 				model.WithEvidence("port", p.HostPort),

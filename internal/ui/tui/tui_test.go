@@ -343,3 +343,136 @@ func TestFixFlowThroughEngine(t *testing.T) {
 		}
 	}
 }
+
+// TestRollbackFlowThroughEngine is the TUI half of "reversible anywhere":
+// apply a fix, open the history screen with h, roll it back, and confirm
+// the file is restored and the finding is back in the active list.
+func TestRollbackFlowThroughEngine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine := core.New(core.Config{
+		Registry: check.NewRegistry(composecheck.New()),
+		Fixes:    fix.Default(),
+		Store:    history.NewStore(t.TempDir()),
+		Runner:   fakeRunner{present: map[string]bool{"docker": true}, lsJSON: `[{"Name":"demo","ConfigFiles":"` + path + `"}]`},
+	})
+	rep := engine.Scan(context.Background(), nil)
+
+	m := tea.Model(&appModel{engine: engine, mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = send(m, scannedMsg{report: rep})
+	for i, f := range m.(*appModel).active {
+		if f.ID == "compose.ds018" {
+			m.(*appModel).cursor = i
+		}
+	}
+
+	// Apply the fix.
+	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "f"}))
+	m = send(m, cmd())
+	_, cmd = m.Update(tea.KeyPressMsg(tea.Key{Text: "y"}))
+	m = send(m, cmd())
+	if data, _ := os.ReadFile(path); string(data) == orig {
+		t.Fatal("fix was not applied")
+	}
+	// The message should point at the history screen, not a bare ID the user
+	// can only act on by quitting to the CLI.
+	if !strings.Contains(m.(*appModel).status, "h to undo") {
+		t.Errorf("apply status should point at the history screen, got %q", m.(*appModel).status)
+	}
+
+	// Dismiss the message, then open history with h.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: " "}))
+	_, cmd = m.Update(tea.KeyPressMsg(tea.Key{Text: "h"}))
+	if cmd == nil {
+		t.Fatal("h should issue a history command")
+	}
+	m = send(m, cmd())
+	hm := m.(*appModel)
+	if hm.mode != modeHistory {
+		t.Fatalf("expected history mode, got %v", hm.mode)
+	}
+	if len(hm.checkpoints) != 1 {
+		t.Fatalf("want 1 checkpoint, got %d", len(hm.checkpoints))
+	}
+	if view := m.(*appModel).viewHistory(); !strings.Contains(view, "compose.ds018") {
+		t.Errorf("history view should name the finding:\n%s", view)
+	}
+
+	// enter → confirm screen → y rolls back.
+	m = send(m, tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	if m.(*appModel).mode != modeRollbackConfirm {
+		t.Fatalf("enter on a reversible checkpoint should ask to confirm, got %v", m.(*appModel).mode)
+	}
+	_, cmd = m.Update(tea.KeyPressMsg(tea.Key{Text: "y"}))
+	if cmd == nil {
+		t.Fatal("y should issue a rollback command")
+	}
+	m = send(m, cmd())
+
+	am := m.(*appModel)
+	if !strings.Contains(am.status, "Rolled back") {
+		t.Errorf("expected rollback status, got %q", am.status)
+	}
+	if data, _ := os.ReadFile(path); string(data) != orig {
+		t.Errorf("rollback did not restore the original bytes:\nwant:\n%s\ngot:\n%s", orig, data)
+	}
+	// The whole point: the finding is back, so the TUI stops claiming a fix
+	// that has been undone.
+	var back bool
+	for _, f := range am.active {
+		if f.ID == "compose.ds018" {
+			back = true
+		}
+	}
+	if !back {
+		t.Error("rolled-back finding should be in the active list again")
+	}
+}
+
+// TestHistoryWithNoCheckpoints keeps h from opening an empty screen.
+func TestHistoryWithNoCheckpoints(t *testing.T) {
+	engine := core.New(core.Config{Fixes: fix.Default(), Store: history.NewStore(t.TempDir())})
+	m := tea.Model(&appModel{engine: engine, mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = send(m, scannedMsg{report: sampleReport()})
+
+	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "h"}))
+	if cmd == nil {
+		t.Fatal("h should issue a history command")
+	}
+	m = send(m, cmd())
+	am := m.(*appModel)
+	if am.mode != modeMessage {
+		t.Errorf("empty history should show a message, got mode %v", am.mode)
+	}
+	if !strings.Contains(am.status, "No fixes") {
+		t.Errorf("unexpected status: %q", am.status)
+	}
+}
+
+// TestNonReversibleCheckpointOffersNoRollback: exec fixes back up no files,
+// so the TUI must explain that rather than appearing to roll one back.
+func TestNonReversibleCheckpointOffersNoRollback(t *testing.T) {
+	m := &appModel{
+		mode:   modeHistory,
+		width:  100,
+		height: 40,
+		checkpoints: []model.Checkpoint{{
+			ID: "cp1", FindingID: "updates.disabled", Label: "Enable unattended upgrades",
+			Reversible: false, Commands: [][]string{{"systemctl", "enable", "unattended-upgrades"}},
+		}},
+	}
+	next, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	am := next.(*appModel)
+	if am.mode != modeMessage {
+		t.Errorf("expected an explanatory message, got mode %v", am.mode)
+	}
+	if !strings.Contains(am.status, "nothing to restore") {
+		t.Errorf("unexpected status: %q", am.status)
+	}
+}

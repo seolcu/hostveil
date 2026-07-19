@@ -25,7 +25,11 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 		return model.FixPreview{}, fmt.Errorf("no fix available for %s", f.ID)
 	}
 
-	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: fx.Kind}
+	// Report the classified kind, not the registry's raw one: classify may
+	// hold a fix at Review that the registry shapes as Auto, and a preview
+	// labelled "Auto-fix" next to a finding labelled "Review" would be a
+	// contradiction the user has to resolve.
+	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: classifiedKind(f.Remediation, fx.Kind)}
 	for i, a := range fx.Actions {
 		ap := model.ActionPreview{Index: i, Label: a.Label, Warning: a.Warning}
 		switch a.Kind {
@@ -110,6 +114,7 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	cp := history.Checkpoint{
 		ID:             history.NewID(f.ID),
 		FindingID:      f.ID,
+		FindingKey:     f.Key(),
 		Label:          fx.Label,
 		CreatedAt:      time.Now(),
 		Diff:           d,
@@ -143,11 +148,12 @@ func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	// Exec fixes are not file-backed, so there is no rollback checkpoint;
 	// record the commands for the history log.
 	cp := history.Checkpoint{
-		ID:        history.NewID(f.ID),
-		FindingID: f.ID,
-		Label:     fx.Label,
-		CreatedAt: time.Now(),
-		Commands:  a.Commands,
+		ID:         history.NewID(f.ID),
+		FindingID:  f.ID,
+		FindingKey: f.Key(),
+		Label:      fx.Label,
+		CreatedAt:  time.Now(),
+		Commands:   a.Commands,
 	}
 	if _, err := e.store.Save(cp, nil); err != nil {
 		return model.FixOutcome{}, err
@@ -182,8 +188,12 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 	return out
 }
 
-// Rollback restores a checkpoint's files and rescans nothing; the caller
-// (or a re-scan) reflects the restored state.
+// Rollback restores a checkpoint's files, then un-marks the finding the
+// checkpoint fixed and rescores — the exact inverse of ApplyFix's
+// mark-fixed→rescore tail. Doing it here rather than leaving it to a
+// re-scan is what makes rollback correct in a long-lived TUI or web
+// session, where the in-memory report would otherwise keep reporting a
+// finding as fixed after its fix had been undone.
 func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {
 	cp, err := e.store.Rollback(id)
 	if err != nil {
@@ -193,12 +203,66 @@ func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {
 	for _, bf := range cp.Files {
 		out.RestoredFiles = append(out.RestoredFiles, bf.Path)
 	}
+	out.Unfixed = e.unmarkFixed(cp)
+	out.NewScore = e.rescore()
 	return out, nil
 }
 
-// ListCheckpoints returns saved restore points, newest first.
-func (e *Engine) ListCheckpoints() ([]history.Checkpoint, error) {
-	return e.store.List()
+// unmarkFixed clears the Fixed flag on the finding a checkpoint fixed, so
+// it reappears in every UI's active list. It matches on the full
+// source|id|service key where the checkpoint has one, falling back to the
+// bare finding ID for checkpoints written before FindingKey existed.
+func (e *Engine) unmarkFixed(cp history.Checkpoint) []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var unfixed []string
+	for i := range e.current.Findings {
+		f := &e.current.Findings[i]
+		if !f.Fixed {
+			continue
+		}
+		if cp.FindingKey != "" && f.Key() != cp.FindingKey {
+			continue
+		}
+		if cp.FindingKey == "" && f.ID != cp.FindingID {
+			continue
+		}
+		f.Fixed = false
+		unfixed = append(unfixed, f.ID)
+	}
+	return unfixed
+}
+
+// ListCheckpoints returns saved restore points, newest first, as model
+// values so every UI can render the applied-fix log without reaching into
+// internal/history.
+func (e *Engine) ListCheckpoints() ([]model.Checkpoint, error) {
+	cps, err := e.store.List()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.Checkpoint, 0, len(cps))
+	for _, cp := range cps {
+		out = append(out, toModelCheckpoint(cp))
+	}
+	return out, nil
+}
+
+func toModelCheckpoint(cp history.Checkpoint) model.Checkpoint {
+	out := model.Checkpoint{
+		ID:             cp.ID,
+		FindingID:      cp.FindingID,
+		Label:          cp.Label,
+		CreatedAt:      cp.CreatedAt,
+		Reversible:     cp.Reversible(),
+		Diff:           cp.Diff,
+		RestartService: cp.RestartService,
+		Commands:       cp.Commands,
+	}
+	for _, bf := range cp.Files {
+		out.Files = append(out.Files, bf.Path)
+	}
+	return out
 }
 
 func (e *Engine) buildFix(f model.Finding) (fix.Fix, bool, error) {
