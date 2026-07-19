@@ -31,6 +31,12 @@ checksum:
   name_template: "{{ .ProjectName }}-checksums.txt"
   algorithm: sha256
 
+# One SBOM per archive, so anyone auditing a hostveil binary can see the
+# dependency set it was built from without trusting a build log.
+sboms:
+  - id: archive-sbom
+    artifacts: archive
+
 release:
   github:
     owner: seolcu
