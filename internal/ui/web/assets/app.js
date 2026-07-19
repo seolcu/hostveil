@@ -306,6 +306,70 @@ async function applyFix(f, action) {
   } catch (e) { flash("Fix failed: " + e.message, true); }
 }
 
+// ── history + rollback ─────────────────────────────────────────────────
+// Every applied fix leaves a checkpoint; this panel is how the web UI
+// makes them reversible, so a fix applied here can be undone here rather
+// than only from the CLI.
+async function showHistory() {
+  let cps;
+  try {
+    cps = await api("/api/history");
+  } catch (e) { flash("Could not load history: " + e.message, true); return; }
+
+  selected = null;
+  document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
+  const d = document.getElementById("detail");
+  d.replaceChildren(
+    el("h3", {}, "Applied fixes"),
+    el("div", { class: "meta" }, `${cps.length} checkpoint${cps.length === 1 ? "" : "s"}  ·  newest first`)
+  );
+  if (!cps.length) {
+    d.append(el("p", { class: "empty" }, "No fixes have been applied yet."));
+    return;
+  }
+  cps.forEach((cp) => d.append(checkpointBox(cp)));
+}
+
+function checkpointBox(cp) {
+  const when = new Date(cp.created_at).toLocaleString();
+  const body = el("div", { class: "fixbox-body" });
+
+  if (cp.reversible) {
+    if (cp.diff) body.append(diffPre(cp.diff));
+    if (cp.restart_service) {
+      body.append(el("div", { class: "warn" },
+        `⚠  Rolling back may require restarting '${cp.restart_service}'.`));
+    }
+    body.append(el("div", { class: "row" },
+      el("button", { onclick: () => rollback(cp) }, "Roll back")));
+  } else {
+    // Exec fixes back up no files, so there is nothing to restore. Show
+    // what ran instead of a button that would lead nowhere.
+    if (cp.commands) body.append(cmdList(cp.commands));
+    body.append(el("p", { class: "empty" },
+      "This fix ran a command rather than editing a file, so there is nothing to restore automatically. Undo it by hand if you need to."));
+  }
+
+  return el("div", { class: "fixbox" },
+    el("div", { class: "fixbox-head" }, `${when}  ·  ${cp.finding_id}  ·  ${cp.label}`),
+    body);
+}
+
+async function rollback(cp) {
+  if (!confirm(`Roll back "${cp.label}"?\n\nThis restores the original file as it was before the fix was applied.`)) return;
+  try {
+    const o = await api("/api/rollback", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkpoint_id: cp.id }),
+    });
+    const n = o.restored_files ? o.restored_files.length : 0;
+    flash(`Rolled back. Restored ${n} file${n === 1 ? "" : "s"}. Score ${o.new_score.overall}/100.` +
+      (o.restart_service ? `  You may need to restart '${o.restart_service}'.` : ""));
+    await refresh();
+    await showHistory();
+  } catch (e) { flash("Rollback failed: " + e.message, true); }
+}
+
 async function refresh() { report = await api("/api/result"); render(); }
 
 function flash(msg, isErr) {
@@ -316,6 +380,8 @@ function flash(msg, isErr) {
   clearTimeout(flash._t);
   flash._t = setTimeout(() => (s.hidden = true), 6000);
 }
+
+document.getElementById("history").onclick = showHistory;
 
 document.getElementById("rescan").onclick = async () => {
   flash("Rescanning…");
