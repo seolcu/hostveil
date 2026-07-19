@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -28,10 +29,20 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 
 // Check probes the known firewall front-ends and, if none is active,
 // emits a single finding.
+//
+// When a tool is installed but every probe fails — `ufw status` and
+// `nft list ruleset` both need root — the honest answer is "cannot tell",
+// not "no firewall". Reporting the finding there would accuse a properly
+// firewalled host of being wide open purely because the scan lacked
+// privileges.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	if active, which := activeFirewall(ctx, env.Runner); active {
-		_ = which // an active firewall is the good case: no finding
-		return nil, nil
+	switch status, _ := probe(ctx, env.Runner); status {
+	case StatusActive:
+		return nil, nil // the good case: no finding
+	case StatusUnknown:
+		return nil, &check.PartialError{
+			Reason: "cannot read firewall state — re-run with sudo to check the host firewall",
+		}
 	}
 	return []model.Finding{
 		model.NewFinding("firewall.inactive", "No active host firewall",
@@ -43,36 +54,69 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}, nil
 }
 
-// Active reports whether any supported host firewall is actively filtering.
-// It is exported so other checkers (e.g. the ports checker) can treat an
-// active firewall as a backstop when deciding how loudly to flag an exposed
-// listener, reusing this package's probing rather than duplicating it.
-func Active(ctx context.Context, r platform.CommandRunner) bool {
-	active, _ := activeFirewall(ctx, r)
-	return active
+// Status is the outcome of probing the host's firewall front-ends.
+type Status int
+
+const (
+	// StatusInactive means the probes ran and found no firewall filtering.
+	StatusInactive Status = iota
+	// StatusActive means a supported firewall is actively filtering.
+	StatusActive
+	// StatusUnknown means a firewall tool is installed but could not be
+	// queried — almost always missing root. It is deliberately distinct
+	// from Inactive: "I could not look" is not evidence of absence.
+	StatusUnknown
+)
+
+// Probe reports whether any supported host firewall is actively filtering,
+// and which one. It is exported so other checkers (e.g. the ports checker)
+// can treat an active firewall as a backstop when deciding how loudly to flag
+// an exposed listener, reusing this package's probing rather than duplicating
+// it. Callers must distinguish StatusUnknown from StatusInactive before
+// drawing any conclusion from it.
+func Probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
+	return probe(ctx, r)
 }
 
-// activeFirewall returns whether any supported firewall is actively
-// filtering, and which one.
-func activeFirewall(ctx context.Context, r platform.CommandRunner) (bool, string) {
-	if platform.Has(r, "ufw") {
-		if out, err := r.Run(ctx, "ufw", "status"); err == nil &&
-			strings.Contains(strings.ToLower(string(out)), "status: active") {
-			return true, "ufw"
+// probe runs each installed front-end's query in turn. A tool that is present
+// but errors is recorded as unreadable rather than as a negative answer.
+func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
+	unreadable := false
+
+	query := func(tool, which string, args []string, active func(string) bool) (Status, string) {
+		if !platform.Has(r, tool) {
+			return StatusInactive, ""
 		}
-	}
-	if platform.Has(r, "firewall-cmd") {
-		if out, err := r.Run(ctx, "firewall-cmd", "--state"); err == nil &&
-			strings.Contains(string(out), "running") {
-			return true, "firewalld"
+		out, err := r.Run(ctx, tool, args...)
+		if err != nil {
+			unreadable = true
+			return StatusInactive, ""
 		}
-	}
-	if platform.Has(r, "nft") {
-		if out, err := r.Run(ctx, "nft", "list", "ruleset"); err == nil && hasHostFirewall(string(out)) {
-			return true, "nftables"
+		if active(string(out)) {
+			return StatusActive, which
 		}
+		return StatusInactive, ""
 	}
-	return false, ""
+
+	if st, which := query("ufw", "ufw", []string{"status"}, func(s string) bool {
+		return strings.Contains(strings.ToLower(s), "status: active")
+	}); st == StatusActive {
+		return st, which
+	}
+	if st, which := query("firewall-cmd", "firewalld", []string{"--state"}, func(s string) bool {
+		return strings.Contains(s, "running")
+	}); st == StatusActive {
+		return st, which
+	}
+	if st, which := query("nft", "nftables", []string{"list", "ruleset"}, hasHostFirewall); st == StatusActive {
+		return st, which
+	}
+
+	// Only claim "no firewall" if every installed tool actually answered.
+	if unreadable {
+		return StatusUnknown, ""
+	}
+	return StatusInactive, ""
 }
 
 // hasHostFirewall reports whether an nft ruleset contains an actual

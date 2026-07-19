@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
@@ -120,8 +121,21 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// no host firewall acting as a backstop — otherwise every expected web
 	// server would be noise. When there is no firewall, surface them once,
 	// aggregated, at low severity.
-	if len(generic) > 0 && !firewall.Active(ctx, env.Runner) {
-		findings = append(findings, genericFinding(generic))
+	//
+	// If the firewall state cannot be read at all (its probes need root),
+	// neither answer is safe: flagging would manufacture noise on a
+	// firewalled host, and staying silent would hide real exposure. Say so
+	// instead, and report the rest of the domain as partial.
+	fwStatus, _ := firewall.Probe(ctx, env.Runner)
+	if len(generic) > 0 {
+		switch fwStatus {
+		case firewall.StatusInactive:
+			findings = append(findings, genericFinding(generic))
+		case firewall.StatusUnknown:
+			return findings, &check.PartialError{
+				Reason: "cannot read firewall state — re-run with sudo to judge whether open ports are shielded",
+			}
+		}
 	}
 	return findings, nil
 }
