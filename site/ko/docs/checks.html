@@ -141,17 +141,17 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev critical">심각</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev critical">심각</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev critical">심각</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
@@ -165,7 +165,7 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, 또는 nftables)</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, 또는 nftables)</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -186,8 +186,8 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>검토</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
                 </tbody>
               </table>
@@ -222,9 +222,23 @@
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>
             <p>Trivy가 설치되어 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 각 고유 취약점은 <code>cve.&lt;vulnerability-id&gt;</code> 형태의 ID를 가진 발견 항목이 되며 (예: <code>cve.cve-2023-1234</code>), 심각도는 Trivy의 등급에서 매핑됩니다.</p>
+            <p>여기에 더해, 스캔된 이미지마다 <code>cve.outdated-image</code> 발견 항목이 하나씩 생겨 업스트림에 패치가 나온 취약점들을 요약합니다. 실제로 조치할 수 있는 건 이 항목입니다 — 수정 기능은 여기에 붙고, 개별 CVE 항목은 정보성으로 남습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>탐지 내용</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>cve.outdated-image</code></td><td>이미지에 업스트림 패치가 나온 취약점이 있음</td><td>수정 가능한 것 중 최악</td><td>검토</td></tr>
+                  <tr><td><code>cve.&lt;vulnerability-id&gt;</code></td><td>한 이미지의 알려진 취약점 하나</td><td>Trivy 기준</td><td>수동</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="callout-label">개별 CVE에 수정 버튼이 없는 이유</span>
+              <p>Trivy는 패키지가 <code>3.0.11-1~deb12u2</code> 버전에 도달해야 한다고 알려줍니다. 이건 이미지 <em>안</em>에 있는 OS 패키지 버전이지 이미지 태그가 아니고, 둘 사이를 잇는 매핑은 존재하지 않습니다 — 개별 CVE 수정을 만들려면 그 매핑을 지어내야 합니다. 이미지 단위 롤업은 이 문제를 아예 비껴갑니다. 이미 사용자가 고른 태그를 다시 받는 데는 버전 매핑이 필요 없고, 약속하는 것도 "태그를 다시 해석한다"까지일 뿐 특정 CVE가 사라진다고 말하지 않습니다. 다이제스트로 고정된 이미지에는 수정이 붙지 않습니다 — 다이제스트를 pull해봐야 아무것도 바뀌지 않기 때문입니다.</p>
+            </div>
             <div class="callout">
               <span class="callout-label">"아직 패치가 없음"에 대한 솔직함</span>
-              <p>수정된 버전이 존재하면 해당 발견 항목은 <strong>검토</strong> 수정입니다 (이미지 업데이트). 아직 패치가 없다면, hostveil은 이를 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다 — 스캔이 정직함을 유지하도록.</p>
+              <p>아직 패치가 없다면, hostveil은 이를 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다 — 스캔이 정직함을 유지하도록.</p>
             </div>
 
             <div class="docs-pager">

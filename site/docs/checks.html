@@ -141,17 +141,17 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev critical">Critical</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev critical">Critical</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">Low</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
@@ -165,7 +165,7 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, or nftables)</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, or nftables)</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -186,8 +186,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">High</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
@@ -222,9 +222,23 @@
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
             <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Each unique vulnerability becomes a finding whose ID is <code>cve.&lt;vulnerability-id&gt;</code> (for example <code>cve.cve-2023-1234</code>), with severity mapped from Trivy's rating.</p>
+            <p>Alongside those, each scanned image gets one <code>cve.outdated-image</code> finding summarising the vulnerabilities that do have a published fix. That is the finding you can act on: it carries the fix, while the per-CVE findings stay informational.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>cve.outdated-image</code></td><td>An image ships vulnerabilities that are fixed upstream</td><td>Worst fixable CVE</td><td>Review</td></tr>
+                  <tr><td><code>cve.&lt;vulnerability-id&gt;</code></td><td>One known vulnerability in one image</td><td>From Trivy</td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="callout-label">Why individual CVEs have no fix button</span>
+              <p>Trivy tells you a package must reach version <code>3.0.11-1~deb12u2</code>. That is an OS package version <em>inside</em> the image, not an image tag, and there is no mapping from one to the other — so a per-CVE fix would have to invent one. The per-image rollup avoids the problem entirely: re-pulling the tag you already chose needs no version mapping, and it promises only that it re-resolves the tag, not that any particular CVE is gone. Images pinned by digest get no fix either, because pulling a digest cannot change anything.</p>
+            </div>
             <div class="callout">
               <span class="callout-label">Honest about "no patch yet"</span>
-              <p>If a fixed version exists, the finding is a <strong>Review</strong> fix (update the image). If there is no patch available yet, hostveil models that as a first-class <strong>Unavailable</strong> state rather than pretending it can be fixed — so the scan stays truthful.</p>
+              <p>If there is no patch available yet, hostveil models that as a first-class <strong>Unavailable</strong> state rather than pretending it can be fixed — so the scan stays truthful.</p>
             </div>
 
             <div class="docs-pager">
