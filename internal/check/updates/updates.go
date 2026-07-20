@@ -6,6 +6,7 @@ package updates
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -27,13 +28,25 @@ func New() *Checker {
 // Source identifies the updates domain.
 func (*Checker) Source() model.Source { return model.SourceUpdates }
 
-// Available is always true; on an unrecognized package manager Check
-// simply reports nothing.
-func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
-	return true, ""
+// Available requires a package manager whose auto-update mechanism this
+// checker knows how to verify. Anywhere else it reports a skip rather than
+// running: apk and pacman have no standard unattended-upgrade daemon to
+// look for, so "found nothing" would be indistinguishable from "did not
+// look" — and the two score identically while meaning opposite things.
+// A skip excludes the axis as N/A instead of awarding it full marks.
+func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
+	switch env.PackageManager {
+	case platform.PMApt, platform.PMDnf:
+		return true, ""
+	case platform.PMUnknown:
+		return false, "no recognized package manager — cannot verify automatic updates"
+	default:
+		return false, "automatic-update checks cover apt and dnf hosts only — detected " + string(env.PackageManager)
+	}
 }
 
-// Check dispatches to the package-manager-specific verification.
+// Check dispatches to the package-manager-specific verification. Available
+// has already ruled out every other package manager.
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	switch env.PackageManager {
 	case platform.PMApt:
@@ -41,7 +54,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	case platform.PMDnf:
 		return c.auditDnf(ctx, env), nil
 	default:
-		return nil, nil // no supported auto-update mechanism to assess
+		return nil, fmt.Errorf("unsupported package manager %q: Available should have skipped this checker", env.PackageManager)
 	}
 }
 
