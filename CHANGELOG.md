@@ -2,6 +2,46 @@
 
 ## [3.1.0](https://github.com/seolcu/hostveil/compare/v3.0.0...v3.1.0) (2026-07-20)
 
+This is the first release cut from `main` since v2.6.0, and the first produced
+by the automated release pipeline. The `v3.0.0` tag was published from a
+rewrite branch that never merged, so this release — not that one — is what the
+v3 line actually is.
+
+The sections below were generated from conventional-commit history, which for
+this window covers only part of the work: the rewrite landed under `P0:`–`P8:`
+prefixes that carry no commit type, so it is summarised here by hand. Later
+releases will not need this note — pull request titles are linted now, and
+merges to `main` are squashed, so the generated sections are the whole story
+from here on.
+
+### Highlights
+
+* **Rewritten around a single engine.** `internal/core.Engine` owns scanning,
+  scoring, classification, preview, apply, and rollback; the CLI, TUI, and web
+  dashboard are rendering layers over it, enforced by tests that fail if UI
+  code reaches past it. A fix applied in any of the three behaves identically
+  and is reversible from any of them.
+* **New detection domains** beyond containers and SSH: open ports, user
+  accounts, file permissions, and self-hosted AI agent runtimes.
+* **CVEs are reported per image**, with a rollup finding you can act on,
+  instead of one finding per CVE.
+* **Scoring no longer bottoms out.** Findings erode an axis multiplicatively
+  rather than summing into a clamp, so a host with 27 container findings no
+  longer scores the same as one with 3.
+* **A scan that could not look no longer reports a clean result.** Partial
+  coverage is representable and surfaced as a degraded axis, closing the path
+  by which a non-root scan once reported a perfect CVE score.
+* **Rollback from every surface** — a history screen in the TUI and reversible
+  applied fixes in the web dashboard.
+* **Compose fixes render as minimal text edits** rather than a whole-file
+  re-encode, so a one-line change stays a one-line diff.
+* **Auto-elevation**: commands that benefit from root re-exec under sudo
+  instead of failing.
+* **Website generated from a single source** (`cmd/sitegen`), with a docs site,
+  client-side search, and a Korean localization.
+* **Reproducible demo VM** (Vagrant) for exercising the tool against a
+  deliberately vulnerable host.
+* **Releases ship an SBOM and build provenance attestation.**
 
 ### Features
 
