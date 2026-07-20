@@ -480,3 +480,26 @@ func TestNonReversibleCheckpointOffersNoRollback(t *testing.T) {
 		t.Errorf("unexpected status: %q", am.status)
 	}
 }
+
+// TestDeltaLineRendersOnlyWhenSomethingMoved: the engine computes a delta
+// on every scan, but a first scan has nothing to compare against, and a
+// scan that changed nothing should not add a line saying so.
+func TestDeltaLineRendersOnlyWhenSomethingMoved(t *testing.T) {
+	m := &appModel{engine: nil, mode: modeList}
+	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40}).(*appModel)
+
+	m = send(m, scannedMsg{report: sampleReport()}).(*appModel)
+	if strings.Contains(m.View().Content, "since last scan") {
+		t.Error("a scan with no delta should not render a since-last-scan line")
+	}
+
+	prev := sampleReport().Findings[0]
+	m = send(m, scannedMsg{
+		report: sampleReport(),
+		delta:  model.Delta{Resolved: []model.Finding{prev}, StillPresent: 2},
+	}).(*appModel)
+	view := m.View().Content
+	if !strings.Contains(view, "since last scan") || !strings.Contains(view, "1 resolved") {
+		t.Errorf("expected a since-last-scan summary naming 1 resolved:\n%s", view)
+	}
+}

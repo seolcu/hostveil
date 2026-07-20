@@ -285,3 +285,41 @@ func TestDashboardServed(t *testing.T) {
 		t.Error("missing CSP header")
 	}
 }
+
+// TestResultCarriesDelta: the dashboard has to be able to answer "did my
+// last round of fixes help?", which means the engine's delta must survive
+// the trip through the API rather than being dropped as it used to be.
+func TestResultCarriesDelta(t *testing.T) {
+	s, _ := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	for _, path := range []string{"/api/result", "/api/rescan"} {
+		var payload struct {
+			Findings []model.Finding `json:"findings"`
+			Delta    *model.Delta    `json:"delta"`
+		}
+		var resp *http.Response
+		var err error
+		if path == "/api/rescan" {
+			resp, err = http.Post(srv.URL+path, "application/json", nil)
+		} else {
+			resp, err = http.Get(srv.URL + path)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = json.NewDecoder(resp.Body).Decode(&payload)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if payload.Delta == nil {
+			t.Errorf("%s: response carries no delta field", path)
+		}
+		// Embedding must not have disturbed the existing flat shape.
+		if len(payload.Findings) == 0 {
+			t.Errorf("%s: findings disappeared from the payload", path)
+		}
+	}
+}
