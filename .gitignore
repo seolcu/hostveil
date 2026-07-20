@@ -6,6 +6,14 @@ dist/
 !scripts/install.sh.sha256
 *.bak.*
 
+# Local state from AI coding agents. Contributors use different tools, so
+# each one's session data and personal settings stay out of the repo. The
+# shared instructions live in the tracked AGENTS.md.
+.claude/
+.opencode/
+.codex/
+CLAUDE.local.md
+
 # E2E test artifacts
 test/e2e/node_modules/
 test/e2e/playwright-report/
