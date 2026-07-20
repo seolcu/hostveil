@@ -316,6 +316,46 @@ func TestListenerAloneExposesGateway(t *testing.T) {
 	}
 }
 
+// These runtimes appear in ss under whatever interpreter runs them, so a
+// process name must never be enough on its own to call a socket an agent
+// gateway. An unrelated python3 or node service on some other port is not
+// evidence of anything, and attributing it would put a Critical on a host
+// that is not running the runtime at all.
+func TestUnrelatedInterpreterProcessIsNotAGateway(t *testing.T) {
+	h := newHost(t, "alice")
+	// Hermes is installed but its dashboard is not running; the python3 here
+	// is an ordinary service on an unrelated port.
+	h.write("alice", ".hermes/.env", "LOG_LEVEL=debug\n", 0o600)
+
+	fs, err := h.checker().Check(context.Background(), envNoFirewall(ssLine("0.0.0.0", 8000, "python3")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f, ok := findByID(fs, "agent.gateway-exposed"); ok {
+		t.Errorf("a python3 listener on port 8000 was mistaken for a gateway: %+v", f.Evidence)
+	}
+}
+
+// Among several listeners on the gateway port, the one the runtime plausibly
+// owns is the one worth naming in evidence.
+func TestListenerEvidencePrefersTheRuntimesOwnProcess(t *testing.T) {
+	h := newHost(t, "alice")
+	h.write("alice", ".openclaw/openclaw.json", cleanOpenClaw, 0o600)
+
+	ss := ssLine("0.0.0.0", 18789, "haproxy") + "\n" + ssLine("192.168.1.5", 18789, "openclaw")
+	fs, err := h.checker().Check(context.Background(), envNoFirewall(ss))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok := findByID(fs, "agent.gateway-exposed")
+	if !ok {
+		t.Fatal("expected the gateway to be reported")
+	}
+	if got := f.Evidence["process"]; got != "openclaw" {
+		t.Errorf("evidence names %q, want the runtime's own process", got)
+	}
+}
+
 // A loopback listener on the gateway port is the correct deployment.
 func TestLoopbackListenerIsNotExposure(t *testing.T) {
 	h := newHost(t, "alice")

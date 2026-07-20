@@ -339,25 +339,34 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 	return out
 }
 
-// matchListener finds a non-loopback listener for the gateway: one on the
-// configured port, or one owned by a process the runtime is known to run.
-// The second case matters when the config was unreadable and the port could
-// therefore not be resolved.
+// matchListener finds a non-loopback listener for the gateway.
+//
+// The port is the only trigger. A process name never matches on its own,
+// however tempting it is as a way to catch a gateway moved to a port we could
+// not read: these runtimes are reported by ss under whatever interpreter runs
+// them — python3, node, uvicorn — and matching those would attribute any
+// unrelated Python or Node service on the host to an agent gateway. The
+// default port is always known, so the fallback bought very little and cost a
+// false positive on some of the most common process names there are.
+//
+// ProcNames is still used, for what it is actually good for: when several
+// listeners share the port, prefer the one the runtime plausibly owns, so the
+// evidence names a useful process.
 func matchListener(listeners []platform.Listener, port int, procs []string) (platform.Listener, bool) {
+	var first platform.Listener
+	found := false
 	for _, l := range listeners {
-		if l.Loopback() {
+		if l.Loopback() || l.Port != port {
 			continue
 		}
-		if l.Port == port {
+		if l.Proc != "" && slices.Contains(procs, l.Proc) {
 			return l, true
 		}
-	}
-	for _, l := range listeners {
-		if !l.Loopback() && l.Proc != "" && slices.Contains(procs, l.Proc) {
-			return l, true
+		if !found {
+			first, found = l, true
 		}
 	}
-	return platform.Listener{}, false
+	return first, found
 }
 
 // dangerFindings applies the runtime's danger-key table. Rules sharing an ID
