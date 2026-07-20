@@ -3,16 +3,29 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
-  # Required to mint a build-provenance attestation for the release
-  # artifacts: id-token to request the OIDC token that identifies this
-  # workflow, attestations to record the signed statement.
-  id-token: write
-  attestations: write
-
 jobs:
+  # Run the full CI gate against the tagged commit before anything is
+  # published. A tag can be pushed to any commit, including one that never
+  # went through a pull request, so "it was green on main" is not a
+  # guarantee about what is being released.
+  #
+  # This calls the same ci.yml the branch protection uses, resolved from the
+  # tagged ref itself, so the gate that runs is the one belonging to the code
+  # being released — not a newer or older copy of it.
+  ci:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   goreleaser:
+    needs: ci
+    permissions:
+      contents: write
+      # Required to mint a build-provenance attestation for the release
+      # artifacts: id-token to request the OIDC token that identifies this
+      # workflow, attestations to record the signed statement.
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -21,8 +34,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
-      - name: Verify
-        run: go build ./... && go vet ./...
       - name: Install syft
         uses: anchore/sbom-action/download-syft@v0
       - uses: goreleaser/goreleaser-action@v7
