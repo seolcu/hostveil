@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Callable so the release workflow can run this exact gate against the
+  # commit being tagged, rather than trusting that some earlier run of it
+  # passed. Adding this does not change when CI runs on its own.
+  workflow_call:
 
 jobs:
   build:
@@ -30,6 +34,19 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
+
+      # The release workflow calls this one, and a broken `uses:` path or a
+      # dangling `needs:` in that wiring is invisible until a tag is pushed —
+      # by which time the thing that was supposed to gate the release is the
+      # thing that is broken. actionlint catches both statically. Pinned for
+      # the same reason golangci-lint is: a floating version can start
+      # failing CI on a commit that changed nothing.
+      #
+      # Runs from the repo root with no arguments, which lints every file
+      # under .github/workflows. The runner has shellcheck installed, so this
+      # also checks the shell in every `run:` block.
+      - name: Lint workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
       - name: Verify site/ is up to date with sitegen
         run: |
