@@ -199,12 +199,12 @@ func TestUnifiedNewlineOnlyChangeIsVisible(t *testing.T) {
 func TestUnifiedElidesDistantContext(t *testing.T) {
 	var a, b strings.Builder
 	for i := range 200 {
-		a.WriteString(fmt.Sprintf("line%d\n", i))
+		fmt.Fprintf(&a, "line%d\n", i)
 		if i == 100 {
 			b.WriteString("changed\n")
 			continue
 		}
-		b.WriteString(fmt.Sprintf("line%d\n", i))
+		fmt.Fprintf(&b, "line%d\n", i)
 	}
 	got := Unified("big.conf", a.String(), b.String())
 
@@ -226,12 +226,12 @@ func TestUnifiedElidesDistantContext(t *testing.T) {
 func TestUnifiedSeparatesDistantChanges(t *testing.T) {
 	var a, b strings.Builder
 	for i := range 100 {
-		a.WriteString(fmt.Sprintf("line%d\n", i))
+		fmt.Fprintf(&a, "line%d\n", i)
 		switch i {
 		case 10, 80:
-			b.WriteString(fmt.Sprintf("changed%d\n", i))
+			fmt.Fprintf(&b, "changed%d\n", i)
 		default:
-			b.WriteString(fmt.Sprintf("line%d\n", i))
+			fmt.Fprintf(&b, "line%d\n", i)
 		}
 	}
 	got := Unified("big.conf", a.String(), b.String())
