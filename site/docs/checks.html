@@ -143,7 +143,7 @@
             <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev critical">Critical</span> or <span class="sev high">High</span> — useful as a CI or cron gate.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
-            <p>Parsed natively from <code>sshd_config</code>. Reading it needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>.</p>
+            <p>Parsed natively from <code>sshd_config</code>, following <code>Include</code> directives into <code>sshd_config.d/</code>. That matters on Debian and Ubuntu, which put the <code>Include</code> at the top of the file: <code>sshd</code> keeps the first value it obtains for each keyword, so a drop-in wins over the lines below it. Reading these needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>. A fix edits the file the winning directive actually lives in.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
