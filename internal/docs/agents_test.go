@@ -232,31 +232,41 @@ func TestReferencedPathsExist(t *testing.T) {
 // (`compose.ds016`, `cve.*`) and are emphatically not Go symbols.
 var pkgRef = regexp.MustCompile(`^([a-z][a-z0-9]*)\.([A-Z][A-Za-z0-9_]*)(\(\))?$`)
 
-// declaredNames returns every top-level name a package declares, plus its
-// method names.
+// declaredNames returns every top-level name the .go files in dir declare —
+// funcs and methods, types, vars, and consts.
+//
+// The files are parsed one at a time rather than with parser.ParseDir, which
+// is deprecated: it ignores build tags when grouping files into packages.
+// Nothing here needs that grouping, since a name declared anywhere in the
+// directory is a name the doc may legitimately reference.
 func declaredNames(t *testing.T, dir string) map[string]bool {
 	t.Helper()
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, 0)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatalf("parse %s: %v", dir, err)
+		t.Fatalf("read %s: %v", dir, err)
 	}
+	fset := token.NewFileSet()
 	names := map[string]bool{}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			for _, decl := range file.Decls {
-				switch d := decl.(type) {
-				case *ast.FuncDecl:
-					names[d.Name.Name] = true
-				case *ast.GenDecl:
-					for _, spec := range d.Specs {
-						switch s := spec.(type) {
-						case *ast.TypeSpec:
-							names[s.Name.Name] = true
-						case *ast.ValueSpec:
-							for _, n := range s.Names {
-								names[n.Name] = true
-							}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", e.Name(), err)
+		}
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.FuncDecl:
+				names[d.Name.Name] = true
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					switch s := spec.(type) {
+					case *ast.TypeSpec:
+						names[s.Name.Name] = true
+					case *ast.ValueSpec:
+						for _, n := range s.Names {
+							names[n.Name] = true
 						}
 					}
 				}
