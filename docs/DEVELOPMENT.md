@@ -42,11 +42,13 @@ go test -race ./...
 ## Repository layout
 
 ```
+AGENTS.md            architecture + invariants, written for AI coding agents
 cmd/hostveil/        entry point + subcommand wiring
 cmd/sitegen/         static-site generator for site/ (templates + content + pages.json)
 internal/
   core/              the shared engine — the only thing the UIs call
-  check/             detection domains (compose, ssh, firewall, updates, cve)
+  check/             detection domains (compose, ssh, firewall, updates, cve,
+                     ports, accounts, fileperms, agent)
   fix/ compose/ history/   fix registry, YAML editing, backup/rollback
   model/ platform/   pure value types; the OS/command seam
   ui/{cli,tui,web}/  thin UIs over the engine
@@ -54,6 +56,13 @@ demo/                the reproducible vulnerable-server VM (Vagrant)
 site/                the marketing site (static, generated — see below)
 docs/                these docs
 ```
+
+`AGENTS.md` is worth reading even if you never use a coding agent: it is the
+shortest description of the architectural rules that span multiple files — the
+one-engine/thin-UI split and the tests that enforce it, the seams that keep
+checkers and fixes unit-testable, and the scoring invariants. Claude Code
+reaches it through a one-line `CLAUDE.md` that imports it; OpenCode and Codex
+read it directly.
 
 ## Editing the website
 
