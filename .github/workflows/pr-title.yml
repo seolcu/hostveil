@@ -1,0 +1,68 @@
+name: PR Title
+
+# Merges to main are squashed and the pull request title becomes the commit
+# subject, so this title is the only thing release-please ever reads when it
+# decides the next version. Linting it here is what makes automated versioning
+# trustworthy; the commits on your branch stay unconstrained.
+#
+# pull_request_target rather than pull_request so the check re-runs on
+# `edited` for fork pull requests too. It never checks out the head ref and
+# holds only read permission, so the elevated token has nothing to exploit.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            revert
+          # The habit this list exists to break is putting the component in
+          # the type slot — `site:`, `model:`, `check/cve:`. Conventional
+          # commits accepts those as types, finds no bump rule for them, and
+          # silently versions the change as a patch while dropping it from the
+          # changelog. Components belong in the scope: `feat(site):`.
+          scopes: |
+            core
+            model
+            check
+            cve
+            compose
+            fix
+            platform
+            history
+            ai
+            ui
+            tui
+            web
+            cmd
+            sitegen
+            site
+            demo
+            docs
+            install
+            ci
+            release
+            deps
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+[^.]$
+          subjectPatternError: |
+            The subject "{subject}" of "{title}" must start with a lowercase
+            letter and must not end with a period.

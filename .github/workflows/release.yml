@@ -1,24 +1,68 @@
 name: Release
+
+# Runs on every push to main and almost always does nothing visible:
+# release-please either opens or refreshes the release pull request, or
+# no-ops. The build jobs below are gated on release_created, so they fire
+# only on the push that merges that pull request.
+#
+# This replaced a `push: tags` trigger. That form cannot work here, because
+# the tag is now created by release-please rather than by a human, and events
+# created with the default token do not start workflow runs — see the comment
+# on the app token below.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+
+permissions: {}
+
+# Two pushes to main in quick succession would otherwise race to cut the same
+# version. Queue instead of cancelling: a run that has already created a tag
+# must be allowed to finish uploading artifacts for it.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  # Run the full CI gate against the tagged commit before anything is
-  # published. A tag can be pushed to any commit, including one that never
-  # went through a pull request, so "it was green on main" is not a
-  # guarantee about what is being released.
-  #
-  # This calls the same ci.yml the branch protection uses, resolved from the
-  # tagged ref itself, so the gate that runs is the one belonging to the code
-  # being released — not a newer or older copy of it.
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # The default GITHUB_TOKEN cannot be used for this step. Events it
+      # creates do not start workflow runs, so the release pull request it
+      # opened would never receive a CI check, and the required status check
+      # on main would leave that pull request permanently unmergeable.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # The same gate branch protection runs on pull requests, re-run against the
+  # exact commit the tag now points at. Redundant on the happy path — the
+  # release pull request passed it minutes ago — but it costs nothing because
+  # it only runs when a release was actually cut, and it catches the case
+  # where main moved between that check and the merge.
   ci:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/ci.yml
 
   goreleaser:
-    needs: ci
+    needs: [release-please, ci]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: write
       # Required to mint a build-provenance attestation for the release
@@ -28,14 +72,20 @@ jobs:
       attestations: write
     runs-on: ubuntu-latest
     steps:
+      # Check out the tag by name rather than whatever main points at now.
+      # release-please created that tag seconds ago, but another push may
+      # already have landed, and the artifacts must match the tag.
       - uses: actions/checkout@v7
         with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - name: Install syft
         uses: anchore/sbom-action/download-syft@v0
+      # Plain GITHUB_TOKEN is enough here. The tag and release already exist,
+      # so this step never needs to trigger another workflow.
       - uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
@@ -48,3 +98,29 @@ jobs:
             dist/*.tar.gz
             dist/*.sbom.json
             dist/hostveil-checksums.txt
+
+  # release-please creates the tag by creating the release, so a published
+  # release exists before any artifact does and nothing can reorder that.
+  # What can be fixed is the consequence. scripts/install.sh resolves the
+  # version by following the /releases/latest redirect, and a draft release is
+  # not "Latest" — so demoting a release whose build failed keeps installers
+  # on the last good version instead of sending them to tarballs that were
+  # never uploaded.
+  demote-on-failure:
+    needs: [release-please, ci, goreleaser]
+    if: >-
+      always()
+      && needs.release-please.outputs.release_created == 'true'
+      && (needs.ci.result != 'success' || needs.goreleaser.result != 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Demote the failed release to a draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release edit "$TAG" --repo "$REPO" --draft=true
+          echo "::error::Release $TAG failed to build and was demoted to a draft."

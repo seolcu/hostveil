@@ -37,18 +37,22 @@ sboms:
   - id: archive-sbom
     artifacts: archive
 
+# release-please owns the changelog. It derives one from conventional-commit
+# history, writes it to CHANGELOG.md and into the release body, and does so
+# before goreleaser ever runs. A second git-log-derived changelog here would
+# be a competing source of truth for the same text.
+changelog:
+  disable: true
+
 release:
   github:
     owner: seolcu
     name: hostveil
   name_template: "v{{.Version}}"
-  header: |
-    ## hostveil v{{.Version}}
-
-    Finds the security mistakes on your self-hosted Linux server, explains them in plain language, and fixes them safely.
-
-    ### Installation
-
-    ```sh
-    curl -fsSL https://raw.githubusercontent.com/seolcu/hostveil/main/scripts/install.sh | bash
-    ```
+  # The release already exists by the time this runs: release-please creates
+  # it, and the tag with it, when the release pull request merges. Under
+  # keep-existing goreleaser finds that release and only uploads archives,
+  # checksums, and SBOMs to it, leaving the body alone. Any other mode would
+  # splice goreleaser's own notes over release-please's. This is goreleaser's
+  # default, said out loud because the whole arrangement depends on it.
+  mode: keep-existing

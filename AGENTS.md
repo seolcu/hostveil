@@ -42,6 +42,16 @@ cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
 
 The repo syncs on `up`/`reload` but **not** on `provision` — re-sync after editing code. See `demo/README.md` and `docs/DEVELOPMENT.md`.
 
+## Releasing
+
+Releases are automated — **never push a `v*` tag by hand.** That is how `v3.0.0` ended up published from a commit that was never on main, pointing every `install.sh` user at abandoned code. A tag ruleset now rejects it anyway.
+
+release-please watches main and keeps a release pull request open with the next version and the changelog diff. Edit that pull request if the version is wrong, then merge it: merging creates the tag and the GitHub release, and goreleaser attaches the archives, checksums, SBOMs, and provenance attestation. Config is `release-please-config.json` and `.release-please-manifest.json` — the manifest is the version of record, not any git tag.
+
+**Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, so the title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types nobody has a bump rule for, so the change lands as a patch and disappears from the changelog. Commits on your own branch are unconstrained. There are no `!`/`BREAKING CHANGE` markers anywhere in this repo's history, so a major bump is still a human decision made by editing the release pull request.
+
+The version string lives in exactly one place, `cmd/hostveil/main.go`, and is overwritten at build time by goreleaser's ldflags. Nothing in the release pipeline rewrites Go source, and `scripts/install.sh` resolves the version at runtime rather than being stamped — keep it out of release-please's `extra-files`, or its pinned checksum stops matching.
+
 ## Architecture
 
 The central rule: **one engine, three thin UIs.** `internal/core.Engine` owns all scanning, scoring, classification, preview, apply, and rollback. CLI, TUI, and web are rendering layers over it, so a fix applied anywhere behaves identically and is reversible anywhere.
