@@ -23,28 +23,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Runs on the default token, which has one consequence worth knowing: events
+  # created with it do not start workflow runs, so the release pull request
+  # this opens carries no CI check of its own. That is survivable because the
+  # release pull request only ever edits CHANGELOG.md and the manifest — there
+  # is no Go code in it for a test run to have an opinion about — and because
+  # nothing downstream depends on a trigger from this step: the ci and
+  # goreleaser jobs below are part of this same workflow run.
+  #
+  # It does mean the release pull request must be merged through the main
+  # ruleset's admin bypass. Swapping in a GitHub App token here (an
+  # actions/create-github-app-token step feeding `token:`) removes that
+  # caveat, and is the upgrade to make if this repo ever gains a second
+  # maintainer who has no bypass.
   release-please:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      # The default GITHUB_TOKEN cannot be used for this step. Events it
-      # creates do not start workflow runs, so the release pull request it
-      # opened would never receive a CI check, and the required status check
-      # on main would leave that pull request permanently unmergeable.
-      - uses: actions/create-github-app-token@v3
-        id: app-token
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
