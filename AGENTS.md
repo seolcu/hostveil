@@ -2,6 +2,8 @@
 
 Guidance for AI coding agents working in this repository. OpenCode and Codex read this file directly; Claude Code does not, so it reads it through the `@AGENTS.md` import in `CLAUDE.md` — keep that file, it is the only thing wiring the two together.
 
+`internal/docs/agents_test.go` checks the mechanical claims below against the code — that referenced paths and symbols exist, that the checker count and lint list match. Reword the prose freely; renaming something this file names will fail the build until the sentence is updated too.
+
 ## What this is
 
 hostveil is a single-binary guided hardening tool for self-hosted Linux servers: it scans a host, merges findings into one 0–100 score, explains them in plain language, and applies fixes with preview, backup, and rollback. Go 1.26, GPL-3.0, no config file, no cloud.
