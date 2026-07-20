@@ -166,6 +166,22 @@ NAT is independent of the host firewall.
 | Accounts | a second UID-0 account (`backdoor`) and a passwordless login account (`demo_nopass`) | `accounts.uid0`, `accounts.emptypassword` |
 | File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
 | CVEs | old image tags (redis 6.0, postgres 13, jellyfin 10.8, nextcloud 24, portainer 2.9) | `cve.*` (needs Trivy, installed in the VM) |
+| AI agents | an OpenClaw gateway on the LAN with auth off, unapproved shell exec, sandbox off; world-readable Hermes API keys | `agent.auth-disabled`, `agent.gateway-exposed`, `agent.secret-exposed`, … |
 
-The stacks live in `stacks/`, the weak SSH snippet in `seed/`, and the whole
-build lives in `Vagrantfile` + `provision.sh`.
+The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
+`seed/`, and the whole build lives in `Vagrantfile` + `provision.sh`.
+
+> **On the agent fixtures**: unlike everything else here, OpenClaw and Hermes
+> are not actually *installed* — neither is packaged for apt, and neither
+> ships a daemon the demo could honestly run. `provision.sh` seeds their
+> configuration and file layout instead, which is what the agent domain
+> inspects anyway. The one part this cannot show is the listener
+> cross-check: with nothing bound to the gateway port,
+> `agent.gateway-exposed` reports **High** from the config alone. Start
+> something on the port to watch it escalate to **Critical** (an exposed
+> gateway, confirmed listening, with `ufw` inactive):
+>
+> ```bash
+> python3 -m http.server 18789 --bind 0.0.0.0 &
+> hostveil scan          # severity high → critical, basis config → config+listener
+> ```

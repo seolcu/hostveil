@@ -4,6 +4,7 @@ import (
 	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/check"
 	accountscheck "github.com/seolcu/hostveil/internal/check/accounts"
+	agentcheck "github.com/seolcu/hostveil/internal/check/agent"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
 	filepermscheck "github.com/seolcu/hostveil/internal/check/fileperms"
@@ -33,6 +34,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 			portscheck.New(),
 			accountscheck.New(),
 			filepermscheck.New(),
+			agentcheck.New(),
 		),
 		Fixes: fix.Default(),
 	}

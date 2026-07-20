@@ -99,6 +99,7 @@
                   <tr><td>Exposed services</td><td><code>ports.</code></td><td><code>ss</code></td></tr>
                   <tr><td>Accounts</td><td><code>accounts.</code></td><td>root (for <code>/etc/shadow</code>)</td></tr>
                   <tr><td>File permissions</td><td><code>fileperms.</code></td><td>—</td></tr>
+                  <tr><td>AI agent runtimes</td><td><code>agent.</code></td><td>OpenClaw or Hermes installed</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -127,14 +128,15 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>20</td></tr>
-                  <tr><td>SSH hardening</td><td>18</td></tr>
-                  <tr><td>Vulnerabilities</td><td>15</td></tr>
-                  <tr><td>Host firewall</td><td>13</td></tr>
-                  <tr><td>Exposed services</td><td>11</td></tr>
-                  <tr><td>Account hygiene</td><td>9</td></tr>
-                  <tr><td>Auto-updates</td><td>8</td></tr>
-                  <tr><td>File permissions</td><td>6</td></tr>
+                  <tr><td>Container exposure</td><td>18</td></tr>
+                  <tr><td>SSH hardening</td><td>17</td></tr>
+                  <tr><td>Vulnerabilities</td><td>13</td></tr>
+                  <tr><td>Host firewall</td><td>12</td></tr>
+                  <tr><td>Exposed services</td><td>10</td></tr>
+                  <tr><td>AI agent runtimes</td><td>10</td></tr>
+                  <tr><td>Account hygiene</td><td>8</td></tr>
+                  <tr><td>Auto-updates</td><td>7</td></tr>
+                  <tr><td>File permissions</td><td>5</td></tr>
                 </tbody>
               </table>
             </div>
@@ -239,6 +241,29 @@
                 </tbody>
               </table>
             </div>
+
+            <h2 id="agent">AI agent runtimes <code>agent.</code></h2>
+            <p>Self-hosted AI agents — <a href="https://docs.openclaw.ai/">OpenClaw</a> and <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a> — run a network gateway and keep API keys on disk in your home directory. Misconfigured, the worst case is someone reaching that gateway and driving an agent that can read your files and run commands as you.</p>
+            <p>This domain is <strong>skipped entirely</strong> unless one of those runtimes is actually installed, so a host that has never run an agent is not scored on it. hostveil looks up home directories in <code>/etc/passwd</code> and stats only the paths listed below — it never walks your home.</p>
+            <p>These projects ship their own config auditors (<code>openclaw security audit</code>), which cover their settings far more thoroughly than hostveil tries to. What hostveil adds is the part those tools cannot see: whether the gateway is <em>actually</em> listening on a reachable address, whether a firewall stands behind it, and whether your credential files are readable by other accounts on the box.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address (<span class="sev critical">Critical</span> when it is confirmed listening with no firewall)</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.secret-exposed</code></td><td>A credentials file or directory is readable beyond its owner</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>The agent may run shell commands with no approval step</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>Elevated (host-level) command execution is enabled</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>The control UI has its auth or device-identity checks disabled</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.config-perms</code></td><td>A config or state path is more permissive than upstream ships it</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>The agent browser may reach private-network addresses</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The config findings are <strong>Manual</strong> on purpose. OpenClaw's config is JSON5 and carries your own comments; hostveil has no way to edit one key without rewriting the file and deleting them. Hermes settings may come from the config, from <code>.env</code>, from a systemd unit, or from a <code>docker&nbsp;-e</code> flag, and a finding cannot tell which is in force. Rebinding a gateway can also cut you off from the agent you administer remotely — so hostveil explains these and leaves the edit to you.</p>
+            <p>Only the two permission findings are auto-fixable, and both are a <code>chmod</code> that only ever <em>removes</em> access, checkpointed so <code>hostveil rollback</code> restores the previous mode exactly.</p>
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
             <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>, not per vulnerability — a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>

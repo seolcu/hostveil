@@ -8,7 +8,6 @@ package ports
 import (
 	"context"
 	"fmt"
-	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,57 +61,46 @@ var adminPorts = map[int]string{
 	9443: "Portainer (HTTPS)",
 }
 
-// listener is one parsed TCP listening socket.
-type listener struct {
-	addr string
-	port int
-	proc string
-}
-
 // Check reads listening TCP sockets and flags non-loopback exposure.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	// No `-H`: it is a relatively recent flag, so we skip the header row
-	// ourselves (parseListener rejects it) and stay compatible with older
-	// iproute2 rather than hard-erroring on an unknown flag.
-	out, err := env.Runner.Run(ctx, "ss", "-tlnp")
+	listeners, err := platform.Listeners(ctx, env.Runner)
 	if err != nil {
-		return nil, fmt.Errorf("listing listening sockets with ss: %w", err)
+		return nil, err
 	}
 
 	var findings []model.Finding
-	generic := map[int]listener{} // exposed, non-sensitive; deduped by port
-	seenDS := map[int]bool{}      // avoid duplicate findings for v4+v6 of same port
+	generic := map[int]platform.Listener{} // exposed, non-sensitive; deduped by port
+	seenDS := map[int]bool{}               // avoid duplicate findings for v4+v6 of same port
 
-	for _, line := range strings.Split(string(out), "\n") {
-		l, ok := parseListener(line)
-		if !ok || isLoopback(l.addr) {
+	for _, l := range listeners {
+		if l.Loopback() {
 			continue
 		}
 		switch {
-		case datastorePorts[l.port] != "":
-			if seenDS[l.port] {
+		case datastorePorts[l.Port] != "":
+			if seenDS[l.Port] {
 				continue
 			}
-			seenDS[l.port] = true
+			seenDS[l.Port] = true
 			findings = append(findings, exposedFinding(l, "ports.exposed-datastore",
-				"Datastore reachable from the network: "+datastorePorts[l.port],
+				"Datastore reachable from the network: "+datastorePorts[l.Port],
 				"A database listening on a non-loopback address is reachable from every network this host is on. Datastores rarely need to accept remote connections directly; exposing one invites credential-stuffing and data theft.",
 				model.SeverityHigh))
-		case adminPorts[l.port] != "":
-			if seenDS[l.port] {
+		case adminPorts[l.Port] != "":
+			if seenDS[l.Port] {
 				continue
 			}
-			seenDS[l.port] = true
+			seenDS[l.Port] = true
 			findings = append(findings, exposedFinding(l, "ports.exposed-admin",
-				"Admin panel reachable from the network: "+adminPorts[l.port],
+				"Admin panel reachable from the network: "+adminPorts[l.Port],
 				"A management UI listening on a non-loopback address lets anyone who can reach this host attempt to log in and control your services. Bind it to localhost and reach it over an SSH tunnel or VPN.",
 				model.SeverityHigh))
 		default:
-			if l.port == 22 { // SSH is expected to be reachable; not a finding here
+			if l.Port == 22 { // SSH is expected to be reachable; not a finding here
 				continue
 			}
-			if _, dup := generic[l.port]; !dup {
-				generic[l.port] = l
+			if _, dup := generic[l.Port]; !dup {
+				generic[l.Port] = l
 			}
 		}
 	}
@@ -140,19 +128,19 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	return findings, nil
 }
 
-func exposedFinding(l listener, id, title, desc string, sev model.Severity) model.Finding {
+func exposedFinding(l platform.Listener, id, title, desc string, sev model.Severity) model.Finding {
 	opts := []model.FindingOption{
 		// Attribute the finding to this specific listener so two different
 		// exposed datastores (e.g. Redis and Postgres) get distinct Keys and
 		// are each counted, rather than deduplicated to one by (source, id).
 		model.WithService(listenerSubject(l)),
 		model.WithDescription(desc),
-		model.WithHowToFix(fmt.Sprintf("Bind %s to 127.0.0.1 instead of %s, or restrict access with a host firewall / VPN. If it must be remote, put it behind an authenticated reverse proxy.", portLabel(l), l.addr)),
-		model.WithEvidence("port", strconv.Itoa(l.port)),
-		model.WithEvidence("address", l.addr),
+		model.WithHowToFix(fmt.Sprintf("Bind %s to 127.0.0.1 instead of %s, or restrict access with a host firewall / VPN. If it must be remote, put it behind an authenticated reverse proxy.", portLabel(l), l.Addr)),
+		model.WithEvidence("port", strconv.Itoa(l.Port)),
+		model.WithEvidence("address", l.Addr),
 	}
-	if l.proc != "" {
-		opts = append(opts, model.WithEvidence("process", l.proc))
+	if l.Proc != "" {
+		opts = append(opts, model.WithEvidence("process", l.Proc))
 	}
 	return model.NewFinding(id, title, sev, model.SourcePorts, model.RemediationReview, opts...)
 }
@@ -160,14 +148,14 @@ func exposedFinding(l listener, id, title, desc string, sev model.Severity) mode
 // listenerSubject identifies a listener for the finding's Service field:
 // the process name qualified by port when known (unique across same-named
 // processes on different ports), else just the port.
-func listenerSubject(l listener) string {
-	if l.proc != "" {
-		return fmt.Sprintf("%s:%d", l.proc, l.port)
+func listenerSubject(l platform.Listener) string {
+	if l.Proc != "" {
+		return fmt.Sprintf("%s:%d", l.Proc, l.Port)
 	}
-	return "port " + strconv.Itoa(l.port)
+	return "port " + strconv.Itoa(l.Port)
 }
 
-func genericFinding(generic map[int]listener) model.Finding {
+func genericFinding(generic map[int]platform.Listener) model.Finding {
 	ports := make([]int, 0, len(generic))
 	for p := range generic {
 		ports = append(ports, p)
@@ -175,7 +163,7 @@ func genericFinding(generic map[int]listener) model.Finding {
 	sort.Ints(ports)
 	parts := make([]string, len(ports))
 	for i, p := range ports {
-		if proc := generic[p].proc; proc != "" {
+		if proc := generic[p].Proc; proc != "" {
 			parts[i] = fmt.Sprintf("%d (%s)", p, proc)
 		} else {
 			parts[i] = strconv.Itoa(p)
@@ -190,73 +178,9 @@ func genericFinding(generic map[int]listener) model.Finding {
 	)
 }
 
-func portLabel(l listener) string {
-	if l.proc != "" {
-		return fmt.Sprintf("%s (port %d)", l.proc, l.port)
+func portLabel(l platform.Listener) string {
+	if l.Proc != "" {
+		return fmt.Sprintf("%s (port %d)", l.Proc, l.Port)
 	}
-	return "port " + strconv.Itoa(l.port)
-}
-
-// parseListener parses one `ss -tlnp` row into a listener. The local
-// address:port is the 4th whitespace-separated field; the process column
-// (from -p) is the last. The header row and any malformed row are skipped,
-// never an error.
-func parseListener(line string) (listener, bool) {
-	fields := strings.Fields(line)
-	if len(fields) < 4 || fields[0] == "State" { // "State" == header row
-		return listener{}, false
-	}
-	addr, portStr, ok := splitHostPort(fields[3])
-	if !ok {
-		return listener{}, false
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return listener{}, false
-	}
-	l := listener{addr: addr, port: port}
-	if len(fields) >= 6 {
-		l.proc = procName(fields[len(fields)-1])
-	}
-	return l, true
-}
-
-// splitHostPort splits ss's "host:port" local-address field. It defers to
-// net.SplitHostPort, which correctly handles bracketed IPv6 literals
-// ("[::]:22", "[fe80::1%lo]:6379") and wildcards ("*:22"). A field it cannot
-// parse is rejected rather than turned into a malformed address.
-func splitHostPort(s string) (host, port string, ok bool) {
-	h, p, err := net.SplitHostPort(s)
-	if err != nil || p == "" {
-		return "", "", false
-	}
-	return h, p, true
-}
-
-// isLoopback reports whether an address is a loopback / host-only bind that
-// is not reachable from the network. Everything else — the 0.0.0.0/:: /*
-// wildcards and specific LAN/public IPs — counts as exposed. An IPv6 zone
-// suffix (e.g. "::1%lo") is stripped before parsing.
-func isLoopback(addr string) bool {
-	if i := strings.IndexByte(addr, '%'); i >= 0 {
-		addr = addr[:i]
-	}
-	if ip := net.ParseIP(addr); ip != nil {
-		return ip.IsLoopback()
-	}
-	return false
-}
-
-// procName extracts the program name from ss's process column, e.g.
-// `users:(("redis-server",pid=999,fd=6))` -> "redis-server".
-func procName(field string) string {
-	i := strings.Index(field, `("`)
-	if i < 0 {
-		return ""
-	}
-	rest := field[i+2:]
-	if j := strings.Index(rest, `"`); j >= 0 {
-		return rest[:j]
-	}
-	return ""
+	return "port " + strconv.Itoa(l.Port)
 }

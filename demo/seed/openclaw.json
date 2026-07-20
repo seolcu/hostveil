@@ -1,0 +1,49 @@
+// Deliberately insecure OpenClaw gateway config for the hostveil demo.
+//
+// This file is JSON5 on purpose — comments and trailing commas and all.
+// OpenClaw documents its config as JSON5 and users comment it heavily, so a
+// config that parses ONLY as strict JSON would not exercise the checker's
+// real input. If hostveil ever regresses to a strict-JSON parse, the agent
+// domain reports Degraded here and the demo shows it.
+//
+// Every setting below is one a real self-hoster plausibly sets while trying
+// to make the thing work, with a comment explaining the reasoning that leads
+// there. That is the point: none of it looks reckless in isolation.
+{
+  "gateway": {
+    // "so I can reach it from the tablet in the kitchen"
+    "bind": "lan",
+    "port": 18789,
+    // "it's just my home network, nobody else is on it"
+    "auth": { "mode": "none" },
+    "controlUi": {
+      // "the login kept logging me out while I was setting it up"
+      "allowInsecureAuth": true,
+    },
+  },
+
+  "tools": {
+    // "approving every command got annoying fast"
+    "exec": { "security": "full", "ask": "off" },
+    // "it couldn't restart my containers without this"
+    "elevated": { "enabled": true },
+  },
+
+  "agents": {
+    "defaults": {
+      // "the sandbox broke my file tools"
+      "sandbox": { "mode": "off", "workspaceAccess": "rw" },
+    },
+  },
+
+  "browser": {
+    "ssrfPolicy": {
+      // "it couldn't reach my Home Assistant at 192.168.1.x"
+      "dangerouslyAllowPrivateNetwork": true,
+    },
+  },
+
+  // A URL, to prove the JSON5 comment stripper does not mistake the "//"
+  // inside a string literal for the start of a comment.
+  "notes": "hardening guide: https://docs.openclaw.ai/gateway/security",
+}

@@ -465,6 +465,67 @@ func TestModeFixAbortsWhenAPathIsMissing(t *testing.T) {
 	}
 }
 
+// A directory already at its target mode must produce no change at all.
+// tighten() carries the type bits through precisely so that planModes sees a
+// fixed point here; when it dropped fs.ModeDir the comparison against the
+// full mode never matched, and applyMode would checkpoint and chmod a
+// compliant directory while reporting success for work it had not done.
+func TestModeFixOnCompliantDirectoryIsANoOp(t *testing.T) {
+	engine := fixEngine(t)
+	dir := filepath.Join(t.TempDir(), "credentials")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", dir),
+		model.WithEvidence("expected", "0700"),
+	)
+
+	if _, err := engine.ApplyFix(context.Background(), f, 0); err == nil {
+		t.Fatal("expected an 'already as strict as required' error for a compliant directory")
+	}
+	fi, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fi.IsDir() {
+		t.Error("path is no longer a directory")
+	}
+	if fi.Mode().Perm() != 0o700 {
+		t.Errorf("mode = %#o, want 0700", fi.Mode().Perm())
+	}
+}
+
+// A directory that genuinely is too permissive must still be tightened, and
+// must still be a directory afterwards.
+func TestModeFixTightensLooseDirectory(t *testing.T) {
+	engine := fixEngine(t)
+	dir := filepath.Join(t.TempDir(), "credentials")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", dir),
+		model.WithEvidence("expected", "0700"),
+	)
+
+	if _, err := engine.ApplyFix(context.Background(), f, 0); err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+	fi, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fi.IsDir() {
+		t.Error("path is no longer a directory")
+	}
+	if fi.Mode().Perm() != 0o700 {
+		t.Errorf("mode = %#o, want 0700", fi.Mode().Perm())
+	}
+}
+
 // Auto means "safe to apply unattended", so `fix --all` must actually pick
 // a mode fix up. ApplyBatch takes only single-action Auto fixes, which is
 // exactly the shape ActionMode produces.

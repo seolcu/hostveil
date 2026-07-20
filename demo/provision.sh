@@ -10,23 +10,23 @@ DEMO="$REPO/demo"
 GO_VERSION=1.26.3
 export DEBIAN_FRONTEND=noninteractive
 
-echo "==> [0/9] prefer IPv4 (libvirt NAT usually has no IPv6 egress → apt/curl/docker fail on IPv6)"
+echo "==> [0/10] prefer IPv4 (libvirt NAT usually has no IPv6 egress → apt/curl/docker fail on IPv6)"
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
 sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
 echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-echo "==> [1/9] base packages"
+echo "==> [1/10] base packages"
 apt-get update -y || true
 apt-get install -y ca-certificates curl git ufw openssh-server
 
-echo "==> [2/9] Docker (official convenience script — gives 'docker compose')"
+echo "==> [2/10] Docker (official convenience script — gives 'docker compose')"
 if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://get.docker.com | sh
 fi
 systemctl enable --now docker
 usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the demo
 
-echo "==> [3/9] Go ${GO_VERSION} (apt's Go is too old to build hostveil)"
+echo "==> [3/10] Go ${GO_VERSION} (apt's Go is too old to build hostveil)"
 ARCH=$(dpkg --print-architecture)     # amd64 | arm64
 if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION}"; then
   curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz
@@ -35,7 +35,7 @@ if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION}"; then
 fi
 export PATH="$PATH:/usr/local/go/bin"
 
-echo "==> [4/9] Trivy (optional CVE scanner) + vuln DB"
+echo "==> [4/10] Trivy (optional CVE scanner) + vuln DB"
 # NOTE: this provisioner runs as root, so --download-db-only warms only
 # /root/.cache/trivy. A non-root `hostveil` scan uses ~vagrant/.cache/trivy and
 # will download the DB itself on first use.
@@ -45,7 +45,7 @@ if ! command -v trivy >/dev/null 2>&1; then
 fi
 trivy image --download-db-only 2>/dev/null || echo "   (trivy DB download skipped — CVE scan will fetch on first run)"
 
-echo "==> [5/9] weak SSH config (appended to the main sshd_config)"
+echo "==> [5/10] weak SSH config (appended to the main sshd_config)"
 if ! grep -q "hostveil demo weak SSH" /etc/ssh/sshd_config; then
   {
     echo ""
@@ -55,7 +55,7 @@ if ! grep -q "hostveil demo weak SSH" /etc/ssh/sshd_config; then
 fi
 systemctl restart ssh || systemctl restart sshd || true
 
-echo "==> [6/9] disable automatic security updates (so updates.disabled fires)"
+echo "==> [6/10] disable automatic security updates (so updates.disabled fires)"
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "0";
 APT::Periodic::Unattended-Upgrade "0";
@@ -63,7 +63,7 @@ EOF
 # ufw is installed but left INACTIVE → firewall.inactive fires.
 ufw --force disable || true
 
-echo "==> [7/9] host-level weaknesses (native exposed service, weak accounts, loose file perms)"
+echo "==> [7/10] host-level weaknesses (native exposed service, weak accounts, loose file perms)"
 # A NON-Docker datastore bound to every interface → ports.exposed-datastore.
 # This is exactly the kind of exposure a Compose-file audit can never see,
 # because it is a native service, not a container.
@@ -83,7 +83,27 @@ passwd -d demo_nopass || true
 # World-readable /etc/shadow → fileperms.shadow (every password hash exposed).
 chmod 0644 /etc/shadow || true
 
-echo "==> [8/9] deploy vulnerable compose stacks"
+echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
+# NOTE: neither project is packaged for apt, and neither ships a daemon we
+# could honestly run here, so this seeds their *configuration* rather than
+# installing them. That is enough for the agent domain: hostveil detects a
+# runtime by its home-directory layout and judges the config and file modes,
+# which is exactly the ground these fixtures cover.
+#
+# The one thing it cannot show is the listener cross-check. With no gateway
+# actually bound to :18789, agent.gateway-exposed reports High from the
+# config alone; on a host where the gateway is really running with no
+# firewall it escalates to Critical. To see that in the demo, run something
+# on the port first:  python3 -m http.server 18789 --bind 0.0.0.0 &
+install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.openclaw
+install -d -m 0755 -o vagrant -g vagrant /home/vagrant/.openclaw/credentials  # too open → agent.secret-exposed
+install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.openclaw/state
+install -m 0644 -o vagrant -g vagrant "$DEMO/seed/openclaw.json" /home/vagrant/.openclaw/openclaw.json  # → agent.config-perms
+
+install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.hermes
+install -m 0644 -o vagrant -g vagrant "$DEMO/seed/hermes.env" /home/vagrant/.hermes/.env  # → agent.secret-exposed
+
+echo "==> [9/10] deploy vulnerable compose stacks"
 mkdir -p /opt/stacks
 cp -r "$DEMO/stacks/." /opt/stacks/
 # Bring the stacks up once now. They have no restart policy on purpose, so
@@ -96,7 +116,7 @@ for dir in /opt/stacks/*/; do
     || echo "     (stack '$name' had a service that failed to start — hostveil still audits its compose file)"
 done
 
-echo "==> [9/9] build hostveil from the mounted source"
+echo "==> [10/10] build hostveil from the mounted source"
 cd "$REPO"
 GOFLAGS=-buildvcs=false /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil
 hostveil version || true

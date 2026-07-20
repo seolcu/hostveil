@@ -45,15 +45,23 @@ type axisDef struct {
 // axis's share of the overall score and nothing else — it is purely how
 // much this domain matters, never a threshold. The caps sum to 100 so the
 // overall is a weighted average of the axes that ran.
+//
+// "agent" ties with "ports" deliberately: both describe a network service
+// that should not be reachable. The agent domain's worst case is strictly
+// worse — an unauthenticated gateway is remote code execution as a real
+// user — but it applies to far fewer hosts, and it is N/A-excluded entirely
+// on any host with no agent runtime installed. So the generous cap costs a
+// typical host nothing and carries real weight where it applies.
 var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 20},
-	{"ssh", "SSH hardening", SourceSSH, 18},
-	{"firewall", "Host firewall", SourceFirewall, 13},
-	{"updates", "Auto-updates", SourceUpdates, 8},
-	{"cve", "Vulnerabilities", SourceCVE, 15},
-	{"ports", "Exposed services", SourcePorts, 11},
-	{"accounts", "Account hygiene", SourceAccounts, 9},
-	{"fileperms", "File permissions", SourceFilePerms, 6},
+	{"container", "Container exposure", SourceCompose, 18},
+	{"ssh", "SSH hardening", SourceSSH, 17},
+	{"firewall", "Host firewall", SourceFirewall, 12},
+	{"updates", "Auto-updates", SourceUpdates, 7},
+	{"cve", "Vulnerabilities", SourceCVE, 13},
+	{"ports", "Exposed services", SourcePorts, 10},
+	{"accounts", "Account hygiene", SourceAccounts, 8},
+	{"fileperms", "File permissions", SourceFilePerms, 5},
+	{"agent", "AI agent runtimes", SourceAgent, 10},
 }
 
 // criticalHalves is the anchor of the whole penalty model: one Critical

@@ -2,7 +2,7 @@
 
 const SEV = ["critical", "high", "medium", "low"];
 // Finding.source (int) -> short domain label, mirrors the score axes.
-const SRC = { 1: "Container", 2: "SSH", 3: "Firewall", 4: "Updates", 5: "CVEs", 6: "Ports", 7: "Accounts", 8: "File perms" };
+const SRC = { 1: "Container", 2: "SSH", 3: "Firewall", 4: "Updates", 5: "CVEs", 6: "Ports", 7: "Accounts", 8: "File perms", 9: "AI agents" };
 const REM_AUTO = 1;
 // model.ScanState (int), in declaration order.
 const SCAN_DONE = 2, SCAN_SKIPPED = 3, SCAN_DEGRADED = 4, SCAN_ERROR = 5;
@@ -190,7 +190,7 @@ function render() {
   );
 
   // Per-axis bars (short labels so they never crowd the meter).
-  const AX = { container: "Container", ssh: "SSH", firewall: "Firewall", updates: "Updates", cve: "CVEs", ports: "Ports", accounts: "Accounts", fileperms: "File perms" };
+  const AX = { container: "Container", ssh: "SSH", firewall: "Firewall", updates: "Updates", cve: "CVEs", ports: "Ports", accounts: "Accounts", fileperms: "File perms", agent: "AI agents" };
   document.getElementById("axes").replaceChildren(
     ...score.axes.map((ax) =>
       el("div", { class: "axis" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") },

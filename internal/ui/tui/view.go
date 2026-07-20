@@ -248,6 +248,8 @@ func sourceLabel(s model.Source) string {
 		return "Accounts"
 	case model.SourceFilePerms:
 		return "File perms"
+	case model.SourceAgent:
+		return "AI agents"
 	default:
 		return s.String()
 	}
