@@ -12,6 +12,7 @@ import (
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
+	"github.com/seolcu/hostveil/internal/secretkey"
 )
 
 // Checker audits discovered Docker Compose projects.
@@ -315,18 +316,11 @@ func ruleNoResourceLimits(s compose.Service) (model.Finding, bool) {
 	), true
 }
 
-var secretKeyPattern = []string{"password", "passwd", "secret", "api_key", "apikey", "token", "private_key", "access_key"}
-
 func ruleInlineSecret(s compose.Service) (model.Finding, bool) {
 	for k, v := range s.Environment {
-		lk := strings.ToLower(k)
-		if !matchesSecretKey(lk) {
-			continue
-		}
-		if v == "" || strings.HasPrefix(v, "${") || strings.HasPrefix(v, "$$") {
-			continue // references an external value, not a hardcoded secret
-		}
-		if len(v) < 6 {
+		// The heuristic is shared with the agent checker; keeping one copy
+		// stops the two domains from drifting on what counts as a secret.
+		if !secretkey.Matches(k) || !secretkey.LooksLiteral(v) {
 			continue
 		}
 		return f("dr005", "Hardcoded secret in compose environment", model.SeverityHigh, model.RemediationReview, s.Name,
@@ -336,15 +330,6 @@ func ruleInlineSecret(s compose.Service) (model.Finding, bool) {
 		), true
 	}
 	return model.Finding{}, false
-}
-
-func matchesSecretKey(lowerKey string) bool {
-	for _, p := range secretKeyPattern {
-		if strings.Contains(lowerKey, p) {
-			return true
-		}
-	}
-	return false
 }
 
 func ruleEnvFile(s compose.Service) (model.Finding, bool) {

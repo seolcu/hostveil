@@ -20,6 +20,7 @@ const (
 	SourcePorts
 	SourceAccounts
 	SourceFilePerms
+	SourceAgent
 )
 
 // String returns the stable lowercase domain name, also used as the
@@ -42,20 +43,27 @@ func (s Source) String() string {
 		return "accounts"
 	case SourceFilePerms:
 		return "fileperms"
+	case SourceAgent:
+		return "agent"
 	default:
 		return "unset"
 	}
 }
 
 // Valid reports whether the source was set to a real domain.
+//
+// The upper bound is a range check, so a new domain appended to the const
+// block must be added here too. Forgetting is silent and total: every
+// finding from the new domain fails Validate() and is dropped after the
+// scan, so the domain reports clean rather than reporting nothing.
 func (s Source) Valid() bool {
-	return s >= SourceCompose && s <= SourceFilePerms
+	return s >= SourceCompose && s <= SourceAgent
 }
 
 // AllSources lists every real detection domain in scan/report order.
 func AllSources() []Source {
 	return []Source{
 		SourceCompose, SourceSSH, SourceFirewall, SourceUpdates, SourceCVE,
-		SourcePorts, SourceAccounts, SourceFilePerms,
+		SourcePorts, SourceAccounts, SourceFilePerms, SourceAgent,
 	}
 }

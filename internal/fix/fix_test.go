@@ -111,6 +111,18 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"compose.ds005":       "removal-shaped: same, for cap_add",
 		"compose.dr001":       "removing host networking without knowing which ports to publish leaves the service unreachable",
 		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
+
+		// Every agent.* config-key finding. OpenClaw's config is JSON5 and
+		// re-encoding it would delete the operator's comments; Hermes' bind
+		// and auth may come from config, .env, a unit file, or a docker flag,
+		// and the finding cannot tell which is in force.
+		"agent.gateway-exposed":      "rebinding a gateway to loopback can cut the operator off from the agent they administer remotely",
+		"agent.auth-disabled":        "editing JSON5 without a round-tripper deletes the operator's comments, and there is no second alternative to make it a Review fix",
+		"agent.exec-unrestricted":    "same JSON5 edit problem; two keys can express it and the finding cannot pick one",
+		"agent.elevated-enabled":     "same JSON5 edit problem",
+		"agent.sandbox-off":          "same JSON5 edit problem, and enabling a sandbox can break tools the operator relies on",
+		"agent.control-ui-insecure":  "same JSON5 edit problem",
+		"agent.ssrf-private-network": "same JSON5 edit problem",
 	}
 	r := Default()
 	for id, why := range declined {

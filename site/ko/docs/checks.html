@@ -99,6 +99,7 @@
                   <tr><td>노출된 서비스</td><td><code>ports.</code></td><td><code>ss</code></td></tr>
                   <tr><td>계정</td><td><code>accounts.</code></td><td>root (<code>/etc/shadow</code>용)</td></tr>
                   <tr><td>파일 권한</td><td><code>fileperms.</code></td><td>—</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td><code>agent.</code></td><td>OpenClaw 또는 Hermes 설치</td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -127,14 +128,15 @@
               <table>
                 <thead><tr><th>축</th><th>가중치</th></tr></thead>
                 <tbody>
-                  <tr><td>컨테이너 노출</td><td>20</td></tr>
-                  <tr><td>SSH 하드닝</td><td>18</td></tr>
-                  <tr><td>취약점</td><td>15</td></tr>
-                  <tr><td>호스트 방화벽</td><td>13</td></tr>
-                  <tr><td>노출된 서비스</td><td>11</td></tr>
-                  <tr><td>계정 위생</td><td>9</td></tr>
-                  <tr><td>자동 업데이트</td><td>8</td></tr>
-                  <tr><td>파일 권한</td><td>6</td></tr>
+                  <tr><td>컨테이너 노출</td><td>18</td></tr>
+                  <tr><td>SSH 하드닝</td><td>17</td></tr>
+                  <tr><td>취약점</td><td>13</td></tr>
+                  <tr><td>호스트 방화벽</td><td>12</td></tr>
+                  <tr><td>노출된 서비스</td><td>10</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td>10</td></tr>
+                  <tr><td>계정 위생</td><td>8</td></tr>
+                  <tr><td>자동 업데이트</td><td>7</td></tr>
+                  <tr><td>파일 권한</td><td>5</td></tr>
                 </tbody>
               </table>
             </div>
@@ -239,6 +241,29 @@
                 </tbody>
               </table>
             </div>
+
+            <h2 id="agent">AI 에이전트 런타임 <code>agent.</code></h2>
+            <p>셀프호스트 AI 에이전트인 <a href="https://docs.openclaw.ai/">OpenClaw</a>와 <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a>는 네트워크 게이트웨이를 띄우고 API 키를 홈 디렉터리에 저장합니다. 설정이 잘못되면 최악의 경우 외부에서 그 게이트웨이에 접근해, 내 파일을 읽고 내 권한으로 명령을 실행하는 에이전트를 그대로 조종할 수 있습니다.</p>
+            <p>이 도메인은 해당 런타임이 실제로 설치되어 있지 않으면 <strong>아예 건너뜁니다</strong>. 에이전트를 쓴 적 없는 호스트는 이 항목으로 점수를 매기지 않습니다. hostveil은 <code>/etc/passwd</code>에서 홈 디렉터리를 찾은 뒤 아래 표에 적힌 경로만 stat합니다. 홈 디렉터리 전체를 훑지 않습니다.</p>
+            <p>두 프로젝트 모두 자체 설정 점검 도구(<code>openclaw security audit</code>)를 제공하며, 설정 항목 자체는 그쪽이 훨씬 촘촘합니다. hostveil이 더하는 것은 그 도구들이 볼 수 없는 부분입니다. 게이트웨이가 <em>실제로</em> 외부에서 닿는 주소에서 대기 중인지, 그 앞에 방화벽이 있는지, 자격 증명 파일을 같은 호스트의 다른 계정이 읽을 수 있는지입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>무엇을 잡아내는지</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev critical">치명적</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨 (대기 중인 것이 확인되고 방화벽도 없으면 <span class="sev critical">치명적</span>)</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">높음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>설정 관련 항목이 <strong>수동</strong>인 것은 의도된 선택입니다. OpenClaw 설정은 JSON5라 사용자가 직접 쓴 주석이 들어 있는데, hostveil이 키 하나만 고치려 해도 파일을 다시 쓰면서 그 주석을 지우게 됩니다. Hermes 설정값은 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 것인지 판별할 수 없습니다. 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수도 있습니다. 그래서 hostveil은 설명만 하고 수정은 사용자에게 맡깁니다.</p>
+            <p>자동 수정되는 것은 권한 관련 두 항목뿐이며, 둘 다 접근 권한을 <em>줄이기만</em> 하는 <code>chmod</code>입니다. 체크포인트가 남으므로 <code>hostveil rollback</code>으로 이전 권한을 그대로 되돌릴 수 있습니다.</p>
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>
             <p>Trivy가 설치되어 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 발견 항목은 취약점 단위가 아니라 <strong>이미지 단위</strong>로 보고됩니다 — 이미지 하나가 CVE 수백 개를 싣고 있는 건 흔한 일이고, 그 전부가 같은 조치 하나를 공유하기 때문입니다.</p>

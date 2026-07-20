@@ -103,6 +103,40 @@ package fix
 //     original improves nothing. More to the point, by the time the secret
 //     is found it has already leaked into backups and git history, so the
 //     real remediation is rotating it, which hostveil cannot do.
+//   - agent.gateway-exposed, agent.auth-disabled, agent.exec-unrestricted,
+//     agent.elevated-enabled, agent.sandbox-off, agent.control-ui-insecure,
+//     agent.ssrf-private-network — all seven reduce to editing one key in a
+//     runtime's config, and neither runtime can be edited safely. OpenClaw's
+//     config is JSON5 carrying the operator's own comments and trailing
+//     commas; hostveil has no JSON5 round-tripper, and re-encoding through
+//     encoding/json deletes every comment in the file. (internal/compose's
+//     minimal text surgery exists precisely to avoid that class of damage,
+//     and it is YAML-specific.) Hermes is worse: its bind and auth may come
+//     from config, from ~/.hermes/.env, from a systemd unit, or from a
+//     docker -e flag, and the finding cannot tell which is in force, so an
+//     edit could silently change nothing. There is also no second
+//     independent alternative to pair any of these with, which Review
+//     requires. agent.gateway-exposed fails the recoverability test on top
+//     of all that: rebinding a gateway to loopback can cut an operator off
+//     from the agent they administer remotely.
+//
+// # Auto fixes that touch a user's home
+//
+// agent.config-perms and agent.secret-exposed are the first Auto fixes
+// aimed outside /etc: they chmod paths under ~/.openclaw and ~/.hermes,
+// which means root running `fix --all` tightens another user's files.
+//
+// That is deliberate and meets the standard. tighten is subtractive, so it
+// only ever removes access; SaveModes checkpoints the prior mode, so it
+// rolls back exactly; and no permission on an agent's own state directory
+// can sever the operator's access to the host the way an SSH or firewall
+// edit can. The values are also not guesses — each target's mode is the
+// baseline the runtime's own hardening guide specifies.
+//
+// The one deployment it could disrupt is an agent daemon running as a
+// different user and reading the config through group permissions. Upstream
+// ships these paths at 0600/0700, so that arrangement is a deviation rather
+// than a design, and the finding's how-to-fix names it explicitly.
 //
 // # The one CVE finding that does have a fix
 //
@@ -136,5 +170,6 @@ func Default() *Registry {
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)
+	registerAgent(r)
 	return r
 }
