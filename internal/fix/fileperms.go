@@ -26,23 +26,26 @@ func registerFilePerms(r *Registry) {
 	}
 }
 
-// specialBits are the mode bits outside the permission triplet that a chmod
-// must carry through. fs.FileMode.Perm() covers only the low nine, so
-// rebuilding a mode from Perm() alone would silently clear setuid, setgid,
-// or the sticky bit. The checker judged the file on its permission bits, so
-// those are the only bits this fix is entitled to touch.
-const specialBits = fs.ModeSetuid | fs.ModeSetgid | fs.ModeSticky
-
-// tighten returns the mode with every bit outside mask cleared, and nothing
-// else changed.
+// tighten returns the mode with every permission bit outside mask cleared,
+// and nothing else changed.
 //
 // It is subtractive on purpose. Assigning the rule's MaxMode outright would
 // *grant* access the file did not have: /etc/shadow at 0604 violates a 0640
 // rule, and setting it to 0640 would hand the shadow group a read bit it
 // never had. Masking gives 0600 instead. Only ever removing bits is what
 // makes this fix unambiguous enough to apply unattended.
+//
+// Everything outside the permission triplet is carried through untouched:
+// setuid/setgid/sticky, which rebuilding from Perm() alone would silently
+// clear, and the type bits — ModeDir above all. Clearing ModeDir would not
+// corrupt anything (os.Chmod ignores it), but planModes compares the result
+// against the full fs.FileMode, so a directory would compare unequal to
+// itself forever: preview would print a phantom 0700 → 0700 row and apply
+// would checkpoint and chmod a directory that was already compliant. The
+// checker judged the path on its permission bits, so those are the only bits
+// this fix is entitled to touch.
 func tighten(current fs.FileMode, mask fs.FileMode) fs.FileMode {
-	return current&specialBits | (current.Perm() & mask)
+	return current&^fs.ModePerm | (current.Perm() & mask)
 }
 
 func buildTightenMode(f model.Finding) (Fix, error) {

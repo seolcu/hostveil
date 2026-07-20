@@ -356,6 +356,22 @@ func TestTightenPreservesSpecialBits(t *testing.T) {
 	}
 }
 
+// ModeDir must survive too. planModes compares tighten's result against the
+// full fs.FileMode, so dropping the type bit makes an already-compliant
+// directory compare unequal to itself: preview prints a phantom 0700 → 0700
+// row and apply checkpoints and chmods a directory that needed nothing.
+func TestTightenPreservesModeDir(t *testing.T) {
+	if got := tighten(fs.ModeDir|0o777, 0o700); got != fs.ModeDir|0o700 {
+		t.Errorf("tighten(d0777, 0700) = %v, want d0700", got)
+	}
+	// The identity that planModes depends on: a compliant directory is a
+	// fixed point, so it produces no change at all.
+	compliant := fs.ModeDir | 0o700
+	if got := tighten(compliant, 0o700); got != compliant {
+		t.Errorf("tighten(%v, 0700) = %v, want it unchanged", compliant, got)
+	}
+}
+
 func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
 	f := model.NewFinding("fileperms.hostkey", "t", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
