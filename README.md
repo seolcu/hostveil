@@ -79,6 +79,17 @@ it continues in the same terminal. `version` and `help` never prompt.
 To run unprivileged (scripts/CI), set `HOSTVEIL_NO_SUDO=1`; the root-owned
 domains are then skipped with a clear message.
 
+### Using it as a CI or cron gate
+
+`hostveil scan` exits **1** when any unfixed finding is Critical or High, and
+**0** otherwise — so a scheduled check needs no output parsing:
+
+```bash
+HOSTVEIL_NO_SUDO=1 hostveil scan --json > report.json || echo "action needed"
+```
+
+Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
+
 ## How fixing works
 
 Every finding is classified so the tool never mutates blindly:
