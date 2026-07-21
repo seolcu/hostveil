@@ -7,7 +7,7 @@
               <table>
                 <thead><tr><th>영역</th><th>접두사</th><th>필요 조건</th></tr></thead>
                 <tbody>
-                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker + Compose 파일</td></tr>
+                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker</td></tr>
                   <tr><td>SSH</td><td><code>ssh.</code></td><td>—</td></tr>
                   <tr><td>방화벽</td><td><code>firewall.</code></td><td>—</td></tr>
                   <tr><td>자동 업데이트</td><td><code>updates.</code></td><td>—</td></tr>
@@ -73,7 +73,7 @@
             </div>
 
             <h2 id="compose">Docker / Compose <code>compose.</code></h2>
-            <p>Compose 파일에 대한 네이티브 감사입니다 — 외부 스캐너가 필요 없습니다.</p>
+            <p>Compose 파일에 대한 네이티브 감사입니다 — 외부 스캐너가 필요 없습니다. <code>docker run</code>으로 직접 띄운 컨테이너도 파일이 아니라 데몬에서 읽어 함께 점검합니다. 이 발견 항목들은 항상 수동입니다 — 수정할 파일이 없으므로, 동작하지 않을 버튼을 보여주는 대신 컨테이너를 다시 만들 때 무엇을 바꿔야 하는지 알려줍니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
@@ -35,7 +36,14 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 	return true, ""
 }
 
-// Check discovers compose projects and audits each service.
+// Check audits every container on the host: those described by a compose
+// file, and those started directly with `docker run`.
+//
+// Compose projects were the only thing this checker looked at, so a
+// hand-started container was invisible to all fifteen rules. Since compose
+// carries the largest single axis weight, that meant the most dangerous
+// object on the box could be published to 0.0.0.0, privileged, and mounting
+// the Docker socket while the axis scored it as if it were not there.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	projects, err := compose.Discover(ctx, env.Runner)
 	if err != nil {
@@ -54,7 +62,82 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 			}
 		}
 	}
+
+	standalone, err := compose.DiscoverContainers(ctx, env.Runner)
+	if err != nil {
+		// The compose half of the domain was covered, so this is a partial
+		// result, not a failure. Returning an ordinary error would discard
+		// findings already gathered and exclude the axis entirely.
+		return findings, &check.PartialError{
+			Reason:  "cannot inspect containers started outside Compose — audited compose projects only",
+			Covered: len(projects),
+		}
+	}
+	for _, c := range standalone {
+		findings = append(findings, auditContainer(c)...)
+	}
 	return findings, nil
+}
+
+// runtimeOnlyRules are the rules that mean the same thing for a container
+// the daemon describes as they do for a service a compose file describes.
+//
+// Two of the fifteen are deliberately absent, both because the daemon's
+// record cannot support the claim the rule would make:
+//
+//   - dr005 (hardcoded secret in the environment) — `docker inspect` reports
+//     the resolved environment, which merges the image's own ENV defaults and
+//     anything loaded from an env_file. Flagging that would accuse an
+//     operator who did exactly the right thing, and tell them to do the thing
+//     they already did.
+//   - dr004 (loads secrets from an env_file) — a running container has no
+//     env_file; the values were resolved when it was created and the daemon
+//     keeps no record of where they came from.
+//
+// ds009 (runs as root) is kept, and is more accurate here than for compose:
+// Config.User reflects the effective user including an image's baked-in
+// USER, so a container reported as root really is running as root. The
+// compose rule has to guess from the file alone, which is part of why its
+// fix is declined.
+var runtimeOnlyRules = []rule{
+	rulePrivileged,
+	ruleDockerSocket,
+	ruleExposedDatastore,
+	ruleExposedAdminPanel,
+	ruleHostNetwork,
+	ruleSensitiveHostMount,
+	ruleDangerousCaps,
+	ruleNoNewPrivileges,
+	ruleRunsAsRoot,
+	rulePortAllInterfaces,
+	ruleNoRestart,
+	ruleNoHealthcheck,
+	ruleNoResourceLimits,
+}
+
+// auditContainer audits a container with no compose file behind it.
+//
+// Every finding is forced to Manual. The remediations these rules describe
+// are all file edits — "bind the port to 127.0.0.1", "add security_opt" —
+// and there is no file. Engine.classify takes whichever of the checker and
+// the registry demands more human involvement, so declaring Manual here
+// keeps the registry from offering a fix that would have nothing to edit.
+// Without it a UI would show a fix button leading nowhere, which is exactly
+// what the classify rule exists to prevent.
+func auditContainer(c compose.Container) []model.Finding {
+	var out []model.Finding
+	for _, rule := range runtimeOnlyRules {
+		f, ok := rule(c.Service)
+		if !ok {
+			continue
+		}
+		f.Remediation = model.RemediationManual
+		f.HowToFix = "This container was started with `docker run`, not Compose, so there is no file to edit. " +
+			"Recreate it with the corrected flag, or move it into a compose file where hostveil can fix it for you. " + f.HowToFix
+		f.Evidence = mergeMeta(f.Evidence, map[string]string{"managed_by": "docker run"})
+		out = append(out, f)
+	}
+	return out
 }
 
 func mergeMeta(base, add map[string]string) map[string]string {
