@@ -160,6 +160,30 @@ async function applyBatch() {
 // dashboard renders a score built from a partial scan exactly like one built
 // from a complete scan — the CVE axis reading a confident 100 because Trivy
 // could not reach a single image is the case that motivated it.
+// renderDelta summarises what moved since the previous scan. The CLI prints
+// the same counts and then names the findings; here it stays one line — the
+// list below already shows what is outstanding, and the question this
+// answers is only "did the last round of fixes help?". Hidden when there is
+// no previous scan to compare against.
+function renderDelta() {
+  const box = document.getElementById("delta");
+  const d = report.delta || {};
+  const resolved = (d.resolved || []).length;
+  const added = (d.new || []).length;
+  const changed = (d.changed || []).length;
+  if (!resolved && !added && !changed) {
+    box.hidden = true;
+    box.replaceChildren();
+    return;
+  }
+  const parts = [el("span", { class: "delta-label" }, "Since last scan")];
+  if (resolved) parts.push(el("span", { class: "delta-good" }, `✓ ${resolved} resolved`));
+  if (added) parts.push(el("span", { class: "delta-new" }, `+ ${added} new`));
+  if (changed) parts.push(el("span", { class: "delta-chg" }, `~ ${changed} changed`));
+  box.hidden = false;
+  box.replaceChildren(...parts);
+}
+
 function renderDomainNotice() {
   const box = document.getElementById("domains");
   const bad = (report.domains || []).filter((d) => d.state !== SCAN_DONE);
@@ -204,6 +228,7 @@ function render() {
     )
   );
 
+  renderDelta();
   renderDomainNotice();
 
   // Findings list.

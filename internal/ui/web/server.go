@@ -126,14 +126,24 @@ func hostFromURL(u string) string {
 
 // --- handlers ---
 
+// resultPayload is the dashboard's view of a scan: the report, plus how it
+// differs from the one before it. The engine already computes the delta on
+// every scan; without this the dashboard would throw away the one thing
+// that tells an operator whether their last round of fixes helped. Report
+// is embedded so its JSON stays flat and the shape only gains a field.
+type resultPayload struct {
+	model.Report
+	Delta model.Delta `json:"delta"`
+}
+
 func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {
 	report, _ := s.engine.Current()
-	writeJSON(w, report)
+	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
 }
 
 func (s *Server) handleRescan(w http.ResponseWriter, r *http.Request) {
 	report := s.engine.Scan(r.Context(), nil)
-	writeJSON(w, report)
+	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
 }
 
 func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {

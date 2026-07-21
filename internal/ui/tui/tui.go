@@ -41,6 +41,7 @@ type appModel struct {
 	width, height int
 	mode          mode
 
+	delta         model.Delta // how this scan differs from the previous one
 	preview       model.FixPreview
 	previewAction int
 	status        string
@@ -71,7 +72,10 @@ func Run(engine *core.Engine) error {
 
 // --- messages ---
 
-type scannedMsg struct{ report model.Report }
+type scannedMsg struct {
+	report model.Report
+	delta  model.Delta
+}
 type previewMsg struct {
 	preview model.FixPreview
 	err     error
@@ -82,7 +86,10 @@ type appliedMsg struct {
 }
 
 func scanCmd(e *core.Engine) tea.Cmd {
-	return func() tea.Msg { return scannedMsg{report: e.Scan(context.Background(), nil)} }
+	return func() tea.Msg {
+		report := e.Scan(context.Background(), nil)
+		return scannedMsg{report: report, delta: e.LastDelta()}
+	}
 }
 
 func previewCmd(e *core.Engine, f model.Finding) tea.Cmd {
@@ -142,6 +149,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case scannedMsg:
 		m.report = msg.report
+		m.delta = msg.delta
 		m.selected = map[string]bool{} // a fresh scan invalidates old picks
 		m.rebuildActive()
 		m.offset = 0

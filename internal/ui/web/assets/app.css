@@ -80,6 +80,15 @@ button:disabled { opacity: .45; cursor: default; }
 .domains .dom-err { color: var(--crit); }
 .domains .dom-skip { color: var(--slate); }
 
+/* ── since-last-scan summary ── */
+.delta { flex: 0 0 auto; padding: 8px 18px; border-bottom: 1px solid var(--line);
+  font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.delta .delta-label { color: var(--slate); text-transform: uppercase; font-size: 10px;
+  letter-spacing: 1px; align-self: center; }
+.delta .delta-good { color: var(--safe); }
+.delta .delta-new { color: var(--high); }
+.delta .delta-chg { color: var(--bone); }
+
 /* ── transient status line ── */
 .status { flex: 0 0 auto; margin: 0; padding: 9px 18px; border-bottom: 1px solid var(--line);
   color: var(--safe); font-size: 12px; }

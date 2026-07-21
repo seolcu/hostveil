@@ -111,7 +111,32 @@ func (m *appModel) header() string {
 	b.WriteString("\n")
 	b.WriteString(m.axesLine())
 	b.WriteString("\n")
+	if line := m.deltaLine(); line != "" {
+		b.WriteString(line + "\n")
+	}
 	return b.String()
+}
+
+// deltaLine summarises what moved since the previous scan. The CLI prints
+// the same counts and then names the findings; here it stays one line —
+// the list below already shows what is outstanding, and the question this
+// answers is only "did the last round of fixes help?". Nothing is rendered
+// when there is no previous scan to compare against.
+func (m *appModel) deltaLine() string {
+	if !m.delta.HasChanges() {
+		return ""
+	}
+	var parts []string
+	if n := len(m.delta.Resolved); n > 0 {
+		parts = append(parts, styleSafe.Render(fmt.Sprintf("✓ %d resolved", n)))
+	}
+	if n := len(m.delta.New); n > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(cHigh).Render(fmt.Sprintf("+ %d new", n)))
+	}
+	if n := len(m.delta.Changed); n > 0 {
+		parts = append(parts, styleBone.Render(fmt.Sprintf("~ %d changed", n)))
+	}
+	return styleDim.Render("since last scan  ") + strings.Join(parts, styleDim.Render("   "))
 }
 
 func (m *appModel) axesLine() string {
