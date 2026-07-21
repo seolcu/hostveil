@@ -386,3 +386,50 @@ func TestClaudeMdImportsAgentsMd(t *testing.T) {
 	}
 	t.Error("CLAUDE.md must contain a bare `@AGENTS.md` import line, or Claude Code loads no project guidance at all")
 }
+
+var documentedPRScopes = regexp.MustCompile(`accepts only ([^.]+)\.`)
+
+// TestDocumentedPRScopesMatchTheWorkflow pins the scope allowlist. The list
+// is not discoverable from the convention it implements: conventional
+// commits allows any scope, so `fix(check/ssh):` looks correct, reads
+// correct, and is rejected only after the pull request is already open. The
+// doc had described where the component goes without saying that the set of
+// legal values is closed, which is most of what a contributor needs.
+func TestDocumentedPRScopesMatchTheWorkflow(t *testing.T) {
+	m := documentedPRScopes.FindStringSubmatch(agentsMD(t))
+	if m == nil {
+		t.Fatal(`AGENTS.md no longer says which scopes pr-title.yml "accepts only"`)
+	}
+	var documented []string
+	for _, s := range strings.Split(m[1], ",") {
+		if s = strings.Trim(strings.TrimSpace(s), "`"); s != "" {
+			documented = append(documented, s)
+		}
+	}
+
+	wf := readRepoFile(t, filepath.Join(".github", "workflows", "pr-title.yml"))
+	_, after, found := strings.Cut(wf, "scopes: |")
+	if !found {
+		t.Fatal("pr-title.yml has no scopes: block")
+	}
+	var allowed []string
+	for _, line := range strings.Split(after, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, ":") || strings.HasPrefix(line, "#") {
+			break // the next YAML key ends the block scalar
+		}
+		allowed = append(allowed, line)
+	}
+	if len(allowed) == 0 {
+		t.Fatal("parsed no scopes from pr-title.yml; the workflow markup changed")
+	}
+
+	slices.Sort(documented)
+	slices.Sort(allowed)
+	if !slices.Equal(documented, allowed) {
+		t.Errorf("AGENTS.md documents scopes %v, but pr-title.yml allows %v", documented, allowed)
+	}
+}
