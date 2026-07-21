@@ -1,5 +1,83 @@
 # Changelog
 
+## [3.2.0](https://github.com/seolcu/hostveil/compare/v3.1.0...v3.2.0) (2026-07-22)
+
+This release is mostly about a single question: was the score telling the
+truth? On the kind of host hostveil is built for — a VPS running Docker
+behind ufw — several axes were scoring configurations they could not
+actually see, so a host could look clean while a datastore was open to the
+internet. Measured on the demo VM, three of those axes moved: firewall
+100 → 50, containers 100 → 15, auto-updates 88 → 60, all on the same
+unchanged host.
+
+**Your score will probably drop after upgrading, without your configuration
+having changed.** That is the point of this release.
+
+### Features
+
+* **check:** flag container ports that bypass an active ufw firewall
+  ([#546](https://github.com/seolcu/hostveil/issues/546)). Docker writes its
+  rules ahead of ufw's, so `ufw deny 6379` does nothing to a container
+  published with `-p 6379:6379`. hostveil previously *rewarded* this: an
+  active ufw scored full marks and suppressed the exposed-ports finding.
+* **check:** audit containers started outside Compose
+  ([#548](https://github.com/seolcu/hostveil/issues/548)). Both the container
+  and CVE checkers enumerated only through `docker compose ls`, so a
+  hand-started `docker run` container — often the most dangerous thing on the
+  box — was invisible to 31 points' worth of scoring.
+* **check:** report pending security updates and a required reboot
+  ([#547](https://github.com/seolcu/hostveil/issues/547)). Having
+  unattended-upgrades enabled was the whole check, so a host with 60 pending
+  patches and an installed kernel update it had never rebooted for scored
+  full marks.
+* **ui:** tell the user what to do after a scan
+  ([#550](https://github.com/seolcu/hostveil/issues/550)). The report labelled
+  findings Auto/Review/Manual without ever naming the command that acts on one.
+* **ui:** show what changed since the last scan in the TUI and dashboard
+  ([#541](https://github.com/seolcu/hostveil/issues/541)).
+* **history:** refuse to roll back over edits made after the fix
+  ([#554](https://github.com/seolcu/hostveil/issues/554)). Rollback overwrote
+  whatever was on disk with no checks at all, and keeps no backup of its own —
+  so hand-editing a file after fixing it and then rolling back destroyed that
+  work irrecoverably. Use `--force` to restore anyway.
+
+### Bug Fixes
+
+* **check:** follow `sshd_config` `Include` directives
+  ([#539](https://github.com/seolcu/hostveil/issues/539)). Debian and Ubuntu
+  put the `Include` at the top of the file and sshd keeps the first value it
+  finds, so drop-ins win — meaning findings could be reported from a file sshd
+  was not using, and fixes could edit the wrong one.
+* **check:** detect firewalld by exit status, and recognise iptables-only hosts
+  ([#545](https://github.com/seolcu/hostveil/issues/545)). Both defects
+  accused a firewalled host of having no firewall.
+* **check:** skip hosts whose automatic updates cannot be verified
+  ([#540](https://github.com/seolcu/hostveil/issues/540)). Alpine, Arch and
+  openSUSE scored the updates axis 100 for a check that never ran.
+* **core:** show newline-only changes and elide distant context in fix previews
+  ([#542](https://github.com/seolcu/hostveil/issues/542)). A change to the
+  trailing newline was invisible in the preview, so preview and write
+  disagreed.
+* **cmd:** stop dropping flags on a terminal and exiting 2 on `--help`
+  ([#549](https://github.com/seolcu/hostveil/issues/549)). `hostveil --json`
+  opened the TUI and discarded the flag when run on a terminal, while working
+  correctly when piped.
+* **history:** give scan snapshots unique IDs, and test the ordering for real
+  ([#553](https://github.com/seolcu/hostveil/issues/553)). Two scans in the
+  same millisecond overwrote each other, and the test named for the history
+  ordering was passing vacuously.
+
+### Documentation and infrastructure
+
+* `SECURITY.md` and `CONTRIBUTING.md`
+  ([#552](https://github.com/seolcu/hostveil/issues/552)); vulnerabilities can
+  now be reported privately.
+* CI checks hostveil's own dependencies with govulncheck
+  ([#551](https://github.com/seolcu/hostveil/issues/551)).
+* Releases are cut by hand rather than through release-please
+  ([#555](https://github.com/seolcu/hostveil/issues/555)), which could never
+  satisfy the branch ruleset it was merged under.
+
 ## [3.1.0](https://github.com/seolcu/hostveil/compare/v3.0.0...v3.1.0) (2026-07-20)
 
 This is the first release cut from `main` since v2.6.0, and the first produced
