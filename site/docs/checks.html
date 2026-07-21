@@ -199,6 +199,8 @@
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">Medium</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">High</span> / <span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
