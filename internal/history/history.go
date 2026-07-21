@@ -245,8 +245,19 @@ func randomSuffix() string {
 }
 
 // NewScanID returns a sortable ID for a scan snapshot.
+//
+// It carries the same random suffix as NewID, and for the same reason: the
+// timestamp resolves to a millisecond, so two scans starting within one
+// wrote to the same filename and the second silently replaced the first.
+// The delta between scans is computed from the newest snapshot, so a lost
+// one makes the next scan compare against the wrong baseline.
+//
+// The timestamp stays the prefix, so scanFiles' lexical sort remains
+// chronological. Within a single millisecond the order becomes arbitrary,
+// which is the correct answer for two events at the same instant and is in
+// any case better than one of them not existing.
 func NewScanID() string {
-	return time.Now().UTC().Format("20060102-150405.000")
+	return time.Now().UTC().Format("20060102-150405.000") + "-" + randomSuffix()
 }
 
 // blobName returns a filesystem-safe name derived from a path.
