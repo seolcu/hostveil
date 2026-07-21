@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.2.0](https://github.com/seolcu/hostveil/compare/v3.1.0...v3.2.0) (2026-07-21)
+
+
+### Features
+
+* **check:** audit containers started outside Compose ([#548](https://github.com/seolcu/hostveil/issues/548)) ([7d85904](https://github.com/seolcu/hostveil/commit/7d85904f3b2d51d93a06b4d62e0b588e2e11367e))
+* **check:** flag container ports that bypass an active ufw firewall ([#546](https://github.com/seolcu/hostveil/issues/546)) ([32d0ace](https://github.com/seolcu/hostveil/commit/32d0aced72cf988047ff8c64805f96aff93dc156))
+* **check:** report pending security updates and a required reboot ([#547](https://github.com/seolcu/hostveil/issues/547)) ([e46d1de](https://github.com/seolcu/hostveil/commit/e46d1debedb12d5260b297d02f73a28f2436a473))
+* **history:** refuse to roll back over edits made after the fix ([#554](https://github.com/seolcu/hostveil/issues/554)) ([8d44bf8](https://github.com/seolcu/hostveil/commit/8d44bf884411659bde38ea3ffee1c1bfe8289289))
+* **ui:** show what changed since the last scan in the TUI and dashboard ([#541](https://github.com/seolcu/hostveil/issues/541)) ([bdc3dd8](https://github.com/seolcu/hostveil/commit/bdc3dd80315f04ddd1c9e11a457918c93d598437))
+* **ui:** tell the user what to do after a scan ([#550](https://github.com/seolcu/hostveil/issues/550)) ([c7e2f45](https://github.com/seolcu/hostveil/commit/c7e2f45a0af050bcdb5ddaef0218e288c3e67e13))
+
+
+### Bug Fixes
+
+* **check:** detect firewalld by exit status and recognize iptables-only hosts ([#545](https://github.com/seolcu/hostveil/issues/545)) ([7af73ec](https://github.com/seolcu/hostveil/commit/7af73ec2aa30ad9e36f022a84b9f99d86166f230))
+* **check:** follow sshd_config Include directives when parsing SSH config ([#539](https://github.com/seolcu/hostveil/issues/539)) ([e00b5f0](https://github.com/seolcu/hostveil/commit/e00b5f0fb9a45bf6742147a4b6a60c1a4b0da497))
+* **check:** skip hosts whose automatic updates cannot be verified ([#540](https://github.com/seolcu/hostveil/issues/540)) ([028f4f2](https://github.com/seolcu/hostveil/commit/028f4f2f92716bedbe1d63066424e9ceca5d053d))
+* **cmd:** stop dropping flags on a terminal and exiting 2 on --help ([#549](https://github.com/seolcu/hostveil/issues/549)) ([f55f4ed](https://github.com/seolcu/hostveil/commit/f55f4ed732622468e9b7e5d5e0ebeec2080bf751))
+* **core:** show newline-only changes and elide distant context in fix previews ([#542](https://github.com/seolcu/hostveil/issues/542)) ([f2beb43](https://github.com/seolcu/hostveil/commit/f2beb43d44fd2e35494ecdf8a0f315389bbe8142))
+* **history:** give scan snapshots unique IDs and test the ordering for real ([#553](https://github.com/seolcu/hostveil/issues/553)) ([1cef986](https://github.com/seolcu/hostveil/commit/1cef9869a2ca036388a33bd166ae9f0e6195111b))
+
 ## [3.1.0](https://github.com/seolcu/hostveil/compare/v3.0.0...v3.1.0) (2026-07-20)
 
 This is the first release cut from `main` since v2.6.0, and the first produced
