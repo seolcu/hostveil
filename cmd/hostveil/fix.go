@@ -18,13 +18,11 @@ func cmdFix(args []string) int {
 		action  int
 		yes     bool
 		all     bool
-		noColor bool
 	)
 	fs.StringVar(&service, "service", "", "disambiguate a finding by service name")
 	fs.IntVar(&action, "action", -1, "for Review fixes, the alternative to apply (0-based)")
 	fs.BoolVar(&yes, "yes", false, "apply without an interactive confirmation")
 	fs.BoolVar(&all, "all", false, "apply every safe (Auto) fix at once")
-	fs.BoolVar(&noColor, "no-color", false, "disable colored output")
 
 	// Allow the finding ID to come before flags ("fix <id> --yes"), which
 	// Go's flag package would otherwise stop parsing at.
@@ -32,8 +30,8 @@ func cmdFix(args []string) int {
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		findingID, args = args[0], args[1:]
 	}
-	if err := fs.Parse(args); err != nil {
-		return 2
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
 	}
 
 	if all {

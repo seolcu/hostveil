@@ -34,16 +34,7 @@ func run(args []string) int {
 		}
 	}
 
-	// With an explicit subcommand, dispatch to it. With none, open the TUI
-	// on an interactive terminal, otherwise print a scan (script-friendly).
-	explicit := len(args) > 0 && !strings.HasPrefix(args[0], "-")
-	cmd := "scan"
-	switch {
-	case explicit:
-		cmd, args = args[0], args[1:]
-	case isInteractive():
-		cmd = "tui"
-	}
+	cmd, args := resolveCommand(args, isInteractive())
 
 	maybeElevate(cmd) // on success the process is replaced by sudo and does not return
 
@@ -75,6 +66,35 @@ func run(args []string) int {
 	}
 }
 
+// resolveCommand decides which subcommand to run and what arguments it
+// receives. It is separate from run so the dispatch rules can be tested
+// without a scan, a terminal, or a sudo prompt.
+//
+// The three cases, in order:
+//
+//   - A bare word is the subcommand.
+//   - A leading flag with no subcommand means scan. Flags only ever apply to
+//     scan (cmdTUI accepts none), so scan's parser gets to accept or reject
+//     them. This case used to fall through to the interactive one, which
+//     opened the TUI and discarded the flags: on a terminal `hostveil --json`
+//     printed no JSON and `hostveil --bogus` reported no error, while both
+//     behaved correctly when piped. Same input, divergent behavior by
+//     TTY-ness, and the silent branch was the interactive one.
+//   - Nothing at all opens the TUI on a terminal, or prints a scan when
+//     piped, which is what makes `hostveil > report.txt` do something useful.
+func resolveCommand(args []string, interactive bool) (string, []string) {
+	switch {
+	case len(args) > 0 && !strings.HasPrefix(args[0], "-"):
+		return args[0], args[1:]
+	case len(args) > 0:
+		return "scan", args
+	case interactive:
+		return "tui", args
+	default:
+		return "scan", args
+	}
+}
+
 func printUsage(w *os.File) {
 	fmt.Fprint(w, `hostveil — guided hardening for self-hosted Linux servers
 
@@ -83,8 +103,9 @@ Usage:
   hostveil scan [flags]          Scan the host and report security findings
   hostveil tui                   Open the interactive TUI explicitly
   hostveil fix <id> [flags]      Preview and apply the fix for a finding
-  hostveil explain <id> [--ai]   Explain a finding (optionally via local AI)
-  hostveil serve [--addr]        Serve the localhost web dashboard
+  hostveil fix --all             Apply every safe (Auto) fix at once
+  hostveil explain <id> [flags]  Explain a finding (optionally via local AI)
+  hostveil serve [--addr]        Serve the localhost web dashboard (alias: web)
   hostveil rollback <id>         Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
   hostveil version               Print the version (also: --version, -V)
@@ -96,8 +117,22 @@ Scan flags:
   --no-color      Disable colored output
 
 Fix flags:
+  --all           Apply every safe (Auto) fix; Review and Manual are left alone
   --service NAME  Disambiguate a finding that affects multiple services
   --action N      For Review fixes, pick alternative N (0-based)
   --yes           Apply without an interactive confirmation
+
+Explain flags:
+  --service NAME  Disambiguate a finding that affects multiple services
+  --ai            Add a plain-language explanation from a local Ollama model
+
+Exit status:
+  hostveil scan exits 1 when any unfixed finding is Critical or High, and 0
+  otherwise — useful as a CI or cron gate. Other commands exit 0 on success,
+  1 on failure, and 2 on a usage error.
+
+Environment:
+  HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
+  NO_COLOR=1           Disable colored output
 `)
 }

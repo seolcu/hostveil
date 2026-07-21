@@ -21,8 +21,8 @@ func cmdExplain(args []string) int {
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		findingID, args = args[0], args[1:]
 	}
-	if err := fs.Parse(args); err != nil {
-		return 2
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
 	}
 	if findingID == "" {
 		fmt.Fprintln(os.Stderr, "usage: hostveil explain <finding-id> [--service NAME] [--ai]")

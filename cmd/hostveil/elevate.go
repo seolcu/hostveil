@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
@@ -43,6 +44,14 @@ func maybeElevate(cmd string) {
 	if err != nil {
 		return
 	}
+	// Say why before sudo asks. A first-time user's opening interaction with
+	// hostveil was otherwise a bare "[sudo] password for ..." with nothing
+	// above it explaining who wanted their password or what for — the highest
+	// friction possible for a tool asking to be trusted with root. This goes
+	// to stderr so it never contaminates `--json` on stdout.
+	fmt.Fprintln(os.Stderr, "hostveil needs root to read /etc/shadow, sshd_config, and the firewall state; re-running with sudo.")
+	fmt.Fprintln(os.Stderr, "It only reads until you ask it to fix something. Set HOSTVEIL_NO_SUDO=1 to skip this (some checks will be skipped too).")
+
 	argv := append([]string{"sudo", exe}, os.Args[1:]...)
 	env := append(os.Environ(), "HOSTVEIL_ELEVATED=1")
 	_ = syscall.Exec(sudo, argv, env)

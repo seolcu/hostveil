@@ -21,8 +21,8 @@ func cmdScan(args []string) int {
 	fs.BoolVar(&verbose, "verbose", false, "show descriptions and fix guidance")
 	fs.BoolVar(&verbose, "v", false, "show descriptions and fix guidance (shorthand)")
 	fs.BoolVar(&noColor, "no-color", false, "disable colored output")
-	if err := fs.Parse(args); err != nil {
-		return 2
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
 	}
 
 	engine := buildEngine()
