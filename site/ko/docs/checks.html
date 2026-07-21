@@ -199,6 +199,8 @@
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">높음</span> / <span class="sev medium">보통</span></td><td>수동</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>

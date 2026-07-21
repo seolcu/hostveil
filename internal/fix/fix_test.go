@@ -93,11 +93,13 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 // not quietly reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
 	declined := map[string]string{
-		"firewall.inactive":       "enabling a default-deny firewall over SSH can lock the user out, and exec fixes have no rollback",
-		"firewall.docker-bypass":  "republishing to loopback means editing an unknown compose file and recreating the container; the ufw-docker alternative is firewall policy with no rollback",
-		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
-		"ports.exposed-admin":     "same as ports.exposed-datastore",
-		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
+		"firewall.inactive":        "enabling a default-deny firewall over SSH can lock the user out, and exec fixes have no rollback",
+		"firewall.docker-bypass":   "republishing to loopback means editing an unknown compose file and recreating the container; the ufw-docker alternative is firewall policy with no rollback",
+		"updates.reboot-required":  "rebooting is exec with no checkpoint and takes every service down; only the operator knows when that is acceptable",
+		"updates.pending-security": "apt/dnf upgrade is exec, unbounded, and can restart services or prompt about config files — nothing a checkpoint can undo",
+		"ports.exposed-datastore":  "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
+		"ports.exposed-admin":      "same as ports.exposed-datastore",
+		"compose.ds016":            "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
 		// The checker no longer emits per-CVE findings at all — they were
 		// aggregated into cve.outdated-image / cve.unpatched-image. The pin
 		// stays as a guard: a cve.* glob would make this shape fixable again

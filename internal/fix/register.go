@@ -51,6 +51,16 @@ package fix
 //     ufw-docker rules means appending to /etc/ufw/after.rules and reloading
 //     ufw — firewall policy, so it fails the same recoverability criterion as
 //     firewall.inactive.
+//   - updates.reboot-required — the remediation is rebooting the host, which
+//     is an exec action with no checkpoint and takes every service on the box
+//     down with it. Only the operator knows when that downtime is acceptable,
+//     and a tool that reboots a server as part of "fix all safe" would be
+//     indefensible whatever the finding said.
+//   - updates.pending-security — `apt upgrade` is exec, so never Auto, and it
+//     is also unbounded: it can pull in a new kernel, restart services, and
+//     prompt about modified config files. Nothing about that is reversible
+//     from a checkpoint, and a package upgrade that breaks a service leaves
+//     the operator worse off than the pending patch did.
 //   - firewall.inactive — the only remediation is enabling a firewall, and
 //     the checker records no SSH port, interface, or session data. Enabling
 //     a default-deny policy on a box reached over SSH can lock the user out
