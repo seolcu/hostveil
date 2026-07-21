@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -106,7 +107,16 @@ func (m *appModel) header() string {
 	var b strings.Builder
 	sc := m.report.Score.Overall
 	b.WriteString(styleDim.Render("▚ ") + styleBrand.Render("hostveil"))
-	b.WriteString("   " + styleDim.Render("SECURITY ") + meter(sc, 18, band(sc)) +
+	// Everything but the meter is fixed width: "▚ " + "hostveil" + a
+	// three-space gap + "SECURITY " + " NNN" + "/100". The meter absorbs
+	// whatever is left, so the gauge shrinks with the terminal instead of
+	// running off the end of a narrow one.
+	const gaugeChrome = 2 + 8 + 3 + 9 + 4 + 4
+	meterW := 18
+	if m.width > 0 && m.width-gaugeChrome < meterW {
+		meterW = max(4, m.width-gaugeChrome)
+	}
+	b.WriteString("   " + styleDim.Render("SECURITY ") + meter(sc, meterW, band(sc)) +
 		styleBone.Render(fmt.Sprintf(" %d", sc)) + styleDim.Render("/100"))
 	b.WriteString("\n")
 	b.WriteString(m.axesLine())
@@ -139,22 +149,59 @@ func (m *appModel) deltaLine() string {
 	return styleDim.Render("since last scan  ") + strings.Join(parts, styleDim.Render("   "))
 }
 
+// axisCell is the rendered width of one axis: a 9-column id, an 8-column
+// meter, and a 4-column value. axisGap separates two of them.
+const (
+	axisCell = 9 + 8 + 4
+	axisGap  = 3
+)
+
+// axesLine renders the score axes, wrapped to the terminal width.
+//
+// It used to join every axis into a single row. With nine domains that is
+// 9*21 + 8*3 = 213 columns, so on any ordinary 80- or 120-column terminal the
+// row was far wider than the screen — and in alt-screen mode a wrapped line
+// does not merely look wrong, it pushes every row below it down and off the
+// bottom of the frame, taking the findings list with it.
 func (m *appModel) axesLine() string {
-	var parts []string
+	var cells []string
 	for _, ax := range m.report.Score.Axes {
 		label := styleDim.Render(fmt.Sprintf("%-9s", ax.ID))
 		switch {
 		case !ax.Applicable:
-			parts = append(parts, label+styleTrack.Render(strings.Repeat("░", 8))+styleDim.Render(" N/A"))
+			cells = append(cells, label+styleTrack.Render(strings.Repeat("░", 8))+styleDim.Render(" N/A"))
 		case ax.Degraded:
 			// Scored, but from an incomplete picture — the "~" says so, since
-			// a bare number here reads as a full result.
-			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %d~", ax.Score)))
+			// a bare number here reads as a full result. Padded to the same
+			// width as an undegraded value so the columns still line up.
+			cells = append(cells, label+meter(ax.Score, 8, band(ax.Score))+
+				styleBone.Render(fmt.Sprintf(" %-3s", strconv.Itoa(int(ax.Score))+"~")))
 		default:
-			parts = append(parts, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
+			cells = append(cells, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
 		}
 	}
-	return strings.Join(parts, styleDim.Render("   "))
+	if len(cells) == 0 {
+		return ""
+	}
+
+	// How many cells fit: n cells occupy n*axisCell + (n-1)*axisGap. Always
+	// emit at least one per row, so a pathologically narrow terminal still
+	// renders something rather than dividing by zero or looping forever.
+	perRow := 1
+	if m.width > axisCell {
+		perRow = (m.width + axisGap) / (axisCell + axisGap)
+	}
+	if perRow < 1 {
+		perRow = 1
+	}
+
+	gap := styleDim.Render(strings.Repeat(" ", axisGap))
+	var rows []string
+	for i := 0; i < len(cells); i += perRow {
+		end := min(i+perRow, len(cells))
+		rows = append(rows, strings.Join(cells[i:end], gap))
+	}
+	return strings.Join(rows, "\n")
 }
 
 const listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
@@ -162,7 +209,8 @@ const listHint = "↑/↓ move   enter details   f fix   space select   a fix ma
 
 func (m *appModel) viewList() string {
 	var b strings.Builder
-	b.WriteString(m.header())
+	hdr := m.header()
+	b.WriteString(hdr)
 	b.WriteString(m.rule() + "\n")
 
 	fl := m.filterLine()
@@ -179,7 +227,18 @@ func (m *appModel) viewList() string {
 		return b.String()
 	}
 
-	reserved := 8
+	// Measure the header rather than assuming its height. It used to be a
+	// constant 8, which silently assumed a two-line header — one brand line
+	// and one axes line. That was already one short whenever a delta line was
+	// present, and the axes strip now wraps to several rows on a narrow
+	// terminal. Reserving too little makes the list draw more rows than fit,
+	// pushing the footer and its key hints off the bottom of the frame.
+	//
+	// The footer is measured too, since its hint now reflows. The remaining
+	// 3 is what viewList draws itself: the rule under the header, the count
+	// line, and the footer's leading blank.
+	ftr := m.footer(listHint)
+	reserved := strings.Count(hdr, "\n") + strings.Count(ftr, "\n") + 3
 	if fl != "" {
 		reserved++
 	}
@@ -213,7 +272,7 @@ func (m *appModel) viewList() string {
 	for i := m.offset; i < end; i++ {
 		b.WriteString(m.findingRow(m.active[i], i == m.cursor) + "\n")
 	}
-	b.WriteString(m.footer(listHint))
+	b.WriteString(ftr)
 	return b.String()
 }
 
@@ -245,12 +304,32 @@ func (m *appModel) findingRow(f model.Finding, cursor bool) string {
 		}
 	}
 	sev := sevAbbr(f.Severity)
-	title := truncate(f.Title, m.width-46)
+
+	// Budget the row from what is actually drawn rather than a fixed 46.
+	// The old constant did not account for the trailing service suffix at
+	// all, so a finding on "cloud/nextcloud-12" overran the terminal by
+	// however long the service name happened to be — and it did not account
+	// for an ID longer than its %-13s field either (cve.outdated-image is
+	// eighteen). Both are host-supplied, so neither has a safe upper bound.
+	const gutterAndMark = 3 // "▌" + a two-column mark
+	body := fmt.Sprintf("%-4s %-13s ", sev, f.ID)
+
 	if cursor {
-		return gutter + mark + styleSel.Render(padRight(fmt.Sprintf("%-4s %-13s %s", sev, f.ID, title), m.width-3))
+		title := truncate(f.Title, m.width-gutterAndMark-lipgloss.Width(body))
+		return gutter + mark + styleSel.Render(padRight(body+title, m.width-gutterAndMark))
 	}
+
+	// The suffix is dropped rather than truncated when there is no room for
+	// it: a service name cut to "(clo…" identifies nothing, and the title is
+	// the more useful of the two.
+	suffix := serviceSuffixTUI(f)
+	avail := m.width - gutterAndMark - lipgloss.Width(body)
+	if lipgloss.Width(suffix) > avail {
+		suffix = ""
+	}
+	title := truncate(f.Title, avail-lipgloss.Width(suffix))
 	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
-		styleDim.Render(fmt.Sprintf(" %-13s ", f.ID)) + styleBone.Render(title) + serviceSuffixTUI(f)
+		styleDim.Render(fmt.Sprintf(" %-13s ", f.ID)) + styleBone.Render(title) + suffix
 }
 
 // sourceLabel is the short domain name shown in the filter line, matching
@@ -462,7 +541,39 @@ func (m *appModel) viewMessage() string {
 }
 
 func (m *appModel) footer(hint string) string {
-	return "\n" + m.rule() + "\n" + styleDim.Render(hint)
+	return "\n" + m.rule() + "\n" + styleDim.Render(m.wrapHint(hint))
+}
+
+// wrapHint reflows a key-binding hint onto as many lines as the terminal
+// needs. The hints are written as fixed two-line strings, and the longer of
+// the two is 75 columns — wider than a 72-column pane, where it wrapped and
+// pushed the frame. Items are separated by three spaces, which is the only
+// place a break is legible.
+func (m *appModel) wrapHint(hint string) string {
+	const sep = "   "
+	if m.width <= 0 {
+		return hint
+	}
+	var out []string
+	for _, para := range strings.Split(hint, "\n") {
+		cur := ""
+		for _, item := range strings.Split(para, sep) {
+			cand := item
+			if cur != "" {
+				cand = cur + sep + item
+			}
+			if lipgloss.Width(cand) > m.width && cur != "" {
+				out = append(out, cur)
+				cur = item
+				continue
+			}
+			cur = cand
+		}
+		if cur != "" {
+			out = append(out, cur)
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 func renderDiff(diff string) string {
@@ -498,11 +609,30 @@ func scrollOffset(cursor, total, visible, offset int) int {
 	return offset
 }
 
+// truncate shortens s to at most max columns, marking the cut with an
+// ellipsis when there is room for one.
+//
+// The old guard returned s unchanged whenever max < 4, which inverted the
+// function exactly where it was needed. findingRow passes m.width-46, so on a
+// 40-column terminal max is negative and every title came back at full
+// length: a narrower terminal produced longer lines than a wide one, and the
+// rows wrapped.
+//
+// It also sliced by byte, which can cut a multi-byte rune in half and emit a
+// replacement character. Findings are English today, but service names and
+// file paths come from the host.
 func truncate(s string, max int) string {
-	if max < 4 || len(s) <= max {
+	r := []rune(s)
+	switch {
+	case max <= 0:
+		return ""
+	case len(r) <= max:
 		return s
+	case max < 4:
+		return string(r[:max]) // no room for an ellipsis to be worth a column
+	default:
+		return string(r[:max-1]) + "…"
 	}
-	return s[:max-1] + "…"
 }
 
 func padRight(s string, n int) string {

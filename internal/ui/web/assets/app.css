@@ -181,3 +181,23 @@ pre.diff .ctx { color: var(--slate); }
   .findings, .detail { overflow: visible; }
   .axes { grid-template-columns: 1fr 1fr; }
 }
+
+/* Below this width the layout was wider than the screen and the page
+   scrolled sideways. Two things caused it, and the first one mattered:
+
+   .statusbar is a single flex row with no wrap, and .actions sits at the far
+   end via margin-left:auto — so History, Rescan and Fix all safe were pushed
+   clean off the right edge. Every action the dashboard offers was unreachable
+   on a phone unless you thought to scroll horizontally first.
+
+   The two-column axes strip needs about 426px (72px label + 92px meter + gaps
+   + value, twice, plus padding), which overflowed on its own. */
+@media (max-width: 560px) {
+  .statusbar { flex-wrap: wrap; gap: 10px 16px; }
+  .actions { margin-left: 0; width: 100%; }
+  .actions button { flex: 1 1 auto; }
+  .gauge { flex: 1 1 auto; min-width: 0; }
+  .gauge .meter { flex: 1 1 auto; width: auto; min-width: 60px; }
+  .gauge-score { min-width: 0; }
+  .axes { grid-template-columns: 1fr; }
+}
