@@ -13,10 +13,21 @@ import (
 )
 
 // Checker reports whether the host has an active firewall.
-type Checker struct{}
+type Checker struct {
+	// DaemonConfigPath is Docker's daemon.json. Overridable for tests;
+	// empty means the real /etc/docker/daemon.json.
+	DaemonConfigPath string
+}
 
 // New returns a firewall checker.
 func New() *Checker { return &Checker{} }
+
+func (c *Checker) daemonConfig() string {
+	if c.DaemonConfigPath != "" {
+		return c.DaemonConfigPath
+	}
+	return defaultDaemonConfig
+}
 
 // Source identifies the firewall domain.
 func (*Checker) Source() model.Source { return model.SourceFirewall }
@@ -35,9 +46,16 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // not "no firewall". Reporting the finding there would accuse a properly
 // firewalled host of being wide open purely because the scan lacked
 // privileges.
-func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	switch status, _ := probe(ctx, env.Runner); status {
+func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
+	switch status, which := probe(ctx, env.Runner); status {
 	case StatusActive:
+		// An active firewall is not the end of the question on a Docker
+		// host: published container ports are accepted before ufw's rules
+		// are consulted. Scoring this case clean is what let a host with an
+		// open datastore outscore one running nothing at all.
+		if which == "ufw" {
+			return checkDockerBypass(ctx, env.Runner, c.daemonConfig())
+		}
 		return nil, nil // the good case: no finding
 	case StatusUnknown:
 		return nil, &check.PartialError{
