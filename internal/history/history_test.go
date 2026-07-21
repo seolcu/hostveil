@@ -145,8 +145,20 @@ func TestListIsNewestFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, id := range []string{"ssh.rootlogin", "compose.ds006", "ssh.maxauthtries"} {
-		if _, err := store.Save(Checkpoint{ID: NewID(id), FindingID: id}, map[string][]byte{path: []byte("a\n")}); err != nil {
+	// Save does not stamp CreatedAt — the engine does, at fixflow.go:189 —
+	// so the test has to. Without it all three carried the zero time, the
+	// assertion below was vacuously true, and the ordering was actually
+	// being decided by the ID tiebreak. Flipping After to Before in List
+	// left the whole suite green.
+	base := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	want := []string{"newest", "middle", "oldest"}
+	for i, id := range []string{"oldest", "middle", "newest"} {
+		cp := Checkpoint{
+			ID:        NewID(id),
+			FindingID: id,
+			CreatedAt: base.Add(time.Duration(i) * time.Hour),
+		}
+		if _, err := store.Save(cp, map[string][]byte{path: []byte("a\n")}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -158,9 +170,91 @@ func TestListIsNewestFirst(t *testing.T) {
 	if len(cps) != 3 {
 		t.Fatalf("want 3 checkpoints, got %d", len(cps))
 	}
+	for i, wantID := range want {
+		if cps[i].FindingID != wantID {
+			t.Errorf("position %d = %q, want %q — List must be newest first (got order %v)",
+				i, cps[i].FindingID, wantID, findingIDs(cps))
+		}
+	}
 	for i := 1; i < len(cps); i++ {
 		if cps[i-1].CreatedAt.Before(cps[i].CreatedAt) {
 			t.Errorf("checkpoint %d is older than %d — List must be newest first", i-1, i)
 		}
+	}
+}
+
+func findingIDs(cps []Checkpoint) []string {
+	out := make([]string, len(cps))
+	for i, c := range cps {
+		out[i] = c.FindingID
+	}
+	return out
+}
+
+// NewScanID lacked the random suffix that NewID's own doc comment argues is
+// mandatory, twelve lines above it. The timestamp resolves to a millisecond,
+// so two scans starting within one produced the same filename and the second
+// silently replaced the first — and the delta is computed from the newest
+// snapshot, so a lost one makes the next scan compare against the wrong
+// baseline.
+func TestScanIDsAreUniqueWithinAMillisecond(t *testing.T) {
+	seen := map[string]bool{}
+	for i := 0; i < 2000; i++ {
+		id := NewScanID()
+		if seen[id] {
+			t.Fatalf("NewScanID collided after %d calls: %q", i, id)
+		}
+		seen[id] = true
+	}
+}
+
+// The timestamp must stay the prefix: scanFiles sorts lexically and treats
+// that order as chronological, so a suffix that disturbed it would make
+// LastReport return something other than the newest scan.
+func TestScanIDsSortChronologically(t *testing.T) {
+	first := NewScanID()
+	time.Sleep(2 * time.Millisecond)
+	second := NewScanID()
+	if first >= second {
+		t.Errorf("scan IDs must sort chronologically: %q should precede %q", first, second)
+	}
+}
+
+// Two snapshots written in the same millisecond must both survive.
+func TestConcurrentScanSnapshotsDoNotClobber(t *testing.T) {
+	store := NewStore(t.TempDir())
+	for i := 0; i < 5; i++ {
+		if err := store.SaveReport(NewScanID(), []byte(`{"n":1}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	names, err := scanFiles(store.scansDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) != 5 {
+		t.Errorf("wrote 5 snapshots, %d survived: %v", len(names), names)
+	}
+}
+
+// Retention is executed on every save but nothing asserted it works, so a
+// broken prune would grow the directory forever without a test noticing.
+func TestScanSnapshotsArePrunedToMaxScans(t *testing.T) {
+	store := NewStore(t.TempDir())
+	for i := 0; i < maxScans+15; i++ {
+		if err := store.SaveReport(NewScanID(), []byte(`{"n":1}`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	names, err := scanFiles(store.scansDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) != maxScans {
+		t.Errorf("retained %d snapshots, want the %d cap", len(names), maxScans)
+	}
+	// The newest must be the survivors, not an arbitrary subset.
+	if _, ok, err := store.LastReport(); err != nil || !ok {
+		t.Errorf("LastReport after pruning: ok=%v err=%v", ok, err)
 	}
 }
