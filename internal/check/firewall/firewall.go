@@ -103,12 +103,28 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	}); st == StatusActive {
 		return st, which
 	}
-	if st, which := query("firewall-cmd", "firewalld", []string{"--state"}, func(s string) bool {
-		return strings.Contains(s, "running")
-	}); st == StatusActive {
-		return st, which
+	// firewalld is detected by exit status, not by the text of `--state`.
+	// The command exits 0 when the daemon is running and non-zero when it is
+	// not, which is the only signal stable across versions: some print
+	// "running" to stdout, others to stderr, and Run captures stdout only.
+	// Matching the text therefore read a running firewalld as absent on every
+	// host of the second kind — a High finding on a firewalled machine.
+	if platform.Has(r, "firewall-cmd") {
+		if _, err := r.Run(ctx, "firewall-cmd", "--state"); err != nil {
+			unreadable = true
+		} else {
+			return StatusActive, "firewalld"
+		}
 	}
 	if st, which := query("nft", "nftables", []string{"list", "ruleset"}, hasHostFirewall); st == StatusActive {
+		return st, which
+	}
+	// iptables last, and only as a fallback: on a modern host the nft backend
+	// already reported the same rules above. It matters for a host still on
+	// iptables-persistent with no nft binary, which every probe above misses —
+	// so a correctly firewalled machine was told it had no firewall at all,
+	// and the ports checker simultaneously stopped treating it as shielded.
+	if st, which := query("iptables", "iptables", []string{"-S", "INPUT"}, hasDropPolicy); st == StatusActive {
 		return st, which
 	}
 
@@ -145,9 +161,31 @@ func hasHostFirewall(out string) bool {
 	return false
 }
 
+// hasDropPolicy reports whether `iptables -S INPUT` shows a default-deny
+// INPUT policy. Only the chain policy counts: individual ACCEPT rules say
+// nothing about what happens to traffic that matches none of them, and a
+// policy of ACCEPT means everything not explicitly dropped gets through.
+func hasDropPolicy(out string) bool {
+	for _, line := range strings.Split(strings.ToLower(out), "\n") {
+		switch strings.TrimSpace(line) {
+		case "-p input drop", "-p input reject":
+			return true
+		}
+	}
+	return false
+}
+
+// ProbedTools names every binary probe consults. It is exported because the
+// ports and agent checkers both call Probe, and their tests need to build a
+// host with no firewall at all. Hardcoding the list in each of those packages
+// meant that adding a probe here silently turned their "no firewall" fixtures
+// into "firewall state unreadable", changing what they asserted without
+// changing what they said.
+var ProbedTools = []string{"ufw", "firewall-cmd", "nft", "iptables"}
+
 func availableTools(r platform.CommandRunner) []string {
 	var tools []string
-	for _, t := range []string{"ufw", "firewall-cmd", "nft"} {
+	for _, t := range ProbedTools {
 		if platform.Has(r, t) {
 			tools = append(tools, t)
 		}

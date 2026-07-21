@@ -139,6 +139,49 @@ func TestFirewallUnreadableIsNotReportedAsAbsent(t *testing.T) {
 	}
 }
 
+// TestFirewalldDetectedWhenStateGoesToStderr guards the false positive where
+// a running firewalld was reported as no firewall at all. Older firewalld
+// prints "running" to stderr, and the runner captures stdout only, so the
+// text match saw an empty string. Exit status is the stable signal.
+func TestFirewalldDetectedWhenStateGoesToStderr(t *testing.T) {
+	r := fakeRunner{
+		present: map[string]bool{"firewall-cmd": true},
+		outputs: map[string]string{"firewall-cmd --state": ""}, // exits 0, says nothing on stdout
+	}
+	if n := countFindings(t, r); n != 0 {
+		t.Errorf("firewalld running with empty stdout must count as active, got %d findings", n)
+	}
+}
+
+// TestIptablesOnlyHostIsNotFlagged guards the false positive on a host still
+// using iptables-persistent: ufw, firewalld and nft are all absent, but INPUT
+// defaults to DROP, so the host is firewalled and must not be accused.
+func TestIptablesOnlyHostIsNotFlagged(t *testing.T) {
+	r := fakeRunner{
+		present: map[string]bool{"iptables": true},
+		outputs: map[string]string{
+			"iptables -S INPUT": "-P INPUT DROP\n-A INPUT -i lo -j ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
+		},
+	}
+	if n := countFindings(t, r); n != 0 {
+		t.Errorf("an iptables INPUT DROP policy is a host firewall, got %d findings", n)
+	}
+}
+
+// An ACCEPT policy is the opposite: allow rules say nothing about traffic
+// that matches none of them, so the host is still open.
+func TestIptablesAcceptPolicyIsStillFlagged(t *testing.T) {
+	r := fakeRunner{
+		present: map[string]bool{"iptables": true},
+		outputs: map[string]string{
+			"iptables -S INPUT": "-P INPUT ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
+		},
+	}
+	if n := countFindings(t, r); n != 1 {
+		t.Errorf("an iptables ACCEPT policy is not a firewall; want 1 finding, got %d", n)
+	}
+}
+
 // "Cannot tell" and "definitely absent" must stay distinct: a host with no
 // firewall tooling at all is still a confident Inactive.
 func TestFirewallProbeStatuses(t *testing.T) {
@@ -163,6 +206,17 @@ func TestFirewallProbeStatuses(t *testing.T) {
 			present: map[string]bool{"ufw": true, "nft": true},
 			outputs: map[string]string{"ufw status": "Status: active\n"},
 		}, StatusActive},
+		{"firewalld installed but unreadable", fakeRunner{
+			present: map[string]bool{"firewall-cmd": true},
+		}, StatusUnknown},
+		{"iptables answers drop", fakeRunner{
+			present: map[string]bool{"iptables": true},
+			outputs: map[string]string{"iptables -S INPUT": "-P INPUT DROP\n"},
+		}, StatusActive},
+		{"iptables answers accept", fakeRunner{
+			present: map[string]bool{"iptables": true},
+			outputs: map[string]string{"iptables -S INPUT": "-P INPUT ACCEPT\n"},
+		}, StatusInactive},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
