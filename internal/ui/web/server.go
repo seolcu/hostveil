@@ -234,6 +234,10 @@ func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 
 type rollbackRequest struct {
 	CheckpointID string `json:"checkpoint_id"`
+	// Force restores even when the file changed after the fix wrote it.
+	// The dashboard asks first: rollback keeps no backup of its own, so
+	// discarding those edits cannot be undone.
+	Force bool `json:"force"`
 }
 
 func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
@@ -242,8 +246,19 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	out, err := s.engine.Rollback(req.CheckpointID)
+	rollback := s.engine.Rollback
+	if req.Force {
+		rollback = s.engine.RollbackForce
+	}
+	out, err := rollback(req.CheckpointID)
 	if err != nil {
+		// 409 rather than 400 so the client can tell "this file changed
+		// since the fix, confirm before discarding" apart from a genuine
+		// failure. The engine declined; it did not fail.
+		if core.IsExternalEdit(err) {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

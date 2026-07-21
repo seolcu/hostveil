@@ -49,6 +49,19 @@ type Checkpoint struct {
 	// Commands records exec-fix commands for the record; exec fixes cannot
 	// be auto-rolled-back (Files is empty for them).
 	Commands [][]string `json:"commands,omitempty"`
+	// AppliedSHA256 maps each edited path to the SHA-256 of the content the
+	// fix wrote. Rollback compares it against the file on disk to notice
+	// that somebody edited the file afterwards.
+	//
+	// Without it, rollback overwrote whatever was there — so applying a fix
+	// to sshd_config, hand-editing that file for an hour, then rolling back
+	// destroyed the hour's work with no warning and no way to get it back,
+	// because rollback writes no checkpoint of its own.
+	//
+	// Omitempty: checkpoints written before this field existed deserialize
+	// to nil, and a nil entry means "cannot tell", which is not the same as
+	// "unchanged" and must not be treated as consent.
+	AppliedSHA256 map[string]string `json:"applied_sha256,omitempty"`
 }
 
 // Reversible reports whether the checkpoint can be rolled back (i.e. it
@@ -182,10 +195,97 @@ func (s *Store) Get(id string) (Checkpoint, error) {
 	return cp, nil
 }
 
+// ExternalEditError reports that a file changed after the fix wrote it, so
+// rolling back would discard whatever was done to it in between.
+//
+// It is a distinct type rather than a plain error because every UI has to
+// tell this apart from a genuine failure: the rollback did not fail, it
+// declined, and the user can still choose to proceed.
+type ExternalEditError struct {
+	CheckpointID string
+	Path         string
+}
+
+func (e *ExternalEditError) Error() string {
+	return fmt.Sprintf("%s has changed since the fix was applied; rolling back would discard those edits "+
+		"(re-run with --force to restore the backup anyway)", e.Path)
+}
+
+// checkUnmodified reports whether a file still holds content that hostveil
+// itself wrote.
+//
+// The question is not "does this match what THIS fix wrote" — that would
+// misfire on the most ordinary workflow there is. `fix --all` over two
+// findings in one compose file applies two fixes to the same path in
+// sequence, so by the time the first checkpoint is rolled back the file
+// legitimately holds what the second fix wrote. Treating that as tampering
+// would refuse a rollback nobody interfered with. (An existing test,
+// TestRollbackUnmarksOnlyTheCheckpointedService, is exactly this shape and
+// is what caught it.)
+//
+// So the test is membership: the file must hash to something some fix
+// recorded writing. Anything else came from outside hostveil.
+//
+// A checkpoint from before AppliedSHA256 existed contributes no hashes, and
+// a file that cannot be read yields no complaint — "cannot tell" must not be
+// dressed up as either answer, and refusing every pre-upgrade checkpoint
+// would break rollback for everyone updating.
+func (s *Store) checkUnmodified(cp Checkpoint, bf BackedFile) error {
+	if cp.AppliedSHA256[bf.Path] == "" {
+		return nil // this checkpoint predates the recording; cannot tell
+	}
+	data, err := os.ReadFile(bf.Path) //nolint:gosec // path recorded by a fix this tool applied
+	if err != nil {
+		return nil
+	}
+	if s.writtenByHostveil(bf.Path, SHA256Hex(data)) {
+		return nil
+	}
+	return &ExternalEditError{CheckpointID: cp.ID, Path: bf.Path}
+}
+
+// writtenByHostveil reports whether any checkpoint recorded writing exactly
+// this content to this path.
+func (s *Store) writtenByHostveil(path, sum string) bool {
+	cps, err := s.List()
+	if err != nil {
+		// Unable to enumerate: allowing the rollback keeps the recovery path
+		// working, and this only ever runs on a file the operator explicitly
+		// asked to restore.
+		return true
+	}
+	for _, c := range cps {
+		if c.AppliedSHA256[path] == sum {
+			return true
+		}
+	}
+	return false
+}
+
+// SHA256Hex is exported so the engine can record what a fix wrote at the
+// moment it writes it, using the same hash Rollback compares against.
+func SHA256Hex(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
 // Rollback restores every backed-up file in a checkpoint to its original
-// bytes and mode. It returns the checkpoint so the caller can surface any
-// service restart the user should run.
+// bytes and mode, refusing if any of them changed after the fix wrote it.
+// It returns the checkpoint so the caller can surface any service restart
+// the user should run.
 func (s *Store) Rollback(id string) (Checkpoint, error) {
+	return s.rollback(id, false)
+}
+
+// RollbackForce restores the checkpoint even when a file changed after the
+// fix wrote it. The caller is responsible for having told the user what
+// they are discarding: rollback writes no checkpoint of its own, so this is
+// one-way.
+func (s *Store) RollbackForce(id string) (Checkpoint, error) {
+	return s.rollback(id, true)
+}
+
+func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 	cp, err := s.Get(id)
 	if err != nil {
 		return Checkpoint{}, err
@@ -193,6 +293,19 @@ func (s *Store) Rollback(id string) (Checkpoint, error) {
 	if !cp.Reversible() {
 		return cp, fmt.Errorf("checkpoint %s has no backed-up files to restore", id)
 	}
+
+	// Check every file before touching any of them. Rollback restores in a
+	// loop and returns on the first error, so a mid-loop refusal would leave
+	// some files restored and others not — a state neither the host nor the
+	// in-memory report describes correctly.
+	if !force {
+		for _, bf := range cp.Files {
+			if err := s.checkUnmodified(cp, bf); err != nil {
+				return cp, err
+			}
+		}
+	}
+
 	dir := filepath.Join(s.checkpointsDir(), id, "files")
 	for _, bf := range cp.Files {
 		// A mode-only entry carries no blob: the fix changed permissions and
