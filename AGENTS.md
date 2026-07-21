@@ -45,15 +45,50 @@ The repo syncs on `up`/`reload` but **not** on `provision` — re-sync after edi
 
 ## Releasing
 
-Releases are automated — **never push a `v*` tag by hand.** That is how `v3.0.0` ended up published from a commit that was never on main, pointing every `install.sh` user at abandoned code. A tag ruleset now rejects it anyway.
+Releases are cut by hand — by a maintainer or by an agent working in this repo — and the tag is what starts the pipeline. There is no release-please and no release pull request.
 
-release-please watches main and keeps a release pull request open with the next version and the changelog diff. Edit that pull request if the version is wrong, then merge it: merging creates the tag and the GitHub release, and goreleaser attaches the archives, checksums, SBOMs, and provenance attestation. Config is `release-please-config.json` and `.release-please-manifest.json` — the manifest is the version of record, not any git tag.
+It used to work the other way, and the reason it does not is worth keeping: release-please opened the release pull request with the default `GITHUB_TOKEN`, and GitHub does not start workflow runs for events created by that token. So the release pull request carried **no CI checks at all**, the `main` ruleset requires `build` and `lint`, and every single release therefore had to be forced through an admin bypass. That is not automation; it is a manual step wearing a costume.
 
-**Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, so the title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types nobody has a bump rule for, so the change lands as a patch and disappears from the changelog.
+### When to cut a release
 
-The scope is not free text. `.github/workflows/pr-title.yml` accepts only `core`, `model`, `check`, `cve`, `compose`, `fix`, `platform`, `history`, `ai`, `ui`, `tui`, `web`, `cmd`, `sitegen`, `site`, `demo`, `docs`, `install`, `ci`, `release`, `deps`. A path-shaped scope like `check/ssh` is rejected and the pull request cannot merge until the title is edited, so name the package, not the subpackage: a change to `internal/check/ssh` is `fix(check):`. Commits on your own branch are unconstrained. There are no `!`/`BREAKING CHANGE` markers anywhere in this repo's history, so a major bump is still a human decision made by editing the release pull request.
+Release when **all** of these hold. If any is false, say so and stop rather than releasing anyway.
 
-The version string lives in exactly one place, `cmd/hostveil/main.go`, and is overwritten at build time by goreleaser's ldflags. Nothing in the release pipeline rewrites Go source, and `scripts/install.sh` resolves the version at runtime rather than being stamped — keep it out of release-please's `extra-files`, or its pinned checksum stops matching.
+1. `origin/main` passes the full CI gate below, run locally, at the exact commit being tagged.
+2. There is at least one user-visible change since the last tag. A release containing only refactors, test changes, or CI edits is noise for everyone who has to read the changelog.
+3. Nothing on main is known-broken or half-finished — no feature landed in pieces with the rest still open.
+4. The version follows from the conventional-commit subjects since the last tag, computed and not guessed: any `feat` → **minor**, otherwise → **patch**.
+
+A **major** bump is never automatic and never an agent's decision. It requires a human saying so explicitly, in words, for that release.
+
+### How to cut one
+
+```bash
+git checkout main && git pull
+go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+go run ./cmd/sitegen && git diff --exit-code site/
+
+git log --oneline "$(git describe --tags --abbrev=0)"..main   # what is going in
+```
+
+Write the changelog entry into `CHANGELOG.md` — grouped `### Features` / `### Bug Fixes`, newest version first, matching the existing shape — and land it on main through a normal pull request. Then create the release, which creates the tag:
+
+```bash
+gh release create v3.2.0 --target "$(git rev-parse origin/main)" --title v3.2.0 --notes-file notes.md
+```
+
+Pushing that tag starts `.github/workflows/release.yml`, which re-runs the full gate against the tagged commit, refuses the tag if it is not an ancestor of `origin/main`, and then lets goreleaser attach the archives, checksums, SBOMs, and provenance attestation. If any of that fails the release is demoted to a draft, which keeps `install.sh` users on the last good version — it resolves the version by following the `/releases/latest` redirect, and a draft is not "Latest".
+
+`--target` is not optional. **`v3.0.0` was published from a commit that was never on main**, pointing every `install.sh` user at abandoned code. The `release-tags` ruleset does *not* prevent a repeat: it forbids **updating and deleting** a `v*` tag, not creating one on the wrong commit. The `verify-on-main` job in the release workflow is what actually blocks that now.
+
+Never move or delete a published tag. That the ruleset does enforce, and installers and the provenance attestation both assume a tag is immutable.
+
+**Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, which is the only record of what a change was when the release is cut. The title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types with no bump rule, so the change reads as a patch and drops out of the changelog.
+
+The scope is not free text. `.github/workflows/pr-title.yml` accepts only `core`, `model`, `check`, `cve`, `compose`, `fix`, `platform`, `history`, `ai`, `ui`, `tui`, `web`, `cmd`, `sitegen`, `site`, `demo`, `docs`, `install`, `ci`, `release`, `deps`. A path-shaped scope like `check/ssh` is rejected and the pull request cannot merge until the title is edited, so name the package, not the subpackage: a change to `internal/check/ssh` is `fix(check):`. Commits on your own branch are unconstrained.
+
+The version string lives in exactly one place, `cmd/hostveil/main.go`, and is overwritten at build time by goreleaser's ldflags. Nothing in the release pipeline rewrites Go source, and `scripts/install.sh` resolves the version at runtime rather than being stamped. The git tag is the version of record.
 
 ## Architecture
 
