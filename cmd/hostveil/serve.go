@@ -13,8 +13,8 @@ func cmdServe(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	var addr string
 	fs.StringVar(&addr, "addr", "127.0.0.1:8787", "address to bind the dashboard to")
-	if err := fs.Parse(args); err != nil {
-		return 2
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
 	}
 
 	if !strings.HasPrefix(addr, "127.0.0.1") && !strings.HasPrefix(addr, "localhost") {
