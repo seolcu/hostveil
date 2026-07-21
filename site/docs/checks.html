@@ -92,7 +92,7 @@
               <table>
                 <thead><tr><th>Domain</th><th>Prefix</th><th>Needs</th></tr></thead>
                 <tbody>
-                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker + Compose files</td></tr>
+                  <tr><td>Docker / Compose</td><td><code>compose.</code></td><td>Docker</td></tr>
                   <tr><td>SSH</td><td><code>ssh.</code></td><td>—</td></tr>
                   <tr><td>Firewall</td><td><code>firewall.</code></td><td>—</td></tr>
                   <tr><td>Auto-updates</td><td><code>updates.</code></td><td>—</td></tr>
@@ -158,7 +158,7 @@
             </div>
 
             <h2 id="compose">Docker / Compose <code>compose.</code></h2>
-            <p>A native audit of your Compose files — no external scanner required.</p>
+            <p>A native audit of your Compose files — no external scanner required. Containers started with plain <code>docker run</code> are audited too, read from the daemon rather than a file. Those findings are always Manual: there is no file for a fix to edit, so hostveil tells you what to change when you recreate the container instead of offering a button that could not work.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>

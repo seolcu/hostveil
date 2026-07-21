@@ -81,10 +81,43 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		}
 	}
 
+	// Images belonging to containers no compose file describes. Without
+	// these, a hand-started container's vulnerabilities were not merely
+	// unreported — the axis scored as though the image were not on the host.
+	// A failure to enumerate these is tracked apart from a failure to scan an
+	// image. Folding it into the image counters would make "3 of 4 images
+	// scanned" mean two different things, and could make a host whose only
+	// images all scanned cleanly look like a total failure.
+	standalone, enumErr := compose.DiscoverContainers(ctx, env.Runner)
+	for _, c := range standalone {
+		if c.Service.Image == "" || scanned[c.Service.Image] {
+			continue
+		}
+		scanned[c.Service.Image] = true
+		attempted++
+		fs, err := scanImage(ctx, env.Runner, c.Service.Image, c.Name, "", "")
+		if err != nil {
+			failed++
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		findings = append(findings, demoteToManual(fs)...)
+	}
+
 	// Case order matters: with no images at all, failed and attempted are both
 	// zero and the clean case must win.
 	switch failed {
 	case 0:
+		if enumErr != nil {
+			// Every image we knew about scanned, but we could not find out
+			// which containers exist outside Compose — so the axis covered
+			// less ground than a clean result would claim.
+			return findings, &check.PartialError{
+				Reason: "scanned compose images only — cannot enumerate containers started outside Compose",
+			}
+		}
 		// Includes the no-images case: a host with no containers genuinely
 		// has no image vulnerabilities.
 		return findings, nil
@@ -121,6 +154,25 @@ type trivyVuln struct {
 // the network allows — the flag makes Trivy exit with a legible message, and
 // the context guarantees termination if it hangs before parsing its own flags.
 const imageTimeout = 5 * time.Minute
+
+// demoteToManual marks findings for an image whose container has no compose
+// file. The registered fix for cve.outdated-image runs
+// `docker compose -f <file> pull <service>`, and there is no file — so the
+// checker declares Manual and Engine.classify, which takes whichever side
+// demands more human involvement, keeps the registry from offering a fix
+// that could not run.
+func demoteToManual(fs []model.Finding) []model.Finding {
+	for i := range fs {
+		fs[i].Remediation = model.RemediationManual
+		fs[i].HowToFix = "This container was started with `docker run`, not Compose, so hostveil cannot update it for you. " +
+			"Pull the image and recreate the container yourself. " + fs[i].HowToFix
+		if fs[i].Evidence == nil {
+			fs[i].Evidence = map[string]string{}
+		}
+		fs[i].Evidence["managed_by"] = "docker run"
+	}
+	return fs
+}
 
 func scanImage(ctx context.Context, r platform.CommandRunner, image, service, file, project string) ([]model.Finding, error) {
 	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)

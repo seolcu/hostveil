@@ -71,7 +71,15 @@ func TestCVESkipsWhenDaemonUnreachable(t *testing.T) {
 // scriptRunner scripts a full Check(): a compose project on disk plus a
 // per-image Trivy result (or failure).
 type scriptRunner struct {
-	lsJSON   string
+	lsJSON string
+	// psIDs is the output of `docker ps --quiet --no-trunc`; empty means no
+	// containers exist outside the compose projects lsJSON describes.
+	psIDs string
+	// inspectJSON is the output of `docker inspect <ids...>`.
+	inspectJSON string
+	// psErr makes container enumeration fail, which is a partial result
+	// rather than an image scan failure.
+	psErr    bool
 	trivy    map[string]string // image → JSON output
 	trivyErr map[string]bool   // image → fail
 	argv     []string          // the last trivy argv, for flag assertions
@@ -86,6 +94,13 @@ func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]by
 		return []byte("27.0.3\n"), nil
 	case name == "docker" && joined == "compose ls --all --format json":
 		return []byte(s.lsJSON), nil
+	case name == "docker" && joined == "ps --quiet --no-trunc":
+		if s.psErr {
+			return nil, errors.New("cannot connect to the Docker daemon")
+		}
+		return []byte(s.psIDs), nil
+	case name == "docker" && args[0] == "inspect":
+		return []byte(s.inspectJSON), nil
 	case name == "trivy":
 		s.argv = args
 		image := args[len(args)-1]
