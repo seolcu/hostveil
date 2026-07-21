@@ -48,6 +48,14 @@ jobs:
       - name: Lint workflows
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
+      # A tool that reports other people's vulnerabilities should not ship
+      # its own. govulncheck reports only vulnerabilities in code paths this
+      # binary actually reaches, so a finding here is real rather than a
+      # dependency-graph coincidence — which is why it gates the build
+      # instead of merely warning.
+      - name: Check dependencies for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
       - name: Verify site/ is up to date with sitegen
         run: |
           go run ./cmd/sitegen
