@@ -83,6 +83,45 @@ func Text(r model.Report, opts Options) string {
 			}
 		}
 	}
+	b.WriteString(nextSteps(active, opts))
+	return b.String()
+}
+
+// nextSteps closes the report with the commands that act on what it just
+// listed.
+//
+// The report used to end at the last finding. It named a remediation kind
+// per finding — "Auto", "Review", "Manual" — without ever naming the command
+// that acts on one, so a first-time user was shown a score, a list of
+// problems, and no way in. `fix --all` already closes with a next step; the
+// primary output path, the one everybody sees first, was the one without.
+func nextSteps(active []model.Finding, opts Options) string {
+	if len(active) == 0 {
+		return ""
+	}
+	c := palette(opts.Color)
+
+	auto := 0
+	for _, f := range active {
+		if f.Remediation == model.RemediationAuto {
+			auto++
+		}
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n%sNext:%s\n", c.bold, c.reset)
+	if auto > 0 {
+		// Named before the per-finding commands because it is the one action
+		// that needs no decision: every Auto fix is reversible, cannot cut
+		// off access to the host, and has exactly one correct form.
+		fmt.Fprintf(&b, "  %shostveil fix --all%s        apply the %d safe fix(es) — each is previewed and reversible\n",
+			c.green, c.reset, auto)
+	}
+	fmt.Fprintf(&b, "  %shostveil explain <id>%s     what a finding means and why it matters\n", c.green, c.reset)
+	fmt.Fprintf(&b, "  %shostveil fix <id>%s         preview one fix and apply it after confirming\n", c.green, c.reset)
+	if !opts.Verbose {
+		fmt.Fprintf(&b, "  %shostveil scan -v%s          show every finding's description and fix guidance\n", c.green, c.reset)
+	}
 	return b.String()
 }
 
