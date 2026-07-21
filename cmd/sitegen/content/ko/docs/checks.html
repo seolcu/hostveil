@@ -103,6 +103,7 @@
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev critical">심각</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>

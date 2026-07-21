@@ -94,6 +94,7 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 func TestKnownUnregisteredFindings(t *testing.T) {
 	declined := map[string]string{
 		"firewall.inactive":       "enabling a default-deny firewall over SSH can lock the user out, and exec fixes have no rollback",
+		"firewall.docker-bypass":  "republishing to loopback means editing an unknown compose file and recreating the container; the ufw-docker alternative is firewall policy with no rollback",
 		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
 		"ports.exposed-admin":     "same as ports.exposed-datastore",
 		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",

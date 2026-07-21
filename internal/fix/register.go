@@ -43,6 +43,14 @@ package fix
 // TestKnownUnregisteredFindings pins each one, so registering a fix means
 // deleting an assertion and arguing with the reason.
 //
+//   - firewall.docker-bypass — the two remediations are unrelated and only
+//     the operator can choose. Republishing the port to loopback means
+//     editing whichever Compose file or `docker run` invocation started the
+//     container, then recreating it, which takes the service down and is not
+//     a file edit hostveil can locate from the finding. Installing the
+//     ufw-docker rules means appending to /etc/ufw/after.rules and reloading
+//     ufw — firewall policy, so it fails the same recoverability criterion as
+//     firewall.inactive.
 //   - firewall.inactive — the only remediation is enabling a firewall, and
 //     the checker records no SSH port, interface, or session data. Enabling
 //     a default-deny policy on a box reached over SSH can lock the user out
