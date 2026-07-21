@@ -58,7 +58,7 @@
             <p><code>hostveil scan</code>은 수정되지 않은 발견 항목 중 <span class="sev critical">심각</span> 또는 <span class="sev high">높음</span>이 하나라도 있으면 0이 아닌 값으로 종료합니다 — CI나 cron 게이트로 유용합니다.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
-            <p><code>sshd_config</code>에서 직접 파싱합니다. 읽으려면 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 상승하여 이를 얻습니다.</p>
+            <p><code>sshd_config</code>에서 직접 파싱하며, <code>Include</code> 지시어를 따라 <code>sshd_config.d/</code>까지 읽습니다. Debian과 Ubuntu는 <code>Include</code>를 파일 맨 위에 두고, <code>sshd</code>는 각 키워드에 대해 처음 얻은 값을 사용하므로 drop-in 파일이 아래 줄들을 이깁니다. 읽으려면 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 상승하여 이를 얻습니다. 수정은 실제로 적용되고 있는 지시어가 있는 파일에 가해집니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>

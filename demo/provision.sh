@@ -45,15 +45,27 @@ if ! command -v trivy >/dev/null 2>&1; then
 fi
 trivy image --download-db-only 2>/dev/null || echo "   (trivy DB download skipped — CVE scan will fetch on first run)"
 
-echo "==> [5/10] weak SSH config (appended to the main sshd_config)"
-if ! grep -q "hostveil demo weak SSH" /etc/ssh/sshd_config; then
-  {
-    echo ""
-    echo "# --- hostveil demo weak SSH (intentionally insecure) ---"
-    cat "$DEMO/seed/sshd_hostveil.conf"
-  } >> /etc/ssh/sshd_config
+echo "==> [5/10] weak SSH config (a drop-in that outranks the image's own)"
+# The seed goes in sshd_config.d, not at the end of the main file, because
+# the main file loses. Ubuntu's sshd_config puts `Include
+# sshd_config.d/*.conf` at the top and sshd keeps the first value it
+# obtains for each keyword, so the cloud image's 50-cloud-init.conf and
+# 60-cloudimg-settings.conf — both of which set PasswordAuthentication no —
+# beat anything appended below. Appending is what this script used to do,
+# and it left ssh.passwordauth silently unreproducible.
+#
+# The 00- prefix sorts ahead of the image's drop-ins, so these win. That
+# also makes the demo exercise the checker's Include handling rather than
+# only its main-file parsing.
+install -m 0644 "$DEMO/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+
+# Converge VMs provisioned by the older version of this script, which
+# appended the same settings to the main file and left them there.
+if grep -q "hostveil demo weak SSH" /etc/ssh/sshd_config; then
+  sed -i '/# --- hostveil demo weak SSH/,$d' /etc/ssh/sshd_config
 fi
-systemctl restart ssh || systemctl restart sshd || true
+
+sshd -t && (systemctl restart ssh || systemctl restart sshd || true)
 
 echo "==> [6/10] disable automatic security updates (so updates.disabled fires)"
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'

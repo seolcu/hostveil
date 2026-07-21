@@ -28,7 +28,7 @@ undo any fix with one command.
 | Domain | What it looks at | Needs |
 | --- | --- | --- |
 | **Docker / Compose** | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, missing no-new-privileges, hardcoded secrets, and more — a native audit of your Compose files | Docker |
-| **SSH** | Root login, password authentication, empty passwords, weak brute-force limits, X11 forwarding — parsed natively from `sshd_config` | — |
+| **SSH** | Root login, password authentication, empty passwords, weak brute-force limits, X11 forwarding — parsed natively from `sshd_config`, following `Include` into `sshd_config.d/` | — |
 | **Firewall** | Whether ufw, firewalld, or nftables is actually active | — |
 | **Auto-updates** | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
 | **Exposed services** | Host processes listening on a non-loopback address — the natively-installed database, admin panel, or app your Compose audit can't see, read from `ss` | `ss` |
