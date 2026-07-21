@@ -1,6 +1,7 @@
 package history
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -256,5 +257,128 @@ func TestScanSnapshotsArePrunedToMaxScans(t *testing.T) {
 	// The newest must be the survivors, not an arbitrary subset.
 	if _, ok, err := store.LastReport(); err != nil || !ok {
 		t.Errorf("LastReport after pruning: ok=%v err=%v", ok, err)
+	}
+}
+
+// Rollback used to overwrite whatever was on disk with no checks at all: no
+// hash, no mtime, not even an existence test. Apply a fix to sshd_config,
+// hand-edit it for an hour, roll back — and the hour was gone, permanently,
+// because rollback writes no checkpoint of its own.
+func TestRollbackRefusesToDiscardExternalEdits(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	path := filepath.Join(dir, "sshd_config")
+
+	orig := []byte("PermitRootLogin yes\n")
+	applied := []byte("PermitRootLogin no\n")
+	if err := os.WriteFile(path, orig, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cp, err := store.Save(Checkpoint{
+		ID:            NewID("ssh.rootlogin"),
+		FindingID:     "ssh.rootlogin",
+		AppliedSHA256: map[string]string{path: SHA256Hex(applied)},
+	}, map[string][]byte{path: orig})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, applied, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Untouched since the fix: rollback proceeds.
+	if _, err := store.Rollback(cp.ID); err != nil {
+		t.Fatalf("an unmodified file should roll back cleanly: %v", err)
+	}
+
+	// Now the operator edits the file after the fix.
+	if err := os.WriteFile(path, applied, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	edited := []byte("PermitRootLogin no\nAllowUsers alice\n")
+	if err := os.WriteFile(path, edited, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.Rollback(cp.ID)
+	var ext *ExternalEditError
+	if !errors.As(err, &ext) {
+		t.Fatalf("want ExternalEditError, got %v", err)
+	}
+	if ext.Path != path {
+		t.Errorf("error names %q, want %q", ext.Path, path)
+	}
+	// Declining must change nothing.
+	if got, _ := os.ReadFile(path); string(got) != string(edited) {
+		t.Errorf("a refused rollback modified the file:\n%s", got)
+	}
+
+	// Force is the escape hatch, and it really does discard.
+	if _, err := store.RollbackForce(cp.ID); err != nil {
+		t.Fatalf("force: %v", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != string(orig) {
+		t.Errorf("force should restore the original:\nwant %q\ngot  %q", orig, got)
+	}
+}
+
+// Two fixes to the same file in sequence — what `fix --all` does with two
+// findings in one compose file — must not look like tampering. By the time
+// the first checkpoint is rolled back the file holds what the SECOND fix
+// wrote, which hostveil is responsible for.
+func TestSequentialFixesToOneFileAreNotTampering(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	path := filepath.Join(dir, "docker-compose.yml")
+
+	v0 := []byte("a\n")
+	v1 := []byte("b\n")
+	v2 := []byte("c\n")
+	if err := os.WriteFile(path, v0, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := store.Save(Checkpoint{
+		ID: NewID("compose.ds018"), FindingID: "compose.ds018",
+		AppliedSHA256: map[string]string{path: SHA256Hex(v1)},
+	}, map[string][]byte{path: v0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Save(Checkpoint{
+		ID: NewID("compose.dr002"), FindingID: "compose.dr002",
+		AppliedSHA256: map[string]string{path: SHA256Hex(v2)},
+	}, map[string][]byte{path: v1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, v2, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.Rollback(first.ID); err != nil {
+		t.Errorf("a second hostveil fix is not an external edit: %v", err)
+	}
+}
+
+// A checkpoint written before AppliedSHA256 existed records no hash. That is
+// "cannot tell", and refusing every such rollback would break recovery for
+// anyone upgrading — so it proceeds, as it always did.
+func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	path := filepath.Join(dir, "f.conf")
+	if err := os.WriteFile(path, []byte("orig\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cp, err := store.Save(Checkpoint{ID: NewID("x.y"), FindingID: "x.y"},
+		map[string][]byte{path: []byte("orig\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("edited by hand\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Rollback(cp.ID); err != nil {
+		t.Errorf("a pre-upgrade checkpoint must still roll back: %v", err)
 	}
 }

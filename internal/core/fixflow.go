@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -189,6 +190,12 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		CreatedAt:      time.Now(),
 		Diff:           d,
 		RestartService: f.Service,
+		// Record what this fix is about to write, so a later rollback can
+		// tell "still exactly as hostveil left it" from "the operator has
+		// edited this since" and decline rather than silently discard their
+		// work. Computed before the write so the checkpoint is complete
+		// before anything on the host changes.
+		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 	}
 	saved, err := e.store.Save(cp, map[string][]byte{a.Path: orig})
 	if err != nil {
@@ -311,7 +318,37 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 // session, where the in-memory report would otherwise keep reporting a
 // finding as fixed after its fix had been undone.
 func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {
-	cp, err := e.store.Rollback(id)
+	return e.rollback(id, false)
+}
+
+// IsExternalEdit reports whether a rollback was declined because the file
+// changed after the fix wrote it, rather than having failed.
+//
+// It exists because the UIs cannot answer this themselves: the layering
+// tests forbid internal/ui/* from importing internal/history, so they have
+// no access to the error type. Without this they would be left matching on
+// the message text, which silently stops working the day the wording is
+// improved. The distinction matters — a declined rollback is a question for
+// the user, not an error to report.
+func IsExternalEdit(err error) bool {
+	var e *history.ExternalEditError
+	return errors.As(err, &e)
+}
+
+// RollbackForce restores a checkpoint even when a file changed after the fix
+// wrote it, discarding those changes. Rollback itself writes no checkpoint,
+// so this is one-way — a UI must have said what is being discarded before
+// calling it.
+func (e *Engine) RollbackForce(id string) (model.RollbackOutcome, error) {
+	return e.rollback(id, true)
+}
+
+func (e *Engine) rollback(id string, force bool) (model.RollbackOutcome, error) {
+	restore := e.store.Rollback
+	if force {
+		restore = e.store.RollbackForce
+	}
+	cp, err := restore(id)
 	if err != nil {
 		return model.RollbackOutcome{}, err
 	}
