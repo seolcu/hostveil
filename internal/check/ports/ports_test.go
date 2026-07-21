@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -34,6 +35,18 @@ func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte,
 		return []byte(out), nil
 	}
 	return nil, errors.New("no output for: " + key)
+}
+
+// noFirewall builds a runner for a host with no firewall tooling at all, so
+// firewall.Probe returns a confident Inactive rather than StatusUnknown. It
+// reads the tool list from the firewall package so adding a probe there can
+// never silently change what these tests assert.
+func noFirewall(ss string) fakeRunner {
+	missing := map[string]bool{}
+	for _, t := range firewall.ProbedTools {
+		missing[t] = true
+	}
+	return fakeRunner{ss: ss, missing: missing}
 }
 
 func findByID(fs []model.Finding, id string) (model.Finding, bool) {
@@ -136,7 +149,7 @@ func TestGenericExposedOnlyWithoutFirewall(t *testing.T) {
 LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 
 	// No firewall active -> the generic exposure finding appears (SSH excluded).
-	noFW := fakeRunner{ss: ss, missing: map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}}
+	noFW := noFirewall(ss)
 	fs, err := New().Check(context.Background(), platform.Env{Runner: noFW})
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +183,7 @@ func TestZoneScopedLoopbackIgnored(t *testing.T) {
 	// A zone-scoped IPv6 loopback ([::1%lo]) is host-only and must not be
 	// reported as network-exposed.
 	ss := `LISTEN 0 128 [::1%lo]:6379 [::]:* users:(("redis-server",pid=9,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss, missing: map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +212,7 @@ func findByIDok(fs []model.Finding, id string) bool {
 
 func TestMalformedLinesSkipped(t *testing.T) {
 	ss := "garbage line without enough fields\nLISTEN\n\n"
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss, missing: map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}

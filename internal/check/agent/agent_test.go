@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -42,9 +43,15 @@ func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte,
 }
 
 // noFirewall reports every firewall front-end as absent, which Probe reads as
-// a definite StatusInactive rather than "could not look".
+// a definite StatusInactive rather than "could not look". The list comes from
+// the firewall package so adding a probe there cannot silently turn these
+// fixtures into "unreadable" and change what the tests assert.
 func noFirewall() map[string]bool {
-	return map[string]bool{"ufw": true, "firewall-cmd": true, "nft": true}
+	missing := map[string]bool{}
+	for _, t := range firewall.ProbedTools {
+		missing[t] = true
+	}
+	return missing
 }
 
 func envNoFirewall(ss string) platform.Env {
