@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
 type fakeRunner struct {
@@ -56,7 +58,7 @@ func testServer(t *testing.T) (*Server, string) {
 		Runner:   fakeRunner{present: map[string]bool{"docker": true}, lsJSON: `[{"Name":"demo","ConfigFiles":"` + path + `"}]`},
 	})
 	engine.Scan(context.Background(), nil)
-	return New(engine, "127.0.0.1:0"), path
+	return New(engine, "127.0.0.1:0", "nord"), path
 }
 
 func TestResultEndpoint(t *testing.T) {
@@ -321,5 +323,124 @@ func TestResultCarriesDelta(t *testing.T) {
 		if len(payload.Findings) == 0 {
 			t.Errorf("%s: findings disappeared from the payload", path)
 		}
+	}
+}
+
+// The dashboard's palette is generated from internal/ui/theme rather than
+// shipped in app.css, so that it and the TUI cannot drift. That only holds if
+// the two generated routes actually serve.
+func TestThemeAssets(t *testing.T) {
+	s, _ := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	for _, tc := range []struct{ path, ctype string }{
+		{"/themes.css", "text/css"},
+		{"/theme.js", "text/javascript"},
+	} {
+		resp, err := http.Get(srv.URL + tc.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s returned %d", tc.path, resp.StatusCode)
+		}
+		if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, tc.ctype) {
+			t.Errorf("%s Content-Type = %q, want %s", tc.path, ct, tc.ctype)
+		}
+		for _, th := range theme.All() {
+			if !strings.Contains(string(body), th.ID) {
+				t.Errorf("%s does not mention theme %q", tc.path, th.ID)
+			}
+		}
+	}
+}
+
+// The page paints in the theme hostveil was started with, before any script
+// runs — otherwise every load flashes the default palette first.
+func TestServedThemeIsTheStartingPalette(t *testing.T) {
+	s, _ := testServer(t) // built with "nord"
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/themes.css", nil)
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/themes.css returned %d", rec.Code)
+	}
+
+	nord, ok := theme.Lookup("nord")
+	if !ok {
+		t.Fatal("the nord theme is gone")
+	}
+	css := rec.Body.String()
+	start, end := strings.Index(css, ":root {"), strings.Index(css, ":root[data-theme=")
+	if start < 0 || end < start {
+		t.Fatalf("no bare :root block in the stylesheet:\n%s", css)
+	}
+	if root := css[start:end]; !strings.Contains(root, nord.Palette.Ink) {
+		t.Errorf(":root is not the served theme's palette:\n%s", root)
+	}
+}
+
+// Generated routes are inside the same guard as everything else; a page that
+// could be styled cross-origin is a page that can be framed convincingly.
+func TestThemeAssetsAreGuarded(t *testing.T) {
+	s, _ := testServer(t)
+	for _, path := range []string{"/themes.css", "/theme.js"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Host = "evil.example.com"
+		s.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s from a forbidden host returned %d", path, rec.Code)
+		}
+	}
+}
+
+// Moving the palette out of app.css and into a generated stylesheet means the
+// two files now have to agree: every var(--x) the layout reads must be one the
+// theme package declares. A typo, or a variable added to app.css and never to
+// a palette, resolves to nothing — and an unset custom property is not an
+// error in CSS, it is an invisible element.
+func TestEveryCSSVariableIsDeclared(t *testing.T) {
+	appCSS, err := assets.ReadFile("assets/app.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	declared := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(--[a-z0-9-]+):`).FindAllStringSubmatch(theme.CSS("")+string(appCSS), -1) {
+		declared[m[1]] = true
+	}
+	for _, m := range regexp.MustCompile(`var\((--[a-z0-9-]+)`).FindAllStringSubmatch(string(appCSS), -1) {
+		if !declared[m[1]] {
+			t.Errorf("app.css reads %s, which no palette declares", m[1])
+		}
+	}
+}
+
+// The page has to actually load the generated files. app.css deliberately no
+// longer carries a palette, so an index.html that drops either link renders
+// the dashboard with no colors at all.
+func TestIndexLoadsTheGeneratedThemeAssets(t *testing.T) {
+	index, err := assets.ReadFile("assets/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(index)
+	for _, want := range []string{`href="/themes.css"`, `src="/theme.js"`} {
+		if !strings.Contains(html, want) {
+			t.Errorf("index.html does not load %s", want)
+		}
+	}
+	// theme.js restores the saved theme and must run before the first paint;
+	// below the stylesheet links it would apply a palette the page has
+	// already been drawn without.
+	if strings.Index(html, `href="/themes.css"`) > strings.Index(html, `src="/theme.js"`) {
+		t.Error("theme.js is loaded before themes.css, so the page can paint unstyled first")
+	}
+	if !strings.Contains(html, `<select id="theme"`) {
+		t.Error("the status bar has no theme picker")
 	}
 }

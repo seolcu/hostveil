@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
 //go:embed assets/*
@@ -27,11 +29,18 @@ const maxBody = 1 << 20 // 1 MiB
 type Server struct {
 	engine *core.Engine
 	addr   string
+	// theme is the palette the page starts in — the one hostveil resolved
+	// from --theme, the environment, or the remembered choice. A theme picked
+	// in the browser is stored there and overrides it for that browser only,
+	// so two people pointed at the same dashboard can read it differently.
+	theme string
 }
 
-// New builds a web Server bound to addr (e.g. "127.0.0.1:8787").
-func New(engine *core.Engine, addr string) *Server {
-	return &Server{engine: engine, addr: addr}
+// New builds a web Server bound to addr (e.g. "127.0.0.1:8787"), rendering in
+// the theme named by themeID (see internal/ui/theme; an unknown or empty ID
+// falls back to the default).
+func New(engine *core.Engine, addr, themeID string) *Server {
+	return &Server{engine: engine, addr: addr, theme: themeID}
 }
 
 // Handler builds the guarded HTTP handler (dashboard + API). Exposed so
@@ -39,6 +48,11 @@ func New(engine *core.Engine, addr string) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(mustSub())))
+	// Generated from internal/ui/theme rather than shipped as static assets,
+	// which is what keeps the dashboard's palette and the TUI's identical:
+	// there is one registry of hexes and both read from it.
+	mux.HandleFunc("/themes.css", s.handleThemesCSS)
+	mux.HandleFunc("/theme.js", s.handleThemeJS)
 	mux.HandleFunc("/api/result", s.handleResult)
 	mux.HandleFunc("/api/preview", s.handlePreview)
 	mux.HandleFunc("/api/fix", s.handleFix)
@@ -125,6 +139,20 @@ func hostFromURL(u string) string {
 }
 
 // --- handlers ---
+
+func (s *Server) handleThemesCSS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	// No caching: the served default changes with --theme, and a stale
+	// stylesheet would silently keep the previous run's palette.
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.WriteString(w, theme.CSS(s.theme))
+}
+
+func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.WriteString(w, theme.JS(s.theme))
+}
 
 // resultPayload is the dashboard's view of a scan: the report, plus how it
 // differs from the one before it. The engine already computes the delta on

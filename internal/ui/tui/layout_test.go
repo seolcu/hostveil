@@ -155,3 +155,19 @@ func TestPreviewAndHistoryFitTerminalWidth(t *testing.T) {
 		}
 	}
 }
+
+// The theme picker is drawn with the widest fixed-width row in the interface
+// — a padded name plus a five-color swatch — so it is the mode most likely to
+// overrun a narrow terminal. It must fit every width like the rest, and the
+// swatch must be dropped rather than clipped when it does not.
+func TestThemePickerFitsTerminalWidth(t *testing.T) {
+	for _, w := range []int{120, 80, 72, 60, 44, 30, 20} {
+		m := &appModel{mode: modeTheme, width: w, height: 30, report: layoutReport(), selected: map[string]bool{}}
+		m.openThemePicker()
+		for _, line := range strings.Split(m.View().Content, "\n") {
+			if got := visibleWidth(line); got > w {
+				t.Errorf("width=%d: line is %d columns:\n  %q", w, got, line)
+			}
+		}
+	}
+}

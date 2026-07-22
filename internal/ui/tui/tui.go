@@ -14,6 +14,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
 type mode int
@@ -26,6 +27,7 @@ const (
 	modeMessage
 	modeHistory
 	modeRollbackConfirm
+	modeTheme
 )
 
 type appModel struct {
@@ -49,11 +51,32 @@ type appModel struct {
 	checkpoints []model.Checkpoint // applied-fix log, newest first
 	cpCursor    int
 	cpOffset    int
+
+	th          theme.Theme // active color theme; the zero value renders as the default
+	st          *styles     // th resolved into lipgloss styles, built on first render
+	themeCursor int
+	themePrev   theme.Theme        // restored when the picker is cancelled
+	saveTheme   func(string) error // nil when there is nowhere to persist to
+}
+
+// ThemeOpts carries the color theme into the TUI.
+//
+// Save records a theme chosen in the picker so the next run starts in it. It
+// is a callback rather than a directory because the TUI must not know where
+// hostveil keeps its state: that lives in internal/history, which the
+// layering test forbids this package from importing. cmd/hostveil, which may
+// import it, wires the two together.
+type ThemeOpts struct {
+	Initial theme.Theme
+	Save    func(id string) error
 }
 
 // New builds the TUI model around an engine.
-func New(engine *core.Engine) tea.Model {
-	return &appModel{engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{}}
+func New(engine *core.Engine, opts ThemeOpts) tea.Model {
+	return &appModel{
+		engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
+		th: opts.Initial, saveTheme: opts.Save,
+	}
 }
 
 // rebuildActive re-derives the visible list from the current report and
@@ -65,8 +88,8 @@ func (m *appModel) rebuildActive() {
 }
 
 // Run starts the TUI event loop.
-func Run(engine *core.Engine) error {
-	_, err := tea.NewProgram(New(engine)).Run()
+func Run(engine *core.Engine, opts ThemeOpts) error {
+	_, err := tea.NewProgram(New(engine, opts)).Run()
 	return err
 }
 
@@ -251,6 +274,8 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyHistory(key)
 	case modeRollbackConfirm:
 		return m.keyRollbackConfirm(key)
+	case modeTheme:
+		return m.keyTheme(key)
 	case modeMessage:
 		m.mode = modeList
 	}
@@ -295,6 +320,50 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		return m, scanCmd(m.engine)
 	case "h":
 		return m, historyCmd(m.engine)
+	case "t":
+		m.openThemePicker()
+	}
+	return m, nil
+}
+
+// openThemePicker remembers the current theme so cancelling can restore it,
+// and starts the cursor on the theme in use rather than at the top.
+func (m *appModel) openThemePicker() {
+	// Resolve the zero value first, so "what was active" is a real theme and
+	// cancelling restores it rather than blanking the palette.
+	m.setTheme(m.th)
+	m.themePrev = m.th
+	m.themeCursor = 0
+	for i, t := range theme.All() {
+		if t.ID == m.themePrev.ID {
+			m.themeCursor = i
+		}
+	}
+	m.mode = modeTheme
+}
+
+// keyTheme drives the picker. Moving the cursor applies the theme
+// immediately: the preview *is* the rest of the interface.
+func (m *appModel) keyTheme(key string) (tea.Model, tea.Cmd) {
+	all := theme.All()
+	switch key {
+	case "up", "k":
+		m.themeCursor = clamp(m.themeCursor-1, 0, len(all)-1)
+		m.setTheme(all[m.themeCursor])
+	case "down", "j":
+		m.themeCursor = clamp(m.themeCursor+1, 0, len(all)-1)
+		m.setTheme(all[m.themeCursor])
+	case "enter", "y":
+		if m.saveTheme != nil {
+			// A theme that cannot be written down still applies for the rest
+			// of the session. Interrupting the user with a modal error over a
+			// cosmetic preference would cost them more than the lost setting.
+			_ = m.saveTheme(m.th.ID)
+		}
+		m.mode = modeList
+	case "esc", "q", "backspace", "t":
+		m.setTheme(m.themePrev)
+		m.mode = modeList
 	}
 	return m, nil
 }

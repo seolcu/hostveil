@@ -157,3 +157,41 @@ func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 		}
 	}
 }
+
+// A mistyped --theme is a usage error, not a silent fall back to the default:
+// the user asked for something specific and did not get it. It is caught
+// before the TUI's terminal check, so it reports the same way when piped.
+// The subcommands are called directly rather than through run(): run() would
+// re-exec under sudo, and a *valid* theme would leave cmdServe listening
+// forever. Both must refuse before either of those can happen.
+func TestUnknownThemeIsAUsageError(t *testing.T) {
+	for name, cmd := range map[string]func([]string) int{"tui": cmdTUI, "serve": cmdServe} {
+		if code := cmd([]string{"--theme", "no-such-theme"}); code != 2 {
+			t.Errorf("%s --theme no-such-theme exited %d, want 2", name, code)
+		}
+	}
+}
+
+// resolveTheme is the one place the precedence lives; every UI goes through
+// it, so a valid flag must survive whatever the environment happens to say.
+func TestResolveThemePrefersTheFlag(t *testing.T) {
+	t.Setenv(themeEnv, "gruvbox")
+	got, err := resolveTheme("nord")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "nord" {
+		t.Errorf("resolveTheme = %q, want nord", got.ID)
+	}
+}
+
+func TestResolveThemeReadsTheEnvironment(t *testing.T) {
+	t.Setenv(themeEnv, "tokyonight")
+	got, err := resolveTheme("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "tokyonight" {
+		t.Errorf("resolveTheme = %q, want tokyonight", got.ID)
+	}
+}

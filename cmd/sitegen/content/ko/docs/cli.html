@@ -65,12 +65,13 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="serve">serve</h2>
             <p>localhost 웹 대시보드를 실행합니다. <code>hostveil web</code>은 별칭입니다.</p>
-            <div class="code-block"><pre><code>hostveil serve [--addr ADDR]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>대시보드를 바인딩할 주소입니다.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td><code>instrument</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -78,8 +79,16 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="tui">tui</h2>
             <p>대화형 터미널 UI를 엽니다(터미널에서 명령 없이 실행할 때의 기본값이기도 합니다).</p>
-            <div class="code-block"><pre><code>hostveil tui</code></pre></div>
-            <p>플래그는 없습니다. 대화형 터미널이 필요하며, 그렇지 않으면 <code>hostveil scan</code>을 사용하라고 안내합니다.</p>
+            <div class="code-block"><pre><code>hostveil tui [--theme NAME]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>instrument</code></td><td>색상 테마: <code>instrument</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>대화형 터미널이 필요하며, 그렇지 않으면 <code>hostveil scan</code>을 사용하라고 안내합니다. TUI 안에서 <code>t</code>를 누르면 테마를 고르고 기억시킬 수 있습니다 — <a href="interfaces#themes">인터페이스</a>를 참고하세요.</p>
 
             <h2 id="exit-codes">종료 코드</h2>
             <div class="docs-table-wrap">

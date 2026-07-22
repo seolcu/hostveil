@@ -122,6 +122,28 @@ bash shell, use the raw `vagrant up` / `vagrant ssh` / `vagrant snapshot`
 commands instead.) The full walkthrough, demo script, and reset workflow
 live in [demo/README.md](../demo/README.md).
 
+### Checking a UI change without sitting at the keyboard
+
+A screenshot is the only honest way to review a colour, a layout, or anything
+that reflows. All three of these run against the demo VM, so nothing is aimed
+at your own machine:
+
+```bash
+# TUI — drive the real thing and read back what it drew
+vagrant ssh -c 'tmux -f /dev/null new-session -d -x 100 -y 34 "sudo hostveil tui"'
+vagrant ssh -c 'tmux send-keys -t 0 t; sleep 1; tmux capture-pane -p -t 0'   # -e keeps the colour codes
+
+# Web — a throwaway profile, or Firefox hangs waiting on the one you have open
+firefox --headless --no-remote --profile "$(mktemp -d)" \
+        --window-size=1400,900 --screenshot out.png http://localhost:8787/
+
+# What actually reaches the terminal, escape sequence by escape sequence
+vagrant ssh -c 'script -q -c "hostveil tui" /tmp/raw.log'
+```
+
+The TUI also has a snapshot hook for documentation frames: `HOSTVEIL_SNAPSHOT=/path
+go test ./internal/ui/tui -run TestSnapshotDump`.
+
 ### Provider setup by platform
 
 **Linux — libvirt/KVM** (fastest, native):

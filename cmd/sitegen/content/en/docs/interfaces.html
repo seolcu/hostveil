@@ -33,6 +33,14 @@
 hostveil fix --all --yes</code></pre></div>
             <p>See the <a href="cli">CLI reference</a> for every command and flag.</p>
 
+            <h2 id="themes">Themes</h2>
+            <p>The TUI and the dashboard ship five color themes: <code>instrument</code> (the default), <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, and <code>tokyonight</code>. They share one palette definition, so a theme looks the same in the terminal and in the browser.</p>
+            <p>In the TUI press <code>t</code> to open the picker: the arrow keys preview each theme in place, <code>Enter</code> keeps it, and <code>Esc</code> puts back the one you had. Your choice is remembered for the next run. The dashboard has the same list in its status bar and remembers it per browser.</p>
+            <div class="code-block"><pre><code>hostveil tui --theme nord
+hostveil serve --theme gruvbox
+HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
+            <p><code>--theme</code> and <code>HOSTVEIL_THEME</code> both override the remembered choice. Colors mean the same thing in every theme — the four severity steps and safety — so nothing about a theme changes how a finding reads.</p>
+
             <div class="callout">
               <span class="callout-label">One engine, three faces</span>
               <p>Because the interfaces share a single fix-and-rollback engine, behavior is identical across them: a fix applied in the browser shows up in <code>hostveil history</code> and is reversible from the terminal, and vice versa.</p>

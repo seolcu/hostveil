@@ -10,73 +10,124 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
-// Palette — identical hex to the web UI ("Instrument" system). lipgloss v2
-// renders these as truecolor and degrades gracefully on limited terminals.
-var (
-	cLine  = lipgloss.Color("#333b46")
-	cBone  = lipgloss.Color("#e7e3d8")
-	cSlate = lipgloss.Color("#7c8692")
-	cCrit  = lipgloss.Color("#e5484d")
-	cHigh  = lipgloss.Color("#e8843c")
-	cMed   = lipgloss.Color("#e6c14a")
-	cLow   = lipgloss.Color("#6b7480")
-	cSafe  = lipgloss.Color("#46c69a")
-)
+// styles is one theme resolved into the colors and lipgloss styles the views
+// draw with. lipgloss v2 renders these as truecolor and degrades gracefully
+// on limited terminals.
+//
+// This used to be a package-level palette, fixed at init and duplicated by
+// hand in the web dashboard's CSS. The hexes now come from
+// internal/ui/theme — one registry, shared with the dashboard — and a themed
+// TUI needs to rebuild them at runtime, which a package var cannot do.
+type styles struct {
+	cInk   color.Color
+	cLine  color.Color
+	cBone  color.Color
+	cSlate color.Color
+	cCrit  color.Color
+	cHigh  color.Color
+	cMed   color.Color
+	cLow   color.Color
+	cSafe  color.Color
 
-var (
-	styleBone  = lipgloss.NewStyle().Foreground(cBone)
-	styleDim   = lipgloss.NewStyle().Foreground(cSlate)
-	styleSafe  = lipgloss.NewStyle().Foreground(cSafe)
-	styleBrand = lipgloss.NewStyle().Foreground(cBone).Bold(true)
-	styleSel   = lipgloss.NewStyle().Foreground(cBone).Background(cLine).Bold(true)
-	styleTrack = lipgloss.NewStyle().Foreground(cLine)
-)
+	bone  lipgloss.Style
+	dim   lipgloss.Style
+	safe  lipgloss.Style
+	brand lipgloss.Style
+	sel   lipgloss.Style
+	track lipgloss.Style
+}
 
-func severityColor(s model.Severity) color.Color {
-	switch s {
+func newStyles(t theme.Theme) *styles {
+	p := t.Palette
+	s := &styles{
+		cInk:   lipgloss.Color(p.Ink),
+		cLine:  lipgloss.Color(p.Line2),
+		cBone:  lipgloss.Color(p.Bone),
+		cSlate: lipgloss.Color(p.Slate),
+		cCrit:  lipgloss.Color(p.Crit),
+		cHigh:  lipgloss.Color(p.High),
+		cMed:   lipgloss.Color(p.Med),
+		cLow:   lipgloss.Color(p.Low),
+		cSafe:  lipgloss.Color(p.Safe),
+	}
+	s.bone = lipgloss.NewStyle().Foreground(s.cBone)
+	s.dim = lipgloss.NewStyle().Foreground(s.cSlate)
+	s.safe = lipgloss.NewStyle().Foreground(s.cSafe)
+	s.brand = lipgloss.NewStyle().Foreground(s.cBone).Bold(true)
+	s.sel = lipgloss.NewStyle().Foreground(s.cBone).Background(s.cLine).Bold(true)
+	s.track = lipgloss.NewStyle().Foreground(s.cLine)
+	return s
+}
+
+// sty returns the active styles, building them on first use. The lazy build
+// is deliberate: an appModel is a plain struct that several call sites (and
+// every layout test) construct as a literal, and a zero value must render in
+// the default theme rather than in no colors at all.
+func (m *appModel) sty() *styles {
+	if m.st == nil {
+		if m.th.ID == "" {
+			m.th = theme.Default()
+		}
+		m.st = newStyles(m.th)
+	}
+	return m.st
+}
+
+// setTheme switches the palette the next render draws with.
+func (m *appModel) setTheme(t theme.Theme) {
+	if t.ID == "" {
+		t = theme.Default()
+	}
+	m.th, m.st = t, newStyles(t)
+}
+
+func (s *styles) severityColor(sev model.Severity) color.Color {
+	switch sev {
 	case model.SeverityCritical:
-		return cCrit
+		return s.cCrit
 	case model.SeverityHigh:
-		return cHigh
+		return s.cHigh
 	case model.SeverityMedium:
-		return cMed
+		return s.cMed
 	default:
-		return cLow
+		return s.cLow
 	}
 }
 
 // band maps a 0-100 health score to its meter color (safe→crit heat).
-func band(v uint8) color.Color {
+func (s *styles) band(v uint8) color.Color {
 	switch {
 	case v >= 80:
-		return cSafe
+		return s.cSafe
 	case v >= 50:
-		return cMed
+		return s.cMed
 	case v >= 25:
-		return cHigh
+		return s.cHigh
 	default:
-		return cCrit
+		return s.cCrit
 	}
 }
 
 // meter renders a segmented bar: filled blocks in c, empty in the track.
-func meter(pct uint8, width int, c color.Color) string {
+func (s *styles) meter(pct uint8, width int, c color.Color) string {
 	filled := int(pct) * width / 100
 	if filled > width {
 		filled = width
 	}
 	on := lipgloss.NewStyle().Foreground(c).Render(strings.Repeat("█", filled))
-	off := styleTrack.Render(strings.Repeat("░", width-filled))
+	off := s.track.Render(strings.Repeat("░", width-filled))
 	return on + off
 }
 
 func (m *appModel) View() tea.View {
+	s := m.sty()
 	var content string
 	switch m.mode {
 	case modeScanning:
-		content = "\n  " + styleDim.Render(m.status) + "\n"
+		content = "\n  " + s.dim.Render(m.status) + "\n"
 	case modeList:
 		content = m.viewList()
 	case modeDetail:
@@ -89,8 +140,16 @@ func (m *appModel) View() tea.View {
 		content = m.viewHistory()
 	case modeRollbackConfirm:
 		content = m.viewRollbackConfirm()
+	case modeTheme:
+		content = m.viewTheme()
 	}
-	return tea.View{Content: content, AltScreen: true}
+	// Paint the terminal background too. Without it a theme only recolors the
+	// text and the terminal's own background shows through every gap, which
+	// reads as a broken palette rather than a chosen one. Bubble Tea resets
+	// this to the terminal's default when the program exits — note that a
+	// terminal whose background was itself set by an earlier escape sequence
+	// comes back to its default rather than to that value.
+	return tea.View{Content: content, AltScreen: true, BackgroundColor: s.cInk}
 }
 
 func (m *appModel) rule() string {
@@ -98,15 +157,16 @@ func (m *appModel) rule() string {
 	if w < 1 {
 		w = 1
 	}
-	return styleTrack.Render(strings.Repeat("─", w))
+	return m.sty().track.Render(strings.Repeat("─", w))
 }
 
 // header renders the status bar: brand + the exposure gauge (SECURITY
 // meter + score), then the per-axis bars.
 func (m *appModel) header() string {
+	s := m.sty()
 	var b strings.Builder
 	sc := m.report.Score.Overall
-	b.WriteString(styleDim.Render("▚ ") + styleBrand.Render("hostveil"))
+	b.WriteString(s.dim.Render("▚ ") + s.brand.Render("hostveil"))
 	// Everything but the meter is fixed width: "▚ " + "hostveil" + a
 	// three-space gap + "SECURITY " + " NNN" + "/100". The meter absorbs
 	// whatever is left, so the gauge shrinks with the terminal instead of
@@ -116,8 +176,8 @@ func (m *appModel) header() string {
 	if m.width > 0 && m.width-gaugeChrome < meterW {
 		meterW = max(4, m.width-gaugeChrome)
 	}
-	b.WriteString("   " + styleDim.Render("SECURITY ") + meter(sc, meterW, band(sc)) +
-		styleBone.Render(fmt.Sprintf(" %d", sc)) + styleDim.Render("/100"))
+	b.WriteString("   " + s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
+		s.bone.Render(fmt.Sprintf(" %d", sc)) + s.dim.Render("/100"))
 	b.WriteString("\n")
 	b.WriteString(m.axesLine())
 	b.WriteString("\n")
@@ -136,17 +196,18 @@ func (m *appModel) deltaLine() string {
 	if !m.delta.HasChanges() {
 		return ""
 	}
+	s := m.sty()
 	var parts []string
 	if n := len(m.delta.Resolved); n > 0 {
-		parts = append(parts, styleSafe.Render(fmt.Sprintf("✓ %d resolved", n)))
+		parts = append(parts, s.safe.Render(fmt.Sprintf("✓ %d resolved", n)))
 	}
 	if n := len(m.delta.New); n > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(cHigh).Render(fmt.Sprintf("+ %d new", n)))
+		parts = append(parts, lipgloss.NewStyle().Foreground(s.cHigh).Render(fmt.Sprintf("+ %d new", n)))
 	}
 	if n := len(m.delta.Changed); n > 0 {
-		parts = append(parts, styleBone.Render(fmt.Sprintf("~ %d changed", n)))
+		parts = append(parts, s.bone.Render(fmt.Sprintf("~ %d changed", n)))
 	}
-	return styleDim.Render("since last scan  ") + strings.Join(parts, styleDim.Render("   "))
+	return s.dim.Render("since last scan  ") + strings.Join(parts, s.dim.Render("   "))
 }
 
 // axisCell is the rendered width of one axis: a 9-column id, an 8-column
@@ -164,20 +225,21 @@ const (
 // does not merely look wrong, it pushes every row below it down and off the
 // bottom of the frame, taking the findings list with it.
 func (m *appModel) axesLine() string {
+	s := m.sty()
 	var cells []string
 	for _, ax := range m.report.Score.Axes {
-		label := styleDim.Render(fmt.Sprintf("%-9s", ax.ID))
+		label := s.dim.Render(fmt.Sprintf("%-9s", ax.ID))
 		switch {
 		case !ax.Applicable:
-			cells = append(cells, label+styleTrack.Render(strings.Repeat("░", 8))+styleDim.Render(" N/A"))
+			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(" N/A"))
 		case ax.Degraded:
 			// Scored, but from an incomplete picture — the "~" says so, since
 			// a bare number here reads as a full result. Padded to the same
 			// width as an undegraded value so the columns still line up.
-			cells = append(cells, label+meter(ax.Score, 8, band(ax.Score))+
-				styleBone.Render(fmt.Sprintf(" %-3s", strconv.Itoa(int(ax.Score))+"~")))
+			cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+
+				s.bone.Render(fmt.Sprintf(" %-3s", strconv.Itoa(int(ax.Score))+"~")))
 		default:
-			cells = append(cells, label+meter(ax.Score, 8, band(ax.Score))+styleBone.Render(fmt.Sprintf(" %-3d", ax.Score)))
+			cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+s.bone.Render(fmt.Sprintf(" %-3d", ax.Score)))
 		}
 	}
 	if len(cells) == 0 {
@@ -195,7 +257,7 @@ func (m *appModel) axesLine() string {
 		perRow = 1
 	}
 
-	gap := styleDim.Render(strings.Repeat(" ", axisGap))
+	gap := s.dim.Render(strings.Repeat(" ", axisGap))
 	var rows []string
 	for i := 0; i < len(cells); i += perRow {
 		end := min(i+perRow, len(cells))
@@ -205,9 +267,10 @@ func (m *appModel) axesLine() string {
 }
 
 const listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-	"s severity   d domain   x fixable   c clear   h history   r rescan   q quit"
+	"s severity   d domain   x fixable   c clear   h history   t theme   r rescan   q quit"
 
 func (m *appModel) viewList() string {
+	s := m.sty()
 	var b strings.Builder
 	hdr := m.header()
 	b.WriteString(hdr)
@@ -219,11 +282,11 @@ func (m *appModel) viewList() string {
 	if len(m.active) == 0 {
 		if fl != "" {
 			b.WriteString(fl + "\n")
-			b.WriteString("\n" + styleDim.Render("  No findings match the filter.") + "\n")
+			b.WriteString("\n" + s.dim.Render("  No findings match the filter.") + "\n")
 		} else {
-			b.WriteString("\n" + styleSafe.Render("  No problems found. Clean.") + "\n")
+			b.WriteString("\n" + s.safe.Render("  No problems found. Clean.") + "\n")
 		}
-		b.WriteString(m.footer("c clear   r rescan   q quit"))
+		b.WriteString(m.footer("c clear   t theme   r rescan   q quit"))
 		return b.String()
 	}
 
@@ -257,12 +320,12 @@ func (m *appModel) viewList() string {
 	if total := m.activeTotal(); total != len(m.active) {
 		count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), total)
 	}
-	head := styleDim.Render(count)
+	head := s.dim.Render(count)
 	if n := len(m.selected); n > 0 {
-		head += styleSafe.Render(fmt.Sprintf("   ✓ %d marked", n))
+		head += s.safe.Render(fmt.Sprintf("   ✓ %d marked", n))
 	}
 	if len(m.active) > visible {
-		head += styleDim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
+		head += s.dim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
 	}
 	b.WriteString(head + "\n")
 	if fl != "" {
@@ -293,14 +356,15 @@ func (m *appModel) activeTotal() int {
 // marker (✓ / ·) is only shown on auto-fixable rows, since only those can be
 // batch-selected.
 func (m *appModel) findingRow(f model.Finding, cursor bool) string {
-	sevC := severityColor(f.Severity)
+	s := m.sty()
+	sevC := s.severityColor(f.Severity)
 	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
 	mark := "  "
 	if f.Remediation == model.RemediationAuto {
 		if m.selected[f.Key()] {
-			mark = styleSafe.Render("✓ ")
+			mark = s.safe.Render("✓ ")
 		} else {
-			mark = styleDim.Render("· ")
+			mark = s.dim.Render("· ")
 		}
 	}
 	sev := sevAbbr(f.Severity)
@@ -316,20 +380,20 @@ func (m *appModel) findingRow(f model.Finding, cursor bool) string {
 
 	if cursor {
 		title := truncate(f.Title, m.width-gutterAndMark-lipgloss.Width(body))
-		return gutter + mark + styleSel.Render(padRight(body+title, m.width-gutterAndMark))
+		return gutter + mark + s.sel.Render(padRight(body+title, m.width-gutterAndMark))
 	}
 
 	// The suffix is dropped rather than truncated when there is no room for
 	// it: a service name cut to "(clo…" identifies nothing, and the title is
 	// the more useful of the two.
-	suffix := serviceSuffixTUI(f)
+	suffix := m.serviceSuffix(f)
 	avail := m.width - gutterAndMark - lipgloss.Width(body)
 	if lipgloss.Width(suffix) > avail {
 		suffix = ""
 	}
 	title := truncate(f.Title, avail-lipgloss.Width(suffix))
 	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
-		styleDim.Render(fmt.Sprintf(" %-13s ", f.ID)) + styleBone.Render(title) + suffix
+		s.dim.Render(fmt.Sprintf(" %-13s ", f.ID)) + s.bone.Render(title) + suffix
 }
 
 // sourceLabel is the short domain name shown in the filter line, matching
@@ -374,7 +438,8 @@ func (m *appModel) filterLine() string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return styleDim.Render("FILTER  ") + styleBone.Render(strings.Join(parts, " · "))
+	s := m.sty()
+	return s.dim.Render("FILTER  ") + s.bone.Render(strings.Join(parts, " · "))
 }
 
 func sevAbbr(s model.Severity) string {
@@ -390,29 +455,30 @@ func sevAbbr(s model.Severity) string {
 	}
 }
 
-func serviceSuffixTUI(f model.Finding) string {
+func (m *appModel) serviceSuffix(f model.Finding) string {
 	if f.Service == "" {
 		return ""
 	}
-	return styleDim.Render("  (" + f.Service + ")")
+	return m.sty().dim.Render("  (" + f.Service + ")")
 }
 
 func (m *appModel) viewDetail() string {
+	s := m.sty()
 	f := m.active[m.cursor]
 	var b strings.Builder
 	b.WriteString(m.header())
 	b.WriteString(m.rule() + "\n\n")
-	b.WriteString(lipgloss.NewStyle().Foreground(severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
-		"  " + styleBrand.Render(f.Title) + "\n")
+	b.WriteString(lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
+		"  " + s.brand.Render(f.Title) + "\n")
 	meta := strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
 	if f.Service != "" {
 		meta += "  ·  SERVICE: " + f.Service
 	}
-	b.WriteString(styleDim.Render(meta) + "\n\n")
-	b.WriteString(styleBone.Render(wrap(f.Description, min(m.width-4, 78))) + "\n\n")
+	b.WriteString(s.dim.Render(meta) + "\n\n")
+	b.WriteString(s.bone.Render(wrap(f.Description, min(m.width-4, 78))) + "\n\n")
 	if f.HowToFix != "" {
-		b.WriteString(styleDim.Render("HOW TO FIX") + "\n")
-		b.WriteString(styleBone.Render(wrap(f.HowToFix, min(m.width-4, 78))) + "\n")
+		b.WriteString(s.dim.Render("HOW TO FIX") + "\n")
+		b.WriteString(s.bone.Render(wrap(f.HowToFix, min(m.width-4, 78))) + "\n")
 	}
 	hint := "esc back   q list"
 	if f.IsFixable() {
@@ -423,19 +489,20 @@ func (m *appModel) viewDetail() string {
 }
 
 func (m *appModel) viewPreview() string {
+	s := m.sty()
 	var b strings.Builder
-	b.WriteString(styleDim.Render("FIX PREVIEW") + "\n")
-	b.WriteString(styleBrand.Render(m.preview.Label) + "\n")
+	b.WriteString(s.dim.Render("FIX PREVIEW") + "\n")
+	b.WriteString(s.brand.Render(m.preview.Label) + "\n")
 	b.WriteString(m.rule() + "\n\n")
 
 	if len(m.preview.Actions) > 1 {
-		b.WriteString(styleDim.Render("Alternatives (press a number):") + "\n")
+		b.WriteString(s.dim.Render("Alternatives (press a number):") + "\n")
 		for _, a := range m.preview.Actions {
 			marker := "  "
 			if a.Index == m.previewAction {
-				marker = lipgloss.NewStyle().Foreground(cBone).Render("› ")
+				marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
 			}
-			b.WriteString(marker + styleBone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)) + "\n")
+			b.WriteString(marker + s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)) + "\n")
 		}
 		b.WriteString("\n")
 	}
@@ -450,19 +517,19 @@ func (m *appModel) viewPreview() string {
 		// sit under the text rather than the marker.
 		warn := wrap(a.Warning, min(m.width-4, 78))
 		warn = strings.ReplaceAll(warn, "\n", "\n   ")
-		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).Render("⚠  "+warn) + "\n\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(s.cHigh).Render("⚠  "+warn) + "\n\n")
 	}
 	switch a.Type {
 	case "edit", "mode":
-		b.WriteString(renderDiff(a.Diff))
+		b.WriteString(s.renderDiff(a.Diff))
 	case "exec":
-		b.WriteString(styleDim.Render("These commands will run:") + "\n")
+		b.WriteString(s.dim.Render("These commands will run:") + "\n")
 		for _, cmd := range a.Commands {
-			b.WriteString(styleDim.Render("  $ "+strings.Join(cmd, " ")) + "\n")
+			b.WriteString(s.dim.Render("  $ "+strings.Join(cmd, " ")) + "\n")
 		}
 	default:
 		// Never leave the apply/cancel footer with an empty body above it.
-		b.WriteString(styleDim.Render("(no preview available for action type "+a.Type+")") + "\n")
+		b.WriteString(s.dim.Render("(no preview available for action type "+a.Type+")") + "\n")
 	}
 	b.WriteString(m.footer("y apply   n cancel"))
 	return b.String()
@@ -473,6 +540,7 @@ func (m *appModel) viewPreview() string {
 // (command) fixes are dimmed: they are part of the record but there is
 // nothing file-backed to restore.
 func (m *appModel) viewHistory() string {
+	s := m.sty()
 	var b strings.Builder
 	hdr := m.header()
 	b.WriteString(hdr)
@@ -497,9 +565,9 @@ func (m *appModel) viewHistory() string {
 		end = len(m.checkpoints)
 	}
 
-	head := styleDim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
+	head := s.dim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
 	if len(m.checkpoints) > visible {
-		head += styleDim.Render(fmt.Sprintf("      %d–%d", m.cpOffset+1, end))
+		head += s.dim.Render(fmt.Sprintf("      %d–%d", m.cpOffset+1, end))
 	}
 	b.WriteString(head + "\n")
 
@@ -513,54 +581,110 @@ func (m *appModel) viewHistory() string {
 const historyHint = "↑/↓ move   enter roll back   esc back   q list"
 
 func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
+	s := m.sty()
 	when := cp.CreatedAt.Local().Format("01-02 15:04")
 	label := truncate(cp.Label, m.width-40)
 	line := fmt.Sprintf("%-11s %-15s %s", when, cp.FindingID, label)
 	if cursor {
-		return styleSel.Render(padRight(line, m.width-1))
+		return s.sel.Render(padRight(line, m.width-1))
 	}
 	if !cp.Reversible {
-		return styleDim.Render(line)
+		return s.dim.Render(line)
 	}
-	return styleDim.Render(when+" ") + styleBone.Render(fmt.Sprintf("%-15s ", cp.FindingID)) +
-		styleBone.Render(label)
+	return s.dim.Render(when+" ") + s.bone.Render(fmt.Sprintf("%-15s ", cp.FindingID)) +
+		s.bone.Render(label)
+}
+
+const themeHint = "↑/↓ preview   enter keep   esc cancel"
+
+// viewTheme is the color-theme picker. Moving the cursor restyles the whole
+// frame on the spot rather than showing a swatch and a name: a palette is
+// only judgeable against the meters, severity gutters and diffs it will
+// actually be drawn with.
+func (m *appModel) viewTheme() string {
+	s := m.sty()
+	var b strings.Builder
+	b.WriteString(s.dim.Render("THEME") + "\n")
+	b.WriteString(s.brand.Render(m.th.Name) + "\n")
+	b.WriteString(m.rule() + "\n\n")
+
+	all := theme.All()
+	// A row is "› " + an 18-column name + a two-space gap + five two-column
+	// swatches. The swatch is dropped rather than clipped on a terminal too
+	// narrow for it — half a palette says less than none.
+	const nameW, swatchW = 18, 10
+	showSwatch := m.width >= 2+nameW+2+swatchW
+	for i, t := range all {
+		marker := "  "
+		if i == m.themeCursor {
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+		}
+		name := padRight(truncate(t.Name, max(1, min(nameW, m.width-2))), nameW)
+		row := marker
+		if i == m.themeCursor {
+			row += s.sel.Render(name)
+		} else {
+			row += s.bone.Render(name)
+		}
+		if showSwatch {
+			row += "  " + swatch(t)
+		}
+		b.WriteString(row + "\n")
+	}
+
+	b.WriteString("\n" + s.dim.Render(wrap("Colors mean the same thing in every theme: the four severity "+
+		"steps and safety. Everything else is chrome.", min(m.width-2, 78))) + "\n")
+	b.WriteString(m.footer(themeHint))
+	return b.String()
+}
+
+// swatch previews the five colors that carry meaning, in that theme's own
+// palette rather than the active one.
+func swatch(t theme.Theme) string {
+	var b strings.Builder
+	for _, hex := range []string{t.Palette.Crit, t.Palette.High, t.Palette.Med, t.Palette.Low, t.Palette.Safe} {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render("██"))
+	}
+	return b.String()
 }
 
 // viewRollbackConfirm mirrors viewPreview's y/n gesture, showing the diff
 // the rollback would revert so the decision is made on evidence.
 func (m *appModel) viewRollbackConfirm() string {
+	s := m.sty()
 	cp := m.checkpoints[m.cpCursor]
 	var b strings.Builder
-	b.WriteString(styleDim.Render("ROLL BACK") + "\n")
-	b.WriteString(styleBrand.Render(cp.Label) + "\n")
+	b.WriteString(s.dim.Render("ROLL BACK") + "\n")
+	b.WriteString(s.brand.Render(cp.Label) + "\n")
 	b.WriteString(m.rule() + "\n\n")
-	b.WriteString(styleDim.Render("Restores:") + "\n")
+	b.WriteString(s.dim.Render("Restores:") + "\n")
 	for _, p := range cp.Files {
-		b.WriteString(styleBone.Render("  "+p) + "\n")
+		b.WriteString(s.bone.Render("  "+p) + "\n")
 	}
 	b.WriteString("\n")
 	if cp.RestartService != "" {
-		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).
+		b.WriteString(lipgloss.NewStyle().Foreground(s.cHigh).
 			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards.") + "\n\n")
 	}
 	if cp.Diff != "" {
-		b.WriteString(styleDim.Render("This change will be reverted:") + "\n")
-		b.WriteString(renderDiff(cp.Diff))
+		b.WriteString(s.dim.Render("This change will be reverted:") + "\n")
+		b.WriteString(s.renderDiff(cp.Diff))
 	}
 	b.WriteString(m.footer("y roll back   n cancel"))
 	return b.String()
 }
 
 func (m *appModel) viewMessage() string {
+	s := m.sty()
 	var b strings.Builder
 	b.WriteString(m.header())
-	b.WriteString(m.rule() + "\n\n  " + styleBone.Render(m.status) + "\n")
+	b.WriteString(m.rule() + "\n\n  " + s.bone.Render(m.status) + "\n")
 	b.WriteString(m.footer("press any key to continue"))
 	return b.String()
 }
 
 func (m *appModel) footer(hint string) string {
-	return "\n" + m.rule() + "\n" + styleDim.Render(m.wrapHint(hint))
+	return "\n" + m.rule() + "\n" + m.sty().dim.Render(m.wrapHint(hint))
 }
 
 // wrapHint reflows a key-binding hint onto as many lines as the terminal
@@ -595,16 +719,16 @@ func (m *appModel) wrapHint(hint string) string {
 	return strings.Join(out, "\n")
 }
 
-func renderDiff(diff string) string {
+func (s *styles) renderDiff(diff string) string {
 	var b strings.Builder
 	for _, line := range strings.Split(strings.TrimRight(diff, "\n"), "\n") {
 		switch {
 		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++"):
-			b.WriteString(styleSafe.Render(line) + "\n")
+			b.WriteString(s.safe.Render(line) + "\n")
 		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---"):
-			b.WriteString(lipgloss.NewStyle().Foreground(cCrit).Render(line) + "\n")
+			b.WriteString(lipgloss.NewStyle().Foreground(s.cCrit).Render(line) + "\n")
 		default:
-			b.WriteString(styleDim.Render(line) + "\n")
+			b.WriteString(s.dim.Render(line) + "\n")
 		}
 	}
 	return b.String()
