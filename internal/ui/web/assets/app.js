@@ -252,6 +252,7 @@ function render() {
     return;
   }
 
+  const rows = new Map(); // finding key -> its <li>, so the overview can jump to one
   list.replaceChildren(
     ...items.map((f) => {
       const li = el("li", { class: "finding " + rowSevClass(f) + (isAuto(f) ? " pickable" : "") },
@@ -265,10 +266,73 @@ function render() {
       );
       li.onclick = () => selectFinding(f, li);
       if (selected && selected.id === f.id && selected.service === f.service) li.classList.add("active");
+      rows.set(f.id + "|" + (f.service || ""), li);
       return li;
     })
   );
   renderBatchbar();
+
+  // Orient the user in the detail pane instead of leaving it a blank "Select
+  // a finding". It stays until the first selection, and comes back on rescan.
+  if (!selected) renderOverview(all, items, rows);
+}
+
+// renderOverview fills the detail pane with a read of the whole scan: the
+// score in words, the severity mix, how many can be fixed unattended, and the
+// most severe findings as a jump list. The empty pane was wasted on the one
+// view every user sees first.
+function renderOverview(all, visible, rows) {
+  const counts = [0, 0, 0, 0];
+  for (const f of all) counts[f.severity]++;
+  const autos = all.filter(isAuto).length;
+  const s = report.score.overall;
+  const verdict = s >= 80 ? "in good shape" : s >= 50 ? "middling" : s >= 25 ? "exposed" : "wide open";
+
+  const d = document.getElementById("detail");
+  const box = el("div", { class: "overview" });
+  box.append(el("h3", {}, `This host is ${verdict}.`));
+  box.append(el("p", { class: "over-lead" },
+    `${all.length} unresolved finding${all.length === 1 ? "" : "s"} across the domains that ran.`));
+
+  // Severity chips, only for severities actually present.
+  const chips = el("div", { class: "over-sev" });
+  [["Critical", 0], ["High", 1], ["Medium", 2], ["Low", 3]].forEach(([name, i]) => {
+    if (counts[i] > 0) chips.append(el("span", { class: "over-chip sev-" + SEV[i] }, `${counts[i]} ${name}`));
+  });
+  box.append(chips);
+
+  // The one action that needs no per-finding decision.
+  if (autos > 0) {
+    const btn = el("button", { class: "primary over-fixall" },
+      `Fix all ${autos} safe finding${autos === 1 ? "" : "s"}`);
+    btn.onclick = () => document.getElementById("fixall").click();
+    box.append(btn);
+    box.append(el("p", { class: "over-note" },
+      "Each is previewed and backed up first, and reversible from History."));
+  }
+
+  // Jump list: the most severe handful, so the worst problems are one click
+  // away rather than a scroll-and-hunt.
+  const top = visible.slice(0, 6);
+  if (top.length) {
+    box.append(el("div", { class: "over-head" }, "Most severe"));
+    const ul = el("ul", { class: "over-jump" });
+    for (const f of top) {
+      const li = el("li", { class: "over-jump-row" },
+        el("span", { class: "sev " + rowSevClass(f) }, sevAbbr(f)),
+        el("span", { class: "over-jump-title" }, f.title),
+        f.service ? el("span", { class: "svc" }, f.service) : ""
+      );
+      li.onclick = () => {
+        const row = rows.get(f.id + "|" + (f.service || ""));
+        if (row) { row.scrollIntoView({ block: "nearest" }); selectFinding(f, row); }
+      };
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+
+  d.replaceChildren(box);
 }
 
 function selectFinding(f, li) {

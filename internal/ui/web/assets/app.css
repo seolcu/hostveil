@@ -154,6 +154,28 @@ ul { list-style: none; margin: 0; padding: 0; }
 .detail p { max-width: 74ch; margin: 0 0 12px; }
 .detail .howto { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; }
 
+/* ── overview (detail pane before a finding is selected) ── */
+.overview { max-width: 68ch; }
+.over-lead { color: var(--slate); }
+.over-sev { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.over-chip { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 4px 9px;
+  border: 1px solid var(--line-2); }
+.over-chip.sev-critical { color: var(--crit); border-color: var(--crit); }
+.over-chip.sev-high { color: var(--high); border-color: var(--high); }
+.over-chip.sev-medium { color: var(--med); }
+.over-chip.sev-low { color: var(--low); }
+.over-fixall { margin: 0 0 6px; }
+.over-note { color: var(--slate); font-size: 12px; margin: 0 0 20px; }
+.over-head { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px;
+  margin: 0 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.over-jump { list-style: none; margin: 0; padding: 0; }
+.over-jump-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline;
+  padding: 8px 4px; border-bottom: 1px solid var(--ink-2); cursor: pointer; }
+.over-jump-row:hover { background: var(--ink-2); }
+.over-jump-row .sev.crit { color: var(--crit); } .over-jump-row .sev.high { color: var(--high); }
+.over-jump-row .sev.medium { color: var(--med); } .over-jump-row .sev.low { color: var(--low); }
+.over-jump-title { color: var(--bone); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ── fix preview ── */
 .fixbox { margin-top: 18px; border: 1px solid var(--line); background: var(--ink-2); }
 .fixbox-head { padding: 10px 14px; border-bottom: 1px solid var(--line);
