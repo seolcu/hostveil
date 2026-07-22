@@ -442,7 +442,15 @@ func (m *appModel) viewPreview() string {
 
 	a := m.preview.Actions[m.previewAction]
 	if a.Warning != "" {
-		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).Render("⚠  "+a.Warning) + "\n\n")
+		// Wrap the warning. It is the one place the preview explains what
+		// cannot be undone, and unwrapped it ran past the terminal edge and
+		// was clipped mid-sentence — cut, in the exec case, at "There is no
+		// rollback" with the reason that follows lost. The "⚠  " prefix is
+		// two columns plus a space, so the continuation lines are indented to
+		// sit under the text rather than the marker.
+		warn := wrap(a.Warning, min(m.width-4, 78))
+		warn = strings.ReplaceAll(warn, "\n", "\n   ")
+		b.WriteString(lipgloss.NewStyle().Foreground(cHigh).Render("⚠  "+warn) + "\n\n")
 	}
 	switch a.Type {
 	case "edit", "mode":
@@ -466,10 +474,19 @@ func (m *appModel) viewPreview() string {
 // nothing file-backed to restore.
 func (m *appModel) viewHistory() string {
 	var b strings.Builder
-	b.WriteString(m.header())
+	hdr := m.header()
+	b.WriteString(hdr)
 	b.WriteString(m.rule() + "\n")
 
-	reserved := 8
+	// Measure the header rather than assuming 8 lines. viewList was corrected
+	// this way when the axes strip started wrapping; this view had the same
+	// hardcoded reservation and the same bug — on a narrow terminal the extra
+	// header rows pushed the checkpoint list past the footer. The 6 is the
+	// chrome viewHistory draws around the rows (matching viewList): the rule
+	// under the header, the count line, and the footer's blank, rule, and two
+	// hint lines.
+	ftr := m.footer(historyHint)
+	reserved := strings.Count(hdr, "\n") + strings.Count(ftr, "\n") + 3
 	visible := m.height - reserved
 	if visible < 1 {
 		visible = 1
@@ -489,9 +506,11 @@ func (m *appModel) viewHistory() string {
 	for i := m.cpOffset; i < end; i++ {
 		b.WriteString(m.checkpointRow(m.checkpoints[i], i == m.cpCursor) + "\n")
 	}
-	b.WriteString(m.footer("↑/↓ move   enter roll back   esc back   q list"))
+	b.WriteString(ftr)
 	return b.String()
 }
+
+const historyHint = "↑/↓ move   enter roll back   esc back   q list"
 
 func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
 	when := cp.CreatedAt.Local().Format("01-02 15:04")
