@@ -106,3 +106,52 @@ func TestFrameFitsTerminalHeight(t *testing.T) {
 		}
 	}
 }
+
+// The preview warning is the one place a fix says what it cannot undo, and it
+// was rendered as a single unwrapped line. On a terminal narrower than the
+// warning it ran off the edge and was clipped mid-sentence — in the exec case
+// exactly at "There is no rollback", losing the reason that follows. Every
+// line of every mode must fit the width it is drawn into.
+func TestPreviewAndHistoryFitTerminalWidth(t *testing.T) {
+	longWarn := "This recreates the container: the service goes down briefly and comes " +
+		"back on a different image. There is no rollback checkpoint: exec fixes are " +
+		"not file-backed, so hostveil cannot undo this."
+
+	preview := &appModel{
+		mode: modePreview, width: 80, height: 30, selected: map[string]bool{},
+		preview: model.FixPreview{
+			Label: "Update the image for nextcloud",
+			Actions: []model.ActionPreview{
+				{Index: 0, Label: "Pull the new image and recreate nextcloud now", Warning: longWarn,
+					Type: "exec", Commands: [][]string{{"docker", "compose", "-f", "/opt/stacks/cloud/docker-compose.yml", "pull", "nextcloud"}}},
+				{Index: 1, Label: "Download only", Warning: longWarn, Type: "exec",
+					Commands: [][]string{{"docker", "compose", "pull", "nextcloud"}}},
+			},
+		},
+	}
+
+	cps := make([]model.Checkpoint, 20)
+	for i := range cps {
+		cps[i] = model.Checkpoint{
+			ID: "cp", FindingID: "compose.ds018", Label: "Bind redis to loopback", Reversible: true,
+		}
+	}
+	history := &appModel{mode: modeHistory, width: 72, height: 20, checkpoints: cps, report: layoutReport(), selected: map[string]bool{}}
+
+	for name, m := range map[string]*appModel{"preview": preview, "history": history} {
+		content := m.View().Content
+		for _, line := range strings.Split(content, "\n") {
+			if got := visibleWidth(line); got > m.width {
+				t.Errorf("%s width=%d: line is %d columns:\n  %q", name, m.width, got, line)
+			}
+		}
+		// The history list sizes itself to the terminal, so a wrong header
+		// reservation makes it draw more rows than fit and the frame runs past
+		// the bottom. (The preview is content-sized and not height-bounded.)
+		if name == "history" {
+			if got := strings.Count(content, "\n") + 1; got > m.height {
+				t.Errorf("history height=%d: frame is %d lines", m.height, got)
+			}
+		}
+	}
+}
