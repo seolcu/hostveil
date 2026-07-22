@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.3.0](https://github.com/seolcu/hostveil/compare/v3.2.0...v3.3.0) (2026-07-22)
+
+Where v3.2.0 asked whether the score was telling the truth, this one asks
+whether the interfaces reporting it actually hold up on a real screen. Every
+change here was found by driving the running software — the dashboard in a
+headless browser at phone widths, the TUI through a real terminal — rather
+than by reading snapshots of what it renders. All three defects were invisible
+to the existing tests, and two of them were invisible to the first version of
+the tests written to catch them.
+
+### Features
+
+* **web:** orient the user with an overview in the detail pane
+  ([#558](https://github.com/seolcu/hostveil/issues/558)). Half of the first
+  screen every user sees read *"Select a finding to inspect it."* and stayed
+  that way until they clicked something. It now reads the scan already in
+  memory: a verdict in words, the severity mix, the one action that needs no
+  per-finding decision, and the most severe findings as a jump list.
+
+### Bug Fixes
+
+* **ui:** keep the TUI frame and the dashboard inside the viewport
+  ([#557](https://github.com/seolcu/hostveil/issues/557)). Below about 560px
+  the dashboard's status bar pushed History, Rescan and Fix-all-safe clean off
+  the right edge — every action the dashboard offers, unreachable unless you
+  thought to scroll sideways. The TUI overflowed its own frame on narrow and
+  short terminals through four separate unbudgeted widths.
+* **tui:** wrap the fix-preview warning and measure history's header
+  ([#559](https://github.com/seolcu/hostveil/issues/559)). The warning that a
+  fix has no rollback rendered as one unwrapped line, so on a narrow terminal
+  it was clipped mid-sentence — cutting off, among other things, the words
+  "there is no rollback".
+
 ## [3.2.0](https://github.com/seolcu/hostveil/compare/v3.1.0...v3.2.0) (2026-07-22)
 
 This release is mostly about a single question: was the score telling the
