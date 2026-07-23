@@ -180,8 +180,61 @@ func rangeSpec(start, count int) string {
 	return fmt.Sprintf("%d,%d", start, count)
 }
 
-// lcsDiff computes edit operations via a longest-common-subsequence DP.
+// lcsDiff computes edit operations for the whole of a→b, trimming the
+// matching head and tail before handing the rest to the quadratic core.
+//
+// The trim is what makes previewing a fix affordable. The LCS table is
+// O(len(a)·len(b)) in both time and memory, and a fix is by construction a
+// small localized edit: previewing a one-line change to a 10,000-line
+// compose file built a 100-million-cell table — 784 MiB of allocation to
+// produce 408 bytes of diff, enough to OOM the 1 GB VPS this tool is aimed
+// at. Every line outside the changed region is common to both sides, so
+// trimming leaves the core a handful of lines regardless of file size.
+//
+// Trimming cannot change the output. The lines removed here are pairwise
+// equal, so any LCS of the full inputs contains them, and emitting them as
+// context around whatever the core returns reconstructs exactly the op
+// sequence the untrimmed DP would have produced. (FuzzUnified pins this.)
 func lcsDiff(a, b []string) []op {
+	head := 0
+	for head < len(a) && head < len(b) && a[head] == b[head] {
+		head++
+	}
+	tail := 0
+	for tail < len(a)-head && tail < len(b)-head &&
+		a[len(a)-1-tail] == b[len(b)-1-tail] {
+		tail++
+	}
+
+	ops := make([]op, 0, head+tail+8)
+	for i := 0; i < head; i++ {
+		ops = append(ops, op{kind: opEqual, line: a[i], aLine: i + 1, bLine: i + 1})
+	}
+	// Line numbers inside the core are relative to the trimmed slices, so
+	// shift them back onto the original files.
+	for _, o := range lcsCore(a[head:len(a)-tail], b[head:len(b)-tail]) {
+		if o.aLine > 0 {
+			o.aLine += head
+		}
+		if o.bLine > 0 {
+			o.bLine += head
+		}
+		ops = append(ops, o)
+	}
+	for i := 0; i < tail; i++ {
+		ops = append(ops, op{
+			kind:  opEqual,
+			line:  a[len(a)-tail+i],
+			aLine: len(a) - tail + i + 1,
+			bLine: len(b) - tail + i + 1,
+		})
+	}
+	return ops
+}
+
+// lcsCore computes edit operations via a longest-common-subsequence DP. It
+// runs on inputs whose common head and tail have already been removed.
+func lcsCore(a, b []string) []op {
 	n, m := len(a), len(b)
 	dp := make([][]int, n+1)
 	for i := range dp {
