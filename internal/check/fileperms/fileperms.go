@@ -104,8 +104,10 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			model.WithEvidence("files", strings.Join(badEvidence, model.EvidenceSeparator)),
 			// The machine-readable twin of "files": the fix needs the paths
 			// alone, and parsing them back out of "/etc/shadow (0644), …"
-			// breaks on any path containing ", " or " (".
-			model.WithEvidence("paths", strings.Join(badPaths, model.EvidenceSeparator)),
+			// breaks on any path containing ", " or " (". The separator is
+			// PathListSeparator rather than EvidenceSeparator for the second
+			// half of that reason — ", " is legal inside a path too.
+			model.WithEvidence("paths", strings.Join(badPaths, model.PathListSeparator)),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
 	}

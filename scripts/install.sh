@@ -181,14 +181,46 @@ install_tool() {
       }
       case "$OS" in linux) TRIVY_OS="Linux" ;; darwin) TRIVY_OS="Darwin" ;; esac
       case "$ARCH" in amd64) TRIVY_ARCH="64bit" ;; arm64) TRIVY_ARCH="ARM64" ;; esac
-      curl -fsSL --retry 3 \
-        "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VER}/trivy_${TRIVY_VER}_${TRIVY_OS}-${TRIVY_ARCH}.tar.gz" \
-        -o "${TMPDIR}/trivy.tar.gz"
-      tar xzf "${TMPDIR}/trivy.tar.gz" -C "$TMPDIR" || {
+      TRIVY_TAR="trivy_${TRIVY_VER}_${TRIVY_OS}-${TRIVY_ARCH}.tar.gz"
+      TRIVY_BASE="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VER}"
+      # Extract into its own directory. A bare `find` over $TMPDIR would also
+      # match anything named trivy that another step left there.
+      TRIVY_DIR="${TMPDIR}/trivy-unpack"
+      mkdir -p "$TRIVY_DIR"
+
+      curl -fsSL --retry 3 "${TRIVY_BASE}/${TRIVY_TAR}" -o "${TRIVY_DIR}/${TRIVY_TAR}" || {
+        echo "  ERROR: trivy download failed" >&2
+        return 1
+      }
+
+      # Verified for the same reason hostveil's own archive is: this is
+      # installed to /usr/bin and hostveil then executes it. Trivy publishes
+      # checksums with every release, and skipping them here while insisting
+      # on them for hostveil would secure the front door and leave the side
+      # one open.
+      curl -fsSL --retry 3 "${TRIVY_BASE}/trivy_${TRIVY_VER}_checksums.txt" \
+        -o "${TRIVY_DIR}/checksums.txt" || {
+        echo "  ERROR: could not download trivy's checksums; refusing to install it unverified" >&2
+        return 1
+      }
+      TRIVY_EXPECTED=$(awk -v f="$TRIVY_TAR" '$2 == f || $2 == "*" f {print $1}' "${TRIVY_DIR}/checksums.txt")
+      if [[ -z "$TRIVY_EXPECTED" ]]; then
+        echo "  ERROR: ${TRIVY_TAR} is not listed in trivy's checksums file" >&2
+        return 1
+      fi
+      TRIVY_ACTUAL=$(require_sha256 "${TRIVY_DIR}/${TRIVY_TAR}")
+      if [[ "$TRIVY_EXPECTED" != "$TRIVY_ACTUAL" ]]; then
+        echo "  ERROR: checksum mismatch for ${TRIVY_TAR}" >&2
+        echo "    expected: $TRIVY_EXPECTED" >&2
+        echo "    actual:   $TRIVY_ACTUAL" >&2
+        return 1
+      fi
+
+      tar xzf "${TRIVY_DIR}/${TRIVY_TAR}" -C "$TRIVY_DIR" || {
         echo "  ERROR: trivy extraction failed" >&2
         return 1
       }
-      TRIVY_BIN=$(find "$TMPDIR" -name 'trivy' -type f 2>/dev/null | head -1)
+      TRIVY_BIN=$(find "$TRIVY_DIR" -name 'trivy' -type f 2>/dev/null | head -1)
       if [[ -n "$TRIVY_BIN" ]]; then
         sudo install -m 755 "$TRIVY_BIN" /usr/bin/trivy
       else
@@ -222,25 +254,36 @@ curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
   exit 1
 }
 
+# Verification is mandatory, and every way it can fail is fatal.
+#
+# This used to warn and install anyway when the checksums file could not be
+# fetched or did not list the archive. That turns a network-level attacker
+# who can serve one file and block another into an attacker who can hand you
+# any binary they like — and this binary is about to be installed to
+# /usr/bin and run as root. There is no partial credit here: either the
+# artifact matches what the release published, or it does not get installed.
 echo "  • hostveil: verifying checksum..."
 CHECKSUM_URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/hostveil-checksums.txt"
-if curl -fsSL --retry 3 "$CHECKSUM_URL" -o "${TMPDIR}/hostveil-checksums.txt"; then
-  EXPECTED=$(grep "${TAR}" "${TMPDIR}/hostveil-checksums.txt" 2>/dev/null | awk '{print $1}')
-  if [[ -n "$EXPECTED" ]]; then
-    ACTUAL=$(require_sha256 "${TMPDIR}/${TAR}")
-    if [[ "$EXPECTED" != "$ACTUAL" ]]; then
-      echo "  ERROR: checksum mismatch for ${TAR}" >&2
-      echo "    expected: $EXPECTED" >&2
-      echo "    actual:   $ACTUAL" >&2
-      exit 1
-    fi
-    echo "  ✓ checksum verified"
-  else
-    echo "  ⚠ ${TAR} not listed in checksums file, skipping verification"
-  fi
-else
-  echo "  ⚠ checksums file not available, skipping verification"
+if ! curl -fsSL --retry 3 "$CHECKSUM_URL" -o "${TMPDIR}/hostveil-checksums.txt"; then
+  echo "  ERROR: could not download the checksums file for v${VERSION}" >&2
+  echo "    ${CHECKSUM_URL}" >&2
+  echo "    Refusing to install an unverified binary." >&2
+  exit 1
 fi
+EXPECTED=$(awk -v f="$TAR" '$2 == f || $2 == "*" f {print $1}' "${TMPDIR}/hostveil-checksums.txt")
+if [[ -z "$EXPECTED" ]]; then
+  echo "  ERROR: ${TAR} is not listed in the release's checksums file" >&2
+  echo "    Refusing to install an unverified binary." >&2
+  exit 1
+fi
+ACTUAL=$(require_sha256 "${TMPDIR}/${TAR}")
+if [[ "$EXPECTED" != "$ACTUAL" ]]; then
+  echo "  ERROR: checksum mismatch for ${TAR}" >&2
+  echo "    expected: $EXPECTED" >&2
+  echo "    actual:   $ACTUAL" >&2
+  exit 1
+fi
+echo "  ✓ checksum verified"
 
 tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" || {
   echo "  ERROR: extraction failed" >&2

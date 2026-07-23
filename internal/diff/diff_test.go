@@ -260,6 +260,55 @@ func TestUnifiedLargeInput(t *testing.T) {
 	}
 }
 
+// TestUnifiedCostIsBoundedByTheChange guards the trim in lcsDiff, which is
+// the only reason previewing a fix to a large file is affordable.
+//
+// The LCS table is O(len(a)·len(b)) in time and memory. Without the trim
+// this input would build a 4·10^10-cell table — hundreds of gigabytes, so
+// the test does not fail slowly, it dies. With it, the quadratic core sees
+// the one changed line and the cost tracks the edit rather than the file.
+// A one-line change to a 10,000-line compose file allocated 784 MiB before
+// this and 0.7 MiB after.
+func TestUnifiedCostIsBoundedByTheChange(t *testing.T) {
+	const lines = 200_000
+	var a, b strings.Builder
+	for i := range lines {
+		a.WriteString("  - '8080:80'\n")
+		if i == lines/2 {
+			b.WriteString("  - '127.0.0.1:8080:80'\n")
+			continue
+		}
+		b.WriteString("  - '8080:80'\n")
+	}
+
+	got := Unified("docker-compose.yml", a.String(), b.String())
+
+	if n := strings.Count(got, "\n+  - '127.0.0.1:8080:80'"); n != 1 {
+		t.Errorf("expected exactly one added line, got %d", n)
+	}
+	// Only the changed line plus its context survives; echoing the file back
+	// would bury the very line being authorized.
+	if len(got) > 1000 {
+		t.Errorf("diff of a one-line change is %d bytes, want a single small hunk", len(got))
+	}
+}
+
+// BenchmarkUnifiedOneLineEdit measures the operation that runs every time a
+// user previews a fix.
+func BenchmarkUnifiedOneLineEdit(b *testing.B) {
+	var orig strings.Builder
+	for range 5000 {
+		orig.WriteString("  - '8080:80'\n")
+	}
+	a := orig.String()
+	modified := strings.Replace(a, "  - '8080:80'\n", "  - '127.0.0.1:8080:80'\n", 1)
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = Unified("docker-compose.yml", a, modified)
+	}
+}
+
 // FuzzUnified asserts the property that makes a preview trustworthy: the diff
 // must be a faithful, lossless rendering of both texts. Because Unified emits
 // every line (no hunks, no elided context), the reconstruction is exact at line

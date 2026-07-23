@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -136,7 +137,7 @@ func TestThemePickerOpensOnTheActiveTheme(t *testing.T) {
 // preference would both be ignored the moment the TUI starts.
 func TestNewAppliesTheGivenTheme(t *testing.T) {
 	want, _ := theme.Lookup("tokyonight")
-	m := New(nil, ThemeOpts{Initial: want}).(*appModel)
+	m := New(context.Background(), nil, ThemeOpts{Initial: want}).(*appModel)
 	if m.th.ID != want.ID {
 		t.Errorf("New used theme %q, want %q", m.th.ID, want.ID)
 	}

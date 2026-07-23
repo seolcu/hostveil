@@ -7,6 +7,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sync"
 
 	"github.com/seolcu/hostveil/internal/ai"
@@ -34,6 +35,18 @@ type Engine struct {
 	store    *history.Store
 	runner   platform.CommandRunner
 	ai       ai.Explainer
+
+	// applyMu serializes everything that mutates the host or replaces the
+	// current report: scans, fix applications, and rollbacks. It is always
+	// taken OUTSIDE mu, never while holding it.
+	//
+	// Without it the web dashboard — which serves requests concurrently —
+	// could run two applyEdits against one compose file at once. Each reads
+	// the file, transforms its own copy, and writes; the later write erases
+	// the earlier fix while both checkpoints record success and both findings
+	// are marked Fixed. That is silent data loss in the one subsystem whose
+	// entire promise is that changes are recorded and reversible.
+	applyMu sync.Mutex
 
 	mu        sync.RWMutex
 	current   model.Report
@@ -63,7 +76,19 @@ func New(cfg Config) *Engine {
 // be nil; if non-nil it receives a ScanEvent as each checker starts and
 // finishes.
 func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) model.Report {
-	env := platform.Detect(ctx, e.runner)
+	// A scan replaces the current report wholesale, so it must not overlap a
+	// fix: the replacement would drop the Fixed flag the fix had just set,
+	// and the scan would be reading files another goroutine is mid-write on.
+	e.applyMu.Lock()
+	defer e.applyMu.Unlock()
+
+	// Checkers are read-only and run concurrently, and several of them ask
+	// the host the same questions — `docker compose ls`, `docker inspect`
+	// over every container, the firewall probe. The cache collapses those to
+	// one execution each for the duration of this scan. It deliberately does
+	// not replace e.runner: fixes run through the uncached one, because an
+	// exec fix mutates the host and must never be served from a cache.
+	env := platform.Detect(ctx, platform.NewScanCache(e.runner))
 	results := e.registry.Run(ctx, env, progress)
 
 	var findings []model.Finding
@@ -135,10 +160,20 @@ func (e *Engine) persist(r model.Report) {
 }
 
 // Current returns the last stored report and whether a scan has run.
+//
+// The findings are copied, not shared. Report is a struct but Findings is a
+// slice, so returning it by value hands the caller the same backing array
+// the engine keeps mutating — markFixed writes Fixed on those elements
+// under the lock while the caller reads them outside it. The web dashboard
+// hit exactly that: `go test -race` reports a write in markFixed against a
+// concurrent read in json.Encoder from /api/result. Copying makes the
+// returned report a snapshot, which is what every caller already assumed.
 func (e *Engine) Current() (model.Report, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.current, e.hasRun
+	report := e.current
+	report.Findings = slices.Clone(e.current.Findings)
+	return report, e.hasRun
 }
 
 // classify settles a finding's remediation between two sources of truth.

@@ -68,7 +68,7 @@ hostveil fix --all       # apply every safe (Auto) fix at once
 hostveil rollback <id>   # undo a previously applied fix
 hostveil history         # list applied fixes and their rollback IDs
 hostveil explain <id>    # explain a finding (add --ai for a local-LLM second opinion)
-hostveil serve           # web dashboard on 127.0.0.1:8787
+hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
 ```
 
 Some checks (SSH, firewall) read root-owned files, and applying fixes needs
@@ -106,7 +106,11 @@ same engine, a fix applied anywhere is reversible.
 ## Interfaces
 
 - **TUI** — keyboard-driven, the default when you run `hostveil` on a terminal.
-- **Web** — `hostveil serve`, a localhost-bound dashboard.
+- **Web** — `hostveil serve`, a localhost-bound dashboard. It prints a URL
+  carrying a one-off access token; open that exact URL. Loopback keeps the
+  dashboard off the network, but not away from other accounts on the same
+  machine — and it runs as root. For remote access, forward the port over SSH
+  rather than changing `--addr`, which cannot expose it.
 - **CLI** — scriptable `scan` / `fix` / `rollback` with `--json` output.
 
 All three are thin layers over one shared engine, so they behave identically.

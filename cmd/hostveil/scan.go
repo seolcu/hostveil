@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/seolcu/hostveil/internal/clirender"
+	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-func cmdScan(args []string) int {
+func cmdScan(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	var (
 		jsonOut bool
@@ -26,7 +27,7 @@ func cmdScan(args []string) int {
 	}
 
 	engine := buildEngine()
-	report := engine.Scan(context.Background(), nil)
+	report := scanWithProgress(ctx, engine)
 
 	if jsonOut {
 		out, err := clirender.JSON(report)
@@ -44,6 +45,31 @@ func cmdScan(args []string) int {
 		fmt.Print(clirender.DeltaSummary(delta))
 	}
 	return exitCode(report)
+}
+
+// scanWithProgress runs a scan, showing which domains are still working
+// while it does.
+//
+// The display goes to stderr and only when stderr is a terminal, so `--json`,
+// a redirect, and a cron run all produce exactly the bytes they did before.
+// When there is nowhere useful to draw, the scan runs with a nil channel and
+// no goroutine — the same path as before this existed.
+func scanWithProgress(ctx context.Context, engine *core.Engine) model.Report {
+	if !isCharDevice(os.Stderr) {
+		return engine.Scan(ctx, nil)
+	}
+
+	events := make(chan model.ScanEvent, clirender.ProgressBufferSize)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		clirender.Progress(os.Stderr, events)
+	}()
+
+	report := engine.Scan(ctx, events)
+	close(events)
+	<-done // let the renderer clear its line before the report is printed
+	return report
 }
 
 // exitCode returns 1 when any unfixed high-or-critical finding was

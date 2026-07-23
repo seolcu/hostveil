@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/fix"
@@ -540,5 +541,83 @@ func TestApplyBatchIncludesModeFixes(t *testing.T) {
 	}
 	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o640 {
 		t.Errorf("mode = %#o, want 0640", fi.Mode().Perm())
+	}
+}
+
+// TestConcurrentFixesToOneFileDoNotLoseEachOther pins the serialization in
+// applyMu.
+//
+// applyEdit is a read-modify-write, and the web dashboard serves requests
+// concurrently. Without the lock, two fixes to one compose file both read the
+// original, both transform their own copy, and the later write erases the
+// earlier fix — while both checkpoints record success and both findings are
+// marked Fixed. The loss is silent, in the subsystem whose entire promise is
+// that changes are recorded and reversible.
+func TestConcurrentFixesToOneFileDoNotLoseEachOther(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  app:\n    image: myapp\n    ports:\n      - \"8080:80\"\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Two independent Auto fixes that edit the same file in different places.
+	findings := []model.Finding{
+		model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
+			model.SourceCompose, model.RemediationAuto,
+			model.WithService("app"), model.WithMetadata("file", path), model.WithMetadata("service", "app")),
+		model.NewFinding("compose.ds018", "port on all interfaces", model.SeverityMedium,
+			model.SourceCompose, model.RemediationAuto,
+			model.WithService("app"), model.WithMetadata("file", path), model.WithMetadata("service", "app"),
+			model.WithEvidence("port", "8080")),
+	}
+
+	e := fixEngine(t)
+	var wg sync.WaitGroup
+	for _, f := range findings {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := e.ApplyFix(context.Background(), f, 0); err != nil {
+				t.Errorf("apply %s: %v", f.ID, err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Both edits must be present. Either one missing means a write was lost.
+	for _, want := range []string{"no-new-privileges", "127.0.0.1:8080:80"} {
+		if !strings.Contains(string(after), want) {
+			t.Errorf("a concurrent fix was lost — %q missing from:\n%s", want, after)
+		}
+	}
+}
+
+// TestCurrentIsASnapshot guards against the data race `go test -race` found
+// between /api/result and an in-flight fix: Report is a struct but Findings
+// is a slice, so returning it by value used to hand callers the same backing
+// array markFixed writes into.
+func TestCurrentIsASnapshot(t *testing.T) {
+	e := fixEngine(t)
+	e.mu.Lock()
+	e.current = model.Report{Findings: []model.Finding{
+		model.NewFinding("compose.ds006", "t", model.SeverityLow,
+			model.SourceCompose, model.RemediationAuto, model.WithService("app")),
+	}}
+	e.hasRun = true
+	e.mu.Unlock()
+
+	snapshot, _ := e.Current()
+	e.markFixed(snapshot.Findings[0])
+
+	if snapshot.Findings[0].Fixed {
+		t.Error("Current() shares its findings with the engine; a later fix mutated the caller's copy")
+	}
+	if fresh, _ := e.Current(); !fresh.Findings[0].Fixed {
+		t.Error("markFixed did not reach the engine's own report")
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-func cmdFix(args []string) int {
+func cmdFix(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("fix", flag.ContinueOnError)
 	var (
 		service string
@@ -35,7 +35,7 @@ func cmdFix(args []string) int {
 	}
 
 	if all {
-		return fixAll(yes)
+		return fixAll(ctx, yes)
 	}
 	if findingID == "" {
 		if fs.NArg() < 1 {
@@ -46,7 +46,7 @@ func cmdFix(args []string) int {
 	}
 
 	engine := buildEngine()
-	report := engine.Scan(context.Background(), nil)
+	report := engine.Scan(ctx, nil)
 
 	finding, ok := findFinding(report, findingID, service)
 	if !ok {
@@ -78,7 +78,7 @@ func cmdFix(args []string) int {
 		return 0
 	}
 
-	outcome, err := engine.ApplyFix(context.Background(), finding, chosen)
+	outcome, err := engine.ApplyFix(ctx, finding, chosen)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil: fix failed:", err)
 		return 1
@@ -88,9 +88,9 @@ func cmdFix(args []string) int {
 }
 
 // fixAll previews and applies every safe (Auto) fix in one pass.
-func fixAll(yes bool) int {
+func fixAll(ctx context.Context, yes bool) int {
 	engine := buildEngine()
-	report := engine.Scan(context.Background(), nil)
+	report := engine.Scan(ctx, nil)
 
 	var auto []model.Finding
 	for _, f := range report.Findings {
@@ -113,7 +113,7 @@ func fixAll(yes bool) int {
 		return 0
 	}
 
-	out := engine.ApplyBatch(context.Background(), auto)
+	out := engine.ApplyBatch(ctx, auto)
 	fmt.Printf("\n✓ Applied %d fixes", len(out.Applied))
 	if len(out.Failed) > 0 {
 		fmt.Printf(", %d failed", len(out.Failed))

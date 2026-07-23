@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -58,26 +59,20 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		return nil, err
 	}
 
-	var findings []model.Finding
-	var attempted, failed int
-	var firstErr error
+	var targets []target
 	scanned := map[string]bool{}
+	add := func(t target) {
+		if t.image == "" || scanned[t.image] {
+			return
+		}
+		scanned[t.image] = true
+		targets = append(targets, t)
+	}
+
 	for _, p := range projects {
-		for _, svc := range p.Services {
-			if svc.Image == "" || scanned[svc.Image] {
-				continue
-			}
-			scanned[svc.Image] = true
-			attempted++
-			fs, err := scanImage(ctx, env.Runner, svc.Image, svc.Name, p.File, p.Name)
-			if err != nil {
-				failed++
-				if firstErr == nil {
-					firstErr = err
-				}
-				continue
-			}
-			findings = append(findings, fs...)
+		for _, name := range sortedServiceNames(p) {
+			svc := p.Services[name]
+			add(target{image: svc.Image, service: svc.Name, file: p.File, project: p.Name})
 		}
 	}
 
@@ -90,21 +85,11 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// images all scanned cleanly look like a total failure.
 	standalone, enumErr := compose.DiscoverContainers(ctx, env.Runner)
 	for _, c := range standalone {
-		if c.Service.Image == "" || scanned[c.Service.Image] {
-			continue
-		}
-		scanned[c.Service.Image] = true
-		attempted++
-		fs, err := scanImage(ctx, env.Runner, c.Service.Image, c.Name, "", "")
-		if err != nil {
-			failed++
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		findings = append(findings, demoteToManual(fs)...)
+		add(target{image: c.Service.Image, service: c.Name, standalone: true})
 	}
+
+	findings, failed, firstErr := scanAll(ctx, env.Runner, targets)
+	attempted := len(targets)
 
 	// Case order matters: with no images at all, failed and attempted are both
 	// zero and the clean case must win.
@@ -130,6 +115,85 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 			Total:   attempted,
 		}
 	}
+}
+
+// target is one image to scan, plus the attribution its findings carry.
+// standalone marks a container no compose file describes, whose findings are
+// demoted to Manual because the registered fix has no file to act on.
+type target struct {
+	image      string
+	service    string
+	file       string
+	project    string
+	standalone bool
+}
+
+// scanParallelism bounds how many Trivy processes run at once.
+//
+// The scan was serial, and Trivy is the slowest thing hostveil runs: a host
+// with twenty images spent twenty sequential image scans in a domain the
+// other eight checkers had long since finished. The cap exists because the
+// opposite mistake is just as easy — Trivy is CPU- and IO-heavy, and one
+// process per image on a small VPS would thrash the box hostveil is meant to
+// be looking after gently. Four keeps the pipeline full without becoming the
+// load spike.
+const scanParallelism = 4
+
+// scanAll scans every target with bounded concurrency and returns the merged
+// findings, how many failed, and the first failure in target order.
+//
+// Results are collected by index rather than appended as they arrive, so the
+// findings and the reported error do not depend on which Trivy process
+// happened to finish first. A scan that reordered its own output between runs
+// would show up as a spurious delta on the next re-scan.
+func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (findings []model.Finding, failed int, firstErr error) {
+	type result struct {
+		findings []model.Finding
+		err      error
+	}
+	results := make([]result, len(targets))
+
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, scanParallelism)
+	for i, t := range targets {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			slots <- struct{}{}
+			defer func() { <-slots }()
+
+			fs, err := scanImage(ctx, r, t.image, t.service, t.file, t.project)
+			if err == nil && t.standalone {
+				fs = demoteToManual(fs)
+			}
+			results[i] = result{findings: fs, err: err}
+		}()
+	}
+	wg.Wait()
+
+	for _, res := range results {
+		if res.err != nil {
+			failed++
+			if firstErr == nil {
+				firstErr = res.err
+			}
+			continue
+		}
+		findings = append(findings, res.findings...)
+	}
+	return findings, failed, firstErr
+}
+
+// sortedServiceNames returns a project's service names in a stable order.
+// Ranging a map directly would vary the scan order between runs, which
+// decides which image's failure is reported as the first one.
+func sortedServiceNames(p compose.Project) []string {
+	names := make([]string, 0, len(p.Services))
+	for name := range p.Services {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 type trivyReport struct {

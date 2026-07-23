@@ -2,6 +2,7 @@ package history
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -380,5 +381,78 @@ func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 	}
 	if _, err := store.Rollback(cp.ID); err != nil {
 		t.Errorf("a pre-upgrade checkpoint must still roll back: %v", err)
+	}
+}
+
+// Checkpoints are backups, so they are capped far more loosely than scan
+// snapshots — but they are capped. Nothing removed them before, and each
+// holds a full copy of every file its fix touched, so a long-lived host grew
+// its state directory without bound and paid for it on every history view.
+func TestCheckpointsArePrunedOldestFirst(t *testing.T) {
+	s := NewStore(t.TempDir())
+
+	total := maxCheckpoints + 10
+	ids := make([]string, 0, total)
+	for i := range total {
+		cp := Checkpoint{
+			ID:        fmt.Sprintf("2026%06d-000000.000-aaaaaaaa-0000000%d", i, i%10),
+			FindingID: "ssh.rootlogin",
+			CreatedAt: time.Unix(int64(i), 0).UTC(),
+		}
+		saved, err := s.Save(cp, map[string][]byte{
+			filepath.Join(t.TempDir(), "f"): []byte("contents"),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, saved.ID)
+	}
+
+	kept, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != maxCheckpoints {
+		t.Errorf("kept %d checkpoints, want the cap of %d", len(kept), maxCheckpoints)
+	}
+
+	// The newest must survive: pruning from that end would strip the record
+	// the external-edit check reads, making a rollback of an untouched file
+	// look like tampering.
+	newest := ids[len(ids)-1]
+	if _, err := s.Get(newest); err != nil {
+		t.Errorf("the newest checkpoint was pruned: %v", err)
+	}
+	if _, err := s.Get(ids[0]); err == nil {
+		t.Error("the oldest checkpoint survived the cap")
+	}
+}
+
+// A batch fix must not prune the backups it is in the middle of writing:
+// a checkpoint discarded moments after it was created is a fix that became
+// unrollbackable the instant it was applied.
+func TestOneBatchFitsUnderTheCheckpointCap(t *testing.T) {
+	s := NewStore(t.TempDir())
+	dir := t.TempDir()
+
+	// Comfortably more findings than any single `fix --all` produces.
+	const batch = 60
+	for i := range batch {
+		path := filepath.Join(dir, fmt.Sprintf("f%d", i))
+		if err := os.WriteFile(path, []byte("orig"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cp := Checkpoint{ID: NewID("compose.ds018"), FindingID: "compose.ds018", CreatedAt: time.Now()}
+		if _, err := s.Save(cp, map[string][]byte{path: []byte("orig")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	kept, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != batch {
+		t.Errorf("a %d-fix batch left %d checkpoints; every one must survive its own session", batch, len(kept))
 	}
 }

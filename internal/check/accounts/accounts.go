@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -32,7 +33,8 @@ func (*Checker) Source() model.Source { return model.SourceAccounts }
 
 // Available requires a readable /etc/passwd. /etc/shadow may still be
 // unreadable without root; Check handles that by running the passwd-only
-// checks and skipping the password check.
+// checks and reporting the domain Degraded, so the unchecked half is
+// visible rather than scored as clean.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	f, err := os.Open(c.PasswdPath) //nolint:gosec // fixed system path
 	if err != nil {
@@ -89,11 +91,23 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		))
 	}
 
-	// The empty-password check needs /etc/shadow, which is root-only. If it
-	// is unreadable, skip just this check rather than failing the domain.
+	// The empty-password check needs /etc/shadow, which is root-only. Losing
+	// it costs half the domain, so the result is Degraded — never clean.
+	//
+	// Returning nil here is the mistake this package exists to catch, made by
+	// the checker itself: "could not read /etc/shadow" and "no account has an
+	// empty password" score identically and mean opposite things. A non-root
+	// scan reported full marks for account hygiene having never looked at a
+	// single password, which is the same lie that once produced a perfect CVE
+	// score on an unscanned host.
 	shadow, err := os.ReadFile(c.ShadowPath) //nolint:gosec // fixed system path
 	if err != nil {
-		return findings, nil
+		return findings, &check.PartialError{
+			Reason: "cannot read " + c.ShadowPath +
+				" — checked for UID-0 accounts, but not for accounts with an empty password; re-run with sudo",
+			Covered: 1,
+			Total:   2,
+		}
 	}
 	var passwordless []string
 	for _, line := range strings.Split(string(shadow), "\n") {

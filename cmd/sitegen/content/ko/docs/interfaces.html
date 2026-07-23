@@ -45,7 +45,8 @@
               <button class="copy-btn" type="button" data-copy="hostveil serve">Copy</button>
               <pre><code>hostveil serve</code></pre>
             </div>
-            <p>기본적으로 <code>127.0.0.1:8787</code>에 바인딩됩니다 — loopback 전용입니다. <code>--addr</code>로 변경할 수 있으며, non-loopback 주소를 지정하면 hostveil이 대시보드 노출에 관한 경고를 출력합니다. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
+            <p>일회용 접근 토큰이 담긴 URL이 출력됩니다 — 그 URL을 그대로 여세요. loopback 바인딩은 대시보드를 네트워크에서 차단하지만 같은 machine의 다른 계정으로부터는 지켜주지 못하며, 이곳의 모든 경로는 root 권한으로 fix를 적용하거나 <code>/etc/shadow</code> 스캔 결과를 읽습니다. 토큰이 그 틈을 막습니다. 첫 페이지 로드에서 세션 쿠키로 교환되므로 이후 링크에는 다시 나타나지 않습니다.</p>
+            <p><code>127.0.0.1:8787</code>에 바인딩됩니다. 대시보드는 localhost로 향하지 않은 요청을 모두 거부하므로 <code>--addr</code>로는 네트워크에 노출할 수 없습니다 — non-loopback 주소를 지정하면 바인딩은 되지만 아무 요청에도 응답하지 않습니다. 다른 machine에서 접근하려면 포트를 포워딩하세요: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
             <figure>
               <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 점수, 점검 범위 안내, 필터 칩, 스캔 개요" width="1200" height="456" loading="lazy">
               <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수와 영역별 축, 지난 스캔 이후의 변화, 필터 칩, 그리고 스캔을 읽어 주는 개요.</span></figcaption>

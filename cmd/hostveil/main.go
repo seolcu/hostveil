@@ -5,19 +5,31 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 // version is the build version, overridden via -ldflags at release time.
 var version = "v3-dev"
 
 func main() {
-	os.Exit(run(os.Args[1:]))
+	// One cancellable context for the whole run, cancelled on Ctrl-C or
+	// SIGTERM. Every command threads it down to Engine.Scan, which passes it
+	// to exec.CommandContext, so an interrupt actually stops the docker and
+	// trivy processes a scan has running rather than leaving them to finish
+	// against a terminal nobody is watching. Nothing was cancellable before:
+	// the TUI puts the terminal in raw mode and reads Ctrl-C as a key, so a
+	// scan there could not be interrupted at all.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	os.Exit(run(ctx, os.Args[1:]))
 }
 
-func run(args []string) int {
+func run(ctx context.Context, args []string) int {
 	// Top-level help/version flags are handled before subcommand dispatch so
 	// they behave like the bare-word `help`/`version` subcommands. Otherwise a
 	// leading dash-flag is never promoted to a command and leaks into the
@@ -40,19 +52,19 @@ func run(args []string) int {
 
 	switch cmd {
 	case "scan":
-		return cmdScan(args)
+		return cmdScan(ctx, args)
 	case "tui":
-		return cmdTUI(args)
+		return cmdTUI(ctx, args)
 	case "fix":
-		return cmdFix(args)
+		return cmdFix(ctx, args)
 	case "serve", "web":
-		return cmdServe(args)
+		return cmdServe(ctx, args)
 	case "explain":
-		return cmdExplain(args)
+		return cmdExplain(ctx, args)
 	case "rollback":
-		return cmdRollback(args)
+		return cmdRollback(ctx, args)
 	case "history":
-		return cmdHistory(args)
+		return cmdHistory(ctx, args)
 	case "version":
 		fmt.Println("hostveil", version)
 		return 0
@@ -135,7 +147,14 @@ TUI and dashboard flags:
   --theme NAME    Color theme: instrument (default), gruvbox, nord,
                   catppuccin, tokyonight. The TUI's picker (press t) remembers
                   your choice; --theme and HOSTVEIL_THEME override it.
-  --addr HOST     serve only: address to bind the dashboard to
+  --addr HOST     serve only: address to bind the dashboard to. The dashboard
+                  answers only requests addressed to localhost, so this cannot
+                  publish it to the network; forward the port over SSH instead.
+
+The dashboard prints a URL carrying a one-off access token, and every route
+requires it — loopback separates this host from the network, not you from the
+other accounts on this machine, and serve runs as root. Open the printed URL;
+the token then becomes a session cookie for that browser.
 
 Exit status:
   hostveil scan exits 1 when any unfixed finding is Critical or High, and 0

@@ -203,7 +203,8 @@ func modeFindings(s scan) []model.Finding {
 			model.WithEvidence("files", fmt.Sprintf("%s (%#o)", path, perm)),
 			// The machine-readable twin of "files", in the shape the mode fix
 			// expects. Parsing paths back out of the human string breaks on
-			// any path containing ", " or " (".
+			// any path containing ", " or " (". A single path needs no
+			// separator, but it is read back with PathListSeparator.
 			model.WithEvidence("paths", path),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.Max)),
 		}

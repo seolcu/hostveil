@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -42,7 +43,7 @@ func captureStdout(t *testing.T, fn func()) string {
 func TestTopLevelHelpFlags(t *testing.T) {
 	for _, arg := range []string{"help", "--help", "-h"} {
 		var code int
-		out := captureStdout(t, func() { code = run([]string{arg}) })
+		out := captureStdout(t, func() { code = run(context.Background(), []string{arg}) })
 		if code != 0 {
 			t.Errorf("run(%q) exit = %d, want 0", arg, code)
 		}
@@ -60,7 +61,7 @@ func TestTopLevelHelpFlags(t *testing.T) {
 func TestTopLevelVersionFlags(t *testing.T) {
 	for _, arg := range []string{"version", "--version", "-V"} {
 		var code int
-		out := captureStdout(t, func() { code = run([]string{arg}) })
+		out := captureStdout(t, func() { code = run(context.Background(), []string{arg}) })
 		if code != 0 {
 			t.Errorf("run(%q) exit = %d, want 0", arg, code)
 		}

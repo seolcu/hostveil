@@ -6,7 +6,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -61,12 +63,37 @@ func testServer(t *testing.T) (*Server, string) {
 	return New(engine, "127.0.0.1:0", "nord"), path
 }
 
+// authedClient returns a client carrying the dashboard's access token in its
+// cookie jar, which is the state a browser is in after following the URL
+// hostveil prints. Requests without it are rejected before routing, so every
+// test that exercises a route needs this rather than http.DefaultClient.
+func authedClient(t *testing.T, s *Server, srv *httptest.Server) *http.Client {
+	t.Helper()
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar.SetCookies(u, []*http.Cookie{{Name: sessionCookie, Value: s.token}})
+	return &http.Client{Jar: jar}
+}
+
+// authed adds the access token to a request built with httptest.NewRequest,
+// which does not go through a cookie jar.
+func authed(s *Server, r *http.Request) *http.Request {
+	r.AddCookie(&http.Cookie{Name: sessionCookie, Value: s.token})
+	return r
+}
+
 func TestResultEndpoint(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/result")
+	resp, err := authedClient(t, s, srv).Get(srv.URL + "/api/result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +121,7 @@ func TestDNSRebindGuard(t *testing.T) {
 func TestCSRFGuard(t *testing.T) {
 	s, _ := testServer(t)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/rescan", nil)
+	req := authed(s, httptest.NewRequest(http.MethodPost, "/api/rescan", nil))
 	req.Host = "127.0.0.1:8787"
 	req.Header.Set("Origin", "http://evil.example.com")
 	s.Handler().ServeHTTP(rec, req)
@@ -112,7 +139,7 @@ func TestFixThroughAPI(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/fix", body)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", srv.URL)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := authedClient(t, s, srv).Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +167,7 @@ func TestFixBatchThroughAPI(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/fix/batch", body)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", srv.URL)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := authedClient(t, s, srv).Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,12 +200,13 @@ func TestHistoryAndRollbackThroughAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	client := authedClient(t, s, srv)
 	post := func(p, body string) *http.Response {
 		t.Helper()
 		req, _ := http.NewRequest(http.MethodPost, srv.URL+p, strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", srv.URL)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,7 +226,7 @@ func TestHistoryAndRollbackThroughAPI(t *testing.T) {
 
 	// The history endpoint feeds the browser directly: it must carry a
 	// materialized reversible flag and must not leak how backups are stored.
-	histResp, err := http.Get(srv.URL + "/api/history")
+	histResp, err := client.Get(srv.URL + "/api/history")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +260,7 @@ func TestHistoryAndRollbackThroughAPI(t *testing.T) {
 
 	// The finding must be back in the active list, or the dashboard would
 	// show a clean host whose fix had just been undone.
-	resResp, err := http.Get(srv.URL + "/api/result")
+	resResp, err := client.Get(srv.URL + "/api/result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,8 +285,8 @@ func TestHistoryAndRollbackThroughAPI(t *testing.T) {
 func TestRollbackRejectsUnknownCheckpoint(t *testing.T) {
 	s, _ := testServer(t)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/rollback",
-		strings.NewReader(`{"checkpoint_id":"nope"}`))
+	req := authed(s, httptest.NewRequest(http.MethodPost, "/api/rollback",
+		strings.NewReader(`{"checkpoint_id":"nope"}`)))
 	req.Host = "127.0.0.1:8787"
 	req.Header.Set("Origin", "http://127.0.0.1:8787")
 	req.Header.Set("Content-Type", "application/json")
@@ -272,7 +300,7 @@ func TestDashboardServed(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())
 	defer srv.Close()
-	resp, err := http.Get(srv.URL + "/")
+	resp, err := authedClient(t, s, srv).Get(srv.URL + "/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,10 +331,11 @@ func TestResultCarriesDelta(t *testing.T) {
 		}
 		var resp *http.Response
 		var err error
+		client := authedClient(t, s, srv)
 		if path == "/api/rescan" {
-			resp, err = http.Post(srv.URL+path, "application/json", nil)
+			resp, err = client.Post(srv.URL+path, "application/json", nil)
 		} else {
-			resp, err = http.Get(srv.URL + path)
+			resp, err = client.Get(srv.URL + path)
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -338,7 +367,7 @@ func TestThemeAssets(t *testing.T) {
 		{"/themes.css", "text/css"},
 		{"/theme.js", "text/javascript"},
 	} {
-		resp, err := http.Get(srv.URL + tc.path)
+		resp, err := authedClient(t, s, srv).Get(srv.URL + tc.path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -363,7 +392,7 @@ func TestThemeAssets(t *testing.T) {
 func TestServedThemeIsTheStartingPalette(t *testing.T) {
 	s, _ := testServer(t) // built with "nord"
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/themes.css", nil)
+	req := authed(s, httptest.NewRequest(http.MethodGet, "/themes.css", nil))
 	req.Host = "127.0.0.1:8787"
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -442,5 +471,169 @@ func TestIndexLoadsTheGeneratedThemeAssets(t *testing.T) {
 	}
 	if !strings.Contains(html, `<select id="theme"`) {
 		t.Error("the status bar has no theme picker")
+	}
+}
+
+// TestMutatingRoutesRejectGET is the regression guard for a live CSRF hole.
+//
+// The guard checked the origin of POSTs only, and the handlers ignored the
+// request method entirely. A GET therefore skipped the origin check and still
+// reached the handler, so `<img src="http://127.0.0.1:8787/api/fix/all">` on
+// any page in the world made the dashboard apply every Auto fix on the host —
+// verified applying three real fixes to a compose file before this landed. An
+// <img> cannot carry the access token either, but the method restriction is
+// what makes the route unreachable rather than merely unauthorized.
+func TestMutatingRoutesRejectGET(t *testing.T) {
+	s, path := testServer(t)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, route := range []string{"/api/fix", "/api/fix/all", "/api/fix/batch", "/api/rescan", "/api/rollback"} {
+		rec := httptest.NewRecorder()
+		req := authed(s, httptest.NewRequest(http.MethodGet, route, nil))
+		req.Host = "127.0.0.1:8787"
+		req.Header.Set("Origin", "http://evil.example.com")
+		s.Handler().ServeHTTP(rec, req)
+
+		if rec.Code == http.StatusOK {
+			t.Errorf("GET %s succeeded (%d) — a cross-origin <img> can reach it", route, rec.Code)
+		}
+	}
+
+	if after, _ := os.ReadFile(path); string(after) != string(before) {
+		t.Errorf("cross-origin GETs modified the host's compose file:\n%s", after)
+	}
+}
+
+// The token is the boundary between the operator and every other account on
+// the machine. hostveil auto-elevates for `serve`, so an unauthenticated
+// route is root applying fixes on behalf of whoever asked.
+func TestRoutesRequireTheAccessToken(t *testing.T) {
+	s, _ := testServer(t)
+	for _, route := range []string{"/", "/api/result", "/api/history", "/themes.css", "/api/fix/all"} {
+		rec := httptest.NewRecorder()
+		method := http.MethodGet
+		if route == "/api/fix/all" {
+			method = http.MethodPost
+		}
+		req := httptest.NewRequest(method, route, nil) // deliberately no token
+		req.Host = "127.0.0.1:8787"
+		s.Handler().ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s %s without a token returned %d, want 401", method, route, rec.Code)
+		}
+	}
+}
+
+// A wrong token must not be accepted, and must not be distinguishable from
+// any other wrong token.
+func TestWrongTokenIsRejected(t *testing.T) {
+	s, _ := testServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/result?t="+strings.Repeat("a", 64), nil)
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("a wrong token returned %d, want 401", rec.Code)
+	}
+}
+
+// The token travels in the URL once and is exchanged for a session cookie,
+// so the dashboard's own fetches — which carry no query string — stay
+// authorized without the token reappearing in every request.
+func TestTokenInURLSetsTheSessionCookie(t *testing.T) {
+	s, _ := testServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/result?t="+s.token, nil)
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a valid token in the URL returned %d", rec.Code)
+	}
+	var session *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == sessionCookie {
+			session = c
+		}
+	}
+	if session == nil {
+		t.Fatal("no session cookie was set")
+	}
+	if !session.HttpOnly {
+		t.Error("the session cookie must be HttpOnly — a script should not be able to read the token")
+	}
+	if session.SameSite != http.SameSiteStrictMode {
+		t.Error("the session cookie must be SameSite=Strict; Lax would ride along on a cross-site navigation")
+	}
+}
+
+// The printed URL has to be the one that works, or the token is a puzzle
+// rather than a credential.
+func TestURLCarriesTheToken(t *testing.T) {
+	s, _ := testServer(t)
+	if !strings.Contains(s.URL(), "t="+s.token) {
+		t.Errorf("URL() = %q, which does not carry the access token", s.URL())
+	}
+}
+
+// Origin comparison decides whether a request may mutate the host, so it
+// parses the URL rather than trimming a prefix off it. The old hand-rolled
+// version credited the host of anything that merely started with the right
+// characters.
+func TestOriginMatchingIsNotPrefixBased(t *testing.T) {
+	s, _ := testServer(t)
+	for _, origin := range []string{
+		"http://127.0.0.1:8787.evil.example.com",
+		"http://evil.example.com/127.0.0.1:8787",
+		"http://user@evil.example.com",
+	} {
+		rec := httptest.NewRecorder()
+		req := authed(s, httptest.NewRequest(http.MethodPost, "/api/rescan", nil))
+		req.Host = "127.0.0.1:8787"
+		req.Header.Set("Origin", origin)
+		s.Handler().ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("Origin %q returned %d, want 403", origin, rec.Code)
+		}
+	}
+}
+
+// A browser labels every request it makes. When it says the request came
+// from another site, that settles it regardless of the other headers.
+func TestSecFetchSiteBlocksCrossSite(t *testing.T) {
+	s, _ := testServer(t)
+	rec := httptest.NewRecorder()
+	req := authed(s, httptest.NewRequest(http.MethodPost, "/api/rescan", nil))
+	req.Host = "127.0.0.1:8787"
+	req.Header.Set("Origin", "http://127.0.0.1:8787") // spoof-friendly header agrees
+	req.Header.Set("Sec-Fetch-Site", "cross-site")    // the browser's own account does not
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("a cross-site labelled request returned %d, want 403", rec.Code)
+	}
+}
+
+// A wildcard bind is an instruction to the listener, not an address anyone
+// can browse to — and the Host allowlist requires a loopback name whatever
+// the socket is bound to. The Vagrant demo binds 0.0.0.0 and reaches the
+// dashboard through a port-forward, so the URL it prints has to be usable.
+func TestURLRendersAWildcardBindAsLoopback(t *testing.T) {
+	s, _ := testServer(t)
+	for _, tc := range []struct{ addr, want string }{
+		{"0.0.0.0:8787", "http://127.0.0.1:8787/"},
+		{":8787", "http://127.0.0.1:8787/"},
+		{"[::]:8787", "http://127.0.0.1:8787/"},
+		{"127.0.0.1:8787", "http://127.0.0.1:8787/"},
+	} {
+		s.addr = tc.addr
+		if got := s.URL(); !strings.HasPrefix(got, tc.want+"?t=") {
+			t.Errorf("addr %q → URL %q, want it to start with %q", tc.addr, got, tc.want)
+		}
 	}
 }

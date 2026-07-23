@@ -45,7 +45,10 @@ case "${1:-up}" in
     ;;
   scan)    vagrant ssh -c "sudo hostveil scan ${2:-}" ;;
   web)
-    echo "Dashboard: http://localhost:8787   (Ctrl-C to stop)"
+    # 0.0.0.0 so Vagrant's NAT port-forward can reach the listener; the
+    # browser still addresses it as localhost, which is what the dashboard's
+    # Host allowlist checks. Open the tokenized URL hostveil prints below.
+    echo "Dashboard: http://localhost:8787   (open the URL printed below — it carries the access token)"
     vagrant ssh -c "sudo hostveil serve --addr 0.0.0.0:8787"
     ;;
   shell)   vagrant ssh ;;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"github.com/seolcu/hostveil/internal/ui/tui"
 )
 
-func cmdTUI(args []string) int {
+func cmdTUI(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
 	if code := parseFlags(fs, args); code >= 0 {
@@ -31,7 +32,7 @@ func cmdTUI(args []string) int {
 		Initial: t,
 		Save:    func(id string) error { return theme.Save(dir, id) },
 	}
-	if err := tui.Run(buildEngine(), opts); err != nil {
+	if err := tui.Run(ctx, buildEngine(), opts); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
