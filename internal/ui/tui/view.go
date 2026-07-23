@@ -210,17 +210,19 @@ func (m *appModel) deltaLine() string {
 	return s.dim.Render("since last scan  ") + strings.Join(parts, s.dim.Render("   "))
 }
 
-// axisCell is the rendered width of one axis: a 9-column id, an 8-column
-// meter, and a 4-column value. axisGap separates two of them.
+// axisCell is the rendered width of one axis: a 10-column id, an 8-column
+// meter, and a 4-column value. axisGap separates two of them. The id is
+// 10 wide, not 9, so the longest ids ("container", "fileperms") keep a
+// space before the meter instead of butting straight against it.
 const (
-	axisCell = 9 + 8 + 4
+	axisCell = 10 + 8 + 4
 	axisGap  = 3
 )
 
 // axesLine renders the score axes, wrapped to the terminal width.
 //
 // It used to join every axis into a single row. With nine domains that is
-// 9*21 + 8*3 = 213 columns, so on any ordinary 80- or 120-column terminal the
+// 9*22 + 8*3 = 222 columns, so on any ordinary 80- or 120-column terminal the
 // row was far wider than the screen — and in alt-screen mode a wrapped line
 // does not merely look wrong, it pushes every row below it down and off the
 // bottom of the frame, taking the findings list with it.
@@ -228,7 +230,7 @@ func (m *appModel) axesLine() string {
 	s := m.sty()
 	var cells []string
 	for _, ax := range m.report.Score.Axes {
-		label := s.dim.Render(fmt.Sprintf("%-9s", ax.ID))
+		label := s.dim.Render(fmt.Sprintf("%-10s", ax.ID))
 		switch {
 		case !ax.Applicable:
 			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(" N/A"))
