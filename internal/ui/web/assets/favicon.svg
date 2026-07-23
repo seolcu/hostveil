@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="hostveil">
+  <!-- The hostveil mark. The rounded tile is the host; the three bone slats
+       are the veil drawn over it; the teal panel is the hardened core the
+       scan reveals as the veil is drawn aside. Bone dominates and teal is
+       the one meaningful accent, matching the Instrument palette. Kept as a
+       static two-tone mark because a browser tab icon is requested before
+       any theme is known. Bone #e7e3d8, Safe teal #46c69a, Ink2 tile #12151b. -->
+  <rect width="32" height="32" rx="7" fill="#12151b"/>
+  <clipPath id="veil"><rect x="6" y="6" width="20" height="20" rx="2.5"/></clipPath>
+  <g clip-path="url(#veil)">
+    <rect x="18.5" y="6" width="7.5" height="20" fill="#46c69a"/>
+    <g fill="#e7e3d8">
+      <rect x="6" y="6" width="3.4" height="20"/>
+      <rect x="11" y="6" width="3.4" height="20"/>
+      <rect x="16" y="6" width="3.4" height="20"/>
+    </g>
+  </g>
+</svg>

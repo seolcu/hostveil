@@ -29,9 +29,12 @@ body {
    ran clean off the right edge — unreachable — on every viewport between the
    560px mobile breakpoint and ~880px (tablets, split-screen, small laptops).
    Wrapping drops .actions to its own right-aligned row instead. */
-.brand { font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
+.brand { display: inline-flex; align-items: center; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
 .brand b { color: var(--bone); }
-.brand::before { content: "▚"; color: var(--slate); margin-right: 8px; }
+/* The tile-less mark, so it dissolves into any theme's status bar and only the
+   veil slats and revealed core show. (The favicon carries a tile instead, for
+   the neutral background of a browser tab.) */
+.brand::before { content: ""; width: 20px; height: 20px; margin-right: 9px; background: url(/mark.svg) center / contain no-repeat; }
 .actions { margin-left: auto; display: flex; gap: 8px; }
 
 button {
