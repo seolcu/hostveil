@@ -16,6 +16,12 @@ import (
 // CommandRunner runs external commands and looks up binaries. Production
 // code uses DefaultRunner; tests inject a fake to script command output
 // and simulate missing tools (e.g. Trivy not installed).
+//
+// Implementations must be safe for concurrent use. Checkers all run at once,
+// and some (the CVE checker, scanning several images) call the runner from
+// several goroutines of their own. DefaultRunner is stateless, so this costs
+// production nothing; a fake that records what it was called with needs a
+// mutex around the recording.
 type CommandRunner interface {
 	// Run executes name with args and returns its stdout. A non-zero exit is
 	// returned as an error whose message includes the command's stderr.

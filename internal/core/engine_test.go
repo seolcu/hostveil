@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -264,5 +266,96 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 				t.Errorf("%s: remediation = %v, want %v (%s)", tc.finding.ID, got, tc.want, tc.why)
 			}
 		})
+	}
+}
+
+// tallyRunner counts how many times each command actually reached the host.
+type tallyRunner struct {
+	mu       sync.Mutex
+	calls    map[string]int
+	composeF string
+}
+
+func (r *tallyRunner) LookPath(string) (string, error) { return "/usr/bin/x", nil }
+
+func (r *tallyRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
+	joined := name + " " + strings.Join(args, " ")
+	r.mu.Lock()
+	r.calls[joined]++
+	r.mu.Unlock()
+
+	switch {
+	case joined == "docker version --format {{.Server.Version}}":
+		return []byte("27.0.3\n"), nil
+	case joined == "docker compose ls --all --format json":
+		return []byte(`[{"Name":"demo","ConfigFiles":"` + r.composeF + `"}]`), nil
+	case joined == "docker ps --quiet --no-trunc":
+		return []byte(""), nil
+	case name == "trivy":
+		return []byte(`{"Results":[]}`), nil
+	}
+	return nil, errors.New("unexpected command: " + joined)
+}
+
+func (r *tallyRunner) count(cmd string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.calls[cmd]
+}
+
+// TestScanAsksTheHostEachQuestionOnce pins the scan-scoped command cache.
+//
+// Checkers are read-only and run concurrently, and several independently
+// need the same facts: the compose and CVE checkers both enumerate compose
+// projects and both inspect the containers Compose did not create, and the
+// ports checker re-probes the firewall the firewall checker just probed.
+// Each of those ran twice per scan, concurrently — and `docker inspect`
+// over every container on a busy host is megabytes of output to fetch and
+// parse for the second time.
+//
+// Deduplicating at the runner rather than in the checkers is what keeps the
+// checkers ignorant of each other; this test is what keeps that true.
+func TestScanAsksTheHostEachQuestionOnce(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	yml := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(yml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &tallyRunner{calls: map[string]int{}, composeF: path}
+	engine := New(Config{
+		// Two checkers that each need the full container inventory.
+		Registry: check.NewRegistry(composecheck.New(), cvecheck.New()),
+		Store:    history.NewStore(t.TempDir()),
+		Runner:   r,
+	})
+	engine.Scan(context.Background(), nil)
+
+	for _, cmd := range []string{
+		"docker compose ls --all --format json",
+		"docker ps --quiet --no-trunc",
+		"docker version --format {{.Server.Version}}",
+	} {
+		if n := r.count(cmd); n != 1 {
+			t.Errorf("%q ran %d times in one scan, want 1", cmd, n)
+		}
+	}
+}
+
+// The cache belongs to the scan, not the engine. A fix runs commands that
+// change the host, and serving one of those from a cache would mean the
+// second `ufw allow` of a session silently never happened.
+func TestFixCommandsBypassTheScanCache(t *testing.T) {
+	r := &tallyRunner{calls: map[string]int{}}
+	engine := New(Config{Store: history.NewStore(t.TempDir()), Runner: r})
+
+	for range 3 {
+		if _, err := engine.runner.Run(context.Background(), "trivy"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := r.count("trivy "); n != 3 {
+		t.Errorf("the engine's fix runner ran %d commands, want 3 — it is caching", n)
 	}
 }

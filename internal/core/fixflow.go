@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -135,6 +136,15 @@ func previewMode(a fix.Action) (string, error) {
 // backup→apply→checkpoint→mark-fixed→rescore pipeline, and returns the
 // outcome. It is the ONLY path that mutates the host.
 func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (model.FixOutcome, error) {
+	e.applyMu.Lock()
+	defer e.applyMu.Unlock()
+	return e.applyFix(ctx, f, actionIdx)
+}
+
+// applyFix is ApplyFix's body, with the caller holding applyMu. ApplyBatch
+// applies many fixes under one lock and calls this directly; sync.Mutex is
+// not reentrant, so the exported entry point can never be the one that loops.
+func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (model.FixOutcome, error) {
 	fx, ok, err := e.buildFix(f)
 	if err != nil {
 		return model.FixOutcome{}, err
@@ -206,11 +216,65 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	if fi, err := os.Stat(a.Path); err == nil {
 		mode = fi.Mode().Perm()
 	}
-	if err := os.WriteFile(a.Path, next, mode); err != nil {
+	if err := writeFileAtomic(a.Path, next, mode); err != nil {
 		return model.FixOutcome{}, err
 	}
 
 	return model.FixOutcome{Diff: d, CheckpointID: saved.ID, RestartHint: f.Service}, nil
+}
+
+// writeFileAtomic replaces path's contents in one step: write a temporary
+// file beside it, then rename over the target.
+//
+// os.WriteFile truncates and then writes, so a crash or power loss between
+// the two leaves a half-written or empty file. For the files hostveil edits
+// that is not a cosmetic failure — a truncated /etc/ssh/sshd_config can mean
+// sshd refuses to start and nobody can log in to the host to repair it. The
+// checkpoint still holds the original, but reaching it requires the access
+// the truncated file just took away. rename(2) is atomic within a
+// filesystem, so a reader sees either the old file or the new one.
+//
+// The temporary lives in the target's own directory so the rename never
+// crosses a filesystem boundary, and it is cleaned up on any failure.
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".hostveil-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	// CreateTemp makes the file 0600; carry the original's mode across so the
+	// rename does not silently tighten or loosen it.
+	if err := tmp.Chmod(mode); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	// A rename replaces the inode, so the new file carries the temporary's
+	// ownership rather than the original's. hostveil runs as root, so without
+	// this a fix to a compose file owned by the operator's own account would
+	// hand it to root and lock them out of editing their own file. Failing to
+	// preserve ownership is an error, not something to do quietly.
+	if err := preserveOwner(tmp, path); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	// Flush to disk before the rename. Without it the rename can land while
+	// the contents are still in the page cache, which on a crash yields the
+	// new name pointing at empty data — the very outcome this avoids.
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 // applyMode tightens permission bits, following applyEdit's order: record
@@ -290,6 +354,9 @@ func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a f
 // anything without an auto fix. It is the shared implementation behind
 // "fix everything safe", so no UI reimplements the batch loop.
 func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model.BatchOutcome {
+	e.applyMu.Lock()
+	defer e.applyMu.Unlock()
+
 	out := model.BatchOutcome{Failed: map[string]string{}}
 	for _, f := range findings {
 		if f.Fixed || f.Remediation != model.RemediationAuto {
@@ -301,7 +368,7 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
-		if _, err := e.ApplyFix(ctx, f, 0); err != nil {
+		if _, err := e.applyFix(ctx, f, 0); err != nil {
 			out.Failed[f.ID] = err.Error()
 			continue
 		}
@@ -344,6 +411,12 @@ func (e *Engine) RollbackForce(id string) (model.RollbackOutcome, error) {
 }
 
 func (e *Engine) rollback(id string, force bool) (model.RollbackOutcome, error) {
+	// Restoring a file is a host mutation like any other, and it un-marks a
+	// finding and rescores afterwards. Same lock as apply, or a rollback
+	// racing a fix to the same path could interleave their writes.
+	e.applyMu.Lock()
+	defer e.applyMu.Unlock()
+
 	restore := e.store.Rollback
 	if force {
 		restore = e.store.RollbackForce
