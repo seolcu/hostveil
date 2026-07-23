@@ -65,12 +65,13 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="serve">serve</h2>
             <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
-            <div class="code-block"><pre><code>hostveil serve [--addr ADDR]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>Address to bind the dashboard to.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td><code>instrument</code></td><td>Color theme the dashboard opens in.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -78,8 +79,16 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="tui">tui</h2>
             <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>
-            <div class="code-block"><pre><code>hostveil tui</code></pre></div>
-            <p>No flags. Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>.</p>
+            <div class="code-block"><pre><code>hostveil tui [--theme NAME]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--theme NAME</code></td><td>remembered, else <code>instrument</code></td><td>Color theme: <code>instrument</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>. Press <code>t</code> inside the TUI to pick a theme and have it remembered — see <a href="interfaces#themes">Interfaces</a>.</p>
 
             <h2 id="exit-codes">Exit codes</h2>
             <div class="docs-table-wrap">

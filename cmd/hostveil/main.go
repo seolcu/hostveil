@@ -101,11 +101,11 @@ func printUsage(w *os.File) {
 Usage:
   hostveil                       Open the interactive TUI (on a terminal)
   hostveil scan [flags]          Scan the host and report security findings
-  hostveil tui                   Open the interactive TUI explicitly
+  hostveil tui [--theme]         Open the interactive TUI explicitly
   hostveil fix <id> [flags]      Preview and apply the fix for a finding
   hostveil fix --all             Apply every safe (Auto) fix at once
   hostveil explain <id> [flags]  Explain a finding (optionally via local AI)
-  hostveil serve [--addr]        Serve the localhost web dashboard (alias: web)
+  hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id>         Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
   hostveil version               Print the version (also: --version, -V)
@@ -126,6 +126,12 @@ Explain flags:
   --service NAME  Disambiguate a finding that affects multiple services
   --ai            Add a plain-language explanation from a local Ollama model
 
+TUI and dashboard flags:
+  --theme NAME    Color theme: instrument (default), gruvbox, nord,
+                  catppuccin, tokyonight. The TUI's picker (press t) remembers
+                  your choice; --theme and HOSTVEIL_THEME override it.
+  --addr HOST     serve only: address to bind the dashboard to
+
 Exit status:
   hostveil scan exits 1 when any unfixed finding is Critical or High, and 0
   otherwise — useful as a CI or cron gate. Other commands exit 0 on success,
@@ -133,6 +139,7 @@ Exit status:
 
 Environment:
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
+  HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   NO_COLOR=1           Disable colored output
 `)
 }

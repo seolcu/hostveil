@@ -4,13 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>hostveil</title>
+  <!-- Generated from internal/ui/theme: the palettes, then the layout that
+       draws from them. theme.js is blocking and in <head> on purpose — it
+       restores the saved theme before the first paint, and the page's CSP
+       (default-src 'self') rules out doing that inline. -->
+  <link rel="stylesheet" href="/themes.css">
   <link rel="stylesheet" href="/app.css">
+  <script src="/theme.js"></script>
 </head>
 <body>
   <div class="statusbar">
     <div class="brand"><b>hostveil</b></div>
     <div class="gauge" id="gauge"></div>
     <div class="actions">
+      <select id="theme" aria-label="Color theme"></select>
       <button id="history">History</button>
       <button id="rescan">Rescan</button>
       <button id="fixall" class="primary">Fix all safe</button>
