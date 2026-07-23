@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -82,7 +83,20 @@ type scriptRunner struct {
 	psErr    bool
 	trivy    map[string]string // image → JSON output
 	trivyErr map[string]bool   // image → fail
-	argv     []string          // the last trivy argv, for flag assertions
+
+	// The checker scans images concurrently, so this fake is called from
+	// several goroutines at once. Only the recording needs guarding — the
+	// scripted maps are written before the scan starts and only read during
+	// it. The real DefaultRunner is stateless and needs none of this.
+	mu   sync.Mutex
+	argv []string // the last trivy argv, for flag assertions
+}
+
+// lastArgv returns the most recent trivy invocation's arguments.
+func (s *scriptRunner) lastArgv() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.argv)
 }
 
 func (s *scriptRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
@@ -102,7 +116,9 @@ func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]by
 	case name == "docker" && args[0] == "inspect":
 		return []byte(s.inspectJSON), nil
 	case name == "trivy":
+		s.mu.Lock()
 		s.argv = args
+		s.mu.Unlock()
 		image := args[len(args)-1]
 		if s.trivyErr[image] {
 			return nil, errors.New("failed to download vulnerability DB")
@@ -210,8 +226,8 @@ func TestCVEPassesTimeoutToTrivy(t *testing.T) {
 	if _, err := New().Check(context.Background(), platform.Env{Runner: r}); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(r.argv, "--timeout") {
-		t.Errorf("trivy invoked without --timeout: %v", r.argv)
+	if !slices.Contains(r.lastArgv(), "--timeout") {
+		t.Errorf("trivy invoked without --timeout: %v", r.lastArgv())
 	}
 }
 
