@@ -85,6 +85,19 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		findings = append(findings, rebootFinding("sudo reboot"))
 	}
 
+	// `apt`, not `apt-get`, despite apt printing that its CLI is not a stable
+	// scripting interface.
+	//
+	// The stable alternative is `apt-get --just-print upgrade`, and it answers
+	// a different question: it lists what `upgrade` would actually install,
+	// which excludes anything held back for needing new or removed packages.
+	// Security updates land in that category regularly. Counting from it
+	// would report fewer pending security updates than the host really has —
+	// erring toward "you are patched" on a machine that is not, which is the
+	// one direction this checker must never be wrong in.
+	//
+	// The warning apt prints goes to stderr, and Run captures stdout only, so
+	// it cannot reach countAptSecurityUpdates.
 	out, err := env.Runner.Run(ctx, "apt", "list", "--upgradable")
 	if err != nil {
 		return findings, &check.PartialError{

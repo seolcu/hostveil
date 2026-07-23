@@ -167,7 +167,8 @@ hostveil fix --all [flags]</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>Binding to a non-loopback address prints a warning about exposing the dashboard on the network.</p>
+            <p>The command prints a URL containing a one-off access token; open that URL rather than typing the bare address. Every route requires the token, because loopback does not separate the operator from other local accounts and the dashboard runs as root.</p>
+            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds but refuses every request, and hostveil says so. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
 
             <h2 id="tui">tui</h2>
             <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>

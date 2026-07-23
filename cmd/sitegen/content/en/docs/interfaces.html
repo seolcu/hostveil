@@ -45,7 +45,8 @@
               <button class="copy-btn" type="button" data-copy="hostveil serve">Copy</button>
               <pre><code>hostveil serve</code></pre>
             </div>
-            <p>By default it binds to <code>127.0.0.1:8787</code> — loopback only. Change it with <code>--addr</code>; if you point it at a non-loopback address, hostveil prints a warning about exposing the dashboard. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
+            <p>It prints a URL carrying a one-off access token — open that exact URL. Loopback keeps the dashboard off the network, but not away from other accounts on the same machine, and every route here applies fixes or reads a scan of <code>/etc/shadow</code> as root. The token closes that gap; the first page load exchanges it for a session cookie, so it does not reappear in later links.</p>
+            <p>It binds to <code>127.0.0.1:8787</code>. The dashboard rejects any request not addressed to localhost, so <code>--addr</code> cannot expose it to the network — pointing it at a non-loopback address produces a listener that answers nothing. To reach it from another machine, forward the port instead: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
             <figure>
               <img src="../assets/web.png" alt="hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1200" height="456" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
