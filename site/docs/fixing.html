@@ -132,6 +132,18 @@
               <p>Rollback restores the backed-up file byte-for-byte. Because the TUI, web dashboard, and CLI all go through one shared engine, a fix applied in any of them is listed in <code>history</code> and reversible from any of them. (A few actions are inherently not reversible; <code>history</code> marks those <em>not reversible</em>.)</p>
             </div>
 
+            <h3 id="declined">When rollback declines</h3>
+            <p>A checkpoint records the checksum of what the fix wrote. If the file no longer matches it — because you edited it yourself afterwards — rollback stops instead of restoring:</p>
+            <div class="code-block"><pre><code>hostveil: /etc/ssh/sshd_config changed after the fix was applied
+  Rolling back would overwrite it with the pre-fix backup and discard those edits.
+  Rollback keeps no backup of its own, so this cannot be undone.
+  Save a copy first, then: hostveil rollback cp-3f9a --force</code></pre></div>
+            <p>This is a refusal, not a failure: nothing was touched. Rollback writes no checkpoint of its own, so restoring over an hour of your own edits would be unrecoverable — the one outcome a recovery feature must never produce. Save a copy of the current file, then pass <code>--force</code> if you still want the backup back.</p>
+            <p>The dashboard asks the same question in a confirmation dialog rather than a flag. Fixing the same file twice is <em>not</em> treated as an external edit, so <code>fix --all</code> over one Compose file leaves every one of its checkpoints rollback-able.</p>
+
+            <h3>Fixes that leave nothing to restore</h3>
+            <p>A fix that runs a command — pulling a new image, restarting a service — has no file to back up, so it gets a history record but no restore point. hostveil says so in the preview, before you apply it, and <code>history</code> marks the entry <em>not reversible</em>. Undoing one is a manual job.</p>
+
             <div class="docs-pager">
               <a class="button secondary" href="checks">← What it checks</a>
               <a class="button primary" href="interfaces">Interfaces →</a>

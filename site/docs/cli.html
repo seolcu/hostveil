@@ -118,7 +118,6 @@ hostveil fix --all [flags]</code></pre></div>
                   <tr><td><code>--action N</code></td><td><code>-1</code></td><td>For a Review fix, the 0-based alternative to apply.</td></tr>
                   <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
                   <tr><td><code>--yes</code></td><td><code>false</code></td><td>Apply without the interactive confirmation.</td></tr>
-                  <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -126,8 +125,16 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="rollback">rollback</h2>
             <p>Undo a previously applied fix.</p>
-            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt;</code></pre></div>
-            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. No flags.</p>
+            <div class="code-block"><pre><code>hostveil rollback &lt;checkpoint-id&gt; [--force]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--force</code></td><td><code>false</code></td><td>Restore even if the file changed after the fix was applied.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. If the file no longer matches what the fix wrote, rollback <strong>declines</strong> and exits <code>1</code> rather than discarding your later edits — see <a href="fixing#declined">when rollback declines</a>.</p>
 
             <h2 id="history">history</h2>
             <p>List applied fixes and their rollback IDs.</p>

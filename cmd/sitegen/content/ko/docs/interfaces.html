@@ -7,13 +7,37 @@
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
             <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다.</p>
             <figure>
-              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="478" loading="lazy">
+              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="480" loading="lazy">
               <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
             </figure>
             <div class="callout">
               <span class="callout-label">터미널이 필요함</span>
               <p>TUI는 대화형 터미널이 필요합니다. stdin/stdout이 파이프되거나 리다이렉트된 경우, 대신 <code>hostveil scan</code>을 사용하세요 — 일반 텍스트 보고서를 출력합니다.</p>
             </div>
+
+            <h3 id="keys">키 목록</h3>
+            <p>화면 맨 아래 두 줄에는 지금 보고 있는 화면의 키가 항상 표시됩니다. 전체 목록은 다음과 같습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>키</th><th>목록 화면에서</th></tr></thead>
+                <tbody>
+                  <tr><td><code>↑</code> <code>↓</code></td><td>커서를 옮깁니다 — <code>k</code>와 <code>j</code>도 됩니다.</td></tr>
+                  <tr><td><code>Enter</code></td><td>발견 항목의 상세를 엽니다 — 설명, 고치는 방법, 대신 고쳐 줄 수 있는지 여부.</td></tr>
+                  <tr><td><code>f</code></td><td>커서 위 항목의 수정을 미리 봅니다. <code>y</code>로 적용, <code>n</code>으로 취소. 검토 수정은 번호가 붙은 대안을 제시하니 해당 숫자를 누르세요.</td></tr>
+                  <tr><td><code>Space</code></td><td>자동 수정 항목을 일괄 처리 대상으로 표시합니다. 자동 수정 행만 표시할 수 있습니다.</td></tr>
+                  <tr><td><code>a</code></td><td>표시한 항목을 적용합니다 — 표시한 것이 없으면 자동 수정 항목 전체를 적용합니다.</td></tr>
+                  <tr><td><code>s</code></td><td>최소 심각도를 순환합니다: 심각 → 높음 → 보통 → 낮음 → 해제.</td></tr>
+                  <tr><td><code>d</code></td><td>이번 스캔에서 실제로 발견된 영역들만 순환하며 필터링합니다.</td></tr>
+                  <tr><td><code>x</code></td><td>hostveil이 고칠 수 있는 항목만 봅니다.</td></tr>
+                  <tr><td><code>c</code></td><td>모든 필터를 지웁니다. <code>Esc</code>는 일괄 처리 표시를 지웁니다.</td></tr>
+                  <tr><td><code>h</code></td><td>적용된 수정 이력입니다. 하나를 골라 <code>Enter</code>를 누르면 되돌렸을 때 복원될 내용을 보여 주고, 확인을 받습니다.</td></tr>
+                  <tr><td><code>t</code></td><td>테마 선택기(아래 참고).</td></tr>
+                  <tr><td><code>r</code></td><td>다시 스캔합니다.</td></tr>
+                  <tr><td><code>q</code></td><td>뒤로, 목록 화면에서는 종료. <code>Ctrl-C</code>는 언제나 종료합니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>호스트를 바꾸는 동작 — 수정 적용, 롤백 — 은 모두 diff를 보여 주고 먼저 물어봅니다. 미리보기 없이 디스크에 쓰는 키는 없습니다.</p>
 
             <h2>웹 — localhost 대시보드</h2>
             <p>브라우저로 검토하는 편이 나을 때 동일한 스캔을 HTTP로 제공합니다.</p>
@@ -23,9 +47,15 @@
             </div>
             <p>기본적으로 <code>127.0.0.1:8787</code>에 바인딩됩니다 — loopback 전용입니다. <code>--addr</code>로 변경할 수 있으며, non-loopback 주소를 지정하면 hostveil이 대시보드 노출에 관한 경고를 출력합니다. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
             <figure>
-              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 필터 칩, 다중 선택, 수정 상세" width="1200" height="456" loading="lazy">
-              <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수, 필터 가능한 발견 항목, 다중 선택 일괄 수정, 미리보기, 롤백.</span></figcaption>
+              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 점수, 점검 범위 안내, 필터 칩, 스캔 개요" width="1200" height="456" loading="lazy">
+              <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수와 영역별 축, 지난 스캔 이후의 변화, 필터 칩, 그리고 스캔을 읽어 주는 개요.</span></figcaption>
             </figure>
+            <p>아무것도 고르기 전에도 오른쪽 패널이 스캔 결과를 읽어 줍니다 — 점수를 말로 풀어 주고, 심각도별 분포, 사용자의 판단 없이 고칠 수 있는 항목 수, 그리고 가장 심각한 몇 건을 바로 가기 목록으로 보여 줍니다. 발견 항목을 선택하면 그 자리에 상세 내용과 <strong>Preview fix</strong> 버튼이 들어오고, <strong>History</strong>를 누르면 적용된 수정들이 각각 되돌릴 diff와 <strong>Roll back</strong> 버튼과 함께 표시됩니다.</p>
+            <p>목록 위의 칩은 심각도와 영역으로 필터링하며 개수를 실시간으로 보여 주고, 체크박스는 한 번에 일괄 수정할 항목을 고릅니다. 모두 CLI와 같은 엔진을 거치므로, 브라우저에서 한 작업이 터미널의 <code>hostveil history</code>에 그대로 나열됩니다.</p>
+
+            <h3 id="delta">지난 스캔 이후 달라진 것</h3>
+            <p>hostveil은 스캔을 저장해 두기 때문에 다음 스캔이 무엇이 달라졌는지 말해 줄 수 있습니다. 변화가 있으면 두 UI 모두 발견 목록 위에 한 줄 요약을 보여 줍니다 — <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>. "방금 한 수정이 실제로 도움이 됐나?"에 가장 빠르게 답하는 방법입니다. 첫 스캔에서는 비교할 대상이 없으므로 아무것도 표시되지 않습니다.</p>
+            <p>그 바로 아래에는 온전히 점검하지 못한 영역의 이름이 나옵니다. 부분적인 스캔으로 만든 점수는 그 사실을 한 번 알리고 사라지는 대신 계속 말해 줍니다 — <a href="checks#coverage">영역을 온전히 점검하지 못했을 때</a>를 참고하세요.</p>
 
             <h2>CLI — 스크립트 가능</h2>
             <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 심각 또는 높음이 하나라도 있으면 0이 아닌 값으로 종료합니다 — 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>

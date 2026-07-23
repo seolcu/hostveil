@@ -106,7 +106,7 @@ Usage:
   hostveil fix --all             Apply every safe (Auto) fix at once
   hostveil explain <id> [flags]  Explain a finding (optionally via local AI)
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
-  hostveil rollback <id>         Undo a previously applied fix
+  hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
   hostveil version               Print the version (also: --version, -V)
   hostveil help                  Show this help (also: --help, -h)
@@ -125,6 +125,11 @@ Fix flags:
 Explain flags:
   --service NAME  Disambiguate a finding that affects multiple services
   --ai            Add a plain-language explanation from a local Ollama model
+
+Rollback flags:
+  --force         Restore even if the file changed after the fix was applied.
+                  Rollback keeps no backup of its own, so it declines by
+                  default rather than discard those edits.
 
 TUI and dashboard flags:
   --theme NAME    Color theme: instrument (default), gruvbox, nord,
