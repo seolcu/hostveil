@@ -21,9 +21,14 @@ body {
 
 /* ── status bar ── */
 .statusbar {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 26px;
+  flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 26px;
   padding: 11px 18px; border-bottom: 1px solid var(--line); background: var(--ink-2);
 }
+/* wrap, not overflow: the bar's content needs ~860px, and with .actions pinned
+   right by margin-left:auto and no wrapping the History/Rescan/Fix-all buttons
+   ran clean off the right edge — unreachable — on every viewport between the
+   560px mobile breakpoint and ~880px (tablets, split-screen, small laptops).
+   Wrapping drops .actions to its own right-aligned row instead. */
 .brand { font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
 .brand b { color: var(--bone); }
 .brand::before { content: "▚"; color: var(--slate); margin-right: 8px; }
@@ -156,7 +161,16 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding .title { min-width: 0; }
 .finding .title .name { color: var(--bone); }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
-.finding .svc { color: var(--slate); font-size: 11px; white-space: nowrap; }
+/* Bounded + ellipsised: Service can hold a full image reference
+   (registry/namespace/name:tag) from a CVE finding, which is easily long
+   enough that, left unbounded in this nowrap auto-track, it forced the whole
+   findings pane — and with it the statusbar and filter chips — wider than the
+   viewport, scrolling the entire app sideways. The title (1fr) keeps priority;
+   an over-long service name truncates here instead. */
+.finding .svc { color: var(--slate); font-size: 11px; white-space: nowrap;
+  max-width: 24ch; overflow: hidden; text-overflow: ellipsis; }
+.over-jump-row .svc { color: var(--slate); font-size: 11px; white-space: nowrap;
+  max-width: 24ch; overflow: hidden; text-overflow: ellipsis; }
 .clean { padding: 22px 18px; color: var(--safe); }
 .clean.muted { color: var(--slate); }
 
