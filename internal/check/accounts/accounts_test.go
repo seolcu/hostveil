@@ -2,10 +2,13 @@ package accounts
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -112,12 +115,22 @@ func TestEmptyPasswordOnNonLoginAccountIgnored(t *testing.T) {
 	}
 }
 
-func TestShadowUnreadableStillRunsPasswdChecks(t *testing.T) {
+// An unreadable /etc/shadow costs the empty-password half of this domain.
+// The findings from the readable half are still real and must survive, but
+// the result must say so: reporting clean would score identically to "every
+// account has a password" while meaning "nobody looked", and the axis would
+// hand a non-root scan full marks for account hygiene it never checked.
+func TestShadowUnreadableIsPartialNotClean(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:0:0::/root:/bin/bash\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: filepath.Join(t.TempDir(), "missing-shadow")}
 	fs, err := c.Check(context.Background(), platform.Env{})
-	if err != nil {
-		t.Fatal(err)
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("unreadable shadow must yield a PartialError (→ Degraded), got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "empty password") {
+		t.Errorf("reason should name what went unchecked, got %q", partial.Reason)
 	}
 	if !has(fs, "accounts.uid0") {
 		t.Errorf("uid0 check should still run when shadow is unreadable, got %v", fs)
