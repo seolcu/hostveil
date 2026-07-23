@@ -120,7 +120,63 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
 		return Checkpoint{}, err
 	}
+	s.pruneCheckpoints()
 	return cp, nil
+}
+
+// maxCheckpoints caps how many restore points are kept.
+//
+// Unlike a scan snapshot, a checkpoint is a backup: discarding one discards
+// the ability to undo the fix that wrote it, so this cap is deliberately
+// far looser than maxScans. It exists because checkpoints hold a full copy
+// of every file a fix touched and nothing ever removed them — a long-lived
+// host accumulated backups until the state directory was the problem, and
+// List() reads and parses every one of them on each history view and each
+// rollback.
+//
+// The number has to clear the largest thing one session can produce. A
+// `fix --all` on a badly misconfigured host applies dozens of fixes at
+// once, and pruning any of those immediately after writing them would make
+// a fix unrollbackable the moment it was applied. Two hundred leaves room
+// for several such sessions before the oldest starts aging out.
+const maxCheckpoints = 200
+
+// pruneCheckpoints removes the oldest restore points beyond maxCheckpoints.
+//
+// Oldest-first is what makes this safe against the external-edit check.
+// That check asks whether a file still holds content *some* checkpoint
+// recorded writing, so the entry that matters for a path is the most recent
+// one. Pruning from the other end would strip the newest record and make a
+// rollback of an untouched file look like tampering.
+//
+// Ordering comes from the directory names alone. IDs are timestamp-prefixed
+// (see NewID), so a lexical sort is chronological — the same property
+// scanFiles relies on. Going through List() instead would read and JSON-parse
+// every checkpoint on disk on *every* fix applied, turning a batch fix into a
+// quadratic pile of reads; the cheap path is the whole point of pruning here.
+//
+// A failure to prune is not a failure to apply a fix: the checkpoint is
+// already written, the host is already changed, and refusing here would
+// report an error for a fix that succeeded.
+func (s *Store) pruneCheckpoints() {
+	dir := s.checkpointsDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	if len(names) <= maxCheckpoints {
+		return
+	}
+	sort.Strings(names) // oldest first
+	for _, name := range names[:len(names)-maxCheckpoints] {
+		_ = os.RemoveAll(filepath.Join(dir, name))
+	}
 }
 
 // SaveModes writes a checkpoint that restores permissions only. modes maps
@@ -148,6 +204,7 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
 		return Checkpoint{}, err
 	}
+	s.pruneCheckpoints()
 	return cp, nil
 }
 
@@ -212,7 +269,7 @@ func (e *ExternalEditError) Error() string {
 }
 
 // checkUnmodified reports whether a file still holds content that hostveil
-// itself wrote.
+// itself wrote, given the set of writes every checkpoint has recorded.
 //
 // The question is not "does this match what THIS fix wrote" — that would
 // misfire on the most ordinary workflow there is. `fix --all` over two
@@ -230,7 +287,7 @@ func (e *ExternalEditError) Error() string {
 // a file that cannot be read yields no complaint — "cannot tell" must not be
 // dressed up as either answer, and refusing every pre-upgrade checkpoint
 // would break rollback for everyone updating.
-func (s *Store) checkUnmodified(cp Checkpoint, bf BackedFile) error {
+func checkUnmodified(cp Checkpoint, bf BackedFile, known recordedWrites) error {
 	if cp.AppliedSHA256[bf.Path] == "" {
 		return nil // this checkpoint predates the recording; cannot tell
 	}
@@ -238,28 +295,48 @@ func (s *Store) checkUnmodified(cp Checkpoint, bf BackedFile) error {
 	if err != nil {
 		return nil
 	}
-	if s.writtenByHostveil(bf.Path, SHA256Hex(data)) {
+	if known.has(bf.Path, SHA256Hex(data)) {
 		return nil
 	}
 	return &ExternalEditError{CheckpointID: cp.ID, Path: bf.Path}
 }
 
-// writtenByHostveil reports whether any checkpoint recorded writing exactly
-// this content to this path.
-func (s *Store) writtenByHostveil(path, sum string) bool {
-	cps, err := s.List()
-	if err != nil {
+// recordedWrites maps each path to every content hash some checkpoint
+// recorded writing to it. A nil map means the checkpoints could not be
+// enumerated, which reads as "cannot tell" rather than "tampered with".
+type recordedWrites map[string]map[string]bool
+
+func (w recordedWrites) has(path, sum string) bool {
+	if w == nil {
 		// Unable to enumerate: allowing the rollback keeps the recovery path
 		// working, and this only ever runs on a file the operator explicitly
 		// asked to restore.
 		return true
 	}
+	return w[path][sum]
+}
+
+// recordedWrites builds the index once.
+//
+// It exists because the check is per-file and used to re-List() — reading and
+// JSON-parsing every checkpoint on disk — for each file in the checkpoint
+// being restored. That is O(checkpoints × files) reads to answer a question
+// with one pass, on a directory that only ever grows.
+func (s *Store) recordedWrites() recordedWrites {
+	cps, err := s.List()
+	if err != nil {
+		return nil
+	}
+	out := recordedWrites{}
 	for _, c := range cps {
-		if c.AppliedSHA256[path] == sum {
-			return true
+		for path, sum := range c.AppliedSHA256 {
+			if out[path] == nil {
+				out[path] = map[string]bool{}
+			}
+			out[path][sum] = true
 		}
 	}
-	return false
+	return out
 }
 
 // SHA256Hex is exported so the engine can record what a fix wrote at the
@@ -299,8 +376,9 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 	// some files restored and others not — a state neither the host nor the
 	// in-memory report describes correctly.
 	if !force {
+		known := s.recordedWrites()
 		for _, bf := range cp.Files {
-			if err := s.checkUnmodified(cp, bf); err != nil {
+			if err := checkUnmodified(cp, bf, known); err != nil {
 				return cp, err
 			}
 		}
