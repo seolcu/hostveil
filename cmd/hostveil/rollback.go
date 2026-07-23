@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"github.com/seolcu/hostveil/internal/core"
 )
 
-func cmdRollback(args []string) int {
+func cmdRollback(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("rollback", flag.ContinueOnError)
 	force := fs.Bool("force", false, "restore even if the file changed after the fix was applied")
 
@@ -65,7 +66,7 @@ func cmdRollback(args []string) int {
 	return 0
 }
 
-func cmdHistory(args []string) int {
+func cmdHistory(_ context.Context, args []string) int {
 	_ = args
 	cps, err := buildEngine().ListCheckpoints()
 	if err != nil {

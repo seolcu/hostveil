@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"testing"
 
@@ -165,8 +166,8 @@ func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 // re-exec under sudo, and a *valid* theme would leave cmdServe listening
 // forever. Both must refuse before either of those can happen.
 func TestUnknownThemeIsAUsageError(t *testing.T) {
-	for name, cmd := range map[string]func([]string) int{"tui": cmdTUI, "serve": cmdServe} {
-		if code := cmd([]string{"--theme", "no-such-theme"}); code != 2 {
+	for name, cmd := range map[string]func(context.Context, []string) int{"tui": cmdTUI, "serve": cmdServe} {
+		if code := cmd(context.Background(), []string{"--theme", "no-such-theme"}); code != 2 {
 			t.Errorf("%s --theme no-such-theme exited %d, want 2", name, code)
 		}
 	}

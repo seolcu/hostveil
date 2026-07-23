@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func cmdExplain(args []string) int {
+func cmdExplain(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("explain", flag.ContinueOnError)
 	var (
 		service string
@@ -30,14 +30,14 @@ func cmdExplain(args []string) int {
 	}
 
 	engine := buildEngineWithAI(useAI)
-	report := engine.Scan(context.Background(), nil)
+	report := engine.Scan(ctx, nil)
 	finding, ok := findFinding(report, findingID, service)
 	if !ok {
 		fmt.Fprintf(os.Stderr, "hostveil: no active finding %q%s\n", findingID, serviceSuffix(service))
 		return 1
 	}
 
-	exp := engine.Explain(context.Background(), finding, useAI)
+	exp := engine.Explain(ctx, finding, useAI)
 	fmt.Println(exp.Plain)
 	if useAI {
 		fmt.Println()

@@ -31,6 +31,12 @@ const (
 )
 
 type appModel struct {
+	// ctx is cancelled when the process is interrupted. It rides on the model
+	// because bubbletea commands are closures with no parameters of their
+	// own, and it has to reach Engine.Scan: the TUI puts the terminal in raw
+	// mode and reads Ctrl-C as a key, so without a cancellable context a scan
+	// started here could not be stopped by any means at all.
+	ctx    context.Context
 	engine *core.Engine
 	report model.Report
 	active []model.Finding // report findings after m.filter
@@ -71,10 +77,11 @@ type ThemeOpts struct {
 	Save    func(id string) error
 }
 
-// New builds the TUI model around an engine.
-func New(engine *core.Engine, opts ThemeOpts) tea.Model {
+// New builds the TUI model around an engine. ctx cancels in-flight scans and
+// fixes when the process is interrupted.
+func New(ctx context.Context, engine *core.Engine, opts ThemeOpts) tea.Model {
 	return &appModel{
-		engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
+		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
 		th: opts.Initial, saveTheme: opts.Save,
 	}
 }
@@ -88,8 +95,8 @@ func (m *appModel) rebuildActive() {
 }
 
 // Run starts the TUI event loop.
-func Run(engine *core.Engine, opts ThemeOpts) error {
-	_, err := tea.NewProgram(New(engine, opts)).Run()
+func Run(ctx context.Context, engine *core.Engine, opts ThemeOpts) error {
+	_, err := tea.NewProgram(New(ctx, engine, opts)).Run()
 	return err
 }
 
@@ -108,9 +115,9 @@ type appliedMsg struct {
 	err     error
 }
 
-func scanCmd(e *core.Engine) tea.Cmd {
+func scanCmd(ctx context.Context, e *core.Engine) tea.Cmd {
 	return func() tea.Msg {
-		report := e.Scan(context.Background(), nil)
+		report := e.Scan(ctx, nil)
 		return scannedMsg{report: report, delta: e.LastDelta()}
 	}
 }
@@ -122,18 +129,18 @@ func previewCmd(e *core.Engine, f model.Finding) tea.Cmd {
 	}
 }
 
-func applyCmd(e *core.Engine, f model.Finding, action int) tea.Cmd {
+func applyCmd(ctx context.Context, e *core.Engine, f model.Finding, action int) tea.Cmd {
 	return func() tea.Msg {
-		o, err := e.ApplyFix(context.Background(), f, action)
+		o, err := e.ApplyFix(ctx, f, action)
 		return appliedMsg{outcome: o, err: err}
 	}
 }
 
 type batchAppliedMsg struct{ outcome model.BatchOutcome }
 
-func batchCmd(e *core.Engine, fs []model.Finding) tea.Cmd {
+func batchCmd(ctx context.Context, e *core.Engine, fs []model.Finding) tea.Cmd {
 	return func() tea.Msg {
-		return batchAppliedMsg{outcome: e.ApplyBatch(context.Background(), fs)}
+		return batchAppliedMsg{outcome: e.ApplyBatch(ctx, fs)}
 	}
 }
 
@@ -162,7 +169,7 @@ func rollbackCmd(e *core.Engine, id string) tea.Cmd {
 
 // --- tea.Model ---
 
-func (m *appModel) Init() tea.Cmd { return scanCmd(m.engine) }
+func (m *appModel) Init() tea.Cmd { return scanCmd(m.ctx, m.engine) }
 
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -317,7 +324,7 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		m.mode = modeScanning
 		m.status = "Rescanning…"
-		return m, scanCmd(m.engine)
+		return m, scanCmd(m.ctx, m.engine)
 	case "h":
 		return m, historyCmd(m.engine)
 	case "t":
@@ -444,7 +451,7 @@ func (m *appModel) startBatch() tea.Cmd {
 		m.mode = modeMessage
 		return nil
 	}
-	return batchCmd(m.engine, sel)
+	return batchCmd(m.ctx, m.engine, sel)
 }
 
 // presentSources lists the distinct sources among active findings, sorted,
@@ -510,7 +517,7 @@ func (m *appModel) keyPreview(key string) (tea.Model, tea.Cmd) {
 			m.mode = modeList
 			return m, nil
 		}
-		return m, applyCmd(m.engine, m.active[m.cursor], m.previewAction)
+		return m, applyCmd(m.ctx, m.engine, m.active[m.cursor], m.previewAction)
 	default:
 		// Number keys pick an alternative for Review fixes.
 		if n := int(key[0] - '0'); len(key) == 1 && n >= 0 && n < len(m.preview.Actions) {
