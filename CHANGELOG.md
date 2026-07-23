@@ -1,5 +1,45 @@
 # Changelog
 
+## [3.4.0](https://github.com/seolcu/hostveil/compare/v3.3.0...v3.4.0) (2026-07-23)
+
+hostveil shipped exactly one look, and its palette was written down twice —
+once as lipgloss colors in the TUI, once as CSS custom properties in the
+dashboard, each file claiming in a comment to match the other with nothing
+enforcing it. This release makes the look selectable and, in doing so, gives
+that claim an owner: one registry both interfaces read from, so they cannot
+drift apart.
+
+It also corrects the website, which was wrong in two places and silent in
+several more. The CLI reference documented a `--no-color` flag on `fix` that
+does not exist — copying it gets you exit 2 — and described `rollback` as
+taking no flags months after `--force` was added, leaving the flag that stands
+between an operator and an unrecoverable overwrite of their own edits
+documented nowhere at all, not even in `hostveil help`. Both are fixed, and a
+test now reads the flag registrations out of the source and fails the build if
+the reference and the binary disagree in either direction. Three shipped
+features that had never been documented — rollback declining over later edits,
+the Skipped/Partial/Failed coverage states, and the dashboard's overview pane —
+now are, along with the TUI's key bindings, which had been documented nowhere.
+Both screenshots were regenerated: they predated the History button and the
+keys the new key table lists.
+
+### Features
+
+* **ui:** add selectable color themes to the TUI and dashboard
+  ([#561](https://github.com/seolcu/hostveil/issues/561)). Five themes —
+  Instrument (the unchanged default), Gruvbox Dark, Nord, Catppuccin Mocha and
+  Tokyo Night — pickable in both interfaces and remembered between runs, or set
+  with `--theme` / `HOSTVEIL_THEME`. A theme chosen in the TUI is the one the
+  dashboard opens with.
+
+  Ported faithfully, the new palettes were unreadable where it mattered most:
+  Nord rendered a Critical finding at 3.05:1 against its own background, and
+  four of the five put Low below 3.4:1. Severity is the only thing color
+  carries here, so every theme is now held to a floor of 4.5:1 (3.5:1 for Low)
+  — not an invented standard, but the one the shipped Instrument palette
+  already cleared. Nord's Polar Night ramp is shifted down a step to buy that
+  room, which keeps its Aurora orange, yellow and green exactly as published.
+
 ## [3.3.0](https://github.com/seolcu/hostveil/compare/v3.2.0...v3.3.0) (2026-07-22)
 
 Where v3.2.0 asked whether the score was telling the truth, this one asks
