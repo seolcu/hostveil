@@ -132,6 +132,18 @@
               <p>롤백은 백업된 파일을 바이트 단위 그대로 복원합니다. TUI, 웹 대시보드, CLI가 모두 하나의 공유 엔진을 거치기 때문에, 어느 곳에서 적용한 수정이든 <code>history</code>에 나열되고 어디서나 되돌릴 수 있습니다. (일부 작업은 본질적으로 되돌릴 수 없으며, <code>history</code>는 이를 <em>되돌릴 수 없음</em>으로 표시합니다.)</p>
             </div>
 
+            <h3 id="declined">롤백이 거부할 때</h3>
+            <p>체크포인트에는 수정이 써 넣은 내용의 체크섬이 함께 기록됩니다. 그 뒤에 파일을 직접 편집해서 체크섬이 더 이상 맞지 않으면, 롤백은 복원하지 않고 멈춥니다.</p>
+            <div class="code-block"><pre><code>hostveil: /etc/ssh/sshd_config changed after the fix was applied
+  Rolling back would overwrite it with the pre-fix backup and discard those edits.
+  Rollback keeps no backup of its own, so this cannot be undone.
+  Save a copy first, then: hostveil rollback cp-3f9a --force</code></pre></div>
+            <p>이것은 실패가 아니라 거부입니다 — 아무것도 건드리지 않았습니다. 롤백은 자기 자신의 체크포인트를 남기지 않기 때문에, 직접 작업한 편집 위에 복원해 버리면 되돌릴 방법이 없습니다. 복구 기능이 절대 만들어서는 안 되는 결과입니다. 현재 파일을 따로 복사해 둔 뒤, 그래도 백업을 되살리고 싶다면 <code>--force</code>를 넘기세요.</p>
+            <p>대시보드는 같은 질문을 플래그 대신 확인 대화상자로 묻습니다. 같은 파일을 두 번 수정한 것은 외부 편집으로 <em>보지 않으므로</em>, 하나의 Compose 파일에 <code>fix --all</code>을 적용해도 그 체크포인트들은 모두 되돌릴 수 있습니다.</p>
+
+            <h3>복원할 것이 남지 않는 수정</h3>
+            <p>명령을 실행하는 수정 — 새 이미지를 받거나 서비스를 재시작하는 종류 — 은 백업할 파일이 없어서 이력 기록만 남고 복원 지점은 생기지 않습니다. hostveil은 적용 전 미리보기에서 이를 알려 주고, <code>history</code>는 해당 항목을 <em>되돌릴 수 없음</em>으로 표시합니다. 되돌리려면 직접 손으로 해야 합니다.</p>
+
             <div class="docs-pager">
               <a class="button secondary" href="checks">← 점검 항목</a>
               <a class="button primary" href="interfaces">인터페이스 →</a>

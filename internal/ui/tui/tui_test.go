@@ -86,10 +86,21 @@ func TestSnapshotDump(t *testing.T) {
 		{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
 	}}
 
-	m := tea.Model(&appModel{mode: modeList})
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
 	m = send(m, tea.WindowSizeMsg{Width: 96, Height: 34})
 	m = send(m, scannedMsg{report: rep})
-	if err := os.WriteFile(path, []byte(m.(*appModel).View().Content), 0o600); err != nil {
+
+	// Mark a couple of auto-fixable findings. The frame is a documentation
+	// screenshot, and multi-select is one of the things the caption claims;
+	// an empty gutter shows the reader a feature that looks like it is not
+	// there.
+	am := m.(*appModel)
+	for _, f := range am.active {
+		if f.Remediation == model.RemediationAuto && len(am.selected) < 3 {
+			am.selected[f.Key()] = true
+		}
+	}
+	if err := os.WriteFile(path, []byte(am.View().Content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

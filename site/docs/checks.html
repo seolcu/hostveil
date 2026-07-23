@@ -140,6 +140,21 @@
                 </tbody>
               </table>
             </div>
+            <h3 id="coverage">When a domain can't be fully checked</h3>
+            <p>"I couldn't look" and "there was nothing there" produce the same empty list, and they mean opposite things. hostveil never lets one pass for the other, so every domain reports how much ground it actually covered:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>State</th><th>What it means</th><th>Effect on the score</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Done</strong></td><td>The domain was checked end to end.</td><td>Scored normally.</td></tr>
+                  <tr><td><strong>Skipped</strong></td><td>A dependency is missing — no Docker, no Trivy, no ufw.</td><td>Shown as <code>N/A</code> and excluded; the other axes are renormalized.</td></tr>
+                  <tr><td><strong>Partial</strong></td><td>Some of the ground was covered and some was not — Trivy could scan three images out of five.</td><td>Scored on what was seen, and flagged. The TUI writes <code>42~</code>, the dashboard writes <code>42~</code> in amber.</td></tr>
+                  <tr><td><strong>Failed</strong></td><td>The checker could not examine its ground at all.</td><td>Excluded like Skipped, and the reason is shown.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Both UIs print the reason above the findings list — <em>"Container partial: cannot inspect containers started outside Compose"</em>, <em>"CVEs skipped: Trivy not installed"</em>. An excluded axis is never scored 100: a scan that could not see your images is not a scan that found your images clean. This is why running without root produces a lower, not a higher, score than running with it.</p>
+
             <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev critical">Critical</span> or <span class="sev high">High</span> — useful as a CI or cron gate.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
