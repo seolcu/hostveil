@@ -390,7 +390,9 @@ func TestTightenPreservesModeDir(t *testing.T) {
 func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
 	f := model.NewFinding("fileperms.hostkey", "t", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
-		model.WithEvidence("paths", "/etc/ssh/ssh_host_rsa_key, /etc/ssh/ssh_host_ed25519_key"),
+		model.WithEvidence("paths", strings.Join(
+			[]string{"/etc/ssh/ssh_host_rsa_key", "/etc/ssh/ssh_host_ed25519_key"},
+			model.PathListSeparator)),
 		model.WithEvidence("expected", "0640"),
 	)
 	fx, ok, err := Default().Build(f)
@@ -430,6 +432,35 @@ func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
 		}
 		if _, _, err := Default().Build(f); err == nil {
 			t.Errorf("expected a build error for evidence %v", ev)
+		}
+	}
+}
+
+// A path may contain ", ". The human-readable "files" evidence and the
+// machine-readable "paths" evidence used to share that separator, so a
+// directory like "logs, old" split into two paths that do not exist. It
+// failed safe — planModes aborts the whole fix when a path is missing — but
+// it failed, on a fix that should have worked, for a reason invisible in the
+// output.
+func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
+	want := []string{"/home/me/logs, old/config.json", "/etc/plain"}
+	f := model.NewFinding("fileperms.shadow", "t", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", strings.Join(want, model.PathListSeparator)),
+		model.WithEvidence("expected", "0600"),
+	)
+
+	fx, ok, err := Default().Build(f)
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	got := fx.Actions[0].Paths
+	if len(got) != len(want) {
+		t.Fatalf("paths = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("path %d = %q, want %q", i, got[i], want[i])
 		}
 	}
 }

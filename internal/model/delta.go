@@ -55,7 +55,26 @@ func (c FindingChange) ChangedEvidence() []string {
 // list, firewall's available tools, cve's vulnerability IDs). The space is
 // load-bearing — clirender wraps on whitespace, so a comma-only join would
 // be one unbreakable word that overflows a terminal.
+//
+// It is for evidence a person reads. Anything a fix has to parse back out
+// uses PathListSeparator, because ", " occurs inside real values.
 const EvidenceSeparator = ", "
+
+// PathListSeparator joins file paths in the evidence a fix reads back.
+//
+// Paths need their own separator because EvidenceSeparator can appear inside
+// one: ", " is legal in a POSIX filename, and a directory named "logs, old"
+// under a user's home is not exotic. Splitting such a value on ", " yields
+// two paths that do not exist. Today that fails safe — planModes stats every
+// path and aborts the whole fix when one is missing, so nothing is chmod'ed —
+// but it fails, on a fix that should have worked, for a reason nobody
+// reading the output could guess.
+//
+// ASCII unit separator: it cannot occur in a path (the kernel allows any
+// byte but NUL and '/', while every path hostveil handles comes from a glob
+// or a config file), it needs no escaping, and it is invisible enough that a
+// value carrying it reads as machine-facing at a glance.
+const PathListSeparator = "\x1f"
 
 // EvidenceListDelta reports which items entered and left a list-valued
 // evidence entry, sorted. Both slices are empty when the value is not a

@@ -53,9 +53,13 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 	if raw == "" {
 		return Fix{}, fmt.Errorf("finding %s has no paths to tighten", f.ID)
 	}
+	// Split on PathListSeparator, not EvidenceSeparator: the checker writes
+	// this entry for exactly this reader, and ", " occurs inside real paths.
+	// No TrimSpace either — leading and trailing whitespace are part of a
+	// filename, and trimming would target a different file or none at all.
 	var paths []string
-	for _, p := range strings.Split(raw, model.EvidenceSeparator) {
-		if p = strings.TrimSpace(p); p != "" {
+	for _, p := range strings.Split(raw, model.PathListSeparator) {
+		if p != "" {
 			paths = append(paths, p)
 		}
 	}
