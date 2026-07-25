@@ -1,0 +1,36 @@
+name: Feature request or new detection rule
+description: Suggest a capability, or a security check hostveil should add.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        New detection rules are welcome. A rule that fires on a correctly
+        configured host is worse than no rule at all — so if you're proposing a
+        check, please describe the case that must **not** trigger it too.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What gap or misconfiguration are you thinking about? Who does it affect?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like hostveil to do
+      description: >
+        For a new check: what should it flag, at what severity, and is there a
+        safe automatic fix or is it Manual? For a feature: what should it look
+        like?
+    validations:
+      required: true
+  - type: textarea
+    id: must-not-trigger
+    attributes:
+      label: What must NOT trigger it
+      description: For a detection rule, the configuration that is fine and should stay silent.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
