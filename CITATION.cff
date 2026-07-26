@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use hostveil in your work, please cite it using this metadata."
+title: hostveil
+abstract: >-
+  A single-binary guided hardening tool for self-hosted Linux servers. It scans
+  the host, its Docker/Compose stacks, and image CVEs, merges the findings into
+  one 0–100 score, explains them in plain language, and applies fixes with a
+  preview, a backup, and one-command rollback. Winner of the Grand Prize
+  (Development) at the 2026-1 Ajou University SoftCon.
+type: software
+authors:
+  - name: seolcu
+    alias: seolcu
+  - name: gkdms04
+    alias: gkdms04
+repository-code: "https://github.com/seolcu/hostveil"
+url: "https://hostveil.seolcu.com/"
+license: GPL-3.0-or-later
+keywords:
+  - security
+  - linux
+  - self-hosting
+  - hardening
+  - docker

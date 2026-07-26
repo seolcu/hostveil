@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability in hostveil
+    url: https://github.com/seolcu/hostveil/security/advisories/new
+    about: hostveil runs as root — please report vulnerabilities privately, not as a public issue. See SECURITY.md.
+  - name: Documentation and usage
+    url: https://hostveil.seolcu.com/docs/
+    about: How to install, run, and read the report.

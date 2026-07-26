@@ -9,8 +9,14 @@ One binary, no config file, no cloud account.
 [![Release](https://img.shields.io/github/v/release/seolcu/hostveil)](https://github.com/seolcu/hostveil/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/seolcu/hostveil)](https://goreportcard.com/report/github.com/seolcu/hostveil)
 
 [Website](https://hostveil.seolcu.com/) · [Docs](https://hostveil.seolcu.com/docs/) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
+
+<p align="center">
+  <img src="site/assets/web.png" width="900"
+       alt="hostveil's web dashboard: a 0–100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+</p>
 
 ---
 
@@ -43,6 +49,12 @@ renormalized so you are never handed a misleadingly perfect result.
 
 ```bash
 curl -fsSL https://hostveil.seolcu.com/install.sh | bash
+```
+
+Or, if you have Go 1.26+ and would rather build it yourself:
+
+```bash
+go install github.com/seolcu/hostveil/cmd/hostveil@latest
 ```
 
 Trivy is optional — install it any time to enable image CVE scanning.
@@ -105,6 +117,11 @@ same engine, a fix applied anywhere is reversible.
 
 ## Interfaces
 
+<p align="center">
+  <img src="site/assets/tui.png" width="820"
+       alt="hostveil's terminal UI: the same score and per-domain meters over a keyboard-driven findings list">
+</p>
+
 - **TUI** — keyboard-driven, the default when you run `hostveil` on a terminal.
 - **Web** — `hostveil serve`, a localhost-bound dashboard. It prints a URL
   carrying a one-off access token; open that exact URL. Loopback keeps the
@@ -126,6 +143,28 @@ bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
 LLM (Ollama by default), so nothing leaves your host. AI is strictly
 advisory — it never applies changes — and every explanation, score, and fix
 works with no AI at all.
+
+## How it compares
+
+Most server-hardening tools are auditors: they hand you a report and leave the
+fixing to you. hostveil is built to close that loop for people who aren't
+security experts.
+
+- **[Lynis](https://github.com/CISOfy/lynis)** is a thorough, expert-oriented
+  host auditor. It prints a long list of suggestions but doesn't apply them,
+  and reading the output assumes you already know which ones matter.
+- **[docker-bench-security](https://github.com/docker/docker-bench-security)**
+  checks a Docker host against the CIS benchmark. It's container-only, and it
+  reports rather than fixes.
+- **[Trivy](https://github.com/aquasecurity/trivy)** scans images and
+  filesystems for known CVEs and misconfigurations. It's excellent at that one
+  job — hostveil actually *runs* Trivy for its CVE domain — but it doesn't look
+  at your SSH config, firewall, or accounts.
+
+hostveil's angle is to merge the host, your containers, and image CVEs into a
+single 0–100 score, explain each finding in plain language, and then **apply
+the fix** — with a preview, a backup, and one-command rollback. One binary, and
+no report to interpret.
 
 ## Build from source
 

@@ -1,0 +1,69 @@
+name: Bug report
+description: Something hostveil did wrong — a crash, a bad fix, or a finding it got wrong or missed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report. If this is a **security
+        vulnerability in hostveil itself**, please don't use this form — report
+        it privately per [SECURITY.md](https://github.com/seolcu/hostveil/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did hostveil do, and what did you expect instead?
+      placeholder: |
+        I ran `hostveil fix ssh.rootlogin` and ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      description: Roughly where the problem is. Pick the closest.
+      options:
+        - A finding is wrong or missing (false positive / false negative)
+        - A fix did the wrong thing, or couldn't be rolled back
+        - Scan / scoring
+        - TUI
+        - Web dashboard
+        - CLI / scripting
+        - Install / build
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: hostveil version
+      description: Output of `hostveil version`.
+      placeholder: v3.2.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / distribution
+      description: e.g. Ubuntu 24.04, Debian 12, Fedora 40.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Relevant config and output
+      description: >
+        For a wrong or missing finding, the config that should (or should not)
+        have triggered it is the single most useful thing you can include — the
+        `sshd_config` snippet, the `docker-compose.yml` service, the `ss`/`ufw`
+        line. Paste `hostveil scan --json` output if it helps. Redact secrets.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is not a security vulnerability in hostveil itself (those go through SECURITY.md).
+          required: true
