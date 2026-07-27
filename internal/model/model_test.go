@@ -331,3 +331,52 @@ func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 		}
 	}
 }
+
+// A score with no axis behind it is not a perfect score. Every axis is
+// excluded when no domain ran, leaving nothing to renormalize over — and
+// the arithmetic fell out at 100, so a host nobody could look at was
+// reported as flawless. That is the same lie the per-axis N/A exists to
+// prevent, surviving in the one number the whole tool is judged on.
+func TestAScoreWithNoDomainsIsNotApplicable(t *testing.T) {
+	states := map[Source]ScanState{}
+	for _, s := range AllSources() {
+		states[s] = ScanSkipped
+	}
+	got := ScoreReport(nil, states)
+
+	if got.Applicable {
+		t.Error("a report where no domain ran must not be Applicable")
+	}
+	if got.Overall == 100 {
+		t.Error("a scan that examined nothing must not read as a perfect 100")
+	}
+	for _, ax := range got.Axes {
+		if ax.Applicable {
+			t.Errorf("axis %s should be N/A when its domain was skipped", ax.ID)
+		}
+	}
+}
+
+// The flag must be true on any ordinary scan, or it means nothing.
+func TestAScoreWithAnyDomainIsApplicable(t *testing.T) {
+	states := map[Source]ScanState{}
+	for _, s := range AllSources() {
+		states[s] = ScanSkipped
+	}
+	states[SourceSSH] = ScanDone
+
+	got := ScoreReport(nil, states)
+	if !got.Applicable {
+		t.Error("one domain running is enough for the overall score to mean something")
+	}
+	if got.Overall != 100 {
+		t.Errorf("a clean host with one domain scanned should score 100, got %d", got.Overall)
+	}
+}
+
+// The nil-states convention ("every domain ran") must stay applicable.
+func TestNilStatesScoresAsApplicable(t *testing.T) {
+	if got := ScoreReport(nil, nil); !got.Applicable {
+		t.Error("nil states means every domain ran, which is applicable")
+	}
+}

@@ -7,6 +7,18 @@ import "math"
 type ScoreBreakdown struct {
 	Overall uint8       `json:"overall"`
 	Axes    []ScoreAxis `json:"axes"`
+	// Applicable is false when no domain ran at all, in which case Overall
+	// carries no information and must not be shown as a number.
+	//
+	// The per-axis Applicable flag exists so a skipped domain is reported N/A
+	// rather than 100; without this the same lie survived in the aggregate.
+	// With every axis excluded there is nothing to renormalize over, and the
+	// arithmetic falls out at a perfect 100 — a host nobody could look at,
+	// scored as flawless. It takes an unusual host (no package manager, no
+	// readable sshd_config, no firewall tooling, no Docker) but "unusual" is
+	// not "impossible", and this is the one number the whole tool is judged
+	// on.
+	Applicable bool `json:"applicable"`
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
@@ -175,14 +187,20 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		}
 	}
 
-	return ScoreBreakdown{Overall: renormalize(totalPenalty, ranCapSum), Axes: axes}
+	return ScoreBreakdown{
+		Overall:    renormalize(totalPenalty, ranCapSum),
+		Axes:       axes,
+		Applicable: ranCapSum > 0,
+	}
 }
 
 // renormalize scales the summed penalty against the caps of the axes that
 // actually ran, yielding a 0-100 score even when some axes are N/A.
 func renormalize(penalty float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
-		return 100
+		// Callers must check ScoreBreakdown.Applicable rather than reading
+		// this; the value is arbitrary because there is nothing to average.
+		return 0
 	}
 	scaled := math.Round(penalty * 100 / float64(ranCapSum))
 	if scaled > 100 {

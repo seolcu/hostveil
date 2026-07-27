@@ -130,8 +130,12 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 			t.Errorf("compose domain state = %v, want skipped", d.State)
 		}
 	}
-	if report.Score.Overall != 100 {
-		t.Errorf("score with nothing scannable = %d, want 100", report.Score.Overall)
+	// This engine registers only the compose checker, so skipping it leaves
+	// no axis at all — and a score with nothing behind it is N/A, not a
+	// perfect 100. A real host runs the other eight checkers and gets a
+	// number; see TestEngineSkipsDockerDomainsWhenDaemonUnreachable.
+	if report.Score.Applicable {
+		t.Error("a report with every axis excluded must not claim an applicable score")
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // This diff is the last thing an operator reads before authorizing hostveil to
@@ -502,4 +503,71 @@ func equalLines(x, y []string) bool {
 		}
 	}
 	return true
+}
+
+// The head/tail trim only removes what matches, so a whole-file reflow —
+// which is what internal/compose's re-encode fallback produces — reaches the
+// quadratic core with both files entire. Two 4,000-line files with nothing
+// in common is a 16-million-cell table, and the comment on lcsDiff records
+// what that costs: 784 MiB for a 10,000-line file, enough to OOM the 1 GB
+// VPS this tool is aimed at. `fix --all --yes` never reads the preview, so
+// nothing would stop it.
+func TestAWholeFileReflowDoesNotBuildAHugeTable(t *testing.T) {
+	const n = 4000
+	a := make([]string, n)
+	b := make([]string, n)
+	for i := range a {
+		a[i] = fmt.Sprintf("old line %d", i)
+		b[i] = fmt.Sprintf("new line %d", i)
+	}
+
+	done := make(chan string, 1)
+	go func() { done <- Unified("docker-compose.yml", strings.Join(a, "\n"), strings.Join(b, "\n")) }()
+
+	select {
+	case out := <-done:
+		if !strings.Contains(out, "-old line 0") || !strings.Contains(out, "+new line 0") {
+			t.Errorf("the degraded diff must still describe the change:\n%s", first(out, 400))
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("Unified did not bound the LCS table for a whole-file reflow")
+	}
+}
+
+// The cap must not change ordinary diffs, which is the whole point of
+// setting it far above any real edit.
+func TestTheCapDoesNotAffectARealisticEdit(t *testing.T) {
+	lines := make([]string, 5000)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("      - \"%d:80\"", 8000+i)
+	}
+	before := strings.Join(lines, "\n")
+	lines[2500] = `      - "127.0.0.1:10500:80"`
+	after := strings.Join(lines, "\n")
+
+	out := Unified("docker-compose.yml", before, after)
+
+	// Counted over body lines only: the "---" and "+++" headers start with
+	// the same characters as a delete and an add.
+	dels, adds := 0, 0
+	for _, l := range strings.Split(out, "\n") {
+		switch {
+		case strings.HasPrefix(l, "---"), strings.HasPrefix(l, "+++"):
+		case strings.HasPrefix(l, "-"):
+			dels++
+		case strings.HasPrefix(l, "+"):
+			adds++
+		}
+	}
+	if dels != 1 || adds != 1 {
+		t.Errorf("a one-line edit in a 5,000-line file must stay a one-line diff (%d del, %d add):\n%s",
+			dels, adds, first(out, 600))
+	}
+}
+
+func first(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }

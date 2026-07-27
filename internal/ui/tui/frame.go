@@ -194,6 +194,12 @@ func (m *appModel) topRow(right string) string {
 // tiers stay recognisably the same instrument.
 func (m *appModel) gaugeRow(meterW int) string {
 	s := m.sty()
+	// A report where no domain ran has no score to draw. An empty meter
+	// beside a number would read as "0/100 — terrible host" rather than
+	// "nothing was examined", which are opposite messages.
+	if m.report.Domains != nil && !m.report.Score.Applicable {
+		return s.dim.Render("SECURITY ") + s.dim.Render("N/A — nothing could be scanned")
+	}
 	sc := m.report.Score.Overall
 	return s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
 		s.bone.Render(fmt.Sprintf(" %d", sc)) + s.dim.Render("/100")
