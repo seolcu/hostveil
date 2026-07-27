@@ -36,10 +36,16 @@ type FixOutcome struct {
 
 // BatchOutcome is the result of applying every eligible Auto fix at once.
 type BatchOutcome struct {
-	Applied  []string          `json:"applied"` // finding IDs fixed
-	Skipped  []string          `json:"skipped"` // needed a choice or had no auto fix
-	Failed   map[string]string `json:"failed"`  // finding ID -> error
-	NewScore ScoreBreakdown    `json:"new_score"`
+	Applied []string          `json:"applied"` // finding IDs fixed
+	Skipped []string          `json:"skipped"` // needed a choice or had no auto fix
+	Failed  map[string]string `json:"failed"`  // finding ID -> error
+	// Interrupted reports that the batch stopped early because the run was
+	// cancelled, so Skipped holds findings nobody decided against — they were
+	// simply never reached. A UI must say so: the checkpoints for whatever
+	// did land are on disk, and an operator who thinks the batch completed
+	// has no reason to go looking for them.
+	Interrupted bool           `json:"interrupted,omitempty"`
+	NewScore    ScoreBreakdown `json:"new_score"`
 }
 
 // RollbackOutcome is the result of rolling back a checkpoint. Unfixed and

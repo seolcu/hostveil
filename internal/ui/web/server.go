@@ -10,6 +10,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -103,10 +104,31 @@ func (s *Server) Handler() http.Handler {
 	return s.guard(mux)
 }
 
-// ListenAndServe runs an initial scan, then serves the dashboard until the
-// process exits.
-func (s *Server) ListenAndServe() error {
-	s.engine.Scan(context.Background(), nil)
+// shutdownGrace bounds how long a shutdown waits for in-flight requests. A
+// fix or a rescan can legitimately be mid-flight, and cutting one off at the
+// socket tells the browser nothing; a few seconds is enough for a handler
+// that is nearly done and short enough that Ctrl-C still feels like Ctrl-C.
+const shutdownGrace = 5 * time.Second
+
+// ListenAndServe runs an initial scan, then serves the dashboard until ctx is
+// cancelled, at which point it stops accepting and drains in-flight requests.
+//
+// The context is the whole point of the signature. Before it, serve ignored
+// cancellation entirely: `cmdServe` took a context and never looked at it,
+// and this method blocked in http.Server.ListenAndServe with no Shutdown
+// wired up. Combined with signal.NotifyContext consuming the only signal it
+// would ever act on, that left a root-owned dashboard which answered neither
+// Ctrl-C nor `systemctl stop` and died only when systemd escalated to
+// SIGKILL — mid-fix, if that is what it happened to be doing.
+func (s *Server) ListenAndServe(ctx context.Context) error {
+	// The startup scan gets the caller's context, so Ctrl-C during the slow
+	// first scan on a Trivy host stops it rather than being ignored until the
+	// listener is up.
+	s.engine.Scan(ctx, nil)
+	if err := ctx.Err(); err != nil {
+		return nil // interrupted before we ever served; not a failure
+	}
+
 	srv := &http.Server{
 		Addr:              s.addr,
 		Handler:           s.Handler(),
@@ -116,7 +138,22 @@ func (s *Server) ListenAndServe() error {
 		// crash. IdleTimeout still reaps connections nobody is using.
 		IdleTimeout: 2 * time.Minute,
 	}
-	return srv.ListenAndServe()
+
+	idle := make(chan struct{})
+	go func() {
+		<-ctx.Done()
+		grace, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownGrace)
+		defer cancel()
+		_ = srv.Shutdown(grace)
+		close(idle)
+	}()
+
+	err := srv.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		<-idle // let the drain finish before the process exits
+		return nil
+	}
+	return err
 }
 
 // guard applies the security middleware: a Host-header allowlist (DNS
@@ -275,8 +312,26 @@ func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
 }
 
+// hostWork returns the context a host-mutating or host-scanning operation
+// should run under: the request's values, but not its cancellation.
+//
+// net/http cancels a request context as soon as the client disconnects, and a
+// browser disconnects for reasons that have nothing to do with intent —
+// closing the tab, navigating away, a laptop lid. Letting that cancel the
+// work is wrong in both directions here. A rescan cut off part-way leaves a
+// report whose domains are empty because they were killed, and a fix cut off
+// part-way is a half-applied change to the host. Neither is what the person
+// closing a tab asked for.
+//
+// The work is already bounded without the request: every command carries
+// platform.DefaultTimeout, and the engine serialises apply and scan behind
+// one mutex, so this cannot accumulate runaway work.
+func hostWork(r *http.Request) context.Context {
+	return context.WithoutCancel(r.Context())
+}
+
 func (s *Server) handleRescan(w http.ResponseWriter, r *http.Request) {
-	report := s.engine.Scan(r.Context(), nil)
+	report := s.engine.Scan(hostWork(r), nil)
 	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
 }
 
@@ -311,7 +366,7 @@ func (s *Server) handleFix(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no such finding", http.StatusNotFound)
 		return
 	}
-	outcome, err := s.engine.ApplyFix(r.Context(), f, req.Action)
+	outcome, err := s.engine.ApplyFix(hostWork(r), f, req.Action)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -327,7 +382,7 @@ func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 			auto = append(auto, f)
 		}
 	}
-	writeJSON(w, s.engine.ApplyBatch(r.Context(), auto))
+	writeJSON(w, s.engine.ApplyBatch(hostWork(r), auto))
 }
 
 type fixRef struct {
@@ -354,7 +409,7 @@ func (s *Server) handleFixBatch(w http.ResponseWriter, r *http.Request) {
 			sel = append(sel, f)
 		}
 	}
-	writeJSON(w, s.engine.ApplyBatch(r.Context(), sel))
+	writeJSON(w, s.engine.ApplyBatch(hostWork(r), sel))
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {

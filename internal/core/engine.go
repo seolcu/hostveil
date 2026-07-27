@@ -115,6 +115,23 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 		Domains:  domains,
 	}
 
+	// A cancelled scan describes nothing. Every exec'd checker dies the
+	// instant the context is cancelled, so what is left is a report whose
+	// domains are empty because they were killed, not because the host is
+	// clean — and installing it would replace a good report with that, in
+	// memory and on disk. Worse, it becomes the baseline: the next scan diffs
+	// against it and reports every finding on the host as newly appeared.
+	//
+	// The dashboard hit this by the shortest possible route. handleRescan
+	// passed the request's context, so closing the browser tab mid-rescan
+	// cancelled the scan, and /api/result then served a scan that never ran.
+	// The request context is no longer the scan's (see ListenAndServe's
+	// BaseContext), but the rule belongs here: any caller may cancel, and
+	// none of them wants the wreckage kept.
+	if err := ctx.Err(); err != nil {
+		return report
+	}
+
 	// Compute the delta against the previous saved scan (for the re-check
 	// loop), then persist this one.
 	delta := e.deltaAgainstLast(report)

@@ -359,3 +359,77 @@ func TestFixCommandsBypassTheScanCache(t *testing.T) {
 		t.Errorf("the engine's fix runner ran %d commands, want 3 — it is caching", n)
 	}
 }
+
+// cancelEngine builds an engine over a real compose file, so a scan produces
+// findings when it is allowed to finish and the cancelled case is a genuine
+// contrast rather than two empty reports.
+func cancelEngine(t *testing.T) *Engine {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "docker-compose.yml")
+	body := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return New(Config{
+		Registry: check.NewRegistry(composecheck.New()),
+		Fixes:    fix.Default(),
+		Store:    history.NewStore(t.TempDir()),
+		Runner: fakeRunner{
+			present: map[string]bool{"docker": true},
+			lsJSON:  `[{"Name":"demo","ConfigFiles":"` + path + `"}]`,
+		},
+	})
+}
+
+// A cancelled scan describes nothing — every exec'd checker dies the instant
+// the context is cancelled — so it must not replace a good report. The
+// dashboard reached this by the shortest route: closing a browser tab
+// mid-rescan cancelled the scan, and the near-empty result became both the
+// current report and the delta baseline, so the next scan reported every
+// finding on the host as newly appeared.
+func TestCancelledScanDoesNotReplaceTheCurrentReport(t *testing.T) {
+	e := cancelEngine(t)
+	good := e.Scan(context.Background(), nil)
+	if len(good.Findings) == 0 {
+		t.Fatal("fixture produced no findings; the test would prove nothing")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	e.Scan(ctx, nil)
+
+	cur, ok := e.Current()
+	if !ok {
+		t.Fatal("a cancelled scan cleared hasRun")
+	}
+	if len(cur.Findings) != len(good.Findings) {
+		t.Errorf("current report now has %d findings, want the %d from the good scan",
+			len(cur.Findings), len(good.Findings))
+	}
+}
+
+// The saved scan is what the next run diffs against, so persisting a
+// cancelled one poisons the delta long after the scan itself is forgotten.
+func TestCancelledScanIsNotPersisted(t *testing.T) {
+	store := history.NewStore(t.TempDir())
+	path := filepath.Join(t.TempDir(), "docker-compose.yml")
+	if err := os.WriteFile(path, []byte("services:\n  cache:\n    image: redis\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e := New(Config{
+		Registry: check.NewRegistry(composecheck.New()),
+		Store:    store,
+		Runner: fakeRunner{
+			present: map[string]bool{"docker": true},
+			lsJSON:  `[{"Name":"demo","ConfigFiles":"` + path + `"}]`,
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	e.Scan(ctx, nil)
+
+	if _, ok, _ := store.LastReport(); ok {
+		t.Error("a cancelled scan was written to the store")
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/check"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
@@ -635,5 +636,61 @@ func TestURLRendersAWildcardBindAsLoopback(t *testing.T) {
 		if got := s.URL(); !strings.HasPrefix(got, tc.want+"?t=") {
 			t.Errorf("addr %q → URL %q, want it to start with %q", tc.addr, got, tc.want)
 		}
+	}
+}
+
+// The dashboard runs as root and applies fixes, so it must stop when it is
+// told to. Before this it ignored cancellation entirely — cmdServe took a
+// context and never looked at it, and ListenAndServe blocked with no
+// Shutdown wired up — leaving a process that answered neither Ctrl-C nor
+// `systemctl stop` and died only when systemd escalated to SIGKILL.
+func TestServeStopsWhenTheContextIsCancelled(t *testing.T) {
+	s, _ := testServer(t)
+	s.addr = "127.0.0.1:0"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- s.ListenAndServe(ctx) }()
+
+	// Give the listener a moment to come up, then ask it to stop.
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("a clean shutdown must not be an error: %v", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("ListenAndServe ignored its cancelled context")
+	}
+}
+
+// Cancelled before the listener ever opens — during the slow first scan on a
+// Trivy host — is a clean stop, not a failure to report.
+func TestServeInterruptedDuringTheStartupScanIsNotAnError(t *testing.T) {
+	s, _ := testServer(t)
+	s.addr = "127.0.0.1:0"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.ListenAndServe(ctx); err != nil {
+		t.Errorf("interrupted before serving should be a clean exit, got %v", err)
+	}
+}
+
+// A browser that goes away must not take a fix or a rescan with it. net/http
+// cancels the request context the moment the client disconnects, and a tab
+// closes for reasons that have nothing to do with intent — so the work runs
+// under a context carrying the request's values but not its cancellation.
+func TestHostWorkOutlivesTheRequest(t *testing.T) {
+	reqCtx, cancel := context.WithCancel(context.Background())
+	r := httptest.NewRequest(http.MethodPost, "/api/rescan", nil).WithContext(reqCtx)
+
+	work := hostWork(r)
+	cancel() // the browser went away
+
+	if err := work.Err(); err != nil {
+		t.Errorf("host work was cancelled with the request: %v", err)
 	}
 }

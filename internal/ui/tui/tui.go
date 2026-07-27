@@ -36,6 +36,9 @@ type appModel struct {
 	// own, and it has to reach Engine.Scan: the TUI puts the terminal in raw
 	// mode and reads Ctrl-C as a key, so without a cancellable context a scan
 	// started here could not be stopped by any means at all.
+	//
+	// Read it through runCtx, never directly — a model built as a bare struct
+	// literal has none, which is how several tests construct one.
 	ctx    context.Context
 	engine *core.Engine
 	report model.Report
@@ -84,6 +87,20 @@ func New(ctx context.Context, engine *core.Engine, opts ThemeOpts) tea.Model {
 		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
 		th: opts.Initial, saveTheme: opts.Save,
 	}
+}
+
+// runCtx is the context every engine call from the TUI runs under.
+//
+// It exists because appModel is also built as a bare struct literal — the
+// layout and frame tests do it for all eight modes — and such a model has no
+// context. Before this, a batch fix issued from one of those panicked on a
+// nil dereference inside the engine. Falling back to Background keeps the
+// zero value renderable and drivable; production always goes through New.
+func (m *appModel) runCtx() context.Context {
+	if m.ctx == nil {
+		return context.Background()
+	}
+	return m.ctx
 }
 
 // rebuildActive re-derives the visible list from the current report and
@@ -169,7 +186,7 @@ func rollbackCmd(e *core.Engine, id string) tea.Cmd {
 
 // --- tea.Model ---
 
-func (m *appModel) Init() tea.Cmd { return scanCmd(m.ctx, m.engine) }
+func (m *appModel) Init() tea.Cmd { return scanCmd(m.runCtx(), m.engine) }
 
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -324,7 +341,7 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		m.mode = modeScanning
 		m.status = "Rescanning…"
-		return m, scanCmd(m.ctx, m.engine)
+		return m, scanCmd(m.runCtx(), m.engine)
 	case "h":
 		return m, historyCmd(m.engine)
 	case "t":
@@ -451,7 +468,7 @@ func (m *appModel) startBatch() tea.Cmd {
 		m.mode = modeMessage
 		return nil
 	}
-	return batchCmd(m.ctx, m.engine, sel)
+	return batchCmd(m.runCtx(), m.engine, sel)
 }
 
 // presentSources lists the distinct sources among active findings, sorted,
@@ -517,7 +534,7 @@ func (m *appModel) keyPreview(key string) (tea.Model, tea.Cmd) {
 			m.mode = modeList
 			return m, nil
 		}
-		return m, applyCmd(m.ctx, m.engine, m.active[m.cursor], m.previewAction)
+		return m, applyCmd(m.runCtx(), m.engine, m.active[m.cursor], m.previewAction)
 	default:
 		// Number keys pick an alternative for Review fixes.
 		if n := int(key[0] - '0'); len(key) == 1 && n >= 0 && n < len(m.preview.Actions) {
@@ -593,5 +610,12 @@ func batchSummary(o model.BatchOutcome) string {
 		fmt.Fprintf(&b, " · failed %d", len(o.Failed))
 	}
 	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
+	// An interrupted batch and a completed one differ only in this sentence,
+	// and the difference matters: the skipped findings were never judged
+	// ineligible, they were never reached, and the fixes that did land are
+	// already on the host with checkpoints waiting in the history view.
+	if o.Interrupted {
+		b.WriteString(" Interrupted before the rest were attempted; press h to see what was applied.")
+	}
 	return b.String()
 }
