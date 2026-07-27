@@ -100,6 +100,8 @@
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--json</code></td><td><code>false</code></td><td>Output the report as JSON.</td></tr>
+                  <tr><td><code>--sarif</code></td><td><code>false</code></td><td>Output the report as SARIF 2.1.0, the format CI systems and GitHub code scanning ingest. Mutually exclusive with <code>--json</code>. Per-domain coverage rides in the run's properties, so a degraded scan is visible in the export too.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>—</td><td>Write the report to a file instead of stdout, in whichever format was chosen. The exit status is unchanged, so a CI gate keeps working.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
                 </tbody>

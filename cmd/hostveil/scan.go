@@ -14,36 +14,65 @@ import (
 func cmdScan(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	var (
-		jsonOut bool
-		verbose bool
-		noColor bool
+		jsonOut  bool
+		sarifOut bool
+		verbose  bool
+		noColor  bool
+		output   string
 	)
 	fs.BoolVar(&jsonOut, "json", false, "output the report as JSON")
+	fs.BoolVar(&sarifOut, "sarif", false, "output the report as SARIF 2.1.0")
 	fs.BoolVar(&verbose, "verbose", false, "show descriptions and fix guidance")
 	fs.BoolVar(&verbose, "v", false, "show descriptions and fix guidance (shorthand)")
 	fs.BoolVar(&noColor, "no-color", false, "disable colored output")
+	fs.StringVar(&output, "output", "", "write the report to a file instead of stdout")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
+	}
+	if jsonOut && sarifOut {
+		fmt.Fprintln(os.Stderr, "hostveil: --json and --sarif are mutually exclusive")
+		return 2
 	}
 
 	engine := buildEngine()
 	report := scanWithProgress(ctx, engine)
 
-	if jsonOut {
+	var rendered string
+	switch {
+	case jsonOut:
 		out, err := clirender.JSON(report)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "hostveil:", err)
 			return 1
 		}
-		fmt.Println(out)
-		return exitCode(report)
+		rendered = out + "\n"
+	case sarifOut:
+		out, err := clirender.SARIF(report, version)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "hostveil:", err)
+			return 1
+		}
+		rendered = out + "\n"
+	default:
+		// A report written to a file is read later, without the terminal it
+		// was produced on — never color it.
+		opts := clirender.Options{Color: output == "" && !noColor && colorEnabled(), Verbose: verbose}
+		rendered = clirender.Text(report, opts)
+		if delta := engine.LastDelta(); delta.HasChanges() {
+			rendered += clirender.DeltaSummary(delta)
+		}
 	}
 
-	opts := clirender.Options{Color: !noColor && colorEnabled(), Verbose: verbose}
-	fmt.Print(clirender.Text(report, opts))
-	if delta := engine.LastDelta(); delta.HasChanges() {
-		fmt.Print(clirender.DeltaSummary(delta))
+	if output != "" {
+		if err := os.WriteFile(output, []byte(rendered), 0o644); err != nil {
+			fmt.Fprintln(os.Stderr, "hostveil:", err)
+			return 1
+		}
+	} else {
+		fmt.Print(rendered)
 	}
+	// The exit code is the CI contract and does not vary by output format
+	// or destination.
 	return exitCode(report)
 }
 

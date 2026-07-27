@@ -157,6 +157,10 @@ Usage:
 Scan flags:
   -v, --verbose   Show each finding's description and fix guidance
   --json          Output the report as JSON
+  --sarif         Output the report as SARIF 2.1.0, the format CI systems
+                  and GitHub code scanning ingest
+  --output FILE   Write the report to FILE instead of stdout. The exit
+                  status is unchanged, so a CI gate still works.
   --no-color      Disable colored output
 
 Fix flags:
