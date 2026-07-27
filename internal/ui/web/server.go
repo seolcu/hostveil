@@ -4,6 +4,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -478,9 +479,21 @@ func (s *Server) lookup(id, service string) (model.Finding, bool) {
 	return model.Finding{}, false
 }
 
+// writeJSON encodes v as the response body.
+//
+// Encoding into a buffer first is what makes a failure reportable. Streaming
+// straight into the ResponseWriter commits the 200 and the headers with the
+// first byte, so an error partway leaves the client holding truncated JSON
+// under a success status — which reads as a parse bug on their side rather
+// than a failure on ours.
 func writeJSON(w http.ResponseWriter, v any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(v); err != nil {
+		http.Error(w, "cannot encode response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(v)
+	_, _ = w.Write(buf.Bytes())
 }
 
 // mustSub returns the embedded assets rooted at the assets/ directory so

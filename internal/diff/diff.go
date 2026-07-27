@@ -232,9 +232,41 @@ func lcsDiff(a, b []string) []op {
 	return ops
 }
 
+// maxCoreCells caps the LCS table lcsCore is willing to build.
+//
+// The trim above makes the core tiny for the edits hostveil actually
+// performs, but it can only trim what matches: when internal/compose falls
+// back to re-encoding a whole YAML file, the reflow leaves no common head or
+// tail at all and the core sees both files entire. Ten million cells is
+// roughly 80 MiB — well past any real diff, and well short of the 784 MiB
+// that OOMs the 1 GB VPS this tool is aimed at.
+//
+// Past the cap the diff degrades to whole-file replace rather than failing:
+// a fix must not be blocked because its preview is expensive to render, and
+// "every line changed" is an honest description of a reflowed file.
+const maxCoreCells = 10_000_000
+
+// replaceAll is the degenerate diff: delete every line of a, add every line
+// of b. It is what the LCS would produce for inputs with nothing in common,
+// and what the cap falls back to when computing the real answer would cost
+// more memory than the host can spare.
+func replaceAll(a, b []string) []op {
+	ops := make([]op, 0, len(a)+len(b))
+	for i, line := range a {
+		ops = append(ops, op{kind: opDel, line: line, aLine: i + 1})
+	}
+	for i, line := range b {
+		ops = append(ops, op{kind: opAdd, line: line, bLine: i + 1})
+	}
+	return ops
+}
+
 // lcsCore computes edit operations via a longest-common-subsequence DP. It
 // runs on inputs whose common head and tail have already been removed.
 func lcsCore(a, b []string) []op {
+	if len(a)*len(b) > maxCoreCells {
+		return replaceAll(a, b)
+	}
 	n, m := len(a), len(b)
 	dp := make([][]int, n+1)
 	for i := range dp {

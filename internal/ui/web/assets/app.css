@@ -68,6 +68,7 @@ button:disabled { opacity: .45; cursor: default; }
 .gauge-label { font-size: 10px; letter-spacing: 1.5px; color: var(--slate); text-transform: uppercase; }
 .gauge-score { font-weight: 700; font-size: 19px; letter-spacing: .5px; min-width: 74px; }
 .gauge-score small { color: var(--slate); font-size: 12px; font-weight: 400; }
+.gauge-na { color: var(--slate); font-size: 13px; }
 .meter {
   --w: 0%; --c: var(--slate);
   position: relative; width: 150px; height: 10px;

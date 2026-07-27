@@ -22,7 +22,14 @@ func Text(r model.Report, opts Options) string {
 	var b strings.Builder
 	c := palette(opts.Color)
 
-	fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s\n\n", c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset)
+	// No axis ran, so there is nothing to average and the number would be
+	// arbitrary. Printing one anyway is the same lie the per-axis N/A exists
+	// to prevent, in the one place everybody reads.
+	if !r.Score.Applicable {
+		fmt.Fprintf(&b, "%sSecurity score: %sN/A — no domain could be scanned%s\n\n", c.bold, c.dim, c.reset)
+	} else {
+		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s\n\n", c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset)
+	}
 
 	for _, ax := range r.Score.Axes {
 		if !ax.Applicable {

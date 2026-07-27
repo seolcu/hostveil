@@ -207,10 +207,16 @@ function render() {
   const score = report.score;
 
   // Exposure gauge (the signature): SECURITY meter + score.
+  //
+  // When no domain ran there is nothing to average, so the number would be
+  // arbitrary — and an empty meter next to a digit reads as "terrible host"
+  // rather than "nothing was examined", which are opposite messages.
   document.getElementById("gauge").replaceChildren(
     el("span", { class: "gauge-label" }, "Security"),
-    meter(score.overall, band(score.overall)),
-    el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` })
+    ...(score.applicable === false
+      ? [el("span", { class: "gauge-na" }, "N/A — nothing could be scanned")]
+      : [meter(score.overall, band(score.overall)),
+         el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` })])
   );
 
   // Per-axis bars (short labels so they never crowd the meter).
@@ -548,22 +554,48 @@ initThemePicker();
 
 document.getElementById("history").onclick = showHistory;
 
-document.getElementById("rescan").onclick = async () => {
+// whileBusy disables a button for the duration of the work it starts, and
+// reports a failure instead of leaving one unhandled.
+//
+// Both of these routes take minutes on a real host and the engine serialises
+// them behind one mutex, so a second click does not run anything sooner — it
+// queues another multi-minute request behind the first and holds a
+// connection open for it. And a rejected promise with no catch left the user
+// on "Rescanning…" forever with the reason only in the browser console.
+async function whileBusy(el, label, fn) {
+  if (el.disabled) return;
+  const original = el.textContent;
+  el.disabled = true;
+  el.textContent = label;
+  try {
+    await fn();
+  } catch (e) {
+    flash(original + " failed: " + e.message, true);
+  } finally {
+    el.disabled = false;
+    el.textContent = original;
+  }
+}
+
+const rescanBtn = document.getElementById("rescan");
+rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   flash("Rescanning…");
   marked.clear();
   report = await api("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
   render();
   flash("Rescan complete.");
-};
+});
 
-document.getElementById("fixall").onclick = async () => {
+const fixallBtn = document.getElementById("fixall");
+fixallBtn.onclick = () => {
   if (!confirm("Apply every safe (Auto) fix now?")) return;
-  try {
+  whileBusy(fixallBtn, "Applying…", async () => {
     const o = await api("/api/fix/all", { method: "POST", headers: { "Content-Type": "application/json" } });
-    flash(`Applied ${o.applied ? o.applied.length : 0} fixes. Score ${o.new_score.overall}/100.`);
+    flash(`Applied ${o.applied ? o.applied.length : 0} fixes. Score ${o.new_score.overall}/100.`
+      + (o.interrupted ? "  Interrupted — the rest were never attempted." : ""));
     marked.clear();
     await refresh();
-  } catch (e) { flash("Batch fix failed: " + e.message, true); }
+  });
 };
 
 refresh().catch((e) => flash("Failed to load: " + e.message, true));
