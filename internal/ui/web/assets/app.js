@@ -358,6 +358,30 @@ function selectFinding(f, li) {
   if (isFixable(f)) {
     d.append(el("button", { class: "primary", onclick: () => preview(f) }, "Preview fix"));
   }
+  d.append(el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI"));
+}
+
+// explainAI asks the server for the advisory AI explanation. It degrades in
+// place: with no Ollama reachable the server answers with ai_error, which
+// renders as a note rather than an error state — AI is optional everywhere.
+async function explainAI(f, btn) {
+  const d = document.getElementById("detail");
+  const old = d.querySelector(".aibox");
+  if (old) old.remove();
+  const box = el("div", { class: "aibox" }, el("div", { class: "meta" }, "Asking the local AI model…"));
+  d.append(box);
+  if (btn) btn.disabled = true;
+  try {
+    const ex = await api(`/api/explain?id=${encodeURIComponent(f.id)}&service=${encodeURIComponent(f.service || "")}`);
+    box.replaceChildren(
+      el("div", { class: "howto" }, "AI explanation (advisory)"),
+      ex.ai ? el("p", {}, ex.ai) : el("p", { class: "meta" }, ex.ai_error || "The AI provider returned nothing.")
+    );
+  } catch (e) {
+    box.replaceChildren(el("p", { class: "meta" }, "AI explanation failed: " + e.message));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function preview(f) {

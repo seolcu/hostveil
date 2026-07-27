@@ -209,6 +209,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .over-jump-title { color: var(--bone); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── fix preview ── */
+.aibox { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); background: var(--ink-2); }
+.aibox p { margin: 6px 0 0; }
+
 .fixbox { margin-top: 18px; border: 1px solid var(--line); background: var(--ink-2); }
 .fixbox-head { padding: 10px 14px; border-bottom: 1px solid var(--line);
   font-size: 11px; letter-spacing: .5px; }

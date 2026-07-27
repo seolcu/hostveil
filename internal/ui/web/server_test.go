@@ -438,6 +438,45 @@ func TestConcurrentRescanIsRefused(t *testing.T) {
 	}
 }
 
+// The explain route must always answer with the deterministic explanation,
+// and with no AI provider wired in (the test engine has none) it says so in
+// ai_error rather than failing — AI is advisory everywhere or it is a
+// dependency, and it must not be a dependency.
+func TestExplainDegradesWithoutAI(t *testing.T) {
+	s, _ := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	client := authedClient(t, s, srv)
+
+	resp, err := client.Get(srv.URL + "/api/explain?id=compose.ds018&service=cache")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("explain returned %d", resp.StatusCode)
+	}
+	var ex model.Explanation
+	if err := json.NewDecoder(resp.Body).Decode(&ex); err != nil {
+		t.Fatal(err)
+	}
+	if ex.Plain == "" {
+		t.Error("the deterministic explanation must always be present")
+	}
+	if ex.AI != "" || ex.AIError == "" {
+		t.Errorf("with no provider, ai should be empty and ai_error set, got %+v", ex)
+	}
+
+	missing, err := client.Get(srv.URL + "/api/explain?id=nope.nothing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing.Body.Close()
+	if missing.StatusCode != http.StatusNotFound {
+		t.Errorf("unknown finding returned %d, want 404", missing.StatusCode)
+	}
+}
+
 // The status route reads scan state gathered as root, so it is gated by
 // the token like everything else.
 func TestRescanStatusRequiresTheToken(t *testing.T) {
