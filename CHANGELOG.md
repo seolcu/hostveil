@@ -1,5 +1,161 @@
 # Changelog
 
+## [3.5.0](https://github.com/seolcu/hostveil/compare/v3.4.0...v3.5.0) (2026-07-28)
+
+The previous releases asked whether the score was telling the truth and whether
+the interfaces held up on a real screen. This one asks a harder question: what
+happens to hostveil, and to the host it is running on, when something goes
+wrong.
+
+The answers were not good. A local unprivileged user could arrange their own
+home directory so that `hostveil fix --all` chmod'ed `/etc/passwd` on their
+behalf. A Docker daemon that accepted a connection and never answered hung the
+entire scan with no way out, because the second Ctrl-C was silently discarded
+along with the first. The checkpoint store — the only backup mechanism, the
+thing every rollback depends on — wrote non-durably and restored without
+checking that what it was about to write over your `sshd_config` was intact.
+And a scan whose domains had all failed exited 0, so a CI gate could not tell a
+blind scan from a clean host.
+
+None of these were reachable by the existing tests, because all of them are
+about the paths taken when something has already failed. So this release also
+builds the machinery to catch the next one: every command is now bounded and
+traceable, the two commands that change a host went from no test coverage to
+being driven end to end, and CI now runs the real binary through
+scan → fix → rollback inside a seeded container on every pull request.
+
+**Two changes can move your score without your configuration having changed.**
+A compose project whose file cannot be parsed now degrades its domain instead
+of being silently dropped, and a scan where no domain ran at all now reports
+N/A rather than a perfect 100. Both replace a number that was never earned.
+
+### Features
+
+* **cmd:** trace every command hostveil runs, with `HOSTVEIL_DEBUG=1`
+  ([#576](https://github.com/seolcu/hostveil/issues/576)). There was no logging
+  facility of any kind, so the entire evidence available for *"it says my
+  firewall is inactive, but it isn't"* was a domain's one-line reason string,
+  truncated to 200 characters. Every claim hostveil makes about a host comes
+  from a command, and now each one is logged to stderr with its duration and
+  outcome — including the binary lookups that decide whether a domain runs at
+  all. Command *output* is deliberately never logged: `docker inspect` reports
+  the resolved environment of every container, so a trace pasted into a bug
+  report would routinely be a credential leak. Ships with the operator
+  troubleshooting guide the docs never had.
+* **install:** add an uninstall path, and verify each release's build
+  provenance ([#581](https://github.com/seolcu/hostveil/issues/581)). Nothing
+  in the repository told a user how to remove hostveil, and nothing said that
+  re-running the installer is how you upgrade. `--uninstall` removes the binary
+  and deliberately leaves the state directory alone — those checkpoints are the
+  backups of every file hostveil has edited on the host, and uninstalling the
+  tool is not a decision to give up the ability to undo its fixes. The
+  installer also now checks the signed build provenance attestation the release
+  workflow has been minting all along: the checksums file comes from the same
+  release as the tarball, so matching it proved only that the download was not
+  corrupted in transit.
+* **web:** require an access token for the dashboard
+  ([#564](https://github.com/seolcu/hostveil/issues/564)). Loopback keeps the
+  dashboard off the network but not away from the other accounts on the
+  machine, and `serve` auto-elevates — so any local user could `curl` root into
+  applying fixes. Every route now requires the one-off token printed in the
+  startup URL.
+* **ui:** add a brand mark and favicon, and tighten the TUI's axis strip
+  ([#565](https://github.com/seolcu/hostveil/issues/565)).
+
+### Bug Fixes
+
+* **check:** stop a local user turning the agent audit against the host
+  ([#569](https://github.com/seolcu/hostveil/issues/569)). The agent checker
+  reads config files inside other accounts' home directories, as root, and
+  emits an Auto chmod fix for the ones whose permissions are loose — following
+  symlinks at every step. So any user could point `~/.openclaw/openclaw.json`
+  at `/etc/passwd`, collect a genuine finding about *its* mode, and have
+  `fix --all` tighten the password database to 0600, breaking logins, `sudo`,
+  and every `getpwnam` on the machine. A FIFO in the same place parked the scan
+  inside `open(2)` forever; a symlink to `/dev/zero` read without bound. Every
+  read and every chmod on an attacker-influenceable path now refuses to follow
+  a link, cannot block, and is bounded.
+* **core:** bound every command, so one wedged daemon cannot hang a scan
+  ([#570](https://github.com/seolcu/hostveil/issues/570)). Only Trivy had a
+  timeout. Everything else ran with no deadline at all, and a half-dead Docker
+  daemon — one that accepts the connection and never answers — is an ordinary
+  failure. The single-flight cache made it worse: one hung command parked every
+  checker waiting on the same call, so three domains stopped together and the
+  user watched `scanning: container cve firewall` until they killed the
+  process.
+* **core:** make interrupting hostveil actually stop it
+  ([#571](https://github.com/seolcu/hostveil/issues/571)). `signal.NotifyContext`
+  consumes one signal and returns, but leaves the handler registered — so every
+  signal after the first was diverted from its default disposition and silently
+  dropped. `hostveil serve` ignored cancellation entirely, leaving a root-owned
+  dashboard that answered neither Ctrl-C nor `systemctl stop` and died only
+  when systemd escalated to SIGKILL, mid-fix if that is what it was doing.
+  Cancellation was also being acted on where it should not be: closing a
+  browser tab mid-rescan cancelled the scan, and the resulting empty report
+  replaced the good one *and* became the baseline the next scan compared
+  against, which then reported the entire host as newly appeared.
+* **history:** make the recovery layer durable, and verify backups before
+  restoring them ([#572](https://github.com/seolcu/hostveil/issues/572)). The
+  checkpoint store is the only backup mechanism hostveil has, and it was the
+  one place not using the atomic writer sitting 200 lines away — no fsync, no
+  temp-and-rename. Nothing recorded the hash of the backup itself either, so a
+  blob truncated by a crash, or by delayed allocation on XFS or btrfs, was
+  restored as-is: an empty `/etc/ssh/sshd_config` written over a working one,
+  which is precisely the outcome the whole layer exists to prevent. Rollback's
+  own write was non-atomic too, so an interrupted restore destroyed the file it
+  was restoring. A checkpoint whose metadata could not be read also vanished
+  from `hostveil history` with no message, making an applied fix look like it
+  had never happened.
+* **core:** verify what a fix writes, and record what it half-did
+  ([#575](https://github.com/seolcu/hostveil/issues/575)). Nothing ran
+  `sshd -t`, anywhere. "The file was written" and "the service will accept it"
+  are different claims, and only the second is worth marking a finding fixed
+  for — sshd keeps serving from the config it already loaded, so a broken file
+  looks like nothing at all until the next restart, when sshd refuses to start
+  and repairing it needs the SSH access it just removed. SSH fixes are now
+  validated *before* the live file is touched. Separately, an exec fix that
+  changed the host and then failed on a later command left no record at all
+  while reporting only that it had failed.
+* **check:** close three places where a partial scan reported as complete
+  ([#574](https://github.com/seolcu/hostveil/issues/574)). A compose project
+  whose file could not be parsed was skipped with a bare `continue` and the
+  domain reported Done over the rest — the only place left in the tree that let
+  "I couldn't look" pass for "nothing there". `sshd_config` parsing stopped
+  silently at any line over 64 KiB, so every directive after it read as unset
+  and the compiled-in default won the audit, which for `PermitRootLogin` means
+  the verdict depended on which side of that line it sat. And on a minimal
+  Fedora or Rocky host, a missing `needs-restarting` made the checker return
+  before it ever counted pending security updates.
+* **cmd:** stop `scan` exiting 0 when it never actually looked
+  ([#573](https://github.com/seolcu/hostveil/issues/573)). The exit code came
+  from findings alone, and a failed domain produces none — so an unreachable
+  Docker socket silenced the two heaviest axes and the pipeline saw a clean
+  run. `scan` now exits **3** when a domain failed outright. A domain skipped
+  for a missing dependency, or degraded to partial coverage, still does not
+  change the status.
+* **model:** stop reporting 100 for a scan that examined nothing
+  ([#577](https://github.com/seolcu/hostveil/issues/577)). The per-axis N/A
+  flag already stopped a skipped domain scoring full marks, but the same lie
+  survived in the aggregate: with every axis excluded there was nothing to
+  average over and the arithmetic fell out at a perfect 100. Also bounds the
+  diff, which could allocate 784 MiB — enough to OOM the 1 GB VPS this tool is
+  aimed at — when a compose file was reflowed by the re-encode fallback and
+  `fix --all --yes` never read the preview that would have shown it.
+* **tui:** compose every mode through one frame layout
+  ([#568](https://github.com/seolcu/hostveil/issues/568)). Each view worked out
+  its row budget by counting the newlines of chrome it had already rendered,
+  arithmetic that had to be re-derived by hand every time the chrome changed
+  and was the direct cause of two separate viewport bugs in the last two
+  releases. The chrome is now measured first and the body is told what it may
+  use.
+* **web:** stop the dashboard scrolling sideways on narrow viewports.
+* **cmd:** ask two questions in a row without losing the answer to the second
+  ([#579](https://github.com/seolcu/hostveil/issues/579)). Each prompt built a
+  fresh buffered reader over stdin, and the first read ahead into a buffer that
+  went out of scope with it — so choosing an alternative for a Review fix
+  consumed the confirmation too, which then read EOF and declined. Applying a
+  Review fix interactively was not possible.
+
 ## [3.4.0](https://github.com/seolcu/hostveil/compare/v3.3.0...v3.4.0) (2026-07-23)
 
 hostveil shipped exactly one look, and its palette was written down twice —
