@@ -14,6 +14,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // PreviewFix returns, per available action, exactly what the fix would
@@ -90,12 +91,21 @@ type modeChange struct {
 // A stat failure aborts the whole plan rather than skipping the file: a fix
 // that silently tightened three of four files would report success while
 // leaving the fourth exposed.
+//
+// Lstat plus a type check, never Stat. Mode fixes reach into user homes
+// (agent.config-perms), where the path is the account's to shape: a symlink
+// left where the config file was would send root's chmod to whatever the
+// link points at. Refusing loudly rather than skipping keeps the no-silent-
+// partial-success rule above.
 func planModes(a fix.Action) ([]modeChange, error) {
 	var changes []modeChange
 	for _, p := range a.Paths {
-		fi, err := os.Stat(p)
+		fi, err := os.Lstat(p)
 		if err != nil {
 			return nil, err
+		}
+		if m := fi.Mode(); !m.IsRegular() && !m.IsDir() {
+			return nil, fmt.Errorf("%s is not a regular file or directory (%v); refusing to change its mode", p, m.Type())
 		}
 		cur := fi.Mode()
 		next := a.Mode(cur)
@@ -316,7 +326,10 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 
 	for _, c := range changes {
-		if err := os.Chmod(c.path, c.to); err != nil {
+		// Through the descriptor, not the path: planModes vetted the type,
+		// but the file can be swapped for a symlink between the plan and this
+		// line, and os.Chmod would follow it.
+		if err := platform.ChmodNoFollow(c.path, c.to); err != nil {
 			return model.FixOutcome{}, err
 		}
 	}

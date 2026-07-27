@@ -3,13 +3,13 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/seolcu/hostveil/internal/platform"
 	"github.com/seolcu/hostveil/internal/secretkey"
 )
 
@@ -196,10 +196,16 @@ type envFile struct {
 	SecretKeys []string
 }
 
+// maxAgentFileBytes bounds every read under a user's home. The largest real
+// config is a few hundred kilobytes of commented JSON5; a megabyte of headroom
+// keeps any legitimate file readable while a symlink at /dev/zero stays a
+// bounded error instead of an allocation that never ends.
+const maxAgentFileBytes = 1 << 20
+
 // loadEnvFile parses a KEY=value file. safeKeys names the variables whose
 // values the caller needs; every other variable is reported by presence only.
 func loadEnvFile(path string, safeKeys []string) (envFile, error) {
-	b, err := os.ReadFile(path) //nolint:gosec // path comes from the runtime registry
+	b, err := platform.ReadFileNoFollow(path, maxAgentFileBytes)
 	if err != nil {
 		return envFile{}, err
 	}

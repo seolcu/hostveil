@@ -621,3 +621,41 @@ func TestCurrentIsASnapshot(t *testing.T) {
 		t.Error("markFixed did not reach the engine's own report")
 	}
 }
+
+// A mode fix must not chmod through a symlink. fileperms and agent findings
+// both carry paths, and the agent ones point into a user's home where that
+// account decides what the path is. A symlink there aimed at /etc/passwd
+// would turn "tighten your agent config" into root breaking the host's
+// account database.
+//
+// The fix refuses rather than skipping, because a mode fix that silently
+// tightened some of its paths would report success over a file it left
+// exposed.
+func TestModeFixRefusesToFollowASymlink(t *testing.T) {
+	dir := t.TempDir()
+	victim := filepath.Join(dir, "passwd")
+	if err := os.WriteFile(victim, []byte("root:x:0:0::/root:/bin/bash\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "shadow")
+	if err := os.Symlink(victim, link); err != nil {
+		t.Fatal(err)
+	}
+
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
+		model.SourceFilePerms, model.RemediationAuto,
+		model.WithEvidence("paths", link),
+		model.WithEvidence("expected", "0640"),
+	)
+
+	engine := fixEngine(t)
+	if _, err := engine.PreviewFix(f); err == nil {
+		t.Error("previewing a mode fix on a symlink must fail, not report a plan")
+	}
+	if _, err := engine.ApplyFix(context.Background(), f, 0); err == nil {
+		t.Fatal("applying a mode fix to a symlink must fail")
+	}
+	if fi, _ := os.Stat(victim); fi.Mode().Perm() != 0o644 {
+		t.Errorf("the symlink's target is now %#o — the chmod followed the link", fi.Mode().Perm())
+	}
+}
