@@ -16,6 +16,8 @@
                   <tr><td><code>--json</code></td><td><code>false</code></td><td>Output the report as JSON.</td></tr>
                   <tr><td><code>--sarif</code></td><td><code>false</code></td><td>Output the report as SARIF 2.1.0, the format CI systems and GitHub code scanning ingest. Mutually exclusive with <code>--json</code>. Per-domain coverage rides in the run's properties, so a degraded scan is visible in the export too.</td></tr>
                   <tr><td><code>--output FILE</code></td><td>—</td><td>Write the report to a file instead of stdout, in whichever format was chosen. The exit status is unchanged, so a CI gate keeps working.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>—</td><td>Scan only these domains, comma-separated (e.g. <code>--only ssh,firewall</code>). Domains not scanned show as N/A, never as 100. A partial scan is not saved as the last-scan baseline and reports no delta — otherwise the next full scan would announce every finding from the skipped domains as new.</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>—</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>; the same partial-scan rules apply.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
                 </tbody>

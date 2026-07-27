@@ -161,6 +161,10 @@ Scan flags:
                   and GitHub code scanning ingest
   --output FILE   Write the report to FILE instead of stdout. The exit
                   status is unchanged, so a CI gate still works.
+  --only LIST     Scan only these domains (comma-separated, e.g.
+                  --only ssh,firewall). A partial scan is not saved as the
+                  last-scan baseline and reports no delta.
+  --skip LIST     Scan every domain except these (comma-separated)
   --no-color      Disable colored output
 
 Fix flags:

@@ -71,11 +71,33 @@ func New(cfg Config) *Engine {
 	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer}
 }
 
+// ScanOptions narrows what a scan covers. The zero value is a full scan.
+type ScanOptions struct {
+	// Only limits the scan to these domains. Empty means every registered
+	// checker runs.
+	Only []model.Source
+}
+
+// Partial reports whether the options describe less than a full scan.
+func (o ScanOptions) Partial() bool { return len(o.Only) > 0 }
+
 // Scan runs every checker concurrently, scores the merged findings, stores
 // the result as the engine's current report, and returns it. progress may
 // be nil; if non-nil it receives a ScanEvent as each checker starts and
 // finishes.
 func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) model.Report {
+	return e.ScanWith(ctx, progress, ScanOptions{})
+}
+
+// ScanWith is Scan with domain selection.
+//
+// A partial scan is never persisted and computes no delta. Saving it would
+// make the partial report the baseline: the next full scan would announce
+// every finding from the skipped domains as newly appeared, and the
+// operator's last complete report on disk would have been overwritten by a
+// narrower one. The in-memory current report is still replaced, so a fix
+// in the same process works on what was just scanned.
+func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, opts ScanOptions) model.Report {
 	// A scan replaces the current report wholesale, so it must not overlap a
 	// fix: the replacement would drop the Fixed flag the fix had just set,
 	// and the scan would be reading files another goroutine is mid-write on.
@@ -89,7 +111,17 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 	// not replace e.runner: fixes run through the uncached one, because an
 	// exec fix mutates the host and must never be served from a cache.
 	env := platform.Detect(ctx, platform.NewScanCache(e.runner))
-	results := e.registry.Run(ctx, env, progress)
+	registry := e.registry
+	if opts.Partial() {
+		var subset []check.Checker
+		for _, c := range e.registry.Checkers() {
+			if slices.Contains(opts.Only, c.Source()) {
+				subset = append(subset, c)
+			}
+		}
+		registry = check.NewRegistry(subset...)
+	}
+	results := registry.Run(ctx, env, progress)
 
 	var findings []model.Finding
 	states := make(map[model.Source]model.ScanState, len(results))
@@ -133,9 +165,13 @@ func (e *Engine) Scan(ctx context.Context, progress chan<- model.ScanEvent) mode
 	}
 
 	// Compute the delta against the previous saved scan (for the re-check
-	// loop), then persist this one.
-	delta := e.deltaAgainstLast(report)
-	e.persist(report)
+	// loop), then persist this one. A partial scan does neither — see
+	// ScanWith.
+	var delta model.Delta
+	if !opts.Partial() {
+		delta = e.deltaAgainstLast(report)
+		e.persist(report)
+	}
 
 	e.mu.Lock()
 	e.current = report
