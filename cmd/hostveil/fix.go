@@ -122,7 +122,16 @@ func fixAll(ctx context.Context, yes bool) int {
 	for id, msg := range out.Failed {
 		fmt.Printf("  ✗ %s: %s\n", id, msg)
 	}
+	// Say it before the rollback hint, because the hint is what an
+	// interrupted operator most needs: some fixes did land, and nothing else
+	// on screen would tell them that.
+	if out.Interrupted {
+		fmt.Printf("\nInterrupted — %d of %d fixes were never attempted.\n", len(out.Skipped), len(auto))
+	}
 	fmt.Println("Roll back any change with: hostveil history")
+	if out.Interrupted {
+		return 1
+	}
 	return 0
 }
 

@@ -659,3 +659,58 @@ func TestModeFixRefusesToFollowASymlink(t *testing.T) {
 		t.Errorf("the symlink's target is now %#o — the chmod followed the link", fi.Mode().Perm())
 	}
 }
+
+// A batch cut short must say so. Ctrl-C in the TUI maps straight to tea.Quit
+// with no guard while a batch is in flight, so the process exits mid-loop —
+// the checkpoints for whatever landed are on disk, and without this flag the
+// outcome is indistinguishable from a batch that ran to completion and found
+// the rest ineligible.
+func TestInterruptedBatchReportsWhatItDidNotReach(t *testing.T) {
+	engine := fixEngine(t)
+
+	dir := t.TempDir()
+	var findings []model.Finding
+	for _, name := range []string{"a", "b", "c"} {
+		path := filepath.Join(dir, name+".yml")
+		if err := os.WriteFile(path, []byte("services:\n  app:\n    image: myapp\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		findings = append(findings, model.NewFinding("compose.ds006", "no-new-privileges",
+			model.SeverityMedium, model.SourceCompose, model.RemediationAuto,
+			model.WithService(name), model.WithMetadata("file", path)))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	out := engine.ApplyBatch(ctx, findings)
+
+	if !out.Interrupted {
+		t.Error("a batch that stopped on cancellation must report Interrupted")
+	}
+	if len(out.Applied) != 0 {
+		t.Errorf("applied %v under an already-cancelled context", out.Applied)
+	}
+	if len(out.Skipped) != len(findings) {
+		t.Errorf("skipped %d, want all %d unreached findings listed", len(out.Skipped), len(findings))
+	}
+}
+
+// The flag must not fire on the ordinary path, or it means nothing.
+func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
+	engine := fixEngine(t)
+	path := filepath.Join(t.TempDir(), "docker-compose.yml")
+	if err := os.WriteFile(path, []byte("services:\n  app:\n    image: myapp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
+		model.SourceCompose, model.RemediationAuto,
+		model.WithService("app"), model.WithMetadata("file", path))
+
+	out := engine.ApplyBatch(context.Background(), []model.Finding{f})
+	if out.Interrupted {
+		t.Error("a batch that ran to completion must not report Interrupted")
+	}
+	if len(out.Applied) != 1 {
+		t.Errorf("applied = %v, want the one auto fix", out.Applied)
+	}
+}

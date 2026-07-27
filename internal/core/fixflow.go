@@ -372,6 +372,17 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 
 	out := model.BatchOutcome{Failed: map[string]string{}}
 	for _, f := range findings {
+		// Between fixes, not during one. A fix is backup→write→checkpoint and
+		// must finish what it started; the safe place to stop is the gap
+		// before the next one. Everything after the interruption lands in
+		// Skipped, and Interrupted says those were never reached rather than
+		// judged ineligible — otherwise a batch cut short reads exactly like
+		// one that ran to completion.
+		if ctx.Err() != nil {
+			out.Interrupted = true
+			out.Skipped = append(out.Skipped, f.ID)
+			continue
+		}
 		if f.Fixed || f.Remediation != model.RemediationAuto {
 			out.Skipped = append(out.Skipped, f.ID)
 			continue

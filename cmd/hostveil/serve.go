@@ -50,9 +50,13 @@ func cmdServe(ctx context.Context, args []string) int {
 	// dashboard off the network but not away from other accounts on this
 	// machine — and every route here applies fixes or reads a scan of
 	// /etc/shadow, as root.
-	fmt.Printf("hostveil dashboard listening on %s  (scanning…)\n", addr)
-	fmt.Printf("Open this exact URL — it carries the access token for this run:\n  %s\n", srv.URL())
-	if err := srv.ListenAndServe(); err != nil {
+	// Say "scanning first" rather than "listening": the initial scan runs
+	// before the listener opens, and on a host with many images that is
+	// minutes. Announcing the URL as live meant the operator opened it,
+	// got connection-refused, and had nothing to tell them to wait.
+	fmt.Printf("hostveil is scanning the host; the dashboard opens on %s when it finishes.\n", addr)
+	fmt.Printf("Then open this exact URL — it carries the access token for this run:\n  %s\n", srv.URL())
+	if err := srv.ListenAndServe(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

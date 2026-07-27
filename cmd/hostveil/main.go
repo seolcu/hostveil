@@ -17,16 +17,47 @@ import (
 var version = "v3-dev"
 
 func main() {
-	// One cancellable context for the whole run, cancelled on Ctrl-C or
-	// SIGTERM. Every command threads it down to Engine.Scan, which passes it
-	// to exec.CommandContext, so an interrupt actually stops the docker and
-	// trivy processes a scan has running rather than leaving them to finish
-	// against a terminal nobody is watching. Nothing was cancellable before:
-	// the TUI puts the terminal in raw mode and reads Ctrl-C as a key, so a
-	// scan there could not be interrupted at all.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := notifyContext(context.Background())
 	defer stop()
 	os.Exit(run(ctx, os.Args[1:]))
+}
+
+// notifyContext gives the run one cancellable context, cancelled on Ctrl-C or
+// SIGTERM, and makes a second signal end the process immediately.
+//
+// Every command threads the context down to Engine.Scan, which passes it to
+// exec.CommandContext, so an interrupt actually stops the docker and trivy
+// processes a scan has running rather than leaving them to finish against a
+// terminal nobody is watching. Nothing was cancellable before: the TUI puts
+// the terminal in raw mode and reads Ctrl-C as a key, so a scan there could
+// not be interrupted at all.
+//
+// The escalation is the part signal.NotifyContext cannot do. Its goroutine
+// consumes one signal and returns, but the handler stays registered, so from
+// then on SIGINT and SIGTERM are diverted from their default disposition and
+// silently dropped. Anything that ignores the cancelled context — a fix
+// mid-apply, an HTTP server with no shutdown wired up — becomes
+// uninterruptible, and the operator's only remaining move is SIGKILL from
+// another shell. The second signal is the operator saying they meant it, so
+// it exits rather than being swallowed. 130 is the conventional
+// 128+SIGINT status for a program killed by an interrupt.
+func notifyContext(parent context.Context) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(parent)
+	ch := make(chan os.Signal, 2)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-ch
+		cancel()
+		<-ch
+		fmt.Fprintln(os.Stderr, "\nhostveil: interrupted again, exiting now")
+		os.Exit(130)
+	}()
+
+	return ctx, func() {
+		signal.Stop(ch)
+		cancel()
+	}
 }
 
 func run(ctx context.Context, args []string) int {
