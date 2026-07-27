@@ -295,7 +295,92 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 			configFor(cfg, path, "X11Forwarding")))
 	}
 
+	// sshd's own default is 120 seconds, so this fires on an untouched
+	// config — deliberately, like ssh.passwordauth. The fix is Auto because
+	// shortening the window cannot lock anyone out: it only bounds how long
+	// an unauthenticated connection may sit there. 0 means no limit at all.
+	grace := effective(cfg, "LoginGraceTime", "120")
+	if secs, ok := parseSSHDuration(grace); ok && (secs == 0 || secs > 60) {
+		out = append(out, model.NewFinding("ssh.logingracetime", "SSH keeps unauthenticated connections open too long",
+			model.SeverityLow, model.SourceSSH, model.RemediationAuto,
+			model.WithDescription("LoginGraceTime is how long sshd waits for a connection to authenticate before dropping it. A long (or unlimited) window lets scanning bots hold many half-open connections and gives every brute-force attempt more room."),
+			model.WithHowToFix("Set `LoginGraceTime 60` or lower."),
+			model.WithEvidence("value", grace), configFor(cfg, path, "LoginGraceTime")))
+	}
+
+	if v := effective(cfg, "GatewayPorts", "no"); v == "yes" || v == "clientspecified" {
+		out = append(out, model.NewFinding("ssh.gatewayports", "SSH exposes remote-forwarded ports to the network",
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
+			model.WithDescription("With GatewayPorts enabled, a port forwarded with `ssh -R` listens on all interfaces instead of loopback, so anyone who can reach this host can use the tunnel — effectively publishing whatever the tunnel reaches."),
+			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel genuinely must be public, front it with a reverse proxy that authenticates."),
+			model.WithEvidence("value", v), configFor(cfg, path, "GatewayPorts")))
+	}
+
+	if effective(cfg, "HostbasedAuthentication", "no") == "yes" {
+		out = append(out, model.NewFinding("ssh.hostbasedauth", "SSH trusts other hosts' identities for login",
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
+			model.WithDescription("Host-based authentication lets users log in because of which machine they connect from, without any per-user credential. Compromising one trusted host then opens this one."),
+			model.WithHowToFix("Set `HostbasedAuthentication no` and use per-user SSH keys instead."),
+			configFor(cfg, path, "HostbasedAuthentication")))
+	}
+
+	// The contradiction case only: PasswordAuthentication no is meant to end
+	// password guessing, but keyboard-interactive runs the same PAM password
+	// prompt through a different door. KbdInteractiveAuthentication defaults
+	// to yes, and ChallengeResponseAuthentication is its pre-8.7 alias — an
+	// operator who disabled either one has already closed the door.
+	kbdKey := "KbdInteractiveAuthentication"
+	kbd := effective(cfg, kbdKey, "")
+	if kbd == "" {
+		if v := effective(cfg, "ChallengeResponseAuthentication", ""); v != "" {
+			kbdKey = "ChallengeResponseAuthentication"
+			kbd = v
+		} else {
+			kbd = "yes"
+		}
+	}
+	if kbd == "yes" && effective(cfg, "PasswordAuthentication", "yes") == "no" {
+		out = append(out, model.NewFinding("ssh.kbdinteractive", "SSH still accepts interactive password prompts",
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
+			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on — and on most systems it asks PAM for the very same password. The brute-force protection you configured is not actually in force."),
+			model.WithHowToFix("Set `KbdInteractiveAuthentication no`. Careful: PAM-based one-time codes (2FA prompts) also use this mechanism, so keep it if your logins go through one."),
+			model.WithEvidence("directive", kbdKey), configFor(cfg, path, kbdKey)))
+	}
+
 	return out
+}
+
+// parseSSHDuration parses sshd's time format: a bare number is seconds, and
+// qualified values chain quantity[unit] pairs ("90", "2m", "1h30m"). It
+// returns false for anything else, and a false parse produces no finding —
+// sshd -t is the authority on validity, not this checker.
+func parseSSHDuration(s string) (seconds int, ok bool) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return 0, false
+	}
+	total, num, haveDigits := 0, 0, false
+	for i := range len(s) {
+		c := s[i]
+		switch {
+		case c >= '0' && c <= '9':
+			num = num*10 + int(c-'0')
+			haveDigits = true
+		case c == 's' || c == 'm' || c == 'h' || c == 'd' || c == 'w':
+			if !haveDigits {
+				return 0, false
+			}
+			mult := map[byte]int{'s': 1, 'm': 60, 'h': 3600, 'd': 86400, 'w': 604800}[c]
+			total += num * mult
+			num, haveDigits = 0, false
+		default:
+			return 0, false
+		}
+	}
+	if haveDigits {
+		total += num
+	}
+	return total, true
 }
 
 func atoiDefault(s string, def int) int {

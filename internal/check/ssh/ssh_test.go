@@ -74,12 +74,98 @@ X11Forwarding yes
 func TestSSHHardenedConfigIsClean(t *testing.T) {
 	cfg := `PermitRootLogin prohibit-password
 PasswordAuthentication no
+KbdInteractiveAuthentication no
 PermitEmptyPasswords no
 MaxAuthTries 3
+LoginGraceTime 30
 `
 	got := auditConfig(parseConfig([]byte(cfg)), "x")
 	if len(got) != 0 {
 		t.Errorf("hardened config produced findings: %v", got)
+	}
+}
+
+func TestGraceTimeGatewayAndHostbasedRules(t *testing.T) {
+	cfg := `LoginGraceTime 2m
+GatewayPorts clientspecified
+HostbasedAuthentication yes
+`
+	got := idsOf(auditConfig(parseConfig([]byte(cfg)), "x"))
+	for _, want := range []string{"ssh.logingracetime", "ssh.gatewayports", "ssh.hostbasedauth"} {
+		if _, ok := got[want]; !ok {
+			t.Errorf("expected %s, got %v", want, got)
+		}
+	}
+	if got["ssh.logingracetime"].Evidence["value"] != "2m" {
+		t.Errorf("grace-time evidence = %q, want the configured value", got["ssh.logingracetime"].Evidence["value"])
+	}
+}
+
+func TestUnlimitedGraceTimeIsFlagged(t *testing.T) {
+	got := idsOf(auditConfig(parseConfig([]byte("LoginGraceTime 0\n")), "x"))
+	if _, ok := got["ssh.logingracetime"]; !ok {
+		t.Error("LoginGraceTime 0 means no limit and must be flagged")
+	}
+}
+
+// The finding exists for the contradiction only: an operator who left
+// PasswordAuthentication on has not been misled about what is in force.
+func TestKbdInteractiveFlaggedOnlyWhenPasswordsAreOff(t *testing.T) {
+	got := idsOf(auditConfig(parseConfig([]byte("PasswordAuthentication no\n")), "x"))
+	f, ok := got["ssh.kbdinteractive"]
+	if !ok {
+		t.Fatal("default KbdInteractiveAuthentication (yes) with PasswordAuthentication no should be flagged")
+	}
+	if f.Evidence["directive"] != "KbdInteractiveAuthentication" {
+		t.Errorf("directive evidence = %q, want the modern keyword", f.Evidence["directive"])
+	}
+
+	got = idsOf(auditConfig(parseConfig([]byte("PasswordAuthentication yes\n")), "x"))
+	if _, ok := got["ssh.kbdinteractive"]; ok {
+		t.Error("with passwords still allowed there is no contradiction to report")
+	}
+}
+
+// ChallengeResponseAuthentication is the pre-8.7 alias for the same option,
+// and sshd keeps the first value it sees for either keyword. The finding
+// must respect an alias-based opt-out, and when the alias is the keyword in
+// force, name it so the fix edits the directive that actually wins.
+func TestChallengeResponseAliasIsRespected(t *testing.T) {
+	got := idsOf(auditConfig(parseConfig([]byte("PasswordAuthentication no\nChallengeResponseAuthentication no\n")), "x"))
+	if _, ok := got["ssh.kbdinteractive"]; ok {
+		t.Error("disabling the old alias closes the same door; nothing to report")
+	}
+
+	got = idsOf(auditConfig(parseConfig([]byte("PasswordAuthentication no\nChallengeResponseAuthentication yes\n")), "x"))
+	f, ok := got["ssh.kbdinteractive"]
+	if !ok {
+		t.Fatal("an explicit yes through the alias should be flagged")
+	}
+	if f.Evidence["directive"] != "ChallengeResponseAuthentication" {
+		t.Errorf("directive evidence = %q, want the alias in force", f.Evidence["directive"])
+	}
+}
+
+func TestParseSSHDuration(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int
+		ok   bool
+	}{
+		{"120", 120, true},
+		{"2m", 120, true},
+		{"1h30m", 5400, true},
+		{"90s", 90, true},
+		{"0", 0, true},
+		{"", 0, false},
+		{"none", 0, false},
+		{"m5", 0, false},
+	}
+	for _, tc := range cases {
+		got, ok := parseSSHDuration(tc.in)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("parseSSHDuration(%q) = (%d, %v), want (%d, %v)", tc.in, got, ok, tc.want, tc.ok)
+		}
 	}
 }
 
