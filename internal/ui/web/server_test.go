@@ -332,34 +332,122 @@ func TestResultCarriesDelta(t *testing.T) {
 	srv := httptest.NewServer(s.Handler())
 	defer srv.Close()
 
-	for _, path := range []string{"/api/result", "/api/rescan"} {
-		var payload struct {
-			Findings []model.Finding `json:"findings"`
-			Delta    *model.Delta    `json:"delta"`
+	var payload struct {
+		Findings []model.Finding `json:"findings"`
+		Delta    *model.Delta    `json:"delta"`
+	}
+	resp, err := authedClient(t, s, srv).Get(srv.URL + "/api/result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = json.NewDecoder(resp.Body).Decode(&payload)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if payload.Delta == nil {
+		t.Error("response carries no delta field")
+	}
+	// Embedding must not have disturbed the existing flat shape.
+	if len(payload.Findings) == 0 {
+		t.Error("findings disappeared from the payload")
+	}
+}
+
+// A rescan takes minutes on a real host, so the route answers 202 and the
+// scan runs in the background; the client follows it on the status route
+// and fetches the result when the running flag drops.
+func TestRescanIsAsynchronous(t *testing.T) {
+	s, _ := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	client := authedClient(t, s, srv)
+
+	resp, err := client.Post(srv.URL+"/api/rescan", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("rescan returned %d, want 202", resp.StatusCode)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		var st struct {
+			Running bool `json:"running"`
+			Domains []struct {
+				Source string `json:"source"`
+				State  string `json:"state"`
+			} `json:"domains"`
 		}
-		var resp *http.Response
-		var err error
-		client := authedClient(t, s, srv)
-		if path == "/api/rescan" {
-			resp, err = client.Post(srv.URL+path, "application/json", nil)
-		} else {
-			resp, err = client.Get(srv.URL + path)
-		}
+		resp, err := client.Get(srv.URL + "/api/rescan/status")
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = json.NewDecoder(resp.Body).Decode(&payload)
+		err = json.NewDecoder(resp.Body).Decode(&st)
 		resp.Body.Close()
 		if err != nil {
-			t.Fatalf("%s: %v", path, err)
+			t.Fatal(err)
 		}
-		if payload.Delta == nil {
-			t.Errorf("%s: response carries no delta field", path)
+		if !st.Running {
+			// The finished scan's domains must be visible in the snapshot,
+			// with their final states.
+			if len(st.Domains) == 0 {
+				t.Error("status carries no domain states after a completed scan")
+			}
+			break
 		}
-		// Embedding must not have disturbed the existing flat shape.
-		if len(payload.Findings) == 0 {
-			t.Errorf("%s: findings disappeared from the payload", path)
+		if time.Now().After(deadline) {
+			t.Fatal("the background scan never finished")
 		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// The report the scan produced serves as usual.
+	res, err := client.Get(srv.URL + "/api/result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var report model.Report
+	if err := json.NewDecoder(res.Body).Decode(&report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Findings) == 0 {
+		t.Error("no findings after the background rescan")
+	}
+}
+
+// A second rescan while one is running queues nothing and answers 409 —
+// the engine serialises scans behind one mutex, so accepting the request
+// would only hold a connection open behind the first.
+func TestConcurrentRescanIsRefused(t *testing.T) {
+	s, _ := testServer(t)
+	if !s.progress.begin() {
+		t.Fatal("tracker should be idle at start")
+	}
+	defer s.progress.finish()
+
+	rec := httptest.NewRecorder()
+	req := authed(s, httptest.NewRequest(http.MethodPost, "/api/rescan", nil))
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Errorf("concurrent rescan returned %d, want 409", rec.Code)
+	}
+}
+
+// The status route reads scan state gathered as root, so it is gated by
+// the token like everything else.
+func TestRescanStatusRequiresTheToken(t *testing.T) {
+	s, _ := testServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/rescan/status", nil)
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("unauthenticated status read returned %d, want 401", rec.Code)
 	}
 }
 
