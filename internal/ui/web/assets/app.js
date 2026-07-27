@@ -426,7 +426,12 @@ async function applyFix(f, action) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: f.id, service: f.service || "", action }),
     });
+    // The restart hint is not decoration. An edit fix writes the file and
+    // nothing reloads the service, so until the operator restarts it the
+    // score has improved for a change that is not yet in effect. The CLI has
+    // always said so; the dashboard used to show only the new number.
     flash(`Fix applied. Score ${o.new_score.overall}/100.` +
+      (o.restart_hint ? `  Restart '${o.restart_hint}' for it to take effect.` : "") +
       (o.checkpoint_id ? `  Rollback: ${o.checkpoint_id}` : ""));
     await refresh();
   } catch (e) { flash("Fix failed: " + e.message, true); }

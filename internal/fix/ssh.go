@@ -25,6 +25,13 @@ func sshConfigPath(f model.Finding) (string, error) {
 }
 
 // sshEdit builds an edit action that sets one sshd directive.
+//
+// Every SSH fix carries `sshd -t`, which parses the *effective* config —
+// including whatever the Include directives pull in — and exits non-zero if
+// sshd would refuse it. This is the domain where an unvalidated write is
+// worst: sshd keeps serving from the config it already loaded, so a broken
+// file looks like nothing at all until the next restart, and repairing it
+// then needs the SSH access it just removed.
 func sshEdit(path, label, warning, key, value string) Action {
 	return Action{
 		Label:   label,
@@ -34,6 +41,7 @@ func sshEdit(path, label, warning, key, value string) Action {
 		Transform: func(in []byte) ([]byte, error) {
 			return setSSHDDirective(in, key, value), nil
 		},
+		VerifyCmd: []string{"sshd", "-t", "-f", VerifyPathToken},
 	}
 }
 
