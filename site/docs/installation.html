@@ -143,6 +143,11 @@
               </table>
             </div>
 
+            <h2 id="upgrade">Upgrading and uninstalling</h2>
+            <p>To upgrade, re-run the install command. The binary is replaced in place and your saved scans and rollback checkpoints are left alone.</p>
+            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall</code></pre></div>
+            <p>Uninstalling removes <code>/usr/bin/hostveil</code> and prints where the state directory is — <strong>without deleting it</strong>. Those checkpoints are the backups of every file hostveil has edited on this host, and removing the tool is not a decision to give up the ability to undo its fixes. The command to delete them is printed if you want it. Trivy is left alone too: it is a general-purpose scanner that may predate hostveil or be used by something else.</p>
+
             <h2>Build from source</h2>
             <p>With a recent Go toolchain installed:</p>
             <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil

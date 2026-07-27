@@ -59,6 +59,18 @@ go install github.com/seolcu/hostveil/cmd/hostveil@latest
 
 Trivy is optional — install it any time to enable image CVE scanning.
 
+To **upgrade**, re-run the same command: the binary is replaced and your saved
+scans and rollback checkpoints are left alone. To **uninstall**:
+
+```bash
+curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall
+```
+
+That removes the binary and prints where the state directory is, without
+deleting it — those checkpoints are the backups of every file hostveil has
+edited on the host, and uninstalling is not a decision to give up the ability
+to undo them.
+
 Release archives are built by GitHub Actions and carry a signed build
 provenance attestation, so you can confirm a download really came from this
 repo's release workflow before running it:
