@@ -437,11 +437,12 @@ async function applyFix(f, action) {
 // makes them reversible, so a fix applied here can be undone here rather
 // than only from the CLI.
 async function showHistory() {
-  let cps;
+  let res;
   try {
-    cps = await api("/api/history");
+    res = await api("/api/history");
   } catch (e) { flash("Could not load history: " + e.message, true); return; }
 
+  const cps = res.checkpoints || [];
   selected = null;
   document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
   const d = document.getElementById("detail");
@@ -449,6 +450,12 @@ async function showHistory() {
     el("h3", {}, "Applied fixes"),
     el("div", { class: "meta" }, `${cps.length} checkpoint${cps.length === 1 ? "" : "s"}  ·  newest first`)
   );
+  // Some checkpoints on disk could not be read. The list below is still
+  // usable; what is missing from it cannot be rolled back at all, which is
+  // exactly the thing an operator must not discover only when they try.
+  if (res.warning) {
+    d.append(el("div", { class: "warn" }, `⚠  ${res.warning}`));
+  }
   if (!cps.length) {
     d.append(el("p", { class: "empty" }, "No fixes have been applied yet."));
     return;

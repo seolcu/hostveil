@@ -69,7 +69,13 @@ func cmdRollback(ctx context.Context, args []string) int {
 func cmdHistory(_ context.Context, args []string) int {
 	_ = args
 	cps, err := buildEngine().ListCheckpoints()
-	if err != nil {
+	// An unreadable checkpoint is a warning over a usable list, not a failure:
+	// the entries that survived still name fixes the operator can roll back,
+	// and staying silent about the rest would hide that part of their recovery
+	// history is gone.
+	if core.IsIncompleteHistory(err) {
+		fmt.Fprintln(os.Stderr, "hostveil: warning:", err)
+	} else if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

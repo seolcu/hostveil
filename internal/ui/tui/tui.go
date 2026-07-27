@@ -60,6 +60,9 @@ type appModel struct {
 	checkpoints []model.Checkpoint // applied-fix log, newest first
 	cpCursor    int
 	cpOffset    int
+	// historyWarning names checkpoints that could not be read, shown above
+	// the list rather than instead of it.
+	historyWarning string
 
 	th          theme.Theme // active color theme; the zero value renders as the default
 	st          *styles     // th resolved into lipgloss styles, built on first render
@@ -163,7 +166,10 @@ func batchCmd(ctx context.Context, e *core.Engine, fs []model.Finding) tea.Cmd {
 
 type historyMsg struct {
 	checkpoints []model.Checkpoint
-	err         error
+	// warning is set when some checkpoints could not be read. The list is
+	// still shown; err is for a history that could not be listed at all.
+	warning string
+	err     error
 }
 type rolledBackMsg struct {
 	outcome model.RollbackOutcome
@@ -173,6 +179,13 @@ type rolledBackMsg struct {
 func historyCmd(e *core.Engine) tea.Cmd {
 	return func() tea.Msg {
 		cps, err := e.ListCheckpoints()
+		// Unreadable checkpoints leave a usable list behind, so the view still
+		// opens and carries the warning rather than replacing the history with
+		// an error screen. What is missing cannot be rolled back at all, which
+		// is not something to discover only on trying.
+		if core.IsIncompleteHistory(err) {
+			return historyMsg{checkpoints: cps, warning: err.Error()}
+		}
 		return historyMsg{checkpoints: cps, err: err}
 	}
 }
@@ -250,6 +263,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.checkpoints = msg.checkpoints
+		m.historyWarning = msg.warning
 		m.cpCursor, m.cpOffset = 0, 0
 		m.mode = modeHistory
 		return m, nil

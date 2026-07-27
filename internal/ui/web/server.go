@@ -414,11 +414,21 @@ func (s *Server) handleFixBatch(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 	cps, err := s.engine.ListCheckpoints()
-	if err != nil {
+	// Unreadable checkpoints leave a usable list behind, so the dashboard
+	// still renders it and carries the warning alongside rather than replacing
+	// the whole history view with a 500.
+	if err != nil && !core.IsIncompleteHistory(err) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, cps)
+	payload := struct {
+		Checkpoints []model.Checkpoint `json:"checkpoints"`
+		Warning     string             `json:"warning,omitempty"`
+	}{Checkpoints: cps}
+	if err != nil {
+		payload.Warning = err.Error()
+	}
+	writeJSON(w, payload)
 }
 
 type rollbackRequest struct {

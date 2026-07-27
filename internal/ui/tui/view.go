@@ -555,16 +555,36 @@ func (m *appModel) historyRows(budget int) []string {
 		return nil
 	}
 
+	// The warning costs a row, and it is worth one: a checkpoint missing from
+	// this list cannot be rolled back at all, which the list itself cannot
+	// say. It is dropped before the header when the terminal is too short,
+	// because a list with no header is still a list.
+	warn := ""
+	if m.historyWarning != "" {
+		warn = lipgloss.NewStyle().Foreground(s.cHigh).
+			Render("⚠ " + truncate(m.historyWarning, max(1, m.width-2)))
+	}
+
 	chrome := 1
+	if warn != "" {
+		chrome = 2
+	}
 	visible := budget - chrome
-	if visible < 1 {
-		chrome, visible = 0, budget
+	for visible < 1 && chrome > 0 {
+		chrome--
+		if warn != "" {
+			warn = ""
+		}
+		visible = budget - chrome
 	}
 
 	m.cpOffset = scrollOffset(m.cpCursor, len(m.checkpoints), visible, m.cpOffset)
 	end := min(m.cpOffset+visible, len(m.checkpoints))
 
 	var out []string
+	if warn != "" {
+		out = append(out, warn)
+	}
 	if chrome > 0 {
 		head := s.dim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
 		if len(m.checkpoints) > visible {

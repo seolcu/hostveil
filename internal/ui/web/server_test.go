@@ -236,10 +236,17 @@ func TestHistoryAndRollbackThroughAPI(t *testing.T) {
 	if strings.Contains(string(raw), `"blob"`) {
 		t.Errorf("/api/history leaks backup blob names to the client: %s", raw)
 	}
-	var cps []model.Checkpoint
-	if err := json.Unmarshal(raw, &cps); err != nil {
+	var hist struct {
+		Checkpoints []model.Checkpoint `json:"checkpoints"`
+		Warning     string             `json:"warning"`
+	}
+	if err := json.Unmarshal(raw, &hist); err != nil {
 		t.Fatal(err)
 	}
+	if hist.Warning != "" {
+		t.Errorf("a healthy store must report no warning, got %q", hist.Warning)
+	}
+	cps := hist.Checkpoints
 	if len(cps) != 1 {
 		t.Fatalf("want 1 checkpoint, got %d", len(cps))
 	}

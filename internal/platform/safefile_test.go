@@ -110,3 +110,54 @@ func TestChmodNoFollowRefusesASymlink(t *testing.T) {
 		t.Errorf("the symlink's target changed mode to %#o — the chmod followed the link", fi.Mode().Perm())
 	}
 }
+
+// WriteFileAtomic must be able to create a file that does not exist yet —
+// that is the checkpoint store writing a fresh backup blob. Preserving the
+// owner of a file with no prior owner is not an error.
+func TestWriteFileAtomicCreatesANewFile(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "new.txt")
+	if err := WriteFileAtomic(p, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("WriteFileAtomic on a new path: %v", err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil || string(b) != "hello" {
+		t.Fatalf("read back %q, %v", b, err)
+	}
+	if fi, _ := os.Stat(p); fi.Mode().Perm() != 0o600 {
+		t.Errorf("mode = %#o, want 0600", fi.Mode().Perm())
+	}
+}
+
+// Replacing an existing file keeps its mode rather than the temporary's
+// 0600, or a fix would silently tighten every file it touched.
+func TestWriteFileAtomicKeepsTheTargetMode(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "conf")
+	if err := os.WriteFile(p, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFileAtomic(p, []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if fi, _ := os.Stat(p); fi.Mode().Perm() != 0o644 {
+		t.Errorf("mode = %#o, want the original 0644", fi.Mode().Perm())
+	}
+}
+
+// The temporary must not survive a failure, or a directory of half-written
+// .hostveil-* files accumulates beside every file hostveil has ever edited.
+func TestWriteFileAtomicLeavesNoTemporaryBehind(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "conf")
+	if err := WriteFileAtomic(p, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.Contains(e.Name(), "hostveil-") {
+			t.Errorf("temporary file left behind: %s", e.Name())
+		}
+	}
+}
