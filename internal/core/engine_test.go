@@ -12,6 +12,7 @@ import (
 	"github.com/seolcu/hostveil/internal/check"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
+	filepermscheck "github.com/seolcu/hostveil/internal/check/fileperms"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
@@ -110,6 +111,57 @@ func TestEngineScanEndToEnd(t *testing.T) {
 	// Current() should return the stored report.
 	if cur, ran := engine.Current(); !ran || len(cur.Findings) != len(report.Findings) {
 		t.Error("Current() did not return the stored report")
+	}
+}
+
+// A partial scan must not become the baseline: persisting it would make
+// the next full scan report every finding from the skipped domains as
+// newly appeared, and it would overwrite the operator's last complete
+// report on disk. The unselected axes must come out N/A, never 100.
+func TestPartialScanIsNotPersistedAndExcludesUnselectedAxes(t *testing.T) {
+	dir := t.TempDir()
+	composePath := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte("services:\n  app:\n    image: myapp\n    privileged: true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := fakeRunner{
+		present: map[string]bool{"docker": true},
+		lsJSON:  `[{"Name":"p","ConfigFiles":"` + composePath + `"}]`,
+	}
+	store := history.NewStore(t.TempDir())
+	engine := New(Config{
+		Registry: check.NewRegistry(composecheck.New(), filepermscheck.New()),
+		Runner:   runner,
+		Store:    store,
+	})
+
+	report := engine.ScanWith(context.Background(), nil, ScanOptions{Only: []model.Source{model.SourceCompose}})
+
+	for _, ax := range report.Score.Axes {
+		switch ax.Source {
+		case model.SourceCompose:
+			if !ax.Applicable {
+				t.Error("the selected axis should have been scanned and scored")
+			}
+		case model.SourceFilePerms:
+			if ax.Applicable {
+				t.Error("an unselected axis must be N/A, never scored as if it ran clean")
+			}
+		}
+	}
+	if len(report.Domains) != 1 {
+		t.Errorf("only the selected domain should report, got %v", report.Domains)
+	}
+	if _, ok, err := store.LastReport(); err != nil || ok {
+		t.Errorf("a partial scan must not be persisted (ok=%v, err=%v)", ok, err)
+	}
+	if cur, ran := engine.Current(); !ran || len(cur.Findings) != len(report.Findings) {
+		t.Error("the in-memory current report should still be replaced so fix works")
+	}
+
+	engine.Scan(context.Background(), nil)
+	if _, ok, _ := store.LastReport(); !ok {
+		t.Error("a full scan should still be persisted")
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/clirender"
 	"github.com/seolcu/hostveil/internal/core"
@@ -19,6 +20,8 @@ func cmdScan(ctx context.Context, args []string) int {
 		verbose  bool
 		noColor  bool
 		output   string
+		only     string
+		skip     string
 	)
 	fs.BoolVar(&jsonOut, "json", false, "output the report as JSON")
 	fs.BoolVar(&sarifOut, "sarif", false, "output the report as SARIF 2.1.0")
@@ -26,6 +29,8 @@ func cmdScan(ctx context.Context, args []string) int {
 	fs.BoolVar(&verbose, "v", false, "show descriptions and fix guidance (shorthand)")
 	fs.BoolVar(&noColor, "no-color", false, "disable colored output")
 	fs.StringVar(&output, "output", "", "write the report to a file instead of stdout")
+	fs.StringVar(&only, "only", "", "scan only these domains (comma-separated); a partial scan is not saved as the last-scan baseline")
+	fs.StringVar(&skip, "skip", "", "scan every domain except these (comma-separated); a partial scan is not saved as the last-scan baseline")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
 	}
@@ -33,9 +38,14 @@ func cmdScan(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil: --json and --sarif are mutually exclusive")
 		return 2
 	}
+	scanOpts, errMsg := scanSelection(only, skip)
+	if errMsg != "" {
+		fmt.Fprintln(os.Stderr, "hostveil:", errMsg)
+		return 2
+	}
 
 	engine := buildEngine()
-	report := scanWithProgress(ctx, engine)
+	report := scanWithProgress(ctx, engine, scanOpts)
 
 	var rendered string
 	switch {
@@ -83,9 +93,9 @@ func cmdScan(ctx context.Context, args []string) int {
 // a redirect, and a cron run all produce exactly the bytes they did before.
 // When there is nowhere useful to draw, the scan runs with a nil channel and
 // no goroutine — the same path as before this existed.
-func scanWithProgress(ctx context.Context, engine *core.Engine) model.Report {
+func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOptions) model.Report {
 	if !isCharDevice(os.Stderr) {
-		return engine.Scan(ctx, nil)
+		return engine.ScanWith(ctx, nil, opts)
 	}
 
 	events := make(chan model.ScanEvent, clirender.ProgressBufferSize)
@@ -95,10 +105,60 @@ func scanWithProgress(ctx context.Context, engine *core.Engine) model.Report {
 		clirender.Progress(os.Stderr, events)
 	}()
 
-	report := engine.Scan(ctx, events)
+	report := engine.ScanWith(ctx, events, opts)
 	close(events)
 	<-done // let the renderer clear its line before the report is printed
 	return report
+}
+
+// scanSelection turns --only/--skip into ScanOptions, validating domain
+// names against the real source set so a typo is a usage error naming the
+// valid choices rather than a silently empty scan.
+func scanSelection(only, skip string) (core.ScanOptions, string) {
+	if only != "" && skip != "" {
+		return core.ScanOptions{}, "--only and --skip are mutually exclusive"
+	}
+	list := only
+	if skip != "" {
+		list = skip
+	}
+	if list == "" {
+		return core.ScanOptions{}, ""
+	}
+
+	byName := map[string]model.Source{}
+	var names []string
+	for _, s := range model.AllSources() {
+		byName[s.String()] = s
+		names = append(names, s.String())
+	}
+
+	selected := map[model.Source]bool{}
+	for _, name := range strings.Split(list, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		src, ok := byName[name]
+		if !ok {
+			return core.ScanOptions{}, fmt.Sprintf("unknown domain %q (valid: %s)", name, strings.Join(names, ", "))
+		}
+		selected[src] = true
+	}
+	if len(selected) == 0 {
+		return core.ScanOptions{}, "no domains named"
+	}
+
+	var out []model.Source
+	for _, s := range model.AllSources() {
+		if selected[s] == (only != "") {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return core.ScanOptions{}, "--skip removes every domain; nothing would be scanned"
+	}
+	return core.ScanOptions{Only: out}, ""
 }
 
 // Exit codes for scan. These are the CI and cron contract, so they are
