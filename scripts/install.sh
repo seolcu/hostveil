@@ -5,6 +5,12 @@ VERSION=""
 VERSION_EXPLICIT=false
 SKIP_TRIVY=false
 FORCE=false
+UNINSTALL=false
+
+# The repository every release artifact is fetched from, and the one the
+# build provenance attestation must name. One constant so a URL and the
+# identity being verified can never drift apart.
+REPO="seolcu/hostveil"
 
 usage() {
   cat <<'EOF'
@@ -15,8 +21,63 @@ Options:
   --no-trivy         Skip the optional trivy (image CVE scanner) install
   --no-deps          Install hostveil only (same as --no-trivy)
   --yes, -y          Non-interactive mode (install optional dependencies)
+  --uninstall        Remove hostveil, and say where its saved state lives
   --help, -h         Show this help
+
+Re-running this script installs over an existing hostveil, which is the
+supported way to upgrade: the binary is replaced and your saved scans and
+rollback checkpoints are left alone.
 EOF
+}
+
+# uninstall removes what this script installed, and nothing else.
+#
+# It deliberately does not delete the state directory. That is where the
+# rollback checkpoints live — the backups of every file hostveil has edited
+# on this host — and removing hostveil is not a statement that the operator
+# no longer wants the ability to undo what it did. So the path is printed
+# with the command to remove it, and the decision stays theirs.
+#
+# trivy is likewise left in place: this script offers to install it, but it
+# is a general-purpose scanner that may well predate hostveil or be used by
+# something else, and silently removing another tool is not ours to do.
+uninstall() {
+  local removed=false
+
+  if [[ -e /usr/bin/hostveil ]]; then
+    sudo rm -f /usr/bin/hostveil
+    echo "  ✓ removed /usr/bin/hostveil"
+    removed=true
+  else
+    echo "  hostveil is not installed at /usr/bin/hostveil"
+  fi
+
+  local state
+  if [[ -d /var/lib/hostveil ]]; then
+    state=/var/lib/hostveil
+  elif [[ -d "${HOME}/.local/share/hostveil" ]]; then
+    state="${HOME}/.local/share/hostveil"
+  fi
+
+  if [[ -n "${state:-}" ]]; then
+    echo ""
+    echo "  Saved scans and rollback checkpoints are still in:"
+    echo "    ${state}"
+    echo "  Those checkpoints are the backups of every file hostveil edited here."
+    echo "  Delete them only if you no longer need to undo any of its fixes:"
+    echo "    sudo rm -rf ${state}"
+  fi
+
+  if command -v trivy >/dev/null 2>&1; then
+    echo ""
+    echo "  trivy is still installed. It is a general-purpose scanner, so this"
+    echo "  script does not remove it. To remove it: sudo rm -f \"$(command -v trivy)\""
+  fi
+
+  if [[ "$removed" == true ]]; then
+    echo ""
+    echo "  Done."
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -34,6 +95,7 @@ while [[ $# -gt 0 ]]; do
     --no-trivy) SKIP_TRIVY=true; shift ;;
     --no-deps) SKIP_TRIVY=true; shift ;;
     --yes|-y) FORCE=true; shift ;;
+    --uninstall) UNINSTALL=true; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Unknown option: $1" >&2
@@ -42,6 +104,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$UNINSTALL" == true ]]; then
+  uninstall
+  exit 0
+fi
 
 if [[ "$VERSION_EXPLICIT" == true && -z "$VERSION" ]]; then
   echo "ERROR: --version requires a non-empty version (e.g. v2.6.0)" >&2
@@ -238,7 +305,7 @@ fi
 
 # ─── INSTALL HOSTVEIL ────────────────────────────────────────────────────
 if [[ -z "$VERSION" ]]; then
-  VERSION=$(github_latest_tag seolcu/hostveil) || true
+  VERSION=$(github_latest_tag "$REPO") || true
   if [[ -z "$VERSION" ]]; then
     echo "  ERROR: failed to determine latest hostveil version" >&2
     echo "  Try again later or specify a version with --version vX.Y.Z" >&2
@@ -248,7 +315,7 @@ fi
 
 echo "  • hostveil: downloading v${VERSION}..."
 TAR="hostveil-${OS}-${ARCH}.tar.gz"
-URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/${TAR}"
+URL="https://github.com/${REPO}/releases/download/v${VERSION}/${TAR}"
 curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
   echo "  ERROR: download failed for ${URL}" >&2
   exit 1
@@ -263,7 +330,7 @@ curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
 # /usr/bin and run as root. There is no partial credit here: either the
 # artifact matches what the release published, or it does not get installed.
 echo "  • hostveil: verifying checksum..."
-CHECKSUM_URL="https://github.com/seolcu/hostveil/releases/download/v${VERSION}/hostveil-checksums.txt"
+CHECKSUM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/hostveil-checksums.txt"
 if ! curl -fsSL --retry 3 "$CHECKSUM_URL" -o "${TMPDIR}/hostveil-checksums.txt"; then
   echo "  ERROR: could not download the checksums file for v${VERSION}" >&2
   echo "    ${CHECKSUM_URL}" >&2
@@ -285,6 +352,27 @@ if [[ "$EXPECTED" != "$ACTUAL" ]]; then
 fi
 echo "  ✓ checksum verified"
 
+# The checksums file comes from the same GitHub release as the tarball, so
+# matching it proves the download was not corrupted or partially swapped in
+# transit — not that the release itself is genuine. The release workflow
+# mints a signed build provenance attestation tying the archive to the
+# workflow run and commit that produced it, and that is the claim worth
+# checking. Verified when the tooling is present; skipped with a note when
+# it is not, because gh is not a dependency this installer can require.
+if command -v gh >/dev/null 2>&1; then
+  if gh attestation verify "${TMPDIR}/${TAR}" --repo "$REPO" >/dev/null 2>&1; then
+    echo "  ✓ build provenance verified (built by ${REPO}'s release workflow)"
+  else
+    echo "  ERROR: build provenance could not be verified for ${TAR}." >&2
+    echo "  The checksum matched, but nothing proves this archive came from" >&2
+    echo "  ${REPO}'s release workflow. Refusing to install." >&2
+    exit 1
+  fi
+else
+  echo "  · provenance not checked (install the GitHub CLI to enable it):"
+  echo "      gh attestation verify ${TAR} --repo ${REPO}"
+fi
+
 tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" || {
   echo "  ERROR: extraction failed" >&2
   exit 1
@@ -302,3 +390,4 @@ fi
 echo ""
 echo "  hostveil v${VERSION} installed ($(hostveil --version))."
 echo "  Run: hostveil"
+echo "  Upgrade later by re-running this script; uninstall with: install.sh --uninstall"
