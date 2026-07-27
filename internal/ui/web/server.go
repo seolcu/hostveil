@@ -45,6 +45,13 @@ type Server struct {
 	// token gates every route. See newToken for why loopback alone is not
 	// enough of a boundary here.
 	token string
+	// progress is the per-domain snapshot behind GET /api/rescan/status.
+	progress progressTracker
+	// baseCtx is what a background rescan runs under: it must outlive the
+	// request that started it (a closed tab is not an instruction to stop
+	// scanning) but die with the server (Ctrl-C is). Set by ListenAndServe;
+	// nil means Background, which only happens in tests.
+	baseCtx context.Context
 }
 
 // New builds a web Server bound to addr (e.g. "127.0.0.1:8787"), rendering in
@@ -97,6 +104,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
+	mux.HandleFunc("GET /api/rescan/status", s.handleRescanStatus)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
@@ -122,6 +130,11 @@ const shutdownGrace = 5 * time.Second
 // Ctrl-C nor `systemctl stop` and died only when systemd escalated to
 // SIGKILL — mid-fix, if that is what it happened to be doing.
 func (s *Server) ListenAndServe(ctx context.Context) error {
+	// Background rescans derive from this context, not from the requests
+	// that start them. Set before the listener opens, so no handler can
+	// observe it half-initialized.
+	s.baseCtx = ctx
+
 	// The startup scan gets the caller's context, so Ctrl-C during the slow
 	// first scan on a Trivy host stops it rather than being ignored until the
 	// listener is up.
@@ -331,9 +344,62 @@ func hostWork(r *http.Request) context.Context {
 	return context.WithoutCancel(r.Context())
 }
 
-func (s *Server) handleRescan(w http.ResponseWriter, r *http.Request) {
-	report := s.engine.Scan(hostWork(r), nil)
-	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
+// handleRescan starts a scan in the background and returns immediately —
+// a rescan takes minutes on a real host, and a response that blocks for
+// the duration gives the browser nothing to render but a frozen button.
+// The client polls /api/rescan/status and fetches /api/result when the
+// running flag drops.
+//
+// The scan runs under the server's base context rather than the request's:
+// a closed tab must not abort a scan (the hostWork rule), but Ctrl-C on the
+// server should.
+func (s *Server) handleRescan(w http.ResponseWriter, _ *http.Request) {
+	if !s.progress.begin() {
+		http.Error(w, "a scan is already running", http.StatusConflict)
+		return
+	}
+	go s.runTrackedScan()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	_, _ = w.Write([]byte("{\"started\":true}\n"))
+}
+
+// scanEventBuffer sizes the progress channel. The engine drops events on a
+// full buffer rather than stall a checker; a generous buffer plus a
+// dedicated drain goroutine makes that a non-event.
+const scanEventBuffer = 64
+
+// runTrackedScan runs one scan, feeding the progress tracker until the
+// engine is done and every event has been drained.
+func (s *Server) runTrackedScan() {
+	events := make(chan model.ScanEvent, scanEventBuffer)
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		for ev := range events {
+			s.progress.update(ev)
+		}
+	}()
+
+	ctx := s.baseCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	s.engine.Scan(ctx, events)
+	close(events)
+	<-drained
+	s.progress.finish()
+}
+
+func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
+	// Never cache: the whole point of the route is that the answer changes
+	// second to second.
+	w.Header().Set("Cache-Control", "no-store")
+	running, domains := s.progress.snapshot()
+	writeJSON(w, struct {
+		Running bool             `json:"running"`
+		Domains []domainProgress `json:"domains"`
+	}{running, domains})
 }
 
 func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {

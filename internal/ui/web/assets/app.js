@@ -577,14 +577,34 @@ async function whileBusy(el, label, fn) {
   }
 }
 
+// A rescan is started, not awaited: the server answers 202 immediately and
+// the scan runs in the background, so the page polls the status route and
+// narrates which domains are still working instead of freezing a button
+// for minutes. A 409 means a scan is already running — poll that one.
 const rescanBtn = document.getElementById("rescan");
 rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   flash("Rescanning…");
   marked.clear();
-  report = await api("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
+  const res = await fetch("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
+  if (!res.ok && res.status !== 409) throw new Error((await res.text()) || res.statusText);
+  await pollRescan();
+  report = await api("/api/result");
   render();
   flash("Rescan complete.");
 });
+
+// pollRescan resolves when the running scan finishes, updating the status
+// line with the per-domain picture roughly once a second.
+async function pollRescan() {
+  for (;;) {
+    const st = await api("/api/rescan/status");
+    if (!st.running) return;
+    const working = (st.domains || []).filter((d) => d.state === "running").map((d) => d.source);
+    const done = (st.domains || []).filter((d) => d.state !== "running" && d.state !== "pending").length;
+    flash("Rescanning… " + (working.length ? "checking " + working.join(", ") : done + " domain(s) finished"));
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
 
 const fixallBtn = document.getElementById("fixall");
 fixallBtn.onclick = () => {
