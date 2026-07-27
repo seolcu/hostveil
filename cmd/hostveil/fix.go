@@ -5,11 +5,19 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
 )
+
+// newEngine is how every command obtains its engine. It is a variable so a
+// test can supply one wired to a fake runner and a temp state directory —
+// otherwise `fix` and `rollback`, the two commands that mutate the host,
+// could only be exercised by scanning the machine running the tests.
+var newEngine = func() *core.Engine { return buildEngine() }
 
 func cmdFix(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("fix", flag.ContinueOnError)
@@ -45,7 +53,7 @@ func cmdFix(ctx context.Context, args []string) int {
 		findingID = fs.Arg(0)
 	}
 
-	engine := buildEngine()
+	engine := newEngine()
 	report := engine.Scan(ctx, nil)
 
 	finding, ok := findFinding(report, findingID, service)
@@ -89,7 +97,7 @@ func cmdFix(ctx context.Context, args []string) int {
 
 // fixAll previews and applies every safe (Auto) fix in one pass.
 func fixAll(ctx context.Context, yes bool) int {
-	engine := buildEngine()
+	engine := newEngine()
 	report := engine.Scan(ctx, nil)
 
 	var auto []model.Finding
@@ -223,13 +231,32 @@ func serviceSuffix(service string) string {
 	return " for service " + service
 }
 
+// stdin is the reader prompts consume, and it is package-level for two
+// reasons.
+//
+// The first is correctness. This used to build a fresh bufio.Scanner around
+// os.Stdin on every call, and a Scanner reads ahead into its own buffer — so
+// asking two questions in a row (choose an alternative, then confirm) could
+// read both answers into the first scanner and throw the second away with
+// it, leaving the confirmation to consume EOF and read as "no". One reader
+// for the process is what makes a sequence of prompts work.
+//
+// The second is that a command which cannot be given input cannot be tested,
+// and `hostveil fix` is the most destructive thing this binary does.
+var stdin io.Reader = os.Stdin
+
+var promptIn *bufio.Reader
+
 func prompt(msg string) string {
 	fmt.Print(msg)
-	sc := bufio.NewScanner(os.Stdin)
-	if sc.Scan() {
-		return strings.TrimSpace(sc.Text())
+	if promptIn == nil {
+		promptIn = bufio.NewReader(stdin)
 	}
-	return ""
+	line, err := promptIn.ReadString('\n')
+	if line == "" && err != nil {
+		return ""
+	}
+	return strings.TrimSpace(line)
 }
 
 func promptYesNo(msg string) bool {

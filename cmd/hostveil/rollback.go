@@ -35,7 +35,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 		return 2
 	}
 
-	engine := buildEngine()
+	engine := newEngine()
 	out, err := engine.Rollback(id)
 
 	// Declining is not failing. The file changed after hostveil wrote it, so
@@ -69,7 +69,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 
 func cmdHistory(_ context.Context, args []string) int {
 	_ = args
-	cps, err := buildEngine().ListCheckpoints()
+	cps, err := newEngine().ListCheckpoints()
 	// An unreadable checkpoint is a warning over a usable list, not a failure:
 	// the entries that survived still name fixes the operator can roll back,
 	// and staying silent about the rest would hide that part of their recovery
