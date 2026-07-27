@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // countingRunner records how many times each command actually reached the
@@ -169,4 +170,35 @@ func TestScanCacheSeparatesRunFromLookPath(t *testing.T) {
 	if path != "/usr/bin/docker" {
 		t.Errorf("LookPath returned %q — it read the Run cache", path)
 	}
+}
+
+// A caller waiting on someone else's in-flight command must still honour its
+// own cancellation. The flight carries the deadline of whoever started it, so
+// without this a checker with a tighter deadline — or a scan the user just
+// cancelled — would sit here until an unrelated command finished.
+func TestWaiterHonoursItsOwnCancellation(t *testing.T) {
+	r := &countingRunner{release: make(chan struct{}), entered: make(chan struct{})}
+	c := NewScanCache(r)
+
+	go func() { _, _ = c.Run(context.Background(), "docker", "ps") }()
+	<-r.entered // the first call is now parked inside Run
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := c.Run(ctx, "docker", "ps")
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("waiter should report its own cancellation, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a cancelled waiter stayed parked on another caller's command")
+	}
+	close(r.release)
 }
