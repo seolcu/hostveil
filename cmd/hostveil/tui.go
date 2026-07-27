@@ -32,7 +32,10 @@ func cmdTUI(ctx context.Context, args []string) int {
 		Initial: t,
 		Save:    func(id string) error { return theme.Save(dir, id) },
 	}
-	if err := tui.Run(ctx, buildEngine(), opts); err != nil {
+	// The advisory AI provider is wired in for the detail view's `e` key.
+	// Construction does no I/O; with no Ollama reachable the view shows a
+	// one-line note instead.
+	if err := tui.Run(ctx, buildEngineWithAI(true), opts); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

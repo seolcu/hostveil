@@ -57,6 +57,14 @@ type appModel struct {
 	previewAction int
 	status        string
 
+	// Advisory AI explanation state for the detail view. Cleared whenever
+	// the inspected finding changes, so a slow answer cannot land under the
+	// wrong finding — explainedMsg also carries the finding's key and is
+	// dropped if the user has moved on.
+	aiBusy bool
+	aiText string
+	aiErr  string
+
 	checkpoints []model.Checkpoint // applied-fix log, newest first
 	cpCursor    int
 	cpOffset    int
@@ -104,6 +112,13 @@ func (m *appModel) runCtx() context.Context {
 		return context.Background()
 	}
 	return m.ctx
+}
+
+// clearAI drops any AI explanation state; called whenever the inspected
+// finding is about to change.
+func (m *appModel) clearAI() {
+	m.aiBusy = false
+	m.aiText, m.aiErr = "", ""
 }
 
 // rebuildActive re-derives the visible list from the current report and
@@ -164,6 +179,20 @@ func batchCmd(ctx context.Context, e *core.Engine, fs []model.Finding) tea.Cmd {
 	}
 }
 
+type explainedMsg struct {
+	key string // Finding.Key() of the finding this answers for
+	exp model.Explanation
+}
+
+// explainCmd asks the engine for an explanation with the advisory AI
+// enabled. The engine degrades on its own: no reachable provider comes
+// back as AIError, never as a failure.
+func explainCmd(ctx context.Context, e *core.Engine, f model.Finding) tea.Cmd {
+	return func() tea.Msg {
+		return explainedMsg{key: f.Key(), exp: e.Explain(ctx, f, true)}
+	}
+}
+
 type historyMsg struct {
 	checkpoints []model.Checkpoint
 	// warning is set when some checkpoints could not be read. The list is
@@ -211,9 +240,19 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.report = msg.report
 		m.delta = msg.delta
 		m.selected = map[string]bool{} // a fresh scan invalidates old picks
+		m.clearAI()
 		m.rebuildActive()
 		m.offset = 0
 		m.mode = modeList
+		return m, nil
+
+	case explainedMsg:
+		m.aiBusy = false
+		// A slow answer for a finding the user has already left is dropped
+		// rather than rendered under whatever is on screen now.
+		if m.mode == modeDetail && len(m.active) > 0 && m.active[m.cursor].Key() == msg.key {
+			m.aiText, m.aiErr = msg.exp.AI, msg.exp.AIError
+		}
 		return m, nil
 
 	case previewMsg:
@@ -302,9 +341,16 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeDetail:
 		switch key {
 		case "esc", "q", "backspace":
+			m.clearAI()
 			m.mode = modeList
 		case "f":
 			return m, m.startPreview()
+		case "e":
+			if len(m.active) > 0 && !m.aiBusy {
+				m.aiBusy = true
+				m.aiText, m.aiErr = "", ""
+				return m, explainCmd(m.runCtx(), m.engine, m.active[m.cursor])
+			}
 		}
 	case modePreview:
 		return m.keyPreview(key)
@@ -330,6 +376,7 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		m.cursor = clamp(m.cursor+1, 0, len(m.active)-1)
 	case "enter":
 		if len(m.active) > 0 {
+			m.clearAI()
 			m.mode = modeDetail
 		}
 	case "f":
