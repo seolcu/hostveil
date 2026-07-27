@@ -116,6 +116,19 @@ package fix
 //     from a load-bearing one. dr001 is the clearest: removing host
 //     networking without knowing which ports to publish in its place
 //     leaves the service unreachable, and the finding does not carry them.
+//   - compose.ds020, compose.ds021 — removal-shaped like the three above:
+//     delete `pid: host`, delete `ipc: host`. Both are settings nobody types
+//     by accident — a monitoring agent needs the host PID namespace, a pair
+//     of processes sharing memory needs the IPC one — and hostveil cannot
+//     tell that deployment from a cargo-culted one. Deleting the line breaks
+//     the legitimate case silently: the service starts fine and stops seeing
+//     what it existed to see.
+//   - compose.ds022 — the one mechanical remediation, `read_only: true`,
+//     breaks any image that writes inside its own filesystem, which is most
+//     of them (/tmp, /run, log directories). Making it work needs tmpfs
+//     mounts for exactly the paths the service writes, and a static audit
+//     cannot learn which paths those are. A fix that takes the service down
+//     to improve the score is worse than no fix.
 //   - compose.dr005 — moving a value into an env_file is a two-file change
 //     where Action carries one Path, and a move that does not delete the
 //     original improves nothing. More to the point, by the time the secret

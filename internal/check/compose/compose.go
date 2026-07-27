@@ -96,8 +96,8 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // runtimeOnlyRules are the rules that mean the same thing for a container
 // the daemon describes as they do for a service a compose file describes.
 //
-// Two of the fifteen are deliberately absent, both because the daemon's
-// record cannot support the claim the rule would make:
+// Two rules are deliberately absent, both because the daemon's record
+// cannot support the claim the rule would make:
 //
 //   - dr005 (hardcoded secret in the environment) — `docker inspect` reports
 //     the resolved environment, which merges the image's own ENV defaults and
@@ -119,6 +119,8 @@ var runtimeOnlyRules = []rule{
 	ruleExposedDatastore,
 	ruleExposedAdminPanel,
 	ruleHostNetwork,
+	ruleHostPid,
+	ruleHostIpc,
 	ruleSensitiveHostMount,
 	ruleDangerousCaps,
 	ruleNoNewPrivileges,
@@ -127,6 +129,7 @@ var runtimeOnlyRules = []rule{
 	ruleNoRestart,
 	ruleNoHealthcheck,
 	ruleNoResourceLimits,
+	ruleWritableRootFS,
 }
 
 // auditContainer audits a container with no compose file behind it.
@@ -188,12 +191,17 @@ type rule func(compose.Service) (model.Finding, bool)
 
 // rules is the ordered set of compose checks. Each returns a finding when
 // the service trips it. IDs preserve the v2 ds/dr naming for continuity.
+// userns_mode is parsed but deliberately has no rule: `userns_mode: host` is
+// a no-op unless the daemon enables userns-remap, which a static file audit
+// cannot see, so flagging it would accuse configs that change nothing.
 var rules = []rule{
 	rulePrivileged,
 	ruleDockerSocket,
 	ruleExposedDatastore,
 	ruleExposedAdminPanel,
 	ruleHostNetwork,
+	ruleHostPid,
+	ruleHostIpc,
 	ruleSensitiveHostMount,
 	ruleDangerousCaps,
 	ruleNoNewPrivileges,
@@ -202,6 +210,7 @@ var rules = []rule{
 	ruleNoRestart,
 	ruleNoHealthcheck,
 	ruleNoResourceLimits,
+	ruleWritableRootFS,
 	ruleInlineSecret,
 	ruleEnvFile,
 }
@@ -289,6 +298,26 @@ func ruleHostNetwork(s compose.Service) (model.Finding, bool) {
 	return f("dr001", "Container uses host network mode", model.SeverityHigh, model.RemediationReview, s.Name,
 		model.WithDescription("`network_mode: host` removes network isolation: the container shares the host's interfaces and can bind any port, bypassing Docker's published-port controls and your firewall assumptions."),
 		model.WithHowToFix("Remove `network_mode: host` and publish only the specific ports the service needs."),
+	), true
+}
+
+func ruleHostPid(s compose.Service) (model.Finding, bool) {
+	if s.Pid != "host" {
+		return model.Finding{}, false
+	}
+	return f("ds020", "Container shares the host PID namespace", model.SeverityHigh, model.RemediationManual, s.Name,
+		model.WithDescription("`pid: host` lets the container see and signal every process on the host. A compromised container can read other processes' command lines and environment — which often carry credentials — and kill arbitrary services."),
+		model.WithHowToFix("Remove `pid: host` unless the service is a monitoring agent that genuinely needs to observe host processes. If it only needs to see one other container, use `pid: \"service:NAME\"` instead."),
+	), true
+}
+
+func ruleHostIpc(s compose.Service) (model.Finding, bool) {
+	if s.Ipc != "host" {
+		return model.Finding{}, false
+	}
+	return f("ds021", "Container shares the host IPC namespace", model.SeverityMedium, model.RemediationManual, s.Name,
+		model.WithDescription("`ipc: host` shares the host's inter-process communication (shared memory, semaphores) with the container. A compromised container can read or tamper with shared memory used by host processes, including other containers' databases."),
+		model.WithHowToFix("Remove `ipc: host`. If two containers need to share memory with each other, use `ipc: \"service:NAME\"` to share between just those two instead of with the whole host."),
 	), true
 }
 
@@ -410,6 +439,16 @@ func ruleNoResourceLimits(s compose.Service) (model.Finding, bool) {
 	return f("ds010", "No memory limit set", model.SeverityLow, model.RemediationReview, s.Name,
 		model.WithDescription("Without a memory limit, one runaway or attacker-triggered container can exhaust host RAM and take every other service down with it."),
 		model.WithHowToFix("Set a memory limit, e.g. `mem_limit: 512m` (Compose v2) or under `deploy.resources.limits.memory`."),
+	), true
+}
+
+func ruleWritableRootFS(s compose.Service) (model.Finding, bool) {
+	if s.ReadOnly {
+		return model.Finding{}, false
+	}
+	return f("ds022", "Container filesystem is writable", model.SeverityLow, model.RemediationManual, s.Name,
+		model.WithDescription("Without `read_only: true`, a compromised process can modify the container's own binaries and drop tools anywhere in its filesystem, making an intrusion easier to deepen and harder to spot."),
+		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so hostveil does not change this automatically."),
 	), true
 }
 

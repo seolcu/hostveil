@@ -186,11 +186,14 @@
                   <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>Shares the host PID namespace</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>Shares the host IPC namespace</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">Low</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>Container filesystem is writable</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">Low</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>

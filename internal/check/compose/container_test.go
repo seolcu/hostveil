@@ -150,6 +150,45 @@ func TestResolvedEnvironmentIsNotScannedForSecrets(t *testing.T) {
 	}
 }
 
+// The daemon reports namespace modes and the root-filesystem flag directly,
+// so `docker run --pid=host --ipc=host` is as visible as the compose keys —
+// and a `--read-only` container must not be accused of a writable rootfs.
+func TestHostNamespacesAuditedForStandaloneContainers(t *testing.T) {
+	shared := `[{
+	 "Name": "/monitor",
+	 "Config": {"Image": "myapp", "User": "1000", "Labels": {}},
+	 "HostConfig": {
+	   "PidMode": "host",
+	   "IpcMode": "host",
+	   "ReadonlyRootfs": false,
+	   "RestartPolicy": {"Name": "always"}
+	 }
+	}]`
+	fs := check2(t, runRunner{inspect: shared})
+	for _, id := range []string{"compose.ds020", "compose.ds021", "compose.ds022"} {
+		if _, ok := has(fs, id); !ok {
+			t.Errorf("%s not reported for a hand-started container", id)
+		}
+	}
+
+	private := `[{
+	 "Name": "/app",
+	 "Config": {"Image": "myapp", "User": "1000", "Labels": {}},
+	 "HostConfig": {
+	   "PidMode": "private",
+	   "IpcMode": "private",
+	   "ReadonlyRootfs": true,
+	   "RestartPolicy": {"Name": "always"}
+	 }
+	}]`
+	fs = check2(t, runRunner{inspect: private})
+	for _, id := range []string{"compose.ds020", "compose.ds021", "compose.ds022"} {
+		if _, ok := has(fs, id); ok {
+			t.Errorf("%s reported for a container with private namespaces and a read-only rootfs", id)
+		}
+	}
+}
+
 // Losing the ability to enumerate containers is a smaller blind spot than a
 // failed scan, but it is still one: the domain covered compose only and has
 // to say so rather than report a clean result.
@@ -175,6 +214,7 @@ func TestWellConfiguredStandaloneContainerIsClean(t *testing.T) {
 	 "HostConfig": {
 	   "Privileged": false,
 	   "NetworkMode": "bridge",
+	   "ReadonlyRootfs": true,
 	   "SecurityOpt": ["no-new-privileges:true"],
 	   "Binds": ["/srv/app/data:/data:rw"],
 	   "Memory": 536870912,
