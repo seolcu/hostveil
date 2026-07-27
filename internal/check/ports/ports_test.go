@@ -144,6 +144,24 @@ func TestAdminPanelFlagged(t *testing.T) {
 	}
 }
 
+func TestWebminAndProxmoxRecognizedAsAdminPanels(t *testing.T) {
+	ss := `LISTEN 0 128 0.0.0.0:10000 0.0.0.0:* users:(("miniserv",pid=42,fd=3))
+LISTEN 0 128 0.0.0.0:8006 0.0.0.0:* users:(("pveproxy",pid=43,fd=3))`
+	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var admins int
+	for _, f := range fs {
+		if f.ID == "ports.exposed-admin" {
+			admins++
+		}
+	}
+	if admins != 2 {
+		t.Fatalf("expected 2 admin-panel findings (Webmin, Proxmox), got %d: %v", admins, fs)
+	}
+}
+
 func TestGenericExposedOnlyWithoutFirewall(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=1,fd=3))
 LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
