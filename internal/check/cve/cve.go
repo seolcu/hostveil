@@ -54,7 +54,7 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 // but mean opposite things. Some images unscannable is Degraded; all of them
 // is an outright error, which drops the axis from scoring entirely.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	projects, err := compose.Discover(ctx, env.Runner)
+	projects, unparsed, err := compose.Discover(ctx, env.Runner)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +95,18 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// zero and the clean case must win.
 	switch failed {
 	case 0:
+		// A compose file we could not parse is a set of images we never even
+		// knew to scan, so it degrades the axis exactly like a failed
+		// enumeration does — the images are absent from `attempted`, and
+		// without this the axis would score as if they did not exist.
+		if len(unparsed) > 0 {
+			return findings, &check.PartialError{
+				Reason: "cannot parse compose file(s): " + strings.Join(unparsed, ", ") +
+					" — images defined there were not scanned",
+				Covered: attempted,
+				Total:   attempted + len(unparsed),
+			}
+		}
 		if enumErr != nil {
 			// Every image we knew about scanned, but we could not find out
 			// which containers exist outside Compose — so the axis covered

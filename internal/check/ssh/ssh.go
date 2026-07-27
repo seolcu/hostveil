@@ -125,8 +125,28 @@ type includeParser struct {
 	stopped bool // hit a Match block; everything after it is conditional
 }
 
+// parse reads one config file's directives into the effective config.
+//
+// A scanner error — in practice bufio.ErrTooLong, a line over 64 KiB — stops
+// the read partway with no error returned anywhere, so every directive after
+// that point read as unset and the compiled-in default silently won the
+// audit. PermitRootLogin is the one that matters: unset audits as the
+// default, so a truncated parse could report a hardened host as exposed, or
+// an exposed one as fine, depending on which side of the long line the
+// directive sat. It is recorded as a file we could not fully read, which is
+// what it is, and rides the same PartialError the unreadable-include case
+// already uses.
 func (p *includeParser) parse(data []byte, path string, depth int) {
 	sc := bufio.NewScanner(bytes.NewReader(data))
+	defer func() {
+		if sc.Err() != nil {
+			// The caller counted this file as read before handing it over;
+			// take that back, so Covered/Total describes what was actually
+			// covered rather than crediting a file we only half-parsed.
+			p.cfg.filesRead--
+			p.unread = append(p.unread, path)
+		}
+	}()
 	for sc.Scan() {
 		if p.stopped {
 			return

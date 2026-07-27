@@ -118,29 +118,50 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 			"Install and enable dnf-automatic: `dnf install dnf-automatic` then `systemctl enable --now dnf-automatic.timer` (configure it to apply security updates)."))
 	}
 
+	// Reasons accumulate rather than returning at the first one. Both probes
+	// below are independent questions about this domain, and answering only
+	// the first used to mean the second was never asked: on a stock minimal
+	// Fedora or Rocky there is no needs-restarting (it ships in dnf-utils),
+	// so the reboot check came back unknown, the function returned, and
+	// pending security updates went uncounted on every such host — while the
+	// domain reported only that a reboot could not be determined.
+	var reasons []string
+
 	// `needs-restarting -r` exits non-zero precisely when a reboot IS
 	// required, so the exit status cannot be read as success or failure here.
 	// Its stdout is unambiguous and is still captured on a non-zero exit, so
 	// the text is the signal — and a reply matching neither phrase means the
 	// command did not answer, which must not be read as "no reboot needed".
-	rebootOut, _ := env.Runner.Run(ctx, "needs-restarting", "-r")
-	switch reboot := classifyNeedsRestarting(string(rebootOut)); reboot {
-	case rebootRequired:
-		findings = append(findings, rebootFinding("sudo reboot"))
-	case rebootUnknown:
-		return findings, &check.PartialError{
-			Reason: "cannot tell whether a reboot is pending — checked that automatic updates are configured, but not whether they have taken effect",
+	switch {
+	case !platform.Has(env.Runner, "needs-restarting"):
+		reasons = append(reasons, "cannot tell whether a reboot is pending — needs-restarting is not installed (`dnf install dnf-utils`)")
+	default:
+		rebootOut, _ := env.Runner.Run(ctx, "needs-restarting", "-r")
+		switch classifyNeedsRestarting(string(rebootOut)) {
+		case rebootRequired:
+			findings = append(findings, rebootFinding("sudo reboot"))
+		case rebootUnknown:
+			reasons = append(reasons, "cannot tell whether a reboot is pending")
 		}
 	}
 
 	secOut, err := env.Runner.Run(ctx, "dnf", "-q", "updateinfo", "list", "security")
-	if err != nil {
-		return findings, &check.PartialError{
-			Reason: "cannot list pending security updates — checked that automatic updates are configured, but not whether they have caught up",
+	switch {
+	case err != nil:
+		reasons = append(reasons, "cannot list pending security updates")
+	default:
+		if n := countDnfSecurityAdvisories(string(secOut)); n > 0 {
+			findings = append(findings, pendingFinding(n, "sudo dnf upgrade --security"))
 		}
 	}
-	if n := countDnfSecurityAdvisories(string(secOut)); n > 0 {
-		findings = append(findings, pendingFinding(n, "sudo dnf upgrade --security"))
+
+	if len(reasons) > 0 {
+		return findings, &check.PartialError{
+			Reason: strings.Join(reasons, "; ") +
+				" — checked that automatic updates are configured, but not whether they have caught up",
+			Covered: 2 - len(reasons),
+			Total:   2,
+		}
 	}
 	return findings, nil
 }

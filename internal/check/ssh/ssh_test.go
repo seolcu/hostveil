@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -265,5 +266,57 @@ func TestSSHAvailability(t *testing.T) {
 	}
 	if _, ok := idsOf(fs)["ssh.rootlogin"]; !ok {
 		t.Error("Check should flag root login from the real file")
+	}
+}
+
+// bufio.Scanner stops at a line over 64 KiB and reports it only through
+// Err(), which nothing checked. The parse ended silently partway, every
+// directive after that point read as unset, and the compiled-in default won
+// the audit — so PermitRootLogin's verdict depended on which side of the
+// long line it sat, with nothing saying the file had been truncated.
+func TestAnOverlongLineDegradesRatherThanTruncatingSilently(t *testing.T) {
+	dir := t.TempDir()
+	main := filepath.Join(dir, "sshd_config")
+	body := "PermitRootLogin no\n" +
+		"# " + strings.Repeat("x", 128*1024) + "\n" +
+		"PasswordAuthentication no\n"
+	if err := os.WriteFile(main, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, unread, err := parseConfigFile(main)
+	if err != nil {
+		t.Fatalf("parseConfigFile: %v", err)
+	}
+	if len(unread) != 1 || unread[0] != main {
+		t.Errorf("a truncated parse must be reported as unread, got %v", unread)
+	}
+	// What was read before the long line is still valid and worth keeping.
+	if cfg.values["permitrootlogin"] != "no" {
+		t.Errorf("directives before the long line should survive, got %q", cfg.values["permitrootlogin"])
+	}
+
+	c := &Checker{ConfigPath: main}
+	findings, err := c.Check(context.Background(), platform.Env{})
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("expected a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, main) {
+		t.Errorf("the reason should name the file: %q", partial.Reason)
+	}
+	// Findings gathered before the truncation are real and must be kept.
+	_ = findings
+}
+
+// The ordinary file must not be reported as truncated, or the flag means
+// nothing.
+func TestANormalConfigIsNotReportedAsUnread(t *testing.T) {
+	main := filepath.Join(t.TempDir(), "sshd_config")
+	if err := os.WriteFile(main, []byte("PermitRootLogin no\nPasswordAuthentication no\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, unread, err := parseConfigFile(main); err != nil || len(unread) != 0 {
+		t.Errorf("unread = %v, err = %v; want neither", unread, err)
 	}
 }
