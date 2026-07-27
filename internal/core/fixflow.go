@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -226,65 +225,11 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	if fi, err := os.Stat(a.Path); err == nil {
 		mode = fi.Mode().Perm()
 	}
-	if err := writeFileAtomic(a.Path, next, mode); err != nil {
+	if err := platform.WriteFileAtomic(a.Path, next, mode); err != nil {
 		return model.FixOutcome{}, err
 	}
 
 	return model.FixOutcome{Diff: d, CheckpointID: saved.ID, RestartHint: f.Service}, nil
-}
-
-// writeFileAtomic replaces path's contents in one step: write a temporary
-// file beside it, then rename over the target.
-//
-// os.WriteFile truncates and then writes, so a crash or power loss between
-// the two leaves a half-written or empty file. For the files hostveil edits
-// that is not a cosmetic failure — a truncated /etc/ssh/sshd_config can mean
-// sshd refuses to start and nobody can log in to the host to repair it. The
-// checkpoint still holds the original, but reaching it requires the access
-// the truncated file just took away. rename(2) is atomic within a
-// filesystem, so a reader sees either the old file or the new one.
-//
-// The temporary lives in the target's own directory so the rename never
-// crosses a filesystem boundary, and it is cleaned up on any failure.
-func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".hostveil-*")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	// CreateTemp makes the file 0600; carry the original's mode across so the
-	// rename does not silently tighten or loosen it.
-	if err := tmp.Chmod(mode); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	// A rename replaces the inode, so the new file carries the temporary's
-	// ownership rather than the original's. hostveil runs as root, so without
-	// this a fix to a compose file owned by the operator's own account would
-	// hand it to root and lock them out of editing their own file. Failing to
-	// preserve ownership is an error, not something to do quietly.
-	if err := preserveOwner(tmp, path); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	// Flush to disk before the rename. Without it the rename can land while
-	// the contents are still in the page cache, which on a crash yields the
-	// new name pointing at empty data — the very outcome this avoids.
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, path)
 }
 
 // applyMode tightens permission bits, following applyEdit's order: record
@@ -475,17 +420,30 @@ func (e *Engine) unmarkFixed(cp history.Checkpoint) []string {
 // ListCheckpoints returns saved restore points, newest first, as model
 // values so every UI can render the applied-fix log without reaching into
 // internal/history.
+//
+// A checkpoint whose metadata cannot be read comes back as a non-nil error
+// *alongside* the ones that could, because the list is still worth showing
+// and the operator still needs telling that part of their recovery history is
+// gone. Use IsIncompleteHistory to tell that from an outright failure.
 func (e *Engine) ListCheckpoints() ([]model.Checkpoint, error) {
 	cps, err := e.store.List()
-	if err != nil {
+	if err != nil && !history.IsDamaged(err) {
 		return nil, err
 	}
 	out := make([]model.Checkpoint, 0, len(cps))
 	for _, cp := range cps {
 		out = append(out, toModelCheckpoint(cp))
 	}
-	return out, nil
+	return out, err
 }
+
+// IsIncompleteHistory reports whether an error from ListCheckpoints means
+// "some checkpoints are unreadable" rather than "the list failed".
+//
+// It exists for the same reason IsExternalEdit does: the layering tests
+// forbid internal/ui/* from importing internal/history, so a UI has no access
+// to the error type and would otherwise be left matching on message text.
+func IsIncompleteHistory(err error) bool { return history.IsDamaged(err) }
 
 func toModelCheckpoint(cp history.Checkpoint) model.Checkpoint {
 	out := model.Checkpoint{

@@ -10,11 +10,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/platform"
@@ -31,6 +33,21 @@ type BackedFile struct {
 	Path string      `json:"path"` // original absolute path
 	Blob string      `json:"blob,omitempty"`
 	Mode os.FileMode `json:"mode"`
+	// BlobSHA256 is the hash of the backup itself, checked before the blob is
+	// written back over a live file.
+	//
+	// AppliedSHA256 on the Checkpoint records what the fix *wrote* and answers
+	// a different question — has the operator edited this since? Nothing
+	// recorded what was *backed up*, so a blob that was truncated by a crash
+	// between the write returning and the data reaching disk, or by delayed
+	// allocation on XFS or btrfs, was restored as-is. Writing an empty
+	// /etc/ssh/sshd_config over a working one is precisely the unrecoverable
+	// outcome the whole recovery layer exists to prevent.
+	//
+	// Omitempty: blobs written before this field existed have no hash, and a
+	// missing hash means "cannot tell", which must not read as either answer —
+	// see verifyBlob.
+	BlobSHA256 string `json:"blob_sha256,omitempty"`
 }
 
 // Checkpoint is a restore point created when a fix is applied.
@@ -108,22 +125,39 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 		if fi, err := os.Stat(path); err == nil {
 			mode = fi.Mode().Perm()
 		}
-		if err := os.WriteFile(filepath.Join(dir, "files", blob), data, 0o600); err != nil {
+		// Atomic and fsync'ed, like every other write here. This is a backup
+		// being taken moments before the file it copies is overwritten; if the
+		// crash that makes the backup matter is also the crash that leaves it
+		// half-written, the recovery layer has recorded a promise it cannot
+		// keep.
+		if err := platform.WriteFileAtomic(filepath.Join(dir, "files", blob), data, 0o600); err != nil {
 			return Checkpoint{}, err
 		}
-		cp.Files = append(cp.Files, BackedFile{Path: path, Blob: blob, Mode: mode})
+		cp.Files = append(cp.Files, BackedFile{
+			Path: path, Blob: blob, Mode: mode, BlobSHA256: SHA256Hex(data),
+		})
 	}
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
-	meta, err := json.MarshalIndent(cp, "", "  ")
-	if err != nil {
-		return Checkpoint{}, err
-	}
-	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
+	if err := s.writeMeta(dir, cp); err != nil {
 		return Checkpoint{}, err
 	}
 	s.pruneCheckpoints()
 	return cp, nil
+}
+
+// writeMeta persists the checkpoint's metadata, last and atomically.
+//
+// Order matters: meta.json is what List and Get read, so a checkpoint exists
+// exactly when its metadata does. Writing it after the blobs means an
+// interrupted Save leaves a directory nothing will try to restore from,
+// rather than a checkpoint that promises files it never finished copying.
+func (s *Store) writeMeta(dir string, cp Checkpoint) error {
+	meta, err := json.MarshalIndent(cp, "", "  ")
+	if err != nil {
+		return err
+	}
+	return platform.WriteFileAtomic(filepath.Join(dir, "meta.json"), meta, 0o600)
 }
 
 // maxCheckpoints caps how many restore points are kept.
@@ -199,11 +233,7 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 	}
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
-	meta, err := json.MarshalIndent(cp, "", "  ")
-	if err != nil {
-		return Checkpoint{}, err
-	}
-	if err := os.WriteFile(filepath.Join(dir, "meta.json"), meta, 0o600); err != nil {
+	if err := s.writeMeta(dir, cp); err != nil {
 		return Checkpoint{}, err
 	}
 	s.pruneCheckpoints()
@@ -220,13 +250,22 @@ func (s *Store) List() ([]Checkpoint, error) {
 		return nil, err
 	}
 	var cps []Checkpoint
+	var damaged []string
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
-		if cp, err := s.Get(e.Name()); err == nil {
-			cps = append(cps, cp)
+		cp, err := s.Get(e.Name())
+		if err != nil {
+			// A checkpoint that cannot be read is not one that does not exist.
+			// Dropping it silently made a fix vanish from `hostveil history`
+			// with no message and no way to tell it had ever been applied — and
+			// it also fell out of recordedWrites, which can turn an honest
+			// rollback into a false "the file was edited externally" refusal.
+			damaged = append(damaged, e.Name())
+			continue
 		}
+		cps = append(cps, cp)
 	}
 	// Newest first, breaking ties on ID. CreatedAt resolves to a
 	// millisecond, so a batch fix produces several checkpoints with the same
@@ -238,7 +277,33 @@ func (s *Store) List() ([]Checkpoint, error) {
 		}
 		return cps[i].ID > cps[j].ID
 	})
+	if len(damaged) > 0 {
+		// Returned alongside the readable checkpoints, not instead of them: the
+		// list is still useful and the operator still needs to be told that
+		// part of their recovery history is unreadable.
+		sort.Strings(damaged)
+		return cps, &DamagedError{IDs: damaged}
+	}
 	return cps, nil
+}
+
+// DamagedError reports checkpoints whose metadata could not be read. It
+// accompanies a successful List rather than replacing it — callers that only
+// want to render the history can ignore it, and callers that report problems
+// can surface it.
+type DamagedError struct{ IDs []string }
+
+func (e *DamagedError) Error() string {
+	return fmt.Sprintf("%d checkpoint(s) are unreadable and cannot be rolled back: %s",
+		len(e.IDs), strings.Join(e.IDs, ", "))
+}
+
+// IsDamaged reports whether err is the unreadable-checkpoint warning. It
+// exists so a caller can tell "the list is incomplete" from "the list
+// failed", which matters because the first still carries usable entries.
+func IsDamaged(err error) bool {
+	var d *DamagedError
+	return errors.As(err, &d)
 }
 
 // Get loads one checkpoint by ID.
@@ -326,6 +391,11 @@ func (w recordedWrites) has(path, sum string) bool {
 // with one pass, on a directory that only ever grows.
 func (s *Store) recordedWrites() recordedWrites {
 	cps, err := s.List()
+	// An incomplete index is worse than none. Membership is the whole test —
+	// the file must hash to something *some* fix recorded writing — so a
+	// missing checkpoint turns an honest rollback into a false "you edited
+	// this externally" refusal. nil reads as "cannot tell", which allows the
+	// restore the operator explicitly asked for.
 	if err != nil {
 		return nil
 	}
@@ -346,6 +416,21 @@ func (s *Store) recordedWrites() recordedWrites {
 func SHA256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
+}
+
+// verifyBlob refuses to restore a backup that is not the backup that was
+// taken.
+//
+// A blob with no recorded hash predates the field and is restored as before:
+// "cannot tell" must not be dressed up as either answer, and refusing every
+// pre-upgrade checkpoint would break rollback for everyone updating — the
+// same rule checkUnmodified follows. New checkpoints always carry one.
+func verifyBlob(bf BackedFile, data []byte) error {
+	if bf.BlobSHA256 == "" || SHA256Hex(data) == bf.BlobSHA256 {
+		return nil
+	}
+	return fmt.Errorf("the backup of %s is damaged (%d bytes, wrong checksum); "+
+		"restoring it would overwrite the live file with corrupt data", bf.Path, len(data))
 }
 
 // Rollback restores every backed-up file in a checkpoint to its original
@@ -386,16 +471,35 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		}
 	}
 
+	// Read and verify every blob before writing any of them, for the same
+	// reason the external-edit check runs up front: a restore that fails
+	// half-way leaves some files restored and others not, which is a state
+	// neither the host nor the in-memory report describes correctly.
 	dir := filepath.Join(s.checkpointsDir(), id, "files")
+	blobs := make(map[string][]byte, len(cp.Files))
+	for _, bf := range cp.Files {
+		if bf.Blob == "" {
+			continue // mode-only entry; the contents were never touched
+		}
+		data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
+		if err != nil {
+			return cp, err
+		}
+		if err := verifyBlob(bf, data); err != nil {
+			return cp, err
+		}
+		blobs[bf.Path] = data
+	}
+
 	for _, bf := range cp.Files {
 		// A mode-only entry carries no blob: the fix changed permissions and
 		// never touched the contents, so there is nothing to write back.
-		if bf.Blob != "" {
-			data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
-			if err != nil {
-				return cp, err
-			}
-			if err := os.WriteFile(bf.Path, data, bf.Mode); err != nil {
+		if data, ok := blobs[bf.Path]; ok {
+			// Atomically, because this is the write that runs when something
+			// has already gone wrong. os.WriteFile truncates first, so an
+			// interrupted restore destroys the very file it was recovering —
+			// and rollback keeps no backup of its own to try again from.
+			if err := platform.WriteFileAtomic(bf.Path, data, bf.Mode); err != nil {
 				return cp, err
 			}
 		}
