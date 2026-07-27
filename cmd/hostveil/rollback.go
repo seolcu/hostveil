@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/seolcu/hostveil/internal/core"
+	"github.com/seolcu/hostveil/internal/history"
 )
 
 func cmdRollback(ctx context.Context, args []string) int {
@@ -81,6 +82,7 @@ func cmdHistory(_ context.Context, args []string) int {
 	}
 	if len(cps) == 0 {
 		fmt.Println("No fixes have been applied yet.")
+		warnAboutStateDirectory()
 		return 0
 	}
 	fmt.Println("Applied fixes (newest first):")
@@ -93,4 +95,23 @@ func cmdHistory(_ context.Context, args []string) int {
 			cp.CreatedAt.Format("2006-01-02 15:04:05"), cp.FindingID, cp.Label, reversible)
 	}
 	return 0
+}
+
+// warnAboutStateDirectory explains an empty history that is not really
+// empty.
+//
+// Checkpoints live in /var/lib/hostveil when root and ~/.local/share/hostveil
+// otherwise, so a fix applied as root and a later unprivileged `hostveil
+// history` read different directories. The user is then told "No fixes have
+// been applied yet" about a host they fixed ten minutes ago, with nothing
+// pointing at the reason. Only shown when the history is empty *and* the run
+// is unprivileged, so it never nags anyone whose setup is fine.
+func warnAboutStateDirectory() {
+	if os.Geteuid() == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr,
+		"\nhostveil: reading %s because this run is not root.\n"+
+			"Fixes applied as root are recorded in /var/lib/hostveil instead — re-run with sudo to see those.\n",
+		history.DefaultDir())
 }

@@ -115,6 +115,23 @@ does not change the status; both are reported in the output instead.
 
 Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
 
+### When something looks wrong
+
+Set `HOSTVEIL_DEBUG=1` to trace every command hostveil runs against the host —
+what ran, how long it took, and whether it failed — to stderr:
+
+```bash
+HOSTVEIL_DEBUG=1 hostveil scan
+```
+
+That is the right thing to attach to a bug report about a domain being skipped
+or a check reporting the wrong thing. Command *output* is deliberately never
+logged: `docker inspect` reports the resolved environment of every container,
+so a trace that included it would routinely be a credential leak.
+
+See [Troubleshooting](https://hostveil.seolcu.com/docs/troubleshooting) for what
+Degraded, a declined rollback, an empty history, and exit code 3 mean.
+
 ## How fixing works
 
 Every finding is classified so the tool never mutates blindly:

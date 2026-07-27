@@ -1,0 +1,37 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Troubleshooting</p>
+            <h1>Troubleshooting</h1>
+            <p class="lead">What the less obvious messages mean, and how to find out what hostveil actually did.</p>
+
+            <h2 id="debug">See every command hostveil runs</h2>
+            <p>Most questions about a wrong-looking result come down to one command answering differently than expected. Set <code>HOSTVEIL_DEBUG=1</code> to trace them:</p>
+            <pre><code>HOSTVEIL_DEBUG=1 hostveil scan</code></pre>
+            <p>Each line names the command, how long it took, and whether it failed — including the binary lookups that decide whether a domain runs at all. The trace goes to <strong>stderr</strong>, so <code>--json</code> and redirects are unaffected, and it is the right thing to attach to a bug report.</p>
+            <p>Command <em>output</em> is deliberately never logged. <code>docker inspect</code> reports the resolved environment of every container, so a trace that included it would routinely be a credential leak.</p>
+
+            <h2 id="degraded">A domain says “Degraded”</h2>
+            <p>The checker ran and covered <em>part</em> of its ground. The findings it reported are real and are scored; what it could not examine is named in the reason. Common causes: an <code>Include</code>d sshd config it cannot read, a compose file it cannot parse, images Trivy could not pull, or containers it could not enumerate.</p>
+            <p>Degraded is deliberately different from <strong>Skipped</strong> (a dependency is absent — the domain is excluded from scoring entirely, not given full marks) and from <strong>Error</strong> (the checker failed outright).</p>
+
+            <h2 id="declined">Rollback says the file was edited externally</h2>
+            <p>The file no longer matches anything hostveil recorded writing, so someone changed it after the fix ran. Rollback keeps no backup of its own, so restoring would discard those edits irreversibly — it declines instead.</p>
+            <p>If you are sure you want the backup back, <code>hostveil rollback &lt;id&gt; --force</code> overwrites. Note that <code>--force</code> will <em>not</em> push through a backup whose checksum does not match what was stored: there is nothing correct on the other side of a damaged backup.</p>
+
+            <h2 id="empty-history">“No fixes have been applied yet” after applying fixes</h2>
+            <p>Almost always the state directory. hostveil stores checkpoints in <code>/var/lib/hostveil</code> when running as root and <code>~/.local/share/hostveil</code> otherwise, so a fix applied under <code>sudo</code> is invisible to an unprivileged <code>hostveil history</code>. Re-run with <code>sudo</code>. This most often bites when <code>HOSTVEIL_NO_SUDO=1</code> is set, or on a host with no <code>sudo</code> installed.</p>
+
+            <h2 id="exit-codes">A scheduled scan exits 3</h2>
+            <p>A detection domain failed outright, so the scan covered less of the host than it should have — a result that looks clean but is not trustworthy. An unreachable Docker socket is the usual cause. A domain merely <em>skipped</em> for a missing dependency, or <em>degraded</em> to partial coverage, does not produce this. See <a href="cli#exit-codes">exit codes</a>.</p>
+
+            <h2 id="timeouts">A check reports that a command “did not respond”</h2>
+            <p>hostveil bounds every command it runs, so a daemon that accepts a connection and never answers — a wedged Docker is the everyday case — fails that check instead of hanging the scan. The affected domain is reported honestly rather than scored as clean. Check the daemon named in the message; <code>HOSTVEIL_DEBUG=1</code> shows exactly which call stalled.</p>
+
+            <h2 id="ssh-fix">An SSH fix refuses to apply</h2>
+            <p>Before writing, hostveil runs the config it would produce through <code>sshd -t</code>. If sshd rejects it, the fix is abandoned and your file is left untouched — nothing was written, so there is nothing to roll back. This exists because sshd keeps serving from the config it already loaded: a broken file would look like nothing at all until the next restart, when sshd refuses to start and repairing it needs the SSH access it just removed.</p>
+
+            <h2 id="interrupt">Ctrl-C does not seem to stop it</h2>
+            <p>The first interrupt cancels the work in progress and lets it wind down cleanly — stopping the commands a scan has running, draining the dashboard's in-flight requests. Press it a second time to exit immediately. A batch fix stops between fixes rather than during one, and tells you how many were never attempted; whatever did apply is in <code>hostveil history</code>.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="faq">← FAQ</a>
+              <a class="button primary" href="contributing">Contributing →</a>
+            </div>
