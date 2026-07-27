@@ -15,9 +15,17 @@ import (
 
 type fakeRunner struct {
 	outputs map[string]string
+	// missing names binaries this host does not have, so a checker's
+	// platform.Has gate can be exercised. The zero value has none.
+	missing map[string]bool
 }
 
-func (fakeRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
+func (f fakeRunner) LookPath(name string) (string, error) {
+	if f.missing[name] {
+		return "", errors.New("not found: " + name)
+	}
+	return "/usr/bin/" + name, nil
+}
 
 func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
@@ -299,5 +307,56 @@ func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 		if len(fs) != 0 {
 			t.Errorf("%q: Check returned findings %v alongside the error", pm, fs)
 		}
+	}
+}
+
+// needs-restarting ships in dnf-utils, which a stock minimal Fedora, RHEL,
+// or Rocky does not install. The reboot probe then came back unknown, the
+// function returned right there, and `dnf updateinfo list security` never
+// ran — so pending security updates went uncounted on every such host, while
+// the domain reported only that a reboot could not be determined.
+func TestMissingNeedsRestartingStillCountsSecurityUpdates(t *testing.T) {
+	out := dnfClean()
+	out["dnf -q updateinfo list security"] = `FEDORA-2026-aaaa Important/Sec. openssl-3.2.1-1.fc41.x86_64
+FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
+`
+	env := platform.Env{
+		PackageManager: platform.PMDnf,
+		Runner:         fakeRunner{outputs: out, missing: map[string]bool{"needs-restarting": true}},
+	}
+
+	fs, err := New().Check(context.Background(), env)
+
+	// Still degraded — a reboot genuinely cannot be determined.
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "dnf-utils") {
+		t.Errorf("the reason should name the missing package: %q", partial.Reason)
+	}
+	// But the second probe ran, which is the whole point.
+	find(t, fs, "updates.pending-security")
+}
+
+// Both probes failing must read as both failing, not just the first.
+func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
+	out := dnfClean()
+	delete(out, "dnf -q updateinfo list security") // the fake errors on an unknown key
+	env := platform.Env{
+		PackageManager: platform.PMDnf,
+		Runner:         fakeRunner{outputs: out, missing: map[string]bool{"needs-restarting": true}},
+	}
+
+	_, err := New().Check(context.Background(), env)
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "reboot") || !strings.Contains(partial.Reason, "security updates") {
+		t.Errorf("both failures should be named: %q", partial.Reason)
+	}
+	if partial.Covered != 0 || partial.Total != 2 {
+		t.Errorf("coverage = %d/%d, want 0/2", partial.Covered, partial.Total)
 	}
 }

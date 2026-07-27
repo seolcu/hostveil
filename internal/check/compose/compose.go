@@ -45,7 +45,7 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 // object on the box could be published to 0.0.0.0, privileged, and mounting
 // the Docker socket while the axis scored it as if it were not there.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	projects, err := compose.Discover(ctx, env.Runner)
+	projects, unparsed, err := compose.Discover(ctx, env.Runner)
 	if err != nil {
 		return nil, err
 	}
@@ -71,10 +71,24 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		return findings, &check.PartialError{
 			Reason:  "cannot inspect containers started outside Compose — audited compose projects only",
 			Covered: len(projects),
+			Total:   len(projects) + len(unparsed),
 		}
 	}
 	for _, c := range standalone {
 		findings = append(findings, auditContainer(c)...)
+	}
+
+	// A project docker knows about but whose file we could not parse is a
+	// stack this scan says nothing about. Reporting ScanDone over the rest
+	// would score the domain as if those services had been audited and found
+	// clean, which is the one thing a checker must never do.
+	if len(unparsed) > 0 {
+		return findings, &check.PartialError{
+			Reason: "cannot parse compose file(s): " + strings.Join(unparsed, ", ") +
+				" — services defined there were not audited",
+			Covered: len(projects),
+			Total:   len(projects) + len(unparsed),
+		}
 	}
 	return findings, nil
 }
