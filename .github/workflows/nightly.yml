@@ -70,3 +70,48 @@ jobs:
           path: |
             **/testdata/fuzz/${{ matrix.target }}/**
           if-no-files-found: ignore
+
+  # The installer is the first thing a new user runs, and it is the one
+  # component CI cannot exercise from source: it downloads a published
+  # release. So it is checked here rather than on a pull request, against
+  # whatever is currently `latest` — which is also what catches a release
+  # that published badly, independent of the code in this branch.
+  installer:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install what a bare server has
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            curl ca-certificates tar coreutils >/dev/null
+          # The container is already root and the script calls sudo, which
+          # a minimal image does not ship. A pass-through stands in for it.
+          printf '#!/bin/sh\nexec "$@"\n' > /usr/bin/sudo
+          chmod +x /usr/bin/sudo
+
+      - name: Install the published release
+        run: bash scripts/install.sh --yes --no-trivy
+
+      - name: The installed binary runs
+        run: |
+          hostveil --version
+          HOSTVEIL_NO_SUDO=1 hostveil scan --json > /dev/null || true
+
+      - name: Re-running the installer is the upgrade path
+        run: |
+          bash scripts/install.sh --yes --no-trivy
+          hostveil --version
+
+      - name: Uninstall removes the binary and keeps the state directory
+        run: |
+          set -eux
+          mkdir -p /var/lib/hostveil
+          bash scripts/install.sh --uninstall
+          test ! -e /usr/bin/hostveil
+          # The checkpoints are backups of files hostveil edited; removing
+          # the tool must not throw them away.
+          test -d /var/lib/hostveil
