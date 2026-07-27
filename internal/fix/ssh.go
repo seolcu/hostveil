@@ -14,6 +14,37 @@ func registerSSH(r *Registry) {
 	r.Register("ssh.passwordauth", buildSSHAuto("PasswordAuthentication", "no", "Disable password authentication",
 		"Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH."))
 	r.Register("ssh.rootlogin", buildRootLogin)
+	r.Register("ssh.logingracetime", buildSSHAuto("LoginGraceTime", "60", "Lower LoginGraceTime to 60 seconds", ""))
+	r.Register("ssh.gatewayports", buildSSHAuto("GatewayPorts", "no", "Bind remote-forwarded ports to loopback only",
+		"If you rely on `ssh -R` tunnels being reachable from other machines, this closes them to loopback."))
+	r.Register("ssh.hostbasedauth", buildSSHAuto("HostbasedAuthentication", "no", "Disable host-based authentication",
+		"If any user logs in via host-based trust rather than their own key, this removes that path."))
+	r.Register("ssh.kbdinteractive", buildKbdInteractive)
+}
+
+// buildKbdInteractive disables keyboard-interactive authentication by
+// setting whichever keyword is actually in force. The checker records it in
+// the finding: sshd treats ChallengeResponseAuthentication as an alias for
+// KbdInteractiveAuthentication and keeps the first value it sees for either,
+// so writing the modern keyword into a file where the old alias already
+// appears earlier would change nothing while claiming to have fixed it.
+func buildKbdInteractive(f model.Finding) (Fix, error) {
+	path, err := sshConfigPath(f)
+	if err != nil {
+		return Fix{}, err
+	}
+	key := f.Evidence["directive"]
+	if key == "" {
+		key = "KbdInteractiveAuthentication"
+	}
+	label := "Disable keyboard-interactive authentication"
+	return Fix{
+		Label: label,
+		Kind:  model.RemediationAuto,
+		Actions: []Action{sshEdit(path, label,
+			"PAM-based one-time codes (2FA prompts) also use this mechanism — keep it enabled if your logins go through one.",
+			key, "no")},
+	}, nil
 }
 
 func sshConfigPath(f model.Finding) (string, error) {
