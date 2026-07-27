@@ -84,24 +84,34 @@ func TestFrameFitsTerminalWidth(t *testing.T) {
 	}
 }
 
-// The rows drawn plus the chrome around them must not exceed the terminal
-// height, or the footer — which is where every key binding is documented —
-// scrolls off the bottom.
+// The frame is exactly as tall as the terminal — not merely no taller.
+//
+// "No taller" was the old assertion, and it let the footer float: a short
+// list drew its key hints directly under the last row and left the bottom
+// third of the alt screen empty, which reads as a half-drawn program. Exact
+// height is what pins the footer to the last line, so the composer pads the
+// body rather than stopping early.
+//
+// It also has to stay exact from the other direction: the count is
+// separators + 1, so a single trailing newline makes the frame h+1 rows and
+// scrolls the alt screen by one.
 func TestFrameFitsTerminalHeight(t *testing.T) {
 	r := layoutReport()
-	for _, h := range []int{40, 30, 24, 20} {
-		for _, withDelta := range []bool{false, true} {
-			m := &appModel{
-				mode: modeList, width: 80, height: h,
-				report: r, selected: map[string]bool{},
-			}
-			if withDelta {
-				m.delta = model.Delta{Resolved: r.Findings[:1]}
-			}
-			m.active = m.report.Select(m.filter)
-			got := strings.Count(m.View().Content, "\n") + 1
-			if got > h {
-				t.Errorf("height=%d delta=%v: frame is %d lines", h, withDelta, got)
+	for _, w := range []int{120, 80, 60, 44} {
+		for _, h := range []int{40, 30, 24, 20} {
+			for _, withDelta := range []bool{false, true} {
+				m := &appModel{
+					mode: modeList, width: w, height: h,
+					report: r, selected: map[string]bool{},
+				}
+				if withDelta {
+					m.delta = model.Delta{Resolved: r.Findings[:1]}
+				}
+				m.active = m.report.Select(m.filter)
+				got := strings.Count(m.View().Content, "\n") + 1
+				if got != h {
+					t.Errorf("%dx%d delta=%v: frame is %d lines, want %d", w, h, withDelta, got, h)
+				}
 			}
 		}
 	}
@@ -145,13 +155,11 @@ func TestPreviewAndHistoryFitTerminalWidth(t *testing.T) {
 				t.Errorf("%s width=%d: line is %d columns:\n  %q", name, m.width, got, line)
 			}
 		}
-		// The history list sizes itself to the terminal, so a wrong header
-		// reservation makes it draw more rows than fit and the frame runs past
-		// the bottom. (The preview is content-sized and not height-bounded.)
-		if name == "history" {
-			if got := strings.Count(content, "\n") + 1; got > m.height {
-				t.Errorf("history height=%d: frame is %d lines", m.height, got)
-			}
+		// Both are height-bounded now. The preview used to be content-sized,
+		// which is why its key hints appeared wherever the diff happened to
+		// end; every mode goes through the same composer and fills the frame.
+		if got := strings.Count(content, "\n") + 1; got != m.height {
+			t.Errorf("%s height=%d: frame is %d lines", name, m.height, got)
 		}
 	}
 }

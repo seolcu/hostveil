@@ -64,13 +64,23 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 	return next
 }
 
-// TestSnapshotDump writes the rendered TUI frame to the path in
-// HOSTVEIL_SNAPSHOT when set, for generating documentation screenshots. It
-// is a no-op in normal test runs.
+// TestSnapshotDump writes rendered TUI frames to HOSTVEIL_SNAPSHOT when it is
+// set, and is a no-op in normal test runs. It is how the frames in the
+// documentation are produced, and how a layout change is reviewed without a
+// terminal in front of you.
+//
+// A file path gets the one frame the website uses (site/assets/tui.png, at
+// its published 96x34); a directory gets every mode, one .ans per screen, for
+// eyeballing a change across the whole interface. There is deliberately one
+// hook rather than two — a second dumper drifts out of step with the first.
 func TestSnapshotDump(t *testing.T) {
 	path := os.Getenv("HOSTVEIL_SNAPSHOT")
 	if path == "" {
-		t.Skip("set HOSTVEIL_SNAPSHOT to dump a frame")
+		t.Skip("set HOSTVEIL_SNAPSHOT to dump a frame (a file for the site frame, a directory for every mode)")
+	}
+	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+		dumpEveryMode(t, path)
+		return
 	}
 	findings := []model.Finding{
 		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
@@ -414,7 +424,7 @@ func TestRollbackFlowThroughEngine(t *testing.T) {
 	if len(hm.checkpoints) != 1 {
 		t.Fatalf("want 1 checkpoint, got %d", len(hm.checkpoints))
 	}
-	if view := m.(*appModel).viewHistory(); !strings.Contains(view, "compose.ds018") {
+	if view := m.(*appModel).View().Content; !strings.Contains(view, "compose.ds018") {
 		t.Errorf("history view should name the finding:\n%s", view)
 	}
 
