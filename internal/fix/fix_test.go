@@ -113,6 +113,9 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"compose.ds001":       "removal-shaped: hostveil cannot tell a needless privileged flag from a load-bearing one",
 		"compose.ds005":       "removal-shaped: same, for cap_add",
 		"compose.dr001":       "removing host networking without knowing which ports to publish leaves the service unreachable",
+		"compose.ds020":       "removal-shaped: a monitoring agent legitimately needs the host PID namespace, and hostveil cannot tell that from a cargo-culted one",
+		"compose.ds021":       "removal-shaped: deliberate host-IPC sharing breaks silently when the line is deleted",
+		"compose.ds022":       "read_only: true breaks any image that writes to its own filesystem, and the audit cannot infer the tmpfs mounts that would make it safe",
 		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 
 		// Every agent.* config-key finding. OpenClaw's config is JSON5 and

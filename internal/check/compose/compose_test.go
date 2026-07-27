@@ -120,6 +120,59 @@ func TestHardenedServiceIsClean(t *testing.T) {
 	}
 }
 
+func TestHostNamespaceSharingDetected(t *testing.T) {
+	got := findingsFor(t, `services:
+  monitor:
+    image: myapp
+    pid: host
+    ipc: host`)
+	if f, ok := got["compose.ds020"]; !ok {
+		t.Errorf("expected compose.ds020 for pid: host, got %v", keys(got))
+	} else if f.Severity != model.SeverityHigh {
+		t.Errorf("ds020 severity = %v, want high", f.Severity)
+	}
+	if f, ok := got["compose.ds021"]; !ok {
+		t.Errorf("expected compose.ds021 for ipc: host, got %v", keys(got))
+	} else if f.Severity != model.SeverityMedium {
+		t.Errorf("ds021 severity = %v, want medium", f.Severity)
+	}
+}
+
+func TestServiceScopedNamespacesNotFlagged(t *testing.T) {
+	got := findingsFor(t, `services:
+  app:
+    image: myapp
+    pid: "service:db"
+    ipc: "service:db"`)
+	if _, ok := got["compose.ds020"]; ok {
+		t.Error("pid scoped to another service should not be flagged")
+	}
+	if _, ok := got["compose.ds021"]; ok {
+		t.Error("ipc scoped to another service should not be flagged")
+	}
+}
+
+func TestWritableRootFilesystemDetected(t *testing.T) {
+	got := findingsFor(t, `services:
+  app:
+    image: myapp`)
+	f, ok := got["compose.ds022"]
+	if !ok {
+		t.Fatalf("expected compose.ds022 for a service without read_only, got %v", keys(got))
+	}
+	if f.Severity != model.SeverityLow {
+		t.Errorf("ds022 severity = %v, want low", f.Severity)
+	}
+
+	clean := findingsFor(t, `services:
+  app:
+    image: myapp
+    read_only: true`)
+	if _, ok := clean["compose.ds022"]; ok {
+		t.Error("read_only: true should not be flagged")
+	}
+}
+
 func TestInlineSecretDetected(t *testing.T) {
 	got := findingsFor(t, `services:
   db:

@@ -69,16 +69,17 @@ type dockerContainer struct {
 		} `json:"Healthcheck"`
 	} `json:"Config"`
 	HostConfig struct {
-		Privileged    bool                `json:"Privileged"`
-		NetworkMode   string              `json:"NetworkMode"`
-		PidMode       string              `json:"PidMode"`
-		IpcMode       string              `json:"IpcMode"`
-		CapAdd        []string            `json:"CapAdd"`
-		SecurityOpt   []string            `json:"SecurityOpt"`
-		Binds         []string            `json:"Binds"`
-		Memory        int64               `json:"Memory"`
-		PortBindings  map[string][]hostIP `json:"PortBindings"`
-		RestartPolicy struct {
+		Privileged     bool                `json:"Privileged"`
+		NetworkMode    string              `json:"NetworkMode"`
+		PidMode        string              `json:"PidMode"`
+		IpcMode        string              `json:"IpcMode"`
+		ReadonlyRootfs bool                `json:"ReadonlyRootfs"`
+		CapAdd         []string            `json:"CapAdd"`
+		SecurityOpt    []string            `json:"SecurityOpt"`
+		Binds          []string            `json:"Binds"`
+		Memory         int64               `json:"Memory"`
+		PortBindings   map[string][]hostIP `json:"PortBindings"`
+		RestartPolicy  struct {
 			Name string `json:"Name"`
 		} `json:"RestartPolicy"`
 	} `json:"HostConfig"`
@@ -120,6 +121,7 @@ func (e dockerContainer) toService(name string) Service {
 		NetworkMode: e.HostConfig.NetworkMode,
 		Pid:         e.HostConfig.PidMode,
 		Ipc:         e.HostConfig.IpcMode,
+		ReadOnly:    e.HostConfig.ReadonlyRootfs,
 		User:        e.Config.User,
 		Restart:     e.HostConfig.RestartPolicy.Name,
 		CapAdd:      e.HostConfig.CapAdd,

@@ -186,11 +186,14 @@
                   <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">높음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
                   <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">보통</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
                   <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
