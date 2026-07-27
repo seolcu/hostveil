@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // CommandRunner runs external commands and looks up binaries. Production
@@ -32,12 +33,79 @@ type CommandRunner interface {
 }
 
 // DefaultRunner is the real CommandRunner backed by os/exec.
-type DefaultRunner struct{}
+type DefaultRunner struct {
+	// Timeout bounds a command whose caller set no deadline. Zero means
+	// DefaultTimeout, which is what every production call site wants; it is a
+	// field so a test can assert the bound exists without waiting for it.
+	Timeout time.Duration
+}
+
+// DefaultTimeout bounds any command whose caller set no deadline of its own.
+//
+// Nothing hostveil asks the host is a long question: `ss -tlnp`, `docker
+// inspect`, `apt list --upgradable`, `sshd -T`. What they have in common is
+// that each talks to a daemon or a package database that can stop answering
+// while the socket stays open — a wedged Docker daemon is the everyday case —
+// and a read from one of those blocks forever, not briefly. Thirty seconds is
+// far more than any of them needs and still bounded.
+//
+// The bound matters more here than the exact number, because a scan runs its
+// checkers concurrently behind a single-flight cache: one command that never
+// returns parks every checker waiting on the same command with it, and the
+// user sees "scanning: container cve firewall" until they kill the process.
+const DefaultTimeout = 30 * time.Second
+
+// waitDelay bounds the wait for output after the process itself is gone.
+//
+// exec.CommandContext kills the process on cancellation, but Output() also
+// waits for the read of the stdout pipe to finish, and a grandchild that
+// inherited the write end keeps it open after its parent dies. `docker
+// compose` shelling out is exactly that shape. Without a WaitDelay the
+// timeout kills the command and Wait blocks anyway, which is the same hang
+// wearing a different hat.
+const waitDelay = 2 * time.Second
 
 // Run executes the command and returns its stdout.
-func (DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
-	out, err := exec.CommandContext(ctx, name, args...).Output()
-	return out, withStderr(err)
+//
+// A caller that set its own deadline keeps it: the CVE checker gives Trivy
+// minutes on purpose, and imposing the default on top would kill every image
+// scan. The default is a floor for callers that said nothing, not a ceiling
+// over callers that did.
+func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	limit := r.Timeout
+	if limit <= 0 {
+		limit = DefaultTimeout
+	}
+	if d, ok := ctx.Deadline(); ok {
+		limit = time.Until(d)
+	} else {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, limit)
+		defer cancel()
+	}
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.WaitDelay = waitDelay
+	out, err := cmd.Output()
+	return out, describeContext(ctx, name, limit, withStderr(err))
+}
+
+// describeContext turns the "signal: killed" a cancelled command reports into
+// something an operator can act on. The domain reason is the only channel
+// hostveil has for saying why a check did not finish, and "exit status -1" in
+// it means the user has to guess between a crash, a permission problem, and a
+// daemon that stopped answering.
+func describeContext(ctx context.Context, name string, limit time.Duration, err error) error {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case errors.Is(ctx.Err(), context.DeadlineExceeded):
+		return fmt.Errorf("%s did not respond within %s (is the daemon it talks to healthy?)",
+			name, limit.Round(time.Second))
+	case errors.Is(ctx.Err(), context.Canceled):
+		return fmt.Errorf("%s was interrupted: %w", name, ctx.Err())
+	}
+	return err
 }
 
 // maxStderr bounds how much of a failed command's stderr reaches the error.

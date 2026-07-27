@@ -66,8 +66,17 @@ func (c *ScanCache) Run(ctx context.Context, name string, args ...string) ([]byt
 	c.mu.Lock()
 	if call, ok := c.calls[key]; ok {
 		c.mu.Unlock()
-		<-call.done // may already be closed
-		return call.out, call.err
+		// Wait for the in-flight run, but not past this caller's own
+		// cancellation. The flight belongs to whoever started it and carries
+		// that caller's deadline; without this select a checker with a short
+		// deadline, or a scan the user cancelled, would still sit here until
+		// someone else's command finished.
+		select {
+		case <-call.done:
+			return call.out, call.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 	call := &cachedCall{done: make(chan struct{})}
 	c.calls[key] = call
