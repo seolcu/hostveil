@@ -119,7 +119,7 @@ jobs:
           # history prints and the only order that is safe: two fixes to one
           # file leave the second's content in place.
           # rollback does not prompt, so there is nothing to confirm.
-          grep -o 'hostveil rollback [^ ]*' /tmp/history.txt | while read -r _ _ id; do
+          grep -o 'hostveil rollback [^] ]*' /tmp/history.txt | while read -r _ _ id; do
             hostveil rollback "$id"
           done
 
