@@ -14,6 +14,8 @@
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--json</code></td><td><code>false</code></td><td>보고서를 JSON으로 출력합니다.</td></tr>
+                  <tr><td><code>--sarif</code></td><td><code>false</code></td><td>보고서를 CI 시스템과 GitHub code scanning이 읽는 SARIF 2.1.0 형식으로 출력합니다. <code>--json</code>과 함께 쓸 수 없습니다. 도메인별 커버리지가 run 속성에 함께 실리므로, 일부만 점검된 스캔은 내보내기에서도 그대로 보입니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>—</td><td>선택한 형식 그대로 보고서를 stdout 대신 파일에 씁니다. 종료 코드는 그대로이므로 CI 게이트는 계속 동작합니다.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>설명과 수정 안내를 표시합니다.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>색상 출력을 비활성화합니다.</td></tr>
                 </tbody>
