@@ -21,6 +21,7 @@ const (
 	SourceAccounts
 	SourceFilePerms
 	SourceAgent
+	SourceSysctl
 )
 
 // String returns the stable lowercase domain name, also used as the
@@ -45,6 +46,8 @@ func (s Source) String() string {
 		return "fileperms"
 	case SourceAgent:
 		return "agent"
+	case SourceSysctl:
+		return "sysctl"
 	default:
 		return "unset"
 	}
@@ -57,13 +60,13 @@ func (s Source) String() string {
 // finding from the new domain fails Validate() and is dropped after the
 // scan, so the domain reports clean rather than reporting nothing.
 func (s Source) Valid() bool {
-	return s >= SourceCompose && s <= SourceAgent
+	return s >= SourceCompose && s <= SourceSysctl
 }
 
 // AllSources lists every real detection domain in scan/report order.
 func AllSources() []Source {
 	return []Source{
 		SourceCompose, SourceSSH, SourceFirewall, SourceUpdates, SourceCVE,
-		SourcePorts, SourceAccounts, SourceFilePerms, SourceAgent,
+		SourcePorts, SourceAccounts, SourceFilePerms, SourceAgent, SourceSysctl,
 	}
 }

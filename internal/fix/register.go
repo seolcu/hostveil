@@ -150,6 +150,16 @@ package fix
 //     requires. agent.gateway-exposed fails the recoverability test on top
 //     of all that: rebinding a gateway to loopback can cut an operator off
 //     from the agent they administer remotely.
+//   - sysctl.* (every kernel-hardening finding) — one shared reason.
+//     Persisting a value means writing an /etc/sysctl.d drop-in that does
+//     not exist, and edit actions cannot create files: previewEdit and
+//     applyEdit both read the target before doing anything. Making it live
+//     needs `sysctl --system`, which is exec and so never Auto; and
+//     "write the drop-in, then apply it" is sequential steps, exactly what
+//     Review's independent-alternatives shape forbids. Each finding's
+//     how-to-fix carries the exact line and command instead. Revisit if
+//     Action ever grows a create-if-missing mode, at which point these
+//     become natural Review fixes.
 //
 // # Auto fixes that touch a user's home
 //

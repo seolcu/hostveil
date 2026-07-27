@@ -129,15 +129,16 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>18</td></tr>
-                  <tr><td>SSH hardening</td><td>17</td></tr>
-                  <tr><td>Vulnerabilities</td><td>13</td></tr>
-                  <tr><td>Host firewall</td><td>12</td></tr>
+                  <tr><td>Container exposure</td><td>17</td></tr>
+                  <tr><td>SSH hardening</td><td>16</td></tr>
+                  <tr><td>Vulnerabilities</td><td>12</td></tr>
+                  <tr><td>Host firewall</td><td>11</td></tr>
                   <tr><td>Exposed services</td><td>10</td></tr>
                   <tr><td>AI agent runtimes</td><td>10</td></tr>
-                  <tr><td>Account hygiene</td><td>8</td></tr>
+                  <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
                   <tr><td>File permissions</td><td>5</td></tr>
+                  <tr><td>Kernel hardening</td><td>5</td></tr>
                 </tbody>
               </table>
             </div>
@@ -264,6 +265,25 @@
                   <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="sysctl">Kernel hardening <code>sysctl.</code></h2>
+            <p>Read directly from <code>/proc/sys</code> — no <code>sysctl</code> binary needed. These are the quiet knobs whose safe value is the same on essentially every server: none of them is the hole an attacker comes in through, each is what stops a foothold from becoming root or a spoofed packet from becoming a route. A parameter this kernel does not have (Yama not built in, say) is simply skipped.</p>
+            <p>Every finding here is Manual for now: making a value stick means creating an <code>/etc/sysctl.d</code> drop-in that does not exist yet, and applying it live takes <code>sysctl --system</code> — so each finding carries the exact line and the exact command instead of a button. <code>net.ipv4.ip_forward</code> is deliberately not audited: Docker, WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately enable it, and hostveil cannot tell those apart from an accident.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>Any process can debug its siblings and read their memory</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN-flood protection is off</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP redirects can rewrite this host's routing</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>Symlink/hardlink race protections are disabled</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>Kernel pointer addresses are visible to all users</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>Any user can read the kernel log</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq is fully enabled</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>sysctl.rp-filter</code></td><td>Source-address spoofing filter is off (strict and loose both pass)</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

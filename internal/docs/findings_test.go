@@ -30,7 +30,7 @@ import (
 // findingID matches a namespaced finding ID. The namespace must be one of
 // the real sources, so incidental dotted strings in the check packages
 // (config filenames, config keys like net.bindIp) do not masquerade as IDs.
-var findingID = regexp.MustCompile(`^(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent)\.[a-z0-9][a-z0-9.\-]*$`)
+var findingID = regexp.MustCompile(`^(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent|sysctl)\.[a-z0-9][a-z0-9.\-]*$`)
 
 // composeRuleID matches compose's bare rule IDs, which reach NewFinding
 // through a helper that prefixes them: f("ds016", …) → "compose.ds016".

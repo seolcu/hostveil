@@ -129,6 +129,20 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"agent.sandbox-off":          "same JSON5 edit problem, and enabling a sandbox can break tools the operator relies on",
 		"agent.control-ui-insecure":  "same JSON5 edit problem",
 		"agent.ssrf-private-network": "same JSON5 edit problem",
+
+		// Every sysctl.* finding, one shared reason: the /etc/sysctl.d
+		// drop-in does not exist and edit actions cannot create files;
+		// applying the live value is exec (never Auto); and a
+		// write-then-apply pair is sequential steps, not the independent
+		// alternatives Review requires.
+		"sysctl.kptr-restrict":    "edit actions cannot create the missing sysctl.d drop-in, and sysctl --system is exec",
+		"sysctl.dmesg-restrict":   "same drop-in problem",
+		"sysctl.sysrq":            "same drop-in problem",
+		"sysctl.ptrace-scope":     "same drop-in problem",
+		"sysctl.syncookies":       "same drop-in problem",
+		"sysctl.accept-redirects": "same drop-in problem",
+		"sysctl.rp-filter":        "same drop-in problem",
+		"sysctl.protected-links":  "same drop-in problem",
 	}
 	r := Default()
 	for id, why := range declined {
