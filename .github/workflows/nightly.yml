@@ -64,7 +64,7 @@ jobs:
       # commit as a regression seed, not a log line to reconstruct from.
       - name: Upload crash corpus
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-crash-${{ matrix.target }}
           path: |
