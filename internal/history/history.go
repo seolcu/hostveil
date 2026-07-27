@@ -16,6 +16,8 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // BackedFile records one file captured in a checkpoint.
@@ -401,7 +403,12 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// file, so restoring the mode of a file that still exists needs an
 		// explicit chmod. Without this the Mode recorded on every checkpoint
 		// was never applied to anything.
-		if err := os.Chmod(bf.Path, bf.Mode); err != nil {
+		//
+		// No-follow, because mode-only checkpoints point into user homes
+		// (agent.config-perms) and the account that owns the path can have
+		// replaced it with a symlink since the fix ran — os.Chmod would carry
+		// root's chmod through to the link's target.
+		if err := platform.ChmodNoFollow(bf.Path, bf.Mode); err != nil {
 			return cp, err
 		}
 	}

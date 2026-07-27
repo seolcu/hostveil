@@ -156,6 +156,17 @@ package fix
 // ships these paths at 0600/0700, so that arrangement is a deviation rather
 // than a design, and the finding's how-to-fix names it explicitly.
 //
+// A path under a home carries one more obligation that /etc never did: the
+// account that owns it can shape it, so "safe to apply unattended" must hold
+// against an adversarial layout, not just a mistaken one. Every step from
+// detection to apply therefore refuses to follow a symlink — the checker
+// Lstats and skips non-regular files, planModes re-vets the type, and the
+// chmod itself goes through a descriptor opened O_NOFOLLOW — because a
+// symlink at ~/.openclaw/openclaw.json pointing at /etc/passwd would
+// otherwise turn `fix --all` into root tightening the password database off
+// the host. Any future Auto fix whose target another account can influence
+// owes the same discipline.
+//
 // # The one CVE finding that does have a fix
 //
 // cve.outdated-image, the per-image rollup, IS registered, because its

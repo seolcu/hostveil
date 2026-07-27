@@ -114,7 +114,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			}
 		}
 
-		b, err := os.ReadFile(in.path(in.rt.Config)) //nolint:gosec // path from the runtime registry
+		// The registry supplies the relative path, but everything under the
+		// home is the account's to shape, so the read must not follow a
+		// symlink, block on a FIFO, or swallow something unbounded.
+		b, err := platform.ReadFileNoFollow(in.path(in.rt.Config), maxAgentFileBytes)
 		switch {
 		case err != nil && os.IsNotExist(err):
 			// Installed but never configured. Nothing to read, nothing lost.
@@ -157,16 +160,26 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 // modeFindings flags registry paths whose permissions are looser than the
 // runtime's own hardened baseline.
+//
+// Lstat, never Stat. These paths belong to the account being audited, and a
+// finding here carries an Auto chmod fix — following a symlink would let any
+// user point their "config file" at /etc/passwd, collect a finding about its
+// 0644 mode, and have root tighten it for them, which on /etc/passwd is a
+// host-wide denial of service. A symlink or any other non-regular file is not
+// the layout the registry describes, so it is skipped, not judged.
 func modeFindings(s scan) []model.Finding {
 	var out []model.Finding
 	for _, rule := range s.in.rt.Modes {
 		path := s.in.path(rule.Rel)
-		fi, err := os.Stat(path)
+		fi, err := os.Lstat(path)
 		if err != nil {
 			continue // a path the user never created is not a finding
 		}
 		if fi.IsDir() != rule.Dir {
 			continue // the layout is not what the registry describes; do not guess
+		}
+		if !rule.Dir && !fi.Mode().IsRegular() {
+			continue // a symlink, FIFO, or device is not the registry's layout
 		}
 		perm := fi.Mode().Perm()
 		if perm&^rule.Max == 0 {
