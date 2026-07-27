@@ -105,6 +105,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
 	mux.HandleFunc("GET /api/rescan/status", s.handleRescanStatus)
+	mux.HandleFunc("GET /api/explain", s.handleExplain)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
@@ -400,6 +401,20 @@ func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
 		Running bool             `json:"running"`
 		Domains []domainProgress `json:"domains"`
 	}{running, domains})
+}
+
+// handleExplain returns the deterministic explanation plus, when a local
+// AI provider is reachable, an advisory AI one (model.Explanation's ai /
+// ai_error fields). It runs under the request's own context, unlike a fix
+// or a scan: an explanation mutates nothing, so one nobody is waiting for
+// should die with the tab that asked for it.
+func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
+	f, ok := s.lookup(r.URL.Query().Get("id"), r.URL.Query().Get("service"))
+	if !ok {
+		http.Error(w, "no such finding", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, s.engine.Explain(r.Context(), f, true))
 }
 
 func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {

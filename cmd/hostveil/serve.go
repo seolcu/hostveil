@@ -45,7 +45,11 @@ func cmdServe(ctx context.Context, args []string) int {
 				"tunnel: ssh -L 8787:127.0.0.1:8787 you@this-host\n", addr)
 	}
 
-	srv := web.New(buildEngine(), addr, t.ID)
+	// The dashboard gets the advisory AI provider wired in: /api/explain
+	// offers an AI explanation on request. Construction does no I/O, and
+	// with no Ollama reachable the route degrades to the deterministic
+	// explanation plus a note, so this costs a host without AI nothing.
+	srv := web.New(buildEngineWithAI(true), addr, t.ID)
 	// The URL carries a one-off access token, because loopback keeps the
 	// dashboard off the network but not away from other accounts on this
 	// machine — and every route here applies fixes or reads a scan of
