@@ -13,6 +13,7 @@ import (
 	firewallcheck "github.com/seolcu/hostveil/internal/check/firewall"
 	portscheck "github.com/seolcu/hostveil/internal/check/ports"
 	sshcheck "github.com/seolcu/hostveil/internal/check/ssh"
+	sysctlcheck "github.com/seolcu/hostveil/internal/check/sysctl"
 	updatescheck "github.com/seolcu/hostveil/internal/check/updates"
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/fix"
@@ -38,6 +39,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 			accountscheck.New(),
 			filepermscheck.New(),
 			agentcheck.New(),
+			sysctlcheck.New(),
 		),
 		Fixes:  fix.Default(),
 		Runner: debugRunner(),

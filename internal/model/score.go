@@ -64,16 +64,21 @@ type axisDef struct {
 // user — but it applies to far fewer hosts, and it is N/A-excluded entirely
 // on any host with no agent runtime installed. So the generous cap costs a
 // typical host nothing and carries real weight where it applies.
+//
+// "sysctl" ties with "fileperms" deliberately too: both are quiet local-
+// hardening backstops — neither is the hole an attacker comes in through,
+// each is what stops a foothold from becoming root.
 var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 18},
-	{"ssh", "SSH hardening", SourceSSH, 17},
-	{"firewall", "Host firewall", SourceFirewall, 12},
+	{"container", "Container exposure", SourceCompose, 17},
+	{"ssh", "SSH hardening", SourceSSH, 16},
+	{"firewall", "Host firewall", SourceFirewall, 11},
 	{"updates", "Auto-updates", SourceUpdates, 7},
-	{"cve", "Vulnerabilities", SourceCVE, 13},
+	{"cve", "Vulnerabilities", SourceCVE, 12},
 	{"ports", "Exposed services", SourcePorts, 10},
-	{"accounts", "Account hygiene", SourceAccounts, 8},
+	{"accounts", "Account hygiene", SourceAccounts, 7},
 	{"fileperms", "File permissions", SourceFilePerms, 5},
 	{"agent", "AI agent runtimes", SourceAgent, 10},
+	{"sysctl", "Kernel hardening", SourceSysctl, 5},
 }
 
 // criticalHalves is the anchor of the whole penalty model: one Critical
