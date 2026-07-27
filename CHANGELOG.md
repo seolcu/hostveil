@@ -1,5 +1,105 @@
 # Changelog
 
+## [3.6.0](https://github.com/seolcu/hostveil/compare/v3.5.0...v3.6.0) (2026-07-28)
+
+3.5.0 asked what happens when something goes wrong. This release goes back to
+the day job: seeing more, and putting the results where they can do work. It
+widens detection on three fronts — container namespaces, the SSH config, and a
+kernel-hardening domain that did not exist — and then gives the report an exit
+into CI (SARIF), a way to scope a scan, and the two interface features users
+hit the absence of first: a rescan you can watch, and the AI explanation that
+only the CLI had.
+
+**Your score will move without your configuration having changed.** A new
+domain means new axis weights: Kernel hardening enters at 5, funded by one
+point each from container, ssh, cve, firewall, and accounts. And the new
+findings — a writable root filesystem in every compose service that lacks
+`read_only`, sshd's own 120-second login grace default, eight sysctl values —
+fire on configurations that scored clean last week. Nothing got worse on your
+host; hostveil is looking at more of it.
+
+### Features
+
+* **check:** audit shared pid/ipc namespaces and writable root filesystems in
+  compose services ([#584](https://github.com/seolcu/hostveil/issues/584)). The
+  parser has carried `pid`, `ipc`, and `read_only` for a long time; no rule
+  read them. `pid: host` lets a compromised container read every host
+  process's command line and environment, `ipc: host` hands it the host's
+  shared memory, and a writable root filesystem lets it rewrite its own
+  binaries. All three are Manual on purpose: the first two are settings nobody
+  types by accident, and hostveil cannot tell a monitoring agent's deliberate
+  `pid: host` from a cargo-culted one — deleting the line breaks the
+  legitimate case silently. Containers started with `docker run` are audited
+  too, and a `--read-only` container is not accused of a writable rootfs.
+* **check:** extend the sshd audit with grace time, gateway ports, host-based
+  and keyboard-interactive auth
+  ([#585](https://github.com/seolcu/hostveil/issues/585)). The most honest of
+  the four is `ssh.kbdinteractive`, which fires only on a contradiction: you
+  set `PasswordAuthentication no`, but keyboard-interactive is still on, and
+  on most systems it asks PAM for the very same password — the brute-force
+  protection you configured is not actually in force. It respects the pre-8.7
+  `ChallengeResponseAuthentication` alias in both directions, because sshd
+  keeps the first value it sees for either keyword and a fix that writes the
+  losing one would claim to have fixed something while changing nothing.
+  `LoginGraceTime` fires on sshd's own 120-second default, deliberately, and
+  its fix is Auto because shortening the window cannot lock anyone out.
+  `AllowTcpForwarding` is deliberately not audited: hostveil's own remediation
+  text tells you to reach admin panels over SSH tunnels.
+* **check:** add a kernel/sysctl hardening domain
+  ([#587](https://github.com/seolcu/hostveil/issues/587)). A tenth checker
+  reading `/proc/sys` directly — no `sysctl` binary needed — for eight
+  parameters whose safe value is the same on essentially every server: the
+  quiet knobs that stop a local foothold from becoming root and a spoofed
+  packet from becoming a route. A knob this kernel does not have is silently
+  fine; one that exists but cannot be read degrades the axis rather than
+  passing for clean. `net.ipv4.ip_forward` is deliberately absent — Docker,
+  WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately
+  enable it, and a rule that accuses most self-hosters' routers erodes trust
+  in the whole domain. Every finding is Manual for now and carries the exact
+  `/etc/sysctl.d` line and `sysctl --system` command, because an edit fix
+  cannot create the drop-in file that does not exist yet.
+* **check:** recognize Webmin and Proxmox in the exposed-admin-port table
+  ([#586](https://github.com/seolcu/hostveil/issues/586)). Two additions with
+  unambiguous default ports; Cockpit's 9090 stays out because Prometheus
+  claims the same port, and an admin finding titled with the wrong product
+  half the time teaches the user to distrust the domain.
+* **cmd:** add SARIF output and `--output` to scan
+  ([#588](https://github.com/seolcu/hostveil/issues/588)). `--sarif` emits
+  SARIF 2.1.0 — the format CI systems and GitHub code scanning ingest — with
+  one rule per finding ID, a stable fingerprint per finding so a consumer can
+  track it across scans, and the score and per-domain coverage riding in the
+  run's properties: a SARIF file with zero results from a scan that could not
+  look would otherwise read as a clean host, the exact lie the score model
+  refuses to tell. `--output FILE` writes whichever format was chosen, and the
+  exit status (0/1/3) does not vary by format or destination — the CI contract
+  is the exit code.
+* **core:** domain selection for scan (`--only`/`--skip`)
+  ([#589](https://github.com/seolcu/hostveil/issues/589)). `--only
+  ssh,firewall` runs two checkers instead of ten; the domains that did not run
+  report N/A, never 100. A partial scan is not saved as the last-scan baseline
+  and produces no delta — saving it would make the next full scan announce
+  every finding from the skipped domains as newly appeared, and would
+  overwrite the last complete report on disk. A typo in a domain name is a
+  usage error naming the valid choices, not a silently empty scan.
+* **web:** live rescan progress in the dashboard
+  ([#590](https://github.com/seolcu/hostveil/issues/590)). Rescan was a
+  blocking POST that took minutes on a real host and gave the browser nothing
+  to render but a frozen button. It now returns immediately and the page polls
+  a status route, narrating which domains are still working. A second rescan
+  while one runs is refused rather than queued, and a closed tab does not
+  abort the scan — but Ctrl-C on the server still does.
+* **web:** add AI explanations to the dashboard
+  ([#591](https://github.com/seolcu/hostveil/issues/591)). The finding panel's
+  *Explain with AI* button asks the same local Ollama provider `explain --ai`
+  uses, through a token-gated route like every other. With no model reachable
+  it renders a one-line note, never an error — AI stays advisory everywhere,
+  or it is a dependency, and it must not be a dependency.
+* **tui:** add AI explanations to the detail view
+  ([#592](https://github.com/seolcu/hostveil/issues/592)). Press `e` in a
+  finding's detail. The answer is fetched without blocking the interface, and
+  a slow response for a finding you have already left is dropped rather than
+  drawn under whatever is on screen now.
+
 ## [3.5.0](https://github.com/seolcu/hostveil/compare/v3.4.0...v3.5.0) (2026-07-28)
 
 The previous releases asked whether the score was telling the truth and whether
