@@ -1,0 +1,166 @@
+name: E2E
+
+# Drives the real binary through the sequence that changes a host —
+# scan → fix → rescan → rollback → rescan — and checks the outcome at each
+# step, against a container seeded with genuine misconfigurations.
+#
+# Everything above this is a unit test against a fake CommandRunner, which
+# proves the checkers parse what they are handed but never that hostveil
+# reads a real sshd_config, writes it, and puts it back. The project had
+# browser E2E in v2 and deleted it in the v3 rewrite; nothing replaced it,
+# and the demo VM is manual and asserts nothing. This is the smallest thing
+# that closes the gap and runs on every pull request.
+#
+# Deliberately no Docker and no Trivy: the container domains need a daemon,
+# and the point here is the apply/rollback machinery, not coverage breadth.
+# The domains that cannot run report Skipped, which is itself asserted.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  roundtrip:
+    runs-on: ubuntu-latest
+    # Debian, not the runner itself: the test writes /etc/ssh/sshd_config and
+    # chmods files under /etc, and doing that to the runner would be both
+    # rude and unrepeatable. A container gives a disposable root filesystem.
+    container:
+      image: debian:13
+    steps:
+      - name: Install the host tooling hostveil probes for
+        run: |
+          apt-get update -qq
+          # openssh-server for sshd and its -t validator; iproute2 for `ss`;
+          # git because actions/checkout needs it inside a container.
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            openssh-server iproute2 ca-certificates git jq >/dev/null
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+
+      - name: Build
+        run: go build -o /usr/local/bin/hostveil ./cmd/hostveil
+
+      - name: Seed the host with real misconfigurations
+        run: |
+          set -eux
+          mkdir -p /etc/ssh/sshd_config.d
+          # The same fixture the demo VM uses, so the two describe one host.
+          cp demo/seed/sshd_hostveil.conf /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+          # sshd -t needs a host key to validate against, and hostveil's SSH
+          # fixes run that validator before writing.
+          ssh-keygen -A
+          sshd -t
+
+      - name: scan finds the seeded problems and gates on them
+        run: |
+          set -eux
+          # Already root in the container, so elevation is neither needed nor
+          # possible; the opt-out keeps it from trying.
+          export HOSTVEIL_NO_SUDO=1
+
+          set +e
+          hostveil scan --json > /tmp/scan1.json
+          code=$?
+          set -e
+          # 1 means unfixed Critical or High findings, which is the whole
+          # point of the seed. 0 would mean the scan found nothing; 3 would
+          # mean a domain failed outright.
+          test "$code" = 1
+
+          for id in ssh.rootlogin ssh.passwordauth ssh.emptypasswords; do
+            grep -q "\"$id\"" /tmp/scan1.json || { echo "missing $id"; exit 1; }
+          done
+
+      - name: fix --all applies the safe fixes and the score improves
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+
+          before=$(hostveil scan --json | jq '.score.overall')
+
+          hostveil fix --all --yes
+
+          after=$(hostveil scan --json | jq '.score.overall')
+          echo "score $before -> $after"
+          test "$after" -gt "$before"
+
+          # The Auto SSH fixes are edits, so they must have taken effect on
+          # the real file — and sshd must still accept the result, which is
+          # what the fix's own validator promised.
+          grep -q "PermitEmptyPasswords no" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+          sshd -t
+
+      - name: history lists the applied fixes and rollback restores them
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+
+          hostveil history | tee /tmp/history.txt
+          grep -q "rollback: hostveil rollback " /tmp/history.txt
+
+          # Roll back every checkpoint, newest first, which is the order
+          # history prints and the only order that is safe: two fixes to one
+          # file leave the second's content in place.
+          # rollback does not prompt, so there is nothing to confirm.
+          grep -o 'hostveil rollback [^ ]*' /tmp/history.txt | while read -r _ _ id; do
+            hostveil rollback "$id"
+          done
+
+          # Back to the seeded state: the finding that was fixed is back.
+          grep -q "PermitEmptyPasswords yes" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+          sshd -t
+
+      - name: a rescan sees the restored problems again
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          set +e
+          hostveil scan --json > /tmp/scan2.json
+          code=$?
+          set -e
+          test "$code" = 1
+          grep -q '"ssh.emptypasswords"' /tmp/scan2.json
+
+      - name: domains that cannot run report Skipped, never clean
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          # No Docker daemon and no Trivy here. The invariant is that those
+          # domains are excluded rather than awarded a perfect score, so a
+          # scan that could not look never reads as a scan that found nothing.
+          # scan exits 1 whenever unfixed Critical/High findings exist,
+          # which is exactly the state under test — so the status here is
+          # expected, not a failure.
+          hostveil scan --json > /tmp/scan3.json || true
+
+          # Every domain reported Skipped must have a non-applicable axis. A
+          # skipped domain scored 100 is the failure this whole invariant
+          # exists to prevent, and it is invisible in the printed report.
+          bad=$(jq -r '
+            (.score.axes | map({key: (.source|tostring), value: .}) | from_entries) as $ax
+            | .domains[] | select(.state == 3)
+            | select($ax[(.source|tostring)].applicable)
+            | .source' /tmp/scan3.json)
+          test -z "$bad" || { echo "skipped domains still scored: $bad"; exit 1; }
+
+          # Some domains did run here, so the overall score means something.
+          test "$(jq '.score.applicable' /tmp/scan3.json)" = true
+
+      - name: the debug trace works and never leaks command output
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          HOSTVEIL_DEBUG=1 hostveil scan >/dev/null 2>/tmp/trace.txt || true
+          grep -q 'hostveil\[trace\]' /tmp/trace.txt
+          # stdout must be unaffected by the trace.
+          HOSTVEIL_DEBUG=1 hostveil scan --json 2>/dev/null | jq -e . >/dev/null
