@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -169,7 +170,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	var outcome model.FixOutcome
 	switch action.Kind {
 	case fix.ActionEdit:
-		outcome, err = e.applyEdit(f, fx, action)
+		outcome, err = e.applyEdit(ctx, f, fx, action)
 	case fix.ActionExec:
 		outcome, err = e.applyExec(ctx, f, fx, action)
 	case fix.ActionMode:
@@ -189,7 +190,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	return outcome, nil
 }
 
-func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
+func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
 	orig, err := os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
 	if err != nil {
 		return model.FixOutcome{}, err
@@ -199,6 +200,12 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		return model.FixOutcome{}, err
 	}
 	d := diff.Unified(a.Path, string(orig), string(next))
+
+	// Before the backup, and long before the write: a fix that would produce
+	// a file the service refuses must not touch the host at all.
+	if err := e.verifyEdit(ctx, a, orig, next); err != nil {
+		return model.FixOutcome{}, err
+	}
 
 	// Back up the original before writing anything.
 	cp := history.Checkpoint{
@@ -230,6 +237,60 @@ func (e *Engine) applyEdit(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 
 	return model.FixOutcome{Diff: d, CheckpointID: saved.ID, RestartHint: f.Service}, nil
+}
+
+// verifyEdit checks that the bytes an edit action produced are something the
+// service will actually accept, before they reach the live file.
+//
+// The validator runs twice: once on the original file, once on the new
+// content, both in a temporary directory. Only a validator that accepts the
+// original is trusted to reject the replacement. That control run is what
+// makes this usable at all — `sshd -t` needs to read the host keys, so on a
+// host where it cannot, it fails on every config including the one already
+// in service. Without the control, a fix would be blocked by the checker's
+// own inability to run rather than by anything wrong with the file.
+//
+// Checking before the write rather than after means there is nothing to undo
+// when it fails: the live file was never touched.
+func (e *Engine) verifyEdit(ctx context.Context, a fix.Action, orig, next []byte) error {
+	if len(a.VerifyCmd) == 0 {
+		return nil
+	}
+	if _, err := e.runner.LookPath(a.VerifyCmd[0]); err != nil {
+		return nil // no validator on this host; cannot verify is not invalid
+	}
+
+	dir, err := os.MkdirTemp("", "hostveil-verify-")
+	if err != nil {
+		return nil // cannot stage the check; do not block the fix on it
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+
+	run := func(name string, data []byte) error {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, data, 0o600); err != nil {
+			return err
+		}
+		argv := make([]string, len(a.VerifyCmd))
+		for i, arg := range a.VerifyCmd {
+			if arg == fix.VerifyPathToken {
+				arg = p
+			}
+			argv[i] = arg
+		}
+		_, err := e.runner.Run(ctx, argv[0], argv[1:]...)
+		return err
+	}
+
+	if err := run("before", orig); err != nil {
+		// The validator rejects the file that is already in service, so it is
+		// not telling us anything about our edit.
+		return nil
+	}
+	if err := run("after", next); err != nil {
+		return fmt.Errorf("%s rejects the file this fix would produce: %w", a.VerifyCmd[0], err)
+	}
+	return nil
 }
 
 // applyMode tightens permission bits, following applyEdit's order: record
@@ -270,26 +331,50 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
 	}
 
-	for _, c := range changes {
+	for i, c := range changes {
 		// Through the descriptor, not the path: planModes vetted the type,
 		// but the file can be swapped for a symlink between the plan and this
 		// line, and os.Chmod would follow it.
 		if err := platform.ChmodNoFollow(c.path, c.to); err != nil {
-			return model.FixOutcome{}, err
+			// The checkpoint is already on disk and covers every path in the
+			// plan, so the ones that did change can still be rolled back.
+			// Naming how far it got is the part that was missing: the outcome
+			// said only "failed", while some files really had been tightened.
+			return model.FixOutcome{}, fmt.Errorf(
+				"%w — %d of %d paths were already changed; undo them with `hostveil rollback %s`",
+				err, i, len(changes), saved.ID)
 		}
 	}
 	return model.FixOutcome{Diff: summary, CheckpointID: saved.ID}, nil
 }
 
+// applyExec runs an exec action's commands in order, stopping at the first
+// failure.
+//
+// The record is written whether or not every command succeeded, and that is
+// the point. A fix like updates' — `apt-get install -y unattended-upgrades`
+// then `systemctl enable --now` — changes the host on the first command; if
+// the second fails, returning before the Save left the host modified with no
+// history entry at all, reported only as `Success: false`. The operator was
+// then told the fix failed while a package sat newly installed and unnamed.
+//
+// There is still no rollback checkpoint: exec actions are not file-backed
+// and nothing about them can be recorded to undo. What is recorded is what
+// ran, which is what someone repairing this by hand needs.
 func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
+	var ran [][]string
+	var runErr error
 	for _, cmd := range a.Commands {
 		if len(cmd) == 0 {
 			continue
 		}
 		if _, err := e.runner.Run(ctx, cmd[0], cmd[1:]...); err != nil {
-			return model.FixOutcome{}, fmt.Errorf("command %v failed: %w", cmd, err)
+			runErr = fmt.Errorf("command %v failed: %w", cmd, err)
+			break
 		}
+		ran = append(ran, cmd)
 	}
+
 	// Exec fixes are not file-backed, so there is no rollback checkpoint;
 	// record the commands for the history log.
 	cp := history.Checkpoint{
@@ -298,13 +383,38 @@ func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		FindingKey: f.Key(),
 		Label:      fx.Label,
 		CreatedAt:  time.Now(),
-		Commands:   a.Commands,
+		Commands:   ran,
 	}
+	if runErr != nil {
+		if len(ran) == 0 {
+			// Nothing ran, so the host is untouched and there is nothing worth
+			// recording. Reporting a checkpoint here would clutter the history
+			// with entries that undo nothing and describe no change.
+			return model.FixOutcome{}, runErr
+		}
+		cp.Label = fx.Label + " (partially applied)"
+		if _, err := e.store.Save(cp, nil); err != nil {
+			return model.FixOutcome{}, fmt.Errorf("%w (and the partial change could not be recorded: %v)", runErr, err)
+		}
+		return model.FixOutcome{}, fmt.Errorf("%w — %d of %d commands had already run and are recorded in `hostveil history`",
+			runErr, len(ran), countCommands(a.Commands))
+	}
+
 	if _, err := e.store.Save(cp, nil); err != nil {
 		return model.FixOutcome{}, err
 	}
 	// CheckpointID left empty: nothing to auto-roll-back for exec.
 	return model.FixOutcome{}, nil
+}
+
+func countCommands(cmds [][]string) int {
+	n := 0
+	for _, c := range cmds {
+		if len(c) > 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // ApplyBatch applies every Auto (single-action) fix among the given

@@ -33,6 +33,24 @@ type Action struct {
 	Path      string
 	Transform func(in []byte) (out []byte, err error)
 
+	// VerifyCmd is an optional argv that validates an edit action's *result*
+	// before it is written. Exactly one element must be VerifyPathToken; the
+	// engine substitutes a temporary file holding the bytes Transform
+	// produced. Like Commands it is argv, never a shell string.
+	//
+	// It exists because "the file was written" and "the service can use it"
+	// are different claims, and only the second is worth marking a finding
+	// fixed for. An invalid sshd_config is the case that matters: sshd keeps
+	// serving from the config it already loaded, so a broken file looks like
+	// nothing at all until the next restart — at which point sshd refuses to
+	// start and repairing it needs the SSH access it just removed.
+	//
+	// The check is calibrated against the original file before it is trusted:
+	// see Engine.verifyEdit. That is what keeps a validator which cannot run
+	// on this host — `sshd -t` needs host keys it may not be able to read —
+	// from blocking a perfectly good fix. "Cannot verify" is not "invalid".
+	VerifyCmd []string
+
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string
@@ -47,6 +65,11 @@ type Action struct {
 	Paths []string
 	Mode  func(current fs.FileMode) fs.FileMode
 }
+
+// VerifyPathToken is the placeholder an Action's VerifyCmd uses for the file
+// under test. The engine replaces it with a temporary path; the live file is
+// never named, which is what lets the check run before anything is written.
+const VerifyPathToken = "{}"
 
 // Fix is the remediation for one finding: a label, an explicit
 // remediation kind, and one or more actions. For Review fixes the actions
