@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Troubleshooting — hostveil docs</title>
+    <meta name="description" content="What hostveil's less obvious messages mean and how to diagnose them: HOSTVEIL_DEBUG command tracing, Degraded domains, declined rollbacks, an empty history, exit code 3, and command timeouts.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Troubleshooting — hostveil docs">
+    <meta property="og:description" content="Diagnose a hostveil result: trace every command it runs, and read Degraded, declined rollback, empty history, and exit code 3.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/troubleshooting">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/troubleshooting">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/troubleshooting">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/troubleshooting">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/troubleshooting">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+    <script src="../lang-suggest.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/ko/docs/troubleshooting" lang="ko" hreflang="ko">한국어</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="Search the docs…" aria-label="Search documentation"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="Search results" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="./">Introduction</a></li>
+              <li><a href="installation">Installation</a></li>
+              <li><a href="quickstart">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks">What it checks</a></li>
+              <li><a href="fixing">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces">Interfaces</a></li>
+              <li><a href="ai">AI explanations</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli">CLI reference</a></li>
+              <li><a href="faq">FAQ</a></li>
+              <li><a href="troubleshooting" class="active">Troubleshooting</a></li>
+              <li><a href="contributing">Contributing</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Troubleshooting</p>
+            <h1>Troubleshooting</h1>
+            <p class="lead">What the less obvious messages mean, and how to find out what hostveil actually did.</p>
+
+            <h2 id="debug">See every command hostveil runs</h2>
+            <p>Most questions about a wrong-looking result come down to one command answering differently than expected. Set <code>HOSTVEIL_DEBUG=1</code> to trace them:</p>
+            <pre><code>HOSTVEIL_DEBUG=1 hostveil scan</code></pre>
+            <p>Each line names the command, how long it took, and whether it failed — including the binary lookups that decide whether a domain runs at all. The trace goes to <strong>stderr</strong>, so <code>--json</code> and redirects are unaffected, and it is the right thing to attach to a bug report.</p>
+            <p>Command <em>output</em> is deliberately never logged. <code>docker inspect</code> reports the resolved environment of every container, so a trace that included it would routinely be a credential leak.</p>
+
+            <h2 id="degraded">A domain says “Degraded”</h2>
+            <p>The checker ran and covered <em>part</em> of its ground. The findings it reported are real and are scored; what it could not examine is named in the reason. Common causes: an <code>Include</code>d sshd config it cannot read, a compose file it cannot parse, images Trivy could not pull, or containers it could not enumerate.</p>
+            <p>Degraded is deliberately different from <strong>Skipped</strong> (a dependency is absent — the domain is excluded from scoring entirely, not given full marks) and from <strong>Error</strong> (the checker failed outright).</p>
+
+            <h2 id="declined">Rollback says the file was edited externally</h2>
+            <p>The file no longer matches anything hostveil recorded writing, so someone changed it after the fix ran. Rollback keeps no backup of its own, so restoring would discard those edits irreversibly — it declines instead.</p>
+            <p>If you are sure you want the backup back, <code>hostveil rollback &lt;id&gt; --force</code> overwrites. Note that <code>--force</code> will <em>not</em> push through a backup whose checksum does not match what was stored: there is nothing correct on the other side of a damaged backup.</p>
+
+            <h2 id="empty-history">“No fixes have been applied yet” after applying fixes</h2>
+            <p>Almost always the state directory. hostveil stores checkpoints in <code>/var/lib/hostveil</code> when running as root and <code>~/.local/share/hostveil</code> otherwise, so a fix applied under <code>sudo</code> is invisible to an unprivileged <code>hostveil history</code>. Re-run with <code>sudo</code>. This most often bites when <code>HOSTVEIL_NO_SUDO=1</code> is set, or on a host with no <code>sudo</code> installed.</p>
+
+            <h2 id="exit-codes">A scheduled scan exits 3</h2>
+            <p>A detection domain failed outright, so the scan covered less of the host than it should have — a result that looks clean but is not trustworthy. An unreachable Docker socket is the usual cause. A domain merely <em>skipped</em> for a missing dependency, or <em>degraded</em> to partial coverage, does not produce this. See <a href="cli#exit-codes">exit codes</a>.</p>
+
+            <h2 id="timeouts">A check reports that a command “did not respond”</h2>
+            <p>hostveil bounds every command it runs, so a daemon that accepts a connection and never answers — a wedged Docker is the everyday case — fails that check instead of hanging the scan. The affected domain is reported honestly rather than scored as clean. Check the daemon named in the message; <code>HOSTVEIL_DEBUG=1</code> shows exactly which call stalled.</p>
+
+            <h2 id="ssh-fix">An SSH fix refuses to apply</h2>
+            <p>Before writing, hostveil runs the config it would produce through <code>sshd -t</code>. If sshd rejects it, the fix is abandoned and your file is left untouched — nothing was written, so there is nothing to roll back. This exists because sshd keeps serving from the config it already loaded: a broken file would look like nothing at all until the next restart, when sshd refuses to start and repairing it needs the SSH access it just removed.</p>
+
+            <h2 id="interrupt">Ctrl-C does not seem to stop it</h2>
+            <p>The first interrupt cancels the work in progress and lets it wind down cleanly — stopping the commands a scan has running, draining the dashboard's in-flight requests. Press it a second time to exit immediately. A batch fix stops between fixes rather than during one, and tells you how many were never attempted; whatever did apply is in <code>hostveil history</code>.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="faq">← FAQ</a>
+              <a class="button primary" href="contributing">Contributing →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

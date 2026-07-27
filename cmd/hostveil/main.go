@@ -198,6 +198,12 @@ Exit status:
   Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
 
 Environment:
+  HOSTVEIL_DEBUG=1     Trace every command hostveil runs against the host, to
+                       stderr: what ran, how long it took, and whether it
+                       failed. This is what to attach to a bug report about a
+                       domain being skipped or a check reporting the wrong
+                       thing. Command output is deliberately not logged — it
+                       routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   NO_COLOR=1           Disable colored output

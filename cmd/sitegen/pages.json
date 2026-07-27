@@ -187,6 +187,25 @@
       }
     },
     {
+      "slug": "troubleshooting",
+      "group": "reference",
+      "ogType": "article",
+      "en": {
+        "title": "Troubleshooting — hostveil docs",
+        "description": "What hostveil's less obvious messages mean and how to diagnose them: HOSTVEIL_DEBUG command tracing, Degraded domains, declined rollbacks, an empty history, exit code 3, and command timeouts.",
+        "ogTitle": "Troubleshooting — hostveil docs",
+        "ogDescription": "Diagnose a hostveil result: trace every command it runs, and read Degraded, declined rollback, empty history, and exit code 3.",
+        "nav": "Troubleshooting"
+      },
+      "ko": {
+        "title": "문제 해결 — hostveil 문서",
+        "description": "hostveil의 덜 명확한 메시지들이 무슨 뜻인지, 어떻게 진단하는지: HOSTVEIL_DEBUG 명령 추적, Degraded 도메인, 거부된 롤백, 빈 히스토리, 종료 코드 3, 명령 시간 초과.",
+        "ogTitle": "문제 해결 — hostveil 문서",
+        "ogDescription": "hostveil 결과 진단하기: 실행되는 모든 명령을 추적하고 Degraded, 거부된 롤백, 빈 히스토리, 종료 코드 3을 읽는 법.",
+        "nav": "문제 해결"
+      }
+    },
+    {
       "slug": "contributing",
       "group": "reference",
       "ogType": "article",
