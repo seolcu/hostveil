@@ -56,9 +56,15 @@ var datastorePorts = map[int]string{
 }
 
 // adminPorts maps well-known admin/management-UI ports to a human name.
+// Only single-purpose admin UIs whose default port is unambiguous belong
+// here — Cockpit's 9090 is absent because Prometheus claims the same port,
+// and a finding titled with the wrong product half the time teaches the
+// user to ignore the whole domain.
 var adminPorts = map[int]string{
-	9000: "Portainer",
-	9443: "Portainer (HTTPS)",
+	9000:  "Portainer",
+	9443:  "Portainer (HTTPS)",
+	10000: "Webmin",
+	8006:  "Proxmox VE",
 }
 
 // Check reads listening TCP sockets and flags non-loopback exposure.
