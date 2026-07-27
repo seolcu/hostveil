@@ -29,9 +29,12 @@ go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
 go run ./cmd/sitegen && git diff --exit-code site/
 (cd scripts && sha256sum -c install.sh.sha256)   # regenerate the .sha256 if install.sh changed
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12   # only if you touched .github/workflows/
+shellcheck scripts/install.sh                               # only if you touched install.sh
 ```
 
 Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell.
+
+CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), `scripts/install.sh` is shellchecked, and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck and gives each fuzz target five minutes, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.
 
 ### Running it for real
 

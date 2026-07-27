@@ -1,0 +1,72 @@
+name: Nightly
+
+# The checks that are worth running against time rather than against a diff.
+#
+# govulncheck gates every pull request, but a new advisory against a
+# dependency lands on a schedule nobody controls — so with PR-only triggers a
+# vulnerability in a shipped release stays invisible until somebody happens
+# to open a pull request. For a tool whose entire job is telling operators
+# about vulnerabilities, that is the wrong way round.
+#
+# Fuzzing is the other half. Three targets exist and CI has only ever
+# executed their committed seeds, which is the one thing a seed corpus
+# already guarantees. Time is the input fuzzing needs and a pull request
+# cannot afford to give it.
+on:
+  schedule:
+    # 04:17 UTC — off the hour, because everything else in the world runs at
+    # :00 and a scheduled job that queues behind GitHub's peak gets delayed
+    # or dropped.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+      - name: Check dependencies for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      # One failing target must not cancel the others: they cover unrelated
+      # parsers, and a crash in one says nothing about the rest.
+      fail-fast: false
+      matrix:
+        include:
+          - package: ./internal/compose
+            target: FuzzEdit
+          - package: ./internal/compose
+            target: FuzzParse
+          - package: ./internal/check/cve
+            target: FuzzParseTrivy
+          - package: ./internal/diff
+            target: FuzzUnified
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+
+      - name: Fuzz ${{ matrix.target }}
+        run: go test ${{ matrix.package }} -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 5m
+
+      # A crash is only useful if the input that caused it survives the
+      # runner. Go writes it under testdata/fuzz/<Target>/, which is exactly
+      # where it belongs in the repo — so the artifact is a file someone can
+      # commit as a regression seed, not a log line to reconstruct from.
+      - name: Upload crash corpus
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: |
+            **/testdata/fuzz/${{ matrix.target }}/**
+          if-no-files-found: ignore

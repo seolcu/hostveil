@@ -1,10 +1,34 @@
 version: 2
+
+# Grouped, so a week's updates arrive as one pull request rather than six.
+# hostveil has few direct dependencies and a hand-cut release process, so a
+# stream of individual pull requests would be most of the repository's
+# traffic while telling a maintainer nothing they could not read in one
+# batch. The nightly govulncheck run is what catches the updates that matter
+# urgently; this keeps the floor from drifting between times.
+#
+# The commit-message prefix is not cosmetic. Merges to main are squashed and
+# the pull request title becomes the commit subject, which is what the
+# release version is computed from — and .github/workflows/pr-title.yml
+# rejects any title whose type and scope are not on its lists, so an
+# unprefixed Dependabot pull request simply cannot merge.
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"

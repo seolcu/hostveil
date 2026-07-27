@@ -83,5 +83,40 @@ jobs:
         run: |
           cd scripts && sha256sum -c install.sh.sha256
 
+      # goreleaser builds linux and darwin on amd64 and arm64, and until this
+      # existed the first compile of three of those four targets happened
+      # during a release — where a failure demotes the release to a draft
+      # rather than being caught on the pull request that caused it.
+      # Compiling is enough: the tests only pass meaningfully on the platform
+      # they run on, and a build break is what actually escapes review.
+      - name: Cross-compile every release target
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            echo "building $target"
+            GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+          done
+
+      # shellcheck over install.sh, which nothing covered. actionlint checks
+      # the shell inside `run:` blocks in workflows, not standalone scripts —
+      # and this is 10 KB of privileged bash that pipes into sudo on machines
+      # hostveil has never seen. The runner ships shellcheck.
+      - name: Lint install.sh
+        run: shellcheck scripts/install.sh
+
       - name: Test
-        run: go test -race ./...
+        run: go test -race -coverprofile=coverage.out ./...
+
+      # Reported, not gated. A threshold on a repository this size mostly
+      # teaches people to write tests that move the number, and the useful
+      # signal is which package dropped — which is visible right here in the
+      # job summary next to the diff that caused it.
+      - name: Coverage by package
+        run: |
+          go tool cover -func=coverage.out | tail -1
+          {
+            echo "### Coverage"
+            echo
+            echo '```'
+            go tool cover -func=coverage.out | tail -1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
