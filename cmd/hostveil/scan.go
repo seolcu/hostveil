@@ -72,18 +72,45 @@ func scanWithProgress(ctx context.Context, engine *core.Engine) model.Report {
 	return report
 }
 
-// exitCode returns 1 when any unfixed high-or-critical finding was
-// detected, so scripts and CI can gate on it; 0 otherwise.
+// Exit codes for scan. These are the CI and cron contract, so they are
+// named rather than written as bare integers at the return sites.
+const (
+	exitClean      = 0 // the scan ran and found nothing serious
+	exitFindings   = 1 // unfixed Critical or High findings
+	exitIncomplete = 3 // a domain failed outright; the result describes less than the host
+)
+
+// exitCode is what a CI or cron gate reads.
+//
+// Findings come first: an unfixed Critical or High is the answer the gate
+// exists for, and it stays 1 whatever else happened.
+//
+// A domain in ScanError is the second answer, and it used to have none.
+// The code was derived from findings alone, and a failed domain contributes
+// zero findings — so an unreachable Docker socket silenced the two heaviest
+// axes and the pipeline saw exit 0. A blind scan and a clean host were
+// indistinguishable to the one consumer that cannot look at the output.
+//
+// Skipped and Degraded deliberately do not qualify. Skipped is the ordinary
+// state of a host that has no Docker or no Trivy, and failing every such
+// pipeline would train people to ignore the code. Degraded means the checker
+// covered part of its ground and said so, and those findings are real and
+// scored; it is reported in the output, not in the exit status.
 func exitCode(r model.Report) int {
 	for _, f := range r.Findings {
 		if f.Fixed {
 			continue
 		}
 		if f.Severity == model.SeverityCritical || f.Severity == model.SeverityHigh {
-			return 1
+			return exitFindings
 		}
 	}
-	return 0
+	for _, d := range r.Domains {
+		if d.State == model.ScanError {
+			return exitIncomplete
+		}
+	}
+	return exitClean
 }
 
 // colorEnabled reports whether to emit ANSI color: honored only when

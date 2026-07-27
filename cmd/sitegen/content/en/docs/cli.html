@@ -106,6 +106,7 @@ hostveil fix --all [flags]</code></pre></div>
                   <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed Critical/High findings).</td></tr>
                   <tr><td><code>1</code></td><td><code>scan</code> found unfixed Critical or High findings, or a command failed.</td></tr>
                   <tr><td><code>2</code></td><td>Usage error — unknown command or missing required argument.</td></tr>
+                  <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail outright, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this — both are reported in the output instead.</td></tr>
                 </tbody>
               </table>
             </div>

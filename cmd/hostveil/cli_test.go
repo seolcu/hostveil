@@ -52,6 +52,48 @@ func TestExitCode(t *testing.T) {
 	}
 }
 
+// A failed domain contributes no findings, so before this an unreachable
+// Docker socket silenced the two heaviest axes and the pipeline saw exit 0.
+// A blind scan and a clean host must not look the same to the one consumer
+// that never reads the output.
+func TestExitCodeReflectsDomainState(t *testing.T) {
+	domain := func(st model.ScanState) model.DomainResult {
+		return model.DomainResult{Source: model.SourceCompose, State: st}
+	}
+	for _, tc := range []struct {
+		name    string
+		fs      []model.Finding
+		domains []model.DomainResult
+		want    int
+	}{
+		{"a failed domain is not a clean host", nil, []model.DomainResult{domain(model.ScanError)}, 3},
+		{"a skipped domain is ordinary", nil, []model.DomainResult{domain(model.ScanSkipped)}, 0},
+		{"a degraded domain is reported, not gated", nil, []model.DomainResult{domain(model.ScanDegraded)}, 0},
+		{"everything ran and found nothing", nil, []model.DomainResult{domain(model.ScanDone)}, 0},
+		{
+			// Findings win: the gate exists to answer "is this host exposed",
+			// and a domain that also failed does not make that less true.
+			"findings outrank an incomplete scan",
+			[]model.Finding{finding(model.SeverityCritical, false)},
+			[]model.DomainResult{domain(model.ScanError)},
+			1,
+		},
+		{
+			"one failed domain among healthy ones still counts",
+			nil,
+			[]model.DomainResult{domain(model.ScanDone), domain(model.ScanError), domain(model.ScanSkipped)},
+			3,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := exitCode(model.Report{Findings: tc.fs, Domains: tc.domains})
+			if got != tc.want {
+				t.Errorf("exitCode = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // -h is a request, not a mistake. Go's flag package reports it as
 // flag.ErrHelp after printing usage, and treating that as a parse failure
 // made `hostveil scan --help` exit 2. The top-level form was fixed in #520

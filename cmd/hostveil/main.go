@@ -188,9 +188,14 @@ other accounts on this machine, and serve runs as root. Open the printed URL;
 the token then becomes a session cookie for that browser.
 
 Exit status:
-  hostveil scan exits 1 when any unfixed finding is Critical or High, and 0
-  otherwise — useful as a CI or cron gate. Other commands exit 0 on success,
-  1 on failure, and 2 on a usage error.
+  hostveil scan is a CI or cron gate:
+    0  the scan ran and found nothing Critical or High
+    1  at least one unfixed Critical or High finding
+    3  a detection domain failed outright, so the scan covered less of the
+       host than it should have — a clean-looking result you cannot trust
+  A domain skipped for a missing dependency, or degraded to partial coverage,
+  does not change the status; both are reported in the output instead.
+  Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
 
 Environment:
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)

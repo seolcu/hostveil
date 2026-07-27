@@ -93,12 +93,25 @@ domains are then skipped with a clear message.
 
 ### Using it as a CI or cron gate
 
-`hostveil scan` exits **1** when any unfixed finding is Critical or High, and
-**0** otherwise — so a scheduled check needs no output parsing:
+`hostveil scan` reports what it found in its exit status, so a scheduled
+check needs no output parsing:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | The scan ran and found nothing Critical or High. |
+| `1` | At least one unfixed Critical or High finding. |
+| `3` | A detection domain failed outright, so the scan covered less of the host than it should have. |
 
 ```bash
 HOSTVEIL_NO_SUDO=1 hostveil scan --json > report.json || echo "action needed"
 ```
+
+Code **3** matters more than it looks. A failed domain contributes no
+findings, so without it an unreachable Docker socket silences the two
+heaviest axes and the pipeline sees a clean run — a blind scan and a healthy
+host are indistinguishable to the one consumer that never reads the output.
+A domain skipped for a missing dependency, or degraded to partial coverage,
+does not change the status; both are reported in the output instead.
 
 Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
 
