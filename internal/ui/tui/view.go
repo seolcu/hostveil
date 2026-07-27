@@ -113,6 +113,9 @@ func (s *styles) band(v uint8) color.Color {
 
 // meter renders a segmented bar: filled blocks in c, empty in the track.
 func (s *styles) meter(pct uint8, width int, c color.Color) string {
+	if width < 0 {
+		width = 0 // strings.Repeat panics on a negative count
+	}
 	filled := int(pct) * width / 100
 	if filled > width {
 		filled = width
@@ -122,27 +125,61 @@ func (s *styles) meter(pct uint8, width int, c color.Color) string {
 	return on + off
 }
 
+// View draws the whole screen. Every mode goes through compose (see
+// frame.go), so all of them are exactly as tall as the terminal, with the key
+// hints pinned to the last row.
 func (m *appModel) View() tea.View {
 	s := m.sty()
+	m.fitSize()
+
 	var content string
 	switch m.mode {
 	case modeScanning:
-		content = "\n  " + s.dim.Render(m.status) + "\n"
+		content = m.compose(noHeader(), nil, "ctrl+c quit", m.scanningRows)
+
 	case modeList:
-		content = m.viewList()
+		hint := listHint
+		if len(m.active) == 0 {
+			hint = emptyListHint
+		}
+		content = m.compose(fullHeader(), nil, hint, m.listRows)
+
 	case modeDetail:
-		content = m.viewDetail()
+		hint := "esc back   q list"
+		if len(m.active) > 0 && m.active[m.cursor].IsFixable() {
+			hint = "f apply fix   " + hint
+		}
+		content = m.compose(compactHeader(""), nil, hint,
+			func(n int) []string { return m.clipRows(m.detailRows(), n) })
+
 	case modePreview:
-		content = m.viewPreview()
+		content = m.compose(compactHeader("FIX PREVIEW"),
+			[]string{s.brand.Render(m.preview.Label)}, "y apply   n cancel",
+			func(n int) []string { return m.clipRows(m.previewRows(), n) })
+
 	case modeMessage:
-		content = m.viewMessage()
+		content = m.compose(compactHeader(""), nil, "press any key to continue",
+			func(n int) []string {
+				return centerRows(styledRows(s.bone, "  "+wrap(m.status, min(m.width-4, 78))), n)
+			})
+
 	case modeHistory:
-		content = m.viewHistory()
+		content = m.compose(compactHeader(""), nil, historyHint, m.historyRows)
+
 	case modeRollbackConfirm:
-		content = m.viewRollbackConfirm()
+		var title []string
+		if len(m.checkpoints) > 0 {
+			title = []string{s.brand.Render(m.checkpoints[m.cpCursor].Label)}
+		}
+		content = m.compose(compactHeader("ROLL BACK"), title, "y roll back   n cancel",
+			func(n int) []string { return m.clipRows(m.rollbackRows(), n) })
+
 	case modeTheme:
-		content = m.viewTheme()
+		content = m.compose(compactHeader("THEME"),
+			[]string{s.brand.Render(m.th.Name)}, themeHint,
+			func(n int) []string { return m.clipRows(m.themeRows(), n) })
 	}
+
 	// Paint the terminal background too. Without it a theme only recolors the
 	// text and the terminal's own background shows through every gap, which
 	// reads as a broken palette rather than a chosen one. Bubble Tea resets
@@ -150,41 +187,6 @@ func (m *appModel) View() tea.View {
 	// terminal whose background was itself set by an earlier escape sequence
 	// comes back to its default rather than to that value.
 	return tea.View{Content: content, AltScreen: true, BackgroundColor: s.cInk}
-}
-
-func (m *appModel) rule() string {
-	w := m.width
-	if w < 1 {
-		w = 1
-	}
-	return m.sty().track.Render(strings.Repeat("─", w))
-}
-
-// header renders the status bar: brand + the exposure gauge (SECURITY
-// meter + score), then the per-axis bars.
-func (m *appModel) header() string {
-	s := m.sty()
-	var b strings.Builder
-	sc := m.report.Score.Overall
-	b.WriteString(s.dim.Render("▚ ") + s.brand.Render("hostveil"))
-	// Everything but the meter is fixed width: "▚ " + "hostveil" + a
-	// three-space gap + "SECURITY " + " NNN" + "/100". The meter absorbs
-	// whatever is left, so the gauge shrinks with the terminal instead of
-	// running off the end of a narrow one.
-	const gaugeChrome = 2 + 8 + 3 + 9 + 4 + 4
-	meterW := 18
-	if m.width > 0 && m.width-gaugeChrome < meterW {
-		meterW = max(4, m.width-gaugeChrome)
-	}
-	b.WriteString("   " + s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
-		s.bone.Render(fmt.Sprintf(" %d", sc)) + s.dim.Render("/100"))
-	b.WriteString("\n")
-	b.WriteString(m.axesLine())
-	b.WriteString("\n")
-	if line := m.deltaLine(); line != "" {
-		b.WriteString(line + "\n")
-	}
-	return b.String()
 }
 
 // deltaLine summarises what moved since the previous scan. The CLI prints
@@ -260,85 +262,87 @@ func (m *appModel) axesLine() string {
 	}
 
 	gap := s.dim.Render(strings.Repeat(" ", axisGap))
-	var rows []string
+	var out []string
 	for i := 0; i < len(cells); i += perRow {
 		end := min(i+perRow, len(cells))
-		rows = append(rows, strings.Join(cells[i:end], gap))
+		out = append(out, strings.Join(cells[i:end], gap))
 	}
-	return strings.Join(rows, "\n")
+	return strings.Join(out, "\n")
 }
 
-const listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-	"s severity   d domain   x fixable   c clear   h history   t theme   r rescan   q quit"
+const (
+	listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
+		"s severity   d domain   x fixable   c clear   h history   t theme   r rescan   q quit"
+	emptyListHint = "c clear   t theme   r rescan   q quit"
+	historyHint   = "↑/↓ move   enter roll back   esc back   q list"
+	themeHint     = "↑/↓ preview   enter keep   esc cancel"
+)
 
-func (m *appModel) viewList() string {
+// scanningRows is the whole scan screen: one status line, held in the middle
+// of an otherwise empty frame.
+func (m *appModel) scanningRows(n int) []string {
+	return centerRows(styledRows(m.sty().dim, "  "+m.status), n)
+}
+
+// listRows draws the findings list into the rows the frame gave it. The head
+// and filter lines are drawn from that same budget rather than reserved
+// outside it, so there is exactly one place the arithmetic happens.
+func (m *appModel) listRows(budget int) []string {
 	s := m.sty()
-	var b strings.Builder
-	hdr := m.header()
-	b.WriteString(hdr)
-	b.WriteString(m.rule() + "\n")
+	if budget <= 0 {
+		return nil
+	}
 
 	fl := m.filterLine()
 
 	// Empty list: distinguish a clean host from a too-narrow filter.
 	if len(m.active) == 0 {
+		var body []string
 		if fl != "" {
-			b.WriteString(fl + "\n")
-			b.WriteString("\n" + s.dim.Render("  No findings match the filter.") + "\n")
+			body = append(body, fl, "", s.dim.Render("  No findings match the filter."))
 		} else {
-			b.WriteString("\n" + s.safe.Render("  No problems found. Clean.") + "\n")
+			body = append(body, s.safe.Render("  No problems found. Clean."))
 		}
-		b.WriteString(m.footer("c clear   t theme   r rescan   q quit"))
-		return b.String()
+		return centerRows(body, budget)
 	}
 
-	// Measure the header rather than assuming its height. It used to be a
-	// constant 8, which silently assumed a two-line header — one brand line
-	// and one axes line. That was already one short whenever a delta line was
-	// present, and the axes strip now wraps to several rows on a narrow
-	// terminal. Reserving too little makes the list draw more rows than fit,
-	// pushing the footer and its key hints off the bottom of the frame.
-	//
-	// The footer is measured too, since its hint now reflows. The remaining
-	// 3 is what viewList draws itself: the rule under the header, the count
-	// line, and the footer's leading blank.
-	ftr := m.footer(listHint)
-	reserved := strings.Count(hdr, "\n") + strings.Count(ftr, "\n") + 3
+	chrome := 1
 	if fl != "" {
-		reserved++
+		chrome = 2
 	}
-	visible := m.height - reserved
+	visible := budget - chrome
 	if visible < 1 {
-		visible = 1
+		// Findings beat labels: on a frame this short the list itself is the
+		// only thing worth drawing.
+		chrome, visible = 0, budget
 	}
+
 	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
-	end := m.offset + visible
-	if end > len(m.active) {
-		end = len(m.active)
-	}
+	end := min(m.offset+visible, len(m.active))
 
-	// Head: shown[/total] · selected · scroll range.
-	count := fmt.Sprintf("FINDINGS · %d", len(m.active))
-	if total := m.activeTotal(); total != len(m.active) {
-		count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), total)
+	var out []string
+	if chrome > 0 {
+		// Head: shown[/total] · selected · scroll range.
+		count := fmt.Sprintf("FINDINGS · %d", len(m.active))
+		if total := m.activeTotal(); total != len(m.active) {
+			count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), total)
+		}
+		head := s.dim.Render(count)
+		if n := len(m.selected); n > 0 {
+			head += s.safe.Render(fmt.Sprintf("   ✓ %d marked", n))
+		}
+		if len(m.active) > visible {
+			head += s.dim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
+		}
+		out = append(out, head)
+		if chrome == 2 {
+			out = append(out, fl)
+		}
 	}
-	head := s.dim.Render(count)
-	if n := len(m.selected); n > 0 {
-		head += s.safe.Render(fmt.Sprintf("   ✓ %d marked", n))
-	}
-	if len(m.active) > visible {
-		head += s.dim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
-	}
-	b.WriteString(head + "\n")
-	if fl != "" {
-		b.WriteString(fl + "\n")
-	}
-
 	for i := m.offset; i < end; i++ {
-		b.WriteString(m.findingRow(m.active[i], i == m.cursor) + "\n")
+		out = append(out, m.findingRow(m.active[i], i == m.cursor))
 	}
-	b.WriteString(ftr)
-	return b.String()
+	return out
 }
 
 // activeTotal counts findings that are not fixed, ignoring the filter — the
@@ -464,52 +468,50 @@ func (m *appModel) serviceSuffix(f model.Finding) string {
 	return m.sty().dim.Render("  (" + f.Service + ")")
 }
 
-func (m *appModel) viewDetail() string {
+func (m *appModel) detailRows() []string {
+	if len(m.active) == 0 {
+		return nil
+	}
 	s := m.sty()
 	f := m.active[m.cursor]
-	var b strings.Builder
-	b.WriteString(m.header())
-	b.WriteString(m.rule() + "\n\n")
-	b.WriteString(lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
-		"  " + s.brand.Render(f.Title) + "\n")
+
+	out := []string{"",
+		lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
+			"  " + s.brand.Render(f.Title)}
 	meta := strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
 	if f.Service != "" {
 		meta += "  ·  SERVICE: " + f.Service
 	}
-	b.WriteString(s.dim.Render(meta) + "\n\n")
-	b.WriteString(s.bone.Render(wrap(f.Description, min(m.width-4, 78))) + "\n\n")
+	out = append(out, s.dim.Render(meta), "")
+	out = append(out, styledRows(s.bone, wrap(f.Description, min(m.width-4, 78)))...)
 	if f.HowToFix != "" {
-		b.WriteString(s.dim.Render("HOW TO FIX") + "\n")
-		b.WriteString(s.bone.Render(wrap(f.HowToFix, min(m.width-4, 78))) + "\n")
+		out = append(out, "", s.dim.Render("HOW TO FIX"))
+		out = append(out, styledRows(s.bone, wrap(f.HowToFix, min(m.width-4, 78)))...)
 	}
-	hint := "esc back   q list"
-	if f.IsFixable() {
-		hint = "f apply fix   " + hint
-	}
-	b.WriteString(m.footer(hint))
-	return b.String()
+	return out
 }
 
-func (m *appModel) viewPreview() string {
+func (m *appModel) previewRows() []string {
+	if len(m.preview.Actions) == 0 {
+		return nil
+	}
 	s := m.sty()
-	var b strings.Builder
-	b.WriteString(s.dim.Render("FIX PREVIEW") + "\n")
-	b.WriteString(s.brand.Render(m.preview.Label) + "\n")
-	b.WriteString(m.rule() + "\n\n")
+	idx := clamp(m.previewAction, 0, len(m.preview.Actions)-1)
 
+	out := []string{""}
 	if len(m.preview.Actions) > 1 {
-		b.WriteString(s.dim.Render("Alternatives (press a number):") + "\n")
+		out = append(out, s.dim.Render("Alternatives (press a number):"))
 		for _, a := range m.preview.Actions {
 			marker := "  "
-			if a.Index == m.previewAction {
+			if a.Index == idx {
 				marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
 			}
-			b.WriteString(marker + s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)) + "\n")
+			out = append(out, marker+s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)))
 		}
-		b.WriteString("\n")
+		out = append(out, "")
 	}
 
-	a := m.preview.Actions[m.previewAction]
+	a := m.preview.Actions[idx]
 	if a.Warning != "" {
 		// Wrap the warning. It is the one place the preview explains what
 		// cannot be undone, and unwrapped it ran past the terminal edge and
@@ -517,70 +519,64 @@ func (m *appModel) viewPreview() string {
 		// rollback" with the reason that follows lost. The "⚠  " prefix is
 		// two columns plus a space, so the continuation lines are indented to
 		// sit under the text rather than the marker.
-		warn := wrap(a.Warning, min(m.width-4, 78))
-		warn = strings.ReplaceAll(warn, "\n", "\n   ")
-		b.WriteString(lipgloss.NewStyle().Foreground(s.cHigh).Render("⚠  "+warn) + "\n\n")
+		warn := lipgloss.NewStyle().Foreground(s.cHigh)
+		for i, l := range strings.Split(wrap(a.Warning, min(m.width-4, 78)), "\n") {
+			if i == 0 {
+				out = append(out, warn.Render("⚠  "+l))
+			} else {
+				out = append(out, warn.Render("   "+l))
+			}
+		}
+		out = append(out, "")
 	}
+
 	switch a.Type {
 	case "edit", "mode":
-		b.WriteString(s.renderDiff(a.Diff))
+		out = append(out, s.diffRows(a.Diff)...)
 	case "exec":
-		b.WriteString(s.dim.Render("These commands will run:") + "\n")
+		out = append(out, s.dim.Render("These commands will run:"))
 		for _, cmd := range a.Commands {
-			b.WriteString(s.dim.Render("  $ "+strings.Join(cmd, " ")) + "\n")
+			out = append(out, s.dim.Render("  $ "+strings.Join(cmd, " ")))
 		}
 	default:
 		// Never leave the apply/cancel footer with an empty body above it.
-		b.WriteString(s.dim.Render("(no preview available for action type "+a.Type+")") + "\n")
+		out = append(out, s.dim.Render("(no preview available for action type "+a.Type+")"))
 	}
-	b.WriteString(m.footer("y apply   n cancel"))
-	return b.String()
+	return out
 }
 
-// viewHistory lists every applied fix, newest first, so a fix applied here
+// historyRows lists every applied fix, newest first, so a fix applied here
 // can be undone here rather than only from the CLI. Non-reversible
 // (command) fixes are dimmed: they are part of the record but there is
 // nothing file-backed to restore.
-func (m *appModel) viewHistory() string {
+func (m *appModel) historyRows(budget int) []string {
 	s := m.sty()
-	var b strings.Builder
-	hdr := m.header()
-	b.WriteString(hdr)
-	b.WriteString(m.rule() + "\n")
+	if budget <= 0 || len(m.checkpoints) == 0 {
+		return nil
+	}
 
-	// Measure the header rather than assuming 8 lines. viewList was corrected
-	// this way when the axes strip started wrapping; this view had the same
-	// hardcoded reservation and the same bug — on a narrow terminal the extra
-	// header rows pushed the checkpoint list past the footer. The 6 is the
-	// chrome viewHistory draws around the rows (matching viewList): the rule
-	// under the header, the count line, and the footer's blank, rule, and two
-	// hint lines.
-	ftr := m.footer(historyHint)
-	reserved := strings.Count(hdr, "\n") + strings.Count(ftr, "\n") + 3
-	visible := m.height - reserved
+	chrome := 1
+	visible := budget - chrome
 	if visible < 1 {
-		visible = 1
+		chrome, visible = 0, budget
 	}
+
 	m.cpOffset = scrollOffset(m.cpCursor, len(m.checkpoints), visible, m.cpOffset)
-	end := m.cpOffset + visible
-	if end > len(m.checkpoints) {
-		end = len(m.checkpoints)
-	}
+	end := min(m.cpOffset+visible, len(m.checkpoints))
 
-	head := s.dim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
-	if len(m.checkpoints) > visible {
-		head += s.dim.Render(fmt.Sprintf("      %d–%d", m.cpOffset+1, end))
+	var out []string
+	if chrome > 0 {
+		head := s.dim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
+		if len(m.checkpoints) > visible {
+			head += s.dim.Render(fmt.Sprintf("      %d–%d", m.cpOffset+1, end))
+		}
+		out = append(out, head)
 	}
-	b.WriteString(head + "\n")
-
 	for i := m.cpOffset; i < end; i++ {
-		b.WriteString(m.checkpointRow(m.checkpoints[i], i == m.cpCursor) + "\n")
+		out = append(out, m.checkpointRow(m.checkpoints[i], i == m.cpCursor))
 	}
-	b.WriteString(ftr)
-	return b.String()
+	return out
 }
-
-const historyHint = "↑/↓ move   enter roll back   esc back   q list"
 
 func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
 	s := m.sty()
@@ -597,18 +593,13 @@ func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
 		s.bone.Render(label)
 }
 
-const themeHint = "↑/↓ preview   enter keep   esc cancel"
-
-// viewTheme is the color-theme picker. Moving the cursor restyles the whole
+// themeRows is the color-theme picker. Moving the cursor restyles the whole
 // frame on the spot rather than showing a swatch and a name: a palette is
 // only judgeable against the meters, severity gutters and diffs it will
 // actually be drawn with.
-func (m *appModel) viewTheme() string {
+func (m *appModel) themeRows() []string {
 	s := m.sty()
-	var b strings.Builder
-	b.WriteString(s.dim.Render("THEME") + "\n")
-	b.WriteString(s.brand.Render(m.th.Name) + "\n")
-	b.WriteString(m.rule() + "\n\n")
+	out := []string{""}
 
 	all := theme.All()
 	// A row is "› " + an 18-column name + a two-space gap + five two-column
@@ -631,13 +622,13 @@ func (m *appModel) viewTheme() string {
 		if showSwatch {
 			row += "  " + swatch(t)
 		}
-		b.WriteString(row + "\n")
+		out = append(out, row)
 	}
 
-	b.WriteString("\n" + s.dim.Render(wrap("Colors mean the same thing in every theme: the four severity "+
-		"steps and safety. Everything else is chrome.", min(m.width-2, 78))) + "\n")
-	b.WriteString(m.footer(themeHint))
-	return b.String()
+	out = append(out, "")
+	out = append(out, styledRows(s.dim, wrap("Colors mean the same thing in every theme: the four severity "+
+		"steps and safety. Everything else is chrome.", min(m.width-2, 78)))...)
+	return out
 }
 
 // swatch previews the five colors that carry meaning, in that theme's own
@@ -650,43 +641,29 @@ func swatch(t theme.Theme) string {
 	return b.String()
 }
 
-// viewRollbackConfirm mirrors viewPreview's y/n gesture, showing the diff
-// the rollback would revert so the decision is made on evidence.
-func (m *appModel) viewRollbackConfirm() string {
+// rollbackRows mirrors previewRows' y/n gesture, showing the diff the
+// rollback would revert so the decision is made on evidence.
+func (m *appModel) rollbackRows() []string {
+	if len(m.checkpoints) == 0 {
+		return nil
+	}
 	s := m.sty()
 	cp := m.checkpoints[m.cpCursor]
-	var b strings.Builder
-	b.WriteString(s.dim.Render("ROLL BACK") + "\n")
-	b.WriteString(s.brand.Render(cp.Label) + "\n")
-	b.WriteString(m.rule() + "\n\n")
-	b.WriteString(s.dim.Render("Restores:") + "\n")
+
+	out := []string{"", s.dim.Render("Restores:")}
 	for _, p := range cp.Files {
-		b.WriteString(s.bone.Render("  "+p) + "\n")
+		out = append(out, s.bone.Render("  "+p))
 	}
-	b.WriteString("\n")
+	out = append(out, "")
 	if cp.RestartService != "" {
-		b.WriteString(lipgloss.NewStyle().Foreground(s.cHigh).
-			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards.") + "\n\n")
+		out = append(out, lipgloss.NewStyle().Foreground(s.cHigh).
+			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards."), "")
 	}
 	if cp.Diff != "" {
-		b.WriteString(s.dim.Render("This change will be reverted:") + "\n")
-		b.WriteString(s.renderDiff(cp.Diff))
+		out = append(out, s.dim.Render("This change will be reverted:"))
+		out = append(out, s.diffRows(cp.Diff)...)
 	}
-	b.WriteString(m.footer("y roll back   n cancel"))
-	return b.String()
-}
-
-func (m *appModel) viewMessage() string {
-	s := m.sty()
-	var b strings.Builder
-	b.WriteString(m.header())
-	b.WriteString(m.rule() + "\n\n  " + s.bone.Render(m.status) + "\n")
-	b.WriteString(m.footer("press any key to continue"))
-	return b.String()
-}
-
-func (m *appModel) footer(hint string) string {
-	return "\n" + m.rule() + "\n" + m.sty().dim.Render(m.wrapHint(hint))
+	return out
 }
 
 // wrapHint reflows a key-binding hint onto as many lines as the terminal
@@ -721,19 +698,19 @@ func (m *appModel) wrapHint(hint string) string {
 	return strings.Join(out, "\n")
 }
 
-func (s *styles) renderDiff(diff string) string {
-	var b strings.Builder
+func (s *styles) diffRows(diff string) []string {
+	var out []string
 	for _, line := range strings.Split(strings.TrimRight(diff, "\n"), "\n") {
 		switch {
 		case strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++"):
-			b.WriteString(s.safe.Render(line) + "\n")
+			out = append(out, s.safe.Render(line))
 		case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---"):
-			b.WriteString(lipgloss.NewStyle().Foreground(s.cCrit).Render(line) + "\n")
+			out = append(out, lipgloss.NewStyle().Foreground(s.cCrit).Render(line))
 		default:
-			b.WriteString(s.dim.Render(line) + "\n")
+			out = append(out, s.dim.Render(line))
 		}
 	}
-	return b.String()
+	return out
 }
 
 // scrollOffset returns a new window start that keeps cursor within the
@@ -756,6 +733,10 @@ func scrollOffset(cursor, total, visible, offset int) int {
 
 // truncate shortens s to at most max columns, marking the cut with an
 // ellipsis when there is room for one.
+//
+// It is for plain text, before it is styled: it measures runes, so an ANSI
+// escape would cost it a dozen columns and it would happily cut through the
+// middle of one. Bounding a row that is already styled is clip()'s job.
 //
 // The old guard returned s unchanged whenever max < 4, which inverted the
 // function exactly where it was needed. findingRow passes m.width-46, so on a
