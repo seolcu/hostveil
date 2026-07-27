@@ -145,7 +145,7 @@ func (m *appModel) View() tea.View {
 		content = m.compose(fullHeader(), nil, hint, m.listRows)
 
 	case modeDetail:
-		hint := "esc back   q list"
+		hint := "e explain (AI)   esc back   q list"
 		if len(m.active) > 0 && m.active[m.cursor].IsFixable() {
 			hint = "f apply fix   " + hint
 		}
@@ -487,6 +487,17 @@ func (m *appModel) detailRows() []string {
 	if f.HowToFix != "" {
 		out = append(out, "", s.dim.Render("HOW TO FIX"))
 		out = append(out, styledRows(s.bone, wrap(f.HowToFix, min(m.width-4, 78)))...)
+	}
+	if m.aiBusy || m.aiText != "" || m.aiErr != "" {
+		out = append(out, "", s.dim.Render("AI EXPLANATION (ADVISORY)"))
+		switch {
+		case m.aiBusy:
+			out = append(out, s.dim.Render("  asking the local AI model…"))
+		case m.aiText != "":
+			out = append(out, styledRows(s.bone, wrap(m.aiText, min(m.width-4, 78)))...)
+		default:
+			out = append(out, styledRows(s.dim, wrap(m.aiErr, min(m.width-4, 78)))...)
+		}
 	}
 	return out
 }

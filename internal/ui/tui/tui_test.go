@@ -115,6 +115,48 @@ func TestSnapshotDump(t *testing.T) {
 	}
 }
 
+// The detail view's `e` key asks for an advisory AI explanation. With no
+// provider the engine answers through AIError, which must render as a note
+// in the detail pane — and a slow answer for a finding the user already
+// left must be dropped, not drawn under the wrong finding.
+func TestDetailAIExplanation(t *testing.T) {
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{},
+		engine: core.New(core.Config{Registry: check.NewRegistry()})})
+	m = send(m, tea.WindowSizeMsg{Width: 96, Height: 34})
+	m = send(m, scannedMsg{report: sampleReport()})
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "enter", Code: tea.KeyEnter}))
+
+	am := m.(*appModel)
+	if am.mode != modeDetail {
+		t.Fatalf("mode = %v, want detail", am.mode)
+	}
+	next, cmd := am.handleKey(tea.KeyPressMsg(tea.Key{Text: "e"}))
+	am = next.(*appModel)
+	if !am.aiBusy || cmd == nil {
+		t.Fatal("e should mark the pane busy and start the explain command")
+	}
+	if !strings.Contains(am.View().Content, "AI EXPLANATION") {
+		t.Error("busy state should already show the AI section")
+	}
+
+	key := am.active[am.cursor].Key()
+	m = send(tea.Model(am), explainedMsg{key: key, exp: model.Explanation{AIError: "no AI provider is reachable"}})
+	am = m.(*appModel)
+	if am.aiBusy || am.aiErr == "" {
+		t.Errorf("the answer should land as a note: busy=%v err=%q", am.aiBusy, am.aiErr)
+	}
+	if !strings.Contains(am.View().Content, "no AI provider is reachable") {
+		t.Error("the AI note is not rendered in the detail pane")
+	}
+
+	// Leave the detail view; a late answer must be dropped.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "esc", Code: tea.KeyEscape}))
+	m = send(m, explainedMsg{key: key, exp: model.Explanation{AI: "late answer"}})
+	if am := m.(*appModel); am.aiText != "" {
+		t.Error("an answer that arrives after leaving the detail view must be dropped")
+	}
+}
+
 // TestListScrolls verifies the list viewport follows the cursor when there
 // are more findings than fit on screen.
 func TestListScrolls(t *testing.T) {
