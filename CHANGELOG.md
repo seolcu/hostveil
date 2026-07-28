@@ -78,6 +78,15 @@ to Review, which changes the button they carry, not the number.
   along. A scan where no domain could be examined shows N/A rather than a
   number, and no change is reported against it — a run nobody could score is
   not a drop to zero.
+* **ui:** draw the score trend in the TUI and the dashboard
+  ([#606](https://github.com/seolcu/hostveil/issues/606)). The other half of
+  the change above, and the same omission this release is otherwise about:
+  the engine gained the series and neither interface asked for it. The TUI
+  draws it on the history screen, where the checkpoint list already says what
+  was changed and the trend says whether it helped; the dashboard draws it
+  beside the delta line. `model.Sparkline` buckets the scores once and both
+  interfaces render what it returns, so the rule cannot drift the way the
+  severity palette and the domain table each did before it.
 
 ### Bug Fixes
 
