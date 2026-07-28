@@ -1,8 +1,13 @@
 "use strict";
 
 const SEV = ["critical", "high", "medium", "low"];
-// Finding.source (int) -> short domain label, mirrors the score axes.
-const SRC = { 1: "Container", 2: "SSH", 3: "Firewall", 4: "Updates", 5: "CVEs", 6: "Ports", 7: "Accounts", 8: "File perms", 9: "AI agents" };
+// Finding.source (int) -> {id, label}, served by /domains.js and generated
+// from model.AllSources. This used to be an object literal written out by
+// hand here; it fell a domain behind the engine and took the sysctl filter
+// chip with it. Read it through srcLabel, never directly, so a source the
+// table somehow lacks still renders as a name.
+const SRC = window.HOSTVEIL_DOMAINS || {};
+function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 const REM_AUTO = 1;
 // model.ScanState (int), in declaration order.
 const SCAN_DONE = 2, SCAN_SKIPPED = 3, SCAN_DEGRADED = 4, SCAN_ERROR = 5;
@@ -87,10 +92,12 @@ function renderFilterbar(all) {
     }, "c-" + abbr));
   });
 
-  // Domain chips (only sources present in the report).
-  const domains = [...new Set(all.map((f) => f.source))].filter((s) => SRC[s]).sort((a, b) => a - b);
+  // Domain chips (every source present in the report — filtering this list
+  // by the label table is what hid the sysctl domain when the table was a
+  // hand-written copy).
+  const domains = [...new Set(all.map((f) => f.source))].sort((a, b) => a - b);
   domains.forEach((s) => {
-    kids.push(chip(SRC[s], filters.domain.has(s), () => {
+    kids.push(chip(srcLabel(s), filters.domain.has(s), () => {
       filters.domain.has(s) ? filters.domain.delete(s) : filters.domain.add(s);
       render();
     }));
@@ -194,7 +201,7 @@ function renderDomainNotice() {
   }
   box.hidden = false;
   box.replaceChildren(...bad.map((d) => {
-    const name = SRC[d.source] || d.source;
+    const name = srcLabel(d.source);
     if (d.state === SCAN_ERROR) return el("span", { class: "dom-err" }, `! ${name} failed: ${d.reason || "unknown error"}`);
     if (d.state === SCAN_DEGRADED) return el("span", {}, `~ ${name} partial: ${d.reason || ""}`);
     if (d.state === SCAN_SKIPPED) return el("span", { class: "dom-skip" }, `· ${name} skipped: ${d.reason || ""}`);

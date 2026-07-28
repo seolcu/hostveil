@@ -53,6 +53,50 @@ func (s Source) String() string {
 	}
 }
 
+// Label returns the short display name every interface shows for the
+// domain — the filter chip in the dashboard, the filter line in the TUI.
+//
+// It lives here rather than in each UI because it did live in each UI, and
+// they drifted. The TUI wrote the table out in a switch and the dashboard
+// wrote it again in JavaScript, and when the sysctl domain landed neither
+// copy was updated: the dashboard filtered its domain chips by membership
+// in that table, so eight kernel-hardening findings became unfilterable,
+// and a failed sysctl domain announced itself as "10 failed".
+//
+// The labels are shorter than the scoring axis labels on purpose. An axis
+// names a subject in a table with room for it ("Container exposure"); a
+// chip sits in a row of nine and has to stay narrow.
+//
+// There is no fallback for an unknown domain, which is the point: adding a
+// Source without a label here fails TestEverySourceHasALabel rather than
+// rendering as a bare integer somewhere nobody looks.
+func (s Source) Label() string {
+	switch s {
+	case SourceCompose:
+		return "Container"
+	case SourceSSH:
+		return "SSH"
+	case SourceFirewall:
+		return "Firewall"
+	case SourceUpdates:
+		return "Updates"
+	case SourceCVE:
+		return "CVEs"
+	case SourcePorts:
+		return "Ports"
+	case SourceAccounts:
+		return "Accounts"
+	case SourceFilePerms:
+		return "File perms"
+	case SourceAgent:
+		return "AI agents"
+	case SourceSysctl:
+		return "Kernel"
+	default:
+		return ""
+	}
+}
+
 // Valid reports whether the source was set to a real domain.
 //
 // The upper bound is a range check, so a new domain appended to the const
