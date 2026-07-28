@@ -625,3 +625,46 @@ func TestEvidenceIsStableAcrossScans(t *testing.T) {
 		}
 	}
 }
+
+// The service-account test is shared with the account domain now, so it
+// answers the same way wherever the distribution keeps nologin. This copy
+// already matched on the path suffix and so handled all of these; the test
+// exists because the shared predicate is the thing that could regress, and
+// a regression here silently downgrades the finding from High to Medium.
+func TestServiceAccountShellsAcrossDistributions(t *testing.T) {
+	for _, shell := range []string{
+		"/usr/sbin/nologin",                  // Debian, Ubuntu
+		"/sbin/nologin",                      // RHEL, Fedora
+		"/usr/bin/nologin",                   // Arch
+		"/run/current-system/sw/bin/nologin", // NixOS
+		"/bin/false",
+		"/bin/true", // exits successfully and immediately; still no session
+		"",          // no shell recorded
+	} {
+		t.Run(shell, func(t *testing.T) {
+			h := host(t, "", "root:x:0:\ndocker:x:%GID%:runner\n",
+				cleanPasswd+"runner:x:3000:3000::/srv/runner:"+shell+"\n", 0o660)
+			f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
+			if f.Severity != model.SeverityHigh {
+				t.Errorf("a docker-group member with shell %q has no interactive login, "+
+					"so the finding must be High, got %v", shell, f.Severity)
+			}
+		})
+	}
+}
+
+// And the counterpart: a real login shell above the system range is a human
+// administrator, which is the ordinary shape of a self-hosted server and
+// must stay Medium.
+func TestHumanAdministratorStaysMedium(t *testing.T) {
+	for _, shell := range []string{"/bin/bash", "/usr/bin/zsh", "/bin/falsehood"} {
+		t.Run(shell, func(t *testing.T) {
+			h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice\n",
+				cleanPasswd+"alice:x:3000:3000::/home/alice:"+shell+"\n", 0o660)
+			f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
+			if f.Severity != model.SeverityMedium {
+				t.Errorf("shell %q is a real login, so the finding must stay Medium, got %v", shell, f.Severity)
+			}
+		})
+	}
+}

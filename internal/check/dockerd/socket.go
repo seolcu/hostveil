@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // socket is the local unix socket's identity: how open it is, and which
@@ -172,17 +174,14 @@ type account struct {
 // 1000 for services, and an account created above that range with a nologin
 // shell (the shape most CI runners and agents take) is just as much a
 // credential nobody logs into and nobody watches.
+// The shell half is platform.IsNonLoginShell, shared with the account
+// domain, which asks the same question to decide whether an empty password
+// is a login risk. This copy tested the path's suffix and so handled a
+// nologin anywhere; the other matched whole paths against a fixed list and
+// did not. Sharing settles it at the more portable of the two, and picks up
+// /bin/true, which ends a session as firmly as /bin/false.
 func (a account) system() bool {
-	if a.uid < 1000 {
-		return true
-	}
-	switch {
-	case strings.HasSuffix(a.shell, "/nologin"),
-		strings.HasSuffix(a.shell, "/false"),
-		a.shell == "":
-		return true
-	}
-	return false
+	return a.uid < 1000 || platform.IsNonLoginShell(a.shell)
 }
 
 func (c *Checker) accounts() (map[string]account, error) {
