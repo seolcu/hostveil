@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/textwidth"
 )
 
 // Options controls text rendering.
@@ -316,23 +317,15 @@ func scoreColor(c colors, score uint8) string {
 }
 
 // wrap reflows text to width columns, indenting continuation lines.
+// wrap reflows text to width display columns, indenting continuation lines.
+//
+// The count is columns rather than bytes. Counting bytes wrapped Hangul at
+// roughly two-thirds of the width it was given, and the TUI's copy of this
+// function had the same flaw — which is why there is now one of it.
 func wrap(s string, width int, indent string) string {
-	words := strings.Fields(s)
-	if len(words) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	lineLen := 0
-	for i, w := range words {
-		if i > 0 && lineLen+1+len(w) > width {
-			b.WriteString("\n" + indent)
-			lineLen = 0
-		} else if i > 0 {
-			b.WriteString(" ")
-			lineLen++
-		}
-		b.WriteString(w)
-		lineLen += len(w)
-	}
-	return b.String()
+	return textwidth.Wrap(s, width, minWrapWidth, indent)
 }
+
+// minWrapWidth is the floor for a computed width; one word per line is
+// unreadable in a way an overrun is not.
+const minWrapWidth = 8

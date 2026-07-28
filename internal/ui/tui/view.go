@@ -9,6 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/seolcu/hostveil/internal/textwidth"
+
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
@@ -831,19 +833,14 @@ func scrollOffset(cursor, total, visible, offset int) int {
 // It also sliced by byte, which can cut a multi-byte rune in half and emit a
 // replacement character. Findings are English today, but service names and
 // file paths come from the host.
-func truncate(s string, max int) string {
-	r := []rune(s)
-	switch {
-	case max <= 0:
-		return ""
-	case len(r) <= max:
-		return s
-	case max < 4:
-		return string(r[:max]) // no room for an ellipsis to be worth a column
-	default:
-		return string(r[:max-1]) + "…"
-	}
-}
+// truncate fits s into max display columns.
+//
+// It used to count runes, which is right for ASCII and wrong for anything
+// wider: a Hangul or CJK cell handed a 20-column budget came back 34
+// columns and pushed the row past the edge of the terminal. padRight, three
+// lines below, has always measured columns — so the two disagreed about the
+// same row.
+func truncate(s string, max int) string { return textwidth.Truncate(s, max) }
 
 func padRight(s string, n int) string {
 	if lipgloss.Width(s) >= n || n < 0 {
@@ -852,26 +849,18 @@ func padRight(s string, n int) string {
 	return s + strings.Repeat(" ", n-lipgloss.Width(s))
 }
 
-func wrap(s string, width int) string {
-	if width < 8 {
-		width = 8
-	}
-	words := strings.Fields(s)
-	var b strings.Builder
-	ll := 0
-	for i, w := range words {
-		if i > 0 && ll+1+len(w) > width {
-			b.WriteString("\n")
-			ll = 0
-		} else if i > 0 {
-			b.WriteString(" ")
-			ll++
-		}
-		b.WriteString(w)
-		ll += len(w)
-	}
-	return b.String()
-}
+// minWrapWidth is the floor wrap applies to a computed width. A narrow
+// terminal can drive the budget to nothing, and one word per line is
+// unreadable in a way an overrun is not.
+const minWrapWidth = 8
+
+// wrap reflows s to width display columns.
+//
+// It used to count bytes, so Hangul wrapped at roughly two-thirds of the
+// width it was given — 24 columns used of 40. `explain --ai` renders
+// whatever the local model wrote, which is the path that reaches this with
+// text the byte count is wrong about.
+func wrap(s string, width int) string { return textwidth.Wrap(s, width, minWrapWidth, "") }
 
 // trendLine renders the score of every retained scan as one row.
 //
