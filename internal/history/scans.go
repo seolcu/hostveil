@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // maxScans caps how many past scan snapshots are retained.
@@ -13,12 +15,23 @@ func (s *Store) scansDir() string { return filepath.Join(s.dir, "scans") }
 
 // SaveReport persists a scan snapshot (opaque JSON) under a sortable id,
 // pruning old snapshots beyond maxScans.
+//
+// The write is atomic for the same reason every other write in this package
+// is, even though a scan snapshot is not a backup. The newest snapshot is
+// the baseline: LastReport reads it and nothing else, and the next scan
+// diffs against it to decide what is newly appeared, resolved, or changed.
+// A snapshot torn by a crash — or by delayed allocation on XFS or btrfs —
+// therefore does not degrade the delta, it destroys it: the file fails to
+// unmarshal, and the run that follows either reports no delta at all or
+// announces the whole host as new. os.WriteFile truncates before it writes,
+// so the window where that file is a half-written prefix of valid JSON is
+// real, and it lands on exactly the file the next scan depends on.
 func (s *Store) SaveReport(id string, data []byte) error {
 	dir := s.scansDir()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, id+".json"), data, 0o600); err != nil {
+	if err := platform.WriteFileAtomic(filepath.Join(dir, id+".json"), data, 0o600); err != nil {
 		return err
 	}
 	s.pruneScans()
