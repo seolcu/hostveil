@@ -687,11 +687,36 @@ func toModelCheckpoint(cp history.Checkpoint) model.Checkpoint {
 	return out
 }
 
+// buildFix resolves the registered fix for a finding and checks that its
+// shape matches the kind it claims.
+//
+// fix.Validate is the contract — Auto is exactly one action, Review is two
+// or more alternatives, an edit carries a Transform, an exec carries a
+// command — and until now nothing but a test ever ran it. That left the
+// registry's shape guaranteed only for the representative findings
+// internal/fix/fix_test.go happens to build. A registration that came out
+// malformed for some other finding got no complaint at all: classify saw a
+// fixable Kind and left the finding Auto, so a UI drew a fix button, and
+// the first thing to notice was applyEdit calling a nil Transform. There is
+// no recover on that path.
+//
+// A registered fix whose shape contradicts its kind is therefore an error
+// rather than a fix. Reporting it as "registered, but broken" is what lets
+// classify demote the finding to Manual, which is the same answer it
+// already gives when no fix is registered and the same promise the rest of
+// the engine makes: a UI never offers a button that leads nowhere.
 func (e *Engine) buildFix(f model.Finding) (fix.Fix, bool, error) {
 	if e.fixes == nil {
 		return fix.Fix{}, false, nil
 	}
-	return e.fixes.Build(f)
+	fx, ok, err := e.fixes.Build(f)
+	if !ok || err != nil {
+		return fx, ok, err
+	}
+	if err := fix.Validate(fx); err != nil {
+		return fix.Fix{}, true, err
+	}
+	return fx, true, nil
 }
 
 // markFixed marks the target finding fixed in the current report.

@@ -167,7 +167,14 @@ func matchPattern(pattern, id string) bool {
 
 // Validate checks a Fix's shape against its kind: Auto has exactly one
 // action, Review has two or more independent alternatives, and every edit
-// action has a Transform. It is used by tests and can gate registration.
+// action has a Transform.
+//
+// core.Engine.buildFix runs it on every fix it resolves, so a registration
+// whose shape contradicts its kind demotes the finding to Manual instead of
+// reaching a UI as a button. It used to run only in this package's tests,
+// against the representative findings those tests happen to construct,
+// which left the contract unenforced for every other finding — and the
+// first thing to notice a missing Transform was applyEdit calling it.
 func Validate(fx Fix) error {
 	switch fx.Kind {
 	case model.RemediationAuto:
