@@ -510,8 +510,13 @@ async function applyFix(f, action) {
     // nothing reloads the service, so until the operator restarts it the
     // score has improved for a change that is not yet in effect. The CLI has
     // always said so; the dashboard used to show only the new number.
+    // verify_message is rendered by the engine, not composed here: the
+    // difference between "re-checked and gone" and "applied but not yet in
+    // force" is subtle enough that three interfaces phrasing it themselves
+    // would make three different claims.
     flash(`Fix applied. Score ${o.new_score.overall}/100.` +
       (o.restart_hint ? `  Restart '${o.restart_hint}' for it to take effect.` : "") +
+      (o.verify_message ? `  ${o.verify_message}` : "") +
       (o.checkpoint_id ? `  Rollback: ${o.checkpoint_id}` : ""));
     await refresh();
   } catch (e) { flash("Fix failed: " + e.message, true); }

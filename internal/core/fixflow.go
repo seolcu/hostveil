@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/diff"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
@@ -169,7 +170,73 @@ func previewMode(a fix.Action) (string, error) {
 func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (model.FixOutcome, error) {
 	e.applyMu.Lock()
 	defer e.applyMu.Unlock()
-	return e.applyFix(ctx, f, actionIdx)
+	out, err := e.applyFix(ctx, f, actionIdx)
+	if err != nil {
+		return out, err
+	}
+	// Verify only on the single-fix path. ApplyBatch calls applyFix in a
+	// loop, and re-checking there would re-run a checker once per fix —
+	// twenty compose findings would mean twenty enumerations of every
+	// container on the host. A batch ends with the operator rescanning
+	// anyway; a single fix is the one they are watching.
+	out.Verified, out.VerifyNote = e.verifyFix(ctx, f)
+	out.VerifyMessage = out.Verified.Note(out.RestartHint)
+	return out, nil
+}
+
+// verifyFix re-runs the finding's own domain and reports whether it is
+// still there.
+//
+// It runs the one checker directly rather than going through ScanWith, for
+// two reasons that are each sufficient. ScanWith takes applyMu, which
+// ApplyFix already holds, so calling it here would deadlock. And a scoped
+// scan replaces the current report wholesale with just that domain's
+// findings — verifying an SSH fix would delete every container finding from
+// the report the operator is looking at.
+//
+// The runner is the uncached one, deliberately. e.runner is what fixes use,
+// because a cached answer would report the state of the host before the fix
+// rather than after it — which is the entire question being asked.
+func (e *Engine) verifyFix(ctx context.Context, f model.Finding) (model.FixVerification, string) {
+	if e.registry == nil {
+		return model.VerifyNotRun, ""
+	}
+	var target check.Checker
+	for _, c := range e.registry.Checkers() {
+		if c.Source() == f.Source {
+			target = c
+		}
+	}
+	if target == nil {
+		return model.VerifyUnavailable, "no checker is registered for this domain"
+	}
+
+	env := platform.Detect(ctx, e.runner)
+	results := check.NewRegistry(target).Run(ctx, env, nil)
+	if len(results) != 1 {
+		return model.VerifyUnavailable, "the re-check did not run"
+	}
+	r := results[0]
+
+	// The same rule the scan itself follows. A checker that was skipped,
+	// failed, or covered only part of its ground has not established that
+	// the finding is gone — and "could not look" must never read as either
+	// answer.
+	switch r.State {
+	case model.ScanSkipped, model.ScanError, model.ScanDegraded:
+		reason := r.Reason
+		if reason == "" {
+			reason = "the re-check could not cover this domain"
+		}
+		return model.VerifyUnavailable, reason
+	}
+
+	for _, got := range validFindings(r.Findings) {
+		if got.Key() == f.Key() {
+			return model.VerifyStillPresent, ""
+		}
+	}
+	return model.VerifyGone, ""
 }
 
 // applyFix is ApplyFix's body, with the caller holding applyMu. ApplyBatch

@@ -242,6 +242,12 @@ func printOutcome(o model.FixOutcome) {
 	if o.RestartHint != "" {
 		fmt.Printf("  You may need to restart the '%s' service for the change to take effect.\n", o.RestartHint)
 	}
+	if o.VerifyMessage != "" {
+		fmt.Printf("  %s\n", o.VerifyMessage)
+		if o.VerifyNote != "" {
+			fmt.Printf("    %s\n", o.VerifyNote)
+		}
+	}
 	fmt.Printf("  New security score: %d/100\n", o.NewScore.Overall)
 }
 

@@ -31,6 +31,21 @@ type FixOutcome struct {
 	CheckpointID string         `json:"checkpoint_id,omitempty"` // "" if nothing to roll back
 	RestartHint  string         `json:"restart_hint,omitempty"`  // service the user may need to restart
 	NewScore     ScoreBreakdown `json:"new_score"`
+
+	// Verified is what re-running the finding's own domain found, and
+	// VerifyNote carries the reason when it could not be established.
+	// Applying a fix marks the finding Fixed either way; these say whether
+	// anything actually confirmed it.
+	Verified FixVerification `json:"verified"`
+	// VerifyMessage is the sentence every interface shows, rendered once by
+	// the engine from Verified and RestartHint. The three outcome summaries
+	// already phrase the same fields three different ways; this distinction
+	// is subtle enough that three attempts at it would mean three different
+	// claims.
+	VerifyMessage string `json:"verify_message,omitempty"`
+	// VerifyNote is the checker's own reason when the re-check could not
+	// run — shown under the message, not instead of it.
+	VerifyNote string `json:"verify_note,omitempty"`
 }
 
 // BatchOutcome is the result of applying every eligible Auto fix at once.
@@ -77,4 +92,86 @@ type Checkpoint struct {
 	Diff           string     `json:"diff,omitempty"`
 	RestartService string     `json:"restart_service,omitempty"`
 	Commands       [][]string `json:"commands,omitempty"`
+}
+
+// FixVerification is what a re-check of the finding's own domain found
+// after a fix was applied.
+//
+// It exists because "hostveil wrote the file" and "the finding is gone" are
+// different claims, and until now only the first was ever established —
+// markFixed set Fixed the moment an apply returned, and the score moved on
+// that. That is the same gap Action.VerifyCmd closes before a write: this
+// closes the one after it.
+//
+// It deliberately does not change whether the finding is marked Fixed. A
+// persisted sysctl drop-in is correct and complete and the running kernel
+// still reports the old value until the next boot, so a checker that still
+// sees the finding is not evidence the fix failed. Reporting the two facts
+// separately is honest; collapsing them would either call that fix broken
+// or call an unverified one confirmed.
+type FixVerification int
+
+const (
+	// VerifyNotRun means no re-check was attempted — the batch path, which
+	// would otherwise re-run a checker once per fix.
+	VerifyNotRun FixVerification = iota
+	// VerifyGone means the domain was re-checked and no longer reports it.
+	VerifyGone
+	// VerifyStillPresent means the domain was re-checked and still reports
+	// it. Not necessarily a failure: the change may need a restart or a
+	// reboot to take effect.
+	VerifyStillPresent
+	// VerifyUnavailable means the re-check could not run or could not cover
+	// its ground. "Could not look" is not "still broken", and it is not
+	// "fixed" either.
+	VerifyUnavailable
+)
+
+// String returns the lowercase name used in JSON and in every UI.
+func (v FixVerification) String() string {
+	switch v {
+	case VerifyGone:
+		return "gone"
+	case VerifyStillPresent:
+		return "still-present"
+	case VerifyUnavailable:
+		return "unavailable"
+	default:
+		return "not-run"
+	}
+}
+
+// Note is the one sentence every interface shows for this result.
+//
+// It lives here because the three outcome summaries — the CLI's
+// printOutcome, the TUI's applySummary, and the dashboard's flash — already
+// phrase the same fields three different ways, and this one carries a
+// distinction subtle enough that three attempts at it would produce three
+// different meanings.
+//
+// "Still present" is deliberately not phrased as a failure. The commonest
+// case is a change that is correct and not yet in force: a sysctl drop-in
+// applies at the next boot, and sshd serves from the config it already
+// loaded until it restarts.
+func (v FixVerification) Note(restartHint string) string {
+	switch v {
+	case VerifyGone:
+		return "Re-checked: the finding is gone."
+	case VerifyStillPresent:
+		if restartHint != "" {
+			return "Re-checked: the finding is still reported — the change may not take effect until '" +
+				restartHint + "' restarts."
+		}
+		return "Re-checked: the finding is still reported — the change may not take effect until a restart or reboot."
+	case VerifyUnavailable:
+		return "Could not re-check this domain, so the fix is unconfirmed."
+	default:
+		return ""
+	}
+}
+
+// MarshalJSON emits the name rather than the integer, so a consumer of
+// --json is not left mapping ordinals the way the dashboard once had to.
+func (v FixVerification) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + v.String() + `"`), nil
 }
