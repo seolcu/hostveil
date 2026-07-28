@@ -1,5 +1,47 @@
 # Changelog
 
+## [3.8.1](https://github.com/seolcu/hostveil/compare/v3.8.0...v3.8.1) (2026-07-29)
+
+One false Critical, on hosts whose distribution keeps `nologin` somewhere
+other than Debian's or Fedora's path.
+
+3.8.0 was about a table written twice. This is the same fault a layer down
+and with the copies further apart: two domains asked whether an account can
+log in, and only one of them answered portably. The one that did not was the
+one gating a Critical.
+
+**If you run Arch or NixOS, your account-hygiene score should improve** —
+because it was wrong, not because anything on your host changed.
+
+### Bug Fixes
+
+* **check:** recognise nologin shells wherever the distribution keeps them
+  ([#615](https://github.com/seolcu/hostveil/issues/615)). The account domain
+  decided whether an account could log in by matching its shell against a
+  fixed list of six full paths — Debian's `/usr/sbin/nologin`, Fedora's
+  `/sbin/nologin`, and four more. A distribution that keeps the same program
+  elsewhere was not on it: Arch's `/usr/bin/nologin`, NixOS's under
+  `/run/current-system/sw/bin`, anything hand-built under `/usr/local`. On
+  those hosts every service account read as an ordinary login shell, so
+  `accounts.emptypassword` reported "Login account with an empty password"
+  for an account with no way in, at Critical, and took the axis down with it.
+  The Docker daemon domain asks the same question of docker-group members —
+  to separate an administrator who chose this from a credential nobody
+  watches — and had already got it right by matching the path's suffix. Both
+  now call one predicate that matches the program's base name, because the
+  path is not portable and the name is. Two narrowings follow, each removing
+  a false report rather than adding a true one: the empty-password finding
+  stops firing on non-login accounts on those distributions, and a
+  docker-group member whose shell is `/bin/true` is now correctly read as a
+  service identity — a shell that exits successfully and immediately ends a
+  session as firmly as one that fails.
+
+The release also retires the last hand-written copy of the domain list, a
+regex in the test that requires every emitted finding to be documented
+([#616](https://github.com/seolcu/hostveil/issues/616)). It changes no
+behaviour, but it was the twelfth table keyed by `model.Source` and the only
+one 3.8.0 left standing.
+
 ## [3.8.0](https://github.com/seolcu/hostveil/compare/v3.7.0...v3.8.0) (2026-07-29)
 
 This release adds the eleventh domain and then, unintentionally, tests the
