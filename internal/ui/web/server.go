@@ -101,9 +101,10 @@ func (s *Server) Handler() http.Handler {
 	// there is one registry of hexes and both read from it.
 	mux.HandleFunc("GET /themes.css", s.handleThemesCSS)
 	mux.HandleFunc("GET /theme.js", s.handleThemeJS)
-	// Same arrangement, one layer down: the domain table comes from
-	// model.AllSources rather than from a copy of it kept in app.js.
-	mux.HandleFunc("GET /domains.js", s.handleDomainsJS)
+	// Same arrangement, one layer down: every enum the page has to read —
+	// domains, severities, remediation kinds, scan states, score bands —
+	// comes from internal/model rather than from copies kept in app.js.
+	mux.HandleFunc("GET /model.js", s.handleModelJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
@@ -316,10 +317,10 @@ func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
 	_, _ = io.WriteString(w, theme.JS(s.theme))
 }
 
-func (s *Server) handleDomainsJS(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, domainsJS())
+	_, _ = io.WriteString(w, modelJS())
 }
 
 // resultPayload is the dashboard's view of a scan: the report, plus how it
@@ -338,7 +339,7 @@ type resultPayload struct {
 // The glyphs come from model.Sparkline rather than being bucketed again in
 // JavaScript: two implementations of one rule is the shape that has already
 // gone wrong twice here — the severity palette before internal/ui/theme,
-// the domain table before /domains.js.
+// the domain table before /model.js.
 //
 // It is its own route rather than a field on /api/result because the result
 // is refetched after every fix, and re-reading thirty snapshots from disk

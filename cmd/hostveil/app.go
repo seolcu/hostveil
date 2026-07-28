@@ -30,26 +30,38 @@ func buildEngine() *core.Engine { return buildEngineWithAI(false) }
 // AI provider (Ollama) wired in when useAI is set.
 func buildEngineWithAI(useAI bool) *core.Engine {
 	cfg := core.Config{
-		Registry: check.NewRegistry(
-			composecheck.New(),
-			sshcheck.New(),
-			firewallcheck.New(),
-			updatescheck.New(),
-			cvecheck.New(),
-			portscheck.New(),
-			accountscheck.New(),
-			filepermscheck.New(),
-			agentcheck.New(),
-			sysctlcheck.New(),
-			dockerdcheck.New(),
-		),
-		Fixes:  fix.Default(),
-		Runner: debugRunner(),
+		Registry: buildRegistry(),
+		Fixes:    fix.Default(),
+		Runner:   debugRunner(),
 	}
 	if useAI {
 		cfg.AI = ai.NewOllama()
 	}
 	return core.New(cfg)
+}
+
+// buildRegistry lists every checker, in scan order.
+//
+// This order is load-bearing: Registry.Run writes its results by registry
+// index, so this is what orders Report.Domains and therefore the CLI's
+// per-domain status block. It is the third copy of the domain order — the
+// other two, AllSources and the scoring axes, were merged into one table
+// in internal/model and can no longer disagree with each other.
+// TestCheckerRegistrationMatchesSourceOrder holds this one to that table.
+func buildRegistry() *check.Registry {
+	return check.NewRegistry(
+		composecheck.New(),
+		sshcheck.New(),
+		firewallcheck.New(),
+		updatescheck.New(),
+		cvecheck.New(),
+		portscheck.New(),
+		accountscheck.New(),
+		filepermscheck.New(),
+		agentcheck.New(),
+		sysctlcheck.New(),
+		dockerdcheck.New(),
+	)
 }
 
 // debugRunner returns the command runner the engine should use: the plain

@@ -16,30 +16,68 @@ const (
 	ScanSkipped                   // dependency absent (e.g. Trivy not installed) — not an error
 	ScanDegraded                  // ran but produced a partial result
 	ScanError                     // failed
+
+	scanStateCount // sentinel, not a state; keep last
 )
+
+type scanStateDef struct {
+	state ScanState
+	name  string // lowercase state name for display and exports
+	ran   bool   // executed and contributed to scoring
+	// complete means it also covered all of its ground. Only ScanDegraded
+	// has ran without complete, and that gap is the entire reason both
+	// columns exist — see Ran and Complete below.
+	complete bool
+}
+
+// scanStateDefs describes the enum once. The state is an explicit column
+// and the lookup is keyed by it, never by slice position; see enum.go.
+var scanStateDefs = []scanStateDef{
+	{ScanPending, "pending", false, false},
+	{ScanRunning, "running", false, false},
+	{ScanDone, "done", true, true},
+	{ScanSkipped, "skipped", false, false},
+	{ScanDegraded, "degraded", true, false},
+	{ScanError, "error", false, false},
+}
+
+var scanStateIndex = indexBy(scanStateDefs, func(d scanStateDef) ScanState { return d.state })
 
 // String returns the lowercase state name for display and exports.
 func (s ScanState) String() string {
-	switch s {
-	case ScanRunning:
-		return "running"
-	case ScanDone:
-		return "done"
-	case ScanSkipped:
-		return "skipped"
-	case ScanDegraded:
-		return "degraded"
-	case ScanError:
-		return "error"
-	default:
-		return "pending"
+	if d, ok := scanStateIndex[s]; ok {
+		return d.name
 	}
+	return "pending"
 }
 
 // Ran reports whether the checker actually executed and contributed to
 // scoring (Done or Degraded). Skipped/Error/Pending did not.
 func (s ScanState) Ran() bool {
-	return s == ScanDone || s == ScanDegraded
+	return scanStateIndex[s].ran
+}
+
+// AllScanStates lists every state in declaration order. UIs that mirror
+// the enum build their table from this.
+func AllScanStates() []ScanState {
+	return columnOf(scanStateDefs, func(d scanStateDef) ScanState { return d.state })
+}
+
+// Complete reports whether the checker covered all of its ground.
+//
+// ScanDegraded is the entire distinction between this and Ran, and the two
+// are not interchangeable. Scoring asks Ran, because partial evidence still
+// beats none and a degraded axis is scored with its flag set. Everything
+// that makes a claim about *absence* must ask Complete instead: a checker
+// that saw only half its ground has not established that anything is gone,
+// and "I could not look" must never read as either answer.
+//
+// Both callers of this predicate used to spell it out longhand and in
+// opposite directions — a three-case switch in the engine's post-fix
+// re-check, a != ScanDone in the CLI's clean-host guard — which is how the
+// two came to look like negations of Ran when neither is.
+func (s ScanState) Complete() bool {
+	return scanStateIndex[s].complete
 }
 
 // DomainResult records how one checker fared during a scan.
@@ -64,6 +102,29 @@ type Report struct {
 	Findings []Finding      `json:"findings"`
 	Score    ScoreBreakdown `json:"score"`
 	Domains  []DomainResult `json:"domains"`
+}
+
+// IncompleteDomains counts the domains that did not cover all of their
+// ground — skipped, degraded, or errored.
+//
+// It is the guard on every "clean host" claim. Finding nothing means
+// nothing unless the whole host was examined, and the two readings score
+// identically while meaning opposite things. The CLI has always checked
+// this; the TUI and the dashboard each said "No problems found. Clean."
+// unconditionally, so a host whose every checker failed was reported
+// spotless in two interfaces out of three.
+//
+// A report with no domains at all returns 0, and that is deliberate: it
+// means "no scan behind this report" (a bare finding set, a zero-value
+// model in a test), not "everything failed".
+func (r Report) IncompleteDomains() int {
+	n := 0
+	for _, d := range r.Domains {
+		if !d.State.Complete() {
+			n++
+		}
+	}
+	return n
 }
 
 // Filter selects a subset of findings for display.
@@ -135,7 +196,7 @@ type ScorePoint struct {
 // It lives on the model rather than in either interface because both draw
 // the same picture from the same points, and a bucketing rule written twice
 // is the shape that has already gone wrong here twice — the severity
-// palette before internal/ui/theme, the domain table before /domains.js.
+// palette before internal/ui/theme, the domain table before /model.js.
 // The TUI prints the string; the dashboard renders the same characters in a
 // monospace span.
 //

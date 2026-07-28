@@ -10,6 +10,41 @@ import (
 
 func plain(r model.Report) string { return Text(r, Options{}) }
 
+// The CLI's score color had three arms where the TUI and the dashboard had
+// four, so a host scoring 10 and one scoring 40 printed identically here
+// while reading a band apart everywhere else — and 10 is the half of that
+// range where the host is on fire.
+func TestScoreColorDistinguishesEveryBand(t *testing.T) {
+	scored := func(v uint8) string {
+		out := Text(model.Report{
+			Score: model.ScoreBreakdown{Overall: v, Applicable: true},
+		}, Options{Color: true})
+		line, _, _ := strings.Cut(out, "\n")
+		return line
+	}
+
+	seen := map[string]uint8{}
+	for _, v := range []uint8{10, 40, 60, 90} {
+		line := scored(v)
+		_, rest, ok := strings.Cut(line, "Security score: ")
+		if !ok {
+			t.Fatalf("score %d rendered no score line: %q", v, line)
+		}
+		esc, _, ok := strings.Cut(rest, "m")
+		if !ok || !strings.HasPrefix(esc, "\x1b[") {
+			t.Fatalf("score %d rendered no color escape: %q", v, line)
+		}
+		if prev, dup := seen[esc]; dup {
+			t.Errorf("scores %d and %d share the color %q — %v and %v are different bands",
+				prev, v, esc, model.BandFor(prev), model.BandFor(v))
+		}
+		seen[esc] = v
+	}
+	if len(seen) != len(model.Bands()) {
+		t.Errorf("%d distinct score colors for %d bands", len(seen), len(model.Bands()))
+	}
+}
+
 // A domain that ran but covered only part of its ground must appear. Before
 // ScanDegraded had any renderer, such a domain printed nothing at all — the
 // report looked exactly like a complete one.

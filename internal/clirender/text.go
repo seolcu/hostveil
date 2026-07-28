@@ -63,7 +63,7 @@ func Text(r model.Report, opts Options) string {
 	if len(active) == 0 {
 		// "Clean" is a claim about the whole host, so it may only be made
 		// when the whole host was actually examined.
-		if n := incompleteDomains(r); n > 0 {
+		if n := r.IncompleteDomains(); n > 0 {
 			fmt.Fprintf(&b, "\n%sNo problems found in the domains that ran — but %d did not complete (see above).%s\n",
 				c.yellow, n, c.reset)
 		} else {
@@ -274,18 +274,6 @@ type colors struct {
 	bold, dim, reset, red, green, yellow, orange string
 }
 
-// incompleteDomains counts domains that did not fully cover their ground —
-// skipped, degraded, or errored.
-func incompleteDomains(r model.Report) int {
-	n := 0
-	for _, d := range r.Domains {
-		if d.State != model.ScanDone {
-			n++
-		}
-	}
-	return n
-}
-
 func palette(on bool) colors {
 	if !on {
 		return colors{}
@@ -315,11 +303,13 @@ func sevColor(c colors, s model.Severity) string {
 }
 
 func scoreColor(c colors, score uint8) string {
-	switch {
-	case score >= 80:
+	switch model.BandFor(score) {
+	case model.BandGood:
 		return c.green
-	case score >= 50:
+	case model.BandFair:
 		return c.yellow
+	case model.BandPoor:
+		return c.orange
 	default:
 		return c.red
 	}

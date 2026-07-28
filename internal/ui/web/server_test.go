@@ -552,7 +552,7 @@ func TestServedThemeIsTheStartingPalette(t *testing.T) {
 // could be styled cross-origin is a page that can be framed convincingly.
 func TestThemeAssetsAreGuarded(t *testing.T) {
 	s, _ := testServer(t)
-	for _, path := range []string{"/themes.css", "/theme.js"} {
+	for _, path := range []string{"/themes.css", "/theme.js", "/model.js"} {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Host = "evil.example.com"
