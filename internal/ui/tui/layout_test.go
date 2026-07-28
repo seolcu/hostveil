@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -160,6 +161,29 @@ func TestPreviewAndHistoryFitTerminalWidth(t *testing.T) {
 		// end; every mode goes through the same composer and fills the frame.
 		if got := strings.Count(content, "\n") + 1; got != m.height {
 			t.Errorf("%s height=%d: frame is %d lines", name, m.height, got)
+		}
+	}
+}
+
+var ansiSeq = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+// The axis id column is one wider than the longest id, so every id keeps at
+// least one space before its meter. It was exactly as wide for a while
+// ("%-9s"), which the width tests above cannot see: "container████────"
+// and "container ███────" are the same number of columns, just the first
+// one is unreadable. The gap is asserted on every axis, N/A and degraded
+// included — each renders its own cell and each regressed the same way.
+func TestAxisIdsKeepAGapBeforeTheMeter(t *testing.T) {
+	m := &appModel{width: 200, report: layoutReport(), selected: map[string]bool{}}
+	strip := ansiSeq.ReplaceAllString(m.axesLine(), "")
+	for _, ax := range m.report.Score.Axes {
+		i := strings.Index(strip, ax.ID)
+		if i < 0 {
+			t.Fatalf("axis %q missing from the strip:\n%s", ax.ID, strip)
+		}
+		rest := strip[i+len(ax.ID):]
+		if rest == "" || rest[0] != ' ' {
+			t.Errorf("axis %q butts straight against its meter: %q", ax.ID, strip[i:min(i+16, len(strip))])
 		}
 	}
 }
