@@ -87,6 +87,17 @@ to Review, which changes the button they carry, not the number.
   beside the delta line. `model.Sparkline` buckets the scores once and both
   interfaces render what it returns, so the rule cannot drift the way the
   severity palette and the domain table each did before it.
+* **core:** re-check the finding after applying its fix
+  ([#607](https://github.com/seolcu/hostveil/issues/607)). "hostveil wrote
+  the file" and "the finding is gone" are different claims, and only the
+  first was ever established — `markFixed` set the flag the moment an apply
+  returned, and the score moved on that. A fix now re-runs its own domain
+  and says which of the three it got: gone, still reported, or unconfirmed.
+  The result deliberately does not decide whether the finding counts as
+  fixed. A persisted kernel drop-in is correct and complete while the
+  running kernel still reports the old value until the next boot, so a
+  checker that still sees it is not evidence of failure — and a re-check
+  that was skipped or degraded has established nothing in either direction.
 
 ### Bug Fixes
 
