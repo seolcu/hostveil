@@ -53,10 +53,29 @@ type axisDef struct {
 	cap    int
 }
 
-// axisDefs maps each detection domain to a scoring axis. A cap is the
-// axis's share of the overall score and nothing else — it is purely how
-// much this domain matters, never a threshold. The caps sum to 100 so the
-// overall is a weighted average of the axes that ran.
+// axisDefsFromSources reads the axis columns out of sourceDefs.
+func axisDefsFromSources() []axisDef {
+	return columnOf(sourceDefs, func(d sourceDef) axisDef {
+		return axisDef{id: d.axisID, label: d.axisLabel, source: d.source, cap: d.cap}
+	})
+}
+
+// axisDefs is the scoring axes, one per detection domain, in the order
+// sourceDefs declares them.
+//
+// It used to be a hand-written table of its own — a fifth record per
+// domain, in a second file, keyed by the same constant as the four in
+// source.go. Nothing tied the two together, so adding a domain meant
+// remembering both, and the axis order and the scan order agreed only
+// because someone kept them agreeing.
+//
+// The numbers now live in sourceDefs' cap column; what follows is the
+// argument behind them, which stays here because a cap is a claim about
+// weight rather than a fact about a domain's identity.
+//
+// A cap is the axis's share of the overall score and nothing else — it is
+// purely how much this domain matters, never a threshold. The caps sum to
+// 100 so the overall is a weighted average of the axes that ran.
 //
 // "agent" ties with "ports" deliberately: both describe a network service
 // that should not be reachable. The agent domain's worst case is strictly
@@ -87,19 +106,7 @@ type axisDef struct {
 // alone does not say whether TLS verification is in force. "agent" gave one
 // because its generous cap was argued from being N/A on most hosts, and that
 // argument now has a second claimant.
-var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 15},
-	{"ssh", "SSH hardening", SourceSSH, 15},
-	{"firewall", "Host firewall", SourceFirewall, 10},
-	{"updates", "Auto-updates", SourceUpdates, 7},
-	{"cve", "Vulnerabilities", SourceCVE, 11},
-	{"ports", "Exposed services", SourcePorts, 9},
-	{"accounts", "Account hygiene", SourceAccounts, 7},
-	{"fileperms", "File permissions", SourceFilePerms, 5},
-	{"agent", "AI agent runtimes", SourceAgent, 9},
-	{"sysctl", "Kernel hardening", SourceSysctl, 5},
-	{"dockerd", "Docker daemon", SourceDockerd, 7},
-}
+var axisDefs = axisDefsFromSources()
 
 // criticalHalves is the anchor of the whole penalty model: one Critical
 // finding takes half of whatever credit an axis has left. Every other

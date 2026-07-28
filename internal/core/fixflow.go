@@ -222,8 +222,11 @@ func (e *Engine) verifyFix(ctx context.Context, f model.Finding) (model.FixVerif
 	// failed, or covered only part of its ground has not established that
 	// the finding is gone — and "could not look" must never read as either
 	// answer.
-	switch r.State {
-	case model.ScanSkipped, model.ScanError, model.ScanDegraded:
+	//
+	// Complete, not Ran: a degraded re-check *did* run, so Ran accepts it,
+	// but it covered only part of its ground and the finding may live in
+	// the part it missed.
+	if !r.State.Complete() {
 		reason := r.Reason
 		if reason == "" {
 			reason = "the re-check could not cover this domain"

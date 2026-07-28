@@ -1,16 +1,24 @@
 "use strict";
 
-const SEV = ["critical", "high", "medium", "low"];
-// Finding.source (int) -> {id, label}, served by /domains.js and generated
-// from model.AllSources. This used to be an object literal written out by
-// hand here; it fell a domain behind the engine and took the sysctl filter
-// chip with it. Read it through srcLabel, never directly, so a source the
-// table somehow lacks still renders as a name.
-const SRC = window.HOSTVEIL_DOMAINS || {};
+// The model's vocabulary, served by /model.js and generated from
+// internal/model. /api/result carries these as bare integers, so the page
+// cannot say anything about a finding without a table to look them up in.
+//
+// Every one of these used to be written out here by hand. Two of them
+// drifted: the domain labels fell a release behind and took the sysctl
+// filter chip with them, and a second axis-label copy fell two behind and
+// started substituting long scoring labels into a narrow column. Read
+// everything through the accessors below, never the tables directly, so a
+// value the engine knows and the page does not still renders as something
+// rather than as undefined.
+const M = window.HOSTVEIL_MODEL || {};
+const SRC = M.domains || {};
+const SEV = M.severities || {};
+const REM = M.remediations || {};
+const SCAN = M.scanStates || {};
+const BANDS = M.bands || [];
+
 function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
-const REM_AUTO = 1;
-// model.ScanState (int), in declaration order.
-const SCAN_DONE = 2, SCAN_SKIPPED = 3, SCAN_DEGRADED = 4, SCAN_ERROR = 5;
 
 let report = null;
 // trend is fetched separately from the report: the report is refetched
@@ -53,18 +61,28 @@ function el(tag, attrs = {}, ...kids) {
   return e;
 }
 
-function sevName(f) { return SEV[f.severity] || "low"; }
-function sevAbbr(f) { return ["crit", "high", "med", "low"][f.severity] || "low"; }
-function remLabel(r) { return ["Unclassified", "Auto-fix", "Review", "Manual", "Unavailable"][r] || "?"; }
-function isFixable(f) { return f.remediation === 1 || f.remediation === 2; }
-function isAuto(f) { return f.remediation === REM_AUTO; }
+// sevName doubles as the CSS class for a finding's gutter and its severity
+// chip (.finding.critical, .over-chip.sev-critical), so the stylesheet and
+// the exports share one spelling. There used to be two tables here that
+// differed only in whether Medium was "med" or "medium", and only the
+// second one matched the stylesheet.
+function sevName(f) { return (SEV[f.severity] && SEV[f.severity].name) || "unknown"; }
+function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
+function remLabel(r) { return (REM[r] && REM[r].label) || "Unclassified"; }
+function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
+function isAuto(f) { return !!(REM[f.remediation] && REM[f.remediation].auto); }
 function active(findings) { return findings.filter((x) => !x.fixed); }
 
-// A finding row's grid class → the severity class also used for the gutter.
-function rowSevClass(f) { return ["crit", "high", "medium", "low"][f.severity] || "low"; }
+// A domain that did not cover all of its ground. Degraded counts: it ran,
+// and it is scored, but it cannot vouch for what it did not look at.
+function scanComplete(state) { return !!(SCAN[state] && SCAN[state].complete); }
 
-// Score/axis health band → meter fill color.
-function band(v) { return v >= 80 ? "b-safe" : v >= 50 ? "b-med" : v >= 25 ? "b-high" : "b-crit"; }
+// Score/axis health band. BANDS is ordered best-first with an inclusive
+// floor each, so the first row the score clears is its band — the same walk
+// model.BandFor does. The thresholds were written out four times before
+// this, and the CLI's copy had one fewer arm than the rest.
+function bandFor(v) { return BANDS.find((b) => v >= b.min) || { cls: "b-na", verdict: "unscored" }; }
+function band(v) { return bandFor(v).cls; }
 
 function meter(pct, bandClass) {
   const m = el("div", { class: "meter " + bandClass });
@@ -94,16 +112,20 @@ function renderFilterbar(all) {
   const bar = document.getElementById("filterbar");
   const kids = [];
 
-  // Severity chips (only those present), each with a live count.
-  const sevCounts = [0, 0, 0, 0];
-  all.forEach((f) => { if (f.severity >= 0 && f.severity < 4) sevCounts[f.severity]++; });
-  ["crit", "high", "med", "low"].forEach((abbr, i) => {
-    if (!sevCounts[i]) return;
-    kids.push(chip(`${abbr.toUpperCase()} ${sevCounts[i]}`, filters.sev.has(i), () => {
+  // Severity chips (only those present), each with a live count. Ordered
+  // by the model's table, so the chips run most-severe-first for the same
+  // reason the findings do, rather than because a literal here says so.
+  const sevCounts = {};
+  all.forEach((f) => { if (SEV[f.severity]) sevCounts[f.severity] = (sevCounts[f.severity] || 0) + 1; });
+  for (const [key, sev] of Object.entries(SEV)) {
+    const n = sevCounts[key] || 0;
+    if (!n) continue;
+    const i = Number(key);
+    kids.push(chip(`${sev.abbr.toUpperCase()} ${n}`, filters.sev.has(i), () => {
       filters.sev.has(i) ? filters.sev.delete(i) : filters.sev.add(i);
       render();
-    }, "c-" + abbr));
-  });
+    }, "c-" + sev.abbr));
+  }
 
   // Domain chips (every source present in the report — filtering this list
   // by the label table is what hid the sysctl domain when the table was a
@@ -233,9 +255,16 @@ function renderTrend() {
     el("span", { class: "spark-end" }, score(last)));
 }
 
+// incompleteDomains is the model's Report.IncompleteDomains, and it gates
+// two things: this notice, and whether the findings list may call the host
+// clean. Both must ask the same question or the page contradicts itself.
+function incompleteDomains() {
+  return (report.domains || []).filter((d) => !scanComplete(d.state));
+}
+
 function renderDomainNotice() {
   const box = document.getElementById("domains");
-  const bad = (report.domains || []).filter((d) => d.state !== SCAN_DONE);
+  const bad = incompleteDomains();
   if (!bad.length) {
     box.hidden = true;
     box.replaceChildren();
@@ -244,9 +273,10 @@ function renderDomainNotice() {
   box.hidden = false;
   box.replaceChildren(...bad.map((d) => {
     const name = srcLabel(d.source);
-    if (d.state === SCAN_ERROR) return el("span", { class: "dom-err" }, `! ${name} failed: ${d.reason || "unknown error"}`);
-    if (d.state === SCAN_DEGRADED) return el("span", {}, `~ ${name} partial: ${d.reason || ""}`);
-    if (d.state === SCAN_SKIPPED) return el("span", { class: "dom-skip" }, `· ${name} skipped: ${d.reason || ""}`);
+    const state = (SCAN[d.state] && SCAN[d.state].name) || "";
+    if (state === "error") return el("span", { class: "dom-err" }, `! ${name} failed: ${d.reason || "unknown error"}`);
+    if (state === "degraded") return el("span", {}, `~ ${name} partial: ${d.reason || ""}`);
+    if (state === "skipped") return el("span", { class: "dom-skip" }, `· ${name} skipped: ${d.reason || ""}`);
     return el("span", { class: "dom-skip" }, `· ${name} did not run`);
   }));
 }
@@ -268,12 +298,16 @@ function render() {
          el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` })])
   );
 
-  // Per-axis bars (short labels so they never crowd the meter).
-  const AX = { container: "Container", ssh: "SSH", firewall: "Firewall", updates: "Updates", cve: "CVEs", ports: "Ports", accounts: "Accounts", fileperms: "File perms", agent: "AI agents" };
+  // Per-axis bars. The short domain label, not the axis label: the column
+  // is 72px with an ellipsis, and "Container exposure" does not fit where
+  // "Container" does. This was a hand-written table of short labels keyed
+  // by axis ID, nine rows for eleven domains, so the two domains added
+  // after it was written fell through to the long label and rendered
+  // truncated. The axis already carries its source; ask the domain table.
   document.getElementById("axes").replaceChildren(
     ...score.axes.map((ax) =>
       el("div", { class: "axis" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") },
-        el("span", { class: "axis-label" }, AX[ax.id] || ax.label),
+        el("span", { class: "axis-label" }, srcLabel(ax.source)),
         ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
         // A degraded axis is scored from an incomplete picture; the "~" keeps
         // it from reading as a full clean result.
@@ -298,7 +332,16 @@ function render() {
   if (all.length === 0) {
     marked.clear();
     renderBatchbar();
-    list.replaceChildren(el("li", { class: "clean" }, "No problems found. Clean."));
+    // "Clean" is a claim about the whole host, so it may only be made when
+    // the whole host was actually examined. Finding nothing and being
+    // unable to look score the same and mean opposite things — and this
+    // page said "Clean." either way, so a host whose every checker had
+    // failed was reported spotless right above the notice saying so.
+    const missing = incompleteDomains().length;
+    list.replaceChildren(missing > 0
+      ? el("li", { class: "clean muted" },
+        `No problems found in the domains that ran — but ${missing} did not complete.`)
+      : el("li", { class: "clean" }, "No problems found. Clean."));
     document.getElementById("detail").replaceChildren(el("p", { class: "empty" }, "Nothing to fix."));
     return;
   }
@@ -311,7 +354,7 @@ function render() {
   const rows = new Map(); // finding key -> its <li>, so the overview can jump to one
   list.replaceChildren(
     ...items.map((f) => {
-      const li = el("li", { class: "finding " + rowSevClass(f) + (isAuto(f) ? " pickable" : "") },
+      const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") },
         isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
         el("span", { class: "sev" }, sevAbbr(f)),
         el("div", { class: "title" },
@@ -338,23 +381,31 @@ function render() {
 // most severe findings as a jump list. The empty pane was wasted on the one
 // view every user sees first.
 function renderOverview(all, visible, rows) {
-  const counts = [0, 0, 0, 0];
-  for (const f of all) counts[f.severity]++;
+  const counts = {};
+  for (const f of all) counts[f.severity] = (counts[f.severity] || 0) + 1;
   const autos = all.filter(isAuto).length;
-  const s = report.score.overall;
-  const verdict = s >= 80 ? "in good shape" : s >= 50 ? "middling" : s >= 25 ? "exposed" : "wide open";
 
   const d = document.getElementById("detail");
   const box = el("div", { class: "overview" });
-  box.append(el("h3", {}, `This host is ${verdict}.`));
+  // The verdict reads the same band table the meter does, so the wording
+  // and the colour cannot disagree. With no applicable score there is no
+  // band and no verdict to give: an unscannable host is not a bad host,
+  // and "wide open" is the number-shaped version of the lie the gauge's
+  // N/A already refuses to tell.
+  box.append(el("h3", {}, report.score.applicable === false
+    ? "This host could not be scanned."
+    : `This host is ${bandFor(report.score.overall).verdict}.`));
   box.append(el("p", { class: "over-lead" },
     `${all.length} unresolved finding${all.length === 1 ? "" : "s"} across the domains that ran.`));
 
-  // Severity chips, only for severities actually present.
+  // Severity chips, only for severities actually present. Ordered by the
+  // model's table, which is most-severe-first.
   const chips = el("div", { class: "over-sev" });
-  [["Critical", 0], ["High", 1], ["Medium", 2], ["Low", 3]].forEach(([name, i]) => {
-    if (counts[i] > 0) chips.append(el("span", { class: "over-chip sev-" + SEV[i] }, `${counts[i]} ${name}`));
-  });
+  for (const [i, sev] of Object.entries(SEV)) {
+    const n = counts[i] || 0;
+    if (n > 0) chips.append(el("span", { class: "over-chip sev-" + sev.name },
+      `${n} ${sev.name.charAt(0).toUpperCase() + sev.name.slice(1)}`));
+  }
   box.append(chips);
 
   // The one action that needs no per-finding decision.
@@ -375,7 +426,7 @@ function renderOverview(all, visible, rows) {
     const ul = el("ul", { class: "over-jump" });
     for (const f of top) {
       const li = el("li", { class: "over-jump-row" },
-        el("span", { class: "sev " + rowSevClass(f) }, sevAbbr(f)),
+        el("span", { class: "sev " + sevName(f) }, sevAbbr(f)),
         el("span", { class: "over-jump-title" }, f.title),
         f.service ? el("span", { class: "svc" }, f.service) : ""
       );

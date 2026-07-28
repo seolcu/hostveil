@@ -8,7 +8,7 @@ import (
 // The sparkline lives on the model because both interfaces draw the same
 // picture from the same points. A bucketing rule written twice is the shape
 // that has already gone wrong here twice — the severity palette before
-// internal/ui/theme, the domain table before /domains.js.
+// internal/ui/theme, the domain table before /model.js.
 
 func point(score uint8, applicable bool) ScorePoint {
 	return ScorePoint{Overall: score, Applicable: applicable}

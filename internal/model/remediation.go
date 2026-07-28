@@ -15,47 +15,76 @@ const (
 	RemediationReview                             // multiple independent alternatives; user picks
 	RemediationManual                             // guidance only, no automatable action
 	RemediationUnavailable                        // known issue, no fix exists yet (e.g. CVE with no patch)
+
+	remediationCount // sentinel, not a kind; keep last
 )
+
+type remediationDef struct {
+	kind    RemediationKind
+	name    string // stable lowercase name used in exports
+	label   string // human-facing label shown in the UIs
+	fixable bool   // hostveil can offer to apply something
+}
+
+// remediationDefs is the single description of the enum: name, label, and
+// fixability were three switches over the same five constants.
+//
+// The kind is an explicit column and the lookup is built from it, never
+// from the slice index. The numeric value is what reaches disk and the
+// wire, so nothing may depend on a row's position — that is the invariant
+// the whole enum-table shape has to protect.
+//
+// RemediationUnset has a row so the zero value has a name and a label of
+// its own rather than falling out of a default arm. Its false fixability
+// is not a judgement about the finding: an unclassified finding is not
+// "known to have no fix", it is one nobody has classified, and both must
+// refuse to offer a fix button.
+var remediationDefs = []remediationDef{
+	{RemediationUnset, "unset", "Unclassified", false},
+	{RemediationAuto, "auto", "Auto-fix", true},
+	{RemediationReview, "review", "Review", true},
+	{RemediationManual, "manual", "Manual", false},
+	{RemediationUnavailable, "unavailable", "Unavailable", false},
+}
+
+var remediationIndex = indexBy(remediationDefs, func(d remediationDef) RemediationKind { return d.kind })
 
 // IsFixable reports whether hostveil can offer to apply a fix. Unset,
 // Manual, and Unavailable are all non-fixable.
 func (r RemediationKind) IsFixable() bool {
-	return r == RemediationAuto || r == RemediationReview
+	return remediationIndex[r].fixable
 }
 
 // Valid reports whether the kind was classified (i.e. not the zero value).
+//
+// This asks only about Unset, not about table membership. A value outside
+// the enum entirely is a bug or a corrupt snapshot, and the right answer
+// to that is a finding rendered "Unclassified" with no fix button — which
+// is what the other three methods already do. Failing Valid instead would
+// send it through Finding.Validate and drop it from the report, trading a
+// visible oddity for a silent disappearance.
 func (r RemediationKind) Valid() bool {
 	return r != RemediationUnset
 }
 
 // String returns the stable lowercase name used in exports.
 func (r RemediationKind) String() string {
-	switch r {
-	case RemediationAuto:
-		return "auto"
-	case RemediationReview:
-		return "review"
-	case RemediationManual:
-		return "manual"
-	case RemediationUnavailable:
-		return "unavailable"
-	default:
-		return "unset"
+	if d, ok := remediationIndex[r]; ok {
+		return d.name
 	}
+	return "unset"
 }
 
 // Label returns the human-facing label shown in the UIs.
 func (r RemediationKind) Label() string {
-	switch r {
-	case RemediationAuto:
-		return "Auto-fix"
-	case RemediationReview:
-		return "Review"
-	case RemediationManual:
-		return "Manual"
-	case RemediationUnavailable:
-		return "Unavailable"
-	default:
-		return "Unclassified"
+	if d, ok := remediationIndex[r]; ok {
+		return d.label
 	}
+	return "Unclassified"
+}
+
+// AllRemediationKinds lists every kind in declaration order, Unset
+// included. UIs that mirror the enum build their table from this.
+func AllRemediationKinds() []RemediationKind {
+	return columnOf(remediationDefs, func(d remediationDef) RemediationKind { return d.kind })
 }

@@ -26,6 +26,71 @@ func TestZeroValuesAreInert(t *testing.T) {
 	}
 }
 
+// Ran and Complete differ on exactly one state, and everything downstream
+// depends on which one a caller reaches for. Scoring asks Ran, so a degraded
+// domain is still scored. Any claim about absence — the post-fix re-check
+// deciding a finding is gone, the clean-host guard — must ask Complete, or a
+// checker that saw half its ground gets to say nothing is there.
+func TestRanAndCompleteDifferOnlyOnDegraded(t *testing.T) {
+	for _, s := range []ScanState{ScanPending, ScanRunning, ScanDone, ScanSkipped, ScanDegraded, ScanError} {
+		if s == ScanDegraded {
+			if !s.Ran() || s.Complete() {
+				t.Errorf("%v: Ran=%v Complete=%v, want true/false — degraded is the whole distinction",
+					s, s.Ran(), s.Complete())
+			}
+			continue
+		}
+		if s.Ran() != s.Complete() {
+			t.Errorf("%v: Ran=%v but Complete=%v; only ScanDegraded may differ",
+				s, s.Ran(), s.Complete())
+		}
+	}
+	if !ScanDone.Complete() {
+		t.Error("ScanDone must be complete")
+	}
+}
+
+// The predicate behind every "clean host" claim. It lived in the CLI
+// renderer, which is why the CLI was the only interface that refused to
+// call a host clean when its checkers had failed.
+func TestIncompleteDomains(t *testing.T) {
+	for name, tc := range map[string]struct {
+		domains []DomainResult
+		want    int
+	}{
+		// No scan behind the report — not "everything failed".
+		"no domains at all": {nil, 0},
+		"all done": {[]DomainResult{
+			{Source: SourceCVE, State: ScanDone},
+			{Source: SourceCompose, State: ScanDone},
+		}, 0},
+		"one skipped": {[]DomainResult{
+			{Source: SourceCVE, State: ScanSkipped},
+			{Source: SourceCompose, State: ScanDone},
+		}, 1},
+		// Degraded counts: it ran and was scored, but it did not cover
+		// its ground, so it cannot vouch for the host either.
+		"degraded counts": {[]DomainResult{
+			{Source: SourceCompose, State: ScanDegraded},
+		}, 1},
+		"errored counts": {[]DomainResult{
+			{Source: SourceCompose, State: ScanError},
+		}, 1},
+		"every kind": {[]DomainResult{
+			{Source: SourceCompose, State: ScanDone},
+			{Source: SourceSSH, State: ScanSkipped},
+			{Source: SourceCVE, State: ScanDegraded},
+			{Source: SourcePorts, State: ScanError},
+		}, 3},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := (Report{Domains: tc.domains}).IncompleteDomains(); got != tc.want {
+				t.Errorf("IncompleteDomains() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRemediationFixability(t *testing.T) {
 	fixable := map[RemediationKind]bool{
 		RemediationUnset:       false,
@@ -74,31 +139,37 @@ func TestAxisCapsSumTo100(t *testing.T) {
 	}
 }
 
-// TestAllSourcesConsistent guards the source.go three-function contract:
-// every real domain in AllSources must be Valid, must have a concrete (not
-// "unset") String, and must own a scoring axis.
-func TestAllSourcesConsistent(t *testing.T) {
-	axisSources := make(map[Source]bool, len(axisDefs))
+// TestAllSourcesConsistent used to check that every domain in AllSources
+// was Valid, had a String, and owned an axis — all three of which are now
+// true by construction, since AllSources and axisDefs are both projections
+// of sourceDefs and Valid is membership in it. Asserting them here would
+// only be checking that the table equals itself.
+//
+// The assertion that survives the collapse is the one about identity
+// rather than presence: the string columns are keys. name is the
+// finding-ID prefix and the first field of Finding.Key(); axisID keys the
+// axis a UI renders. Two rows sharing either would merge two domains into
+// one wherever those keys are used, and nothing about a table prevents a
+// copy-pasted row. The coverage half of the old test moved to
+// TestEverySourceConstHasATableRow, which walks the const range and so can
+// still see a domain the table forgot.
+func TestSourceKeyColumnsAreDistinct(t *testing.T) {
+	assertDistinct(t, AllSources(), Source.String)
+	assertDistinct(t, AllSources(), Source.Label)
+
+	seenAxis := map[string]Source{}
 	for _, def := range axisDefs {
-		axisSources[def.source] = true
+		if prev, dup := seenAxis[def.id]; dup {
+			t.Errorf("sources %q and %q share the axis ID %q", prev, def.source, def.id)
+		}
+		seenAxis[def.id] = def.source
 	}
-	for _, src := range AllSources() {
-		if !src.Valid() {
-			t.Errorf("AllSources contains invalid source %d", int(src))
-		}
-		if src.String() == "unset" {
-			t.Errorf("source %d has no String() name", int(src))
-		}
-		if !axisSources[src] {
-			t.Errorf("source %q (%d) has no scoring axis", src.String(), int(src))
-		}
-	}
-	if got := len(AllSources()); got != len(axisDefs) {
-		t.Errorf("AllSources has %d entries, axisDefs has %d", got, len(axisDefs))
+	if len(seenAxis) != len(AllSources()) {
+		t.Errorf("%d distinct axis IDs for %d domains", len(seenAxis), len(AllSources()))
 	}
 }
 
-// Every domain needs a display label, and no two may share one.
+// Label must stay empty for everything that is not a domain.
 //
 // This is the guard the display tables did not have. The name was written
 // out twice — a switch in the TUI, an object literal in the dashboard's
@@ -108,29 +179,22 @@ func TestAllSourcesConsistent(t *testing.T) {
 // became unfilterable, and the domain's failures announced themselves as
 // "10 failed". Nothing failed to compile, and no test noticed.
 //
-// Label() returns "" for an unknown domain rather than falling back to
-// String(), precisely so that forgetting shows up here instead of shipping
-// as a plausible-looking lowercase name.
-func TestEverySourceHasALabel(t *testing.T) {
-	seen := map[string]Source{}
-	for _, src := range AllSources() {
-		label := src.Label()
-		if label == "" {
-			t.Errorf("source %q (%d) has no Label() — add one in source.go", src.String(), int(src))
-			continue
+// That every *real* domain has a label is now checked by walking the const
+// range in TestEverySourceConstHasATableRow. What still has to be pinned
+// here is the other end: Label returns "" for a non-domain rather than
+// falling back to String(), which is what makes a forgotten row show up as
+// a failing test instead of shipping as a plausible-looking lowercase name.
+func TestOnlyRealDomainsHaveLabels(t *testing.T) {
+	for _, s := range []Source{SourceUnset, sourceCount, -1, 99} {
+		if got := s.Label(); got != "" {
+			t.Errorf("Source(%d) has label %q, but it is not a domain", int(s), got)
 		}
-		if prev, dup := seen[label]; dup {
-			t.Errorf("sources %q and %q share the label %q", prev.String(), src.String(), label)
+		if s.Valid() {
+			t.Errorf("Source(%d) is not a domain but reports Valid", int(s))
 		}
-		seen[label] = src
-	}
-	// The nothing-extracted guard: an AllSources that somehow returned
-	// nothing would pass every assertion above without checking anything.
-	if len(seen) < len(axisDefs) {
-		t.Errorf("only %d of %d domains produced a label", len(seen), len(axisDefs))
-	}
-	if SourceUnset.Label() != "" {
-		t.Errorf("SourceUnset has label %q, but it is not a domain", SourceUnset.Label())
+		if got := s.String(); got != "unset" {
+			t.Errorf("Source(%d).String() = %q, want unset", int(s), got)
+		}
 	}
 }
 

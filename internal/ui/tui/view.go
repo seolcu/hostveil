@@ -99,12 +99,12 @@ func (s *styles) severityColor(sev model.Severity) color.Color {
 
 // band maps a 0-100 health score to its meter color (safe→crit heat).
 func (s *styles) band(v uint8) color.Color {
-	switch {
-	case v >= 80:
+	switch model.BandFor(v) {
+	case model.BandGood:
 		return s.cSafe
-	case v >= 50:
+	case model.BandFair:
 		return s.cMed
-	case v >= 25:
+	case model.BandPoor:
 		return s.cHigh
 	default:
 		return s.cCrit
@@ -300,12 +300,35 @@ func (m *appModel) listRows(budget int) []string {
 
 	fl := m.filterLine()
 
-	// Empty list: distinguish a clean host from a too-narrow filter.
+	// Empty list: distinguish a clean host from a too-narrow filter — and,
+	// when nothing is filtered, a clean host from one that could not be
+	// examined. "Clean" is a claim about the whole host, so it may only be
+	// made when the whole host was looked at. The CLI has always drawn that
+	// line; this view and the dashboard both said "Clean." unconditionally,
+	// so a host whose every checker failed read as spotless in two
+	// interfaces out of three.
+	//
+	// The message has to stand on its own here. The CLI can say "see above"
+	// because it prints a per-domain status block first; this view prints
+	// none, so it names the count itself.
 	if len(m.active) == 0 {
 		var body []string
-		if fl != "" {
+		switch {
+		case fl != "":
 			body = append(body, fl, "", s.dim.Render("  No findings match the filter."))
-		} else {
+		case m.report.IncompleteDomains() > 0:
+			// Wrapped, for the reason the preview's warning is wrapped: this
+			// row is far longer than the "Clean." it replaces, and clipped at
+			// the terminal edge it degrades into "No problems found in the
+			// domains that" — which reads as the very claim it exists to
+			// withhold.
+			warn := lipgloss.NewStyle().Foreground(s.cHigh)
+			msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
+				m.report.IncompleteDomains())
+			for _, l := range strings.Split(wrap(msg, min(m.width-4, 78)), "\n") {
+				body = append(body, warn.Render("  "+l))
+			}
+		default:
 			body = append(body, s.safe.Render("  No problems found. Clean."))
 		}
 		return centerRows(body, budget)
@@ -440,17 +463,11 @@ func (m *appModel) filterLine() string {
 	return s.dim.Render("FILTER  ") + s.bone.Render(strings.Join(parts, " · "))
 }
 
+// sevAbbr upper-cases the model's abbreviation rather than keeping a
+// second table of its own. The abbreviations are pinned to four characters
+// there, which is the width findingRow pads this column to.
 func sevAbbr(s model.Severity) string {
-	switch s {
-	case model.SeverityCritical:
-		return "CRIT"
-	case model.SeverityHigh:
-		return "HIGH"
-	case model.SeverityMedium:
-		return "MED"
-	default:
-		return "LOW"
-	}
+	return strings.ToUpper(s.Abbr())
 }
 
 func (m *appModel) serviceSuffix(f model.Finding) string {
