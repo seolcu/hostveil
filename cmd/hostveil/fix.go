@@ -19,6 +19,13 @@ import (
 // could only be exercised by scanning the machine running the tests.
 var newEngine = func() *core.Engine { return buildEngine() }
 
+// newEngineWithAI is the same seam for the three commands that offer the
+// advisory explainer. It exists so `explain` is reachable from a test the
+// way `fix` and `rollback` are; without it, explain built its engine
+// directly and could only be exercised by scanning the machine running the
+// tests.
+var newEngineWithAI = func(useAI bool) *core.Engine { return buildEngineWithAI(useAI) }
+
 func cmdFix(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("fix", flag.ContinueOnError)
 	var (
@@ -43,6 +50,20 @@ func cmdFix(ctx context.Context, args []string) int {
 	}
 
 	if all {
+		// --all applies every Auto fix on the host, so there is no one
+		// finding to disambiguate and no alternative to pick — Auto fixes
+		// have exactly one action by definition. Both flags parsed into
+		// this set and were then silently dropped, which is the worst
+		// available answer: `fix --all --action 1` looked like it chose
+		// something. Say so instead.
+		if service != "" || action >= 0 {
+			fmt.Fprintln(os.Stderr, "hostveil: --service and --action apply to a single finding and cannot be combined with --all")
+			return 2
+		}
+		if findingID != "" || fs.NArg() > 0 {
+			fmt.Fprintln(os.Stderr, "hostveil: --all applies every safe fix; do not also name a finding")
+			return 2
+		}
 		return fixAll(ctx, yes)
 	}
 	if findingID == "" {

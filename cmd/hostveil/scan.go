@@ -44,7 +44,7 @@ func cmdScan(ctx context.Context, args []string) int {
 		return 2
 	}
 
-	engine := buildEngine()
+	engine := newEngine()
 	report := scanWithProgress(ctx, engine, scanOpts)
 
 	var rendered string

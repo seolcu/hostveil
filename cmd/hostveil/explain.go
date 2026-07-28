@@ -29,7 +29,7 @@ func cmdExplain(ctx context.Context, args []string) int {
 		return 2
 	}
 
-	engine := buildEngineWithAI(useAI)
+	engine := newEngineWithAI(useAI)
 	report := engine.Scan(ctx, nil)
 	finding, ok := findFinding(report, findingID, service)
 	if !ok {
