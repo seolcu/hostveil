@@ -57,8 +57,17 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="history">history</h2>
             <p>List applied fixes and their rollback IDs.</p>
-            <div class="code-block"><pre><code>hostveil history</code></pre></div>
-            <p>Lists checkpoints newest-first with a timestamp, the finding ID, a label, and either the exact <code>hostveil rollback &lt;id&gt;</code> command or <em>not reversible</em>. No flags.</p>
+            <div class="code-block"><pre><code>hostveil history
+hostveil history --scans</code></pre></div>
+            <p>Lists checkpoints newest-first with a timestamp, the finding ID, a label, and either the exact <code>hostveil rollback &lt;id&gt;</code> command or <em>not reversible</em>.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--scans</code></td><td>Show the score of every retained scan instead of the applied-fix log, oldest first, with the change from the one before it. hostveil keeps the last 30 scans. A scan where no domain could be examined shows <code>N/A</code> rather than a number, and no change is reported against it — a run nobody could score is not a drop to zero.</td></tr>
+                </tbody>
+              </table>
+            </div>
 
             <h2 id="explain">explain</h2>
             <p>Explain a finding in plain language.</p>

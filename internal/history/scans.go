@@ -1,9 +1,12 @@
 package history
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -83,4 +86,59 @@ func scanFiles(dir string) ([]string, error) {
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+// ScanSnapshot is one saved scan: when it ran, and the opaque bytes it was
+// saved as. The store deliberately does not parse them — it holds
+// snapshots, it does not know what a report is — so the caller unmarshals.
+type ScanSnapshot struct {
+	ID   string
+	At   time.Time
+	Data []byte
+}
+
+// scanIDTime is the timestamp layout NewScanID writes. The ids are
+// timestamp-prefixed so a lexical sort is chronological, which pruning and
+// LastReport both already rely on; this reads the same prefix back.
+const scanIDTime = "20060102-150405.000"
+
+// ListReports returns every retained scan snapshot, oldest first.
+//
+// Thirty of these have been kept and pruned since the store was written,
+// and nothing ever read more than the newest one — LastReport takes the
+// last element and every interface shows only "since last scan". The data
+// for a trend was on disk the whole time with no way to ask for it.
+//
+// A snapshot whose id does not carry a parseable timestamp, or that cannot
+// be read, is skipped rather than failing the call. This is a history
+// view: one unreadable entry should cost that entry, not the whole series
+// — the same reasoning as Store.List returning what it could read
+// alongside its error.
+func (s *Store) ListReports() ([]ScanSnapshot, error) {
+	names, err := scanFiles(s.scansDir())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ScanSnapshot, 0, len(names))
+	for _, name := range names {
+		id := strings.TrimSuffix(name, ".json")
+		at, err := scanIDAt(id)
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(s.scansDir(), name))
+		if err != nil {
+			continue
+		}
+		out = append(out, ScanSnapshot{ID: id, At: at, Data: data})
+	}
+	return out, nil
+}
+
+// scanIDAt recovers the scan time from its id.
+func scanIDAt(id string) (time.Time, error) {
+	if len(id) < len(scanIDTime) {
+		return time.Time{}, fmt.Errorf("scan id %q is too short to carry a timestamp", id)
+	}
+	return time.Parse(scanIDTime, id[:len(scanIDTime)])
 }
