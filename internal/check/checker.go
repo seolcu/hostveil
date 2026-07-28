@@ -64,9 +64,6 @@ func NewRegistry(checkers ...Checker) *Registry {
 	return &Registry{checkers: checkers}
 }
 
-// Register appends a checker.
-func (r *Registry) Register(c Checker) { r.checkers = append(r.checkers, c) }
-
 // Checkers returns the registered checkers.
 func (r *Registry) Checkers() []Checker { return r.checkers }
 
