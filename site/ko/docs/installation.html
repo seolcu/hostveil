@@ -143,6 +143,15 @@
               </table>
             </div>
 
+                        <h2 id="packages">Debian·RPM 패키지</h2>
+            <p>모든 릴리스에는 <code>.deb</code>와 <code>.rpm</code> 패키지도 함께 올라갑니다. 스크립트를 셸에 파이프하고 싶지 않은 분들을 위한 것이고, 보안 도구라면 특히 타당한 선호입니다. <a href="https://github.com/seolcu/hostveil/releases/latest">최신 릴리스</a>에서 아키텍처에 맞는 파일을 받아 패키지 관리자로 설치하세요.</p>
+            <div class="code-block"><pre><code>sudo apt install ./hostveil_&lt;version&gt;_linux_amd64.deb
+# 또는
+sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
+            <p>패키지는 설치 스크립트와 같은 경로 <code>/usr/bin/hostveil</code>에 같은 바이너리 하나를 설치하므로 둘은 서로 바꿔 쓸 수 있습니다 — PATH에 사본이 두 개 남는 일 없이 옮겨 갈 수 있습니다. Docker와 <code>iproute2</code>는 <em>권장</em>일 뿐 필수가 아닙니다. 없으면 컨테이너·CVE·노출된 서비스 영역이 N/A로 표시될 뿐, hostveil이 실행되지 않는 것은 아닙니다.</p>
+            <p>활성화할 서비스도, 편집할 설정 파일도 없습니다. 패키지를 제거해도 <code>/var/lib/hostveil</code>은 남습니다 — <code>--uninstall</code>과 같은 이유로, 그 체크포인트가 hostveil이 편집한 모든 파일의 백업이기 때문입니다.</p>
+            <p>패키지는 리눅스 전용입니다. hostveil은 macOS에서 빌드되고 실행되지만 거기서는 볼 것이 없습니다 — systemd도, ufw도, 기대하는 형태의 <code>/etc/shadow</code>도 없습니다.</p>
+
             <h2 id="upgrade">업그레이드와 제거</h2>
             <p>업그레이드하려면 설치 명령을 다시 실행하세요. 바이너리만 교체되고, 저장된 스캔 기록과 롤백 체크포인트는 그대로 남습니다.</p>
             <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall</code></pre></div>

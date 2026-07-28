@@ -27,6 +27,56 @@ archives:
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
     formats: ["tar.gz"]
 
+# Native packages, for the audience this tool is actually for. hostveil
+# runs meaningfully only on Linux, and its users administer servers — where
+# `apt install ./hostveil.deb` is the ordinary way software arrives and a
+# tarball extracted into /usr/bin is the exception. Until now the only
+# supported path was piping install.sh to bash, which is exactly the habit
+# a security tool should not be teaching.
+#
+# Linux only: nfpms builds .deb and .rpm, and a macOS build has no business
+# in either. The darwin binaries still ship as archives.
+#
+# The package installs the same single binary to the same path install.sh
+# uses, /usr/bin/hostveil, so the two are interchangeable — an operator can
+# move from one to the other without ending up with two copies on PATH.
+#
+# There is no postinstall script, no service unit, and no config file to
+# ship. hostveil is a command you run, its state lives in /var/lib/hostveil
+# (created on first use as root), and it has no daemon. Packaging it as
+# though it did would invent a lifecycle the tool does not have — and a
+# package that removed /var/lib/hostveil on purge would delete the
+# checkpoints that are the only backup of every file it ever edited, which
+# is precisely why install.sh --uninstall leaves them alone too.
+nfpms:
+  - id: packages
+    package_name: hostveil
+    ids: [hostveil]
+    formats: [deb, rpm]
+    maintainer: seolcu <seolcu@users.noreply.github.com>
+    homepage: https://hostveil.seolcu.com/
+    description: |-
+      Guided security hardening for self-hosted Linux servers.
+      hostveil scans a host for the misconfigurations that get self-hosters
+      breached, merges them into one 0-100 score, explains each in plain
+      language, and applies fixes with preview, backup, and rollback.
+    license: GPL-3.0
+    section: admin
+    bindir: /usr/bin
+    # Every one of these is optional and each unlocks a domain rather than
+    # being required to run: no Docker means the container and CVE domains
+    # report N/A, not that hostveil fails. Recommends, never Depends —
+    # pulling Docker onto a host as a side effect of installing a scanner
+    # would be indefensible.
+    recommends:
+      - docker.io
+      - iproute2
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/hostveil/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/hostveil/README.md
+
 checksum:
   name_template: "{{ .ProjectName }}-checksums.txt"
   algorithm: sha256
@@ -36,6 +86,11 @@ checksum:
 sboms:
   - id: archive-sbom
     artifacts: archive
+  # And one per package, for the same reason. A .deb is the artifact most
+  # likely to be installed without anyone reading a release page, so it is
+  # the one that most needs its dependency set to be auditable afterwards.
+  - id: package-sbom
+    artifacts: package
 
 # The changelog is written by hand into CHANGELOG.md and the release body
 # before this runs, derived from conventional-commit history (see AGENTS.md).
