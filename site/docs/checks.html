@@ -102,6 +102,7 @@
                   <tr><td>File permissions</td><td><code>fileperms.</code></td><td>—</td></tr>
                   <tr><td>AI agent runtimes</td><td><code>agent.</code></td><td>OpenClaw or Hermes installed</td></tr>
                   <tr><td>Kernel hardening</td><td><code>sysctl.</code></td><td>—</td></tr>
+                  <tr><td>Docker daemon</td><td><code>dockerd.</code></td><td>Docker</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -130,14 +131,15 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>17</td></tr>
-                  <tr><td>SSH hardening</td><td>16</td></tr>
-                  <tr><td>Vulnerabilities</td><td>12</td></tr>
-                  <tr><td>Host firewall</td><td>11</td></tr>
-                  <tr><td>Exposed services</td><td>10</td></tr>
-                  <tr><td>AI agent runtimes</td><td>10</td></tr>
+                  <tr><td>Container exposure</td><td>15</td></tr>
+                  <tr><td>SSH hardening</td><td>15</td></tr>
+                  <tr><td>Vulnerabilities</td><td>11</td></tr>
+                  <tr><td>Host firewall</td><td>10</td></tr>
+                  <tr><td>Exposed services</td><td>9</td></tr>
+                  <tr><td>AI agent runtimes</td><td>9</td></tr>
                   <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
+                  <tr><td>Docker daemon</td><td>7</td></tr>
                   <tr><td>File permissions</td><td>5</td></tr>
                   <tr><td>Kernel hardening</td><td>5</td></tr>
                 </tbody>
@@ -291,6 +293,28 @@
                 </tbody>
               </table>
             </div>
+
+            <h2 id="dockerd">Docker daemon <code>dockerd.</code></h2>
+            <p>The Compose audit judges what your services declare and the CVE scan judges the images they run. This domain judges the daemon underneath both — the part of the stack that actually holds root.</p>
+            <p>It is worth being blunt about the worst finding here, because it is the worst finding hostveil has. A daemon listening on a TCP port without TLS client verification is root on the host for anyone who can reach that port: no password, no vulnerability, one HTTP request that starts a container with your filesystem mounted inside it. Membership in the socket's group is the same authority from a local account, and unlike <code>sudo</code> it asks for nothing and logs nothing.</p>
+            <p><strong>Three sources, and they disagree.</strong> Docker's settings live in <code>/etc/docker/daemon.json</code>, in flags on the service unit, and in the running daemon — and after an edit without a restart those are different answers. So the daemon defaults are read from <code>docker info</code>, which is what the daemon actually loaded rather than what someone wrote down; the socket and TLS settings are read from the file and the unit together, because <code>docker info</code> does not report them at all; and <code>ss</code> supplies the endpoint you can go and verify, without ever deciding whether a finding exists.</p>
+            <p><strong>Every finding here is Manual, on purpose.</strong> The checker reads the running daemon, but a fix would edit a file the daemon does not read again until it restarts — and restarting Docker stops every container on the host. A fix that marked the finding resolved and raised your score while changing nothing an attacker can see would be worse than no fix, so the how-to-fix text carries the exact change and you choose the moment.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>The Docker API is served over TCP with no TLS client verification — unauthenticated root for anyone who can reach the port</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>Every local account can connect to the Docker socket, and so become root</td><td><span class="sev critical">Critical</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>The API is encrypted but accepts any client — TLS without <code>tlsverify</code> authenticates the server, not the caller</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>Accounts other than root hold the socket's group, which is root-equivalent with no password prompt and no audit record</td><td><span class="sev medium">Medium</span> / <span class="sev high">High</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>Containers can still gain privileges through setuid binaries</td><td><span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>User namespaces are not remapped, so container root is host root</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>Restarting the daemon stops every container, which is why daemon updates get deferred</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>dockerd.group-members</code> is <span class="sev medium">Medium</span> when the accounts holding the group are people, and <span class="sev high">High</span> when any of them is a service account — one with a system UID or no interactive login. Nobody deliberately grants a CI runner or a monitoring agent the ability to become root, and a credential that never logs in is one nobody is watching.</p>
+            <p>A loopback-only TCP socket is not flagged: it reaches nothing the unix socket did not, and it is the documented way to put a proxy in front of the daemon. A daemon running <strong>rootless</strong> has <code>userns-remap</code> and <code>group-members</code> suppressed and its API finding lowered to <span class="sev high">High</span>, because the blast radius is that user's containers rather than the host. <code>live-restore</code> is suppressed on a swarm node, where Docker does not support it.</p>
 
             <h2 id="agent">AI agent runtimes <code>agent.</code></h2>
             <p>Self-hosted AI agents — <a href="https://docs.openclaw.ai/">OpenClaw</a> and <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a> — run a network gateway and keep API keys on disk in your home directory. Misconfigured, the worst case is someone reaching that gateway and driving an agent that can read your files and run commands as you.</p>

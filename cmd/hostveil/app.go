@@ -9,6 +9,7 @@ import (
 	agentcheck "github.com/seolcu/hostveil/internal/check/agent"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	cvecheck "github.com/seolcu/hostveil/internal/check/cve"
+	dockerdcheck "github.com/seolcu/hostveil/internal/check/dockerd"
 	filepermscheck "github.com/seolcu/hostveil/internal/check/fileperms"
 	firewallcheck "github.com/seolcu/hostveil/internal/check/firewall"
 	portscheck "github.com/seolcu/hostveil/internal/check/ports"
@@ -40,6 +41,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 			filepermscheck.New(),
 			agentcheck.New(),
 			sysctlcheck.New(),
+			dockerdcheck.New(),
 		),
 		Fixes:  fix.Default(),
 		Runner: debugRunner(),

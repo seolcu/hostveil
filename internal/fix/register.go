@@ -259,6 +259,66 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
+// # The Docker daemon domain, declined whole
+//
+// dockerd.* has no registered fix at all — not one finding, and not because
+// nobody has looked. The two blockers that would ordinarily explain it are
+// both gone, which is why the real reason has to be written down.
+//
+// Action.CreateIfMissing handles the absent /etc/docker/daemon.json, exactly
+// as it does for the sysctl drop-in. And `dockerd --validate --config-file`
+// is a genuine `sshd -t` analogue: it rejects malformed JSON and unknown
+// directives, accepts an empty file — so verifyEdit's control run on the
+// original passes for a create-if-missing action — and needs no running
+// daemon. A VerifyCmd here would work.
+//
+// The reason is structural, and it is the one thing this domain does that
+// no other does: the checker reads the daemon's *running* state, while a fix
+// would edit a file the running daemon will not read again until it
+// restarts. `systemctl restart docker` stops every container on the host.
+//
+// So an applied fix would write the file, take a checkpoint, mark the
+// finding Fixed, and raise the score — while changing nothing an attacker
+// can see. The next scan asks `docker info`, gets the same answer as before,
+// and reports the finding again. A fix that improves the score without
+// improving the host is the objection already recorded for compose.ds016,
+// arriving by a different route.
+//
+// The asymmetry with SSH is what makes this consistent rather than
+// arbitrary. The ssh checker reads sshd_config, which is the same artifact
+// the ssh fix edits, so the Fixed mark is honest and the restart is a hint.
+// Here the artifact and the oracle are two different objects, and only one
+// of them is what the domain reports on.
+//
+// Each finding also has its own reason on top of that shared one:
+//
+//   - dockerd.api-unauthenticated and dockerd.api-tls-unverified — removing
+//     the TCP endpoint severs the exact channel a remote operator may be
+//     administering the host through: DOCKER_HOST, a Portainer agent, a CI
+//     runner. That is firewall.inactive's recoverability criterion.
+//   - dockerd.group-members — `gpasswd -d` is exec, so never Auto, and the
+//     member it removes may be the operator's own account and the access
+//     they administer the daemon with. That is accounts.emptypassword's
+//     objection.
+//   - dockerd.socket-world-writable — the socket's mode is not durable
+//     state. dockerd recreates the socket from the systemd docker.socket
+//     unit on every start, so a chmod is undone at the next restart and the
+//     honest remediation is a unit drop-in — which needs a restart to apply.
+//   - dockerd.live-restore — the one setting `systemctl reload docker` picks
+//     up without bouncing containers, which is what makes it look fixable.
+//     The reload is exec and has no checkpoint, and pairing it with the
+//     daemon.json edit is "write it, then apply it" — sequential steps, the
+//     shape Review forbids. Docker has no `sysctl -w` equivalent, no way to
+//     change a running daemon's setting in place, so there is no second
+//     independent alternative to pair with. That leaves one action, which
+//     would have to be Auto: `fix --all`, unattended, re-encoding the
+//     operator's daemon.json through encoding/json and reordering every key
+//     for a one-line change.
+//   - dockerd.no-new-privileges and dockerd.userns-remap — the shared reason
+//     alone. Both are daemon defaults that take effect only for containers
+//     started after a restart, and userns-remap additionally rewrites the
+//     ownership of every bind mount on the host.
+//
 // # The one CVE finding that does have a fix
 //
 // cve.outdated-image, the per-image rollup, IS registered, because its
