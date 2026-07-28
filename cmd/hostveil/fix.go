@@ -143,19 +143,14 @@ func fixAll(ctx context.Context, yes bool) int {
 	}
 
 	out := engine.ApplyBatch(ctx, auto)
-	fmt.Printf("\n✓ Applied %d fixes", len(out.Applied))
-	if len(out.Failed) > 0 {
-		fmt.Printf(", %d failed", len(out.Failed))
-	}
-	fmt.Printf(". New security score: %d/100\n", out.NewScore.Overall)
+	// One sentence, rendered by the engine, so this and the other two
+	// interfaces cannot describe the same outcome differently. Only the
+	// per-failure detail and the rollback hint are the CLI's own — it has
+	// the room for the first and is the only place the second is a command
+	// you can type.
+	fmt.Printf("\n✓ %s\n", out.Message)
 	for id, msg := range out.Failed {
 		fmt.Printf("  ✗ %s: %s\n", id, msg)
-	}
-	// Say it before the rollback hint, because the hint is what an
-	// interrupted operator most needs: some fixes did land, and nothing else
-	// on screen would tell them that.
-	if out.Interrupted {
-		fmt.Printf("\nInterrupted — %d of %d fixes were never attempted.\n", len(out.Skipped), len(auto))
 	}
 	fmt.Println("Roll back any change with: hostveil history")
 	if out.Interrupted {

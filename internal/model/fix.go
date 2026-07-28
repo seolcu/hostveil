@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // FixPreview is the side-effect-free preview of a finding's fix: what each
 // available action would change, computed without touching any live file
@@ -60,6 +64,42 @@ type BatchOutcome struct {
 	// has no reason to go looking for them.
 	Interrupted bool           `json:"interrupted,omitempty"`
 	NewScore    ScoreBreakdown `json:"new_score"`
+	// Message is the sentence every interface shows, rendered once by the
+	// engine from the fields above. It exists for the reason
+	// FixOutcome.VerifyMessage does, and the reason turned out to apply
+	// here with more force: four surfaces phrased this outcome themselves
+	// and each dropped something different. The dashboard's batch path
+	// never mentioned Interrupted at all, so a batch cut short read exactly
+	// like one that completed — the outcome the flag was added to prevent —
+	// and its fix-all path reported neither skipped nor failed, so a fix
+	// that errored was invisible.
+	Message string `json:"message"`
+}
+
+// Summary renders the outcome as one sentence.
+//
+// It deliberately stops before saying where to look. "press h" and
+// "hostveil history" are directions to a place only one interface has, and
+// an interface appends its own; what may not vary is the claim about what
+// happened.
+func (o BatchOutcome) Summary() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Applied %d", len(o.Applied))
+	if n := len(o.Skipped); n > 0 {
+		fmt.Fprintf(&b, " · skipped %d", n)
+	}
+	if n := len(o.Failed); n > 0 {
+		fmt.Fprintf(&b, " · failed %d", n)
+	}
+	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
+	// Every finding handed to a batch lands in exactly one of the three, so
+	// their sum is what was asked for — which is what makes "8 of 11" sayable
+	// without the caller passing the total back in.
+	if o.Interrupted {
+		fmt.Fprintf(&b, " Interrupted — %d of %d were never attempted.",
+			len(o.Skipped), len(o.Applied)+len(o.Skipped)+len(o.Failed))
+	}
+	return b.String()
 }
 
 // RollbackOutcome is the result of rolling back a checkpoint. Unfixed and

@@ -826,21 +826,14 @@ func rollbackSummary(o model.RollbackOutcome) string {
 }
 
 func batchSummary(o model.BatchOutcome) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "✓ Applied %d", len(o.Applied))
-	if len(o.Skipped) > 0 {
-		fmt.Fprintf(&b, " · skipped %d", len(o.Skipped))
-	}
-	if len(o.Failed) > 0 {
-		fmt.Fprintf(&b, " · failed %d", len(o.Failed))
-	}
-	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
-	// An interrupted batch and a completed one differ only in this sentence,
-	// and the difference matters: the skipped findings were never judged
-	// ineligible, they were never reached, and the fixes that did land are
-	// already on the host with checkpoints waiting in the history view.
+	// The claim comes from the engine; this adds only the tick and the one
+	// thing that is genuinely local — which key reaches the history view.
+	// The fixes that did land are already on the host with checkpoints
+	// waiting there, and an operator who thinks the batch completed has no
+	// reason to go looking.
+	s := "✓ " + o.Message
 	if o.Interrupted {
-		b.WriteString(" Interrupted before the rest were attempted; press h to see what was applied.")
+		s += " Press h to see what was applied."
 	}
-	return b.String()
+	return s
 }

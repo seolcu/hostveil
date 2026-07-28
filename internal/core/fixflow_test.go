@@ -693,6 +693,16 @@ func TestInterruptedBatchReportsWhatItDidNotReach(t *testing.T) {
 	if len(out.Skipped) != len(findings) {
 		t.Errorf("skipped %d, want all %d unreached findings listed", len(out.Skipped), len(findings))
 	}
+	// The flag is only worth setting if it reaches the operator, and every
+	// interface now shows Message and nothing else about the outcome. The
+	// dashboard used to render its own summary and omit the interruption
+	// entirely, so a batch cut short read exactly like a completed one.
+	if !strings.Contains(out.Message, "Interrupted") {
+		t.Errorf("Message = %q, want it to say the batch was interrupted", out.Message)
+	}
+	if !strings.Contains(out.Message, "3 of 3 were never attempted") {
+		t.Errorf("Message = %q, want it to count what was never reached", out.Message)
+	}
 }
 
 // The flag must not fire on the ordinary path, or it means nothing.
@@ -709,6 +719,9 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 	out := engine.ApplyBatch(context.Background(), []model.Finding{f})
 	if out.Interrupted {
 		t.Error("a batch that ran to completion must not report Interrupted")
+	}
+	if strings.Contains(out.Message, "Interrupted") {
+		t.Errorf("Message = %q must not mention an interruption on the ordinary path", out.Message)
 	}
 	if len(out.Applied) != 1 {
 		t.Errorf("applied = %v, want the one auto fix", out.Applied)
