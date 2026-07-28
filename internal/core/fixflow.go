@@ -182,9 +182,9 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		return model.FixOutcome{Success: false, Error: err.Error()}, err
 	}
 
-	// Mark the finding fixed, cascade to same-service siblings sharing the
-	// fix, and rescore — all inside the engine so no UI reimplements it.
-	outcome.AlsoFixed = e.markFixed(f)
+	// Mark the finding fixed and rescore — both inside the engine so no UI
+	// reimplements either.
+	e.markFixed(f)
 	outcome.Success = true
 	outcome.NewScore = e.rescore()
 	return outcome, nil
@@ -590,11 +590,15 @@ func (e *Engine) buildFix(f model.Finding) (fix.Fix, bool, error) {
 	return e.fixes.Build(f)
 }
 
-// markFixed marks the target finding fixed in the current report. Richer
-// cross-finding cascade and re-scan verification arrive in a later phase;
-// here the applied finding alone is marked, and its return value is the
-// list of additional findings marked (currently none).
-func (e *Engine) markFixed(target model.Finding) []string {
+// markFixed marks the target finding fixed in the current report.
+//
+// It used to return "the list of additional findings marked (currently
+// none)" against a planned cross-finding cascade, and FixOutcome carried
+// that list to the UIs as `also_fixed`. Nothing ever populated it and no
+// interface ever read it, so the field promised a behaviour the engine did
+// not have; both are gone. If a cascade is ever built, it should be built
+// with the thing that reports it, not ahead of it.
+func (e *Engine) markFixed(target model.Finding) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	for i := range e.current.Findings {
@@ -603,7 +607,6 @@ func (e *Engine) markFixed(target model.Finding) []string {
 			f.Fixed = true
 		}
 	}
-	return nil
 }
 
 func (e *Engine) rescore() model.ScoreBreakdown {

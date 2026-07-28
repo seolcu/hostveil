@@ -150,6 +150,42 @@ package fix
 //     requires. agent.gateway-exposed fails the recoverability test on top
 //     of all that: rebinding a gateway to loopback can cut an operator off
 //     from the agent they administer remotely.
+//   - compose.ds012 — the remediation is a healthcheck, and the right one
+//     depends entirely on what the service exposes: an HTTP path, a CLI
+//     probe, a port to open. A static audit cannot learn any of them, and a
+//     guessed healthcheck is worse than none — a probe that does not match
+//     the app marks a working container unhealthy, and anything waiting on
+//     `condition: service_healthy` then never starts. The finding's own
+//     how-to-fix says this cannot be filled in automatically; this is the
+//     registry agreeing with it.
+//   - compose.dr004 — the finding is not that a value is wrong but that
+//     credentials live in an env_file, and the remediation is to check that
+//     file's permissions and that it is out of version control and backups.
+//     One of those is a fact about a path the finding does not carry, and
+//     the other two are about systems hostveil cannot see. There is nothing
+//     in the compose file to edit.
+//   - ports.exposed — the aggregate finding, which fires only when no
+//     firewall is active at all. Its remediation is firewall.inactive's,
+//     and it is declined for firewall.inactive's reason: enabling
+//     default-deny on a box reached over SSH can lock the operator out
+//     irrecoverably, and exec fixes have no checkpoint. Fixing the firewall
+//     resolves this finding as a side effect, which is the right order.
+//   - accounts.uid0 — the remediation is deleting an account or changing
+//     its UID, and hostveil cannot tell a backdoor from a deliberate
+//     second root that a recovery procedure depends on. `userdel` is not
+//     reversible from a checkpoint at all: it takes the home directory,
+//     the mail spool, and the account's file ownership with it. Changing
+//     the UID instead orphans every file the account owns, which the
+//     finding does not enumerate and could not restore.
+//   - accounts.emptypassword — `passwd -l` is a real, mechanical
+//     remediation and it is deliberately not registered. It is exec, so
+//     never Auto; and it fails the recoverability test in the way that
+//     matters most, because the account it locks may be the only one the
+//     operator can reach the machine with. An empty password on a console-
+//     only account is a different situation from one on the account you
+//     SSH in as, and /etc/shadow does not say which this is. Setting a
+//     password instead cannot be done unattended by definition — hostveil
+//     would have to invent one, and then it would know it.
 //   - sysctl.* (every kernel-hardening finding) — one shared reason.
 //     Persisting a value means writing an /etc/sysctl.d drop-in that does
 //     not exist, and edit actions cannot create files: previewEdit and

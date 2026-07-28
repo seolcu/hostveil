@@ -29,7 +29,6 @@ type FixOutcome struct {
 	Error        string         `json:"error,omitempty"`
 	Diff         string         `json:"diff,omitempty"`
 	CheckpointID string         `json:"checkpoint_id,omitempty"` // "" if nothing to roll back
-	AlsoFixed    []string       `json:"also_fixed,omitempty"`    // cascaded finding IDs
 	RestartHint  string         `json:"restart_hint,omitempty"`  // service the user may need to restart
 	NewScore     ScoreBreakdown `json:"new_score"`
 }
@@ -49,9 +48,8 @@ type BatchOutcome struct {
 }
 
 // RollbackOutcome is the result of rolling back a checkpoint. Unfixed and
-// NewScore mirror FixOutcome's AlsoFixed/NewScore so a long-lived UI can
-// refresh its list and gauge straight from the response, exactly as it
-// does after an apply.
+// NewScore let a long-lived UI refresh its list and gauge straight from the
+// response, exactly as NewScore does after an apply.
 type RollbackOutcome struct {
 	CheckpointID   string         `json:"checkpoint_id"`
 	RestoredFiles  []string       `json:"restored_files"`

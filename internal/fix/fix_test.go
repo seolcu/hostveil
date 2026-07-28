@@ -143,6 +143,12 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"sysctl.accept-redirects": "same drop-in problem",
 		"sysctl.rp-filter":        "same drop-in problem",
 		"sysctl.protected-links":  "same drop-in problem",
+
+		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
+		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
+		"ports.exposed":          "the aggregate finding's remediation is firewall.inactive's, and is declined for the same reason",
+		"accounts.uid0":          "userdel is exec, irreversible, and takes the home directory with it; hostveil cannot tell a backdoor from a deliberate second root",
+		"accounts.emptypassword": "passwd -l is exec, and the account it locks may be the only way the operator reaches the machine",
 	}
 	r := Default()
 	for id, why := range declined {
