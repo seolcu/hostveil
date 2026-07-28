@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/model"
 )
 
 // The docs table in content/{en,ko}/docs/checks.html is the enumeration of
@@ -30,7 +32,30 @@ import (
 // findingID matches a namespaced finding ID. The namespace must be one of
 // the real sources, so incidental dotted strings in the check packages
 // (config filenames, config keys like net.bindIp) do not masquerade as IDs.
-var findingID = regexp.MustCompile(`^(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent|sysctl|dockerd)\.[a-z0-9][a-z0-9.\-]*$`)
+//
+// The alternation is built from model.AllSources rather than written out,
+// because a hand-written copy of the domain list is the thing this repo has
+// most reliably got wrong — and here it misreports which file is broken.
+//
+// A namespace missing from the pattern means that domain's IDs never match,
+// never enter the harvest, and are never required to be documented. That is
+// caught today, but only sideways and only if the domain's findings are
+// already documented: TestDocumentedFindingsAreStillEmitted sees rows with
+// no emitter and reports "the checks table documents dockerd.api-tls-
+// unverified but no checker constructs it — either the row is stale or the
+// ID was renamed". Both suggestions are wrong. The row is correct, the
+// checker is correct, and the fault is a stale regex two files away.
+//
+// Deriving the pattern removes the failure instead of improving the message.
+// TestEveryDomainContributesAHarvestedID below covers the case that is
+// genuinely silent: a domain neither harvestable nor documented.
+var findingID = func() *regexp.Regexp {
+	names := make([]string, 0, len(model.AllSources()))
+	for _, s := range model.AllSources() {
+		names = append(names, regexp.QuoteMeta(s.String()))
+	}
+	return regexp.MustCompile(`^(` + strings.Join(names, "|") + `)\.[a-z0-9][a-z0-9.\-]*$`)
+}()
 
 // composeRuleID matches compose's bare rule IDs, which reach NewFinding
 // through a helper that prefixes them: f("ds016", …) → "compose.ds016".
@@ -143,6 +168,36 @@ func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 		if !slices.Contains(emitted, id) {
 			t.Errorf("the checks table documents %s but no checker constructs it — "+
 				"either the row is stale or the ID was renamed", id)
+		}
+	}
+}
+
+// TestEveryDomainContributesAHarvestedID is the nothing-extracted guard for
+// the harvest, applied one domain at a time.
+//
+// The two tests above assert set equality between what is emitted and what
+// is documented, which keeps the walk honest for every domain it can already
+// see. What neither notices is a domain it cannot see at all: if a checker
+// builds its IDs in a shape the AST walk does not recognise *and* nobody
+// adds finding rows for it, the emitted set and the documented set are both
+// missing the same entries and agree perfectly. Every guard passes, and the
+// domain's findings ship undocumented.
+//
+// That shape is not hypothetical — compose already has it. Its rules reach
+// NewFinding through a helper that prefixes them, so its IDs never appear as
+// namespaced literals, and composeRuleID exists solely to special-case them.
+// A twelfth domain adopting the same convention would need the same
+// treatment, and this is what says so instead of quietly policing ten.
+func TestEveryDomainContributesAHarvestedID(t *testing.T) {
+	byDomain := map[string]int{}
+	for _, id := range emittedFindingIDs(t) {
+		byDomain[strings.SplitN(id, ".", 2)[0]]++
+	}
+	for _, src := range model.AllSources() {
+		if byDomain[src.String()] == 0 {
+			t.Errorf("no finding ID was harvested for the %s domain — its checker builds IDs in a "+
+				"shape emittedFindingIDs cannot see, so nothing requires them to be documented "+
+				"(compose needed composeRuleID for exactly this)", src)
 		}
 	}
 }
