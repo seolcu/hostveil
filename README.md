@@ -31,16 +31,21 @@ undo any fix with one command.
 
 ## What it checks
 
-| Domain | What it looks at | Needs |
-| --- | --- | --- |
-| **Docker / Compose** | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, missing no-new-privileges, hardcoded secrets, and more — a native audit of your Compose files, plus containers started with plain `docker run` | Docker |
-| **SSH** | Root login, password authentication, empty passwords, weak brute-force limits, X11 forwarding — parsed natively from `sshd_config`, following `Include` into `sshd_config.d/` | — |
-| **Firewall** | Whether ufw, firewalld, nftables, or iptables is actually active — and whether published container ports are quietly bypassing it | — |
-| **Auto-updates** | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
-| **Exposed services** | Host processes listening on a non-loopback address — the natively-installed database, admin panel, or app your Compose audit can't see, read from `ss` | `ss` |
-| **Accounts** | Non-root accounts with root's UID (0) and login accounts with an empty password, parsed from `/etc/passwd` and `/etc/shadow` | root (for `/etc/shadow`) |
-| **File permissions** | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
-| **Image CVEs** *(optional)* | Known vulnerabilities in the images your Compose services run | Trivy |
+Every finding is named for the domain that found it, so the prefix in the
+second column is what you type into `hostveil fix` and `hostveil explain`.
+
+| Domain | Findings | What it looks at | Needs |
+| --- | --- | --- | --- |
+| **Docker / Compose** | `compose.*` | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, shared PID and IPC namespaces, writable root filesystems, missing no-new-privileges, hardcoded secrets, and more — a native audit of your Compose files, plus containers started with plain `docker run` | Docker |
+| **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding — parsed natively from `sshd_config`, following `Include` into `sshd_config.d/` | — |
+| **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables, or iptables is actually active — and whether published container ports are quietly bypassing it | — |
+| **Auto-updates** | `updates.*` | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
+| **Exposed services** | `ports.*` | Host processes listening on a non-loopback address — the natively-installed database, admin panel, or app your Compose audit can't see, read from `ss` | `ss` |
+| **Accounts** | `accounts.*` | Non-root accounts with root's UID (0) and login accounts with an empty password, parsed from `/etc/passwd` and `/etc/shadow` | root (for `/etc/shadow`) |
+| **File permissions** | `fileperms.*` | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
+| **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes — OpenClaw and Hermes Agent: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, the sandbox disabled, and loose permissions on the config and the API keys beside it | — |
+| **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys` — the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
+| **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
 Missing Docker or Trivy? Those domains are skipped cleanly and the score is
 renormalized so you are never handed a misleadingly perfect result.
@@ -117,6 +122,18 @@ check needs no output parsing:
 ```bash
 HOSTVEIL_NO_SUDO=1 hostveil scan --json > report.json || echo "action needed"
 ```
+
+`--sarif` emits SARIF 2.1.0 instead — the format GitHub code scanning and most
+CI systems ingest — with one rule per finding ID and a stable fingerprint per
+finding, so a consumer can track one across scans. The score and per-domain
+coverage ride in the run's properties, because a SARIF file with no results
+from a scan that could not look would otherwise read as a clean host.
+`--output FILE` writes whichever format you picked, and the exit status does
+not vary by format or destination — the contract is the exit code.
+
+`--only` and `--skip` scope a run to some domains (`--only ssh,firewall`). The
+domains that did not run report N/A, never 100, and a partial scan is
+deliberately not saved as the baseline for the next delta.
 
 Code **3** matters more than it looks. A failed domain contributes no
 findings, so without it an unreachable Docker socket silences the two

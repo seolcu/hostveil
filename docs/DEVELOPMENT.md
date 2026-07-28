@@ -48,10 +48,11 @@ cmd/sitegen/         static-site generator for site/ (templates + content + page
 internal/
   core/              the shared engine — the only thing the UIs call
   check/             detection domains (compose, ssh, firewall, updates, cve,
-                     ports, accounts, fileperms, agent)
+                     ports, accounts, fileperms, agent, sysctl)
   fix/ compose/ history/   fix registry, YAML editing, backup/rollback
   model/ platform/   pure value types; the OS/command seam
-  ui/{cli,tui,web}/  thin UIs over the engine
+  clirender/         the CLI's report rendering
+  ui/{theme,tui,web}/  thin UIs over the engine, and the one palette registry
 demo/                the reproducible vulnerable-server VM (Vagrant)
 site/                the marketing site (static, generated — see below)
 docs/                these docs
