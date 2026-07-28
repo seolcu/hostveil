@@ -402,31 +402,18 @@ func (m *appModel) findingRow(f model.Finding, cursor bool) string {
 		s.dim.Render(fmt.Sprintf(" %-13s ", f.ID)) + s.bone.Render(title) + suffix
 }
 
-// sourceLabel is the short domain name shown in the filter line, matching
-// the score axis labels.
+// sourceLabel is the short domain name shown in the filter line.
+//
+// The table it used to hold now lives on model.Source, because the
+// dashboard kept an independent copy of the same nine entries and both
+// went stale together when the sysctl domain landed. One table, two
+// readers. The empty-label fallback is for a domain added without one —
+// an ugly name beats a blank filter line that says nothing is filtered.
 func sourceLabel(s model.Source) string {
-	switch s {
-	case model.SourceCompose:
-		return "Container"
-	case model.SourceSSH:
-		return "SSH"
-	case model.SourceFirewall:
-		return "Firewall"
-	case model.SourceUpdates:
-		return "Updates"
-	case model.SourceCVE:
-		return "CVEs"
-	case model.SourcePorts:
-		return "Ports"
-	case model.SourceAccounts:
-		return "Accounts"
-	case model.SourceFilePerms:
-		return "File perms"
-	case model.SourceAgent:
-		return "AI agents"
-	default:
-		return s.String()
+	if l := s.Label(); l != "" {
+		return l
 	}
+	return s.String()
 }
 
 // filterLine describes the active filter, or "" when nothing is filtered.

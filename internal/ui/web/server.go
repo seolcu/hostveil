@@ -101,6 +101,9 @@ func (s *Server) Handler() http.Handler {
 	// there is one registry of hexes and both read from it.
 	mux.HandleFunc("GET /themes.css", s.handleThemesCSS)
 	mux.HandleFunc("GET /theme.js", s.handleThemeJS)
+	// Same arrangement, one layer down: the domain table comes from
+	// model.AllSources rather than from a copy of it kept in app.js.
+	mux.HandleFunc("GET /domains.js", s.handleDomainsJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
@@ -310,6 +313,12 @@ func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = io.WriteString(w, theme.JS(s.theme))
+}
+
+func (s *Server) handleDomainsJS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.WriteString(w, domainsJS())
 }
 
 // resultPayload is the dashboard's view of a scan: the report, plus how it

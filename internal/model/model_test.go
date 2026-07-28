@@ -98,6 +98,42 @@ func TestAllSourcesConsistent(t *testing.T) {
 	}
 }
 
+// Every domain needs a display label, and no two may share one.
+//
+// This is the guard the display tables did not have. The name was written
+// out twice — a switch in the TUI, an object literal in the dashboard's
+// JavaScript — and when the sysctl domain landed neither copy grew a tenth
+// entry. The dashboard built its filter chips by looking each source up in
+// that table and dropping the misses, so eight kernel-hardening findings
+// became unfilterable, and the domain's failures announced themselves as
+// "10 failed". Nothing failed to compile, and no test noticed.
+//
+// Label() returns "" for an unknown domain rather than falling back to
+// String(), precisely so that forgetting shows up here instead of shipping
+// as a plausible-looking lowercase name.
+func TestEverySourceHasALabel(t *testing.T) {
+	seen := map[string]Source{}
+	for _, src := range AllSources() {
+		label := src.Label()
+		if label == "" {
+			t.Errorf("source %q (%d) has no Label() — add one in source.go", src.String(), int(src))
+			continue
+		}
+		if prev, dup := seen[label]; dup {
+			t.Errorf("sources %q and %q share the label %q", prev.String(), src.String(), label)
+		}
+		seen[label] = src
+	}
+	// The nothing-extracted guard: an AllSources that somehow returned
+	// nothing would pass every assertion above without checking anything.
+	if len(seen) < len(axisDefs) {
+		t.Errorf("only %d of %d domains produced a label", len(seen), len(axisDefs))
+	}
+	if SourceUnset.Label() != "" {
+		t.Errorf("SourceUnset has label %q, but it is not a domain", SourceUnset.Label())
+	}
+}
+
 func TestScoreCleanHostIsPerfect(t *testing.T) {
 	got := ScoreReport(nil, nil)
 	if got.Overall != 100 {
