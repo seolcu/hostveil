@@ -26,6 +26,52 @@ fi
 systemctl enable --now docker
 usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the demo
 
+# --- hostveil demo: a deliberately dangerous Docker daemon -----------------
+# This is the real thing, not a mock: an unauthenticated Docker API on 2375
+# is root on this VM for anyone who can reach the port, and a 0666 socket is
+# root for any local account. It is acceptable here only because the
+# Vagrantfile NATs this VM and forwards nothing to 2375 — check that before
+# adding a forwarded port. Everything below is undone by `./run.sh reset`.
+#
+# Seeded before the stacks come up in [9/10], so the daemon restart does not
+# bounce them.
+
+# dockerd.api-unauthenticated (Critical). The drop-in is generated from the
+# CURRENT ExecStart rather than hardcoded, so it survives Docker changing its
+# packaged flags. The bare `ExecStart=` line is mandatory: without it systemd
+# rejects a second ExecStart on a Type=notify service. And the socket goes
+# here rather than into daemon.json's "hosts" — dockerd refuses to start when
+# that key and -H are both set, and -H fd:// is already on the shipped unit.
+install -d /etc/systemd/system/docker.service.d
+CURRENT_EXECSTART=$(systemctl show docker.service -p ExecStart --value \
+  | sed -n 's/.*argv\[\]=\([^;]*\).*/\1/p')
+printf '[Service]\nExecStart=\nExecStart=%s -H tcp://0.0.0.0:2375\n' \
+  "${CURRENT_EXECSTART:-/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock}" \
+  > /etc/systemd/system/docker.service.d/10-hostveil-demo.conf
+
+# dockerd.socket-world-writable (Critical). Set on the socket unit, not with
+# chmod: dockerd recreates the socket from this unit at every start, so a
+# chmod would be gone by the time hostveil looked — and the unit drop-in is
+# the misconfiguration people actually make.
+install -d /etc/systemd/system/docker.socket.d
+printf '[Socket]\nSocketMode=0666\n' \
+  > /etc/systemd/system/docker.socket.d/10-hostveil-demo.conf
+
+systemctl daemon-reload
+systemctl restart docker.socket || true
+systemctl restart docker
+
+# dockerd.group-members escalates Medium -> High when a service account holds
+# the group. vagrant above gives the Medium; a CI runner that cannot log in
+# and can still become root is the case worth showing.
+id ci_runner >/dev/null 2>&1 || useradd -r -M -s /usr/sbin/nologin ci_runner
+usermod -aG docker ci_runner || true
+
+# no-new-privileges, userns-remap and live-restore need no seeding: all three
+# are off by default on a stock install, which is the point of the rules.
+# dockerd.api-tls-unverified is not seeded — it needs a server keypair, which
+# is more machinery than the demo earns. Unit tests cover it.
+
 echo "==> [3/10] Go ${GO_VERSION} (apt's Go is too old to build hostveil)"
 ARCH=$(dpkg --print-architecture)     # amd64 | arm64
 if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION}"; then

@@ -167,9 +167,21 @@ NAT is independent of the host firewall.
 | File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
 | CVEs | old image tags (redis 6.0, postgres 13, jellyfin 10.8, nextcloud 24, portainer 2.9) | `cve.*` (needs Trivy, installed in the VM) |
 | AI agents | an OpenClaw gateway on the LAN with auth off, unapproved shell exec, sandbox off; world-readable Hermes API keys | `agent.auth-disabled`, `agent.gateway-exposed`, `agent.secret-exposed`, … |
+| Docker daemon | the API published on `0.0.0.0:2375` with no TLS, a `0666` docker socket, and a `nologin` CI account in the docker group | `dockerd.api-unauthenticated`, `dockerd.socket-world-writable`, `dockerd.group-members` |
 
 The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
 `seed/`, and the whole build lives in `Vagrantfile` + `provision.sh`.
+
+> **On the Docker daemon**: this one is not a fixture, it is the real thing.
+> `dockerd.api-unauthenticated` means anyone who can reach port 2375 on this
+> VM is root on it — no password, one HTTP request. That is safe here only
+> because the `Vagrantfile` NATs the VM and forwards nothing but 8787; if you
+> add a forwarded port for 2375, you have published root on your laptop's
+> network. The three daemon *defaults* (`no-new-privileges`, `userns-remap`,
+> `live-restore`) need no seeding at all — they are off on a stock install,
+> which is the whole point of those rules. `dockerd.api-tls-unverified` is
+> the one finding the demo does not show, because it needs a server keypair;
+> the unit tests cover it instead.
 
 > **On the agent fixtures**: unlike everything else here, OpenClaw and Hermes
 > are not actually *installed* — neither is packaged for apt, and neither
