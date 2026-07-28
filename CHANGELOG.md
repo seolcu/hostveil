@@ -1,5 +1,49 @@
 # Changelog
 
+## [3.8.2](https://github.com/seolcu/hostveil/compare/v3.8.1...v3.8.2) (2026-07-29)
+
+Two things the tool knew and did not say, and one it could not have said
+because it would have crashed first.
+
+### Bug Fixes
+
+* **model:** render the batch outcome once instead of four times
+  ([#618](https://github.com/seolcu/hostveil/issues/618)). Applying several
+  fixes at once produces four facts — how many were applied, skipped, failed,
+  and whether the run was cut short — and four surfaces described them in
+  their own words. Two of the four dropped something that matters, both in
+  the dashboard, both for the same engine response. The batch button never
+  mentioned an interruption, which is the one outcome that flag exists to
+  make visible: a batch stopped partway read exactly like one that finished,
+  while the fixes that *did* land sat on the host with checkpoints waiting in
+  History and nothing on screen suggesting there was anything to go back for.
+  The fix-all button had the opposite hole — it reported neither skipped nor
+  failed, so a fix that errored was invisible: the score moved, no reason was
+  given, and the error had been in the response the whole time. The sentence
+  is now rendered once by the engine and shown by all three interfaces. It
+  stops short of saying *where* to look, because "press h" and `hostveil
+  history` are directions to a place only one interface has; each appends its
+  own. The CLI keeps its per-failure detail and its exit code, and now names
+  the skipped count outside the interrupted case as well.
+* **core:** check a fix's shape before offering it, not while applying it
+  ([#619](https://github.com/seolcu/hostveil/issues/619)). Every fix declares
+  a kind, and the kind is a claim about shape: Auto means exactly one
+  mechanical action, Review means two or more real alternatives, an edit
+  carries the pure function that produces the new bytes. A validator for all
+  of that existed and ran only in one package's tests, against the sample
+  findings those tests construct — its own comment said it "can gate
+  registration", and it gated nothing. For any other finding the contract was
+  unchecked, and an unchecked contract here is not a lint failure: a fix
+  registered without its transform function was classified as fixable, drew a
+  button in all three interfaces, and dereferenced a nil pointer the moment
+  anyone previewed or applied it. `hostveil serve` runs as root. The engine
+  now validates every fix as it resolves it, and one whose shape contradicts
+  its kind is demoted to Manual — the same answer already given when no fix
+  is registered, and the same promise the rest of the engine keeps: an
+  interface never offers a button that leads nowhere. No fix that ships today
+  was affected; what changed is that the guarantee now covers every finding
+  rather than the sampled ones.
+
 ## [3.8.1](https://github.com/seolcu/hostveil/compare/v3.8.0...v3.8.1) (2026-07-29)
 
 One false Critical, on hosts whose distribution keeps `nologin` somewhere
