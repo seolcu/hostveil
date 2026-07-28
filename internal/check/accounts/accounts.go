@@ -44,17 +44,6 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	return true, ""
 }
 
-// nonLoginShells are shells that mean the account cannot interactively log
-// in, so an empty password on such an account is not a login risk.
-var nonLoginShells = map[string]bool{
-	"":                  true,
-	"/usr/sbin/nologin": true,
-	"/sbin/nologin":     true,
-	"/bin/false":        true,
-	"/usr/bin/false":    true,
-	"/bin/true":         true,
-}
-
 // Check parses the user databases and emits account-hygiene findings.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	passwd, err := os.ReadFile(c.PasswdPath) //nolint:gosec // fixed system path
@@ -70,7 +59,12 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			continue
 		}
 		name, shell := fields[0], fields[6]
-		loginShell[name] = !nonLoginShells[strings.TrimSpace(shell)]
+		// Asked through platform because the Docker daemon domain asks the
+		// same question of docker-group members, and the two answers used to
+		// differ: this one matched whole paths against a fixed list, so a
+		// nologin at any other path — Arch's /usr/bin/nologin, NixOS's under
+		// /run/current-system — read as an ordinary login shell.
+		loginShell[name] = !platform.IsNonLoginShell(shell)
 		// Compare the UID numerically: the kernel parses "00"/"000" as 0, so
 		// a string compare against "0" would let a leading-zero UID-0
 		// backdoor slip past the very check that exists to catch it.

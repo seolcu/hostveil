@@ -143,3 +143,57 @@ func TestUnavailableWithoutPasswd(t *testing.T) {
 		t.Error("checker should be unavailable when passwd is unreadable")
 	}
 }
+
+// A service account with an empty password field but no way to log in is
+// not "a login account with an empty password", and reporting it as one is
+// a false Critical that also drags the account-hygiene axis down.
+//
+// This used to depend on where the distribution keeps nologin. The shell
+// was matched against a fixed list of six full paths, so Debian and Fedora
+// were recognised and Arch (/usr/bin/nologin) and NixOS (under
+// /run/current-system/sw/bin) were not — on those hosts every such account
+// was read as an ordinary login.
+func TestEmptyPasswordIgnoresNonLoginShellsAtAnyPath(t *testing.T) {
+	for _, shell := range []string{
+		"/usr/sbin/nologin",                  // Debian, Ubuntu
+		"/sbin/nologin",                      // RHEL, Fedora
+		"/usr/bin/nologin",                   // Arch
+		"/run/current-system/sw/bin/nologin", // NixOS
+		"/usr/local/sbin/nologin",            // hand-built
+		"/bin/false",
+		"/bin/true",
+		"", // no shell recorded at all
+	} {
+		t.Run(shell, func(t *testing.T) {
+			pw := writeFile(t, "passwd", cleanPasswd+"svc:x:998:998::/var/lib/svc:"+shell+"\n")
+			sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nsvc::19000:0:99999:7:::\n")
+			c := &Checker{PasswdPath: pw, ShadowPath: sh}
+			fs, err := c.Check(context.Background(), platform.Env{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if has(fs, "accounts.emptypassword") {
+				t.Errorf("shell %q cannot log in, but the account was reported as an empty-password login", shell)
+			}
+		})
+	}
+}
+
+// The other direction, which matters just as much: widening what counts as
+// a non-login shell must not stop the finding firing on a real login.
+func TestEmptyPasswordStillFiresOnARealLoginShell(t *testing.T) {
+	for _, shell := range []string{"/bin/bash", "/bin/sh", "/usr/bin/zsh", "/bin/falsehood"} {
+		t.Run(shell, func(t *testing.T) {
+			pw := writeFile(t, "passwd", cleanPasswd+"weak:x:1001:1001::/home/weak:"+shell+"\n")
+			sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nweak::19000:0:99999:7:::\n")
+			c := &Checker{PasswdPath: pw, ShadowPath: sh}
+			fs, err := c.Check(context.Background(), platform.Env{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !has(fs, "accounts.emptypassword") {
+				t.Errorf("shell %q is a real login shell with an empty password and must be reported", shell)
+			}
+		})
+	}
+}
