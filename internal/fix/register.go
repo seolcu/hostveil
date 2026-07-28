@@ -61,6 +61,15 @@ package fix
 //     prompt about modified config files. Nothing about that is reversible
 //     from a checkpoint, and a package upgrade that breaks a service leaves
 //     the operator worse off than the pending patch did.
+//   - firewall.default-allow — the remediation is flipping the default
+//     inbound policy to deny, which is firewall.inactive's remediation
+//     applied to a firewall that happens to already be running, and it is
+//     declined for firewall.inactive's reason. The new policy takes effect
+//     the moment it is set, on every connection no rule already allows —
+//     including the SSH session the operator is issuing it from. Exec fixes
+//     have no checkpoint, so a lockout has no undo. The how-to-fix says to
+//     allow SSH first, which is advice a person can follow in order and a
+//     fix cannot: hostveil does not know which port that session is on.
 //   - firewall.inactive — the only remediation is enabling a firewall, and
 //     the checker records no SSH port, interface, or session data. Enabling
 //     a default-deny policy on a box reached over SSH can lock the user out

@@ -49,14 +49,41 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	switch status, which := probe(ctx, env.Runner); status {
 	case StatusActive:
-		// An active firewall is not the end of the question on a Docker
-		// host: published container ports are accepted before ufw's rules
-		// are consulted. Scoring this case clean is what let a host with an
-		// open datastore outscore one running nothing at all.
-		if which == "ufw" {
-			return checkDockerBypass(ctx, env.Runner, c.daemonConfig())
+		// "Running" is not the same as "filtering", and an active firewall
+		// is not the end of the question on a Docker host either. Two
+		// separate ways a host can look protected and not be.
+		var findings []model.Finding
+		var partial *check.PartialError
+
+		switch defaultInbound(ctx, env.Runner, which) {
+		case policyAllow:
+			findings = append(findings, defaultAllowFinding(which))
+		case policyUnknown:
+			// The same rule the probe itself follows: not being able to read
+			// the policy degrades the domain, it does not accuse the host.
+			partial = &check.PartialError{
+				Reason: "cannot read " + which + "'s default inbound policy — re-run with sudo to check whether the firewall actually denies unmatched traffic",
+			}
 		}
-		return nil, nil // the good case: no finding
+
+		// Published container ports are accepted before ufw's rules are
+		// consulted. Scoring this case clean is what let a host with an open
+		// datastore outscore one running nothing at all.
+		if which == "ufw" {
+			fs, err := checkDockerBypass(ctx, env.Runner, c.daemonConfig())
+			findings = append(findings, fs...)
+			// One reason is enough to mark the domain degraded, and the
+			// first is the more fundamental of the two.
+			if pe, ok := err.(*check.PartialError); ok && partial == nil {
+				partial = pe
+			} else if err != nil && !ok {
+				return findings, err
+			}
+		}
+		if partial != nil {
+			return findings, partial
+		}
+		return findings, nil
 	case StatusUnknown:
 		return nil, &check.PartialError{
 			Reason: "cannot read firewall state — re-run with sudo to check the host firewall",

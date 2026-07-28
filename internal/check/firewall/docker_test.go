@@ -18,10 +18,10 @@ func dockerHost(ps, dockerUser string) fakeRunner {
 	return fakeRunner{
 		present: map[string]bool{"ufw": true, "iptables": true, "docker": true},
 		outputs: map[string]string{
-			"ufw status": "Status: active\n",
-			"docker version --format {{.Server.Version}}": "27.3.1\n",
-			"docker ps --format {{.Names}}\t{{.Ports}}":   ps,
-			"iptables -S DOCKER-USER":                     dockerUser,
+			"ufw status":         "Status: active\n",
+			"ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n", "docker version --format {{.Server.Version}}": "27.3.1\n",
+			"docker ps --format {{.Names}}\t{{.Ports}}": ps,
+			"iptables -S DOCKER-USER":                   dockerUser,
 		},
 	}
 }
@@ -146,7 +146,7 @@ func TestDaemonConfigWithoutIptablesKeyStillFlags(t *testing.T) {
 func TestNoDockerNoBypass(t *testing.T) {
 	r := fakeRunner{
 		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: active\n"},
+		outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
 	}
 	fs, err := checkWith(t, r)
 	if err != nil {
@@ -163,7 +163,8 @@ func TestBypassScopedToUFW(t *testing.T) {
 	r := fakeRunner{
 		present: map[string]bool{"firewall-cmd": true, "iptables": true, "docker": true},
 		outputs: map[string]string{
-			"firewall-cmd --state":                        "running\n",
+			"firewall-cmd --state":            "running\n",
+			"firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n",
 			"docker version --format {{.Server.Version}}": "27.3.1\n",
 			"docker ps --format {{.Names}}\t{{.Ports}}":   "cache\t0.0.0.0:6379->6379/tcp\n",
 			"iptables -S DOCKER-USER":                     emptyDockerUser,
