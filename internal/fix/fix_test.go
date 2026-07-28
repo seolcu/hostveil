@@ -25,6 +25,7 @@ func representative(id string) model.Finding {
 		model.WithEvidence("reference", "tag"),
 		model.WithEvidence("paths", "/etc/shadow"),
 		model.WithEvidence("expected", "0640"),
+		model.WithEvidence("set", "kernel.kptr_restrict=1"),
 	)
 	return f
 }
@@ -135,14 +136,6 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		// applying the live value is exec (never Auto); and a
 		// write-then-apply pair is sequential steps, not the independent
 		// alternatives Review requires.
-		"sysctl.kptr-restrict":    "edit actions cannot create the missing sysctl.d drop-in, and sysctl --system is exec",
-		"sysctl.dmesg-restrict":   "same drop-in problem",
-		"sysctl.sysrq":            "same drop-in problem",
-		"sysctl.ptrace-scope":     "same drop-in problem",
-		"sysctl.syncookies":       "same drop-in problem",
-		"sysctl.accept-redirects": "same drop-in problem",
-		"sysctl.rp-filter":        "same drop-in problem",
-		"sysctl.protected-links":  "same drop-in problem",
 
 		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
 		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",

@@ -75,8 +75,24 @@ func TestWeakValuesAreFlagged(t *testing.T) {
 		if err := f.Validate(); err != nil {
 			t.Errorf("%s: invalid finding: %v", f.ID, err)
 		}
-		if f.Remediation != model.RemediationManual {
-			t.Errorf("%s: remediation = %v, want Manual", f.ID, f.Remediation)
+		// Review, not Manual: the fix registry now offers a drop-in and a
+		// `sysctl -w`, and the checker asks for a human eye because the
+		// unambiguous value is not the only defensible one on every host
+		// (rp_filter is 2 on a multi-homed box, sysrq has a bitmask form).
+		if f.Remediation != model.RemediationReview {
+			t.Errorf("%s: remediation = %v, want Review", f.ID, f.Remediation)
+		}
+		// Every finding must carry the machine-readable recommendation the
+		// fix is built from. Without it the fix errors out at build time
+		// and the UI shows a fix button that leads nowhere.
+		if f.Evidence["set"] == "" {
+			t.Errorf("%s: no 'set' evidence, so no fix can be built from it", f.ID)
+		}
+		for _, kv := range strings.Split(f.Evidence["set"], ",") {
+			k, _, ok := strings.Cut(kv, "=")
+			if !ok || k == "" {
+				t.Errorf("%s: malformed 'set' evidence %q", f.ID, f.Evidence["set"])
+			}
 		}
 		if !strings.Contains(f.HowToFix, "/etc/sysctl.d") || !strings.Contains(f.HowToFix, "sysctl --system") {
 			t.Errorf("%s: how-to-fix must carry the drop-in path and apply command: %q", f.ID, f.HowToFix)
