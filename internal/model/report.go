@@ -2,6 +2,7 @@ package model
 
 import (
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -127,4 +128,46 @@ type ScorePoint struct {
 	At         time.Time `json:"at"`
 	Overall    uint8     `json:"overall"`
 	Applicable bool      `json:"applicable"`
+}
+
+// Sparkline renders a score series as one line of block glyphs.
+//
+// It lives on the model rather than in either interface because both draw
+// the same picture from the same points, and a bucketing rule written twice
+// is the shape that has already gone wrong here twice — the severity
+// palette before internal/ui/theme, the domain table before /domains.js.
+// The TUI prints the string; the dashboard renders the same characters in a
+// monospace span.
+//
+// Scores are bucketed against the fixed 0-100 range, never against the
+// series' own min and max. Auto-scaling would turn a host that moved from
+// 71 to 73 into a dramatic climb and one that sat at 42 all week into a
+// flat line indistinguishable from a host at 4, which is a chart that lies
+// about the only thing it is for.
+//
+// A scan with no applicable score contributes a gap rather than a bar. It
+// is not a zero — nobody could look — and drawing it as the lowest bucket
+// would be the same lie the aggregate score refuses to tell.
+func Sparkline(points []ScorePoint) string {
+	// Runes, not a string: every bar is three bytes, so indexing by
+	// len("▁▂▃▄▅▆▇█") would reach for element 24 of an eight-element ramp.
+	bars := []rune("▁▂▃▄▅▆▇█")
+	const gap = '·'
+
+	var b strings.Builder
+	for _, p := range points {
+		if !p.Applicable {
+			b.WriteRune(gap)
+			continue
+		}
+		// 0 lands in the first bucket and 100 in the last; the division is
+		// by 100 rather than by len(bars)+1 so a perfect score is a full
+		// bar, with the top clamped rather than overflowing.
+		i := int(p.Overall) * len(bars) / 100
+		if i >= len(bars) {
+			i = len(bars) - 1
+		}
+		b.WriteRune(bars[i])
+	}
+	return b.String()
 }

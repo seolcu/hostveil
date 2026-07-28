@@ -13,6 +13,9 @@ const REM_AUTO = 1;
 const SCAN_DONE = 2, SCAN_SKIPPED = 3, SCAN_DEGRADED = 4, SCAN_ERROR = 5;
 
 let report = null;
+// trend is fetched separately from the report: the report is refetched
+// after every fix, and the trend only moves when a scan does.
+let trend = null;
 let selected = null; // {id, service} — the inspected finding (single-select)
 
 // Filter + multi-select state.
@@ -201,6 +204,35 @@ function renderDelta() {
   box.replaceChildren(...parts);
 }
 
+// renderTrend draws the score of every retained scan beside the delta.
+//
+// The glyphs come from the server, rendered by model.Sparkline — the same
+// function the TUI draws from. Bucketing scores into blocks again here
+// would be a second implementation of one rule, which is the shape that
+// already cost this file its domain table.
+//
+// Nothing is drawn for a single scan: a sparkline of one point is a shape
+// with no information in it, and a first run should not be handed a chart
+// implying a history it does not have.
+function renderTrend() {
+  const box = document.getElementById("trend");
+  const pts = (trend && trend.points) || [];
+  if (pts.length < 2) { box.hidden = true; box.replaceChildren(); return; }
+
+  const score = (p) => (p.applicable ? String(p.overall) : "N/A");
+  const last = pts[pts.length - 1];
+  const spark = el("span", { class: "spark " + (last.applicable ? band(last.overall) : "b-na") },
+    trend.sparkline);
+  spark.title = pts.map((p) => new Date(p.at).toLocaleString() + "  " + score(p)).join("\n");
+
+  box.hidden = false;
+  box.replaceChildren(
+    el("span", { class: "delta-label" }, "Score over " + pts.length + " scans"),
+    el("span", { class: "spark-end" }, score(pts[0])),
+    spark,
+    el("span", { class: "spark-end" }, score(last)));
+}
+
 function renderDomainNotice() {
   const box = document.getElementById("domains");
   const bad = (report.domains || []).filter((d) => d.state !== SCAN_DONE);
@@ -252,6 +284,7 @@ function render() {
   );
 
   renderDelta();
+  renderTrend();
   renderDomainNotice();
 
   // Findings list.
@@ -569,6 +602,17 @@ async function rollback(cp, force = false) {
 
 async function refresh() { report = await api("/api/result"); render(); }
 
+// refreshTrend is called on load and after a rescan, never after a fix — a
+// fix changes the live score, not the series of saved scans.
+async function refreshTrend() {
+  try {
+    trend = await api("/api/trend");
+  } catch (e) {
+    trend = null; // a trend that cannot be read costs the trend line, nothing else
+  }
+  if (report) renderTrend();
+}
+
 function flash(msg, isErr) {
   const s = document.getElementById("status");
   s.textContent = msg;
@@ -643,6 +687,9 @@ rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   await pollRescan();
   report = await api("/api/result");
   render();
+  // A scan is the one thing that moves the series, so this is the one place
+  // besides load that refetches it.
+  await refreshTrend();
   flash("Rescan complete.");
 });
 
@@ -671,4 +718,4 @@ fixallBtn.onclick = () => {
   });
 };
 
-refresh().catch((e) => flash("Failed to load: " + e.message, true));
+refresh().then(refreshTrend).catch((e) => flash("Failed to load: " + e.message, true));

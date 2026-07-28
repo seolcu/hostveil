@@ -568,14 +568,30 @@ func (m *appModel) historyRows(budget int) []string {
 			Render("⚠ " + truncate(m.historyWarning, max(1, m.width-2)))
 	}
 
+	// The trend costs a row and answers the question the checkpoint list
+	// cannot: the list says what was changed, this says whether it helped.
+	// Dropped before the warning when the terminal is short, because a
+	// missing checkpoint is more urgent than a shape.
+	trend := m.trendLine()
+
+	// Chrome is the header, plus the trend and the warning when there is
+	// room. They are shed in that order as the terminal shrinks: a shape is
+	// the first thing to lose, then the warning, and the header last —
+	// a list with no header is still a list.
 	chrome := 1
 	if warn != "" {
-		chrome = 2
+		chrome++
+	}
+	if trend != "" {
+		chrome++
 	}
 	visible := budget - chrome
 	for visible < 1 && chrome > 0 {
 		chrome--
-		if warn != "" {
+		switch {
+		case trend != "":
+			trend = ""
+		case warn != "":
 			warn = ""
 		}
 		visible = budget - chrome
@@ -587,6 +603,9 @@ func (m *appModel) historyRows(budget int) []string {
 	var out []string
 	if warn != "" {
 		out = append(out, warn)
+	}
+	if trend != "" {
+		out = append(out, trend)
 	}
 	if chrome > 0 {
 		head := s.dim.Render(fmt.Sprintf("APPLIED FIXES · %d", len(m.checkpoints)))
@@ -835,4 +854,44 @@ func wrap(s string, width int) string {
 		ll += len(w)
 	}
 	return b.String()
+}
+
+// trendLine renders the score of every retained scan as one row.
+//
+// It is on the history screen because it answers the other half of the same
+// question: the checkpoint list says what was changed, this says whether it
+// helped. "Since last scan" already sits on the findings list and answers
+// only about the most recent round.
+//
+// Nothing is drawn for a single scan — a sparkline of one point is a shape
+// with no information in it, and a first run should not be handed a chart
+// that implies a history it does not have.
+func (m *appModel) trendLine() string {
+	if len(m.trend) < 2 {
+		return ""
+	}
+	s := m.sty()
+
+	// The most recent scans, not the oldest, when the terminal cannot hold
+	// them all. The label and the two scores cost about 24 columns.
+	points := m.trend
+	if room := m.width - 26; room > 0 && len(points) > room {
+		points = points[len(points)-room:]
+	}
+
+	first, last := "N/A", "N/A"
+	if p := points[0]; p.Applicable {
+		first = strconv.Itoa(int(p.Overall))
+	}
+	if p := points[len(points)-1]; p.Applicable {
+		last = strconv.Itoa(int(p.Overall))
+	}
+
+	spark := model.Sparkline(points)
+	if p := points[len(points)-1]; p.Applicable {
+		spark = lipgloss.NewStyle().Foreground(s.band(p.Overall)).Render(spark)
+	} else {
+		spark = s.dim.Render(spark)
+	}
+	return s.dim.Render("score  "+first+" ") + spark + s.dim.Render(" "+last)
 }
