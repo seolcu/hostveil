@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/textwidth"
 )
 
 // visibleWidth is the rendered column count of a line, ignoring ANSI colour.
 func visibleWidth(s string) int {
-	var n int
+	var b strings.Builder
 	for i := 0; i < len(s); {
 		if s[i] == 0x1b { // skip an escape sequence up to its final 'm'
 			for i < len(s) && s[i] != 'm' {
@@ -21,10 +22,13 @@ func visibleWidth(s string) int {
 			continue
 		}
 		_, size := decodeRune(s[i:])
+		b.WriteString(s[i : i+size])
 		i += size
-		n++
 	}
-	return n
+	// Columns, not runes. Counting runes here made this helper agree with
+	// the rune-counting truncate it was supposed to be checking, so a cell
+	// twice as wide as its budget measured as exactly fitting.
+	return textwidth.Of(b.String())
 }
 
 func decodeRune(s string) (rune, int) {
