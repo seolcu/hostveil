@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -21,11 +20,8 @@ func cmdRollback(ctx context.Context, args []string) int {
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		id, args = args[0], args[1:]
 	}
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return 0
-		}
-		return 2
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
 	}
 	if id == "" {
 		id = fs.Arg(0)
@@ -67,8 +63,17 @@ func cmdRollback(ctx context.Context, args []string) int {
 	return 0
 }
 
+// cmdHistory takes no flags, which is not the same as ignoring them. It
+// used to discard args entirely, so `hostveil history --json` — a flag a
+// user has every reason to expect, and which the CLI reference says does
+// not exist — printed the human table and exited 0. Every other subcommand
+// exits 2 on an unknown flag. Parsing an empty flag set is what makes the
+// documented "no flags" true rather than merely written down.
 func cmdHistory(_ context.Context, args []string) int {
-	_ = args
+	fs := flag.NewFlagSet("history", flag.ContinueOnError)
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
+	}
 	cps, err := newEngine().ListCheckpoints()
 	// An unreadable checkpoint is a warning over a usable list, not a failure:
 	// the entries that survived still name fixes the operator can roll back,

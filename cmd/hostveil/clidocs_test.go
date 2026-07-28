@@ -31,6 +31,7 @@ var docSection = map[string]string{
 	"cmdExplain":  "explain",
 	"cmdServe":    "serve",
 	"cmdTUI":      "tui",
+	"cmdHistory":  "history",
 }
 
 var docLangs = []string{"en", "ko"}
@@ -83,6 +84,14 @@ func declaredFlags(t *testing.T) map[string][]string {
 			section, documented := docSection[fn.Name.Name]
 			if !documented {
 				continue
+			}
+			// Seed the section even when the command registers nothing, so
+			// "documented as taking no flags" is a checked claim rather
+			// than an absence. `history` is the case: it accepted no flags
+			// and also parsed none, so an unknown one was silently ignored
+			// instead of exiting 2 like every other subcommand.
+			if _, ok := out[section]; !ok {
+				out[section] = []string{}
 			}
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				if flag := flagNameOf(n); flag != "" {
