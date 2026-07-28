@@ -5,7 +5,7 @@
             <h2>TUI — 기본값</h2>
             <p>인수 없이 대화형 터미널에서 <code>hostveil</code>을 실행하면 키보드 기반 TUI가 열립니다. 명시적으로 실행할 수도 있습니다.</p>
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
-            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다.</p>
+            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다. 스캔이 도는 동안에는 아직 작업 중인 영역의 이름을 보여 주므로, 이미지가 많은 호스트에서 CVE 스캔이 오래 걸려도 멈춘 것이 아니라 진행 중임을 알 수 있습니다.</p>
             <figure>
               <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="480" loading="lazy">
               <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
@@ -30,7 +30,7 @@
                   <tr><td><code>d</code></td><td>이번 스캔에서 실제로 발견된 영역들만 순환하며 필터링합니다.</td></tr>
                   <tr><td><code>x</code></td><td>hostveil이 고칠 수 있는 항목만 봅니다.</td></tr>
                   <tr><td><code>c</code></td><td>모든 필터를 지웁니다. <code>Esc</code>는 일괄 처리 표시를 지웁니다.</td></tr>
-                  <tr><td><code>h</code></td><td>적용된 수정 이력입니다. 하나를 골라 <code>Enter</code>를 누르면 되돌렸을 때 복원될 내용을 보여 주고, 확인을 받습니다.</td></tr>
+                  <tr><td><code>h</code></td><td>적용된 수정 이력입니다. 하나를 골라 <code>Enter</code>를 누르면 되돌렸을 때 복원될 내용을 보여 주고, 확인을 받습니다. 수정 이후 그 파일이 바뀌었다면 롤백이 거절되고, 그래도 덮어쓸지 묻습니다 — <code>y</code>만 실행하며, 되돌릴 수 없습니다.</td></tr>
                   <tr><td><code>e</code></td><td>발견 항목의 상세 화면에서: 로컬 Ollama 모델의 조언성 AI 설명을 덧붙입니다. 모델이 없으면 한 줄 안내가 대신 나옵니다 — <a href="ai">AI 설명</a> 참고.</td></tr>
                   <tr><td><code>t</code></td><td>테마 선택기(아래 참고).</td></tr>
                   <tr><td><code>r</code></td><td>다시 스캔합니다.</td></tr>

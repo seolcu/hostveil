@@ -23,7 +23,17 @@ function fkey(f) { return f.id + "|" + (f.service || ""); }
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
-  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  if (!res.ok) {
+    // The status matters on one route: a declined rollback answers 409,
+    // and a decline is a question for the operator rather than a failure
+    // to report. Carrying it on the error is what lets the caller tell
+    // them apart — without it the dashboard turned every decline into
+    // "Rollback failed" and offered nothing further, while the server had
+    // supported force all along.
+    const err = new Error((await res.text()) || res.statusText);
+    err.status = res.status;
+    throw err;
+  }
   const ct = res.headers.get("content-type") || "";
   return ct.includes("json") ? res.json() : res.text();
 }
@@ -530,19 +540,31 @@ function checkpointBox(cp) {
     body);
 }
 
-async function rollback(cp) {
-  if (!confirm(`Roll back "${cp.label}"?\n\nThis restores the original file as it was before the fix was applied.`)) return;
+async function rollback(cp, force = false) {
+  if (!force && !confirm(`Roll back "${cp.label}"?\n\nThis restores the original file as it was before the fix was applied.`)) return;
   try {
     const o = await api("/api/rollback", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ checkpoint_id: cp.id }),
+      body: JSON.stringify({ checkpoint_id: cp.id, force }),
     });
     const n = o.restored_files ? o.restored_files.length : 0;
     flash(`Rolled back. Restored ${n} file${n === 1 ? "" : "s"}. Score ${o.new_score.overall}/100.` +
       (o.restart_service ? `  You may need to restart '${o.restart_service}'.` : ""));
     await refresh();
     await showHistory();
-  } catch (e) { flash("Rollback failed: " + e.message, true); }
+  } catch (e) {
+    // 409 is the engine declining, not failing: the file changed after
+    // hostveil wrote it, so restoring the backup would discard whatever
+    // was done in between. Rollback keeps no checkpoint of its own, so
+    // say that plainly and make the override a second, informed answer.
+    if (e.status === 409) {
+      if (confirm(`${e.message}\n\nOverwrite it anyway?\n\nThis restores hostveil's backup over the current file, discarding those changes. Rollback writes no checkpoint of its own, so this cannot be undone.`)) {
+        await rollback(cp, true);
+      }
+      return;
+    }
+    flash("Rollback failed: " + e.message, true);
+  }
 }
 
 async function refresh() { report = await api("/api/result"); render(); }
