@@ -16,6 +16,7 @@ import (
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
+	"github.com/seolcu/hostveil/internal/textwidth"
 )
 
 // PreviewFix returns, per available action, exactly what the fix would
@@ -148,20 +149,40 @@ func previewMode(a fix.Action) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return modeTable(changes), nil
+}
+
+// modeTable renders a plan that has already been made.
+//
+// It is separate from previewMode so that applyMode can describe the very
+// changes it is about to make. applyMode used to call planModes and then
+// previewMode, which planned again — two Lstat passes over the same paths
+// inside one apply, and two chances for the answer to differ. The paths it
+// chmod'ed and recorded for rollback came from the first pass while the
+// summary stored in the checkpoint came from the second, so a mode altered
+// between them left the checkpoint describing a set that was never applied.
+// Rollback still worked, since the restore data came from the first pass;
+// the record of what happened was the part that lied.
+//
+// The column is measured in display columns. len() counts bytes, which
+// misaligns the arrows for any path that is not ASCII — and paths come from
+// the operator.
+func modeTable(changes []modeChange) string {
 	if len(changes) == 0 {
-		return "Permissions are already as strict as required.", nil
+		return "Permissions are already as strict as required."
 	}
 	width := 0
 	for _, c := range changes {
-		if len(c.path) > width {
-			width = len(c.path)
+		if w := textwidth.Of(c.path); w > width {
+			width = w
 		}
 	}
 	var b strings.Builder
 	for _, c := range changes {
-		fmt.Fprintf(&b, "%-*s  %#o → %#o\n", width, c.path, c.from.Perm(), c.to.Perm())
+		fmt.Fprintf(&b, "%s  %#o → %#o\n",
+			c.path+strings.Repeat(" ", width-textwidth.Of(c.path)), c.from.Perm(), c.to.Perm())
 	}
-	return b.String(), nil
+	return b.String()
 }
 
 // ApplyFix applies one action of a finding's fix through the single
@@ -410,10 +431,9 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		return model.FixOutcome{}, fmt.Errorf("permissions on %v are already as strict as required", a.Paths)
 	}
 
-	summary, err := previewMode(a)
-	if err != nil {
-		return model.FixOutcome{}, err
-	}
+	// From the plan already in hand, not a second one: the summary must
+	// describe the changes this call is about to make.
+	summary := modeTable(changes)
 
 	prior := make(map[string]os.FileMode, len(changes))
 	for _, c := range changes {
