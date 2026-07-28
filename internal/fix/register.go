@@ -61,6 +61,17 @@ package fix
 //     prompt about modified config files. Nothing about that is reversible
 //     from a checkpoint, and a package upgrade that breaks a service leaves
 //     the operator worse off than the pending patch did.
+//   - fileperms.owner — the remediation is `chown root:root`, and hostveil
+//     cannot undo it. A checkpoint records a file's contents and its mode
+//     and has nowhere to put its previous owner, so this would be the only
+//     fix in the tool that changes something a rollback cannot put back.
+//     The right group is not guessable either: /etc/shadow is root:shadow
+//     on Debian and root:root on others, so a fix would have to pick one
+//     and would be wrong on the other half of hosts. And ownership landing
+//     on the wrong account is usually a symptom — a restore run as the
+//     wrong user, an archive extracted with its own uids — where chowning
+//     the files hostveil happens to know about fixes the visible part and
+//     leaves the rest. Revisit if BackedFile ever records uid/gid.
 //   - firewall.default-allow — the remediation is flipping the default
 //     inbound policy to deny, which is firewall.inactive's remediation
 //     applied to a firewall that happens to already be running, and it is

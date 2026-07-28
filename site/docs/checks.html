@@ -270,6 +270,7 @@
                   <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code> is writable by non-root users</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev high">High</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">High</span></td><td>Manual</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">Medium</span></td><td>Auto-fix</td></tr>
                 </tbody>
               </table>
