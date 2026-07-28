@@ -1,5 +1,123 @@
 # Changelog
 
+## [3.7.0](https://github.com/seolcu/hostveil/compare/v3.6.0...v3.7.0) (2026-07-28)
+
+3.6.0 widened what hostveil looks at. This release is mostly about the gap
+between what the engine already knew and what the interfaces would say — and
+it turned out to be wider than expected, because 3.6.0 itself shipped through
+it. The dashboard mirrored `model.Source` as a hand-written JavaScript object
+and the copy stopped at nine entries, so the tenth domain that release added
+had no filter chip and announced its own failures as `! 10 failed`. README
+advertised eight of the ten domains, missing the two newest. The engine had
+emitted per-domain scan progress since the CLI display was built for it, and
+the TUI threw every event away. `RollbackForce` had existed for releases and
+was reachable from neither UI. Thirty scan snapshots had been kept and pruned
+since the store was written and nobody ever read more than the newest one.
+
+None of that was a broken feature. Each was a thing the engine did correctly
+and an interface never asked about, which is the failure mode the "one engine,
+three thin UIs" rule exists to prevent and which import-checking alone cannot
+see. So the fixes come with the guards: the domain table is now generated from
+`model.AllSources` the way the palettes are generated from the theme registry,
+and README, the docs tables, the CLI reference, and the register of
+deliberately-unfixed findings are each pinned to the code they describe.
+
+Those guards started working immediately. Three of the changes below were
+caught by a test added earlier in the same cycle before a human looked at
+them — a new finding could not reach main undocumented, a fix registered for
+a domain could not land without the docs saying so, and a new flag could not
+ship without the CLI reference listing it.
+
+**Your score will move on two kinds of host, without your configuration having
+changed.** A firewall that is running with a default-allow inbound policy is
+now flagged: ufw and firewalld were accepted on the strength of being active,
+while nftables and iptables always had to show a default-deny policy, so
+hostveil held a hand-written ruleset to a stricter standard than the two
+managed front-ends. And the eight kernel-hardening findings move from Manual
+to Review, which changes the button they carry, not the number.
+
+### Features
+
+* **fix:** make the kernel-hardening domain fixable
+  ([#600](https://github.com/seolcu/hostveil/issues/600)). `sysctl` was the
+  only domain with no registered fix at all — eight findings, every one
+  Manual, an axis a user could see and not act on. The blocker was recorded
+  in the register: persisting a kernel parameter means writing an
+  `/etc/sysctl.d` drop-in that does not exist, and edit actions could only
+  modify a file already on disk. `Action.CreateIfMissing` removes it, and
+  what that reveals is two independent alternatives that were there all
+  along — write the drop-in (persistent, effective at the next boot) or
+  `sysctl -w` (effective now, gone at the next boot). Neither dominates,
+  which is what makes it a choice rather than the sequence Review forbids.
+  The delicate half is the undo: restoring "this file did not exist" means
+  deleting it, so the checkpoint says so explicitly rather than inferring it
+  from an empty backup, the deletion runs behind the same external-edit check
+  every other restore gets, and a drop-in the operator has since tuned
+  declines instead of vanishing.
+* **check:** flag a firewall that runs but accepts everything
+  ([#601](https://github.com/seolcu/hostveil/issues/601)). `ufw enable` after
+  `ufw default allow incoming` scored the Host firewall axis a perfect 100
+  while the host accepted every inbound packet — the same posture that scores
+  0 through `firewall.inactive` when nftables is the tool in use. A firewall
+  that is running and permitting is not a firewall; it is a log, and the only
+  thing it reliably does is make the host look protected. No fix is
+  registered: the new policy takes effect on every connection no rule already
+  allows, including the SSH session the operator is issuing it from.
+* **ui:** let the TUI and dashboard reach two engine features they could not
+  ([#602](https://github.com/seolcu/hostveil/issues/602)). The TUI now names
+  the domains still working while a scan runs — a screen that cannot
+  distinguish "still working" from "hung" is the one place progress is not
+  decoration, and on a host with many images that wait is minutes. And a
+  declined rollback is now a question in both interfaces rather than a dead
+  end: the file changed after hostveil wrote it, restoring the backup would
+  discard whatever was done in between, and rollback keeps no checkpoint of
+  its own. Only an explicit `y` overrides it.
+* **cmd:** show how the score has moved
+  ([#603](https://github.com/seolcu/hostveil/issues/603)). `hostveil history
+  --scans` reads the snapshots hostveil has been keeping and pruning all
+  along. A scan where no domain could be examined shows N/A rather than a
+  number, and no change is reported against it — a run nobody could score is
+  not a drop to zero.
+
+### Bug Fixes
+
+* **web:** serve the domain table instead of copying it into app.js
+  ([#595](https://github.com/seolcu/hostveil/issues/595)). The dashboard
+  turned a finding's numeric source into a filter chip through a table
+  written out by hand in JavaScript, and when the kernel-hardening domain
+  landed in 3.6.0 the copy did not grow a tenth entry. Both consequences were
+  silent: the chip list discarded sources it could not name, so eight
+  findings became unfilterable, and a failed domain rendered as the raw
+  integer. The table now comes from `model.AllSources`, served the way the
+  palettes are.
+* **history:** write scan snapshots atomically
+  ([#597](https://github.com/seolcu/hostveil/issues/597)). The one write in
+  the recovery layer that was not atomic, and it landed on the file the next
+  scan's delta depends on. A snapshot torn by a crash does not degrade the
+  delta, it destroys it.
+* **cmd:** stop three commands accepting flags they ignore
+  ([#598](https://github.com/seolcu/hostveil/issues/598)). `hostveil history
+  --json` printed the human table and exited 0; `fix --all --action 1` looked
+  like it had chosen an alternative and had not. Silently accepting a flag is
+  worse than rejecting it, because the user believes it did something.
+* **fix:** close the gap between Manual by decision and Manual by omission
+  ([#599](https://github.com/seolcu/hostveil/issues/599)). Five findings had
+  no fix and no recorded reason for not having one, which renders identically
+  to a maintainer having weighed the remediation and refused it. Every
+  finding now either has a fix or is named in the register with its reason,
+  and a test asserts there is no third state.
+* **docs:** document all ten domains and pin the tables to the code
+  ([#596](https://github.com/seolcu/hostveil/issues/596)). README advertised
+  eight of ten — the two missing being AI agent runtimes and kernel
+  hardening, the newest and therefore the worst pair to omit from the first
+  thing a visitor reads. The CLI reference also contradicted its own
+  exit-code table.
+* **build:** ship `.deb` and `.rpm` packages
+  ([#604](https://github.com/seolcu/hostveil/issues/604)). The only supported
+  install path was piping a script into a shell, which is the habit a
+  security tool should least be teaching. Docker is *recommended*, never
+  required, and removing the package leaves the checkpoint directory alone.
+
 ## [3.6.0](https://github.com/seolcu/hostveil/compare/v3.5.0...v3.6.0) (2026-07-28)
 
 3.5.0 asked what happens when something goes wrong. This release goes back to
