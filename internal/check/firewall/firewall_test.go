@@ -42,7 +42,7 @@ func countFindings(t *testing.T, r fakeRunner) int {
 func TestFirewallActiveUFW(t *testing.T) {
 	r := fakeRunner{
 		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: active\n"},
+		outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
 	}
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("active ufw should yield no finding, got %d", n)
@@ -69,7 +69,7 @@ func TestFirewallNoneInstalled(t *testing.T) {
 func TestFirewallFirewalld(t *testing.T) {
 	r := fakeRunner{
 		present: map[string]bool{"firewall-cmd": true},
-		outputs: map[string]string{"firewall-cmd --state": "running\n"},
+		outputs: map[string]string{"firewall-cmd --state": "running\n", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"},
 	}
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("running firewalld should yield no finding, got %d", n)
@@ -146,7 +146,7 @@ func TestFirewallUnreadableIsNotReportedAsAbsent(t *testing.T) {
 func TestFirewalldDetectedWhenStateGoesToStderr(t *testing.T) {
 	r := fakeRunner{
 		present: map[string]bool{"firewall-cmd": true},
-		outputs: map[string]string{"firewall-cmd --state": ""}, // exits 0, says nothing on stdout
+		outputs: map[string]string{"firewall-cmd --state": "", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"}, // exits 0, says nothing on stdout
 	}
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("firewalld running with empty stdout must count as active, got %d findings", n)
@@ -193,7 +193,7 @@ func TestFirewallProbeStatuses(t *testing.T) {
 		{"no tools installed", fakeRunner{}, StatusInactive},
 		{"ufw answers active", fakeRunner{
 			present: map[string]bool{"ufw": true},
-			outputs: map[string]string{"ufw status": "Status: active\n"},
+			outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
 		}, StatusActive},
 		{"ufw answers inactive", fakeRunner{
 			present: map[string]bool{"ufw": true},
@@ -204,7 +204,7 @@ func TestFirewallProbeStatuses(t *testing.T) {
 		}, StatusUnknown},
 		{"one tool unreadable, another confirms active", fakeRunner{
 			present: map[string]bool{"ufw": true, "nft": true},
-			outputs: map[string]string{"ufw status": "Status: active\n"},
+			outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
 		}, StatusActive},
 		{"firewalld installed but unreadable", fakeRunner{
 			present: map[string]bool{"firewall-cmd": true},
