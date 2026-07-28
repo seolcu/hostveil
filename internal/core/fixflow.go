@@ -67,7 +67,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 // previewEdit computes an edit action's diff purely: read the file, run the
 // pure Transform on a copy, diff the two. The live file is never written.
 func previewEdit(a fix.Action) (string, error) {
-	orig, err := os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+	orig, _, err := readEditTarget(a)
 	if err != nil {
 		return "", err
 	}
@@ -76,6 +76,27 @@ func previewEdit(a fix.Action) (string, error) {
 		return "", err
 	}
 	return diff.Unified(a.Path, string(orig), string(next)), nil
+}
+
+// readEditTarget reads an edit action's file, reporting whether the action
+// is about to create it.
+//
+// A CreateIfMissing action treats an absent file as empty input, so
+// Transform composes the whole contents and the diff renders as a pure
+// addition — which is exactly what the operator is being asked to approve.
+// Any other read error is still an error, including for such an action: a
+// permission denial or an EISDIR must not be mistaken for "not there yet"
+// and answered by creating something.
+func readEditTarget(a fix.Action) (data []byte, creating bool, err error) {
+	data, err = os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+	switch {
+	case err == nil:
+		return data, false, nil
+	case a.CreateIfMissing && errors.Is(err, fs.ErrNotExist):
+		return nil, true, nil
+	default:
+		return nil, false, err
+	}
 }
 
 // modeChange is one file whose permission bits a mode action would alter.
@@ -191,7 +212,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 }
 
 func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
-	orig, err := os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+	orig, creating, err := readEditTarget(a)
 	if err != nil {
 		return model.FixOutcome{}, err
 	}
@@ -223,7 +244,17 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 	}
-	saved, err := e.store.Save(cp, map[string][]byte{a.Path: orig})
+	// A file that did not exist has nothing to back up, and the checkpoint
+	// has to say so rather than record an empty backup: restoring an empty
+	// file is not the same as restoring its absence, and a host left with a
+	// zero-byte drop-in would look configured while configuring nothing.
+	save := func() (history.Checkpoint, error) {
+		if creating {
+			return e.store.SaveCreations(cp, []string{a.Path})
+		}
+		return e.store.Save(cp, map[string][]byte{a.Path: orig})
+	}
+	saved, err := save()
 	if err != nil {
 		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
 	}

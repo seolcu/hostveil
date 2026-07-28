@@ -33,6 +33,22 @@ type Action struct {
 	Path      string
 	Transform func(in []byte) (out []byte, err error)
 
+	// CreateIfMissing lets an edit action target a file that does not exist
+	// yet: Transform is handed nil rather than the read failing, and the
+	// checkpoint records that undoing the fix means deleting the file.
+	//
+	// Without it an edit action could only ever modify something already on
+	// disk, which left an entire detection domain unfixable. Persisting a
+	// kernel parameter means writing a drop-in under /etc/sysctl.d that by
+	// definition is not there — if it were, the value would already be set
+	// and the finding would not have fired.
+	//
+	// It is opt-in per action, not the default, because for every other fix
+	// a missing target is a real error worth reporting: an sshd_config that
+	// is not there means the finding was stale or the path was wrong, and
+	// silently creating one would be worse than failing.
+	CreateIfMissing bool
+
 	// VerifyCmd is an optional argv that validates an edit action's *result*
 	// before it is written. Exactly one element must be VerifyPathToken; the
 	// engine substitutes a temporary file holding the bytes Transform

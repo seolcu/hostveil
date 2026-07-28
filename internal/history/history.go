@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -48,6 +49,17 @@ type BackedFile struct {
 	// missing hash means "cannot tell", which must not read as either answer —
 	// see verifyBlob.
 	BlobSHA256 string `json:"blob_sha256,omitempty"`
+
+	// Created records that the fix brought this file into existence, so
+	// restoring it means deleting it rather than writing something back.
+	//
+	// It is an explicit flag rather than an inference from an empty Blob,
+	// because an empty Blob already means something else — SaveModes writes
+	// mode-only entries with no blob, and those must be left alone. Guessing
+	// between "no contents were touched" and "there were no contents" would
+	// make rollback delete a file whose permissions were the only thing a
+	// fix ever changed.
+	Created bool `json:"created,omitempty"`
 }
 
 // Checkpoint is a restore point created when a fix is applied.
@@ -230,6 +242,39 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 	cp.Files = cp.Files[:0]
 	for path, mode := range modes {
 		cp.Files = append(cp.Files, BackedFile{Path: path, Mode: mode})
+	}
+	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
+
+	if err := s.writeMeta(dir, cp); err != nil {
+		return Checkpoint{}, err
+	}
+	s.pruneCheckpoints()
+	return cp, nil
+}
+
+// SaveCreations writes a checkpoint for a fix that created files which did
+// not exist before. paths names them; restoring the checkpoint deletes them.
+//
+// It is the third sibling of Save and SaveModes, and it exists for the same
+// reason SaveModes does: the checkpoint has to describe what undoing this
+// fix means, and "write these bytes back" cannot describe a file that had
+// no bytes. There is nothing to back up — that is the whole point — so the
+// checkpoint stores no blobs and is Reversible on the strength of naming
+// the paths.
+//
+// A fix that both creates one file and edits another would need Save and
+// this at once, and cannot express it. No such fix exists: an Action
+// carries a single Path. If one is ever written, this is where it breaks,
+// loudly, rather than silently checkpointing half of it.
+func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error) {
+	dir := filepath.Join(s.checkpointsDir(), cp.ID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return Checkpoint{}, err
+	}
+
+	cp.Files = cp.Files[:0]
+	for _, path := range paths {
+		cp.Files = append(cp.Files, BackedFile{Path: path, Created: true})
 	}
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
@@ -492,6 +537,21 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 	}
 
 	for _, bf := range cp.Files {
+		// The file did not exist before the fix, so restoring it means
+		// removing it. An already-absent file is the desired end state, not
+		// an error — an operator who deleted the drop-in by hand and then
+		// rolled back should get success, not a failure describing the thing
+		// they already did.
+		//
+		// This runs after the same external-edit check every other entry
+		// gets, so a drop-in the operator has since edited declines here
+		// rather than being deleted out from under them.
+		if bf.Created {
+			if err := os.Remove(bf.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return cp, err
+			}
+			continue
+		}
 		// A mode-only entry carries no blob: the fix changed permissions and
 		// never touched the contents, so there is nothing to write back.
 		if data, ok := blobs[bf.Path]; ok {

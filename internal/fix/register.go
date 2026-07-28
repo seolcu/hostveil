@@ -186,16 +186,8 @@ package fix
 //     SSH in as, and /etc/shadow does not say which this is. Setting a
 //     password instead cannot be done unattended by definition — hostveil
 //     would have to invent one, and then it would know it.
-//   - sysctl.* (every kernel-hardening finding) — one shared reason.
-//     Persisting a value means writing an /etc/sysctl.d drop-in that does
-//     not exist, and edit actions cannot create files: previewEdit and
-//     applyEdit both read the target before doing anything. Making it live
-//     needs `sysctl --system`, which is exec and so never Auto; and
-//     "write the drop-in, then apply it" is sequential steps, exactly what
-//     Review's independent-alternatives shape forbids. Each finding's
-//     how-to-fix carries the exact line and command instead. Revisit if
-//     Action ever grows a create-if-missing mode, at which point these
-//     become natural Review fixes.
+//
+// (sysctl.* was in this list and is not any more; see below.)
 //
 // # Auto fixes that touch a user's home
 //
@@ -225,6 +217,38 @@ package fix
 // otherwise turn `fix --all` into root tightening the password database off
 // the host. Any future Auto fix whose target another account can influence
 // owes the same discipline.
+//
+// # The kernel-hardening fixes, and why they stopped being declined
+//
+// Every sysctl.* finding was on the list above, for one shared reason:
+// persisting a value means writing an /etc/sysctl.d drop-in that does not
+// exist — and if it did exist the value would already be set, so the
+// finding would not have fired — while edit actions could only modify a
+// file already on disk. That left one remediation, `sysctl --system`, with
+// no partner, and "write the drop-in, then apply it" is sequential steps,
+// exactly what Review's independent-alternatives shape forbids.
+//
+// Action.CreateIfMissing removes the blocker, and what it reveals is that
+// there were two independent alternatives all along:
+//
+//   - write the drop-in — persistent, effective at the next boot;
+//   - `sysctl -w` — effective now, gone at the next boot.
+//
+// Neither dominates. An operator hardening a box they are about to reboot
+// wants the first; one who cannot restart a production host today wants
+// the second now and the first later. That is a choice, not a sequence.
+//
+// They are Review and not Auto, and the reason is not the shape. Writing
+// the drop-in is one mechanical, reversible file edit and would otherwise
+// qualify — but it is not unambiguous. rp_filter is 1 on a single-homed
+// server and 2 on a VPN or multi-homed one; sysrq has a restricted-bitmask
+// answer as legitimate as 0. hostveil audits only the unambiguous half of
+// each and writes only what it audited, but the operator is the one who
+// knows which host this is, so they see it first.
+//
+// One file per finding, never a shared 99-hostveil.conf. Independence is
+// the whole point: applying the second fix must not have to read what the
+// first wrote, and rolling one back must not take another's line with it.
 //
 // # The one CVE finding that does have a fix
 //
@@ -259,5 +283,6 @@ func Default() *Registry {
 	registerSSH(r)
 	registerUpdates(r)
 	registerAgent(r)
+	registerSysctl(r)
 	return r
 }

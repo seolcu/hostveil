@@ -272,19 +272,21 @@
 
             <h2 id="sysctl">커널 하드닝 <code>sysctl.</code></h2>
             <p><code>/proc/sys</code>에서 직접 읽습니다 — <code>sysctl</code> 바이너리가 필요 없습니다. 이 항목들은 사실상 모든 서버에서 안전한 값이 같은 조용한 손잡이들입니다. 공격자가 들어오는 구멍은 아니지만, 각각은 발판이 root가 되는 것과 위조된 패킷이 경로가 되는 것을 막아 줍니다. 이 커널에 없는 파라미터(예: Yama가 빌드되지 않은 경우)는 그냥 건너뜁니다.</p>
-            <p>여기의 모든 발견 항목은 지금은 수동입니다. 값을 유지하려면 아직 존재하지 않는 <code>/etc/sysctl.d</code> 드롭인 파일을 만들어야 하고, 즉시 적용하려면 <code>sysctl --system</code>이 필요합니다 — 그래서 버튼 대신 정확한 설정 줄과 명령을 발견 항목이 직접 알려줍니다. <code>net.ipv4.ip_forward</code>는 의도적으로 점검하지 않습니다. Docker, WireGuard, Tailscale 종료 노드, 가상화 호스트가 모두 정당하게 켜는 값이고, hostveil은 그것을 실수와 구별할 수 없습니다.</p>
+            <p>여기의 모든 발견 항목은 <strong>검토</strong>이고, 두 대안은 한 절차의 앞뒤가 아니라 진짜 선택지입니다. <em>영구 적용</em>은 <code>/etc/sysctl.d</code> 아래에 발견 항목 이름을 딴 드롭인 파일을 하나 씁니다 — 재부팅해도 남고, 다음 부팅 때(또는 바로 <code>sysctl --system</code>을 실행하면 그 즉시) 적용됩니다. <em>지금 적용</em>은 <code>sysctl -w</code>로 실행 중인 커널을 이 순간 바꾸지만 다음 부팅에 사라집니다. 어느 쪽도 항상 낫지 않습니다. 곧 재부팅할 서버를 강화하는 중이라면 앞쪽을, 오늘 재시작할 수 없는 운영 호스트라면 지금은 뒤쪽을 그리고 나중에 앞쪽을 원하게 됩니다.</p>
+            <p>자동 수정이 아니라 검토인 이유는, 안전한 값이 언제나 유일하게 타당한 값은 아니기 때문입니다. <code>rp_filter</code>는 단일 회선 서버에서는 1이지만 VPN이나 다중 회선 호스트에서는 2이고, <code>sysrq</code>도 0만큼이나 정당한 제한 비트마스크 형태가 있습니다. hostveil은 각 항목에서 모호하지 않은 부분만 표시하고 표시한 것만 씁니다만, 이 호스트가 어느 쪽인지 아는 사람은 당신입니다. 영구 적용한 수정을 롤백하면 만들어진 드롭인 파일이 삭제되고, 그 파일을 그 뒤에 직접 고쳤다면 롤백은 거절됩니다.</p>
+            <p><code>net.ipv4.ip_forward</code>는 의도적으로 점검하지 않습니다. Docker, WireGuard, Tailscale 종료 노드, 가상화 호스트가 모두 정당하게 켜는 값이고, hostveil은 그것을 실수와 구별할 수 없습니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">보통</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
-                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">낮음</span></td><td>수동</td></tr>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">보통</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">낮음</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
