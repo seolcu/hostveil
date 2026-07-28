@@ -84,6 +84,7 @@ type appModel struct {
 	aiErr  string
 
 	checkpoints []model.Checkpoint // applied-fix log, newest first
+	trend       []model.ScorePoint // score of every retained scan, oldest first
 	cpCursor    int
 	cpOffset    int
 	// historyWarning names checkpoints that could not be read, shown above
@@ -292,6 +293,11 @@ func explainCmd(ctx context.Context, e *core.Engine, f model.Finding) tea.Cmd {
 
 type historyMsg struct {
 	checkpoints []model.Checkpoint
+	// trend is the score of every retained scan, oldest first. It rides on
+	// the history message because it answers the same question from the
+	// other side: the checkpoint list says what was changed, the trend says
+	// whether it helped.
+	trend []model.ScorePoint
 	// warning is set when some checkpoints could not be read. The list is
 	// still shown; err is for a history that could not be listed at all.
 	warning string
@@ -309,10 +315,14 @@ func historyCmd(e *core.Engine) tea.Cmd {
 		// opens and carries the warning rather than replacing the history with
 		// an error screen. What is missing cannot be rolled back at all, which
 		// is not something to discover only on trying.
+		// A trend that cannot be read costs the trend line, not the
+		// history screen. The checkpoints are what the operator opened
+		// this for, and they are still there.
+		trend, _ := e.ScoreHistory()
 		if core.IsIncompleteHistory(err) {
-			return historyMsg{checkpoints: cps, warning: err.Error()}
+			return historyMsg{checkpoints: cps, trend: trend, warning: err.Error()}
 		}
-		return historyMsg{checkpoints: cps, err: err}
+		return historyMsg{checkpoints: cps, trend: trend, err: err}
 	}
 }
 
@@ -423,6 +433,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.checkpoints = msg.checkpoints
+		m.trend = msg.trend
 		m.historyWarning = msg.warning
 		m.cpCursor, m.cpOffset = 0, 0
 		m.mode = modeHistory

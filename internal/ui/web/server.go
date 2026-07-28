@@ -107,6 +107,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
+	mux.HandleFunc("GET /api/trend", s.handleTrend)
 	mux.HandleFunc("GET /api/rescan/status", s.handleRescanStatus)
 	mux.HandleFunc("GET /api/explain", s.handleExplain)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
@@ -329,6 +330,30 @@ func (s *Server) handleDomainsJS(w http.ResponseWriter, _ *http.Request) {
 type resultPayload struct {
 	model.Report
 	Delta model.Delta `json:"delta"`
+}
+
+// handleTrend serves the score of every retained scan, plus the sparkline
+// the TUI draws from the same points.
+//
+// The glyphs come from model.Sparkline rather than being bucketed again in
+// JavaScript: two implementations of one rule is the shape that has already
+// gone wrong twice here — the severity palette before internal/ui/theme,
+// the domain table before /domains.js.
+//
+// It is its own route rather than a field on /api/result because the result
+// is refetched after every fix, and re-reading thirty snapshots from disk
+// each time would be work nobody asked for. The trend only moves when a
+// scan does.
+func (s *Server) handleTrend(w http.ResponseWriter, _ *http.Request) {
+	points, err := s.engine.ScoreHistory()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, struct {
+		Points    []model.ScorePoint `json:"points"`
+		Sparkline string             `json:"sparkline"`
+	}{Points: points, Sparkline: model.Sparkline(points)})
 }
 
 func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {

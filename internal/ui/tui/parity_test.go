@@ -159,3 +159,69 @@ func TestOrdinaryRollbackFailureDoesNotOfferToForce(t *testing.T) {
 type plainErr string
 
 func (e plainErr) Error() string { return string(e) }
+
+// The score series was put on the engine in #603 so both interfaces could
+// draw it; neither did. This is the TUI half, and it lives on the history
+// screen because it answers the other side of the same question: the
+// checkpoint list says what was changed, the trend says whether it helped.
+func TestHistoryScreenShowsTheScoreTrend(t *testing.T) {
+	m := &appModel{mode: modeHistory, width: 100, height: 24, selected: map[string]bool{},
+		checkpoints: []model.Checkpoint{{ID: "cp1", Label: "Bind redis to loopback", Reversible: true}},
+		trend: []model.ScorePoint{
+			{Overall: 42, Applicable: true},
+			{Overall: 58, Applicable: true},
+			{Overall: 71, Applicable: true},
+		}}
+
+	body := m.View().Content
+	// The glyphs come from model.Sparkline, the same call the dashboard's
+	// /api/trend makes. Two bucketing rules is the shape this repo has
+	// already been bitten by twice.
+	if want := model.Sparkline(m.trend); !strings.Contains(ansiSeq.ReplaceAllString(body, ""), want) {
+		t.Errorf("the history screen does not draw model.Sparkline(%q):\n%s", want, body)
+	}
+	// The endpoints are what turn a shape into a reading.
+	strip := ansiSeq.ReplaceAllString(body, "")
+	for _, want := range []string{"42", "71"} {
+		if !strings.Contains(strip, want) {
+			t.Errorf("the trend line does not carry the score %s:\n%s", want, strip)
+		}
+	}
+}
+
+// A sparkline of one point is a shape with no information in it, and a
+// first run should not be handed a chart implying a history it does not
+// have.
+func TestNoTrendLineForASingleScan(t *testing.T) {
+	for _, trend := range [][]model.ScorePoint{nil, {{Overall: 42, Applicable: true}}} {
+		m := &appModel{mode: modeHistory, width: 100, height: 24, selected: map[string]bool{},
+			checkpoints: []model.Checkpoint{{ID: "cp1", Reversible: true}}, trend: trend}
+		if got := m.trendLine(); got != "" {
+			t.Errorf("%d point(s) drew a trend line: %q", len(trend), got)
+		}
+	}
+}
+
+// The trend is the first thing shed when the terminal is too short: a
+// missing checkpoint cannot be rolled back at all, which is more urgent
+// than a shape. The frame must still be exactly as tall as the terminal.
+func TestTrendIsSheddableOnAShortTerminal(t *testing.T) {
+	trend := []model.ScorePoint{{Overall: 42, Applicable: true}, {Overall: 71, Applicable: true}}
+	cps := make([]model.Checkpoint, 8)
+	for i := range cps {
+		cps[i] = model.Checkpoint{ID: "cp", Label: "Bind redis to loopback", Reversible: true}
+	}
+	for _, h := range []int{24, 16, 12, 10, 8, 7, 6} {
+		m := &appModel{mode: modeHistory, width: 80, height: h, selected: map[string]bool{},
+			checkpoints: cps, trend: trend, historyWarning: "one checkpoint could not be read"}
+		content := m.View().Content
+		if got := strings.Count(content, "\n") + 1; got != h {
+			t.Errorf("height=%d: frame is %d lines", h, got)
+		}
+		for _, line := range strings.Split(content, "\n") {
+			if got := visibleWidth(line); got > 80 {
+				t.Errorf("height=%d: line is %d columns:\n  %q", h, got, line)
+			}
+		}
+	}
+}

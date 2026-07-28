@@ -258,3 +258,21 @@ pre.diff .ctx { color: var(--slate); }
   .gauge-score { min-width: 0; }
   .axes { grid-template-columns: 1fr; }
 }
+
+/* The sparkline is block glyphs, so it needs the monospace run the rest of
+   the chrome does not — a proportional font renders ▁▂▃ at different widths
+   and the shape stops being a shape. Colored by the latest score's band, the
+   same rule the gauge and the axis meters use. */
+.spark {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: pre;
+}
+.spark.b-safe { color: var(--safe); }
+.spark.b-med  { color: var(--med); }
+.spark.b-high { color: var(--high); }
+.spark.b-crit { color: var(--crit); }
+.spark.b-na   { color: var(--slate); }
+.spark-end { color: var(--slate); font-variant-numeric: tabular-nums; }
