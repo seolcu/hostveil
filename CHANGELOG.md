@@ -1,5 +1,44 @@
 # Changelog
 
+## [3.8.3](https://github.com/seolcu/hostveil/compare/v3.8.2...v3.8.3) (2026-07-29)
+
+Two fixes for hosts and operators that are not ASCII, and one for a record
+that could describe work nobody did.
+
+### Bug Fixes
+
+* **ui:** measure text in display columns, not bytes or runes
+  ([#621](https://github.com/seolcu/hostveil/issues/621)). Three notions of
+  "how wide is this" were in use at once: the padding function counted
+  display columns, truncation counted runes, and wrapping — in the TUI and
+  again in the CLI renderer — counted bytes. For ASCII all three agree, which
+  is why nobody noticed. For anything else they diverge in opposite
+  directions, and against Hangul, where one character is three bytes, one
+  rune and two columns, wrapping at a width of 40 produced lines 24 columns
+  wide while truncating to a 20-column budget produced 34. The second is the
+  damaging one: truncation exists to make a cell fit the space computed for
+  it, and the padding beside it measured the same cell differently, so rows
+  ran past the edge of the terminal. This reaches ordinary hosts through
+  compose service names, file paths, and `explain --ai`, which renders
+  whatever the local model wrote. The interesting part of the fix is the
+  width table: the obvious library call picks one from `LANG` and `LC_ALL` at
+  startup, and under a Korean locale it calls `…`, `→`, `±` and `·` two
+  columns wide — all four of which hostveil draws — so the same binary would
+  have laid out screens differently for operators in different countries.
+  An explicit table is pinned instead, and a test asserts it agrees with the
+  one the terminal layer already uses.
+* **core:** plan a mode change once per apply, not twice
+  ([#622](https://github.com/seolcu/hostveil/issues/622)). Applying a
+  permission fix planned the changes, then rendered its summary by planning
+  them a second time. The paths it actually changed, and the modes it saved
+  for rollback, came from the first pass; the summary stored in the
+  checkpoint came from the second. A file altered between the two left the
+  checkpoint describing a set that was never applied — rollback still worked,
+  since the restore data came from the first pass, but the record of what
+  happened did not match what happened. The summary is now rendered from the
+  plan being executed. Its table was also aligned by byte count, so a single
+  non-ASCII path threw every arrow in it out of line.
+
 ## [3.8.2](https://github.com/seolcu/hostveil/compare/v3.8.1...v3.8.2) (2026-07-29)
 
 Two things the tool knew and did not say, and one it could not have said
