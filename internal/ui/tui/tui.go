@@ -806,6 +806,9 @@ func applySummary(o model.FixOutcome) string {
 	if o.RestartHint != "" {
 		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartHint)
 	}
+	if o.VerifyMessage != "" {
+		b.WriteString(" " + o.VerifyMessage)
+	}
 	return b.String()
 }
 

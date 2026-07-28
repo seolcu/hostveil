@@ -109,7 +109,19 @@
               <button class="copy-btn" type="button" data-copy="hostveil fix ssh.rootlogin">Copy</button>
               <pre><code>hostveil fix ssh.rootlogin</code></pre>
             </div>
-            <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, then <strong>3)</strong> applies the change. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
+            <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, <strong>3)</strong> applies the change, then <strong>4)</strong> re-runs that finding's own domain to see whether it is actually gone. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
+            <p>That last step exists because <em>"hostveil wrote the file"</em> and <em>"the finding is gone"</em> are different claims, and only the first used to be established. The result is reported, never guessed at:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Result</th><th>What it means</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Gone</strong></td><td>The domain was re-checked and no longer reports it.</td></tr>
+                  <tr><td><strong>Still reported</strong></td><td>The change landed but the finding persists — usually because it is not yet in force. A sysctl drop-in applies at the next boot; sshd serves from the config it already loaded until it restarts. <strong>Not a failure</strong>, and the fix stays rollbackable.</td></tr>
+                  <tr><td><strong>Unconfirmed</strong></td><td>The re-check could not run or could not cover its ground — no Docker, no root. "Couldn't look" is not "still broken", and it is not "fixed" either.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Verification does <em>not</em> change whether the finding is marked fixed, and <code>fix --all</code> skips it: re-checking after each of twenty fixes would re-run a checker twenty times, and a batch ends with a rescan anyway.</p>
 
             <h3>Choosing a Review alternative</h3>
             <p>Review findings offer independent alternatives. Pass the 0-based index with <code>--action</code>:</p>
