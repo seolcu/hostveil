@@ -828,3 +828,53 @@ func TestHostWorkOutlivesTheRequest(t *testing.T) {
 		t.Errorf("host work was cancelled with the request: %v", err)
 	}
 }
+
+// Both batch routes must carry the outcome sentence, because the dashboard
+// now shows nothing else about what happened.
+//
+// It shows nothing else because writing it in JavaScript produced two
+// summaries of one response that each dropped a different field: the batch
+// button never mentioned an interruption, so a batch cut short read exactly
+// like a completed one, and the fix-all button reported neither skipped nor
+// failed, so a fix that errored moved the score and said nothing. The
+// message is rendered once in the engine; these assert it arrives.
+func TestBatchRoutesCarryTheOutcomeMessage(t *testing.T) {
+	for _, tc := range []struct{ name, route, body string }{
+		{"batch", "/api/fix/batch", `{"findings":[{"id":"compose.ds018","service":"cache"}]}`},
+		{"fix all", "/api/fix/all", `{}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, _ := testServer(t)
+			srv := httptest.NewServer(s.Handler())
+			defer srv.Close()
+
+			req, _ := http.NewRequest(http.MethodPost, srv.URL+tc.route, strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", srv.URL)
+			resp, err := authedClient(t, s, srv).Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("%s returned %d", tc.route, resp.StatusCode)
+			}
+
+			// Decoded as a bare map as well, so this fails if the field is
+			// renamed or dropped from the wire rather than only from Go.
+			var raw map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+				t.Fatal(err)
+			}
+			msg, _ := raw["message"].(string)
+			if msg == "" {
+				t.Fatalf("%s carried no message; the dashboard would flash an empty toast: %v", tc.route, raw)
+			}
+			for _, want := range []string{"Applied ", "New score: "} {
+				if !strings.Contains(msg, want) {
+					t.Errorf("%s message = %q, want it to contain %q", tc.route, msg, want)
+				}
+			}
+		})
+	}
+}

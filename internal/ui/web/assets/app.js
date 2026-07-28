@@ -189,10 +189,11 @@ async function applyBatch() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ findings }),
     });
-    const parts = [`Applied ${o.applied ? o.applied.length : 0}`];
-    if (o.skipped && o.skipped.length) parts.push(`skipped ${o.skipped.length}`);
-    if (o.failed && Object.keys(o.failed).length) parts.push(`failed ${Object.keys(o.failed).length}`);
-    flash(parts.join(" · ") + `. Score ${o.new_score.overall}/100.`);
+    // The engine's own sentence. Written here by hand it counted applied,
+    // skipped and failed but never mentioned o.interrupted, so a batch cut
+    // short read exactly like one that ran to completion — which is the one
+    // thing that flag exists to prevent.
+    flash(o.message);
     marked.clear();
     await refresh();
   } catch (e) { flash("Batch fix failed: " + e.message, true); }
@@ -767,8 +768,11 @@ fixallBtn.onclick = () => {
   if (!confirm("Apply every safe (Auto) fix now?")) return;
   whileBusy(fixallBtn, "Applying…", async () => {
     const o = await api("/api/fix/all", { method: "POST", headers: { "Content-Type": "application/json" } });
-    flash(`Applied ${o.applied ? o.applied.length : 0} fixes. Score ${o.new_score.overall}/100.`
-      + (o.interrupted ? "  Interrupted — the rest were never attempted." : ""));
+    // Same route's outcome as the batch button above, so the same sentence.
+    // This one used to report only the applied count and the interruption,
+    // so a fix that errored was invisible: the score moved, nothing said
+    // why, and the failure was in the response all along.
+    flash(o.message);
     marked.clear();
     await refresh();
   });

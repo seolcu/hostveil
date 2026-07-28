@@ -555,6 +555,9 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 		out.Applied = append(out.Applied, f.ID)
 	}
 	out.NewScore = e.rescore()
+	// Rendered here, after the score, so every interface reports the same
+	// outcome rather than four descriptions of it.
+	out.Message = out.Summary()
 	return out
 }
 
