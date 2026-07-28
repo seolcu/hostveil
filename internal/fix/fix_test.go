@@ -137,6 +137,19 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		// write-then-apply pair is sequential steps, not the independent
 		// alternatives Review requires.
 
+		// Every dockerd.* finding, one shared reason: the checker reads the
+		// running daemon's state while a fix would edit a file the daemon
+		// does not re-read until a restart that stops every container — so
+		// the fix would mark the finding Fixed and change nothing the next
+		// scan can see.
+		"dockerd.api-unauthenticated":   "removing the TCP endpoint severs the channel a remote operator may be administering the host through",
+		"dockerd.api-tls-unverified":    "same as dockerd.api-unauthenticated",
+		"dockerd.socket-world-writable": "the socket's mode is recreated from the systemd unit at every restart, so a chmod does not persist",
+		"dockerd.group-members":         "gpasswd -d is exec, and the member it removes may be the operator's own account",
+		"dockerd.no-new-privileges":     "a daemon default that takes effect only for containers started after a restart",
+		"dockerd.userns-remap":          "same, and it rewrites the ownership of every bind mount on the host",
+		"dockerd.live-restore":          "reload is exec with no checkpoint, and write-then-apply is sequential steps rather than Review's independent alternatives",
+
 		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
 		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
 		"ports.exposed":          "the aggregate finding's remediation is firewall.inactive's, and is declined for the same reason",

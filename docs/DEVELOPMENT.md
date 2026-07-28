@@ -48,7 +48,7 @@ cmd/sitegen/         static-site generator for site/ (templates + content + page
 internal/
   core/              the shared engine — the only thing the UIs call
   check/             detection domains (compose, ssh, firewall, updates, cve,
-                     ports, accounts, fileperms, agent, sysctl)
+                     ports, accounts, fileperms, agent, sysctl, dockerd)
   fix/ compose/ history/   fix registry, YAML editing, backup/rollback
   model/ platform/   pure value types; the OS/command seam
   clirender/         the CLI's report rendering

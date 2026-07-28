@@ -68,17 +68,37 @@ type axisDef struct {
 // "sysctl" ties with "fileperms" deliberately too: both are quiet local-
 // hardening backstops — neither is the hole an attacker comes in through,
 // each is what stops a foothold from becoming root.
+//
+// "dockerd" ties with "accounts" and "updates", and the tie is the argument:
+// like account hygiene it is a small rule set where one member is
+// catastrophic and the rest are hygiene, and like both it is excluded
+// entirely on a host it does not apply to. Six axes gave up a point to fund
+// it. "container" gave two because it was the only place any Docker risk
+// landed and was implicitly priced to cover the daemon as well; it no longer
+// has to, and compose findings are now strictly about what a service
+// declares. "ssh" gave one because on a host running Docker the daemon socket
+// is a second remote-administration channel with SSH's blast radius and none
+// of its hardening. "cve" gave one because both are Docker-conditional and an
+// open API hands over every container today, while an image's patch level is
+// a slower problem. "firewall" gave one because firewall.docker-bypass
+// already says the daemon walks through the host firewall. "ports" gave one
+// because this axis takes custody of the most dangerous port a Docker host
+// can publish — one the port table could never have judged, since the number
+// alone does not say whether TLS verification is in force. "agent" gave one
+// because its generous cap was argued from being N/A on most hosts, and that
+// argument now has a second claimant.
 var axisDefs = []axisDef{
-	{"container", "Container exposure", SourceCompose, 17},
-	{"ssh", "SSH hardening", SourceSSH, 16},
-	{"firewall", "Host firewall", SourceFirewall, 11},
+	{"container", "Container exposure", SourceCompose, 15},
+	{"ssh", "SSH hardening", SourceSSH, 15},
+	{"firewall", "Host firewall", SourceFirewall, 10},
 	{"updates", "Auto-updates", SourceUpdates, 7},
-	{"cve", "Vulnerabilities", SourceCVE, 12},
-	{"ports", "Exposed services", SourcePorts, 10},
+	{"cve", "Vulnerabilities", SourceCVE, 11},
+	{"ports", "Exposed services", SourcePorts, 9},
 	{"accounts", "Account hygiene", SourceAccounts, 7},
 	{"fileperms", "File permissions", SourceFilePerms, 5},
-	{"agent", "AI agent runtimes", SourceAgent, 10},
+	{"agent", "AI agent runtimes", SourceAgent, 9},
 	{"sysctl", "Kernel hardening", SourceSysctl, 5},
+	{"dockerd", "Docker daemon", SourceDockerd, 7},
 }
 
 // criticalHalves is the anchor of the whole penalty model: one Critical

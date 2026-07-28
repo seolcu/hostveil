@@ -52,7 +52,7 @@ func TestEveryFindingIsEitherFixableOrDeclinedOnPurpose(t *testing.T) {
 
 // registerID matches an ID as the register writes it, including the
 // source-wide glob form.
-var registerID = regexp.MustCompile(`\b(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent|sysctl)\.(\*|[a-z0-9][a-z0-9.\-]*)`)
+var registerID = regexp.MustCompile(`\b(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent|sysctl|dockerd)\.(\*|[a-z0-9][a-z0-9.\-]*)`)
 
 // declinedInRegister reads the doc comment on fix.Default and returns every
 // finding ID it names.

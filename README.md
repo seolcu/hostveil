@@ -45,6 +45,7 @@ second column is what you type into `hostveil fix` and `hostveil explain`.
 | **File permissions** | `fileperms.*` | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
 | **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes — OpenClaw and Hermes Agent: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, the sandbox disabled, and loose permissions on the config and the API keys beside it | — |
 | **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys` — the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
+| **Docker daemon** | `dockerd.*` | The daemon underneath your containers: an API served over TCP without TLS client verification (unauthenticated root for anyone who can reach the port), a world-writable socket, who holds the socket's group, and the defaults — no-new-privileges, userns-remap, live-restore | Docker |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
 Missing Docker or Trivy? Those domains are skipped cleanly and the score is
