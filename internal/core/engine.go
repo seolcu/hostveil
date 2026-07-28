@@ -286,3 +286,35 @@ func validFindings(in []model.Finding) []model.Finding {
 	}
 	return out
 }
+
+// ScoreHistory returns the headline score of every retained scan, oldest
+// first, so a UI can show whether the host is getting better.
+//
+// The data has been on disk since the store was written — thirty snapshots,
+// kept and pruned — and nothing ever read more than the newest one. Every
+// interface showed "since last scan" and nothing longer, which answers
+// "did that round of fixes help?" but not "is this host improving?".
+//
+// A snapshot that will not unmarshal is skipped rather than failing the
+// call, and an unscorable scan keeps Applicable false rather than being
+// flattened to zero: a run where every domain was skipped has no score, and
+// drawing it as 0 would invent a cliff.
+func (e *Engine) ScoreHistory() ([]model.ScorePoint, error) {
+	snaps, err := e.store.ListReports()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ScorePoint, 0, len(snaps))
+	for _, snap := range snaps {
+		var r model.Report
+		if json.Unmarshal(snap.Data, &r) != nil {
+			continue
+		}
+		out = append(out, model.ScorePoint{
+			At:         snap.At,
+			Overall:    r.Score.Overall,
+			Applicable: r.Score.Applicable,
+		})
+	}
+	return out, nil
+}

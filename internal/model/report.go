@@ -1,6 +1,9 @@
 package model
 
-import "sort"
+import (
+	"sort"
+	"time"
+)
 
 // ScanState is the lifecycle state of one domain's checker during a scan.
 type ScanState int
@@ -111,4 +114,17 @@ func SortFindings(findings []Finding) {
 		}
 		return a.ID < b.ID
 	})
+}
+
+// ScorePoint is one past scan's headline score, for a trend.
+//
+// Applicable mirrors ScoreBreakdown.Applicable and must be carried, not
+// flattened to a number: a scan where every domain was skipped or failed
+// has no score at all, and rendering it as 0 would draw a cliff where the
+// truth is "nobody could look". The same lie the aggregate score already
+// refuses to tell, told again by a chart.
+type ScorePoint struct {
+	At         time.Time `json:"at"`
+	Overall    uint8     `json:"overall"`
+	Applicable bool      `json:"applicable"`
 }

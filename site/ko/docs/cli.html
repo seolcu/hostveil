@@ -143,8 +143,17 @@ hostveil fix --all [flags]</code></pre></div>
 
             <h2 id="history">history</h2>
             <p>적용된 수정과 그 롤백 ID를 나열합니다.</p>
-            <div class="code-block"><pre><code>hostveil history</code></pre></div>
-            <p>체크포인트를 최신순으로 나열하며, 타임스탬프, 발견 항목 ID, 레이블, 그리고 정확한 <code>hostveil rollback &lt;id&gt;</code> 명령 또는 <em>되돌릴 수 없음</em> 표시가 함께 나옵니다. 플래그는 없습니다.</p>
+            <div class="code-block"><pre><code>hostveil history
+hostveil history --scans</code></pre></div>
+            <p>체크포인트를 최신순으로 나열하며, 타임스탬프, 발견 항목 ID, 레이블, 그리고 정확한 <code>hostveil rollback &lt;id&gt;</code> 명령 또는 <em>되돌릴 수 없음</em> 표시가 함께 나옵니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--scans</code></td><td>적용된 수정 이력 대신, 보관된 모든 스캔의 점수를 오래된 순으로 보여 주고 직전 스캔 대비 변화를 함께 표시합니다. hostveil은 최근 30개 스캔을 보관합니다. 어떤 영역도 확인하지 못한 스캔은 숫자가 아니라 <code>N/A</code>로 표시되고 변화도 계산하지 않습니다 — 아무도 채점할 수 없었던 실행은 0점으로 떨어진 것이 아니기 때문입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
 
             <h2 id="explain">explain</h2>
             <p>발견 항목을 쉬운 말로 설명합니다.</p>

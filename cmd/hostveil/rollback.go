@@ -8,6 +8,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/history"
+	"github.com/seolcu/hostveil/internal/model"
 )
 
 func cmdRollback(ctx context.Context, args []string) int {
@@ -71,8 +72,12 @@ func cmdRollback(ctx context.Context, args []string) int {
 // documented "no flags" true rather than merely written down.
 func cmdHistory(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("history", flag.ContinueOnError)
+	scans := fs.Bool("scans", false, "show the score of every past scan instead of the applied-fix log")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
+	}
+	if *scans {
+		return printScanHistory()
 	}
 	cps, err := newEngine().ListCheckpoints()
 	// An unreadable checkpoint is a warning over a usable list, not a failure:
@@ -119,4 +124,58 @@ func warnAboutStateDirectory() {
 		"\nhostveil: reading %s because this run is not root.\n"+
 			"Fixes applied as root are recorded in /var/lib/hostveil instead — re-run with sudo to see those.\n",
 		history.DefaultDir())
+}
+
+// printScanHistory shows how the host's score has moved.
+//
+// The snapshots have been kept and pruned since the store was written and
+// nothing ever read more than the newest one, so every interface could
+// answer "did that round of fixes help?" and none could answer "is this
+// host getting better?". The data was already on disk.
+func printScanHistory() int {
+	points, err := newEngine().ScoreHistory()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "hostveil:", err)
+		return 1
+	}
+	if len(points) == 0 {
+		fmt.Println("No scans have been saved yet. Run `hostveil scan` first.")
+		warnAboutStateDirectory()
+		return 0
+	}
+
+	fmt.Printf("Saved scans (oldest first, %d kept):\n", len(points))
+	var prev *model.ScorePoint
+	for i := range points {
+		p := points[i]
+		// N/A, not 0. A scan where every domain was skipped or failed has
+		// no score, and printing a number for it would draw a cliff where
+		// the truth is that nobody could look.
+		score := "  N/A"
+		if p.Applicable {
+			score = fmt.Sprintf("%3d/100", p.Overall)
+		}
+		fmt.Printf("  %s  %s %s\n",
+			p.At.Local().Format("2006-01-02 15:04"), score, scoreMove(prev, p))
+		prev = &points[i]
+	}
+	return 0
+}
+
+// scoreMove renders the change from the previous scan.
+//
+// A move is only meaningful between two scans that both produced a score:
+// comparing against an N/A run would report a jump the host never made.
+func scoreMove(prev *model.ScorePoint, cur model.ScorePoint) string {
+	if prev == nil || !prev.Applicable || !cur.Applicable {
+		return ""
+	}
+	switch d := int(cur.Overall) - int(prev.Overall); {
+	case d > 0:
+		return fmt.Sprintf("(+%d)", d)
+	case d < 0:
+		return fmt.Sprintf("(%d)", d)
+	default:
+		return "(=)"
+	}
 }
