@@ -1,5 +1,81 @@
 # Changelog
 
+## [3.8.0](https://github.com/seolcu/hostveil/compare/v3.7.0...v3.8.0) (2026-07-29)
+
+This release adds the eleventh domain and then, unintentionally, tests the
+lesson of the last one.
+
+The new domain is the Docker daemon itself. hostveil already judged what a
+service declares and what its images contain, and looked straight past the
+process underneath that holds root — so a daemon listening on TCP without TLS
+client verification, which is unauthenticated root for anyone who can reach
+the port, was invisible.
+
+3.7.0 was largely about interfaces that had fallen behind the engine, and its
+headline fix was generating the dashboard's domain table from `model.AllSources`
+so a hand-written copy could not go stale again. That fix held for the table it
+covered. Twenty lines away in the same file sat a second label table, keyed by
+axis ID, which had gone two domains stale without tripping anything — and the
+comment beside the generated one explained at length why the remaining copies
+were safe to leave. They were not. The conclusion this time is not to write the
+tables more carefully but to stop having them: a domain is now one row, and
+everything else — its name, its label, its scoring axis, the copies the browser
+needs — is projected from it.
+
+**Nothing about your score or your snapshots changes.** The domain enums are
+serialized as bare integers into scan history, and the collapse was verified
+against a capture of every value before and after.
+
+### Features
+
+* **check:** audit the Docker daemon itself
+  ([#609](https://github.com/seolcu/hostveil/issues/609)). Seven rules over a
+  new `dockerd` domain, scored on its own axis. No existing domain could have
+  caught these, and not by oversight: the port table cannot judge 2375 because
+  the number alone does not say whether TLS verification is in force, the
+  accounts domain cannot ask whether Docker is even installed, and the file
+  permissions domain refuses any path that is not a regular file or directory —
+  a socket is neither. The hard part was deciding what to believe, since
+  Docker's configuration lives in `daemon.json`, in flags on the unit, and in
+  the running daemon, and after an edit without a restart those disagree. Each
+  rule names one source and says why: `docker info` for effective daemon state,
+  because reading the file would report the operator's intention as though it
+  were the machine's behaviour; `daemon.json` unioned with the unit's
+  `ExecStart` for socket and TLS settings, because `docker info` reports
+  neither; and `ss` as evidence only.
+* **demo:** expose the Docker daemon and seed the docker group
+  ([#612](https://github.com/seolcu/hostveil/issues/612)). Without it the new
+  domain lands with three of its seven rules unreachable in the one place this
+  project can show a finding against a real daemon. Both socket findings are
+  seeded through systemd drop-ins rather than `daemon.json` or `chmod`, because
+  neither alternative survives: dockerd refuses to start when `hosts` and `-H`
+  are both set, and a `chmod` on the socket is gone before hostveil looks,
+  since dockerd recreates it at every start. The drop-in is also the
+  misconfiguration operators actually make.
+
+### Bug Fixes
+
+* **model:** single-source the enum tables and the drift they hid
+  ([#613](https://github.com/seolcu/hostveil/issues/613)). `model.Source` was
+  described by six parallel tables — the const block, `String()`, `Label()`,
+  the hand-maintained upper bound in `Valid()`, `AllSources()`, and `axisDefs`
+  in another file — and three more enums had three to five each. Each is now
+  one row, and `Valid()` became table membership, so the bound whose omission
+  silently dropped a whole domain's findings can no longer be forgotten. Three
+  user-visible consequences came out of the collapse. The dashboard's newest
+  two axes render **"Kernel" and "Dockerd"** instead of long scoring labels
+  truncated inside a narrow column. The CLI's score colour had **three bands
+  where the other two interfaces had four**, so a host scoring 10 and a host
+  scoring 40 printed identically — the lower half of that range being where the
+  host is on fire. And the TUI and the dashboard both said **"No problems
+  found. Clean."** unconditionally, so a host whose every checker had failed
+  read as spotless in two interfaces out of three; only the CLI had ever
+  refused, because the predicate lived in the CLI's own renderer. The guards
+  moved with it: the coverage tests now walk the constant range rather than
+  `AllSources()`, since a constant declared without a row never appears in the
+  projection and every test that iterates it would pass vacuously — in the
+  direction that reports the missing domain as fine.
+
 ## [3.7.0](https://github.com/seolcu/hostveil/compare/v3.6.0...v3.7.0) (2026-07-28)
 
 3.6.0 widened what hostveil looks at. This release is mostly about the gap
