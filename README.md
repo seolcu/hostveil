@@ -56,6 +56,19 @@ renormalized so you are never handed a misleadingly perfect result.
 curl -fsSL https://hostveil.seolcu.com/install.sh | bash
 ```
 
+Or install a native package from the [latest release](https://github.com/seolcu/hostveil/releases/latest)
+— reasonable if you would rather not pipe a script into a shell, especially
+for a security tool:
+
+```bash
+sudo apt install ./hostveil_<version>_linux_amd64.deb   # or dnf install ./hostveil-<version>.x86_64.rpm
+```
+
+The package installs the same binary to the same path (`/usr/bin/hostveil`),
+so it and the installer are interchangeable. Docker and `iproute2` are
+*recommended*, never required: without them those domains report N/A rather
+than hostveil failing.
+
 Or, if you have Go 1.26+ and would rather build it yourself:
 
 ```bash

@@ -143,6 +143,15 @@
               </table>
             </div>
 
+            <h2 id="packages">Debian and RPM packages</h2>
+            <p>Every release also ships <code>.deb</code> and <code>.rpm</code> packages, for people who would rather not pipe a script into a shell — a reasonable preference, especially for a security tool. Download the one matching your architecture from the <a href="https://github.com/seolcu/hostveil/releases/latest">latest release</a> and install it with your package manager:</p>
+            <div class="code-block"><pre><code>sudo apt install ./hostveil_&lt;version&gt;_linux_amd64.deb
+# or
+sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
+            <p>The package installs the same single binary to the same path the installer uses, <code>/usr/bin/hostveil</code>, so the two are interchangeable — you can move from one to the other without ending up with two copies on your PATH. Docker and <code>iproute2</code> are listed as <em>recommended</em>, never required: without them the container, CVE, and exposed-service domains report N/A rather than hostveil failing to run.</p>
+            <p>There is no service to enable and no config file to edit. Removing the package leaves <code>/var/lib/hostveil</code> in place, for the same reason <code>--uninstall</code> does: those checkpoints are the backups of every file hostveil has edited.</p>
+            <p>Packages are Linux-only. hostveil builds and runs on macOS but has nothing to look at there — no systemd, no ufw, no <code>/etc/shadow</code> in the shape it expects.</p>
+
             <h2 id="upgrade">Upgrading and uninstalling</h2>
             <p>To upgrade, re-run the install command. The binary is replaced in place and your saved scans and rollback checkpoints are left alone.</p>
             <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall</code></pre></div>
