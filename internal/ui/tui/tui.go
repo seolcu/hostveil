@@ -27,6 +27,10 @@ const (
 	modeMessage
 	modeHistory
 	modeRollbackConfirm
+	// modeForceConfirm is shown when a rollback was declined because the
+	// file changed after the fix wrote it. It is its own mode rather than a
+	// message because the answer is destructive and one-way.
+	modeForceConfirm
 	modeTheme
 )
 
@@ -56,6 +60,20 @@ type appModel struct {
 	preview       model.FixPreview
 	previewAction int
 	status        string
+
+	// scanDone counts the domains that have reported a terminal state this
+	// scan, and scanRunning names the ones still working.
+	//
+	// The engine has emitted these events since the progress display was
+	// built for the CLI; the TUI passed nil and threw them away, so a scan
+	// that takes minutes on a host with many images showed a static
+	// "Scanning…" and nothing else. A screen that cannot distinguish "still
+	// working" from "hung" is the one place a spinner is not decoration.
+	scanDone    int
+	scanRunning map[model.Source]bool
+	// scanCh is the live scan's event channel, held so Update can re-arm
+	// the waiter after each event.
+	scanCh chan model.ScanEvent
 
 	// Advisory AI explanation state for the detail view. Cleared whenever
 	// the inspected finding changes, so a slow answer cannot land under the
@@ -150,11 +168,90 @@ type appliedMsg struct {
 	err     error
 }
 
-func scanCmd(ctx context.Context, e *core.Engine) tea.Cmd {
+// scanProgressMsg carries one checker's terminal state as it lands.
+type scanProgressMsg struct{ event model.ScanEvent }
+
+// scanEventBuffer is deep enough that a checker never blocks handing over
+// its result. Ten domains report once each, and the reader is a bubbletea
+// command that may be a frame behind; a buffer this size means the send
+// never has to wait for it.
+const scanEventBuffer = 32
+
+// scanCmd runs a scan and reports it, feeding progress events into ch.
+//
+// The channel is closed here, by the only goroutine that writes to it, so
+// waitForScanEvent's receive ends cleanly when the scan does rather than
+// blocking forever on a channel nobody will write to again.
+func scanCmd(ctx context.Context, e *core.Engine, ch chan model.ScanEvent) tea.Cmd {
 	return func() tea.Msg {
-		report := e.Scan(ctx, nil)
+		report := e.Scan(ctx, ch)
+		close(ch)
 		return scannedMsg{report: report, delta: e.LastDelta()}
 	}
+}
+
+// waitForScanEvent blocks on one event and re-arms itself, which is how a
+// stream reaches a bubbletea model: a Cmd yields exactly one message, so
+// continuous progress is a command that returns the next one and asks for
+// another. A closed channel yields nil, ending the chain.
+func waitForScanEvent(ch chan model.ScanEvent) tea.Cmd {
+	return func() tea.Msg {
+		ev, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return scanProgressMsg{event: ev}
+	}
+}
+
+// startScan wires both halves together.
+func (m *appModel) startScan() tea.Cmd {
+	m.scanDone, m.scanRunning = 0, map[model.Source]bool{}
+	m.scanCh = make(chan model.ScanEvent, scanEventBuffer)
+	return tea.Batch(scanCmd(m.runCtx(), m.engine, m.scanCh), waitForScanEvent(m.scanCh))
+}
+
+// noteScanEvent folds one event into the progress state.
+//
+// Same reading as the CLI renderer: ScanRunning means a checker started,
+// and any other state is that checker finishing — Skipped and Degraded are
+// outcomes, not failures to report. Counting terminal events rather than
+// tracking a total keeps this correct when a scan runs fewer than every
+// domain.
+func (m *appModel) noteScanEvent(ev model.ScanEvent) {
+	if m.scanRunning == nil {
+		m.scanRunning = map[model.Source]bool{}
+	}
+	if ev.State == model.ScanRunning {
+		m.scanRunning[ev.Source] = true
+	} else if m.scanRunning[ev.Source] {
+		delete(m.scanRunning, ev.Source)
+		m.scanDone++
+	}
+	m.status = m.scanStatus()
+}
+
+// scanStatus is the line the scanning screen shows.
+//
+// It names the domains still working rather than the ones finished,
+// because the question the screen has to answer is "is this hung, and on
+// what" — and on a real host the answer is almost always the CVE scan,
+// which can take minutes. Sorted, because map order would make the line
+// jitter on every redraw.
+func (m *appModel) scanStatus() string {
+	verb := "Scanning"
+	if m.scanDone > 0 || len(m.scanRunning) > 0 {
+		verb = fmt.Sprintf("Scanning (%d done)", m.scanDone)
+	}
+	if len(m.scanRunning) == 0 {
+		return verb + "…"
+	}
+	names := make([]string, 0, len(m.scanRunning))
+	for src := range m.scanRunning {
+		names = append(names, src.Label())
+	}
+	sort.Strings(names)
+	return verb + ": " + strings.Join(names, ", ")
 }
 
 func previewCmd(e *core.Engine, f model.Finding) tea.Cmd {
@@ -226,15 +323,39 @@ func rollbackCmd(e *core.Engine, id string) tea.Cmd {
 	}
 }
 
+// forceRollbackCmd restores over the operator's own later edits.
+//
+// It is separate from rollbackCmd, and reached only from the declined
+// screen, because that is the whole safety property: the engine refuses by
+// default, and forcing is a second, informed answer to a question the user
+// has now been asked. Rollback writes no checkpoint of its own, so this is
+// one-way.
+func forceRollbackCmd(e *core.Engine, id string) tea.Cmd {
+	return func() tea.Msg {
+		o, err := e.RollbackForce(id)
+		return rolledBackMsg{outcome: o, err: err}
+	}
+}
+
 // --- tea.Model ---
 
-func (m *appModel) Init() tea.Cmd { return scanCmd(m.runCtx(), m.engine) }
+func (m *appModel) Init() tea.Cmd { return m.startScan() }
 
 func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
+
+	case scanProgressMsg:
+		// Progress arriving after the report is stale by definition — the
+		// scan is over and the list is already drawn. Drop it rather than
+		// overwrite the screen the user is now reading.
+		if m.mode != modeScanning {
+			return m, nil
+		}
+		m.noteScanEvent(msg.event)
+		return m, waitForScanEvent(m.scanCh)
 
 	case scannedMsg:
 		m.report = msg.report
@@ -309,6 +430,17 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case rolledBackMsg:
 		if msg.err != nil {
+			// A declined rollback is a question, not a failure. The file
+			// changed after hostveil wrote it, so restoring the backup
+			// would discard whatever was done in between — and rollback
+			// keeps no checkpoint of its own, so there is no way back from
+			// that. The CLI has said so and offered --force since 3.4;
+			// here the answer was "Rollback failed" and a dead end.
+			if core.IsExternalEdit(msg.err) {
+				m.status = msg.err.Error()
+				m.mode = modeForceConfirm
+				return m, nil
+			}
 			m.status = "Rollback failed: " + msg.err.Error()
 			m.mode = modeMessage
 			return m, nil
@@ -358,6 +490,8 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyHistory(key)
 	case modeRollbackConfirm:
 		return m.keyRollbackConfirm(key)
+	case modeForceConfirm:
+		return m.keyForceConfirm(key)
 	case modeTheme:
 		return m.keyTheme(key)
 	case modeMessage:
@@ -402,7 +536,8 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		m.mode = modeScanning
 		m.status = "Rescanning…"
-		return m, scanCmd(m.runCtx(), m.engine)
+		m.status = "Rescanning…"
+		return m, m.startScan()
 	case "h":
 		return m, historyCmd(m.engine)
 	case "t":
@@ -473,6 +608,21 @@ func (m *appModel) keyHistory(key string) (tea.Model, tea.Cmd) {
 		m.mode = modeRollbackConfirm
 	}
 	return m, nil
+}
+
+// keyForceConfirm answers the declined rollback. Anything but an explicit
+// yes cancels, matching keyRollbackConfirm — for a one-way overwrite of the
+// operator's own edits, a stray keypress must never be consent.
+func (m *appModel) keyForceConfirm(key string) (tea.Model, tea.Cmd) {
+	if key != "y" {
+		m.mode = modeList
+		return m, nil
+	}
+	if len(m.checkpoints) == 0 {
+		m.mode = modeList
+		return m, nil
+	}
+	return m, forceRollbackCmd(m.engine, m.checkpoints[m.cpCursor].ID)
 }
 
 func (m *appModel) keyRollbackConfirm(key string) (tea.Model, tea.Cmd) {

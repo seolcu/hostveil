@@ -91,7 +91,7 @@
             <h2>TUI — the default</h2>
             <p>Running <code>hostveil</code> with no arguments on an interactive terminal opens the keyboard-driven TUI. You can also launch it explicitly:</p>
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
-            <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied.</p>
+            <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied. While a scan runs it names the domains still working, so a slow CVE scan on a host with many images reads as progress rather than as a hang.</p>
             <figure>
               <img src="../assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1200" height="480" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
@@ -116,7 +116,7 @@
                   <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan actually found something in.</td></tr>
                   <tr><td><code>x</code></td><td>Show only findings hostveil can fix.</td></tr>
                   <tr><td><code>c</code></td><td>Clear every filter. <code>Esc</code> clears the batch marks.</td></tr>
-                  <tr><td><code>h</code></td><td>Applied-fix history — pick one and press <code>Enter</code> to see what rolling it back would restore, then confirm.</td></tr>
+                  <tr><td><code>h</code></td><td>Applied-fix history — pick one and press <code>Enter</code> to see what rolling it back would restore, then confirm. If the file has changed since the fix wrote it, the rollback is declined and you are asked whether to overwrite anyway; only <code>y</code> does it, and it cannot be undone.</td></tr>
                   <tr><td><code>e</code></td><td>In a finding's detail: add an advisory AI explanation from a local Ollama model. Without one, a one-line note appears instead — <a href="ai">AI explanations</a>.</td></tr>
                   <tr><td><code>t</code></td><td>Theme picker (below).</td></tr>
                   <tr><td><code>r</code></td><td>Rescan.</td></tr>

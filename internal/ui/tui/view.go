@@ -174,6 +174,11 @@ func (m *appModel) View() tea.View {
 		content = m.compose(compactHeader("ROLL BACK"), title, "y roll back   n cancel",
 			func(n int) []string { return m.clipRows(m.rollbackRows(), n) })
 
+	case modeForceConfirm:
+		content = m.compose(compactHeader("ROLLBACK DECLINED"), nil,
+			"y overwrite anyway   any other key cancel",
+			func(n int) []string { return m.clipRows(m.forceRows(), n) })
+
 	case modeTheme:
 		content = m.compose(compactHeader("THEME"),
 			[]string{s.brand.Render(m.th.Name)}, themeHint,
@@ -680,6 +685,31 @@ func (m *appModel) rollbackRows() []string {
 	if cp.Diff != "" {
 		out = append(out, s.dim.Render("This change will be reverted:"))
 		out = append(out, s.diffRows(cp.Diff)...)
+	}
+	return out
+}
+
+// forceRows explains a declined rollback and what forcing it costs.
+//
+// It says the two things the CLI's --force text says, because they are the
+// two the operator cannot recover from not knowing: the file has changed
+// since hostveil wrote it, and rollback keeps no backup of its own, so
+// whatever is in it now is gone for good.
+func (m *appModel) forceRows() []string {
+	s := m.sty()
+	out := []string{""}
+	out = append(out, styledRows(lipgloss.NewStyle().Foreground(s.cHigh),
+		wrap(m.status, min(m.width-4, 78)))...)
+	out = append(out, "")
+	out = append(out, styledRows(s.bone, wrap(
+		"Forcing the rollback restores hostveil's backup over the current file, discarding those changes. Rollback writes no checkpoint of its own, so this cannot be undone.",
+		min(m.width-4, 78)))...)
+	if len(m.checkpoints) > 0 {
+		cp := m.checkpoints[m.cpCursor]
+		out = append(out, "", s.dim.Render("Would overwrite:"))
+		for _, p := range cp.Files {
+			out = append(out, s.bone.Render("  "+p))
+		}
 	}
 	return out
 }
