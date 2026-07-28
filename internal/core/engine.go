@@ -245,7 +245,10 @@ func (e *Engine) Current() (model.Report, bool) {
 func (e *Engine) classify(findings []model.Finding) {
 	for i := range findings {
 		if e.fixes != nil {
-			if fx, ok, err := e.fixes.Build(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
+			// Through buildFix, so a fix whose shape contradicts its kind is
+			// treated exactly like one that failed to build: demoted here
+			// rather than offered and discovered at apply.
+			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
 				findings[i].Remediation = classifiedKind(findings[i].Remediation, fx.Kind)
 				continue
 			}
