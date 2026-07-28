@@ -1,7 +1,7 @@
 // Package core is hostveil's shared engine: the single object every UI
-// (CLI, TUI, Web) calls. All scanning, scoring, and — in later phases —
-// fix preview/apply/rollback orchestration lives here exactly once, so no
-// UI ever re-implements it.
+// (CLI, TUI, Web) calls. All scanning, scoring, and fix
+// preview/apply/rollback orchestration lives here exactly once, so no UI
+// ever re-implements it.
 package core
 
 import (

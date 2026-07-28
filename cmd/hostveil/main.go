@@ -1,7 +1,7 @@
 // Command hostveil is a guided hardening tool for self-hosted Linux
 // servers: it scans the host for the security mistakes most likely to get
 // a non-expert self-hoster hacked, explains them in plain language, and
-// (in later phases) fixes them safely with preview, backup, and rollback.
+// fixes them safely with preview, backup, and rollback.
 package main
 
 import (
@@ -215,5 +215,12 @@ Environment:
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   NO_COLOR=1           Disable colored output
+
+  HOSTVEIL_OLLAMA_HOST=URL     Where the optional local LLM listens
+                               (default http://127.0.0.1:11434)
+  HOSTVEIL_OLLAMA_MODEL=NAME   Which model to ask (default llama3.2)
+  Both are advisory-only: they affect 'explain --ai' and the AI buttons in the
+  TUI and dashboard, and nothing else. No score, finding, or fix depends on a
+  model being reachable.
 `)
 }
