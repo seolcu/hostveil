@@ -170,6 +170,63 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 	}
 }
 
+// An unparsed compose file is a set of images the scan never even knew to
+// look at, and the clean branch already counts it — but the branch that
+// handles a failed image scan did not, so a host that hit both reported
+// "covered 1 of 2" while a whole stack's images had gone unexamined. Two
+// independent blind spots, one of them silently discarded.
+func TestCVEUnparsedProjectCountsAlongsideAFailedImage(t *testing.T) {
+	r := composeProject(t)
+	r.lsJSON = withBrokenProject(r.lsJSON)
+	r.trivy["redis:7"] = oneVuln
+	r.trivyErr["postgres:13"] = true
+
+	_, err := New().Check(context.Background(), platform.Env{Runner: r})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("expected a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "/nonexistent/docker-compose.yml") {
+		t.Errorf("the unparsed compose file is missing from %q", partial.Reason)
+	}
+	// One image scanned, one failed, one stack never enumerated.
+	if partial.Covered != 1 || partial.Total != 3 {
+		t.Errorf("coverage = %d/%d, want 1/3", partial.Covered, partial.Total)
+	}
+}
+
+// The same loss on the other pair: every image scanned, but neither the
+// unparsed stack nor the failed container enumeration alone tells the whole
+// story of what was missed.
+func TestCVEUnparsedProjectAndFailedEnumerationBothReported(t *testing.T) {
+	r := composeProject(t)
+	r.lsJSON = withBrokenProject(r.lsJSON)
+	r.psErr = true
+	r.trivy["redis:7"] = `{"Results":[]}`
+	r.trivy["postgres:13"] = `{"Results":[]}`
+
+	_, err := New().Check(context.Background(), platform.Env{Runner: r})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("expected a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "/nonexistent/docker-compose.yml") {
+		t.Errorf("the unparsed compose file is missing from %q", partial.Reason)
+	}
+	if !strings.Contains(partial.Reason, "outside Compose") {
+		t.Errorf("the failed container enumeration is missing from %q", partial.Reason)
+	}
+}
+
+// withBrokenProject appends a project whose config file cannot be parsed to a
+// `docker compose ls` payload.
+func withBrokenProject(lsJSON string) string {
+	return strings.TrimSuffix(lsJSON, "]") +
+		`,{"Name":"broken","ConfigFiles":"/nonexistent/docker-compose.yml"}]`
+}
+
 // Every image failing is not a partial result, it is a failed one. It must be
 // an ordinary error so the axis drops out of scoring entirely — a Degraded
 // domain is still scored, and would hand back the false 100 all over again.

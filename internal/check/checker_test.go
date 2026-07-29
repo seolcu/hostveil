@@ -82,6 +82,14 @@ func TestPartialErrorReasonIncludesCoverage(t *testing.T) {
 	if got := (&PartialError{Reason: "cannot read firewall state"}).Error(); got != "cannot read firewall state" {
 		t.Errorf("got %q", got)
 	}
+	// And a full count is not a fraction worth printing. The compose domain
+	// counted its projects, missed something it could not count, and told the
+	// operator "audited compose projects only (covered 1 of 1)" — a claim of
+	// partial coverage and a claim of complete coverage in one sentence.
+	full := &PartialError{Reason: "audited compose projects only", Covered: 1, Total: 1}
+	if got := full.Error(); got != "audited compose projects only" {
+		t.Errorf("got %q, want the bare reason with no coverage fraction", got)
+	}
 }
 
 // A PartialError reached through a wrapping chain must still be recognized —

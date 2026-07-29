@@ -12,10 +12,12 @@ import (
 )
 
 // runRunner scripts a host with no compose projects and one hand-started
-// container described by inspectJSON.
+// container described by inspectJSON. ls overrides `docker compose ls` for
+// the tests that need a project alongside the standalone container.
 type runRunner struct {
 	inspect string
 	psErr   bool
+	ls      string
 }
 
 func (runRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
@@ -26,6 +28,9 @@ func (r runRunner) Run(_ context.Context, name string, args ...string) ([]byte, 
 	case name == "docker" && joined == "version --format {{.Server.Version}}":
 		return []byte("27.0.3\n"), nil
 	case name == "docker" && joined == "compose ls --all --format json":
+		if r.ls != "" {
+			return []byte(r.ls), nil
+		}
 		return []byte(`[]`), nil
 	case name == "docker" && joined == "ps --quiet --no-trunc":
 		if r.psErr {
@@ -197,6 +202,30 @@ func TestUninspectableContainersAreDegraded(t *testing.T) {
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError so the axis reports Degraded, got %v", err)
+	}
+}
+
+// Two blind spots at once must both be reported. The checker returned at the
+// first one, so a host where container enumeration failed *and* a compose
+// file would not parse was told only about the containers — and the unparsed
+// stack, which the very next branch calls "the one thing a checker must never
+// do" to report clean, went unmentioned.
+func TestEveryCoverageGapIsReported(t *testing.T) {
+	r := runRunner{
+		psErr: true,
+		ls:    `[{"Name":"broken","ConfigFiles":"/nonexistent/docker-compose.yml"}]`,
+	}
+	_, err := New().Check(context.Background(), platform.Env{Runner: r})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError so the axis reports Degraded, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "outside Compose") {
+		t.Errorf("the failed container enumeration is missing from %q", partial.Reason)
+	}
+	if !strings.Contains(partial.Reason, "/nonexistent/docker-compose.yml") {
+		t.Errorf("the unparsed compose file is missing from %q", partial.Reason)
 	}
 }
 

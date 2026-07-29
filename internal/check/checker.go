@@ -47,8 +47,17 @@ type PartialError struct {
 	Total   int    // units that should have been examined
 }
 
+// Error appends the coverage fraction only when it says something the reason
+// does not: that some countable unit went unexamined.
+//
+// The test is Covered < Total, not Total > 0. A gap with no unit of its own —
+// "cannot enumerate the containers started outside Compose", where the units
+// missed are by definition the ones that could not be counted — leaves the
+// two equal, and the domain reported "audited compose projects only (covered
+// 1 of 1)" in every UI: a claim of partial coverage and a claim of complete
+// coverage in one sentence.
 func (e *PartialError) Error() string {
-	if e.Total > 0 {
+	if e.Covered < e.Total {
 		return fmt.Sprintf("%s (covered %d of %d)", e.Reason, e.Covered, e.Total)
 	}
 	return e.Reason
