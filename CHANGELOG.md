@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.8.6](https://github.com/seolcu/hostveil/compare/v3.8.5...v3.8.6) (2026-07-29)
+
+One fix, for an SSH remediation that reported success and left the setting it
+named exactly as it found it.
+
+### Bug Fixes
+
+* **fix:** keep sshd_config edits out of Match blocks
+  ([#633](https://github.com/seolcu/hostveil/issues/633)). A `Match` block in
+  sshd_config applies only to the sessions it selects, so hostveil's SSH
+  detection deliberately stops reading at the first one — every SSH finding is
+  a statement about the global settings above it. The part that *edits* the
+  file was meant to work the same way and did not: its guard against touching
+  Match blocks could never run, because the test above it had already narrowed
+  the line to the directive being changed. Two things followed. A setting
+  written inside a Match block was rewritten as though it were the global
+  default, changing SSH's behaviour for the users that block selects — chosen
+  deliberately by the operator, and never what the finding was about. And when
+  the setting was absent, it was added at the end of the file, which on a
+  config ending in a Match block put it inside that block. The second case is
+  the one an ordinary host hits: password authentication is reported whenever
+  no global value is set, since SSH defaults it to on, and Match sections at
+  the end of sshd_config are commonplace. Both results are valid configuration
+  files, so the check hostveil runs before writing accepted them and the fix
+  reported success — while asking SSH for its effective settings still showed
+  password authentication enabled. The re-check afterwards did still report
+  the finding, so this was not a silent failure, but operators were told a fix
+  had been applied, given a restore point for it, and left with passwords
+  accepted and an edited Match block.
+
 ## [3.8.5](https://github.com/seolcu/hostveil/compare/v3.8.4...v3.8.5) (2026-07-29)
 
 Four fixes for the same disagreement between what hostveil knew and what it
