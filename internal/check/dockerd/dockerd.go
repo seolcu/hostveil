@@ -122,15 +122,8 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	findings = append(findings, f.groupFindings()...)
 	findings = append(findings, f.defaultsFindings()...)
 
-	covered, total, reasons := f.coverage()
-	if len(reasons) > 0 {
-		return findings, &check.PartialError{
-			Reason:  strings.Join(reasons, "; "),
-			Covered: covered,
-			Total:   total,
-		}
-	}
-	return findings, nil
+	cov := f.coverage()
+	return findings, cov.Err()
 }
 
 // facts is everything the checker managed to learn, plus what it could not.
@@ -191,51 +184,50 @@ func (c *Checker) gather(ctx context.Context, env platform.Env) *facts {
 func (f *facts) rootless() bool { return f.infoKnown && f.info.rootless }
 
 // coverage translates what could not be read into the rule count it cost.
-func (f *facts) coverage() (covered, total int, reasons []string) {
+func (f *facts) coverage() check.Coverage {
+	var cov check.Coverage
+
 	// The two socket-configuration rules.
-	total += 2
 	if f.cfgKnown {
-		covered += 2
+		cov.Covered(2)
 	} else {
-		reasons = append(reasons, f.cfgReason)
+		cov.Missed(2, f.cfgReason)
 	}
 
 	// The three daemon-default rules.
-	total += 3
 	if f.infoKnown {
-		covered += 3
+		cov.Covered(3)
 	} else {
-		reasons = append(reasons, f.infoReason)
+		cov.Missed(3, f.infoReason)
 	}
 
 	// The socket mode rule. A daemon reached over DOCKER_HOST with no local
 	// socket has nothing to judge — that is not applicable, not uncovered,
 	// so it leaves the denominator rather than lowering the fraction.
 	if !f.sockAbsent {
-		total++
 		if f.sockKnown {
-			covered++
+			cov.Covered(1)
 		} else {
-			reasons = append(reasons, f.sockReason)
+			cov.Missed(1, f.sockReason)
 		}
 	}
 
 	// The group-membership rule. A rootless daemon's socket confers only that
 	// user's own containers, so there is no root-equivalent group to audit.
 	if !f.sockAbsent && !f.rootless() {
-		total++
 		switch {
 		case f.membersKnown:
-			covered++
+			cov.Covered(1)
 		case f.sockKnown:
-			reasons = append(reasons, f.membersReason)
+			cov.Missed(1, f.membersReason)
 		default:
 			// Already reported by the socket rule; the group could not be
 			// resolved because the socket could not be, and saying so twice
-			// tells the operator nothing new.
+			// tells the operator nothing new. The rule is still uncovered.
+			cov.Missed(1, "")
 		}
 	}
-	return covered, total, reasons
+	return cov
 }
 
 // apiFindings judges the daemon's network-facing sockets.

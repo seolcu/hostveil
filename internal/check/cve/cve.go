@@ -91,42 +91,42 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	findings, failed, firstErr := scanAll(ctx, env.Runner, targets)
 	attempted := len(targets)
 
-	// Case order matters: with no images at all, failed and attempted are both
-	// zero and the clean case must win.
-	switch failed {
-	case 0:
-		// A compose file we could not parse is a set of images we never even
-		// knew to scan, so it degrades the axis exactly like a failed
-		// enumeration does — the images are absent from `attempted`, and
-		// without this the axis would score as if they did not exist.
-		if len(unparsed) > 0 {
-			return findings, &check.PartialError{
-				Reason: "cannot parse compose file(s): " + strings.Join(unparsed, ", ") +
-					" — images defined there were not scanned",
-				Covered: attempted,
-				Total:   attempted + len(unparsed),
-			}
-		}
-		if enumErr != nil {
-			// Every image we knew about scanned, but we could not find out
-			// which containers exist outside Compose — so the axis covered
-			// less ground than a clean result would claim.
-			return findings, &check.PartialError{
-				Reason: "scanned compose images only — cannot enumerate containers started outside Compose",
-			}
-		}
-		// Includes the no-images case: a host with no containers genuinely
-		// has no image vulnerabilities.
-		return findings, nil
-	case attempted:
+	// Every image failing is not partial coverage, it is none, and it leaves
+	// before the ledger because it is the one outcome that is not a matter of
+	// degree: a Degraded domain is still scored, so reporting it here would
+	// hand back a scored axis built on nothing. The attempted > 0 guard is
+	// what keeps a host with no containers at all — where failed and
+	// attempted are both zero — on the clean path.
+	if attempted > 0 && failed == attempted {
 		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
-	default:
-		return findings, &check.PartialError{
-			Reason:  fmt.Sprintf("some images could not be scanned (first failure: %v)", firstErr),
-			Covered: attempted - failed,
-			Total:   attempted,
-		}
 	}
+
+	// Each blind spot is recorded rather than returned, so hitting two of
+	// them reports two. Returning at the first is how an unparsed compose
+	// file used to disappear from a scan that also had an image fail.
+	var cov check.Coverage
+	cov.Covered(attempted - failed)
+	if failed > 0 {
+		cov.Missed(failed, fmt.Sprintf("some images could not be scanned (first failure: %v)", firstErr))
+	}
+	// A compose file we could not parse is a set of images we never even knew
+	// to scan, so it degrades the axis exactly like a failed enumeration does
+	// — the images are absent from `attempted`, and without this the axis
+	// would score as if they did not exist.
+	if len(unparsed) > 0 {
+		cov.Missed(len(unparsed), "cannot parse compose file(s): "+strings.Join(unparsed, ", ")+
+			" — images defined there were not scanned")
+	}
+	// Every image we knew about scanned, but we could not find out which
+	// containers exist outside Compose — so the axis covered less ground than
+	// a clean result would claim. It carries no unit count: the images it
+	// would have added are exactly the ones that could not be enumerated.
+	if enumErr != nil {
+		cov.Missed(0, "scanned compose images only — cannot enumerate containers started outside Compose")
+	}
+	// Nothing missed includes the no-images case: a host with no containers
+	// genuinely has no image vulnerabilities.
+	return findings, cov.Err()
 }
 
 // target is one image to scan, plus the attribution its findings carry.

@@ -63,16 +63,21 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		}
 	}
 
+	// Both halves of the domain can fail independently, so both are recorded
+	// and neither returns early. Returning at the first is what let a host
+	// with an unparsed stack *and* an unreachable daemon hear only about the
+	// daemon — while the stack it said nothing about went unmentioned.
+	var cov check.Coverage
+	cov.Covered(len(projects))
+
 	standalone, err := compose.DiscoverContainers(ctx, env.Runner)
 	if err != nil {
 		// The compose half of the domain was covered, so this is a partial
 		// result, not a failure. Returning an ordinary error would discard
-		// findings already gathered and exclude the axis entirely.
-		return findings, &check.PartialError{
-			Reason:  "cannot inspect containers started outside Compose — audited compose projects only",
-			Covered: len(projects),
-			Total:   len(projects) + len(unparsed),
-		}
+		// findings already gathered and exclude the axis entirely. The
+		// containers it would have counted are the ones it cannot list, so
+		// the gap has no unit count of its own.
+		cov.Missed(0, "cannot inspect containers started outside Compose — audited compose projects only")
 	}
 	for _, c := range standalone {
 		findings = append(findings, auditContainer(c)...)
@@ -83,14 +88,10 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// would score the domain as if those services had been audited and found
 	// clean, which is the one thing a checker must never do.
 	if len(unparsed) > 0 {
-		return findings, &check.PartialError{
-			Reason: "cannot parse compose file(s): " + strings.Join(unparsed, ", ") +
-				" — services defined there were not audited",
-			Covered: len(projects),
-			Total:   len(projects) + len(unparsed),
-		}
+		cov.Missed(len(unparsed), "cannot parse compose file(s): "+strings.Join(unparsed, ", ")+
+			" — services defined there were not audited")
 	}
-	return findings, nil
+	return findings, cov.Err()
 }
 
 // runtimeOnlyRules are the rules that mean the same thing for a container
