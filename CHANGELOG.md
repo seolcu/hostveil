@@ -1,5 +1,63 @@
 # Changelog
 
+## [3.8.5](https://github.com/seolcu/hostveil/compare/v3.8.4...v3.8.5) (2026-07-29)
+
+Four fixes for the same disagreement between what hostveil knew and what it
+said: a fix that could not be undone, two domains that reported ground they
+never covered, and a rule the code stated five times without enforcing once.
+
+### Bug Fixes
+
+* **history:** keep a fix rollbackable after it is applied
+  ([#627](https://github.com/seolcu/hostveil/issues/627)). Checkpoint pruning
+  runs on every save, so a `fix --all` that wrote more restore points than the
+  store keeps deleted its own earliest ones — the fixes it applied first were
+  unrollbackable the instant they were applied, and nothing said so. The cap
+  named that as the thing that must never happen and then answered it by being
+  a big enough number, which is a hope rather than a mechanism: adding
+  `no-new-privileges` and setting a restart policy are both applied
+  automatically and both apply to nearly every stock compose service, so a
+  host with a hundred services reached the limit in one run. Nothing written
+  in the last hour is discarded now, however much arrives at once, and the
+  count still bounds a long-lived host's state directory.
+* **check:** a home the agent scan cannot enter is not a home with nothing in
+  it ([#628](https://github.com/seolcu/hostveil/issues/628)). Statting a
+  directory needs only search permission on its parent, so someone else's
+  home at mode 0700 passed the readability check and denied everything
+  underneath it — the ordinary shape of a multi-user host scanned without
+  root. The agent domain read that as an account with no runtime installed.
+  It reported "no self-hosted agent runtime found" for an account it could not
+  look inside and said nothing about sudo; worse, when another runtime was
+  visible so the domain did run, the account it could not see never registered
+  as a gap and the domain was scored as though it had covered ground it never
+  saw. An unelevated scan now says which homes it could not read. Scans
+  elevate themselves, so the usual path is unchanged.
+* **check:** a file whose permissions cannot be read is not a file with good
+  permissions ([#629](https://github.com/seolcu/hostveil/issues/629)). The
+  file-permission domain skipped anything it could not examine, with a comment
+  saying the skip was for files that are not installed. Absence and denial
+  arrive identically, so a rule that could not run reported exactly like a rule
+  that passed — on the domain whose whole job is noticing that a sensitive file
+  is readable by the wrong people. The sharper half was the SSH host-key rule:
+  expanding a wildcard reports a directory it cannot read as no matches at all,
+  which is indistinguishable from a host that has no host keys, so an
+  unreadable `/etc/ssh` silently cleared a high-severity check on private keys.
+  This changes nothing on a standard host, where those paths are readable; it
+  closes the case rather than a failure seen in the wild.
+* **core:** never apply a command-running fix unattended
+  ([#630](https://github.com/seolcu/hostveil/issues/630)). "Safe to apply
+  automatically" rests on the change being reversible, and a fix that runs a
+  command leaves no restore point — applying one in a batch means a command
+  run as root with no way to undo it through hostveil. The code states that
+  rule five times over while deciding what to offer, and it was held up
+  entirely by each detection domain choosing to ask for confirmation by hand.
+  Enabling automatic security updates is where that showed: its remediation is
+  a single action, which is all the shape rule means, and the only thing
+  between "fix everything safe" and `apt-get install` was the updates domain
+  independently asking for review. Now anything that runs a command asks,
+  whatever the domain declared. Nothing in this release changes what any
+  existing finding offers.
+
 ## [3.8.4](https://github.com/seolcu/hostveil/compare/v3.8.3...v3.8.4) (2026-07-29)
 
 One fix, for a scan that could not tell you everything it had failed to look
