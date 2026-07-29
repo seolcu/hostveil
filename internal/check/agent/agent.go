@@ -46,26 +46,38 @@ func (*Checker) Source() model.Source { return model.SourceAgent }
 // Available probes for an actual agent installation, not merely for the
 // ability to look.
 //
-// The two failure modes are kept distinct on purpose. An unreadable
-// /etc/passwd means we could not look, and a host with no runtime installed
-// means there was nothing to find; both skip the domain, but conflating them
-// would let "I couldn't look" pass for "nothing there". The domain is skipped
-// rather than reported clean because a host that has never installed an agent
-// should not collect a free perfect score for a domain that never applied.
+// The failure modes are kept distinct on purpose. An unreadable /etc/passwd
+// means we could not look, a home we cannot enter means we could not look
+// *there*, and a host with no runtime installed means there was nothing to
+// find. All three skip the domain, but conflating them would let "I couldn't
+// look" pass for "nothing there". The domain is skipped rather than reported
+// clean because a host that has never installed an agent should not collect a
+// free perfect score for a domain that never applied.
+//
+// The middle one is why the unreadable list is read here rather than
+// discarded. On a multi-user host scanned without root, every other account's
+// home denies entry, so reporting absence would tell an operator there is no
+// agent runtime while one runs behind a wide-open gateway two accounts over —
+// and would say nothing about sudo, the one thing that would show it.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	hs, err := homes(c.PasswdPath)
 	if err != nil {
 		return false, "cannot read " + c.PasswdPath + " to locate home directories"
 	}
-	found, _ := installs(hs, c.Runtimes)
-	if len(found) == 0 {
-		names := make([]string, 0, len(c.Runtimes))
-		for _, rt := range c.Runtimes {
-			names = append(names, rt.Display)
-		}
-		return false, "no self-hosted agent runtime found (" + strings.Join(names, ", ") + ")"
+	found, unreadable := installs(hs, c.Runtimes)
+	if len(found) > 0 {
+		return true, ""
 	}
-	return true, ""
+	if len(unreadable) > 0 {
+		sort.Strings(unreadable)
+		return false, "cannot read home directories (" + strings.Join(unreadable, ", ") +
+			") — re-run with sudo to scan them for agent runtimes"
+	}
+	names := make([]string, 0, len(c.Runtimes))
+	for _, rt := range c.Runtimes {
+		names = append(names, rt.Display)
+	}
+	return false, "no self-hosted agent runtime found (" + strings.Join(names, ", ") + ")"
 }
 
 // scan is one runtime installation plus whatever we managed to read of it.
