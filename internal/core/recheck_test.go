@@ -74,7 +74,7 @@ func recheckEngine(t *testing.T, after check.Checker) *Engine {
 		}, nil
 	})
 	e := New(Config{Registry: check.NewRegistry(after), Fixes: r, Store: history.NewStore(t.TempDir())})
-	e.current = model.Report{Findings: []model.Finding{recheckFinding()}}
+	e.state.current = model.Report{Findings: []model.Finding{recheckFinding()}}
 	return e
 }
 

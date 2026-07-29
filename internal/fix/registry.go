@@ -62,7 +62,7 @@ type Action struct {
 	// start and repairing it needs the SSH access it just removed.
 	//
 	// The check is calibrated against the original file before it is trusted:
-	// see Engine.verifyEdit. That is what keeps a validator which cannot run
+	// see Engine.runEditValidator. That is what keeps a validator which cannot run
 	// on this host — `sshd -t` needs host keys it may not be able to read —
 	// from blocking a perfectly good fix. "Cannot verify" is not "invalid".
 	VerifyCmd []string
