@@ -107,6 +107,25 @@ jobs:
           grep -q "PermitEmptyPasswords no" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
           sshd -t
 
+      - name: fix --all leaves the fixes that run commands alone
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+
+          # Enabling automatic security updates is a real remediation that
+          # hostveil knows how to apply, and it runs a command — so it leaves
+          # no restore point, and "fix everything safe" has to decline it.
+          # The package must still be absent and the finding must still be
+          # open after the batch above.
+          #
+          # Unit tests pin the classification against a fake registry. This is
+          # the only place it meets a real apt, on a host where the finding
+          # genuinely fires, with a real `fix --all` deciding what to run.
+          ! dpkg -s unattended-upgrades >/dev/null 2>&1
+
+          hostveil scan --json > /tmp/scan_fixed.json || true
+          test "$(jq '[.findings[] | select(.id == "updates.disabled")] | length' /tmp/scan_fixed.json)" = 1
+
       - name: history lists the applied fixes and rollback restores them
         run: |
           set -eux
@@ -137,6 +156,38 @@ jobs:
           set -e
           test "$code" = 1
           grep -q '"ssh.emptypasswords"' /tmp/scan2.json
+
+      - name: rollback declines to clobber an edit made after the fix
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          conf=/etc/ssh/sshd_config.d/00-hostveil-demo.conf
+
+          hostveil fix --all --yes
+          hostveil history > /tmp/history2.txt
+          id=$(grep -o 'hostveil rollback [^] ]*' /tmp/history2.txt | head -1 | awk '{print $3}')
+
+          # The operator edits the file themselves, after hostveil wrote it.
+          echo "# edited by the operator after the fix" >> "$conf"
+          before=$(sha256sum "$conf" | cut -d' ' -f1)
+
+          # Rollback keeps no backup of its own, so overwriting those edits
+          # would be unrecoverable. It has to refuse and leave the file exactly
+          # as it found it — a refusal that still wrote would be the worst
+          # outcome this layer can produce.
+          set +e
+          hostveil rollback "$id" > /tmp/declined.txt 2>&1
+          rc=$?
+          set -e
+          test "$rc" != 0
+          grep -q -- "--force" /tmp/declined.txt
+          test "$(sha256sum "$conf" | cut -d' ' -f1)" = "$before"
+
+          # And --force has to be a real escape hatch rather than a sentence
+          # in an error message: it restores the backup, edits and all.
+          hostveil rollback "$id" --force
+          ! grep -q "edited by the operator after the fix" "$conf"
+          sshd -t
 
       - name: domains that cannot run report Skipped, never clean
         run: |
