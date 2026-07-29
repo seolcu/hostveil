@@ -234,7 +234,7 @@ func (e *Engine) classify(findings []model.Finding) {
 			// treated exactly like one that failed to build: demoted here
 			// rather than offered and discovered at apply.
 			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
-				findings[i].Remediation = classifiedKind(findings[i].Remediation, fx.Kind)
+				findings[i].Remediation = execFloor(classifiedKind(findings[i].Remediation, fx.Kind), fx)
 				continue
 			}
 		}
@@ -259,6 +259,38 @@ func classifiedKind(declared, registered model.RemediationKind) model.Remediatio
 		return declared
 	}
 	return registered
+}
+
+// execFloor raises a resolved Auto to Review when the fix runs a command.
+//
+// "Auto means safe to apply unattended" rests on the fix being reversible,
+// and an exec action writes no checkpoint — there is nothing file-backed to
+// restore. So `fix --all` applying one means a command run as root, on the
+// operator's host, with no way to undo it through hostveil.
+//
+// internal/fix/register.go states the rule five times over while deciding
+// what to register ("`apt upgrade` is exec, so never Auto"; "Being exec, it
+// is Review and can never be Auto"), and until this it was upheld entirely by
+// each checker choosing Review by hand. The updates domain is where that is
+// visible: its fix for updates.disabled is shaped Auto — one action, which is
+// all the shape rule means — and the only thing between `fix --all` and
+// `apt-get install` is the checker independently declaring Review, with
+// classifiedKind taking the stricter of the two.
+//
+// One checker declaring Auto for a finding whose fix happens to be exec is
+// all it would take, and nothing would report it. Review rather than Manual:
+// the fix is still correct and still worth offering, it just needs a human to
+// say go.
+func execFloor(kind model.RemediationKind, fx fix.Fix) model.RemediationKind {
+	if kind != model.RemediationAuto {
+		return kind
+	}
+	for _, a := range fx.Actions {
+		if a.Kind == fix.ActionExec {
+			return model.RemediationReview
+		}
+	}
+	return kind
 }
 
 // validFindings drops any malformed finding so an unclassified or
