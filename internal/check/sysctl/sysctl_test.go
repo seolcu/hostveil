@@ -29,9 +29,37 @@ func writeKeys(t *testing.T, keys map[string]string) string {
 	return root
 }
 
+// checkerFor points the checker at a fake /proc/sys and at a configuration
+// search path that does not exist. Leaving ConfDirs at the default would read
+// the developer's own /etc/sysctl.d, so whether a finding names an origin
+// would depend on the machine running the test.
 func checkerFor(root string) *Checker {
 	c := New()
 	c.Root = root
+	c.ConfDirs = []string{filepath.Join(root, "no-such-sysctl.d")}
+	c.ConfFile = filepath.Join(root, "no-such-sysctl.conf")
+	return c
+}
+
+// withConf gives the checker a sysctl.d directory holding dropIns (name →
+// body) and, when legacy is non-empty, an /etc/sysctl.conf holding it.
+func withConf(t *testing.T, c *Checker, dropIns map[string]string, legacy string) *Checker {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range dropIns {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.ConfDirs = []string{dir}
+	if legacy != "" {
+		// Deliberately not inside dir: the real one lives beside sysctl.d,
+		// not in it, and its name would otherwise be sorted in as a drop-in.
+		c.ConfFile = filepath.Join(t.TempDir(), "sysctl.conf")
+		if err := os.WriteFile(c.ConfFile, []byte(legacy), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return c
 }
 
@@ -161,6 +189,141 @@ func TestUnreadableKeyIsPartial(t *testing.T) {
 	}
 	if _, ok := idsOf(fs)["sysctl.syncookies"]; ok {
 		t.Error("an unread key must not be guessed into a finding")
+	}
+}
+
+// The reachable failure this whole file exists for. Ubuntu ships
+// /etc/sysctl.d/99-sysctl.conf as a symlink to /etc/sysctl.conf, so a value
+// set there is read *after* every drop-in — including the 60-hostveil-*.conf
+// the fix writes. Without an origin the finding tells the operator to add a
+// drop-in that will be overridden at the next boot, and nothing anywhere says
+// why the value came back.
+func TestLegacyConfFileIsNamedAsTheOrigin(t *testing.T) {
+	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
+		"10-distro.conf": "kernel.dmesg_restrict = 1\n",
+	}, "# operator settings\nkernel.dmesg_restrict = 0\n")
+
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := idsOf(fs)["sysctl.dmesg-restrict"]
+
+	if got := f.Evidence["set-by"]; got != c.ConfFile+":2" {
+		t.Errorf("set-by = %q, want %q — the legacy file is read after every drop-in", got, c.ConfFile+":2")
+	}
+	if strings.Contains(f.HowToFix, "Add `") {
+		t.Errorf("how-to-fix still recommends a drop-in that would be overridden:\n%s", f.HowToFix)
+	}
+	if !strings.Contains(f.HowToFix, c.ConfFile) {
+		t.Errorf("how-to-fix must name the file to edit:\n%s", f.HowToFix)
+	}
+}
+
+// Between two drop-ins the later file name wins, which is systemd-sysctl's
+// own rule and the reason it logs "Overwriting earlier assignment".
+func TestTheLastDropInWins(t *testing.T) {
+	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
+		"10-distro.conf": "kernel.dmesg_restrict = 1\n",
+		"90-local.conf":  "kernel.dmesg_restrict = 0\n",
+	}, "")
+
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(c.ConfDirs[0], "90-local.conf") + ":1"
+	if got := idsOf(fs)["sysctl.dmesg-restrict"].Evidence["set-by"]; got != want {
+		t.Errorf("set-by = %q, want %q", got, want)
+	}
+}
+
+// A file that sets a value other than the one running is not why the
+// parameter is weak — something set it at runtime. Naming it would send the
+// operator to edit a line that already says the right thing.
+func TestAFileSettingADifferentValueIsNotTheOrigin(t *testing.T) {
+	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
+		"90-local.conf": "kernel.dmesg_restrict = 1\n",
+	}, "")
+
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := idsOf(fs)["sysctl.dmesg-restrict"]
+	if got := f.Evidence["set-by"]; got != "" {
+		t.Errorf("set-by = %q, want none: that file sets 1 and the kernel is running 0", got)
+	}
+	if !strings.Contains(f.HowToFix, "/etc/sysctl.d") {
+		t.Errorf("with no origin the drop-in advice is right:\n%s", f.HowToFix)
+	}
+}
+
+// No configuration file mentions the key: the value is the kernel's own
+// default, a drop-in is the correct remediation, and there is nothing to name.
+func TestNoOriginWhenNoFileSetsTheKey(t *testing.T) {
+	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
+		"90-local.conf": "# nothing relevant\nvm.swappiness = 10\n",
+	}, "")
+
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := idsOf(fs)["sysctl.dmesg-restrict"].Evidence["set-by"]; got != "" {
+		t.Errorf("set-by = %q, want none", got)
+	}
+}
+
+func TestParseAssignment(t *testing.T) {
+	for _, tc := range []struct {
+		line string
+		key  string
+		val  int64
+		ok   bool
+	}{
+		{"kernel.dmesg_restrict = 1", "kernel.dmesg_restrict", 1, true},
+		{"kernel.dmesg_restrict=0", "kernel.dmesg_restrict", 0, true},
+		{"  kernel.dmesg_restrict  =  1  ", "kernel.dmesg_restrict", 1, true},
+		// systemd's "apply, but do not complain if it fails" marker is part
+		// of the syntax, not of the key.
+		{"-kernel.dmesg_restrict = 1", "kernel.dmesg_restrict", 1, true},
+		// sysctl.d permits slashes for the same parameter as dots, and a rule
+		// keyed on dots would otherwise miss it.
+		{"kernel/dmesg_restrict = 1", "kernel.dmesg_restrict", 1, true},
+		{"# kernel.dmesg_restrict = 1", "", 0, false},
+		{"; kernel.dmesg_restrict = 1", "", 0, false},
+		{"", "", 0, false},
+		{"kernel.dmesg_restrict", "", 0, false},
+		// A glob selects many parameters; rewriting one line of it would
+		// change the others too.
+		{"net.ipv4.conf.*.accept_redirects = 1", "", 0, false},
+		// Not an integer, so no audited rule could ever match it.
+		{"kernel.core_pattern = |/usr/share/apport", "", 0, false},
+	} {
+		key, val, ok := parseAssignment(tc.line)
+		if key != tc.key || val != tc.val || ok != tc.ok {
+			t.Errorf("parseAssignment(%q) = (%q, %d, %v), want (%q, %d, %v)",
+				tc.line, key, val, ok, tc.key, tc.val, tc.ok)
+		}
+	}
+}
+
+// An earlier directory masks a same-named file in a later one rather than
+// overriding it: that is how a distribution drop-in is disabled from /etc.
+func TestEarlierDirectoryMasksTheSameFileName(t *testing.T) {
+	etc, lib := t.TempDir(), t.TempDir()
+	for dir, body := range map[string]string{
+		etc: "kernel.dmesg_restrict = 0\n",
+		lib: "kernel.dmesg_restrict = 1\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, "50-x.conf"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := origins([]string{etc, lib}, "")
+	if got["kernel.dmesg_restrict"].Path != filepath.Join(etc, "50-x.conf") {
+		t.Errorf("masking failed: %+v", got["kernel.dmesg_restrict"])
 	}
 }
 
