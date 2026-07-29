@@ -7,32 +7,12 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
-	"github.com/seolcu/hostveil/internal/platform"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 )
 
-type fakeRunner struct {
-	present map[string]bool
-	outputs map[string]string // key: "name arg1 arg2..."
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.present[name] {
-		return "/usr/bin/" + name, nil
-	}
-	return "", errors.New("not found")
-}
-
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
-	if out, ok := f.outputs[key]; ok {
-		return []byte(out), nil
-	}
-	return nil, errors.New("no output for: " + key)
-}
-
-func countFindings(t *testing.T, r fakeRunner) int {
+func countFindings(t *testing.T, r *checktest.Runner) int {
 	t.Helper()
-	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
+	fs, err := New().Check(context.Background(), r.Env())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,37 +20,28 @@ func countFindings(t *testing.T, r fakeRunner) int {
 }
 
 func TestFirewallActiveUFW(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
-	}
+	r := checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"})
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("active ufw should yield no finding, got %d", n)
 	}
 }
 
 func TestFirewallInactive(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: inactive\n"},
-	}
+	r := checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: inactive\n"})
 	if n := countFindings(t, r); n != 1 {
 		t.Errorf("inactive ufw should yield one finding, got %d", n)
 	}
 }
 
 func TestFirewallNoneInstalled(t *testing.T) {
-	r := fakeRunner{present: map[string]bool{}}
+	r := checktest.New().Only()
 	if n := countFindings(t, r); n != 1 {
 		t.Errorf("no firewall installed should yield one finding, got %d", n)
 	}
 }
 
 func TestFirewallFirewalld(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"firewall-cmd": true},
-		outputs: map[string]string{"firewall-cmd --state": "running\n", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"},
-	}
+	r := checktest.New().Only("firewall-cmd").Outputs(map[string]string{"firewall-cmd --state": "running\n", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"})
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("running firewalld should yield no finding, got %d", n)
 	}
@@ -84,10 +55,7 @@ func TestFirewallNftablesActive(t *testing.T) {
 		ct state established,related accept
 	}
 }`
-	r := fakeRunner{
-		present: map[string]bool{"nft": true},
-		outputs: map[string]string{"nft list ruleset": ruleset},
-	}
+	r := checktest.New().Only("nft").Outputs(map[string]string{"nft list ruleset": ruleset})
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("an active input-dropping nftables firewall should yield no finding, got %d", n)
 	}
@@ -106,10 +74,7 @@ table ip filter {
 	chain DOCKER { }
 	chain FORWARD { type filter hook forward priority filter; policy accept; }
 }`
-	r := fakeRunner{
-		present: map[string]bool{"nft": true},
-		outputs: map[string]string{"nft list ruleset": dockerRuleset},
-	}
+	r := checktest.New().Only("nft").Outputs(map[string]string{"nft list ruleset": dockerRuleset})
 	if n := countFindings(t, r); n != 1 {
 		t.Errorf("Docker's nftables tables must not count as a firewall; expected 1 finding, got %d", n)
 	}
@@ -123,9 +88,9 @@ table ip filter {
 func TestFirewallUnreadableIsNotReportedAsAbsent(t *testing.T) {
 	// ufw is installed but refuses to answer (as it does without root): the
 	// fake has no scripted output for it, so Run errors.
-	r := fakeRunner{present: map[string]bool{"ufw": true}}
+	r := checktest.New().Only("ufw")
 
-	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
+	fs, err := New().Check(context.Background(), r.Env())
 	if len(fs) != 0 {
 		t.Errorf("unreadable firewall state must not produce a finding, got %v", fs)
 	}
@@ -144,10 +109,7 @@ func TestFirewallUnreadableIsNotReportedAsAbsent(t *testing.T) {
 // prints "running" to stderr, and the runner captures stdout only, so the
 // text match saw an empty string. Exit status is the stable signal.
 func TestFirewalldDetectedWhenStateGoesToStderr(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"firewall-cmd": true},
-		outputs: map[string]string{"firewall-cmd --state": "", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"}, // exits 0, says nothing on stdout
-	}
+	r := checktest.New().Only("firewall-cmd").Outputs(map[string]string{"firewall-cmd --state": "", "firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n"})
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("firewalld running with empty stdout must count as active, got %d findings", n)
 	}
@@ -157,12 +119,9 @@ func TestFirewalldDetectedWhenStateGoesToStderr(t *testing.T) {
 // using iptables-persistent: ufw, firewalld and nft are all absent, but INPUT
 // defaults to DROP, so the host is firewalled and must not be accused.
 func TestIptablesOnlyHostIsNotFlagged(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"iptables": true},
-		outputs: map[string]string{
-			"iptables -S INPUT": "-P INPUT DROP\n-A INPUT -i lo -j ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
-		},
-	}
+	r := checktest.New().Only("iptables").Outputs(map[string]string{
+		"iptables -S INPUT": "-P INPUT DROP\n-A INPUT -i lo -j ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
+	})
 	if n := countFindings(t, r); n != 0 {
 		t.Errorf("an iptables INPUT DROP policy is a host firewall, got %d findings", n)
 	}
@@ -171,12 +130,9 @@ func TestIptablesOnlyHostIsNotFlagged(t *testing.T) {
 // An ACCEPT policy is the opposite: allow rules say nothing about traffic
 // that matches none of them, so the host is still open.
 func TestIptablesAcceptPolicyIsStillFlagged(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"iptables": true},
-		outputs: map[string]string{
-			"iptables -S INPUT": "-P INPUT ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
-		},
-	}
+	r := checktest.New().Only("iptables").Outputs(map[string]string{
+		"iptables -S INPUT": "-P INPUT ACCEPT\n-A INPUT -p tcp --dport 22 -j ACCEPT\n",
+	})
 	if n := countFindings(t, r); n != 1 {
 		t.Errorf("an iptables ACCEPT policy is not a firewall; want 1 finding, got %d", n)
 	}
@@ -187,36 +143,17 @@ func TestIptablesAcceptPolicyIsStillFlagged(t *testing.T) {
 func TestFirewallProbeStatuses(t *testing.T) {
 	cases := []struct {
 		name string
-		r    fakeRunner
+		r    *checktest.Runner
 		want Status
 	}{
-		{"no tools installed", fakeRunner{}, StatusInactive},
-		{"ufw answers active", fakeRunner{
-			present: map[string]bool{"ufw": true},
-			outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
-		}, StatusActive},
-		{"ufw answers inactive", fakeRunner{
-			present: map[string]bool{"ufw": true},
-			outputs: map[string]string{"ufw status": "Status: inactive\n"},
-		}, StatusInactive},
-		{"ufw installed but unreadable", fakeRunner{
-			present: map[string]bool{"ufw": true},
-		}, StatusUnknown},
-		{"one tool unreadable, another confirms active", fakeRunner{
-			present: map[string]bool{"ufw": true, "nft": true},
-			outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
-		}, StatusActive},
-		{"firewalld installed but unreadable", fakeRunner{
-			present: map[string]bool{"firewall-cmd": true},
-		}, StatusUnknown},
-		{"iptables answers drop", fakeRunner{
-			present: map[string]bool{"iptables": true},
-			outputs: map[string]string{"iptables -S INPUT": "-P INPUT DROP\n"},
-		}, StatusActive},
-		{"iptables answers accept", fakeRunner{
-			present: map[string]bool{"iptables": true},
-			outputs: map[string]string{"iptables -S INPUT": "-P INPUT ACCEPT\n"},
-		}, StatusInactive},
+		{"no tools installed", checktest.New().Only(), StatusInactive},
+		{"ufw answers active", checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"}), StatusActive},
+		{"ufw answers inactive", checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: inactive\n"}), StatusInactive},
+		{"ufw installed but unreadable", checktest.New().Only("ufw"), StatusUnknown},
+		{"one tool unreadable, another confirms active", checktest.New().Only("ufw", "nft").Outputs(map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"}), StatusActive},
+		{"firewalld installed but unreadable", checktest.New().Only("firewall-cmd"), StatusUnknown},
+		{"iptables answers drop", checktest.New().Only("iptables").Outputs(map[string]string{"iptables -S INPUT": "-P INPUT DROP\n"}), StatusActive},
+		{"iptables answers accept", checktest.New().Only("iptables").Outputs(map[string]string{"iptables -S INPUT": "-P INPUT ACCEPT\n"}), StatusInactive},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

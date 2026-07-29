@@ -36,10 +36,8 @@ func (l Listener) Loopback() bool {
 // an ordinary error, and it is the caller's domain that decides whether that
 // means skipped, degraded, or fatal.
 func Listeners(ctx context.Context, r CommandRunner) ([]Listener, error) {
-	// No `-H`: it is a relatively recent flag, so we skip the header row
-	// ourselves (parseListener rejects it) and stay compatible with older
-	// iproute2 rather than hard-erroring on an unknown flag.
-	out, err := r.Run(ctx, "ss", "-tlnp")
+	argv := ListenersArgv()
+	out, err := r.Run(ctx, argv[0], argv[1:]...)
 	if err != nil {
 		return nil, fmt.Errorf("listing listening sockets with ss: %w", err)
 	}
@@ -51,6 +49,15 @@ func Listeners(ctx context.Context, r CommandRunner) ([]Listener, error) {
 	}
 	return ls, nil
 }
+
+// ListenersArgv is the exact command Listeners runs.
+//
+// No `-H`: it is a relatively recent flag, so the header row is skipped here
+// (parseListener rejects it) rather than by asking an older iproute2 to
+// accept a flag it does not know. Exported for the same reason as
+// DockerProbeArgv — a test that scripts a stale argv still passes, because
+// the fake runner's miss looks exactly like the tool failing.
+func ListenersArgv() []string { return []string{"ss", "-tlnp"} }
 
 // parseListener parses one `ss -tlnp` row into a Listener. The local
 // address:port is the 4th whitespace-separated field; the process column

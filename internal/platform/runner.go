@@ -163,8 +163,22 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 	if !Has(r, "docker") {
 		return false, "Docker not installed"
 	}
-	if _, err := r.Run(ctx, "docker", "version", "--format", "{{.Server.Version}}"); err != nil {
+	argv := DockerProbeArgv()
+	if _, err := r.Run(ctx, argv[0], argv[1:]...); err != nil {
 		return false, "cannot reach the Docker daemon — add your user to the docker group, or re-run with sudo"
 	}
 	return true, ""
+}
+
+// DockerProbeArgv is the exact command DockerReachable runs.
+//
+// It is exported so tests script this rather than a copy of it. The argv was
+// written out by hand in five test files, and a scripted command that no
+// longer matches the caller's does not fail — it falls through to the fake
+// runner's error path, which every checker reads as a daemon that did not
+// answer. That is the same value a genuinely unreachable daemon produces, so
+// a test covering the reachable case would go on passing while covering the
+// opposite one.
+func DockerProbeArgv() []string {
+	return []string{"docker", "version", "--format", "{{.Server.Version}}"}
 }

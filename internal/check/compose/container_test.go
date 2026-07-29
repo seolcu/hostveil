@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -25,7 +26,7 @@ func (runRunner) LookPath(name string) (string, error) { return "/usr/bin/" + na
 func (r runRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	joined := strings.Join(args, " ")
 	switch {
-	case name == "docker" && joined == "version --format {{.Server.Version}}":
+	case checktest.IsDockerProbe(name, args):
 		return []byte("27.0.3\n"), nil
 	case name == "docker" && joined == "compose ls --all --format json":
 		if r.ls != "" {

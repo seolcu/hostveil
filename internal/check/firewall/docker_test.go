@@ -8,32 +8,29 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
-	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // dockerHost builds a runner for a host with ufw active and Docker reachable.
 // Callers override or add entries to shape the specific scenario.
-func dockerHost(ps, dockerUser string) fakeRunner {
-	return fakeRunner{
-		present: map[string]bool{"ufw": true, "iptables": true, "docker": true},
-		outputs: map[string]string{
-			"ufw status":         "Status: active\n",
-			"ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n", "docker version --format {{.Server.Version}}": "27.3.1\n",
-			"docker ps --format {{.Names}}\t{{.Ports}}": ps,
-			"iptables -S DOCKER-USER":                   dockerUser,
-		},
-	}
+func dockerHost(ps, dockerUser string) *checktest.Runner {
+	return checktest.New().Only("ufw", "iptables", "docker").Outputs(map[string]string{
+		"ufw status":         "Status: active\n",
+		"ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n", "docker version --format {{.Server.Version}}": "27.3.1\n",
+		"docker ps --format {{.Names}}\t{{.Ports}}": ps,
+		"iptables -S DOCKER-USER":                   dockerUser,
+	})
 }
 
 // emptyDockerUser is what Docker installs by default: the chain exists and
 // unconditionally returns, so it filters nothing.
 const emptyDockerUser = "-N DOCKER-USER\n-A DOCKER-USER -j RETURN\n"
 
-func checkWith(t *testing.T, r fakeRunner) ([]model.Finding, error) {
+func checkWith(t *testing.T, r *checktest.Runner) ([]model.Finding, error) {
 	t.Helper()
 	c := &Checker{DaemonConfigPath: filepath.Join(t.TempDir(), "absent.json")}
-	return c.Check(context.Background(), platform.Env{Runner: r})
+	return c.Check(context.Background(), r.Env())
 }
 
 // The headline case: ufw reports active, so every axis scored this host
@@ -114,7 +111,7 @@ func TestDockerNotManagingIptablesSuppressesTheFinding(t *testing.T) {
 	r := dockerHost("cache\t0.0.0.0:6379->6379/tcp\n", emptyDockerUser)
 
 	c := &Checker{DaemonConfigPath: cfg}
-	fs, err := c.Check(context.Background(), platform.Env{Runner: r})
+	fs, err := c.Check(context.Background(), r.Env())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +130,7 @@ func TestDaemonConfigWithoutIptablesKeyStillFlags(t *testing.T) {
 	r := dockerHost("cache\t0.0.0.0:6379->6379/tcp\n", emptyDockerUser)
 
 	c := &Checker{DaemonConfigPath: cfg}
-	fs, err := c.Check(context.Background(), platform.Env{Runner: r})
+	fs, err := c.Check(context.Background(), r.Env())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,10 +141,7 @@ func TestDaemonConfigWithoutIptablesKeyStillFlags(t *testing.T) {
 
 // No Docker means no Docker rules to jump the queue.
 func TestNoDockerNoBypass(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"},
-	}
+	r := checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: active\n", "ufw status verbose": "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"})
 	fs, err := checkWith(t, r)
 	if err != nil {
 		t.Fatal(err)
@@ -160,16 +154,13 @@ func TestNoDockerNoBypass(t *testing.T) {
 // The finding names ufw and its remediation edits /etc/ufw/after.rules, so
 // it must not fire on a firewalld host where neither applies.
 func TestBypassScopedToUFW(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"firewall-cmd": true, "iptables": true, "docker": true},
-		outputs: map[string]string{
-			"firewall-cmd --state":            "running\n",
-			"firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n",
-			"docker version --format {{.Server.Version}}": "27.3.1\n",
-			"docker ps --format {{.Names}}\t{{.Ports}}":   "cache\t0.0.0.0:6379->6379/tcp\n",
-			"iptables -S DOCKER-USER":                     emptyDockerUser,
-		},
-	}
+	r := checktest.New().Only("firewall-cmd", "iptables", "docker").Outputs(map[string]string{
+		"firewall-cmd --state":            "running\n",
+		"firewall-cmd --get-default-zone": "public\n", "firewall-cmd --zone=public --list-all": "public (active)\n  target: default\n",
+		"docker version --format {{.Server.Version}}": "27.3.1\n",
+		"docker ps --format {{.Names}}\t{{.Ports}}":   "cache\t0.0.0.0:6379->6379/tcp\n",
+		"iptables -S DOCKER-USER":                     emptyDockerUser,
+	})
 	fs, err := checkWith(t, r)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +176,7 @@ func TestBypassScopedToUFW(t *testing.T) {
 // that may be correctly configured.
 func TestUnreadableDockerUserChainIsPartial(t *testing.T) {
 	r := dockerHost("cache\t0.0.0.0:6379->6379/tcp\n", "")
-	delete(r.outputs, "iptables -S DOCKER-USER") // no scripted output -> Run errors
+	r.Unscript("iptables", "-S", "DOCKER-USER") // installed, refuses to answer
 
 	fs, err := checkWith(t, r)
 	if len(fs) != 0 {

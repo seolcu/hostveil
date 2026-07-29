@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/fix"
@@ -24,28 +24,6 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
-
-type fakeRunner struct {
-	present map[string]bool
-	lsJSON  string
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.present[name] {
-		return "/usr/bin/" + name, nil
-	}
-	return "", errors.New("nope")
-}
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	switch {
-	case name == "docker" && strings.Join(args, " ") == "compose ls --all --format json":
-		return []byte(f.lsJSON), nil
-	// Checkers probe the daemon before trusting the CLI's presence.
-	case name == "docker" && strings.Join(args, " ") == "version --format {{.Server.Version}}":
-		return []byte("27.0.3\n"), nil
-	}
-	return nil, errors.New("unexpected")
-}
 
 func testServer(t *testing.T) (*Server, string) {
 	t.Helper()
@@ -58,7 +36,7 @@ func testServer(t *testing.T) (*Server, string) {
 		Registry: check.NewRegistry(composecheck.New()),
 		Fixes:    fix.Default(),
 		Store:    history.NewStore(t.TempDir()),
-		Runner:   fakeRunner{present: map[string]bool{"docker": true}, lsJSON: `[{"Name":"demo","ConfigFiles":"` + path + `"}]`},
+		Runner:   checktest.ComposeProjects(map[string]string{"demo": path}),
 	})
 	engine.Scan(context.Background(), nil)
 	return New(engine, "127.0.0.1:0", "nord"), path
