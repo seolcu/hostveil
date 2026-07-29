@@ -38,7 +38,7 @@ type Engine struct {
 
 	// applyMu serializes everything that mutates the host or replaces the
 	// current report: scans, fix applications, and rollbacks. It is always
-	// taken OUTSIDE mu, never while holding it.
+	// taken OUTSIDE the report state's own lock, never while holding it.
 	//
 	// Without it the web dashboard — which serves requests concurrently —
 	// could run two applyEdits against one compose file at once. Each reads
@@ -48,10 +48,9 @@ type Engine struct {
 	// entire promise is that changes are recorded and reversible.
 	applyMu sync.Mutex
 
-	mu        sync.RWMutex
-	current   model.Report
-	hasRun    bool
-	lastDelta model.Delta
+	// state is the last scan and everything derived from it. It carries
+	// its own lock, which is always taken INSIDE applyMu, never around it.
+	state reportState
 }
 
 // New builds an Engine from cfg.
@@ -173,22 +172,14 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 		e.persist(report)
 	}
 
-	e.mu.Lock()
-	e.current = report
-	e.hasRun = true
-	e.lastDelta = delta
-	e.mu.Unlock()
+	e.state.replace(report, delta)
 
 	return report
 }
 
 // LastDelta returns how the most recent scan differed from the one before
 // it (resolved / new / still-present findings).
-func (e *Engine) LastDelta() model.Delta {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.lastDelta
-}
+func (e *Engine) LastDelta() model.Delta { return e.state.delta() }
 
 // deltaAgainstLast loads the previously saved scan and diffs it against the
 // fresh report. A missing or unreadable prior scan yields an empty delta.
@@ -221,13 +212,7 @@ func (e *Engine) persist(r model.Report) {
 // hit exactly that: `go test -race` reports a write in markFixed against a
 // concurrent read in json.Encoder from /api/result. Copying makes the
 // returned report a snapshot, which is what every caller already assumed.
-func (e *Engine) Current() (model.Report, bool) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	report := e.current
-	report.Findings = slices.Clone(e.current.Findings)
-	return report, e.hasRun
-}
+func (e *Engine) Current() (model.Report, bool) { return e.state.snapshot() }
 
 // classify settles a finding's remediation between two sources of truth.
 //

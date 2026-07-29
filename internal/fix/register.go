@@ -268,7 +268,7 @@ package fix
 // Action.CreateIfMissing handles the absent /etc/docker/daemon.json, exactly
 // as it does for the sysctl drop-in. And `dockerd --validate --config-file`
 // is a genuine `sshd -t` analogue: it rejects malformed JSON and unknown
-// directives, accepts an empty file — so verifyEdit's control run on the
+// directives, accepts an empty file — so runEditValidator's control run on the
 // original passes for a create-if-missing action — and needs no running
 // daemon. A VerifyCmd here would work.
 //

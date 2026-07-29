@@ -57,7 +57,7 @@ func createEngine(t *testing.T, path string) *Engine {
 func TestCreateThenRollbackRemovesTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)
-	e.current = model.Report{Findings: []model.Finding{createFinding()}}
+	e.state.current = model.Report{Findings: []model.Finding{createFinding()}}
 
 	out, err := e.ApplyFix(context.Background(), createFinding(), 0)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestPreviewOfACreatedFileShowsTheWholeBody(t *testing.T) {
 func TestRollbackDeclinesToDeleteAnEditedFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)
-	e.current = model.Report{Findings: []model.Finding{createFinding()}}
+	e.state.current = model.Report{Findings: []model.Finding{createFinding()}}
 
 	out, err := e.ApplyFix(context.Background(), createFinding(), 0)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestRollbackDeclinesToDeleteAnEditedFile(t *testing.T) {
 func TestRollbackOfAnAlreadyDeletedFileSucceeds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)
-	e.current = model.Report{Findings: []model.Finding{createFinding()}}
+	e.state.current = model.Report{Findings: []model.Finding{createFinding()}}
 
 	out, err := e.ApplyFix(context.Background(), createFinding(), 0)
 	if err != nil {
@@ -169,7 +169,7 @@ func TestEditWithoutCreateStillFailsOnAMissingFile(t *testing.T) {
 		}, nil
 	})
 	e := New(Config{Fixes: r, Store: history.NewStore(t.TempDir())})
-	e.current = model.Report{Findings: []model.Finding{createFinding()}}
+	e.state.current = model.Report{Findings: []model.Finding{createFinding()}}
 
 	if _, err := e.ApplyFix(context.Background(), createFinding(), 0); err == nil {
 		t.Error("applying an edit to a missing file succeeded; only CreateIfMissing may do that")

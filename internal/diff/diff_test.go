@@ -31,7 +31,7 @@ func TestUnified(t *testing.T) {
 		want string
 	}{
 		{
-			// The empty string is the contract fixflow.go leans on: previewMode
+			// The empty string is the contract core.previewMode leans on: previewMode
 			// exists precisely because a no-op edit renders as "" and callers
 			// treat that as "nothing would change".
 			name: "identical inputs yield no diff",
@@ -158,7 +158,7 @@ func TestUnifiedHeaderNamesTheFile(t *testing.T) {
 // TestUnifiedNewlineOnlyChangeIsVisible pins the fix for a preview that
 // used to lie. splitLines drops the trailing newline, so a transform whose
 // only effect was adding or removing the file's final newline produced a
-// diff with a header and nothing but context: non-empty, so fixflow treated
+// diff with a header and nothing but context: non-empty, so the preview path treated
 // it as "there is a change to review", yet showing the operator zero +/-
 // lines to review — while applyEdit wrote the differing bytes. The preview
 // and the write disagreed. Both sides of the change must now be visible and

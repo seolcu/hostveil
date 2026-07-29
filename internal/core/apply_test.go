@@ -166,18 +166,18 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	engine := fixEngine(t)
 	// Seed the in-memory report the way a real scan would, so mark/unmark
 	// and rescore have something to act on.
-	engine.current = model.Report{
+	engine.state.current = model.Report{
 		Findings: []model.Finding{f},
 		Domains:  []model.DomainResult{{Source: model.SourceCompose, State: model.ScanDone, FindingCount: 1}},
 	}
-	engine.hasRun = true
-	before := engine.rescore().Overall
+	engine.state.hasRun = true
+	before := engine.state.rescore().Overall
 
 	outcome, err := engine.ApplyFix(context.Background(), f, 0)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if !engine.current.Findings[0].Fixed {
+	if !engine.state.current.Findings[0].Fixed {
 		t.Fatal("apply did not mark the finding fixed")
 	}
 	if outcome.NewScore.Overall <= before {
@@ -188,7 +188,7 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("rollback: %v", err)
 	}
-	if engine.current.Findings[0].Fixed {
+	if engine.state.current.Findings[0].Fixed {
 		t.Error("rollback left the finding marked fixed — it stays hidden in every UI")
 	}
 	if len(rb.Unfixed) != 1 || rb.Unfixed[0] != "compose.ds018" {
@@ -221,11 +221,11 @@ func TestRollbackUnmarksOnlyTheCheckpointedService(t *testing.T) {
 	cache, queue := mk("cache", "6379"), mk("queue", "6380")
 
 	engine := fixEngine(t)
-	engine.current = model.Report{
+	engine.state.current = model.Report{
 		Findings: []model.Finding{cache, queue},
 		Domains:  []model.DomainResult{{Source: model.SourceCompose, State: model.ScanDone, FindingCount: 2}},
 	}
-	engine.hasRun = true
+	engine.state.hasRun = true
 
 	cacheOut, err := engine.ApplyFix(context.Background(), cache, 0)
 	if err != nil {
@@ -238,7 +238,7 @@ func TestRollbackUnmarksOnlyTheCheckpointedService(t *testing.T) {
 	if _, err := engine.Rollback(cacheOut.CheckpointID); err != nil {
 		t.Fatalf("rollback: %v", err)
 	}
-	for _, f := range engine.current.Findings {
+	for _, f := range engine.state.current.Findings {
 		if f.Service == "cache" && f.Fixed {
 			t.Error("cache finding should be un-fixed after rolling its checkpoint back")
 		}
@@ -603,16 +603,16 @@ func TestConcurrentFixesToOneFileDoNotLoseEachOther(t *testing.T) {
 // array markFixed writes into.
 func TestCurrentIsASnapshot(t *testing.T) {
 	e := fixEngine(t)
-	e.mu.Lock()
-	e.current = model.Report{Findings: []model.Finding{
+	e.state.mu.Lock()
+	e.state.current = model.Report{Findings: []model.Finding{
 		model.NewFinding("compose.ds006", "t", model.SeverityLow,
 			model.SourceCompose, model.RemediationAuto, model.WithService("app")),
 	}}
-	e.hasRun = true
-	e.mu.Unlock()
+	e.state.hasRun = true
+	e.state.mu.Unlock()
 
 	snapshot, _ := e.Current()
-	e.markFixed(snapshot.Findings[0])
+	e.state.markFixed(snapshot.Findings[0])
 
 	if snapshot.Findings[0].Fixed {
 		t.Error("Current() shares its findings with the engine; a later fix mutated the caller's copy")

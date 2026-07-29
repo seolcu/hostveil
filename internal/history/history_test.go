@@ -147,7 +147,7 @@ func TestListIsNewestFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Save does not stamp CreatedAt — the engine does, at fixflow.go:189 —
+	// Save does not stamp CreatedAt — the engine does, in core.applyEdit —
 	// so the test has to. Without it all three carried the zero time, the
 	// assertion below was vacuously true, and the ordering was actually
 	// being decided by the ID tiebreak. Flipping After to Before in List
