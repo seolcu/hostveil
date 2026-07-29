@@ -190,6 +190,73 @@ func TestAvailableDistinguishesUnreadableFromAbsent(t *testing.T) {
 	}
 }
 
+// There is a third failure mode, and it reads as the second.
+//
+// A home directory that cannot be entered is ground this domain did not
+// cover. Available discarded the unreadable list and reported "no
+// self-hosted agent runtime found" — so a non-root scan on a host where
+// another account runs an agent behind a wide-open gateway told the operator
+// there was no agent runtime, and offered no reason to try again with sudo.
+//
+// The home itself stays stat-able throughout: statting a directory needs only
+// search permission on its *parent*, so the check that guards this path
+// succeeds and the marker underneath is what fails.
+func TestAvailableSaysSoWhenAHomeCannotBeRead(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can read every home, so the permission gap cannot be staged")
+	}
+	h := newHost(t, "alice", "bob")
+	h.write("bob", ".openclaw/openclaw.json", cleanOpenClaw, 0o600)
+	if err := os.Chmod(h.homes["bob"], 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(h.homes["bob"], 0o755) })
+
+	// The premise: bob's home stats fine, the marker inside it does not.
+	if _, err := os.Stat(h.homes["bob"]); err != nil {
+		t.Fatalf("premise broken — bob's home is not stat-able: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(h.homes["bob"], ".openclaw")); err == nil {
+		t.Fatal("premise broken — the marker under an unreadable home is still readable")
+	}
+
+	ok, reason := h.checker().Available(context.Background(), platform.Env{})
+	if ok {
+		t.Fatalf("expected the domain to be skipped, got available")
+	}
+	if strings.Contains(reason, "no self-hosted agent runtime") {
+		t.Errorf("reason %q reports absence for a home that could not be read", reason)
+	}
+	if !strings.Contains(reason, "sudo") {
+		t.Errorf("reason %q should tell the operator how to cover the domain", reason)
+	}
+}
+
+// The same blind spot on the other side of the fence: one runtime is visible,
+// so the domain runs — and the account it could not look at has to show up as
+// a coverage gap rather than as a clean result.
+func TestAnUnreadableHomeDegradesAScanThatOtherwiseRan(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can read every home, so the permission gap cannot be staged")
+	}
+	h := newHost(t, "alice", "bob")
+	h.write("alice", ".openclaw/openclaw.json", cleanOpenClaw, 0o600)
+	h.write("bob", ".openclaw/openclaw.json", cleanOpenClaw, 0o600)
+	if err := os.Chmod(h.homes["bob"], 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(h.homes["bob"], 0o755) })
+
+	_, err := h.checker().Check(context.Background(), envNoFirewall(""))
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError so the axis reports Degraded, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, h.homes["bob"]) {
+		t.Errorf("the unreadable home is missing from %q", partial.Reason)
+	}
+}
+
 func TestAvailableTrueWhenMarkerExists(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", cleanOpenClaw, 0o600)

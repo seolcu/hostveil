@@ -93,14 +93,46 @@ func installs(hs []userHome, rts []Runtime) (found []install, unreadable []strin
 			}
 			continue
 		}
+		// The home stats fine and its markers still may not. Statting a
+		// directory needs only search permission on its *parent*, so a home
+		// mode 0700 owned by someone else passes the check above and denies
+		// everything underneath it — which is the ordinary shape of a
+		// multi-user host scanned without root.
+		blind := false
 		for _, rt := range rts {
-			for _, m := range rt.Markers {
-				if _, err := os.Stat(filepath.Join(h.Home, m)); err == nil {
-					found = append(found, install{user: h, rt: rt})
-					break
-				}
+			switch installed, err := hasMarker(h.Home, rt); {
+			case err != nil:
+				blind = true
+			case installed:
+				found = append(found, install{user: h, rt: rt})
 			}
+		}
+		if blind {
+			unreadable = append(unreadable, h.Home)
 		}
 	}
 	return found, unreadable
+}
+
+// hasMarker reports whether rt is installed under home.
+//
+// A non-nil error means the question could not be answered, which is not the
+// same as answering no — and treating it as no is what let an unreadable home
+// report as an account with nothing installed. Only os.IsNotExist is a real
+// negative; anything else is a blind spot the caller has to account for.
+//
+// A runtime found through one marker is installed regardless of what the
+// others say, so a positive wins outright. Otherwise any unanswerable marker
+// makes the whole answer unanswerable.
+func hasMarker(home string, rt Runtime) (bool, error) {
+	var blind error
+	for _, m := range rt.Markers {
+		switch _, err := os.Stat(filepath.Join(home, m)); {
+		case err == nil:
+			return true, nil
+		case !os.IsNotExist(err):
+			blind = err
+		}
+	}
+	return false, blind
 }
