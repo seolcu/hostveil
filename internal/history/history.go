@@ -182,14 +182,56 @@ func (s *Store) writeMeta(dir string, cp Checkpoint) error {
 // List() reads and parses every one of them on each history view and each
 // rollback.
 //
-// The number has to clear the largest thing one session can produce. A
-// `fix --all` on a badly misconfigured host applies dozens of fixes at
-// once, and pruning any of those immediately after writing them would make
-// a fix unrollbackable the moment it was applied. Two hundred leaves room
-// for several such sessions before the oldest starts aging out.
+// It bounds how far back the history goes; minRetention, not this number, is
+// what keeps a fix rollbackable after it is applied.
 const maxCheckpoints = 200
 
-// pruneCheckpoints removes the oldest restore points beyond maxCheckpoints.
+// minRetention is how long a checkpoint is held back from maxCheckpoints.
+//
+// The count cap cannot express the guarantee that matters. pruneCheckpoints
+// runs on every save, so a `fix --all` writing more than maxCheckpoints in one
+// run pruned its own earliest checkpoints: the fixes it applied first became
+// unrollbackable the instant they were applied, which is the one thing the cap
+// exists to avoid. The cap used to answer that by being "a big enough number",
+// which is a hope and not a mechanism — no-new-privileges and a missing
+// restart policy are both Auto and both fire on nearly every stock compose
+// service, so a host with a hundred services reaches 200 in a single batch.
+//
+// A duration says it directly: nothing written recently is discarded, however
+// much arrived at once. That also covers the cases a per-batch rule would
+// miss — fixes applied one at a time from the dashboard, or a shell loop over
+// `hostveil fix` — where each is equally rollbackable-then-not.
+//
+// An hour spans any one run plus the window in which an operator notices the
+// host misbehaving and reaches for rollback. Growth stays bounded by what can
+// be applied inside it.
+const minRetention = time.Hour
+
+// idTimeLayout is the timestamp prefix NewID and NewScanID mint. Pruning
+// reads an ID's age straight out of the directory name through it, which is
+// what keeps that path free of meta.json reads.
+const idTimeLayout = "20060102-150405.000"
+
+// idTime recovers when an ID was minted from its timestamp prefix.
+//
+// ok is false for anything it cannot date — an ID from a format that predates
+// this one, or a stray directory. Such an entry is treated as prunable rather
+// than protected: the guarantee below is for checkpoints this build wrote, and
+// an undatable one must not become immortal for want of a timestamp.
+func idTime(id string) (time.Time, bool) {
+	if len(id) < len(idTimeLayout) {
+		return time.Time{}, false
+	}
+	at, err := time.ParseInLocation(idTimeLayout, id[:len(idTimeLayout)], time.UTC)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return at, true
+}
+
+// pruneCheckpoints removes restore points beyond maxCheckpoints that are also
+// older than minRetention. Both conditions must hold: the count is what bounds
+// the directory, the age is what keeps a fix rollbackable after it is applied.
 //
 // Oldest-first is what makes this safe against the external-edit check.
 // That check asks whether a file still holds content *some* checkpoint
@@ -222,7 +264,13 @@ func (s *Store) pruneCheckpoints() {
 		return
 	}
 	sort.Strings(names) // oldest first
+	cutoff := time.Now().UTC().Add(-minRetention)
 	for _, name := range names[:len(names)-maxCheckpoints] {
+		// Reaching something recent ends the sweep rather than skipping it:
+		// names are in chronological order, so everything left is newer still.
+		if at, ok := idTime(name); ok && at.After(cutoff) {
+			return
+		}
 		_ = os.RemoveAll(filepath.Join(dir, name))
 	}
 }

@@ -388,14 +388,20 @@ func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 // snapshots — but they are capped. Nothing removed them before, and each
 // holds a full copy of every file its fix touched, so a long-lived host grew
 // its state directory without bound and paid for it on every history view.
+//
+// The IDs are old on purpose. Recent checkpoints are held back from the cap
+// (see minRetention), so dating these a year ago is what puts them in the
+// cap's reach at all — and it is what the cap is for: backups from past
+// sessions, not the ones this session just wrote.
 func TestCheckpointsArePrunedOldestFirst(t *testing.T) {
 	s := NewStore(t.TempDir())
 
 	total := maxCheckpoints + 10
 	ids := make([]string, 0, total)
+	old := time.Now().UTC().Add(-365 * 24 * time.Hour)
 	for i := range total {
 		cp := Checkpoint{
-			ID:        fmt.Sprintf("2026%06d-000000.000-aaaaaaaa-0000000%d", i, i%10),
+			ID:        agedID(old.Add(time.Duration(i) * time.Second)),
 			FindingID: "ssh.rootlogin",
 			CreatedAt: time.Unix(int64(i), 0).UTC(),
 		}
@@ -425,6 +431,104 @@ func TestCheckpointsArePrunedOldestFirst(t *testing.T) {
 	}
 	if _, err := s.Get(ids[0]); err == nil {
 		t.Error("the oldest checkpoint survived the cap")
+	}
+}
+
+// agedID mints a checkpoint ID that looks like it was written at t. It has to
+// go through the real layout: pruning reads the age out of the directory name
+// (see idTime), so an ID in any other shape is one the cap cannot date.
+func agedID(t time.Time) string {
+	return t.Format("20060102-150405.000") + "-aaaaaaaa-" + fmt.Sprintf("%08x", t.UnixNano()%0xffffffff)
+}
+
+// The guarantee the count cap cannot make on its own: a fix stays rollbackable
+// after it is applied.
+//
+// pruneCheckpoints runs on every save, so a `fix --all` that writes more than
+// maxCheckpoints in one run used to prune its own earliest checkpoints — the
+// fixes it applied first became unrollbackable the instant they were applied.
+// The cap's comment says that must never happen and then relies on 200 being a
+// big enough number, which is a hope rather than a mechanism: no-new-privileges
+// and a missing restart policy are both Auto and both fire on nearly every
+// stock compose service, so a host with a hundred services reaches the cap in
+// a single batch.
+func TestRecentCheckpointsAreHeldBackFromTheCap(t *testing.T) {
+	s := NewStore(t.TempDir())
+
+	total := maxCheckpoints + 10
+	ids := make([]string, 0, total)
+	for range total {
+		saved, err := s.Save(Checkpoint{
+			ID:        NewID("compose.ds006"),
+			FindingID: "compose.ds006",
+			CreatedAt: time.Now().UTC(),
+		}, map[string][]byte{
+			filepath.Join(t.TempDir(), "f"): []byte("contents"),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, saved.ID)
+	}
+
+	for i, id := range ids {
+		if _, err := s.Get(id); err != nil {
+			t.Fatalf("fix %d of %d was pruned by the same batch that wrote it: %v", i+1, total, err)
+		}
+	}
+}
+
+// A batch is protected, but the checkpoints it finds already on disk are not:
+// the cap still has to bound a long-lived host's state directory.
+func TestTheCapStillTrimsOlderCheckpoints(t *testing.T) {
+	s := NewStore(t.TempDir())
+
+	// A year of accumulated backups, then one fresh fix.
+	old := time.Now().UTC().Add(-365 * 24 * time.Hour)
+	var oldest string
+	for i := range maxCheckpoints {
+		saved, err := s.Save(Checkpoint{
+			ID:        agedID(old.Add(time.Duration(i) * time.Second)),
+			FindingID: "ssh.rootlogin",
+		}, map[string][]byte{filepath.Join(t.TempDir(), "f"): []byte("old")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			oldest = saved.ID
+		}
+	}
+	fresh, err := s.Save(Checkpoint{ID: NewID("ssh.rootlogin"), FindingID: "ssh.rootlogin"},
+		map[string][]byte{filepath.Join(t.TempDir(), "f"): []byte("new")})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.Get(oldest); err == nil {
+		t.Error("a year-old checkpoint survived a save that pushed the count past the cap")
+	}
+	if _, err := s.Get(fresh.ID); err != nil {
+		t.Errorf("the checkpoint just written was pruned: %v", err)
+	}
+	kept, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != maxCheckpoints {
+		t.Errorf("kept %d checkpoints, want the cap of %d", len(kept), maxCheckpoints)
+	}
+}
+
+// If NewID's shape ever drifts from what pruning parses, every checkpoint
+// becomes undatable — and undatable means prunable, so the hold above would
+// silently stop protecting anything while every other test still passed.
+func TestNewIDCarriesADateThePrunerCanRead(t *testing.T) {
+	at, ok := idTime(NewID("ssh.rootlogin"))
+	if !ok {
+		t.Fatal("pruning cannot read a timestamp out of a freshly minted checkpoint ID")
+	}
+	if d := time.Since(at); d < 0 || d > time.Minute {
+		t.Errorf("the ID's timestamp is %v away from now", d)
 	}
 }
 
