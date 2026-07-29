@@ -1,5 +1,34 @@
 # Changelog
 
+## [3.8.4](https://github.com/seolcu/hostveil/compare/v3.8.3...v3.8.4) (2026-07-29)
+
+One fix, for a scan that could not tell you everything it had failed to look
+at.
+
+### Bug Fixes
+
+* **check:** report every coverage gap, not just the first
+  ([#625](https://github.com/seolcu/hostveil/issues/625)). A domain can have
+  more than one blind spot, and both container checkers decided what to
+  report at the moment a gap was found — so whichever one lost the race was
+  discarded, from the message shown in every interface and from the counters
+  beside it. The CVE domain mentioned a compose file it could not parse only
+  when no image had also failed to scan; hit both, as a host with one broken
+  stack and one unreachable registry does, and the unparsed project vanished
+  while its images went unexamined and the domain read "covered 1 of 2". The
+  branch that does count it explains in its own comment why that matters: the
+  images are absent from the attempted count, so without it the axis scores
+  as though they were not on the host. The compose domain lost the same file
+  the mirror way, reporting it only when container enumeration had succeeded.
+  Both now build the result through a ledger that records every success and
+  every gap and decides nothing until the end, so a second blind spot can
+  only add to the first. Separately, the coverage fraction is printed only
+  when something countable actually went unexamined — a gap with no unit of
+  its own, such as being unable to list the containers started outside
+  Compose, left the two numbers equal and told operators "audited compose
+  projects only (covered 1 of 1)", which claims partial and complete coverage
+  in the same sentence.
+
 ## [3.8.3](https://github.com/seolcu/hostveil/compare/v3.8.2...v3.8.3) (2026-07-29)
 
 Two fixes for hosts and operators that are not ASCII, and one for a record
