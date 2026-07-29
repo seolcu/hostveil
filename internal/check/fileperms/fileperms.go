@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -28,6 +29,36 @@ type Rule struct {
 	ID      string
 	Title   string
 	Desc    string
+}
+
+// paths resolves the rule to the concrete files to stat. An error means the
+// rule could not be evaluated at all, which is a coverage gap and not a pass.
+//
+// The glob is the reason this exists. filepath.Glob reports a directory it
+// cannot read as zero matches and a nil error — indistinguishable from a host
+// that simply has no SSH host keys — so an /etc/ssh the scan cannot enter
+// would silently clear a High-severity rule about private keys being readable.
+// Asking the directory directly is the only way to tell the two apart.
+//
+// It assumes the wildcard is in the last element, which is the shape Rule
+// documents and the only shape defaultRules uses.
+func (r Rule) paths() ([]string, error) {
+	if !r.Glob {
+		return []string{r.Path}, nil
+	}
+	matches, err := filepath.Glob(r.Path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot expand %s: %w", r.Path, err)
+	}
+	if len(matches) > 0 {
+		return matches, nil
+	}
+	dir := filepath.Dir(r.Path)
+	if _, err := os.ReadDir(dir); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("cannot read %s — the files it holds were not checked", dir)
+	}
+	// The directory is absent or genuinely empty of matches. Nothing to judge.
+	return nil, nil
 }
 
 // Checker reports sensitive files with over-permissive modes.
@@ -69,28 +100,49 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 }
 
 // Check stats each rule's file(s) and flags any over-permissive mode.
+//
+// A rule it could not evaluate is recorded as a coverage gap rather than
+// passed over. "This file is not here" and "I was not allowed to look at it"
+// both used to arrive as a non-nil error from Stat and both were skipped, so
+// a rule that could not run reported exactly like a rule that passed — on a
+// domain whose whole job is noticing that a sensitive file is readable by the
+// wrong people.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
+	var cov check.Coverage
 	for _, rule := range c.Rules {
-		paths := []string{rule.Path}
-		if rule.Glob {
-			matches, err := filepath.Glob(rule.Path)
-			if err != nil || len(matches) == 0 {
-				continue
-			}
-			paths = matches
+		paths, err := rule.paths()
+		if err != nil {
+			cov.Missed(1, err.Error())
+			continue
 		}
+		cov.Covered(1)
+
 		var badPaths []string
 		var badEvidence []string
+		var unstattable []string
 		for _, p := range paths {
 			fi, err := os.Stat(p)
-			if err != nil || fi.IsDir() {
-				continue // missing files (e.g. no SSH server) are not findings
+			switch {
+			case os.IsNotExist(err):
+				continue // no SSH server, no /etc/shadow: nothing to judge
+			case err != nil:
+				// Not the same as absent. The rule was not evaluated for this
+				// file, and saying nothing would report it as having passed.
+				unstattable = append(unstattable, p)
+				continue
+			case fi.IsDir():
+				continue
 			}
 			if fi.Mode().Perm()&^rule.MaxMode != 0 {
 				badPaths = append(badPaths, p)
 				badEvidence = append(badEvidence, fmt.Sprintf("%s (%#o)", p, fi.Mode().Perm()))
 			}
+		}
+		if len(unstattable) > 0 {
+			sort.Strings(unstattable)
+			cov.Missed(0, "cannot read "+strings.Join(unstattable, ", ")+
+				" — their permissions were not checked")
 		}
 		if len(badPaths) == 0 {
 			continue
@@ -111,5 +163,5 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
 	}
-	return findings, nil
+	return findings, cov.Err()
 }

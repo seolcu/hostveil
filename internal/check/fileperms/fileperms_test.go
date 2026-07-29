@@ -2,11 +2,13 @@ package fileperms
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -138,5 +140,99 @@ func TestFilePermsDeclaresAutoAndCarriesPaths(t *testing.T) {
 	}
 	if f.Evidence["expected"] != "0640" {
 		t.Errorf("expected = %q, want 0640", f.Evidence["expected"])
+	}
+}
+
+// A directory the scan cannot enter is not a directory with no host keys in
+// it. filepath.Glob reports an unreadable directory as zero matches and a nil
+// error, so the two arrived identically — and the one that means "I was not
+// allowed to look" cleared a High-severity rule about SSH private keys being
+// readable by the wrong people.
+func TestAnUnreadableGlobDirectoryDegradesTheDomain(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every directory, so the permission gap cannot be staged")
+	}
+	dir := filepath.Join(t.TempDir(), "ssh")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ssh_host_rsa_key"), []byte("k"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	pattern := filepath.Join(dir, "ssh_host_*_key")
+	// The premise: Glob is silent about why it found nothing.
+	if m, err := filepath.Glob(pattern); len(m) != 0 || err != nil {
+		t.Fatalf("premise broken — Glob returned %v, %v", m, err)
+	}
+
+	_, err := (&Checker{Rules: []Rule{{
+		Path: pattern, Glob: true, MaxMode: 0o640, Sev: model.SeverityHigh,
+		ID: "fileperms.hostkey", Title: "host key", Desc: "d",
+	}}}).Check(context.Background(), platform.Env{})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError so the axis reports Degraded, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, dir) {
+		t.Errorf("the unreadable directory is missing from %q", partial.Reason)
+	}
+}
+
+// The same distinction one level down: a file that exists but cannot be
+// statted is a rule that did not run, not a rule that passed.
+func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root stats every file, so the permission gap cannot be staged")
+	}
+	dir := filepath.Join(t.TempDir(), "etc")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "shadow")
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	// The premise: the error is a denial, not an absence.
+	if _, err := os.Stat(path); err == nil || os.IsNotExist(err) {
+		t.Fatalf("premise broken — stat returned %v", err)
+	}
+
+	_, err := (&Checker{Rules: []Rule{{
+		Path: path, MaxMode: 0o640, Sev: model.SeverityHigh,
+		ID: "fileperms.shadow", Title: "shadow", Desc: "d",
+	}}}).Check(context.Background(), platform.Env{})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError so the axis reports Degraded, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, path) {
+		t.Errorf("the unstattable file is missing from %q", partial.Reason)
+	}
+}
+
+// A file that is simply not on this host — no SSH server, no /etc/shadow — is
+// nothing to judge, and must stay a clean result. Without this the fix above
+// would mark every minimal host Degraded.
+func TestAbsentFilesAreStillClean(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "not-here")
+	_, err := (&Checker{Rules: []Rule{
+		{Path: missing, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "s", Desc: "d"},
+		{Path: filepath.Join(t.TempDir(), "ssh_host_*_key"), Glob: true, MaxMode: 0o640,
+			Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "h", Desc: "d"},
+	}}).Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Errorf("a host missing these files is clean, not degraded: %v", err)
 	}
 }
