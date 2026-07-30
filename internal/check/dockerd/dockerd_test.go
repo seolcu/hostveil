@@ -12,31 +12,19 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-type fakeRunner struct {
-	present map[string]bool
-	outputs map[string]string // key: "name arg1 arg2..."
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.present[name] {
-		return "/usr/bin/" + name, nil
-	}
-	return "", errors.New("not found")
-}
-
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
-	if out, ok := f.outputs[key]; ok {
-		return []byte(out), nil
-	}
-	return nil, errors.New("no output for: " + key)
-}
-
-const infoCmd = "docker info --format {{json .}}"
+// The two commands this domain's fixtures script, as argv rather than as a
+// joined string: a fake whose scripted spelling drifts from the caller's does
+// not fail, it answers "that command errored", which the checker reads as a
+// daemon or a unit that would not talk.
+var (
+	infoArgv = []string{"docker", "info", "--format", "{{json .}}"}
+	unitArgv = []string{"systemctl", "show", "docker.service", "--property=ExecStart", "--no-pager"}
+)
 
 // hardenedInfo is a daemon with every default this domain checks turned on,
 // so a test that means to isolate one rule does not accidentally assert the
@@ -57,17 +45,15 @@ func execStart(args string) string {
 // env builds a scan environment whose daemon answers with the given info
 // document and whose unit carries the given dockerd flags.
 func env(info, unitArgs string) platform.Env {
-	out := map[string]string{
-		infoCmd: info,
-		"docker version --format {{.Server.Version}}": "27.0.0\n",
-	}
+	// Docker() scripts the daemon probe from platform's own argv rather than
+	// from a copy of it here: a probe that changed would otherwise leave this
+	// fixture answering "unreachable", which the checker cannot tell from a
+	// daemon that is genuinely down.
+	r := checktest.New().Only("docker").Docker("27.0.0").Script(info, infoArgv...)
 	if unitArgs != "" {
-		out["systemctl show docker.service --property=ExecStart --no-pager"] = execStart(unitArgs)
+		r.Script(execStart(unitArgs), unitArgv...)
 	}
-	return platform.Env{
-		ServiceManager: platform.SMSystemd,
-		Runner:         fakeRunner{present: map[string]bool{"docker": true}, outputs: out},
-	}
+	return platform.Env{ServiceManager: platform.SMSystemd, Runner: r}
 }
 
 // host writes a fixture host: a daemon.json (skipped when empty), a group
@@ -288,11 +274,9 @@ func TestUnixAndFdSocketsAreNotEndpoints(t *testing.T) {
 func TestListenerCorroboratesEvidence(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375"]}`, cleanGroup, cleanPasswd, 0o660)
 	e := env(hardenedInfo, "-H fd://")
-	r := e.Runner.(fakeRunner)
-	r.present["ss"] = true
-	r.outputs["ss -tlnp"] = "State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process\n" +
-		`LISTEN 0      4096   0.0.0.0:2375        0.0.0.0:*         users:(("dockerd",pid=1,fd=3))` + "\n"
-	e.Runner = r
+	e.Runner.(*checktest.Runner).Also("ss").Listeners(
+		"State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process\n" +
+			`LISTEN 0      4096   0.0.0.0:2375        0.0.0.0:*         users:(("dockerd",pid=1,fd=3))` + "\n")
 
 	f := mustFind(t, h.check(t, e), "dockerd.api-unauthenticated")
 	if got := f.Evidence["listening"]; got != "0.0.0.0:2375" {
@@ -478,9 +462,7 @@ func TestRootlessDowngradesTheAPIFinding(t *testing.T) {
 func TestDockerInfoFailureIsPartialNotFatal(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375"]}`, cleanGroup, cleanPasswd, 0o666)
 	e := env(hardenedInfo, "-H fd://")
-	r := e.Runner.(fakeRunner)
-	delete(r.outputs, infoCmd)
-	e.Runner = r
+	e.Runner.(*checktest.Runner).Unscript(infoArgv...)
 
 	fs, err := h.c.Check(context.Background(), e)
 	var partial *check.PartialError
@@ -559,7 +541,7 @@ func TestUnreadableGroupIsPartial(t *testing.T) {
 // the socket, and a domain that accepted that would score a perfect axis on
 // exactly the host whose daemon nobody could examine.
 func TestAvailableRequiresAReachableDaemon(t *testing.T) {
-	r := fakeRunner{present: map[string]bool{"docker": true}} // no version output
+	r := checktest.New().Only("docker") // no version output
 	ok, reason := New().Available(context.Background(), platform.Env{Runner: r})
 	if ok {
 		t.Fatal("Available should be false when the daemon does not answer")
@@ -570,7 +552,7 @@ func TestAvailableRequiresAReachableDaemon(t *testing.T) {
 }
 
 func TestAvailableWhenDockerIsAbsent(t *testing.T) {
-	ok, reason := New().Available(context.Background(), platform.Env{Runner: fakeRunner{}})
+	ok, reason := New().Available(context.Background(), platform.Env{Runner: checktest.New().Only()})
 	if ok {
 		t.Fatal("Available should be false with no Docker at all")
 	}

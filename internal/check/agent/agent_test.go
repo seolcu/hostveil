@@ -10,60 +10,23 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// fakeRunner scripts `ss` output and controls which binaries appear present,
-// which is what firewall.Probe keys off.
-type fakeRunner struct {
-	ss      string
-	ssErr   error
-	missing map[string]bool
-	outputs map[string]string
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.missing[name] {
-		return "", errors.New("not found: " + name)
-	}
-	return "/usr/bin/" + name, nil
-}
-
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	if name == "ss" {
-		return []byte(f.ss), f.ssErr
-	}
-	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
-	if out, ok := f.outputs[key]; ok {
-		return []byte(out), nil
-	}
-	return nil, errors.New("no output for: " + key)
-}
-
-// noFirewall reports every firewall front-end as absent, which Probe reads as
-// a definite StatusInactive rather than "could not look". The list comes from
-// the firewall package so adding a probe there cannot silently turn these
+// A host with no firewall front-end at all, which Probe reads as a definite
+// StatusInactive rather than "could not look". The tool list comes from the
+// firewall package, so adding a probe there cannot silently turn these
 // fixtures into "unreadable" and change what the tests assert.
-func noFirewall() map[string]bool {
-	missing := map[string]bool{}
-	for _, t := range firewall.ProbedTools {
-		missing[t] = true
-	}
-	return missing
-}
-
 func envNoFirewall(ss string) platform.Env {
-	return platform.Env{Runner: fakeRunner{ss: ss, missing: noFirewall()}}
+	return checktest.New().Without(firewall.ProbedTools...).Listeners(ss).Env()
 }
 
 func envActiveFirewall(ss string) platform.Env {
-	return platform.Env{Runner: fakeRunner{
-		ss:      ss,
-		missing: map[string]bool{"firewall-cmd": true, "nft": true},
-		outputs: map[string]string{"ufw status": "Status: active"},
-	}}
+	return checktest.New().Without("firewall-cmd", "nft").Listeners(ss).
+		Outputs(map[string]string{"ufw status": "Status: active"}).Env()
 }
 
 // ssLine renders one `ss -tlnp` row.
@@ -450,7 +413,7 @@ func TestMissingSsDoesNotDegrade(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"lan","auth":{"mode":"token","token":"a-long-random-token"}}}`, 0o600)
 
-	env := platform.Env{Runner: fakeRunner{ssErr: errors.New("ss: not found"), missing: noFirewall()}}
+	env := platform.Env{Runner: checktest.New().Without().ListenersFail(errors.New("ss: not found"))}
 	fs, err := h.checker().Check(context.Background(), env)
 	if err != nil {
 		t.Fatalf("a missing ss must not degrade the domain: %v", err)

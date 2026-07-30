@@ -12,33 +12,13 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-type fakeRunner struct {
-	present    map[string]bool
-	daemonDown bool
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.present[name] {
-		return "/usr/bin/" + name, nil
-	}
-	return "", errors.New("not found")
-}
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	if name == "docker" && strings.Join(args, " ") == "version --format {{.Server.Version}}" {
-		if f.daemonDown {
-			return nil, errors.New("permission denied while trying to connect to the Docker daemon socket")
-		}
-		return []byte("27.0.3\n"), nil
-	}
-	return nil, errors.New("unexpected command: " + name + " " + strings.Join(args, " "))
-}
-
 func TestCVESkipsWithoutTrivy(t *testing.T) {
-	ok, reason := New().Available(context.Background(), platform.Env{Runner: fakeRunner{present: map[string]bool{"docker": true}}})
+	ok, reason := New().Available(context.Background(), platform.Env{Runner: checktest.New().Only("docker").Docker("27.0.3")})
 	if ok {
 		t.Error("should skip without Trivy")
 	}
@@ -48,7 +28,7 @@ func TestCVESkipsWithoutTrivy(t *testing.T) {
 }
 
 func TestCVEAvailableWithBothTools(t *testing.T) {
-	ok, _ := New().Available(context.Background(), platform.Env{Runner: fakeRunner{present: map[string]bool{"trivy": true, "docker": true}}})
+	ok, _ := New().Available(context.Background(), platform.Env{Runner: checktest.New().Only("trivy", "docker").Docker("27.0.3")})
 	if !ok {
 		t.Error("should be available with trivy and docker present")
 	}
@@ -59,7 +39,7 @@ func TestCVEAvailableWithBothTools(t *testing.T) {
 // proceed, fail on every image, and report zero vulnerabilities — which scores
 // as a perfect 100 on a host that was never actually scanned.
 func TestCVESkipsWhenDaemonUnreachable(t *testing.T) {
-	r := fakeRunner{present: map[string]bool{"trivy": true, "docker": true}, daemonDown: true}
+	r := checktest.New().Only("trivy", "docker").DockerDown("permission denied while trying to connect to the Docker daemon socket")
 	ok, reason := New().Available(context.Background(), platform.Env{Runner: r})
 	if ok {
 		t.Fatal("should skip when the Docker daemon cannot be reached")
@@ -104,7 +84,7 @@ func (s *scriptRunner) LookPath(name string) (string, error) { return "/usr/bin/
 func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	joined := strings.Join(args, " ")
 	switch {
-	case name == "docker" && joined == "version --format {{.Server.Version}}":
+	case checktest.IsDockerProbe(name, args):
 		return []byte("27.0.3\n"), nil
 	case name == "docker" && joined == "compose ls --all --format json":
 		return []byte(s.lsJSON), nil

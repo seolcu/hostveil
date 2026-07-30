@@ -7,46 +7,18 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// fakeRunner scripts `ss` output and simulates which binaries are present.
-type fakeRunner struct {
-	ss      string
-	missing map[string]bool // binaries reported as absent
-	outputs map[string]string
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.missing[name] {
-		return "", errors.New("not found: " + name)
-	}
-	return "/usr/bin/" + name, nil
-}
-
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	if name == "ss" {
-		return []byte(f.ss), nil
-	}
-	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
-	if out, ok := f.outputs[key]; ok {
-		return []byte(out), nil
-	}
-	return nil, errors.New("no output for: " + key)
-}
-
 // noFirewall builds a runner for a host with no firewall tooling at all, so
 // firewall.Probe returns a confident Inactive rather than StatusUnknown. It
 // reads the tool list from the firewall package so adding a probe there can
 // never silently change what these tests assert.
-func noFirewall(ss string) fakeRunner {
-	missing := map[string]bool{}
-	for _, t := range firewall.ProbedTools {
-		missing[t] = true
-	}
-	return fakeRunner{ss: ss, missing: missing}
+func noFirewall(ss string) *checktest.Runner {
+	return checktest.New().Without(firewall.ProbedTools...).Listeners(ss)
 }
 
 func findByID(fs []model.Finding, id string) (model.Finding, bool) {
@@ -60,7 +32,7 @@ func findByID(fs []model.Finding, id string) (model.Finding, bool) {
 
 func TestUnavailableWithoutSS(t *testing.T) {
 	c := New()
-	ok, reason := c.Available(context.Background(), platform.Env{Runner: fakeRunner{missing: map[string]bool{"ss": true}}})
+	ok, reason := c.Available(context.Background(), platform.Env{Runner: checktest.New().Without("ss")})
 	if ok {
 		t.Fatal("ports checker should be unavailable without ss")
 	}
@@ -72,7 +44,7 @@ func TestUnavailableWithoutSS(t *testing.T) {
 func TestExposedDatastoreFlagged(t *testing.T) {
 	ss := `LISTEN 0 511 0.0.0.0:6379 0.0.0.0:* users:(("redis-server",pid=999,fd=6))
 LISTEN 0 128 [::]:6379 [::]:* users:(("redis-server",pid=999,fd=7))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +73,7 @@ LISTEN 0 128 [::]:6379 [::]:* users:(("redis-server",pid=999,fd=7))`
 func TestTwoDistinctDatastoresBothCounted(t *testing.T) {
 	ss := `LISTEN 0 511 0.0.0.0:6379 0.0.0.0:* users:(("redis-server",pid=1,fd=6))
 LISTEN 0 128 0.0.0.0:5432 0.0.0.0:* users:(("postgres",pid=2,fd=5))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +96,7 @@ LISTEN 0 128 0.0.0.0:5432 0.0.0.0:* users:(("postgres",pid=2,fd=5))`
 func TestLoopbackDatastoreNotFlagged(t *testing.T) {
 	ss := `LISTEN 0 128 127.0.0.1:5432 0.0.0.0:* users:(("postgres",pid=888,fd=5))
 LISTEN 0 128 [::1]:5432 [::]:* users:(("postgres",pid=888,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +107,7 @@ LISTEN 0 128 [::1]:5432 [::]:* users:(("postgres",pid=888,fd=6))`
 
 func TestAdminPanelFlagged(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:9000 0.0.0.0:* users:(("portainer",pid=42,fd=3))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +119,7 @@ func TestAdminPanelFlagged(t *testing.T) {
 func TestWebminAndProxmoxRecognizedAsAdminPanels(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:10000 0.0.0.0:* users:(("miniserv",pid=42,fd=3))
 LISTEN 0 128 0.0.0.0:8006 0.0.0.0:* users:(("pveproxy",pid=43,fd=3))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +159,7 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 	}
 
 	// Active ufw firewall -> no generic finding (firewall is the backstop).
-	withFW := fakeRunner{ss: ss, outputs: map[string]string{"ufw status": "Status: active\n"}}
+	withFW := checktest.New().Listeners(ss).Outputs(map[string]string{"ufw status": "Status: active\n"})
 	fs2, err := New().Check(context.Background(), platform.Env{Runner: withFW})
 	if err != nil {
 		t.Fatal(err)
@@ -214,7 +186,7 @@ func TestHeaderRowSkipped(t *testing.T) {
 	// `ss` without -H prints a header row; it must be ignored, not parsed.
 	ss := `State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
 LISTEN 0      511    0.0.0.0:6379       0.0.0.0:*         users:(("redis-server",pid=1,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: fakeRunner{ss: ss}})
+	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +220,7 @@ func TestGenericExposureWhenFirewallStateUnreadable(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:8080 0.0.0.0:*
 LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
 	// ufw is installed but will not answer — the fake has no scripted output.
-	r := fakeRunner{ss: ss, missing: map[string]bool{"firewall-cmd": true, "nft": true}}
+	r := checktest.New().Without("firewall-cmd", "nft").Listeners(ss)
 
 	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
 

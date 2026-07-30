@@ -9,31 +9,10 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
-
-type fakeRunner struct {
-	outputs map[string]string
-	// missing names binaries this host does not have, so a checker's
-	// platform.Has gate can be exercised. The zero value has none.
-	missing map[string]bool
-}
-
-func (f fakeRunner) LookPath(name string) (string, error) {
-	if f.missing[name] {
-		return "", errors.New("not found: " + name)
-	}
-	return "/usr/bin/" + name, nil
-}
-
-func (f fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	key := strings.TrimSpace(name + " " + strings.Join(args, " "))
-	if out, ok := f.outputs[key]; ok {
-		return []byte(out), nil
-	}
-	return nil, errors.New("no output for: " + key)
-}
 
 // aptChecker builds a checker whose two file paths point into a temp dir.
 // enabled controls whether unattended-upgrades looks configured; reboot
@@ -61,7 +40,7 @@ func aptChecker(t *testing.T, enabled, reboot bool) *Checker {
 func aptEnv(upgradable string) platform.Env {
 	return platform.Env{
 		PackageManager: platform.PMApt,
-		Runner:         fakeRunner{outputs: map[string]string{"apt list --upgradable": upgradable}},
+		Runner:         checktest.New().Outputs(map[string]string{"apt list --upgradable": upgradable}),
 	}
 }
 
@@ -165,7 +144,7 @@ func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 // Not being able to list updates is a blind spot, not a clean result. The
 // mechanism half of the domain was still covered, so this is Degraded.
 func TestAptUnreadableUpgradeListIsPartial(t *testing.T) {
-	env := platform.Env{PackageManager: platform.PMApt, Runner: fakeRunner{}}
+	env := platform.Env{PackageManager: platform.PMApt, Runner: checktest.New()}
 	fs, err := aptChecker(t, false, false).Check(context.Background(), env)
 
 	var partial *check.PartialError
@@ -177,7 +156,7 @@ func TestAptUnreadableUpgradeListIsPartial(t *testing.T) {
 }
 
 func dnfEnv(outputs map[string]string) platform.Env {
-	return platform.Env{PackageManager: platform.PMDnf, Runner: fakeRunner{outputs: outputs}}
+	return platform.Env{PackageManager: platform.PMDnf, Runner: checktest.New().Outputs(outputs)}
 }
 
 func dnfClean() map[string]string {
@@ -322,7 +301,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 `
 	env := platform.Env{
 		PackageManager: platform.PMDnf,
-		Runner:         fakeRunner{outputs: out, missing: map[string]bool{"needs-restarting": true}},
+		Runner:         checktest.New().Without("needs-restarting").Outputs(out),
 	}
 
 	fs, err := New().Check(context.Background(), env)
@@ -345,7 +324,7 @@ func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 	delete(out, "dnf -q updateinfo list security") // the fake errors on an unknown key
 	env := platform.Env{
 		PackageManager: platform.PMDnf,
-		Runner:         fakeRunner{outputs: out, missing: map[string]bool{"needs-restarting": true}},
+		Runner:         checktest.New().Without("needs-restarting").Outputs(out),
 	}
 
 	_, err := New().Check(context.Background(), env)

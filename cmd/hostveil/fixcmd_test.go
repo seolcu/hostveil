@@ -2,18 +2,17 @@ package main
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	composecheck "github.com/seolcu/hostveil/internal/check/compose"
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
-	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // `fix` and `rollback` are the two commands that change the host, and
@@ -22,29 +21,6 @@ import (
 // compose file in a temp directory, so the whole path — scan, resolve the
 // finding, preview, prompt, apply, checkpoint, roll back — runs for real
 // without touching the machine running the tests.
-
-// composeRunner scripts a host with one compose project and no standalone
-// containers.
-type composeRunner struct{ lsJSON string }
-
-func (composeRunner) LookPath(name string) (string, error) {
-	if name == "docker" {
-		return "/usr/bin/docker", nil
-	}
-	return "", errors.New("not found: " + name)
-}
-
-func (r composeRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
-	switch strings.Join(append([]string{name}, args...), " ") {
-	case "docker version --format {{.Server.Version}}":
-		return []byte("27.0.3\n"), nil
-	case "docker compose ls --all --format json":
-		return []byte(r.lsJSON), nil
-	case "docker ps --quiet --no-trunc":
-		return []byte(""), nil
-	}
-	return nil, errors.New("unexpected: " + name)
-}
 
 // exposedRedis is the fixture: a datastore published on 0.0.0.0, which is
 // compose.ds018 — Critical, and Auto-fixable by binding it to loopback.
@@ -69,9 +45,7 @@ func fixtureHost(t *testing.T) string {
 			Registry: check.NewRegistry(composecheck.New()),
 			Fixes:    fix.Default(),
 			Store:    history.NewStore(stateDir),
-			Runner: composeRunner{
-				lsJSON: `[{"Name":"demo","ConfigFiles":"` + path + `"}]`,
-			},
+			Runner:   checktest.ComposeProjects(map[string]string{"demo": path}),
 		})
 	}
 	t.Cleanup(func() { newEngine = orig })
@@ -322,6 +296,3 @@ func rollbackIDFrom(t *testing.T, listing string) string {
 	}
 	return rest
 }
-
-// Guard against the fake drifting from the real interface.
-var _ platform.CommandRunner = composeRunner{}

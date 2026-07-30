@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
-	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // denies is the fixture pair for a correctly-configured front-end, so a
@@ -28,9 +28,9 @@ func firewalldOutputs(target string) map[string]string {
 	}
 }
 
-func checkFindings(t *testing.T, r fakeRunner) ([]model.Finding, error) {
+func checkFindings(t *testing.T, r *checktest.Runner) ([]model.Finding, error) {
 	t.Helper()
-	return New().Check(context.Background(), platform.Env{Runner: r})
+	return New().Check(context.Background(), r.Env())
 }
 
 // A firewall that runs and permits is the same posture as no firewall,
@@ -41,25 +41,22 @@ func checkFindings(t *testing.T, r fakeRunner) ([]model.Finding, error) {
 func TestDefaultAllowIsFlagged(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		runner  fakeRunner
+		runner  *checktest.Runner
 		wantHit bool
 	}{
 		{
 			"ufw denying inbound is clean",
-			fakeRunner{present: map[string]bool{"ufw": true},
-				outputs: ufwOutputs("Default: deny (incoming), allow (outgoing), disabled (routed)\n")},
+			checktest.New().Only("ufw").Outputs(ufwOutputs("Default: deny (incoming), allow (outgoing), disabled (routed)\n")),
 			false,
 		},
 		{
 			"ufw rejecting inbound is clean",
-			fakeRunner{present: map[string]bool{"ufw": true},
-				outputs: ufwOutputs("Default: reject (incoming), allow (outgoing), disabled (routed)\n")},
+			checktest.New().Only("ufw").Outputs(ufwOutputs("Default: reject (incoming), allow (outgoing), disabled (routed)\n")),
 			false,
 		},
 		{
 			"ufw allowing inbound is flagged",
-			fakeRunner{present: map[string]bool{"ufw": true},
-				outputs: ufwOutputs("Default: allow (incoming), allow (outgoing), disabled (routed)\n")},
+			checktest.New().Only("ufw").Outputs(ufwOutputs("Default: allow (incoming), allow (outgoing), disabled (routed)\n")),
 			true,
 		},
 		{
@@ -68,23 +65,22 @@ func TestDefaultAllowIsFlagged(t *testing.T) {
 			// line would accuse the overwhelming majority of correct
 			// configurations.
 			"denying inbound while allowing outbound is clean",
-			fakeRunner{present: map[string]bool{"ufw": true},
-				outputs: ufwOutputs("Default: deny (incoming), allow (outgoing), allow (routed)\n")},
+			checktest.New().Only("ufw").Outputs(ufwOutputs("Default: deny (incoming), allow (outgoing), allow (routed)\n")),
 			false,
 		},
 		{
 			"firewalld with the default target is clean",
-			fakeRunner{present: map[string]bool{"firewall-cmd": true}, outputs: firewalldOutputs("default")},
+			checktest.New().Only("firewall-cmd").Outputs(firewalldOutputs("default")),
 			false,
 		},
 		{
 			"firewalld with an explicit DROP target is clean",
-			fakeRunner{present: map[string]bool{"firewall-cmd": true}, outputs: firewalldOutputs("DROP")},
+			checktest.New().Only("firewall-cmd").Outputs(firewalldOutputs("DROP")),
 			false,
 		},
 		{
 			"firewalld with an ACCEPT target is flagged",
-			fakeRunner{present: map[string]bool{"firewall-cmd": true}, outputs: firewalldOutputs("ACCEPT")},
+			checktest.New().Only("firewall-cmd").Outputs(firewalldOutputs("ACCEPT")),
 			true,
 		},
 	} {
@@ -113,10 +109,7 @@ func TestDefaultAllowIsFlagged(t *testing.T) {
 func TestUnreadablePolicyDegradesRatherThanAccuses(t *testing.T) {
 	// Active by `ufw status`, but the verbose query is not stubbed, so it
 	// errors — exactly what happens without root.
-	r := fakeRunner{
-		present: map[string]bool{"ufw": true},
-		outputs: map[string]string{"ufw status": "Status: active\n"},
-	}
+	r := checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: active\n"})
 	fs, err := checkFindings(t, r)
 	for _, f := range fs {
 		if f.ID == "firewall.default-allow" {
@@ -131,14 +124,11 @@ func TestUnreadablePolicyDegradesRatherThanAccuses(t *testing.T) {
 
 // firewalld reached through a zone that cannot be listed is the same case.
 func TestUnreadableFirewalldZoneDegrades(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"firewall-cmd": true},
-		outputs: map[string]string{
-			"firewall-cmd --state":            "running\n",
-			"firewall-cmd --get-default-zone": "public\n",
-			// --list-all is not stubbed: it errors.
-		},
-	}
+	r := checktest.New().Only("firewall-cmd").Outputs(map[string]string{
+		"firewall-cmd --state":            "running\n",
+		"firewall-cmd --get-default-zone": "public\n",
+		// --list-all is not stubbed: it errors.
+	})
 	_, err := checkFindings(t, r)
 	var pe *check.PartialError
 	if !errors.As(err, &pe) {
@@ -151,12 +141,9 @@ func TestUnreadableFirewalldZoneDegrades(t *testing.T) {
 // answered. Asking twice could only produce a different answer by reading
 // something else.
 func TestNftablesNeedsNoSecondQuery(t *testing.T) {
-	r := fakeRunner{
-		present: map[string]bool{"nft": true},
-		outputs: map[string]string{
-			"nft list ruleset": "table inet filter {\n chain input {\n type filter hook input priority 0; policy drop;\n }\n}\n",
-		},
-	}
+	r := checktest.New().Only("nft").Outputs(map[string]string{
+		"nft list ruleset": "table inet filter {\n chain input {\n type filter hook input priority 0; policy drop;\n }\n}\n",
+	})
 	fs, err := checkFindings(t, r)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
