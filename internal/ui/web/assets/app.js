@@ -1,5 +1,29 @@
 "use strict";
 
+// Drop the access token out of the address bar.
+//
+// It arrives in the URL because that is the one channel a terminal can hand
+// to a browser, and the server converts it into a SameSite=Strict session
+// cookie on the very first request. Past that point the copy in the query
+// string is residue: every fetch below authenticates with the cookie and not
+// one of them carries ?t=. Residue is not free — it sits in the address bar,
+// in the history entry, in a bookmark made without thinking, and in every
+// screenshot of the dashboard anyone pastes into an issue. `Referrer-Policy:
+// no-referrer` already stops it leaving over the network; this is the rest.
+//
+// Reloading the stripped URL works for as long as the session cookie lives.
+// Past that the server answers 401 with the sentence telling the operator to
+// reopen the URL hostveil printed, and `serve` is still printing it in the
+// terminal that is still running.
+(function stripToken() {
+  if (!location.search) return;
+  const q = new URLSearchParams(location.search);
+  if (!q.has("t")) return;
+  q.delete("t");
+  const rest = q.toString();
+  history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
+})();
+
 // The model's vocabulary, served by /model.js and generated from
 // internal/model. /api/result carries these as bare integers, so the page
 // cannot say anything about a finding without a table to look them up in.

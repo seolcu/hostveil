@@ -706,6 +706,53 @@ func TestTokenInURLSetsTheSessionCookie(t *testing.T) {
 	}
 }
 
+// The token travels in the URL because a terminal has no other way to hand a
+// credential to a browser, and once the cookie exists the copy in the address
+// bar is residue — it stays in the history entry, in a bookmark made without
+// thinking, and in every screenshot of the dashboard pasted into an issue.
+// So app.js drops it. What makes that safe is that nothing else needs it:
+// every dashboard fetch authenticates with the cookie alone.
+func TestTheStrippedURLStillWorksOnTheCookieAlone(t *testing.T) {
+	s, _ := testServer(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?t="+s.token, nil)
+	req.Host = "127.0.0.1:8787"
+	s.Handler().ServeHTTP(rec, req)
+	cookies := rec.Result().Cookies()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("the printed URL returned %d", rec.Code)
+	}
+
+	// The same URL app.js leaves in the address bar: no query string at all.
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodGet, "/api/result", nil)
+	req2.Host = "127.0.0.1:8787"
+	for _, c := range cookies {
+		req2.AddCookie(c)
+	}
+	s.Handler().ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("after stripping ?t= the page could no longer reach its own API: %d %s",
+			rec2.Code, rec2.Body.String())
+	}
+}
+
+// And the stripping itself, which is a line of JavaScript no Go test can
+// execute. Guarded the way the deleted model tables are: by asserting the
+// shape is still in the file that ships.
+func TestAppJSStripsTheTokenFromTheURL(t *testing.T) {
+	app, err := assets.ReadFile("assets/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"history.replaceState", `q.delete("t")`} {
+		if !strings.Contains(string(app), want) {
+			t.Errorf("app.js no longer strips the access token from the URL: %q is gone", want)
+		}
+	}
+}
+
 // The printed URL has to be the one that works, or the token is a puzzle
 // rather than a credential.
 func TestURLCarriesTheToken(t *testing.T) {
