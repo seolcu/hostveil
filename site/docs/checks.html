@@ -103,6 +103,7 @@
                   <tr><td>AI agent runtimes</td><td><code>agent.</code></td><td>OpenClaw or Hermes installed</td></tr>
                   <tr><td>Kernel hardening</td><td><code>sysctl.</code></td><td>—</td></tr>
                   <tr><td>Docker daemon</td><td><code>dockerd.</code></td><td>Docker</td></tr>
+                  <tr><td>Service hardening</td><td><code>systemd.</code></td><td>systemd</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -131,15 +132,16 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>15</td></tr>
-                  <tr><td>SSH hardening</td><td>15</td></tr>
-                  <tr><td>Vulnerabilities</td><td>11</td></tr>
-                  <tr><td>Host firewall</td><td>10</td></tr>
-                  <tr><td>Exposed services</td><td>9</td></tr>
-                  <tr><td>AI agent runtimes</td><td>9</td></tr>
+                  <tr><td>Container exposure</td><td>14</td></tr>
+                  <tr><td>SSH hardening</td><td>14</td></tr>
+                  <tr><td>Vulnerabilities</td><td>10</td></tr>
+                  <tr><td>Host firewall</td><td>9</td></tr>
+                  <tr><td>Exposed services</td><td>8</td></tr>
+                  <tr><td>AI agent runtimes</td><td>8</td></tr>
                   <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
                   <tr><td>Docker daemon</td><td>7</td></tr>
+                  <tr><td>Service hardening</td><td>6</td></tr>
                   <tr><td>File permissions</td><td>5</td></tr>
                   <tr><td>Kernel hardening</td><td>5</td></tr>
                 </tbody>
@@ -315,6 +317,25 @@
             </div>
             <p><code>dockerd.group-members</code> is <span class="sev medium">Medium</span> when the accounts holding the group are people, and <span class="sev high">High</span> when any of them is a service account — one with a system UID or no interactive login. Nobody deliberately grants a CI runner or a monitoring agent the ability to become root, and a credential that never logs in is one nobody is watching.</p>
             <p>A loopback-only TCP socket is not flagged: it reaches nothing the unix socket did not, and it is the documented way to put a proxy in front of the daemon. A daemon running <strong>rootless</strong> has <code>userns-remap</code> and <code>group-members</code> suppressed and its API finding lowered to <span class="sev high">High</span>, because the blast radius is that user's containers rather than the host. <code>live-restore</code> is suppressed on a swarm node, where Docker does not support it.</p>
+
+            <h2 id="systemd">Service hardening <code>systemd.</code></h2>
+            <p>Roughly half of a self-hosted server is not in a container. The Compose domain reads what your containers declare — privileged, running as root, no-new-privileges off — and a service started by a unit file has exactly the same decisions made about it. Until this domain existed, nothing looked at them.</p>
+            <p>systemd already knows the answers. <code>systemctl show</code> reports the <strong>effective</strong> value of each property after the unit file, every drop-in, and every default have been merged — so what hostveil reads is what the service will actually run with, not what some file says.</p>
+            <p><strong>Only your own units are audited.</strong> A unit counts if its file lives under <code>/etc/systemd/system</code> or <code>/usr/local/lib/systemd/system</code> — the ones you wrote or installed by hand. Your distribution hardens its own units on its own schedule, and second-guessing them means taking on maintenance of somebody else&rsquo;s service. Reporting on them would also bury your services under dozens of findings about software you did not choose, which is how a domain stops being read.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">Low</span> / <span class="sev medium">Medium</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">Medium</span> / <span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">Medium</span> / <span class="sev low">Low</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">Low</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><strong>Two severities, and which one applies depends on the account.</strong> <code>no-new-privileges</code> is <span class="sev medium">Medium</span> on a service running as somebody other than root and <span class="sev low">Low</span> on one running as root — a root service can already do anything, so the setuid path it closes buys little there. The two filesystem protections go the other way for the same reason: they are worth most exactly where <code>no-new-privileges</code> is worth least.</p>
+            <p><strong>Every finding here is Manual, on purpose.</strong> The drop-in is two lines and hostveil could write it — but writing it is not the same as knowing it is safe. <code>ProtectSystem=full</code> breaks a service that writes under <code>/usr</code>; <code>PrivateTmp=yes</code> breaks two services that hand each other files through <code>/tmp</code>. Neither failure shows up until the next restart, which on a self-hosted box is the next reboot — and the service that does not come back is the one holding your data. So the how-to-fix carries the exact path and the exact two lines, and you pick the moment to restart and watch.</p>
+            <p>A property this systemd does not implement is reported as nothing at all, and nothing is not evidence that a protection is off — those are left alone rather than turned into a finding.</p>
 
             <h2 id="agent">AI agent runtimes <code>agent.</code></h2>
             <p>Self-hosted AI agents — <a href="https://docs.openclaw.ai/">OpenClaw</a> and <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a> — run a network gateway and keep API keys on disk in your home directory. Misconfigured, the worst case is someone reaching that gateway and driving an agent that can read your files and run commands as you.</p>

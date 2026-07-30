@@ -106,6 +106,21 @@ func axisDefsFromSources() []axisDef {
 // alone does not say whether TLS verification is in force. "agent" gave one
 // because its generous cap was argued from being N/A on most hosts, and that
 // argument now has a second claimant.
+//
+// "systemd" sits just under "accounts", "updates" and "dockerd", and the gap
+// is the argument. It covers the same ground for a unit-started service that
+// "container" covers for a compose one — can it gain privileges, can it write
+// outside its own data, can it read every home directory — so on a host that
+// runs its services natively it is doing the work "container" does elsewhere.
+// It is one step below that band because none of its findings is by itself an
+// entry: each one widens what a compromise reaches rather than granting it.
+// Six axes funded it, each giving one. "container" and "ssh" gave from the
+// top because they are the only two large enough that a point does not change
+// what they can express. "cve", "ports", "firewall" and "agent" gave because
+// each already had a share argued as generous — and because a service running
+// unsandboxed is the step *after* every one of them: the exposed port, the
+// unpatched image, and the bypassed firewall all end at a process, and this
+// axis is about what that process can then touch.
 var axisDefs = axisDefsFromSources()
 
 // criticalHalves is the anchor of the whole penalty model: one Critical

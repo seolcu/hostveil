@@ -15,6 +15,7 @@ import (
 	portscheck "github.com/seolcu/hostveil/internal/check/ports"
 	sshcheck "github.com/seolcu/hostveil/internal/check/ssh"
 	sysctlcheck "github.com/seolcu/hostveil/internal/check/sysctl"
+	systemdcheck "github.com/seolcu/hostveil/internal/check/systemd"
 	updatescheck "github.com/seolcu/hostveil/internal/check/updates"
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/fix"
@@ -61,6 +62,7 @@ func buildRegistry() *check.Registry {
 		agentcheck.New(),
 		sysctlcheck.New(),
 		dockerdcheck.New(),
+		systemdcheck.New(),
 	)
 }
 

@@ -259,6 +259,35 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
+// # The service-hardening domain, declined whole
+//
+// systemd.* has no registered fix either, and the reason is the shape of the
+// failure rather than the shape of the edit. The edit is trivial: a drop-in
+// at /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service]
+// section and one directive, created by CreateIfMissing, reversed by
+// deleting the file, and `systemd-analyze verify` would validate it.
+//
+// What is not trivial is knowing it is safe. ProtectSystem=full breaks a
+// service that writes under /usr; PrivateTmp=yes breaks two services that
+// hand each other files through /tmp; ProtectHome=yes breaks anything whose
+// data lives in a home directory, which on a self-hosted box is common. None
+// of that is visible from the unit — it depends on what the program does —
+// so no amount of reading gets hostveil to "unambiguous", and Auto is out.
+//
+// Review is out for the same reason it is out for dockerd, arrived at from
+// the other direction: there is only one thing to do. A drop-in and a
+// restart are not two alternatives, they are one procedure in two steps, and
+// systemd has no equivalent of `sysctl -w` — no way to change a running
+// service's sandbox without restarting it — so there is no second
+// independent alternative to pair with.
+//
+// And the failure is delayed. A property this changes takes effect at the
+// next restart, which on a host like this is the next reboot; a service that
+// does not come back then is discovered later, by absence, with no obvious
+// connection to a fix applied weeks earlier. So the remediation carries the
+// exact path and the exact two lines, and the operator restarts it while
+// watching.
+//
 // # The Docker daemon domain, declined whole
 //
 // dockerd.* has no registered fix at all — not one finding, and not because
