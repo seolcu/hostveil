@@ -23,7 +23,7 @@ import (
 // daemon or a unit that would not talk.
 var (
 	infoArgv = []string{"docker", "info", "--format", "{{json .}}"}
-	unitArgv = []string{"systemctl", "show", "docker.service", "--property=ExecStart", "--no-pager"}
+	unitArgv = []string{"systemctl", "show", "docker.service", "--property=LoadState,ExecStart", "--no-pager"}
 )
 
 // hardenedInfo is a daemon with every default this domain checks turned on,
@@ -51,7 +51,7 @@ func env(info, unitArgs string) platform.Env {
 	// daemon that is genuinely down.
 	r := checktest.New().Only("docker").Docker("27.0.0").Script(info, infoArgv...)
 	if unitArgs != "" {
-		r.Script(execStart(unitArgs), unitArgv...)
+		r.Script("LoadState=loaded\n"+execStart(unitArgs), unitArgv...)
 	}
 	return platform.Env{ServiceManager: platform.SMSystemd, Runner: r}
 }
@@ -648,5 +648,119 @@ func TestHumanAdministratorStaysMedium(t *testing.T) {
 				t.Errorf("shell %q is a real login, so the finding must stay Medium, got %v", shell, f.Severity)
 			}
 		})
+	}
+}
+
+// # The unit is the richer source, and losing it is a coverage gap
+
+// `systemctl show` on a unit that does not exist exits 0 and prints nothing
+// for ExecStart. Reading err==nil as "inspected, no flags" is a claim the
+// command never made — the unit was not read, it was not there.
+//
+// Reachable whenever the daemon's unit is not literally docker.service:
+// snap-installed Docker (snap.docker.dockerd.service), a rootless daemon
+// whose unit lives in the user manager, or a host where something other than
+// systemd starts it. On any of those, a TCP socket on the real unit is
+// invisible while the domain reports its API rules fully audited.
+func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
+	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
+	e := env(hardenedInfo, "")
+	// Exactly what systemd answers for a unit it does not have.
+	e.Runner.(*checktest.Runner).Script("LoadState=not-found\n", unitArgv...)
+
+	_, err := h.c.Check(context.Background(), e)
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("err = %v, want a PartialError: the unit was not inspected", err)
+	}
+}
+
+// With no daemon.json and no readable unit, hostveil has consulted neither
+// source of the socket and TLS settings — and the default state of most hosts
+// is no daemon.json at all, so this is the ordinary shape of the failure
+// rather than an exotic one.
+//
+// The old condition demanded that *both* sources fail, counting an absent
+// daemon.json as a success. It is a complete answer about that file ("no
+// options are set there") and says nothing whatever about the unit, which is
+// where every mainstream package puts the listening socket.
+func TestNoDaemonJSONAndNoReadableUnitIsNotAudited(t *testing.T) {
+	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
+	// env with no unit args scripts no `systemctl show` at all, so the call
+	// errors — a host whose unit hostveil cannot read.
+	_, err := h.c.Check(context.Background(), env(hardenedInfo, ""))
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("err = %v, want a PartialError", err)
+	}
+	if partial.Covered >= partial.Total {
+		t.Errorf("coverage = %d/%d, want the two API rules missing", partial.Covered, partial.Total)
+	}
+}
+
+// A daemon.json carrying `hosts` does not make up for an unreadable unit
+// either, and this is the direction that produces a *false positive* on the
+// domain's worst finding. Docker refuses to start with `hosts` in both places,
+// so the file's socket answer is trustworthy — but `tlsverify` has no such
+// exclusion and lives on the unit just as often. Trusting the file alone here
+// reports an unauthenticated API on a host running mutual TLS.
+func TestDaemonJSONDoesNotMakeUpForAnUnreadableUnit(t *testing.T) {
+	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"]}`, cleanGroup, cleanPasswd, 0o660)
+	fs, err := h.c.Check(context.Background(), env(hardenedInfo, ""))
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("err = %v, want a PartialError", err)
+	}
+	if f := find(fs, "dockerd.api-unauthenticated"); f != nil {
+		t.Errorf("reported an unauthenticated API without having read the unit's TLS flags: %+v", f.Evidence)
+	}
+}
+
+// The largest behaviour change here, stated as its own case: on a host that
+// does not run systemd, the daemon's start-up flags live somewhere hostveil
+// cannot read — /etc/conf.d/docker under OpenRC, a supervisor's config, a
+// hand-typed command line — and `docker info` does not report them. So the two
+// API rules are genuinely unanswered there.
+//
+// This used to report clean. An Alpine or Gentoo host publishing
+// `-H tcp://0.0.0.0:2375` from its OpenRC conf got a perfect Docker-daemon
+// axis and no finding, which is the same shape as the non-root CVE scan that
+// scored 100 on a host nobody had looked at.
+func TestANonSystemdHostCannotAuditTheAPISocket(t *testing.T) {
+	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
+	e := env(hardenedInfo, "-H fd://")
+	e.ServiceManager = platform.SMOpenRC
+
+	fs, err := h.c.Check(context.Background(), e)
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("err = %v, want a PartialError so the axis reports Degraded", err)
+	}
+	if !strings.Contains(partial.Reason, "systemd") {
+		t.Errorf("the reason should say why the flags are unreadable: %q", partial.Reason)
+	}
+	// The rules that do not depend on the unit are still answered — partial
+	// means incomplete, not failed.
+	if len(fs) == 0 && partial.Covered == 0 {
+		t.Error("the daemon defaults and the socket mode were still readable")
+	}
+}
+
+// And the direction that stays: the unit is the richer source, so having
+// parsed it covers a daemon.json that could not be read. Pinned here as well
+// as in its own test because the guard above sits one line away from it.
+func TestAParsedUnitStillCoversAnUnreadableDaemonJSON(t *testing.T) {
+	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
+	// A daemon.json that exists but cannot be parsed.
+	write(t, h.c.DaemonConfig, "{not json")
+
+	fs, err := h.c.Check(context.Background(), env(hardenedInfo, "-H fd:// -H tcp://0.0.0.0:2375"))
+	if err != nil {
+		t.Fatalf("the unit answered, so this is not a coverage gap: %v", err)
+	}
+	if find(fs, "dockerd.api-unauthenticated") == nil {
+		t.Error("the socket the unit declares must still be judged")
 	}
 }

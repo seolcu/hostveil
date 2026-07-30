@@ -120,19 +120,42 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 		failed = append(failed, fmt.Sprintf("cannot read %s", c.DaemonConfig))
 	}
 
-	unitHosts, unitTLS, unitVerify, unitOK := c.readUnit(ctx, env)
-	if unitOK {
+	unitHosts, unitTLS, unitVerify, unitReason := c.readUnit(ctx, env)
+	if unitReason == "" {
 		cfg.inUnit = true
 		cfg.hosts = append(cfg.hosts, unitHosts...)
 		cfg.tls = cfg.tls || unitTLS
 		cfg.tlsVerify = cfg.tlsVerify || unitVerify
 	}
 
-	// The unit carries both the socket flags and the TLS flags, so having
-	// parsed it makes up for an unreadable daemon.json entirely. Only losing
-	// both leaves these rules unanswered.
-	if len(failed) > 0 && !unitOK {
-		return config{}, false, failed[0] + " and the daemon's unit file could not be inspected — the API socket and TLS settings were not audited"
+	// The substitution runs one way only, and the guard here used to run it
+	// both ways.
+	//
+	// Having parsed the unit does make up for an unreadable daemon.json — the
+	// unit carries the socket flags and the TLS flags alike, and `hosts` set in
+	// both places stops Docker from starting at all, so in a daemon that
+	// answered at most one of them holds it. That direction stays.
+	//
+	// The reverse was never claimed and is not true. An absent daemon.json is a
+	// complete answer *about that file* — no options are set there, the default
+	// state of most hosts — and says nothing whatever about the unit, which is
+	// where every mainstream package puts the listening socket. Requiring both
+	// sources to fail therefore never fired on the ordinary shape of the
+	// failure: no daemon.json plus an unreadable unit reported "audited, no
+	// sockets configured", which is the exact conclusion readUnit exists to
+	// prevent.
+	//
+	// A daemon.json that does carry `hosts` does not cover for it either. That
+	// exclusion binds `hosts` and nothing else, while `tlsverify` lives on the
+	// unit just as often and has no such rule — so trusting the file alone
+	// there reports an unauthenticated API, this domain's one Critical, on a
+	// host running mutual TLS.
+	if unitReason != "" {
+		if len(failed) > 0 {
+			return config{}, false, failed[0] + " and " + unitReason +
+				" — the API socket and TLS settings were not audited"
+		}
+		return config{}, false, unitReason + " — the API socket and TLS settings were not audited"
 	}
 	return cfg, true, ""
 }
@@ -177,13 +200,32 @@ func readDaemonJSON(path string) (config, error) {
 // daemon's listening socket as a flag on the unit, so a checker that read
 // only the file would conclude that a host with a TCP socket on its ExecStart
 // had no sockets configured at all.
-func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify, ok bool) {
+// LoadState is asked for alongside ExecStart because `systemctl show` on a
+// unit that does not exist **exits 0 and prints nothing** for ExecStart. Reading
+// err == nil as "inspected, and it carries no flags" is a claim the command
+// never made: the unit was not read, it was not there. Only LoadState
+// distinguishes the two, and it is the whole reason this asks for a property it
+// does not otherwise use.
+//
+// That matters wherever the daemon's unit is not literally docker.service — a
+// snap install (snap.docker.dockerd.service), a rootless daemon whose unit
+// lives in the user manager, or a host where something else starts it. On any
+// of those, a TCP socket on the real unit was invisible while this domain
+// reported its API rules fully audited.
+//
+// The reason is returned rather than a bool so readConfig can say *which*
+// source it lost; a host with no systemd at all and a host whose systemctl
+// refused are both gaps, but not the same one to an operator.
+func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify bool, reason string) {
 	if env.ServiceManager != platform.SMSystemd {
-		return nil, false, false, false
+		return nil, false, false, "this host does not run systemd, so the daemon's own start-up flags could not be read"
 	}
-	out, err := env.Runner.Run(ctx, "systemctl", "show", c.Unit, "--property=ExecStart", "--no-pager")
+	out, err := env.Runner.Run(ctx, "systemctl", "show", c.Unit, "--property=LoadState,ExecStart", "--no-pager")
 	if err != nil {
-		return nil, false, false, false
+		return nil, false, false, "cannot inspect the " + c.Unit + " unit"
+	}
+	if state := showProperty(string(out), "LoadState"); state != "loaded" {
+		return nil, false, false, "systemd has no " + c.Unit + " (LoadState=" + state + "), so the daemon's start-up flags could not be read"
 	}
 	for _, argv := range execStartArgv(string(out)) {
 		h, t, v := parseDaemonFlags(argv)
@@ -191,7 +233,19 @@ func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []strin
 		tls = tls || t
 		verify = verify || v
 	}
-	return hosts, tls, verify, true
+	return hosts, tls, verify, ""
+}
+
+// showProperty reads one Key=Value line out of `systemctl show` output.
+// Records are keyed by name because systemd prints the properties in an order
+// of its own, not the order they were asked for.
+func showProperty(out, key string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if k, v, ok := strings.Cut(line, "="); ok && k == key {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
 }
 
 // execStartArgv extracts each argv list from `systemctl show --property=
