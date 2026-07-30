@@ -150,6 +150,7 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"dockerd.userns-remap":          "same, and it rewrites the ownership of every bind mount on the host",
 		"dockerd.live-restore":          "reload is exec with no checkpoint, and write-then-apply is sequential steps rather than Review's independent alternatives",
 
+		"fileperms.owner":        "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
 		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
 		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
 		"ports.exposed":          "the aggregate finding's remediation is firewall.inactive's, and is declined for the same reason",

@@ -25,9 +25,14 @@ func writeMode(t *testing.T, name string, mode os.FileMode) string {
 	return path
 }
 
+// run drives the mode rules and nothing else. OwnerUID is the account
+// running the suite, so the fixtures in this file — temp files owned by
+// whoever that is — are correctly owned and the ownership check stays
+// silent. Without it these tests pass under root and fail under CI's
+// unprivileged user, which is exactly how this was caught.
 func run(t *testing.T, rules []Rule) []model.Finding {
 	t.Helper()
-	fs, err := (&Checker{Rules: rules}).Check(context.Background(), platform.Env{})
+	fs, err := (&Checker{Rules: rules, OwnerUID: os.Geteuid()}).Check(context.Background(), platform.Env{})
 	if err != nil {
 		t.Fatal(err)
 	}

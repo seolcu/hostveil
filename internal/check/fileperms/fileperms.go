@@ -1,8 +1,9 @@
-// Package fileperms implements a native checker for over-permissive modes
-// on sensitive host files. A world-writable /etc/passwd or a group-readable
-// SSH host key is a quiet but serious hole; this checker stats a curated set
-// of security-critical files and flags any whose permission bits are looser
-// than they should ever be.
+// Package fileperms implements a native checker for the two things that
+// decide who can read and write a sensitive host file: its permission bits
+// and its owner. A world-writable /etc/passwd or a group-readable SSH host
+// key is a quiet but serious hole, and so is a mode-0600 /etc/shadow that
+// belongs to somebody other than root — 0600 says "only the owner", and the
+// whole question is who that is.
 package fileperms
 
 import (
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
@@ -61,14 +63,42 @@ func (r Rule) paths() ([]string, error) {
 	return nil, nil
 }
 
+// ownerFinding reports sensitive files that are not owned by root.
+//
+// The mode rules above answer "how much access do the bits grant" and
+// stopped there, which is only half the question: mode 0600 grants
+// everything to the owner and nothing to anyone else, so a /etc/shadow at
+// 0600 owned by an ordinary user hands that user every password hash on the
+// host — and the mode check calls it clean, because 0600 is exactly what it
+// wants to see. Ownership is the other half, and every file in this table
+// belongs to root on every distribution.
+//
+// One finding for all of them rather than one per path: the remediation is
+// the same `chown root:root` in every case, and a host where this has gone
+// wrong has usually had it go wrong to several files at once (a restore from
+// a backup taken as the wrong user, an extracted archive).
+const ownerFindingID = "fileperms.owner"
+
+// rootUID is the owner every file in the rule table must have on a real
+// host. These are paths whose ownership is fixed by the system, not by
+// preference — Checker.OwnerUID exists only so a test can assert both
+// directions without caring which account runs the suite.
+const rootUID = 0
+
 // Checker reports sensitive files with over-permissive modes.
 type Checker struct {
 	// Rules is the set of files to check; overridable for tests.
 	Rules []Rule
+	// OwnerUID is the uid every rule's file must belong to. Zero means
+	// root, which is the answer on every real host; it is a field so a test
+	// can assert the wrongly-owned case without having to run as a
+	// particular account, and so the suite behaves the same under root and
+	// under CI's unprivileged user.
+	OwnerUID int
 }
 
 // New returns a fileperms checker with the default sensitive-file rules.
-func New() *Checker { return &Checker{Rules: defaultRules()} }
+func New() *Checker { return &Checker{Rules: defaultRules(), OwnerUID: rootUID} }
 
 func defaultRules() []Rule {
 	return []Rule{
@@ -99,7 +129,8 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	return true, ""
 }
 
-// Check stats each rule's file(s) and flags any over-permissive mode.
+// Check stats each rule's file(s) and flags any over-permissive mode, and any
+// file not owned by root.
 //
 // A rule it could not evaluate is recorded as a coverage gap rather than
 // passed over. "This file is not here" and "I was not allowed to look at it"
@@ -109,6 +140,7 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // wrong people.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
+	var wrongOwner []string
 	var cov check.Coverage
 	for _, rule := range c.Rules {
 		paths, err := rule.paths()
@@ -133,6 +165,12 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 				continue
 			case fi.IsDir():
 				continue
+			}
+			// Checked for every rule, and independently of the mode: a file
+			// can have impeccable bits and the wrong owner, which is the
+			// case the mode check reads as clean.
+			if uid, ok := fileUID(fi); ok && uid != c.OwnerUID {
+				wrongOwner = append(wrongOwner, fmt.Sprintf("%s (uid %d)", p, uid))
 			}
 			if fi.Mode().Perm()&^rule.MaxMode != 0 {
 				badPaths = append(badPaths, p)
@@ -163,5 +201,30 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
 	}
+
+	if len(wrongOwner) > 0 {
+		sort.Strings(wrongOwner)
+		findings = append(findings, model.NewFinding(ownerFindingID,
+			"A sensitive system file is not owned by root",
+			model.SeverityHigh, model.SourceFilePerms, model.RemediationManual,
+			model.WithDescription("These files are owned by an account other than root. Permission bits are only half of who can read and write a file — the other half is who the owner is. A mode-0600 /etc/shadow grants everything to its owner and nothing to anyone else, so if that owner is an ordinary user, they hold every password hash on the host while the permissions look exactly right."),
+			model.WithHowToFix("Restore root ownership, e.g. `chown root:root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too — /etc/shadow is usually root:shadow. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
+			model.WithEvidence("files", strings.Join(wrongOwner, model.EvidenceSeparator)),
+		))
+	}
 	return findings, cov.Err()
+}
+
+// fileUID reports the owning uid, and whether the platform gave one.
+//
+// ok is false where the stat result carries no Unix owner. That reads as
+// "could not tell", and the caller flags nothing — the same rule the rest of
+// this tool follows, because an unowned-looking file is a gap in what we can
+// see rather than evidence about the host.
+func fileUID(fi os.FileInfo) (int, bool) {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, false
+	}
+	return int(st.Uid), true
 }
