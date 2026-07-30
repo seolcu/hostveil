@@ -55,10 +55,22 @@ type Checker struct {
 	Root string
 	// Rules is the parameter set to audit; overridable for tests.
 	Rules []Rule
+	// ConfDirs and ConfFile are the sysctl.d search path and the legacy
+	// single file, read to find out which one decides a weak value. See
+	// origin.go; overridable for tests.
+	ConfDirs []string
+	ConfFile string
 }
 
 // New returns a sysctl checker with the default rule set.
-func New() *Checker { return &Checker{Root: "/proc/sys", Rules: defaultRules()} }
+func New() *Checker {
+	return &Checker{
+		Root:     "/proc/sys",
+		Rules:    defaultRules(),
+		ConfDirs: defaultConfDirs(),
+		ConfFile: defaultConfFile,
+	}
+}
 
 func defaultRules() []Rule {
 	return []Rule{
@@ -190,6 +202,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	var findings []model.Finding
 	var unreadable []string
 	covered := 0
+	byKey := origins(c.ConfDirs, c.ConfFile)
 	for _, r := range c.Rules {
 		vals := map[string]int64{}
 		failed := false
@@ -212,16 +225,31 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		if !r.Flagged(vals) {
 			continue
 		}
-		findings = append(findings, model.NewFinding(r.ID, r.Title, r.Sev,
-			model.SourceSysctl, model.RemediationReview,
+		opts := []model.FindingOption{
 			model.WithDescription(r.Desc),
-			model.WithHowToFix(fmt.Sprintf("Add `%s` to a file under /etc/sysctl.d (e.g. 99-hardening.conf), then run `sysctl --system` to apply it without a reboot.", r.Want)),
 			model.WithEvidence("value", evidenceFor(r.Keys, vals)),
 			// The machine-readable form of the same recommendation, so the
 			// fix registry can build an action from the finding alone — a
 			// fix never sees the Rule it came from.
 			model.WithEvidence("set", strings.Join(r.Set, ",")),
-		))
+		}
+		if origin, ok := originOf(r.Keys, vals, byKey); ok {
+			// Name the file, and tell the operator to edit it rather than to
+			// add a drop-in. A new file under /etc/sysctl.d is only read
+			// before this one on the hosts where it happens to sort earlier,
+			// and on the common case — Ubuntu's 99-sysctl.conf symlink to
+			// /etc/sysctl.conf — it is read before it and loses silently.
+			opts = append(opts,
+				model.WithEvidence("set-by", origin.String()),
+				model.WithHowToFix(fmt.Sprintf(
+					"`%s` sets this value and is read after anything in /etc/sysctl.d, so a new drop-in there would not take effect. Change that line to `%s`, then run `sysctl --system` to apply it without a reboot.",
+					origin, r.Want)))
+		} else {
+			opts = append(opts, model.WithHowToFix(fmt.Sprintf(
+				"Add `%s` to a file under /etc/sysctl.d (e.g. 99-hardening.conf), then run `sysctl --system` to apply it without a reboot.", r.Want)))
+		}
+		findings = append(findings, model.NewFinding(r.ID, r.Title, r.Sev,
+			model.SourceSysctl, model.RemediationReview, opts...))
 	}
 	if len(unreadable) > 0 {
 		return findings, &check.PartialError{
