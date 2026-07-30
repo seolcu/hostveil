@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -71,6 +72,30 @@ const waitDelay = 2 * time.Second
 // minutes on purpose, and imposing the default on top would kill every image
 // scan. The default is a floor for callers that said nothing, not a ceiling
 // over callers that did.
+//
+// # The locale is pinned, and it has to be
+//
+// Every parser in internal/check that matches a word rather than a number is
+// reading translated text unless the command is told not to translate. This
+// inherited the operator's environment, and `sudo` keeps LANG and LC_* by
+// default, so `hostveil scan` on a German or Japanese host asked apt in German
+// and then looked for English.
+//
+// The one that mattered: apt's `[upgradable from: %s]` is translated in
+// twenty-one locales, and countAptSecurityUpdates skips any line that does not
+// contain that exact English text. On such a host the pending-security-updates
+// count came out zero however many were waiting — a clean report on an
+// unpatched machine, which is the failure class this whole tool refuses.
+//
+// LC_ALL rather than LANG, and this is the part worth remembering: gettext
+// honours LANGUAGE over LANG, so setting LANG alone leaves a desktop's
+// `LANGUAGE=de:en` in charge. LANGUAGE is ignored when the locale is C, which
+// is why this one variable is enough. Verified against real apt: with
+// `LANGUAGE=de LANG=de_DE.UTF-8 LC_ALL=C` it prints "Listing...", and dropping
+// the LC_ALL prints "Auflistung…".
+//
+// The rest of the environment is kept. Commands need PATH to be found at all,
+// and DOCKER_HOST to reach a daemon that is not on this machine.
 func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	limit := r.Timeout
 	if limit <= 0 {
@@ -85,6 +110,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = waitDelay
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
 	out, err := cmd.Output()
 	return out, describeContext(ctx, name, limit, withStderr(err))
 }
