@@ -1,5 +1,112 @@
 # Changelog
 
+## [3.9.0](https://github.com/seolcu/hostveil/compare/v3.8.6...v3.9.0) (2026-07-30)
+
+A twelfth detection domain, and five fixes. Three of them are the same mistake:
+hostveil working out for itself what another tool's layered configuration adds up
+to, and reaching a different answer than the tool does. Two of those let a
+Critical finding go unreported on an ordinary host. The other two fixes are a
+warning about your restore points that was not true, and an access token that
+outstayed its usefulness in the address bar.
+
+### Features
+
+* **check:** audit the sandboxing of the services you installed yourself
+  ([#638](https://github.com/seolcu/hostveil/issues/638)). Roughly half of a
+  self-hosted server is not in a container. The container audit reads what each
+  service declares — privileged, running as root, no-new-privileges off — and a
+  service started by a unit file has exactly the same decisions made about it:
+  whether it can gain privileges through a setuid binary, whether it can write
+  to `/usr` and `/etc`, whether it can read every user's home directory,
+  whether it shares `/tmp` with the rest of the host. Nothing looked at any of
+  it before. The new domain asks systemd for each unit's *effective*
+  configuration, so what it reports is what the service will actually run with
+  rather than what some file says, and it audits only the units you installed
+  yourself — your distribution hardens its own on its own schedule, and
+  reporting on those would bury your services under findings about software you
+  did not choose. Severity follows the account: the privilege-escalation rule
+  matters most on a service running as somebody other than root, and the two
+  filesystem rules matter most exactly where it matters least. All four are
+  Manual on purpose — the change is two lines, but a service that needs what
+  one of these protections hides fails at its next restart, which on a
+  self-hosted box is the next reboot. Adding the domain moved the score
+  weights: six axes gave up one point each to fund it, so scores will shift
+  slightly on hosts where those domains apply.
+
+### Bug Fixes
+
+* **compose:** audit the project docker composes, not its first file
+  ([#641](https://github.com/seolcu/hostveil/issues/641)). `docker compose up`
+  reads `docker-compose.override.yml` with no flag asked for, and `-f base.yml
+  -f prod.yml` is the standard production pattern, so a project made of several
+  files is the ordinary case. hostveil read the first one and audited that.
+  That is not a partial view — it is a wrong one, and in the dangerous
+  direction, because compose *adds* port mappings across files rather than
+  replacing them. A base file binding a database to localhost plus an override
+  publishing it is published on every interface; hostveil saw the localhost
+  binding, found nothing, and passed the host. An exposed datastore is the
+  worst finding the container domain has. It now asks docker for the merged
+  configuration, which also resolves `${VARIABLES}` the way they will resolve
+  at run time instead of reading them as literal text. Where docker cannot
+  answer and the project has several files, the project is reported as ground
+  the scan did not cover rather than guessed at from one of them.
+
+* **check:** a docker.service systemd never loaded is not a unit with no flags
+  ([#642](https://github.com/seolcu/hostveil/issues/642)). Every mainstream
+  package puts the Docker daemon's listening socket on its service unit, which
+  is why hostveil reads the unit as well as `daemon.json`. Two things stopped
+  it. Asking systemd about a unit it does not have succeeds and prints nothing,
+  so "the unit was never read" was indistinguishable from "the unit carries no
+  flags" — which is the state of every host whose daemon runs under a
+  differently-named unit, including snap installs and rootless daemons. And the
+  two sources were treated as covering for each other in both directions when
+  only one direction holds: having read the unit does make up for an unreadable
+  `daemon.json`, but the reverse is not true, and most hosts have no
+  `daemon.json` at all. So the ordinary failure — no `daemon.json`, unit not
+  read — reported "audited, no sockets configured". An API served over TCP
+  without TLS client verification is unauthenticated root for anyone who can
+  reach the port, and it could go unreported while the score said the daemon
+  had been checked. A host that does not run systemd now reports these rules as
+  not audited rather than clean: the flags live somewhere hostveil cannot read,
+  and saying so is the honest answer.
+
+* **check:** name the file that decides a kernel parameter, and fix that one
+  ([#635](https://github.com/seolcu/hostveil/issues/635)). The kernel-hardening
+  fix wrote a new file under `/etc/sysctl.d`, reported success, and recorded a
+  restore point. On Ubuntu that file loses. `/etc/sysctl.conf` — where
+  operators have been told to put kernel settings for thirty years — is read
+  after everything in `/etc/sysctl.d`, so a value set there came back at the
+  next boot with nothing to explain why. The scan now works out which file
+  actually decides each parameter and says so, and the fix corrects that file
+  instead of writing one that cannot take effect. Where the deciding file
+  belongs to a package rather than to you, hostveil declines to edit it and
+  says the drop-in will not work, rather than reporting a success the next boot
+  contradicts.
+
+* **history:** a Save that never finished is not damaged recovery history
+  ([#640](https://github.com/seolcu/hostveil/issues/640)). `hostveil history`
+  could report that some of your restore points were unreadable and could not
+  be rolled back, when nothing had been lost. A restore point is written
+  backup-first and only becomes real when its metadata lands, precisely so that
+  an interrupted one is something nothing will try to restore from — and since
+  the backup is taken before the file is changed, one that did not finish means
+  the file was never touched. Listing tried to read them anyway and reported
+  the leftovers as damage. It did not take a crash: a full disk was enough to
+  leave one behind permanently, so the warning repeated on every later run.
+  Metadata that exists and cannot be read is still reported, because that is a
+  fix which was applied and can no longer be undone.
+
+* **web:** drop the dashboard access token out of the address bar
+  ([#636](https://github.com/seolcu/hostveil/issues/636)). `hostveil serve`
+  prints a URL carrying an access token, because a terminal has no other way to
+  hand a credential to a browser. The dashboard converts it to a session cookie
+  on the first request and never needs it again — but the copy in the address
+  bar stayed, in the history entry, in a bookmark made without thinking, and in
+  every screenshot pasted into an issue. The page now removes it as soon as it
+  loads. Reloading works for as long as the session lasts; past that the
+  dashboard asks you to reopen the URL it printed, which the running `serve`
+  command is still showing.
+
 ## [3.8.6](https://github.com/seolcu/hostveil/compare/v3.8.5...v3.8.6) (2026-07-29)
 
 One fix, for an SSH remediation that reported success and left the setting it
