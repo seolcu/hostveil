@@ -88,10 +88,12 @@ jobs:
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             curl ca-certificates tar coreutils >/dev/null
-          # The container is already root and the script calls sudo, which
-          # a minimal image does not ship. A pass-through stands in for it.
-          printf '#!/bin/sh\nexec "$@"\n' > /usr/bin/sudo
-          chmod +x /usr/bin/sudo
+          # Deliberately no sudo installed and no shim standing in for it.
+          # This container is root, which is what the installer has to handle
+          # on its own — Debian's default is root-only administration, and
+          # every `docker run … | bash` is the same shape. A fake sudo here
+          # passed the test while real users in this position hit
+          # "sudo: command not found" after the download and the checksum.
 
       - name: Install the published release
         run: bash scripts/install.sh --yes --no-trivy

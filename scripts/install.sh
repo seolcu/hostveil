@@ -45,7 +45,7 @@ uninstall() {
   local removed=false
 
   if [[ -e /usr/bin/hostveil ]]; then
-    sudo rm -f /usr/bin/hostveil
+    "${SUDO[@]}" rm -f /usr/bin/hostveil
     echo "  ✓ removed /usr/bin/hostveil"
     removed=true
   else
@@ -65,13 +65,13 @@ uninstall() {
     echo "    ${state}"
     echo "  Those checkpoints are the backups of every file hostveil edited here."
     echo "  Delete them only if you no longer need to undo any of its fixes:"
-    echo "    sudo rm -rf ${state}"
+    echo "    ${SUDO[*]:+sudo }rm -rf ${state}"
   fi
 
   if command -v trivy >/dev/null 2>&1; then
     echo ""
     echo "  trivy is still installed. It is a general-purpose scanner, so this"
-    echo "  script does not remove it. To remove it: sudo rm -f \"$(command -v trivy)\""
+    echo "  script does not remove it. To remove it: ${SUDO[*]:+sudo }rm -f \"$(command -v trivy)\""
   fi
 
   if [[ "$removed" == true ]]; then
@@ -104,6 +104,28 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# ─── privilege ────────────────────────────────────────────────────────────
+# Installing into /usr/bin needs root. Which is not the same as needing sudo,
+# and the script used to assume it was: it called `sudo install` unconditionally,
+# so on a host where you are *already* root and sudo is not installed it got all
+# the way through downloading and verifying and then died with
+# "sudo: command not found". That is not an exotic host — Debian's own default
+# is root-only administration with no sudo, and every `docker run … | bash` is
+# the same shape.
+#
+# An array rather than a string so that the empty case expands to nothing at
+# all, instead of to an empty argument that `install` would read as a filename.
+SUDO=()
+if [[ ${EUID} -ne 0 ]]; then
+  if command -v sudo &>/dev/null; then
+    SUDO=(sudo)
+  else
+    echo "ERROR: installing into /usr/bin needs root, and sudo is not available." >&2
+    echo "  Re-run this as root, or install sudo first." >&2
+    exit 1
+  fi
+fi
 
 if [[ "$UNINSTALL" == true ]]; then
   uninstall
@@ -289,7 +311,7 @@ install_tool() {
       }
       TRIVY_BIN=$(find "$TRIVY_DIR" -name 'trivy' -type f 2>/dev/null | head -1)
       if [[ -n "$TRIVY_BIN" ]]; then
-        sudo install -m 755 "$TRIVY_BIN" /usr/bin/trivy
+        "${SUDO[@]}" install -m 755 "$TRIVY_BIN" /usr/bin/trivy
       else
         echo "  ERROR: trivy binary not found after extraction" >&2
         return 1
@@ -377,7 +399,7 @@ tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" || {
   echo "  ERROR: extraction failed" >&2
   exit 1
 }
-sudo install -m 755 "${TMPDIR}/hostveil" /usr/bin/hostveil || {
+"${SUDO[@]}" install -m 755 "${TMPDIR}/hostveil" /usr/bin/hostveil || {
   echo "  ERROR: install failed" >&2
   exit 1
 }
