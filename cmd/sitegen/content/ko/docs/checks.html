@@ -17,6 +17,7 @@
                   <tr><td>AI 에이전트 런타임</td><td><code>agent.</code></td><td>OpenClaw 또는 Hermes 설치</td></tr>
                   <tr><td>커널 하드닝</td><td><code>sysctl.</code></td><td>—</td></tr>
                   <tr><td>Docker 데몬</td><td><code>dockerd.</code></td><td>Docker</td></tr>
+                  <tr><td>서비스 하드닝</td><td><code>systemd.</code></td><td>systemd</td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -45,15 +46,16 @@
               <table>
                 <thead><tr><th>축</th><th>가중치</th></tr></thead>
                 <tbody>
-                  <tr><td>컨테이너 노출</td><td>15</td></tr>
-                  <tr><td>SSH 하드닝</td><td>15</td></tr>
-                  <tr><td>취약점</td><td>11</td></tr>
-                  <tr><td>호스트 방화벽</td><td>10</td></tr>
-                  <tr><td>노출된 서비스</td><td>9</td></tr>
-                  <tr><td>AI 에이전트 런타임</td><td>9</td></tr>
+                  <tr><td>컨테이너 노출</td><td>14</td></tr>
+                  <tr><td>SSH 하드닝</td><td>14</td></tr>
+                  <tr><td>취약점</td><td>10</td></tr>
+                  <tr><td>호스트 방화벽</td><td>9</td></tr>
+                  <tr><td>노출된 서비스</td><td>8</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td>8</td></tr>
                   <tr><td>계정 위생</td><td>7</td></tr>
                   <tr><td>자동 업데이트</td><td>7</td></tr>
                   <tr><td>Docker 데몬</td><td>7</td></tr>
+                  <tr><td>서비스 하드닝</td><td>6</td></tr>
                   <tr><td>파일 권한</td><td>5</td></tr>
                   <tr><td>커널 하드닝</td><td>5</td></tr>
                 </tbody>
@@ -229,6 +231,25 @@
             </div>
             <p><code>dockerd.group-members</code>는 그룹을 가진 계정이 사람일 때 <span class="sev medium">보통</span>, 그중 하나라도 서비스 계정 — 시스템 UID이거나 대화형 로그인이 없는 계정 — 이면 <span class="sev high">높음</span>입니다. CI 러너나 모니터링 에이전트에게 root가 될 능력을 일부러 주는 사람은 없고, 한 번도 로그인하지 않는 자격 증명은 아무도 지켜보지 않는 자격 증명입니다.</p>
             <p>루프백 전용 TCP 소켓은 표시하지 않습니다. 유닉스 소켓이 닿지 않던 곳에 닿지 않고, 데몬 앞에 프록시를 두는 문서화된 방법이기 때문입니다. <strong>rootless</strong>로 실행 중인 데몬은 <code>userns-remap</code>과 <code>group-members</code>가 억제되고 API 항목이 <span class="sev high">높음</span>으로 내려갑니다. 피해 범위가 호스트가 아니라 그 사용자의 컨테이너이기 때문입니다. <code>live-restore</code>는 Docker가 지원하지 않는 swarm 노드에서 억제됩니다.</p>
+
+            <h2 id="systemd">서비스 하드닝 <code>systemd.</code></h2>
+            <p>자체 호스팅 서버의 절반가량은 컨테이너 밖에 있습니다. Compose 도메인은 컨테이너가 선언한 내용 — privileged, root 실행, no-new-privileges 해제 — 을 읽는데, 유닛 파일로 뜬 서비스에도 똑같은 판단이 필요합니다. 이 도메인이 생기기 전까지는 아무도 그쪽을 보지 않았습니다.</p>
+            <p>답은 systemd가 이미 알고 있습니다. <code>systemctl show</code>는 유닛 파일과 모든 드롭인, 그리고 기본값까지 병합한 뒤의 <strong>실효</strong> 값을 알려줍니다. 그래서 hostveil이 읽는 값은 어떤 파일에 적힌 값이 아니라 서비스가 실제로 그 값으로 돌아간다는 뜻입니다.</p>
+            <p><strong>직접 만든 유닛만 검사합니다.</strong> 유닛 파일이 <code>/etc/systemd/system</code> 또는 <code>/usr/local/lib/systemd/system</code> 아래에 있으면 대상이 됩니다 — 사용자가 직접 쓰거나 손으로 설치한 것들입니다. 배포판 유닛은 배포판이 자기 일정에 맞춰 하드닝하며, 그걸 뒤집는 것은 남의 서비스 유지보수를 떠안는 일입니다. 게다가 그것들까지 보고하면 사용자가 고르지도 않은 소프트웨어에 대한 수십 건의 항목에 정작 본인 서비스가 묻힙니다. 그렇게 되면 아무도 그 도메인을 읽지 않습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">Low</span> / <span class="sev medium">Medium</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">Medium</span> / <span class="sev low">Low</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">Medium</span> / <span class="sev low">Low</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">Low</span></td><td>수동</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><strong>심각도가 두 가지이며, 어느 쪽인지는 실행 계정이 정합니다.</strong> <code>no-new-privileges</code>는 root가 아닌 계정으로 도는 서비스에서 <span class="sev medium">Medium</span>, root로 도는 서비스에서 <span class="sev low">Low</span>입니다. root 서비스는 이미 무엇이든 할 수 있으므로 이 설정이 막는 setuid 경로의 값어치가 거기서는 작습니다. 파일시스템 보호 두 가지는 같은 이유로 반대 방향입니다 — <code>no-new-privileges</code>의 값어치가 가장 작은 자리에서 가장 큽니다.</p>
+            <p><strong>여기의 모든 항목은 의도적으로 수동입니다.</strong> 드롭인은 두 줄이고 hostveil이 쓸 수도 있습니다. 하지만 쓰는 것과 안전하다고 아는 것은 다릅니다. <code>ProtectSystem=full</code>은 <code>/usr</code> 아래에 쓰는 서비스를 망가뜨리고, <code>PrivateTmp=yes</code>는 <code>/tmp</code>로 파일을 주고받는 두 서비스를 망가뜨립니다. 어느 쪽도 다음 재시작 전까지는 드러나지 않는데, 자체 호스팅 환경에서 그 시점은 다음 재부팅입니다 — 그리고 돌아오지 못한 서비스가 하필 데이터를 쥐고 있던 쪽입니다. 그래서 수정 안내에 정확한 경로와 정확한 두 줄을 담고, 재시작해서 지켜볼 시점은 사용자가 고릅니다.</p>
+            <p>이 systemd가 구현하지 않은 속성은 아무 값도 보고되지 않으며, 값이 없다는 것은 보호가 꺼져 있다는 근거가 아닙니다. 그런 경우는 항목으로 만들지 않고 그대로 둡니다.</p>
 
             <h2 id="agent">AI 에이전트 런타임 <code>agent.</code></h2>
             <p>셀프호스트 AI 에이전트인 <a href="https://docs.openclaw.ai/">OpenClaw</a>와 <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a>는 네트워크 게이트웨이를 띄우고 API 키를 홈 디렉터리에 저장합니다. 설정이 잘못되면 최악의 경우 외부에서 그 게이트웨이에 접근해, 내 파일을 읽고 내 권한으로 명령을 실행하는 에이전트를 그대로 조종할 수 있습니다.</p>

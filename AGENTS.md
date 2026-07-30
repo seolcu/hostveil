@@ -99,7 +99,7 @@ The central rule: **one engine, three thin UIs.** `internal/core.Engine` owns al
 
 This is enforced structurally: `internal/ui/tui/layering_test.go` and `internal/ui/web/layering_test.go` parse imports and fail if production UI code imports `internal/fix`, `internal/history`, `internal/check`, or `internal/compose`. UIs may import only `core` and `model`. (v2's duplicated-fix-logic failure is what these tests exist to prevent.)
 
-Flow: `cmd/hostveil/app.go` builds the one engine (all eleven checkers + `fix.Default()`) → `Engine.Scan` detects `platform.Env`, runs the checker registry concurrently, validates and classifies findings, scores, diffs against the last saved scan, persists.
+Flow: `cmd/hostveil/app.go` builds the one engine (all twelve checkers + `fix.Default()`) → `Engine.Scan` detects `platform.Env`, runs the checker registry concurrently, validates and classifies findings, scores, diffs against the last saved scan, persists.
 
 ### Key seams
 
