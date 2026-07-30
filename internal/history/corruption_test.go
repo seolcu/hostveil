@@ -191,3 +191,114 @@ func TestSaveRecordsTheBackupHash(t *testing.T) {
 		t.Error("the recorded hash does not match the blob on disk")
 	}
 }
+
+// A checkpoint directory with no meta.json is not a damaged checkpoint. It is
+// the residue of a Save that never finished, and writeMeta's own comment says
+// so: metadata is written last precisely so "an interrupted Save leaves a
+// directory nothing will try to restore from".
+//
+// List tried anyway, and reported it as unreadable recovery history — a
+// warning in all three UIs saying part of the operator's ability to undo is
+// gone, when nothing was lost at all. Apply order is backup → write, so a
+// Save that did not complete means the target file was never touched and
+// there is nothing to undo.
+//
+// This is not only the crash case. Save returns on the first failed write —
+// a full disk, EPERM, a read-only mount — applyEdit refuses to apply, and the
+// partial directory stays on disk permanently, so every `hostveil history`
+// from then on reports damage that no rollback could ever fix.
+func TestAnInterruptedSaveIsNotDamagedHistory(t *testing.T) {
+	store, _, good := savedCheckpoint(t)
+
+	// Exactly what a Save interrupted after its blobs and before its metadata
+	// leaves behind.
+	partial := filepath.Join(store.checkpointsDir(), "20260101-000000.000-deadbeef-cafe", "files")
+	if err := os.MkdirAll(partial, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(partial, "blob"), []byte("before\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cps, err := store.List()
+	if err != nil {
+		t.Errorf("an unfinished Save is not damage to report: %v", err)
+	}
+	if len(cps) != 1 || cps[0].ID != good.ID {
+		t.Errorf("the readable checkpoint should be the only one listed, got %d: %+v", len(cps), cps)
+	}
+}
+
+// The distinction that has to survive: metadata that exists and cannot be
+// read *is* damage. Losing it means a fix that was applied can no longer be
+// rolled back, and the operator has to be told.
+func TestUnreadableMetadataIsStillDamage(t *testing.T) {
+	store, _, cp := savedCheckpoint(t)
+
+	meta := filepath.Join(store.checkpointsDir(), cp.ID, "meta.json")
+	if err := os.WriteFile(meta, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.List(); !IsDamaged(err) {
+		t.Errorf("corrupt metadata must still be reported: %v", err)
+	}
+}
+
+// And Save cleans up after itself, so an ordinary failure does not leave
+// residue for List to have to ignore in the first place. The directory it
+// created is removed; one it found already there is left alone, because the
+// checkpoint already in it is somebody's only copy.
+func TestAFailedSaveLeavesNoDirectoryBehind(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permission bits do not bind root")
+	}
+	store := NewStore(t.TempDir())
+	id := NewID("compose.ds018")
+
+	// A files/ directory the blob write cannot use. MkdirAll then succeeds
+	// because it already exists, and WriteFileAtomic fails inside it — which
+	// is the shape of a full disk or a read-only mount, reached here through
+	// a permission bit instead.
+	files := filepath.Join(store.checkpointsDir(), id, "files")
+	if err := os.MkdirAll(files, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Only the leaf is made unwritable; MkdirAll would otherwise apply the
+	// mode to the parents it creates and fail before Save ever runs.
+	if err := os.Chmod(files, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(files, 0o700) })
+
+	if _, err := store.Save(Checkpoint{ID: id, FindingID: "compose.ds018"},
+		map[string][]byte{"/etc/ssh/sshd_config": []byte("x")}); err == nil {
+		t.Fatal("the blob write should have failed")
+	}
+	if _, err := os.Stat(filepath.Join(store.checkpointsDir(), id)); !os.IsNotExist(err) {
+		t.Errorf("a failed Save left its directory behind: %v", err)
+	}
+	if _, err := store.List(); err != nil {
+		t.Errorf("and List then had something to complain about: %v", err)
+	}
+}
+
+// The guard that matters more than the cleanup: a directory already holding a
+// finished checkpoint is somebody's only backup, and a later Save that fails
+// must not take it with it. IDs carry a random suffix so production never
+// reuses one, but the cost of being wrong is unrecoverable.
+func TestCleanupLeavesAFinishedCheckpointAlone(t *testing.T) {
+	store, _, cp := savedCheckpoint(t)
+	dir := filepath.Join(store.checkpointsDir(), cp.ID)
+
+	discardUnfinished(dir, cp.ID)
+	if _, err := store.Get(cp.ID); err != nil {
+		t.Errorf("the finished checkpoint was removed: %v", err)
+	}
+
+	// And an empty ID is refused, because dir would then be the checkpoints
+	// directory itself and this a RemoveAll of every backup on the host.
+	discardUnfinished(store.checkpointsDir(), "")
+	if _, err := store.Get(cp.ID); err != nil {
+		t.Errorf("an empty ID wiped the whole store: %v", err)
+	}
+}
