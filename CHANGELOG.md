@@ -1,5 +1,60 @@
 # Changelog
 
+## [3.10.0](https://github.com/seolcu/hostveil/compare/v3.9.0...v3.10.0) (2026-07-30)
+
+A new check for who owns your sensitive files, and two fixes for hostveil asking
+the host a question in one language and reading the answer in another. If your
+system is not in English and you run Debian or Ubuntu, **the pending
+security-update count was wrong** — read the first fix below.
+
+### Features
+
+* **check:** check who owns a sensitive file, not just its mode
+  ([#611](https://github.com/seolcu/hostveil/issues/611)). The file-permission
+  rules asked how much access the permission bits grant and stopped there,
+  which is half the question. Mode 0600 grants everything to the owner and
+  nothing to anyone else — so an `/etc/shadow` at 0600 owned by an ordinary
+  account hands that account every password hash on the host, and the old check
+  called it clean, because 0600 is exactly what it wants to see. Ownership is
+  now checked for every file in the table, independently of the mode, so a file
+  with impeccable bits is still examined. One finding covers all of them, since
+  the remedy is the same in every case and when this goes wrong it has usually
+  gone wrong to several files at once — a restore run as the wrong user, an
+  archive extracted with its own ownership. It is Manual on purpose: a restore
+  point records a file's contents and its permissions and has nowhere to put
+  its previous owner, so this would be the only change hostveil makes that it
+  could not undo. Hosts with a wrongly-owned sensitive file will see their score
+  drop, which is the point — they were being scored clean on a file the wrong
+  account could read.
+
+### Bug Fixes
+
+* **platform:** ask the host in a language the parsers can read
+  ([#644](https://github.com/seolcu/hostveil/issues/644)). hostveil ran the
+  host's own tools and read their output, and it ran them in whatever language
+  the operator's system is set to — `sudo` passes that setting through. But it
+  looked for English. The one that mattered: apt marks an upgradable package
+  with `[upgradable from: …]`, which is translated in twenty-one languages
+  including German, French, Spanish, Japanese, Russian and Chinese. On such a
+  host every line was skipped and the count of waiting security updates came
+  out **zero, however many were actually waiting** — a clean report on a machine
+  with unapplied security patches. Commands now run with the language pinned, so
+  every one of these parsers reads what it was written for. The same change
+  covers apt's and dnf's other messages and the firewall and port checks, which
+  had the same exposure without having broken yet.
+
+* **cmd:** the re-exec loop guard could not fire, because sudo strips it
+  ([#645](https://github.com/seolcu/hostveil/issues/645)). When run without
+  root, hostveil re-runs itself under `sudo`. It marked the second run so it
+  would not try a third time, and `sudo` discarded that mark — it clears the
+  environment by default and keeps only a short list of variables it knows
+  about. So on a host configured to give `sudo` a target other than root,
+  hostveil would have re-run itself without end, asking for a password each
+  time. The guard now keys on a marker `sudo` sets itself, which is present even
+  when the target is not root. If it ever reads that marker wrongly, hostveil
+  simply scans without root and says which checks it had to skip, which is the
+  safe direction to be wrong in.
+
 ## [3.9.0](https://github.com/seolcu/hostveil/compare/v3.8.6...v3.9.0) (2026-07-30)
 
 A twelfth detection domain, and five fixes. Three of them are the same mistake:
