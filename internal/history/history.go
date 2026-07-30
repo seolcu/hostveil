@@ -143,6 +143,7 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 		// half-written, the recovery layer has recorded a promise it cannot
 		// keep.
 		if err := platform.WriteFileAtomic(filepath.Join(dir, "files", blob), data, 0o600); err != nil {
+			discardUnfinished(dir, cp.ID)
 			return Checkpoint{}, err
 		}
 		cp.Files = append(cp.Files, BackedFile{
@@ -152,10 +153,35 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
 	if err := s.writeMeta(dir, cp); err != nil {
+		discardUnfinished(dir, cp.ID)
 		return Checkpoint{}, err
 	}
 	s.pruneCheckpoints()
 	return cp, nil
+}
+
+// discardUnfinished removes the directory of a Save that could not complete,
+// so an ordinary failure leaves nothing for List to have to recognise and
+// ignore.
+//
+// Two guards, both of them about not destroying somebody's only backup:
+//
+//   - A directory already holding a meta.json is a finished checkpoint. IDs
+//     carry a random suffix so production never reuses one, but a caller that
+//     did would otherwise have the earlier checkpoint deleted by the later
+//     Save's failure.
+//   - An empty ID is refused outright. dir is checkpointsDir()/cp.ID, so an
+//     empty one makes this a RemoveAll of every checkpoint on the host. The
+//     call could not reach here with one today; the cost of being wrong about
+//     that is the entire recovery history.
+func discardUnfinished(dir, id string) {
+	if id == "" {
+		return
+	}
+	if _, err := os.Stat(filepath.Join(dir, "meta.json")); err == nil {
+		return
+	}
+	_ = os.RemoveAll(dir)
 }
 
 // writeMeta persists the checkpoint's metadata, last and atomically.
@@ -294,6 +320,7 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
 	if err := s.writeMeta(dir, cp); err != nil {
+		discardUnfinished(dir, cp.ID)
 		return Checkpoint{}, err
 	}
 	s.pruneCheckpoints()
@@ -327,6 +354,7 @@ func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error)
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
 	if err := s.writeMeta(dir, cp); err != nil {
+		discardUnfinished(dir, cp.ID)
 		return Checkpoint{}, err
 	}
 	s.pruneCheckpoints()
@@ -349,12 +377,30 @@ func (s *Store) List() ([]Checkpoint, error) {
 			continue
 		}
 		cp, err := s.Get(e.Name())
-		if err != nil {
-			// A checkpoint that cannot be read is not one that does not exist.
-			// Dropping it silently made a fix vanish from `hostveil history`
-			// with no message and no way to tell it had ever been applied — and
-			// it also fell out of recordedWrites, which can turn an honest
-			// rollback into a false "the file was edited externally" refusal.
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			// No meta.json at all: this was never a checkpoint. writeMeta
+			// writes the metadata last precisely so an interrupted Save leaves
+			// a directory nothing will try to restore from — and since apply
+			// order is backup → write, a Save that did not finish means the
+			// target file was never touched and there is nothing to undo.
+			//
+			// Reporting it as damage said the opposite: every UI warned that
+			// part of the operator's ability to roll back was gone, over a
+			// directory whose absence would have changed nothing. And it did
+			// not take a crash. Save returns on its first failed write — a
+			// full disk, EPERM, a read-only mount — and the residue then sat
+			// there permanently, so every later `hostveil history` repeated a
+			// warning no rollback could ever clear.
+			continue
+		case err != nil:
+			// Metadata that exists and cannot be read is different, and is
+			// real damage: a fix that *was* applied can no longer be rolled
+			// back. Dropping it silently made that fix vanish from `hostveil
+			// history` with no message and no way to tell it had ever been
+			// applied — and it also fell out of recordedWrites, which can turn
+			// an honest rollback into a false "the file was edited externally"
+			// refusal.
 			damaged = append(damaged, e.Name())
 			continue
 		}
