@@ -148,3 +148,43 @@ func TestCancelledCommandSaysSo(t *testing.T) {
 		t.Errorf("a cancelled command must not read as a timeout, got %q", err)
 	}
 }
+
+// Every parser in internal/check that matches a word rather than a number is
+// reading translated text unless the command is told not to translate. The
+// runner inherited the operator's environment, and `sudo` keeps LANG and LC_*
+// by default, so `hostveil scan` on a German or Japanese host asked apt in
+// German and then looked for English.
+//
+// The one that mattered: apt's `[upgradable from: %s]` is translated in
+// twenty-one locales, and countAptSecurityUpdates skips any line without that
+// exact English text. On such a host the pending-security-updates count came
+// out zero however many were waiting — a clean report on an unpatched machine.
+//
+// LC_ALL rather than LANG, and this is the part worth remembering: gettext
+// honours LANGUAGE over LANG, so setting LANG alone leaves a GNOME desktop's
+// `LANGUAGE=de:en` in charge. LANGUAGE is ignored when the locale is C, which
+// is why this one variable is enough — verified against real apt, where
+// `LANGUAGE=de LANG=de_DE.UTF-8 LC_ALL=C` prints "Listing..." and dropping the
+// LC_ALL prints "Auflistung…".
+func TestRunPinsTheLocaleSoParsersReadEnglish(t *testing.T) {
+	out, err := DefaultRunner{}.Run(context.Background(), "sh", "-c", "echo \"[$LC_ALL]\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(out)); got != "[C]" {
+		t.Errorf("LC_ALL in the command's environment = %s, want [C]", got)
+	}
+}
+
+// And the rest of the environment survives, because commands need PATH to be
+// found at all and DOCKER_HOST to reach a daemon that is not on this machine.
+func TestRunKeepsTheRestOfTheEnvironment(t *testing.T) {
+	t.Setenv("HOSTVEIL_ENV_PROBE", "kept")
+	out, err := DefaultRunner{}.Run(context.Background(), "sh", "-c", "echo \"$HOSTVEIL_ENV_PROBE:${PATH:+has-path}\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(out)); got != "kept:has-path" {
+		t.Errorf("environment = %q, want the caller's variables intact", got)
+	}
+}
