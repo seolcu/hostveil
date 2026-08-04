@@ -1,8 +1,11 @@
 package web
 
 import (
+	"bytes"
 	"io"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -71,15 +74,20 @@ func TestBrandAssetsAreReferenced(t *testing.T) {
 	}
 }
 
-var svgFill = regexp.MustCompile(`fill="(#[0-9a-fA-F]{6})"`)
+// Both paint attributes, not just fill. The mark is linework — a package
+// outline, twelve pins — so its most prominent colour is a stroke, and a
+// fill-only extraction would have walked straight past it. `fill="none"` is
+// not a colour and does not match, which is what keeps the outlined package
+// from failing the role check.
+var svgPaint = regexp.MustCompile(`(?:fill|stroke)="(#[0-9a-fA-F]{6})"`)
 
 // internal/ui/theme is the only place a color is written down; the two brand
 // SVGs are the one static exception, because a favicon is fetched before any
 // theme is known. That exception is tolerable only while their hexes stay
-// the default theme's roles — the Ink2 tile, Bone slats, and the Safe core.
-// If the palette moves, this fails instead of the mark quietly drifting
-// off-brand, which is exactly what it did when Instrument was retired: the
-// mark kept its bone-and-teal until this test said otherwise.
+// the default theme's roles — the Ink2 tile, the Bone package and pins, and
+// the Safe core. If the palette moves, this fails instead of the mark
+// quietly drifting off-brand, which is exactly what it did when Instrument
+// was retired: the mark kept its bone-and-teal until this test said otherwise.
 //
 // It reads Default() rather than a named theme on purpose. The mark belongs
 // to whatever hostveil opens in, and pinning it to an ID would survive that
@@ -93,26 +101,52 @@ func TestBrandMarkColorsAreTheDefaultPalette(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fills := svgFill.FindAllStringSubmatch(string(b), -1)
-		if len(fills) == 0 {
-			t.Fatalf("%s declares no fills — the extraction is broken, not the mark", name)
+		paints := svgPaint.FindAllStringSubmatch(string(b), -1)
+		if len(paints) == 0 {
+			t.Fatalf("%s declares no paints — the extraction is broken, not the mark", name)
 		}
 		seen := map[string]bool{}
-		for _, m := range fills {
+		for _, m := range paints {
 			hex := strings.ToLower(m[1])
 			r, ok := role[hex]
 			if !ok {
-				t.Errorf("%s fills with %s, which is no Ink2/Bone/Safe of the default theme", name, hex)
+				t.Errorf("%s paints with %s, which is no Ink2/Bone/Safe of the default theme", name, hex)
 				continue
 			}
 			seen[r] = true
 		}
-		// Both variants are the same figure: bone veil slats over a safe-teal
+		// Both variants are the same figure: a bone package around a safe
 		// core. Losing either color is losing half the mark's meaning.
 		for _, want := range []string{"Bone", "Safe"} {
 			if !seen[want] {
 				t.Errorf("%s no longer uses the %s role", name, want)
 			}
+		}
+	}
+}
+
+// The marketing site cannot serve the dashboard's embedded assets, so it
+// keeps its own copies — and copies are how hostveil ended up with four
+// hand-drawn marks in the first place: a favicon, a status-bar mark, a
+// bordered box built in site/styles.css, and a fourth figure inlined as a
+// data URI in the page head, none of which had ever been seen side by side.
+//
+// Byte equality rather than "looks similar": the whole point of picking one
+// mark is that there is one drawing, and a copy that has been nudged is a
+// second drawing with a shared name.
+func TestSiteBrandAssetsMatchTheDashboard(t *testing.T) {
+	for _, name := range []string{"favicon.svg", "mark.svg"} {
+		want, err := assets.ReadFile("assets/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join("..", "..", "..", "site", "assets", name))
+		if err != nil {
+			t.Fatalf("the site has no copy of %s: %v", name, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("site/assets/%s has drifted from the dashboard's copy; "+
+				"copy it across rather than editing one of them", name)
 		}
 	}
 }

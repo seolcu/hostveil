@@ -120,35 +120,17 @@ pre,
   font-size: 1.05rem;
 }
 
+/* The product's mark, not a second one drawn here in CSS.
+   assets/mark.svg is byte-identical to the dashboard's, and a test holds
+   them equal — this used to be a bordered box with two bars that had nothing
+   to do with the figure hostveil actually ships, and nobody noticed because
+   the two were never on a screen together.
+   url() resolves against the stylesheet rather than the page, so one
+   relative path works from the landing page and from /docs alike. */
 .brand-mark {
-  position: relative;
   width: 34px;
   height: 34px;
-  border: 2px solid var(--accent);
-  background: var(--panel);
-  box-shadow: 4px 4px 0 var(--shadow-cut);
-}
-
-.brand-mark::before,
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  background: var(--accent);
-}
-
-.brand-mark::before {
-  left: 9px;
-  right: 9px;
-  top: 6px;
-  height: 18px;
-}
-
-.brand-mark::after {
-  left: 14px;
-  top: 18px;
-  width: 12px;
-  height: 4px;
-  transform: rotate(-45deg);
+  background: url(assets/mark.svg) center / contain no-repeat;
 }
 
 .nav-links {

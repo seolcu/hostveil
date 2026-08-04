@@ -36,9 +36,10 @@ body {
    Wrapping drops .actions to its own right-aligned row instead. */
 .brand { display: inline-flex; align-items: center; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
 .brand b { color: var(--bone); }
-/* The tile-less mark, so it dissolves into any theme's status bar and only the
-   veil slats and revealed core show. (The favicon carries a tile instead, for
-   the neutral background of a browser tab.) */
+/* The tile-less mark, so it dissolves into any theme's status bar rather than
+   sitting on a plate of its own. (The favicon carries a tile instead, for the
+   unknown background of a browser tab.) 20px is the size the drawing's
+   weights were set for. */
 .brand::before { content: ""; width: 20px; height: 20px; margin-right: 9px; background: url(/mark.svg) center / contain no-repeat; }
 .actions { margin-left: auto; display: flex; gap: 8px; }
 
