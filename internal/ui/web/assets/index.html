@@ -12,40 +12,64 @@
   <link rel="stylesheet" href="/themes.css">
   <link rel="stylesheet" href="/app.css">
   <script src="/theme.js"></script>
+  <!-- Generated from internal/ui/web/layout.go, on the same pattern and for
+       the same reason: the six arrangements under evaluation, and the applier
+       that restores the chosen one before first paint. Temporary scaffolding
+       for picking one — see layout.go. -->
+  <script src="/layout.js"></script>
   <!-- Generated from internal/model: domains, severities, remediation
        kinds, scan states, score bands. Blocking, because app.js reads the
        tables while rendering its first frame. -->
   <script src="/model.js"></script>
 </head>
 <body>
-  <div class="statusbar">
-    <div class="brand"><b>hostveil</b></div>
-    <div class="gauge" id="gauge"></div>
-    <div class="actions">
-      <select id="theme" aria-label="Color theme"></select>
-      <button id="history">History</button>
-      <button id="rescan">Rescan</button>
-      <button id="fixall" class="primary">Fix all safe</button>
+  <!-- The rail is a sibling of everything else, not a child of it: the two
+       layouts that use it split the whole window down the middle. The other
+       four leave it hidden and .stack takes the full width. -->
+  <aside class="rail" id="rail" hidden></aside>
+
+  <div class="stack">
+    <div class="statusbar">
+      <div class="brand"><b>hostveil</b></div>
+      <div class="gauge" id="gauge"></div>
+      <div class="actions">
+        <select id="layout" aria-label="Dashboard layout"></select>
+        <select id="theme" aria-label="Color theme"></select>
+        <button id="history">History</button>
+        <button id="rescan">Rescan</button>
+        <button id="fixall" class="primary">Fix all safe</button>
+      </div>
     </div>
+
+    <!-- The verdict band: what is wrong, in a sentence, with the action that
+         answers it beside. Built on every render and shown by the two
+         layouts that lead with it, so switching the picker never has to
+         re-derive anything. -->
+    <div class="verdict" id="verdict" hidden></div>
+
+    <div class="axes" id="axes"></div>
+    <div class="delta" id="delta" hidden></div>
+    <div class="delta" id="trend" hidden></div>
+    <div class="domains" id="domains" hidden></div>
+    <div class="status" id="status" hidden></div>
+
+    <main>
+      <section class="findings">
+        <div class="pane-head" id="findings-title">Findings</div>
+        <div class="filterbar" id="filterbar"></div>
+        <div class="batchbar" id="batchbar" hidden></div>
+        <ul id="findings"></ul>
+      </section>
+      <!-- One detail node, three placements. The pane is the default; the
+           overlay layouts lift this same element over the list in CSS, and
+           the inline layout moves it into the list under the selected row.
+           Three copies would be three things to keep in step. -->
+      <section class="detail" id="detail">
+        <p class="empty">Reading the scan…</p>
+      </section>
+      <div class="scrim" id="scrim" hidden></div>
+    </main>
   </div>
-
-  <div class="axes" id="axes"></div>
-  <div class="delta" id="delta" hidden></div>
-  <div class="delta" id="trend" hidden></div>
-  <div class="domains" id="domains" hidden></div>
-  <div class="status" id="status" hidden></div>
-
-  <main>
-    <section class="findings">
-      <div class="pane-head" id="findings-title">Findings</div>
-      <div class="filterbar" id="filterbar"></div>
-      <div class="batchbar" id="batchbar" hidden></div>
-      <ul id="findings"></ul>
-    </section>
-    <section class="detail" id="detail">
-      <p class="empty">Reading the scan…</p>
-    </section>
-  </main>
 
   <script src="/app.js"></script>
 </body>

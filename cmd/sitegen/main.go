@@ -171,6 +171,12 @@ func assetLinks(kind, lang string) string {
 	var b strings.Builder
 	link := func(href string) { fmt.Fprintf(&b, "    <link rel=\"stylesheet\" href=\"%s\">\n", href) }
 	script := func(src string) { fmt.Fprintf(&b, "    <script src=\"%s\" defer></script>\n", src) }
+	// The tab icon is the same file the dashboard serves, and it is emitted
+	// here rather than in head.tmpl because it is the one <link> whose href
+	// depends on how deep the page is. It used to be an inline data URI of a
+	// figure drawn nowhere else, which is how the site ended up with a mark
+	// of its own that nothing kept in step with the product's.
+	fmt.Fprintf(&b, "    <link rel=\"icon\" type=\"image/svg+xml\" href=\"%sassets/favicon.svg\">\n", prefix)
 	link(prefix + "styles.css")
 	if kind == "docs" {
 		link(prefix + "docs.css")

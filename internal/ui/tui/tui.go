@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/seolcu/hostveil/internal/core"
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
@@ -32,6 +33,9 @@ const (
 	// message because the answer is destructive and one-way.
 	modeForceConfirm
 	modeTheme
+	// modeLayout is the temporary arrangement picker; it goes when one of
+	// the six is chosen.
+	modeLayout
 )
 
 type appModel struct {
@@ -96,6 +100,23 @@ type appModel struct {
 	themeCursor int
 	themePrev   theme.Theme        // restored when the picker is cancelled
 	saveTheme   func(string) error // nil when there is nowhere to persist to
+
+	// Temporary, and goes with the layout picker. layout is the arrangement
+	// ID; the zero value renders as the shipped one, which is what keeps every
+	// bare struct literal in the tests drawing the default. rowOffset is the
+	// lanes arrangement's scroll position, which counts rendered rows rather
+	// than findings because its headings are rows too.
+	layout       string
+	layoutCursor int
+	layoutPrev   string
+	rowOffset    int
+	saveLayout   func(string) error
+
+	// gl is which symbol set the screen draws from. The zero value is
+	// glyph.Plain, so a model built as a bare struct literal — which is how
+	// every layout and frame test builds one — renders what hostveil has
+	// always rendered.
+	gl glyph.Set
 }
 
 // ThemeOpts carries the color theme into the TUI.
@@ -110,13 +131,35 @@ type ThemeOpts struct {
 	Save    func(id string) error
 }
 
+// Opts is everything the TUI is told before it starts. It is one struct
+// rather than three parameters because the third would have been the one
+// that tipped the signature into being read wrong at a call site.
+type Opts struct {
+	Theme  ThemeOpts
+	Layout LayoutOpts
+	// Glyphs is which symbol set to draw from. It has no Save callback
+	// because there is no picker for it: what a terminal's font can draw is
+	// a fact about the terminal, set once with --glyphs or HOSTVEIL_GLYPHS
+	// and remembered by whoever resolved it.
+	Glyphs glyph.Set
+}
+
 // New builds the TUI model around an engine. ctx cancels in-flight scans and
 // fixes when the process is interrupted.
-func New(ctx context.Context, engine *core.Engine, opts ThemeOpts) tea.Model {
-	return &appModel{
+//
+// Opts.Layout is temporary and goes with the picker; an unknown or empty ID
+// resolves to the shipped arrangement rather than failing, because a stale
+// preference is not worth refusing to start over.
+func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
+	m := &appModel{
 		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
-		th: opts.Initial, saveTheme: opts.Save,
+		th: opts.Theme.Initial, saveTheme: opts.Theme.Save,
+		saveLayout: opts.Layout.Save, gl: opts.Glyphs,
 	}
+	if l, ok := LookupLayout(opts.Layout.Initial); ok {
+		m.layout = l.ID
+	}
+	return m
 }
 
 // runCtx is the context every engine call from the TUI runs under.
@@ -149,7 +192,7 @@ func (m *appModel) rebuildActive() {
 }
 
 // Run starts the TUI event loop.
-func Run(ctx context.Context, engine *core.Engine, opts ThemeOpts) error {
+func Run(ctx context.Context, engine *core.Engine, opts Opts) error {
 	_, err := tea.NewProgram(New(ctx, engine, opts)).Run()
 	return err
 }
@@ -505,6 +548,8 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyForceConfirm(key)
 	case modeTheme:
 		return m.keyTheme(key)
+	case modeLayout:
+		return m.keyLayout(key)
 	case modeMessage:
 		m.mode = modeList
 	}
@@ -528,6 +573,8 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		return m, m.startPreview()
 	case " ", "space":
 		m.toggleSelect()
+	case "m":
+		m.markLane()
 	case "a":
 		return m, m.startBatch()
 	case "esc":
@@ -553,8 +600,84 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		return m, historyCmd(m.engine)
 	case "t":
 		m.openThemePicker()
+	case "l":
+		m.openLayoutPicker()
 	}
 	return m, nil
+}
+
+// markLane marks every auto-fixable finding at the cursor's severity.
+//
+// It is the terminal's answer to the lanes arrangement's per-lane button:
+// the dashboard's marks the lane's Auto findings and hands them to the batch
+// bar rather than applying anything itself, and so does this — `a` is still
+// what applies them, and it still goes through the one preview-and-apply
+// path. A second route to the same POST is a second place for it to go
+// wrong, and the same is true of a second route to ApplyBatch.
+func (m *appModel) markLane() {
+	if len(m.active) == 0 {
+		return
+	}
+	if m.selected == nil {
+		m.selected = map[string]bool{}
+	}
+	sev := m.active[m.cursor].Severity
+	for _, f := range m.active {
+		if f.Severity == sev && f.Remediation == model.RemediationAuto {
+			m.selected[f.Key()] = true
+		}
+	}
+}
+
+// openLayoutPicker remembers the current arrangement so cancelling can
+// restore it, and starts the cursor on the one in use.
+func (m *appModel) openLayoutPicker() {
+	m.layout = m.layoutID()
+	m.layoutPrev = m.layout
+	m.layoutCursor = 0
+	for i, l := range Layouts() {
+		if l.ID == m.layout {
+			m.layoutCursor = i
+		}
+	}
+	m.mode = modeLayout
+}
+
+// keyLayout drives the arrangement picker. It mirrors keyTheme, except that
+// the choice is not previewed under the cursor: the picker screen is not one
+// of the arrangements, so there would be nothing to see. Enter applies it and
+// returns to the list, which is where it can be judged.
+func (m *appModel) keyLayout(key string) (tea.Model, tea.Cmd) {
+	all := Layouts()
+	switch key {
+	case "up", "k":
+		m.layoutCursor = clamp(m.layoutCursor-1, 0, len(all)-1)
+	case "down", "j":
+		m.layoutCursor = clamp(m.layoutCursor+1, 0, len(all)-1)
+	case "enter", "y":
+		m.setLayout(all[m.layoutCursor].ID)
+		if m.saveLayout != nil {
+			// An arrangement that cannot be written down still applies for the
+			// rest of the session, for the reason the theme's does: interrupting
+			// the user with a modal error over a cosmetic preference costs them
+			// more than the lost setting.
+			_ = m.saveLayout(m.layout)
+		}
+		m.mode = modeList
+	case "esc", "q", "backspace", "l":
+		m.setLayout(m.layoutPrev)
+		m.mode = modeList
+	}
+	return m, nil
+}
+
+// setLayout switches the arrangement and drops the scroll positions with it.
+// The two are not interchangeable — one counts findings and the other counts
+// rendered rows — so carrying either across a switch scrolls the new
+// arrangement to somewhere nobody asked for.
+func (m *appModel) setLayout(id string) {
+	m.layout = id
+	m.offset, m.rowOffset = 0, 0
 }
 
 // openThemePicker remembers the current theme so cancelling can restore it,

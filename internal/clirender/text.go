@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/textwidth"
 )
@@ -16,6 +17,10 @@ import (
 type Options struct {
 	Color   bool
 	Verbose bool // include descriptions and fix guidance
+	// Glyphs is which symbol set to draw the status markers from. The zero
+	// value is glyph.Plain, so a caller that does not set it gets exactly
+	// what this renderer printed before the field existed.
+	Glyphs glyph.Set
 }
 
 // Text renders a human-readable report.
@@ -48,15 +53,19 @@ func Text(r model.Report, opts Options) string {
 	}
 	b.WriteString("\n")
 
-	// Domain status (skipped/degraded/errored checkers).
+	// Domain status (skipped/degraded/errored checkers). All three markers
+	// come from the same set — they are printed as one block, and a patched
+	// glyph on the skipped line beside an ASCII one on the partial line
+	// reads as two different kinds of remark rather than three degrees of
+	// the same one.
 	for _, d := range r.Domains {
 		switch d.State {
 		case model.ScanSkipped:
-			fmt.Fprintf(&b, "  %s· %s skipped: %s%s\n", c.dim, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s skipped: %s%s\n", c.dim, opts.Glyphs.Of(glyph.Skipped), d.Source, d.Reason, c.reset)
 		case model.ScanDegraded:
-			fmt.Fprintf(&b, "  %s~ %s partial: %s%s\n", c.yellow, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s partial: %s%s\n", c.yellow, opts.Glyphs.Of(glyph.Partial), d.Source, d.Reason, c.reset)
 		case model.ScanError:
-			fmt.Fprintf(&b, "  %s! %s error: %s%s\n", c.red, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s error: %s%s\n", c.red, opts.Glyphs.Of(glyph.Failed), d.Source, d.Reason, c.reset)
 		}
 	}
 
@@ -73,9 +82,18 @@ func Text(r model.Report, opts Options) string {
 		return b.String()
 	}
 
-	fmt.Fprintf(&b, "\n%sFindings (%d):%s\n", c.bold, len(active), c.reset)
-	for _, f := range active {
-		fmt.Fprintf(&b, "\n  %s[%s]%s %s  %s%s%s",
+	fmt.Fprintf(&b, "\n%sFindings (%d):%s\n\n", c.bold, len(active), c.reset)
+	for i, f := range active {
+		// A blank line between entries only earns its space when an entry is
+		// more than one line. Verbose adds a description and fix guidance
+		// under each headline, so there the separator is what keeps two
+		// findings from reading as one paragraph; the plain listing is a
+		// table, and double-spacing it made a routine 86-finding host four
+		// screens of scrollback instead of two.
+		if opts.Verbose && i > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "  %s[%s]%s %s  %s%s%s",
 			sevColor(c, f.Severity), strings.ToUpper(f.Severity.String()), c.reset,
 			f.ID, c.bold, f.Title, c.reset)
 		if f.Service != "" {
@@ -140,11 +158,16 @@ func nextSteps(active []model.Finding, opts Options) string {
 const maxDeltaLines = 10
 
 // DeltaSummary renders a short "since last scan" summary line.
-func DeltaSummary(d model.Delta) string {
+//
+// It takes the whole Options rather than just the glyph set so it cannot
+// drift out of step with Text's: the two are printed one after the other and
+// a resolved-tick from a different table in the middle of one report would
+// be the only place hostveil disagreed with itself about a symbol.
+func DeltaSummary(d model.Delta, opts Options) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d changed, %d still present.\n",
 		len(d.Resolved), len(d.New), len(d.Changed), d.StillPresent)
-	deltaLines(&b, "  ✓ resolved: ", d.Resolved)
+	deltaLines(&b, "  "+opts.Glyphs.Of(glyph.OK)+" resolved: ", d.Resolved)
 	deltaLines(&b, "  + new: ", d.New)
 	changedLines(&b, d.Changed)
 	return b.String()

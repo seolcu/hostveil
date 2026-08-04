@@ -80,7 +80,7 @@ func modelJS() string {
 	b.WriteString("  bands: [\n")
 	for _, band := range model.Bands() {
 		fmt.Fprintf(&b, "    {name: %q, min: %d, cls: %q, verdict: %q},\n",
-			band.String(), band.Min(), bandClass(band), bandVerdict(band))
+			band.String(), band.Min(), bandClass(band), band.Verdict())
 	}
 	b.WriteString("  ],\n")
 
@@ -103,22 +103,4 @@ func bandClass(b model.Band) string {
 		return "b-crit"
 	}
 	return "b-na"
-}
-
-// bandVerdict is the overview's one-line reading of the score. It used to
-// be a second ternary chain in app.js with the thresholds written out
-// again, so the dashboard could pair a meter of one band's colour with
-// another band's wording the moment either chain was edited alone.
-func bandVerdict(b model.Band) string {
-	switch b {
-	case model.BandGood:
-		return "in good shape"
-	case model.BandFair:
-		return "middling"
-	case model.BandPoor:
-		return "exposed"
-	case model.BandCritical:
-		return "wide open"
-	}
-	return "unscored"
 }

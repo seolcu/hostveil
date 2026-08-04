@@ -1,6 +1,6 @@
 // Package theme is the single source of truth for hostveil's colors.
 //
-// The "Instrument" design system is a monochrome console — bone text on ink,
+// hostveil's design system is a monochrome console — bone text on ink,
 // all-monospace, dense — where the ONLY things that carry color are risk
 // (severity) and safety. A theme swaps the twelve hexes that system is drawn
 // from; it does not change what any of them mean.
@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// Palette is the twelve semantic roles the Instrument system draws from.
+// Palette is the twelve semantic roles the design system draws from.
 // Every value is a lowercase "#rrggbb" string.
 //
 // Ink/Ink2/Ink3 are the background and its two raised surfaces; Line and
@@ -53,18 +53,39 @@ type Theme struct {
 	Palette Palette
 }
 
-// themes is the registry, in the order both pickers list them. Instrument is
+// themes is the registry, in the order both pickers list them. One Dark is
 // first because it is the default.
 var themes = []Theme{
 	{
-		ID:   "instrument",
-		Name: "Instrument",
+		ID:   "onedark",
+		Name: "One Dark",
 		Palette: Palette{
-			Ink: "#0b0d10", Ink2: "#12151b", Ink3: "#171b22",
-			Line: "#222831", Line2: "#333b46",
-			Bone: "#e7e3d8", Slate: "#7c8692",
-			Crit: "#e5484d", High: "#e8843c", Med: "#e6c14a", Low: "#6b7480",
-			Safe: "#46c69a",
+			// Atom's One Dark. Nine of the twelve roles map onto its published
+			// values unchanged; the other three needed a decision.
+			//
+			// Line is #181a1f, which is DARKER than the page. That is the look
+			// and not a mistake: One Dark seams its panels rather than boxing
+			// them in a bright hairline, and swapping it for a lighter rule is
+			// most of what makes a One Dark port read as generic.
+			//
+			// Slate, Crit and Low are lifted, because One Dark's published
+			// values do not clear the contrast floor this package holds every
+			// theme to — the comment grey (#7f848e) lands at 3.73:1 on its own
+			// background where 4.5 is required, the red (#e06c75) at 4.38, and
+			// the Low grey at 3.39 against a floor of 3.5. Each is raised in
+			// HSL lightness only, by the smallest step that clears it, so the
+			// hue One Dark is recognised by is untouched. Nord needed the same
+			// treatment for the same reason; see its entry below.
+			//
+			// Bone is One Dark's foreground (#abb2bf) lifted as well, though
+			// that one is a judgement rather than a floor: an editor sets a few
+			// hundred glyphs on screen and this sets thousands, and at editor
+			// weight the denser view reads grey rather than written.
+			Ink: "#282c34", Ink2: "#21252b", Ink3: "#2f343f",
+			Line: "#181a1f", Line2: "#3e4451",
+			Bone: "#c8ccd4", Slate: "#8e939b",
+			Crit: "#e17079", High: "#d19a66", Med: "#e5c07b", Low: "#79808e",
+			Safe: "#98c379",
 		},
 	},
 	{
@@ -173,6 +194,15 @@ func (p Palette) block(selector string) string {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s {\n", selector)
+	// Every palette here is bone-on-ink, and the browser has no way to know
+	// that from custom properties: the widgets it draws itself — a checkbox,
+	// a <select>'s dropdown, a scrollbar — follow color-scheme, not --ink. Left
+	// unset they come out of the light default, which is why an unticked
+	// batch-select box was a white square sitting in the middle of a dark
+	// findings list. Written per block rather than once on :root so it travels
+	// with the palette it describes; TestEveryPaletteIsDark holds the claim,
+	// and a light theme would have to answer it here.
+	b.WriteString("  color-scheme: dark;\n")
 	for _, name := range names {
 		fmt.Fprintf(&b, "  %s: %s;\n", name, v[name])
 	}

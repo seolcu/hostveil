@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -29,6 +31,11 @@ import (
 // a score breakdown is context, and context that leaves no room for the thing
 // it is context *for* is worse than no context.
 const minBodyRows = 6
+
+// minChipRows is how many findings must remain visible for the chip row to
+// be worth its own row. Below it the summary would be competing with the
+// thing it summarises for the same three lines.
+const minChipRows = 4
 
 // Fallback terminal size, used until the first WindowSizeMsg arrives and by
 // every model built as a bare struct literal (which is how the layout tests
@@ -130,25 +137,60 @@ func (m *appModel) headerRows(hdr header, footerRows int) []string {
 	case hdrNone:
 		return nil
 	case hdrFull:
+		// Two tiers of full header, then the compact row. The coverage
+		// notices are the part that varies with the host rather than with
+		// the design — a host with no Docker, no Trivy and no systemd
+		// contributes three rows the same screen did not have to find on the
+		// developer's laptop — so they are given up before the axes strip
+		// they annotate, instead of taking the whole header down with them.
 		full := m.fullHeaderRows()
 		if m.height-len(full)-1-footerRows >= minBodyRows {
 			return full
+		}
+		if bare := m.fullHeaderRowsWithout(coverage); m.height-len(bare)-1-footerRows >= minBodyRows {
+			return bare
 		}
 	}
 	return []string{m.topRow(hdr.right)}
 }
 
-// fullHeaderRows is the list's header: the brand and exposure gauge, the
-// per-axis bars, and what moved since the last scan.
+// headerPart names an optional region of the full header, for the callers
+// that build it without one.
+type headerPart int
+
+const coverage headerPart = iota
+
+// fullHeaderRows is the list's header, in the order the dashboard stacks the
+// same information: the brand and exposure gauge, the per-axis bars, what
+// moved since the last scan, then which domains did not fully cover their
+// ground.
 func (m *appModel) fullHeaderRows() []string {
+	return m.fullHeaderRowsWithout(-1)
+}
+
+func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 	s := m.sty()
-	out := []string{s.dim.Render("▚ ") + s.brand.Render("hostveil") + "   " +
+	out := []string{s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil") + "   " +
 		m.gaugeRow(gaugeMeterWidth(m.width))}
-	if ax := m.axesLine(); ax != "" {
-		out = append(out, strings.Split(ax, "\n")...)
+	// How the breakdown is drawn is the arrangement's call: the strip, one
+	// spark row, or nothing at all where the rail is carrying the same
+	// numbers with the reason for each gap attached.
+	switch m.axesStyle() {
+	case axesFull:
+		if ax := m.axesLine(); ax != "" {
+			out = append(out, strings.Split(ax, "\n")...)
+		}
+	case axesSpark:
+		if ax := m.sparkAxesLine(m.width); ax != "" {
+			out = append(out, ax)
+		}
+	case axesNone:
 	}
 	if d := m.deltaLine(); d != "" {
 		out = append(out, d)
+	}
+	if omit != coverage {
+		out = append(out, m.coverageRows()...)
 	}
 	return out
 }
@@ -161,7 +203,7 @@ func (m *appModel) fullHeaderRows() []string {
 // of them.
 func (m *appModel) topRow(right string) string {
 	s := m.sty()
-	brand := s.dim.Render("▚ ") + s.brand.Render("hostveil")
+	brand := s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil")
 
 	if right == "" {
 		right = m.axisDigest()
@@ -250,7 +292,7 @@ func (m *appModel) deltaDigest() string {
 	s := m.sty()
 	var parts []string
 	if n := len(m.delta.Resolved); n > 0 {
-		parts = append(parts, s.safe.Render(fmt.Sprintf("✓%d", n)))
+		parts = append(parts, s.safe.Render(m.gl.Of(glyph.OK)+strconv.Itoa(n)))
 	}
 	if n := len(m.delta.New); n > 0 {
 		parts = append(parts, lipgloss.NewStyle().Foreground(s.cHigh).Render(fmt.Sprintf("+%d", n)))

@@ -16,7 +16,7 @@
     <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/cli">
     <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/cli">
     <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/cli">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2307100f'/%3E%3Crect x='8' y='7' width='16' height='18' fill='%23d2bc74'/%3E%3Crect x='13' y='18' width='10' height='4' fill='%2307100f' transform='rotate(-45 18 20)'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="../../docs.css">
     <script src="../../docs.js" defer></script>
@@ -104,6 +104,7 @@
                   <tr><td><code>--output FILE</code></td><td>—</td><td>선택한 형식 그대로 보고서를 stdout 대신 파일에 씁니다. 종료 코드는 그대로이므로 CI 게이트는 계속 동작합니다.</td></tr>
                   <tr><td><code>--only LIST</code></td><td>—</td><td>지정한 도메인만 스캔합니다. 쉼표로 구분합니다 (예: <code>--only ssh,firewall</code>). 스캔하지 않은 도메인은 100이 아니라 N/A로 표시됩니다. 부분 스캔은 마지막 스캔 기준선으로 저장되지 않고 변화 요약도 만들지 않습니다 — 저장하면 다음 전체 스캔이 건너뛴 도메인의 모든 발견 항목을 새로 생긴 것으로 보고하게 됩니다.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>—</td><td>지정한 도메인을 제외한 모든 도메인을 스캔합니다. <code>--only</code>와 함께 쓸 수 없으며, 같은 부분 스캔 규칙이 적용됩니다.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다 — 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 자동 감지가 아니라 명시적 선택이며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>설명과 수정 안내를 표시합니다.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>색상 출력을 비활성화합니다.</td></tr>
                 </tbody>
@@ -177,7 +178,7 @@ hostveil history --scans</code></pre></div>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>대시보드를 바인딩할 주소입니다.</td></tr>
-                  <tr><td><code>--theme NAME</code></td><td><code>instrument</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td><code>onedark</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -186,12 +187,14 @@ hostveil history --scans</code></pre></div>
 
             <h2 id="tui">tui</h2>
             <p>대화형 터미널 UI를 엽니다(터미널에서 명령 없이 실행할 때의 기본값이기도 합니다).</p>
-            <div class="code-block"><pre><code>hostveil tui [--theme NAME]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil tui [--theme NAME] [--layout NAME] [--glyphs NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>instrument</code></td><td>색상 테마: <code>instrument</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>색상 테마: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>split</code></td><td>임시 옵션입니다. 하나를 고르기 위해 여섯 가지 배치를 함께 담아두었습니다: <code>split</code>, <code>triage</code>, <code>console</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르세요.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다 — 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 자동 감지가 아니라 명시적 선택이며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                 </tbody>
               </table>
             </div>

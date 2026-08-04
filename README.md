@@ -206,10 +206,22 @@ same engine, a fix applied anywhere is reversible.
 
 All three are thin layers over one shared engine, so they behave identically.
 
-The TUI and the dashboard share five color themes — `instrument` (the
+The TUI and the dashboard share five color themes — `onedark` (the
 default), `gruvbox`, `nord`, `catppuccin`, `tokyonight`. Press `t` in the TUI
 to pick one and have it remembered, use the picker in the dashboard's status
 bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
+
+The TUI and `scan` can also draw their status markers from a patched
+[Nerd Font](https://www.nerdfonts.com/) — `--glyphs nerd`, or
+`HOSTVEIL_GLYPHS=nerd` once. It is opt-in rather than detected, because a
+terminal cannot be asked what font it is using and a missing glyph is drawn
+in the same single cell a present one would be. The default set is plain
+Unicode and renders everywhere.
+
+Any Nerd Font build works — Mono or not. The symbols are drawn from the
+Font Awesome block, which is present in every patched font and one cell wide
+in all of them; the glyphs that go double-width in a non-Mono build are the
+Powerline and icon ranges, which hostveil does not use.
 
 ## AI (optional, advisory only)
 

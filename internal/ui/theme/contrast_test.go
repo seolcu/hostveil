@@ -35,16 +35,23 @@ func contrast(fg, bg string) float64 {
 // Severity is the only thing color carries here, and it is drawn as small
 // text — a 10px uppercase label in the dashboard, a four-column abbreviation
 // in the TUI — so WCAG's 4.5:1 for normal text is the applicable bar, not the
-// 3:1 large-text one. The floors below are not aspirational: Instrument, the
-// palette hostveil shipped before any of this existed, already clears every
-// one of them, so this test asks a new theme for nothing the design did not
-// already demand of itself.
+// 3:1 large-text one. The floors below were set by Instrument, the palette
+// hostveil shipped before any of this existed, which cleared every one of
+// them without being asked to — so they were never a bar a theme had to be
+// designed up to, only one it had to not fall below.
+//
+// Instrument is gone and the floors stay, which is the point of having
+// written them down: they are what the default has to clear, not what the
+// default happens to score. One Dark does not clear them as published —
+// its comment grey, its red and its Low grey all land short — and the entry
+// in theme.go lifts exactly those three rather than lowering the bar to
+// meet them.
 //
 // Low is the one exception, at 3.5:1. It is deliberately the quietest color
-// in the system — a Low finding that shouted would drown out a Critical one —
-// and Instrument sets it at 4.11:1 against the page and 3.86:1 against a
-// raised row. Anything below 3.5 stops being quiet and starts being
-// unreadable; the first drafts of Nord and Tokyo Night sat at 2.4 and 2.8.
+// in the system — a Low finding that shouted would drown out a Critical one.
+// Anything below 3.5 stops being quiet and starts being unreadable; the
+// first drafts of Nord and Tokyo Night sat at 2.4 and 2.8, and One Dark's
+// own #767d8c sits at 3.39.
 func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 	floors := map[string]float64{
 		"bone": 4.5, "slate": 4.5,
@@ -94,6 +101,26 @@ func TestChromeIsDistinguishable(t *testing.T) {
 			if c.hex == p.Ink {
 				t.Errorf("%s: %s is identical to ink, so raised surfaces do not read as raised", th.ID, c.name)
 			}
+		}
+	}
+}
+
+// CSS declares color-scheme: dark unconditionally, which is only true while
+// every palette is one. It is not decoration: it decides how the browser
+// draws the widgets hostveil does not style — checkboxes, the theme picker's
+// dropdown, scrollbars — and a light palette shipped under it would render
+// those against the wrong ground.
+//
+// The threshold is generous on purpose. Nord's ink (#22262e) is the lightest
+// page in the registry at 0.02, and anything a browser would sensibly call a
+// light scheme sits an order of magnitude above that.
+func TestEveryPaletteIsDark(t *testing.T) {
+	for _, th := range All() {
+		if got := relativeLuminance(th.Palette.Ink); got > 0.18 {
+			t.Errorf("%s: ink (%s) has luminance %.3f — too light for the "+
+				"color-scheme: dark that theme.CSS emits; make color-scheme "+
+				"follow the palette before adding a light theme",
+				th.ID, th.Palette.Ink, got)
 		}
 	}
 }

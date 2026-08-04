@@ -31,6 +31,7 @@ func cmdScan(ctx context.Context, args []string) int {
 	fs.StringVar(&output, "output", "", "write the report to a file instead of stdout")
 	fs.StringVar(&only, "only", "", "scan only these domains (comma-separated); a partial scan is not saved as the last-scan baseline")
 	fs.StringVar(&skip, "skip", "", "scan every domain except these (comma-separated); a partial scan is not saved as the last-scan baseline")
+	glyphSet := fs.String("glyphs", "", "symbol set ("+glyphList()+")")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
 	}
@@ -41,6 +42,11 @@ func cmdScan(ctx context.Context, args []string) int {
 	scanOpts, errMsg := scanSelection(only, skip)
 	if errMsg != "" {
 		fmt.Fprintln(os.Stderr, "hostveil:", errMsg)
+		return 2
+	}
+	gl, err := resolveGlyphs(*glyphSet)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 2
 	}
 
@@ -66,10 +72,12 @@ func cmdScan(ctx context.Context, args []string) int {
 	default:
 		// A report written to a file is read later, without the terminal it
 		// was produced on — never color it.
-		opts := clirender.Options{Color: output == "" && !noColor && colorEnabled(), Verbose: verbose}
+		opts := clirender.Options{
+			Color: output == "" && !noColor && colorEnabled(), Verbose: verbose, Glyphs: gl,
+		}
 		rendered = clirender.Text(report, opts)
 		if delta := engine.LastDelta(); delta.HasChanges() {
-			rendered += clirender.DeltaSummary(delta)
+			rendered += clirender.DeltaSummary(delta, opts)
 		}
 	}
 

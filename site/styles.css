@@ -113,42 +113,32 @@ pre,
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.6em;
   font-family: var(--font-mono);
   font-weight: 900;
   letter-spacing: -0.04em;
   font-size: 1.05rem;
 }
 
+/* The product's mark, not a second one drawn here in CSS.
+   assets/mark.svg is byte-identical to the dashboard's, and a test holds
+   them equal — this used to be a bordered box with two bars that had nothing
+   to do with the figure hostveil actually ships, and nobody noticed because
+   the two were never on a screen together.
+   url() resolves against the stylesheet rather than the page, so one
+   relative path works from the landing page and from /docs alike.
+
+   1.7em is the dashboard's figure too. This header had it at 34px against an
+   11px cap height — 3.1x — while the dashboard ran 2.2x, which is why the
+   same drawing read as two marks. See the note in the dashboard's app.css. */
 .brand-mark {
-  position: relative;
-  width: 34px;
-  height: 34px;
-  border: 2px solid var(--accent);
-  background: var(--panel);
-  box-shadow: 4px 4px 0 var(--shadow-cut);
-}
-
-.brand-mark::before,
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  background: var(--accent);
-}
-
-.brand-mark::before {
-  left: 9px;
-  right: 9px;
-  top: 6px;
-  height: 18px;
-}
-
-.brand-mark::after {
-  left: 14px;
-  top: 18px;
-  width: 12px;
-  height: 4px;
-  transform: rotate(-45deg);
+  width: 1.7em;
+  height: 1.7em;
+  flex: none;
+  /* Half a descender up: the word has none, so its ink stops at the baseline
+     and its optical centre is above the line box the flexbox centres on. */
+  transform: translateY(-0.11em);
+  background: url(assets/mark.svg) center / contain no-repeat;
 }
 
 .nav-links {

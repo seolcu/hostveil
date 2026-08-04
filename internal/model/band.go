@@ -30,19 +30,20 @@ const (
 )
 
 type bandDef struct {
-	band Band
-	name string
-	min  uint8 // inclusive lower bound
+	band    Band
+	name    string
+	min     uint8 // inclusive lower bound
+	verdict string
 }
 
 // bandDefs is ordered best-first; BandFor walks it and takes the first
 // band whose floor the score clears. The last row must have min 0 so the
 // walk always terminates on a real band.
 var bandDefs = []bandDef{
-	{BandGood, "good", 80},
-	{BandFair, "fair", 50},
-	{BandPoor, "poor", 25},
-	{BandCritical, "critical", 0},
+	{BandGood, "good", 80, "in good shape"},
+	{BandFair, "fair", 50, "middling"},
+	{BandPoor, "poor", 25, "exposed"},
+	{BandCritical, "critical", 0, "wide open"},
 }
 
 // BandFor classifies a 0-100 score.
@@ -74,6 +75,21 @@ func Bands() []Band {
 		out[i] = d.band
 	}
 	return out
+}
+
+// Verdict is the band said out loud: the half-sentence a UI completes with
+// "This host is …". It is a phrase and not a color, so by the rule at the
+// top of this file it looks like the renderer's business — but two
+// renderers now need the same words, and a phrase paired with the wrong
+// band is the same defect as a meter painted the wrong color. The dashboard
+// held these four strings and the terminal would have had to copy them.
+func (b Band) Verdict() string {
+	for _, d := range bandDefs {
+		if d.band == b {
+			return d.verdict
+		}
+	}
+	return "unscored"
 }
 
 // Min returns the band's inclusive lower bound.

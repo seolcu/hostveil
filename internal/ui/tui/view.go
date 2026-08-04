@@ -11,6 +11,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/textwidth"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
@@ -140,11 +141,7 @@ func (m *appModel) View() tea.View {
 		content = m.compose(noHeader(), nil, "ctrl+c quit", m.scanningRows)
 
 	case modeList:
-		hint := listHint
-		if len(m.active) == 0 {
-			hint = emptyListHint
-		}
-		content = m.compose(fullHeader(), nil, hint, m.listRows)
+		content = m.compose(fullHeader(), nil, m.listHintFor(), m.listRows)
 
 	case modeDetail:
 		hint := "e explain (AI)   esc back   q list"
@@ -185,6 +182,11 @@ func (m *appModel) View() tea.View {
 		content = m.compose(compactHeader("THEME"),
 			[]string{s.brand.Render(m.th.Name)}, themeHint,
 			func(n int) []string { return m.clipRows(m.themeRows(), n) })
+
+	case modeLayout:
+		content = m.compose(compactHeader("LAYOUT"),
+			[]string{s.brand.Render(m.layoutName())}, layoutHint,
+			func(n int) []string { return m.clipRows(m.layoutPickerRows(), n) })
 	}
 
 	// Paint the terminal background too. Without it a theme only recolors the
@@ -208,7 +210,7 @@ func (m *appModel) deltaLine() string {
 	s := m.sty()
 	var parts []string
 	if n := len(m.delta.Resolved); n > 0 {
-		parts = append(parts, s.safe.Render(fmt.Sprintf("✓ %d resolved", n)))
+		parts = append(parts, s.safe.Render(fmt.Sprintf("%s %d resolved", m.gl.Of(glyph.OK), n)))
 	}
 	if n := len(m.delta.New); n > 0 {
 		parts = append(parts, lipgloss.NewStyle().Foreground(s.cHigh).Render(fmt.Sprintf("+ %d new", n)))
@@ -279,11 +281,32 @@ func (m *appModel) axesLine() string {
 
 const (
 	listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   r rescan   q quit"
-	emptyListHint = "c clear   t theme   r rescan   q quit"
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   r rescan   q quit"
+	emptyListHint = "c clear   t theme   l layout   r rescan   q quit"
 	historyHint   = "↑/↓ move   enter roll back   esc back   q list"
 	themeHint     = "↑/↓ preview   enter keep   esc cancel"
+	// The lanes arrangement adds one key, so it adds one line of hint. Written
+	// as its own string rather than appended at the call site because the
+	// footer is the only documentation these bindings have.
+	laneListHint = "↑/↓ move   enter details   f fix   space select   m mark lane   a fix marked\n" +
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   r rescan   q quit"
+	// Not "preview", which is what the theme picker's says and earns: moving
+	// the cursor there restyles the whole frame on the spot. Here there is
+	// nothing to preview, because the picker screen is not one of the
+	// arrangements — enter is what shows you the choice.
+	layoutHint = "↑/↓ choose   enter apply   esc cancel"
 )
+
+// listHintFor picks the footer for the active arrangement.
+func (m *appModel) listHintFor() string {
+	if len(m.active) == 0 {
+		return emptyListHint
+	}
+	if m.wantsLanes() {
+		return laneListHint
+	}
+	return listHint
+}
 
 // scanningRows is the whole scan screen: one status line, held in the middle
 // of an otherwise empty frame.
@@ -291,16 +314,92 @@ func (m *appModel) scanningRows(n int) []string {
 	return centerRows(styledRows(m.sty().dim, "  "+m.status), n)
 }
 
-// listRows draws the findings list into the rows the frame gave it. The head
-// and filter lines are drawn from that same budget rather than reserved
-// outside it, so there is exactly one place the arithmetic happens.
+// minVerdictBody is how many rows must remain for the verdict band to be
+// worth its four. A sentence about the list, above no list, is not a summary.
+const minVerdictBody = 4
+
+// minInlineList is how many findings must stay visible around an opened one.
+// Below that the inline block has stopped being a finding opened in a list
+// and become the detail view with a row of context.
+const minInlineList = 3
+
+// listRows draws the body of the findings screen: the verdict band across
+// the top where an arrangement asks for one, then the rail, the list and the
+// detail pane side by side.
+//
+// It is the only place the arrangements meet. Everything below it is written
+// against a column width rather than the terminal width, which is what lets
+// the same list render at 120 columns and at 46 without a second code path.
 func (m *appModel) listRows(budget int) []string {
+	if budget <= 0 {
+		return nil
+	}
+	railW, listW, paneW := m.bodyColumns()
+
+	// The band spans every column, because in the dashboard it is a sibling
+	// of <main> rather than a cell inside it.
+	var lead []string
+	if m.wantsVerdict() {
+		if v := m.verdictRows(m.width); len(v)+minVerdictBody <= budget {
+			lead = v
+		}
+	}
+	inner := budget - len(lead)
+
+	list := m.listColumn(inner, listW)
+	if railW == 0 && paneW == 0 {
+		return append(lead, fitRows(list, inner)...)
+	}
+
+	widths := make([]int, 0, 3)
+	cols := make([][]string, 0, 3)
+	if railW > 0 {
+		widths = append(widths, railW)
+		cols = append(cols, m.railRows(railW, inner))
+	}
+	widths = append(widths, listW)
+	cols = append(cols, list)
+	if paneW > 0 {
+		widths = append(widths, paneW)
+		cols = append(cols, m.paneRows(paneW, inner))
+	}
+	return append(lead, m.joinColumns(inner, widths, cols)...)
+}
+
+// paneRows is the detail column: the finding under the cursor, in full.
+//
+// The dashboard's pane shows an overview until something is clicked and the
+// finding after that. A terminal has no "nothing selected" state — the
+// cursor is always on a row — so the pane follows it, which is the closer
+// translation of what the pane is for: reading the finding without leaving
+// the list.
+func (m *appModel) paneRows(w, budget int) []string {
+	s := m.sty()
+	if budget <= 0 {
+		return nil
+	}
+	if len(m.active) == 0 {
+		return centerRows([]string{s.dim.Render(truncate("Nothing to show.", w))}, budget)
+	}
+	body := m.detailBodyRows(m.active[m.cursor], min(w-2, 78))
+	out := make([]string, 0, len(body))
+	for _, r := range body {
+		out = append(out, " "+r)
+	}
+	return m.clipRows(out, budget)
+}
+
+// listColumn draws the findings list into the rows and the columns it was
+// given. The head and filter lines are drawn from that same budget rather
+// than reserved outside it, so there is exactly one place the arithmetic
+// happens.
+func (m *appModel) listColumn(budget, w int) []string {
 	s := m.sty()
 	if budget <= 0 {
 		return nil
 	}
 
-	fl := m.filterLine()
+	fl := m.chipRow()
 
 	// Empty list: distinguish a clean host from a too-narrow filter — and,
 	// when nothing is filtered, a clean host from one that could not be
@@ -316,7 +415,10 @@ func (m *appModel) listRows(budget int) []string {
 	if len(m.active) == 0 {
 		var body []string
 		switch {
-		case fl != "":
+		case m.filterActive():
+			// Asked explicitly rather than inferred from the chip row: the
+			// chips are drawn from the unfiltered report, so they are there
+			// whenever the host has findings at all, filtered or not.
 			body = append(body, fl, "", s.dim.Render("  No findings match the filter."))
 		case m.report.IncompleteDomains() > 0:
 			// Wrapped, for the reason the preview's warning is wrapped: this
@@ -327,7 +429,7 @@ func (m *appModel) listRows(budget int) []string {
 			warn := lipgloss.NewStyle().Foreground(s.cHigh)
 			msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
 				m.report.IncompleteDomains())
-			for _, l := range strings.Split(wrap(msg, min(m.width-4, 78)), "\n") {
+			for _, l := range strings.Split(wrap(msg, min(w-4, 78)), "\n") {
 				body = append(body, warn.Render("  "+l))
 			}
 		default:
@@ -345,34 +447,100 @@ func (m *appModel) listRows(budget int) []string {
 		// Findings beat labels: on a frame this short the list itself is the
 		// only thing worth drawing.
 		chrome, visible = 0, budget
+	} else if chrome == 2 && visible < minChipRows {
+		// The chips are a summary of the list, and a summary that costs half
+		// of what it summarises is not worth its row.
+		chrome, visible = 1, budget-1
 	}
 
-	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
-	end := min(m.offset+visible, len(m.active))
+	// The inline block is paid for out of the list's own rows rather than
+	// added under them, so the column is still exactly `budget` tall and the
+	// footer does not move when a finding is opened.
+	var inline []string
+	if m.wantsInline() {
+		if in := m.inlineRows(w); len(in) > 0 && visible-len(in) >= minInlineList {
+			inline, visible = in, visible-len(in)
+		}
+	}
 
 	var out []string
-	if chrome > 0 {
-		// Head: shown[/total] · selected · scroll range.
+	head := func(shownFrom, shownTo, total int) {
+		if chrome == 0 {
+			return
+		}
 		count := fmt.Sprintf("FINDINGS · %d", len(m.active))
-		if total := m.activeTotal(); total != len(m.active) {
-			count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), total)
+		if t := m.activeTotal(); t != len(m.active) {
+			count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), t)
 		}
-		head := s.dim.Render(count)
+		h := s.dim.Render(count)
 		if n := len(m.selected); n > 0 {
-			head += s.safe.Render(fmt.Sprintf("   ✓ %d marked", n))
+			h += s.safe.Render(fmt.Sprintf("   %s %d marked", m.gl.Of(glyph.OK), n))
 		}
-		if len(m.active) > visible {
-			head += s.dim.Render(fmt.Sprintf("      %d–%d", m.offset+1, end))
+		if total > visible {
+			h += s.dim.Render(fmt.Sprintf("      %d–%d", shownFrom, shownTo))
 		}
-		out = append(out, head)
+		out = append(out, h)
 		if chrome == 2 {
 			out = append(out, fl)
 		}
 	}
+
+	// Lanes scrolls over the rendered rows rather than over the findings,
+	// because the lane headers are rows too: a window computed on finding
+	// indices would scroll the list out from under its own headings.
+	if m.wantsLanes() {
+		rows, cursorRow := m.laneRows(w)
+		m.rowOffset = scrollOffset(cursorRow, len(rows), visible, m.rowOffset)
+		end := min(m.rowOffset+visible, len(rows))
+		head(m.rowOffset+1, end, len(rows))
+		return append(out, rows[m.rowOffset:end]...)
+	}
+
+	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
+	end := min(m.offset+visible, len(m.active))
+	head(m.offset+1, end, len(m.active))
 	for i := m.offset; i < end; i++ {
-		out = append(out, m.findingRow(m.active[i], i == m.cursor))
+		out = append(out, m.findingRow(m.active[i], i == m.cursor, w))
+		if i == m.cursor {
+			out = append(out, inline...)
+		}
 	}
 	return out
+}
+
+// laneRows renders the list grouped into one section per severity, and
+// returns the row index the cursor landed on so the caller can scroll to it.
+//
+// A severity with nothing at it gets no lane: a "CRITICAL · 0" heading is a
+// row of screen spent announcing that nothing happened, and four of them on
+// a nearly-clean host is the whole list.
+func (m *appModel) laneRows(w int) ([]string, int) {
+	var rows []string
+	cursorRow := 0
+	for _, sev := range model.AllSeverities() {
+		var idx []int
+		autos := 0
+		for i, f := range m.active {
+			if f.Severity != sev {
+				continue
+			}
+			idx = append(idx, i)
+			if f.Remediation == model.RemediationAuto {
+				autos++
+			}
+		}
+		if len(idx) == 0 {
+			continue
+		}
+		rows = append(rows, m.laneHeadRow(sev, len(idx), autos, w))
+		for _, i := range idx {
+			if i == m.cursor {
+				cursorRow = len(rows)
+			}
+			rows = append(rows, m.findingRow(m.active[i], i == m.cursor, w))
+		}
+	}
+	return rows, cursorRow
 }
 
 // activeTotal counts findings that are not fixed, ignoring the filter — the
@@ -391,14 +559,20 @@ func (m *appModel) activeTotal() int {
 // label + id + title + service. The cursor row is inverse-video. The pick
 // marker (✓ / ·) is only shown on auto-fixable rows, since only those can be
 // batch-selected.
-func (m *appModel) findingRow(f model.Finding, cursor bool) string {
+//
+// w is the column the row is drawn into, which is the terminal width only in
+// the arrangements that give the list the whole screen. Passing it beats
+// reading m.width: the rail and the detail pane are real columns, and a row
+// budgeted against the terminal would overrun its own column and push every
+// column right of it off the screen.
+func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	s := m.sty()
 	sevC := s.severityColor(f.Severity)
 	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
 	mark := "  "
 	if f.Remediation == model.RemediationAuto {
 		if m.selected[f.Key()] {
-			mark = s.safe.Render("✓ ")
+			mark = s.safe.Render(m.gl.Of(glyph.OK) + " ")
 		} else {
 			mark = s.dim.Render("· ")
 		}
@@ -415,16 +589,25 @@ func (m *appModel) findingRow(f model.Finding, cursor bool) string {
 	body := fmt.Sprintf("%-4s %-13s ", sev, f.ID)
 
 	if cursor {
-		title := truncate(f.Title, m.width-gutterAndMark-lipgloss.Width(body))
-		return gutter + mark + s.sel.Render(padRight(body+title, m.width-gutterAndMark))
+		title := truncate(f.Title, w-gutterAndMark-lipgloss.Width(body))
+		return gutter + mark + s.sel.Render(padRight(body+title, w-gutterAndMark))
 	}
 
 	// The suffix is dropped rather than truncated when there is no room for
 	// it: a service name cut to "(clo…" identifies nothing, and the title is
 	// the more useful of the two.
+	//
+	// It is also dropped when keeping it would starve the title, which is a
+	// second thing entirely and only became visible when the list stopped
+	// being the width of the terminal. In a narrow column the suffix fits and
+	// the title does not, so the row came out as "agent.auth-disabled O
+	// (openclaw@root)" — the service named in full beside a single letter of
+	// the problem. The service qualifies the title; a title with nothing left
+	// of it has nothing to qualify.
+	const minTitleWidth = 16
 	suffix := m.serviceSuffix(f)
-	avail := m.width - gutterAndMark - lipgloss.Width(body)
-	if lipgloss.Width(suffix) > avail {
+	avail := w - gutterAndMark - lipgloss.Width(body)
+	if sw := lipgloss.Width(suffix); sw > avail || avail-sw < minTitleWidth {
 		suffix = ""
 	}
 	title := truncate(f.Title, avail-lipgloss.Width(suffix))
@@ -446,23 +629,151 @@ func sourceLabel(s model.Source) string {
 	return s.String()
 }
 
-// filterLine describes the active filter, or "" when nothing is filtered.
-func (m *appModel) filterLine() string {
-	var parts []string
-	if m.filter.MinSeverity != nil {
-		parts = append(parts, "sev≥"+strings.ToUpper(m.filter.MinSeverity.String()))
+// chipRow is the dashboard's filter bar, in one row.
+//
+// It replaces a line that appeared only while a filter was set and named
+// what it was. That told the user what they had just pressed and nothing
+// else: the shape of the report — how much of a wall of findings is
+// Critical, how much of it hostveil can fix on its own — was reachable only
+// by scrolling and counting, in the one interface where scrolling is most
+// expensive. The dashboard has never made anyone do that, and this is its
+// chip bar: a count per severity, the fixable count, and the active filter
+// picked out on the chip it belongs to.
+//
+// The counts are taken over the *unfiltered* set, as the dashboard's are.
+// Counts that moved with the filter would be describing the filter rather
+// than the host, and the number a narrowed list most needs beside it is what
+// it was narrowed from.
+//
+// The severity threshold is a range, not a selection, so every chip at or
+// above it reads as active — anything else would show CRIT dim on a list
+// that is showing exactly the Criticals.
+func (m *appModel) chipRow() string {
+	s := m.sty()
+	unfiltered := m.report.Select(model.Filter{})
+
+	counts := map[model.Severity]int{}
+	fixable := 0
+	for _, f := range unfiltered {
+		counts[f.Severity]++
+		if f.IsFixable() {
+			fixable++
+		}
+	}
+
+	var chips []string
+	for _, sev := range model.AllSeverities() {
+		n := counts[sev]
+		if n == 0 {
+			continue // the dashboard omits a severity nothing is at, too
+		}
+		on := m.filter.MinSeverity != nil && sev <= *m.filter.MinSeverity
+		chips = append(chips, m.chip(fmt.Sprintf("%s %d", sevAbbr(sev), n), on, s.severityColor(sev)))
+	}
+	if fixable > 0 {
+		// Safe rather than the dashboard's slate. "Fixable" is a claim about
+		// safety, which is the one thing besides risk this design system lets
+		// a color mean, and spending it here is what makes the count read as
+		// the good news it is.
+		chips = append(chips, m.chip(fmt.Sprintf("FIXABLE %d", fixable), m.filter.FixableOnly, s.cSafe))
 	}
 	if m.filter.Source != model.SourceUnset {
-		parts = append(parts, sourceLabel(m.filter.Source))
+		chips = append(chips, m.chip(strings.ToUpper(sourceLabel(m.filter.Source)), true, s.cSlate))
 	}
-	if m.filter.FixableOnly {
-		parts = append(parts, "fixable")
-	}
-	if len(parts) == 0 {
+	if len(chips) == 0 {
 		return ""
 	}
+	return strings.Join(chips, "  ")
+}
+
+// chip draws one filter chip the way the dashboard's stylesheet does: the
+// chip's own color on the page while it is merely available, and filled —
+// ink on that color — while it is on.
+//
+// The fill is an attribute, so it does not survive being stripped of
+// styling, and it is deliberately not the only thing carrying the state:
+// the head line above prints the narrowed count over the unnarrowed one
+// ("FINDINGS · 3/26"), which is what a monochrome terminal, a pipe and a
+// screenshot all still show.
+func (m *appModel) chip(label string, on bool, c color.Color) string {
+	if on {
+		return lipgloss.NewStyle().Foreground(m.sty().cInk).Background(c).Bold(true).Render(" " + label + " ")
+	}
+	return lipgloss.NewStyle().Foreground(c).Render(" " + label + " ")
+}
+
+// coverageRows names the domains that did not fully cover their ground, with
+// the reason each gave.
+//
+// The axes strip already marks them — "N/A" for a domain that did not run,
+// a "~" on a degraded score — but a mark is not an answer. It says a number
+// is missing without saying whether the host has no Docker, or the daemon
+// refused, or the scan ran as a user who cannot read the socket, which are
+// the difference between "nothing to see" and "look again with sudo". The
+// CLI has printed these since the states existed and the dashboard shows
+// them above the fold; this view showed them nowhere.
+//
+// One row per notice, most severe state first, so a run that is capped or
+// shed keeps the alarming ones and drops the routine ones. Reasons are
+// truncated with an ellipsis rather than left for the frame to cut at the
+// terminal edge: a sentence that stops mid-word reads as a rendering fault,
+// and one that stops at "…" reads as a sentence with more to it — which the
+// CLI will print in full.
+func (m *appModel) coverageRows() []string {
 	s := m.sty()
-	return s.dim.Render("FILTER  ") + s.bone.Render(strings.Join(parts, " · "))
+	warn := lipgloss.NewStyle().Foreground(s.cHigh)
+	fail := lipgloss.NewStyle().Foreground(s.cCrit)
+
+	var errored, degraded, skipped []string
+	for _, d := range m.report.Domains {
+		name := sourceLabel(d.Source)
+		switch d.State {
+		case model.ScanError:
+			errored = append(errored, fail.Render(m.notice(m.gl.Of(glyph.Failed), name, "failed", d.Reason, "unknown error")))
+		case model.ScanDegraded:
+			degraded = append(degraded, warn.Render(m.notice(m.gl.Of(glyph.Partial), name, "partial", d.Reason, "covered only part of the domain")))
+		case model.ScanSkipped:
+			skipped = append(skipped, s.dim.Render(m.notice(m.gl.Of(glyph.Skipped), name, "skipped", d.Reason, "did not run")))
+		}
+	}
+
+	rows := append(append(errored, degraded...), skipped...)
+	// A host with no Docker, no Trivy and no systemd contributes four of
+	// these, and one that could scan nothing at all would contribute twelve —
+	// a header taller than the list it is heading. The frame's own fallback
+	// bounds that (it drops the whole region rather than squeezing the body),
+	// but dropping every notice because there are many is the wrong end to
+	// give way at: the first ones are the ones a reader acts on.
+	if len(rows) > maxCoverageRows {
+		hidden := len(rows) - (maxCoverageRows - 1)
+		rows = rows[:maxCoverageRows-1]
+		rows = append(rows, s.dim.Render(fmt.Sprintf("%s %d more domain(s) did not fully run — hostveil scan lists them", m.gl.Of(glyph.Skipped), hidden)))
+	}
+	return rows
+}
+
+// maxCoverageRows caps the coverage region so a badly-covered host cannot
+// push the findings list off the screen with explanations of its own gaps.
+const maxCoverageRows = 3
+
+func (m *appModel) notice(marker, name, state, reason, fallback string) string {
+	head := fmt.Sprintf("%s %s %s: ", marker, name, state)
+	// -1 keeps a column in hand: the frame clips every row to the width, and
+	// a notice that lands exactly on it would have nowhere to show it was cut.
+	return head + truncate(reasonOr(reason, fallback), m.width-lipgloss.Width(head)-1)
+}
+
+// filterActive reports whether the list is narrowed. The chip row shows the
+// filter's *state*, so it cannot answer this — it is drawn either way.
+func (m *appModel) filterActive() bool {
+	return m.filter.MinSeverity != nil || m.filter.Source != model.SourceUnset || m.filter.FixableOnly
+}
+
+func reasonOr(reason, fallback string) string {
+	if reason == "" {
+		return fallback
+	}
+	return reason
 }
 
 // sevAbbr upper-cases the model's abbreviation rather than keeping a
@@ -483,21 +794,30 @@ func (m *appModel) detailRows() []string {
 	if len(m.active) == 0 {
 		return nil
 	}
-	s := m.sty()
-	f := m.active[m.cursor]
+	return append([]string{""}, m.detailBodyRows(m.active[m.cursor], min(m.width-4, 78))...)
+}
 
-	out := []string{"",
+// detailBodyRows is one finding written out, wrapped to w.
+//
+// It takes the finding and the width rather than reading the cursor and
+// m.width because three things now render it: the full-screen detail view,
+// the detail pane beside the list, and the block that opens inline under a
+// row. They differ in how much room they have and in nothing else, and a
+// second copy of this text is a second place for the AI box to be forgotten.
+func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
+	s := m.sty()
+	out := []string{
 		lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
-			"  " + s.brand.Render(f.Title)}
+			"  " + s.brand.Render(truncate(f.Title, max(1, w-lipgloss.Width(f.Severity.String())-2)))}
 	meta := strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
 	if f.Service != "" {
 		meta += "  ·  SERVICE: " + f.Service
 	}
-	out = append(out, s.dim.Render(meta), "")
-	out = append(out, styledRows(s.bone, wrap(f.Description, min(m.width-4, 78)))...)
+	out = append(out, s.dim.Render(truncate(meta, w)), "")
+	out = append(out, styledRows(s.bone, wrap(f.Description, w))...)
 	if f.HowToFix != "" {
 		out = append(out, "", s.dim.Render("HOW TO FIX"))
-		out = append(out, styledRows(s.bone, wrap(f.HowToFix, min(m.width-4, 78)))...)
+		out = append(out, styledRows(s.bone, wrap(f.HowToFix, w))...)
 	}
 	if m.aiBusy || m.aiText != "" || m.aiErr != "" {
 		out = append(out, "", s.dim.Render("AI EXPLANATION (ADVISORY)"))
@@ -505,9 +825,9 @@ func (m *appModel) detailRows() []string {
 		case m.aiBusy:
 			out = append(out, s.dim.Render("  asking the local AI model…"))
 		case m.aiText != "":
-			out = append(out, styledRows(s.bone, wrap(m.aiText, min(m.width-4, 78)))...)
+			out = append(out, styledRows(s.bone, wrap(m.aiText, w))...)
 		default:
-			out = append(out, styledRows(s.dim, wrap(m.aiErr, min(m.width-4, 78)))...)
+			out = append(out, styledRows(s.dim, wrap(m.aiErr, w))...)
 		}
 	}
 	return out
@@ -526,7 +846,7 @@ func (m *appModel) previewRows() []string {
 		for _, a := range m.preview.Actions {
 			marker := "  "
 			if a.Index == idx {
-				marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+				marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 			}
 			out = append(out, marker+s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)))
 		}
@@ -544,7 +864,7 @@ func (m *appModel) previewRows() []string {
 		warn := lipgloss.NewStyle().Foreground(s.cHigh)
 		for i, l := range strings.Split(wrap(a.Warning, min(m.width-4, 78)), "\n") {
 			if i == 0 {
-				out = append(out, warn.Render("⚠  "+l))
+				out = append(out, warn.Render(m.gl.Of(glyph.Warning)+"  "+l))
 			} else {
 				out = append(out, warn.Render("   "+l))
 			}
@@ -584,7 +904,7 @@ func (m *appModel) historyRows(budget int) []string {
 	warn := ""
 	if m.historyWarning != "" {
 		warn = lipgloss.NewStyle().Foreground(s.cHigh).
-			Render("⚠ " + truncate(m.historyWarning, max(1, m.width-2)))
+			Render(m.gl.Of(glyph.Warning) + " " + truncate(m.historyWarning, max(1, m.width-2)))
 	}
 
 	// The trend costs a row and answers the question the checkpoint list
@@ -671,7 +991,7 @@ func (m *appModel) themeRows() []string {
 	for i, t := range all {
 		marker := "  "
 		if i == m.themeCursor {
-			marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 		name := padRight(truncate(t.Name, max(1, min(nameW, m.width-2))), nameW)
 		row := marker
@@ -689,6 +1009,51 @@ func (m *appModel) themeRows() []string {
 	out = append(out, "")
 	out = append(out, styledRows(s.dim, wrap("Colors mean the same thing in every theme: the four severity "+
 		"steps and safety. Everything else is chrome.", min(m.width-2, 78)))...)
+	return out
+}
+
+// layoutName is the active arrangement's display name, for the picker's
+// title row.
+func (m *appModel) layoutName() string {
+	l, _ := LookupLayout(m.layoutID())
+	return l.Name
+}
+
+// layoutPickerRows is the temporary arrangement picker.
+//
+// Like the theme picker, moving the cursor applies the choice on the spot
+// rather than describing it — but unlike a palette, an arrangement cannot be
+// judged from the picker screen, because the picker screen is not one of the
+// arrangements. So this one carries the note as well: the sentence says what
+// bet the layout makes, and pressing enter returns to the list drawn that
+// way.
+func (m *appModel) layoutPickerRows() []string {
+	s := m.sty()
+	out := []string{""}
+
+	all := Layouts()
+	const nameW = 20
+	for i, l := range all {
+		marker := "  "
+		if i == m.layoutCursor {
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
+		}
+		name := padRight(truncate(l.Name, max(1, min(nameW, m.width-2))), nameW)
+		row := marker
+		if i == m.layoutCursor {
+			row += s.sel.Render(name)
+		} else {
+			row += s.bone.Render(name)
+		}
+		out = append(out, row)
+	}
+
+	out = append(out, "")
+	if m.layoutCursor >= 0 && m.layoutCursor < len(all) {
+		out = append(out, styledRows(s.dim, wrap(all[m.layoutCursor].Note, min(m.width-2, 78)))...)
+	}
+	out = append(out, "", s.dim.Render("Temporary: six arrangements are shipped so one can be chosen. The"))
+	out = append(out, s.dim.Render("dashboard carries the same six under the same letters."))
 	return out
 }
 
@@ -718,7 +1083,7 @@ func (m *appModel) rollbackRows() []string {
 	out = append(out, "")
 	if cp.RestartService != "" {
 		out = append(out, lipgloss.NewStyle().Foreground(s.cHigh).
-			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards."), "")
+			Render(m.gl.Of(glyph.Warning)+"  You may need to restart '"+cp.RestartService+"' afterwards."), "")
 	}
 	if cp.Diff != "" {
 		out = append(out, s.dim.Render("This change will be reverted:"))
