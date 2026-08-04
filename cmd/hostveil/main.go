@@ -183,7 +183,7 @@ Rollback flags:
                   default rather than discard those edits.
 
 TUI and dashboard flags:
-  --theme NAME    Color theme: instrument (default), gruvbox, nord,
+  --theme NAME    Color theme: onedark (default), gruvbox, nord,
                   catppuccin, tokyonight. The TUI's picker (press t) remembers
                   your choice; --theme and HOSTVEIL_THEME override it.
   --addr HOST     serve only: address to bind the dashboard to. The dashboard

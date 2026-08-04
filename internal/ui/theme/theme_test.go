@@ -59,26 +59,45 @@ func TestAllIsACopy(t *testing.T) {
 	}
 }
 
-// The default look must not shift. Instrument is what every existing
-// screenshot, every doc, and every user's muscle memory is calibrated to;
-// this table is the pre-theming palette copied out of view.go and app.css.
-func TestInstrumentUnchanged(t *testing.T) {
+// The default look must not shift under anyone. This is the table every
+// screenshot, every doc and the brand mark are calibrated to, written out
+// again so that changing it is a decision rather than a diff nobody read.
+//
+// Three of the twelve are not One Dark's published values. That is not drift
+// — TestEveryThemeMeetsTheContrastFloor rejects the published Slate, Crit and
+// Low outright — but it does mean somebody comparing this against Atom will
+// find a discrepancy and be right to ask, so the numbers are pinned here with
+// the ones they replaced beside them.
+func TestOneDarkUnchanged(t *testing.T) {
 	want := Palette{
-		Ink: "#0b0d10", Ink2: "#12151b", Ink3: "#171b22",
-		Line: "#222831", Line2: "#333b46",
-		Bone: "#e7e3d8", Slate: "#7c8692",
-		Crit: "#e5484d", High: "#e8843c", Med: "#e6c14a", Low: "#6b7480",
-		Safe: "#46c69a",
+		Ink: "#282c34", Ink2: "#21252b", Ink3: "#2f343f",
+		Line: "#181a1f", Line2: "#3e4451",
+		Bone:  "#c8ccd4", // One Dark's fg #abb2bf, lifted for a denser view
+		Slate: "#8e939b", // #7f848e was 3.73:1 on ink, floor is 4.5
+		Crit:  "#e17079", // #e06c75 was 4.38:1 on ink
+		High:  "#d19a66", Med: "#e5c07b",
+		Low:  "#79808e", // #767d8c was 3.39:1 on ink, floor is 3.5
+		Safe: "#98c379",
 	}
-	got, ok := Lookup("instrument")
+	got, ok := Lookup("onedark")
 	if !ok {
-		t.Fatal("the instrument theme is gone")
+		t.Fatal("the onedark theme is gone")
 	}
 	if got.Palette != want {
-		t.Errorf("instrument palette changed:\n got %+v\nwant %+v", got.Palette, want)
+		t.Errorf("onedark palette changed:\n got %+v\nwant %+v", got.Palette, want)
 	}
-	if Default().ID != "instrument" {
-		t.Errorf("Default() = %q, want instrument", Default().ID)
+	if Default().ID != "onedark" {
+		t.Errorf("Default() = %q, want onedark", Default().ID)
+	}
+}
+
+// The theme that used to be the default is gone, and nothing may quietly
+// bring it back: its palette was tuned against a near-black page that no
+// remaining theme has, so a stray "instrument" entry would be an
+// unmaintained twelfth of the design system rather than a choice.
+func TestInstrumentIsGone(t *testing.T) {
+	if _, ok := Lookup("instrument"); ok {
+		t.Error("the instrument theme is back in the registry")
 	}
 }
 

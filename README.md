@@ -206,7 +206,7 @@ same engine, a fix applied anywhere is reversible.
 
 All three are thin layers over one shared engine, so they behave identically.
 
-The TUI and the dashboard share five color themes — `instrument` (the
+The TUI and the dashboard share five color themes — `onedark` (the
 default), `gruvbox`, `nord`, `catppuccin`, `tokyonight`. Press `t` in the TUI
 to pick one and have it remembered, use the picker in the dashboard's status
 bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.

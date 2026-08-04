@@ -76,15 +76,16 @@ var svgFill = regexp.MustCompile(`fill="(#[0-9a-fA-F]{6})"`)
 // internal/ui/theme is the only place a color is written down; the two brand
 // SVGs are the one static exception, because a favicon is fetched before any
 // theme is known. That exception is tolerable only while their hexes stay
-// the Instrument roles they were drawn from — the Ink2 tile, Bone slats, and
-// the Safe teal core. If the palette moves, this fails instead of the mark
-// quietly drifting off-brand.
-func TestBrandMarkColorsAreTheInstrumentPalette(t *testing.T) {
-	instrument, ok := theme.Lookup("instrument")
-	if !ok {
-		t.Fatal("the instrument theme is gone")
-	}
-	p := instrument.Palette
+// the default theme's roles — the Ink2 tile, Bone slats, and the Safe core.
+// If the palette moves, this fails instead of the mark quietly drifting
+// off-brand, which is exactly what it did when Instrument was retired: the
+// mark kept its bone-and-teal until this test said otherwise.
+//
+// It reads Default() rather than a named theme on purpose. The mark belongs
+// to whatever hostveil opens in, and pinning it to an ID would survive that
+// ID being replaced.
+func TestBrandMarkColorsAreTheDefaultPalette(t *testing.T) {
+	p := theme.Default().Palette
 	role := map[string]string{p.Ink2: "Ink2", p.Bone: "Bone", p.Safe: "Safe"}
 
 	for _, name := range []string{"assets/favicon.svg", "assets/mark.svg"} {
@@ -101,7 +102,7 @@ func TestBrandMarkColorsAreTheInstrumentPalette(t *testing.T) {
 			hex := strings.ToLower(m[1])
 			r, ok := role[hex]
 			if !ok {
-				t.Errorf("%s fills with %s, which is no Instrument Ink2/Bone/Safe", name, hex)
+				t.Errorf("%s fills with %s, which is no Ink2/Bone/Safe of the default theme", name, hex)
 				continue
 			}
 			seen[r] = true
