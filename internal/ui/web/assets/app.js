@@ -534,10 +534,14 @@ function laneRows(items, row) {
     const autos = group.filter(isAuto);
     const acts = el("span", { class: "a" });
     if (autos.length) {
-      const btn = el("button", { class: "primary" }, `Fix the ${autos.length} safe`);
-      // Marks this lane's Auto findings and hands them to the batch bar,
-      // which already knows how to preview, apply and report a batch. A
-      // second path to the same POST is a second place for it to go wrong.
+      // "Select", not "Fix". This button hands the lane's Auto findings to
+      // the batch bar and stops there — it does not apply anything — and a
+      // button that says Fix and then appears to do nothing is the worst
+      // reading of that. It is also what the terminal's `m` does and says,
+      // and the same key in the same arrangement has to mean the same thing.
+      const btn = el("button", { class: "primary" }, `Select the ${autos.length} safe`);
+      // The batch bar already knows how to preview, apply and report a batch.
+      // A second path to the same POST is a second place for it to go wrong.
       btn.onclick = (ev) => {
         ev.stopPropagation();
         marked.clear();

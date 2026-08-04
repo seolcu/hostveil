@@ -189,6 +189,13 @@ func (m *appModel) railRows(w, budget int) []string {
 		reason[d.Source], state[d.Source] = d.Reason, d.State
 	}
 
+	// Dense spends a second row per domain on the severity mix. A domain that
+	// did not run gets its second row either way, because that row is the
+	// reason — and "N/A" with nothing next to it is the unexplained gap the
+	// rail was added to close. It never fit otherwise: twelve domains need 25
+	// rows to go dense and a 30-row terminal leaves the body about 20, so on
+	// every real host the reason was the thing that dropped out, in the one
+	// arrangement whose whole claim is that it carries it.
 	dense := 1+2*len(axes) <= budget
 
 	// Built per domain and flattened afterwards, so a rail that does not fit
@@ -250,11 +257,10 @@ func (m *appModel) railRows(w, budget int) []string {
 
 		block := []string{row}
 		switch {
-		case !dense:
 		case !ax.Applicable:
 			block = append(block, s.dim.Render(truncate("  "+strings.ToLower(state[ax.Source].String())+
 				" — "+reasonOr(reason[ax.Source], "did not run"), w)))
-		default:
+		case dense:
 			block = append(block, "  "+m.severityMix(byDomain[ax.Source], w-2))
 		}
 		blocks = append(blocks, block)
@@ -350,6 +356,10 @@ func (m *appModel) sparkAxesLine(w int) string {
 // hands them to the batch bar. A terminal has no button, so the same action
 // is a key — `m` marks every Auto finding at the cursor's severity — and the
 // header says so, because a lane action nobody can find is not an action.
+//
+// It selects; it does not apply. The dashboard's button says "Select the N
+// safe" for the same reason, and the two have to agree: this is one
+// arrangement with two renderers, not two arrangements.
 func (m *appModel) laneHeadRow(sev model.Severity, n, autos, w int) string {
 	s := m.sty()
 	c := s.severityColor(sev)
@@ -357,7 +367,7 @@ func (m *appModel) laneHeadRow(sev model.Severity, n, autos, w int) string {
 	head += s.dim.Render(fmt.Sprintf("  %d", n))
 	if autos > 0 {
 		head += s.dim.Render("   ") + s.safe.Render(fmt.Sprintf("%d fix themselves", autos)) +
-			s.dim.Render("  (m marks them)")
+			s.dim.Render("  (m selects them)")
 	} else {
 		head += s.dim.Render("   none fix themselves")
 	}
