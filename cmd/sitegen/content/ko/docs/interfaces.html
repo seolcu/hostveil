@@ -7,7 +7,7 @@
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
             <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다. 스캔이 도는 동안에는 아직 작업 중인 영역의 이름을 보여 주므로, 이미지가 많은 호스트에서 CVE 스캔이 오래 걸려도 멈춘 것이 아니라 진행 중임을 알 수 있습니다.</p>
             <figure>
-              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="480" loading="lazy">
+              <img src="../../assets/tui.png" alt="hostveil 터미널 UI — 심각도 필터와 다중 선택이 있는 발견 항목" width="1200" height="483" loading="lazy">
               <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
             </figure>
             <div class="callout">
@@ -33,6 +33,7 @@
                   <tr><td><code>h</code></td><td>적용된 수정 이력입니다. 하나를 골라 <code>Enter</code>를 누르면 되돌렸을 때 복원될 내용을 보여 주고, 확인을 받습니다. 수정 이후 그 파일이 바뀌었다면 롤백이 거절되고, 그래도 덮어쓸지 묻습니다 — <code>y</code>만 실행하며, 되돌릴 수 없습니다. 저장된 모든 스캔의 점수 스파크라인도 함께 표시되므로, 무엇을 바꿨는지 옆에 그게 도움이 됐는지가 나란히 놓입니다.</td></tr>
                   <tr><td><code>e</code></td><td>발견 항목의 상세 화면에서: 로컬 Ollama 모델의 조언성 AI 설명을 덧붙입니다. 모델이 없으면 한 줄 안내가 대신 나옵니다 — <a href="ai">AI 설명</a> 참고.</td></tr>
                   <tr><td><code>t</code></td><td>테마 선택기(아래 참고).</td></tr>
+                  <tr><td><code>l</code></td><td>배치 선택기 — 임시입니다. 같은 화면을 여섯 가지로 배치한 후보가 함께 들어 있어 그중 하나를 고를 수 있으며, 기본값은 위 스크린샷의 배치입니다. 심각도 레인 배치에서는 <code>m</code>이 커서와 같은 심각도의 자동 수정 항목을 모두 표시합니다.</td></tr>
                   <tr><td><code>r</code></td><td>다시 스캔합니다.</td></tr>
                   <tr><td><code>q</code></td><td>뒤로, 목록 화면에서는 종료. <code>Ctrl-C</code>는 언제나 종료합니다.</td></tr>
                 </tbody>
@@ -46,10 +47,10 @@
               <button class="copy-btn" type="button" data-copy="hostveil serve">Copy</button>
               <pre><code>hostveil serve</code></pre>
             </div>
-            <p>일회용 접근 토큰이 담긴 URL이 출력됩니다 — 그 URL을 그대로 여세요. loopback 바인딩은 대시보드를 네트워크에서 차단하지만 같은 machine의 다른 계정으로부터는 지켜주지 못하며, 이곳의 모든 경로는 root 권한으로 fix를 적용하거나 <code>/etc/shadow</code> 스캔 결과를 읽습니다. 토큰이 그 틈을 막습니다. 첫 페이지 로드에서 세션 쿠키로 교환되므로 이후 링크에는 다시 나타나지 않습니다.</p>
-            <p><code>127.0.0.1:8787</code>에 바인딩됩니다. 대시보드는 localhost로 향하지 않은 요청을 모두 거부하므로 <code>--addr</code>로는 네트워크에 노출할 수 없습니다 — non-loopback 주소를 지정하면 바인딩은 되지만 아무 요청에도 응답하지 않습니다. 다른 machine에서 접근하려면 포트를 포워딩하세요: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
+            <p>일회용 접근 토큰이 담긴 URL이 출력됩니다 — 그 URL을 그대로 여세요. loopback 바인딩은 대시보드를 네트워크에서 차단하지만 같은 머신의 다른 계정으로부터는 지켜주지 못하며, 이곳의 모든 경로는 root 권한으로 수정을 적용하거나 <code>/etc/shadow</code> 스캔 결과를 읽습니다. 토큰이 그 틈을 막습니다. 첫 페이지 로드에서 세션 쿠키로 교환되므로 이후 링크에는 다시 나타나지 않습니다.</p>
+            <p><code>127.0.0.1:8787</code>에 바인딩됩니다. 대시보드는 localhost로 향하지 않은 요청을 모두 거부하므로 <code>--addr</code>로는 네트워크에 노출할 수 없습니다 — non-loopback 주소를 지정하면 바인딩은 되지만 아무 요청에도 응답하지 않습니다. 다른 머신에서 접근하려면 포트를 포워딩하세요: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code>은 <code>serve</code>의 별칭입니다.)</p>
             <figure>
-              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 점수, 점검 범위 안내, 필터 칩, 스캔 개요" width="1200" height="456" loading="lazy">
+              <img src="../../assets/web.png" alt="hostveil 웹 대시보드 — 점수, 점검 범위 안내, 필터 칩, 스캔 개요" width="1200" height="481" loading="lazy">
               <figcaption><strong>웹 UI</strong><span>localhost 대시보드: 점수와 영역별 축, 지난 스캔 이후의 변화, 필터 칩, 그리고 스캔을 읽어 주는 개요.</span></figcaption>
             </figure>
             <p>아무것도 고르기 전에도 오른쪽 패널이 스캔 결과를 읽어 줍니다 — 점수를 말로 풀어 주고, 심각도별 분포, 사용자의 판단 없이 고칠 수 있는 항목 수, 그리고 가장 심각한 몇 건을 바로 가기 목록으로 보여 줍니다. 발견 항목을 선택하면 그 자리에 상세 내용과 <strong>Preview fix</strong> 버튼이 들어오고, <strong>History</strong>를 누르면 적용된 수정들이 각각 되돌릴 diff와 <strong>Roll back</strong> 버튼과 함께 표시됩니다.</p>
@@ -72,6 +73,13 @@ hostveil fix --all --yes</code></pre></div>
 hostveil serve --theme gruvbox
 HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <p><code>--theme</code>와 <code>HOSTVEIL_THEME</code>은 기억된 선택보다 우선합니다. 색이 뜻하는 바는 모든 테마에서 같습니다 — 네 단계의 심각도와 안전 — 그래서 테마를 바꿔도 발견 항목을 읽는 방식은 달라지지 않습니다.</p>
+
+            <h2 id="symbols">기호</h2>
+            <p>TUI와 <code>hostveil scan</code>은 상태 표시 기호 — 브랜드 마크, 체크, 경고, 그리고 영역이 온전히 점검되지 못하는 세 가지 경우 — 를 기본적으로 일반 유니코드로 그리며, 이는 어떤 글꼴에서도 표시됩니다. 터미널에서 이미 <a href="https://www.nerdfonts.com/">Nerd Font</a>를 쓰고 있다면 <code>--glyphs nerd</code>로 패치된 아이콘으로 바꿀 수 있습니다.</p>
+            <div class="code-block"><pre><code>hostveil tui --glyphs nerd
+hostveil scan --glyphs nerd
+HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
+            <p>자동 감지가 아니라 사용자가 켜는 방식입니다. 터미널에 어떤 글꼴을 쓰는지 물어볼 방법이 없고, 글꼴에 없는 글리프도 있는 글리프와 똑같이 한 칸에 그려지기 때문에, 잘못 짐작하면 아무도 알아채지 못한 채 두부 글자만 늘어섭니다. Nerd Font라면 Mono든 아니든 모두 동작합니다. 기호는 Font Awesome 블록에서 가져오는데, 모든 패치 글꼴이 이 블록을 담고 있고 어떤 변형에서도 한 칸 너비를 유지합니다. <code>--theme</code>과 마찬가지로 선택은 다음 실행에도 기억되며, <code>--glyphs</code>와 <code>HOSTVEIL_GLYPHS</code>가 그보다 우선합니다.</p>
 
             <div class="callout">
               <span class="callout-label">엔진 하나, 얼굴 셋</span>

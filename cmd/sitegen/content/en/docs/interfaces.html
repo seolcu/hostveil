@@ -7,7 +7,7 @@
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
             <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied. While a scan runs it names the domains still working, so a slow CVE scan on a host with many images reads as progress rather than as a hang.</p>
             <figure>
-              <img src="../assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1200" height="480" loading="lazy">
+              <img src="../assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1200" height="483" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
             </figure>
             <div class="callout">
@@ -33,6 +33,7 @@
                   <tr><td><code>h</code></td><td>Applied-fix history — pick one and press <code>Enter</code> to see what rolling it back would restore, then confirm. If the file has changed since the fix wrote it, the rollback is declined and you are asked whether to overwrite anyway; only <code>y</code> does it, and it cannot be undone. The screen also carries a sparkline of the score across every saved scan, so the list of what was changed sits next to whether it helped.</td></tr>
                   <tr><td><code>e</code></td><td>In a finding's detail: add an advisory AI explanation from a local Ollama model. Without one, a one-line note appears instead — <a href="ai">AI explanations</a>.</td></tr>
                   <tr><td><code>t</code></td><td>Theme picker (below).</td></tr>
+                  <tr><td><code>l</code></td><td>Arrangement picker — temporary. Six arrangements of the same screen ship behind it so one can be chosen; the default is the one in the screenshot above. In the severity-lane arrangement, <code>m</code> marks every Auto-fix finding at the cursor's severity.</td></tr>
                   <tr><td><code>r</code></td><td>Rescan.</td></tr>
                   <tr><td><code>q</code></td><td>Back, or quit from the list. <code>Ctrl-C</code> always quits.</td></tr>
                 </tbody>
@@ -49,7 +50,7 @@
             <p>It prints a URL carrying a one-off access token — open that exact URL. Loopback keeps the dashboard off the network, but not away from other accounts on the same machine, and every route here applies fixes or reads a scan of <code>/etc/shadow</code> as root. The token closes that gap; the first page load exchanges it for a session cookie, so it does not reappear in later links.</p>
             <p>It binds to <code>127.0.0.1:8787</code>. The dashboard rejects any request not addressed to localhost, so <code>--addr</code> cannot expose it to the network — pointing it at a non-loopback address produces a listener that answers nothing. To reach it from another machine, forward the port instead: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
             <figure>
-              <img src="../assets/web.png" alt="hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1200" height="456" loading="lazy">
+              <img src="../assets/web.png" alt="hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1200" height="481" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
             </figure>
             <p>Before you pick anything, the right-hand pane reads the scan back to you: the score in words, how the findings break down by severity, how many can be fixed with no decision from you, and the most severe handful as a jump list. Selecting a finding replaces it with that finding's detail and a <strong>Preview fix</strong> button; <strong>History</strong> puts every applied fix there instead, each with the diff it would revert and a <strong>Roll back</strong> button.</p>
@@ -72,6 +73,13 @@ hostveil fix --all --yes</code></pre></div>
 hostveil serve --theme gruvbox
 HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <p><code>--theme</code> and <code>HOSTVEIL_THEME</code> both override the remembered choice. Colors mean the same thing in every theme — the four severity steps and safety — so nothing about a theme changes how a finding reads.</p>
+
+            <h2 id="symbols">Symbols</h2>
+            <p>The TUI and <code>hostveil scan</code> draw their status markers — the brand mark, the check, the warning, and the three ways a domain can fall short — from plain Unicode, which renders in any font. If your terminal already uses a <a href="https://www.nerdfonts.com/">Nerd Font</a>, <code>--glyphs nerd</code> swaps them for the patched icons.</p>
+            <div class="code-block"><pre><code>hostveil tui --glyphs nerd
+hostveil scan --glyphs nerd
+HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
+            <p>It is opt-in rather than detected, because a terminal cannot be asked what font it is using and a glyph the font lacks is drawn in the same single cell a present one would be — so guessing wrong is a row of tofu with nothing to notice it. Any Nerd Font build works, Mono or not: the symbols come from the Font Awesome block, which every patched font carries and which stays one cell wide in every variant. Like <code>--theme</code>, the choice is remembered for the next run, and <code>--glyphs</code> and <code>HOSTVEIL_GLYPHS</code> both override it.</p>
 
             <div class="callout">
               <span class="callout-label">One engine, three faces</span>
