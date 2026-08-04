@@ -1,5 +1,81 @@
 # Changelog
 
+## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-04)
+
+Everything here is a rendering layer — no checker, rule, score or fix changed.
+hostveil looks different: one brand mark instead of four, One Dark as the
+default theme, a terminal list that finally says what shape a scan is, and
+optional Nerd Font symbols. Six candidate arrangements of the same screen also
+ship, in both the terminal and the browser, behind a picker; **they are
+temporary and will be gone once one of them is chosen.**
+
+### Features
+
+* **ui:** one brand mark, One Dark by default, six arrangements, and Nerd Font
+  glyphs ([#649](https://github.com/seolcu/hostveil/issues/649)). hostveil had
+  *four* brand marks — the dashboard's favicon and status-bar mark were two
+  colourings of one figure, and the marketing site had two more that shared
+  nothing with them. They are now one drawing, a chip, byte-identical across all
+  four surfaces and held there by a test, with both lockups optically aligned.
+  The Instrument palette is gone and One Dark is the default; three of its
+  twelve roles are lifted in HSL lightness by the smallest step that clears the
+  contrast floors every theme here is held to. The terminal list gains what the
+  dashboard has always had above the fold: a count per severity, how many
+  hostveil can fix on its own, and — for each domain that did not fully run —
+  the reason the checker gave, instead of an unexplained `N/A`. `scan` no longer
+  double-spaces its findings, which halves the scrollback on an ordinary host.
+  And `--glyphs nerd` draws the status markers from a patched Nerd Font: opt-in,
+  because a terminal cannot be asked what font it is using and a missing glyph
+  is drawn in the same single cell a present one would be. Any Nerd Font build
+  works, Mono or not — verified by reading the tables of eighteen font files.
+
+* **ui:** six arrangements of the same screen, in both interfaces, behind a
+  picker ([#649](https://github.com/seolcu/hostveil/issues/649)). `l` in the
+  TUI, a dropdown in the dashboard, `--layout` on the command line. This is
+  scaffolding for a decision rather than a setting to keep: an arrangement that
+  reads well in a 1440-column browser and badly in an 80-column terminal is not
+  one hostveil can adopt, and the only way to find that out is to drive both
+  against a real host. The default is unchanged, so an operator who never opens
+  the picker sees no experiment. **When one is chosen the other five go, and
+  `--layout` and `l` go with them.**
+
+### Bug Fixes
+
+* **tui:** a filter chip could be cut through the middle of its count
+  ([#650](https://github.com/seolcu/hostveil/issues/650)). The chip row was
+  clipped to whatever width it had, which is right for a title and wrong for a
+  row that is nothing but numbers: in the arrangement with a rail on one side
+  and a detail pane on the other, `FIXABLE 38` was drawn as `FIXABLE 3`. A
+  clipped word is visibly clipped; a clipped count is a different number. The
+  row now drops whole chips and says how many it dropped, and never drops one
+  that is on — for the domain filter, that chip is the only place the domain is
+  named.
+
+* **tui:** the domain rail did not say why a domain had not run
+  ([#650](https://github.com/seolcu/hostveil/issues/650)). It spent a second row
+  per domain only when it had better than two rows each, and with twelve domains
+  that needs more rows than a 30-line terminal has — so the reason, which is the
+  difference between "nothing there" and "I could not look", was the first thing
+  dropped on every real host. A domain that did not run now keeps its reason
+  whatever the room; the severity mix gives way instead.
+
+* **ui:** the two interfaces drew one arrangement two different ways
+  ([#650](https://github.com/seolcu/hostveil/issues/650)). The dashboard's
+  domain rail runs the full height of the window with the verdict beside it; the
+  terminal put the verdict across the top and started the rail underneath. And
+  the dashboard's per-severity button said "Fix the N safe" while only selecting
+  them for the batch bar — which is what it should do, and what the terminal's
+  `m` does, but not what it said. Both now match.
+
+* **cmd:** `--glyphs nerd` drew one of three coverage markers from the wrong set
+  ([#650](https://github.com/seolcu/hostveil/issues/650)). `scan` prints
+  skipped, partial and errored domains as one block. Only the skipped line went
+  through the chosen symbol set, so a patched glyph sat next to two ASCII ones,
+  which reads as two kinds of remark rather than three degrees of one.
+
+* **install:** needing root is not the same as needing sudo
+  ([#647](https://github.com/seolcu/hostveil/issues/647)).
+
 ## [3.10.0](https://github.com/seolcu/hostveil/compare/v3.9.0...v3.10.0) (2026-07-30)
 
 A new check for who owns your sensitive files, and two fixes for hostveil asking
