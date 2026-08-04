@@ -2,8 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -51,7 +54,7 @@ func plain(s string) string { return ansiSeq.ReplaceAllString(s, "") }
 // Before it, the TUI answered neither without scrolling and counting.
 func TestChipRowCarriesTheSeveritySpreadAndFixableCount(t *testing.T) {
 	m := summaryModel(120, 30)
-	row := plain(m.chipRow())
+	row := plain(m.chipRow(200))
 	for _, want := range []string{"CRIT 3", "HIGH 5", "MED 7", "LOW 11", "FIXABLE 10"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("chip row does not carry %q: %q", want, row)
@@ -68,7 +71,7 @@ func TestChipRowOmitsAnEmptySeverity(t *testing.T) {
 	m := summaryModel(120, 30)
 	m.report.Findings = m.report.Findings[:3] // criticals only
 	m.active = m.report.Select(m.filter)
-	row := plain(m.chipRow())
+	row := plain(m.chipRow(200))
 	if !strings.Contains(row, "CRIT 3") {
 		t.Fatalf("chip row lost the severity that is present: %q", row)
 	}
@@ -84,7 +87,7 @@ func TestChipRowOmitsAnEmptySeverity(t *testing.T) {
 // number a narrowed list most needs beside it is what it was narrowed from.
 func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 	m := summaryModel(120, 30)
-	before := plain(m.chipRow())
+	before := plain(m.chipRow(200))
 
 	crit := model.SeverityCritical
 	m.filter.MinSeverity = &crit
@@ -94,7 +97,7 @@ func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 		t.Fatal("the filter did not narrow anything, so this proves nothing")
 	}
 
-	after := plain(m.chipRow())
+	after := plain(m.chipRow(200))
 	for _, want := range []string{"CRIT 3", "HIGH 5", "MED 7", "LOW 11", "FIXABLE 10"} {
 		if !strings.Contains(after, want) {
 			t.Errorf("filtering changed the count %q:\n before %q\n after  %q", want, before, after)
@@ -107,15 +110,61 @@ func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 // row under the cursor.
 func TestActiveChipIsFilled(t *testing.T) {
 	m := summaryModel(120, 30)
-	off := m.chipRow()
+	off := m.chipRow(200)
 
 	crit := model.SeverityCritical
 	m.filter.MinSeverity = &crit
 	m.filter.FixableOnly = true
 	m.active = m.report.Select(m.filter)
 
-	if on := m.chipRow(); on == off {
+	if on := m.chipRow(200); on == off {
 		t.Errorf("the chips render identically filtered and unfiltered: %q", plain(off))
+	}
+}
+
+// A chip row too wide for its column drops whole chips and says how many. It
+// used to be clipped by the frame instead, which cut through one: in the
+// arrangement that puts a rail and a detail pane either side of the list, the
+// column is narrow enough that "FIXABLE 38" was drawn as "FIXABLE 3". A
+// clipped word is visibly clipped; a clipped count is a different number, and
+// this row is nothing but counts.
+func TestTheChipRowDropsWholeChipsAndSaysHowMany(t *testing.T) {
+	m := summaryModel(120, 30)
+	full := plain(m.chipRow(200))
+	if !strings.Contains(full, "FIXABLE") {
+		t.Fatalf("the fixture does not produce a FIXABLE chip: %q", full)
+	}
+
+	for w := 12; w <= lipgloss.Width(m.chipRow(200)); w += 3 {
+		row := m.chipRow(w)
+		if got := lipgloss.Width(row); got > w {
+			t.Errorf("w=%d: the row is %d columns wide", w, got)
+		}
+		// Every count that survived must be the number it was in the full row,
+		// digits and all. A trailing "+N" is the marker, not a count.
+		body, _, _ := strings.Cut(plain(row), "  +")
+		for _, chip := range strings.Fields(strings.TrimSpace(body)) {
+			if _, err := strconv.Atoi(chip); err != nil {
+				continue
+			}
+			if !strings.Contains(full, chip) {
+				t.Errorf("w=%d: %q holds %q, which is in no chip of %q", w, plain(row), chip, full)
+			}
+		}
+	}
+}
+
+// The domain filter's chip is the only place the domain is named — the head
+// line's "3/26" says the list is narrowed but not by what — so a column too
+// narrow for every chip must still keep that one.
+func TestANarrowChipRowKeepsTheActiveFilter(t *testing.T) {
+	m := summaryModel(120, 30)
+	m.filter.Source = model.SourceSSH
+	m.active = m.report.Select(m.filter)
+	for w := 16; w <= 60; w += 4 {
+		if row := plain(m.chipRow(w)); !strings.Contains(row, "SSH") {
+			t.Errorf("w=%d: the active domain chip was dropped: %q", w, row)
+		}
 	}
 }
 
@@ -161,7 +210,7 @@ func TestSeverityChipsAboveTheThresholdAreAllActive(t *testing.T) {
 			model.SeverityCritical: 3, model.SeverityHigh: 5,
 			model.SeverityMedium: 7, model.SeverityLow: 11}[tc.sev])
 		want := m.chip(label, tc.want, s.severityColor(tc.sev))
-		if !strings.Contains(m.chipRow(), want) {
+		if !strings.Contains(m.chipRow(200), want) {
 			t.Errorf("%s: chip is not rendered with on=%v", tc.sev, tc.want)
 		}
 	}

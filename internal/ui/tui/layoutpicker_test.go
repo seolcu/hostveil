@@ -250,13 +250,53 @@ func TestTheWidePaneAndRailAreActuallyDrawn(t *testing.T) {
 // The rail's whole bet is that it explains a gap rather than marking one.
 // The axes strip already says "N/A"; if the rail says only that, it has
 // bought nothing with the twenty-four columns it took.
+// The budgets are the point. The rail goes dense — a second row per domain —
+// only when it has better than two rows each, and with twelve domains that
+// needs 25 rows the body of a 30-row terminal does not have. So this asserted
+// a property no real screen had: it passed at 40 rows and the reason was the
+// first thing dropped at 20, in the one arrangement whose whole claim is that
+// it carries the reason. Both budgets are checked now, and the tight one is
+// the one that matters.
 func TestRailNamesTheReasonADomainDidNotRun(t *testing.T) {
-	got := plain(strings.Join(layoutModel("console", 140, 40).railRows(railWidth, 40), "\n"))
-	if !strings.Contains(got, "Trivy") {
-		t.Errorf("the rail does not say why the CVE domain did not run:\n%s", got)
+	for _, budget := range []int{40, 20, 16} {
+		got := plain(strings.Join(layoutModel("console", 140, budget+10).railRows(railWidth, budget), "\n"))
+		if !strings.Contains(got, "Trivy") {
+			t.Errorf("budget=%d: the rail does not say why the CVE domain did not run:\n%s", budget, got)
+		}
+		if !strings.Contains(got, "N/A") {
+			t.Errorf("budget=%d: the rail does not mark the skipped domain at all:\n%s", budget, got)
+		}
+		if n := len(layoutModel("console", 140, budget+10).railRows(railWidth, budget)); n > budget {
+			t.Errorf("budget=%d: the rail drew %d rows", budget, n)
+		}
 	}
-	if !strings.Contains(got, "N/A") {
-		t.Errorf("the rail does not mark the skipped domain at all:\n%s", got)
+}
+
+// The dashboard's rail is a sibling of everything else and runs the full
+// height of the window, so the verdict band sits beside it rather than above
+// it. The terminal drew the band across the whole width and started the rail
+// under it, which is a different arrangement wearing the same name — and the
+// shared registry exists precisely so "G" cannot mean two things.
+func TestTheVerdictSitsBesideTheRailRatherThanAboveIt(t *testing.T) {
+	m := layoutModel("railverdict", 140, 40)
+	rows := m.listRows(30)
+	if len(rows) == 0 {
+		t.Fatal("no body rows")
+	}
+	first := plain(rows[0])
+	if !strings.Contains(first, "DOMAINS") {
+		t.Errorf("the rail does not start on the body's first row: %q", first)
+	}
+	joined := plain(strings.Join(rows, "\n"))
+	if !strings.Contains(joined, "critical finding") && !strings.Contains(joined, "This host is") {
+		t.Errorf("the verdict is not drawn at all:\n%s", joined)
+	}
+	// The band is inside the list's column now, so its rows carry the rail's
+	// separator ahead of them rather than starting at column zero.
+	for i, r := range rows {
+		if strings.Contains(plain(r), "unresolved ·") && !strings.HasPrefix(plain(r), " ") {
+			t.Errorf("row %d puts the verdict outside the rail's column: %q", i, plain(r))
+		}
 	}
 }
 
@@ -487,10 +527,10 @@ func TestTheFooterNamesTheKeysTheArrangementAdds(t *testing.T) {
 	if !strings.Contains(listHint, "l layout") {
 		t.Error("the list footer does not name the layout key")
 	}
-	if !strings.Contains(laneListHint, "m mark lane") {
+	if !strings.Contains(laneListHint, "m select lane") {
 		t.Error("the lanes footer does not name the key its own headers advertise")
 	}
-	if got := plain(layoutModel("lanes", 120, 34).View().Content); !strings.Contains(got, "m mark lane") {
+	if got := plain(layoutModel("lanes", 120, 34).View().Content); !strings.Contains(got, "m select lane") {
 		t.Errorf("the lanes arrangement does not render its own key hint:\n%s", got)
 	}
 	// The theme picker previews under the cursor and says so. This one does

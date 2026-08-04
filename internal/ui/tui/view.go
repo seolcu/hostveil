@@ -288,7 +288,7 @@ const (
 	// The lanes arrangement adds one key, so it adds one line of hint. Written
 	// as its own string rather than appended at the call site because the
 	// footer is the only documentation these bindings have.
-	laneListHint = "↑/↓ move   enter details   f fix   space select   m mark lane   a fix marked\n" +
+	laneListHint = "↑/↓ move   enter details   f fix   space select   m select lane   a fix marked\n" +
 		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   r rescan   q quit"
 	// Not "preview", which is what the theme picker's says and earns: moving
 	// the cursor there restyles the whole frame on the spot. Here there is
@@ -336,11 +336,19 @@ func (m *appModel) listRows(budget int) []string {
 	}
 	railW, listW, paneW := m.bodyColumns()
 
-	// The band spans every column, because in the dashboard it is a sibling
-	// of <main> rather than a cell inside it.
+	// The band spans the columns it leads, which is every column except the
+	// rail. In the dashboard the rail is a sibling of everything else and
+	// runs the full height of the window, so the verdict sits *beside* it
+	// rather than above it; the arrangement that draws both would otherwise
+	// read as a different arrangement in the two interfaces, which is the one
+	// thing the shared registry exists to prevent.
+	spanW := m.width
+	if railW > 0 {
+		spanW = listW
+	}
 	var lead []string
 	if m.wantsVerdict() {
-		if v := m.verdictRows(m.width); len(v)+minVerdictBody <= budget {
+		if v := m.verdictRows(spanW); len(v)+minVerdictBody <= budget {
 			lead = v
 		}
 	}
@@ -351,19 +359,27 @@ func (m *appModel) listRows(budget int) []string {
 		return append(lead, fitRows(list, inner)...)
 	}
 
+	// Where the rail is drawn the band belongs to the list's own column, so
+	// the rail keeps the whole height beside it.
+	rows := inner
+	if railW > 0 {
+		list = append(lead, list...)
+		lead, rows = nil, budget
+	}
+
 	widths := make([]int, 0, 3)
 	cols := make([][]string, 0, 3)
 	if railW > 0 {
 		widths = append(widths, railW)
-		cols = append(cols, m.railRows(railW, inner))
+		cols = append(cols, m.railRows(railW, rows))
 	}
 	widths = append(widths, listW)
 	cols = append(cols, list)
 	if paneW > 0 {
 		widths = append(widths, paneW)
-		cols = append(cols, m.paneRows(paneW, inner))
+		cols = append(cols, m.paneRows(paneW, rows))
 	}
-	return append(lead, m.joinColumns(inner, widths, cols)...)
+	return append(lead, m.joinColumns(rows, widths, cols)...)
 }
 
 // paneRows is the detail column: the finding under the cursor, in full.
@@ -389,6 +405,44 @@ func (m *appModel) paneRows(w, budget int) []string {
 	return m.clipRows(out, budget)
 }
 
+// emptyListRows is what the list column says when there is nothing in it: a
+// clean host, a filter that matched nothing, or a host nobody could look at.
+//
+// "Clean" is a claim about the whole host, so it may only be made when the
+// whole host was examined. The CLI has always drawn that line; this view and
+// the dashboard both said "Clean." unconditionally, so a host whose every
+// checker failed read as spotless in two interfaces out of three.
+//
+// The message has to stand on its own here. The CLI can say "see above"
+// because it prints a per-domain status block first; this view prints none,
+// so it names the count itself.
+func (m *appModel) emptyListRows(chips string, w int) []string {
+	s := m.sty()
+	switch {
+	case m.filterActive():
+		// Asked explicitly rather than inferred from the chip row: the chips
+		// are drawn from the unfiltered report, so they are there whenever the
+		// host has findings at all, filtered or not.
+		return []string{chips, "", s.dim.Render("  No findings match the filter.")}
+	case m.report.IncompleteDomains() > 0:
+		// Wrapped, for the reason the preview's warning is wrapped: this row is
+		// far longer than the "Clean." it replaces, and clipped at the terminal
+		// edge it degrades into "No problems found in the domains that" — which
+		// reads as the very claim it exists to withhold.
+		warn := lipgloss.NewStyle().Foreground(s.cHigh)
+		msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
+			m.report.IncompleteDomains())
+		lines := strings.Split(wrap(msg, min(w-4, 78)), "\n")
+		out := make([]string, 0, len(lines))
+		for _, l := range lines {
+			out = append(out, warn.Render("  "+l))
+		}
+		return out
+	default:
+		return []string{s.safe.Render("  No problems found. Clean.")}
+	}
+}
+
 // listColumn draws the findings list into the rows and the columns it was
 // given. The head and filter lines are drawn from that same budget rather
 // than reserved outside it, so there is exactly one place the arithmetic
@@ -399,43 +453,9 @@ func (m *appModel) listColumn(budget, w int) []string {
 		return nil
 	}
 
-	fl := m.chipRow()
-
-	// Empty list: distinguish a clean host from a too-narrow filter — and,
-	// when nothing is filtered, a clean host from one that could not be
-	// examined. "Clean" is a claim about the whole host, so it may only be
-	// made when the whole host was looked at. The CLI has always drawn that
-	// line; this view and the dashboard both said "Clean." unconditionally,
-	// so a host whose every checker failed read as spotless in two
-	// interfaces out of three.
-	//
-	// The message has to stand on its own here. The CLI can say "see above"
-	// because it prints a per-domain status block first; this view prints
-	// none, so it names the count itself.
+	fl := m.chipRow(w)
 	if len(m.active) == 0 {
-		var body []string
-		switch {
-		case m.filterActive():
-			// Asked explicitly rather than inferred from the chip row: the
-			// chips are drawn from the unfiltered report, so they are there
-			// whenever the host has findings at all, filtered or not.
-			body = append(body, fl, "", s.dim.Render("  No findings match the filter."))
-		case m.report.IncompleteDomains() > 0:
-			// Wrapped, for the reason the preview's warning is wrapped: this
-			// row is far longer than the "Clean." it replaces, and clipped at
-			// the terminal edge it degrades into "No problems found in the
-			// domains that" — which reads as the very claim it exists to
-			// withhold.
-			warn := lipgloss.NewStyle().Foreground(s.cHigh)
-			msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
-				m.report.IncompleteDomains())
-			for _, l := range strings.Split(wrap(msg, min(w-4, 78)), "\n") {
-				body = append(body, warn.Render("  "+l))
-			}
-		default:
-			body = append(body, s.safe.Render("  No problems found. Clean."))
-		}
-		return centerRows(body, budget)
+		return centerRows(m.emptyListRows(fl, w), budget)
 	}
 
 	chrome := 1
@@ -648,7 +668,7 @@ func sourceLabel(s model.Source) string {
 // The severity threshold is a range, not a selection, so every chip at or
 // above it reads as active — anything else would show CRIT dim on a list
 // that is showing exactly the Criticals.
-func (m *appModel) chipRow() string {
+func (m *appModel) chipRow(w int) string {
 	s := m.sty()
 	unfiltered := m.report.Select(model.Filter{})
 
@@ -661,29 +681,107 @@ func (m *appModel) chipRow() string {
 		}
 	}
 
-	var chips []string
+	var chips []chipSpec
 	for _, sev := range model.AllSeverities() {
 		n := counts[sev]
 		if n == 0 {
 			continue // the dashboard omits a severity nothing is at, too
 		}
 		on := m.filter.MinSeverity != nil && sev <= *m.filter.MinSeverity
-		chips = append(chips, m.chip(fmt.Sprintf("%s %d", sevAbbr(sev), n), on, s.severityColor(sev)))
+		chips = append(chips, chipSpec{fmt.Sprintf("%s %d", sevAbbr(sev), n), on, s.severityColor(sev)})
 	}
 	if fixable > 0 {
 		// Safe rather than the dashboard's slate. "Fixable" is a claim about
 		// safety, which is the one thing besides risk this design system lets
 		// a color mean, and spending it here is what makes the count read as
 		// the good news it is.
-		chips = append(chips, m.chip(fmt.Sprintf("FIXABLE %d", fixable), m.filter.FixableOnly, s.cSafe))
+		chips = append(chips, chipSpec{fmt.Sprintf("FIXABLE %d", fixable), m.filter.FixableOnly, s.cSafe})
 	}
 	if m.filter.Source != model.SourceUnset {
-		chips = append(chips, m.chip(strings.ToUpper(sourceLabel(m.filter.Source)), true, s.cSlate))
+		chips = append(chips, chipSpec{strings.ToUpper(sourceLabel(m.filter.Source)), true, s.cSlate})
 	}
+	return m.fitChips(chips, w)
+}
+
+// chipSpec is one chip before it is drawn. The row has to decide which chips
+// survive a narrow column, and that decision is about the chip rather than
+// about the escape sequences it renders to.
+type chipSpec struct {
+	label string
+	on    bool
+	color color.Color
+}
+
+// fitChips joins the chips that fit and says how many did not.
+//
+// Clipping the joined row instead is what the frame used to do, and it cut
+// through a chip rather than between two: the console arrangement narrows the
+// list column enough that "FIXABLE 38" came out as "FIXABLE 3". A truncated
+// label is obviously truncated; a truncated *count* is a different number,
+// and this row exists to be read as numbers.
+//
+// A chip that is on is never dropped. The fill is what says which filter is
+// running, and for the domain filter this row is the only place the domain is
+// named at all — the head line's "FINDINGS · 3/26" says the list is narrowed
+// but not by what. So the active ones are kept and the rest fill the room
+// that is left, in their own order.
+func (m *appModel) fitChips(chips []chipSpec, w int) string {
 	if len(chips) == 0 {
 		return ""
 	}
-	return strings.Join(chips, "  ")
+	draw := func(keep []chipSpec, dropped int) string {
+		parts := make([]string, 0, len(keep))
+		for _, c := range keep {
+			parts = append(parts, m.chip(c.label, c.on, c.color))
+		}
+		row := strings.Join(parts, "  ")
+		if dropped > 0 {
+			row += m.overflowTail(dropped)
+		}
+		return row
+	}
+	if full := draw(chips, 0); w <= 0 || lipgloss.Width(full) <= w {
+		return full
+	}
+
+	// Room for the marker is held back before anything is admitted, so it is
+	// never itself the thing that gets clipped.
+	budget := w - overflowTailWidth
+	room := budget
+	keep := make([]bool, len(chips))
+	for i, c := range chips {
+		if !c.on {
+			continue
+		}
+		keep[i] = true
+		room -= lipgloss.Width(m.chip(c.label, c.on, c.color)) + 2
+	}
+	for i, c := range chips {
+		if keep[i] {
+			continue
+		}
+		cw := lipgloss.Width(m.chip(c.label, c.on, c.color)) + 2
+		if room-cw < 0 {
+			break // in order, so what is dropped is always a suffix of the rest
+		}
+		keep[i] = true
+		room -= cw
+	}
+
+	out, dropped := make([]chipSpec, 0, len(chips)), 0
+	for i, c := range chips {
+		if keep[i] {
+			out = append(out, c)
+			continue
+		}
+		dropped++
+	}
+	if len(out) == 0 {
+		// Every chip is wider than the column. One chip and the marker still
+		// beats an empty row that claims there is nothing to filter by.
+		return clip(draw(chips[:1], len(chips)-1), w)
+	}
+	return clip(draw(out, dropped), w)
 }
 
 // chip draws one filter chip the way the dashboard's stylesheet does: the
@@ -1115,6 +1213,21 @@ func (m *appModel) forceRows() []string {
 		}
 	}
 	return out
+}
+
+// overflowTail is how a strip that gets exactly one row says what it could
+// not fit. Two of them need it — the axes spark and the chip row — and a
+// second spelling of the same idea is how "+3" and "3 more" end up on
+// adjacent rows meaning the same thing.
+//
+// overflowTailWidth is what a caller holds back for it before admitting
+// anything, so the marker is never the part that gets clipped. Four columns
+// covers "  +9"; past nine dropped items the row is far too narrow to be
+// reading counts off anyway.
+const overflowTailWidth = 4
+
+func (m *appModel) overflowTail(n int) string {
+	return m.sty().dim.Render(fmt.Sprintf("  +%d", n))
 }
 
 // wrapHint reflows a key-binding hint onto as many lines as the terminal

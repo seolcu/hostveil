@@ -198,3 +198,36 @@ func readAsset(t *testing.T, name string) string {
 	}
 	return string(b)
 }
+
+// The lane header's button hands its severity's Auto findings to the batch
+// bar. It does not apply them — the batch bar does that, on its own click,
+// after its own confirmation — so it must not say it fixes anything.
+//
+// It said "Fix the N safe", which is an action the button does not perform:
+// clicking it ticks N checkboxes and stops. The terminal's `m` does exactly
+// the same thing and has always described it as selecting, so this was also
+// the two interfaces disagreeing about what one arrangement does.
+func TestTheLaneButtonSaysItSelectsRatherThanFixes(t *testing.T) {
+	js := readAsset(t, "assets/app.js")
+	i := strings.Index(js, "function laneRows(")
+	if i < 0 {
+		t.Fatal("app.js no longer defines laneRows — this test needs to know")
+	}
+	body := js[i:]
+	if j := strings.Index(body[1:], "\nfunction "); j >= 0 {
+		body = body[:j]
+	}
+	label := regexp.MustCompile("`(Select|Fix) the \\$\\{autos\\.length\\} safe`")
+	m := label.FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("the lane button's label is not where this test looks for it:\n%s", body)
+	}
+	if m[1] != "Select" {
+		t.Errorf("the lane button says %q, but it only marks findings for the batch bar", m[0])
+	}
+	// And it must still be a marking button rather than a second route to the
+	// apply endpoint: one path to that POST, not two.
+	if strings.Contains(body, "fetch(") || strings.Contains(body, "/api/fix") {
+		t.Error("laneRows posts to the API itself instead of going through the batch bar")
+	}
+}
