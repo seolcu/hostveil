@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/seolcu/hostveil/internal/core"
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
@@ -110,6 +111,12 @@ type appModel struct {
 	layoutPrev   string
 	rowOffset    int
 	saveLayout   func(string) error
+
+	// gl is which symbol set the screen draws from. The zero value is
+	// glyph.Plain, so a model built as a bare struct literal — which is how
+	// every layout and frame test builds one — renders what hostveil has
+	// always rendered.
+	gl glyph.Set
 }
 
 // ThemeOpts carries the color theme into the TUI.
@@ -124,18 +131,32 @@ type ThemeOpts struct {
 	Save    func(id string) error
 }
 
+// Opts is everything the TUI is told before it starts. It is one struct
+// rather than three parameters because the third would have been the one
+// that tipped the signature into being read wrong at a call site.
+type Opts struct {
+	Theme  ThemeOpts
+	Layout LayoutOpts
+	// Glyphs is which symbol set to draw from. It has no Save callback
+	// because there is no picker for it: what a terminal's font can draw is
+	// a fact about the terminal, set once with --glyphs or HOSTVEIL_GLYPHS
+	// and remembered by whoever resolved it.
+	Glyphs glyph.Set
+}
+
 // New builds the TUI model around an engine. ctx cancels in-flight scans and
 // fixes when the process is interrupted.
 //
-// lay is temporary and goes with the picker; an unknown or empty ID resolves
-// to the shipped arrangement rather than failing, because a stale preference
-// is not worth refusing to start over.
-func New(ctx context.Context, engine *core.Engine, opts ThemeOpts, lay LayoutOpts) tea.Model {
+// Opts.Layout is temporary and goes with the picker; an unknown or empty ID
+// resolves to the shipped arrangement rather than failing, because a stale
+// preference is not worth refusing to start over.
+func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
 	m := &appModel{
 		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
-		th: opts.Initial, saveTheme: opts.Save, saveLayout: lay.Save,
+		th: opts.Theme.Initial, saveTheme: opts.Theme.Save,
+		saveLayout: opts.Layout.Save, gl: opts.Glyphs,
 	}
-	if l, ok := LookupLayout(lay.Initial); ok {
+	if l, ok := LookupLayout(opts.Layout.Initial); ok {
 		m.layout = l.ID
 	}
 	return m
@@ -171,8 +192,8 @@ func (m *appModel) rebuildActive() {
 }
 
 // Run starts the TUI event loop.
-func Run(ctx context.Context, engine *core.Engine, opts ThemeOpts, lay LayoutOpts) error {
-	_, err := tea.NewProgram(New(ctx, engine, opts, lay)).Run()
+func Run(ctx context.Context, engine *core.Engine, opts Opts) error {
+	_, err := tea.NewProgram(New(ctx, engine, opts)).Run()
 	return err
 }
 

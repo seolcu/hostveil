@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -168,7 +170,7 @@ func (m *appModel) fullHeaderRows() []string {
 
 func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 	s := m.sty()
-	out := []string{s.dim.Render("▚ ") + s.brand.Render("hostveil") + "   " +
+	out := []string{s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil") + "   " +
 		m.gaugeRow(gaugeMeterWidth(m.width))}
 	// How the breakdown is drawn is the arrangement's call: the strip, one
 	// spark row, or nothing at all where the rail is carrying the same
@@ -201,7 +203,7 @@ func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 // of them.
 func (m *appModel) topRow(right string) string {
 	s := m.sty()
-	brand := s.dim.Render("▚ ") + s.brand.Render("hostveil")
+	brand := s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil")
 
 	if right == "" {
 		right = m.axisDigest()
@@ -290,7 +292,7 @@ func (m *appModel) deltaDigest() string {
 	s := m.sty()
 	var parts []string
 	if n := len(m.delta.Resolved); n > 0 {
-		parts = append(parts, s.safe.Render(fmt.Sprintf("✓%d", n)))
+		parts = append(parts, s.safe.Render(m.gl.Of(glyph.OK)+strconv.Itoa(n)))
 	}
 	if n := len(m.delta.New); n > 0 {
 		parts = append(parts, lipgloss.NewStyle().Foreground(s.cHigh).Render(fmt.Sprintf("+%d", n)))

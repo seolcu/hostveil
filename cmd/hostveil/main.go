@@ -186,6 +186,10 @@ TUI and dashboard flags:
   --theme NAME    Color theme: onedark (default), gruvbox, nord,
                   catppuccin, tokyonight. The TUI's picker (press t) remembers
                   your choice; --theme and HOSTVEIL_THEME override it.
+  --glyphs NAME   Symbol set for status markers: plain (default) or nerd.
+                  nerd draws them from a patched Nerd Font; a terminal cannot
+                  be asked what font it has, so this is opt-in. Also on scan,
+                  and settable once with HOSTVEIL_GLYPHS.
   --addr HOST     serve only: address to bind the dashboard to. The dashboard
                   answers only requests addressed to localhost, so this cannot
                   publish it to the network; forward the port over SSH instead.
@@ -214,6 +218,7 @@ Environment:
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
+  HOSTVEIL_GLYPHS=SET  Symbol set for the TUI and scan: plain or nerd
   NO_COLOR=1           Disable colored output
 
   HOSTVEIL_OLLAMA_HOST=URL     Where the optional local LLM listens

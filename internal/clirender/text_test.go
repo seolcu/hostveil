@@ -136,7 +136,7 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 			model.SourceCVE, model.RemediationManual))
 	}
 
-	out := DeltaSummary(model.Delta{Resolved: resolved})
+	out := DeltaSummary(model.Delta{Resolved: resolved}, Options{})
 
 	if n := strings.Count(out, "✓ resolved:"); n > 12 {
 		t.Errorf("summary listed %d resolved lines; it must be bounded", n)
@@ -167,7 +167,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	out := DeltaSummary(model.ComputeDelta(
 		model.Report{Findings: []model.Finding{before}},
 		model.Report{Findings: []model.Finding{after}},
-	))
+	), Options{})
 
 	if !strings.Contains(out, "count 3627 → 3630") {
 		t.Errorf("summary does not say what moved:\n%s", out)
@@ -207,7 +207,7 @@ func TestDeltaSummaryBoundsNamedListMembers(t *testing.T) {
 	out := DeltaSummary(model.ComputeDelta(
 		model.Report{Findings: []model.Finding{prev}},
 		model.Report{Findings: []model.Finding{curr}},
-	))
+	), Options{})
 
 	// The true count leads; only a handful are named.
 	if !strings.Contains(out, "cves +300 (") {

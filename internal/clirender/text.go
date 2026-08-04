@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/textwidth"
 )
@@ -16,6 +17,10 @@ import (
 type Options struct {
 	Color   bool
 	Verbose bool // include descriptions and fix guidance
+	// Glyphs is which symbol set to draw the status markers from. The zero
+	// value is glyph.Plain, so a caller that does not set it gets exactly
+	// what this renderer printed before the field existed.
+	Glyphs glyph.Set
 }
 
 // Text renders a human-readable report.
@@ -52,7 +57,7 @@ func Text(r model.Report, opts Options) string {
 	for _, d := range r.Domains {
 		switch d.State {
 		case model.ScanSkipped:
-			fmt.Fprintf(&b, "  %s· %s skipped: %s%s\n", c.dim, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s skipped: %s%s\n", c.dim, opts.Glyphs.Of(glyph.Skipped), d.Source, d.Reason, c.reset)
 		case model.ScanDegraded:
 			fmt.Fprintf(&b, "  %s~ %s partial: %s%s\n", c.yellow, d.Source, d.Reason, c.reset)
 		case model.ScanError:
@@ -149,11 +154,16 @@ func nextSteps(active []model.Finding, opts Options) string {
 const maxDeltaLines = 10
 
 // DeltaSummary renders a short "since last scan" summary line.
-func DeltaSummary(d model.Delta) string {
+//
+// It takes the whole Options rather than just the glyph set so it cannot
+// drift out of step with Text's: the two are printed one after the other and
+// a resolved-tick from a different table in the middle of one report would
+// be the only place hostveil disagreed with itself about a symbol.
+func DeltaSummary(d model.Delta, opts Options) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d changed, %d still present.\n",
 		len(d.Resolved), len(d.New), len(d.Changed), d.StillPresent)
-	deltaLines(&b, "  ✓ resolved: ", d.Resolved)
+	deltaLines(&b, "  "+opts.Glyphs.Of(glyph.OK)+" resolved: ", d.Resolved)
 	deltaLines(&b, "  + new: ", d.New)
 	changedLines(&b, d.Changed)
 	return b.String()

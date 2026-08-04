@@ -38,9 +38,25 @@ body {
 .brand b { color: var(--bone); }
 /* The tile-less mark, so it dissolves into any theme's status bar rather than
    sitting on a plate of its own. (The favicon carries a tile instead, for the
-   unknown background of a browser tab.) 20px is the size the drawing's
-   weights were set for. */
-.brand::before { content: ""; width: 20px; height: 20px; margin-right: 9px; background: url(/mark.svg) center / contain no-repeat; }
+   unknown background of a browser tab.)
+
+   1.7em, not a pixel count, and the same 1.7em the marketing site uses. The
+   two surfaces had the mark at 2.2x and 3.1x their own cap height, which is
+   what made the lockups look like two different marks at two different
+   weights. At 1.7em the package — the solid body, ignoring the pins — lands
+   on the cap height and the pins overhang it the way ascenders overhang an
+   x-height, so the figure reads as the same size as the word beside it.
+
+   em rather than the cap unit: cap would make the two surfaces agree exactly
+   rather than within 5%, and 5% of a cap height is not visible, but cap is
+   too new to put on a public page where an unsupported declaration is
+   dropped and the mark collapses. */
+/* Nudged up half a descender. align-items:center centres the mark on the
+   *line box*, but "hostveil" has no descenders in either case, so its ink
+   stops at the baseline and its optical centre sits above the line box's.
+   Measured at 1.58px against a 13px face, which is the half-descender of
+   every mono here to within a rounding error. */
+.brand::before { content: ""; width: 1.7em; height: 1.7em; margin-right: .6em; transform: translateY(-.11em); background: url(/mark.svg) center / contain no-repeat; }
 .actions { margin-left: auto; display: flex; gap: 8px; }
 
 button {

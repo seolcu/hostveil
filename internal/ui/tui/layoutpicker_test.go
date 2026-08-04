@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/web"
 )
@@ -497,5 +498,70 @@ func TestTheFooterNamesTheKeysTheArrangementAdds(t *testing.T) {
 	// waiting for a screen that never changes.
 	if strings.Contains(layoutHint, "preview") {
 		t.Error("the layout picker's footer promises a preview it does not give")
+	}
+}
+
+// The Nerd set is a set of Private Use codepoints, and the frame is built by
+// counting columns. internal/glyph holds every symbol to one column, but
+// that is a claim about the table; this is the claim about the screen — the
+// same widths, heights and arrangements the plain set is held to, drawn from
+// the other table.
+//
+// It matters most for the header: the brand is the first thing on the widest
+// row, so a symbol that measured wrong there would push the gauge off the
+// end of every frame hostveil draws.
+func TestEveryLayoutFitsWithNerdGlyphs(t *testing.T) {
+	for _, l := range Layouts() {
+		for _, w := range []int{200, 120, 100, 80, 60, 44} {
+			for _, h := range []int{40, 24, 14, 10} {
+				m := layoutModel(l.ID, w, h)
+				m.gl = glyph.Nerd
+				m.delta = model.Delta{Resolved: m.report.Findings[:1], New: m.report.Findings[1:3]}
+				content := m.View().Content
+				for _, line := range strings.Split(content, "\n") {
+					if got := visibleWidth(line); got > w {
+						t.Fatalf("%s at %dx%d: line is %d columns:\n  %q", l.ID, w, h, got, line)
+					}
+				}
+				if got := strings.Count(content, "\n") + 1; got != h {
+					t.Fatalf("%s at %dx%d: frame is %d lines", l.ID, w, h, got)
+				}
+			}
+		}
+	}
+}
+
+// Choosing the Nerd set has to actually change the screen, and choosing
+// nothing has to leave it exactly as it was. The second half is the one that
+// protects everybody who never opts in: glyph.Plain is the zero value, so a
+// model built without a set must render what hostveil always rendered.
+func TestTheGlyphSetReachesTheScreen(t *testing.T) {
+	plain := layoutModel("split", 120, 34)
+	nerd := layoutModel("split", 120, 34)
+	nerd.gl = glyph.Nerd
+	// A delta, so the resolved tick is on screen: the brand is drawn on every
+	// frame but the tick only when something moved, and a set that reached
+	// the header and nothing else would pass on the header alone.
+	for _, m := range []*appModel{plain, nerd} {
+		m.delta = model.Delta{Resolved: m.report.Findings[:2]}
+	}
+
+	if plain.View().Content == nerd.View().Content {
+		t.Error("the nerd set renders identically to plain, so --glyphs does nothing")
+	}
+	unset := layoutModel("split", 120, 34)
+	if unset.gl != glyph.Plain {
+		t.Fatal("the zero glyph set is not Plain")
+	}
+	// Every symbol the header and the coverage notices draw, in the set the
+	// terminal was told to use — and none of the other set's.
+	got := plain.View().Content
+	for _, sym := range []glyph.Symbol{glyph.Brand, glyph.OK} {
+		if !strings.Contains(got, glyph.Plain.Of(sym)) {
+			t.Errorf("the plain screen is missing %q", glyph.Plain.Of(sym))
+		}
+		if strings.Contains(got, glyph.Nerd.Of(sym)) {
+			t.Errorf("the plain screen drew the nerd symbol %q", glyph.Nerd.Of(sym))
+		}
 	}
 }

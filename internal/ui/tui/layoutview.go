@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -204,7 +205,7 @@ func (m *appModel) railRows(w, budget int) []string {
 		// attribute does not survive a screenshot or a pipe.
 		marker := "  "
 		if on {
-			marker = s.bone.Render("› ")
+			marker = s.bone.Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 
 		val := "N/A"
@@ -265,7 +266,7 @@ func (m *appModel) railRows(w, budget int) []string {
 		// simply stopped would read as a host with six domains.
 		if len(out)+len(b) > budget {
 			if len(out) < budget {
-				out = append(out, s.dim.Render(truncate(fmt.Sprintf("· %d more", len(blocks)-i), w)))
+				out = append(out, s.dim.Render(truncate(fmt.Sprintf("%s %d more", m.gl.Of(glyph.Skipped), len(blocks)-i), w)))
 			}
 			break
 		}

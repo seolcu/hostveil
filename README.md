@@ -211,6 +211,15 @@ default), `gruvbox`, `nord`, `catppuccin`, `tokyonight`. Press `t` in the TUI
 to pick one and have it remembered, use the picker in the dashboard's status
 bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
 
+The TUI and `scan` can also draw their status markers from a patched
+[Nerd Font](https://www.nerdfonts.com/) — `--glyphs nerd`, or
+`HOSTVEIL_GLYPHS=nerd` once. It is opt-in rather than detected, because a
+terminal cannot be asked what font it is using and a missing glyph is drawn
+in the same single cell a present one would be. The default set is plain
+Unicode and renders everywhere; a Nerd Font **Mono** patch is what to
+install, since the non-Mono variants draw some glyphs double-width and the
+TUI budgets one column per symbol.
+
 ## AI (optional, advisory only)
 
 `hostveil explain <id> --ai` adds a plain-language explanation from a local

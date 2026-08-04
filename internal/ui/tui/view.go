@@ -11,6 +11,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/textwidth"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
@@ -209,7 +210,7 @@ func (m *appModel) deltaLine() string {
 	s := m.sty()
 	var parts []string
 	if n := len(m.delta.Resolved); n > 0 {
-		parts = append(parts, s.safe.Render(fmt.Sprintf("✓ %d resolved", n)))
+		parts = append(parts, s.safe.Render(fmt.Sprintf("%s %d resolved", m.gl.Of(glyph.OK), n)))
 	}
 	if n := len(m.delta.New); n > 0 {
 		parts = append(parts, lipgloss.NewStyle().Foreground(s.cHigh).Render(fmt.Sprintf("+ %d new", n)))
@@ -473,7 +474,7 @@ func (m *appModel) listColumn(budget, w int) []string {
 		}
 		h := s.dim.Render(count)
 		if n := len(m.selected); n > 0 {
-			h += s.safe.Render(fmt.Sprintf("   ✓ %d marked", n))
+			h += s.safe.Render(fmt.Sprintf("   %s %d marked", m.gl.Of(glyph.OK), n))
 		}
 		if total > visible {
 			h += s.dim.Render(fmt.Sprintf("      %d–%d", shownFrom, shownTo))
@@ -571,7 +572,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	mark := "  "
 	if f.Remediation == model.RemediationAuto {
 		if m.selected[f.Key()] {
-			mark = s.safe.Render("✓ ")
+			mark = s.safe.Render(m.gl.Of(glyph.OK) + " ")
 		} else {
 			mark = s.dim.Render("· ")
 		}
@@ -728,11 +729,11 @@ func (m *appModel) coverageRows() []string {
 		name := sourceLabel(d.Source)
 		switch d.State {
 		case model.ScanError:
-			errored = append(errored, fail.Render(m.notice("!", name, "failed", d.Reason, "unknown error")))
+			errored = append(errored, fail.Render(m.notice(m.gl.Of(glyph.Failed), name, "failed", d.Reason, "unknown error")))
 		case model.ScanDegraded:
-			degraded = append(degraded, warn.Render(m.notice("~", name, "partial", d.Reason, "covered only part of the domain")))
+			degraded = append(degraded, warn.Render(m.notice(m.gl.Of(glyph.Partial), name, "partial", d.Reason, "covered only part of the domain")))
 		case model.ScanSkipped:
-			skipped = append(skipped, s.dim.Render(m.notice("·", name, "skipped", d.Reason, "did not run")))
+			skipped = append(skipped, s.dim.Render(m.notice(m.gl.Of(glyph.Skipped), name, "skipped", d.Reason, "did not run")))
 		}
 	}
 
@@ -746,7 +747,7 @@ func (m *appModel) coverageRows() []string {
 	if len(rows) > maxCoverageRows {
 		hidden := len(rows) - (maxCoverageRows - 1)
 		rows = rows[:maxCoverageRows-1]
-		rows = append(rows, s.dim.Render(fmt.Sprintf("· %d more domain(s) did not fully run — hostveil scan lists them", hidden)))
+		rows = append(rows, s.dim.Render(fmt.Sprintf("%s %d more domain(s) did not fully run — hostveil scan lists them", m.gl.Of(glyph.Skipped), hidden)))
 	}
 	return rows
 }
@@ -845,7 +846,7 @@ func (m *appModel) previewRows() []string {
 		for _, a := range m.preview.Actions {
 			marker := "  "
 			if a.Index == idx {
-				marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+				marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 			}
 			out = append(out, marker+s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)))
 		}
@@ -863,7 +864,7 @@ func (m *appModel) previewRows() []string {
 		warn := lipgloss.NewStyle().Foreground(s.cHigh)
 		for i, l := range strings.Split(wrap(a.Warning, min(m.width-4, 78)), "\n") {
 			if i == 0 {
-				out = append(out, warn.Render("⚠  "+l))
+				out = append(out, warn.Render(m.gl.Of(glyph.Warning)+"  "+l))
 			} else {
 				out = append(out, warn.Render("   "+l))
 			}
@@ -903,7 +904,7 @@ func (m *appModel) historyRows(budget int) []string {
 	warn := ""
 	if m.historyWarning != "" {
 		warn = lipgloss.NewStyle().Foreground(s.cHigh).
-			Render("⚠ " + truncate(m.historyWarning, max(1, m.width-2)))
+			Render(m.gl.Of(glyph.Warning) + " " + truncate(m.historyWarning, max(1, m.width-2)))
 	}
 
 	// The trend costs a row and answers the question the checkpoint list
@@ -990,7 +991,7 @@ func (m *appModel) themeRows() []string {
 	for i, t := range all {
 		marker := "  "
 		if i == m.themeCursor {
-			marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 		name := padRight(truncate(t.Name, max(1, min(nameW, m.width-2))), nameW)
 		row := marker
@@ -1035,7 +1036,7 @@ func (m *appModel) layoutPickerRows() []string {
 	for i, l := range all {
 		marker := "  "
 		if i == m.layoutCursor {
-			marker = lipgloss.NewStyle().Foreground(s.cBone).Render("› ")
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 		name := padRight(truncate(l.Name, max(1, min(nameW, m.width-2))), nameW)
 		row := marker
@@ -1082,7 +1083,7 @@ func (m *appModel) rollbackRows() []string {
 	out = append(out, "")
 	if cp.RestartService != "" {
 		out = append(out, lipgloss.NewStyle().Foreground(s.cHigh).
-			Render("⚠  You may need to restart '"+cp.RestartService+"' afterwards."), "")
+			Render(m.gl.Of(glyph.Warning)+"  You may need to restart '"+cp.RestartService+"' afterwards."), "")
 	}
 	if cp.Diff != "" {
 		out = append(out, s.dim.Render("This change will be reverted:"))

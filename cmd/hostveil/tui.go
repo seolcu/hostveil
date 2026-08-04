@@ -18,6 +18,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	// one can be chosen. The flag is here so a screenshot of a candidate does
 	// not have to be driven through the picker by hand.
 	layoutID := fs.String("layout", "", "temporary: arrangement ("+strings.Join(tui.LayoutIDs(), ", ")+")")
+	glyphSet := fs.String("glyphs", "", "symbol set ("+glyphList()+")")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
 	}
@@ -29,6 +30,11 @@ func cmdTUI(ctx context.Context, args []string) int {
 	}
 
 	t, err := resolveTheme(*themeID)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "hostveil:", err)
+		return 2
+	}
+	gl, err := resolveGlyphs(*glyphSet)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 2
@@ -50,7 +56,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	// The advisory AI provider is wired in for the detail view's `e` key.
 	// Construction does no I/O; with no Ollama reachable the view shows a
 	// one-line note instead.
-	if err := tui.Run(ctx, buildEngineWithAI(true), opts, lay); err != nil {
+	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: lay, Glyphs: gl}); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
