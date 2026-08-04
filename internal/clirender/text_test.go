@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -95,6 +96,52 @@ func TestTextRendersSkippedAndErroredDomains(t *testing.T) {
 	if !strings.Contains(out, "error: list compose projects: permission denied") {
 		t.Errorf("errored domain not rendered:\n%s", out)
 	}
+}
+
+// Skipped, partial and errored print one under the other as a single block
+// about what the scan could not see, so all three markers have to come from
+// the set the operator picked. They did not: --glyphs nerd drew the skipped
+// line's minus-circle from the patched font and left the two lines beside it
+// on the ASCII "~" and "!", which reads as two kinds of remark rather than
+// three degrees of one.
+func TestCoverageMarkersAllComeFromTheChosenSet(t *testing.T) {
+	report := model.Report{
+		Domains: []model.DomainResult{
+			{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
+			{Source: model.SourceDockerd, State: model.ScanDegraded, Reason: "unit not readable"},
+			{Source: model.SourceCompose, State: model.ScanError, Reason: "permission denied"},
+		},
+	}
+	for _, set := range []glyph.Set{glyph.Plain, glyph.Nerd} {
+		out := Text(report, Options{Glyphs: set})
+		for _, tc := range []struct {
+			sym  glyph.Symbol
+			word string
+		}{
+			{glyph.Skipped, "skipped"},
+			{glyph.Partial, "partial"},
+			{glyph.Failed, "error"},
+		} {
+			want := set.Of(tc.sym) + " "
+			line := lineContaining(out, " "+tc.word+": ")
+			if line == "" {
+				t.Fatalf("%s: no %s line:\n%s", set, tc.word, out)
+			}
+			if !strings.Contains(line, want) {
+				t.Errorf("%s: %s line %q does not carry %q", set, tc.word, line, want)
+			}
+		}
+	}
+}
+
+// lineContaining returns the first line of s holding sub, or "".
+func lineContaining(s, sub string) string {
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, sub) {
+			return line
+		}
+	}
+	return ""
 }
 
 // "Clean" is a claim about the whole host. With domains missing, the most the

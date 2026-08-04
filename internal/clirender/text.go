@@ -53,15 +53,19 @@ func Text(r model.Report, opts Options) string {
 	}
 	b.WriteString("\n")
 
-	// Domain status (skipped/degraded/errored checkers).
+	// Domain status (skipped/degraded/errored checkers). All three markers
+	// come from the same set — they are printed as one block, and a patched
+	// glyph on the skipped line beside an ASCII one on the partial line
+	// reads as two different kinds of remark rather than three degrees of
+	// the same one.
 	for _, d := range r.Domains {
 		switch d.State {
 		case model.ScanSkipped:
 			fmt.Fprintf(&b, "  %s%s %s skipped: %s%s\n", c.dim, opts.Glyphs.Of(glyph.Skipped), d.Source, d.Reason, c.reset)
 		case model.ScanDegraded:
-			fmt.Fprintf(&b, "  %s~ %s partial: %s%s\n", c.yellow, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s partial: %s%s\n", c.yellow, opts.Glyphs.Of(glyph.Partial), d.Source, d.Reason, c.reset)
 		case model.ScanError:
-			fmt.Fprintf(&b, "  %s! %s error: %s%s\n", c.red, d.Source, d.Reason, c.reset)
+			fmt.Fprintf(&b, "  %s%s %s error: %s%s\n", c.red, opts.Glyphs.Of(glyph.Failed), d.Source, d.Reason, c.reset)
 		}
 	}
 

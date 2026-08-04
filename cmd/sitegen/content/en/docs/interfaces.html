@@ -75,7 +75,7 @@ HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <p><code>--theme</code> and <code>HOSTVEIL_THEME</code> both override the remembered choice. Colors mean the same thing in every theme — the four severity steps and safety — so nothing about a theme changes how a finding reads.</p>
 
             <h2 id="symbols">Symbols</h2>
-            <p>The TUI and <code>hostveil scan</code> draw their status markers — the brand mark, the check, the warning, and the three ways a domain can fall short — from plain Unicode, which renders in any font. If your terminal already uses a <a href="https://www.nerdfonts.com/">Nerd Font</a>, <code>--glyphs nerd</code> swaps them for the patched icons.</p>
+            <p>The TUI and <code>hostveil scan</code> draw their status markers — the brand mark, the check, the warning, and the three ways a domain can fall short — from plain Unicode (<code>plain</code>), which renders in any font. If your terminal already uses a <a href="https://www.nerdfonts.com/">Nerd Font</a>, <code>--glyphs nerd</code> swaps them for the patched icons.</p>
             <div class="code-block"><pre><code>hostveil tui --glyphs nerd
 hostveil scan --glyphs nerd
 HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
