@@ -15,9 +15,10 @@ import (
 //
 // The Nerd variants live in the Private Use Area, which runewidth treats as
 // ambiguous and therefore one column under the narrow condition hostveil
-// pins — so this measures what hostveil will *lay out*. A font that draws
-// them double-width would still break the frame, which is why the package
-// doc names the Mono patch as the requirement rather than "a Nerd Font".
+// pins — so this measures what hostveil will *lay out*. What the font then
+// *draws* is checked separately and by hand, against the four families
+// named in the package doc; the Font Awesome block was chosen partly
+// because it is one cell wide in every build, Mono or not.
 func TestEverySymbolIsOneColumn(t *testing.T) {
 	for _, s := range Symbols() {
 		for set, got := range map[string]string{"plain": s.Plain, "nerd": s.Nerd} {
@@ -93,10 +94,11 @@ func TestSetsDrawFromTheRangesTheyClaim(t *testing.T) {
 }
 
 // Nerd Fonts patch the Font Awesome block at U+F000–U+F2FF, and that range
-// is the oldest in the patch set and the one present in every build,
-// including the Mono variants a terminal actually installs. Newer ranges are
-// prettier and are missing from enough fonts that opting in would produce a
-// row of tofu.
+// is the oldest in the patch set, present in every build, and single-width
+// in all of them. Newer ranges are prettier, are missing from enough fonts
+// that opting in would produce a row of tofu, and include the ones that go
+// double-width in a non-Mono build — which would push every row that
+// carries one past the edge of the terminal.
 func TestNerdGlyphsComeFromTheFontAwesomeBlock(t *testing.T) {
 	for _, s := range Symbols() {
 		for _, r := range s.Nerd {

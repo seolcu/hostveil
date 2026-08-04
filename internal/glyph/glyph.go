@@ -17,11 +17,19 @@
 // in alt-screen mode wraps and shoves every row below it off the bottom.
 // TestEverySymbolIsOneColumn pins it for both sets.
 //
-// The Nerd variants come from the Font Awesome block (U+F000–U+F2FF), which
-// is the oldest range in the patch set and the one present in every Nerd
-// Font build including the Mono variants terminals actually install. A
-// newer, prettier codepoint that half the fonts lack is worse than no
-// support at all: the operator opted in and got a row of tofu.
+// The Nerd variants come from the Font Awesome block (U+F000–U+F2FF), for
+// two reasons that were checked rather than assumed. It is the oldest range
+// in the patch set, so it is present everywhere — a newer, prettier
+// codepoint that half the fonts lack is worse than no support at all,
+// because the operator opted in and got a row of tofu. And it is the range
+// that stays one cell wide: the glyphs that go double-width in a
+// non-Mono build are the Powerline, Devicon and Material ranges, not this
+// one, so hostveil does not have to care which variant is installed.
+//
+// Verified against v3.4.0 of JetBrains Mono, Hack, FiraCode and Meslo — 18
+// files, Mono and non-Mono — by reading each font's cmap and hmtx: every
+// symbol below is present in all of them, and every one has the same
+// advance as an ASCII 'M'.
 package glyph
 
 import (

@@ -216,9 +216,12 @@ The TUI and `scan` can also draw their status markers from a patched
 `HOSTVEIL_GLYPHS=nerd` once. It is opt-in rather than detected, because a
 terminal cannot be asked what font it is using and a missing glyph is drawn
 in the same single cell a present one would be. The default set is plain
-Unicode and renders everywhere; a Nerd Font **Mono** patch is what to
-install, since the non-Mono variants draw some glyphs double-width and the
-TUI budgets one column per symbol.
+Unicode and renders everywhere.
+
+Any Nerd Font build works — Mono or not. The symbols are drawn from the
+Font Awesome block, which is present in every patched font and one cell wide
+in all of them; the glyphs that go double-width in a non-Mono build are the
+Powerline and icon ranges, which hostveil does not use.
 
 ## AI (optional, advisory only)
 
