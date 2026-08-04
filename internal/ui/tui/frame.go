@@ -170,8 +170,19 @@ func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 	s := m.sty()
 	out := []string{s.dim.Render("▚ ") + s.brand.Render("hostveil") + "   " +
 		m.gaugeRow(gaugeMeterWidth(m.width))}
-	if ax := m.axesLine(); ax != "" {
-		out = append(out, strings.Split(ax, "\n")...)
+	// How the breakdown is drawn is the arrangement's call: the strip, one
+	// spark row, or nothing at all where the rail is carrying the same
+	// numbers with the reason for each gap attached.
+	switch m.axesStyle() {
+	case axesFull:
+		if ax := m.axesLine(); ax != "" {
+			out = append(out, strings.Split(ax, "\n")...)
+		}
+	case axesSpark:
+		if ax := m.sparkAxesLine(m.width); ax != "" {
+			out = append(out, ax)
+		}
+	case axesNone:
 	}
 	if d := m.deltaLine(); d != "" {
 		out = append(out, d)

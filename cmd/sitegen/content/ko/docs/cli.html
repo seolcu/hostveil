@@ -100,12 +100,13 @@ hostveil history --scans</code></pre></div>
 
             <h2 id="tui">tui</h2>
             <p>대화형 터미널 UI를 엽니다(터미널에서 명령 없이 실행할 때의 기본값이기도 합니다).</p>
-            <div class="code-block"><pre><code>hostveil tui [--theme NAME]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil tui [--theme NAME] [--layout NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>색상 테마: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>split</code></td><td>임시 옵션입니다. 하나를 고르기 위해 여섯 가지 배치를 함께 담아두었습니다: <code>split</code>, <code>triage</code>, <code>console</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르세요.</td></tr>
                 </tbody>
               </table>
             </div>

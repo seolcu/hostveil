@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/ui/theme"
 	"github.com/seolcu/hostveil/internal/ui/tui"
@@ -13,8 +14,18 @@ import (
 func cmdTUI(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
+	// Temporary, and goes with the picker: six arrangements ship behind it so
+	// one can be chosen. The flag is here so a screenshot of a candidate does
+	// not have to be driven through the picker by hand.
+	layoutID := fs.String("layout", "", "temporary: arrangement ("+strings.Join(tui.LayoutIDs(), ", ")+")")
 	if code := parseFlags(fs, args); code >= 0 {
 		return code
+	}
+	if *layoutID != "" {
+		if _, ok := tui.LookupLayout(*layoutID); !ok {
+			fmt.Fprintln(os.Stderr, "hostveil:", &unknownLayoutError{id: *layoutID})
+			return 2
+		}
 	}
 
 	t, err := resolveTheme(*themeID)
@@ -32,10 +43,14 @@ func cmdTUI(ctx context.Context, args []string) int {
 		Initial: t,
 		Save:    func(id string) error { return theme.Save(dir, id) },
 	}
+	lay := tui.LayoutOpts{Initial: *layoutID, Save: saveLayoutPref}
+	if lay.Initial == "" {
+		lay.Initial = loadLayoutPref()
+	}
 	// The advisory AI provider is wired in for the detail view's `e` key.
 	// Construction does no I/O; with no Ollama reachable the view shows a
 	// one-line note instead.
-	if err := tui.Run(ctx, buildEngineWithAI(true), opts); err != nil {
+	if err := tui.Run(ctx, buildEngineWithAI(true), opts, lay); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

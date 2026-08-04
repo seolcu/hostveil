@@ -80,7 +80,7 @@ func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 	var floors []int
 	for _, b := range model.Bands() {
 		want := fmt.Sprintf("    {name: %q, min: %d, cls: %q, verdict: %q},",
-			b.String(), b.Min(), bandClass(b), bandVerdict(b))
+			b.String(), b.Min(), bandClass(b), b.Verdict())
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing band %s", strings.TrimSpace(want))
 		}
@@ -90,7 +90,7 @@ func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 		if bandClass(b) == "b-na" {
 			t.Errorf("band %v has no meter class", b)
 		}
-		if bandVerdict(b) == "unscored" {
+		if b.Verdict() == "unscored" {
 			t.Errorf("band %v has no verdict phrase", b)
 		}
 	}
@@ -101,7 +101,7 @@ func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 	}
 
 	assertDistinctStrings(t, "band class", model.Bands(), bandClass)
-	assertDistinctStrings(t, "band verdict", model.Bands(), bandVerdict)
+	assertDistinctStrings(t, "band verdict", model.Bands(), model.Band.Verdict)
 
 	// Nothing-extracted guards, one per table.
 	for _, tc := range []struct {
