@@ -97,3 +97,23 @@ func TestChromeIsDistinguishable(t *testing.T) {
 		}
 	}
 }
+
+// CSS declares color-scheme: dark unconditionally, which is only true while
+// every palette is one. It is not decoration: it decides how the browser
+// draws the widgets hostveil does not style — checkboxes, the theme picker's
+// dropdown, scrollbars — and a light palette shipped under it would render
+// those against the wrong ground.
+//
+// The threshold is generous on purpose. Nord's ink (#22262e) is the lightest
+// page in the registry at 0.02, and anything a browser would sensibly call a
+// light scheme sits an order of magnitude above that.
+func TestEveryPaletteIsDark(t *testing.T) {
+	for _, th := range All() {
+		if got := relativeLuminance(th.Palette.Ink); got > 0.18 {
+			t.Errorf("%s: ink (%s) has luminance %.3f — too light for the "+
+				"color-scheme: dark that theme.CSS emits; make color-scheme "+
+				"follow the palette before adding a light theme",
+				th.ID, th.Palette.Ink, got)
+		}
+	}
+}

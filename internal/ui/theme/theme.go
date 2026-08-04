@@ -173,6 +173,15 @@ func (p Palette) block(selector string) string {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s {\n", selector)
+	// Every palette here is bone-on-ink, and the browser has no way to know
+	// that from custom properties: the widgets it draws itself — a checkbox,
+	// a <select>'s dropdown, a scrollbar — follow color-scheme, not --ink. Left
+	// unset they come out of the light default, which is why an unticked
+	// batch-select box was a white square sitting in the middle of a dark
+	// findings list. Written per block rather than once on :root so it travels
+	// with the palette it describes; TestEveryPaletteIsDark holds the claim,
+	// and a light theme would have to answer it here.
+	b.WriteString("  color-scheme: dark;\n")
 	for _, name := range names {
 		fmt.Fprintf(&b, "  %s: %s;\n", name, v[name])
 	}

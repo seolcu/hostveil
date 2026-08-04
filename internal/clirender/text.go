@@ -73,9 +73,18 @@ func Text(r model.Report, opts Options) string {
 		return b.String()
 	}
 
-	fmt.Fprintf(&b, "\n%sFindings (%d):%s\n", c.bold, len(active), c.reset)
-	for _, f := range active {
-		fmt.Fprintf(&b, "\n  %s[%s]%s %s  %s%s%s",
+	fmt.Fprintf(&b, "\n%sFindings (%d):%s\n\n", c.bold, len(active), c.reset)
+	for i, f := range active {
+		// A blank line between entries only earns its space when an entry is
+		// more than one line. Verbose adds a description and fix guidance
+		// under each headline, so there the separator is what keeps two
+		// findings from reading as one paragraph; the plain listing is a
+		// table, and double-spacing it made a routine 86-finding host four
+		// screens of scrollback instead of two.
+		if opts.Verbose && i > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "  %s[%s]%s %s  %s%s%s",
 			sevColor(c, f.Severity), strings.ToUpper(f.Severity.String()), c.reset,
 			f.ID, c.bold, f.Title, c.reset)
 		if f.Service != "" {

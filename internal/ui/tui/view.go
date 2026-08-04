@@ -300,7 +300,7 @@ func (m *appModel) listRows(budget int) []string {
 		return nil
 	}
 
-	fl := m.filterLine()
+	fl := m.chipRow()
 
 	// Empty list: distinguish a clean host from a too-narrow filter — and,
 	// when nothing is filtered, a clean host from one that could not be
@@ -316,7 +316,10 @@ func (m *appModel) listRows(budget int) []string {
 	if len(m.active) == 0 {
 		var body []string
 		switch {
-		case fl != "":
+		case m.filterActive():
+			// Asked explicitly rather than inferred from the chip row: the
+			// chips are drawn from the unfiltered report, so they are there
+			// whenever the host has findings at all, filtered or not.
 			body = append(body, fl, "", s.dim.Render("  No findings match the filter."))
 		case m.report.IncompleteDomains() > 0:
 			// Wrapped, for the reason the preview's warning is wrapped: this
@@ -345,6 +348,10 @@ func (m *appModel) listRows(budget int) []string {
 		// Findings beat labels: on a frame this short the list itself is the
 		// only thing worth drawing.
 		chrome, visible = 0, budget
+	} else if chrome == 2 && visible < minChipRows {
+		// The chips are a summary of the list, and a summary that costs half
+		// of what it summarises is not worth its row.
+		chrome, visible = 1, budget-1
 	}
 
 	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
@@ -446,23 +453,151 @@ func sourceLabel(s model.Source) string {
 	return s.String()
 }
 
-// filterLine describes the active filter, or "" when nothing is filtered.
-func (m *appModel) filterLine() string {
-	var parts []string
-	if m.filter.MinSeverity != nil {
-		parts = append(parts, "sev≥"+strings.ToUpper(m.filter.MinSeverity.String()))
+// chipRow is the dashboard's filter bar, in one row.
+//
+// It replaces a line that appeared only while a filter was set and named
+// what it was. That told the user what they had just pressed and nothing
+// else: the shape of the report — how much of a wall of findings is
+// Critical, how much of it hostveil can fix on its own — was reachable only
+// by scrolling and counting, in the one interface where scrolling is most
+// expensive. The dashboard has never made anyone do that, and this is its
+// chip bar: a count per severity, the fixable count, and the active filter
+// picked out on the chip it belongs to.
+//
+// The counts are taken over the *unfiltered* set, as the dashboard's are.
+// Counts that moved with the filter would be describing the filter rather
+// than the host, and the number a narrowed list most needs beside it is what
+// it was narrowed from.
+//
+// The severity threshold is a range, not a selection, so every chip at or
+// above it reads as active — anything else would show CRIT dim on a list
+// that is showing exactly the Criticals.
+func (m *appModel) chipRow() string {
+	s := m.sty()
+	unfiltered := m.report.Select(model.Filter{})
+
+	counts := map[model.Severity]int{}
+	fixable := 0
+	for _, f := range unfiltered {
+		counts[f.Severity]++
+		if f.IsFixable() {
+			fixable++
+		}
+	}
+
+	var chips []string
+	for _, sev := range model.AllSeverities() {
+		n := counts[sev]
+		if n == 0 {
+			continue // the dashboard omits a severity nothing is at, too
+		}
+		on := m.filter.MinSeverity != nil && sev <= *m.filter.MinSeverity
+		chips = append(chips, m.chip(fmt.Sprintf("%s %d", sevAbbr(sev), n), on, s.severityColor(sev)))
+	}
+	if fixable > 0 {
+		// Safe rather than the dashboard's slate. "Fixable" is a claim about
+		// safety, which is the one thing besides risk this design system lets
+		// a color mean, and spending it here is what makes the count read as
+		// the good news it is.
+		chips = append(chips, m.chip(fmt.Sprintf("FIXABLE %d", fixable), m.filter.FixableOnly, s.cSafe))
 	}
 	if m.filter.Source != model.SourceUnset {
-		parts = append(parts, sourceLabel(m.filter.Source))
+		chips = append(chips, m.chip(strings.ToUpper(sourceLabel(m.filter.Source)), true, s.cSlate))
 	}
-	if m.filter.FixableOnly {
-		parts = append(parts, "fixable")
-	}
-	if len(parts) == 0 {
+	if len(chips) == 0 {
 		return ""
 	}
+	return strings.Join(chips, "  ")
+}
+
+// chip draws one filter chip the way the dashboard's stylesheet does: the
+// chip's own color on the page while it is merely available, and filled —
+// ink on that color — while it is on.
+//
+// The fill is an attribute, so it does not survive being stripped of
+// styling, and it is deliberately not the only thing carrying the state:
+// the head line above prints the narrowed count over the unnarrowed one
+// ("FINDINGS · 3/26"), which is what a monochrome terminal, a pipe and a
+// screenshot all still show.
+func (m *appModel) chip(label string, on bool, c color.Color) string {
+	if on {
+		return lipgloss.NewStyle().Foreground(m.sty().cInk).Background(c).Bold(true).Render(" " + label + " ")
+	}
+	return lipgloss.NewStyle().Foreground(c).Render(" " + label + " ")
+}
+
+// coverageRows names the domains that did not fully cover their ground, with
+// the reason each gave.
+//
+// The axes strip already marks them — "N/A" for a domain that did not run,
+// a "~" on a degraded score — but a mark is not an answer. It says a number
+// is missing without saying whether the host has no Docker, or the daemon
+// refused, or the scan ran as a user who cannot read the socket, which are
+// the difference between "nothing to see" and "look again with sudo". The
+// CLI has printed these since the states existed and the dashboard shows
+// them above the fold; this view showed them nowhere.
+//
+// One row per notice, most severe state first, so a run that is capped or
+// shed keeps the alarming ones and drops the routine ones. Reasons are
+// truncated with an ellipsis rather than left for the frame to cut at the
+// terminal edge: a sentence that stops mid-word reads as a rendering fault,
+// and one that stops at "…" reads as a sentence with more to it — which the
+// CLI will print in full.
+func (m *appModel) coverageRows() []string {
 	s := m.sty()
-	return s.dim.Render("FILTER  ") + s.bone.Render(strings.Join(parts, " · "))
+	warn := lipgloss.NewStyle().Foreground(s.cHigh)
+	fail := lipgloss.NewStyle().Foreground(s.cCrit)
+
+	var errored, degraded, skipped []string
+	for _, d := range m.report.Domains {
+		name := sourceLabel(d.Source)
+		switch d.State {
+		case model.ScanError:
+			errored = append(errored, fail.Render(m.notice("!", name, "failed", d.Reason, "unknown error")))
+		case model.ScanDegraded:
+			degraded = append(degraded, warn.Render(m.notice("~", name, "partial", d.Reason, "covered only part of the domain")))
+		case model.ScanSkipped:
+			skipped = append(skipped, s.dim.Render(m.notice("·", name, "skipped", d.Reason, "did not run")))
+		}
+	}
+
+	rows := append(append(errored, degraded...), skipped...)
+	// A host with no Docker, no Trivy and no systemd contributes four of
+	// these, and one that could scan nothing at all would contribute twelve —
+	// a header taller than the list it is heading. The frame's own fallback
+	// bounds that (it drops the whole region rather than squeezing the body),
+	// but dropping every notice because there are many is the wrong end to
+	// give way at: the first ones are the ones a reader acts on.
+	if len(rows) > maxCoverageRows {
+		hidden := len(rows) - (maxCoverageRows - 1)
+		rows = rows[:maxCoverageRows-1]
+		rows = append(rows, s.dim.Render(fmt.Sprintf("· %d more domain(s) did not fully run — hostveil scan lists them", hidden)))
+	}
+	return rows
+}
+
+// maxCoverageRows caps the coverage region so a badly-covered host cannot
+// push the findings list off the screen with explanations of its own gaps.
+const maxCoverageRows = 3
+
+func (m *appModel) notice(marker, name, state, reason, fallback string) string {
+	head := fmt.Sprintf("%s %s %s: ", marker, name, state)
+	// -1 keeps a column in hand: the frame clips every row to the width, and
+	// a notice that lands exactly on it would have nowhere to show it was cut.
+	return head + truncate(reasonOr(reason, fallback), m.width-lipgloss.Width(head)-1)
+}
+
+// filterActive reports whether the list is narrowed. The chip row shows the
+// filter's *state*, so it cannot answer this — it is drawn either way.
+func (m *appModel) filterActive() bool {
+	return m.filter.MinSeverity != nil || m.filter.Source != model.SourceUnset || m.filter.FixableOnly
+}
+
+func reasonOr(reason, fallback string) string {
+	if reason == "" {
+		return fallback
+	}
+	return reason
 }
 
 // sevAbbr upper-cases the model's abbreviation rather than keeping a
