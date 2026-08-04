@@ -14,9 +14,14 @@ html, body { height: 100%; }
 body {
   margin: 0; background: var(--ink); color: var(--bone);
   font: 13px/1.55 var(--mono);
-  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  display: flex; height: 100vh; overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
+/* .stack is what body used to be: the column of chrome above the two panes.
+   body splits sideways now so the rail layouts can put a column beside the
+   whole thing rather than inside it. With the rail hidden this is a flex row
+   of one item, which lays out exactly as the old column did. */
+.stack { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 ::selection { background: var(--bone); color: var(--ink); }
 
 /* ── status bar ── */
@@ -54,14 +59,17 @@ button:disabled { opacity: .45; cursor: default; }
 /* The right padding is not symmetric on purpose: the browser draws the
    dropdown arrow inside the control, and with uppercase + letter-spacing the
    longest name ("Catppuccin Mocha") ran right into it. */
-#theme {
+#theme, #layout {
   font: 600 11px/1 var(--mono); letter-spacing: .8px; text-transform: uppercase;
   background: transparent; color: var(--bone); border: 1px solid var(--line-2);
   border-radius: 0; padding: 8px 18px 8px 12px; cursor: pointer;
 }
-#theme:hover { border-color: var(--bone); }
-#theme:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
-#theme option { background: var(--ink-2); color: var(--bone); text-transform: none; }
+#theme:hover, #layout:hover { border-color: var(--bone); }
+#theme:focus-visible, #layout:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
+#theme option, #layout option { background: var(--ink-2); color: var(--bone); text-transform: none; }
+/* The layout picker is scaffolding for a decision, not a preference — it is
+   marked as such so it does not read as a permanent twin of the theme one. */
+#layout { border-style: dashed; }
 
 /* ── exposure gauge (the signature) ── */
 .gauge { display: flex; align-items: center; gap: 12px; }
@@ -276,3 +284,185 @@ pre.diff .ctx { color: var(--slate); }
 .spark.b-crit { color: var(--crit); }
 .spark.b-na   { color: var(--slate); }
 .spark-end { color: var(--slate); font-variant-numeric: tabular-nums; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Layout picker — temporary. See internal/ui/web/layout.go.
+
+   Six arrangements over one DOM. Everything above this line is the shipped
+   layout ("split") and stays the default; each block below is what one
+   alternative changes. Only two of them need JavaScript at all — lanes
+   groups the list, inline moves the detail node — which is the whole reason
+   six of these can exist without being six dashboards.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── verdict band: what is wrong, in a sentence, with the action beside it ── */
+.verdict { flex: 0 0 auto; padding: 15px 18px 16px; border-bottom: 1px solid var(--line);
+  background: var(--ink-2); }
+.verdict[hidden] { display: none; }
+.verdict h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.1px; }
+.verdict p { margin: 5px 0 0; color: var(--slate); font-size: 12px; }
+.verdict .v-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 13px; }
+.verdict .v-note { color: var(--slate); font-size: 11px; }
+
+/* ── domain rail: every score and every coverage gap, as navigation ── */
+.rail { flex: 0 0 218px; border-right: 1px solid var(--line); background: var(--ink-2);
+  display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.rail[hidden] { display: none; }
+.rail .rail-head { padding: 11px 15px 6px; color: var(--slate);
+  font-size: 10px; letter-spacing: 1.3px; text-transform: uppercase; }
+.rail .dom { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px;
+  padding: 6px 15px; border-left: 2px solid transparent; cursor: pointer; text-align: left;
+  background: transparent; border-top: 0; border-right: 0; border-bottom: 0; width: 100%;
+  color: inherit; font: 13px/1.5 var(--mono); letter-spacing: 0; text-transform: none; }
+.rail .dom:hover { background: var(--ink-3); }
+.rail .dom.on { background: var(--ink-3); border-left-color: var(--bone); }
+.rail .dom .n { color: var(--bone); font-size: 12.5px; text-align: left; }
+.rail .dom.on .n { font-weight: 700; }
+.rail .dom.na .n { color: var(--slate); }
+.rail .dom .s { font-size: 11px; text-align: right; }
+.rail .dom.na .s { color: var(--slate); }
+.rail .dom.partial .s { color: var(--med); }
+/* 5px, not 3: the meter's fill is a repeating gradient with a 2px gap, and
+   at 3px tall a part-filled bar stopped reading as a bar and started reading
+   as a dashed rule. */
+.rail .dom .meter { grid-column: 1 / -1; width: 100%; height: 5px; }
+.rail .dom .c { grid-column: 1 / -1; color: var(--slate); font-size: 10.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.rail .dom .c .critical { color: var(--crit); } .rail .dom .c .high { color: var(--high); }
+.rail .dom .c .medium { color: var(--med); }   .rail .dom .c .low { color: var(--low); }
+
+/* ── H · Lanes ────────────────────────────────────────────────────────
+   The one alternative whose work is entirely in app.js: laneRows() builds
+   the headers, and nothing else about the page moves. The rules are still
+   scoped to the layout that generates them — an unscoped block would be the
+   only styling in this file that does not say which arrangement it belongs
+   to, and TestEveryLayoutIsAnsweredByTheStylesheet would have no way to tell
+   a JS-only layout from a forgotten one. */
+:root[data-layout="lanes"] .lane-head {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 11px;
+  padding: 8px 16px; background: var(--ink-2); border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
+:root[data-layout="lanes"] .lane-head .n { font-size: 10.5px; font-weight: 700;
+  letter-spacing: 1.4px; text-transform: uppercase; }
+:root[data-layout="lanes"] .lane-head .c { color: var(--slate); font-size: 11px; }
+:root[data-layout="lanes"] .lane-head .a { margin-left: auto; display: flex; gap: 7px;
+  align-items: center; }
+:root[data-layout="lanes"] .lane-head .a em { font-style: normal; color: var(--slate);
+  font-size: 10.5px; }
+:root[data-layout="lanes"] .lane-head button { padding: 4px 9px; font-size: 9.5px;
+  letter-spacing: .6px; }
+:root[data-layout="lanes"] .lane-head.critical { border-left-color: var(--crit); }
+:root[data-layout="lanes"] .lane-head.critical .n { color: var(--crit); }
+:root[data-layout="lanes"] .lane-head.high { border-left-color: var(--high); }
+:root[data-layout="lanes"] .lane-head.high .n { color: var(--high); }
+:root[data-layout="lanes"] .lane-head.medium { border-left-color: var(--med); }
+:root[data-layout="lanes"] .lane-head.medium .n { color: var(--med); }
+:root[data-layout="lanes"] .lane-head.low { border-left-color: var(--low); }
+:root[data-layout="lanes"] .lane-head.low .n { color: var(--low); }
+
+/* ── overlay scrim, for the layouts that lift the detail over the list ── */
+.scrim { display: none; }
+main { position: relative; }
+
+/* ── B · Triage ───────────────────────────────────────────────────────
+   Leads with the verdict, demotes the axes to sparks, gives the list the
+   whole width and the detail an overlay. */
+:root[data-layout="triage"] .verdict[hidden] { display: block; }
+:root[data-layout="triage"] main { grid-template-columns: 1fr; }
+:root[data-layout="triage"] .findings { border-right: 0; }
+
+/* ── C · Console ──────────────────────────────────────────────────────
+   The rail replaces the axes strip: every number in it is in the rail, with
+   the reason for each gap attached, so keeping both would be saying the same
+   thing twice in the space the list wants. */
+:root[data-layout="console"] .rail[hidden] { display: flex; }
+:root[data-layout="console"] .axes { display: none; }
+
+/* ── G · Rail + verdict ───────────────────────────────────────────────
+   Both of the above, minus the detail pane: the rail answers where you are,
+   the sentence answers what to do, and the list takes what the pane was
+   holding. */
+:root[data-layout="railverdict"] .rail[hidden] { display: flex; }
+:root[data-layout="railverdict"] .verdict[hidden] { display: block; }
+:root[data-layout="railverdict"] .axes { display: none; }
+:root[data-layout="railverdict"] main { grid-template-columns: 1fr; }
+:root[data-layout="railverdict"] .findings { border-right: 0; }
+
+/* ── overlay detail (triage, railverdict) ──
+   The same #detail node, lifted. It is a pane in the DOM either way, so
+   nothing about how it is built or filled changes here. */
+:root[data-layout="triage"] .detail,
+:root[data-layout="railverdict"] .detail {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(480px, 82vw); z-index: 4;
+  background: var(--ink-2); border-left: 1px solid var(--line);
+  box-shadow: -18px 0 44px rgba(0, 0, 0, .45); padding: 18px 22px;
+}
+/* Nothing is selected, so there is nothing to overlay — and an empty panel
+   sitting over the list is exactly the waste this layout exists to remove. */
+:root[data-layout="triage"] body:not(.detail-open) .detail,
+:root[data-layout="railverdict"] body:not(.detail-open) .detail { display: none; }
+:root[data-layout="triage"] body.detail-open .scrim,
+:root[data-layout="railverdict"] body.detail-open .scrim {
+  display: block; position: absolute; inset: 0; z-index: 3;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+/* Hidden where the detail is a pane: there is nothing to get out of, and a
+   Close that empties a column nobody asked to empty is a trap. */
+.detail-close { display: none; }
+:root[data-layout="triage"] .detail-close,
+:root[data-layout="railverdict"] .detail-close,
+:root[data-layout="inline"] .detail-close { display: inline-block; }
+/* Pinned only in the overlay layouts, where the panel covers the list and
+   the way out has to be findable without reading to the bottom of it. */
+:root[data-layout="triage"] .detail-close,
+:root[data-layout="railverdict"] .detail-close {
+  position: absolute; top: 12px; right: 16px; padding: 3px 8px;
+  font-size: 10px; letter-spacing: .6px;
+}
+:root[data-layout="triage"] .detail h3,
+:root[data-layout="railverdict"] .detail h3 { padding-right: 72px; }
+
+/* ── I · Inline ───────────────────────────────────────────────────────
+   No pane at all: app.js moves #detail into the list under the open row, so
+   here it is styled as a block in the flow rather than as a column. */
+:root[data-layout="inline"] main { grid-template-columns: 1fr; }
+:root[data-layout="inline"] .findings { border-right: 0; }
+:root[data-layout="inline"] .detail {
+  border-bottom: 1px solid var(--line); background: var(--ink-3);
+  padding: 16px 22px 20px 60px; overflow: visible;
+}
+/* Before the first selection the node is still in <main>, where an inline
+   layout has no column for it. */
+:root[data-layout="inline"] main > .detail { display: none; }
+
+/* ── sparks: the axes strip as one row of small numbers (triage, inline) ── */
+:root[data-layout="triage"] .axes,
+:root[data-layout="inline"] .axes {
+  display: flex; gap: 0; padding: 0; overflow: hidden;
+}
+:root[data-layout="triage"] .axis,
+:root[data-layout="inline"] .axis {
+  flex: 1 1 0; min-width: 0; display: block; padding: 7px 11px;
+  border-right: 1px solid var(--line);
+}
+:root[data-layout="triage"] .axis:last-child,
+:root[data-layout="inline"] .axis:last-child { border-right: 0; }
+:root[data-layout="triage"] .axis-label,
+:root[data-layout="inline"] .axis-label { display: block; width: auto; font-size: 9px; }
+:root[data-layout="triage"] .axis .meter,
+:root[data-layout="inline"] .axis .meter { width: 100%; height: 3px; margin-top: 5px; }
+:root[data-layout="triage"] .axis-val,
+:root[data-layout="inline"] .axis-val { display: block; margin-top: 3px; font-size: 13px; font-weight: 700; }
+
+/* Below the two-pane breakpoint every layout collapses to one column
+   anyway, so the overlay and the rail stop being arrangements and start
+   being things in the way. */
+@media (max-width: 820px) {
+  .rail[hidden] { display: none !important; }
+  :root[data-layout="triage"] .detail,
+  :root[data-layout="railverdict"] .detail {
+    position: static; width: auto; box-shadow: none; border-left: 0; display: block;
+  }
+  :root[data-layout="triage"] body.detail-open .scrim,
+  :root[data-layout="railverdict"] body.detail-open .scrim { display: none; }
+}

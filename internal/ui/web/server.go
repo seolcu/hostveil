@@ -105,6 +105,11 @@ func (s *Server) Handler() http.Handler {
 	// domains, severities, remediation kinds, scan states, score bands —
 	// comes from internal/model rather than from copies kept in app.js.
 	mux.HandleFunc("GET /model.js", s.handleModelJS)
+	// The layout picker, on the same pattern for the same reason: a blocking
+	// script in <head> that restores the choice before first paint. See
+	// layout.go — it is scaffolding for choosing an arrangement, not a
+	// setting the dashboard means to keep.
+	mux.HandleFunc("GET /layout.js", s.handleLayoutJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
@@ -315,6 +320,12 @@ func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = io.WriteString(w, theme.JS(s.theme))
+}
+
+func (s *Server) handleLayoutJS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.WriteString(w, layoutJS())
 }
 
 func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {

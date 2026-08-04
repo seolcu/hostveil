@@ -44,6 +44,15 @@ const BANDS = M.bands || [];
 
 function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 
+// ── layout (temporary; see internal/ui/web/layout.go) ───────────────────
+// Which of the six arrangements is on. /layout.js has already put it on
+// <html> before first paint, so this is a read, never a decision.
+function layout() {
+  return document.documentElement.getAttribute("data-layout") ||
+    window.HOSTVEIL_LAYOUT_DEFAULT || "split";
+}
+function layoutIs(...ids) { return ids.includes(layout()); }
+
 let report = null;
 // trend is fetched separately from the report: the report is refetched
 // after every fix, and the trend only moves when a scan does.
@@ -306,6 +315,98 @@ function renderDomainNotice() {
   }));
 }
 
+// ── verdict band (temporary layouts B, G) ──────────────────────────────
+// The same reading the overview panel gives, said as a sentence with the one
+// action that answers it beside. It is built on every render whatever the
+// layout, so switching the picker never leaves a stale band behind — CSS
+// decides whether it is on screen.
+function renderVerdict(all) {
+  const box = document.getElementById("verdict");
+  const autos = all.filter(isAuto).length;
+  const crit = all.filter((f) => sevName(f) === "critical").length;
+  const scored = (report.score.axes || []).filter((a) => a.applicable).length;
+  const gaps = incompleteDomains().length;
+
+  // The headline is a claim the scan can defend. With nothing scannable
+  // there is no claim to make, which is the same reason the gauge refuses a
+  // number: "no criticals" and "nobody looked" are opposite readings.
+  const head = report.score.applicable === false
+    ? "This host could not be scanned."
+    : crit > 0
+      ? `${crit} critical finding${crit === 1 ? " is" : "s are"} exposed right now.`
+      : `This host is ${bandFor(report.score.overall).verdict}.`;
+
+  const acts = el("div", { class: "v-acts" });
+  if (autos > 0) {
+    const fix = el("button", { class: "primary" },
+      `Fix ${autos} safe finding${autos === 1 ? "" : "s"}`);
+    fix.onclick = () => document.getElementById("fixall").click();
+    acts.append(fix, el("span", { class: "v-note" },
+      "Each is previewed and backed up first, and reversible from History."));
+  } else {
+    acts.append(el("span", { class: "v-note" }, "Nothing here can be fixed unattended."));
+  }
+
+  box.replaceChildren(
+    el("h2", {}, head),
+    el("p", {}, `${all.length} unresolved · ${scored} of ${(report.score.axes || []).length} ` +
+      `domains scored${gaps ? ` · ${gaps} could not be fully checked` : ""}`),
+    acts
+  );
+}
+
+// ── domain rail (temporary layouts C, G) ───────────────────────────────
+// Every axis as a row: score, bar, severity mix, and for a domain that did
+// not run, the reason instead of a number. It doubles as the domain filter,
+// which is the point — the rail is the only place in these layouts where a
+// skipped domain is both visible and clickable.
+function renderRail(all) {
+  const rail = document.getElementById("rail");
+  const byDomain = {};
+  for (const f of all) (byDomain[f.source] = byDomain[f.source] || []).push(f);
+
+  const rows = (report.score.axes || []).map((ax) => {
+    const dom = (report.domains || []).find((d) => d.source === ax.source) || {};
+    const state = (SCAN[dom.state] && SCAN[dom.state].name) || "done";
+    const on = filters.domain.has(ax.source);
+    const row = el("button", {
+      class: "dom" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") + (on ? " on" : ""),
+    });
+    row.append(
+      el("span", { class: "n" }, srcLabel(ax.source)),
+      el("span", { class: "s" },
+        !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score)),
+      ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na")
+    );
+
+    if (!ax.applicable) {
+      row.append(el("span", { class: "c" }, `${state} — ${dom.reason || "did not run"}`));
+    } else {
+      const mix = el("span", { class: "c" });
+      const counts = {};
+      for (const f of byDomain[ax.source] || []) counts[f.severity] = (counts[f.severity] || 0) + 1;
+      const parts = [];
+      for (const [i, sev] of Object.entries(SEV)) {
+        if (counts[i]) parts.push(el("span", { class: sev.name }, `${counts[i]} ${sev.abbr}`));
+      }
+      if (!parts.length) parts.push(el("span", {}, "clean"));
+      parts.forEach((pnode, i) => { if (i) mix.append(" · "); mix.append(pnode); });
+      row.append(mix);
+    }
+
+    // Selecting a domain here is the same filter the chips set, so the two
+    // controls cannot disagree about what the list is showing.
+    row.onclick = () => {
+      if (filters.domain.has(ax.source)) filters.domain.delete(ax.source);
+      else { filters.domain.clear(); filters.domain.add(ax.source); }
+      render();
+    };
+    return row;
+  });
+
+  rail.replaceChildren(el("div", { class: "rail-head" }, `Domains · ${all.length} findings`), ...rows);
+}
+
 // ── main render ────────────────────────────────────────────────────────
 function render() {
   const score = report.score;
@@ -349,6 +450,12 @@ function render() {
   // Findings list.
   const list = document.getElementById("findings");
   const all = active(report.findings);
+  // Both are built whatever the layout, and before the early returns below:
+  // a clean host and a filtered-to-nothing list still need a correct verdict
+  // and a correct rail, and building them only on the happy path is how a
+  // layout switch would show the previous host's numbers.
+  renderVerdict(all);
+  renderRail(all);
   renderFilterbar(all);
   const items = applyFilters(all).sort((a, b) => a.severity - b.severity);
   document.getElementById("findings-title").textContent =
@@ -377,28 +484,77 @@ function render() {
   }
 
   const rows = new Map(); // finding key -> its <li>, so the overview can jump to one
-  list.replaceChildren(
-    ...items.map((f) => {
-      const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") },
-        isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
-        el("span", { class: "sev" }, sevAbbr(f)),
-        el("div", { class: "title" },
-          el("div", { class: "name" }, f.title),
-          el("div", { class: "rem" }, f.id + "  ·  " + remLabel(f.remediation))
-        ),
-        f.service ? el("span", { class: "svc" }, f.service) : ""
-      );
-      li.onclick = () => selectFinding(f, li);
-      if (selected && selected.id === f.id && selected.service === f.service) li.classList.add("active");
-      rows.set(f.id + "|" + (f.service || ""), li);
-      return li;
-    })
-  );
+  const row = (f) => {
+    const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") },
+      isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
+      el("span", { class: "sev" }, sevAbbr(f)),
+      el("div", { class: "title" },
+        el("div", { class: "name" }, f.title),
+        el("div", { class: "rem" }, f.id + "  ·  " + remLabel(f.remediation))
+      ),
+      f.service ? el("span", { class: "svc" }, f.service) : ""
+    );
+    li.onclick = () => selectFinding(f, li);
+    if (selected && selected.id === f.id && selected.service === f.service) li.classList.add("active");
+    rows.set(fkey(f), li);
+    return li;
+  };
+
+  list.replaceChildren(...(layoutIs("lanes") ? laneRows(items, row) : items.map(row)));
   renderBatchbar();
+  // The inline layout parks the detail node in the list, and replaceChildren
+  // above has just thrown that placement away. Put the open finding back.
+  if (layoutIs("inline") && selected) {
+    const back = rows.get(selected.id + "|" + (selected.service || ""));
+    if (back) back.after(document.getElementById("detail"));
+  }
+  document.body.classList.toggle("detail-open", !!selected);
 
   // Orient the user in the detail pane instead of leaving it a blank "Select
   // a finding". It stays until the first selection, and comes back on rescan.
   if (!selected) renderOverview(all, items, rows);
+}
+
+// laneRows groups the list into one section per severity, each with its own
+// count and its own batch action.
+//
+// The lane header is an <li> rather than a <div> because it lives inside the
+// findings <ul> — a <div> there is invalid, and a browser is free to hoist it
+// out of the list, which is exactly the kind of thing that looks fine until
+// it does not.
+//
+// A severity with nothing at it gets no lane. A "Critical · 0" header is a
+// row of screen spent announcing that nothing happened, and four of them on
+// a clean host is the whole list.
+function laneRows(items, row) {
+  const out = [];
+  for (const [i, sev] of Object.entries(SEV)) {
+    const group = items.filter((f) => String(f.severity) === String(i));
+    if (!group.length) continue;
+    const autos = group.filter(isAuto);
+    const acts = el("span", { class: "a" });
+    if (autos.length) {
+      const btn = el("button", { class: "primary" }, `Fix the ${autos.length} safe`);
+      // Marks this lane's Auto findings and hands them to the batch bar,
+      // which already knows how to preview, apply and report a batch. A
+      // second path to the same POST is a second place for it to go wrong.
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        marked.clear();
+        for (const f of autos) marked.add(fkey(f));
+        render();
+      };
+      acts.append(btn);
+    } else {
+      acts.append(el("em", {}, "none fix themselves"));
+    }
+    out.push(el("li", { class: "lane-head " + sev.name },
+      el("span", { class: "n" }, sev.name),
+      el("span", { class: "c" }, String(group.length)),
+      acts));
+    out.push(...group.map(row));
+  }
+  return out;
 }
 
 // renderOverview fills the detail pane with a read of the whole scan: the
@@ -474,6 +630,16 @@ function selectFinding(f, li) {
   const meta = [f.id, sevName(f), remLabel(f.remediation)];
   if (f.service) meta.push("service: " + f.service);
   const d = document.getElementById("detail");
+  // Three placements, one node: the pane keeps it where it is, the overlay
+  // layouts lift it in CSS, and the inline layout moves it into the list
+  // under the row that opened it. Moving beats cloning — a second detail
+  // node would be a second thing for the preview and the AI box to be
+  // appended to, and only one of them would be the one on screen.
+  if (layoutIs("inline") && li) li.after(d);
+  else if (d.parentElement !== document.querySelector("main")) {
+    document.querySelector("main").insertBefore(d, document.getElementById("scrim"));
+  }
+  document.body.classList.add("detail-open");
   d.replaceChildren(
     el("h3", {}, f.title),
     el("div", { class: "meta" }, meta.join("  ·  ")),
@@ -485,6 +651,21 @@ function selectFinding(f, li) {
     d.append(el("button", { class: "primary", onclick: () => preview(f) }, "Preview fix"));
   }
   d.append(el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI"));
+  // The overlay and inline layouts need a way out that is not "pick another
+  // finding": an overlay covers the list it was opened from, and an inline
+  // panel has pushed the next finding off the bottom. The pane layouts have
+  // neither problem, so CSS hides it there.
+  const close = el("button", { class: "detail-close" }, "Close");
+  close.onclick = closeDetail;
+  d.append(close);
+}
+
+// closeDetail returns to the unselected state: the overview comes back in
+// the pane layouts, the overlay lifts, and the inline panel goes back to
+// <main> where it is out of the flow.
+function closeDetail() {
+  selected = null;
+  render();
 }
 
 // explainAI asks the server for the advisory AI explanation. It degrades in
@@ -707,6 +888,34 @@ function flash(msg, isErr) {
 // The list and the applier come from /theme.js, generated by
 // internal/ui/theme, which has already restored the saved choice before this
 // script runs. All that is left is the control itself.
+// ── layout picker (temporary) ──────────────────────────────────────────
+// Same shape as the theme picker, and for the same reason: /layout.js has
+// already applied the saved choice before first paint, so all that is left
+// is the control. This one exists to settle which arrangement hostveil
+// keeps; when that is decided it goes, along with five of the six.
+function initLayoutPicker() {
+  const sel = document.getElementById("layout");
+  const list = window.HOSTVEIL_LAYOUTS || [];
+  if (!sel || !list.length) return;
+
+  const current = layout();
+  sel.replaceChildren(...list.map((l) => {
+    const o = el("option", { value: l.id, title: l.note }, l.name);
+    if (l.id === current) o.selected = true;
+    return o;
+  }));
+  sel.onchange = () => {
+    document.documentElement.setAttribute("data-layout", sel.value);
+    try { localStorage.setItem("hostveil.layout", sel.value); } catch (e) { /* private mode */ }
+    // A re-render, not just a repaint: two of the six restructure the list
+    // and move the detail node, and a CSS-only switch would leave the DOM
+    // arranged for the layout you just left.
+    if (report) render();
+    const l = list.find((x) => x.id === sel.value);
+    if (l) flash(l.name + " — " + l.note);
+  };
+}
+
 function initThemePicker() {
   const sel = document.getElementById("theme");
   const themes = window.HOSTVEIL_THEMES || [];
@@ -729,6 +938,13 @@ function initThemePicker() {
 }
 
 initThemePicker();
+initLayoutPicker();
+
+document.getElementById("scrim").onclick = closeDetail;
+// Escape is what people press at an overlay before they look for a button.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && selected && layoutIs("triage", "railverdict")) closeDetail();
+});
 
 document.getElementById("history").onclick = showHistory;
 
