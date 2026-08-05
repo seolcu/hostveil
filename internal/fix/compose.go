@@ -113,7 +113,9 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 // It refuses digest-pinned references. The checker declares those Manual
 // too, so the rule is encoded at both ends and Engine.classify takes the
 // stricter — neither side alone can produce a fix button that leads
-// nowhere.
+// nowhere. Keep both: for a while classify did not take the stricter when
+// the checker's side was Manual, and this refusal was the only thing
+// holding the promise.
 //
 // applyExec runs argv with no shell and no working directory, so the
 // compose file must be named explicitly with -f. That also sets the project

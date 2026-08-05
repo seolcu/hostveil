@@ -98,6 +98,42 @@ type Fix struct {
 	Actions   []Action
 }
 
+// EffectiveKind is Kind with the exec floor applied: an Auto fix that runs
+// a command is Review, whatever it declared.
+//
+// "Auto means safe to apply unattended" rests on the fix being reversible,
+// and an exec action writes no checkpoint — there is nothing file-backed to
+// restore. So `fix --all` applying one means a command run as root, on the
+// operator's host, with no way to undo it through hostveil.
+//
+// register.go states the rule five times over while deciding what to
+// register ("`apt upgrade` is exec, so never Auto"; "Being exec, it is
+// Review and can never be Auto"), and it was once upheld entirely by each
+// checker choosing Review by hand. The updates domain is where that is
+// visible: its fix for updates.disabled is shaped Auto — one action, which
+// is all the shape rule means — and the only thing between `fix --all` and
+// `apt-get install` was the checker independently declaring Review.
+//
+// One checker declaring Auto for a finding whose fix happens to be exec is
+// all it would take, and nothing would report it. Review rather than Manual:
+// the fix is still correct and still worth offering, it just needs a human to
+// say go.
+//
+// It lives here rather than in the engine because it is a statement about
+// the fix's shape and nothing else, which is what lets the docs tests ask
+// the registry what a user will actually be shown.
+func (f Fix) EffectiveKind() model.RemediationKind {
+	if f.Kind != model.RemediationAuto {
+		return f.Kind
+	}
+	for _, a := range f.Actions {
+		if a.Kind == ActionExec {
+			return model.RemediationReview
+		}
+	}
+	return f.Kind
+}
+
 // Builder produces a concrete Fix for a specific finding, reading its
 // service, evidence, and metadata to target the right artifact.
 type Builder func(f model.Finding) (Fix, error)

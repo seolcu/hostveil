@@ -234,7 +234,7 @@ func (e *Engine) classify(findings []model.Finding) {
 			// treated exactly like one that failed to build: demoted here
 			// rather than offered and discovered at apply.
 			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
-				findings[i].Remediation = execFloor(classifiedKind(findings[i].Remediation, fx.Kind), fx)
+				findings[i].Remediation = resolvedKind(findings[i].Remediation, fx)
 				continue
 			}
 		}
@@ -244,53 +244,33 @@ func (e *Engine) classify(findings []model.Finding) {
 	}
 }
 
-// classifiedKind resolves a checker's declared remediation against the
-// registered fix's kind, taking whichever demands more human involvement.
-// RemediationKind is ordered by caution (Auto < Review < Manual <
-// Unavailable), so that is simply the larger of the two. A checker that
-// declared no opinion (or something unfixable, which only happens if a fix
-// is registered for a finding the checker considers manual) defers to the
+// resolvedKind is the remediation a user is shown: the checker's declared
+// kind against the registered fix's effective one, taking whichever demands
+// more human involvement.
+//
+// RemediationKind is ordered by caution (Unset < Auto < Review < Manual <
+// Unavailable), so "stricter wins" is simply the larger of the two, and the
+// zero value falls out correctly for free — a checker that declared no
+// opinion is the least cautious thing on the scale and defers to the
 // registry.
-func classifiedKind(declared, registered model.RemediationKind) model.RemediationKind {
-	if !declared.IsFixable() {
-		return registered
-	}
+//
+// The unfixable end is why this is a plain max rather than the special case
+// it used to be. That case returned the registry's kind whenever the checker
+// declared Manual or Unavailable, which is the exact inverse of the rule
+// stated everywhere else in the repo: the checker saying "there is nothing
+// safe to automate here" was overruled by a fix builder that happens to match
+// the ID. Two places relied on the stated rule in their comments and were
+// saved instead by their builder returning an error — internal/check/compose
+// forces every runtime-only container finding to Manual because there is no
+// compose file to edit, and internal/fix/compose refuses digest-pinned image
+// references. Accidentally right in both, and a builder that grew a fallback
+// would have turned either into a fix button leading nowhere.
+func resolvedKind(declared model.RemediationKind, fx fix.Fix) model.RemediationKind {
+	registered := fx.EffectiveKind()
 	if declared > registered {
 		return declared
 	}
 	return registered
-}
-
-// execFloor raises a resolved Auto to Review when the fix runs a command.
-//
-// "Auto means safe to apply unattended" rests on the fix being reversible,
-// and an exec action writes no checkpoint — there is nothing file-backed to
-// restore. So `fix --all` applying one means a command run as root, on the
-// operator's host, with no way to undo it through hostveil.
-//
-// internal/fix/register.go states the rule five times over while deciding
-// what to register ("`apt upgrade` is exec, so never Auto"; "Being exec, it
-// is Review and can never be Auto"), and until this it was upheld entirely by
-// each checker choosing Review by hand. The updates domain is where that is
-// visible: its fix for updates.disabled is shaped Auto — one action, which is
-// all the shape rule means — and the only thing between `fix --all` and
-// `apt-get install` is the checker independently declaring Review, with
-// classifiedKind taking the stricter of the two.
-//
-// One checker declaring Auto for a finding whose fix happens to be exec is
-// all it would take, and nothing would report it. Review rather than Manual:
-// the fix is still correct and still worth offering, it just needs a human to
-// say go.
-func execFloor(kind model.RemediationKind, fx fix.Fix) model.RemediationKind {
-	if kind != model.RemediationAuto {
-		return kind
-	}
-	for _, a := range fx.Actions {
-		if a.Kind == fix.ActionExec {
-			return model.RemediationReview
-		}
-	}
-	return kind
 }
 
 // validFindings drops any malformed finding so an unclassified or

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/fix/fixtest"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -39,11 +42,64 @@ func checksPage(t *testing.T, lang string) string {
 	return string(b)
 }
 
-// fixableInDocs maps each language's "Fix" column values to whether they
-// promise the user a fix to apply.
-var fixableInDocs = map[string]bool{
-	"Auto-fix": true, "Review": true, "Manual": false, "Unavailable": false,
-	"자동 수정": true, "검토": true, "수동": false, "사용 불가": false,
+// kindLabels is each language's user-facing name for every remediation kind
+// a finding can carry.
+//
+// The docs used to be read through a map to a bare fixable/not-fixable bool,
+// which made "Auto-fix" and "Review" the same answer — so the column could
+// promise unattended application of a fix the registry shapes as Review and
+// nothing would say a word. The difference between those two is the whole
+// subject of the fixing page: one of them is what `fix --all` runs on its own.
+//
+// RemediationUnset has no entry because no user can be shown one;
+// TestFixingPageDocumentsEveryKindAUserCanSee asserts that rather than
+// assuming it.
+var kindLabels = map[string]map[model.RemediationKind]string{
+	"en": {
+		model.RemediationAuto:        "Auto-fix",
+		model.RemediationReview:      "Review",
+		model.RemediationManual:      "Manual",
+		model.RemediationUnavailable: "Unavailable",
+	},
+	"ko": {
+		model.RemediationAuto:        "자동 수정",
+		model.RemediationReview:      "검토",
+		model.RemediationManual:      "수동",
+		model.RemediationUnavailable: "사용 불가",
+	},
+}
+
+// kindInDocs inverts kindLabels: a Fix-column string to the kind it names,
+// in whichever language wrote it.
+var kindInDocs = func() map[string]model.RemediationKind {
+	out := map[string]model.RemediationKind{}
+	for _, byKind := range kindLabels {
+		for kind, label := range byKind {
+			out[label] = kind
+		}
+	}
+	return out
+}()
+
+// checkerAsksForMore records the findings whose documented kind is
+// deliberately stricter than the shape of the registered fix, and why.
+//
+// The kind a user sees is the stricter of two sources (see Engine.classify),
+// and only one of them is reachable from here: the registry can be built,
+// the checker cannot without a live host. So the invariant this file can
+// enforce is one-sided — the column may never be *less* cautious than the
+// registry's shape — and every place it is more cautious is the checker
+// asking for a human, which belongs in writing.
+//
+// Every entry is an SSH directive that can end the operator's own session.
+// The edit is reversible on disk and rolling it back needs the access it
+// just removed, which is criterion 2 of the Auto standard in
+// internal/fix/register.go, not criterion 1.
+var checkerAsksForMore = map[string]string{
+	"ssh.passwordauth":   "disabling passwords locks out anyone whose key is not already working",
+	"ssh.gatewayports":   "a published tunnel may be the only route to a service, including the operator's",
+	"ssh.hostbasedauth":  "the trusting host may be how the operator gets in",
+	"ssh.kbdinteractive": "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
 }
 
 // TestDocumentedFixKindsMatchTheRegistry is the guard for the failure that
@@ -59,16 +115,110 @@ func TestDocumentedFixKindsMatchTheRegistry(t *testing.T) {
 			t.Fatalf("%s: no finding rows parsed; the table markup changed", lang)
 		}
 		for _, row := range rows {
-			id, kind := row[1], row[2]
-			promised, known := fixableInDocs[kind]
+			id, col := row[1], row[2]
+			documented, known := kindInDocs[col]
 			if !known {
-				t.Errorf("%s: finding %s has unrecognised fix column %q", lang, id, kind)
+				t.Errorf("%s: finding %s has unrecognised fix column %q", lang, id, col)
 				continue
 			}
-			if registered := registry.Has(id); promised != registered {
+			if documented.IsFixable() != registry.Has(id) {
 				t.Errorf("%s: docs list %s as %q but a fix is registered=%v — a UI would %s",
-					lang, id, kind, registered,
-					map[bool]string{true: "show no button where the docs promise one", false: "show a button the docs deny"}[promised])
+					lang, id, col, registry.Has(id),
+					map[bool]string{true: "show no button where the docs promise one", false: "show a button the docs deny"}[documented.IsFixable()])
+				continue
+			}
+			if !registry.Has(id) {
+				continue
+			}
+
+			// EffectiveKind, not Kind: an Auto-shaped fix that runs a command
+			// reaches the user as Review, and the column has to say so. This
+			// is the half of the resolution the docs used to bake in from the
+			// wrong side — updates.disabled is registered Auto and documented
+			// Review, and nothing checked that the two agreed for the reason
+			// they do.
+			fx, ok, err := registry.Build(fixtest.Finding(id))
+			if err != nil || !ok {
+				t.Errorf("%s: cannot build %s to check its documented kind: ok=%v err=%v", lang, id, ok, err)
+				continue
+			}
+			switch effective := fx.EffectiveKind(); {
+			case documented < effective:
+				t.Errorf("%s: docs list %s as %q, but the registered fix resolves to %v — "+
+					"the column is less cautious than the fix a user is handed",
+					lang, id, col, effective)
+			case documented > effective:
+				if _, deliberate := checkerAsksForMore[id]; !deliberate {
+					t.Errorf("%s: docs list %s as %q while the registry shapes it %v — "+
+						"if a checker declares the stricter kind, say so in checkerAsksForMore; "+
+						"otherwise the column is wrong", lang, id, col, effective)
+				}
+			}
+		}
+	}
+}
+
+// A finding listed in checkerAsksForMore that the registry has caught up
+// with is a stale exception, and a stale exception is a hole: it silently
+// re-permits the mismatch the list exists to make deliberate.
+func TestNoStaleCheckerAsksForMoreEntries(t *testing.T) {
+	registry := fix.Default()
+	for _, lang := range docLangs {
+		documented := map[string]model.RemediationKind{}
+		for _, row := range findingRow.FindAllStringSubmatch(checksPage(t, lang), -1) {
+			if k, ok := kindInDocs[row[2]]; ok {
+				documented[row[1]] = k
+			}
+		}
+		for id := range checkerAsksForMore {
+			doc, listed := documented[id]
+			if !listed {
+				t.Errorf("%s: checkerAsksForMore lists %s but the checks table does not", lang, id)
+				continue
+			}
+			fx, ok, err := registry.Build(fixtest.Finding(id))
+			if err != nil || !ok {
+				t.Errorf("%s: checkerAsksForMore lists %s but it has no buildable fix: ok=%v err=%v", lang, id, ok, err)
+				continue
+			}
+			if doc <= fx.EffectiveKind() {
+				t.Errorf("%s: %s is no longer documented stricter than its fix (%v vs %v) — drop the "+
+					"checkerAsksForMore entry so the exact check applies again", lang, id, doc, fx.EffectiveKind())
+			}
+		}
+	}
+}
+
+// TestFixingPageDocumentsEveryKindAUserCanSee closes the loop the fixing
+// page's classification table left open: it lists four kinds and the enum
+// has five, with nothing saying which one is missing or why.
+//
+// The absent one is RemediationUnset, and its absence is correct rather than
+// an oversight — Finding.Validate rejects an unset remediation and the engine
+// drops those before any UI sees them, so no user can ever be shown one. That
+// is a claim about the model, so this asserts it rather than restating it.
+func TestFixingPageDocumentsEveryKindAUserCanSee(t *testing.T) {
+	if (model.Finding{ID: "x", Title: "t", Source: model.SourceSSH}).Validate() == nil {
+		t.Fatal("an unset remediation now survives Finding.Validate, so a user can reach one; " +
+			"the fixing page's classification table needs a row for it")
+	}
+	for _, lang := range docLangs {
+		b, err := assets.ReadFile("content/" + lang + "/docs/fixing.html")
+		if err != nil {
+			t.Fatalf("read %s fixing page: %v", lang, err)
+		}
+		page := string(b)
+		for _, kind := range model.AllRemediationKinds() {
+			if kind == model.RemediationUnset {
+				continue
+			}
+			label, named := kindLabels[lang][kind]
+			if !named {
+				t.Errorf("%s: no label for %v; add one to kindLabels", lang, kind)
+				continue
+			}
+			if !strings.Contains(page, "<strong>"+label+"</strong>") {
+				t.Errorf("%s: the fixing page's classification table has no row for %v (%q)", lang, kind, label)
 			}
 		}
 	}
@@ -115,23 +265,68 @@ func TestDocumentedAxisWeightsMatchTheCode(t *testing.T) {
 	}
 }
 
-// TestScoringProseTripwire cannot read prose, so it watches the constants
-// the prose describes. Changing one without touching the docs leaves four
+// reliefProse is how each language spells the Unavailable relief divisor.
+// Keying it by the number is what makes the constant and the sentence one
+// edit: changing the divisor lands on a key with no phrase, and the test says
+// so instead of passing.
+var reliefProse = map[int]map[string]string{
+	2: {"en": "half as much", "ko": "1/2만 반영"},
+	3: {"en": "a third as much", "ko": "1/3만 반영"},
+	4: {"en": "a quarter as much", "ko": "1/4만 반영"},
+	8: {"en": "an eighth as much", "ko": "1/8만 반영"},
+}
+
+// axisScoreWith returns the score of the axis one finding lands on. The
+// scoring constants are unexported and in another package, so the way to
+// read them is to ask the scorer what it does — which is also the claim the
+// prose actually makes, rather than an arithmetic identity standing in for it.
+func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
+	t.Helper()
+	f := model.NewFinding("ssh.probe", "t", model.SeverityCritical, model.SourceSSH, rem)
+	for _, ax := range model.ScoreReport([]model.Finding{f}, nil).Axes {
+		if ax.Source == model.SourceSSH {
+			return int(ax.Score)
+		}
+	}
+	t.Fatal("no ssh axis in a scored report")
+	return 0
+}
+
+// TestScoringProseTripwire cannot read prose, so it watches what the prose
+// describes. Changing the scoring model without touching the docs leaves four
 // pages quietly lying about how the score works; this makes that a build
 // failure with a pointer to what to edit.
+//
+// It asks the scorer rather than multiplying two constants together. The
+// previous version asserted SeverityCritical.Penalty()*2 == 16, which reads
+// as "one Critical costs half" but never touches criticalHalves — the
+// denominator that decides it. Doubling that constant halves every finding's
+// weight, the docs' "half" becomes a quarter on every page, and this passed.
 func TestScoringProseTripwire(t *testing.T) {
 	// "One Critical takes half of whatever an axis has left."
-	if got := model.SeverityCritical.Penalty() * 2; got != 16 {
-		t.Errorf("a Critical no longer costs half an axis (anchor=%d); docs in "+
-			"content/{en,ko}/docs/{checks,faq}.html say \"half\" and need rewriting", got)
+	full := axisScoreWith(t, model.RemediationAuto)
+	if full != 50 {
+		t.Errorf("one Critical now leaves an axis at %d, not 50; docs in "+
+			"content/{en,ko}/docs/{checks,faq}.html say \"half\" and need rewriting", full)
 	}
-	// "Counts a quarter as much" / "1/4만 반영됩니다".
+
+	// "…counts a quarter as much" — the same finding with nothing that can
+	// fix it. Derived from the erosion rather than the score, because the
+	// relieved score is not a round number for every divisor.
+	relieved := axisScoreWith(t, model.RemediationUnavailable)
+	if relieved <= full || relieved >= 100 {
+		t.Fatalf("an Unavailable Critical scored %d against %d — the relief is gone or inverted", relieved, full)
+	}
+	relief := int(math.Round(float64(100-full) / float64(100-relieved)))
+	phrases, known := reliefProse[relief]
+	if !known {
+		t.Fatalf("the Unavailable relief is now 1/%d and reliefProse has no phrase for it; "+
+			"add one and write it into content/{en,ko}/docs/checks.html", relief)
+	}
 	for _, lang := range docLangs {
-		page := checksPage(t, lang)
-		want := map[string]string{"en": "a quarter as much", "ko": "1/4만 반영"}[lang]
-		if !regexp.MustCompile(regexp.QuoteMeta(want)).MatchString(page) {
-			t.Errorf("%s: checks page no longer states the Unavailable relief (%q); "+
-				"if the constant changed, update the prose too", lang, want)
+		if !strings.Contains(checksPage(t, lang), phrases[lang]) {
+			t.Errorf("%s: checks page does not state the Unavailable relief as %q "+
+				"(the constant makes it 1/%d)", lang, phrases[lang], relief)
 		}
 	}
 }
