@@ -1003,6 +1003,14 @@ func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
 		out = append(out, "", s.dim.Render("HOW TO FIX"))
 		out = append(out, styledRows(s.bone, wrap(f.HowToFix, w))...)
 	}
+	// Under the instructions, not above them: a reader with no fix button
+	// still needs the how-to first, and this answers the question they ask
+	// second. Dim, because it explains an absence rather than asking for
+	// anything.
+	if f.WhyNoFix != "" {
+		out = append(out, "", s.dim.Render("WHY THERE IS NO FIX BUTTON"))
+		out = append(out, styledRows(s.dim, wrap(f.WhyNoFix, w))...)
+	}
 	if m.aiBusy || m.aiText != "" || m.aiErr != "" {
 		out = append(out, "", s.dim.Render("AI EXPLANATION (ADVISORY)"))
 		switch {

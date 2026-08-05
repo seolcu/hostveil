@@ -218,6 +218,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 .over-chip.sev-exposed { color: var(--crit); border-color: var(--crit); }
 .over-chip.sev-weak { color: var(--med); }
 .over-chip.sev-hardening { color: var(--low); }
+#detail p.whynofix { color: var(--slate); }
+
 .over-fixall { margin: 0 0 6px; }
 .over-note { color: var(--slate); font-size: 12px; margin: 0 0 20px; }
 .over-head { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px;

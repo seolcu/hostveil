@@ -656,7 +656,12 @@ function selectFinding(f, li) {
     el("div", { class: "meta" }, meta.join("  ·  ")),
     f.description ? el("p", {}, f.description) : "",
     f.how_to_fix ? el("div", { class: "howto" }, "How to fix") : "",
-    f.how_to_fix ? el("p", {}, f.how_to_fix) : ""
+    f.how_to_fix ? el("p", {}, f.how_to_fix) : "",
+    // Under the instructions, not above them. A reader with no Preview fix
+    // button still needs the how-to first; this answers the question they
+    // ask second, and it is absent entirely on anything fixable.
+    f.why_no_fix ? el("div", { class: "howto" }, "Why there is no fix button") : "",
+    f.why_no_fix ? el("p", { class: "whynofix" }, f.why_no_fix) : ""
   );
   if (isFixable(f)) {
     d.append(el("button", { class: "primary", onclick: () => preview(f) }, "Preview fix"));

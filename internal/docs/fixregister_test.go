@@ -94,3 +94,99 @@ func declinedInRegister(t *testing.T) map[string]bool {
 	}
 	return out
 }
+
+// unfixableInDocs reads the checks table and returns every finding the docs
+// say a user is shown with no fix to apply.
+//
+// The checks table is the right source and the register is not. The register
+// names findings it *argues about*, which includes ones held up as
+// counter-examples — cve.outdated-image is in it precisely because it is the
+// one CVE finding that does have a fix, and agent.config-perms is in it as an
+// Auto fix that touches a home directory. Demanding a decline reason for
+// those would be demanding an explanation for something that never happens.
+//
+// The table's Fix column is already pinned against the registry by
+// cmd/sitegen's TestDocumentedFixKindsMatchTheRegistry, so reading it here is
+// reading the registry through a check that fails if the two ever disagree.
+func unfixableInDocs(t *testing.T) map[string]bool {
+	t.Helper()
+	page := readRepoFile(t, filepath.Join("cmd", "sitegen", "content", "en", "docs", "checks.html"))
+	rows := regexp.MustCompile(`<tr><td><code>([a-z0-9.\-]+)</code></td>.*?<td>([^<]*)</td></tr>`).
+		FindAllStringSubmatch(page, -1)
+	if len(rows) == 0 {
+		t.Fatal("no finding rows parsed from the checks page; the table markup changed")
+	}
+	out := map[string]bool{}
+	for _, r := range rows {
+		if r[2] == "Manual" || r[2] == "Unavailable" {
+			out[r[1]] = true
+		}
+	}
+	if len(out) < 20 {
+		t.Fatalf("only %d unfixable findings parsed from the checks table — extraction is broken, "+
+			"not the table", len(out))
+	}
+	return out
+}
+
+// TestEveryDeclinedFindingSaysWhy is the side of the register that faces the
+// user.
+//
+// TestKnownUnregisteredFindings asserts nothing in the register has acquired
+// a fix. TestEveryFindingIsEitherFixableOrDeclinedOnPurpose asserts nothing
+// is Manual by omission. Both are about the maintainer's view. Neither says
+// anything about the user's, and the user is the one looking at a finding
+// with no button on it.
+//
+// The reasons were always written down — the register is pages of them — in a
+// doc comment nobody outside this repository will ever read. fix.WhyNoFix is
+// the same decision reaching the finding it is about, and this is what keeps
+// the two from parting.
+func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
+	unfixable := unfixableInDocs(t)
+
+	for id := range unfixable {
+		if fix.WhyNoFix(id) == "" {
+			t.Errorf("%s reaches a user with no fix and fix.WhyNoFix has nothing to say about it — "+
+				"they see a finding with no button and no reason", id)
+		}
+	}
+
+	// And the other way: a reason for a finding that does have a fix would
+	// never be shown, so it is dead text nobody would notice going stale.
+	declined := declinedInRegister(t)
+	for _, id := range fix.DeclinedIDs() {
+		if strings.HasSuffix(id, ".*") {
+			// A domain-wide entry is legitimate exactly where the register
+			// argues at that level (systemd.*, dockerd.*).
+			if !declined[id] {
+				t.Errorf("fix.WhyNoFix has a domain-wide entry %s that the register does not "+
+					"argue for as a domain", id)
+			}
+			continue
+		}
+		if !unfixable[id] {
+			t.Errorf("fix.WhyNoFix explains %s, which the checks table says a user can fix — "+
+				"the reason would never be shown", id)
+		}
+	}
+}
+
+// A reason that restates the finding is not a reason, and one that runs on is
+// not readable in a detail pane a few dozen columns wide. Neither is
+// checkable in general; these are the mechanical parts of it.
+func TestDeclineReasonsAreOneShortSentence(t *testing.T) {
+	const maxLen = 200
+	for _, id := range fix.DeclinedIDs() {
+		r := fix.WhyNoFix(id)
+		switch {
+		case r == "":
+			t.Errorf("%s is listed as declined with an empty reason", id)
+		case len(r) > maxLen:
+			t.Errorf("%s: reason is %d characters, over the %d-character budget:\n  %s", id, len(r), maxLen, r)
+		case strings.Count(r, ". ") > 1:
+			t.Errorf("%s: reason runs to %d sentences; one is the budget:\n  %s",
+				id, strings.Count(r, ". ")+1, r)
+		}
+	}
+}

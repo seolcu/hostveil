@@ -193,10 +193,13 @@ package fix
 //   - accounts.uid0 — the remediation is deleting an account or changing
 //     its UID, and hostveil cannot tell a backdoor from a deliberate
 //     second root that a recovery procedure depends on. `userdel` is not
-//     reversible from a checkpoint at all: it takes the home directory,
-//     the mail spool, and the account's file ownership with it. Changing
-//     the UID instead orphans every file the account owns, which the
-//     finding does not enumerate and could not restore.
+//     reversible from a checkpoint at all: the account entry, its group,
+//     and its mail spool go, and every file it owned is left orphaned by
+//     UID with nothing recorded that could give it back. (It leaves the
+//     home directory unless it is given -r, which is what the finding's
+//     how-to-fix recommends — this used to say otherwise.) Changing the
+//     UID instead orphans those same files, which the finding does not
+//     enumerate and could not restore.
 //   - accounts.emptypassword — `passwd -l` is a real, mechanical
 //     remediation and it is deliberately not registered. It is exec, so
 //     never Auto; and it fails the recoverability test in the way that
