@@ -60,8 +60,12 @@ var themes = []Theme{
 		ID:   "onedark",
 		Name: "One Dark",
 		Palette: Palette{
-			// Atom's One Dark. Nine of the twelve roles map onto its published
-			// values unchanged; the other three needed a decision.
+			// Atom's One Dark. Eight of the twelve roles map onto its
+			// published values unchanged; the other four needed a decision.
+			// (Three of the four are the contrast lifts below; the fourth is
+			// Bone, which is a judgement rather than a floor. This said
+			// "nine ... three" and then described four changes, which is the
+			// kind of arithmetic a comment gets to be wrong about forever.)
 			//
 			// Line is #181a1f, which is DARKER than the page. That is the look
 			// and not a mistake: One Dark seams its panels rather than boxing
