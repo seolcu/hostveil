@@ -269,6 +269,14 @@ func (m *appModel) axesLine() string {
 	if perRow < 1 {
 		perRow = 1
 	}
+	// Spread them evenly over the rows they need. Packing greedily put twelve
+	// domains on a 180-column terminal as seven and then five, which leaves a
+	// third of the second row empty and reads as a strip that ran out — the
+	// dashboard's grid gives every card the same share and wraps to six and
+	// six. Same number of rows either way; this only decides where the break
+	// falls.
+	rows := (len(cells) + perRow - 1) / perRow
+	perRow = (len(cells) + rows - 1) / rows
 
 	gap := s.dim.Render(strings.Repeat(" ", axisGap))
 	var out []string
@@ -397,12 +405,35 @@ func (m *appModel) paneRows(w, budget int) []string {
 	if len(m.active) == 0 {
 		return centerRows([]string{s.dim.Render(truncate("Nothing to show.", w))}, budget)
 	}
-	body := m.detailBodyRows(m.active[m.cursor], min(w-2, 78))
-	out := make([]string, 0, len(body))
+	f := m.active[m.cursor]
+	body := m.detailBodyRows(f, min(w-2, 78))
+	out := make([]string, 0, len(body)+4)
 	for _, r := range body {
 		out = append(out, " "+r)
 	}
+	// The dashboard closes this pane with a row of buttons — Preview fix,
+	// Explain with AI — and the terminal closed it with nothing, leaving the
+	// two keys that act on what the pane is showing documented only in the
+	// footer, among fourteen others. A pane that reads a finding out and then
+	// does not say what can be done about it is where the two interfaces
+	// diverged most, and it is the cheapest place to stop.
+	for _, r := range m.paneActionRows(f) {
+		out = append(out, " "+r)
+	}
 	return m.clipRows(out, budget)
+}
+
+// paneActionRows is what the dashboard draws as buttons under the detail: the
+// keys that act on this finding, and only the ones that would do something.
+func (m *appModel) paneActionRows(f model.Finding) []string {
+	s := m.sty()
+	var acts []string
+	if f.IsFixable() {
+		acts = append(acts, s.safe.Render("f  preview and apply the fix"))
+	}
+	acts = append(acts, s.dim.Render("e  explain with AI")+
+		s.dim.Render("     enter  open full screen"))
+	return append([]string{"", m.ruleRow()}, acts...)
 }
 
 // emptyListRows is what the list column says when there is nothing in it: a
@@ -458,19 +489,28 @@ func (m *appModel) listColumn(budget, w int) []string {
 		return centerRows(m.emptyListRows(fl, w), budget)
 	}
 
+	// The chip row and the batch bar are the dashboard's two rows over the
+	// list, in the same order it draws them.
+	bb := m.batchRow(w)
 	chrome := 1
 	if fl != "" {
-		chrome = 2
+		chrome++
+	}
+	if bb != "" {
+		chrome++
 	}
 	visible := budget - chrome
 	if visible < 1 {
 		// Findings beat labels: on a frame this short the list itself is the
 		// only thing worth drawing.
 		chrome, visible = 0, budget
-	} else if chrome == 2 && visible < minChipRows {
-		// The chips are a summary of the list, and a summary that costs half
-		// of what it summarises is not worth its row.
+	} else if chrome > 1 && visible < minChipRows {
+		// The chips and the batch bar summarise the list, and a summary that
+		// costs half of what it summarises is not worth its rows. Both go at
+		// once: dropping one and keeping the other would leave the shorter
+		// frame carrying the less useful of the two.
 		chrome, visible = 1, budget-1
+		fl, bb = "", ""
 	}
 
 	// The inline block is paid for out of the list's own rows rather than
@@ -500,8 +540,11 @@ func (m *appModel) listColumn(budget, w int) []string {
 			h += s.dim.Render(fmt.Sprintf("      %d–%d", shownFrom, shownTo))
 		}
 		out = append(out, h)
-		if chrome == 2 {
+		if fl != "" {
 			out = append(out, fl)
+		}
+		if bb != "" {
+			out = append(out, bb)
 		}
 	}
 
@@ -631,8 +674,50 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		suffix = ""
 	}
 	title := truncate(f.Title, avail-lipgloss.Width(suffix))
+
+	// The service is set flush right, the way the dashboard's row does it,
+	// rather than trailing the title. Two reasons, and the second is the one
+	// that matters on a wide terminal: it makes a column of service names the
+	// eye can run down, and it stops the service from sliding left to right with
+	// every title length so that "which container is this?" is answered in one
+	// place instead of eighty. The gap is only spent where there is room for
+	// it — under minGapForRightAlign the suffix goes back to trailing the
+	// title, because a right-aligned name one space from the title is not a
+	// column, it is the same row with extra arithmetic.
+	const minGapForRightAlign = 4
+	if gap := avail - lipgloss.Width(title) - lipgloss.Width(suffix); suffix != "" && gap >= minGapForRightAlign {
+		title = padRight(title, lipgloss.Width(title)+gap)
+	}
 	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
 		s.dim.Render(fmt.Sprintf(" %-13s ", f.ID)) + s.bone.Render(title) + suffix
+}
+
+// batchRow is the terminal's batch bar: the dashboard has a row of buttons
+// over the list saying what a batch would do, and the terminal had the same
+// information only in the footer, where it reads as one more key among
+// fourteen rather than as the state the list is in.
+//
+// It says what pressing the key does *now*, which is the whole point — `a`
+// applies the marked findings, or every Auto finding when nothing is marked,
+// and those are different enough that a bar naming only one of them would be
+// wrong half the time.
+func (m *appModel) batchRow(w int) string {
+	s := m.sty()
+	autos := 0
+	for _, f := range m.report.Select(model.Filter{}) {
+		if f.Remediation == model.RemediationAuto {
+			autos++
+		}
+	}
+	switch {
+	case len(m.selected) > 0:
+		return clip(s.safe.Render(fmt.Sprintf("a  fix the %d marked", len(m.selected)))+
+			s.dim.Render("     esc  clear marks"), w)
+	case autos > 0:
+		return clip(s.safe.Render(fmt.Sprintf("a  fix all %d safe", autos))+
+			s.dim.Render("     space  mark one"), w)
+	}
+	return ""
 }
 
 // sourceLabel is the short domain name shown in the filter line.

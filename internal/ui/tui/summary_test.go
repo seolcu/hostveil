@@ -350,3 +350,98 @@ func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
 		t.Errorf("a clean host is not told it is clean:\n%s", body)
 	}
 }
+
+// The dashboard has two rows over its findings list: the filter chips, then a
+// bar of batch buttons. The terminal had only the first, and what a batch
+// would do was documented in the footer among fourteen other keys — so the
+// state the list was actually in (two findings marked, `a` about to apply
+// exactly those) was the one thing the screen did not say.
+func TestTheBatchBarSaysWhatTheBatchKeyWouldDo(t *testing.T) {
+	m := summaryModel(120, 30)
+	if got := plain(m.batchRow(120)); !strings.Contains(got, "fix all") {
+		t.Errorf("with nothing marked the bar does not offer the whole batch: %q", got)
+	}
+
+	// Marking changes what `a` does, so it has to change what the bar says.
+	var marked int
+	for _, f := range m.active {
+		if f.Remediation == model.RemediationAuto && marked < 2 {
+			m.selected[f.Key()] = true
+			marked++
+		}
+	}
+	if marked != 2 {
+		t.Fatalf("the fixture produced %d Auto findings to mark", marked)
+	}
+	got := plain(m.batchRow(120))
+	if !strings.Contains(got, "2 marked") {
+		t.Errorf("the bar does not name the marked count: %q", got)
+	}
+	if strings.Contains(got, "fix all") {
+		t.Errorf("the bar still offers the whole batch while a subset is marked: %q", got)
+	}
+	if !strings.Contains(got, "esc") {
+		t.Errorf("the bar does not say how to clear the marks: %q", got)
+	}
+	// And it has to reach the screen, not just exist.
+	if !strings.Contains(plain(strings.Join(m.listRows(24), "\n")), "2 marked") {
+		t.Error("the batch bar is not drawn on the list screen")
+	}
+}
+
+// The dashboard closes its detail pane with Preview fix and Explain with AI.
+// The terminal closed it with nothing, so the two keys that act on the thing
+// the pane is showing lived only in the footer.
+func TestThePaneNamesTheKeysThatActOnWhatItShows(t *testing.T) {
+	m := summaryModel(140, 34)
+	rows := plain(strings.Join(m.paneRows(48, 30), "\n"))
+	if !strings.Contains(rows, "explain with AI") {
+		t.Errorf("the pane does not offer the AI explanation:\n%s", rows)
+	}
+	// A fixable finding gets the fix line; a Manual one must not, because a
+	// key that does nothing is worse than a key nobody was told about.
+	fixable := -1
+	manual := -1
+	for i, f := range m.active {
+		if f.IsFixable() && fixable < 0 {
+			fixable = i
+		}
+		if !f.IsFixable() && manual < 0 {
+			manual = i
+		}
+	}
+	if fixable < 0 || manual < 0 {
+		t.Fatal("the fixture has no fixable/manual pair to compare")
+	}
+	m.cursor = fixable
+	if got := plain(strings.Join(m.paneRows(48, 30), "\n")); !strings.Contains(got, "preview and apply") {
+		t.Errorf("a fixable finding's pane does not offer the fix:\n%s", got)
+	}
+	m.cursor = manual
+	if got := plain(strings.Join(m.paneRows(48, 30), "\n")); strings.Contains(got, "preview and apply") {
+		t.Errorf("a manual finding's pane offers a fix that does not exist:\n%s", got)
+	}
+}
+
+// The service is set flush right the way the dashboard sets it, so a column of
+// container names can be read down. It goes back to trailing the title only
+// when the row is too narrow for the gap to be a column at all.
+func TestTheServiceIsSetFlushRightWhenThereIsRoom(t *testing.T) {
+	f := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical,
+		model.SourceCompose, model.RemediationAuto, model.WithService("redis"))
+	m := summaryModel(140, 30)
+
+	wide := plain(m.findingRow(f, false, 120))
+	if !strings.HasSuffix(strings.TrimRight(wide, " "), "(redis)") {
+		t.Errorf("the service is not at the end of the row: %q", wide)
+	}
+	if !strings.Contains(wide, "exposed   ") {
+		t.Errorf("the service was not pushed right, it is still trailing the title: %q", wide)
+	}
+	// Narrow enough that a right-aligned name would sit one space from the
+	// title: that is not a column, so it trails instead.
+	narrow := plain(m.findingRow(f, false, 46))
+	if strings.Contains(narrow, "exposed   ") {
+		t.Errorf("a narrow row still spends columns on the gap: %q", narrow)
+	}
+}
