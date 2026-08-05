@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"regexp"
 	"slices"
@@ -38,11 +39,13 @@ var (
 // each other.
 var docLangs = []string{"en", "ko"}
 
-func checksPage(t *testing.T, lang string) string {
+func checksPage(t *testing.T, lang string) string { return docsPage(t, lang, "checks") }
+
+func docsPage(t *testing.T, lang, slug string) string {
 	t.Helper()
-	b, err := assets.ReadFile("content/" + lang + "/docs/checks.html")
+	b, err := assets.ReadFile("content/" + lang + "/docs/" + slug + ".html")
 	if err != nil {
-		t.Fatalf("read %s checks page: %v", lang, err)
+		t.Fatalf("read %s %s page: %v", lang, slug, err)
 	}
 	return string(b)
 }
@@ -311,8 +314,8 @@ func TestScoringProseTripwire(t *testing.T) {
 	// "One Critical takes half of whatever an axis has left."
 	full := axisScoreWith(t, model.RemediationAuto)
 	if full != 50 {
-		t.Errorf("one Critical now leaves an axis at %d, not 50; docs in "+
-			"content/{en,ko}/docs/{checks,faq}.html say \"half\" and need rewriting", full)
+		t.Errorf("one Exposed finding now leaves an axis at %d, not 50; docs in "+
+			"content/{en,ko}/docs/{scoring,checks,faq}.html say \"half\" and need rewriting", full)
 	}
 
 	// "…counts a quarter as much" — the same finding with nothing that can
@@ -331,7 +334,8 @@ func TestScoringProseTripwire(t *testing.T) {
 	for _, lang := range docLangs {
 		if !strings.Contains(checksPage(t, lang), phrases[lang]) {
 			t.Errorf("%s: checks page does not state the Unavailable relief as %q "+
-				"(the constant makes it 1/%d)", lang, phrases[lang], relief)
+				"(the constant makes it 1/%d); content/%s/docs/scoring.html states it too",
+				lang, phrases[lang], relief, lang)
 		}
 	}
 }
@@ -352,7 +356,9 @@ func TestEverySeverityChipNamesARealLevel(t *testing.T) {
 		known[s.String()] = true
 	}
 	for _, lang := range docLangs {
-		chips := severityChip.FindAllStringSubmatch(checksPage(t, lang), -1)
+		// Both pages that render severity chips. The scoring page carries a
+		// dozen or more of its own and was not covered when it was added.
+		chips := severityChip.FindAllStringSubmatch(checksPage(t, lang)+docsPage(t, lang, "scoring"), -1)
 		if len(chips) == 0 {
 			t.Fatalf("%s: no severity chips parsed; the markup changed", lang)
 		}
@@ -429,7 +435,7 @@ var findingRef = func() *regexp.Regexp {
 // It compares the whole docs tree, not one page, because every page that
 // names a finding is making the same kind of claim about it.
 func TestBothLanguagesCiteTheSameFindings(t *testing.T) {
-	for _, page := range []string{"fixing", "checks", "faq", "interfaces", "cli", "quickstart", "index", "troubleshooting", "ai", "installation", "contributing"} {
+	for _, page := range []string{"fixing", "scoring", "checks", "faq", "interfaces", "cli", "quickstart", "index", "troubleshooting", "ai", "installation", "contributing"} {
 		cited := map[string][]string{}
 		for _, lang := range docLangs {
 			b, err := assets.ReadFile("content/" + lang + "/docs/" + page + ".html")
@@ -466,6 +472,10 @@ func missing(a, b []string) []string {
 // Every finding a docs page names in prose must be one a checker can emit.
 // A worked example built on an ID that was renamed or retired is an argument
 // about something that no longer happens, and it reads as authoritative.
+//
+// The scoring page is the one that matters most here: its worked example
+// prints per-finding arithmetic, so a retired ID there is a sum a reader
+// cannot reproduce.
 func TestProseCitesOnlyRealFindings(t *testing.T) {
 	documented := map[string]bool{}
 	for _, row := range findingRow.FindAllStringSubmatch(checksPage(t, "en"), -1) {
@@ -476,15 +486,196 @@ func TestProseCitesOnlyRealFindings(t *testing.T) {
 	notAFinding := map[string]bool{"sysctl.d": true}
 
 	for _, lang := range docLangs {
-		b, err := assets.ReadFile("content/" + lang + "/docs/fixing.html")
-		if err != nil {
-			t.Fatalf("read %s fixing page: %v", lang, err)
+		for _, slug := range []string{"fixing", "scoring"} {
+			for _, m := range findingRef.FindAllStringSubmatch(docsPage(t, lang, slug), -1) {
+				if notAFinding[m[1]] || documented[m[1]] {
+					continue
+				}
+				t.Errorf("%s: the %s page argues from %s, which the checks table does not list", lang, slug, m[1])
+			}
 		}
-		for _, m := range findingRef.FindAllStringSubmatch(string(b), -1) {
-			if notAFinding[m[1]] || documented[m[1]] {
+	}
+}
+
+// capTableRow matches a row of the scoring page's cap table: an axis label,
+// its cap, and an argument cell. Anchored on three cells, because the funding
+// tables on the same page are three-cell too and their middle column is also
+// a number — a looser pattern reads point transfers as caps.
+var capTableRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td><td>`)
+
+// TestScoringPageCapsMatchTheCode pins the second place the axis weights are
+// written down.
+//
+// TestDocumentedAxisWeightsMatchTheCode covers the checks page and cannot
+// cover this one: its weightRow pattern requires a two-cell row ending the
+// <tr>, and these rows carry an argument column. So the twelve caps could
+// drift from sourceDefs here with a green build — on the page that presents
+// itself as the whole model, which is the worst place for them to be wrong.
+//
+// It reads the table by its id rather than the whole page, because the same
+// page carries two funding tables whose middle column is a point count.
+func TestScoringPageCapsMatchTheCode(t *testing.T) {
+	var want []int
+	total := 0
+	for _, ax := range model.ScoreReport(nil, nil).Axes {
+		want = append(want, ax.MaxPenalty)
+		total += ax.MaxPenalty
+	}
+	slices.Sort(want)
+
+	for _, lang := range docLangs {
+		page := docsPage(t, lang, "scoring")
+		start := strings.Index(page, `id="cap-table"`)
+		if start < 0 {
+			t.Fatalf("%s: the scoring page has no cap table (looked for id=\"cap-table\")", lang)
+		}
+		table := page[start:]
+		if end := strings.Index(table, "</table>"); end >= 0 {
+			table = table[:end]
+		}
+
+		var got []int
+		for _, row := range capTableRow.FindAllStringSubmatch(table, -1) {
+			n, err := strconv.Atoi(row[2])
+			if err != nil {
 				continue
 			}
-			t.Errorf("%s: the fixing page argues from %s, which the checks table does not list", lang, m[1])
+			got = append(got, n)
+		}
+		slices.Sort(got)
+
+		// The Total row is part of the table and is the claim most worth
+		// checking — it is the one number a reader will take on trust.
+		if !strings.Contains(table, ">"+strconv.Itoa(total)+"<") {
+			t.Errorf("%s: the scoring page's cap table does not state the total %d", lang, total)
+		}
+		var caps []int
+		for _, n := range got {
+			if n != total {
+				caps = append(caps, n)
+			}
+		}
+		if !slices.Equal(caps, want) {
+			t.Errorf("%s: the scoring page documents axis weights %v, the code has %v", lang, caps, want)
+		}
+	}
+}
+
+// exactFigure matches a number written out to four or more decimal places —
+// the kind that only appears because someone computed it.
+var exactFigure = regexp.MustCompile(`\b\d+\.\d{4,}\b`)
+
+// TestBothLanguagesPrintTheSameFigures pins the scoring page's arithmetic
+// across languages.
+//
+// That page is the one place in the docs that shows its working: a worked
+// example from a real scan, erosion step by step, exact dyadic decimals like
+// 0.1922607421875, and a renormalized overall. A translation that recomputed
+// anything, rounded differently, or quietly dropped a step would be a second
+// arithmetic claiming to be the first, and prose parity tests would not see
+// it — the sentences around it can differ freely.
+//
+// The first draft pair diverged exactly this way and had to be rewritten.
+func TestBothLanguagesPrintTheSameFigures(t *testing.T) {
+	figures := map[string][]string{}
+	for _, lang := range docLangs {
+		f := exactFigure.FindAllString(docsPage(t, lang, "scoring"), -1)
+		slices.Sort(f)
+		figures[lang] = slices.Compact(f)
+	}
+	if len(figures["en"]) < 15 {
+		t.Fatalf("only %d exact figures found on the English scoring page — the worked "+
+			"example is gone, or this pattern no longer matches it", len(figures["en"]))
+	}
+	if !slices.Equal(figures["en"], figures["ko"]) {
+		t.Errorf("the scoring page prints different figures per language:\n en only: %v\n ko only: %v",
+			missing(figures["en"], figures["ko"]), missing(figures["ko"], figures["en"]))
+	}
+}
+
+// The two language trees must carry the same set of doc pages. A page added
+// to one and not the other is a hole a reader falls into from the sidebar,
+// which is generated from the manifest and so lists it in both.
+func TestBothLanguagesHaveEveryDocsPage(t *testing.T) {
+	pages := map[string][]string{}
+	for _, lang := range docLangs {
+		entries, err := assets.ReadDir("content/" + lang + "/docs")
+		if err != nil {
+			t.Fatalf("read %s docs dir: %v", lang, err)
+		}
+		for _, e := range entries {
+			pages[lang] = append(pages[lang], e.Name())
+		}
+		slices.Sort(pages[lang])
+	}
+	if !slices.Equal(pages["en"], pages["ko"]) {
+		t.Errorf("the language trees hold different pages:\n en only: %v\n ko only: %v",
+			missing(pages["en"], pages["ko"]), missing(pages["ko"], pages["en"]))
+	}
+}
+
+// A docs page's <h1> either is its sidebar label or is deliberately longer
+// than it — docs/index is headed "hostveil documentation" under a nav of
+// "Introduction", and the FAQ spells its acronym out. What must not differ is
+// which of those a page does in each language.
+//
+// The site search indexes every page under its *sidebar* label and shows that
+// as the result title. A page whose heading matches in one language and not
+// the other means a Korean reader and an English reader get different answers
+// to "did I land where I clicked", from the same page. The scoring page
+// arrived exactly that way: aligned in Korean, descriptive in English.
+//
+// docs/faq is the one page allowed to differ, and the reason is that English
+// has an acronym here and Korean does not: "FAQ" in the sidebar expanding to
+// "Frequently asked questions" as the heading is the right pair, and there is
+// no Korean equivalent of that move — 자주 묻는 질문 is the whole phrase either
+// way. Any other page differing is drift.
+var navHeadingExceptions = map[string]string{
+	"faq": "English abbreviates in the sidebar and expands in the heading; Korean has no acronym to abbreviate",
+}
+
+func TestHeadingsAndNavLabelsAgreeAcrossLanguages(t *testing.T) {
+	h1 := regexp.MustCompile(`<h1>([^<]*)</h1>`)
+	unescape := strings.NewReplacer("&amp;", "&", "&rsquo;", "\u2019").Replace
+
+	var m Manifest
+	raw, err := assets.ReadFile("pages.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Docs) == 0 {
+		t.Fatal("the manifest lists no docs pages")
+	}
+
+	for _, doc := range m.Docs {
+		matches := map[string]bool{}
+		for _, lang := range docLangs {
+			nav := doc.En.Nav
+			if lang == "ko" {
+				nav = doc.Ko.Nav
+			}
+			found := h1.FindStringSubmatch(docsPage(t, lang, doc.Slug))
+			if found == nil {
+				t.Errorf("%s: docs/%s has no <h1>", lang, doc.Slug)
+				continue
+			}
+			matches[lang] = unescape(found[1]) == nav
+		}
+		if _, allowed := navHeadingExceptions[doc.Slug]; allowed {
+			if matches["en"] == matches["ko"] {
+				t.Errorf("docs/%s no longer differs across languages — drop its "+
+					"navHeadingExceptions entry so the check applies to it again", doc.Slug)
+			}
+			continue
+		}
+		if len(matches) == len(docLangs) && matches["en"] != matches["ko"] {
+			t.Errorf("docs/%s is headed by its nav label in one language and not the other "+
+				"(en=%v, ko=%v) — a search hit reads the nav label, so the two readers get "+
+				"different answers to whether they landed where they clicked",
+				doc.Slug, matches["en"], matches["ko"])
 		}
 	}
 }

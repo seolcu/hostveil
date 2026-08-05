@@ -92,6 +92,25 @@
       }
     },
     {
+      "slug": "scoring",
+      "group": "guide",
+      "ogType": "article",
+      "en": {
+        "title": "Scoring — hostveil docs",
+        "description": "How hostveil turns findings into one 0-100 score: each domain is an axis eroded multiplicatively by severity, the axis weights sum to 100, a domain that could not run is renormalized out instead of scored perfect, and a finding with no upstream fix still counts.",
+        "ogTitle": "Scoring — hostveil docs",
+        "ogDescription": "The 0-100 score, exactly: multiplicative erosion per axis, what each domain is worth, renormalization when a domain does not run, and what the number cannot tell you.",
+        "nav": "Scoring"
+      },
+      "ko": {
+        "title": "점수 산정 — hostveil 문서",
+        "description": "hostveil이 발견 항목을 하나의 0-100 점수로 만드는 방법: 도메인마다 축이 하나씩 있고 심각도에 따라 곱셈으로 깎이며, 축 가중치의 합은 100이고, 실행되지 못한 도메인은 만점 대신 재정규화로 빠지며, 상위에 패치가 없는 항목도 점수에 반영됩니다.",
+        "ogTitle": "점수 산정 — hostveil 문서",
+        "ogDescription": "0-100 점수의 전 과정: 축별 곱셈 감점, 도메인마다의 가중치, 실행되지 않은 도메인의 재정규화, 그리고 이 숫자가 알려주지 않는 것.",
+        "nav": "점수 산정"
+      }
+    },
+    {
       "slug": "fixing",
       "group": "guide",
       "ogType": "article",

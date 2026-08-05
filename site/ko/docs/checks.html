@@ -66,6 +66,7 @@
             <p>가이드</p>
             <ul>
               <li><a href="checks" class="active">점검 항목</a></li>
+              <li><a href="scoring">점수 산정</a></li>
               <li><a href="fixing">수정 및 롤백</a></li>
               <li><a href="interfaces">인터페이스</a></li>
               <li><a href="ai">AI 설명</a></li>
@@ -127,7 +128,7 @@
               <span class="callout-label">3.12에서 변경</span>
               <p>이전의 심각/높음/보통/낮음을 대체합니다. 그 네 단계는 CVE의 공개 등급을 그대로 통과시키려고 Trivy에서 물려받은 것이었습니다. 지금은 취약점을 이미지 단위로 묶기 때문에 개별 등급이 발견 항목까지 살아 남지 않고, 네 단계는 설정 파일이 답할 수 없는 질문을 계속 묻고 있었습니다. <strong>EXPOSED</strong>는 기존 심각과 높음을 합한 집합과 정확히 같으므로, <code>scan</code>의 종료 코드와 SARIF 내보내기는 예전과 똑같은 뜻입니다.</p>
             </div>
-            <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다.</p>
+            <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다. 전체 모형은 <a href="scoring">점수 산정</a>에 있습니다 — 계산식, 실제 스캔으로 만든 예시, 그리고 이 숫자가 알려주지 않는 것까지.</p>
             <p>hostveil이 <strong>사용 불가</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
 
             <h3>도메인별 비중</h3>
@@ -389,7 +390,7 @@
 
             <div class="docs-pager">
               <a class="button secondary" href="quickstart">← 빠른 시작</a>
-              <a class="button primary" href="fixing">수정 및 롤백 →</a>
+              <a class="button primary" href="scoring">점수 산정 →</a>
             </div>
           </article>
         </main>

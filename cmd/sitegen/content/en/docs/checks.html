@@ -41,7 +41,7 @@
               <span class="callout-label">Changed in 3.12</span>
               <p>These replace Critical / High / Medium / Low, which hostveil inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so no individual rating survives into a finding, and the four levels were left asking a question a config file cannot answer. <strong>Exposed</strong> is exactly what Critical and High were together, so <code>scan</code>'s exit code and the SARIF export mean what they always did.</p>
             </div>
-            <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three.</p>
+            <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three. <a href="scoring">Scoring</a> is the whole model: the arithmetic, a worked example from a real scan, and what the number cannot tell you.</p>
             <p>A finding hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
 
             <h3>What each domain is worth</h3>
@@ -303,5 +303,5 @@
 
             <div class="docs-pager">
               <a class="button secondary" href="quickstart">← Quick start</a>
-              <a class="button primary" href="fixing">Fixing &amp; rollback →</a>
+              <a class="button primary" href="scoring">Scoring →</a>
             </div>
