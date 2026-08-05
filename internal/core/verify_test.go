@@ -74,7 +74,7 @@ func verifySetup(t *testing.T, r *verifyRunner, marker string) (*Engine, string,
 		t.Fatal(err)
 	}
 	e := New(Config{Fixes: verifiedFix(marker), Store: history.NewStore(t.TempDir()), Runner: r})
-	f := model.NewFinding("ssh.testfix", "test", model.SeverityHigh,
+	f := model.NewFinding("ssh.testfix", "test", model.SeverityExposed,
 		model.SourceSSH, model.RemediationAuto, model.WithEvidence("config", path))
 	return e, path, f
 }

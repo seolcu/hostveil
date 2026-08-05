@@ -87,13 +87,14 @@ func (m *appModel) setTheme(t theme.Theme) {
 	m.th, m.st = t, newStyles(t)
 }
 
+// severityColor is the heat a severity is drawn in. cHigh is not used here:
+// the palette's four heats serve the *score bands*, and only three of them
+// carry a severity now that the top two levels are one.
 func (s *styles) severityColor(sev model.Severity) color.Color {
 	switch sev {
-	case model.SeverityCritical:
+	case model.SeverityExposed:
 		return s.cCrit
-	case model.SeverityHigh:
-		return s.cHigh
-	case model.SeverityMedium:
+	case model.SeverityWeak:
 		return s.cMed
 	default:
 		return s.cLow
@@ -739,7 +740,7 @@ func sourceLabel(s model.Source) string {
 // It replaces a line that appeared only while a filter was set and named
 // what it was. That told the user what they had just pressed and nothing
 // else: the shape of the report — how much of a wall of findings is
-// Critical, how much of it hostveil can fix on its own — was reachable only
+// Exposed, how much of it hostveil can fix on its own — was reachable only
 // by scrolling and counting, in the one interface where scrolling is most
 // expensive. The dashboard has never made anyone do that, and this is its
 // chip bar: a count per severity, the fixable count, and the active filter
@@ -751,8 +752,8 @@ func sourceLabel(s model.Source) string {
 // it was narrowed from.
 //
 // The severity threshold is a range, not a selection, so every chip at or
-// above it reads as active — anything else would show CRIT dim on a list
-// that is showing exactly the Criticals.
+// above it reads as active — anything else would show EXPO dim on a list
+// that is showing exactly the exposed findings.
 func (m *appModel) chipRow(w int) string {
 	s := m.sty()
 	unfiltered := m.report.Select(model.Filter{})

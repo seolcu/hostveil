@@ -179,7 +179,7 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 	var resolved []model.Finding
 	for i := range 6400 {
 		resolved = append(resolved, model.NewFinding(
-			fmt.Sprintf("cve.cve-2024-%04d", i), "t", model.SeverityHigh,
+			fmt.Sprintf("cve.cve-2024-%04d", i), "t", model.SeverityExposed,
 			model.SourceCVE, model.RemediationManual))
 	}
 
@@ -204,10 +204,10 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 // them, which can be thousands of IDs long.
 func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	longList := strings.Repeat("CVE-2024-0001, ", 300)
-	before := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+	before := model.NewFinding("cve.outdated-image", "t", model.SeverityWeak,
 		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
 		model.WithEvidence("count", "3627"), model.WithEvidence("cves", longList))
-	after := model.NewFinding("cve.outdated-image", "t", model.SeverityCritical,
+	after := model.NewFinding("cve.outdated-image", "t", model.SeverityExposed,
 		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
 		model.WithEvidence("count", "3630"), model.WithEvidence("cves", longList+"CVE-2024-9999"))
 
@@ -219,7 +219,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	if !strings.Contains(out, "count 3627 → 3630") {
 		t.Errorf("summary does not say what moved:\n%s", out)
 	}
-	if !strings.Contains(out, "severity high → critical") {
+	if !strings.Contains(out, "severity weak → exposed") {
 		t.Errorf("summary does not report the severity move:\n%s", out)
 	}
 	// An oversized list reports its membership change, not its payload.
@@ -244,10 +244,10 @@ func TestDeltaSummaryBoundsNamedListMembers(t *testing.T) {
 			before = append(before, id)
 		}
 	}
-	prev := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+	prev := model.NewFinding("cve.outdated-image", "t", model.SeverityExposed,
 		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
 		model.WithEvidence("cves", strings.Join(before, ", ")))
-	curr := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
+	curr := model.NewFinding("cve.outdated-image", "t", model.SeverityExposed,
 		model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud"),
 		model.WithEvidence("cves", strings.Join(after, ", ")))
 

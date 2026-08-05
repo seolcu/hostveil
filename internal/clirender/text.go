@@ -274,19 +274,16 @@ func JSON(r model.Report) (string, error) {
 	return string(out), nil
 }
 
+// severityCounts renders an axis's mix. It walks ScoreAxis.Counts, which is
+// ordered most-severe-first by the model, rather than naming the levels — a
+// hand-written arm per level is what had to be edited in three renderers when
+// the scale changed.
 func severityCounts(ax model.ScoreAxis) string {
 	var parts []string
-	if ax.Critical > 0 {
-		parts = append(parts, fmt.Sprintf("%d critical", ax.Critical))
-	}
-	if ax.High > 0 {
-		parts = append(parts, fmt.Sprintf("%d high", ax.High))
-	}
-	if ax.Medium > 0 {
-		parts = append(parts, fmt.Sprintf("%d medium", ax.Medium))
-	}
-	if ax.Low > 0 {
-		parts = append(parts, fmt.Sprintf("%d low", ax.Low))
+	for _, c := range ax.Counts {
+		if c.N > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", c.N, c.Severity))
+		}
 	}
 	if len(parts) == 0 {
 		return "clean"
@@ -313,13 +310,15 @@ func palette(on bool) colors {
 	}
 }
 
+// sevColor is the heat a severity is drawn in. Orange is not used: it is the
+// score band's colour (BandPoor), and it stopped being a severity's when the
+// top two levels merged. Three levels, three heats, and nothing has to invent
+// a fourth.
 func sevColor(c colors, s model.Severity) string {
 	switch s {
-	case model.SeverityCritical:
+	case model.SeverityExposed:
 		return c.red
-	case model.SeverityHigh:
-		return c.orange
-	case model.SeverityMedium:
+	case model.SeverityWeak:
 		return c.yellow
 	default:
 		return c.dim

@@ -11,7 +11,7 @@ import (
 func stateWith(ids ...string) *reportState {
 	var fs []model.Finding
 	for _, id := range ids {
-		fs = append(fs, model.NewFinding(id, "t", model.SeverityHigh,
+		fs = append(fs, model.NewFinding(id, "t", model.SeverityExposed,
 			model.SourceSSH, model.RemediationAuto))
 	}
 	s := &reportState{}
@@ -36,7 +36,7 @@ func TestSnapshotDoesNotAliasTheStoredFindings(t *testing.T) {
 	}
 
 	// Mutating the state must not reach a snapshot already handed out.
-	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
+	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityExposed,
 		model.SourceSSH, model.RemediationAuto))
 	if snap.Findings[0].Fixed {
 		t.Error("marking a finding fixed mutated a snapshot taken beforehand — " +
@@ -65,7 +65,7 @@ func TestSnapshotBeforeAnyScan(t *testing.T) {
 
 func TestMarkAndUnmarkFixed(t *testing.T) {
 	s := stateWith("ssh.rootlogin", "ssh.passwordauth")
-	target := model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
+	target := model.NewFinding("ssh.rootlogin", "t", model.SeverityExposed,
 		model.SourceSSH, model.RemediationAuto)
 
 	s.markFixed(target)
@@ -88,7 +88,7 @@ func TestMarkAndUnmarkFixed(t *testing.T) {
 // A checkpoint written before FindingKey existed carries only the bare ID.
 func TestUnmarkFixedFallsBackToTheBareID(t *testing.T) {
 	s := stateWith("ssh.rootlogin")
-	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
+	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityExposed,
 		model.SourceSSH, model.RemediationAuto))
 
 	if got := s.unmarkFixed(history.Checkpoint{FindingID: "ssh.rootlogin"}); len(got) != 1 {
@@ -101,7 +101,7 @@ func TestUnmarkFixedFallsBackToTheBareID(t *testing.T) {
 // failure the type was extracted to make structural.
 func TestReportStateIsSafeForConcurrentUse(t *testing.T) {
 	s := stateWith("ssh.rootlogin", "ssh.passwordauth", "ssh.x11")
-	target := model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
+	target := model.NewFinding("ssh.rootlogin", "t", model.SeverityExposed,
 		model.SourceSSH, model.RemediationAuto)
 
 	var wg sync.WaitGroup

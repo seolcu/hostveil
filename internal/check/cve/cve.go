@@ -344,7 +344,7 @@ func (g *group) worst() model.Severity { return g.sevOf[g.sorted()[0]] }
 // summary renders "12 critical, 108 high" for the severities present.
 func (g *group) summary() string {
 	var parts []string
-	for _, s := range []model.Severity{model.SeverityCritical, model.SeverityHigh, model.SeverityMedium, model.SeverityLow} {
+	for _, s := range []model.Severity{model.SeverityExposed, model.SeverityExposed, model.SeverityWeak, model.SeverityHardening} {
 		if n := g.counts[s]; n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", n, strings.ToLower(s.String())))
 		}
@@ -374,7 +374,7 @@ func (g *group) evidence() []model.FindingOption {
 		model.WithEvidence("count", strconv.Itoa(len(g.ids))),
 		model.WithEvidence("cves", strings.Join(g.sorted(), ", ")),
 	}
-	for _, s := range []model.Severity{model.SeverityCritical, model.SeverityHigh, model.SeverityMedium, model.SeverityLow} {
+	for _, s := range []model.Severity{model.SeverityExposed, model.SeverityExposed, model.SeverityWeak, model.SeverityHardening} {
 		if n := g.counts[s]; n > 0 {
 			opts = append(opts, model.WithEvidence(strings.ToLower(s.String()), strconv.Itoa(n)))
 		}
@@ -491,12 +491,12 @@ func plural(n int) string {
 func trivySeverity(s string) model.Severity {
 	switch strings.ToUpper(s) {
 	case "CRITICAL":
-		return model.SeverityCritical
+		return model.SeverityExposed
 	case "HIGH":
-		return model.SeverityHigh
+		return model.SeverityExposed
 	case "LOW":
-		return model.SeverityLow
+		return model.SeverityHardening
 	default:
-		return model.SeverityMedium
+		return model.SeverityWeak
 	}
 }

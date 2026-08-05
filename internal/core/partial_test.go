@@ -53,7 +53,7 @@ func twoStepFix() *fix.Registry {
 func execEngine(t *testing.T, r *stepRunner) (*Engine, model.Finding) {
 	t.Helper()
 	e := New(Config{Fixes: twoStepFix(), Store: history.NewStore(t.TempDir()), Runner: r})
-	f := model.NewFinding("updates.testfix", "auto-updates off", model.SeverityMedium,
+	f := model.NewFinding("updates.testfix", "auto-updates off", model.SeverityWeak,
 		model.SourceUpdates, model.RemediationReview)
 	return e, f
 }

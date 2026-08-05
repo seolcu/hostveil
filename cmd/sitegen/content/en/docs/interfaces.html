@@ -26,7 +26,7 @@
                   <tr><td><code>f</code></td><td>Preview the fix for the finding under the cursor, then <code>y</code> to apply or <code>n</code> to cancel. A Review fix offers numbered alternatives — press the number.</td></tr>
                   <tr><td><code>Space</code></td><td>Mark an Auto-fix finding for a batch. Only Auto-fix rows can be marked.</td></tr>
                   <tr><td><code>a</code></td><td>Apply the marked findings — or every Auto-fix one, if nothing is marked.</td></tr>
-                  <tr><td><code>s</code></td><td>Cycle the minimum severity: Critical → High → Medium → Low → off.</td></tr>
+                  <tr><td><code>s</code></td><td>Cycle the minimum severity: Exposed → Weak → Hardening → off.</td></tr>
                   <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan actually found something in.</td></tr>
                   <tr><td><code>x</code></td><td>Show only findings hostveil can fix.</td></tr>
                   <tr><td><code>c</code></td><td>Clear every filter. <code>Esc</code> clears the batch marks.</td></tr>
@@ -61,7 +61,7 @@
             <p>Just under it, either UI names any domain that could not be fully checked. A score built from a partial scan keeps saying so rather than flashing the notice once — see <a href="checks#coverage">when a domain can't be fully checked</a>.</p>
 
             <h2>CLI — scriptable</h2>
-            <p>The <code>scan</code>, <code>fix</code>, <code>rollback</code>, and <code>history</code> subcommands work non-interactively. <code>scan --json</code> emits machine-readable output, and <code>scan</code> exits non-zero when any unfixed finding is Critical or High — so it slots into CI or a cron job:</p>
+            <p>The <code>scan</code>, <code>fix</code>, <code>rollback</code>, and <code>history</code> subcommands work non-interactively. <code>scan --json</code> emits machine-readable output, and <code>scan</code> exits non-zero when any unfixed finding is Exposed — so it slots into CI or a cron job:</p>
             <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
 hostveil fix --all --yes</code></pre></div>
             <p>See the <a href="cli">CLI reference</a> for every command and flag.</p>

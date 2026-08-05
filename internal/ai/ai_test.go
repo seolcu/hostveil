@@ -22,7 +22,7 @@ func TestNoopIsInert(t *testing.T) {
 // values (which can include secrets or paths) off the host — only the
 // human-readable finding fields are sent.
 func TestPromptRedactsEvidence(t *testing.T) {
-	f := model.NewFinding("compose.dr005", "Hardcoded secret", model.SeverityHigh,
+	f := model.NewFinding("compose.dr005", "Hardcoded secret", model.SeverityExposed,
 		model.SourceCompose, model.RemediationManual,
 		model.WithService("db"),
 		model.WithDescription("A secret is stored in plaintext."),

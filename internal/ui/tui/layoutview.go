@@ -95,8 +95,8 @@ func (m *appModel) joinColumns(n int, widths []int, cols [][]string) []string {
 //
 // The headline is a claim the scan can defend. With nothing scannable there
 // is no claim to make, which is the same reason the gauge refuses a number —
-// "no criticals" and "nobody looked" are opposite readings and this is the
-// one row on the screen big enough to be read as the answer.
+// "nothing exposed" and "nobody looked" are opposite readings and this is
+// the one row on the screen big enough to be read as the answer.
 //
 // The wording comes from model.Band.Verdict rather than from a table here,
 // so the sentence and the meter beside it cannot disagree about which band
@@ -105,10 +105,10 @@ func (m *appModel) verdictRows(w int) []string {
 	s := m.sty()
 	all := m.report.Select(model.Filter{})
 
-	crit, autos := 0, 0
+	exposed, autos := 0, 0
 	for _, f := range all {
-		if f.Severity == model.SeverityCritical {
-			crit++
+		if f.Severity == model.SeverityExposed {
+			exposed++
 		}
 		if f.Remediation == model.RemediationAuto {
 			autos++
@@ -121,9 +121,9 @@ func (m *appModel) verdictRows(w int) []string {
 	case m.report.Domains != nil && !m.report.Score.Applicable:
 		head = "This host could not be scanned."
 		headC = s.cHigh
-	case crit > 0:
-		head = fmt.Sprintf("%d critical finding%s exposed right now.", crit,
-			map[bool]string{true: " is", false: "s are"}[crit == 1])
+	case exposed > 0:
+		head = fmt.Sprintf("%d finding%s reachable right now.", exposed,
+			map[bool]string{true: " is", false: "s are"}[exposed == 1])
 		headC = s.cCrit
 	default:
 		head = "This host is " + model.BandFor(m.report.Score.Overall).Verdict() + "."

@@ -437,10 +437,9 @@
   color: var(--muted);
 }
 
-.sev.critical { color: var(--danger); border-color: var(--danger); }
-.sev.high { color: var(--orange); border-color: var(--orange); }
-.sev.medium { color: var(--warning); border-color: var(--warning); }
-.sev.low { color: var(--signal); border-color: var(--signal); }
+.sev.exposed { color: var(--danger); border-color: var(--danger); }
+.sev.weak { color: var(--warning); border-color: var(--warning); }
+.sev.hardening { color: var(--signal); border-color: var(--signal); }
 
 /* ── responsive ───────────────────────────────────────── */
 

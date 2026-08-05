@@ -55,7 +55,7 @@ func TestEverySourceConstHasATableRow(t *testing.T) {
 }
 
 func TestEverySeverityConstHasATableRow(t *testing.T) {
-	for s := SeverityCritical; s < severityCount; s++ {
+	for s := SeverityExposed; s < severityCount; s++ {
 		if _, ok := severityIndex[s]; !ok {
 			t.Errorf("severity %d has no severityDefs row", int(s))
 			continue

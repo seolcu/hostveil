@@ -298,7 +298,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 		t.Errorf("fixable group should be Review, got %v", fixed.Remediation)
 	}
 	// High, from its own group — not the Critical sitting in the other one.
-	if fixed.Severity != model.SeverityHigh {
+	if fixed.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want high", fixed.Severity)
 	}
 
@@ -308,7 +308,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if unfixed.Remediation != model.RemediationUnavailable {
 		t.Errorf("unpatched group should be Unavailable, got %v", unfixed.Remediation)
 	}
-	if unfixed.Severity != model.SeverityCritical {
+	if unfixed.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want critical", unfixed.Severity)
 	}
 }
@@ -352,7 +352,7 @@ func TestAllUnfixableStillReportsTheImage(t *testing.T) {
 	}
 	// Severity must survive aggregation, or `hostveil scan` stops exiting
 	// non-zero for an image whose only Critical has no patch.
-	if fs[0].Severity != model.SeverityCritical {
+	if fs[0].Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want critical", fs[0].Severity)
 	}
 }
@@ -458,7 +458,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := rollupOf(t, fs)
-	if r.Severity != model.SeverityMedium {
+	if r.Severity != model.SeverityWeak {
 		t.Errorf("severity = %v, want medium (the worst fixable), not the unfixable critical", r.Severity)
 	}
 	if r.Evidence["count"] != "1" {

@@ -78,7 +78,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		sort.Strings(rogueRoot)
 		findings = append(findings, model.NewFinding(
 			"accounts.uid0", "Non-root account with root's UID (0)",
-			model.SeverityCritical, model.SourceAccounts, model.RemediationManual,
+			model.SeverityExposed, model.SourceAccounts, model.RemediationManual,
 			model.WithDescription("An account other than 'root' has UID 0, which gives it full root privileges under a different name. This is a common backdoor and almost never legitimate."),
 			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, remove the account (`userdel`) or give it a normal, unique UID. Grant admin rights via sudo, not UID 0."),
 			model.WithEvidence("accounts", strings.Join(rogueRoot, ", ")),
@@ -118,7 +118,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		sort.Strings(passwordless)
 		findings = append(findings, model.NewFinding(
 			"accounts.emptypassword", "Login account with an empty password",
-			model.SeverityCritical, model.SourceAccounts, model.RemediationManual,
+			model.SeverityExposed, model.SourceAccounts, model.RemediationManual,
 			model.WithDescription("A login account has no password set, so anyone who can reach a login prompt (console, SSH with password auth, su) can log in as that user with no credentials at all."),
 			model.WithHowToFix("Set a strong password (`passwd "+passwordless[0]+"`) or lock the account (`passwd -l "+passwordless[0]+"`) if it should not log in. Affected: "+strings.Join(passwordless, ", ")+"."),
 			model.WithEvidence("accounts", strings.Join(passwordless, ", ")),

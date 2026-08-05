@@ -20,7 +20,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // either — and the declared remediation is deliberately Review, the value
 // that resolves against anything without hiding it.
 func Finding(id string) model.Finding {
-	return model.NewFinding(id, "t", model.SeverityHigh, model.SourceCompose, model.RemediationReview,
+	return model.NewFinding(id, "t", model.SeverityExposed, model.SourceCompose, model.RemediationReview,
 		model.WithService("app"),
 		model.WithMetadata("file", "/tmp/docker-compose.yml"),
 		model.WithMetadata("service", "app"),

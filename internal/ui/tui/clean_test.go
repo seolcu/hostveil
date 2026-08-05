@@ -81,7 +81,7 @@ func TestFilteredEmptyListStillNamesTheFilter(t *testing.T) {
 	m = send(m, tea.WindowSizeMsg{Width: 100, Height: 40})
 	m = send(m, scannedMsg{report: model.Report{
 		Findings: []model.Finding{model.NewFinding(
-			"ssh.rootlogin", "root login permitted", model.SeverityLow,
+			"ssh.rootlogin", "root login permitted", model.SeverityHardening,
 			model.SourceSSH, model.RemediationAuto)},
 		Domains: []model.DomainResult{{Source: model.SourceCVE, State: model.ScanError}},
 	}})

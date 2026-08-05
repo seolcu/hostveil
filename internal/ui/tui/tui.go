@@ -832,22 +832,27 @@ func (m *appModel) presentSources() []model.Source {
 	return out
 }
 
-// cycleSeverity advances the minimum-severity filter: off → Critical → High
-// → Medium → Low → off.
+// cycleSeverity advances the minimum-severity filter: off → the most severe
+// level → each one below it → off.
+//
+// It walks model.AllSeverities rather than naming the levels, which is what
+// it used to do. A hand-written chain has to be edited every time the scale
+// changes, and the failure of forgetting is a level the filter simply skips
+// — invisible, because the key still appears to work.
 func cycleSeverity(cur *model.Severity) *model.Severity {
-	next := func(s model.Severity) *model.Severity { return &s }
-	switch {
-	case cur == nil:
-		return next(model.SeverityCritical)
-	case *cur == model.SeverityCritical:
-		return next(model.SeverityHigh)
-	case *cur == model.SeverityHigh:
-		return next(model.SeverityMedium)
-	case *cur == model.SeverityMedium:
-		return next(model.SeverityLow)
-	default:
+	levels := model.AllSeverities()
+	if len(levels) == 0 {
 		return nil
 	}
+	if cur == nil {
+		return &levels[0]
+	}
+	for i, s := range levels {
+		if s == *cur && i+1 < len(levels) {
+			return &levels[i+1]
+		}
+	}
+	return nil
 }
 
 // cycleSource advances the domain filter through the present sources and

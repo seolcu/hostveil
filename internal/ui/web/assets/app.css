@@ -162,12 +162,11 @@ ul { list-style: none; margin: 0; padding: 0; }
   padding: 5px 9px; cursor: pointer; }
 .chip:hover { border-color: var(--bone); color: var(--bone); }
 .chip.on { color: var(--ink); background: var(--slate); border-color: var(--slate); }
-.chip.c-crit { color: var(--crit); } .chip.c-high { color: var(--high); }
-.chip.c-med { color: var(--med); } .chip.c-low { color: var(--low); }
-.chip.c-crit.on { background: var(--crit); border-color: var(--crit); color: var(--ink); }
-.chip.c-high.on { background: var(--high); border-color: var(--high); color: var(--ink); }
-.chip.c-med.on { background: var(--med); border-color: var(--med); color: var(--ink); }
-.chip.c-low.on { background: var(--low); border-color: var(--low); color: var(--ink); }
+.chip.c-expo { color: var(--crit); }
+.chip.c-weak { color: var(--med); } .chip.c-hrdn { color: var(--low); }
+.chip.c-expo.on { background: var(--crit); border-color: var(--crit); color: var(--ink); }
+.chip.c-weak.on { background: var(--med); border-color: var(--med); color: var(--ink); }
+.chip.c-hrdn.on { background: var(--low); border-color: var(--low); color: var(--ink); }
 
 /* ── batch action bar ── */
 .batchbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 14px;
@@ -183,10 +182,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding:hover { background: var(--ink-2); }
 .finding.active { background: var(--ink-2); border-left-color: var(--bone); }
 .sev { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
-.finding.critical { border-left-color: var(--crit); } .finding.critical .sev { color: var(--crit); }
-.finding.high { border-left-color: var(--high); } .finding.high .sev { color: var(--high); }
-.finding.medium { border-left-color: var(--med); } .finding.medium .sev { color: var(--med); }
-.finding.low { border-left-color: var(--low); } .finding.low .sev { color: var(--low); }
+.finding.exposed { border-left-color: var(--crit); } .finding.exposed .sev { color: var(--crit); }
+.finding.weak { border-left-color: var(--med); } .finding.weak .sev { color: var(--med); }
+.finding.hardening { border-left-color: var(--low); } .finding.hardening .sev { color: var(--low); }
 .finding .title { min-width: 0; }
 .finding .title .name { color: var(--bone); }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
@@ -217,10 +215,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .over-sev { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .over-chip { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 4px 9px;
   border: 1px solid var(--line-2); }
-.over-chip.sev-critical { color: var(--crit); border-color: var(--crit); }
-.over-chip.sev-high { color: var(--high); border-color: var(--high); }
-.over-chip.sev-medium { color: var(--med); }
-.over-chip.sev-low { color: var(--low); }
+.over-chip.sev-exposed { color: var(--crit); border-color: var(--crit); }
+.over-chip.sev-weak { color: var(--med); }
+.over-chip.sev-hardening { color: var(--low); }
 .over-fixall { margin: 0 0 6px; }
 .over-note { color: var(--slate); font-size: 12px; margin: 0 0 20px; }
 .over-head { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px;
@@ -229,8 +226,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 .over-jump-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline;
   padding: 8px 4px; border-bottom: 1px solid var(--ink-2); cursor: pointer; }
 .over-jump-row:hover { background: var(--ink-2); }
-.over-jump-row .sev.critical { color: var(--crit); } .over-jump-row .sev.high { color: var(--high); }
-.over-jump-row .sev.medium { color: var(--med); } .over-jump-row .sev.low { color: var(--low); }
+.over-jump-row .sev.exposed { color: var(--crit); }
+.over-jump-row .sev.weak { color: var(--med); } .over-jump-row .sev.hardening { color: var(--low); }
 .over-jump-title { color: var(--bone); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── fix preview ── */
@@ -345,8 +342,8 @@ pre.diff .ctx { color: var(--slate); }
 .rail .dom .meter { grid-column: 1 / -1; width: 100%; height: 5px; }
 .rail .dom .c { grid-column: 1 / -1; color: var(--slate); font-size: 10.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-.rail .dom .c .critical { color: var(--crit); } .rail .dom .c .high { color: var(--high); }
-.rail .dom .c .medium { color: var(--med); }   .rail .dom .c .low { color: var(--low); }
+.rail .dom .c .exposed { color: var(--crit); }
+.rail .dom .c .weak { color: var(--med); }   .rail .dom .c .hardening { color: var(--low); }
 
 /* ── H · Lanes ────────────────────────────────────────────────────────
    The one alternative whose work is entirely in app.js: laneRows() builds
@@ -368,14 +365,12 @@ pre.diff .ctx { color: var(--slate); }
   font-size: 10.5px; }
 :root[data-layout="lanes"] .lane-head button { padding: 4px 9px; font-size: 9.5px;
   letter-spacing: .6px; }
-:root[data-layout="lanes"] .lane-head.critical { border-left-color: var(--crit); }
-:root[data-layout="lanes"] .lane-head.critical .n { color: var(--crit); }
-:root[data-layout="lanes"] .lane-head.high { border-left-color: var(--high); }
-:root[data-layout="lanes"] .lane-head.high .n { color: var(--high); }
-:root[data-layout="lanes"] .lane-head.medium { border-left-color: var(--med); }
-:root[data-layout="lanes"] .lane-head.medium .n { color: var(--med); }
-:root[data-layout="lanes"] .lane-head.low { border-left-color: var(--low); }
-:root[data-layout="lanes"] .lane-head.low .n { color: var(--low); }
+:root[data-layout="lanes"] .lane-head.exposed { border-left-color: var(--crit); }
+:root[data-layout="lanes"] .lane-head.exposed .n { color: var(--crit); }
+:root[data-layout="lanes"] .lane-head.weak { border-left-color: var(--med); }
+:root[data-layout="lanes"] .lane-head.weak .n { color: var(--med); }
+:root[data-layout="lanes"] .lane-head.hardening { border-left-color: var(--low); }
+:root[data-layout="lanes"] .lane-head.hardening .n { color: var(--low); }
 
 /* ── overlay scrim, for the layouts that lift the detail over the list ── */
 .scrim { display: none; }

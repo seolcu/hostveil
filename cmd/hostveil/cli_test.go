@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"strconv"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -24,23 +26,22 @@ func TestExitCode(t *testing.T) {
 		want int
 	}{
 		{"no findings", nil, 0},
-		{"critical", []model.Finding{finding(model.SeverityCritical, false)}, 1},
-		{"high", []model.Finding{finding(model.SeverityHigh, false)}, 1},
-		{"medium only", []model.Finding{finding(model.SeverityMedium, false)}, 0},
-		{"low only", []model.Finding{finding(model.SeverityLow, false)}, 0},
+		{"exposed", []model.Finding{finding(model.SeverityExposed, false)}, 1},
+		{"weak only", []model.Finding{finding(model.SeverityWeak, false)}, 0},
+		{"hardening only", []model.Finding{finding(model.SeverityHardening, false)}, 0},
 		{
-			"a fixed critical does not gate",
-			[]model.Finding{finding(model.SeverityCritical, true)},
+			"a fixed exposed finding does not gate",
+			[]model.Finding{finding(model.SeverityExposed, true)},
 			0,
 		},
 		{
-			"one unfixed high among fixed criticals still gates",
-			[]model.Finding{finding(model.SeverityCritical, true), finding(model.SeverityHigh, false)},
+			"one unfixed exposed finding among fixed ones still gates",
+			[]model.Finding{finding(model.SeverityExposed, true), finding(model.SeverityExposed, false)},
 			1,
 		},
 		{
-			"medium and low together never gate",
-			[]model.Finding{finding(model.SeverityMedium, false), finding(model.SeverityLow, false)},
+			"weak and hardening together never gate",
+			[]model.Finding{finding(model.SeverityWeak, false), finding(model.SeverityHardening, false)},
 			0,
 		},
 	} {
@@ -74,7 +75,7 @@ func TestExitCodeReflectsDomainState(t *testing.T) {
 			// Findings win: the gate exists to answer "is this host exposed",
 			// and a domain that also failed does not make that less true.
 			"findings outrank an incomplete scan",
-			[]model.Finding{finding(model.SeverityCritical, false)},
+			[]model.Finding{finding(model.SeverityExposed, false)},
 			[]model.DomainResult{domain(model.ScanError)},
 			1,
 		},
@@ -236,5 +237,46 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 	}
 	if got.ID != "tokyonight" {
 		t.Errorf("resolveTheme = %q, want tokyonight", got.ID)
+	}
+}
+
+// TestTheGateStillMeansWhatItMeant is the compatibility claim the severity
+// change makes to everyone running `hostveil scan` in CI.
+//
+// The gate is documented in two languages as "exit 1 when any unfixed finding
+// is Critical or High". Those two levels became one — Exposed — and the
+// promise is that the *set* did not move: everything that gated before gates
+// now, and nothing that did not has started to. A pipeline that has been
+// green stays green for the same reasons.
+//
+// It is written against the old scale's ordinals rather than its constants,
+// which no longer exist. That is deliberate: the numbers are what a snapshot
+// on disk holds, and reading one back is the only way left to name a level
+// this build has never heard of.
+func TestTheGateStillMeansWhatItMeant(t *testing.T) {
+	// The four-level scale, by the ordinal each level was serialized as, and
+	// whether it gated.
+	for _, tc := range []struct {
+		ordinal int
+		name    string
+		gated   bool
+	}{
+		{0, "critical", true},
+		{1, "high", true},
+		{2, "medium", false},
+		{3, "low", false},
+	} {
+		var sev model.Severity
+		if err := json.Unmarshal([]byte(strconv.Itoa(tc.ordinal)), &sev); err != nil {
+			t.Fatalf("%s (%d) no longer reads at all: %v", tc.name, tc.ordinal, err)
+		}
+		want := 0
+		if tc.gated {
+			want = 1
+		}
+		if got := exitCode(model.Report{Findings: []model.Finding{finding(sev, false)}}); got != want {
+			t.Errorf("a finding that was %s exits %d, and used to exit %d — the CI gate moved",
+				tc.name, got, want)
+		}
 	}
 }

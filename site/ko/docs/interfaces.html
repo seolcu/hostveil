@@ -112,7 +112,7 @@
                   <tr><td><code>f</code></td><td>커서 위 항목의 수정을 미리 봅니다. <code>y</code>로 적용, <code>n</code>으로 취소. 검토 수정은 번호가 붙은 대안을 제시하니 해당 숫자를 누르세요.</td></tr>
                   <tr><td><code>Space</code></td><td>자동 수정 항목을 일괄 처리 대상으로 표시합니다. 자동 수정 행만 표시할 수 있습니다.</td></tr>
                   <tr><td><code>a</code></td><td>표시한 항목을 적용합니다 — 표시한 것이 없으면 자동 수정 항목 전체를 적용합니다.</td></tr>
-                  <tr><td><code>s</code></td><td>최소 심각도를 순환합니다: 심각 → 높음 → 보통 → 낮음 → 해제.</td></tr>
+                  <tr><td><code>s</code></td><td>최소 심각도를 순환합니다: EXPOSED → WEAK → HARDENING → 해제.</td></tr>
                   <tr><td><code>d</code></td><td>이번 스캔에서 실제로 발견된 영역들만 순환하며 필터링합니다.</td></tr>
                   <tr><td><code>x</code></td><td>hostveil이 고칠 수 있는 항목만 봅니다.</td></tr>
                   <tr><td><code>c</code></td><td>모든 필터를 지웁니다. <code>Esc</code>는 일괄 처리 표시를 지웁니다.</td></tr>
@@ -147,7 +147,7 @@
             <p>그 바로 아래에는 온전히 점검하지 못한 영역의 이름이 나옵니다. 부분적인 스캔으로 만든 점수는 그 사실을 한 번 알리고 사라지는 대신 계속 말해 줍니다 — <a href="checks#coverage">영역을 온전히 점검하지 못했을 때</a>를 참고하세요.</p>
 
             <h2>CLI — 스크립트 가능</h2>
-            <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 심각 또는 높음이 하나라도 있으면 0이 아닌 값으로 종료합니다 — 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>
+            <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 EXPOSED가 하나라도 있으면 0이 아닌 값으로 종료합니다 — 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>
             <div class="code-block"><pre><code>hostveil scan --json &gt; report.json
 hostveil fix --all --yes</code></pre></div>
             <p>모든 명령과 플래그는 <a href="cli">CLI 레퍼런스</a>를 참고하세요.</p>
@@ -158,7 +158,7 @@ hostveil fix --all --yes</code></pre></div>
             <div class="code-block"><pre><code>hostveil tui --theme nord
 hostveil serve --theme gruvbox
 HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
-            <p><code>--theme</code>와 <code>HOSTVEIL_THEME</code>은 기억된 선택보다 우선합니다. 색이 뜻하는 바는 모든 테마에서 같습니다 — 네 단계의 심각도와 안전 — 그래서 테마를 바꿔도 발견 항목을 읽는 방식은 달라지지 않습니다.</p>
+            <p><code>--theme</code>와 <code>HOSTVEIL_THEME</code>은 기억된 선택보다 우선합니다. 색이 뜻하는 바는 모든 테마에서 같습니다 — 세 단계의 심각도, 점수 구간, 그리고 안전 — 그래서 테마를 바꿔도 발견 항목을 읽는 방식은 달라지지 않습니다.</p>
 
             <h2 id="symbols">기호</h2>
             <p>TUI와 <code>hostveil scan</code>은 상태 표시 기호 — 브랜드 마크, 체크, 경고, 그리고 영역이 온전히 점검되지 못하는 세 가지 경우 — 를 기본적으로 일반 유니코드(<code>plain</code>)로 그리며, 이는 어떤 글꼴에서도 표시됩니다. 터미널에서 이미 <a href="https://www.nerdfonts.com/">Nerd Font</a>를 쓰고 있다면 <code>--glyphs nerd</code>로 패치된 아이콘으로 바꿀 수 있습니다.</p>

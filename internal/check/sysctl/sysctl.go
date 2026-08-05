@@ -76,7 +76,7 @@ func defaultRules() []Rule {
 	return []Rule{
 		{
 			ID: "sysctl.ptrace-scope", Title: "Any process can debug its siblings",
-			Sev:  model.SeverityMedium,
+			Sev:  model.SeverityWeak,
 			Desc: "kernel.yama.ptrace_scope is 0, so every process can attach a debugger to any other process of the same user and read its memory — including the session tokens inside a running agent, browser, or password manager. Setting it to 1 limits attaching to direct children.",
 			Keys: []string{"kernel.yama.ptrace_scope"},
 			Want: "kernel.yama.ptrace_scope = 1",
@@ -88,7 +88,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.syncookies", Title: "TCP SYN-flood protection is off",
-			Sev:  model.SeverityMedium,
+			Sev:  model.SeverityWeak,
 			Desc: "net.ipv4.tcp_syncookies lets listening services survive a SYN-flood denial of service. It costs nothing in normal operation and only activates under attack, which is why every mainstream distribution ships it on.",
 			Keys: []string{"net.ipv4.tcp_syncookies"},
 			Want: "net.ipv4.tcp_syncookies = 1",
@@ -100,7 +100,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.accept-redirects", Title: "ICMP redirects are accepted",
-			Sev:  model.SeverityMedium,
+			Sev:  model.SeverityWeak,
 			Desc: "Accepting ICMP redirect messages lets a machine on the same network rewrite this host's routing decisions — a classic man-in-the-middle primitive. A server has no use for them.",
 			Keys: []string{"net.ipv4.conf.all.accept_redirects"},
 			Want: "net.ipv4.conf.all.accept_redirects = 0",
@@ -112,7 +112,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.protected-links", Title: "Symlink and hardlink protections are disabled",
-			Sev:  model.SeverityMedium,
+			Sev:  model.SeverityWeak,
 			Desc: "fs.protected_symlinks and fs.protected_hardlinks close a family of /tmp link races that local attackers use to trick privileged processes into overwriting files of the attacker's choosing. Every mainstream distribution ships both enabled.",
 			Keys: []string{"fs.protected_symlinks", "fs.protected_hardlinks"},
 			Want: "fs.protected_symlinks = 1 and fs.protected_hardlinks = 1",
@@ -128,7 +128,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.kptr-restrict", Title: "Kernel pointer addresses are visible to all users",
-			Sev:  model.SeverityLow,
+			Sev:  model.SeverityHardening,
 			Desc: "With kernel.kptr_restrict at 0, /proc exposes raw kernel pointers to any local user. Those addresses defeat kernel address-space randomization, handing a local exploit the memory layout it needs.",
 			Keys: []string{"kernel.kptr_restrict"},
 			Want: "kernel.kptr_restrict = 1",
@@ -140,7 +140,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.dmesg-restrict", Title: "Any user can read the kernel log",
-			Sev:  model.SeverityLow,
+			Sev:  model.SeverityHardening,
 			Desc: "The kernel log leaks addresses, hardware details, and stack traces that make local privilege-escalation exploits easier to build. With kernel.dmesg_restrict at 0, every account can read it.",
 			Keys: []string{"kernel.dmesg_restrict"},
 			Want: "kernel.dmesg_restrict = 1",
@@ -152,7 +152,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.sysrq", Title: "Magic SysRq is fully enabled",
-			Sev:  model.SeverityLow,
+			Sev:  model.SeverityHardening,
 			Desc: "kernel.sysrq = 1 enables every SysRq function, letting anyone with console, serial, or IPMI access kill processes, remount filesystems, or crash the machine with a keystroke. Distributions default to 0 or a restricted bitmask for a reason.",
 			Keys: []string{"kernel.sysrq"},
 			Want: "kernel.sysrq = 0 (or a restricted bitmask such as 176)",
@@ -166,7 +166,7 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.rp-filter", Title: "Source-address spoofing filter is off",
-			Sev:  model.SeverityLow,
+			Sev:  model.SeverityHardening,
 			Desc: "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
 			Keys: []string{"net.ipv4.conf.all.rp_filter"},
 			Want: "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",

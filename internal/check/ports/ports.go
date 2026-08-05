@@ -91,7 +91,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 			findings = append(findings, exposedFinding(l, "ports.exposed-datastore",
 				"Datastore reachable from the network: "+datastorePorts[l.Port],
 				"A database listening on a non-loopback address is reachable from every network this host is on. Datastores rarely need to accept remote connections directly; exposing one invites credential-stuffing and data theft.",
-				model.SeverityHigh))
+				model.SeverityExposed))
 		case adminPorts[l.Port] != "":
 			if seenDS[l.Port] {
 				continue
@@ -100,7 +100,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 			findings = append(findings, exposedFinding(l, "ports.exposed-admin",
 				"Admin panel reachable from the network: "+adminPorts[l.Port],
 				"A management UI listening on a non-loopback address lets anyone who can reach this host attempt to log in and control your services. Bind it to localhost and reach it over an SSH tunnel or VPN.",
-				model.SeverityHigh))
+				model.SeverityExposed))
 		default:
 			if l.Port == 22 { // SSH is expected to be reachable; not a finding here
 				continue
@@ -177,7 +177,7 @@ func genericFinding(generic map[int]platform.Listener) model.Finding {
 	}
 	list := strings.Join(parts, ", ")
 	return model.NewFinding("ports.exposed", "Services exposed to the network with no firewall",
-		model.SeverityLow, model.SourcePorts, model.RemediationManual,
+		model.SeverityHardening, model.SourcePorts, model.RemediationManual,
 		model.WithDescription("These services listen on a non-loopback address and no host firewall is active, so they are reachable from any network this host is on. Even if each is meant to be public, a firewall that denies inbound by default is your backstop when one is accidentally exposed."),
 		model.WithHowToFix("Enable a host firewall that defaults to denying inbound traffic (allow SSH first), and bind any service that does not need to be public to 127.0.0.1. Exposed ports: "+list+"."),
 		model.WithEvidence("ports", list),

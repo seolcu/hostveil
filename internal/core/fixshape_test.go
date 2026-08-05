@@ -35,7 +35,7 @@ func (c *shapeChecker) Check(context.Context, platform.Env) ([]model.Finding, er
 }
 
 func shapeFinding() model.Finding {
-	return model.NewFinding("sysctl.aslr", "ASLR disabled", model.SeverityHigh,
+	return model.NewFinding("sysctl.aslr", "ASLR disabled", model.SeverityExposed,
 		model.SourceSysctl, model.RemediationAuto)
 }
 

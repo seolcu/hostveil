@@ -61,7 +61,7 @@ X11Forwarding yes
 			t.Errorf("expected %s", want)
 		}
 	}
-	if got["ssh.emptypasswords"].Severity != model.SeverityCritical {
+	if got["ssh.emptypasswords"].Severity != model.SeverityExposed {
 		t.Error("empty passwords should be critical")
 	}
 	for _, f := range got {

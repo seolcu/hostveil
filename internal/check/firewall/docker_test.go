@@ -49,7 +49,7 @@ func TestPublishedPortsBypassingUFWAreCritical(t *testing.T) {
 	if f.ID != "firewall.docker-bypass" {
 		t.Errorf("id = %q", f.ID)
 	}
-	if f.Severity != model.SeverityCritical {
+	if f.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want critical", f.Severity)
 	}
 	// Both containers listed, IPv4+IPv6 of the same port collapsed to one,

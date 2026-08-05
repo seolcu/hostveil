@@ -17,6 +17,11 @@ type enumCase[T ~int] struct {
 	parse  func(string) (T, bool)
 	newPtr func() *T
 	deref  func(*T) T
+	// legacyOrdinal answers "what does the integer i in an old snapshot
+	// mean now?". For every enum but Severity that is i itself. Severity's
+	// scale went from four levels to three, so its old ordinals are remapped
+	// and the identity assertion would be wrong — see legacySeverityOrdinals.
+	legacyOrdinal func(int) (T, bool)
 }
 
 func run[T ~int](t *testing.T, c enumCase[T]) {
@@ -45,20 +50,30 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 				t.Errorf("%s round-tripped to %v", data, c.deref(p))
 			}
 
-			// The integer form every snapshot written before this release
-			// holds. Dropping it would not fail loudly — it would make the
-			// previous scan unreadable, which reads to a user as a host with
-			// no history rather than as a format change.
-			p = c.newPtr()
-			if err := json.Unmarshal([]byte(fmt.Sprint(int(v))), p); err != nil {
-				t.Fatalf("unmarshal legacy %d: %v", int(v), err)
-			}
-			if c.deref(p) != v {
-				t.Errorf("legacy %d read back as %v", int(v), c.deref(p))
-			}
-
 			if got, ok := c.parse(c.name(v)); !ok || got != v {
 				t.Errorf("parse(%q) = %v, %v", c.name(v), got, ok)
+			}
+		}
+
+		// The integer form every snapshot written before names holds.
+		// Dropping it would not fail loudly — it would make the previous scan
+		// unreadable, which reads to a user as a host with no history rather
+		// than as a format change.
+		for n := 0; n < 8; n++ {
+			want, valid := c.legacyOrdinal(n)
+			p := c.newPtr()
+			err := json.Unmarshal([]byte(fmt.Sprint(n)), p)
+			if !valid {
+				if err == nil {
+					t.Errorf("legacy ordinal %d was accepted as a %s", n, c.kind)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatalf("unmarshal legacy %d: %v", n, err)
+			}
+			if c.deref(p) != want {
+				t.Errorf("legacy %d read back as %v, want %v", n, c.deref(p), want)
 			}
 		}
 
@@ -73,30 +88,51 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 	})
 }
 
+// identityOrdinal is the legacy answer for every enum whose numbering never
+// moved: the integer means what it has always meant.
+func identityOrdinal[T ~int](values []T) func(int) (T, bool) {
+	return func(n int) (T, bool) {
+		for _, v := range values {
+			if int(v) == n {
+				return v, true
+			}
+		}
+		var zero T
+		return zero, false
+	}
+}
+
 func TestEnumsMarshalAsNamesAndReadBothForms(t *testing.T) {
 	run(t, enumCase[Severity]{
 		kind: "severity", values: AllSeverities(),
 		name: Severity.String, parse: ParseSeverity,
 		newPtr: func() *Severity { return new(Severity) },
 		deref:  func(p *Severity) Severity { return *p },
+		legacyOrdinal: func(n int) (Severity, bool) {
+			s, ok := legacySeverityOrdinals[n]
+			return s, ok
+		},
 	})
 	run(t, enumCase[Source]{
 		kind: "source", values: append(AllSources(), SourceUnset),
 		name: Source.String, parse: ParseSource,
-		newPtr: func() *Source { return new(Source) },
-		deref:  func(p *Source) Source { return *p },
+		newPtr:        func() *Source { return new(Source) },
+		deref:         func(p *Source) Source { return *p },
+		legacyOrdinal: identityOrdinal(append(AllSources(), SourceUnset)),
 	})
 	run(t, enumCase[RemediationKind]{
 		kind: "remediation", values: AllRemediationKinds(),
 		name: RemediationKind.String, parse: ParseRemediationKind,
-		newPtr: func() *RemediationKind { return new(RemediationKind) },
-		deref:  func(p *RemediationKind) RemediationKind { return *p },
+		newPtr:        func() *RemediationKind { return new(RemediationKind) },
+		deref:         func(p *RemediationKind) RemediationKind { return *p },
+		legacyOrdinal: identityOrdinal(AllRemediationKinds()),
 	})
 	run(t, enumCase[ScanState]{
 		kind: "scan state", values: AllScanStates(),
 		name: ScanState.String, parse: ParseScanState,
-		newPtr: func() *ScanState { return new(ScanState) },
-		deref:  func(p *ScanState) ScanState { return *p },
+		newPtr:        func() *ScanState { return new(ScanState) },
+		deref:         func(p *ScanState) ScanState { return *p },
+		legacyOrdinal: identityOrdinal(AllScanStates()),
 	})
 }
 
@@ -143,8 +179,9 @@ func TestAPreviousScanStillReads(t *testing.T) {
 		src Source
 		rem RemediationKind
 	}{
-		{"ssh.rootlogin", SeverityHigh, SourceSSH, RemediationReview},
-		{"cve.outdated-image", SeverityCritical, SourceCVE, RemediationUnavailable},
+		// severity 1 was High and severity 0 was Critical; both are Exposed now.
+		{"ssh.rootlogin", SeverityExposed, SourceSSH, RemediationReview},
+		{"cve.outdated-image", SeverityExposed, SourceCVE, RemediationUnavailable},
 	} {
 		var got Finding
 		for _, f := range r.Findings {
@@ -178,7 +215,7 @@ func TestAPreviousScanStillReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"severity":"high"`, `"source":"ssh"`, `"remediation":"unavailable"`, `"state":"degraded"`} {
+	for _, want := range []string{`"severity":"exposed"`, `"source":"ssh"`, `"remediation":"unavailable"`, `"state":"degraded"`} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("re-marshalled snapshot does not contain %s:\n%s", want, out)
 		}

@@ -4,6 +4,45 @@
 
 ### Features
 
+* **model:** severity is three urgency levels, not four Trivy ones. A finding
+  is now **`exposed`** (reachable or usable right now, from off the host, by
+  someone holding nothing), **`weak`** (a boundary that gives way to a
+  foothold, a guessed credential, or a local account) or **`hardening`** (no
+  known path today; it narrows what a future compromise reaches). Critical /
+  High / Medium / Low came from Trivy so a CVE's published rating could pass
+  straight through — but vulnerabilities are rolled up per image now, so no
+  individual rating survives into a finding, and outside that domain the four
+  levels were asking a question a config file cannot answer. "How bad is a
+  container running as root" depends entirely on what the container does; how
+  much stands between an attacker and it does not. The names are also
+  deliberately not adjectives: "Critical" invites an argument, "Exposed" is a
+  claim about your host that is either true or false.
+
+  **`exposed` is exactly what Critical and High were together**, so nothing a
+  pipeline reads has moved: `scan` still exits 1 on the same set of findings,
+  and the SARIF export still maps them to the same three levels (Critical and
+  High were both `error` already). Both are pinned against the *old ordinals*,
+  read back through the legacy unmarshal, because the old constants no longer
+  exist to name.
+
+  Scores do move. A finding that was High now costs half of an axis's
+  remaining credit rather than a third, which is the point of the merge — if
+  it is reachable now it is the top level, and the top level costs half. The
+  seeded demo host goes from **38 to 32**, with SSH hardening moving 26 → 19
+  as `ssh.rootlogin` joins the top level.
+
+  Two conditional escalations collapsed, and that is the taxonomy working
+  rather than information being lost. `dockerd.api-unauthenticated` no longer
+  drops a level when the daemon is rootless, and `agent.gateway-exposed` no
+  longer rises one when a listener is confirmed with no firewall: blast radius
+  and confidence are not urgency. Both differences are still reported, in the
+  description and the evidence, where a reader can weigh them.
+
+  `ScoreAxis`'s four hardcoded count fields became `counts`, a list projected
+  from the severity table — the last structural four in the model, and the
+  reason a change of scale used to touch the score struct, its JSON, three
+  renderers and their tests.
+
 * **model:** `scan --json` names its enums instead of numbering them. `severity`,
   `source`, `remediation` and a domain's `state` go out as lowercase words
   (`"high"`, `"ssh"`, `"review"`, `"degraded"`) rather than as the bare integers

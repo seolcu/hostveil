@@ -15,7 +15,7 @@ func sysctlFinding(setBy string) model.Finding {
 		opts = append(opts, model.WithEvidence("set-by", setBy))
 	}
 	return model.NewFinding("sysctl.dmesg-restrict", "Any user can read the kernel log",
-		model.SeverityLow, model.SourceSysctl, model.RemediationReview, opts...)
+		model.SeverityHardening, model.SourceSysctl, model.RemediationReview, opts...)
 }
 
 // persist returns the alternative that survives a reboot — the first action,
