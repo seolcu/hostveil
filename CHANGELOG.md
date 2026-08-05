@@ -17,10 +17,12 @@ temporary and will be gone once one of them is chosen.**
   colourings of one figure, and the marketing site had two more that shared
   nothing with them. They are now one drawing, a chip, byte-identical across all
   four surfaces and held there by a test, with both lockups optically aligned.
-  The Instrument palette is gone and One Dark is the default; three of its
-  twelve roles are lifted in HSL lightness by the smallest step that clears the
-  contrast floors every theme here is held to. The terminal list gains what the
-  dashboard has always had above the fold: a count per severity, how many
+  The Instrument palette is gone and One Dark is the default; four of its twelve
+  roles are moved — three lifted in HSL lightness by the smallest step that
+  clears the contrast floors every theme here is held to, and the foreground
+  lifted as a judgement rather than a floor, because an editor sets a few
+  hundred glyphs on screen and this sets thousands. The terminal list gains
+  what the dashboard has always had above the fold: a count per severity, how many
   hostveil can fix on its own, and — for each domain that did not fully run —
   the reason the checker gave, instead of an unexplained `N/A`. `scan` no longer
   double-spaces its findings, which halves the scrollback on an ordinary host.
