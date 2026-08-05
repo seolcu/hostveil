@@ -45,5 +45,11 @@ func plainExplanation(f model.Finding) string {
 	if f.HowToFix != "" {
 		b.WriteString("How to fix: " + f.HowToFix)
 	}
+	// Last, and only when there is one. A finding with a fix button does not
+	// need to be told why it has one, and a paragraph explaining an absence
+	// above the instructions for handling it would bury the actionable half.
+	if f.WhyNoFix != "" {
+		b.WriteString("\n\nWhy hostveil will not do this for you: " + f.WhyNoFix)
+	}
 	return strings.TrimSpace(b.String())
 }

@@ -18,6 +18,17 @@ type Finding struct {
 	Evidence    map[string]string `json:"evidence,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	Fixed       bool              `json:"fixed"`
+
+	// WhyNoFix is one sentence saying what stops hostveil fixing this
+	// finding for you. It is set by the engine, never by a checker, and only
+	// on findings that reach a UI with no fix to offer.
+	//
+	// "Manual" is a decision — someone weighed the remediation and refused it
+	// — but in an interface it is indistinguishable from a finding nobody has
+	// looked at. The reasons have been written down since the beginning, in
+	// the doc comment on fix.Default(), where a user never sees them; this is
+	// that register reaching the finding it is about.
+	WhyNoFix string `json:"why_no_fix,omitempty"`
 }
 
 // FindingOption customizes optional fields of a Finding.

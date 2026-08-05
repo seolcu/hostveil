@@ -4,6 +4,32 @@
 
 ### Features
 
+* **fix:** a finding with no fix button now says why. hostveil has always had
+  the reasons — the doc comment on `fix.Default()` is pages of them, argued
+  finding by finding — in a place no user will ever read. Each is now one
+  sentence attached to the finding it is about, shown in `hostveil explain`,
+  the terminal's detail pane and the dashboard. "Manual" is a decision
+  somebody made about a specific remediation, and in an interface it was
+  indistinguishable from a finding nobody had looked at.
+
+  Forty-two findings carry one. They say what *stops* the automation, never
+  what the finding is: `accounts.uid0` reads "userdel orphans every file the
+  account owns with no checkpoint to undo it, and hostveil cannot tell a
+  backdoor from a deliberate second root", not a restatement of the title.
+  Two tests hold the register and the sentences together — a declined finding
+  with nothing to say fails, and a sentence for a finding that has a fix
+  fails too.
+
+* **site:** the fixing page now publishes the standard instead of the labels.
+  It had a four-row table saying what Auto-fix, Review, Manual and Unavailable
+  *are* and nothing about how a finding lands in one. It now carries the three
+  criteria an Auto-fix has to meet — reversible, recoverable in practice,
+  unambiguous — each with a worked example from the tool, the reason a failing
+  criterion sometimes means Manual rather than Review (Review needs two
+  independent alternatives; one option and no way to make it safe is Manual),
+  and the two-source resolution rule with a finding you can watch it happen
+  on. In both languages, pinned against each other by a new test.
+
 * **model:** severity is three urgency levels, not four Trivy ones. A finding
   is now **`exposed`** (reachable or usable right now, from off the host, by
   someone holding nothing), **`weak`** (a boundary that gives way to a
@@ -53,6 +79,16 @@
   not lost and its next scan converts it. Nothing writes integers any more.
 
 ### Bug Fixes
+
+* **fix:** four claims in the register of deliberately-unfixed findings were
+  wrong, found while turning it into user-facing text. `userdel` does not
+  take the home directory unless it is given `-r`, which the finding's own
+  how-to-fix does not recommend; `dockerd.api-tls-unverified`'s remediation
+  is requiring client certificates, not removing the TCP endpoint;
+  `dockerd.socket-world-writable`'s socket is recreated by systemd, not by
+  dockerd, which the finding's own text already said; and five of the seven
+  agent findings can only come from OpenClaw, so the register's Hermes
+  argument does not apply to them.
 
 * **core:** remediation is now settled the way every comment in the repo says it
   is. `classify`'s rule — whichever of the checker and the fix registry demands

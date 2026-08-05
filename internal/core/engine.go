@@ -227,6 +227,12 @@ func (e *Engine) Current() (model.Report, bool) { return e.state.snapshot() }
 // *form*, not about whether it is safe to run unattended in a batch. Where
 // the checker asked for Review, Review wins — see the standard in
 // internal/fix/register.go for what each kind means.
+//
+// It also attaches the reason a finding has no fix, because this is the one
+// place that knows a finding ended up without one. A checker cannot say it:
+// it does not know what the registry holds. The registry cannot say it
+// either: a finding it has a fix for can still arrive here unfixable,
+// because the checker asked for Manual and the stricter side wins.
 func (e *Engine) classify(findings []model.Finding) {
 	for i := range findings {
 		if e.fixes != nil {
@@ -235,11 +241,14 @@ func (e *Engine) classify(findings []model.Finding) {
 			// rather than offered and discovered at apply.
 			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
 				findings[i].Remediation = resolvedKind(findings[i].Remediation, fx)
-				continue
+			} else if findings[i].Remediation.IsFixable() {
+				findings[i].Remediation = model.RemediationManual
 			}
-		}
-		if findings[i].Remediation.IsFixable() {
+		} else if findings[i].Remediation.IsFixable() {
 			findings[i].Remediation = model.RemediationManual
+		}
+		if !findings[i].Remediation.IsFixable() {
+			findings[i].WhyNoFix = fix.WhyNoFix(findings[i].ID)
 		}
 	}
 }

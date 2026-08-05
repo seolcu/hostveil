@@ -407,3 +407,84 @@ func TestBothLanguagesAgreeOnSeverity(t *testing.T) {
 		}
 	}
 }
+
+// findingRef matches a finding ID cited in prose, wherever it appears.
+var findingRef = func() *regexp.Regexp {
+	names := make([]string, 0, len(model.AllSources()))
+	for _, s := range model.AllSources() {
+		names = append(names, regexp.QuoteMeta(s.String()))
+	}
+	return regexp.MustCompile(`<code>((?:` + strings.Join(names, "|") + `)\.[a-z0-9.\-]+)</code>`)
+}()
+
+// TestBothLanguagesCiteTheSameFindings is the parity guard for prose.
+//
+// TestBothLanguagesDocumentTheSameFindings covers the checks table, which is
+// a table and drifts visibly. Prose does not: the fixing page argues its case
+// through worked examples, and a language that quietly drops one — or cites a
+// different one — is making a different argument with no way to notice. The
+// two pages were written days apart by different hands and already differed
+// on which compose finding illustrated the ambiguity criterion.
+//
+// It compares the whole docs tree, not one page, because every page that
+// names a finding is making the same kind of claim about it.
+func TestBothLanguagesCiteTheSameFindings(t *testing.T) {
+	for _, page := range []string{"fixing", "checks", "faq", "interfaces", "cli", "quickstart", "index", "troubleshooting", "ai", "installation", "contributing"} {
+		cited := map[string][]string{}
+		for _, lang := range docLangs {
+			b, err := assets.ReadFile("content/" + lang + "/docs/" + page + ".html")
+			if err != nil {
+				continue // not every page exists in both trees by name
+			}
+			var ids []string
+			for _, m := range findingRef.FindAllStringSubmatch(string(b), -1) {
+				ids = append(ids, m[1])
+			}
+			slices.Sort(ids)
+			cited[lang] = slices.Compact(ids)
+		}
+		if len(cited) != len(docLangs) {
+			continue
+		}
+		if !slices.Equal(cited["en"], cited["ko"]) {
+			t.Errorf("docs/%s cites different findings per language:\n en only: %v\n ko only: %v",
+				page, missing(cited["en"], cited["ko"]), missing(cited["ko"], cited["en"]))
+		}
+	}
+}
+
+func missing(a, b []string) []string {
+	var out []string
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+// Every finding a docs page names in prose must be one a checker can emit.
+// A worked example built on an ID that was renamed or retired is an argument
+// about something that no longer happens, and it reads as authoritative.
+func TestProseCitesOnlyRealFindings(t *testing.T) {
+	documented := map[string]bool{}
+	for _, row := range findingRow.FindAllStringSubmatch(checksPage(t, "en"), -1) {
+		documented[row[1]] = true
+	}
+	// sysctl.d is a directory path, not a finding, and it is spelled the same
+	// way. Anything else the pattern picks up has to be real.
+	notAFinding := map[string]bool{"sysctl.d": true}
+
+	for _, lang := range docLangs {
+		b, err := assets.ReadFile("content/" + lang + "/docs/fixing.html")
+		if err != nil {
+			t.Fatalf("read %s fixing page: %v", lang, err)
+		}
+		for _, m := range findingRef.FindAllStringSubmatch(string(b), -1) {
+			if notAFinding[m[1]] || documented[m[1]] {
+				continue
+			}
+			t.Errorf("%s: the fixing page argues from %s, which the checks table does not list", lang, m[1])
+		}
+	}
+}
