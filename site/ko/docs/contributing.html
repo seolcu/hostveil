@@ -76,6 +76,7 @@
             <p>레퍼런스</p>
             <ul>
               <li><a href="cli">CLI 레퍼런스</a></li>
+              <li><a href="environment">환경 변수</a></li>
               <li><a href="faq">자주 묻는 질문</a></li>
               <li><a href="troubleshooting">문제 해결</a></li>
               <li><a href="contributing" class="active">기여하기</a></li>
@@ -101,7 +102,32 @@ go test ./...</code></pre></div>
             </div>
 
             <h2>구조</h2>
-            <p>엔진은 <code>internal/core</code>에 있고, CLI·TUI·웹 UI는 그 위의 얇은 계층입니다. import-lint <strong>테스트</strong>가 <code>ui/*</code>가 <code>fix</code>, <code>history</code>, <code>check</code>, <code>compose</code>를 절대 import하지 않도록 강제하며, 이것이 세 인터페이스를 동일하게 동작하게 만듭니다. 탐지 도메인을 추가하려면 <code>internal/check/</code> 아래에 <code>Checker</code> 인터페이스를 구현하는 패키지 하나를 작성해 등록하면 됩니다(<a href="checks">점검 항목</a>과 <a href="fixing">수정 및 롤백</a> 참고). 전체 저장소 구조와 아키텍처 설명은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
+            <p>엔진은 <code>internal/core</code>에 있고, CLI·TUI·웹 UI는 그 위의 얇은 계층입니다. import-lint <strong>테스트</strong>가 <code>ui/*</code>가 <code>fix</code>, <code>history</code>, <code>check</code>, <code>compose</code>를 절대 import하지 않도록 강제하며, 이것이 세 인터페이스를 동일하게 동작하게 만듭니다. 전체 저장소 구조와 아키텍처 설명은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
+
+            <h2 id="extending">확장하기</h2>
+            <p>플러그인 시스템도, 룰 파일도, 설정 파일도 없습니다. 이건 빠진 기능이 아니라 결정입니다. 점수가 의미를 가지려면 축 가중치의 합이 100이어야 하고, 모든 발견 항목은 누군가 따져 본 조치를 달고 있어야 하며 — 일부러 수정을 붙이지 않은 항목들의 명부는 테스트가 파싱하는 <em>주석 속 산문</em>입니다 — 배포의 전부는 서명된 정적 바이너리 하나입니다. 룰 형식은 이 세 가지를 아무도 서명하지 않는 파일 뒤로 밀어 넣게 됩니다.</p>
+            <p>그래서 hostveil을 확장한다는 것은 Go를 쓰고 다시 빌드한다는 뜻이고, 추가하고 싶을 만한 세 가지는 규모가 자릿수만큼 다릅니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>무엇을 더하는가</th><th>무엇이 필요한가</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>기존 도메인의 규칙 하나</strong></td><td>발견 항목을 돌려주는 함수 하나, 그 도메인 규칙 표의 행 하나, <code>internal/check/checktest</code>로 만든 테스트, 그리고 <em>양</em> 언어 점검 항목 표의 행 하나. 작습니다.</td></tr>
+                  <tr><td><strong>기존 발견 항목의 수정</strong></td><td>빌더 하나, 등록 하나, 그리고 판단 하나: 등록하지 않는다면 <code>fix.Default()</code> 주석의 명부에 이유와 함께 이름을 올리고, 사용자가 보게 될 한 문장짜리 거부 사유를 달아야 합니다. 테스트가 이 셋을 함께 묶어 둡니다. 작습니다.</td></tr>
+                  <tr><td><strong>탐지 도메인 전체</strong></td><td>진짜 변경입니다. 아래를 보세요.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>새 도메인은 <code>Checker</code>를 구현하는 패키지 하나이고, 그다음에는:</p>
+            <ul>
+              <li><code>sourceDefs</code>의 행 하나. 도메인의 이름·라벨·축, 그리고 <strong>가중치</strong>를 담습니다.</li>
+              <li><strong>재조정</strong>. 가중치의 합은 정확히 100이고 테스트가 이를 강제하므로, 새 도메인은 늘 기존 도메인에서 점수를 떼어 와 마련해야 하고 그 이동 하나하나에 근거가 필요합니다.</li>
+              <li><code>cmd/hostveil/app.go</code>에 등록. 도메인 표가 선언한 순서대로입니다.</li>
+              <li>양 언어 점검 항목 표의 행들. 발견 항목마다 심각도와 수정 종류, 그리고 가중치 열까지.</li>
+              <li><a href="scoring">점수 산정</a> 페이지 표의 가중치. 양 언어 모두.</li>
+              <li>수정을 등록하지 않는 모든 발견 항목에 대한 거부 사유.</li>
+              <li>그리고 그 도메인이 리눅스가 아닌 호스트에서 건너뛰는 대신 틀린 답을 내놓을 종류라면, 이유와 함께 OS 게이트 목록에 등록.</li>
+            </ul>
+            <p>각 단계를 마칠 때까지 테스트 열한 개쯤이 실패하며, 그중 대부분은 코드가 아니라 문서 가드입니다. 그게 의도된 경험입니다. 테스트가 곧 체크리스트이고, 문서가 실제로 존재하는 도구를 설명하는 이유가 바로 그것입니다.</p>
 
             <h2>실제로 실행해 보기: 데모 VM</h2>
             <p><code>demo/</code>는 코드로 정의된, 의도적으로 취약하게 만든 Ubuntu 서버입니다. hostveil은 VM <em>내부</em>에서 여러분의 작업 트리로부터 빌드되므로 항상 현재 코드를 반영합니다. <code>./run.sh up</code>으로 띄우고 <code>./run.sh scan</code>으로 스캔하세요. 플랫폼별 프로바이더 설정, 5분 데모 스크립트, 초기화 절차, 문제 해결은 모두 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 있습니다.</p>

@@ -1,0 +1,168 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 환경 변수</p>
+            <h1>환경 변수</h1>
+            <p class="lead">hostveil에는 설정 파일이 없어서, 환경 변수가 곧 설정의 전부입니다. 이 페이지는 hostveil이 읽는 변수, 자신이 실행하는 명령에 설정해 주는 변수, 그리고 물려받아 화면을 바꾸는 변수를 하나도 빼놓지 않고 기본값·허용 값과 함께 정리합니다.</p>
+
+            <h2 id="settings">hostveil 자체 설정</h2>
+            <p>hostveil이 직접 읽는 변수들입니다. 플래그로도 줄 수 있는 것이 있고, 변수로만 줄 수 있는 것도 있습니다. 셸 프로필이나 systemd 유닛에 한 번 넣어 두거나, 명령 앞에 그때그때 붙여 쓰면 됩니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HOSTVEIL_DEBUG</code></td><td>미설정 — 추적하지 않음</td><td>비어 있지 않은 아무 문자열</td><td>실행한 명령마다 한 줄씩 <strong>stderr</strong>에 씁니다. 따옴표로 묶인 인자 목록, 밀리초 단위 소요 시간, 실패 여부 — 도메인이 아예 실행될지를 결정하는 바이너리 탐색까지 포함됩니다. 명령의 <em>출력</em>은 의도적으로 절대 기록하지 않습니다. <code>docker inspect</code>는 모든 컨테이너의 환경 변수를 그대로 보여 주므로, 버그 리포트에 붙여 넣는 추적 로그가 자격 증명 유출이 되어서는 안 되기 때문입니다. 그 외에는 아무것도 달라지지 않으며, 설정하지 않았을 때 hostveil은 예전과 똑같은 경로를 탑니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_NO_SUDO</code></td><td>미설정 — 자동 권한 상승이 켜짐</td><td>비어 있지 않은 아무 문자열</td><td><code>sudo</code>로 자신을 다시 실행하지 않습니다. root가 필요한 영역 — <code>sshd_config</code>, <code>/etc/shadow</code>, 방화벽 상태 — 은 오류가 아니라 이유와 함께 <strong>건너뜀</strong>으로 보고되고, 점수는 실제로 실행된 영역만으로 재정규화됩니다. 탐지나 수정 로직은 전혀 바뀌지 않습니다. 억제하는 것은 재실행뿐이므로, 이미 root로 돌고 있는 hostveil에는 아무 영향이 없습니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_THEME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td><code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code></td><td>TUI의 색상 팔레트이자 대시보드가 처음 열릴 때의 팔레트입니다. 우선순위는 <code>--theme</code> &gt; 이 변수 &gt; 상태 디렉터리에 기억된 값 &gt; 기본값입니다. 이름은 공백 처리 없이 정확히, <strong>대소문자를 구분해서</strong> 비교하므로 <code>HOSTVEIL_THEME=Nord</code>는 아무 일도 하지 않고 아무 말도 하지 않습니다 — 여기서 알 수 없는 값은 조용히 무시되고, 오류가 되는 것은 잘못된 <code>--theme</code>뿐입니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_GLYPHS</code></td><td>기억된 값, 없으면 <code>plain</code></td><td><code>plain</code>, <code>nerd</code></td><td>TUI와 <code>hostveil scan</code>이 상태 표시에 쓰는 기호 세트입니다. 우선순위는 <code>--glyphs</code> &gt; 이 변수 &gt; 기억된 값 &gt; <code>plain</code>입니다. 앞뒤 공백은 잘라내지만 이름은 대소문자를 구분하며, 알 수 없는 값은 조용히 기본값으로 돌아갑니다. <code>nerd</code>는 패치된 Nerd Font가 설치돼 있어야 합니다. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없고, 없는 글리프도 있는 글리프와 똑같이 한 칸을 차지하기 때문에 자동 감지가 아니라 명시적 선택입니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_OLLAMA_HOST</code></td><td><code>http://127.0.0.1:11434</code></td><td>아무 베이스 URL</td><td>선택 사항인 로컬 LLM이 듣고 있는 주소입니다. 접두사로만 쓰여 <code>/api/version</code>과 <code>/api/generate</code>가 뒤에 붙고, 값 자체를 파싱하거나 검증하지 않습니다 — 그래서 끝에 슬래시를 넣으면 요청 경로에 슬래시가 두 개 생깁니다. 빈 값은 미설정으로 취급합니다. 조언 전용이므로 <code>explain --ai</code>와 AI 버튼에만 영향을 주고, 서버가 닿지 않아도 점수·발견 항목·수정은 어느 것도 영향받지 않습니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_OLLAMA_MODEL</code></td><td><code>llama3.2</code></td><td>Ollama가 받아들이는 아무 모델 태그</td><td>어느 모델에게 물을지 정합니다. 로컬에서 검증하지 않으므로, 받아 두지 않은 모델이면 Ollama가 그 이름을 담은 오류로 답합니다. 빈 값은 미설정으로 취급합니다. 위의 호스트와 마찬가지로 조언 전용입니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_ELEVATED</code></td><td>미설정 — hostveil은 이 값을 설정하지 않음</td><td>비어 있지 않은 아무 문자열</td><td>권한 상승이 이미 끝났다고 알려서 hostveil이 <code>sudo</code>를 부르지 않게 합니다. hostveil 대신 권한을 올려 주는 래퍼 스크립트를 위한 변수입니다. 예전에는 hostveil이 자식 프로세스에 이 값을 직접 넣고 다시 읽었는데, 그 방식은 애초에 동작할 수 없었습니다 — 아래를 보세요.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>플래그처럼 생긴 세 개 — <code>HOSTVEIL_DEBUG</code>, <code>HOSTVEIL_NO_SUDO</code>, <code>HOSTVEIL_ELEVATED</code> — 는 값이 아니라 <em>비어 있지 않은지</em>만 검사합니다. 그래서 <code>HOSTVEIL_DEBUG=false</code>는 추적을 켜고 <code>HOSTVEIL_NO_SUDO=0</code>은 sudo를 끕니다. 어디서나 <code>=1</code>로 적는 이유는 그것만이 동작과 읽히는 대로 일치하는 값이기 때문입니다. 끄려면 변수를 해제하거나 빈 문자열로 두세요.</p>
+
+            <h3 id="sudo">sudo 재실행을 넘어 살아남는 것</h3>
+            <p>root 권한이 필요한 명령을 일반 사용자로 실행하면 hostveil은 <code>sudo</code> 아래에서 자신을 다시 실행합니다. 그런데 주요 배포판이 기본으로 켜 두는 <code>sudo</code>의 <code>env_reset</code>은 <code>env_keep</code>에 적힌 것 — <code>TERM</code>, <code>LANG</code>, <code>LC_*</code>와 짧은 목록 정도 — 만 남깁니다. 애플리케이션이 자기 이름으로 만든 변수는 절대 남지 않습니다. 그래서 hostveil은 여러분이 설정한 값을 <code>sudo</code>의 명령줄에 대입문 형태로 직접 넘겨줍니다. 그래야 자식 프로세스에 도착하기 때문입니다.</p>
+            <p>넘어가는 것은 <code>HOSTVEIL_DEBUG</code>, <code>HOSTVEIL_THEME</code>, <code>HOSTVEIL_GLYPHS</code>, <code>HOSTVEIL_OLLAMA_HOST</code>, <code>HOSTVEIL_OLLAMA_MODEL</code>, <code>NO_COLOR</code>입니다 — 각각 실제로 설정되어 있을 때만 넘어가므로, 아무것도 설정하지 않은 호스트는 예전과 똑같은 명령을 만듭니다. <code>HOSTVEIL_NO_SUDO</code>는 재실행 지점에 도달했다는 사실 자체가 설정되지 않았다는 뜻이라서 넘기지 않고, <code>HOSTVEIL_ELEVATED</code>는 아래에 적은 이유로 넘기지 않습니다.</p>
+            <div class="code-block"><pre><code>HOSTVEIL_DEBUG=1 hostveil scan
+  실행:  sudo HOSTVEIL_DEBUG=1 /usr/local/bin/hostveil scan</code></pre></div>
+            <p>이 장치가 필요했던 이유는, 오랫동안 이 변수들이 하나도 넘어가지 않았기 때문입니다. <code>HOSTVEIL_DEBUG=1 hostveil scan</code>은 <code>hostveil help</code>와 README, 그리고 문제 해결 페이지에 버그 리포트에 첨부할 <em>바로 그</em> 한 줄로 적혀 있는데, 평범한 비-root 호스트에서는 평범한 스캔 결과만 내놓았습니다. 추적 로그도, 오류도, 변수가 버려졌다는 낌새조차 없었습니다. 테마나 기호 세트를 설정해도 똑같이 조용히 무시됐습니다. CI가 이것을 못 잡은 이유는, 종단 간 작업이 root로 <code>HOSTVEIL_NO_SUDO=1</code>과 함께 돌기 때문입니다 — 재실행을 건너뛰는 두 갈래 모두에 해당합니다. 위 목록에 <em>없는</em> 변수는 여전히 <code>env_reset</code>에 버려지므로, <code>sudo -E</code>를 쓰거나 <code>env_keep</code>에 항목을 추가하세요.</p>
+            <div class="callout warn">
+              <span class="callout-label">hostveil이 자기 자식에 표시를 남길 수 없는 이유</span>
+              <p>예전에는 <code>HOSTVEIL_ELEVATED=1</code>을 <code>sudo</code> 자식 프로세스에 넣고 거기서 다시 읽어 무한 반복을 막는 장치로 썼는데, <code>env_reset</code>이 매번 그 값을 지웠기 때문에 장치가 작동할 수 없었습니다. <code>sudoers</code>가 <code>runas_default</code>를 root가 아닌 계정으로 잡아 둔 호스트에서는 <code>sudo</code>가 권한 없는 프로세스를 돌려주고 그 프로세스가 다시 <code>sudo</code>를 부르는 일이 끝없이 반복되면서, 매번 비밀번호를 물었습니다. 실제로 작동하는 장치는 <a href="#tooling"><code>SUDO_USER</code></a>입니다. 이 값은 전달되는 것이 아니라 <code>sudo</code>가 대상 환경에 직접 넣어 주기 때문입니다.</p>
+            </div>
+
+            <h2 id="honoured">hostveil이 환경에서 존중하는 것</h2>
+            <p>일부는 hostveil이 직접 읽고, 나머지는 TUI가 올라타 있는 터미널 라이브러리를 통해 들어옵니다. 이 중 어느 것도 발견 항목이나 점수, 수정을 바꾸지 않습니다 — 다만 몇 개는 보이는 화면을 바꾸고, 둘은 파일이 어디에 놓이는지를 바꿉니다.</p>
+
+            <h3 id="color">색상과 터미널</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>NO_COLOR</code></td><td>미설정 — 터미널에서는 색상 출력</td><td>아래 안내를 보세요 — 두 구현이 서로 다릅니다</td><td>ANSI 색상을 억제합니다. <code>hostveil scan</code>에서는 hostveil 자신의 판정이고 색상을 결정하는 유일한 곳이며, TUI에서는 터미널 라이브러리를 통해 들어옵니다. 대시보드는 HTML이라 이 변수를 아예 보지 않습니다.</td></tr>
+                  <tr><td><code>TERM</code></td><td>물려받은 값. 미설정은 <code>dumb</code>로 취급</td><td>아무 terminfo 항목 이름</td><td>TUI의 색상 깊이와 키 해석을 결정합니다. <code>dumb</code>이거나 비어 있으면 색 없이 그리고, <code>*-256color</code>는 256색, <code>*-color</code>는 16색입니다. <code>hostveil scan</code>은 이 값을 전혀 보지 않으므로, <code>TERM=dumb</code>에서도 <code>scan</code>은 색을 내보내고 TUI는 내보내지 않습니다. <code>sudo</code>가 남겨 주는 몇 안 되는 변수라 자동 권한 상승을 넘어서도 살아남습니다.</td></tr>
+                  <tr><td><code>COLORTERM</code></td><td>미설정</td><td><code>truecolor</code>, <code>24bit</code>, <code>yes</code>, <code>true</code> (대소문자 무시)</td><td><code>TERM</code>에 대한 terminfo가 뭐라고 하든 TUI를 24비트 색상으로 올립니다. 테마 색이 이상해 보인다면 설정해 볼 만합니다. 팔레트는 24비트 16진수로 적혀 있고 프로파일에 맞춰 낮춰지므로, 같은 테마도 256색에서는 눈에 띄게 달라집니다.</td></tr>
+                  <tr><td><code>CLICOLOR</code></td><td>미설정</td><td><code>1</code>, <code>true</code>, <code>t</code> (그리고 그 반대 값들)</td><td><em>clicolors</em> 관례입니다. <code>TERM</code>이 <code>dumb</code>이 아닌 터미널에서 TUI의 색상 하한을 16색으로 올립니다. <code>NO_COLOR</code>가 이 값을 이깁니다. TUI에만 적용됩니다.</td></tr>
+                  <tr><td><code>CLICOLOR_FORCE</code></td><td>미설정</td><td><code>1</code>, <code>true</code>, <code>t</code> (그리고 그 반대 값들)</td><td>출력이 터미널이 아니어도 TUI가 색을 내보내게 하고 <code>TERM=dumb</code>도 무시합니다. 그래도 <code>NO_COLOR</code>에는 집니다. <code>hostveil scan</code>은 이 값을 존중하지 않습니다 — 판정 조건에 실제 터미널이 들어 있어서, <code>scan</code>의 색상 출력을 파이프로 넘기는 방법은 지원되지 않습니다.</td></tr>
+                  <tr><td><code>TTY_FORCE</code></td><td>미설정</td><td><code>1</code>, <code>true</code>, <code>t</code> (그리고 그 반대 값들)</td><td>파일 디스크립터를 확인하지 않고 출력을 터미널로 간주하게 합니다.</td></tr>
+                  <tr><td><code>TMUX</code></td><td>tmux 세션 안에서 tmux가 설정</td><td>존재 여부만 봄. 값은 파싱하지 않음</td><td>TUI에게 tmux 안에 있다고 알려 주고, 그러면 TUI는 <code>tmux info</code>를 실행해 256색과 24비트 중 어느 쪽인지 판단합니다. 이 호출은 hostveil 프로세스가 실행하는 명령 중 유일하게 자체 명령 계층을 거치지 않습니다. 그래서 <code>HOSTVEIL_DEBUG</code>로 추적되지 않고, hostveil의 명령 타임아웃이 걸리지 않으며, <a href="#children">로케일 고정</a>도 적용되지 않습니다.</td></tr>
+                  <tr><td><code>TERM_PROGRAM</code></td><td>터미널 에뮬레이터가 설정</td><td>에뮬레이터 식별자 (<code>iTerm.app</code>, <code>vscode</code> …)</td><td>TUI가 시작할 때 어떤 터미널 특성을 적용할지 판단하는 데 씁니다.</td></tr>
+                  <tr><td><code>SSH_TTY</code></td><td>원격 로그인 시 sshd가 설정</td><td>존재 여부만 봄. 경로 값은 쓰지 않음</td><td>TUI에게 SSH 너머에서 돌고 있다고 알려 주며, 터미널이 무엇을 지원한다고 가정할지가 달라집니다. 셀프호스팅 서버는 대개 이렇게 접속하므로 여기서 의미가 있습니다.</td></tr>
+                  <tr><td><code>WT_SESSION</code></td><td>Windows Terminal이 설정</td><td>존재 여부만 봄</td><td>TUI 시작 시 읽히지만 hostveil이 배포하는 플랫폼에서는 아무 효과가 없습니다. 목록을 빠짐없이 두기 위해 적어 둡니다.</td></tr>
+                  <tr><td><code>GOOGLE_CLOUD_SHELL</code></td><td>Google Cloud Shell이 설정</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td><code>COLORTERM</code>이 없어도 TUI를 24비트 색으로 올립니다. 같은 함수에서 <code>WT_SESSION</code> 네 줄 아래에 있고, 적어 두는 이유도 같습니다.</td></tr>
+                  <tr><td><code>TERMINFO</code></td><td>미설정 — 시스템 데이터베이스</td><td>terminfo 데이터베이스가 있는 디렉터리</td><td>TUI가 <code>TERM</code>의 능력을 찾아보는 곳입니다. 트루컬러 질의의 답과 TUI가 키를 해석하는 표를 여기서 정하므로, 실제 터미널을 설명하지 않는 데이터베이스를 가리키면 색이 틀리거나 키가 먹지 않습니다. <code>hostveil scan</code>은 terminfo 항목을 전혀 읽지 않습니다.</td></tr>
+                  <tr><td><code>TERMINFO_DIRS</code></td><td>미설정</td><td>콜론으로 구분된 디렉터리들</td><td>같은 조회이고, <code>TERMINFO</code> 다음으로 찾습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="callout-label">NO_COLOR는 두 번 구현되어 있습니다</span>
+              <p><code>hostveil scan</code>을 좌우하는 hostveil 자신의 판정은 변수가 <em>존재하는지</em>만 봅니다. 그래서 <code>NO_COLOR=0</code>이든 빈 값 <code>NO_COLOR=</code>이든, 어떤 값이라도 색상을 끕니다. 반면 TUI의 판정은 터미널 라이브러리에서 오고 값을 불리언으로 해석합니다. 그래서 <code>NO_COLOR=0</code>, <code>NO_COLOR=</code>, <code>NO_COLOR=yes</code>는 모두 색상을 켠 채로 둡니다. 결과적으로 <code>NO_COLOR=0 hostveil scan</code>은 흑백이고 <code>NO_COLOR=0 hostveil tui</code>는 컬러입니다. <code>1</code>로 설정하면 둘이 일치합니다. 참고로 빈 값을 "끄기"로 취급하는 것은 빈 값이면 끄지 말아야 한다는 <em>no-color.org</em> 관례와도 어긋납니다.</p>
+            </div>
+
+            <h3 id="proxy">요청 하나에 걸리는 프록시 변수</h3>
+            <p>hostveil이 스스로 내는 네트워크 요청은 정확히 하나, 참고용 설명기가 Ollama와 이야기하는 것뿐입니다. Go의 기본 HTTP 전송을 쓰므로 표준 프록시 변수를 따릅니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>하는 일</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HTTP_PROXY</code>, <code>HTTPS_PROXY</code></td><td>미설정</td><td>프록시 URL. 소문자 표기도 동작합니다</td><td>Ollama 요청을 프록시로 보냅니다. <code>HOSTVEIL_OLLAMA_HOST</code>의 기본값은 루프백이라 예외로 빠지므로, 다른 기계의 Ollama를 가리켜 둔 경우에만 실제로 걸립니다 — 그 경우 발견 항목이 담긴 프롬프트가 그 프록시를 지나갑니다.</td></tr>
+                  <tr><td><code>NO_PROXY</code></td><td>미설정</td><td>쉼표로 구분된 호스트·도메인·CIDR</td><td>위 설정에서 특정 호스트를 제외합니다. 루프백은 이것 없이도 이미 제외됩니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>hostveil의 나머지는 소켓을 열지 않습니다. 스캔은 파일을 읽고 로컬 명령을 실행하며, 대시보드는 루프백에 바인딩해 서비스하고, CVE 스캔은 Trivy 자신의 프로세스가 자신의 설정으로 합니다.</p>
+
+            <h3 id="paths">hostveil이 무엇을 어디에 두고, 무엇을 찾을 수 있는지</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HOME</code></td><td>로그인 시 설정됨. hostveil 자체의 기본값은 없음</td><td>절대 경로</td><td>hostveil이 root가 <em>아닐</em> 때의 상태 디렉터리를 결정합니다: <code>$HOME/.local/share/hostveil</code>. 여기에 저장된 스캔, 롤백 체크포인트, 기억된 테마·기호·레이아웃 선택이 들어 있습니다. root일 때는 <code>/var/lib/hostveil</code>이고 <code>HOME</code>은 보지 않습니다 — <code>sudo</code>로 적용한 수정이 권한 없는 <code>hostveil history</code>에 보이지 않는 이유가 이것입니다.</td></tr>
+                  <tr><td><code>TMPDIR</code></td><td><code>/tmp</code></td><td>디렉터리 경로</td><td>두 가지 역할을 합니다. 파일 편집 수정이 검증용으로 적용 전후 사본을 놓아 두는 곳이라, SSH 수정마다 <code>sshd_config</code> 사본이 이곳을 거칩니다 — 새로 만든 디렉터리에 <code>0600</code>으로 쓰고 끝나면 지웁니다. 그리고 <code>HOME</code>을 알아낼 수 없을 때의 마지막 상태 디렉터리이기도 합니다. 검증에 쓰는 바이너리가 놓아 둔 사본을 읽지 못하면 검증을 건너뛰고, 수정을 막는 대신 검증 없이 진행합니다.</td></tr>
+                  <tr><td><code>PATH</code></td><td>물려받은 값. hostveil은 설정하거나 손대지 않음</td><td>콜론으로 구분된 경로 목록</td><td>hostveil이 무엇이 설치돼 있다고 믿을지를 결정합니다. 모든 도메인의 사용 가능 여부 판정이 바이너리 탐색이라, <code>PATH</code>는 도메인이 실행되느냐 <strong>건너뜀</strong>으로 보고되느냐를 가릅니다 — 그리고 로그인 셸이 아닌 <code>PATH</code>에 <code>/usr/sbin</code>이 없으면, 거기 있는 바이너리는 설치돼 있지 않은 바이너리와 완전히 똑같아 보입니다. 권한 상승 여부도 여기서 갈립니다. <code>PATH</code>에 <code>sudo</code>가 없으면 hostveil은 조용히 권한 없이 실행됩니다. <code>HOSTVEIL_DEBUG</code>가 탐색 결과를 하나하나 기록하는 이유가 이것입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Debian과 Ubuntu에서는 <code>sudo</code>의 <code>secure_path</code>가 권한이 올라간 자식의 <code>PATH</code>를 통째로 갈아치웁니다. 그래서 다시 실행된 hostveil은 자신을 시작시킨 프로세스와 다른 바이너리 집합을 찾게 될 수 있습니다.</p>
+            <div class="callout warn">
+              <span class="callout-label">HOME이 없는 호스트</span>
+              <p><code>HOME</code>을 알아낼 수 없으면 — 맨몸의 systemd 유닛, 일부 컨테이너 엔트리포인트 — 상태 디렉터리는 <code>$TMPDIR/hostveil</code>, 즉 보통 호스트에서는 <code>/tmp/hostveil</code>로 떨어집니다. 거기 쓰인 체크포인트는 재부팅을 넘기지 못하므로 "수정은 언제든 되돌릴 수 있다"가 조용히 사실이 아니게 되고, 출력에는 그 사실이 어디에도 나오지 않습니다. 유닛에 <code>HOME</code>을 지정하거나, root로 실행해 <code>/var/lib/hostveil</code>을 쓰세요.</p>
+            </div>
+
+            <h3 id="docker-host">DOCKER_HOST</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>DOCKER_HOST</code></td><td>미설정 — docker CLI가 <code>/var/run/docker.sock</code>을 씀</td><td><code>unix://</code>, <code>tcp://</code>, <code>ssh://user@host</code> — docker CLI가 받아들이는 것이면 무엇이든</td><td>hostveil은 이 값을 읽지 않습니다. 다만 물려받은 환경을 그대로 실행 명령에 넘겨주므로, <code>docker</code>·<code>docker compose</code>·<code>trivy</code>가 이 기계에 없는 데몬에 닿을 수 있습니다. 의도적인 설계입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>그 결과는 분명히 짚어 둘 만합니다. <code>DOCKER_HOST</code>가 다른 곳을 가리키면, Compose·이미지 CVE·Docker 데몬·Docker 방화벽 도메인은 <strong>원격</strong> 데몬을 설명하고 SSH·sysctl·파일 권한·계정 도메인은 로컬 호스트를 설명합니다. 그리고 이 둘은 하나의 점수로 합쳐지며, 어떤 인터페이스도 둘을 구분해 주지 않습니다. 가끔은 이것이 원하는 바이겠지만, 실수로 그렇게 되는 것이 원하는 바인 경우는 없습니다. 지금 앉아 있는 기계를 스캔할 때는 먼저 이 변수를 해제하세요.</p>
+
+            <h3 id="tui-debug">TUI가 물려받는 디버그 스위치</h3>
+            <p>TUI는 자체 디버그 스위치를 가진 터미널 라이브러리 위에 올라가 있습니다. hostveil은 그것들을 설정하지도, 지우지도 않으며, <code>hostveil tui</code>를 실행할 때마다 살아 있습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>TEA_TRACE</code></td><td>미설정 — 로그 없음</td><td>쓰기 가능한 파일 경로. 빈 값은 무시</td><td>그 경로를 <code>0600</code> 모드로 이어쓰기 열어서, 실행할 때마다 TUI 프레임워크 내부 로그를 씁니다.</td></tr>
+                  <tr><td><code>TEA_DEBUG</code></td><td>미설정</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td>TUI가 패닉할 때 <em>현재 작업 디렉터리</em>에 <code>bubbletea-panic-&lt;타임스탬프&gt;.log</code>를 씁니다. 설정하지 않아도 패닉 스택은 stderr에 그대로 출력됩니다.</td></tr>
+                  <tr><td><code>UV_DEBUG</code></td><td>미설정 — 로그 없음</td><td>파일 경로. 빈 값은 무시</td><td>한 겹 아래에서 같은 일을 합니다. 그 밑에 있는 터미널 렌더러의 디버그 파일입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout warn">
+              <span class="callout-label">이 파일들은 root로 쓰입니다</span>
+              <p><code>hostveil tui</code>는 자동으로 권한을 올리므로, 이 파일을 만드는 프로세스는 root이고 경로는 환경 변수에서 옵니다. hostveil 실행의 환경을 건드릴 수 있는 로컬 일반 사용자 — 래퍼 스크립트, 공용 셸 프로필, cron 항목 — 는 자기가 고른 경로에 root 소유 이어쓰기를 얻는 셈입니다. 셋 중 어느 것도 시스템 전역으로 내보내지 말고, 프로필에 설명 없이 들어 있는 것을 발견하면 다른 특권 파일 쓰기와 똑같이 다루세요.</p>
+            </div>
+
+            <h2 id="children">hostveil이 실행하는 명령에 설정해 주는 것</h2>
+            <p>hostveil은 자신의 환경을 실행하는 모든 명령에 그대로 넘기며, 딱 하나를 더합니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>LC_ALL</code></td><td>무엇을 설정해 두었든 자식에서는 항상 <code>C</code></td><td>설정 불가 — 이를 덮는 플래그나 변수는 없음</td><td>hostveil이 실행하는 모든 명령의 환경에 덧붙여서, 도구가 번역되지 않은 영어로 답하게 합니다. 숫자가 아니라 단어를 찾아 읽는 모든 파서가 여기에 기대고 있습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>이것은 실제로 있었던 실패 때문에 존재합니다. hostveil은 운영자의 환경을 물려받고 <code>sudo</code>는 <code>LANG</code>과 <code>LC_*</code>를 기본으로 남기므로, 독일어 호스트에서 hostveil은 <code>apt</code>에게 독일어로 묻고는 영어를 찾았습니다. <code>[upgradable from: %s]</code>라는 문자열은 21개 로케일로 번역되어 있고, 개수를 세는 코드는 그 영어 문장이 정확히 들어 있지 않은 줄을 전부 건너뛰었습니다. 그 결과가 <strong>패치되지 않은 기계에서 대기 중인 보안 업데이트 0건</strong>이었습니다. 이 도구 전체가 거부하는 바로 그 종류의 실패입니다. 믿을 수 없는 깨끗한 보고서는 보고서가 없는 것보다 나쁩니다.</p>
+            <p><code>LANG</code>이 아니라 <code>LC_ALL</code>인 점은 기억해 둘 만합니다. gettext는 <code>LANG</code>보다 <code>LANGUAGE</code>를 우선하므로 <code>LANG</code>만 고정해서는 데스크톱의 <code>LANGUAGE=de:en</code>이 그대로 주도권을 쥡니다. 로케일이 <code>C</code>이면 <code>LANGUAGE</code>는 무시되고, 그래서 이 변수 하나로 충분합니다.</p>
+
+            <h3 id="locale">로케일은 레이아웃을 바꾸지 않습니다. 일부러 그렇습니다</h3>
+            <p>hostveil이 링크하는 문자 폭 라이브러리는 시작할 때 이 값들을 읽어 전역 설정을 만들지만, hostveil은 그 전역을 쓰지 않습니다 — 동아시아 폭 처리를 끈 자체 측정 방식을 따로 만들어 씁니다. 흔히 반대로 짐작하는 부분이라 분명히 적어 둡니다. 아래 네 변수 중 어느 것도 화면 배치를 바꾸지 않습니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>LANG</code></td><td>로그인 시 설정됨</td><td>아무 로케일 이름</td><td>hostveil 자신의 프로세스에는 아무 영향도 없습니다. 시작 시 문자 폭 라이브러리에 닿지만 거기서 무력화됩니다. 다만 위의 고정이 존재하는 이유이기도 합니다 — 그냥 두면 <code>apt</code>, <code>systemctl</code>, <code>docker</code>가 번역된 로케일로 답하게 됩니다.</td></tr>
+                  <tr><td><code>LC_CTYPE</code></td><td>로그인 시 설정됨</td><td>아무 로케일 이름</td><td>같은 이유로 아무 영향이 없습니다. 그 라이브러리의 로케일 우선순위에서 두 번째이고, 어차피 모든 자식에서 <code>LC_ALL=C</code> 고정에 덮입니다.</td></tr>
+                  <tr><td><code>LANGUAGE</code></td><td>일부 데스크톱이 설정</td><td>콜론으로 구분된 로케일 목록</td><td>아무 영향이 없습니다 — hostveil은 이 값을 읽지도, 지우지도 않습니다. 위 설명에서 결정적인 역할을 하기 때문에 적어 둡니다. gettext에서 <code>LANG</code>보다 우선하고, 그래서 고정 대상이 <code>LC_ALL</code>인 것입니다.</td></tr>
+                  <tr><td><code>RUNEWIDTH_EASTASIAN</code></td><td>미설정</td><td><code>strconv.ParseBool</code>이 참으로 읽는 값 — <code>1</code>, <code>t</code>, <code>true</code>. 그 밖의 값은, 해석되지 않는 값을 포함해 꺼진 상태로 둡니다.</td><td>동아시아 애매폭 문자 — hostveil이 그리는 말줄임표·화살표·불릿 — 를 한 칸이 아니라 두 칸으로 잽니다. 터미널 UI를 그리는 <em>두</em> 라이브러리 모두에서요. 터미널이 이 문자들을 넓게 그린다면 설정하세요. hostveil이 로케일에서 <em>가져오지 않는</em> 것은 <code>LANG</code>에서 유추되는 같은 설정입니다. 같은 바이너리가 서울의 운영자와 베를린의 운영자에게 화면을 다르게 그리면 안 되고, 이 변수는 유추가 아니라 명시적인 요청이기 때문입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="tooling">주변 도구에서 읽어 오는 것</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
+                <tbody>
+                  <tr><td><code>SUDO_USER</code></td><td><code>sudo</code>가 설정. hostveil은 설정하지 않음</td><td>비어 있지 않으면 "이미 권한이 올라갔다"는 뜻. 사용자 이름 자체는 보지 않음</td><td>자동 권한 상승의 무한 반복 방지 장치입니다. 값이 비어 있지 않으면 <code>sudo</code>가 이미 실행되었다는 뜻이므로, hostveil은 다시 부르지 않습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>sudo</code>는 이 값을 전달하는 것이 아니라 대상 환경에 직접 넣습니다. <code>env_reset</code>이 이 값을 지울 수 없는 이유이자, <a href="#sudo">hostveil 자신의 표시가 실패한 자리</a>에서 이 값이 작동하는 이유입니다. 게다가 <code>sudo</code>의 대상이 root가 <em>아닐</em> 때도 설정되는데, 바로 그 경우가 잡아야 할 경우입니다. <code>sudoers</code>가 <code>runas_default</code>를 root가 아닌 계정으로 잡아 둔 호스트에서는 자식이 권한 없이 돌아오고, 반복되는 대신 여기서 멈춥니다.</p>
+            <p>거짓 양성 — hostveil을 실행한 <code>sudo</code>가 아닌 다른 무언가가 <code>SUDO_USER</code>를 환경에 남겨 둔 경우 — 의 대가는 권한 없는 스캔이고, root가 필요한 도메인은 이유와 함께 건너뜀으로 보고됩니다. 틀린다면 그쪽으로 틀리는 편이 안전합니다. 끝없이 이어지는 비밀번호 요구는 그렇지 않습니다.</p>
+
+            <h2 id="not-listed">이 페이지에 없는 것</h2>
+            <p><strong>테스트용·빌드용 변수.</strong> 테스트 스위트는 배포되는 바이너리가 결코 읽지 않는 변수를 몇 개 읽고, 릴리스 빌드는 런타임에는 존재하지도 않는 변수를 몇 개 고정합니다. 실행 중인 hostveil의 조절 손잡이가 아니므로, 여기에 적으면 누군가 설정해 보라고 부추기는 셈밖에 되지 않습니다. 이들은 쓰이는 자리, 즉 저장소의 개발 문서에 설명돼 있습니다 — <a href="contributing">기여하기</a>를 참고하세요.</p>
+            <p><strong>hostveil이 읽는 것이 아니라 <em>들여다보는</em> 변수.</strong> 일부 점검은 <em>여러분의 서비스</em>에 속한 환경 변수를 검사합니다. Compose 파일의 <code>environment:</code> 블록이나 컨테이너의 <code>.env</code>에 들어 있는, 자격 증명처럼 생긴 키들입니다. 그것들은 hostveil이 디스크에서 살펴보는 데이터입니다. hostveil은 비밀 값을 찾겠다고 여러분의 셸 환경을 읽지 않으며, 이 페이지의 어떤 값도 어디로도 전송되지 않습니다 — 여기 있는 변수는 모두 로컬에서 읽혀 로컬에서 쓰입니다.</p>
+            <p><strong>발견 항목을 바꾸는 것.</strong> 점검을 끄거나, 심각도를 바꾸거나, 점수를 조정하거나, 수정이 하는 일을 느슨하게 만드는 변수는 없습니다. 탐지는 환경이 아니라 호스트가 결정합니다. 스캔 범위를 바꾸는 변수들도 hostveil이 무엇에 <em>닿을 수 있는지</em>를 바꿔서 그렇게 하는 것뿐입니다 — <code>PATH</code>, <code>HOSTVEIL_NO_SUDO</code>, <code>DOCKER_HOST</code>가 그렇습니다.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="cli">← CLI 레퍼런스</a>
+              <a class="button primary" href="faq">자주 묻는 질문 →</a>
+            </div>

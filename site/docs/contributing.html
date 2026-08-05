@@ -76,6 +76,7 @@
             <p>Reference</p>
             <ul>
               <li><a href="cli">CLI reference</a></li>
+              <li><a href="environment">Environment variables</a></li>
               <li><a href="faq">FAQ</a></li>
               <li><a href="troubleshooting">Troubleshooting</a></li>
               <li><a href="contributing" class="active">Contributing</a></li>
@@ -101,7 +102,32 @@ go test ./...</code></pre></div>
             </div>
 
             <h2>How it's built</h2>
-            <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code> — that is what keeps the three interfaces behaving identically. Adding a detection domain means writing one package under <code>internal/check/</code> that implements the <code>Checker</code> interface and registering it (see <a href="checks">What it checks</a> and <a href="fixing">Fixing &amp; rollback</a>). The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+            <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code> — that is what keeps the three interfaces behaving identically. The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+
+            <h2 id="extending">Extending it</h2>
+            <p>There is no plugin system, no rule file and no config file, and that is a decision rather than a gap. The axis weights have to sum to 100 for the score to mean anything; every finding has to carry a remediation someone argued about, and the register of findings deliberately left unfixed is <em>prose in a doc comment</em> that tests parse; and the distribution story is one signed static binary. A rule format would put all three behind a file nobody signs.</p>
+            <p>So extending hostveil means writing Go and rebuilding — and the three things you might want to add differ in size by an order of magnitude.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>What you are adding</th><th>What it takes</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>A rule in an existing domain</strong></td><td>A function returning a finding, a row in its domain&rsquo;s rule table, a test built through <code>internal/check/checktest</code>, and a row in the checks table in <em>both</em> languages. Small.</td></tr>
+                  <tr><td><strong>A fix for an existing finding</strong></td><td>A builder, a registration, and a decision: if it is not registered it must be named in the register in <code>fix.Default()</code>&rsquo;s doc comment with the reason, and given a one-sentence decline reason a user will see. Tests hold all three together. Small.</td></tr>
+                  <tr><td><strong>A whole detection domain</strong></td><td>A real change. Below.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>A new domain is one package implementing <code>Checker</code> — and then:</p>
+            <ul>
+              <li>a row in <code>sourceDefs</code>, which carries the domain&rsquo;s name, label, axis and <strong>weight</strong>;</li>
+              <li>a <strong>rebalance</strong>: the weights sum to exactly 100 and a test enforces it, so a new domain is always funded by taking points from existing ones, and each transfer wants an argument;</li>
+              <li>registration in <code>cmd/hostveil/app.go</code>, in the order the domain table declares;</li>
+              <li>rows in the checks table in both languages, with a severity and a fix kind for every finding, plus the weight column;</li>
+              <li>the weight in the <a href="scoring">scoring page&rsquo;s</a> table, in both languages;</li>
+              <li>a decline reason for every finding you do not register a fix for;</li>
+              <li>and, if the domain would answer wrongly rather than skip on a non-Linux host, an entry in the OS-gate list with the reason.</li>
+            </ul>
+            <p>Around eleven tests fail until each of those is done, most of them in the documentation guards rather than in the code. That is the intended experience: the tests are the checklist, and they are the reason the docs describe the tool that exists.</p>
 
             <h2>Running it for real: the demo VM</h2>
             <p><code>demo/</code> is a code-defined, deliberately vulnerable Ubuntu server; hostveil is built from your working tree <em>inside</em> the VM, so it always reflects your current code. Bring it up with <code>./run.sh up</code> and scan with <code>./run.sh scan</code>. Per-platform provider setup, the 5-minute demo script, the reset workflow, and troubleshooting all live in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>

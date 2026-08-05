@@ -26,6 +26,8 @@
 package textwidth
 
 import (
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-runewidth"
@@ -47,13 +49,39 @@ import (
 // as one column each. Two measurements that disagree are worse than either
 // being wrong: truncate would cut to one budget while padRight padded to
 // another, and the row would be over-full or ragged depending on the glyph.
-// This condition matches lipgloss on every character the UI uses, and
-// TestAgreesWithLipgloss in internal/ui/tui pins that.
+// TestTextwidthAgreesWithLipgloss in internal/ui/tui pins that.
+//
+// Which is why RUNEWIDTH_EASTASIAN is honoured here rather than ignored.
+// Neutralizing the *locale* is the point above — the same binary must not
+// lay out differently in Seoul and Berlin. That variable is a different
+// thing: it is the operator saying their terminal renders ambiguous
+// characters wide, and lipgloss honours it, in a package init that mutates
+// unexported state hostveil has no way to reset. So ignoring it did not
+// produce a narrow layout; it produced two measurements disagreeing by up
+// to three columns a string, which is the exact failure the paragraph above
+// says this condition exists to prevent. Measured on "→ … ●": hostveil 5,
+// lipgloss 8.
+//
+// The parse is strconv.ParseBool because that is what charmbracelet/x/ansi
+// uses, and a variable read two ways is a third measurement.
 var narrow = func() *runewidth.Condition {
 	c := runewidth.NewCondition()
-	c.EastAsianWidth = false
+	c.EastAsianWidth = eastAsianWidth(os.Getenv(eastAsianEnv))
 	return c
 }()
+
+// eastAsianEnv is the variable go-runewidth and charmbracelet/x/ansi both
+// read. It is named here so a test can drive the rule without touching the
+// process environment, which is global and read at init anyway.
+const eastAsianEnv = "RUNEWIDTH_EASTASIAN"
+
+// eastAsianWidth is x/ansi's rule, kept identical on purpose: a value that
+// does not parse as a bool leaves the setting alone, and only a true value
+// turns it on.
+func eastAsianWidth(v string) bool {
+	ea, err := strconv.ParseBool(v)
+	return err == nil && ea
+}
 
 // Of returns the number of terminal columns s occupies.
 //

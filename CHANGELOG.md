@@ -4,6 +4,32 @@
 
 ### Features
 
+* **site:** where hostveil runs, how it is extended, and every environment
+  variable it reads — three things the docs either got wrong or never said.
+
+  The platform claim led with "Linux and macOS" on two pages and buried the
+  honest sentence dozens of lines down, where it said macOS "has nothing to
+  look at". Neither half was true. There is now a *Running it on macOS*
+  section: ten of the twelve domains report N/A — seven find nothing on their
+  own, three are excluded deliberately because they would otherwise answer a
+  question they had not asked — two run, and the score is a real number
+  averaged over a fifth of the weight. Including the part worth knowing before
+  you try it on a laptop: an SSH fix on a Mac rewrites a real
+  `/etc/ssh/sshd_config`.
+
+  Extensibility was one sentence — "write one package and register it" — for
+  something that touches a domain table, a weight rebalance that has to keep
+  the total at 100, a registration, rows in two languages of two different
+  tables, a decline reason per unfixed finding, and about eleven failing tests
+  until each is done. The contributing page now says so, and separates it from
+  the two things that genuinely are small: a rule, and a fix.
+
+  And there is an environment-variable reference. Around thirty variables were
+  scattered across five pages or documented nowhere at all — including the two
+  that decide whether hostveil re-executes itself as root, which a test
+  asserted were "documented" while nothing a user could read mentioned them.
+  A sweep over the source keeps the page honest in both directions.
+
 * **site:** the scoring model is published, on a page of its own. It was
   restated in fragments across `checks.html` and the FAQ — a severity-share
   table, a weight table, and a paragraph — while the argument behind it lived
@@ -122,6 +148,19 @@
   a reason, through one gate — `platform.AuditableOS` — because "what host is
   this" belongs with the rest of the host questions rather than in three
   checkers deciding it three ways. Nothing changes on Linux.
+
+* **tui:** setting `RUNEWIDTH_EASTASIAN` made the terminal UI measure itself
+  two ways at once. It is what an operator sets when their terminal draws East
+  Asian Ambiguous characters wide, and it is common in CJK setups. lipgloss
+  honours it, in a package init that mutates state hostveil cannot reach;
+  hostveil's own measurement ignored it. So the ellipsis `truncate` appends and
+  the arrows and bullets in the status lines were one column to one half of
+  the UI and two to the other — `truncate` cutting to one budget while
+  `padRight` padded to another, which is the exact failure `internal/textwidth`
+  exists to prevent, arriving through the door it left open. Measured on
+  `"→ … ●"`: 5 columns against 8. It is honoured now, with the same parse rule,
+  and a re-exec test pins the agreement on the side of the variable that used
+  to break it.
 
 * **cmd:** `HOSTVEIL_DEBUG=1 hostveil scan` did nothing on the path most
   people take. Auto-elevation re-execs through sudo, whose `env_reset` keeps
