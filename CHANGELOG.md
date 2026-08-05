@@ -22,11 +22,12 @@ temporary and will be gone once one of them is chosen.**
   clears the contrast floors every theme here is held to, and the foreground
   lifted as a judgement rather than a floor, because an editor sets a few
   hundred glyphs on screen and this sets thousands. The terminal list gains
-  what the dashboard has always had above the fold: a count per severity, how many
-  hostveil can fix on its own, and — for each domain that did not fully run —
-  the reason the checker gave, instead of an unexplained `N/A`. `scan` no longer
-  double-spaces its findings, which halves the scrollback on an ordinary host.
-  And `--glyphs nerd` draws the status markers from a patched Nerd Font: opt-in,
+  what the dashboard has always had above the fold: a count per severity, how
+  many findings hostveil can offer a fix for at all — Auto *and* Review, which
+  is what the dashboard's chip has always counted — and, for each domain that
+  did not fully run, the reason the checker gave, instead of an unexplained
+  `N/A`. `scan` no longer double-spaces its findings, which halves the
+  scrollback on an ordinary host. And `--glyphs nerd` draws the status markers from a patched Nerd Font: opt-in,
   because a terminal cannot be asked what font it is using and a missing glyph
   is drawn in the same single cell a present one would be. Any Nerd Font build
   works, Mono or not — verified by reading the tables of eighteen font files.
