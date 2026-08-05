@@ -52,12 +52,62 @@ func maybeElevate(cmd string) {
 	fmt.Fprintln(os.Stderr, "hostveil needs root to read /etc/shadow, sshd_config, and the firewall state; re-running with sudo.")
 	fmt.Fprintln(os.Stderr, "It only reads until you ask it to fix something. Set HOSTVEIL_NO_SUDO=1 to skip this (some checks will be skipped too).")
 
-	argv := append([]string{"sudo", exe}, os.Args[1:]...)
+	argv := append(elevatedArgv(exe, os.Args[1:], os.Getenv), os.Args[1:]...)
 	// os.Environ() unchanged, and deliberately not carrying a marker of our
 	// own: sudo's env_reset drops everything it does not keep, so a variable
 	// set here would not reach the child. See alreadyElevated.
 	_ = syscall.Exec(sudo, argv, os.Environ())
 	// If Exec returns, it failed; fall through and run unprivileged.
+}
+
+// carriedThroughSudo are the variables a user sets on hostveil's own command
+// line that have to survive the re-exec.
+//
+// env_reset drops all of them. That is stated in alreadyElevated's comment
+// and was drawn as a conclusion about exactly one variable — the marker this
+// code used to pass itself — while applying identically to every variable a
+// user sets. So on the ordinary non-root host, the path hostveil documents
+// most loudly did nothing: `HOSTVEIL_DEBUG=1 hostveil scan` is printed in
+// `hostveil help`, in the README and on both troubleshooting pages as the
+// thing to attach to a bug report, and it produced no trace at all, with no
+// error and nothing to suggest the variable had been discarded. Setting a
+// theme or a glyph set the same way was silently ignored too.
+//
+// CI never saw it because the end-to-end job runs as root with
+// HOSTVEIL_NO_SUDO=1, which is both branches that skip the re-exec.
+//
+// The variables go across as `sudo NAME=value …` rather than through
+// --preserve-env, because the assignment form is what sudo has always had and
+// it says exactly what is being carried. Only variables that are actually set
+// are passed, so a host where none is set builds the argv it built before.
+//
+// TERM, LANG and LC_* are absent on purpose: sudo's own env_keep carries
+// those already. HOSTVEIL_NO_SUDO is absent because reaching this line means
+// it was not set, and HOSTVEIL_ELEVATED because it is the marker whose
+// non-arrival is the whole reason SUDO_USER is the loop guard.
+var carriedThroughSudo = []string{
+	"HOSTVEIL_DEBUG",
+	"HOSTVEIL_THEME",
+	"HOSTVEIL_GLYPHS",
+	"HOSTVEIL_OLLAMA_HOST",
+	"HOSTVEIL_OLLAMA_MODEL",
+	"NO_COLOR",
+}
+
+// elevatedArgv builds everything up to and including the executable path:
+// sudo, the variable assignments that have to be carried, then the binary.
+// The caller appends the original arguments.
+//
+// getenv is a parameter so a test can drive it without touching the real
+// environment, which is process-global and would race the rest of the suite.
+func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
+	argv := []string{"sudo"}
+	for _, name := range carriedThroughSudo {
+		if v := getenv(name); v != "" {
+			argv = append(argv, name+"="+v)
+		}
+	}
+	return append(argv, exe)
 }
 
 // alreadyElevated reports whether sudo has already run, so re-running it would
