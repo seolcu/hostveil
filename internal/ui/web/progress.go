@@ -49,23 +49,22 @@ func (p *progressTracker) finish() {
 	p.running = false
 }
 
-// domainProgress is one domain's latest state, shaped for the client.
-type domainProgress struct {
-	Source string `json:"source"`
-	State  string `json:"state"`
-	Reason string `json:"reason,omitempty"`
-}
-
 // snapshot returns whether a scan is running and each seen domain's latest
 // state, in the stable AllSources order so the client's list does not
 // reshuffle between polls.
-func (p *progressTracker) snapshot() (bool, []domainProgress) {
+//
+// model.ScanEvent goes out as it is. There used to be a domainProgress DTO
+// beside it whose only job was to write the two enums out as names, because
+// the events themselves marshalled as ordinals and the page compares
+// `d.state === "running"`. The enums name themselves now, so the parallel
+// struct is one more thing that could disagree with the type it copies.
+func (p *progressTracker) snapshot() (bool, []model.ScanEvent) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	out := []domainProgress{}
+	out := []model.ScanEvent{}
 	for _, src := range model.AllSources() {
 		if ev, ok := p.domains[src]; ok {
-			out = append(out, domainProgress{Source: src.String(), State: ev.State.String(), Reason: ev.Reason})
+			out = append(out, ev)
 		}
 	}
 	return p.running, out

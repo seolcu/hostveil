@@ -444,8 +444,8 @@ func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	running, domains := s.progress.snapshot()
 	writeJSON(w, struct {
-		Running bool             `json:"running"`
-		Domains []domainProgress `json:"domains"`
+		Running bool              `json:"running"`
+		Domains []model.ScanEvent `json:"domains"`
 	}{running, domains})
 }
 

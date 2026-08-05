@@ -140,3 +140,37 @@ func (s Source) Valid() bool {
 func AllSources() []Source {
 	return columnOf(sourceDefs, func(d sourceDef) Source { return d.source })
 }
+
+// sourceByName carries a row sourceDefs does not: SourceUnset owns the zero
+// value and has no table entry, but String() renders it "unset", and a
+// marshaller that writes a name it cannot read back is a one-way door. It is
+// the only enum here needing this — RemediationKind gives its Unset a real
+// row, and Severity's and ScanState's zero values are ordinary members.
+var sourceByName = func() map[string]Source {
+	m := nameIndex(sourceDefs,
+		func(d sourceDef) Source { return d.source },
+		func(d sourceDef) string { return d.name })
+	m[SourceUnset.String()] = SourceUnset
+	return m
+}()
+
+// ParseSource resolves a lowercase domain name.
+func ParseSource(s string) (Source, bool) {
+	src, ok := sourceByName[s]
+	return src, ok
+}
+
+// MarshalJSON writes the name rather than the ordinal. See enum.go.
+func (s Source) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
+
+// UnmarshalJSON accepts the name or the integer older snapshots hold.
+func (s *Source) UnmarshalJSON(data []byte) error {
+	v, err := unmarshalEnum(data, "source", sourceByName, func(v Source) bool {
+		return v == SourceUnset || v.Valid()
+	})
+	if err != nil {
+		return err
+	}
+	*s = v
+	return nil
+}
