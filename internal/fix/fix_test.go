@@ -6,29 +6,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/fix/fixtest"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
 // representative builds a finding with the metadata/evidence each fix
 // builder needs, so the registry can be exercised without a live scan.
-func representative(id string) model.Finding {
-	f := model.NewFinding(id, "t", model.SeverityHigh, model.SourceCompose, model.RemediationReview,
-		model.WithService("app"),
-		model.WithMetadata("file", "/tmp/docker-compose.yml"),
-		model.WithMetadata("service", "app"),
-		model.WithEvidence("port", "6379"),
-		model.WithEvidence("config", "/etc/ssh/sshd_config"),
-		model.WithEvidence("mechanism", "dnf-automatic"),
-		model.WithEvidence("image", "redis:7"),
-		model.WithEvidence("fixable_count", "3"),
-		model.WithEvidence("worst_cve", "CVE-2021-1234"),
-		model.WithEvidence("reference", "tag"),
-		model.WithEvidence("paths", "/etc/shadow"),
-		model.WithEvidence("expected", "0640"),
-		model.WithEvidence("set", "kernel.kptr_restrict=1"),
-	)
-	return f
-}
+//
+// It lives in fixtest rather than here because cmd/sitegen needs the same
+// thing: pinning the docs' Fix column against what a user is offered means
+// building the fix, and building it means having a finding to build from.
+func representative(id string) model.Finding { return fixtest.Finding(id) }
 
 // TestEveryRegisteredFixIsValid builds each registered fix from a
 // representative finding and asserts it passes Validate — Auto has exactly

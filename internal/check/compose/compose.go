@@ -142,6 +142,12 @@ var runtimeOnlyRules = []rule{
 // keeps the registry from offering a fix that would have nothing to edit.
 // Without it a UI would show a fix button leading nowhere, which is exactly
 // what the classify rule exists to prevent.
+//
+// That was the intent from the start and only became the mechanism later:
+// classify used to hand a Manual finding straight back to the registry, and
+// what actually stopped the button appearing was the compose builders
+// failing to find a file path. Correct by accident, from the layer that was
+// not making the claim.
 func auditContainer(c compose.Container) []model.Finding {
 	var out []model.Finding
 	for _, rule := range runtimeOnlyRules {
