@@ -4,6 +4,29 @@
 
 ### Features
 
+* **site:** the scoring model is published, on a page of its own. It was
+  restated in fragments across `checks.html` and the FAQ — a severity-share
+  table, a weight table, and a paragraph — while the argument behind it lived
+  in a Go doc comment. `docs/scoring` now carries the whole thing: the
+  per-axis multiplicative formula, why it is multiplicative (the additive
+  model it replaced clamped an axis after two findings and made every
+  finding after that free, so a host with 27 container findings scored the
+  same as one with 3), a worked example from a real 83-finding scan with the
+  arithmetic shown line by line, all twelve axis weights with the argument
+  for each, renormalization and what a skipped domain does, why an unfixable
+  finding weighs a quarter, and a section on what the number cannot tell you.
+
+  A cap is a weight, never a threshold, and the page says so before it shows
+  the table. It also says which weights have no positive argument for their
+  exact number — most of them — and what they have instead, which is a
+  defended position relative to their neighbours.
+
+  The twelve weights are now pinned on that page too. The existing guard
+  reads the checks table and cannot see these rows (it requires a two-cell
+  row and these carry an argument column), so they could have drifted from
+  the code with a green build, on the page that presents itself as the whole
+  model.
+
 * **fix:** a finding with no fix button now says why. hostveil has always had
   the reasons — the doc comment on `fix.Default()` is pages of them, argued
   finding by finding — in a place no user will ever read. Each is now one

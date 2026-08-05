@@ -238,6 +238,18 @@
   scroll-margin-top: 88px;
 }
 
+/* An h4 is a step inside an h3's argument, not a section of its own — same
+   family, no rule above it, and smaller. Without this it takes the browser
+   default, which is the body face at less than paragraph size: it reads as
+   fine print rather than as a heading. */
+.docs-prose h4 {
+  margin: 22px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  color: var(--paper-muted);
+  scroll-margin-top: 88px;
+}
+
 .docs-prose p {
   margin: 0 0 16px;
   color: var(--paper-muted);

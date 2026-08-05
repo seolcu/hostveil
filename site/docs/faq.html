@@ -66,6 +66,7 @@
             <p>Guide</p>
             <ul>
               <li><a href="checks">What it checks</a></li>
+              <li><a href="scoring">Scoring</a></li>
               <li><a href="fixing">Fixing &amp; rollback</a></li>
               <li><a href="interfaces">Interfaces</a></li>
               <li><a href="ai">AI explanations</a></li>
@@ -107,7 +108,7 @@
             <p>No — <code>hostveil serve</code> binds to <code>127.0.0.1:8787</code> (loopback only), and every route requires the one-off access token printed in the startup URL. The dashboard rejects any request not addressed to localhost, so <code>--addr</code> cannot publish it to the network either. Use SSH port forwarding for remote access. See <a href="interfaces">Interfaces</a>.</p>
 
             <h2>What does the 0–100 score mean?</h2>
-            <p>Each domain is scored on its own axis, and the axes are combined by weight. Every unfixed finding takes a share of what its axis still has: an <strong>Exposed</strong> finding — one reachable right now — takes half of the remainder, and the two lesser levels proportionally less, and a vulnerability with no upstream patch a quarter as much as one you could act on. Because the shares compound rather than add, an axis never bottoms out after two findings. A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Exposed. See <a href="checks">What it checks</a>.</p>
+            <p>Each domain is scored on its own axis, and the axes are combined by weight. Every unfixed finding takes a share of what its axis still has: an <strong>Exposed</strong> finding — one reachable right now — takes half of the remainder, and the two lesser levels proportionally less, and a vulnerability with no upstream patch a quarter as much as one you could act on. Because the shares compound rather than add, an axis never bottoms out after two findings. A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is Exposed. See <a href="scoring">Scoring</a> for the whole model.</p>
 
             <h2>Which platforms are supported?</h2>
             <p>Prebuilt binaries target <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is built for self-hosted Linux servers.</p>
