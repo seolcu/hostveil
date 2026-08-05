@@ -82,3 +82,29 @@ func (s Severity) Penalty() int {
 func AllSeverities() []Severity {
 	return columnOf(severityDefs, func(d severityDef) Severity { return d.sev })
 }
+
+var severityByName = nameIndex(severityDefs,
+	func(d severityDef) Severity { return d.sev },
+	func(d severityDef) string { return d.name })
+
+// ParseSeverity resolves a lowercase severity name.
+func ParseSeverity(s string) (Severity, bool) {
+	sev, ok := severityByName[s]
+	return sev, ok
+}
+
+// MarshalJSON writes the name rather than the ordinal. See enum.go.
+func (s Severity) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
+
+// UnmarshalJSON accepts the name or the integer older snapshots hold.
+func (s *Severity) UnmarshalJSON(data []byte) error {
+	v, err := unmarshalEnum(data, "severity", severityByName, func(v Severity) bool {
+		_, ok := severityIndex[v]
+		return ok
+	})
+	if err != nil {
+		return err
+	}
+	*s = v
+	return nil
+}

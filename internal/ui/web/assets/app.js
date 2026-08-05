@@ -44,6 +44,14 @@ const BANDS = M.bands || [];
 
 function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 
+// Enum values arrive as names now, not ordinals, so anything that needs the
+// model's ordering asks for it. rank is the row's position in the table the
+// engine declared; sorting by the name itself would put "critical" after
+// "high" and domains in alphabetical order, which is not an ordering anyone
+// chose.
+function rank(table, key) { return (table[key] && table[key].rank) ?? 1e9; }
+function byRank(table) { return (a, b) => rank(table, a) - rank(table, b); }
+
 // ── layout (temporary; see internal/ui/web/layout.go) ───────────────────
 // Which of the six arrangements is on. /layout.js has already put it on
 // <html> before first paint, so this is a read, never a decision.
@@ -153,9 +161,8 @@ function renderFilterbar(all) {
   for (const [key, sev] of Object.entries(SEV)) {
     const n = sevCounts[key] || 0;
     if (!n) continue;
-    const i = Number(key);
-    kids.push(chip(`${sev.abbr.toUpperCase()} ${n}`, filters.sev.has(i), () => {
-      filters.sev.has(i) ? filters.sev.delete(i) : filters.sev.add(i);
+    kids.push(chip(`${sev.abbr.toUpperCase()} ${n}`, filters.sev.has(key), () => {
+      filters.sev.has(key) ? filters.sev.delete(key) : filters.sev.add(key);
       render();
     }, "c-" + sev.abbr));
   }
@@ -163,7 +170,7 @@ function renderFilterbar(all) {
   // Domain chips (every source present in the report — filtering this list
   // by the label table is what hid the sysctl domain when the table was a
   // hand-written copy).
-  const domains = [...new Set(all.map((f) => f.source))].sort((a, b) => a - b);
+  const domains = [...new Set(all.map((f) => f.source))].sort(byRank(SRC));
   domains.forEach((s) => {
     kids.push(chip(srcLabel(s), filters.domain.has(s), () => {
       filters.domain.has(s) ? filters.domain.delete(s) : filters.domain.add(s);
@@ -457,7 +464,7 @@ function render() {
   renderVerdict(all);
   renderRail(all);
   renderFilterbar(all);
-  const items = applyFilters(all).sort((a, b) => a.severity - b.severity);
+  const items = applyFilters(all).sort((a, b) => rank(SEV, a.severity) - rank(SEV, b.severity));
   document.getElementById("findings-title").textContent =
     filterActive() ? `Findings · ${items.length}/${all.length}` : `Findings · ${all.length}`;
 

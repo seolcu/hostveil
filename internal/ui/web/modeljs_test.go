@@ -24,12 +24,12 @@ import (
 // bare integer again.
 func TestGeneratedDomainsCoverEverySource(t *testing.T) {
 	js := modelJS()
-	for _, src := range model.AllSources() {
+	for i, src := range model.AllSources() {
 		// The whole entry, not its pieces. A domain present but nameless is
 		// the failure mode that shipped: app.js falls back to String(s) and
 		// draws the integer, which reads as a rendering glitch rather than
 		// as a missing table entry.
-		want := fmt.Sprintf("    %d: {id: %q, label: %q},", int(src), src.String(), src.Label())
+		want := fmt.Sprintf("    %q: {id: %q, label: %q, rank: %d},", src.String(), src.String(), src.Label(), i)
 		if src.Label() == "" {
 			t.Errorf("%q (%d) reaches the dashboard with no label", src.String(), int(src))
 			continue
@@ -53,22 +53,22 @@ func TestGeneratedDomainsCoverEverySource(t *testing.T) {
 func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 	js := modelJS()
 
-	for _, s := range model.AllSeverities() {
-		want := fmt.Sprintf("    %d: {name: %q, abbr: %q},", int(s), s.String(), s.Abbr())
+	for i, s := range model.AllSeverities() {
+		want := fmt.Sprintf("    %q: {name: %q, abbr: %q, rank: %d},", s.String(), s.String(), s.Abbr(), i)
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing severity %s", strings.TrimSpace(want))
 		}
 	}
 	for _, r := range model.AllRemediationKinds() {
-		want := fmt.Sprintf("    %d: {name: %q, label: %q, fixable: %t, auto: %t},",
-			int(r), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto)
+		want := fmt.Sprintf("    %q: {name: %q, label: %q, fixable: %t, auto: %t},",
+			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto)
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing remediation %s", strings.TrimSpace(want))
 		}
 	}
 	for _, s := range model.AllScanStates() {
-		want := fmt.Sprintf("    %d: {name: %q, ran: %t, complete: %t},",
-			int(s), s.String(), s.Ran(), s.Complete())
+		want := fmt.Sprintf("    %q: {name: %q, ran: %t, complete: %t},",
+			s.String(), s.String(), s.Ran(), s.Complete())
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing scan state %s", strings.TrimSpace(want))
 		}
@@ -192,6 +192,11 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 		{`>= 80 ?`, "the score band thresholds"},
 		{`SCAN_DONE = `, "the scan-state ordinals"},
 		{`REM_AUTO = `, "the remediation ordinals"},
+		// The enums cross the wire as names now, so subtracting two of them
+		// is not a sort — it is NaN, and Array.sort leaves the order it found.
+		// Silent, and it would put Low findings above Critical ones.
+		{`a.severity - b.severity`, "an arithmetic severity sort"},
+		{`a.source - b.source`, "an arithmetic domain sort"},
 	} {
 		if strings.Contains(js, tc.shape) {
 			t.Errorf("app.js has %s again (%s); it must read window.HOSTVEIL_MODEL", tc.what, tc.shape)

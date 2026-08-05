@@ -63,6 +63,32 @@ func AllScanStates() []ScanState {
 	return columnOf(scanStateDefs, func(d scanStateDef) ScanState { return d.state })
 }
 
+var scanStateByName = nameIndex(scanStateDefs,
+	func(d scanStateDef) ScanState { return d.state },
+	func(d scanStateDef) string { return d.name })
+
+// ParseScanState resolves a lowercase state name.
+func ParseScanState(s string) (ScanState, bool) {
+	st, ok := scanStateByName[s]
+	return st, ok
+}
+
+// MarshalJSON writes the name rather than the ordinal. See enum.go.
+func (s ScanState) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
+
+// UnmarshalJSON accepts the name or the integer older snapshots hold.
+func (s *ScanState) UnmarshalJSON(data []byte) error {
+	v, err := unmarshalEnum(data, "scan state", scanStateByName, func(v ScanState) bool {
+		_, ok := scanStateIndex[v]
+		return ok
+	})
+	if err != nil {
+		return err
+	}
+	*s = v
+	return nil
+}
+
 // Complete reports whether the checker covered all of its ground.
 //
 // ScanDegraded is the entire distinction between this and Ran, and the two

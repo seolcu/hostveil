@@ -88,3 +88,29 @@ func (r RemediationKind) Label() string {
 func AllRemediationKinds() []RemediationKind {
 	return columnOf(remediationDefs, func(d remediationDef) RemediationKind { return d.kind })
 }
+
+var remediationByName = nameIndex(remediationDefs,
+	func(d remediationDef) RemediationKind { return d.kind },
+	func(d remediationDef) string { return d.name })
+
+// ParseRemediationKind resolves a stable lowercase kind name.
+func ParseRemediationKind(s string) (RemediationKind, bool) {
+	kind, ok := remediationByName[s]
+	return kind, ok
+}
+
+// MarshalJSON writes the name rather than the ordinal. See enum.go.
+func (r RemediationKind) MarshalJSON() ([]byte, error) { return marshalEnum(r.String()) }
+
+// UnmarshalJSON accepts the name or the integer older snapshots hold.
+func (r *RemediationKind) UnmarshalJSON(data []byte) error {
+	v, err := unmarshalEnum(data, "remediation", remediationByName, func(v RemediationKind) bool {
+		_, ok := remediationIndex[v]
+		return ok
+	})
+	if err != nil {
+		return err
+	}
+	*r = v
+	return nil
+}

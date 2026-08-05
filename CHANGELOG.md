@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* **model:** `scan --json` names its enums instead of numbering them. `severity`,
+  `source`, `remediation` and a domain's `state` go out as lowercase words
+  (`"high"`, `"ssh"`, `"review"`, `"degraded"`) rather than as the bare integers
+  every consumer had to keep its own ordering table for — including hostveil's
+  own dashboard, which was handed a generated lookup table so it could read its
+  own API. Snapshots written by an older version still read: unmarshalling
+  accepts a name *or* an integer, for one release, so a host's previous scan is
+  not lost and its next scan converts it. Nothing writes integers any more.
+
+### Bug Fixes
+
+* **core:** remediation is now settled the way every comment in the repo says it
+  is. `classify`'s rule — whichever of the checker and the fix registry demands
+  more human involvement wins — applied only when the checker's own answer was
+  already fixable, so a checker declaring **Manual** or **Unavailable** was
+  overruled by any fix builder matching the ID. The two packages that rely on
+  the rule by name were saved instead by their builders erroring, which is
+  correct by accident from the layer that was not making the claim. And
+  `PreviewFix` ran only half the resolution, so an exec fix a finding correctly
+  carried as *Review* previewed as *Auto-fix* — on exactly the fixes where "safe
+  to apply unattended" is the claim being ruled out.
+
+* **sitegen:** three docs guards were passing on things they did not check: the
+  scoring tripwire never read the constant that decides whether one Critical
+  costs half an axis, the checks table's Fix column was compared as a
+  fixable/not-fixable bool so Auto and Review were the same answer, and the
+  fixing page's classification table had four rows against a five-value enum
+  with nothing saying which was missing.
+
 ## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-04)
 
 Everything here is a rendering layer — no checker, rule, score or fix changed.
