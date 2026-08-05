@@ -130,8 +130,8 @@ check needs no output parsing:
 
 | Code | Meaning |
 | --- | --- |
-| `0` | The scan ran and found nothing Critical or High. |
-| `1` | At least one unfixed Critical or High finding. |
+| `0` | The scan ran and found nothing Exposed. |
+| `1` | At least one unfixed Exposed finding. |
 | `3` | A detection domain failed outright, so the scan covered less of the host than it should have. |
 
 ```bash

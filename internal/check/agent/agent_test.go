@@ -304,11 +304,11 @@ func TestGatewayExposureSeverityMatrix(t *testing.T) {
 		ok   bool
 		why  string
 	}{
-		{"config only, nothing listening", exposedCfg, envNoFirewall(""), model.SeverityHigh, true,
+		{"config only, nothing listening", exposedCfg, envNoFirewall(""), model.SeverityExposed, true,
 			"configured intent is enough to report, but nothing is confirmed reachable yet"},
-		{"listening, firewall active", exposedCfg, envActiveFirewall(listening), model.SeverityHigh, true,
+		{"listening, firewall active", exposedCfg, envActiveFirewall(listening), model.SeverityExposed, true,
 			"a firewall is a real backstop, so this is not the worst case"},
-		{"listening, no firewall", exposedCfg, envNoFirewall(listening), model.SeverityCritical, true,
+		{"listening, no firewall", exposedCfg, envNoFirewall(listening), model.SeverityExposed, true,
 			"reachable right now with nothing in front of it"},
 		{"loopback and quiet", cleanOpenClaw, envNoFirewall(""), 0, false,
 			"the correct configuration must produce no finding at all"},
@@ -457,7 +457,7 @@ func TestAuthDisabledFiresOnAnExposedGateway(t *testing.T) {
 	if !ok {
 		t.Fatal("an exposed gateway with no authentication must be reported")
 	}
-	if f.Severity != model.SeverityCritical {
+	if f.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want Critical", f.Severity)
 	}
 }

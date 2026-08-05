@@ -21,11 +21,11 @@ import (
 
 func sampleReport() model.Report {
 	findings := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical,
+		model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityExposed,
 			model.SourceCompose, model.RemediationAuto, model.WithService("cache"),
 			model.WithDescription("A datastore is reachable from the internet."),
 			model.WithHowToFix("Bind it to localhost.")),
-		model.NewFinding("compose.ds001", "Privileged mode", model.SeverityHigh,
+		model.NewFinding("compose.ds001", "Privileged mode", model.SeverityExposed,
 			model.SourceCompose, model.RemediationManual, model.WithService("app"),
 			model.WithDescription("Privileged mode is dangerous.")),
 	}
@@ -60,13 +60,13 @@ func TestSnapshotDump(t *testing.T) {
 		return
 	}
 	findings := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
-		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityCritical, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
-		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview),
-		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
-		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("app")),
-		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
-		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("db")),
+		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityExposed, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
+		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityExposed, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
+		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityExposed, model.SourceSSH, model.RemediationReview),
+		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityExposed, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
+		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityWeak, model.SourceCompose, model.RemediationAuto, model.WithService("app")),
+		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityWeak, model.SourceUpdates, model.RemediationAuto),
+		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityHardening, model.SourceCompose, model.RemediationAuto, model.WithService("db")),
 	}
 	states := map[model.Source]model.ScanState{model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone, model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone}
 	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states), Domains: []model.DomainResult{
@@ -140,7 +140,7 @@ func TestListScrolls(t *testing.T) {
 	var fs []model.Finding
 	for i := 0; i < 20; i++ {
 		fs = append(fs, model.NewFinding(fmt.Sprintf("compose.d%03d", i),
-			fmt.Sprintf("finding number %d", i), model.SeverityMedium,
+			fmt.Sprintf("finding number %d", i), model.SeverityWeak,
 			model.SourceCompose, model.RemediationManual))
 	}
 	rep := model.Report{Findings: fs, Score: model.ScoreReport(fs, nil)}
@@ -163,9 +163,9 @@ func TestListScrolls(t *testing.T) {
 
 func TestFilterNarrowsList(t *testing.T) {
 	fs := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
-		model.NewFinding("compose.ds001", "Privileged", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("app")),
-		model.NewFinding("updates.disabled", "Auto-updates off", model.SeverityMedium, model.SourceUpdates, model.RemediationReview),
+		model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityExposed, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
+		model.NewFinding("compose.ds001", "Privileged", model.SeverityWeak, model.SourceCompose, model.RemediationManual, model.WithService("app")),
+		model.NewFinding("updates.disabled", "Auto-updates off", model.SeverityWeak, model.SourceUpdates, model.RemediationReview),
 	}
 	rep := model.Report{Findings: fs, Score: model.ScoreReport(fs, nil)}
 
@@ -176,7 +176,7 @@ func TestFilterNarrowsList(t *testing.T) {
 		t.Fatalf("want 3 active, got %d", got)
 	}
 
-	// s once → minimum severity Critical → only the crit finding.
+	// s once → minimum severity Exposed → only the exposed finding.
 	m = send(m, tea.KeyPressMsg(tea.Key{Text: "s"}))
 	if got := len(m.(*appModel).active); got != 1 {
 		t.Errorf("severity filter: want 1, got %d", got)

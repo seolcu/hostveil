@@ -2,6 +2,7 @@ package clirender
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -31,14 +32,14 @@ func sarifRun(t *testing.T, log map[string]any) map[string]any {
 }
 
 func TestSARIFMapsFindingsToResultsAndRules(t *testing.T) {
-	f1 := model.NewFinding("ssh.rootlogin", "Root login allowed", model.SeverityHigh,
+	f1 := model.NewFinding("ssh.rootlogin", "Root login allowed", model.SeverityExposed,
 		model.SourceSSH, model.RemediationReview,
 		model.WithDescription("desc"), model.WithHowToFix("how"))
-	f2 := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical,
+	f2 := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityExposed,
 		model.SourceCompose, model.RemediationAuto, model.WithService("cache"))
-	f3 := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityCritical,
+	f3 := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityExposed,
 		model.SourceCompose, model.RemediationAuto, model.WithService("db"))
-	fixed := model.NewFinding("ssh.x11forwarding", "X11 on", model.SeverityLow,
+	fixed := model.NewFinding("ssh.x11forwarding", "X11 on", model.SeverityHardening,
 		model.SourceSSH, model.RemediationAuto)
 	fixed.Fixed = true
 
@@ -78,10 +79,14 @@ func TestSARIFMapsFindingsToResultsAndRules(t *testing.T) {
 
 func TestSARIFSeverityLevels(t *testing.T) {
 	cases := map[model.Severity]string{
-		model.SeverityCritical: "error",
-		model.SeverityHigh:     "error",
-		model.SeverityMedium:   "warning",
-		model.SeverityLow:      "note",
+		model.SeverityExposed:   "error",
+		model.SeverityWeak:      "warning",
+		model.SeverityHardening: "note",
+	}
+	// One arm per level, and every level covered: SARIF's three and hostveil's
+	// three now line up exactly, which is what a missing arm would hide.
+	if len(cases) != len(model.AllSeverities()) {
+		t.Fatalf("%d severities, %d mapped to SARIF levels", len(model.AllSeverities()), len(cases))
 	}
 	for sev, want := range cases {
 		if got := sarifLevel(sev); got != want {
@@ -119,5 +124,37 @@ func TestSARIFCarriesDomainCoverage(t *testing.T) {
 	}
 	if _, ok := props["scoreApplicable"]; !ok {
 		t.Error("scoreApplicable missing from run properties")
+	}
+}
+
+// TestSARIFLevelsStillMeanWhatTheyMeant is the same compatibility claim the
+// exit code makes, for the export CI systems and GitHub code scanning read.
+//
+// Critical and High both mapped to "error" before they became one level, so
+// SARIF was already saying what the three-level scale says. An ingester's
+// alerts must not move because hostveil renamed something.
+//
+// Written against the old ordinals rather than the old constants, which no
+// longer exist: the numbers are what a snapshot on disk holds, and reading
+// one back is the only way left to name a level this build never had.
+func TestSARIFLevelsStillMeanWhatTheyMeant(t *testing.T) {
+	for _, tc := range []struct {
+		ordinal int
+		was     string
+		level   string
+	}{
+		{0, "critical", "error"},
+		{1, "high", "error"},
+		{2, "medium", "warning"},
+		{3, "low", "note"},
+	} {
+		var sev model.Severity
+		if err := json.Unmarshal([]byte(strconv.Itoa(tc.ordinal)), &sev); err != nil {
+			t.Fatalf("%s (%d) no longer reads at all: %v", tc.was, tc.ordinal, err)
+		}
+		if got := sarifLevel(sev); got != tc.level {
+			t.Errorf("a finding that was %s exports as %q, and used to export as %q",
+				tc.was, got, tc.level)
+		}
 	}
 }

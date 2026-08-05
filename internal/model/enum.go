@@ -11,7 +11,7 @@ import (
 //
 // The distinction is not academic. Source's table starts at SourceCompose
 // (1) because SourceUnset owns 0, so its rows sit one off from their values;
-// Severity's starts at SeverityCritical (0), so its rows do not. Indexing by
+// Severity's starts at SeverityExposed (0), so its rows do not. Indexing by
 // position works for one and is an off-by-one for the other, and the two
 // tables sit in the same package looking identical. Since these values are
 // serialized as bare integers into on-disk scan snapshots, that off-by-one
@@ -83,6 +83,11 @@ func marshalEnum(name string) ([]byte, error) { return json.Marshal(name) }
 // trade the scanner refuses everywhere else. Callers that survive a bad
 // snapshot — ScoreHistory skips one that will not unmarshal — already handle
 // the error, and they can only do that if there is one.
+//
+// Severity does not use this. Its ordinals were remapped when the scale went
+// from four levels to three, so it needs a legacy table where the others need
+// only their own; it reports the same errors through the helpers below, so a
+// bad snapshot reads the same however it is spelled.
 func unmarshalEnum[V ~int](data []byte, kind string, byName map[string]V, valid func(V) bool) (V, error) {
 	var zero V
 	if len(data) > 0 && data[0] == '"' {
@@ -92,16 +97,22 @@ func unmarshalEnum[V ~int](data []byte, kind string, byName map[string]V, valid 
 		}
 		v, ok := byName[s]
 		if !ok {
-			return zero, fmt.Errorf("unknown %s %q", kind, s)
+			return zero, errUnknownEnum(kind, s)
 		}
 		return v, nil
 	}
 	var n int
 	if err := json.Unmarshal(data, &n); err != nil {
-		return zero, fmt.Errorf("%s must be a name or an integer: %w", kind, err)
+		return zero, errEnumShape(kind, err)
 	}
 	if v := V(n); valid(v) {
 		return v, nil
 	}
-	return zero, fmt.Errorf("unknown %s %d", kind, n)
+	return zero, errUnknownOrdinal(kind, n)
+}
+
+func errUnknownEnum(kind, name string) error     { return fmt.Errorf("unknown %s %q", kind, name) }
+func errUnknownOrdinal(kind string, n int) error { return fmt.Errorf("unknown %s %d", kind, n) }
+func errEnumShape(kind string, err error) error {
+	return fmt.Errorf("%s must be a name or an integer: %w", kind, err)
 }

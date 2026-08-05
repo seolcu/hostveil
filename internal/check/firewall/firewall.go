@@ -91,7 +91,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 	return []model.Finding{
 		model.NewFinding("firewall.inactive", "No active host firewall",
-			model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
+			model.SeverityExposed, model.SourceFirewall, model.RemediationReview,
 			model.WithDescription("Without a firewall, every port a service binds to 0.0.0.0 is reachable from any network the host is on. A firewall is your backstop when a container or service is accidentally exposed."),
 			model.WithHowToFix("Enable a firewall that defaults to denying inbound traffic and allow only what you need (e.g. SSH). Important: allow your SSH port before enabling the firewall so you do not lock yourself out."),
 			model.WithEvidence("available", strings.Join(availableTools(env.Runner), ", ")),

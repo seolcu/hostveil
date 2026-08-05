@@ -31,10 +31,10 @@ func layoutFixture() model.Report {
 				model.WithHowToFix("Bind the port to 127.0.0.1 and set a strong password.")))
 		}
 	}
-	add(3, "compose.ds018", model.SeverityCritical, model.RemediationAuto, model.SourceCompose)
-	add(5, "compose.ds016", model.SeverityHigh, model.RemediationManual, model.SourceCompose)
-	add(7, "ssh.rootlogin", model.SeverityMedium, model.RemediationAuto, model.SourceSSH)
-	add(11, "ports.exposed", model.SeverityLow, model.RemediationManual, model.SourcePorts)
+	add(3, "compose.ds018", model.SeverityExposed, model.RemediationAuto, model.SourceCompose)
+	add(5, "compose.ds016", model.SeverityWeak, model.RemediationManual, model.SourceCompose)
+	add(7, "ssh.rootlogin", model.SeverityWeak, model.RemediationAuto, model.SourceSSH)
+	add(11, "ports.exposed", model.SeverityHardening, model.RemediationManual, model.SourcePorts)
 
 	states := map[model.Source]model.ScanState{
 		model.SourceCompose: model.ScanDone,
@@ -288,7 +288,7 @@ func TestTheVerdictSitsBesideTheRailRatherThanAboveIt(t *testing.T) {
 		t.Errorf("the rail does not start on the body's first row: %q", first)
 	}
 	joined := plain(strings.Join(rows, "\n"))
-	if !strings.Contains(joined, "critical finding") && !strings.Contains(joined, "This host is") {
+	if !strings.Contains(joined, "reachable right now") && !strings.Contains(joined, "This host is") {
 		t.Errorf("the verdict is not drawn at all:\n%s", joined)
 	}
 	// The band is inside the list's column now, so its rows carry the rail's
@@ -330,7 +330,7 @@ func TestRailDrawsNoBarForADomainThatDidNotRun(t *testing.T) {
 // "agent.auth-disabled O  (openclaw@root)".
 func TestANarrowRowKeepsTheTitleRatherThanTheService(t *testing.T) {
 	f := model.NewFinding("agent.auth-disabled", "OpenClaw gateway accepts requests with no authentication",
-		model.SeverityCritical, model.SourceAgent, model.RemediationManual,
+		model.SeverityExposed, model.SourceAgent, model.RemediationManual,
 		model.WithService("openclaw@root"))
 	m := layoutModel("console", 140, 40)
 	for _, w := range []int{46, 50, 56, 64} {
@@ -346,20 +346,20 @@ func TestANarrowRowKeepsTheTitleRatherThanTheService(t *testing.T) {
 	}
 }
 
-// A "CRITICAL · 0" heading is a row of screen spent announcing that nothing
-// happened, and four of them on a nearly-clean host is the whole list.
+// An "EXPOSED · 0" heading is a row of screen spent announcing that nothing
+// happened, and one per level on a nearly-clean host is the whole list.
 func TestLanesOnlyHeadsSeveritiesThatArePresent(t *testing.T) {
 	m := layoutModel("lanes", 120, 40)
-	crit := model.SeverityCritical
-	m.filter.MinSeverity = &crit
+	exposed := model.SeverityExposed
+	m.filter.MinSeverity = &exposed
 	m.active = m.report.Select(m.filter)
 
 	rows, _ := m.laneRows(80)
 	got := plain(strings.Join(rows, "\n"))
-	if !strings.Contains(got, "CRITICAL") {
+	if !strings.Contains(got, "EXPOSED") {
 		t.Errorf("no lane for the severity that is present:\n%s", got)
 	}
-	for _, absent := range []string{"HIGH", "MEDIUM", "LOW"} {
+	for _, absent := range []string{"WEAK", "HARDENING"} {
 		if strings.Contains(got, absent) {
 			t.Errorf("a %s lane was drawn for a severity with nothing in it:\n%s", absent, got)
 		}
@@ -373,7 +373,7 @@ func TestMarkLaneMarksItsOwnSeverityAndOnlyTheAutos(t *testing.T) {
 	m := layoutModel("lanes", 120, 40)
 	// Onto a Critical, which is the severity carrying the Auto findings.
 	for i, f := range m.active {
-		if f.Severity == model.SeverityCritical {
+		if f.Severity == model.SeverityExposed {
 			m.cursor = i
 			break
 		}
@@ -385,7 +385,7 @@ func TestMarkLaneMarksItsOwnSeverityAndOnlyTheAutos(t *testing.T) {
 	}
 	for _, f := range m.active {
 		marked := m.selected[f.Key()]
-		want := f.Severity == model.SeverityCritical && f.Remediation == model.RemediationAuto
+		want := f.Severity == model.SeverityExposed && f.Remediation == model.RemediationAuto
 		if marked != want {
 			t.Errorf("%s/%s/%v: marked=%v, want %v", f.ID, f.Severity, f.Remediation, marked, want)
 		}
@@ -446,12 +446,12 @@ func TestVerdictRefusesAVerdictWhenNothingCouldBeScanned(t *testing.T) {
 	}
 }
 
-// The verdict leads with the criticals when there are any, because that is
-// the sentence the arrangement exists to put at the top.
-func TestVerdictLeadsWithTheCriticals(t *testing.T) {
+// The verdict leads with what is reachable now when anything is, because
+// that is the sentence the arrangement exists to put at the top.
+func TestVerdictLeadsWithWhatIsReachableNow(t *testing.T) {
 	got := plain(strings.Join(layoutModel("triage", 120, 30).verdictRows(120), "\n"))
-	if !strings.Contains(got, "3 critical findings are exposed") {
-		t.Errorf("the verdict does not lead with the critical count:\n%s", got)
+	if !strings.Contains(got, "3 findings are reachable right now") {
+		t.Errorf("the verdict does not lead with the exposed count:\n%s", got)
 	}
 	if !strings.Contains(got, "fix 10 safe findings") {
 		t.Errorf("the verdict does not offer the batch fix:\n%s", got)

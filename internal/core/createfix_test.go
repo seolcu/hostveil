@@ -24,7 +24,7 @@ import (
 
 func createFinding() model.Finding {
 	return model.NewFinding("sysctl.kptr-restrict", "Kernel pointers are visible",
-		model.SeverityLow, model.SourceSysctl, model.RemediationReview,
+		model.SeverityHardening, model.SourceSysctl, model.RemediationReview,
 		model.WithEvidence("set", "kernel.kptr_restrict=1"))
 }
 

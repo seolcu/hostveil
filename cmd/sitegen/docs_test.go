@@ -27,6 +27,11 @@ var (
 	// <tr><td>Container exposure</td><td>20</td></tr> — a whole-cell number,
 	// so the severity-share table ("1/2 of what remains") cannot match.
 	weightRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td></tr>`)
+	// <span class="sev exposed">EXPOSED</span>, wherever one appears.
+	severityChip = regexp.MustCompile(`<span class="sev ([a-z\-]+)">([^<]*)</span>`)
+	// The severity cell of a finding row: everything between the description
+	// and the Fix column, which is where one or two chips live.
+	severityCell = regexp.MustCompile(`<tr><td><code>([a-z0-9.\-]+)</code></td>.*?<td>((?:<span class="sev [^>]*>[^<]*</span>[^<]*)+)</td><td>[^<]*</td></tr>`)
 )
 
 // docLangs are the content trees that must agree with the code and with
@@ -282,7 +287,7 @@ var reliefProse = map[int]map[string]string{
 // prose actually makes, rather than an arithmetic identity standing in for it.
 func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
 	t.Helper()
-	f := model.NewFinding("ssh.probe", "t", model.SeverityCritical, model.SourceSSH, rem)
+	f := model.NewFinding("ssh.probe", "t", model.SeverityExposed, model.SourceSSH, rem)
 	for _, ax := range model.ScoreReport([]model.Finding{f}, nil).Axes {
 		if ax.Source == model.SourceSSH {
 			return int(ax.Score)
@@ -298,7 +303,7 @@ func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
 // failure with a pointer to what to edit.
 //
 // It asks the scorer rather than multiplying two constants together. The
-// previous version asserted SeverityCritical.Penalty()*2 == 16, which reads
+// previous version asserted SeverityExposed.Penalty()*2 == 16, which reads
 // as "one Critical costs half" but never touches criticalHalves — the
 // denominator that decides it. Doubling that constant halves every finding's
 // weight, the docs' "half" becomes a quarter on every page, and this passed.
@@ -327,6 +332,78 @@ func TestScoringProseTripwire(t *testing.T) {
 		if !strings.Contains(checksPage(t, lang), phrases[lang]) {
 			t.Errorf("%s: checks page does not state the Unavailable relief as %q "+
 				"(the constant makes it 1/%d)", lang, phrases[lang], relief)
+		}
+	}
+}
+
+// TestEverySeverityChipNamesARealLevel is the guard the severity column never
+// had.
+//
+// Two tests read the finding table and neither looked at this cell:
+// findingRow captures the last column (the fix kind) and weightRow avoids the
+// severity table on purpose. So roughly a hundred and twenty cells across two
+// languages restated a model enum with nothing checking the restatement — and
+// when the four-level scale became three, a missed cell would have gone on
+// naming a level that no longer exists, styled by a CSS class that no longer
+// exists, which renders as unstyled text rather than as an error.
+func TestEverySeverityChipNamesARealLevel(t *testing.T) {
+	known := map[string]bool{}
+	for _, s := range model.AllSeverities() {
+		known[s.String()] = true
+	}
+	for _, lang := range docLangs {
+		chips := severityChip.FindAllStringSubmatch(checksPage(t, lang), -1)
+		if len(chips) == 0 {
+			t.Fatalf("%s: no severity chips parsed; the markup changed", lang)
+		}
+		for _, c := range chips {
+			class, text := c[1], c[2]
+			if !known[class] {
+				t.Errorf("%s: severity chip has class %q, which is not one of %v — "+
+					"site/docs.css styles the levels by name, so this renders unstyled",
+					lang, class, model.AllSeverities())
+				continue
+			}
+			// The class and the word have to be the same level. A chip reading
+			// EXPOSED in the colour of hardening is worse than either alone.
+			if !strings.EqualFold(text, class) {
+				t.Errorf("%s: severity chip is styled %q but reads %q", lang, class, text)
+			}
+		}
+	}
+}
+
+// The severity a finding is documented at must be the same in both languages.
+// Each is a separate file and nothing links them; the Fix column is already
+// pinned this way, and the severity column is the other half of the same row.
+func TestBothLanguagesAgreeOnSeverity(t *testing.T) {
+	byLang := map[string]map[string]string{}
+	for _, lang := range docLangs {
+		byLang[lang] = map[string]string{}
+		for _, row := range severityCell.FindAllStringSubmatch(checksPage(t, lang), -1) {
+			var levels []string
+			for _, c := range severityChip.FindAllStringSubmatch(row[2], -1) {
+				levels = append(levels, c[1])
+			}
+			byLang[lang][row[1]] = strings.Join(levels, "/")
+		}
+		if len(byLang[lang]) == 0 {
+			t.Fatalf("%s: no severity cells parsed; the markup changed", lang)
+		}
+	}
+	for id, en := range byLang["en"] {
+		ko, listed := byLang["ko"][id]
+		if !listed {
+			t.Errorf("ko: no severity cell for %s", id)
+			continue
+		}
+		if en != ko {
+			t.Errorf("%s is documented %s in English and %s in Korean", id, en, ko)
+		}
+	}
+	for id := range byLang["ko"] {
+		if _, listed := byLang["en"][id]; !listed {
+			t.Errorf("en: no severity cell for %s", id)
 		}
 	}
 }

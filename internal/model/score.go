@@ -1,6 +1,9 @@
 package model
 
-import "math"
+import (
+	"encoding/json"
+	"math"
+)
 
 // ScoreBreakdown is the 0-100 security score plus its per-axis detail.
 // It is pure data so every UI renders it identically.
@@ -31,19 +34,101 @@ type ScoreBreakdown struct {
 // beats none — but its score is drawn from an incomplete picture, so every
 // UI must render the flag. An unlabelled 100 on a partial axis is the same
 // lie Applicable exists to prevent, just in smaller print.
+// Counts is the axis's findings by severity, most severe first, one entry
+// per level whether or not any landed there.
+//
+// It used to be four named int fields and a four-arm switch — the last
+// structural four in this package, and the reason a change of scale touched
+// the score struct, its JSON, three renderers and their tests. It is a
+// projection of AllSeverities now, so a level added or removed reaches every
+// consumer without any of them being edited.
 type ScoreAxis struct {
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-	Source     Source `json:"source"`
-	Applicable bool   `json:"applicable"`
-	Degraded   bool   `json:"degraded,omitempty"`
-	Score      uint8  `json:"score"`
-	Penalty    int    `json:"penalty"`
-	MaxPenalty int    `json:"max_penalty"`
-	Critical   int    `json:"critical"`
-	High       int    `json:"high"`
-	Medium     int    `json:"medium"`
-	Low        int    `json:"low"`
+	ID         string          `json:"id"`
+	Label      string          `json:"label"`
+	Source     Source          `json:"source"`
+	Applicable bool            `json:"applicable"`
+	Degraded   bool            `json:"degraded,omitempty"`
+	Score      uint8           `json:"score"`
+	Penalty    int             `json:"penalty"`
+	MaxPenalty int             `json:"max_penalty"`
+	Counts     []SeverityCount `json:"counts"`
+}
+
+// SeverityCount is how many findings of one severity landed on an axis.
+type SeverityCount struct {
+	Severity Severity `json:"severity"`
+	N        int      `json:"n"`
+}
+
+// Count returns how many findings of one severity landed on the axis.
+func (a ScoreAxis) Count(s Severity) int {
+	for _, c := range a.Counts {
+		if c.Severity == s {
+			return c.N
+		}
+	}
+	return 0
+}
+
+// Findings is how many landed on the axis in total.
+func (a ScoreAxis) Findings() int {
+	n := 0
+	for _, c := range a.Counts {
+		n += c.N
+	}
+	return n
+}
+
+// newCounts builds the zeroed per-severity slots for one axis.
+func newCounts() []SeverityCount {
+	out := make([]SeverityCount, 0, len(AllSeverities()))
+	for _, s := range AllSeverities() {
+		out = append(out, SeverityCount{Severity: s})
+	}
+	return out
+}
+
+// UnmarshalJSON reads an axis, folding the four count fields of the old
+// severity scale into the three of the new one.
+//
+// A scan snapshot is read back by the next run, so the previous release's
+// axes are on operators' disks with critical/high/medium/low in them.
+// Without this they read as an axis with no findings on it, and the domain
+// rail would show a scored axis with nothing behind it.
+func (a *ScoreAxis) UnmarshalJSON(data []byte) error {
+	type axisJSON ScoreAxis // no methods, so no recursion
+	var raw struct {
+		axisJSON
+		Critical *int `json:"critical"`
+		High     *int `json:"high"`
+		Medium   *int `json:"medium"`
+		Low      *int `json:"low"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*a = ScoreAxis(raw.axisJSON)
+	if len(a.Counts) > 0 {
+		return nil
+	}
+	legacy := map[Severity]int{}
+	for sev, n := range map[Severity]*int{
+		SeverityExposed:   raw.Critical,
+		SeverityWeak:      raw.Medium,
+		SeverityHardening: raw.Low,
+	} {
+		if n != nil {
+			legacy[sev] += *n
+		}
+	}
+	if raw.High != nil {
+		legacy[SeverityExposed] += *raw.High
+	}
+	a.Counts = newCounts()
+	for i := range a.Counts {
+		a.Counts[i].N = legacy[a.Counts[i].Severity]
+	}
+	return nil
 }
 
 type axisDef struct {
@@ -123,12 +208,12 @@ func axisDefsFromSources() []axisDef {
 // axis is about what that process can then touch.
 var axisDefs = axisDefsFromSources()
 
-// criticalHalves is the anchor of the whole penalty model: one Critical
+// exposedHalves is the anchor of the whole penalty model: one Exposed
 // finding takes half of whatever credit an axis has left. Every other
 // severity follows from it, since a finding's weight is its severity
-// penalty over this constant (Critical 8/16 = 0.5, High 0.3125, Medium
-// 0.125, Low 0.0625).
-const criticalHalves = 16
+// penalty over this constant (Exposed 8/16 = 0.5, Weak 0.125, Hardening
+// 0.0625).
+const exposedHalves = 16
 
 // unavailableRelief divides the weight of a finding nothing can fix.
 //
@@ -142,7 +227,7 @@ const unavailableRelief = 4
 
 // weight returns the share of an axis's remaining credit a finding takes.
 func weight(f Finding) float64 {
-	w := float64(f.Severity.Penalty()) / criticalHalves
+	w := float64(f.Severity.Penalty()) / exposedHalves
 	if f.Remediation == RemediationUnavailable {
 		w /= unavailableRelief
 	}
@@ -171,6 +256,7 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 			Degraded:   known && st == ScanDegraded,
 			Score:      100,
 			MaxPenalty: def.cap,
+			Counts:     newCounts(),
 		}
 		idxBySource[def.source] = i
 	}
@@ -207,15 +293,11 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		remaining[idx] *= 1 - weight(f)
 
 		axis := &axes[idx]
-		switch f.Severity {
-		case SeverityCritical:
-			axis.Critical++
-		case SeverityHigh:
-			axis.High++
-		case SeverityMedium:
-			axis.Medium++
-		case SeverityLow:
-			axis.Low++
+		for i := range axis.Counts {
+			if axis.Counts[i].Severity == f.Severity {
+				axis.Counts[i].N++
+				break
+			}
 		}
 	}
 

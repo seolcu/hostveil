@@ -201,8 +201,8 @@ the token then becomes a session cookie for that browser.
 
 Exit status:
   hostveil scan is a CI or cron gate:
-    0  the scan ran and found nothing Critical or High
-    1  at least one unfixed Critical or High finding
+    0  the scan ran and found nothing Exposed
+    1  at least one unfixed Exposed finding
     3  a detection domain failed outright, so the scan covered less of the
        host than it should have — a clean-looking result you cannot trust
   A domain skipped for a missing dependency, or degraded to partial coverage,

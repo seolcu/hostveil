@@ -39,7 +39,7 @@ func ownerFixture(t *testing.T, mode os.FileMode, wrongOwner bool) (*Checker, st
 		want++ // an account the file certainly does not belong to
 	}
 	return &Checker{OwnerUID: want, Rules: []Rule{{
-		Path: path, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow",
+		Path: path, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow",
 		Title: "t", Desc: "d",
 	}}}, path
 }
@@ -133,7 +133,7 @@ func TestOwnerFindingIsActionable(t *testing.T) {
 func TestAMissingFileHasNoOwner(t *testing.T) {
 	c := &Checker{OwnerUID: os.Geteuid() + 1, Rules: []Rule{{
 		Path: filepath.Join(t.TempDir(), "absent"), MaxMode: 0o600,
-		Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "t", Desc: "d",
+		Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "t", Desc: "d",
 	}}}
 	if fs := runOwner(t, c); len(fs) != 0 {
 		t.Errorf("a missing file produced %v", fs)

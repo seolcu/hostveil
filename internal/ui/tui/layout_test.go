@@ -55,7 +55,7 @@ func layoutReport() model.Report {
 	var fs []model.Finding
 	for i := 0; i < 60; i++ {
 		fs = append(fs, model.NewFinding("cve.outdated-image",
-			"Image has vulnerabilities with published fixes", model.SeverityCritical,
+			"Image has vulnerabilities with published fixes", model.SeverityExposed,
 			model.SourceCompose, model.RemediationAuto,
 			model.WithService(fmt.Sprintf("cloud/nextcloud-%d", i))))
 	}

@@ -94,7 +94,7 @@ func TestEnabledButRebootPendingIsNotClean(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := find(t, fs, "updates.reboot-required")
-	if f.Severity != model.SeverityHigh {
+	if f.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want high", f.Severity)
 	}
 	if len(fs) != 1 {
@@ -119,7 +119,7 @@ vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubu
 	if f.Evidence["pending"] != "2" {
 		t.Errorf("pending = %q, want 2 (only the -security rows)", f.Evidence["pending"])
 	}
-	if f.Severity != model.SeverityMedium {
+	if f.Severity != model.SeverityWeak {
 		t.Errorf("severity = %v, want medium for a small backlog", f.Severity)
 	}
 }
@@ -136,7 +136,7 @@ func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f := find(t, fs, "updates.pending-security"); f.Severity != model.SeverityHigh {
+	if f := find(t, fs, "updates.pending-security"); f.Severity != model.SeverityExposed {
 		t.Errorf("severity = %v, want high for a 12-package backlog", f.Severity)
 	}
 }

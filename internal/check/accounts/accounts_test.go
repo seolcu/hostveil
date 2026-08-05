@@ -62,7 +62,7 @@ func TestRogueUID0(t *testing.T) {
 	}
 	for _, f := range fs {
 		if f.ID == "accounts.uid0" {
-			if f.Severity != model.SeverityCritical {
+			if f.Severity != model.SeverityExposed {
 				t.Errorf("uid0 severity = %v, want critical", f.Severity)
 			}
 			if f.Evidence["accounts"] != "backdoor" {

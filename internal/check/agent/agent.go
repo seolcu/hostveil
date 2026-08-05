@@ -212,9 +212,9 @@ func modeFindings(s scan) []model.Finding {
 		id, title, desc := "agent.config-perms",
 			s.in.rt.Display+" configuration is readable beyond its owner",
 			"This file configures an agent that can run commands and hold credentials. Any account able to read it learns how the agent is set up; any account able to write it can retarget the agent."
-		sev := model.SeverityMedium
+		sev := model.SeverityWeak
 		if rule.Secret {
-			id, sev = "agent.secret-exposed", model.SeverityHigh
+			id, sev = "agent.secret-exposed", model.SeverityExposed
 			title = s.in.rt.Display + " credentials are readable beyond their owner"
 			desc = "This path holds the API keys the agent authenticates with. Every account on this host can read it, so any of them — or anything running as them — can take those keys and spend, read, or act with them elsewhere."
 		}
@@ -307,11 +307,12 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 	}
 
 	// The firewall decides how bad it is, never whether it is true. An
-	// observed listener with no firewall behind it is reachable now, today.
-	sev := model.SeverityHigh
-	if listenerFound && fw == firewall.StatusInactive {
-		sev = model.SeverityCritical
-	}
+	// observed listener with no firewall behind it is reachable now, today —
+	// and so, on the urgency scale, is a gateway bound to a routable address
+	// with a firewall in front of it that the operator may have opened. Both
+	// are Exposed; what the firewall status changes is the confidence, which
+	// rides in the evidence rather than in the level.
+	sev := model.SeverityExposed
 
 	opts := []model.FindingOption{
 		model.WithService(s.in.subject()),
@@ -352,7 +353,7 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 			}
 			out = append(out, model.NewFinding("agent.auth-disabled",
 				s.in.rt.Display+" gateway accepts requests with no authentication",
-				model.SeverityCritical, model.SourceAgent, model.RemediationManual,
+				model.SeverityExposed, model.SourceAgent, model.RemediationManual,
 				model.WithService(s.in.subject()),
 				model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
 				model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well — authentication is the second line, not the first."),

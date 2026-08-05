@@ -146,7 +146,7 @@ func defaultAllowFinding(which string) model.Finding {
 	}
 	return model.NewFinding("firewall.default-allow",
 		"Firewall is running but accepts everything by default",
-		model.SeverityHigh, model.SourceFirewall, model.RemediationManual,
+		model.SeverityExposed, model.SourceFirewall, model.RemediationManual,
 		model.WithDescription("A firewall is active, but its default policy for inbound traffic is to accept. Every port a service binds to a non-loopback address is reachable from any network this host is on, exactly as if no firewall were running — the difference is that `"+which+"` reports it as active, so the host looks protected. A firewall is only a backstop if what it does with traffic no rule matched is refuse it."),
 		model.WithHowToFix(how),
 		model.WithEvidence("firewall", which),

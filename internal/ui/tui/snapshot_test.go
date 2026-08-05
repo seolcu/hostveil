@@ -22,26 +22,26 @@ func dumpEveryMode(t *testing.T, dir string) {
 	const W, H = 100, 34
 
 	findings := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityCritical, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/redis"),
+		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityExposed, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/redis"),
 			model.WithDescription("The redis container publishes port 6379 on 0.0.0.0, so anything that can reach this host can reach the datastore. Redis has no authentication enabled by default, which means a full read and write of everything the service keeps there."),
 			model.WithHowToFix("Bind the published port to 127.0.0.1 so only this host can connect, and reach it from other containers over the compose network instead.")),
-		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityCritical, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer"),
+		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityExposed, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer"),
 			model.WithDescription("Mounting /var/run/docker.sock gives the container full control of the Docker daemon, which is equivalent to root on the host.")),
-		model.NewFinding("cve.outdated-image", "12 fixable vulnerabilities in nextcloud:27.1.3", model.SeverityCritical, model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud")),
-		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview,
+		model.NewFinding("cve.outdated-image", "12 fixable vulnerabilities in nextcloud:27.1.3", model.SeverityExposed, model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud")),
+		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityExposed, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("PermitRootLogin is set to yes, so anyone who guesses the root password is root on this host."),
 			model.WithHowToFix("Set PermitRootLogin prohibit-password after confirming you have a working key-based login for a non-root user.")),
-		model.NewFinding("ports.database", "PostgreSQL is listening on a public interface", model.SeverityHigh, model.SourcePorts, model.RemediationManual, model.WithService("postgres")),
-		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
-		model.NewFinding("accounts.nopasswd", "A sudoers rule grants NOPASSWD to a human account", model.SeverityHigh, model.SourceAccounts, model.RemediationManual, model.WithService("deploy")),
-		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
-		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
-		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityMedium, model.SourceFirewall, model.RemediationReview),
-		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
-		model.NewFinding("agent.toolsopen", "An AI agent config allows unattended shell access", model.SeverityMedium, model.SourceAgent, model.RemediationManual, model.WithService("opencode")),
-		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
-		model.NewFinding("compose.ds002", "Container runs as root", model.SeverityLow, model.SourceCompose, model.RemediationReview, model.WithService("ops/watchtower")),
-		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
+		model.NewFinding("ports.database", "PostgreSQL is listening on a public interface", model.SeverityExposed, model.SourcePorts, model.RemediationManual, model.WithService("postgres")),
+		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityExposed, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
+		model.NewFinding("accounts.nopasswd", "A sudoers rule grants NOPASSWD to a human account", model.SeverityExposed, model.SourceAccounts, model.RemediationManual, model.WithService("deploy")),
+		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityWeak, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
+		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityWeak, model.SourceUpdates, model.RemediationAuto),
+		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityWeak, model.SourceFirewall, model.RemediationReview),
+		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityWeak, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
+		model.NewFinding("agent.toolsopen", "An AI agent config allows unattended shell access", model.SeverityWeak, model.SourceAgent, model.RemediationManual, model.WithService("opencode")),
+		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityHardening, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
+		model.NewFinding("compose.ds002", "Container runs as root", model.SeverityHardening, model.SourceCompose, model.RemediationReview, model.WithService("ops/watchtower")),
+		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityHardening, model.SourceSSH, model.RemediationAuto),
 	}
 	states := map[model.Source]model.ScanState{
 		model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone,
@@ -78,7 +78,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 	dump("02-list", list)
 
 	filtered := newModel(modeList)
-	sev := model.SeverityHigh
+	sev := model.SeverityExposed
 	filtered.filter = model.Filter{MinSeverity: &sev, FixableOnly: true}
 	filtered.rebuildActive()
 	filtered.cursor = 1

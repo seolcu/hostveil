@@ -128,12 +128,12 @@ func TestHostNamespaceSharingDetected(t *testing.T) {
     ipc: host`)
 	if f, ok := got["compose.ds020"]; !ok {
 		t.Errorf("expected compose.ds020 for pid: host, got %v", keys(got))
-	} else if f.Severity != model.SeverityHigh {
+	} else if f.Severity != model.SeverityExposed {
 		t.Errorf("ds020 severity = %v, want high", f.Severity)
 	}
 	if f, ok := got["compose.ds021"]; !ok {
 		t.Errorf("expected compose.ds021 for ipc: host, got %v", keys(got))
-	} else if f.Severity != model.SeverityMedium {
+	} else if f.Severity != model.SeverityWeak {
 		t.Errorf("ds021 severity = %v, want medium", f.Severity)
 	}
 }
@@ -160,7 +160,7 @@ func TestWritableRootFilesystemDetected(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected compose.ds022 for a service without read_only, got %v", keys(got))
 	}
-	if f.Severity != model.SeverityLow {
+	if f.Severity != model.SeverityHardening {
 		t.Errorf("ds022 severity = %v, want low", f.Severity)
 	}
 
@@ -184,7 +184,7 @@ func TestInlineSecretDetected(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected inline secret finding, got %v", keys(got))
 	}
-	if f.Severity != model.SeverityHigh {
+	if f.Severity != model.SeverityExposed {
 		t.Errorf("inline secret severity = %v, want high", f.Severity)
 	}
 }

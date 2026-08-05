@@ -23,7 +23,7 @@ func report(fs ...model.Finding) model.Report {
 // acts on one, so a first-time user got a score, a list of problems, and no
 // way in.
 func TestReportEndsWithActionableCommands(t *testing.T) {
-	out := Text(report(fnd("ssh.rootlogin", model.SeverityHigh, model.RemediationReview)), Options{})
+	out := Text(report(fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview)), Options{})
 
 	for _, want := range []string{"Next:", "hostveil explain <id>", "hostveil fix <id>"} {
 		if !strings.Contains(out, want) {
@@ -36,9 +36,9 @@ func TestReportEndsWithActionableCommands(t *testing.T) {
 // count has to be the number of Auto findings, not the total.
 func TestFixAllOfferedOnlyWithAutoFindings(t *testing.T) {
 	withAuto := Text(report(
-		fnd("ssh.maxauthtries", model.SeverityLow, model.RemediationAuto),
-		fnd("ssh.x11forwarding", model.SeverityLow, model.RemediationAuto),
-		fnd("firewall.inactive", model.SeverityHigh, model.RemediationManual),
+		fnd("ssh.maxauthtries", model.SeverityHardening, model.RemediationAuto),
+		fnd("ssh.x11forwarding", model.SeverityHardening, model.RemediationAuto),
+		fnd("firewall.inactive", model.SeverityExposed, model.RemediationManual),
 	), Options{})
 	if !strings.Contains(withAuto, "hostveil fix --all") {
 		t.Error("fix --all not offered when Auto findings exist")
@@ -48,8 +48,8 @@ func TestFixAllOfferedOnlyWithAutoFindings(t *testing.T) {
 	}
 
 	noAuto := Text(report(
-		fnd("firewall.inactive", model.SeverityHigh, model.RemediationManual),
-		fnd("ssh.rootlogin", model.SeverityHigh, model.RemediationReview),
+		fnd("firewall.inactive", model.SeverityExposed, model.RemediationManual),
+		fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview),
 	), Options{})
 	if strings.Contains(noAuto, "fix --all") {
 		t.Errorf("fix --all offered with nothing to apply:\n%s", noAuto)
@@ -66,7 +66,7 @@ func TestNoNextStepsOnACleanReport(t *testing.T) {
 // Suggesting -v to someone who already passed it is the kind of small thing
 // that makes a tool feel like it is not listening.
 func TestVerboseHintOnlyWhenNotAlreadyVerbose(t *testing.T) {
-	f := fnd("ssh.rootlogin", model.SeverityHigh, model.RemediationReview)
+	f := fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview)
 	if !strings.Contains(Text(report(f), Options{}), "hostveil scan -v") {
 		t.Error("plain output should mention -v")
 	}
@@ -82,8 +82,8 @@ func TestVerboseHintOnlyWhenNotAlreadyVerbose(t *testing.T) {
 // terminal stuck in whatever color the last finding used.
 func TestColoredOutputResetsEveryEscape(t *testing.T) {
 	out := Text(report(
-		fnd("ssh.rootlogin", model.SeverityCritical, model.RemediationReview),
-		fnd("ssh.maxauthtries", model.SeverityLow, model.RemediationAuto),
+		fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview),
+		fnd("ssh.maxauthtries", model.SeverityHardening, model.RemediationAuto),
 	), Options{Color: true, Verbose: true})
 
 	if !strings.Contains(out, "\x1b[") {
@@ -103,7 +103,7 @@ func TestColoredOutputResetsEveryEscape(t *testing.T) {
 // Color:false must emit no escapes at all, which is what keeps piped output
 // and CI logs clean.
 func TestUncoloredOutputHasNoEscapes(t *testing.T) {
-	out := Text(report(fnd("ssh.rootlogin", model.SeverityHigh, model.RemediationReview)), Options{Verbose: true})
+	out := Text(report(fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview)), Options{Verbose: true})
 	if strings.Contains(out, "\x1b[") {
 		t.Errorf("uncolored output leaked an ANSI escape:\n%q", out)
 	}
@@ -112,7 +112,7 @@ func TestUncoloredOutputHasNoEscapes(t *testing.T) {
 // JSON is the machine-readable contract and nothing asserted it was even
 // valid JSON, let alone that it carried the fields a script would read.
 func TestJSONIsValidAndCarriesTheReport(t *testing.T) {
-	out, err := JSON(report(fnd("ssh.rootlogin", model.SeverityHigh, model.RemediationReview)))
+	out, err := JSON(report(fnd("ssh.rootlogin", model.SeverityExposed, model.RemediationReview)))
 	if err != nil {
 		t.Fatal(err)
 	}
