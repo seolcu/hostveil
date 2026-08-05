@@ -63,11 +63,12 @@ func TestAllIsACopy(t *testing.T) {
 // screenshot, every doc and the brand mark are calibrated to, written out
 // again so that changing it is a decision rather than a diff nobody read.
 //
-// Three of the twelve are not One Dark's published values. That is not drift
-// — TestEveryThemeMeetsTheContrastFloor rejects the published Slate, Crit and
-// Low outright — but it does mean somebody comparing this against Atom will
-// find a discrepancy and be right to ask, so the numbers are pinned here with
-// the ones they replaced beside them.
+// Four of the twelve are not One Dark's published values. Three of those are
+// not drift — TestEveryThemeMeetsTheContrastFloor rejects the published Slate,
+// Crit and Low outright — and the fourth, Bone, is a judgement with its own
+// reason beside it. Either way somebody comparing this against Atom will find
+// a discrepancy and be right to ask, so the numbers are pinned here with the
+// ones they replaced beside them.
 func TestOneDarkUnchanged(t *testing.T) {
 	want := Palette{
 		Ink: "#282c34", Ink2: "#21252b", Ink3: "#2f343f",
