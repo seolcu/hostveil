@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -38,6 +39,58 @@ type Env struct {
 	ServiceManager ServiceManager
 	Hostname       string
 	Runner         CommandRunner
+
+	// OS is the host's operating system, from runtime.GOOS. It is the one
+	// place in hostveil that asks, and it exists so a checker can tell
+	// "I looked and found nothing" apart from "this is not a host I can
+	// audit" — see AuditableOS.
+	OS string
+}
+
+// LinuxOS is the only operating system hostveil's checkers can audit.
+const LinuxOS = "linux"
+
+// AuditableOS reports whether the host is one the checkers can draw
+// conclusions about, and why not when it is not.
+//
+// hostveil builds and runs on darwin — goreleaser publishes those archives —
+// and every detection rule in it is about Linux. Most domains discover that
+// on their own and skip cleanly: there is no /proc/sys, no systemd, no
+// apt-get, no ss. Three did not, and each turned "I could not look" into an
+// answer, which is the one thing this codebase says a checker must never do:
+//
+//   - firewall probes ufw, firewall-cmd, nft and iptables. None is installed
+//     on macOS, no probe fails, and the absence of a failure was read as the
+//     absence of a firewall — a guaranteed `firewall.inactive` at the top
+//     severity, on every Mac, whose actual packet filter is pf and whose
+//     application firewall is socketfilterfw. Neither is probed anywhere.
+//   - accounts reads /etc/passwd, which macOS ships as a stub because the
+//     real account database is Open Directory, then advises re-running with
+//     sudo to read an /etc/shadow that does not exist and never will.
+//   - agent enumerates home directories out of that same /etc/passwd, keeping
+//     uid 0 and 1000..65533. macOS user accounts start at 501, so it finds
+//     only /var/root and reports "no agent runtime found" without ever having
+//     looked at /Users — the exact confusion that package's doc comment says
+//     it exists to prevent.
+//
+// The result was not an N/A score. firewall and fileperms are unconditionally
+// available, so a Mac produced a plausible number built on a false finding.
+//
+// This is a statement about the operating system and not about any tool, so
+// it lives here with the rest of the "what host is this" questions rather
+// than in three checkers making the same call three ways.
+func AuditableOS() (bool, string) { return auditableOS(runtime.GOOS) }
+
+// auditableOS is the rule itself, taking the operating system as an argument
+// so it can be tested for the platforms this build is not running on. The
+// exported wrapper reads runtime.GOOS directly rather than Env.OS, because a
+// checker that forgot to populate the field would then audit a Mac as Linux —
+// and the whole point of this is that the failure must not be silent.
+func auditableOS(goos string) (bool, string) {
+	if goos == LinuxOS {
+		return true, ""
+	}
+	return false, "hostveil audits Linux hosts; this is " + goos
 }
 
 // Detect probes the host once and returns its environment. It is
@@ -45,7 +98,7 @@ type Env struct {
 // failing, since a single scan should degrade gracefully on an
 // unrecognized distro.
 func Detect(ctx context.Context, r CommandRunner) Env {
-	env := Env{Runner: r}
+	env := Env{Runner: r, OS: runtime.GOOS}
 	env.DistroID = readOSReleaseID()
 	env.PackageManager = detectPackageManager(r)
 	env.ServiceManager = detectServiceManager(r)

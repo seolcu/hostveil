@@ -31,11 +31,21 @@ func New() *Checker {
 // Source identifies the accounts domain.
 func (*Checker) Source() model.Source { return model.SourceAccounts }
 
-// Available requires a readable /etc/passwd. /etc/shadow may still be
-// unreadable without root; Check handles that by running the passwd-only
-// checks and reporting the domain Degraded, so the unchecked half is
-// visible rather than scored as clean.
+// Available requires a Linux host with a readable /etc/passwd. /etc/shadow
+// may still be unreadable without root; Check handles that by running the
+// passwd-only checks and reporting the domain Degraded, so the unchecked half
+// is visible rather than scored as clean.
+//
+// The OS gate is not belt-and-braces around the file check, because the file
+// is there on macOS. It is a stub — the account database is Open Directory —
+// so the UID-0 scan passes against something that does not describe the host,
+// and the missing /etc/shadow produces the Degraded reason "re-run with sudo",
+// which cannot help: the file is not unreadable, it does not exist. Advice
+// that cannot work is worse than a skip. See platform.AuditableOS.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
+	if ok, why := platform.AuditableOS(); !ok {
+		return false, why + ", where " + c.PasswdPath + " does not describe the accounts"
+	}
 	f, err := os.Open(c.PasswdPath) //nolint:gosec // fixed system path
 	if err != nil {
 		return false, "cannot read " + c.PasswdPath

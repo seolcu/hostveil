@@ -103,6 +103,38 @@
 
 ### Bug Fixes
 
+* **check:** hostveil reported a firewall finding on every Mac, for a firewall
+  it had never looked for. The firewall checker probes ufw, firewall-cmd, nft
+  and iptables; on a host with none of them installed nothing fails, and the
+  absence of a failure was read as the absence of a firewall — a top-severity
+  `firewall.inactive` on a machine whose packet filter is pf and whose
+  application firewall is socketfilterfw, neither of which appears anywhere in
+  the codebase. Two more domains did the same thing more quietly: `accounts`
+  read the stub `/etc/passwd` macOS ships and then advised re-running with
+  sudo for an `/etc/shadow` that does not exist, and `agent` enumerated homes
+  out of that file keeping uid 0 and 1000–65533, found only `/var/root`
+  because macOS accounts start at 501, and reported "no agent runtime" about a
+  host whose `/Users` it never opened.
+
+  The result was not the N/A score the docs implied: the firewall and file-
+  permission checkers are unconditionally available, so a Mac produced a
+  plausible-looking number resting on a false finding. All three now skip with
+  a reason, through one gate — `platform.AuditableOS` — because "what host is
+  this" belongs with the rest of the host questions rather than in three
+  checkers deciding it three ways. Nothing changes on Linux.
+
+* **cmd:** `HOSTVEIL_DEBUG=1 hostveil scan` did nothing on the path most
+  people take. Auto-elevation re-execs through sudo, whose `env_reset` keeps
+  only what `env_keep` names and never an application's own variable — a fact
+  the elevation code states in a comment, having drawn the conclusion for
+  exactly one variable while it applied to every one a user sets. So the line
+  printed in `hostveil help`, in the README and on both troubleshooting pages
+  as the thing to attach to a bug report produced no trace at all, with no
+  error and nothing to suggest the variable had been dropped. `HOSTVEIL_THEME`
+  and `HOSTVEIL_GLYPHS` were ignored the same way. They are now carried across
+  the re-exec explicitly. CI never caught it because the end-to-end job runs as
+  root with `HOSTVEIL_NO_SUDO=1` — both of the branches that skip the re-exec.
+
 * **fix:** four claims in the register of deliberately-unfixed findings were
   wrong, found while turning it into user-facing text. `userdel` does not
   take the home directory unless it is given `-r`, which the finding's own

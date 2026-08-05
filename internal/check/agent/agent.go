@@ -60,6 +60,16 @@ func (*Checker) Source() model.Source { return model.SourceAgent }
 // agent runtime while one runs behind a wide-open gateway two accounts over —
 // and would say nothing about sudo, the one thing that would show it.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
+	// Same distinction, one level up. homes() reads /etc/passwd and keeps uid
+	// 0 and 1000..65533, which is the Linux convention. macOS ships an
+	// /etc/passwd too and its user accounts start at 501, so the walk finds
+	// only /var/root and installs() reports nothing found — "no agent runtime
+	// here" about a host whose /Users was never opened. That is the reading
+	// this function's own comment above says it exists to prevent, defeated
+	// by a passwd file that does not describe the host.
+	if ok, why := platform.AuditableOS(); !ok {
+		return false, why + ", where " + c.PasswdPath + " does not list the home directories"
+	}
 	hs, err := homes(c.PasswdPath)
 	if err != nil {
 		return false, "cannot read " + c.PasswdPath + " to locate home directories"

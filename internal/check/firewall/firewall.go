@@ -32,10 +32,22 @@ func (c *Checker) daemonConfig() string {
 // Source identifies the firewall domain.
 func (*Checker) Source() model.Source { return model.SourceFirewall }
 
-// Available is always true: the absence of a firewall is a finding, so
-// there is always something to report.
+// Available is true on any Linux host: the absence of a firewall is a
+// finding, so there is always something to report.
+//
+// It is not true anywhere else, and that is the one exception worth spelling
+// out. probe only knows ufw, firewall-cmd, nft and iptables. On a host with
+// none of them installed nothing fails, `unreadable` stays false, and the
+// function returns StatusInactive — which Check reports as "no active host
+// firewall" at the top severity. On Linux that is correct: those four are the
+// front-ends, and a host without any of them has no host firewall.
+//
+// On macOS it is a false finding on every machine. The packet filter is pf
+// and the application firewall is socketfilterfw, and neither string appears
+// anywhere in this repository, so hostveil is not reporting an absence — it
+// is reporting its own blindness as one. See platform.AuditableOS.
 func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
-	return true, ""
+	return platform.AuditableOS()
 }
 
 // Check probes the known firewall front-ends and, if none is active,
