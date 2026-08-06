@@ -1,0 +1,123 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Measured results</p>
+            <h1>Measured results</h1>
+            <p class="lead">hostveil&rsquo;s score going up after hostveil&rsquo;s fixes proves nothing: the same code decides what a finding is, what fixing it means, and what the number should be afterwards. So this page reports what <em>other people&rsquo;s</em> tools saw on the same host, before and after — including the ones that did not move, and one that moved for the wrong reason. Every figure here comes out of a committed run you can reproduce.</p>
+
+            <h2 id="why">Why not just report the score</h2>
+            <p>A self-consistent scanner is easy to build and worthless. If hostveil declares a port binding a finding, edits the Compose file, re-reads the file it just wrote, and awards itself points, nothing about that loop touches your server&rsquo;s security. Every step could be internally correct and the whole thing still be theatre.</p>
+            <p>The only way out is instruments that were not written by us and do not share our opinions. Three of the four below were written by other people for other reasons; the fourth is the kernel&rsquo;s own list of listening sockets, which has no opinions at all.</p>
+            <p>What follows is one run against one deliberately misconfigured host. It is evidence, not a benchmark: read <a href="#limits">what this does not show</a> before quoting any of it.</p>
+
+            <h2 id="host">The host</h2>
+            <p>A container seeded with the misconfigurations self-hosters actually ship: three Compose stacks totalling seven services with published ports, privileged containers and no <code>no-new-privileges</code>; an SSH drop-in permitting empty passwords, root login and password authentication; a second UID 0 account; two AI agent runtimes with their config world-readable; a Docker daemon on an unauthenticated TCP socket; and three datastores — PostgreSQL, Redis and Memcached — reachable on <code>0.0.0.0</code> with no firewall in front of them.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <tbody>
+                  <tr><td>Operating system</td><td><code data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code></td></tr>
+                  <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil v3-dev</code></td></tr>
+                  <tr><td>Measured at</td><td><code data-measured="measured_at">2026-08-06T04:04:18+00:00</code></td></tr>
+                  <tr><td>Findings before</td><td><span data-measured="phases.before.hostveil.findings">88</span> across 10 domains that ran, of 12 attempted</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="instruments">The instruments</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Instrument</th><th>Whose</th><th>What it can see</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>hostveil</strong> <code>scan --json</code></td><td>Ours</td><td>The self-measurement, reported alongside the others precisely so you can see whether they move together.</td></tr>
+                  <tr><td><strong>Lynis</strong></td><td><a href="https://github.com/CISOfy/lynis">CISOfy</a></td><td>A host auditor with its own rule set. Its headline is a 0–100 hardening index over <span data-measured="phases.before.lynis.tests_executed">248</span> executed tests.</td></tr>
+                  <tr><td><strong>docker-bench-security</strong></td><td><a href="https://github.com/docker/docker-bench-security">Docker</a></td><td>The CIS Docker Benchmark. Run over the image and container-runtime sections: <span data-measured="phases.before.docker_bench.checks">44</span> checks against the <em>running</em> containers.</td></tr>
+                  <tr><td><strong>External TCP scan</strong></td><td>—</td><td>A connect scan from a container on the Docker bridge back to the host, so it reaches what is bound to <code>0.0.0.0</code> and nothing bound to loopback. Three outcomes: answered, refused, no reply.</td></tr>
+                  <tr><td><strong>Listening sockets</strong></td><td>The kernel</td><td><code>ss -ltn</code>, split into wildcard-or-routable and loopback-only. No rule set, ours or anyone&rsquo;s.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="phases">Four phases, and why two of them are separate</h2>
+            <p>Every Auto fix hostveil applies is a <strong>file edit</strong>. That is what makes it reversible, and it is also why none of it is in force the moment it lands: a running container keeps the port mapping it was created with, and a daemon keeps serving from the config it already loaded.</p>
+            <p>So the host is measured four times.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Phase</th><th>The host is…</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>before</strong></td><td>As seeded.</td></tr>
+                  <tr><td><strong>after</strong></td><td><code>hostveil fix --all --yes</code> has run. Files changed; nothing restarted.</td></tr>
+                  <tr><td><strong>restarted</strong></td><td><code>docker compose up -d</code> per stack. The services have read the new files.</td></tr>
+                  <tr><td><strong>restored</strong></td><td>Every checkpoint rolled back, and the services restarted back out of the change.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Reporting only <em>after</em> would say the independent instruments saw nothing, which is true and reads as though the fixes did nothing. Reporting only <em>restarted</em> would quietly credit hostveil with a restart it does not perform and deliberately does not offer as an Auto fix — restarting a service is not reversible and cannot be checkpointed. The gap between those two columns is the single most useful thing on this page.</p>
+
+            <h2 id="results">The results</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Measurement</th><th>before</th><th>after</th><th>restarted</th><th>restored</th></tr></thead>
+                <tbody>
+                  <tr><td>hostveil score</td><td data-measured="phases.before.hostveil.overall">28</td><td data-measured="phases.after.hostveil.overall">35</td><td data-measured="phases.restarted.hostveil.overall">37</td><td data-measured="phases.restored.hostveil.overall">28</td></tr>
+                  <tr><td>hostveil findings</td><td data-measured="phases.before.hostveil.findings">88</td><td data-measured="phases.after.hostveil.findings">61</td><td data-measured="phases.restarted.hostveil.findings">59</td><td data-measured="phases.restored.hostveil.findings">88</td></tr>
+                  <tr><td>Lynis hardening index</td><td data-measured="phases.before.lynis.hardening_index">56</td><td data-measured="phases.after.lynis.hardening_index">57</td><td data-measured="phases.restarted.lynis.hardening_index">57</td><td data-measured="phases.restored.lynis.hardening_index">56</td></tr>
+                  <tr><td>Lynis suggestions</td><td data-measured="phases.before.lynis.suggestions">41</td><td data-measured="phases.after.lynis.suggestions">41</td><td data-measured="phases.restarted.lynis.suggestions">41</td><td data-measured="phases.restored.lynis.suggestions">41</td></tr>
+                  <tr><td>CIS Docker score</td><td data-measured="phases.before.docker_bench.score">-3</td><td data-measured="phases.after.docker_bench.score">-3</td><td data-measured="phases.restarted.docker_bench.score">3</td><td data-measured="phases.restored.docker_bench.score">-3</td></tr>
+                  <tr><td>CIS Docker WARN</td><td data-measured="phases.before.docker_bench.results.WARN">16</td><td data-measured="phases.after.docker_bench.results.WARN">16</td><td data-measured="phases.restarted.docker_bench.results.WARN">13</td><td data-measured="phases.restored.docker_bench.results.WARN">16</td></tr>
+                  <tr><td>Ports bound wildcard/routable</td><td data-measured="phases.before.listeners.count">12</td><td data-measured="phases.after.listeners.count">12</td><td data-measured="phases.restarted.listeners.count">7</td><td data-measured="phases.restored.listeners.count">12</td></tr>
+                  <tr><td>Ports answering from off-host</td><td data-measured="phases.before.external_scan.count">5</td><td data-measured="phases.after.external_scan.count">5</td><td data-measured="phases.restarted.external_scan.count">5</td><td data-measured="phases.restored.external_scan.count">5</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>hostveil fix --all --yes</code> applied <strong data-measured="fixes.attempted">27</strong> fixes and failed none.</p>
+
+            <h3 id="moved">What moved</h3>
+            <p><strong>The kernel&rsquo;s listening sockets.</strong> Five ports left the wildcard address for loopback: <code data-measured="deltas.listeners_public_tcp.restarted.cleared">5432, 6380, 8080, 8096, 9000</code>. That is Postgres, Redis, Nextcloud, Jellyfin and Portainer, and it is the least arguable result on this page — nothing interpreted anything, the bind address changed.</p>
+            <p><strong>The CIS Docker Benchmark.</strong> Three checks cleared: <code data-measured="deltas.docker_bench_warnings.restarted.cleared">5.14, 5.26, 5.3</code>. 5.14 is <em>incoming container traffic is bound to a specific host interface</em> and 5.26 is <em>the container is restricted from acquiring additional privileges</em> — the port bindings and <code>no-new-privileges</code> respectively, confirmed by a tool that has never heard of hostveil. 5.3 is a different story; see below.</p>
+            <p><strong>hostveil&rsquo;s own ports axis.</strong> Worth noting because it moved in the <em>restarted</em> column and not the <em>after</em> one: the exposed-services checker reads live sockets rather than files, so it does not credit a change until the change is real. Its own container axis moved a phase earlier, because that one reads Compose files.</p>
+
+            <h3 id="unmoved">What did not move</h3>
+            <p><strong>Lynis moved by one point, and it is right not to move further.</strong> The index went <span data-measured="phases.before.lynis.hardening_index">56</span> → <span data-measured="phases.after.lynis.hardening_index">57</span>, held there through the restart, and came back to <span data-measured="phases.restored.lynis.hardening_index">56</span> when the fixes were rolled back — so the point is attributable rather than noise. But not one of its <span data-measured="phases.before.lynis.suggestions">41</span> suggestions cleared, and there are two reasons, neither of which is that the fixes did nothing. Lynis rolls all of SSH into a single composite suggestion covering a dozen options at once; hostveil&rsquo;s Auto set changed three of them and left <code>PermitRootLogin</code> and <code>PasswordAuthentication</code> to Review, because turning those off can end the session you are issuing the command from. And most of what Lynis wants — a malware scanner, a file-integrity tool, a hardened boot loader, a login banner — is not in hostveil&rsquo;s scope at all. A tool that measures a superset of your work will mostly show you the part you did not do.</p>
+            <p><strong>The external scan did not move, and that is the fixture&rsquo;s fault rather than a result.</strong> The seeded containers are stubs that publish ports without serving them, so a connection to <code>8080</code> is refused by the backend and the scan reads it as closed <em>while the wildcard binding is still wide open</em>. That is precisely why the listening-socket instrument is on this page: an external scan reports what answers, and a port that is bound but silent becomes exposed the moment something starts serving behind it.</p>
+            <p><strong>Nothing moved in the <em>after</em> column</strong> except hostveil&rsquo;s own numbers and that single point of Lynis&rsquo;s index. Twenty-seven fixes had been applied and five files on disk had changed, and the CIS Docker Benchmark, the external scan and the kernel&rsquo;s socket table all reported an identical host. This is the honest shape of a file-editing fixer, and it is the reason the restart column exists.</p>
+
+            <div class="callout warn">
+              <span class="callout-label">One check cleared for the wrong reason</span>
+              <p>CIS 5.3 is <em>ensure that, if applicable, SELinux security options are set</em>, and it cleared. SELinux was not configured — docker-bench implements that check by asking whether <code>HostConfig.SecurityOpt</code> is non-empty, and <code>no-new-privileges</code> lands in exactly that field. So hostveil turned a genuine <span class="sev hardening">HARDENING</span> improvement into a passing SELinux check on a host with no SELinux.</p>
+              <p>It is on this page because it is the failure mode the page is about, arriving through the independent instrument rather than through ours. An external number moving is not proof that the underlying property changed. Three of the four instruments here were consistent; the fourth agreed for a reason that does not survive being read.</p>
+            </div>
+
+            <h2 id="rollback">Rollback fidelity</h2>
+            <p>Not a security measurement — a claim about the recovery layer, and the one that has to hold before any of the rest is worth having. hostveil asks an operator to let it edit files on a server, and &ldquo;you can undo it&rdquo; is the entire reason that is a reasonable thing to ask.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <tbody>
+                  <tr><td>Paths watched</td><td data-measured="rollback.paths_watched">19</td></tr>
+                  <tr><td>Changed by the fixes</td><td data-measured="rollback.paths_changed_by_fixes">5</td></tr>
+                  <tr><td>Restored byte for byte</td><td data-measured="rollback.paths_restored_exactly">5</td></tr>
+                  <tr><td>Checkpoints rolled back</td><td data-measured="rollback.checkpoints_rolled_back">27</td></tr>
+                  <tr><td><strong>Fidelity</strong></td><td><strong data-measured="rollback.fidelity">100</strong>%</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The hashing is deliberately <em>not</em> done against the checkpoints. A checkpoint records what hostveil believes it backed up, so comparing a restored file against it asks only whether hostveil agrees with itself. The candidate paths come from the scan — every file a finding points at, plus every entry of <code>/etc/sysctl.d</code>, because a fix that <em>creates</em> a file is invisible in a before-state that only lists what exists — and they are hashed on the live filesystem before anything is applied. That is the state a rollback has to reproduce.</p>
+            <p>The <em>restored</em> column of the results table is the same claim measured a second way, by instrument rather than by hash: every number came back to where it started.</p>
+
+            <h2 id="limits">What this does not show</h2>
+            <p><strong>One host, one configuration.</strong> A seeded container, not a survey. It says what happened here; it does not predict what happens on yours.</p>
+            <p><strong>Auto fixes only.</strong> <code>fix --all</code> applies exactly the fixes classified <a href="fixing#auto-standard">Auto</a>. The Review and Manual findings — <code>PermitRootLogin</code>, the firewall, the Docker TCP socket, the second root account — were all left in place, and every one of them is a bigger change than anything measured above. This is a floor, not a ceiling.</p>
+            <p><strong>Two domains did not run.</strong> Trivy was not installed, so the CVE axis is N/A; the container has no systemd, so service hardening is too. Neither is represented in any number here.</p>
+            <p><strong>The containers are stubs.</strong> They publish ports without serving them, which is what blinded the external scan. A fixture that ran real services would give that instrument something to see.</p>
+            <p><strong>Nothing here measures whether you get breached.</strong> Every instrument on this page, ours included, measures configuration. That is the honest limit of what a scanner reading files can claim.</p>
+
+            <h2 id="reproduce">Reproduce it</h2>
+            <p>The harness is in the repository, and it edits the host it runs on — point it at a container or a throwaway VM, never at your own machine.</p>
+            <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil &amp;&amp; cd hostveil
+go build -o /usr/local/bin/hostveil ./cmd/hostveil
+
+# Lynis and docker-bench-security are optional; a missing one is
+# recorded as absent rather than passed over.
+sudo scripts/measure/run.sh -p seeded /tmp/measurement.json</code></pre></div>
+            <p>Committed runs live in <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>, and every figure on this page is checked against the newest of them by a test — a stale number here is a failing build, not something a reader has to catch. The harness also runs nightly, where it asserts only the two claims that are promises rather than observations: that rollback restores every changed file exactly, and that hostveil&rsquo;s own score moved at all.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="scoring">← Scoring</a>
+              <a class="button primary" href="fixing">Fixing &amp; rollback →</a>
+            </div>

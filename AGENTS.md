@@ -34,7 +34,15 @@ shellcheck scripts/install.sh                               # only if you touche
 
 Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell.
 
-CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), `scripts/install.sh` is shellchecked, and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck and gives each fuzz target five minutes, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.
+CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), `scripts/install.sh` is shellchecked, and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck, gives each fuzz target five minutes, and runs the measurement harness below, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.
+
+### Measuring that it works
+
+E2E proves the score goes up after `fix --all`, which proves only that hostveil is self-consistent — the same code decides what a finding is, what fixing it means, and what the number should be afterwards. `scripts/measure/run.sh` is the answer to that: it runs Lynis, the CIS Docker Benchmark and a TCP scan from a container off the host, before the fixes and after them and again after rolling every one of them back, and writes one JSON document. `scripts/measure/control.sh` hardens a host from the CIS Benchmarks *without* hostveil, so the harness can also ask whether the score responds to somebody else's standard.
+
+It edits the host it runs on. Use the demo VM or a container, never your own machine. Committed results live in `docs/measurements/`, the numbers on `cmd/sitegen/content/*/docs/measurements.html` are pinned against them by `internal/docs/measurements_test.go`, and the nightly job asserts only the two claims that are promises rather than observations: that rollback restores every changed file byte for byte, and that hostveil's own score moved at all.
+
+The one thing to know before editing the harness: **rollback fidelity is judged against hashes taken before the fixes ran, on paths hostveil's own scan named.** Comparing a restored file against its checkpoint instead would ask whether hostveil agrees with itself, which it always will.
 
 ### Running it for real
 

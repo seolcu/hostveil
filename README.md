@@ -189,6 +189,27 @@ original file to a checkpoint**, then applies it. `hostveil rollback`
 restores the backup — and because every UI (CLI, TUI, web) goes through the
 same engine, a fix applied anywhere is reversible.
 
+### Does it actually work?
+
+hostveil's own score going up after hostveil's fixes proves nothing — the same
+code decides what a finding is and what the number should be afterwards. So
+the repository carries a harness that measures a seeded host with tools that
+have never heard of it: Lynis, Docker's CIS benchmark, a TCP scan from off the
+host, and the kernel's own list of listening sockets.
+
+On the seeded host, `fix --all` applied 27 fixes; four published ports left
+`0.0.0.0` for loopback, three CIS Docker checks cleared, and rolling every
+fix back restored all five changed files byte for byte. Lynis barely moved,
+and nothing outside hostveil moved at all until the services were restarted —
+every Auto fix is a file edit, so none of it is in force until whatever reads
+that file reads it again.
+
+The numbers, the method, the instruments that did not move and the one that
+cleared for the wrong reason are on the
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run it
+yourself with `scripts/measure/run.sh` — on a container or a throwaway VM, not
+your own machine.
+
 ## Interfaces
 
 <p align="center">
