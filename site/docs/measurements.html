@@ -97,14 +97,14 @@
             <p>What follows is one run against one deliberately misconfigured host. It is evidence, not a benchmark: read <a href="#limits">what this does not show</a> before quoting any of it.</p>
 
             <h2 id="host">The host</h2>
-            <p>A container seeded with the misconfigurations self-hosters actually ship: three Compose stacks totalling seven services with published ports, privileged containers and no <code>no-new-privileges</code>; an SSH drop-in permitting empty passwords, root login and password authentication; a second UID 0 account; two AI agent runtimes with their config world-readable; a Docker daemon on an unauthenticated TCP socket; and three datastores — PostgreSQL, Redis and Memcached — reachable on <code>0.0.0.0</code> with no firewall in front of them.</p>
+            <p>An ARM64 server seeded with the misconfigurations self-hosters actually ship, running the services rather than stubbing them: three Compose stacks — Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower — publishing every port on <code>0.0.0.0</code>, with no <code>no-new-privileges</code>, no restart policy and no memory limits; an SSH drop-in permitting empty passwords, root login and password authentication; ufw installed and switched off; automatic security updates off; a natively installed Redis bound to <code>0.0.0.0</code>; a second UID 0 account; a world-readable <code>/etc/shadow</code>; and two AI agent runtimes with their config beside their API keys.</p>
             <div class="docs-table-wrap">
               <table>
                 <tbody>
                   <tr><td>Operating system</td><td><code data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code></td></tr>
-                  <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil v3-dev</code></td></tr>
-                  <tr><td>Measured at</td><td><code data-measured="measured_at">2026-08-06T10:21:10+00:00</code></td></tr>
-                  <tr><td>Findings before</td><td><span data-measured="phases.before.hostveil.findings">88</span> across 10 domains that ran, of 12 attempted</td></tr>
+                  <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil v3.12.0</code></td></tr>
+                  <tr><td>Measured at</td><td><code data-measured="measured_at">2026-08-06T20:45:44+00:00</code></td></tr>
+                  <tr><td>Findings before</td><td><span data-measured="phases.before.hostveil.findings">74</span> across 10 domains that ran, of 12 attempted</td></tr>
                 </tbody>
               </table>
             </div>
@@ -115,7 +115,7 @@
                 <thead><tr><th>Instrument</th><th>Whose</th><th>What it can see</th></tr></thead>
                 <tbody>
                   <tr><td><strong>hostveil</strong> <code>scan --json</code></td><td>Ours</td><td>The self-measurement, reported alongside the others precisely so you can see whether they move together.</td></tr>
-                  <tr><td><strong>Lynis</strong></td><td><a href="https://github.com/CISOfy/lynis">CISOfy</a></td><td>A host auditor with its own rule set. Its headline is a 0–100 hardening index over <span data-measured="phases.before.lynis.tests_executed">248</span> executed tests.</td></tr>
+                  <tr><td><strong>Lynis</strong></td><td><a href="https://github.com/CISOfy/lynis">CISOfy</a></td><td>A host auditor with its own rule set. Its headline is a 0–100 hardening index over <span data-measured="phases.before.lynis.tests_executed">252</span> executed tests.</td></tr>
                   <tr><td><strong>docker-bench-security</strong></td><td><a href="https://github.com/docker/docker-bench-security">Docker</a></td><td>The CIS Docker Benchmark. Run over the image and container-runtime sections: <span data-measured="phases.before.docker_bench.checks">44</span> checks against the <em>running</em> containers.</td></tr>
                   <tr><td><strong>External TCP scan</strong></td><td>—</td><td>A connect scan from a container on the Docker bridge back to the host, so it reaches what is bound to <code>0.0.0.0</code> and nothing bound to loopback. Three outcomes: answered, refused, no reply.</td></tr>
                   <tr><td><strong>Listening sockets</strong></td><td>The kernel</td><td><code>ss -ltn</code>, split into wildcard-or-routable and loopback-only. No rule set, ours or anyone&rsquo;s.</td></tr>
@@ -123,9 +123,9 @@
               </table>
             </div>
 
-            <h2 id="phases">Four phases, and why two of them are separate</h2>
+            <h2 id="phases">Five phases, and why three of them are separate</h2>
             <p>Every Auto fix hostveil applies is a <strong>file edit</strong>. That is what makes it reversible, and it is also why none of it is in force the moment it lands: a running container keeps the port mapping it was created with, and a daemon keeps serving from the config it already loaded.</p>
-            <p>So the host is measured four times.</p>
+            <p>So the host is measured five times.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Phase</th><th>The host is…</th></tr></thead>
@@ -133,39 +133,43 @@
                   <tr><td><strong>before</strong></td><td>As seeded.</td></tr>
                   <tr><td><strong>after</strong></td><td><code>hostveil fix --all --yes</code> has run. Files changed; nothing restarted.</td></tr>
                   <tr><td><strong>restarted</strong></td><td><code>docker compose up -d</code> per stack. The services have read the new files.</td></tr>
+                  <tr><td><strong>reviewed</strong></td><td><code>hostveil fix --all --review --yes</code> has run too — the Review fixes, which hostveil can apply and will not apply unattended. This is the path an operator takes.</td></tr>
                   <tr><td><strong>restored</strong></td><td>Every checkpoint rolled back, and the services restarted back out of the change.</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Reporting only <em>after</em> would say the independent instruments saw nothing, which is true and reads as though the fixes did nothing. Reporting only <em>restarted</em> would quietly credit hostveil with a restart it does not perform and deliberately does not offer as an Auto fix — restarting a service is not reversible and cannot be checkpointed. The gap between those two columns is the single most useful thing on this page.</p>
+            <p>And reporting only the unattended fixes would measure half the tool. <code>fix --all</code> applies Auto fixes only; every SSH hardening option is Review, because turning off root login or password authentication can end the session you are issuing the command from. The <em>reviewed</em> column is what an operator who reads them and accepts them gets, and it is where the SSH domain finally moves.</p>
 
             <h2 id="results">The results</h2>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>Measurement</th><th>before</th><th>after</th><th>restarted</th><th>restored</th></tr></thead>
+                <thead><tr><th>Measurement</th><th>before</th><th>after</th><th>restarted</th><th>reviewed</th><th>restored</th></tr></thead>
                 <tbody>
-                  <tr><td>hostveil score</td><td data-measured="phases.before.hostveil.overall">28</td><td data-measured="phases.after.hostveil.overall">35</td><td data-measured="phases.restarted.hostveil.overall">37</td><td data-measured="phases.restored.hostveil.overall">28</td></tr>
-                  <tr><td>hostveil findings</td><td data-measured="phases.before.hostveil.findings">88</td><td data-measured="phases.after.hostveil.findings">61</td><td data-measured="phases.restarted.hostveil.findings">59</td><td data-measured="phases.restored.hostveil.findings">88</td></tr>
-                  <tr><td>Lynis hardening index</td><td data-measured="phases.before.lynis.hardening_index">56</td><td data-measured="phases.after.lynis.hardening_index">57</td><td data-measured="phases.restarted.lynis.hardening_index">57</td><td data-measured="phases.restored.lynis.hardening_index">56</td></tr>
-                  <tr><td>Lynis suggestions</td><td data-measured="phases.before.lynis.suggestions">41</td><td data-measured="phases.after.lynis.suggestions">41</td><td data-measured="phases.restarted.lynis.suggestions">41</td><td data-measured="phases.restored.lynis.suggestions">41</td></tr>
-                  <tr><td>CIS Docker score</td><td data-measured="phases.before.docker_bench.score">-3</td><td data-measured="phases.after.docker_bench.score">-3</td><td data-measured="phases.restarted.docker_bench.score">3</td><td data-measured="phases.restored.docker_bench.score">-3</td></tr>
-                  <tr><td>CIS Docker WARN</td><td data-measured="phases.before.docker_bench.results.WARN">16</td><td data-measured="phases.after.docker_bench.results.WARN">16</td><td data-measured="phases.restarted.docker_bench.results.WARN">13</td><td data-measured="phases.restored.docker_bench.results.WARN">16</td></tr>
-                  <tr><td>Ports bound wildcard/routable</td><td data-measured="phases.before.listeners.count">12</td><td data-measured="phases.after.listeners.count">12</td><td data-measured="phases.restarted.listeners.count">7</td><td data-measured="phases.restored.listeners.count">12</td></tr>
-                  <tr><td>Ports answering from off-host</td><td data-measured="phases.before.external_scan.count">5</td><td data-measured="phases.after.external_scan.count">5</td><td data-measured="phases.restarted.external_scan.count">5</td><td data-measured="phases.restored.external_scan.count">5</td></tr>
+                  <tr><td>hostveil score</td><td data-measured="phases.before.hostveil.overall">42</td><td data-measured="phases.after.hostveil.overall">46</td><td data-measured="phases.restarted.hostveil.overall">50</td><td data-measured="phases.reviewed.hostveil.overall">59</td><td data-measured="phases.restored.hostveil.overall">41</td></tr>
+                  <tr><td>hostveil findings</td><td data-measured="phases.before.hostveil.findings">74</td><td data-measured="phases.after.hostveil.findings">58</td><td data-measured="phases.restarted.hostveil.findings">55</td><td data-measured="phases.reviewed.hostveil.findings">45</td><td data-measured="phases.restored.hostveil.findings">81</td></tr>
+                  <tr><td>Lynis hardening index</td><td data-measured="phases.before.lynis.hardening_index">56</td><td data-measured="phases.after.lynis.hardening_index">57</td><td data-measured="phases.restarted.lynis.hardening_index">57</td><td data-measured="phases.reviewed.lynis.hardening_index">60</td><td data-measured="phases.restored.lynis.hardening_index">57</td></tr>
+                  <tr><td>Lynis suggestions</td><td data-measured="phases.before.lynis.suggestions">40</td><td data-measured="phases.after.lynis.suggestions">40</td><td data-measured="phases.restarted.lynis.suggestions">40</td><td data-measured="phases.reviewed.lynis.suggestions">39</td><td data-measured="phases.restored.lynis.suggestions">39</td></tr>
+                  <tr><td>CIS Docker PASS</td><td data-measured="phases.before.docker_bench.results.PASS">16</td><td data-measured="phases.after.docker_bench.results.PASS">16</td><td data-measured="phases.restarted.docker_bench.results.PASS">19</td><td data-measured="phases.reviewed.docker_bench.results.PASS">20</td><td data-measured="phases.restored.docker_bench.results.PASS">16</td></tr>
+                  <tr><td>CIS Docker WARN</td><td data-measured="phases.before.docker_bench.results.WARN">16</td><td data-measured="phases.after.docker_bench.results.WARN">16</td><td data-measured="phases.restarted.docker_bench.results.WARN">13</td><td data-measured="phases.reviewed.docker_bench.results.WARN">12</td><td data-measured="phases.restored.docker_bench.results.WARN">16</td></tr>
+                  <tr><td>Ports bound wildcard/routable</td><td data-measured="phases.before.listeners.count">7</td><td data-measured="phases.after.listeners.count">7</td><td data-measured="phases.restarted.listeners.count">2</td><td data-measured="phases.reviewed.listeners.count">2</td><td data-measured="phases.restored.listeners.count">7</td></tr>
+                  <tr><td>Ports answering from off-host</td><td data-measured="phases.before.external_scan.count">7</td><td data-measured="phases.after.external_scan.count">7</td><td data-measured="phases.restarted.external_scan.count">2</td><td data-measured="phases.reviewed.external_scan.count">2</td><td data-measured="phases.restored.external_scan.count">7</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><code>hostveil fix --all --yes</code> applied <strong data-measured="fixes.attempted">27</strong> fixes and failed none.</p>
+            <p><code>hostveil fix --all --yes</code> applied <strong data-measured="fixes.attempted">24</strong> fixes and failed none. <code>fix --all --review --yes</code> then offered <strong data-measured="reviewed.applied">16</strong> more, of which <span data-measured="reviewed.left_a_checkpoint">9</span> left a checkpoint and <span data-measured="reviewed.not_reversible">7</span> did not — six image updates and unattended-upgrades, each marked <code>[not reversible]</code> in hostveil&rsquo;s own history, and none of them undone by the rollback below.</p>
 
             <h3 id="moved">What moved</h3>
-            <p><strong>The kernel&rsquo;s listening sockets.</strong> Five ports left the wildcard address for loopback: <code data-measured="deltas.listeners_public_tcp.restarted.cleared">5432, 6380, 8080, 8096, 9000</code>. That is Postgres, Redis, Nextcloud, Jellyfin and Portainer, and it is the least arguable result on this page — nothing interpreted anything, the bind address changed.</p>
-            <p><strong>The CIS Docker Benchmark.</strong> Three checks cleared: <code data-measured="deltas.docker_bench_warnings.restarted.cleared">5.14, 5.26, 5.3</code>. 5.14 is <em>incoming container traffic is bound to a specific host interface</em> and 5.26 is <em>the container is restricted from acquiring additional privileges</em> — the port bindings and <code>no-new-privileges</code> respectively, confirmed by a tool that has never heard of hostveil. 5.3 is a different story; see below.</p>
-            <p><strong>hostveil&rsquo;s own ports axis.</strong> Worth noting because it moved in the <em>restarted</em> column and not the <em>after</em> one: the exposed-services checker reads live sockets rather than files, so it does not credit a change until the change is real. Its own container axis moved a phase earlier, because that one reads Compose files.</p>
+            <p><strong>What answers from off the host.</strong> Five ports stopped answering a TCP connect from another network namespace: <code data-measured="deltas.external_scan_reachable_tcp.restarted.cleared">5432, 6380, 8080, 8096, 9000</code> — PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The kernel&rsquo;s own socket table agrees exactly, and this is the least arguable result on the page: nothing interpreted anything, the bind address changed and the service stopped being reachable. Two ports remain, and both are correct: SSH, and a natively installed Redis that hostveil reports and declines to fix, because binding that one to loopback means editing a config file whose path and syntax differ per datastore and which the finding does not carry.</p>
+            <p><strong>The CIS Docker Benchmark.</strong> Three checks cleared at the restart — <code data-measured="deltas.docker_bench_warnings.restarted.cleared">5.14, 5.26, 5.3</code> — and a fourth once the Review fixes were accepted: <strong>5.11</strong>, <em>the memory usage for containers is limited</em>, which is <code>compose.ds010</code>. 5.14 is <em>incoming container traffic is bound to a specific host interface</em> and 5.26 is <em>the container is restricted from acquiring additional privileges</em> — the port bindings and <code>no-new-privileges</code>, confirmed by a tool that has never heard of hostveil. 5.3 is a different story; see below.</p>
+            <p><strong>SSH, but only on the reviewed path.</strong> hostveil&rsquo;s SSH domain goes 18 → 44 with the unattended fixes and 18 → <strong>100</strong> once the Review ones are accepted. That gap is the whole reason the <em>reviewed</em> column exists: root login and password authentication are the two options that matter most and the two hostveil will not switch off while you are not looking, because getting them wrong ends the session the command was issued from.</p>
+            <p><strong>Lynis, at last.</strong> The hardening index went <span data-measured="phases.before.lynis.hardening_index">56</span> → <span data-measured="phases.reviewed.lynis.hardening_index">60</span>, and the suggestion it cleared is attributable: <code data-measured="deltas.lynis_suggestions.reviewed.cleared">PKGS-7420</code>, <em>detect toolkit to automatically download and apply upgrades</em>, cleared because hostveil switched unattended-upgrades on. On the unattended path the same index moves a single point — measuring only that path is what made an earlier version of this page report that Lynis never moves.</p>
 
             <h3 id="unmoved">What did not move</h3>
-            <p><strong>Lynis moved by one point, and it is right not to move further.</strong> The index went <span data-measured="phases.before.lynis.hardening_index">56</span> → <span data-measured="phases.after.lynis.hardening_index">57</span>, held there through the restart, and came back to <span data-measured="phases.restored.lynis.hardening_index">56</span> when the fixes were rolled back — so the point is attributable rather than noise. But not one of its <span data-measured="phases.before.lynis.suggestions">41</span> suggestions cleared, and there are two reasons, neither of which is that the fixes did nothing. Lynis rolls all of SSH into a single composite suggestion covering a dozen options at once; hostveil&rsquo;s Auto set changed three of them and left <code>PermitRootLogin</code> and <code>PasswordAuthentication</code> to Review, because turning those off can end the session you are issuing the command from. And most of what Lynis wants — a malware scanner, a file-integrity tool, a hardened boot loader, a login banner — is not in hostveil&rsquo;s scope at all. A tool that measures a superset of your work will mostly show you the part you did not do.</p>
-            <p><strong>The external scan did not move, and that is the fixture&rsquo;s fault rather than a result.</strong> The seeded containers are stubs that publish ports without serving them, so a connection to <code>8080</code> is refused by the backend and the scan reads it as closed <em>while the wildcard binding is still wide open</em>. That is precisely why the listening-socket instrument is on this page: an external scan reports what answers, and a port that is bound but silent becomes exposed the moment something starts serving behind it.</p>
-            <p><strong>Nothing moved in the <em>after</em> column</strong> except hostveil&rsquo;s own numbers and that single point of Lynis&rsquo;s index. Twenty-seven fixes had been applied and five files on disk had changed, and the CIS Docker Benchmark, the external scan and the kernel&rsquo;s socket table all reported an identical host. This is the honest shape of a file-editing fixer, and it is the reason the restart column exists.</p>
+            <p><strong>hostveil&rsquo;s container axis stayed at 0/100 the whole way through.</strong> Every fix it has for a Compose file was applied and the axis did not move, because what is left is Manual by design: the Docker socket mounted into Portainer and Watchtower, host networking, secrets in the environment. Removing the socket mount breaks the two tools that need it, and hostveil will not make that call for you.</p>
+            <p><strong>Two of Lynis&rsquo;s three warnings are a finding hostveil found and declined.</strong> <code>AUTH-9204</code> is <em>check users with an UID of zero</em> and <code>AUTH-9208</code> is <em>check non-unique accounts in passwd file</em> — both the seeded second root, which hostveil reports as <code>accounts.uid0</code> and leaves alone. Deleting an account is not reversible from a checkpoint: <code>userdel</code> takes the account, its group and its mail spool, and orphans every file it owned. The overlap between the two tools is real, and hostveil is choosing not to take it.</p>
+            <p><strong>Six container images were updated and the CVE axis went 2 → 1.</strong> Newer images, still carrying published vulnerabilities, and more containers running after the restart means more images scanned. An image bump is not a patch, and the number says so.</p>
+            <p><strong>Nothing moved in the <em>after</em> column</strong> except hostveil&rsquo;s own numbers. Twenty-four fixes had been applied and five files on disk had changed, and the CIS Docker Benchmark, the external scan and the kernel&rsquo;s socket table all reported an identical host. This is the honest shape of a file-editing fixer, and it is the reason the restart column exists.</p>
 
             <div class="callout warn">
               <span class="callout-label">One check cleared for the wrong reason</span>
@@ -178,10 +182,10 @@
             <div class="docs-table-wrap">
               <table>
                 <tbody>
-                  <tr><td>Paths watched</td><td data-measured="rollback.paths_watched">19</td></tr>
+                  <tr><td>Paths watched</td><td data-measured="rollback.paths_watched">17</td></tr>
                   <tr><td>Changed by the fixes</td><td data-measured="rollback.paths_changed_by_fixes">5</td></tr>
                   <tr><td>Restored byte for byte</td><td data-measured="rollback.paths_restored_exactly">5</td></tr>
-                  <tr><td>Checkpoints rolled back</td><td data-measured="rollback.checkpoints_rolled_back">27</td></tr>
+                  <tr><td>Checkpoints rolled back</td><td data-measured="rollback.checkpoints_rolled_back">33</td></tr>
                   <tr><td><strong>Fidelity</strong></td><td><strong data-measured="rollback.fidelity">100</strong>%</td></tr>
                 </tbody>
               </table>
