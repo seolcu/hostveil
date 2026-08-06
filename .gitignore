@@ -15,3 +15,10 @@ dist/
 CLAUDE.local.md
 
 test-results/
+
+# Python bytecode. scripts/measure/ is importable — report.py is loaded as a
+# module to recompute a run's deltas without re-running the harness — and the
+# cache CPython writes beside it is a build artifact that once reached a
+# commit because nothing here excluded it.
+__pycache__/
+*.py[cod]
