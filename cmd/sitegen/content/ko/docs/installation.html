@@ -13,7 +13,7 @@
 
             <div class="callout">
               <span class="callout-label">지원 플랫폼</span>
-              <p><strong>Linux</strong>와 <strong>macOS</strong>의 <code>amd64</code>·<code>arm64</code> 아키텍처용 사전 빌드 바이너리가 제공됩니다. hostveil은 셀프호스팅 리눅스 서버를 위해 설계되었으며, SSH·방화벽·자동 업데이트 점검은 리눅스를 대상으로 합니다.</p>
+              <p><strong>hostveil은 리눅스 호스트를 감사합니다.</strong> 사전 빌드 바이너리는 Linux와 macOS의 <code>amd64</code>·<code>arm64</code>용으로 제공되고 macOS 빌드도 실제로 실행됩니다 — 다만 그 안의 탐지 규칙은 전부 리눅스에 관한 것이라, Mac에서는 대부분의 도메인이 N/A로 나오고 점수는 그렇지 않은 두 개에서 나옵니다. 거기서 나온 숫자를 읽기 전에 <a href="#macos">macOS에서 실행하기</a>를 보세요.</p>
             </div>
 
             <h2>설치 스크립트가 하는 일</h2>
@@ -64,7 +64,27 @@
 sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>패키지는 설치 스크립트와 같은 경로 <code>/usr/bin/hostveil</code>에 같은 바이너리 하나를 설치하므로 둘은 서로 바꿔 쓸 수 있습니다 — PATH에 사본이 두 개 남는 일 없이 옮겨 갈 수 있습니다. Docker와 <code>iproute2</code>는 <em>권장</em>일 뿐 필수가 아닙니다. 없으면 컨테이너·CVE·노출된 서비스 영역이 N/A로 표시될 뿐, hostveil이 실행되지 않는 것은 아닙니다.</p>
             <p>활성화할 서비스도, 편집할 설정 파일도 없습니다. 패키지를 제거해도 <code>/var/lib/hostveil</code>은 남습니다 — <code>--uninstall</code>과 같은 이유로, 그 체크포인트가 hostveil이 편집한 모든 파일의 백업이기 때문입니다.</p>
-            <p>패키지는 리눅스 전용입니다. hostveil은 macOS에서 빌드되고 실행되지만 거기서는 볼 것이 없습니다 — systemd도, ufw도, 기대하는 형태의 <code>/etc/shadow</code>도 없습니다.</p>
+            <p>패키지는 리눅스 전용입니다.</p>
+
+            <h2 id="macos">macOS에서 실행하기</h2>
+            <p>macOS 빌드는 진짜 빌드입니다 — 설치 스크립트가 받아 가고, 실행되고, 보고서를 냅니다. 공개하는 이유는 hostveil이 흔히 노트북에서 조작되기 때문이고, 공개하지 않는 빌드는 깨져도 아무도 모르기 때문입니다. 다만 이것은 macOS 감사 도구가 아닙니다. 도구 어디에도 Darwin 전용 규칙은 없습니다.</p>
+            <p>Docker가 없는 Mac에서는 열두 도메인 중 열 개가 <strong>N/A</strong>로 나옵니다. 일곱 개는 스스로 볼 것을 찾지 못하고 — <code>/proc/sys</code>도, systemd도, <code>apt</code>나 <code>dnf</code>도, <code>ss</code>도 없습니다 — 나머지 셋은 일부러 제외됩니다. macOS에서는 묻지 않은 질문에 답을 해 버리기 때문입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>도메인</th><th>macOS에서</th></tr></thead>
+                <tbody>
+                  <tr><td>호스트 방화벽</td><td>제외됩니다. hostveil은 ufw, firewalld, nftables, iptables를 봅니다. macOS에는 넷 다 없고 대신 <code>pf</code>를 쓰므로, &ldquo;내가 보는 것 중에 아무것도 없다&rdquo;가 <code>firewall.inactive</code>로 보고됐을 겁니다 — 찾아본 적도 없는 방화벽에 대한 최상위 심각도 발견 항목으로요.</td></tr>
+                  <tr><td>계정 위생</td><td>제외됩니다. macOS에도 <code>/etc/passwd</code>가 있지만 계정 데이터베이스는 Open Directory이고 그 파일은 호스트를 설명하지 않습니다. <code>/etc/shadow</code> 쪽은 아예 실행될 수 없으며, 그때 나올 조언인 &ldquo;<code>sudo</code>로 다시 실행하세요&rdquo;는 결코 도움이 될 수 없습니다. 파일이 읽히지 않는 게 아니라 없기 때문입니다.</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td>제외됩니다. 같은 <code>/etc/passwd</code>에서 리눅스 UID 범위로 홈 디렉터리를 찾습니다. macOS 계정은 501부터라 <code>/var/root</code>만 찾았을 것이고, <code>/Users</code>는 열어보지도 않은 채 &ldquo;에이전트 런타임 없음&rdquo;이라고 보고했을 겁니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>두 도메인은 실행됩니다. <strong>SSH</strong>는 <code>/etc/ssh/sshd_config</code>를 읽는데, 이 파일은 원격 로그인이 켜져 있든 아니든 macOS가 싣고 있습니다. 그리고 그 발견 항목들은 리눅스가 아니라 OpenSSH에 관한 것입니다 — <code>PasswordAuthentication</code>은 Darwin에서도 같은 뜻입니다. <strong>파일 권한</strong>은 아는 파일만 확인하고 나머지는 건너뜁니다. 기본 상태의 macOS에서는 대개 둘 다 깨끗합니다.</p>
+            <div class="callout warn">
+              <span class="callout-label">macOS에서의 수정은 실제 파일을 씁니다</span>
+              <p>SSH 도메인은 읽기 전용 시늉이 아닙니다. Mac에서 <code>hostveil fix ssh.passwordauth</code>를 실행하면 서버에서와 똑같이 <code>/etc/ssh/sshd_config</code>를 백업하고 다시 씁니다. <code>hostveil history</code>에서 되돌리는 것도 똑같습니다. 이건 올바른 동작이고, 노트북에서 실행하기 전에 알아 둘 값어치가 있습니다.</p>
+            </div>
+            <p>그리고 점수는 N/A가 아니라 숫자로 나옵니다. 도메인 두 개가 실행됐으니 평균 낼 것이 있으니까요. 다만 그것은 100점 중 19점어치의 가중치에 대한 평균이고, 실행되지 않은 열 개 도메인에 대해서는 아무 말도 하지 않습니다. 헤드라인 말고 축별 분해를 읽으세요. <code>pf</code>, 응용 방화벽, Homebrew의 업데이트 상태, launchd 서비스, System Integrity Protection — 그 어느 것도 hostveil의 어떤 부분도 살펴보지 않습니다.</p>
 
             <h2 id="upgrade">업그레이드와 제거</h2>
             <p>업그레이드하려면 설치 명령을 다시 실행하세요. 바이너리만 교체되고, 저장된 스캔 기록과 롤백 체크포인트는 그대로 남습니다.</p>

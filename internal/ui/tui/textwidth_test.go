@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -20,6 +22,13 @@ import (
 // Under ko_KR.UTF-8 that default calls "…", "→", "±" and "·" two columns
 // wide while lipgloss calls them one. textwidth pins an explicit condition
 // to avoid it; this is what would notice if that pin were removed.
+//
+// It runs twice. Under RUNEWIDTH_EASTASIAN the two libraries used to part
+// company for the opposite reason: lipgloss honours that variable in a
+// package init that mutates state hostveil cannot reach, textwidth ignored
+// it, and "→ … ●" measured 5 columns one way and 8 the other. The variable
+// has to be set before this process starts for x/ansi's init to see it,
+// which is why the second run is a re-exec of this same test binary.
 func TestTextwidthAgreesWithLipgloss(t *testing.T) {
 	for _, s := range []string{
 		// Every non-ASCII glyph the TUI draws.
@@ -70,5 +79,44 @@ func TestWrapLinesFitTheTerminal(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// eastAsianChild names the re-exec. A test binary inherits the environment
+// it was started with, and charmbracelet/x/ansi reads RUNEWIDTH_EASTASIAN in
+// a package init — so the only way to exercise the set case is to start
+// again with it set.
+const eastAsianChild = "HOSTVEIL_TEST_EASTASIAN_CHILD"
+
+// TestTextwidthAgreesWithLipglossUnderEastAsianWidth is the same assertion
+// on the other side of the one variable that used to break it.
+//
+// RUNEWIDTH_EASTASIAN is what an operator sets when their terminal renders
+// ambiguous characters wide, and it is common in CJK terminal setups.
+// lipgloss honours it; textwidth did not, so the ellipsis truncate appends
+// and the arrows and bullets the status lines draw measured one column to
+// hostveil and two to lipgloss. truncate cut to one budget while padRight
+// padded to another — the exact failure textwidth's doc comment says the
+// package exists to prevent, arriving through the door it left open.
+func TestTextwidthAgreesWithLipglossUnderEastAsianWidth(t *testing.T) {
+	if os.Getenv(eastAsianChild) != "" {
+		// The re-exec. x/ansi's init has already run with the variable set,
+		// so this is the measurement that used to disagree.
+		t.Run("agreement", TestTextwidthAgreesWithLipgloss)
+		return
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		t.Skipf("cannot find the test binary to re-exec: %v", err)
+	}
+	cmd := exec.Command(exe, "-test.run", "TestTextwidthAgreesWithLipglossUnderEastAsianWidth", "-test.v")
+	cmd.Env = append(os.Environ(), eastAsianChild+"=1", "RUNEWIDTH_EASTASIAN=true")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("under RUNEWIDTH_EASTASIAN=true the two measurements disagree:\n%s", out)
+	}
+	if !strings.Contains(string(out), "agreement") {
+		t.Errorf("the re-exec did not run the agreement check — it would pass vacuously:\n%s", out)
 	}
 }

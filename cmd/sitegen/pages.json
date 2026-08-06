@@ -187,6 +187,25 @@
       }
     },
     {
+      "slug": "environment",
+      "group": "reference",
+      "ogType": "article",
+      "en": {
+        "title": "Environment variables — hostveil docs",
+        "description": "Every environment variable hostveil reads, honours from your shell, or sets for the commands it runs: its own settings, the sudo behaviour, colour and terminal detection, the LC_ALL pin, and the proxy variables that reach its one network request.",
+        "ogTitle": "Environment variables — hostveil docs",
+        "ogDescription": "One place for every variable: hostveil's own settings, what it honours from your shell, what it sets for child commands, and what it reads from the tooling around it.",
+        "nav": "Environment variables"
+      },
+      "ko": {
+        "title": "환경 변수 — hostveil 문서",
+        "description": "hostveil이 읽거나, 셸에서 따르거나, 실행하는 명령에 설정해 주는 모든 환경 변수: 자체 설정, sudo 동작, 색과 터미널 감지, LC_ALL 고정, 그리고 유일한 네트워크 요청에 걸리는 프록시 변수까지.",
+        "ogTitle": "환경 변수 — hostveil 문서",
+        "ogDescription": "모든 변수를 한곳에: hostveil 자체 설정, 셸에서 따르는 것, 자식 명령에 설정해 주는 것, 그리고 주변 도구에서 읽는 것.",
+        "nav": "환경 변수"
+      }
+    },
+    {
       "slug": "faq",
       "group": "reference",
       "ogType": "article",

@@ -1,0 +1,168 @@
+            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Environment variables</p>
+            <h1>Environment variables</h1>
+            <p class="lead">hostveil has no config file, so the environment is the whole of its persistent configuration surface. This page lists every variable it reads, every variable it sets for the commands it runs, and every variable it inherits that changes what you see — with the default and the accepted values for each.</p>
+
+            <h2 id="settings">hostveil's own settings</h2>
+            <p>These are hostveil's, and each has a flag equivalent or no equivalent at all. Set them in a shell profile, a systemd unit, or in front of a single command.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HOSTVEIL_DEBUG</code></td><td>unset — no tracing</td><td>Any non-empty string</td><td>Writes one line per command to <strong>stderr</strong>: the quoted argument list, how long it took to the millisecond, and whether it failed — including the binary lookups that decide whether a domain runs at all. Command <em>output</em> is deliberately never logged, because <code>docker inspect</code> reports the resolved environment of every container and a trace pasted into a bug report must not be a credential leak. Nothing else changes; without it hostveil takes the same code path it always did.</td></tr>
+                  <tr><td><code>HOSTVEIL_NO_SUDO</code></td><td>unset — auto-elevation is on</td><td>Any non-empty string</td><td>Never re-execute under <code>sudo</code>. The ground that needs root — <code>sshd_config</code>, <code>/etc/shadow</code>, firewall state — then reports <strong>Skipped</strong> with a reason instead of failing, and scoring renormalizes over what did run. Nothing about detection or fixing changes. It suppresses only the re-exec: a hostveil already running as root is unaffected.</td></tr>
+                  <tr><td><code>HOSTVEIL_THEME</code></td><td>the remembered choice, else <code>onedark</code></td><td><code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code></td><td>Color palette for the TUI and the palette the dashboard opens in. Precedence is <code>--theme</code> &gt; this &gt; the choice remembered in the state directory &gt; the default. The name is matched exactly and is <strong>case-sensitive</strong> with no trimming, so <code>HOSTVEIL_THEME=Nord</code> does nothing at all and says nothing — an unrecognised value here falls back silently, and only a bad <code>--theme</code> is an error.</td></tr>
+                  <tr><td><code>HOSTVEIL_GLYPHS</code></td><td>the remembered choice, else <code>plain</code></td><td><code>plain</code>, <code>nerd</code></td><td>Symbol set for the status markers the TUI and <code>hostveil scan</code> draw. Precedence is <code>--glyphs</code> &gt; this &gt; the remembered choice &gt; <code>plain</code>. Surrounding whitespace is trimmed but the name is case-sensitive, and an unrecognised value falls back silently. <code>nerd</code> needs a patched Nerd Font installed: a terminal cannot be asked what font it has, and a missing glyph occupies the same cell a present one would, so this is opt-in.</td></tr>
+                  <tr><td><code>HOSTVEIL_OLLAMA_HOST</code></td><td><code>http://127.0.0.1:11434</code></td><td>Any base URL</td><td>Where the optional local LLM listens. Used as a prefix — <code>/api/version</code> and <code>/api/generate</code> are appended and the value is never parsed or validated, so a trailing slash produces a double slash in the request path. An empty value is treated as unset. Advisory only: it affects <code>explain --ai</code> and the AI buttons, and no score, finding, or fix depends on the server being reachable.</td></tr>
+                  <tr><td><code>HOSTVEIL_OLLAMA_MODEL</code></td><td><code>llama3.2</code></td><td>Any model tag Ollama accepts</td><td>Which model to ask. Not validated locally; if it has not been pulled, Ollama answers with an error naming it. An empty value is treated as unset. Advisory only, on the same terms as the host above.</td></tr>
+                  <tr><td><code>HOSTVEIL_ELEVATED</code></td><td>unset — hostveil never sets it</td><td>Any non-empty string</td><td>Declares that elevation has already happened, so hostveil does not call <code>sudo</code>. It exists for a wrapper script that elevates on hostveil's behalf. hostveil used to set this on the child itself and read it back, which could not work — see below.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The three flag-shaped ones — <code>HOSTVEIL_DEBUG</code>, <code>HOSTVEIL_NO_SUDO</code>, <code>HOSTVEIL_ELEVATED</code> — are tested for being <em>non-empty</em>, not for a value. <code>HOSTVEIL_DEBUG=false</code> enables tracing and <code>HOSTVEIL_NO_SUDO=0</code> opts out of sudo. Everything writes them as <code>=1</code> because that is the only value that reads the way it behaves; to turn one off, unset it or set it to the empty string.</p>
+
+            <h3 id="sudo">What survives the re-exec under sudo</h3>
+            <p>Running a root-benefiting command as a normal user re-executes hostveil under <code>sudo</code>, and <code>sudo</code>'s <code>env_reset</code> — the default on every mainstream distribution — keeps only what <code>env_keep</code> names: <code>TERM</code>, <code>LANG</code>, <code>LC_*</code>, and a short list besides. Never an application's own variable. So hostveil hands the settings you did set to <code>sudo</code> as assignments on its command line, which is how they arrive.</p>
+            <p>Carried: <code>HOSTVEIL_DEBUG</code>, <code>HOSTVEIL_THEME</code>, <code>HOSTVEIL_GLYPHS</code>, <code>HOSTVEIL_OLLAMA_HOST</code>, <code>HOSTVEIL_OLLAMA_MODEL</code>, and <code>NO_COLOR</code> — each only when it is actually set, so a host with none of them builds exactly the command it always did. <code>HOSTVEIL_NO_SUDO</code> is not carried because reaching the re-exec at all means it was unset, and <code>HOSTVEIL_ELEVATED</code> is not carried for the reason below.</p>
+            <div class="code-block"><pre><code>HOSTVEIL_DEBUG=1 hostveil scan
+  runs:  sudo HOSTVEIL_DEBUG=1 /usr/local/bin/hostveil scan</code></pre></div>
+            <p>This had to be built, because for a long time none of them crossed. <code>HOSTVEIL_DEBUG=1 hostveil scan</code> is printed in <code>hostveil help</code>, in the README and on the troubleshooting page as <em>the</em> thing to attach to a bug report, and on an ordinary non-root host it produced a normal scan, no trace, and nothing to suggest the variable had been discarded; a theme or glyph set was ignored the same silent way. Continuous integration never saw it, because the end-to-end job runs as root with <code>HOSTVEIL_NO_SUDO=1</code> — both of the branches that skip the re-exec. Any variable <em>not</em> on the list above is still dropped by <code>env_reset</code>: use <code>sudo -E</code>, or add an <code>env_keep</code> entry for it.</p>
+            <div class="callout warn">
+              <span class="callout-label">Why hostveil cannot mark its own child</span>
+              <p><code>HOSTVEIL_ELEVATED=1</code> used to be set on the <code>sudo</code> child and read back there as a loop guard, and <code>env_reset</code> deleted it every time, so the guard could never fire. On a host whose <code>sudoers</code> sets a non-root <code>runas_default</code>, <code>sudo</code> returned an unprivileged process that re-ran <code>sudo</code>, without bound, prompting for a password each time. The guard that works is <a href="#tooling"><code>SUDO_USER</code></a>, which <code>sudo</code> sets in the target environment itself rather than passing through.</p>
+            </div>
+
+            <h2 id="honoured">What hostveil honours from your environment</h2>
+            <p>hostveil reads some of these itself and inherits the rest through the terminal libraries the TUI is built on. None of them changes a finding, a score, or a fix — but several change what you are shown, and two change where files land.</p>
+
+            <h3 id="color">Color and the terminal</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>NO_COLOR</code></td><td>unset — color on a terminal</td><td>See the note below — the two implementations disagree</td><td>Suppresses ANSI color. For <code>hostveil scan</code> this is hostveil's own check and the only place it looks; for the TUI it arrives through the terminal library. The dashboard is HTML and ignores it.</td></tr>
+                  <tr><td><code>TERM</code></td><td>inherited; unset is treated as <code>dumb</code></td><td>Any terminfo entry name</td><td>Drives the TUI's color depth and key decoding: <code>dumb</code> or empty renders without color, <code>*-256color</code> gives 256, <code>*-color</code> gives 16. <code>hostveil scan</code> never consults it, so <code>scan</code> still emits color under <code>TERM=dumb</code> where the TUI does not. One of the few variables <code>sudo</code> keeps, so it survives auto-elevation.</td></tr>
+                  <tr><td><code>COLORTERM</code></td><td>unset</td><td><code>truecolor</code>, <code>24bit</code>, <code>yes</code>, <code>true</code> (case-insensitive)</td><td>Promotes the TUI to 24-bit color whatever terminfo says about <code>TERM</code>. Worth setting if a theme looks wrong: the palettes are written as 24-bit hex and are degraded per profile, so the same theme is materially different at 256 colors.</td></tr>
+                  <tr><td><code>CLICOLOR</code></td><td>unset</td><td><code>1</code>, <code>true</code>, <code>t</code> (and their false forms)</td><td>The <em>clicolors</em> convention: on a terminal whose <code>TERM</code> is not <code>dumb</code>, raises the TUI's floor to 16 colors. <code>NO_COLOR</code> wins over it. TUI only.</td></tr>
+                  <tr><td><code>CLICOLOR_FORCE</code></td><td>unset</td><td><code>1</code>, <code>true</code>, <code>t</code> (and their false forms)</td><td>Makes the TUI emit color even when its output is not a terminal, overriding <code>TERM=dumb</code>. Still loses to <code>NO_COLOR</code>. <code>hostveil scan</code> does not honour it — its rule requires a real terminal — so there is no supported way to get colored <code>scan</code> output into a pipe.</td></tr>
+                  <tr><td><code>TTY_FORCE</code></td><td>unset</td><td><code>1</code>, <code>true</code>, <code>t</code> (and their false forms)</td><td>Makes the TUI treat its output as a terminal without checking the file descriptor.</td></tr>
+                  <tr><td><code>TMUX</code></td><td>set by tmux inside a session</td><td>Presence only; the value is not parsed</td><td>Tells the TUI it is inside tmux, after which it runs <code>tmux info</code> to decide between 256 and 24-bit color. That call is the one command hostveil's process makes that does not go through its own command layer: it is not traced by <code>HOSTVEIL_DEBUG</code>, not bounded by hostveil's command timeout, and not covered by the <a href="#children">locale pin</a>.</td></tr>
+                  <tr><td><code>TERM_PROGRAM</code></td><td>set by the terminal emulator</td><td>Emulator identifiers (<code>iTerm.app</code>, <code>vscode</code>, …)</td><td>Terminal-capability sniffing during TUI startup, to decide which quirks to apply.</td></tr>
+                  <tr><td><code>SSH_TTY</code></td><td>set by sshd on a remote login</td><td>Presence only; the path is not used</td><td>Tells the TUI it is running over SSH, which changes what it assumes the terminal supports. Relevant here because a self-hosted server is usually reached this way.</td></tr>
+                  <tr><td><code>WT_SESSION</code></td><td>set by Windows Terminal</td><td>Presence only</td><td>Read during TUI startup and inert on the platforms hostveil ships for. Listed so the enumeration is complete.</td></tr>
+                  <tr><td><code>GOOGLE_CLOUD_SHELL</code></td><td>set by Google Cloud Shell</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td>Promotes the TUI to 24-bit color, like <code>COLORTERM</code>, without <code>COLORTERM</code> being set. Read four lines from <code>WT_SESSION</code> in the same function, and listed for the same reason.</td></tr>
+                  <tr><td><code>TERMINFO</code></td><td>unset — the system database</td><td>A directory holding a terminfo database</td><td>Where the TUI looks up what <code>TERM</code> can do. It decides the answer to the truecolor probe and which key table the TUI decodes with, so pointing it at a database that does not describe your terminal produces wrong colors or keys that do nothing. <code>hostveil scan</code> never reads a terminfo entry.</td></tr>
+                  <tr><td><code>TERMINFO_DIRS</code></td><td>unset</td><td>Colon-separated directories</td><td>The same lookup, searched after <code>TERMINFO</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="callout-label">NO_COLOR is implemented twice</span>
+              <p>hostveil's own check, which governs <code>hostveil scan</code>, tests only whether the variable is <em>present</em>: any value disables color, including <code>NO_COLOR=0</code> and an empty <code>NO_COLOR=</code>. The TUI's check comes from the terminal library and parses the value as a boolean: <code>NO_COLOR=0</code>, <code>NO_COLOR=</code> and <code>NO_COLOR=yes</code> all leave color on. So <code>NO_COLOR=0 hostveil scan</code> is monochrome while <code>NO_COLOR=0 hostveil tui</code> is colored. Set it to <code>1</code> and both agree. Note that treating an empty value as "disable" also departs from the <em>no-color.org</em> convention, which says it should not.</p>
+            </div>
+
+            <h3 id="proxy">The proxy variables, on one request</h3>
+            <p>hostveil makes exactly one network request of its own: the advisory explainer talking to Ollama. It uses Go's default HTTP transport, which honours the standard proxy variables.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HTTP_PROXY</code>, <code>HTTPS_PROXY</code></td><td>unset</td><td>A proxy URL; the lowercase spellings work too</td><td>Routes the Ollama request through a proxy. The default <code>HOSTVEIL_OLLAMA_HOST</code> is loopback and is exempt, so this only takes effect if you have pointed hostveil at an Ollama on another machine — in which case your prompts, which contain your findings, go through that proxy.</td></tr>
+                  <tr><td><code>NO_PROXY</code></td><td>unset</td><td>Comma-separated hosts, domains or CIDRs</td><td>Exempts a host from the above. Loopback is already exempt without it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Nothing else in hostveil opens a socket. The scan reads files and runs local commands; the dashboard binds to loopback and serves; the CVE scan is Trivy&rsquo;s own process with its own configuration.</p>
+
+            <h3 id="paths">Where hostveil keeps things, and what it can find</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>HOME</code></td><td>set by login; no fallback of hostveil's own</td><td>An absolute path</td><td>Decides the state directory when hostveil is <em>not</em> root: <code>$HOME/.local/share/hostveil</code>, which holds the saved scans, the rollback checkpoints, and the remembered theme, glyph and layout choices. As root the directory is <code>/var/lib/hostveil</code> and <code>HOME</code> is not consulted — which is why a fix applied under <code>sudo</code> is invisible to an unprivileged <code>hostveil history</code>.</td></tr>
+                  <tr><td><code>TMPDIR</code></td><td><code>/tmp</code></td><td>A directory path</td><td>Two roles. It is where an edit fix stages its before-and-after copies for validation, so a copy of <code>sshd_config</code> transits it on every SSH fix — written <code>0600</code> into a fresh directory that is removed afterwards. And it is the last-resort state directory when <code>HOME</code> cannot be resolved. If the validating binary cannot read the staged copies, the validator is skipped and the fix proceeds unvalidated rather than being blocked.</td></tr>
+                  <tr><td><code>PATH</code></td><td>inherited; hostveil never sets or normalizes it</td><td>A colon-separated path list</td><td>Decides what hostveil believes is installed. Every domain's availability gate is a binary lookup, so <code>PATH</code> is the difference between a domain running and a domain reporting <strong>Skipped</strong> — and a binary in <code>/usr/sbin</code> that is not on a non-login <code>PATH</code> looks exactly like a binary that is not installed. It also decides whether elevation happens: no <code>sudo</code> on <code>PATH</code> and hostveil silently runs unprivileged. <code>HOSTVEIL_DEBUG</code> logs every lookup for this reason.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>sudo</code>'s <code>secure_path</code> replaces <code>PATH</code> outright in the elevated child on Debian and Ubuntu, so a re-executed hostveil can resolve a different set of binaries than the process that started it would have.</p>
+            <div class="callout warn">
+              <span class="callout-label">A host with no HOME</span>
+              <p>If <code>HOME</code> cannot be resolved — a bare systemd unit, some container entrypoints — the state directory falls back to <code>$TMPDIR/hostveil</code>, i.e. <code>/tmp/hostveil</code> on a normal host. Checkpoints written there do not survive a reboot, so "a fix is always reversible" quietly stops being true, and nothing in the output says so. Give the unit a <code>HOME</code>, or run as root and get <code>/var/lib/hostveil</code>.</p>
+            </div>
+
+            <h3 id="docker-host">DOCKER_HOST</h3>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>DOCKER_HOST</code></td><td>unset — the docker CLI uses <code>/var/run/docker.sock</code></td><td><code>unix://</code>, <code>tcp://</code>, <code>ssh://user@host</code> — whatever the docker CLI accepts</td><td>hostveil never reads it, but it deliberately hands the whole inherited environment to the commands it runs, so <code>docker</code>, <code>docker compose</code> and <code>trivy</code> can reach a daemon that is not on this machine.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The consequence is worth stating plainly: with <code>DOCKER_HOST</code> pointing elsewhere, the Compose, image-CVE, Docker-daemon and Docker-firewall domains describe a <strong>remote</strong> daemon while the SSH, sysctl, file-permission and account domains describe the local host — merged into one score, with nothing in any interface distinguishing them. That is occasionally what you want and is never what you want by accident. Unset it before scanning the machine you are sitting on.</p>
+
+            <h3 id="tui-debug">Debug hooks the TUI inherits</h3>
+            <p>The TUI is built on terminal libraries that carry their own debug switches. hostveil neither sets nor clears them, and they are live on every <code>hostveil tui</code> run.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>TEA_TRACE</code></td><td>unset — no log</td><td>A writable file path; empty is ignored</td><td>Opens that path append-only at mode <code>0600</code> and writes the TUI framework's internals to it, on every run.</td></tr>
+                  <tr><td><code>TEA_DEBUG</code></td><td>unset</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td>On a TUI panic, writes a <code>bubbletea-panic-&lt;timestamp&gt;.log</code> into the <em>current working directory</em>. Without it a panic still prints its stack to stderr.</td></tr>
+                  <tr><td><code>UV_DEBUG</code></td><td>unset — no log</td><td>A file path; empty is ignored</td><td>The same thing one layer down: a debug file for the terminal renderer underneath.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout warn">
+              <span class="callout-label">These write as root</span>
+              <p><code>hostveil tui</code> auto-elevates, so the process that creates these files is root and the path comes from the environment. A local unprivileged user who can set the environment of a hostveil invocation — a wrapper script, a shared shell profile, a cron entry — gets a root-owned append to a path of their choosing. Do not export any of the three system-wide, and treat an unexplained one in a profile the way you would treat any other privileged file write.</p>
+            </div>
+
+            <h2 id="children">What hostveil sets for the commands it runs</h2>
+            <p>hostveil passes its own environment through to every command it runs, with exactly one addition.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>LC_ALL</code></td><td>always <code>C</code> in the child, whatever you have set</td><td>Not configurable — no flag or variable overrides it</td><td>Appended to the environment of every command hostveil runs, so tools answer in untranslated English. Every parser that matches a word rather than a number depends on it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>This exists because of a specific failure. hostveil inherits the operator's environment and <code>sudo</code> keeps <code>LANG</code> and <code>LC_*</code> by default, so on a German host hostveil asked <code>apt</code> in German and then looked for English. The string <code>[upgradable from: %s]</code> is translated in twenty-one locales, and the counter skipped every line that did not contain that exact English text: <strong>zero pending security updates on an unpatched machine</strong>, which is the failure class the whole tool refuses. A clean report you cannot trust is worse than no report.</p>
+            <p><code>LC_ALL</code> rather than <code>LANG</code>, and this is the part worth remembering: gettext honours <code>LANGUAGE</code> over <code>LANG</code>, so pinning <code>LANG</code> alone would leave a desktop's <code>LANGUAGE=de:en</code> in charge. <code>LANGUAGE</code> is ignored when the locale is <code>C</code>, which is why this one variable is enough.</p>
+
+            <h3 id="locale">The locale does not change the layout, on purpose</h3>
+            <p>The width library hostveil links reads these at startup and sets a global that hostveil then does not use — it builds its own measurement with East Asian width switched off. The obvious assumption is the opposite one, so it is worth stating positively: none of these four changes how a screen is laid out.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>LANG</code></td><td>set by login</td><td>Any locale name</td><td>Nothing, in hostveil's own process. It reaches a width library at startup and is neutralized there. It is the reason the pin above exists: an inherited <code>LANG</code> would otherwise make <code>apt</code>, <code>systemctl</code> and <code>docker</code> answer in a translated locale.</td></tr>
+                  <tr><td><code>LC_CTYPE</code></td><td>set by login</td><td>Any locale name</td><td>Nothing, for the same reason. It sits second in that library's locale precedence and is overridden by the <code>LC_ALL=C</code> pin in every child regardless.</td></tr>
+                  <tr><td><code>LANGUAGE</code></td><td>set by some desktops</td><td>A colon-separated locale list</td><td>Nothing — hostveil never reads or clears it. It is listed because it is load-bearing in the reasoning above: it outranks <code>LANG</code> in gettext, which is why the pin is <code>LC_ALL</code>.</td></tr>
+                  <tr><td><code>RUNEWIDTH_EASTASIAN</code></td><td>unset</td><td>Anything <code>strconv.ParseBool</code> reads as true — <code>1</code>, <code>t</code>, <code>true</code>. Anything else, including an unparseable value, leaves it off.</td><td>Measures East Asian Ambiguous characters — the ellipsis, arrows and bullets hostveil draws — as two columns instead of one, in <em>both</em> of the libraries that lay out the terminal UI. Set it if your terminal renders them wide. What hostveil does <em>not</em> take from the locale is the same setting derived from <code>LANG</code>: the same binary must not lay out differently for an operator in Seoul and one in Berlin, and this variable is the explicit request rather than the inference.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="tooling">What it reads from the tooling around it</h2>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>SUDO_USER</code></td><td>set by <code>sudo</code>, never by hostveil</td><td>Any non-empty string means "already elevated"; the username itself is never inspected</td><td>The loop guard on auto-elevation. A non-empty value means <code>sudo</code> has already run, so hostveil does not invoke it again.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>sudo</code> sets this in the target environment itself rather than passing it through, which is precisely why <code>env_reset</code> cannot strip it and why it works where <a href="#sudo">hostveil's own marker could not</a>. It is also set when the <code>sudo</code> target is <em>not</em> root, which is the case worth catching: on a host whose <code>sudoers</code> sets a non-root <code>runas_default</code>, the child comes back unprivileged and stops here instead of looping.</p>
+            <p>A false positive — <code>SUDO_USER</code> left in the environment by something other than the <code>sudo</code> that ran hostveil — costs an unprivileged scan whose root-only domains report Skipped with a reason. That is the safe direction to be wrong in; an unbounded chain of password prompts is not.</p>
+
+            <h2 id="not-listed">What is not on this page</h2>
+            <p><strong>Test and build variables.</strong> The test suite reads a couple of variables the shipped binary never does, and the release build pins a couple more that do not exist at runtime. Neither is a knob on a running hostveil, so listing them here would only invite someone to set one. They are documented where they are used, in the repository's development notes — see <a href="contributing">Contributing</a>.</p>
+            <p><strong>Variables hostveil looks <em>at</em>, rather than reads.</strong> Some checks inspect environment variables belonging to <em>your services</em>: credential-shaped keys in a Compose file's <code>environment:</code> block, or in a container's <code>.env</code>. Those are data hostveil examines on disk. It never reads your shell's environment looking for secrets, and nothing on this page is sent anywhere — every variable here is read locally and used locally.</p>
+            <p><strong>Anything that changes a finding.</strong> There is no variable that turns a check off, changes a severity, adjusts the score, or relaxes what a fix will do. Detection is decided by the host, not by the environment; the only variables that change what a scan covers do it by changing what hostveil can <em>reach</em> — <code>PATH</code>, <code>HOSTVEIL_NO_SUDO</code>, and <code>DOCKER_HOST</code>.</p>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="cli">← CLI reference</a>
+              <a class="button primary" href="faq">FAQ →</a>
+            </div>

@@ -13,7 +13,7 @@
 
             <div class="callout">
               <span class="callout-label">Supported platforms</span>
-              <p>Prebuilt binaries are published for <strong>Linux</strong> and <strong>macOS</strong> on <code>amd64</code> and <code>arm64</code>. hostveil is designed for self-hosted Linux servers; the SSH, firewall, and auto-update checks target Linux.</p>
+              <p><strong>hostveil audits Linux hosts.</strong> Prebuilt binaries are published for Linux and macOS on <code>amd64</code> and <code>arm64</code>, and the macOS build runs — but every detection rule in it is about Linux, so on a Mac most domains report N/A and the score is drawn from the two that do not. See <a href="#macos">Running it on macOS</a> before you read a number it gives you there.</p>
             </div>
 
             <h2>What the installer does</h2>
@@ -64,7 +64,27 @@
 sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>The package installs the same single binary to the same path the installer uses, <code>/usr/bin/hostveil</code>, so the two are interchangeable — you can move from one to the other without ending up with two copies on your PATH. Docker and <code>iproute2</code> are listed as <em>recommended</em>, never required: without them the container, CVE, and exposed-service domains report N/A rather than hostveil failing to run.</p>
             <p>There is no service to enable and no config file to edit. Removing the package leaves <code>/var/lib/hostveil</code> in place, for the same reason <code>--uninstall</code> does: those checkpoints are the backups of every file hostveil has edited.</p>
-            <p>Packages are Linux-only. hostveil builds and runs on macOS but has nothing to look at there — no systemd, no ufw, no <code>/etc/shadow</code> in the shape it expects.</p>
+            <p>Packages are Linux-only.</p>
+
+            <h2 id="macos">Running it on macOS</h2>
+            <p>The macOS build is a real build — the installer takes it, it runs, and it produces a report. It is published because hostveil is often driven from a laptop and because a build that is not published is a build nobody notices breaking. What it is not is a macOS auditor: there is no Darwin-specific rule anywhere in the tool.</p>
+            <p>On a Mac with no Docker, ten of the twelve domains report <strong>N/A</strong>. Seven find nothing to look at on their own — no <code>/proc/sys</code>, no systemd, no <code>apt</code> or <code>dnf</code>, no <code>ss</code> — and three more are excluded deliberately, because on macOS they would have answered a question they had not asked:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Domain</th><th>On macOS</th></tr></thead>
+                <tbody>
+                  <tr><td>Host firewall</td><td>Excluded. hostveil probes ufw, firewalld, nftables and iptables. macOS has none of them and uses <code>pf</code> instead, so &ldquo;none of my probes found anything&rdquo; would have been reported as <code>firewall.inactive</code> — a top-severity finding about a firewall hostveil never looked for.</td></tr>
+                  <tr><td>Account hygiene</td><td>Excluded. macOS ships an <code>/etc/passwd</code>, but the account database is Open Directory and that file does not describe the host. The <code>/etc/shadow</code> half cannot run at all, and the advice it would print — re-run with <code>sudo</code> — could never help, because the file is absent rather than unreadable.</td></tr>
+                  <tr><td>AI agent runtimes</td><td>Excluded. It finds home directories through the same <code>/etc/passwd</code>, keeping the Linux UID range. macOS accounts start at 501, so it would have found only <code>/var/root</code> and reported &ldquo;no agent runtime&rdquo; about a host whose <code>/Users</code> it never opened.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Two domains do run. <strong>SSH</strong> reads <code>/etc/ssh/sshd_config</code>, which macOS ships whether or not Remote Login is on, and its findings are about OpenSSH rather than about Linux — <code>PasswordAuthentication</code> means the same thing on Darwin. <strong>File permissions</strong> stats the files it recognises and skips the rest. On stock macOS both are usually clean.</p>
+            <div class="callout warn">
+              <span class="callout-label">A fix on macOS edits a real file</span>
+              <p>The SSH domain is not read-only theatre. <code>hostveil fix ssh.passwordauth</code> on a Mac backs up and rewrites <code>/etc/ssh/sshd_config</code>, exactly as it would on a server, and it is reversible from <code>hostveil history</code> the same way. That is correct behaviour and worth knowing before you run it on a laptop.</p>
+            </div>
+            <p>And the score is a number, not N/A: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown, not the headline. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of hostveil.</p>
 
             <h2 id="upgrade">Upgrading and uninstalling</h2>
             <p>To upgrade, re-run the install command. The binary is replaced in place and your saved scans and rollback checkpoints are left alone.</p>
