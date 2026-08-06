@@ -32,11 +32,13 @@ func cmdFix(ctx context.Context, args []string) int {
 		service string
 		action  int
 		yes     bool
+		review  bool
 		all     bool
 	)
 	fs.StringVar(&service, "service", "", "disambiguate a finding by service name")
 	fs.IntVar(&action, "action", -1, "for Review fixes, the alternative to apply (0-based)")
 	fs.BoolVar(&yes, "yes", false, "apply without an interactive confirmation")
+	fs.BoolVar(&review, "review", false, "with --all, also apply Review fixes (their first alternative)")
 	fs.BoolVar(&all, "all", false, "apply every safe (Auto) fix at once")
 
 	// Allow the finding ID to come before flags ("fix <id> --yes"), which
@@ -64,7 +66,7 @@ func cmdFix(ctx context.Context, args []string) int {
 			fmt.Fprintln(os.Stderr, "hostveil: --all applies every safe fix; do not also name a finding")
 			return 2
 		}
-		return fixAll(ctx, yes)
+		return fixAll(ctx, yes, review)
 	}
 	if findingID == "" {
 		if fs.NArg() < 1 {
@@ -117,32 +119,69 @@ func cmdFix(ctx context.Context, args []string) int {
 }
 
 // fixAll previews and applies every safe (Auto) fix in one pass.
-func fixAll(ctx context.Context, yes bool) int {
+// fixAll applies every fix the tool can apply unattended, and with --review
+// every fix it can apply at all.
+//
+// The two lists are printed separately and counted separately, because they
+// are different promises. An Auto fix is reversible, cannot cut off access to
+// the host, and has one correct answer. A Review fix is one hostveil can
+// perform and will not perform for you: it may be an exec action with no
+// checkpoint, or it may have more than one defensible remediation, and
+// --review is where the operator says they have read that and accept it.
+func fixAll(ctx context.Context, yes, review bool) int {
 	engine := newEngine()
 	report := engine.Scan(ctx, nil)
 
-	var auto []model.Finding
+	var auto, reviewed []model.Finding
 	for _, f := range report.Findings {
-		if !f.Fixed && f.Remediation == model.RemediationAuto {
+		if f.Fixed {
+			continue
+		}
+		switch f.Remediation {
+		case model.RemediationAuto:
 			auto = append(auto, f)
+		case model.RemediationReview:
+			if review {
+				reviewed = append(reviewed, f)
+			}
 		}
 	}
-	if len(auto) == 0 {
-		fmt.Println("No auto-fixable findings. Nothing to do.")
+	if len(auto)+len(reviewed) == 0 {
+		if review {
+			fmt.Println("Nothing hostveil can fix. Manual findings are explained by `hostveil explain <id>`.")
+		} else {
+			fmt.Println("No auto-fixable findings. Nothing to do.")
+		}
 		return 0
 	}
 
-	fmt.Printf("Will apply %d safe (Auto) fixes:\n", len(auto))
-	for _, f := range auto {
-		fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+	if len(auto) > 0 {
+		fmt.Printf("Will apply %d safe (Auto) fixes:\n", len(auto))
+		for _, f := range auto {
+			fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+		}
 	}
-	fmt.Println("\nReview/Manual findings are left for you to handle individually.")
+	if len(reviewed) > 0 {
+		fmt.Printf("\nAnd %d Review fixes, each through its first alternative:\n", len(reviewed))
+		for _, f := range reviewed {
+			fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+		}
+		fmt.Println("\nThese are Review because they can cut off access to this host, or because")
+		fmt.Println("they run a command with no checkpoint to undo. Read them before saying yes.")
+	} else {
+		fmt.Println("\nReview/Manual findings are left for you to handle individually.")
+	}
 	if !yes && !promptYesNo("Apply all of the above?") {
 		fmt.Println("Aborted. Nothing changed.")
 		return 0
 	}
 
-	out := engine.ApplyBatch(ctx, auto)
+	batch := append(append([]model.Finding{}, auto...), reviewed...)
+	apply := engine.ApplyBatch
+	if review {
+		apply = engine.ApplyBatchWithReviewed
+	}
+	out := apply(ctx, batch)
 	// One sentence, rendered by the engine, so this and the other two
 	// interfaces cannot describe the same outcome differently. Only the
 	// per-failure detail and the rollback hint are the CLI's own — it has

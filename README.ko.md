@@ -108,6 +108,7 @@ hostveil                 # 대화형 TUI (터미널에서의 기본값)
 hostveil scan            # 점수가 매겨진 보고서 출력 (-v 상세, --json JSON)
 hostveil fix <id>        # 발견 항목 하나를 미리 보고 수정 적용
 hostveil fix --all       # 안전한(자동 수정) 항목을 한 번에 모두 적용
+hostveil fix --all --review  # 검토(Review) 항목까지, 무엇인지 읽고 나서
 hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
 hostveil explain <id>    # 발견 항목 설명 (--ai로 로컬 LLM의 2차 소견 추가)

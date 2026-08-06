@@ -75,8 +75,23 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
 	if !aptUnattendedEnabled(c.AptConfigPath) {
-		findings = append(findings, disabledFinding("unattended-upgrades",
-			"Install and enable unattended-upgrades: `apt install unattended-upgrades` then `dpkg-reconfigure -plow unattended-upgrades`."))
+		// Whether the package is already here decides what the remediation
+		// *is*, and therefore whether hostveil can do it unattended. Ubuntu
+		// ships unattended-upgrades installed and Debian's netinst offers it,
+		// so the common case is a host where the whole fix is writing one
+		// config file — reversible, and Auto. Where the package is missing the
+		// fix has to install it, which is a command with no checkpoint.
+		f := disabledFinding("unattended-upgrades",
+			"Install and enable unattended-upgrades: `apt install unattended-upgrades` then `dpkg-reconfigure -plow unattended-upgrades`.")
+		if platform.Has(env.Runner, "unattended-upgrade") {
+			f.Evidence["installed"] = "true"
+			f.Evidence["config"] = c.AptConfigPath
+			f.HowToFix = "unattended-upgrades is installed but switched off. Set both periodic keys in " +
+				c.AptConfigPath + ": `APT::Periodic::Update-Package-Lists \"1\";` and " +
+				"`APT::Periodic::Unattended-Upgrade \"1\";`."
+			f.Remediation = model.RemediationAuto
+		}
+		findings = append(findings, f)
 	}
 	// apt's packages create this file from their postinst when an installed
 	// update cannot take effect until the machine restarts — a new kernel,
