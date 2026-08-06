@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [3.12.0](https://github.com/seolcu/hostveil/compare/v3.11.0...v3.12.0) (2026-08-07)
+
+The six arrangements shipped behind a picker in 3.11.0 are settled: **C ·
+Console is the default in both interfaces**, and the other five stay. The rest
+of this release is what deciding that made visible — the bands that drew
+nothing, the lines that did not meet, and the margins that did not hold — plus
+a Korean README and a measurement harness that now measures the path an
+operator actually takes.
+
 ### Features
 
 * **ui:** the six arrangements are settled. **C · Console — the domain rail
@@ -15,7 +24,24 @@
   that to a banner. Both registries now lead with it, and neither describes
   itself as temporary any more.
 
+* **ci:** the measurement harness measures the *reviewed* path too. It ran
+  `fix --all`, which applies Auto fixes only — the unattended path, and
+  deliberately the most conservative thing hostveil does. It is not the path
+  an operator takes: they read a Review fix, decide, and accept it, and the
+  fixes that need that decision are the ones that change the most, because
+  every SSH hardening option is Review. A fifth phase now accepts every Review
+  fix and counts how many left a checkpoint, since an exec fix leaves none and
+  the rollback phase cannot put it back. On a seeded ARM64 host the difference
+  is the whole argument: Lynis's hardening index moved 56 → 57 for the
+  unattended path and 56 → 60 once the reviewed fixes were accepted.
+
 ### Bug Fixes
+
+* **ci:** the measurement harness could not start on a host that had never
+  applied a fix — which is every host its own documentation points at. `grep`
+  matched nothing, exited 1, and `set -euo pipefail` ended the run two lines
+  in. Invisible on every host it had been run on before, because they all had
+  checkpoints.
 
 * **web:** three bands of empty padding under the axes strip, on every scan
   with nothing to put in them. `.delta`, `.domains` and `.status` each set
