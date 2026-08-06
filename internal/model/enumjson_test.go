@@ -285,7 +285,7 @@ func TestASnapshotFromTheInterimNamesStillReads(t *testing.T) {
 	// The ordering is the part that would fail silently. If two old names
 	// collapsed onto one level the findings would still read, and only the
 	// order they sort in would be wrong.
-	if !(SeverityHigh < SeverityMedium && SeverityMedium < SeverityLow) {
+	if SeverityHigh >= SeverityMedium || SeverityMedium >= SeverityLow {
 		t.Error("the levels no longer sort most-urgent-first")
 	}
 }
