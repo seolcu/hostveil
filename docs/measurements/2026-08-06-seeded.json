@@ -1,6 +1,6 @@
 {
   "profile": "seeded",
-  "measured_at": "2026-08-06T04:04:18+00:00",
+  "measured_at": "2026-08-06T10:21:10+00:00",
   "host": {
     "pretty_name": "Ubuntu 24.04.4 LTS",
     "version_id": "24.04",
@@ -15,9 +15,9 @@
         "applicable": true,
         "findings": 88,
         "by_severity": {
-          "exposed": 28,
-          "weak": 22,
-          "hardening": 38
+          "high": 28,
+          "medium": 22,
+          "low": 38
         },
         "axes": {
           "container": 0,
@@ -177,9 +177,9 @@
         "applicable": true,
         "findings": 61,
         "by_severity": {
-          "exposed": 21,
-          "weak": 12,
-          "hardening": 28
+          "high": 21,
+          "medium": 12,
+          "low": 28
         },
         "axes": {
           "container": 0,
@@ -339,9 +339,9 @@
         "applicable": true,
         "findings": 59,
         "by_severity": {
-          "exposed": 19,
-          "weak": 12,
-          "hardening": 28
+          "high": 19,
+          "medium": 12,
+          "low": 28
         },
         "axes": {
           "container": 0,
@@ -498,9 +498,9 @@
         "applicable": true,
         "findings": 88,
         "by_severity": {
-          "exposed": 28,
-          "weak": 22,
-          "hardening": 38
+          "high": 28,
+          "medium": 22,
+          "low": 38
         },
         "axes": {
           "container": 0,
@@ -743,7 +743,7 @@
     "paths_not_restored": [],
     "paths_with_unobserved_before_state": [],
     "fidelity": 100,
-    "checkpoints_before": 81,
+    "checkpoints_before": 108,
     "checkpoints_rolled_back": 27,
     "changed": [
       "/etc/ssh/sshd_config",

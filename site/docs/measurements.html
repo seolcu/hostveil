@@ -103,7 +103,7 @@
                 <tbody>
                   <tr><td>Operating system</td><td><code data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code></td></tr>
                   <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil v3-dev</code></td></tr>
-                  <tr><td>Measured at</td><td><code data-measured="measured_at">2026-08-06T04:04:18+00:00</code></td></tr>
+                  <tr><td>Measured at</td><td><code data-measured="measured_at">2026-08-06T10:21:10+00:00</code></td></tr>
                   <tr><td>Findings before</td><td><span data-measured="phases.before.hostveil.findings">88</span> across 10 domains that ran, of 12 attempted</td></tr>
                 </tbody>
               </table>
@@ -204,7 +204,7 @@ go build -o /usr/local/bin/hostveil ./cmd/hostveil
 # Lynis and docker-bench-security are optional; a missing one is
 # recorded as absent rather than passed over.
 sudo scripts/measure/run.sh -c -p seeded /tmp/measurement.json</code></pre></div>
-            <p>Committed runs live in <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>, and every figure on this page is checked against the newest of them by a test — a stale number here is a failing build, not something a reader has to catch. Pass <code>-c</code> and the run also exits non-zero on the only two claims in its output that are promises rather than observations: that rollback restored every changed file exactly, and that hostveil&rsquo;s own score moved at all. Nothing else is asserted, because everything else on this page moves for reasons no change to hostveil is responsible for.</p>
+            <p>The run above was made twice, six hours apart, on the same host and the same binary. Every figure on this page came out identical both times — the same scores, the same three CIS check IDs cleared, the same five ports moved, the same five files restored — so what you are reading is a measurement rather than a sample of one. Committed runs live in <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>, and every figure on this page is checked against the newest of them by a test — a stale number here is a failing build, not something a reader has to catch. Pass <code>-c</code> and the run also exits non-zero on the only two claims in its output that are promises rather than observations: that rollback restored every changed file exactly, and that hostveil&rsquo;s own score moved at all. Nothing else is asserted, because everything else on this page moves for reasons no change to hostveil is responsible for.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="scoring">← Scoring</a>
