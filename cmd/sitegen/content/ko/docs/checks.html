@@ -30,16 +30,17 @@
               <table>
                 <thead><tr><th>단계</th><th>뜻</th><th>가져가는 몫</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev exposed">EXPOSED</span></td><td>아무것도 가지지 않은 사람이 <em>지금</em> 호스트 밖에서 닿거나 쓸 수 있습니다. 인증 없는 열린 서비스, 비밀번호 없는 계정, 이미 호스트 root를 넘겨받은 컨테이너. 먼저 뚫어야 할 것이 없습니다.</td><td>남은 점수의 1/2</td></tr>
-                  <tr><td><span class="sev weak">WEAK</span></td><td>발판이나 추측한 자격 증명, 로컬 계정이 있으면 무너지는 경계입니다. 공격자에게 아직 없는 무언가가 필요하고, 그것을 손에 넣을 값어치를 만들어 주는 것이 이 항목입니다.</td><td>1/8</td></tr>
-                  <tr><td><span class="sev hardening">HARDENING</span></td><td>심층 방어입니다. 오늘 알려진 경로는 없고, 앞으로의 침해가 닿을 범위를 좁혀 줍니다.</td><td>1/16</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>아무것도 가지지 않은 사람이 <em>지금</em> 호스트 밖에서 닿거나 쓸 수 있습니다. 인증 없는 열린 서비스, 비밀번호 없는 계정, 이미 호스트 root를 넘겨받은 컨테이너. 먼저 뚫어야 할 것이 없습니다.</td><td>남은 점수의 1/2</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>발판이나 추측한 자격 증명, 로컬 계정이 있으면 무너지는 경계입니다. 공격자에게 아직 없는 무언가가 필요하고, 그것을 손에 넣을 값어치를 만들어 주는 것이 이 항목입니다.</td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>심층 방어입니다. 오늘 알려진 경로는 없고, 앞으로의 침해가 닿을 범위를 좁혀 줍니다.</td><td>1/16</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>이름을 일부러 발견 항목에 대한 형용사로 짓지 않았습니다. "심각"은 정말 심각한지를 두고 논쟁을 부르지만, <strong>EXPOSED</strong>는 참이거나 거짓인 호스트에 대한 진술입니다.</p>
+            <p><strong>네 단계가 아니라 세 단계이고, 위의 정의가 분류 체계의 전부입니다.</strong> 이름이 평범한 것은 여기서 이름이 할 일이 하나뿐이기 때문입니다 — 순서를 담는 것. 그리고 그 일을 칩 하나, <code>--json</code> 한 줄, SARIF 레벨 하나에서 해내야 하는데 거기엔 다른 것이 들어갈 자리가 없습니다. 각 단계가 <em>무엇을 뜻하는지</em>는 옆 칸에 있고, 그것은 발견 항목에 대한 의견이 아니라 호스트에 대한 진술입니다.</p>
             <div class="callout">
               <span class="callout-label">3.12에서 변경</span>
-              <p>이전의 심각/높음/보통/낮음을 대체합니다. 그 네 단계는 CVE의 공개 등급을 그대로 통과시키려고 Trivy에서 물려받은 것이었습니다. 지금은 취약점을 이미지 단위로 묶기 때문에 개별 등급이 발견 항목까지 살아 남지 않고, 네 단계는 설정 파일이 답할 수 없는 질문을 계속 묻고 있었습니다. <strong>EXPOSED</strong>는 기존 심각과 높음을 합한 집합과 정확히 같으므로, <code>scan</code>의 종료 코드와 SARIF 내보내기는 예전과 똑같은 뜻입니다.</p>
+              <p>hostveil에는 원래 네 단계 — 심각/높음/보통/낮음 — 가 있었습니다. CVE의 공개 등급을 그대로 통과시키려고 Trivy에서 물려받은 것이었습니다. 지금은 취약점을 이미지 단위로 묶기 때문에 발견 항목에 닿는 것은 CVE별 등급이 아니라 이미지 하나당 한 단계이고, 네 번째 단계는 설정 파일이 답할 수 없는 질문을 계속 묻고 있었습니다.</p>
+              <p><strong>HIGH는 기존 심각과 높음을 합한 집합과 정확히 같으므로</strong>, <code>scan</code>의 종료 코드와 SARIF 내보내기는 예전과 똑같은 뜻입니다. Trivy 출력과 나란히 비교한다면 한 가지만 유의하세요 — Trivy가 CRITICAL이라 부르는 취약점은 여기서 HIGH로 표시됩니다. hostveil은 세 단계이고 Trivy는 네 단계라, 한쪽의 최상위와 다른 쪽의 최상위는 이름으로 맞출 수 없습니다.</p>
             </div>
             <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다. 전체 모형은 <a href="scoring">점수 산정</a>에 있습니다 — 계산식, 실제 스캔으로 만든 예시, 그리고 이 숫자가 알려주지 않는 것까지.</p>
             <p>hostveil이 <strong>사용 불가</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
@@ -80,7 +81,7 @@
             </div>
             <p>두 UI 모두 발견 목록 위에 그 이유를 출력합니다 — <em>"Container partial: cannot inspect containers started outside Compose"</em>, <em>"CVEs skipped: Trivy not installed"</em>. 제외된 축은 결코 100점으로 처리되지 않습니다. 이미지를 볼 수 없었던 스캔은 이미지가 깨끗하다고 확인한 스캔이 아니기 때문입니다. root 없이 실행하면 점수가 높아지는 게 아니라 낮아지는 이유가 이것입니다.</p>
 
-            <p><code>hostveil scan</code>은 수정되지 않은 발견 항목 중 <span class="sev exposed">EXPOSED</span>이 하나라도 있으면 0이 아닌 값으로 종료합니다 — CI나 cron 게이트로 유용합니다.</p>
+            <p><code>hostveil scan</code>은 수정되지 않은 발견 항목 중 <span class="sev high">HIGH</span>가 하나라도 있으면 0이 아닌 값으로 종료합니다 — CI나 cron 게이트로 유용합니다.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
             <p><code>sshd_config</code>에서 직접 파싱하며, <code>Include</code> 지시어를 따라 <code>sshd_config.d/</code>까지 읽습니다. Debian과 Ubuntu는 <code>Include</code>를 파일 맨 위에 두고, <code>sshd</code>는 각 키워드에 대해 처음 얻은 값을 사용하므로 drop-in 파일이 아래 줄들을 이깁니다. 읽으려면 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 상승하여 이를 얻습니다. 수정은 실제로 적용되고 있는 지시어가 있는 파일에 가해집니다.</p>
@@ -88,15 +89,15 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ssh.emptypasswords</code></td><td>빈 비밀번호가 허용됨</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>ssh.rootlogin</code></td><td>비밀번호를 사용한 root 로그인이 허용됨</td><td><span class="sev exposed">EXPOSED</span></td><td>검토</td></tr>
-                  <tr><td><code>ssh.passwordauth</code></td><td>비밀번호 인증이 허용됨</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>ssh.gatewayports</code></td><td>원격 포워딩 포트가 네트워크에 노출됨</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>ssh.hostbasedauth</code></td><td>호스트 기반 인증이 활성화됨</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>ssh.kbdinteractive</code></td><td>PasswordAuthentication no 이후에도 대화형 비밀번호 입력이 살아 있음</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev hardening">HARDENING</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev hardening">HARDENING</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev hardening">HARDENING</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.emptypasswords</code></td><td>빈 비밀번호가 허용됨</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td>비밀번호를 사용한 root 로그인이 허용됨</td><td><span class="sev high">HIGH</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td>비밀번호 인증이 허용됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.gatewayports</code></td><td>원격 포워딩 포트가 네트워크에 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.hostbasedauth</code></td><td>호스트 기반 인증이 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.kbdinteractive</code></td><td>PasswordAuthentication no 이후에도 대화형 비밀번호 입력이 살아 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>
@@ -107,24 +108,24 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev weak">WEAK</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev weak">WEAK</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev weak">WEAK</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev weak">WEAK</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev hardening">HARDENING</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev hardening">HARDENING</span></td><td>검토</td></tr>
-                  <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -134,9 +135,9 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -146,9 +147,9 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev exposed">EXPOSED</span> / <span class="sev weak">WEAK</span></td><td>수동</td></tr>
-                  <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
+                  <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -159,9 +160,9 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -172,8 +173,8 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -184,12 +185,12 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev weak">WEAK</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>
@@ -203,14 +204,14 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev weak">WEAK</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev hardening">HARDENING</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev hardening">HARDENING</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev hardening">HARDENING</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev hardening">HARDENING</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -224,18 +225,18 @@
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다 — 포트에 닿는 누구에게나 인증 없는 root</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다 — <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev weak">WEAK</span> / <span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev weak">WEAK</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다 — 포트에 닿는 누구에게나 인증 없는 root</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다 — <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><code>dockerd.group-members</code>는 그룹을 가진 계정이 사람일 때 <span class="sev weak">WEAK</span>, 그중 하나라도 서비스 계정 — 시스템 UID이거나 대화형 로그인이 없는 계정 — 이면 <span class="sev exposed">EXPOSED</span>입니다. CI 러너나 모니터링 에이전트에게 root가 될 능력을 일부러 주는 사람은 없고, 한 번도 로그인하지 않는 자격 증명은 아무도 지켜보지 않는 자격 증명입니다.</p>
-            <p>루프백 전용 TCP 소켓은 표시하지 않습니다. 유닉스 소켓이 닿지 않던 곳에 닿지 않고, 데몬 앞에 프록시를 두는 문서화된 방법이기 때문입니다. <strong>rootless</strong>로 실행 중인 데몬은 <code>userns-remap</code>과 <code>group-members</code>가 억제됩니다. API 항목은 그대로 <span class="sev exposed">EXPOSED</span>입니다. rootless는 피해 범위를 호스트가 아니라 그 사용자의 컨테이너로 한정하며 그 차이는 설명문에 적히지만, 포트에 닿기 어려워지는 것은 아니기 때문입니다. <code>live-restore</code>는 Docker가 지원하지 않는 swarm 노드에서 억제됩니다.</p>
+            <p><code>dockerd.group-members</code>는 그룹을 가진 계정이 사람일 때 <span class="sev medium">MEDIUM</span>, 그중 하나라도 서비스 계정 — 시스템 UID이거나 대화형 로그인이 없는 계정 — 이면 <span class="sev high">HIGH</span>입니다. CI 러너나 모니터링 에이전트에게 root가 될 능력을 일부러 주는 사람은 없고, 한 번도 로그인하지 않는 자격 증명은 아무도 지켜보지 않는 자격 증명입니다.</p>
+            <p>루프백 전용 TCP 소켓은 표시하지 않습니다. 유닉스 소켓이 닿지 않던 곳에 닿지 않고, 데몬 앞에 프록시를 두는 문서화된 방법이기 때문입니다. <strong>rootless</strong>로 실행 중인 데몬은 <code>userns-remap</code>과 <code>group-members</code>가 억제됩니다. API 항목은 그대로 <span class="sev high">HIGH</span>입니다. rootless는 피해 범위를 호스트가 아니라 그 사용자의 컨테이너로 한정하며 그 차이는 설명문에 적히지만, 포트에 닿기 어려워지는 것은 아니기 때문입니다. <code>live-restore</code>는 Docker가 지원하지 않는 swarm 노드에서 억제됩니다.</p>
 
             <h2 id="systemd">서비스 하드닝 <code>systemd.</code></h2>
             <p>자체 호스팅 서버의 절반가량은 컨테이너 밖에 있습니다. Compose 도메인은 컨테이너가 선언한 내용 — privileged, root 실행, no-new-privileges 해제 — 을 읽는데, 유닛 파일로 뜬 서비스에도 똑같은 판단이 필요합니다. 이 도메인이 생기기 전까지는 아무도 그쪽을 보지 않았습니다.</p>
@@ -245,14 +246,14 @@
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev hardening">HARDENING</span> / <span class="sev weak">WEAK</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev weak">WEAK</span> / <span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev weak">WEAK</span> / <span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev hardening">HARDENING</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><strong>심각도가 두 가지이며, 어느 쪽인지는 실행 계정이 정합니다.</strong> <code>no-new-privileges</code>는 root가 아닌 계정으로 도는 서비스에서 <span class="sev weak">WEAK</span>, root로 도는 서비스에서 <span class="sev hardening">HARDENING</span>입니다. root 서비스는 이미 무엇이든 할 수 있으므로 이 설정이 막는 setuid 경로의 값어치가 거기서는 작습니다. 파일시스템 보호 두 가지는 같은 이유로 반대 방향입니다 — <code>no-new-privileges</code>의 값어치가 가장 작은 자리에서 가장 큽니다.</p>
+            <p><strong>심각도가 두 가지이며, 어느 쪽인지는 실행 계정이 정합니다.</strong> <code>no-new-privileges</code>는 root가 아닌 계정으로 도는 서비스에서 <span class="sev medium">MEDIUM</span>, root로 도는 서비스에서 <span class="sev low">LOW</span>입니다. root 서비스는 이미 무엇이든 할 수 있으므로 이 설정이 막는 setuid 경로의 값어치가 거기서는 작습니다. 파일시스템 보호 두 가지는 같은 이유로 반대 방향입니다 — <code>no-new-privileges</code>의 값어치가 가장 작은 자리에서 가장 큽니다.</p>
             <p><strong>여기의 모든 항목은 의도적으로 수동입니다.</strong> 드롭인은 두 줄이고 hostveil이 쓸 수도 있습니다. 하지만 쓰는 것과 안전하다고 아는 것은 다릅니다. <code>ProtectSystem=full</code>은 <code>/usr</code> 아래에 쓰는 서비스를 망가뜨리고, <code>PrivateTmp=yes</code>는 <code>/tmp</code>로 파일을 주고받는 두 서비스를 망가뜨립니다. 어느 쪽도 다음 재시작 전까지는 드러나지 않는데, 자체 호스팅 환경에서 그 시점은 다음 재부팅입니다 — 그리고 돌아오지 못한 서비스가 하필 데이터를 쥐고 있던 쪽입니다. 그래서 수정 안내에 정확한 경로와 정확한 두 줄을 담고, 재시작해서 지켜볼 시점은 사용자가 고릅니다.</p>
             <p>이 systemd가 구현하지 않은 속성은 아무 값도 보고되지 않으며, 값이 없다는 것은 보호가 꺼져 있다는 근거가 아닙니다. 그런 경우는 항목으로 만들지 않고 그대로 둡니다.</p>
 
@@ -264,15 +265,15 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 잡아내는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev exposed">EXPOSED</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev exposed">EXPOSED</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev weak">WEAK</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev weak">WEAK</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>

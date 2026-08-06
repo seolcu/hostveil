@@ -80,25 +80,31 @@
   on. In both languages, pinned against each other by a new test.
 
 * **model:** severity is three urgency levels, not four Trivy ones. A finding
-  is now **`exposed`** (reachable or usable right now, from off the host, by
-  someone holding nothing), **`weak`** (a boundary that gives way to a
-  foothold, a guessed credential, or a local account) or **`hardening`** (no
-  known path today; it narrows what a future compromise reaches). Critical /
-  High / Medium / Low came from Trivy so a CVE's published rating could pass
-  straight through — but vulnerabilities are rolled up per image now, so no
-  individual rating survives into a finding, and outside that domain the four
-  levels were asking a question a config file cannot answer. "How bad is a
-  container running as root" depends entirely on what the container does; how
-  much stands between an attacker and it does not. The names are also
-  deliberately not adjectives: "Critical" invites an argument, "Exposed" is a
-  claim about your host that is either true or false.
+  is now **`high`** (reachable or usable right now, from off the host, by
+  someone holding nothing), **`medium`** (a boundary that gives way to a
+  foothold, a guessed credential, or a local account) or **`low`** (no known
+  path today; it narrows what a future compromise reaches). Critical / High /
+  Medium / Low came from Trivy so a CVE's published rating could pass straight
+  through — but vulnerabilities are rolled up per image now, so what reaches a
+  finding is one level for the whole image rather than a rating per CVE, and
+  outside that domain the fourth level was asking a question a config file
+  cannot answer. "How bad is a container running as root" depends entirely on
+  what the container does; how much stands between an attacker and it does
+  not.
 
-  **`exposed` is exactly what Critical and High were together**, so nothing a
+  The definitions above are the taxonomy and the names only carry the order —
+  which is the one job a name has on a filter chip, in a SARIF level, or in a
+  line of `--json`, and it is why they are the ordinary three rather than
+  something more descriptive.
+
+  **`high` is exactly what Critical and High were together**, so nothing a
   pipeline reads has moved: `scan` still exits 1 on the same set of findings,
   and the SARIF export still maps them to the same three levels (Critical and
   High were both `error` already). Both are pinned against the *old ordinals*,
   read back through the legacy unmarshal, because the old constants no longer
-  exist to name.
+  exist to name. If you also run Trivy directly, note that a vulnerability it
+  calls CRITICAL arrives here as `high`: three levels and four do not line up
+  by name.
 
   Scores do move. A finding that was High now costs half of an axis's
   remaining credit rather than a third, which is the point of the merge — if
@@ -128,6 +134,30 @@
   not lost and its next scan converts it. Nothing writes integers any more.
 
 ### Bug Fixes
+
+* **cve:** the vulnerability rollup counted its most severe findings twice.
+  `summary()` and `evidence()` each walked a severity list written out in
+  `cve.go` rather than asking the model, and that list was the four-level
+  scale — so when Critical and High merged into one constant, both rows
+  stayed and the same constant was read twice. An image whose worst
+  vulnerabilities were all top-severity described itself as "2 high, 2 high,
+  1 medium". No count was wrong; each was right and said twice.
+
+* **web:** the dashboard's verdict headline had been dead since the severity
+  levels were renamed. It counted findings whose severity was the string
+  `"critical"`, a name the model stopped using, so the count was always zero
+  and the headline it gates never appeared again — the panel silently fell
+  through to the band verdict on every host. It now asks the model for its
+  top level instead of spelling one.
+
+* **web, site:** severity colours are pinned to the model. The dashboard
+  builds every severity class name at runtime (`.finding.<name>`,
+  `.chip.c-<abbr>`) while the stylesheets have them typed in, so renaming a
+  level silently unstyles the findings list, the filter chips and the
+  landing page's example findings — which reads as a low-contrast theme
+  rather than as a broken stylesheet, and had already shipped that way on
+  the landing page. Tests now walk `model.AllSeverities()` against both
+  stylesheets, in both directions.
 
 * **check:** hostveil reported a firewall finding on every Mac, for a firewall
   it had never looked for. The firewall checker probes ufw, firewall-cmd, nft

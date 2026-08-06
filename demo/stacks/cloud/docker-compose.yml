@@ -14,7 +14,7 @@ services:
   db:
     image: postgres:13                 # intentionally old → image CVEs
     ports:
-      - "5432:5432"                    # database on 0.0.0.0 → compose.ds018 (Critical)
+      - "5432:5432"                    # database on 0.0.0.0 → compose.ds018 (High)
     environment:
       POSTGRES_DB: nextcloud
       POSTGRES_USER: nextcloud

@@ -32,7 +32,7 @@ func TestPreviewIsPure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityWeak,
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("app"), model.WithMetadata("file", path))
 
@@ -61,7 +61,7 @@ func TestApplyRollbackRoundTrip(t *testing.T) {
 	}
 
 	engine := fixEngine(t)
-	f := model.NewFinding("compose.ds018", "exposed datastore", model.SeverityExposed,
+	f := model.NewFinding("compose.ds018", "exposed datastore", model.SeverityHigh,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("cache"),
 		model.WithMetadata("file", path),
@@ -118,7 +118,7 @@ func TestRollbackRestoresAChangedMode(t *testing.T) {
 	if err := os.Chmod(path, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityWeak,
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("cache"), model.WithMetadata("file", path))
 
@@ -157,7 +157,7 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f := model.NewFinding("compose.ds018", "exposed datastore", model.SeverityExposed,
+	f := model.NewFinding("compose.ds018", "exposed datastore", model.SeverityHigh,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("cache"),
 		model.WithMetadata("file", path),
@@ -212,7 +212,7 @@ func TestRollbackUnmarksOnlyTheCheckpointedService(t *testing.T) {
 	}
 
 	mk := func(service, port string) model.Finding {
-		return model.NewFinding("compose.ds018", "exposed datastore", model.SeverityExposed,
+		return model.NewFinding("compose.ds018", "exposed datastore", model.SeverityHigh,
 			model.SourceCompose, model.RemediationAuto,
 			model.WithService(service),
 			model.WithMetadata("file", path),
@@ -257,7 +257,7 @@ func TestListCheckpointsHidesStorageInternals(t *testing.T) {
 	if err := os.WriteFile(path, []byte("services:\n  app:\n    image: myapp\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityWeak,
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("app"), model.WithMetadata("file", path))
 
@@ -299,7 +299,7 @@ func TestSSHFixRoundTrip(t *testing.T) {
 	}
 
 	engine := fixEngine(t)
-	f := model.NewFinding("ssh.emptypasswords", "empty passwords", model.SeverityExposed,
+	f := model.NewFinding("ssh.emptypasswords", "empty passwords", model.SeverityHigh,
 		model.SourceSSH, model.RemediationAuto,
 		model.WithEvidence("config", path))
 
@@ -334,9 +334,9 @@ func TestApplyBatchOnlyAppliesAuto(t *testing.T) {
 	}
 	engine := fixEngine(t)
 
-	auto := model.NewFinding("compose.ds006", "nnp", model.SeverityWeak, model.SourceCompose,
+	auto := model.NewFinding("compose.ds006", "nnp", model.SeverityMedium, model.SourceCompose,
 		model.RemediationAuto, model.WithService("app"), model.WithMetadata("file", path))
-	manual := model.NewFinding("compose.ds001", "priv", model.SeverityExposed, model.SourceCompose,
+	manual := model.NewFinding("compose.ds001", "priv", model.SeverityHigh, model.SourceCompose,
 		model.RemediationManual, model.WithService("app"), model.WithMetadata("file", path))
 
 	out := engine.ApplyBatch(context.Background(), []model.Finding{auto, manual})
@@ -354,7 +354,7 @@ func TestApplyBatchOnlyAppliesAuto(t *testing.T) {
 
 func TestNoFixForUnfixable(t *testing.T) {
 	engine := fixEngine(t)
-	f := model.NewFinding("compose.ds001", "privileged", model.SeverityExposed,
+	f := model.NewFinding("compose.ds001", "privileged", model.SeverityHigh,
 		model.SourceCompose, model.RemediationManual, model.WithService("app"))
 	if _, err := engine.PreviewFix(f); err == nil {
 		t.Error("expected error previewing an unfixable finding")
@@ -371,7 +371,7 @@ func permFinding(t *testing.T, mode os.FileMode, expected string) (model.Finding
 	if err := os.Chmod(path, mode); err != nil {
 		t.Fatal(err)
 	}
-	return model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityExposed,
+	return model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", path),
 		model.WithEvidence("expected", expected),
@@ -477,7 +477,7 @@ func TestModeFixOnCompliantDirectoryIsANoOp(t *testing.T) {
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityExposed,
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", dir),
 		model.WithEvidence("expected", "0700"),
@@ -506,7 +506,7 @@ func TestModeFixTightensLooseDirectory(t *testing.T) {
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityExposed,
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", dir),
 		model.WithEvidence("expected", "0700"),
@@ -563,10 +563,10 @@ func TestConcurrentFixesToOneFileDoNotLoseEachOther(t *testing.T) {
 
 	// Two independent Auto fixes that edit the same file in different places.
 	findings := []model.Finding{
-		model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityWeak,
+		model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
 			model.SourceCompose, model.RemediationAuto,
 			model.WithService("app"), model.WithMetadata("file", path), model.WithMetadata("service", "app")),
-		model.NewFinding("compose.ds018", "port on all interfaces", model.SeverityWeak,
+		model.NewFinding("compose.ds018", "port on all interfaces", model.SeverityMedium,
 			model.SourceCompose, model.RemediationAuto,
 			model.WithService("app"), model.WithMetadata("file", path), model.WithMetadata("service", "app"),
 			model.WithEvidence("port", "8080")),
@@ -605,7 +605,7 @@ func TestCurrentIsASnapshot(t *testing.T) {
 	e := fixEngine(t)
 	e.state.mu.Lock()
 	e.state.current = model.Report{Findings: []model.Finding{
-		model.NewFinding("compose.ds006", "t", model.SeverityHardening,
+		model.NewFinding("compose.ds006", "t", model.SeverityLow,
 			model.SourceCompose, model.RemediationAuto, model.WithService("app")),
 	}}
 	e.state.hasRun = true
@@ -642,7 +642,7 @@ func TestModeFixRefusesToFollowASymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityExposed,
+	f := model.NewFinding("fileperms.shadow", "over-permissive", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", link),
 		model.WithEvidence("expected", "0640"),
@@ -676,7 +676,7 @@ func TestInterruptedBatchReportsWhatItDidNotReach(t *testing.T) {
 			t.Fatal(err)
 		}
 		findings = append(findings, model.NewFinding("compose.ds006", "no-new-privileges",
-			model.SeverityWeak, model.SourceCompose, model.RemediationAuto,
+			model.SeverityMedium, model.SourceCompose, model.RemediationAuto,
 			model.WithService(name), model.WithMetadata("file", path)))
 	}
 
@@ -712,7 +712,7 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 	if err := os.WriteFile(path, []byte("services:\n  app:\n    image: myapp\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityWeak,
+	f := model.NewFinding("compose.ds006", "no-new-privileges", model.SeverityMedium,
 		model.SourceCompose, model.RemediationAuto,
 		model.WithService("app"), model.WithMetadata("file", path))
 

@@ -169,7 +169,7 @@
 
             <div class="callout warn">
               <span class="callout-label">잘못된 이유로 해소된 점검 하나</span>
-              <p>CIS 5.3은 <em>해당한다면 SELinux 보안 옵션이 설정되어 있는가</em>인데, 이것이 해소되었습니다. SELinux는 설정되지 않았습니다. docker-bench가 이 점검을 <code>HostConfig.SecurityOpt</code>가 비어 있지 않은지로 구현하는데, <code>no-new-privileges</code>가 바로 그 필드에 들어가기 때문입니다. 그래서 hostveil은 진짜 <span class="sev hardening">HARDENING</span> 개선 하나를, SELinux가 없는 호스트에서 SELinux 점검 통과로 바꿔 놓았습니다.</p>
+              <p>CIS 5.3은 <em>해당한다면 SELinux 보안 옵션이 설정되어 있는가</em>인데, 이것이 해소되었습니다. SELinux는 설정되지 않았습니다. docker-bench가 이 점검을 <code>HostConfig.SecurityOpt</code>가 비어 있지 않은지로 구현하는데, <code>no-new-privileges</code>가 바로 그 필드에 들어가기 때문입니다. 그래서 실제 개선 하나가 — 서비스마다 <span class="sev medium">MEDIUM</span> 항목 하나씩 해소한 <code>compose.ds006</code> — SELinux가 없는 호스트에서 SELinux 점검 통과로 둔갑했습니다.</p>
               <p>이것을 싣는 이유는 이 페이지가 다루는 실패 양식이 우리 쪽이 아니라 독립 계측기 쪽 문으로 들어온 사례이기 때문입니다. 외부 숫자가 움직였다는 것이 그 밑의 성질이 바뀌었다는 증명은 아닙니다. 여기 네 계측기 중 셋은 일관되었고, 넷째는 읽어 보면 무너지는 이유로 동의했습니다.</p>
             </div>
 

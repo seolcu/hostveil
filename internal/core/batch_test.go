@@ -36,7 +36,7 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 		}
 		findings = append(findings, model.NewFinding(
 			"compose.ds006", "Missing no-new-privileges hardening",
-			model.SeverityWeak, model.SourceCompose, model.RemediationAuto,
+			model.SeverityMedium, model.SourceCompose, model.RemediationAuto,
 			model.WithService(fmt.Sprintf("app-%03d", i)),
 			model.WithMetadata("file", path),
 		))

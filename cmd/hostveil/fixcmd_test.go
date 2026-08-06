@@ -23,7 +23,7 @@ import (
 // without touching the machine running the tests.
 
 // exposedRedis is the fixture: a datastore published on 0.0.0.0, which is
-// compose.ds018 — Critical, and Auto-fixable by binding it to loopback.
+// compose.ds018 — High, and Auto-fixable by binding it to loopback.
 const exposedRedis = "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
 
 // fixtureHost points newEngine at a temp compose file and a temp state

@@ -148,7 +148,8 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 	// A daemon.json that does carry `hosts` does not cover for it either. That
 	// exclusion binds `hosts` and nothing else, while `tlsverify` lives on the
 	// unit just as often and has no such rule — so trusting the file alone
-	// there reports an unauthenticated API, this domain's one Critical, on a
+	// there reports an unauthenticated API, the worst thing this domain can
+	// find, on a
 	// host running mutual TLS.
 	if unitReason != "" {
 		if len(failed) > 0 {

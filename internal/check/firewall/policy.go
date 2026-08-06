@@ -130,11 +130,11 @@ func parseFirewalldTarget(out string) inboundPolicy {
 
 // defaultAllowFinding reports a firewall that runs and permits.
 //
-// It is High rather than Critical for the same reason firewall.inactive is:
-// the host may well be behind a router or cloud security group, so this is
-// a missing backstop rather than a confirmed exposure. It is the same
-// severity as having no firewall at all, because it is the same posture —
-// the difference is only that this one looks fixed.
+// It carries the same level as firewall.inactive, because it is the same
+// posture — the difference is only that this one looks fixed. The level says
+// the backstop is missing, not that an exposure is confirmed: the host may
+// well be behind a router or a cloud security group, which is why the
+// description says so rather than the severity pretending to know.
 //
 // No fix is registered, for firewall.inactive's reason: changing a default
 // policy to deny on a machine reached over SSH can lock the operator out
@@ -146,7 +146,7 @@ func defaultAllowFinding(which string) model.Finding {
 	}
 	return model.NewFinding("firewall.default-allow",
 		"Firewall is running but accepts everything by default",
-		model.SeverityExposed, model.SourceFirewall, model.RemediationManual,
+		model.SeverityHigh, model.SourceFirewall, model.RemediationManual,
 		model.WithDescription("A firewall is active, but its default policy for inbound traffic is to accept. Every port a service binds to a non-loopback address is reachable from any network this host is on, exactly as if no firewall were running — the difference is that `"+which+"` reports it as active, so the host looks protected. A firewall is only a backstop if what it does with traffic no rule matched is refuse it."),
 		model.WithHowToFix(how),
 		model.WithEvidence("firewall", which),

@@ -6,13 +6,13 @@ services:
     ports:
       - "9000:9000"                        # admin panel on 0.0.0.0 → compose.ds019
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # → compose.ds016 (Critical)
+      - /var/run/docker.sock:/var/run/docker.sock   # → compose.ds016 (High)
       - portainer-data:/data
 
   watchtower:
     image: containrrr/watchtower:1.3.0     # real homelab auto-updater; also old → CVEs
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # → compose.ds016 (Critical)
+      - /var/run/docker.sock:/var/run/docker.sock   # → compose.ds016 (High)
 
   monitor:
     image: alpine:3.14                     # a "monitoring" helper left over-privileged

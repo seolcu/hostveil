@@ -35,7 +35,7 @@ func checkWith(t *testing.T, r *checktest.Runner) ([]model.Finding, error) {
 
 // The headline case: ufw reports active, so every axis scored this host
 // clean, while Redis and Postgres were reachable from the internet.
-func TestPublishedPortsBypassingUFWAreCritical(t *testing.T) {
+func TestPublishedPortsBypassingUFWAreHigh(t *testing.T) {
 	r := dockerHost("cache\t0.0.0.0:6379->6379/tcp, :::6379->6379/tcp\ndb\t0.0.0.0:5432->5432/tcp\n", emptyDockerUser)
 
 	fs, err := checkWith(t, r)
@@ -49,8 +49,8 @@ func TestPublishedPortsBypassingUFWAreCritical(t *testing.T) {
 	if f.ID != "firewall.docker-bypass" {
 		t.Errorf("id = %q", f.ID)
 	}
-	if f.Severity != model.SeverityExposed {
-		t.Errorf("severity = %v, want critical", f.Severity)
+	if f.Severity != model.SeverityHigh {
+		t.Errorf("severity = %v, want high", f.Severity)
 	}
 	// Both containers listed, IPv4+IPv6 of the same port collapsed to one,
 	// and ordered by port so repeat scans produce no spurious delta.
@@ -172,7 +172,7 @@ func TestBypassScopedToUFW(t *testing.T) {
 
 // Whether the operator already closed the bypass is the one thing that
 // cannot be guessed. Unreadable means say so, not assume either answer:
-// assuming closed hides a Critical exposure, assuming open accuses a host
+// assuming closed hides a real exposure, assuming open accuses a host
 // that may be correctly configured.
 func TestUnreadableDockerUserChainIsPartial(t *testing.T) {
 	r := dockerHost("cache\t0.0.0.0:6379->6379/tcp\n", "")

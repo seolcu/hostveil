@@ -31,10 +31,10 @@ func layoutFixture() model.Report {
 				model.WithHowToFix("Bind the port to 127.0.0.1 and set a strong password.")))
 		}
 	}
-	add(3, "compose.ds018", model.SeverityExposed, model.RemediationAuto, model.SourceCompose)
-	add(5, "compose.ds016", model.SeverityWeak, model.RemediationManual, model.SourceCompose)
-	add(7, "ssh.rootlogin", model.SeverityWeak, model.RemediationAuto, model.SourceSSH)
-	add(11, "ports.exposed", model.SeverityHardening, model.RemediationManual, model.SourcePorts)
+	add(3, "compose.ds018", model.SeverityHigh, model.RemediationAuto, model.SourceCompose)
+	add(5, "compose.ds016", model.SeverityMedium, model.RemediationManual, model.SourceCompose)
+	add(7, "ssh.rootlogin", model.SeverityMedium, model.RemediationAuto, model.SourceSSH)
+	add(11, "ports.exposed", model.SeverityLow, model.RemediationManual, model.SourcePorts)
 
 	states := map[model.Source]model.ScanState{
 		model.SourceCompose: model.ScanDone,
@@ -330,7 +330,7 @@ func TestRailDrawsNoBarForADomainThatDidNotRun(t *testing.T) {
 // "agent.auth-disabled O  (openclaw@root)".
 func TestANarrowRowKeepsTheTitleRatherThanTheService(t *testing.T) {
 	f := model.NewFinding("agent.auth-disabled", "OpenClaw gateway accepts requests with no authentication",
-		model.SeverityExposed, model.SourceAgent, model.RemediationManual,
+		model.SeverityHigh, model.SourceAgent, model.RemediationManual,
 		model.WithService("openclaw@root"))
 	m := layoutModel("console", 140, 40)
 	for _, w := range []int{46, 50, 56, 64} {
@@ -346,20 +346,20 @@ func TestANarrowRowKeepsTheTitleRatherThanTheService(t *testing.T) {
 	}
 }
 
-// An "EXPOSED · 0" heading is a row of screen spent announcing that nothing
+// A "HIGH · 0" heading is a row of screen spent announcing that nothing
 // happened, and one per level on a nearly-clean host is the whole list.
 func TestLanesOnlyHeadsSeveritiesThatArePresent(t *testing.T) {
 	m := layoutModel("lanes", 120, 40)
-	exposed := model.SeverityExposed
-	m.filter.MinSeverity = &exposed
+	high := model.SeverityHigh
+	m.filter.MinSeverity = &high
 	m.active = m.report.Select(m.filter)
 
 	rows, _ := m.laneRows(80)
 	got := plain(strings.Join(rows, "\n"))
-	if !strings.Contains(got, "EXPOSED") {
+	if !strings.Contains(got, "HIGH") {
 		t.Errorf("no lane for the severity that is present:\n%s", got)
 	}
-	for _, absent := range []string{"WEAK", "HARDENING"} {
+	for _, absent := range []string{"MED", "LOW"} {
 		if strings.Contains(got, absent) {
 			t.Errorf("a %s lane was drawn for a severity with nothing in it:\n%s", absent, got)
 		}
@@ -371,9 +371,9 @@ func TestLanesOnlyHeadsSeveritiesThatArePresent(t *testing.T) {
 // nothing else. `a` is still what applies them — this only marks.
 func TestMarkLaneMarksItsOwnSeverityAndOnlyTheAutos(t *testing.T) {
 	m := layoutModel("lanes", 120, 40)
-	// Onto a Critical, which is the severity carrying the Auto findings.
+	// Onto a High, which is the severity carrying the Auto findings.
 	for i, f := range m.active {
-		if f.Severity == model.SeverityExposed {
+		if f.Severity == model.SeverityHigh {
 			m.cursor = i
 			break
 		}
@@ -385,7 +385,7 @@ func TestMarkLaneMarksItsOwnSeverityAndOnlyTheAutos(t *testing.T) {
 	}
 	for _, f := range m.active {
 		marked := m.selected[f.Key()]
-		want := f.Severity == model.SeverityExposed && f.Remediation == model.RemediationAuto
+		want := f.Severity == model.SeverityHigh && f.Remediation == model.RemediationAuto
 		if marked != want {
 			t.Errorf("%s/%s/%v: marked=%v, want %v", f.ID, f.Severity, f.Remediation, marked, want)
 		}
@@ -426,7 +426,7 @@ func TestInlineOpensUnderTheCursorAndKeepsTheListAround(t *testing.T) {
 	}
 }
 
-// "No criticals" and "nobody looked" are opposite readings, and the verdict
+// "Nothing reachable" and "nobody looked" are opposite readings, and the verdict
 // band is the largest text on the screen in the two arrangements that carry
 // it. It is the one place a false all-clear would be read first and hardest.
 func TestVerdictRefusesAVerdictWhenNothingCouldBeScanned(t *testing.T) {

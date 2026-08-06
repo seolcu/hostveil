@@ -42,11 +42,11 @@ func run(t *testing.T, rules []Rule) []model.Finding {
 func TestOverPermissiveFileFlagged(t *testing.T) {
 	// 0o644 shadow exceeds the 0o640 max (world-readable) -> flagged.
 	path := writeMode(t, "shadow", 0o644)
-	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
+	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
 	if len(fs) != 1 || fs[0].ID != "fileperms.shadow" {
 		t.Fatalf("expected fileperms.shadow, got %v", fs)
 	}
-	if fs[0].Severity != model.SeverityExposed {
+	if fs[0].Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", fs[0].Severity)
 	}
 	if fs[0].Evidence["expected"] != "0640" {
@@ -56,7 +56,7 @@ func TestOverPermissiveFileFlagged(t *testing.T) {
 
 func TestCorrectModeNotFlagged(t *testing.T) {
 	path := writeMode(t, "shadow", 0o640)
-	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
+	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
 	if len(fs) != 0 {
 		t.Errorf("correct-mode file should not be flagged, got %v", fs)
 	}
@@ -65,14 +65,14 @@ func TestCorrectModeNotFlagged(t *testing.T) {
 func TestStricterModeNotFlagged(t *testing.T) {
 	// 0o600 is stricter than the 0o640 max -> fine.
 	path := writeMode(t, "shadow", 0o600)
-	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
+	fs := run(t, []Rule{{Path: path, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
 	if len(fs) != 0 {
 		t.Errorf("stricter-mode file should not be flagged, got %v", fs)
 	}
 }
 
 func TestMissingFileNotFlagged(t *testing.T) {
-	fs := run(t, []Rule{{Path: filepath.Join(t.TempDir(), "nope"), MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
+	fs := run(t, []Rule{{Path: filepath.Join(t.TempDir(), "nope"), MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "shadow", Desc: "d"}})
 	if len(fs) != 0 {
 		t.Errorf("missing file should not be flagged, got %v", fs)
 	}
@@ -89,7 +89,7 @@ func TestGlobHostKeysAggregated(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	fs := run(t, []Rule{{Path: filepath.Join(dir, "ssh_host_*_key"), Glob: true, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.hostkey", Title: "hostkey", Desc: "d"}})
+	fs := run(t, []Rule{{Path: filepath.Join(dir, "ssh_host_*_key"), Glob: true, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "hostkey", Desc: "d"}})
 	if len(fs) != 1 {
 		t.Fatalf("expected one aggregated hostkey finding, got %v", fs)
 	}
@@ -126,7 +126,7 @@ func TestFilePermsDeclaresAutoAndCarriesPaths(t *testing.T) {
 	}
 
 	fs := run(t, []Rule{{Path: filepath.Join(dir, "*"), Glob: true, MaxMode: 0o640,
-		Sev: model.SeverityExposed, ID: "fileperms.hostkey", Title: "t"}})
+		Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "t"}})
 	if len(fs) != 1 {
 		t.Fatalf("expected one aggregated finding, got %d", len(fs))
 	}
@@ -176,7 +176,7 @@ func TestAnUnreadableGlobDirectoryDegradesTheDomain(t *testing.T) {
 	}
 
 	_, err := (&Checker{Rules: []Rule{{
-		Path: pattern, Glob: true, MaxMode: 0o640, Sev: model.SeverityExposed,
+		Path: pattern, Glob: true, MaxMode: 0o640, Sev: model.SeverityHigh,
 		ID: "fileperms.hostkey", Title: "host key", Desc: "d",
 	}}}).Check(context.Background(), platform.Env{})
 
@@ -214,7 +214,7 @@ func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 	}
 
 	_, err := (&Checker{Rules: []Rule{{
-		Path: path, MaxMode: 0o640, Sev: model.SeverityExposed,
+		Path: path, MaxMode: 0o640, Sev: model.SeverityHigh,
 		ID: "fileperms.shadow", Title: "shadow", Desc: "d",
 	}}}).Check(context.Background(), platform.Env{})
 
@@ -233,9 +233,9 @@ func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 func TestAbsentFilesAreStillClean(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "not-here")
 	_, err := (&Checker{Rules: []Rule{
-		{Path: missing, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow", Title: "s", Desc: "d"},
+		{Path: missing, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow", Title: "s", Desc: "d"},
 		{Path: filepath.Join(t.TempDir(), "ssh_host_*_key"), Glob: true, MaxMode: 0o640,
-			Sev: model.SeverityExposed, ID: "fileperms.hostkey", Title: "h", Desc: "d"},
+			Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "h", Desc: "d"},
 	}}).Check(context.Background(), platform.Env{})
 	if err != nil {
 		t.Errorf("a host missing these files is clean, not degraded: %v", err)

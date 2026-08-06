@@ -113,16 +113,16 @@ func (a *ScoreAxis) UnmarshalJSON(data []byte) error {
 	}
 	legacy := map[Severity]int{}
 	for sev, n := range map[Severity]*int{
-		SeverityExposed:   raw.Critical,
-		SeverityWeak:      raw.Medium,
-		SeverityHardening: raw.Low,
+		SeverityHigh:   raw.Critical,
+		SeverityMedium: raw.Medium,
+		SeverityLow:    raw.Low,
 	} {
 		if n != nil {
 			legacy[sev] += *n
 		}
 	}
 	if raw.High != nil {
-		legacy[SeverityExposed] += *raw.High
+		legacy[SeverityHigh] += *raw.High
 	}
 	a.Counts = newCounts()
 	for i := range a.Counts {
@@ -208,12 +208,15 @@ func axisDefsFromSources() []axisDef {
 // axis is about what that process can then touch.
 var axisDefs = axisDefsFromSources()
 
-// exposedHalves is the anchor of the whole penalty model: one Exposed
-// finding takes half of whatever credit an axis has left. Every other
-// severity follows from it, since a finding's weight is its severity
-// penalty over this constant (Exposed 8/16 = 0.5, Weak 0.125, Hardening
-// 0.0625).
-const exposedHalves = 16
+// topHalves is the anchor of the whole penalty model: one High finding
+// takes half of whatever credit an axis has left. Every other severity
+// follows from it, since a finding's weight is its severity penalty over
+// this constant (High 8/16 = 0.5, Medium 0.125, Low 0.0625).
+//
+// Named for the position rather than for the level, because the levels have
+// been renamed twice and this constant is about the top of the scale
+// whatever the top is called.
+const topHalves = 16
 
 // unavailableRelief divides the weight of a finding nothing can fix.
 //
@@ -227,7 +230,7 @@ const unavailableRelief = 4
 
 // weight returns the share of an axis's remaining credit a finding takes.
 func weight(f Finding) float64 {
-	w := float64(f.Severity.Penalty()) / exposedHalves
+	w := float64(f.Severity.Penalty()) / topHalves
 	if f.Remediation == RemediationUnavailable {
 		w /= unavailableRelief
 	}
@@ -263,11 +266,12 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 
 	// remaining[i] is the share of axis i still standing. Findings erode it
 	// multiplicatively rather than adding up: each one takes a share of what
-	// is left, so the tenth Critical still hurts but cannot hurt more than
-	// there is left to lose.
+	// is left, so the tenth High still hurts but cannot hurt more than there
+	// is left to lose.
 	//
 	// Summing severities instead — the model this replaces — meant two
-	// Criticals exhausted most axes and every finding after that was free.
+	// top-severity findings exhausted most axes and every finding after that
+	// was free.
 	// A host with 27 container findings scored identically to one with 3,
 	// and the axis was pinned at 0 for anyone running more than a couple of
 	// services.

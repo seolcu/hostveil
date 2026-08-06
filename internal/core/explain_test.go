@@ -23,7 +23,7 @@ func (f *fakeExplainer) Explain(context.Context, model.Finding) (string, error) 
 }
 
 func sampleFinding() model.Finding {
-	return model.NewFinding("ssh.rootlogin", "SSH permits root login", model.SeverityExposed,
+	return model.NewFinding("ssh.rootlogin", "SSH permits root login", model.SeverityHigh,
 		model.SourceSSH, model.RemediationReview,
 		model.WithDescription("Root over SSH is a brute-force target."),
 		model.WithHowToFix("Set PermitRootLogin prohibit-password."))

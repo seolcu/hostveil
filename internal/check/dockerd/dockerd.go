@@ -234,10 +234,11 @@ func (f *facts) coverage() check.Coverage {
 //
 // The ordering is the argument: TLS with client verification is a correctly
 // secured remote daemon and produces nothing at all. Anything less is graded
-// by what an attacker who reaches the port can do, which is why the absence
-// of TLS is Critical while its presence without verification is one rung
-// below — the operator has demonstrably thought about the socket, and the
-// remaining work is incremental rather than a rethink.
+// by what an attacker who reaches the port can do. Both remaining cases are
+// High — an endpoint anyone can reach is reachable now either way — but they
+// are separate findings with separate remediations, because TLS without
+// client verification means the operator has demonstrably thought about the
+// socket and the remaining work is incremental rather than a rethink.
 func (f *facts) apiFindings() []model.Finding {
 	if !f.cfgKnown {
 		return nil
@@ -265,7 +266,7 @@ func (f *facts) apiFindings() []model.Finding {
 		return []model.Finding{model.NewFinding(
 			"dockerd.api-tls-unverified",
 			"Docker API is encrypted but does not verify clients",
-			model.SeverityExposed, model.SourceDockerd, model.RemediationManual,
+			model.SeverityHigh, model.SourceDockerd, model.RemediationManual,
 			append(ev,
 				model.WithDescription("The daemon serves its API over TLS but does not require a client certificate, so the traffic is confidential and the authorization is nonexistent. TLS without client verification authenticates the server to the client and nothing in the other direction: anyone who can reach the port still gets full control of the daemon, and full control of the daemon is root on this host."),
 				model.WithHowToFix("Set `\"tlsverify\": true` alongside a `\"tlscacert\"` naming the CA that signed your client certificates, then restart the daemon. Docker treats `tlsverify` as the switch that turns encryption into authentication; without it the `tls` setting is only encryption."),
@@ -285,7 +286,7 @@ func (f *facts) apiFindings() []model.Finding {
 	if f.rootless() {
 		desc = "The rootless Docker daemon accepts API requests over TCP with no TLS client verification. The API has no authentication of its own, so anyone who can reach this port gets full control of this user's containers and any file the user can read. Rootless keeps it from being immediate root on the host, which bounds the damage without making the port any harder to reach."
 	}
-	sev := model.SeverityExposed
+	sev := model.SeverityHigh
 	return []model.Finding{model.NewFinding(
 		"dockerd.api-unauthenticated",
 		"Docker API is exposed over TCP without authentication",
@@ -330,7 +331,7 @@ func (f *facts) socketFindings() []model.Finding {
 	return []model.Finding{model.NewFinding(
 		"dockerd.socket-world-writable",
 		"Docker socket is writable by every account on this host",
-		model.SeverityExposed, model.SourceDockerd, model.RemediationManual,
+		model.SeverityHigh, model.SourceDockerd, model.RemediationManual,
 		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one — a web application, a compromised service account — can therefore become root on this host without a password and without an exploit."),
 		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, not by the daemon, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
 		model.WithEvidence("path", f.sock.path),
@@ -374,9 +375,9 @@ func (f *facts) groupFindings() []model.Finding {
 	// A service account is a different claim. Nobody deliberately grants a CI
 	// runner or a monitoring agent the ability to become root, and a
 	// credential that never logs in is one nobody is watching.
-	sev, extra := model.SeverityWeak, ""
+	sev, extra := model.SeverityMedium, ""
 	if len(service) > 0 {
-		sev = model.SeverityExposed
+		sev = model.SeverityHigh
 		extra = fmt.Sprintf(" Among them %s %s no interactive login, so %s a credential that can become root and that nobody is watching.",
 			plural(len(service), "is", "are"), joinNames(service),
 			plural(len(service), "it is", "they are"))
@@ -406,7 +407,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.no-new-privileges",
 			"Containers can gain privileges through setuid binaries",
-			model.SeverityWeak, model.SourceDockerd, model.RemediationManual,
+			model.SeverityMedium, model.SourceDockerd, model.RemediationManual,
 			model.WithDescription("The daemon does not apply no-new-privileges by default, so a process inside a container can still gain privileges by executing a setuid binary. That is the step that turns a foothold in an application container into root inside that container, and root inside a container is the starting point for every escape technique that follows."),
 			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that genuinely needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
 			model.WithEvidence("security options", f.info.securityOptions()),
@@ -417,7 +418,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.userns-remap",
 			"Container root is host root",
-			model.SeverityHardening, model.SourceDockerd, model.RemediationManual,
+			model.SeverityLow, model.SourceDockerd, model.RemediationManual,
 			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges rather than with an unprivileged subordinate uid."),
 			model.WithHowToFix("Set `\"userns-remap\": \"default\"` in /etc/docker/daemon.json and restart the daemon. Weigh it first: remapping changes the ownership of every bind mount, and containers using `--privileged`, host networking, or host PID cannot use it — which is why this is a Low and not an instruction."),
 			model.WithEvidence("security options", f.info.securityOptions()),
@@ -431,7 +432,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.live-restore",
 			"Restarting the daemon stops every container",
-			model.SeverityHardening, model.SourceDockerd, model.RemediationManual,
+			model.SeverityLow, model.SourceDockerd, model.RemediationManual,
 			model.WithDescription("Without live-restore, containers do not survive a daemon restart. The security cost is indirect and worth stating as such: it makes upgrading Docker an outage, so daemon updates get deferred, and a deferred daemon update is an unpatched daemon holding root on this host."),
 			model.WithHowToFix("Add `\"live-restore\": true` to /etc/docker/daemon.json. Unlike the other daemon defaults this one is picked up by `systemctl reload docker`, so enabling it does not itself require an outage. It is unsupported in swarm mode."),
 			model.WithEvidence("live restore", "disabled"),

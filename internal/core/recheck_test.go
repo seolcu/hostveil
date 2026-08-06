@@ -51,7 +51,7 @@ func (c *stubChecker) Check(context.Context, platform.Env) ([]model.Finding, err
 
 func recheckFinding() model.Finding {
 	return model.NewFinding("fileperms.shadow", "World-readable /etc/shadow",
-		model.SeverityExposed, model.SourceFilePerms, model.RemediationAuto)
+		model.SeverityHigh, model.SourceFilePerms, model.RemediationAuto)
 }
 
 // recheckEngine wires one edit fix and one checker that describes the host

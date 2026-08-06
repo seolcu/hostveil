@@ -501,12 +501,12 @@ func plural(n int) string {
 func trivySeverity(s string) model.Severity {
 	switch strings.ToUpper(s) {
 	case "CRITICAL":
-		return model.SeverityExposed
+		return model.SeverityHigh
 	case "HIGH":
-		return model.SeverityExposed
+		return model.SeverityHigh
 	case "LOW":
-		return model.SeverityHardening
+		return model.SeverityLow
 	default:
-		return model.SeverityWeak
+		return model.SeverityMedium
 	}
 }

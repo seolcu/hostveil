@@ -304,11 +304,11 @@ func TestGatewayExposureSeverityMatrix(t *testing.T) {
 		ok   bool
 		why  string
 	}{
-		{"config only, nothing listening", exposedCfg, envNoFirewall(""), model.SeverityExposed, true,
+		{"config only, nothing listening", exposedCfg, envNoFirewall(""), model.SeverityHigh, true,
 			"configured intent is enough to report, but nothing is confirmed reachable yet"},
-		{"listening, firewall active", exposedCfg, envActiveFirewall(listening), model.SeverityExposed, true,
+		{"listening, firewall active", exposedCfg, envActiveFirewall(listening), model.SeverityHigh, true,
 			"a firewall is a real backstop, so this is not the worst case"},
-		{"listening, no firewall", exposedCfg, envNoFirewall(listening), model.SeverityExposed, true,
+		{"listening, no firewall", exposedCfg, envNoFirewall(listening), model.SeverityHigh, true,
 			"reachable right now with nothing in front of it"},
 		{"loopback and quiet", cleanOpenClaw, envNoFirewall(""), 0, false,
 			"the correct configuration must produce no finding at all"},
@@ -356,7 +356,7 @@ func TestListenerAloneExposesGateway(t *testing.T) {
 // These runtimes appear in ss under whatever interpreter runs them, so a
 // process name must never be enough on its own to call a socket an agent
 // gateway. An unrelated python3 or node service on some other port is not
-// evidence of anything, and attributing it would put a Critical on a host
+// evidence of anything, and attributing it would put a High on a host
 // that is not running the runtime at all.
 func TestUnrelatedInterpreterProcessIsNotAGateway(t *testing.T) {
 	h := newHost(t, "alice")
@@ -430,7 +430,7 @@ func TestMissingSsDoesNotDegrade(t *testing.T) {
 // --- Authentication --------------------------------------------------------
 
 // auth.mode: none on a loopback gateway is upstream's documented single-user
-// default. Flagging it would put a Critical on a correct install — a score
+// default. Flagging it would put a High on a correct install — a score
 // nobody could improve by doing everything right.
 func TestAuthDisabledIsSilentOnALoopbackGateway(t *testing.T) {
 	h := newHost(t, "alice")
@@ -457,8 +457,8 @@ func TestAuthDisabledFiresOnAnExposedGateway(t *testing.T) {
 	if !ok {
 		t.Fatal("an exposed gateway with no authentication must be reported")
 	}
-	if f.Severity != model.SeverityExposed {
-		t.Errorf("severity = %v, want Critical", f.Severity)
+	if f.Severity != model.SeverityHigh {
+		t.Errorf("severity = %v, want High", f.Severity)
 	}
 }
 

@@ -373,9 +373,13 @@ pre {
   font-size: 0.92rem;
 }
 
-.finding.critical span { color: var(--danger); }
-.finding.high span { color: var(--orange); }
+/* One rule per severity the model declares — cmd/sitegen's
+   TestTheLandingPageMockupNamesRealLevels pins these against it. The set
+   used to be the four-level scale, so after the levels were renamed the
+   hero's example findings rendered with no colour at all for a release. */
+.finding.high span { color: var(--danger); }
 .finding.medium span { color: var(--warning); }
+.finding.low span { color: var(--signal); }
 
 .score-card strong {
   display: block;
@@ -403,9 +407,9 @@ pre {
   border-left: 6px solid var(--accent);
 }
 
-.finding.critical { border-left-color: var(--danger); }
-.finding.high { border-left-color: var(--orange); }
+.finding.high { border-left-color: var(--danger); }
 .finding.medium { border-left-color: var(--warning); }
+.finding.low { border-left-color: var(--signal); }
 
 .finding strong {
   display: block;

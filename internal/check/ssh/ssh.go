@@ -257,7 +257,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if effective(cfg, "PermitRootLogin", "prohibit-password") == "yes" {
 		out = append(out, model.NewFinding("ssh.rootlogin", "SSH permits root login with a password",
-			model.SeverityExposed, model.SourceSSH, model.RemediationReview,
+			model.SeverityHigh, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("Allowing root to log in over SSH with a password makes the most powerful account a direct brute-force target. A single guessed password is a full host compromise."),
 			model.WithHowToFix("Set `PermitRootLogin prohibit-password` (key-only) or `no`, and log in as a normal user with sudo instead."),
 			configFor(cfg, path, "PermitRootLogin")))
@@ -265,7 +265,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if effective(cfg, "PermitEmptyPasswords", "no") == "yes" {
 		out = append(out, model.NewFinding("ssh.emptypasswords", "SSH allows empty passwords",
-			model.SeverityExposed, model.SourceSSH, model.RemediationAuto,
+			model.SeverityHigh, model.SourceSSH, model.RemediationAuto,
 			model.WithDescription("Accounts with no password could be logged into by anyone. This is almost never intended and is trivially exploitable."),
 			model.WithHowToFix("Set `PermitEmptyPasswords no` in sshd_config."),
 			configFor(cfg, path, "PermitEmptyPasswords")))
@@ -273,7 +273,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if effective(cfg, "PasswordAuthentication", "yes") == "yes" {
 		out = append(out, model.NewFinding("ssh.passwordauth", "SSH allows password authentication",
-			model.SeverityWeak, model.SourceSSH, model.RemediationReview,
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("Password logins are vulnerable to brute-force and credential-stuffing attacks that key-based authentication is immune to. Bots constantly scan the internet for SSH servers accepting passwords."),
 			model.WithHowToFix("Set up an SSH key, then set `PasswordAuthentication no`. Make sure your key works before disabling passwords so you do not lock yourself out."),
 			configFor(cfg, path, "PasswordAuthentication")))
@@ -281,7 +281,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if tries := atoiDefault(effective(cfg, "MaxAuthTries", "6"), 6); tries > 6 {
 		out = append(out, model.NewFinding("ssh.maxauthtries", "SSH allows many authentication attempts per connection",
-			model.SeverityHardening, model.SourceSSH, model.RemediationAuto,
+			model.SeverityLow, model.SourceSSH, model.RemediationAuto,
 			model.WithDescription("A high MaxAuthTries lets an attacker try many passwords per connection, speeding up brute-force attacks."),
 			model.WithHowToFix("Lower `MaxAuthTries` to 3 or 4."),
 			model.WithEvidence("value", strconv.Itoa(tries)), configFor(cfg, path, "MaxAuthTries")))
@@ -289,7 +289,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if effective(cfg, "X11Forwarding", "no") == "yes" {
 		out = append(out, model.NewFinding("ssh.x11forwarding", "SSH X11 forwarding is enabled",
-			model.SeverityHardening, model.SourceSSH, model.RemediationAuto,
+			model.SeverityLow, model.SourceSSH, model.RemediationAuto,
 			model.WithDescription("X11 forwarding widens the attack surface and is rarely needed on a headless server."),
 			model.WithHowToFix("Set `X11Forwarding no` unless you specifically forward graphical applications."),
 			configFor(cfg, path, "X11Forwarding")))
@@ -302,7 +302,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	grace := effective(cfg, "LoginGraceTime", "120")
 	if secs, ok := parseSSHDuration(grace); ok && (secs == 0 || secs > 60) {
 		out = append(out, model.NewFinding("ssh.logingracetime", "SSH keeps unauthenticated connections open too long",
-			model.SeverityHardening, model.SourceSSH, model.RemediationAuto,
+			model.SeverityLow, model.SourceSSH, model.RemediationAuto,
 			model.WithDescription("LoginGraceTime is how long sshd waits for a connection to authenticate before dropping it. A long (or unlimited) window lets scanning bots hold many half-open connections and gives every brute-force attempt more room."),
 			model.WithHowToFix("Set `LoginGraceTime 60` or lower."),
 			model.WithEvidence("value", grace), configFor(cfg, path, "LoginGraceTime")))
@@ -310,7 +310,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if v := effective(cfg, "GatewayPorts", "no"); v == "yes" || v == "clientspecified" {
 		out = append(out, model.NewFinding("ssh.gatewayports", "SSH exposes remote-forwarded ports to the network",
-			model.SeverityWeak, model.SourceSSH, model.RemediationReview,
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("With GatewayPorts enabled, a port forwarded with `ssh -R` listens on all interfaces instead of loopback, so anyone who can reach this host can use the tunnel — effectively publishing whatever the tunnel reaches."),
 			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel genuinely must be public, front it with a reverse proxy that authenticates."),
 			model.WithEvidence("value", v), configFor(cfg, path, "GatewayPorts")))
@@ -318,7 +318,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	if effective(cfg, "HostbasedAuthentication", "no") == "yes" {
 		out = append(out, model.NewFinding("ssh.hostbasedauth", "SSH trusts other hosts' identities for login",
-			model.SeverityWeak, model.SourceSSH, model.RemediationReview,
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("Host-based authentication lets users log in because of which machine they connect from, without any per-user credential. Compromising one trusted host then opens this one."),
 			model.WithHowToFix("Set `HostbasedAuthentication no` and use per-user SSH keys instead."),
 			configFor(cfg, path, "HostbasedAuthentication")))
@@ -341,7 +341,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	}
 	if kbd == "yes" && effective(cfg, "PasswordAuthentication", "yes") == "no" {
 		out = append(out, model.NewFinding("ssh.kbdinteractive", "SSH still accepts interactive password prompts",
-			model.SeverityWeak, model.SourceSSH, model.RemediationReview,
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on — and on most systems it asks PAM for the very same password. The brute-force protection you configured is not actually in force."),
 			model.WithHowToFix("Set `KbdInteractiveAuthentication no`. Careful: PAM-based one-time codes (2FA prompts) also use this mechanism, so keep it if your logins go through one."),
 			model.WithEvidence("directive", kbdKey), configFor(cfg, path, kbdKey)))

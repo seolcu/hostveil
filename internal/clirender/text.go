@@ -316,9 +316,9 @@ func palette(on bool) colors {
 // a fourth.
 func sevColor(c colors, s model.Severity) string {
 	switch s {
-	case model.SeverityExposed:
+	case model.SeverityHigh:
 		return c.red
-	case model.SeverityWeak:
+	case model.SeverityMedium:
 		return c.yellow
 	default:
 		return c.dim

@@ -173,16 +173,16 @@ func scanSelection(only, skip string) (core.ScanOptions, string) {
 // named rather than written as bare integers at the return sites.
 const (
 	exitClean      = 0 // the scan ran and found nothing serious
-	exitFindings   = 1 // unfixed Exposed findings
+	exitFindings   = 1 // unfixed High findings
 	exitIncomplete = 3 // a domain failed outright; the result describes less than the host
 )
 
 // exitCode is what a CI or cron gate reads.
 //
-// Findings come first: an unfixed Exposed finding is the answer the gate
+// Findings come first: an unfixed High finding is the answer the gate
 // exists for, and it stays 1 whatever else happened.
 //
-// Exposed is exactly the set the old Critical and High were together — both
+// High is exactly the set the old Critical and High were together — both
 // folded into it when the scale went to three levels — so a pipeline that has
 // been gating on this code sees no change.
 //
@@ -202,7 +202,7 @@ func exitCode(r model.Report) int {
 		if f.Fixed {
 			continue
 		}
-		if f.Severity == model.SeverityExposed {
+		if f.Severity == model.SeverityHigh {
 			return exitFindings
 		}
 	}

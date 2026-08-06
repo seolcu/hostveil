@@ -92,9 +92,9 @@ func (m *appModel) setTheme(t theme.Theme) {
 // carry a severity now that the top two levels are one.
 func (s *styles) severityColor(sev model.Severity) color.Color {
 	switch sev {
-	case model.SeverityExposed:
+	case model.SeverityHigh:
 		return s.cCrit
-	case model.SeverityWeak:
+	case model.SeverityMedium:
 		return s.cMed
 	default:
 		return s.cLow
@@ -575,7 +575,7 @@ func (m *appModel) listColumn(budget, w int) []string {
 // laneRows renders the list grouped into one section per severity, and
 // returns the row index the cursor landed on so the caller can scroll to it.
 //
-// A severity with nothing at it gets no lane: a "CRITICAL · 0" heading is a
+// A severity with nothing at it gets no lane: a "HIGH · 0" heading is a
 // row of screen spent announcing that nothing happened, and four of them on
 // a nearly-clean host is the whole list.
 func (m *appModel) laneRows(w int) ([]string, int) {
@@ -740,7 +740,7 @@ func sourceLabel(s model.Source) string {
 // It replaces a line that appeared only while a filter was set and named
 // what it was. That told the user what they had just pressed and nothing
 // else: the shape of the report — how much of a wall of findings is
-// Exposed, how much of it hostveil can fix on its own — was reachable only
+// High, how much of it hostveil can fix on its own — was reachable only
 // by scrolling and counting, in the one interface where scrolling is most
 // expensive. The dashboard has never made anyone do that, and this is its
 // chip bar: a count per severity, the fixable count, and the active filter
@@ -752,8 +752,8 @@ func sourceLabel(s model.Source) string {
 // it was narrowed from.
 //
 // The severity threshold is a range, not a selection, so every chip at or
-// above it reads as active — anything else would show EXPO dim on a list
-// that is showing exactly the exposed findings.
+// above it reads as active — anything else would dim the HIGH chip on a
+// list that is showing exactly the High findings.
 func (m *appModel) chipRow(w int) string {
 	s := m.sty()
 	unfiltered := m.report.Select(model.Filter{})
@@ -1199,8 +1199,8 @@ func (m *appModel) themeRows() []string {
 	}
 
 	out = append(out, "")
-	out = append(out, styledRows(s.dim, wrap("Colors mean the same thing in every theme: the four severity "+
-		"steps and safety. Everything else is chrome.", min(m.width-2, 78)))...)
+	out = append(out, styledRows(s.dim, wrap("Colors mean the same thing in every theme: the severity steps, "+
+		"the score bands, and safety. Everything else is chrome.", min(m.width-2, 78)))...)
 	return out
 }
 

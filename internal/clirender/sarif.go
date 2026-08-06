@@ -138,14 +138,16 @@ func SARIF(r model.Report, version string) (string, error) {
 
 // sarifLevel maps severities onto SARIF's three levels.
 //
-// The mapping is one-to-one, which it was not before: Critical and High both
-// became "error", so SARIF was already saying what the three-level scale now
-// says. Nothing an ingesting tool sees changed when the scale did.
+// The mapping is one-to-one, which it was not under the four-level scale:
+// its top two levels both became "error", so SARIF was already saying what
+// three levels now say. Nothing an ingesting tool sees changed when the
+// scale did, nor when the levels were renamed — the level is chosen by
+// constant, never by name.
 func sarifLevel(s model.Severity) string {
 	switch s {
-	case model.SeverityExposed:
+	case model.SeverityHigh:
 		return "error"
-	case model.SeverityWeak:
+	case model.SeverityMedium:
 		return "warning"
 	default:
 		return "note"
@@ -155,14 +157,17 @@ func sarifLevel(s model.Severity) string {
 // securitySeverity is the 0–10 scale GitHub code scanning ranks by, which
 // buckets at 9.0 (critical), 7.0 (high) and 4.0 (medium).
 //
-// Exposed lands in "critical" rather than straddling it and "high" as the two
-// levels it replaces did: it is the level that says the problem is reachable
-// now, and code scanning's own critical band is the one that means act today.
+// hostveil's High lands in code scanning's "critical" band rather than its
+// "high" one, and the mismatched words are deliberate. hostveil has three
+// levels and code scanning has four, so they cannot line up by name; what
+// they can line up on is meaning. hostveil's top level says the problem is
+// reachable now, and code scanning's critical band is the one that means act
+// today.
 func securitySeverity(s model.Severity) string {
 	switch s {
-	case model.SeverityExposed:
+	case model.SeverityHigh:
 		return "9.5"
-	case model.SeverityWeak:
+	case model.SeverityMedium:
 		return "5.5"
 	default:
 		return "3.0"

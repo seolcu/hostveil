@@ -179,9 +179,9 @@ func TestAPreviousScanStillReads(t *testing.T) {
 		src Source
 		rem RemediationKind
 	}{
-		// severity 1 was High and severity 0 was Critical; both are Exposed now.
-		{"ssh.rootlogin", SeverityExposed, SourceSSH, RemediationReview},
-		{"cve.outdated-image", SeverityExposed, SourceCVE, RemediationUnavailable},
+		// severity 1 was High and severity 0 was Critical; both are High now.
+		{"ssh.rootlogin", SeverityHigh, SourceSSH, RemediationReview},
+		{"cve.outdated-image", SeverityHigh, SourceCVE, RemediationUnavailable},
 	} {
 		var got Finding
 		for _, f := range r.Findings {
@@ -215,9 +215,101 @@ func TestAPreviousScanStillReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"severity":"exposed"`, `"source":"ssh"`, `"remediation":"unavailable"`, `"state":"degraded"`} {
+	for _, want := range []string{`"severity":"high"`, `"source":"ssh"`, `"remediation":"unavailable"`, `"state":"degraded"`} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("re-marshalled snapshot does not contain %s:\n%s", want, out)
+		}
+	}
+}
+
+// namedSnapshot is what the build *after* the integer one wrote: enums as
+// names, with the severity levels under the interim names they carried
+// between two changes on main — exposed / weak / hardening. No release ever
+// shipped them, and anyone running from main has one of these on disk.
+//
+// It is a separate fixture from legacySnapshot rather than an edit to it,
+// because the two say different things. The integer fixture proves the
+// oldest form still resolves; this one proves that renaming the levels did
+// not silently invalidate every snapshot written since. Written out for the
+// same reason: a fixture built from the current tables would move with them.
+const namedSnapshot = `{
+  "findings": [
+    {"id": "ssh.rootlogin", "title": "SSH permits root login with a password",
+     "severity": "exposed", "source": "ssh", "remediation": "review"},
+    {"id": "compose.ds006", "title": "Container can gain privileges",
+     "severity": "weak", "source": "compose", "remediation": "auto"},
+    {"id": "sysctl.rp-filter", "title": "Reverse path filtering is off",
+     "severity": "hardening", "source": "sysctl", "remediation": "review"}
+  ],
+  "score": {"overall": 41, "applicable": true},
+  "domains": [{"source": "ssh", "state": "done", "finding_count": 1}]
+}`
+
+// TestASnapshotFromTheInterimNamesStillReads covers the second rename.
+//
+// Renaming a level is invisible to the compiler and to every test that
+// builds its input from the tables — those move together. What does not
+// move is the file the last scan wrote. If "exposed" stopped resolving, the
+// delta would report every finding on the host as new, which is the same
+// failure the integer path exists to prevent, arriving one change later.
+//
+// No release carried these names, so no upgrade path needs them. What does
+// is anyone tracking main, and the fixture costs four lines.
+func TestASnapshotFromTheInterimNamesStillReads(t *testing.T) {
+	var r Report
+	if err := json.Unmarshal([]byte(namedSnapshot), &r); err != nil {
+		t.Fatalf("a snapshot written under the previous level names no longer reads: %v", err)
+	}
+	if len(r.Findings) != 3 {
+		t.Fatalf("read %d findings, want 3", len(r.Findings))
+	}
+	for _, want := range []struct {
+		id  string
+		sev Severity
+	}{
+		{"ssh.rootlogin", SeverityHigh},
+		{"compose.ds006", SeverityMedium},
+		{"sysctl.rp-filter", SeverityLow},
+	} {
+		var got Finding
+		for _, f := range r.Findings {
+			if f.ID == want.id {
+				got = f
+			}
+		}
+		if got.Severity != want.sev {
+			t.Errorf("%s read back as %v, want %v", want.id, got.Severity, want.sev)
+		}
+	}
+
+	// The ordering is the part that would fail silently. If two old names
+	// collapsed onto one level the findings would still read, and only the
+	// order they sort in would be wrong.
+	if !(SeverityHigh < SeverityMedium && SeverityMedium < SeverityLow) {
+		t.Error("the levels no longer sort most-urgent-first")
+	}
+}
+
+// TestEveryNameHostveilHasWrittenStillParses walks the names rather than a
+// snapshot, so a level renamed a third time without an entry here fails
+// immediately instead of at whatever a future operator's disk holds.
+func TestEveryNameHostveilHasWrittenStillParses(t *testing.T) {
+	for name, want := range map[string]Severity{
+		// The current names.
+		"high": SeverityHigh, "medium": SeverityMedium, "low": SeverityLow,
+		// The urgency names, one release only.
+		"exposed": SeverityHigh, "weak": SeverityMedium, "hardening": SeverityLow,
+		// The four-level scale. critical and high merged, which is what
+		// keeps scan's exit code meaning what it always did.
+		"critical": SeverityHigh,
+	} {
+		got, ok := ParseSeverity(name)
+		if !ok {
+			t.Errorf("ParseSeverity(%q) failed, and hostveil has written that name to disk", name)
+			continue
+		}
+		if got != want {
+			t.Errorf("ParseSeverity(%q) = %v, want %v", name, got, want)
 		}
 	}
 }

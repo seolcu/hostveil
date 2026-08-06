@@ -105,10 +105,10 @@ func (m *appModel) verdictRows(w int) []string {
 	s := m.sty()
 	all := m.report.Select(model.Filter{})
 
-	exposed, autos := 0, 0
+	high, autos := 0, 0
 	for _, f := range all {
-		if f.Severity == model.SeverityExposed {
-			exposed++
+		if f.Severity == model.SeverityHigh {
+			high++
 		}
 		if f.Remediation == model.RemediationAuto {
 			autos++
@@ -121,9 +121,9 @@ func (m *appModel) verdictRows(w int) []string {
 	case m.report.Domains != nil && !m.report.Score.Applicable:
 		head = "This host could not be scanned."
 		headC = s.cHigh
-	case exposed > 0:
-		head = fmt.Sprintf("%d finding%s reachable right now.", exposed,
-			map[bool]string{true: " is", false: "s are"}[exposed == 1])
+	case high > 0:
+		head = fmt.Sprintf("%d finding%s reachable right now.", high,
+			map[bool]string{true: " is", false: "s are"}[high == 1])
 		headC = s.cCrit
 	default:
 		head = "This host is " + model.BandFor(m.report.Score.Overall).Verdict() + "."

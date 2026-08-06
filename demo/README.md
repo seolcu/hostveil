@@ -188,12 +188,13 @@ The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
 > ships a daemon the demo could honestly run. `provision.sh` seeds their
 > configuration and file layout instead, which is what the agent domain
 > inspects anyway. The one part this cannot show is the listener
-> cross-check: with nothing bound to the gateway port,
-> `agent.gateway-exposed` reports **High** from the config alone. Start
-> something on the port to watch it escalate to **Critical** (an exposed
-> gateway, confirmed listening, with `ufw` inactive):
+> cross-check. The finding is **High** either way — the firewall and the
+> listener change how confident it is, not how urgent — but with nothing
+> bound to the gateway port its evidence says the binding came from the
+> config rather than from an observed socket. Start something on the port to
+> see the other case:
 >
 > ```bash
 > python3 -m http.server 18789 --bind 0.0.0.0 &
-> hostveil scan          # severity high → critical, basis config → config+listener
+> hostveil scan          # still High; basis config → config+listener
 > ```
