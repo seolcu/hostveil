@@ -36,6 +36,16 @@ Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell.
 
 CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), `scripts/install.sh` is shellchecked, and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck and gives each fuzz target five minutes, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.
 
+### Measuring that it works
+
+E2E proves the score goes up after `fix --all`, which proves only that hostveil is self-consistent — the same code decides what a finding is, what fixing it means, and what the number should be afterwards. `scripts/measure/run.sh` is the answer to that: it runs Lynis, the CIS Docker Benchmark and a TCP scan from a container off the host, before the fixes and after them and again after rolling every one of them back, and writes one JSON document. `scripts/measure/control.sh` hardens a host from the CIS Benchmarks *without* hostveil, so the harness can also ask whether the score responds to somebody else's standard.
+
+It edits the host it runs on. Use the demo VM or a container, never your own machine. Committed results live in `docs/measurements/`, and the numbers on `cmd/sitegen/content/*/docs/measurements.html` are pinned against them by `internal/docs/measurements_test.go`.
+
+`run.sh -c` exits non-zero on the only two claims in the output that are promises rather than observations: that rollback restored every file the fixes changed, and that hostveil's own score moved at all. Nothing else is asserted, because everything else moves for reasons no diff is responsible for — a Lynis release, a new distribution default — and a check that turns red for those is a check somebody turns off, taking the other two with it. The assertion lives in `check.py` beside the harness rather than in a workflow, so it holds wherever the harness is run.
+
+The one thing to know before editing the harness: **rollback fidelity is judged against hashes taken before the fixes ran, on paths hostveil's own scan named.** Comparing a restored file against its checkpoint instead would ask whether hostveil agrees with itself, which it always will.
+
 ### Running it for real
 
 The binary builds and tests everywhere, but only *runs* meaningfully on Linux with docker/ssh/ufw present. Don't run it against your own machine — use the Vagrant demo VM, which rsyncs your working tree in and rebuilds:

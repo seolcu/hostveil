@@ -111,6 +111,25 @@
       }
     },
     {
+      "slug": "measurements",
+      "group": "guide",
+      "ogType": "article",
+      "en": {
+        "title": "Measured results — hostveil docs",
+        "description": "What independent instruments say about a host hostveil has fixed: Lynis, the CIS Docker Benchmark, and a TCP scan from off the host, before and after — including where they did not move, and whether rolling every fix back restores the filesystem byte for byte.",
+        "ogTitle": "Measured results — hostveil docs",
+        "ogDescription": "Lynis, docker-bench-security and an off-host TCP scan, run before and after hostveil's fixes on a deliberately misconfigured server. The numbers, the method, and the ones that did not move.",
+        "nav": "Measured results"
+      },
+      "ko": {
+        "title": "실측 결과 — hostveil 문서",
+        "description": "hostveil이 고친 호스트를 독립 계측기로 잰 결과: Lynis, CIS Docker Benchmark, 호스트 밖에서의 TCP 스캔을 수정 전후로 실행한 수치 — 움직이지 않은 항목까지, 그리고 모든 수정을 되돌렸을 때 파일이 바이트 단위로 복원되는지.",
+        "ogTitle": "실측 결과 — hostveil 문서",
+        "ogDescription": "일부러 잘못 설정한 서버에서 hostveil의 수정 전후를 Lynis, docker-bench-security, 외부 TCP 스캔으로 잰 수치. 방법과 결과, 그리고 움직이지 않은 것들.",
+        "nav": "실측 결과"
+      }
+    },
+    {
       "slug": "fixing",
       "group": "guide",
       "ogType": "article",

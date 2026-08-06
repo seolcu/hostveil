@@ -54,8 +54,9 @@ internal/
   clirender/         the CLI's report rendering
   ui/{theme,tui,web}/  thin UIs over the engine, and the one palette registry
 demo/                the reproducible vulnerable-server VM (Vagrant)
+scripts/measure/     the harness that measures hostveil with other tools
 site/                the marketing site (static, generated — see below)
-docs/                these docs
+docs/                these docs, and docs/measurements/ — committed results
 ```
 
 `AGENTS.md` is worth reading even if you never use a coding agent: it is the
@@ -144,6 +145,38 @@ vagrant ssh -c 'script -q -c "hostveil tui" /tmp/raw.log'
 
 The TUI also has a snapshot hook for documentation frames: `HOSTVEIL_SNAPSHOT=/path
 go test ./internal/ui/tui -run TestSnapshotDump`.
+
+### Measuring hostveil with tools that are not hostveil
+
+The end-to-end job checks that the score improves after `fix --all`. That
+only shows hostveil is self-consistent: the same code decides what a finding
+is, what fixing it means, and what the number should be afterwards.
+`scripts/measure/` closes that circle with auditors that have never heard of
+it — Lynis, docker-bench-security, and a TCP connect scan from a container
+off the host — run before the fixes, after them, and again after every fix
+has been rolled back.
+
+```bash
+# On the demo VM, or any host you are willing to have edited.
+vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -c -p seeded /tmp/out.json'
+
+# The control group: hardened from the CIS Benchmarks, without hostveil.
+vagrant ssh -c 'sudo /vagrant/scripts/measure/control.sh'
+vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -p control /tmp/control.json'
+```
+
+Results are committed under `docs/measurements/` and published on the
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page, whose figures
+are pinned against the committed JSON by `internal/docs/measurements_test.go`.
+A stale number on the page is a test failure, not a reading error.
+
+Pass `-c` and the run exits non-zero on the only two claims in its output
+that are promises rather than observations: that rolling every fix back
+restored each changed file byte for byte, and that hostveil's own score moved
+at all. Everything else is recorded and nothing else is asserted — those
+numbers move for reasons no diff is responsible for, and a check that turns
+red for a Lynis release is a check somebody disables, taking the two real
+ones with it.
 
 ### Provider setup by platform
 
