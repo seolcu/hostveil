@@ -13,8 +13,9 @@
 # where they did not move, because a fix that improves hostveil's own score
 # and nothing else is exactly what this exists to catch.
 #
-# Four phases: before the fixes, after them, after the services have been
-# restarted into them, and after every one has been rolled back.
+# Five phases: before the fixes, after them, after the services have been
+# restarted into them, after every reversible Review fix has been accepted as
+# well, and after every one has been rolled back.
 #
 # It measures the host it runs on, the way hostveil does. Point it at a host
 # you are willing to have edited: it applies every Auto fix and then rolls
@@ -146,6 +147,69 @@ restart_services
 
 say "RESTARTED"
 measure_all restarted
+
+# Everything above measures `fix --all`, which applies Auto fixes only —
+# the unattended path, and deliberately the most conservative thing hostveil
+# does. It is not the path an operator takes. They read a Review fix, decide,
+# and accept it, and the fixes that need that decision are the ones that
+# change the most: every SSH hardening option, because a bad sshd_config can
+# lock the operator out, and hostveil will not do that unattended.
+#
+# So there is a fifth phase for the reviewed path. It applies every Review
+# fix and then counts how many of them left a checkpoint, because that — not
+# a word in the preview — is what "reversible" means here: an exec fix writes
+# no checkpoint, so the rollback phase below cannot put it back, and the
+# report has to say how many of those there were rather than let "restored"
+# read as a full undo.
+#
+# Counted rather than avoided, and counted from the checkpoint log rather
+# than from the preview text. The first version of this read the preview and
+# grepped it for "These commands will run:", which is the *TUI's* wording;
+# the CLI says "The following commands will run:", so it matched nothing and
+# skipped nothing while reporting that it had. A harness that tells you what
+# it skipped, wrongly, is worse than one that does not skip.
+checkpoint_count() { hostveil history 2>/dev/null | grep -cE 'rollback [0-9]{8}-' || true; }
+
+apply_reviewed() {
+  local applied=0 failed=0 cp_before cp_after id svc
+  cp_before=$(checkpoint_count)
+  while IFS=$'\t' read -r id svc; do
+    [ -n "$id" ] || continue
+    if hostveil fix "$id" ${svc:+--service "$svc"} --action 0 --yes >/dev/null 2>&1; then
+      applied=$((applied + 1))
+    else
+      failed=$((failed + 1))
+    fi
+  done < <(hostveil scan --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    r = json.load(sys.stdin)
+except ValueError:
+    raise SystemExit
+seen = set()
+for f in r["findings"]:
+    if f.get("remediation") != "review" or f.get("fixed"):
+        continue
+    key = (f["id"], f.get("service") or "")
+    if key in seen:
+        continue
+    seen.add(key)
+    print(f["id"] + "\t" + (f.get("service") or ""))' || true)
+  cp_after=$(checkpoint_count)
+  local reversible=$((cp_after - cp_before))
+  local irreversible=$((applied - reversible))
+  [ "$irreversible" -ge 0 ] || irreversible=0
+  printf '{"applied":%d,"failed":%d,"left_a_checkpoint":%d,"not_reversible":%d}\n' \
+    "$applied" "$failed" "$reversible" "$irreversible" > "$WORK/reviewed.json"
+  say "  $applied reviewed fixes applied, $reversible reversible, $irreversible with no checkpoint"
+}
+
+say "accepting every reversible Review fix, the way an operator who read them would"
+apply_reviewed
+restart_services
+
+say "REVIEWED"
+measure_all reviewed
 
 # The union, because a fix may create a file that was not there to be listed
 # before, and may clear a finding whose file therefore stops being named.
