@@ -160,7 +160,7 @@ func (m *appModel) View() tea.View {
 	case modeMessage:
 		content = m.compose(compactHeader(""), nil, "press any key to continue",
 			func(n int) []string {
-				return centerRows(styledRows(s.bone, "  "+wrap(m.status, min(m.width-4, 78))), n)
+				return centerRows(m.wrapRows(s.bone, m.status, m.proseWidth(bodyInset), bodyInset), n)
 			})
 
 	case modeHistory:
@@ -320,7 +320,7 @@ func (m *appModel) listHintFor() string {
 // scanningRows is the whole scan screen: one status line, held in the middle
 // of an otherwise empty frame.
 func (m *appModel) scanningRows(n int) []string {
-	return centerRows(styledRows(m.sty().dim, "  "+m.status), n)
+	return centerRows(m.wrapRows(m.sty().dim, m.status, m.proseWidth(bodyInset), bodyInset), n)
 }
 
 // minVerdictBody is how many rows must remain for the verdict band to be
@@ -407,20 +407,22 @@ func (m *appModel) paneRows(w, budget int) []string {
 		return centerRows([]string{s.dim.Render(truncate("Nothing to show.", w))}, budget)
 	}
 	f := m.active[m.cursor]
-	body := m.detailBodyRows(f, min(w-2, 78))
+	body := indentRows(m.detailBodyRows(f, max(minWrapWidth, min(w-2*paneInset, maxProse))), paneInset)
 	out := make([]string, 0, len(body)+4)
-	for _, r := range body {
-		out = append(out, " "+r)
-	}
+	out = append(out, body...)
 	// The dashboard closes this pane with a row of buttons — Preview fix,
 	// Explain with AI — and the terminal closed it with nothing, leaving the
 	// two keys that act on what the pane is showing documented only in the
 	// footer, among fourteen others. A pane that reads a finding out and then
 	// does not say what can be done about it is where the two interfaces
 	// diverged most, and it is the cheapest place to stop.
-	for _, r := range m.paneActionRows(f) {
-		out = append(out, " "+r)
-	}
+	//
+	// The divider is drawn at the pane's own width and *not* indented with the
+	// rows around it: it is the one row here that has to meet the separator to
+	// its left, and joinColumns can only turn that meeting into a ├ if the
+	// rule actually reaches the column edge.
+	out = append(out, "", m.ruleRowOf(w))
+	out = append(out, indentRows(m.paneActionRows(f), paneInset)...)
 	return m.clipRows(out, budget)
 }
 
@@ -434,7 +436,7 @@ func (m *appModel) paneActionRows(f model.Finding) []string {
 	}
 	acts = append(acts, s.dim.Render("e  explain with AI")+
 		s.dim.Render("     enter  open full screen"))
-	return append([]string{"", m.ruleRow()}, acts...)
+	return acts
 }
 
 // emptyListRows is what the list column says when there is nothing in it: a
@@ -455,7 +457,7 @@ func (m *appModel) emptyListRows(chips string, w int) []string {
 		// Asked explicitly rather than inferred from the chip row: the chips
 		// are drawn from the unfiltered report, so they are there whenever the
 		// host has findings at all, filtered or not.
-		return []string{chips, "", s.dim.Render("  No findings match the filter.")}
+		return []string{chips, "", indentRows([]string{s.dim.Render("No findings match the filter.")}, bodyInset)[0]}
 	case m.report.IncompleteDomains() > 0:
 		// Wrapped, for the reason the preview's warning is wrapped: this row is
 		// far longer than the "Clean." it replaces, and clipped at the terminal
@@ -464,14 +466,9 @@ func (m *appModel) emptyListRows(chips string, w int) []string {
 		warn := lipgloss.NewStyle().Foreground(s.cHigh)
 		msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
 			m.report.IncompleteDomains())
-		lines := strings.Split(wrap(msg, min(w-4, 78)), "\n")
-		out := make([]string, 0, len(lines))
-		for _, l := range lines {
-			out = append(out, warn.Render("  "+l))
-		}
-		return out
+		return m.wrapRows(warn, msg, max(minWrapWidth, min(w-2*bodyInset, maxProse)), bodyInset)
 	default:
-		return []string{s.safe.Render("  No problems found. Clean.")}
+		return indentRows([]string{s.safe.Render("No problems found. Clean.")}, bodyInset)
 	}
 }
 
@@ -540,12 +537,18 @@ func (m *appModel) listColumn(budget, w int) []string {
 		if total > visible {
 			h += s.dim.Render(fmt.Sprintf("      %d–%d", shownFrom, shownTo))
 		}
-		out = append(out, h)
+		// listPad: the chip's own background already starts one column left
+		// of its label, so the head and the batch bar are moved in by one to
+		// put all three labels on the same column. The dashboard does this
+		// with one padding on the three containers; here the chip is the only
+		// one carrying its padding inside itself.
+		const listPad = 1
+		out = append(out, indentRows([]string{h}, listPad)...)
 		if fl != "" {
 			out = append(out, fl)
 		}
 		if bb != "" {
-			out = append(out, bb)
+			out = append(out, indentRows([]string{bb}, listPad)...)
 		}
 	}
 
@@ -633,12 +636,18 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	s := m.sty()
 	sevC := s.severityColor(f.Severity)
 	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
-	mark := "  "
+	// The marker column is one width for every row, measured rather than
+	// assumed to be two. "·" and the tick are East Asian Ambiguous, so on a
+	// terminal that draws that class wide they are two columns each and a
+	// marked row started its severity one column right of an unmarked one —
+	// the whole list stepping in and out down the left edge.
+	markW := m.markColumns()
+	mark := padRight("", markW)
 	if f.Remediation == model.RemediationAuto {
 		if m.selected[f.Key()] {
-			mark = s.safe.Render(m.gl.Of(glyph.OK) + " ")
+			mark = s.safe.Render(padRight(m.gl.Of(glyph.OK)+" ", markW))
 		} else {
-			mark = s.dim.Render("· ")
+			mark = s.dim.Render(padRight("· ", markW))
 		}
 	}
 	sev := sevAbbr(f.Severity)
@@ -647,10 +656,11 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// The old constant did not account for the trailing service suffix at
 	// all, so a finding on "cloud/nextcloud-12" overran the terminal by
 	// however long the service name happened to be — and it did not account
-	// for an ID longer than its %-13s field either (cve.outdated-image is
-	// eighteen). Both are host-supplied, so neither has a safe upper bound.
-	const gutterAndMark = 3 // "▌" + a two-column mark
-	body := fmt.Sprintf("%-4s %-13s ", sev, f.ID)
+	// for an ID longer than its field either. Both are host-supplied, so
+	// neither has a safe upper bound.
+	gutterAndMark := lipgloss.Width("▌") + markW
+	idW := m.idColumnWidth(w)
+	body := fmt.Sprintf("%-4s %-*s ", sev, idW, truncate(f.ID, idW))
 
 	if cursor {
 		title := truncate(f.Title, w-gutterAndMark-lipgloss.Width(body))
@@ -679,18 +689,60 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// The service is set flush right, the way the dashboard's row does it,
 	// rather than trailing the title. Two reasons, and the second is the one
 	// that matters on a wide terminal: it makes a column of service names the
-	// eye can run down, and it stops the service from sliding left to right with
-	// every title length so that "which container is this?" is answered in one
-	// place instead of eighty. The gap is only spent where there is room for
-	// it — under minGapForRightAlign the suffix goes back to trailing the
-	// title, because a right-aligned name one space from the title is not a
-	// column, it is the same row with extra arithmetic.
-	const minGapForRightAlign = 4
-	if gap := avail - lipgloss.Width(title) - lipgloss.Width(suffix); suffix != "" && gap >= minGapForRightAlign {
+	// eye can run down, and it stops the service from sliding left to right
+	// with every title length so that "which container is this?" is answered
+	// in one place instead of eighty.
+	//
+	// Always, whatever the gap. This used to right-align only where at least
+	// four columns separated the two, on the reasoning that a name one space
+	// from the title is not a column — which is true of that row read on its
+	// own and false of the list it sits in. A row whose title happened to land
+	// three columns short ended three columns short, so the column of service
+	// names ran down the list and then stepped sideways for one row and back,
+	// once per finding whose title was nearly long enough. Ragged in a way
+	// that reads as a rendering fault, and next to a pane separator it *is*
+	// one: the row no longer reaches the line beside it.
+	if gap := avail - lipgloss.Width(title) - lipgloss.Width(suffix); suffix != "" && gap > 0 {
 		title = padRight(title, lipgloss.Width(title)+gap)
 	}
-	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(sev) +
-		s.dim.Render(fmt.Sprintf(" %-13s ", f.ID)) + s.bone.Render(title) + suffix
+	// The severity is padded to the same %-4s the budget above was computed
+	// from. It was not, and the two disagreed by exactly the difference
+	// between "HIGH" and "MED": every medium and low row was rendered a column
+	// narrower than the arithmetic that laid it out, so the id column stepped
+	// left for those rows and the right-aligned service stopped one short of
+	// the pane separator. Two visible faults, one missing pad.
+	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(fmt.Sprintf("%-4s", sev)) +
+		s.dim.Render(fmt.Sprintf(" %-*s ", idW, truncate(f.ID, idW))) + s.bone.Render(title) + suffix
+}
+
+// markColumns is the width of the pick-marker column, which is the widest of
+// the three things that can be drawn in it. Two columns on every terminal
+// that draws ambiguous characters narrow, and the point of measuring is the
+// one that does not.
+func (m *appModel) markColumns() int {
+	return max(2, lipgloss.Width(m.gl.Of(glyph.OK)+" "), lipgloss.Width("· "))
+}
+
+// idColumnWidth is how wide the finding-id column is drawn, for every row in
+// the list at once.
+//
+// It used to be a literal 13, which is neither the widest id nor a bound on
+// one: cve.outdated-image is eighteen columns and simply pushed its own title
+// five to the right of every other title on the screen. A column that only
+// holds for the ids that happen to be short is not a column, and the ragged
+// left edge it produced is the first thing the eye catches in a list that is
+// otherwise a grid.
+//
+// So: the widest id actually on screen, floored at the common case so a list
+// of short ids does not close the gap the titles are read across, and capped
+// at a third of the column so one long id cannot spend the title's room.
+func (m *appModel) idColumnWidth(w int) int {
+	const floor = 13
+	widest := floor
+	for _, f := range m.active {
+		widest = max(widest, lipgloss.Width(f.ID))
+	}
+	return min(widest, max(floor, w/3))
 }
 
 // batchRow is the terminal's batch bar: the dashboard has a row of buttons
@@ -978,7 +1030,8 @@ func (m *appModel) detailRows() []string {
 	if len(m.active) == 0 {
 		return nil
 	}
-	return append([]string{""}, m.detailBodyRows(m.active[m.cursor], min(m.width-4, 78))...)
+	return append([]string{""},
+		indentRows(m.detailBodyRows(m.active[m.cursor], m.proseWidth(bodyInset)), bodyInset)...)
 }
 
 // detailBodyRows is one finding written out, wrapped to w.
@@ -1015,7 +1068,7 @@ func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
 		out = append(out, "", s.dim.Render("AI EXPLANATION (ADVISORY)"))
 		switch {
 		case m.aiBusy:
-			out = append(out, s.dim.Render("  asking the local AI model…"))
+			out = append(out, s.dim.Render("asking the local AI model…"))
 		case m.aiText != "":
 			out = append(out, styledRows(s.bone, wrap(m.aiText, w))...)
 		default:
@@ -1032,49 +1085,49 @@ func (m *appModel) previewRows() []string {
 	s := m.sty()
 	idx := clamp(m.previewAction, 0, len(m.preview.Actions)-1)
 
+	// Every block below sits at bodyInset and every nested one a step further
+	// in, which is what the dashboard's .fixbox-body does with padding: the
+	// label, the options under it, the warning, the commands.
 	out := []string{""}
 	if len(m.preview.Actions) > 1 {
-		out = append(out, s.dim.Render("Alternatives (press a number):"))
+		out = append(out, indentRows([]string{s.dim.Render("Alternatives (press a number):")}, bodyInset)...)
 		for _, a := range m.preview.Actions {
-			marker := "  "
+			marker := strings.Repeat(" ", stepInset)
 			if a.Index == idx {
 				marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
 			}
-			out = append(out, marker+s.bone.Render(fmt.Sprintf("[%d] %s", a.Index, a.Label)))
+			row := marker + s.bone.Render(truncate(fmt.Sprintf("[%d] %s", a.Index, a.Label),
+				m.proseWidth(bodyInset)-stepInset))
+			out = append(out, indentRows([]string{row}, bodyInset)...)
 		}
 		out = append(out, "")
 	}
 
 	a := m.preview.Actions[idx]
 	if a.Warning != "" {
-		// Wrap the warning. It is the one place the preview explains what
-		// cannot be undone, and unwrapped it ran past the terminal edge and
-		// was clipped mid-sentence — cut, in the exec case, at "There is no
-		// rollback" with the reason that follows lost. The "⚠  " prefix is
-		// two columns plus a space, so the continuation lines are indented to
-		// sit under the text rather than the marker.
-		warn := lipgloss.NewStyle().Foreground(s.cHigh)
-		for i, l := range strings.Split(wrap(a.Warning, min(m.width-4, 78)), "\n") {
-			if i == 0 {
-				out = append(out, warn.Render(m.gl.Of(glyph.Warning)+"  "+l))
-			} else {
-				out = append(out, warn.Render("   "+l))
-			}
-		}
+		// It is the one place the preview explains what cannot be undone, and
+		// unwrapped it ran past the terminal edge and was clipped mid-sentence
+		// — cut, in the exec case, at "There is no rollback" with the reason
+		// that follows lost. Hanging, so the continuation sits under the text
+		// rather than under the marker.
+		out = append(out, m.hangingRows(lipgloss.NewStyle().Foreground(s.cHigh),
+			m.gl.Of(glyph.Warning)+"  ", a.Warning, m.proseWidth(bodyInset), bodyInset)...)
 		out = append(out, "")
 	}
 
 	switch a.Type {
 	case "edit", "mode":
-		out = append(out, s.diffRows(a.Diff)...)
+		out = append(out, indentRows(s.diffRows(a.Diff), bodyInset)...)
 	case "exec":
-		out = append(out, s.dim.Render("These commands will run:"))
+		out = append(out, indentRows([]string{s.dim.Render("These commands will run:")}, bodyInset)...)
 		for _, cmd := range a.Commands {
-			out = append(out, s.dim.Render("  $ "+strings.Join(cmd, " ")))
+			out = append(out, indentRows([]string{s.dim.Render(truncate("$ "+strings.Join(cmd, " "),
+				max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 		}
 	default:
 		// Never leave the apply/cancel footer with an empty body above it.
-		out = append(out, s.dim.Render("(no preview available for action type "+a.Type+")"))
+		out = append(out, indentRows([]string{
+			s.dim.Render("(no preview available for action type " + a.Type + ")")}, bodyInset)...)
 	}
 	return out
 }
@@ -1145,25 +1198,50 @@ func (m *appModel) historyRows(budget int) []string {
 		}
 		out = append(out, head)
 	}
+	idW := m.checkpointIDWidth()
 	for i := m.cpOffset; i < end; i++ {
-		out = append(out, m.checkpointRow(m.checkpoints[i], i == m.cpCursor))
+		out = append(out, m.checkpointRow(m.checkpoints[i], i == m.cpCursor, idW))
 	}
-	return out
+	// One margin for the whole screen, the header and the warning included:
+	// this is a list of prose rows with no severity gutter to sit at the edge,
+	// which is the difference between it and the findings list.
+	return indentRows(out, bodyInset)
 }
 
-func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool) string {
+// checkpointRow is one applied fix: when, what it was about, what it did.
+//
+// The id column is measured, not assumed. At a fixed %-15s every id longer
+// than fifteen — firewall.inactive, fileperms.envfile, updates.disabled, all
+// of them ordinary — pushed its own label right, so the labels stepped in and
+// out down a list whose whole job is to be scanned for the one you want to
+// undo.
+func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool, idW int) string {
 	s := m.sty()
+	const whenW = 11 // "01-02 15:04"
 	when := cp.CreatedAt.Local().Format("01-02 15:04")
-	label := truncate(cp.Label, m.width-40)
-	line := fmt.Sprintf("%-11s %-15s %s", when, cp.FindingID, label)
+	id := truncate(cp.FindingID, idW)
+	inner := max(minWrapWidth, m.width-2*bodyInset)
+	label := truncate(cp.Label, max(1, inner-whenW-idW-2))
+	line := fmt.Sprintf("%-*s %-*s %s", whenW, when, idW, id, label)
 	if cursor {
-		return s.sel.Render(padRight(line, m.width-1))
+		return s.sel.Render(padRight(line, inner))
 	}
 	if !cp.Reversible {
 		return s.dim.Render(line)
 	}
-	return s.dim.Render(when+" ") + s.bone.Render(fmt.Sprintf("%-15s ", cp.FindingID)) +
+	return s.dim.Render(when+" ") + s.bone.Render(fmt.Sprintf("%-*s ", idW, id)) +
 		s.bone.Render(label)
+}
+
+// checkpointIDWidth sizes that column from the entries on screen, bounded so
+// one long id cannot leave no room for the labels beside it.
+func (m *appModel) checkpointIDWidth() int {
+	const floor, ceiling = 15, 24
+	widest := floor
+	for _, cp := range m.checkpoints {
+		widest = max(widest, lipgloss.Width(cp.FindingID))
+	}
+	return min(widest, max(floor, min(ceiling, (m.width-2*bodyInset)/3)))
 }
 
 // themeRows is the color-theme picker. Moving the cursor restyles the whole
@@ -1199,8 +1277,8 @@ func (m *appModel) themeRows() []string {
 	}
 
 	out = append(out, "")
-	out = append(out, styledRows(s.dim, wrap("Colors mean the same thing in every theme: the severity steps, "+
-		"the score bands, and safety. Everything else is chrome.", min(m.width-2, 78)))...)
+	out = append(out, m.wrapRows(s.dim, "Colors mean the same thing in every theme: the severity steps, "+
+		"the score bands, and safety. Everything else is chrome.", m.proseWidth(bodyInset), bodyInset)...)
 	return out
 }
 
@@ -1268,18 +1346,22 @@ func (m *appModel) rollbackRows() []string {
 	s := m.sty()
 	cp := m.checkpoints[m.cpCursor]
 
-	out := []string{"", s.dim.Render("Restores:")}
+	out := []string{""}
+	out = append(out, indentRows([]string{s.dim.Render("Restores:")}, bodyInset)...)
 	for _, p := range cp.Files {
-		out = append(out, s.bone.Render("  "+p))
+		out = append(out, indentRows([]string{s.bone.Render(truncate(p,
+			max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 	}
 	out = append(out, "")
 	if cp.RestartService != "" {
-		out = append(out, lipgloss.NewStyle().Foreground(s.cHigh).
-			Render(m.gl.Of(glyph.Warning)+"  You may need to restart '"+cp.RestartService+"' afterwards."), "")
+		out = append(out, m.hangingRows(lipgloss.NewStyle().Foreground(s.cHigh),
+			m.gl.Of(glyph.Warning)+"  ", "You may need to restart '"+cp.RestartService+"' afterwards.",
+			m.proseWidth(bodyInset), bodyInset)...)
+		out = append(out, "")
 	}
 	if cp.Diff != "" {
-		out = append(out, s.dim.Render("This change will be reverted:"))
-		out = append(out, s.diffRows(cp.Diff)...)
+		out = append(out, indentRows([]string{s.dim.Render("This change will be reverted:")}, bodyInset)...)
+		out = append(out, indentRows(s.diffRows(cp.Diff), bodyInset)...)
 	}
 	return out
 }
@@ -1293,17 +1375,20 @@ func (m *appModel) rollbackRows() []string {
 func (m *appModel) forceRows() []string {
 	s := m.sty()
 	out := []string{""}
-	out = append(out, styledRows(lipgloss.NewStyle().Foreground(s.cHigh),
-		wrap(m.status, min(m.width-4, 78)))...)
+	out = append(out, m.wrapRows(lipgloss.NewStyle().Foreground(s.cHigh), m.status,
+		m.proseWidth(bodyInset), bodyInset)...)
 	out = append(out, "")
-	out = append(out, styledRows(s.bone, wrap(
-		"Forcing the rollback restores hostveil's backup over the current file, discarding those changes. Rollback writes no checkpoint of its own, so this cannot be undone.",
-		min(m.width-4, 78)))...)
+	out = append(out, m.wrapRows(s.bone,
+		"Forcing the rollback restores hostveil's backup over the current file, discarding those changes. "+
+			"Rollback writes no checkpoint of its own, so this cannot be undone.",
+		m.proseWidth(bodyInset), bodyInset)...)
 	if len(m.checkpoints) > 0 {
 		cp := m.checkpoints[m.cpCursor]
-		out = append(out, "", s.dim.Render("Would overwrite:"))
+		out = append(out, "")
+		out = append(out, indentRows([]string{s.dim.Render("Would overwrite:")}, bodyInset)...)
 		for _, p := range cp.Files {
-			out = append(out, s.bone.Render("  "+p))
+			out = append(out, indentRows([]string{s.bone.Render(truncate(p,
+				max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 		}
 	}
 	return out
@@ -1419,6 +1504,88 @@ func padRight(s string, n int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", n-lipgloss.Width(s))
+}
+
+// --- indentation ---------------------------------------------------------
+//
+// The dashboard pads a region and lets everything inside it align to that
+// padding — `.detail { padding: 16px 22px }`, the filter bar and the batch
+// bar `9px 14px` — so a paragraph that wraps keeps its left edge, because
+// the padding belongs to the box and not to the first line of what is in it.
+// A terminal has to do that by hand, and where this did not, it showed:
+//
+//   - the applied-fix message indented its first line two columns and
+//     continued at zero, because "  " was prepended to the string and the
+//     wrap happened after
+//   - the preview's alternatives sat at two columns under a label at zero,
+//     its commands at two under a label at zero, and its warning at zero
+//   - the theme picker's paragraph ran to the frame edge under a list that
+//     did not, and the rollback screen mixed all three
+//
+// One vocabulary, used by every screen:
+//
+//	bodyInset  the left margin of a full-screen body
+//	paneInset  the same inside a column, where the separator is the edge and
+//	           a second column of margin is one the list wanted
+//	stepInset  a nested list under a label — options, paths, commands
+const (
+	bodyInset = 2
+	paneInset = 1
+	stepInset = 2
+)
+
+// maxProse caps a line of running text at the measure the dashboard caps it
+// at (`.detail p { max-width: 74ch }`), so a 200-column terminal sets the
+// same paragraph the browser does rather than one 200 columns wide.
+const maxProse = 74
+
+// proseWidth is how wide running text is set inside a region with this
+// margin on both sides.
+func (m *appModel) proseWidth(inset int) int {
+	return max(minWrapWidth, min(m.width-2*inset, maxProse))
+}
+
+// indentRows shifts every row right, wrapped continuations included. Blank
+// rows stay blank rather than becoming rows of spaces.
+func indentRows(rows []string, n int) []string {
+	if n <= 0 {
+		return rows
+	}
+	pad := strings.Repeat(" ", n)
+	out := make([]string, len(rows))
+	for i, r := range rows {
+		if r == "" {
+			out[i] = ""
+			continue
+		}
+		out[i] = pad + r
+	}
+	return out
+}
+
+// wrapRows sets text to contentW columns and indents every line of it by n.
+func (m *appModel) wrapRows(st lipgloss.Style, text string, contentW, n int) []string {
+	if text == "" {
+		return nil
+	}
+	return indentRows(styledRows(st, wrap(text, max(minWrapWidth, contentW))), n)
+}
+
+// hangingRows is wrapRows for a block led by a marker — the ⚠ of a warning —
+// where the continuation lines align under the text rather than under the
+// marker.
+func (m *appModel) hangingRows(st lipgloss.Style, marker, text string, contentW, n int) []string {
+	lead := lipgloss.Width(marker)
+	lines := strings.Split(wrap(text, max(minWrapWidth, contentW-lead)), "\n")
+	out := make([]string, 0, len(lines))
+	for i, l := range lines {
+		if i == 0 {
+			out = append(out, st.Render(marker+l))
+			continue
+		}
+		out = append(out, st.Render(strings.Repeat(" ", lead)+l))
+	}
+	return indentRows(out, n)
 }
 
 // minWrapWidth is the floor wrap applies to a computed width. A narrow

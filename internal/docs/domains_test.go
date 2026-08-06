@@ -25,32 +25,43 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// TestReadmeDocumentsEveryDomain pins README's table to model.AllSources.
+// TestReadmeDocumentsEveryDomain pins README's table to model.AllSources, in
+// both languages.
 //
 // It matches on the prefix code span (`compose.*`) rather than the display
 // name, because the name is prose an author may reword — "Docker /
 // Compose", "Containers" — while the prefix is the string a user types
 // into `hostveil fix`, and it is wrong or right.
+//
+// The Korean README is checked for the same reason the Korean site page is:
+// a translation is a copy of a list the code owns, and the copy nobody on the
+// team reads every day is the one that quietly describes a smaller product.
 func TestReadmeDocumentsEveryDomain(t *testing.T) {
-	table := section(t, readRepoFile(t, "README.md"), "## What it checks", "## ")
-	found := 0
-	for _, src := range model.AllSources() {
-		want := "`" + src.String() + ".*`"
-		if !strings.Contains(table, want) {
-			t.Errorf("README.md's domain table has no row for %s", want)
-			continue
+	for _, tc := range []struct{ path, heading string }{
+		{"README.md", "## What it checks"},
+		{"README.ko.md", "## 점검 범위"},
+	} {
+		body := readRepoFile(t, tc.path)
+		table := section(t, body, tc.heading, "## ")
+		found := 0
+		for _, src := range model.AllSources() {
+			want := "`" + src.String() + ".*`"
+			if !strings.Contains(table, want) {
+				t.Errorf("%s's domain table has no row for %s", tc.path, want)
+				continue
+			}
+			found++
 		}
-		found++
-	}
-	if found < len(model.AllSources()) {
-		return // the errors above already say which
-	}
-	// Nothing-extracted guard: an empty section would make every Contains
-	// fail loudly, but a section that swallowed the whole file would make
-	// them all pass. Both are extraction bugs, not doc bugs.
-	if len(table) > len(readRepoFile(t, "README.md"))/2 {
-		t.Fatalf("the extracted table is %d bytes of a %d-byte README — the section bounds are wrong",
-			len(table), len(readRepoFile(t, "README.md")))
+		if found < len(model.AllSources()) {
+			continue // the errors above already say which
+		}
+		// Nothing-extracted guard: an empty section would make every Contains
+		// fail loudly, but a section that swallowed the whole file would make
+		// them all pass. Both are extraction bugs, not doc bugs.
+		if len(table) > len(body)/2 {
+			t.Fatalf("the extracted table is %d bytes of a %d-byte %s — the section bounds are wrong",
+				len(table), len(body), tc.path)
+		}
 	}
 }
 

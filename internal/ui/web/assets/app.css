@@ -11,6 +11,19 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+/* Every band that sets `display` needs its own [hidden] rule, because the UA
+   sheet's [hidden] carries the specificity of a single class and a later
+   `.delta { display: flex }` simply beats it. What that produced was not a
+   visible mistake with a name — it was a band of empty padding and a border,
+   once per band the host had nothing to put in it: no previous scan, fewer
+   than two scans on record, no status flash. Three rules of nothing, stacked
+   under the axes in every arrangement.
+
+   Not a blanket `[hidden] { display: none !important }`, however tempting:
+   .verdict and .rail stay hidden in the DOM and are un-hidden per arrangement
+   further down this file, and an !important here would win over that and take
+   the rail out of the two layouts built around it. The rule goes beside each
+   band instead — see .domains, .delta and .status. */
 body {
   margin: 0; background: var(--ink); color: var(--bone);
   font: 13px/1.55 var(--mono);
@@ -112,10 +125,16 @@ button:disabled { opacity: .45; cursor: default; }
   flex: 0 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 5px 26px; padding: 9px 18px; border-bottom: 1px solid var(--line);
 }
-.axis { display: flex; align-items: center; gap: 10px; }
+/* The three parts add up to 214px and the grid track is allowed down to 210,
+   so the row overflowed its own cell by four — invisible in the 26px gap on a
+   wide window, and a horizontal overflow of the whole strip at two columns.
+   The meter is the part that gives: a bar two pixels shorter says the same
+   thing, where a label cut by two loses a letter and a number cut by two is
+   a different number. */
+.axis { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .axis-label { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1px;
   width: 72px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
-.axis .meter { width: 92px; height: 8px; flex: 0 0 auto; }
+.axis .meter { width: 92px; height: 8px; flex: 0 1 92px; min-width: 32px; }
 .axis-val { font-size: 11px; min-width: 30px; }
 .axis.na .axis-val { color: var(--slate); }
 .axis.partial .axis-val { color: var(--med); }
@@ -125,12 +144,14 @@ button:disabled { opacity: .45; cursor: default; }
    saying so, not flash once and vanish. */
 .domains { flex: 0 0 auto; padding: 8px 18px; border-bottom: 1px solid var(--line);
   color: var(--med); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.domains[hidden] { display: none; }
 .domains .dom-err { color: var(--crit); }
 .domains .dom-skip { color: var(--slate); }
 
 /* ── since-last-scan summary ── */
 .delta { flex: 0 0 auto; padding: 8px 18px; border-bottom: 1px solid var(--line);
   font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.delta[hidden] { display: none; }
 .delta .delta-label { color: var(--slate); text-transform: uppercase; font-size: 10px;
   letter-spacing: 1px; align-self: center; }
 .delta .delta-good { color: var(--safe); }
@@ -140,6 +161,7 @@ button:disabled { opacity: .45; cursor: default; }
 /* ── transient status line ── */
 .status { flex: 0 0 auto; margin: 0; padding: 9px 18px; border-bottom: 1px solid var(--line);
   color: var(--safe); font-size: 12px; }
+.status[hidden] { display: none; }
 .status.err { color: var(--crit); }
 
 /* ── body: two panes, independent scroll ── */
@@ -467,6 +489,20 @@ main { position: relative; }
 :root[data-layout="inline"] .axis .meter { width: 100%; height: 3px; margin-top: 5px; }
 :root[data-layout="triage"] .axis-val,
 :root[data-layout="inline"] .axis-val { display: block; margin-top: 3px; font-size: 13px; font-weight: 700; }
+
+/* The spark strip divides the window between twelve domains, and twelve cells
+   in a phone width is twelve one-letter labels: the number survives and what
+   it is a number *of* does not. Below the phone breakpoint it stops dividing
+   the window and becomes a row that scrolls — the same call the terminal's
+   spark line makes when it keeps the cells it can read and says how many it
+   dropped. It has to come after the rules above rather than in the earlier
+   560px block: same specificity, and the later rule wins. */
+@media (max-width: 560px) {
+  :root[data-layout="triage"] .axes,
+  :root[data-layout="inline"] .axes { overflow-x: auto; }
+  :root[data-layout="triage"] .axis,
+  :root[data-layout="inline"] .axis { flex: 0 0 auto; min-width: 88px; }
+}
 
 /* Below the two-pane breakpoint every layout collapses to one column
    anyway, so the overlay and the rail stop being arrangements and start

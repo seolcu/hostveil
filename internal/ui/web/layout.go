@@ -5,13 +5,17 @@ import (
 	"strings"
 )
 
-// This file is a temporary picker, not a feature.
+// This file is the arrangement registry — the dashboard half of the one in
+// internal/ui/tui/layout.go.
 //
 // Six arrangements of the same dashboard were mocked up so one could be
-// chosen; rather than argue from screenshots, all six are shipped behind a
-// selector so they can be driven against a real host. When one wins, the
-// other five and this whole file go, and the winner becomes the layout —
-// the picker is scaffolding for a decision, not a preference to maintain.
+// chosen; rather than argue from screenshots, all six shipped behind a
+// selector so they could be driven against a real host. **C · Console won and
+// is the default**, and the other five stay: what the comparison showed is
+// that the right arrangement depends on the window, and a picker is a cheaper
+// answer to that than one layout with five sets of breakpoints. The terminal
+// registry carries the same six for the same reason, and the two must agree —
+// see TestLayoutRegistriesMatchTheDashboard.
 //
 // The arrangements share one DOM. Only two of them restructure anything in
 // JavaScript (lanes groups the list, inline moves the detail node into it);
@@ -28,24 +32,24 @@ type Layout struct {
 	Note string
 }
 
-// layouts is the registry, in the order the picker lists them: the shipped
-// arrangement first, then the alternatives in the order they were proposed.
+// layouts is the registry, in the order the picker lists them: the default
+// first, then the alternatives in the order they were proposed.
 //
 // The letters are kept in the names because that is what the mockups and the
-// discussion around them called these, and a picker that renamed them would
-// make the comparison harder to follow, which is the one job it has.
+// discussion around them called these, and renaming them now would break
+// every reference to "G" or "H" outside this file for no gain.
 var layouts = []Layout{
 	{
+		ID: "console", Name: "C · Console",
+		Note: "A domain rail down the left carrying every score and every coverage gap.",
+	},
+	{
 		ID: "split", Name: "A · Split",
-		Note: "Today's arrangement: axes strip, findings list, detail pane.",
+		Note: "Axes strip across the top, findings list, detail pane.",
 	},
 	{
 		ID: "triage", Name: "B · Triage",
 		Note: "A spoken verdict on top, axes as sparks, full-width list, detail as an overlay.",
-	},
-	{
-		ID: "console", Name: "C · Console",
-		Note: "A domain rail down the left carrying every score and every coverage gap.",
 	},
 	{
 		ID: "railverdict", Name: "G · Rail + verdict",
@@ -61,9 +65,10 @@ var layouts = []Layout{
 	},
 }
 
-// DefaultLayout is what a browser with no saved choice gets: the arrangement
-// hostveil actually ships, so an operator who never opens the picker sees no
-// experiment.
+// DefaultLayout is what a browser with no saved choice gets: C · Console, the
+// arrangement chosen from the six. The rail is why — it is the only place a
+// domain that could not be scanned is both visible and explained, and every
+// other arrangement leaves that to a banner the eye learns to skip.
 func DefaultLayout() Layout { return layouts[0] }
 
 // Layouts returns the registry in picker order.

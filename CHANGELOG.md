@@ -2,6 +2,92 @@
 
 ## Unreleased
 
+### Features
+
+* **ui:** the six arrangements are settled. **C · Console — the domain rail
+  down the left — is the default in both the terminal and the browser**, and
+  the other five stay in the picker rather than being deleted. The comparison
+  settled a different question than it asked: there is no arrangement that is
+  right at 1440px and at 80 columns and on a host with four findings and on
+  one with forty, so one of them answers the common case and the picker
+  answers the rest. C leads because the rail is the only place a domain nobody
+  could scan is both visible and explained; every other arrangement leaves
+  that to a banner. Both registries now lead with it, and neither describes
+  itself as temporary any more.
+
+### Bug Fixes
+
+* **web:** three bands of empty padding under the axes strip, on every scan
+  with nothing to put in them. `.delta`, `.domains` and `.status` each set
+  `display` in the stylesheet, which beats the `hidden` attribute at equal
+  specificity, so hiding them in JavaScript did nothing to their layout — a
+  first scan (no previous scan, no trend, no status flash) drew three rules of
+  nothing, in every arrangement. Each now has its own `[hidden]` rule, and a
+  test walks the markup for elements that start hidden so the next band is
+  covered before it ships. Deliberately not a blanket
+  `[hidden] { display: none !important }`: the verdict band and the rail stay
+  hidden in the DOM and are un-hidden per arrangement, and that would have
+  deleted the rail from the two layouts built around it.
+
+* **tui:** the grid meets itself. Horizontal rules now carry `┬` where the
+  body's columns begin, `┴` where they end, and `├` where a column's own
+  divider — the detail pane's, the verdict band's — arrives at the separator
+  beside it. Previously a rule ran straight through a vertical line and the
+  vertical line stopped dead at a rule: the same defect from two sides.
+
+* **tui:** the findings list lines up. The severity label was padded in the
+  arithmetic that laid a row out and not in the render, so every `MED` and
+  `LOW` row was drawn a column narrower than its budget — the id column
+  stepped left on those rows and the right-aligned service stopped short of
+  the pane separator. The id field was also a fixed 13 columns, which several
+  real ids overrun (`cve.outdated-image` is 18), pushing their titles right of
+  every other title on the screen; it is now measured from the ids actually on
+  screen and bounded. The history screen had the same fault and the same fix.
+
+* **web:** the inline arrangement broke on the second thing you did. It parks
+  the one detail node inside the findings list, under the row that opened it,
+  and the next list rebuild — a filter, a fix, a rescan — deleted it. Every
+  lookup after that returned null, so opening a finding, previewing a fix and
+  pressing History all threw until the page was reloaded. The renderer now
+  moves the node back out before it rebuilds, and a test pins that it happens
+  in that order.
+
+* **web:** the axes strip no longer overflows its own grid cell — its three
+  parts added up to four pixels more than the track they were laid into, which
+  at two columns overflowed the window — and at a phone width the spark strip
+  (triage, inline) scrolls instead of dividing 480 pixels between twelve
+  domains, which had left twelve one-letter labels: the score survived and
+  what it was a score *of* did not.
+
+* **tui:** one margin per screen, and wrapped text keeps it. The applied-fix
+  message indented its first line two columns and continued at zero; the
+  preview's alternatives sat at two under a label at zero, its commands at two
+  under a label at zero, and its warning at zero; the rollback screen mixed
+  all three; the detail screen had no margin at all while the pane beside the
+  list had one. There is now one vocabulary — a body margin, a step for nested
+  lists, a narrower one inside a column — and the wrap applies it to every
+  line rather than to the first, which is what the dashboard gets for free by
+  padding the box instead of the text.
+
+* **tui:** the grid also holds where a terminal draws East Asian Ambiguous
+  characters wide. Every glyph the frame is built from — `─ │ ┬ ▌ ░ █ · ✓` —
+  is in that class, and an operator whose terminal renders it double-width
+  says so with `RUNEWIDTH_EASTASIAN=1`, which hostveil honours. Four places
+  counted runes where they should have counted columns: the rule was built as
+  `width` dashes and came out twice the terminal, so it was cut back and every
+  junction past halfway went with it; the column arithmetic charged one column
+  for a two-column separator; and the pick marker was two columns for an
+  unmarked row and three for a marked one, which stepped the whole list in and
+  out down its left edge. All four are measured now, and the grid tests run in
+  both modes.
+
+* **tui:** the rail says what the dashboard's says — `3 high · 1 med · 2 low`
+  rather than `3H·1M·2L`, falling back to the compact form only where the
+  column cannot hold the words — and its head counts findings the way the
+  browser's does. The verdict band's note is dropped whole when it does not
+  fit rather than being cut mid-word, which had been ending a sentence about
+  backups at "reversible from histo".
+
 ## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-06)
 
 The severity scale is three levels instead of four, and hostveil now shows

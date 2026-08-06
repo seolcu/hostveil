@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 
@@ -11,13 +12,13 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// This file draws the regions the alternative arrangements need, and is
-// temporary along with layout.go and the picker. Everything here is a
+// This file draws the regions the arrangements need. Everything here is a
 // terminal translation of something the dashboard's stylesheet does: the
 // verdict band, the domain rail, the spark strip, the severity lanes, the
 // inline detail, and the column joining that puts two of them side by side.
 //
-// The shipped arrangement uses none of it except the column joiner.
+// The default arrangement uses the rail and the joiner; A · Split uses the
+// joiner alone.
 
 // Column geometry. The dashboard collapses to one column below 820px; a
 // terminal has to make the same call in characters, and the numbers below
@@ -41,10 +42,15 @@ const (
 // plus one separator column between each add up to exactly m.width, which is
 // what keeps the joined rows inside the frame.
 func (m *appModel) bodyColumns() (rail, list, pane int) {
+	// The separator is one column wide, or two where the terminal draws East
+	// Asian Ambiguous characters wide and the operator has said so. Costing it
+	// as one either way put every column one to the left of where the rules
+	// above them were drawn.
+	sep := sepWidth()
 	list = m.width
 	if m.wantsRail() && m.width >= minRailTotalWidth {
 		rail = railWidth
-		list -= rail + 1
+		list -= rail + sep
 	}
 	// No findings, nothing to show beside them. The pane would be forty
 	// columns of "Nothing to show." taken from the one message that matters
@@ -53,9 +59,9 @@ func (m *appModel) bodyColumns() (rail, list, pane int) {
 	// where nothing could be scanned it is the only thing that says why.
 	if m.wantsPane() && len(m.active) > 0 && m.width >= minPaneTotalWidth {
 		p := clamp(m.width*2/5, minPaneWidth, maxPaneWidth)
-		if list-p-1 >= minListWidth {
+		if list-p-sep >= minListWidth {
 			pane = p
-			list -= pane + 1
+			list -= pane + sep
 		}
 	}
 	return rail, list, pane
@@ -69,21 +75,81 @@ func (m *appModel) bodyColumns() (rail, list, pane int) {
 // terminal, and clip is the only thing in this package that can bound a
 // styled row without cutting through an escape sequence.
 func (m *appModel) joinColumns(n int, widths []int, cols [][]string) []string {
-	sep := m.sty().track.Render("│")
+	track := m.sty().track
 	out := make([]string, n)
 	for i := range n {
-		var b strings.Builder
+		cells := make([]string, len(widths))
 		for c, w := range widths {
-			if c > 0 {
-				b.WriteString(sep)
-			}
 			cell := ""
 			if i < len(cols[c]) {
 				cell = cols[c][i]
 			}
-			b.WriteString(padRight(clip(cell, w), w))
+			cells[c] = padRight(clip(cell, w), w)
+		}
+		var b strings.Builder
+		for c, cell := range cells {
+			if c > 0 {
+				b.WriteString(track.Render(junction(cells[c-1], cell)))
+			}
+			b.WriteString(cell)
 		}
 		out[i] = b.String()
+	}
+	return out
+}
+
+// junction picks the character that joins two cells: the vertical rule, or a
+// tee where one of them ends or begins with a horizontal rule of its own.
+//
+// The detail pane closes with a rule above its actions and the verdict band
+// closes with one under its sentence, and both of those meet the separator
+// beside them. Drawn as a plain │ the result is a line that visibly stops one
+// column short of the one it is supposed to meet — the terminal equivalent of
+// a border that does not quite reach the corner, and the thing that made this
+// interface look drawn rather than composed.
+func junction(left, right string) string {
+	l := endsWithRule(left)
+	r := beginsWithRule(right)
+	switch {
+	case l && r:
+		return "┼"
+	case l:
+		return "┤"
+	case r:
+		return "├"
+	}
+	return "│"
+}
+
+func endsWithRule(cell string) bool {
+	rs := visibleRunes(cell)
+	return len(rs) > 0 && rs[len(rs)-1] == '─'
+}
+
+func beginsWithRule(cell string) bool {
+	rs := visibleRunes(cell)
+	return len(rs) > 0 && rs[0] == '─'
+}
+
+// visibleRunes drops the escape sequences from a styled row, so a caller can
+// ask what is actually drawn in a given column.
+func visibleRunes(s string) []rune {
+	out := make([]rune, 0, len(s))
+	for i := 0; i < len(s); {
+		if s[i] == 0x1b {
+			j := i
+			for j < len(s) && s[j] != 'm' {
+				j++
+			}
+			if j < len(s) {
+				j++
+			}
+			i = j
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		out = append(out, r)
+		i += size
 	}
 	return out
 }
@@ -141,11 +207,19 @@ func (m *appModel) verdictRows(w int) []string {
 		stat += fmt.Sprintf(" · %d could not be fully checked", gaps)
 	}
 
-	act := s.dim.Render("Nothing here can be fixed unattended.")
+	// The note beside the action is the first thing to go when the band is
+	// narrower than the sentence: dropped whole rather than left for the frame
+	// to cut, which ended a reassurance about backups mid-word — "reversible
+	// from histo" — in the one place on the screen that exists to reassure.
+	act := s.dim.Render(truncate("Nothing here can be fixed unattended.", w))
 	if autos > 0 {
-		act = s.safe.Render(fmt.Sprintf("a  fix %d safe finding%s", autos,
-			map[bool]string{true: "", false: "s"}[autos == 1])) +
-			s.dim.Render("   each is previewed, backed up, and reversible from history")
+		lead := fmt.Sprintf("a  fix %d safe finding%s", autos,
+			map[bool]string{true: "", false: "s"}[autos == 1])
+		const note = "   each is previewed, backed up, and reversible from history"
+		act = s.safe.Render(truncate(lead, w))
+		if len(lead)+len(note) <= w {
+			act += s.dim.Render(note)
+		}
 	}
 
 	return []string{
@@ -266,7 +340,15 @@ func (m *appModel) railRows(w, budget int) []string {
 		blocks = append(blocks, block)
 	}
 
-	out := []string{s.dim.Render(truncate(fmt.Sprintf("DOMAINS · %d", len(all)), w))}
+	// The dashboard's rail head reads "Domains · 15 findings", and the count
+	// is the findings rather than the domains — which is worth keeping,
+	// because the rail is a list of domains and a header counting them again
+	// would say nothing the rows below it do not.
+	head := fmt.Sprintf("DOMAINS · %d findings", len(all))
+	if lipgloss.Width(head) > w {
+		head = fmt.Sprintf("DOMAINS · %d", len(all))
+	}
+	out := []string{s.dim.Render(truncate(head, w))}
 	for i, b := range blocks {
 		// Truncating the rail is the last resort, and it says so: a rail that
 		// simply stopped would read as a host with six domains.
@@ -284,6 +366,13 @@ func (m *appModel) railRows(w, budget int) []string {
 // severityMix is a domain's findings as one line of counts, in the model's
 // most-severe-first order, each in its own color. A domain with none says so
 // rather than rendering an empty row that reads as a rendering fault.
+//
+// Two spellings of the same line. The dashboard writes "3 high · 1 med · 2
+// low" and that is what goes here wherever it fits — at the rail's 24 columns
+// the worst case is exactly the 22 it has, which is not a coincidence, it is
+// what the rail was widened to hold. Below that it falls back to "3H·1M·2L",
+// because a mix cut off after "3 high · 1 m" has lost the count it was
+// drawn for, and one letter per level still reads.
 func (m *appModel) severityMix(fs []model.Finding, w int) string {
 	s := m.sty()
 	if len(fs) == 0 {
@@ -293,15 +382,21 @@ func (m *appModel) severityMix(fs []model.Finding, w int) string {
 	for _, f := range fs {
 		counts[f.Severity]++
 	}
-	var parts []string
+
+	var full, compact []string
 	for _, sev := range model.AllSeverities() {
-		if n := counts[sev]; n > 0 {
-			parts = append(parts,
-				lipgloss.NewStyle().Foreground(s.severityColor(sev)).
-					Render(strconv.Itoa(n)+string([]rune(sevAbbr(sev))[0])))
+		n := counts[sev]
+		if n == 0 {
+			continue
 		}
+		st := lipgloss.NewStyle().Foreground(s.severityColor(sev))
+		full = append(full, st.Render(fmt.Sprintf("%d %s", n, strings.ToLower(sevAbbr(sev)))))
+		compact = append(compact, st.Render(strconv.Itoa(n)+string([]rune(sevAbbr(sev))[0])))
 	}
-	return clip(strings.Join(parts, s.dim.Render("·")), w)
+	if row := strings.Join(full, s.dim.Render(" · ")); lipgloss.Width(row) <= w {
+		return row
+	}
+	return clip(strings.Join(compact, s.dim.Render("·")), w)
 }
 
 // --- spark strip (B · Triage, I · Inline) ---

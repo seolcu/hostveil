@@ -34,6 +34,7 @@ func appearanceDocs(t *testing.T) map[string]string {
 	t.Helper()
 	paths := []string{
 		"README.md",
+		"README.ko.md",
 		filepath.Join("cmd", "hostveil", "main.go"),
 	}
 	for _, lang := range []string{"en", "ko"} {
@@ -91,6 +92,7 @@ func TestTheDefaultThemeIsDocumentedAsTheDefault(t *testing.T) {
 	const window = 48
 	for _, tc := range []struct{ path, word string }{
 		{"README.md", "default"},
+		{"README.ko.md", "기본값"},
 		{filepath.Join("cmd", "hostveil", "main.go"), "default"},
 		{filepath.Join("cmd", "sitegen", "content", "en", "docs", "interfaces.html"), "default"},
 		{filepath.Join("cmd", "sitegen", "content", "ko", "docs", "interfaces.html"), "기본값"},
@@ -139,6 +141,7 @@ func TestTheDocumentedThemeCountIsTheRealOne(t *testing.T) {
 	n := len(theme.All())
 	for _, tc := range []struct{ path, lang, suffix string }{
 		{"README.md", "en", " color themes"},
+		{"README.ko.md", "ko", " 가지 색상 테마"},
 		{filepath.Join("cmd", "sitegen", "content", "en", "docs", "interfaces.html"), "en", " color themes"},
 		{filepath.Join("cmd", "sitegen", "content", "en", "index.html"), "en", " color themes"},
 		{filepath.Join("cmd", "sitegen", "content", "ko", "docs", "interfaces.html"), "ko", " 가지 색상 테마"},
