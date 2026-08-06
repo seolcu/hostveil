@@ -155,12 +155,16 @@ measure_all restarted
 # change the most: every SSH hardening option, because a bad sshd_config can
 # lock the operator out, and hostveil will not do that unattended.
 #
-# So there is a fifth phase for the reviewed path. It applies every Review
-# fix and then counts how many of them left a checkpoint, because that — not
-# a word in the preview — is what "reversible" means here: an exec fix writes
-# no checkpoint, so the rollback phase below cannot put it back, and the
-# report has to say how many of those there were rather than let "restored"
-# read as a full undo.
+# So there is a fifth phase for the reviewed path, and it runs the command a
+# user would run — `fix --all --review` — rather than a loop of its own. A
+# harness that drives the tool differently from the way it ships measures
+# something nobody will experience.
+#
+# It then counts how many of those fixes left a checkpoint, because that — not
+# a word in a preview — is what "reversible" means here: an exec fix writes
+# none, so the rollback phase below cannot put it back, and the report has to
+# say how many of those there were rather than let "restored" read as a full
+# undo.
 #
 # Counted rather than avoided, and counted from the checkpoint log rather
 # than from the preview text. The first version of this read the preview and
@@ -171,40 +175,20 @@ measure_all restarted
 checkpoint_count() { hostveil history 2>/dev/null | grep -cE 'rollback [0-9]{8}-' || true; }
 
 apply_reviewed() {
-  local applied=0 failed=0 cp_before cp_after id svc
+  local cp_before cp_after applied
   cp_before=$(checkpoint_count)
-  while IFS=$'\t' read -r id svc; do
-    [ -n "$id" ] || continue
-    if hostveil fix "$id" ${svc:+--service "$svc"} --action 0 --yes >/dev/null 2>&1; then
-      applied=$((applied + 1))
-    else
-      failed=$((failed + 1))
-    fi
-  done < <(hostveil scan --json 2>/dev/null | python3 -c '
-import json, sys
-try:
-    r = json.load(sys.stdin)
-except ValueError:
-    raise SystemExit
-seen = set()
-for f in r["findings"]:
-    if f.get("remediation") != "review" or f.get("fixed"):
-        continue
-    key = (f["id"], f.get("service") or "")
-    if key in seen:
-        continue
-    seen.add(key)
-    print(f["id"] + "\t" + (f.get("service") or ""))' || true)
+  hostveil fix --all --review --yes > "$WORK/fix.reviewed.log" 2>&1 || true
   cp_after=$(checkpoint_count)
+  applied=$(grep -cE '^  • ' "$WORK/fix.reviewed.log" || true)
   local reversible=$((cp_after - cp_before))
   local irreversible=$((applied - reversible))
   [ "$irreversible" -ge 0 ] || irreversible=0
-  printf '{"applied":%d,"failed":%d,"left_a_checkpoint":%d,"not_reversible":%d}\n' \
-    "$applied" "$failed" "$reversible" "$irreversible" > "$WORK/reviewed.json"
-  say "  $applied reviewed fixes applied, $reversible reversible, $irreversible with no checkpoint"
+  printf '{"applied":%d,"left_a_checkpoint":%d,"not_reversible":%d}\n' \
+    "$applied" "$reversible" "$irreversible" > "$WORK/reviewed.json"
+  say "  $applied fixes offered, $reversible reversible, $irreversible with no checkpoint"
 }
 
-say "accepting every reversible Review fix, the way an operator who read them would"
+say "hostveil fix --all --review — everything the tool can do, the way an operator who read it would"
 apply_reviewed
 restart_services
 
