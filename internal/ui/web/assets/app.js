@@ -471,6 +471,16 @@ function render() {
 
   // Findings list.
   const list = document.getElementById("findings");
+  // The inline arrangement parks the one detail node *inside* this list, under
+  // the row that opened it (see selectFinding). Rebuilding the list with it
+  // still in there deletes it — and every later getElementById("detail")
+  // returns null, so History, Preview and opening any finding all threw
+  // "Cannot read properties of null" until the page was reloaded. One node,
+  // three placements: whoever rebuilds the list puts it back first.
+  const det = document.getElementById("detail");
+  if (det && list.contains(det)) {
+    document.querySelector("main").insertBefore(det, document.getElementById("scrim"));
+  }
   const all = active(report.findings);
   // Both are built whatever the layout, and before the early returns below:
   // a clean host and a filtered-to-nothing list still need a correct verdict

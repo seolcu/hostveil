@@ -1,20 +1,23 @@
 package tui
 
-// This file is a temporary picker, not a feature. It is the terminal half of
-// the one in internal/ui/web/layout.go, and the two go together.
+// This file is the arrangement registry — the terminal half of the one in
+// internal/ui/web/layout.go, and the two go together.
 //
 // Six arrangements of the dashboard were mocked up so one could be chosen,
 // and all six were shipped behind a selector so they could be driven against
-// a real host rather than argued about from screenshots. The same six are
-// here so the decision covers both interfaces at once: a layout that reads
-// well in a browser and badly in an 80-column terminal is not a layout
-// hostveil can adopt, and the only way to find that out is to look at both.
+// a real host rather than argued about from screenshots. **C · Console won
+// and is the default.** The other five stay rather than being deleted, which
+// is a change of plan and worth saying why: the thing the comparison actually
+// showed is that the right arrangement depends on the terminal in front of
+// you. The rail costs 25 of 80 columns and pays for itself on a wide one; the
+// split pane is the first casualty of a narrow one; lanes are worth their
+// three header rows on a host with forty findings and not on a host with
+// four. A default answers the common case, and the picker answers the rest.
 //
 // The IDs, names and order match the dashboard's registry exactly, and
 // TestLayoutRegistriesMatchTheDashboard holds that — a picker whose "B" meant
-// one thing here and another there would make the comparison it exists for
-// worse than useless. When one wins, the other five and both of these files
-// go, and the winner becomes the layout.
+// one thing here and another there would make choosing between them worse
+// than useless.
 //
 // What each arrangement *is* had to be translated rather than copied. A
 // browser has an overlay, a scrim and a 1440-column window; a terminal has
@@ -30,24 +33,27 @@ type Layout struct {
 	Note string
 }
 
-// layouts is the registry, in the order the picker lists them: the shipped
-// arrangement first, then the alternatives in the order they were proposed.
+// layouts is the registry, in the order the picker lists them: the default
+// first, then the alternatives in the order they were proposed.
 //
 // The letters are kept in the names because that is what the mockups and the
-// discussion around them called these, and a picker that renamed them would
-// make the comparison harder to follow, which is the one job it has.
+// discussion around them called these, and renaming them now would break
+// every reference to "G" or "H" outside this file for no gain. They are not
+// the picker's order any more, and that is fine: the first entry is the one
+// an operator gets without choosing, which is the ordering that earns its
+// place at the top of a list.
 var layouts = []Layout{
 	{
+		ID: "console", Name: "C · Console",
+		Note: "A domain rail down the left carrying every score and every coverage gap.",
+	},
+	{
 		ID: "split", Name: "A · Split",
-		Note: "Today's arrangement: axes strip, findings list, detail beside it when there is room.",
+		Note: "Axes strip across the top, findings list, detail beside it when there is room.",
 	},
 	{
 		ID: "triage", Name: "B · Triage",
 		Note: "A spoken verdict on top, axes as one spark row, full-width list, detail as a screen.",
-	},
-	{
-		ID: "console", Name: "C · Console",
-		Note: "A domain rail down the left carrying every score and every coverage gap.",
 	},
 	{
 		ID: "railverdict", Name: "G · Rail + verdict",
@@ -63,9 +69,11 @@ var layouts = []Layout{
 	},
 }
 
-// DefaultLayout is what a terminal with no saved choice gets: the
-// arrangement hostveil actually ships, so an operator who never opens the
-// picker sees no experiment.
+// DefaultLayout is what a terminal with no saved choice gets: C · Console,
+// the arrangement chosen from the six. It is the rail one because the rail is
+// the only place a domain that could not be scanned is both visible and
+// explained, and "I could not look" passing for "nothing there" is the
+// failure this whole program is built to refuse.
 func DefaultLayout() Layout { return layouts[0] }
 
 // Layouts returns the registry in picker order.
@@ -96,8 +104,7 @@ func LayoutIDs() []string {
 	return out
 }
 
-// LayoutOpts carries the arrangement into the TUI, and is temporary in the
-// same way the picker is.
+// LayoutOpts carries the arrangement into the TUI.
 //
 // Save is a callback rather than a directory for the reason ThemeOpts.Save
 // is: the TUI must not know where hostveil keeps its state, because that

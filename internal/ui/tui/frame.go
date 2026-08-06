@@ -89,9 +89,14 @@ func (m *appModel) compose(hdr header, title []string, hint string, fill func(ro
 	ftr := m.footerRows(hint)
 
 	top := m.headerRows(hdr, len(ftr))
-	top = append(top, title...)
+	// The title belongs to the body, not to the header: it names what the
+	// screen below it is about — the fix being previewed, the checkpoint being
+	// rolled back — so it takes the body's margin and lines up with the first
+	// thing it introduces. Left at column 0 it sat under the gauge and over a
+	// body two columns in, which reads as two screens stacked.
+	top = append(top, indentRows(title, bodyInset)...)
 	if len(top) > 0 {
-		top = append(top, m.ruleRow())
+		top = append(top, m.rule(m.ruleRow(), "┬"))
 	}
 
 	// Shed chrome from the bottom of the header up — the rule first, then the
@@ -310,19 +315,116 @@ func (m *appModel) footerRows(hint string) []string {
 		return nil
 	}
 	dim := m.sty().dim
-	out := []string{m.ruleRow()}
+	out := []string{m.rule(m.ruleRow(), "┴")}
 	for _, line := range strings.Split(m.wrapHint(hint), "\n") {
 		out = append(out, dim.Render(line))
 	}
 	return out
 }
 
-func (m *appModel) ruleRow() string {
-	w := m.width
+func (m *appModel) ruleRow() string { return m.ruleRowOf(m.width) }
+
+// ruleRowOf is a horizontal rule exactly w columns wide. A region that draws
+// one inside a column passes its own width, not the terminal's: a rule that
+// overran used to be cut by clip at the column edge, which looks the same
+// until the column to its right needs the junction glyph that is no longer
+// the last character of the row.
+func (m *appModel) ruleRowOf(w int) string {
+	return m.sty().track.Render(gridRow(w, nil, ""))
+}
+
+// gridRow draws w columns of horizontal rule, putting junction at each column
+// listed in at.
+//
+// Counted in columns rather than in runes, which is not pedantry here. Every
+// glyph the frame is drawn from — ─ │ ┬ ▌ ░ █ — is East Asian *Ambiguous*,
+// and an operator whose terminal renders that class double-width says so with
+// RUNEWIDTH_EASTASIAN=1, which hostveil honours (see internal/textwidth for
+// why it must). In that mode `strings.Repeat("─", w)` is a row twice as wide
+// as the terminal: clip cut it back, so the rule still looked right, and
+// every junction past the halfway point was cut off with it. The grid came
+// apart in exactly the mode a Korean or Japanese locale is most likely to be
+// running in, and nothing measured it, because measuring a rule against the
+// width it was built from is a tautology.
+func gridRow(w int, at []int, junction string) string {
 	if w < 1 {
 		w = 1
 	}
-	return m.sty().track.Render(strings.Repeat("─", w))
+	mark := map[int]bool{}
+	for _, c := range at {
+		mark[c] = true
+	}
+	dashW := lipgloss.Width("─")
+	junctionW := lipgloss.Width(junction)
+
+	var b strings.Builder
+	for col := 0; col < w; {
+		switch {
+		case mark[col] && junction != "" && col+junctionW <= w:
+			b.WriteString(junction)
+			col += junctionW
+		case col+dashW <= w:
+			b.WriteString("─")
+			col += dashW
+		default:
+			// A trailing half-cell: the rule cannot end flush, so it ends in a
+			// space rather than one column over the edge.
+			b.WriteString(" ")
+			col++
+		}
+	}
+	return b.String()
+}
+
+// sepWidth is what one column separator costs. One column in every terminal
+// that draws ambiguous characters narrow, two in one that does not — and the
+// column arithmetic has to agree with whichever it is, or the columns and the
+// rules above them are laid out to different totals.
+func sepWidth() int { return lipgloss.Width("│") }
+
+// rule stamps junction glyphs into a full-width rule wherever the body below
+// (or above) it draws a column separator.
+//
+// A rule that runs straight through a vertical line and a vertical line that
+// stops dead at a rule are the same defect seen from two sides, and it is the
+// one that makes a terminal interface look assembled from parts: the eye
+// reads the crossing as two elements that do not know about each other,
+// because that is exactly what it was. The columns are known before the body
+// is filled — they come out of bodyColumns, not out of what the fill returned
+// — so the frame can ask for them and place ┬ under the header and ┴ over the
+// footer. joinColumns does the same job from the other direction for the
+// rules drawn *inside* a column.
+func (m *appModel) rule(row, junction string) string {
+	cols := m.bodySepColumns()
+	if len(cols) == 0 {
+		return row
+	}
+	return m.sty().track.Render(gridRow(m.width, cols, junction))
+}
+
+// bodySepColumns is where the body will draw its column separators, in
+// absolute columns from the left edge. Empty when the body is a single
+// column, which is every mode except the findings list and, within it, every
+// arrangement narrow enough to have given its columns back.
+func (m *appModel) bodySepColumns() []int {
+	if m.mode != modeList {
+		return nil
+	}
+	rail, list, pane := m.bodyColumns()
+	if rail == 0 && pane == 0 {
+		return nil
+	}
+	var cols []int
+	x := 0
+	if rail > 0 {
+		cols = append(cols, rail)
+		x = rail + sepWidth()
+	}
+	x += list
+	if pane > 0 {
+		cols = append(cols, x)
+	}
+	return cols
 }
 
 // --- row plumbing ---

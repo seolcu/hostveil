@@ -147,27 +147,29 @@ var (
 // shows, and a moved PNG turns it into a broken-image icon with no CI signal.
 func TestReadmeLocalReferencesExist(t *testing.T) {
 	root := repoRoot(t)
-	readme := readRepoFile(t, "README.md")
+	for _, path := range []string{"README.md", "README.ko.md"} {
+		readme := readRepoFile(t, path)
 
-	var refs []string
-	for _, re := range []*regexp.Regexp{mdImage, htmlImage, mdLink} {
-		for _, m := range re.FindAllStringSubmatch(readme, -1) {
-			target := m[1]
-			if strings.Contains(target, "://") || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
-				continue
+		var refs []string
+		for _, re := range []*regexp.Regexp{mdImage, htmlImage, mdLink} {
+			for _, m := range re.FindAllStringSubmatch(readme, -1) {
+				target := m[1]
+				if strings.Contains(target, "://") || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
+					continue
+				}
+				target, _, _ = strings.Cut(target, "#")
+				refs = addUnique(refs, target)
 			}
-			target, _, _ = strings.Cut(target, "#")
-			refs = addUnique(refs, target)
 		}
-	}
-	// The same nothing-extracted guard as the AGENTS.md tests: README links
-	// at least its license, module file, and two screenshots today.
-	if len(refs) < 3 {
-		t.Fatalf("only %d local references extracted from README.md (%v) — extraction is broken, not the doc", len(refs), refs)
-	}
-	for _, ref := range refs {
-		if _, err := os.Stat(filepath.Join(root, ref)); err != nil {
-			t.Errorf("README.md references %q, which does not exist", ref)
+		// The same nothing-extracted guard as the AGENTS.md tests: each README
+		// links at least its license, module file, and two screenshots today.
+		if len(refs) < 3 {
+			t.Fatalf("only %d local references extracted from %s (%v) — extraction is broken, not the doc", len(refs), path, refs)
+		}
+		for _, ref := range refs {
+			if _, err := os.Stat(filepath.Join(root, ref)); err != nil {
+				t.Errorf("%s references %q, which does not exist", path, ref)
+			}
 		}
 	}
 }

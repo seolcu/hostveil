@@ -16,12 +16,21 @@ import (
 
 // An option in the picker that no stylesheet rule answers is a dead entry:
 // the operator selects it, the page does not move, and the arrangement gets
-// judged on the one it was already looking at. The default is exempt — it is
-// the base rules, which is what "no rule" means for it.
+// judged on the one it was already looking at.
+//
+// One arrangement is exempt, and it is not the default. app.css draws A ·
+// Split with its base rules and every other arrangement is a layer of
+// overrides on top of them — including C · Console, which is what an operator
+// gets. That split rather than the default is the ground is deliberate: it is
+// what a browser falls back to if layout.js never runs, and a page with no
+// rail is the safer of the two failure modes, since the rail is a column the
+// base grid has not reserved room for.
+const baseArrangement = "split"
+
 func TestEveryLayoutIsAnsweredByTheStylesheet(t *testing.T) {
 	css := readAsset(t, "assets/app.css")
 	for _, l := range Layouts() {
-		if l.ID == DefaultLayout().ID {
+		if l.ID == baseArrangement {
 			continue
 		}
 		if !strings.Contains(css, `[data-layout="`+l.ID+`"]`) {
@@ -46,14 +55,18 @@ func TestNoStylesheetRuleForAnUnregisteredLayout(t *testing.T) {
 	}
 }
 
-// An operator who never opens the picker must see the dashboard hostveil
-// ships, not whichever experiment happened to be listed first.
-func TestDefaultLayoutIsTheShippedArrangement(t *testing.T) {
-	if got := DefaultLayout().ID; got != "split" {
-		t.Errorf("DefaultLayout = %q, want the shipped two-pane arrangement", got)
+// An operator who never opens the picker must see the arrangement hostveil
+// chose, not whichever one happened to be listed first. Named rather than
+// read back from DefaultLayout, which would agree with itself.
+func TestDefaultLayoutIsTheChosenArrangement(t *testing.T) {
+	if got := DefaultLayout().ID; got != "console" {
+		t.Errorf("DefaultLayout = %q, want the rail arrangement", got)
 	}
 	if Layouts()[0].ID != DefaultLayout().ID {
-		t.Error("the default is not first in the picker, so the list does not lead with what is shipped")
+		t.Error("the default is not first in the picker, so the list does not lead with what an operator gets")
+	}
+	if !strings.Contains(readAsset(t, "assets/app.css"), `[data-layout="console"]`) {
+		t.Error("the default arrangement has no rules in app.css, so an operator who never opens the picker gets the base ones")
 	}
 }
 

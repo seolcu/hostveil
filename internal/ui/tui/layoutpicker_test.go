@@ -85,25 +85,29 @@ func TestLayoutRegistriesMatchTheDashboard(t *testing.T) {
 	}
 }
 
-// An operator who never presses `l` must see the TUI hostveil ships, not
-// whichever experiment happened to be listed first. That is two claims: the
-// default is the shipped one, and an unset (or stale) ID resolves to it
-// rather than to nothing.
-func TestDefaultLayoutIsTheShippedArrangement(t *testing.T) {
-	if got := DefaultLayout().ID; got != "split" {
-		t.Errorf("DefaultLayout = %q, want the shipped arrangement", got)
+// An operator who never presses `l` must see the arrangement hostveil chose,
+// not whichever one happened to be listed first. That is two claims: the
+// default is C · Console, and an unset (or stale) ID resolves to it rather
+// than to nothing.
+//
+// The ID is named here rather than read from DefaultLayout, because a test
+// that asks the registry what the default is agrees with the registry however
+// the registry changes — which is the one thing this is here to catch.
+func TestDefaultLayoutIsTheChosenArrangement(t *testing.T) {
+	if got := DefaultLayout().ID; got != "console" {
+		t.Errorf("DefaultLayout = %q, want the chosen arrangement", got)
 	}
 	if Layouts()[0].ID != DefaultLayout().ID {
-		t.Error("the default is not first in the picker, so the list does not lead with what is shipped")
+		t.Error("the default is not first in the picker, so the list does not lead with what an operator gets")
 	}
 	unset := layoutModel("", 120, 34).View().Content
 	stale := layoutModel("a-layout-from-a-later-build", 120, 34).View().Content
-	shipped := layoutModel("split", 120, 34).View().Content
-	if unset != shipped {
-		t.Error("an unset layout does not render as the shipped one")
+	chosen := layoutModel("console", 120, 34).View().Content
+	if unset != chosen {
+		t.Error("an unset layout does not render as the default one")
 	}
-	if stale != shipped {
-		t.Error("a stale saved layout does not fall back to the shipped one")
+	if stale != chosen {
+		t.Error("a stale saved layout does not fall back to the default one")
 	}
 }
 
@@ -208,14 +212,18 @@ func TestColumnsAreGivenUpBeforeTheList(t *testing.T) {
 				t.Errorf("%s at %d: list squeezed to %d columns while rail=%d pane=%d",
 					l, w, list, rail, pane)
 			}
+			// Counted in columns, not in separators: a separator is two
+			// columns wide on a terminal that draws ambiguous characters wide,
+			// and the arithmetic here has to be the arithmetic the renderer
+			// uses or one of them is laying out a different screen.
 			sep := 0
 			for _, c := range []int{rail, pane} {
 				if c > 0 {
-					sep++
+					sep += sepWidth()
 				}
 			}
 			if rail+list+pane+sep != w {
-				t.Errorf("%s at %d: columns %d+%d+%d plus %d separators do not fill the width",
+				t.Errorf("%s at %d: columns %d+%d+%d plus %d separator columns do not fill the width",
 					l, w, rail, list, pane, sep)
 			}
 		}
@@ -484,7 +492,8 @@ func TestSparkStripIsOneRowAndSaysWhatItDropped(t *testing.T) {
 // the same contract the theme picker has.
 func TestLayoutPickerKeepsAndCancels(t *testing.T) {
 	saved := ""
-	m := layoutModel("split", 120, 34)
+	start := DefaultLayout().ID
+	m := layoutModel(start, 120, 34)
 	m.saveLayout = func(id string) error { saved = id; return nil }
 
 	m.openLayoutPicker()
@@ -493,7 +502,7 @@ func TestLayoutPickerKeepsAndCancels(t *testing.T) {
 	}
 	m.keyLayout("down")
 	m.keyLayout("esc")
-	if m.layoutID() != "split" || saved != "" {
+	if m.layoutID() != start || saved != "" {
 		t.Errorf("cancel left layout %q and saved %q", m.layoutID(), saved)
 	}
 

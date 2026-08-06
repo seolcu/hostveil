@@ -1,5 +1,7 @@
 # hostveil
 
+**English** · [한국어](README.ko.md)
+
 > 2026-1 Ajou SoftCon 개발부문 최우수상 수상
 
 **hostveil finds the security mistakes on your self-hosted Linux server, explains them in plain language, and fixes them safely.**
@@ -231,6 +233,13 @@ The TUI and the dashboard share five color themes — `onedark` (the
 default), `gruvbox`, `nord`, `catppuccin`, `tokyonight`. Press `t` in the TUI
 to pick one and have it remembered, use the picker in the dashboard's status
 bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
+
+They share six screen arrangements as well — `console` (the default) puts a
+domain rail down the left carrying every score and every coverage gap, and
+`split`, `triage`, `railverdict`, `lanes` and `inline` are the rest. Press `l`
+in the TUI or use the dashboard's status-bar picker. No single arrangement
+suits both a wide window and an 80-column terminal, so the default answers the
+common case and the picker answers the rest.
 
 The TUI and `scan` can also draw their status markers from a patched
 [Nerd Font](https://www.nerdfonts.com/) — `--glyphs nerd`, or
