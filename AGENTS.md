@@ -103,6 +103,39 @@ Pushing that tag starts `.github/workflows/release.yml`, which re-runs the full 
 
 Never move or delete a published tag. That the ruleset does enforce, and installers and the provenance attestation both assume a tag is immutable.
 
+### When Actions is down
+
+The tag is what starts the pipeline, so a release cut while GitHub Actions
+cannot allocate runners is a release with no archives — and because
+`install.sh` resolves the version by following `/releases/latest`, publishing
+one breaks every new install until the workflow eventually runs.
+
+So do not create the tag. Cut a **draft** instead, which does not create one:
+
+```bash
+gh release create v3.12.0 --draft --target "$(git rev-parse origin/main)" \
+  --title v3.12.0 --notes-file notes.md
+```
+
+`/releases/latest` keeps resolving to the previous release, and installs keep
+working. When Actions is back, `gh release edit v3.12.0 --draft=false`
+publishes it: that creates the tag, which starts `release.yml`, which attaches
+the archives, checksums, SBOMs and the provenance attestation.
+
+A run that failed because no runner was ever allocated — the annotation says
+*"The job was not acquired by Runner of type hosted"* — is re-run with
+`gh run rerun <id>`. Re-tagging is not an option and does not need to be: the
+tag is immutable and the workflow reads it rather than the other way round.
+
+The same outage will hold up the pull requests the release is made of.
+Merging those with `--admin` is a judgement call and the bar is the gate
+itself: run it locally against the *merged* result, not against each branch —
+`go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race
+./...`, the released `golangci-lint`, govulncheck, actionlint, shellcheck, and
+`go run ./cmd/sitegen && git diff --exit-code site/`. What CI gives that a
+local run does not is the attestation, and that is attached at release time by
+the workflow either way.
+
 **Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, which is the only record of what a change was when the release is cut. The title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types with no bump rule, so the change reads as a patch and drops out of the changelog.
 
 The scope is not free text. `.github/workflows/pr-title.yml` accepts only `core`, `model`, `check`, `cve`, `compose`, `fix`, `platform`, `history`, `ai`, `ui`, `tui`, `web`, `cmd`, `sitegen`, `site`, `demo`, `docs`, `install`, `ci`, `release`, `deps`. A path-shaped scope like `check/ssh` is rejected and the pull request cannot merge until the title is edited, so name the package, not the subpackage: a change to `internal/check/ssh` is `fix(check):`. Commits on your own branch are unconstrained.
