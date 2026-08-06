@@ -154,7 +154,7 @@ def deltas(phases):
             continue
         before = set(base[field])
         row = {"before": len(before)}
-        for phase in ("after", "restarted"):
+        for phase in ("after", "restarted", "reviewed"):
             values = phases[phase].get(instrument, {}).get(field)
             if not isinstance(values, list):
                 continue
@@ -204,7 +204,7 @@ def main():
     work, profile = sys.argv[1], sys.argv[2]
 
     phases = {}
-    for phase in ("before", "after", "restarted", "restored"):
+    for phase in ("before", "after", "restarted", "reviewed", "restored"):
         phases[phase] = {
             "hostveil": read_json(os.path.join(work, phase + ".hostveil.json")),
             "lynis": read_json(os.path.join(work, phase + ".lynis.json")),
@@ -222,6 +222,7 @@ def main():
         "hostveil_version": version(),
         "phases": phases,
         "fixes": fix_phase(work),
+        "reviewed": read_json(os.path.join(work, "reviewed.json")),
         "deltas": deltas(phases),
         "rollback": rollback_verdict(work),
     }

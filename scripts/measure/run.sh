@@ -13,8 +13,9 @@
 # where they did not move, because a fix that improves hostveil's own score
 # and nothing else is exactly what this exists to catch.
 #
-# Four phases: before the fixes, after them, after the services have been
-# restarted into them, and after every one has been rolled back.
+# Five phases: before the fixes, after them, after the services have been
+# restarted into them, after every reversible Review fix has been accepted as
+# well, and after every one has been rolled back.
 #
 # It measures the host it runs on, the way hostveil does. Point it at a host
 # you are willing to have edited: it applies every Auto fix and then rolls
@@ -146,6 +147,64 @@ restart_services
 
 say "RESTARTED"
 measure_all restarted
+
+# Everything above measures `fix --all`, which applies Auto fixes only —
+# the unattended path, and deliberately the most conservative thing hostveil
+# does. It is not the path an operator takes. They read a Review fix, decide,
+# and accept it, and the fixes that need that decision are the ones that
+# change the most: every SSH hardening option, because a bad sshd_config can
+# lock the operator out, and hostveil will not do that unattended.
+#
+# So there is a fifth phase for the reviewed path, and it applies only the
+# Review fixes that are *file-backed*. An exec fix has no checkpoint, so
+# applying one here would leave the host changed after the rollback phase
+# claimed to have put it back — and rollback fidelity is the one promise this
+# harness exists to check. The count of what was skipped, and why, goes in
+# the report rather than being silently omitted.
+apply_reviewed() {
+  local applied=0 skipped=0 id svc preview
+  while IFS=$'\t' read -r id svc; do
+    [ -n "$id" ] || continue
+    # The tool's own preview decides whether this is file-backed: with stdin
+    # at EOF the confirmation is answered "no", so this prints the preview and
+    # changes nothing. Reading the preview beats a list of ID prefixes here,
+    # which would be a second copy of a decision the registry already made.
+    preview=$(hostveil fix "$id" ${svc:+--service "$svc"} --action 0 </dev/null 2>&1 || true)
+    if printf '%s' "$preview" | grep -q "These commands will run:"; then
+      skipped=$((skipped + 1))
+      say "  skipping $id ${svc:+($svc)} — exec, nothing to roll back"
+      continue
+    fi
+    if hostveil fix "$id" ${svc:+--service "$svc"} --action 0 --yes >/dev/null 2>&1; then
+      applied=$((applied + 1))
+    else
+      skipped=$((skipped + 1))
+    fi
+  done < <(hostveil scan --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    r = json.load(sys.stdin)
+except ValueError:
+    raise SystemExit
+seen = set()
+for f in r["findings"]:
+    if f.get("remediation") != "review" or f.get("fixed"):
+        continue
+    key = (f["id"], f.get("service") or "")
+    if key in seen:
+        continue
+    seen.add(key)
+    print(f["id"] + "\t" + (f.get("service") or ""))' || true)
+  printf '{"applied":%d,"skipped_exec":%d}\n' "$applied" "$skipped" > "$WORK/reviewed.json"
+  say "  $applied reviewed fixes applied, $skipped skipped as exec"
+}
+
+say "accepting every reversible Review fix, the way an operator who read them would"
+apply_reviewed
+restart_services
+
+say "REVIEWED"
+measure_all reviewed
 
 # The union, because a fix may create a file that was not there to be listed
 # before, and may clear a finding whose file therefore stops being named.
