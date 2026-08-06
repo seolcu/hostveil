@@ -33,6 +33,12 @@ shellcheck scripts/install.sh                               # only if you touche
 ```
 
 Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell.
+`golangci-lint` has to be the released binary, not `go run …@v2.12.2`. The published module is built against an older toolchain than this one targets, and `go run` refuses before it reads the config — *"the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version"* — so the command that looks like it lints actually lints nothing, and the first thing that catches the staticcheck finding is CI. Fetch the release the way CI's action does:
+
+```bash
+curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz \
+  | tar xz -C /tmp && /tmp/golangci-lint-2.12.2-linux-amd64/golangci-lint run ./...
+```
 
 CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), `scripts/install.sh` is shellchecked, and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck and gives each fuzz target five minutes, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.
 
@@ -78,7 +84,7 @@ A **major** bump is never automatic and never an agent's decision. It requires a
 ```bash
 git checkout main && git pull
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
+golangci-lint run ./...   # the released binary — see the note above
 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
 go run ./cmd/sitegen && git diff --exit-code site/
 

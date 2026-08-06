@@ -15,10 +15,13 @@ See AGENTS.md for the allowlist and the reasoning. CI enforces it.
 - [ ] Ran the CI gate locally and it passes:
   ```
   go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
-  go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
+  golangci-lint run ./...
   go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
   go run ./cmd/sitegen && git diff --exit-code site/
   ```
+  `golangci-lint` must be the v2.12.2 **release binary**. `go run …@v2.12.2`
+  is built against an older toolchain than this module targets and refuses
+  before it reads the config, so it lints nothing and looks like it passed.
 - [ ] For a new or changed detection rule: added the case that must **not** trigger it, not just the one that must.
 - [ ] For a UI change: included a screenshot, or confirmed the TUI/web layering tests still pass.
 - [ ] The score stays honest — a checker that can't look reports skipped/degraded, it never passes "couldn't look" off as "nothing there" (see AGENTS.md invariants).
