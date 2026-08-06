@@ -2,7 +2,81 @@
 
 ## Unreleased
 
+## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-06)
+
+The severity scale is three levels instead of four, and hostveil now shows
+its work: why a finding has no fix button, how the 0–100 score is computed and
+why that arithmetic, where the tool actually runs, and what independent
+auditors say about a host it has fixed. Three checkers stopped answering
+questions about hosts they had never examined.
+
+**If you read `scan --json` or a scan snapshot, read the first two entries.**
+Severity is `high` / `medium` / `low` rather than four Trivy levels, and every
+enum goes out as a name rather than an integer. `scan`'s exit code and the
+SARIF export mean exactly what they always did, and snapshots written by any
+older version still read.
+
+hostveil also looks different: one brand mark instead of four, One Dark as the
+default theme, a terminal list that finally says what shape a scan is, and
+optional Nerd Font symbols. Six candidate arrangements of the same screen ship
+in both the terminal and the browser behind a picker; **they are temporary and
+will be gone once one of them is chosen.**
+
 ### Features
+
+* **model:** severity is three urgency levels, not four Trivy ones. A finding
+  is now **`high`** (reachable or usable right now, from off the host, by
+  someone holding nothing), **`medium`** (a boundary that gives way to a
+  foothold, a guessed credential, or a local account) or **`low`** (no known
+  path today; it narrows what a future compromise reaches). Critical / High /
+  Medium / Low came from Trivy so a CVE's published rating could pass straight
+  through — but vulnerabilities are rolled up per image now, so what reaches a
+  finding is one level for the whole image rather than a rating per CVE, and
+  outside that domain the fourth level was asking a question a config file
+  cannot answer. "How bad is a container running as root" depends entirely on
+  what the container does; how much stands between an attacker and it does
+  not.
+
+  The definitions above are the taxonomy and the names only carry the order —
+  which is the one job a name has on a filter chip, in a SARIF level, or in a
+  line of `--json`, and it is why they are the ordinary three rather than
+  something more descriptive.
+
+  **`high` is exactly what Critical and High were together**, so nothing a
+  pipeline reads has moved: `scan` still exits 1 on the same set of findings,
+  and the SARIF export still maps them to the same three levels (Critical and
+  High were both `error` already). Both are pinned against the *old ordinals*,
+  read back through the legacy unmarshal, because the old constants no longer
+  exist to name. If you also run Trivy directly, note that a vulnerability it
+  calls CRITICAL arrives here as `high`: three levels and four do not line up
+  by name.
+
+  Scores do move. A finding that was High now costs half of an axis's
+  remaining credit rather than a third, which is the point of the merge — if
+  it is reachable now it is the top level, and the top level costs half. The
+  seeded demo host goes from **38 to 32**, with SSH hardening moving 26 → 19
+  as `ssh.rootlogin` joins the top level.
+
+  Two conditional escalations collapsed, and that is the taxonomy working
+  rather than information being lost. `dockerd.api-unauthenticated` no longer
+  drops a level when the daemon is rootless, and `agent.gateway-exposed` no
+  longer rises one when a listener is confirmed with no firewall: blast radius
+  and confidence are not urgency. Both differences are still reported, in the
+  description and the evidence, where a reader can weigh them.
+
+  `ScoreAxis`'s four hardcoded count fields became `counts`, a list projected
+  from the severity table — the last structural four in the model, and the
+  reason a change of scale used to touch the score struct, its JSON, three
+  renderers and their tests.
+
+* **model:** `scan --json` names its enums instead of numbering them. `severity`,
+  `source`, `remediation` and a domain's `state` go out as lowercase words
+  (`"high"`, `"ssh"`, `"review"`, `"degraded"`) rather than as the bare integers
+  every consumer had to keep its own ordering table for — including hostveil's
+  own dashboard, which was handed a generated lookup table so it could read its
+  own API. Snapshots written by an older version still read: unmarshalling
+  accepts a name *or* an integer, for one release, so a host's previous scan is
+  not lost and its next scan converts it. Nothing writes integers any more.
 
 * **site:** where hostveil runs, how it is extended, and every environment
   variable it reads — three things the docs either got wrong or never said.
@@ -79,59 +153,36 @@
   and the two-source resolution rule with a finding you can watch it happen
   on. In both languages, pinned against each other by a new test.
 
-* **model:** severity is three urgency levels, not four Trivy ones. A finding
-  is now **`high`** (reachable or usable right now, from off the host, by
-  someone holding nothing), **`medium`** (a boundary that gives way to a
-  foothold, a guessed credential, or a local account) or **`low`** (no known
-  path today; it narrows what a future compromise reaches). Critical / High /
-  Medium / Low came from Trivy so a CVE's published rating could pass straight
-  through — but vulnerabilities are rolled up per image now, so what reaches a
-  finding is one level for the whole image rather than a rating per CVE, and
-  outside that domain the fourth level was asking a question a config file
-  cannot answer. "How bad is a container running as root" depends entirely on
-  what the container does; how much stands between an attacker and it does
-  not.
+* **ui:** one brand mark, One Dark by default, six arrangements, and Nerd Font
+  glyphs ([#649](https://github.com/seolcu/hostveil/issues/649)). hostveil had
+  *four* brand marks — the dashboard's favicon and status-bar mark were two
+  colourings of one figure, and the marketing site had two more that shared
+  nothing with them. They are now one drawing, a chip, byte-identical across all
+  four surfaces and held there by a test, with both lockups optically aligned.
+  The Instrument palette is gone and One Dark is the default; four of its twelve
+  roles are moved — three lifted in HSL lightness by the smallest step that
+  clears the contrast floors every theme here is held to, and the foreground
+  lifted as a judgement rather than a floor, because an editor sets a few
+  hundred glyphs on screen and this sets thousands. The terminal list gains
+  what the dashboard has always had above the fold: a count per severity, how
+  many findings hostveil can offer a fix for at all — Auto *and* Review, which
+  is what the dashboard's chip has always counted — and, for each domain that
+  did not fully run, the reason the checker gave, instead of an unexplained
+  `N/A`. `scan` no longer double-spaces its findings, which halves the
+  scrollback on an ordinary host. And `--glyphs nerd` draws the status markers from a patched Nerd Font: opt-in,
+  because a terminal cannot be asked what font it is using and a missing glyph
+  is drawn in the same single cell a present one would be. Any Nerd Font build
+  works, Mono or not — verified by reading the tables of eighteen font files.
 
-  The definitions above are the taxonomy and the names only carry the order —
-  which is the one job a name has on a filter chip, in a SARIF level, or in a
-  line of `--json`, and it is why they are the ordinary three rather than
-  something more descriptive.
-
-  **`high` is exactly what Critical and High were together**, so nothing a
-  pipeline reads has moved: `scan` still exits 1 on the same set of findings,
-  and the SARIF export still maps them to the same three levels (Critical and
-  High were both `error` already). Both are pinned against the *old ordinals*,
-  read back through the legacy unmarshal, because the old constants no longer
-  exist to name. If you also run Trivy directly, note that a vulnerability it
-  calls CRITICAL arrives here as `high`: three levels and four do not line up
-  by name.
-
-  Scores do move. A finding that was High now costs half of an axis's
-  remaining credit rather than a third, which is the point of the merge — if
-  it is reachable now it is the top level, and the top level costs half. The
-  seeded demo host goes from **38 to 32**, with SSH hardening moving 26 → 19
-  as `ssh.rootlogin` joins the top level.
-
-  Two conditional escalations collapsed, and that is the taxonomy working
-  rather than information being lost. `dockerd.api-unauthenticated` no longer
-  drops a level when the daemon is rootless, and `agent.gateway-exposed` no
-  longer rises one when a listener is confirmed with no firewall: blast radius
-  and confidence are not urgency. Both differences are still reported, in the
-  description and the evidence, where a reader can weigh them.
-
-  `ScoreAxis`'s four hardcoded count fields became `counts`, a list projected
-  from the severity table — the last structural four in the model, and the
-  reason a change of scale used to touch the score struct, its JSON, three
-  renderers and their tests.
-
-* **model:** `scan --json` names its enums instead of numbering them. `severity`,
-  `source`, `remediation` and a domain's `state` go out as lowercase words
-  (`"high"`, `"ssh"`, `"review"`, `"degraded"`) rather than as the bare integers
-  every consumer had to keep its own ordering table for — including hostveil's
-  own dashboard, which was handed a generated lookup table so it could read its
-  own API. Snapshots written by an older version still read: unmarshalling
-  accepts a name *or* an integer, for one release, so a host's previous scan is
-  not lost and its next scan converts it. Nothing writes integers any more.
+* **ui:** six arrangements of the same screen, in both interfaces, behind a
+  picker ([#649](https://github.com/seolcu/hostveil/issues/649)). `l` in the
+  TUI, a dropdown in the dashboard, `--layout` on the command line. This is
+  scaffolding for a decision rather than a setting to keep: an arrangement that
+  reads well in a 1440-column browser and badly in an 80-column terminal is not
+  one hostveil can adopt, and the only way to find that out is to drive both
+  against a real host. The default is unchanged, so an operator who never opens
+  the picker sees no experiment. **When one is chosen the other five go, and
+  `--layout` and `l` go with them.**
 
 ### Bug Fixes
 
@@ -231,50 +282,6 @@
   fixable/not-fixable bool so Auto and Review were the same answer, and the
   fixing page's classification table had four rows against a five-value enum
   with nothing saying which was missing.
-
-## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-04)
-
-Everything here is a rendering layer — no checker, rule, score or fix changed.
-hostveil looks different: one brand mark instead of four, One Dark as the
-default theme, a terminal list that finally says what shape a scan is, and
-optional Nerd Font symbols. Six candidate arrangements of the same screen also
-ship, in both the terminal and the browser, behind a picker; **they are
-temporary and will be gone once one of them is chosen.**
-
-### Features
-
-* **ui:** one brand mark, One Dark by default, six arrangements, and Nerd Font
-  glyphs ([#649](https://github.com/seolcu/hostveil/issues/649)). hostveil had
-  *four* brand marks — the dashboard's favicon and status-bar mark were two
-  colourings of one figure, and the marketing site had two more that shared
-  nothing with them. They are now one drawing, a chip, byte-identical across all
-  four surfaces and held there by a test, with both lockups optically aligned.
-  The Instrument palette is gone and One Dark is the default; four of its twelve
-  roles are moved — three lifted in HSL lightness by the smallest step that
-  clears the contrast floors every theme here is held to, and the foreground
-  lifted as a judgement rather than a floor, because an editor sets a few
-  hundred glyphs on screen and this sets thousands. The terminal list gains
-  what the dashboard has always had above the fold: a count per severity, how
-  many findings hostveil can offer a fix for at all — Auto *and* Review, which
-  is what the dashboard's chip has always counted — and, for each domain that
-  did not fully run, the reason the checker gave, instead of an unexplained
-  `N/A`. `scan` no longer double-spaces its findings, which halves the
-  scrollback on an ordinary host. And `--glyphs nerd` draws the status markers from a patched Nerd Font: opt-in,
-  because a terminal cannot be asked what font it is using and a missing glyph
-  is drawn in the same single cell a present one would be. Any Nerd Font build
-  works, Mono or not — verified by reading the tables of eighteen font files.
-
-* **ui:** six arrangements of the same screen, in both interfaces, behind a
-  picker ([#649](https://github.com/seolcu/hostveil/issues/649)). `l` in the
-  TUI, a dropdown in the dashboard, `--layout` on the command line. This is
-  scaffolding for a decision rather than a setting to keep: an arrangement that
-  reads well in a 1440-column browser and badly in an 80-column terminal is not
-  one hostveil can adopt, and the only way to find that out is to drive both
-  against a real host. The default is unchanged, so an operator who never opens
-  the picker sees no experiment. **When one is chosen the other five go, and
-  `--layout` and `l` go with them.**
-
-### Bug Fixes
 
 * **tui:** a filter chip could be cut through the middle of its count
   ([#650](https://github.com/seolcu/hostveil/issues/650)). The chip row was

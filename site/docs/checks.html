@@ -127,7 +127,7 @@
             </div>
             <p><strong>Three levels, not four, and the definitions above are the whole taxonomy.</strong> The names are ordinary because a name has one job here — carrying the order — and it has to do that on a chip, in one line of <code>--json</code>, and in a SARIF level, where there is no room for anything else. What each level <em>means</em> is the column beside it, and it is a claim about your host rather than an opinion about the finding.</p>
             <div class="callout">
-              <span class="callout-label">Changed in 3.12</span>
+              <span class="callout-label">Changed in 3.11</span>
               <p>hostveil used to have four levels — Critical / High / Medium / Low — inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so what reaches a finding is one level for the whole image rather than a rating per CVE, and the fourth level was left asking a question a config file cannot answer.</p>
               <p><strong>HIGH is exactly what Critical and High were together</strong>, so <code>scan</code>'s exit code and the SARIF export mean what they always did. If you are comparing against Trivy's own output, note that a vulnerability Trivy calls CRITICAL lands here as HIGH: hostveil has three levels and Trivy has four, and the top of one is not the top of the other by name.</p>
             </div>
