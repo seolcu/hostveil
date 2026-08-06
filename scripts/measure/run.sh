@@ -155,30 +155,30 @@ measure_all restarted
 # change the most: every SSH hardening option, because a bad sshd_config can
 # lock the operator out, and hostveil will not do that unattended.
 #
-# So there is a fifth phase for the reviewed path, and it applies only the
-# Review fixes that are *file-backed*. An exec fix has no checkpoint, so
-# applying one here would leave the host changed after the rollback phase
-# claimed to have put it back — and rollback fidelity is the one promise this
-# harness exists to check. The count of what was skipped, and why, goes in
-# the report rather than being silently omitted.
+# So there is a fifth phase for the reviewed path. It applies every Review
+# fix and then counts how many of them left a checkpoint, because that — not
+# a word in the preview — is what "reversible" means here: an exec fix writes
+# no checkpoint, so the rollback phase below cannot put it back, and the
+# report has to say how many of those there were rather than let "restored"
+# read as a full undo.
+#
+# Counted rather than avoided, and counted from the checkpoint log rather
+# than from the preview text. The first version of this read the preview and
+# grepped it for "These commands will run:", which is the *TUI's* wording;
+# the CLI says "The following commands will run:", so it matched nothing and
+# skipped nothing while reporting that it had. A harness that tells you what
+# it skipped, wrongly, is worse than one that does not skip.
+checkpoint_count() { hostveil history 2>/dev/null | grep -cE 'rollback [0-9]{8}-' || true; }
+
 apply_reviewed() {
-  local applied=0 skipped=0 id svc preview
+  local applied=0 failed=0 cp_before cp_after id svc
+  cp_before=$(checkpoint_count)
   while IFS=$'\t' read -r id svc; do
     [ -n "$id" ] || continue
-    # The tool's own preview decides whether this is file-backed: with stdin
-    # at EOF the confirmation is answered "no", so this prints the preview and
-    # changes nothing. Reading the preview beats a list of ID prefixes here,
-    # which would be a second copy of a decision the registry already made.
-    preview=$(hostveil fix "$id" ${svc:+--service "$svc"} --action 0 </dev/null 2>&1 || true)
-    if printf '%s' "$preview" | grep -q "These commands will run:"; then
-      skipped=$((skipped + 1))
-      say "  skipping $id ${svc:+($svc)} — exec, nothing to roll back"
-      continue
-    fi
     if hostveil fix "$id" ${svc:+--service "$svc"} --action 0 --yes >/dev/null 2>&1; then
       applied=$((applied + 1))
     else
-      skipped=$((skipped + 1))
+      failed=$((failed + 1))
     fi
   done < <(hostveil scan --json 2>/dev/null | python3 -c '
 import json, sys
@@ -195,8 +195,13 @@ for f in r["findings"]:
         continue
     seen.add(key)
     print(f["id"] + "\t" + (f.get("service") or ""))' || true)
-  printf '{"applied":%d,"skipped_exec":%d}\n' "$applied" "$skipped" > "$WORK/reviewed.json"
-  say "  $applied reviewed fixes applied, $skipped skipped as exec"
+  cp_after=$(checkpoint_count)
+  local reversible=$((cp_after - cp_before))
+  local irreversible=$((applied - reversible))
+  [ "$irreversible" -ge 0 ] || irreversible=0
+  printf '{"applied":%d,"failed":%d,"left_a_checkpoint":%d,"not_reversible":%d}\n' \
+    "$applied" "$failed" "$reversible" "$irreversible" > "$WORK/reviewed.json"
+  say "  $applied reviewed fixes applied, $reversible reversible, $irreversible with no checkpoint"
 }
 
 say "accepting every reversible Review fix, the way an operator who read them would"
