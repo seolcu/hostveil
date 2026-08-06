@@ -24,6 +24,15 @@ operator actually takes.
   that to a banner. Both registries now lead with it, and neither describes
   itself as temporary any more.
 
+* **docs:** the measured-results page and both READMEs carry a run against a
+  real ARM64 server with the services actually running, and the numbers now
+  cover the reviewed path: ports answering from off the host **7 → 2**, CIS
+  Docker Benchmark **16 → 20 pass**, Lynis's hardening index **56 → 60**, the
+  SSH domain **18 → 100**. What did not move is on the page in the same
+  detail — the container domain never leaves 0/100, six image updates left the
+  CVE axis where it was, and two of Lynis's three warnings are an account
+  hostveil finds and refuses to delete.
+
 * **fix:** `fix --all --review` applies the Review fixes too, each through its
   first alternative. "Fix everything that needs no human" and "fix everything
   hostveil can" are different requests and only the first had a command, so

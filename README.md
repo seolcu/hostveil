@@ -195,17 +195,39 @@ same engine, a fix applied anywhere is reversible.
 ### Does it actually work?
 
 hostveil's own score going up after hostveil's fixes proves nothing — the same
-code decides what a finding is and what the number should be afterwards. So
-the repository carries a harness that measures a seeded host with tools that
-have never heard of it: Lynis, Docker's CIS benchmark, a TCP scan from off the
-host, and the kernel's own list of listening sockets.
+code decides what a finding is and what the number should be afterwards. So the
+repository carries a harness that measures a seeded host with tools that have
+never heard of it: Lynis, Docker's CIS benchmark, a TCP scan from off the host,
+and the kernel's own list of listening sockets.
 
-On the seeded host, `fix --all` applied 27 fixes; four published ports left
-`0.0.0.0` for loopback, three CIS Docker checks cleared, and rolling every
-fix back restored all five changed files byte for byte. Lynis barely moved,
-and nothing outside hostveil moved at all until the services were restarted —
-every Auto fix is a file edit, so none of it is in force until whatever reads
-that file reads it again.
+On a real ARM64 server seeded like an ordinary self-hosted box — Nextcloud with
+PostgreSQL, Jellyfin with Redis, Portainer with Watchtower, every port on
+`0.0.0.0`, root SSH login allowed, no firewall, no automatic updates:
+
+| Measured by | Before | After `fix --all --review` |
+| --- | --- | --- |
+| **Ports answering from off the host** | 7 | **2** |
+| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
+| Lynis hardening index | 56 | **60** |
+| hostveil's SSH domain | 18/100 | **100/100** |
+| hostveil score | 42 | **59** |
+
+The five ports that stopped answering are PostgreSQL, Redis, Nextcloud,
+Jellyfin and Portainer. The two that remain are SSH and a natively installed
+Redis that hostveil reports and **declines to fix**, because the config file
+differs per datastore and the finding does not carry its path.
+
+Every file the fixes changed was restored byte for byte on rollback — 5 of 5,
+across 33 checkpoints. Seven of the sixteen reviewed fixes leave nothing to roll
+back at all (six image updates and enabling unattended-upgrades), and hostveil
+marks each of them `[not reversible]` in its own history rather than implying
+the undo is total.
+
+What did *not* move is on the page too: the container domain never leaves 0/100,
+because what remains there is Manual by design — a Docker socket mounted into
+Portainer, host networking, secrets in the environment — and two of Lynis's
+three warnings are a second UID 0 account hostveil finds and refuses to delete,
+since `userdel` cannot be undone from a checkpoint.
 
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the
