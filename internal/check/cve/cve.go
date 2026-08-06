@@ -341,10 +341,17 @@ func (g *group) sorted() []string {
 // cannot touch it, and vice versa.
 func (g *group) worst() model.Severity { return g.sevOf[g.sorted()[0]] }
 
-// summary renders "12 critical, 108 high" for the severities present.
+// summary renders "12 high, 108 medium" for the severities present.
+//
+// It walks model.AllSeverities rather than a list written out here. The list
+// written out here was the four-level scale, and when Critical and High
+// merged into one constant both rows stayed — so the same constant was read
+// twice and a group of two top-severity vulnerabilities rendered as
+// "2 high, 2 high". The scale is the model's to enumerate, and a copy of it
+// in this file is a copy that goes stale exactly when the model changes.
 func (g *group) summary() string {
 	var parts []string
-	for _, s := range []model.Severity{model.SeverityExposed, model.SeverityExposed, model.SeverityWeak, model.SeverityHardening} {
+	for _, s := range model.AllSeverities() {
 		if n := g.counts[s]; n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", n, strings.ToLower(s.String())))
 		}
@@ -374,7 +381,10 @@ func (g *group) evidence() []model.FindingOption {
 		model.WithEvidence("count", strconv.Itoa(len(g.ids))),
 		model.WithEvidence("cves", strings.Join(g.sorted(), ", ")),
 	}
-	for _, s := range []model.Severity{model.SeverityExposed, model.SeverityExposed, model.SeverityWeak, model.SeverityHardening} {
+	// AllSeverities for the reason summary gives: the list this used to
+	// write out held the merged constant twice, so the same evidence key was
+	// added twice with the same value.
+	for _, s := range model.AllSeverities() {
 		if n := g.counts[s]; n > 0 {
 			opts = append(opts, model.WithEvidence(strings.ToLower(s.String()), strconv.Itoa(n)))
 		}

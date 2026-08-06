@@ -575,3 +575,48 @@ func FuzzParseTrivy(f *testing.F) {
 		_, _ = parseTrivy(data, "img", "svc", "f", "p")
 	})
 }
+
+// TestSummaryNamesEachSeverityOnce is the regression for what the four-level
+// scale left behind here.
+//
+// summary() and evidence() each walked a severity list written out in this
+// file. When Critical and High merged into one constant, both rows stayed
+// and the same constant was read twice — so an image whose worst
+// vulnerabilities were all top-severity described itself as "2 high, 2 high"
+// and attached the same evidence key twice. Nothing failed; the count was
+// right, said twice.
+//
+// The fix is that neither place enumerates the scale any more. This test
+// exists so that a future change to the scale cannot reintroduce a copy of
+// it: it counts occurrences rather than comparing a fixed string, so it
+// holds whatever the levels are called.
+func TestSummaryNamesEachSeverityOnce(t *testing.T) {
+	out := `{"Results":[{"Vulnerabilities":[
+		{"VulnerabilityID":"CVE-1","PkgName":"p","FixedVersion":"2","Severity":"CRITICAL"},
+		{"VulnerabilityID":"CVE-2","PkgName":"p","FixedVersion":"2","Severity":"HIGH"},
+		{"VulnerabilityID":"CVE-3","PkgName":"p","FixedVersion":"2","Severity":"MEDIUM"}]}]}`
+
+	findings, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("want one rolled-up finding, got %d", len(findings))
+	}
+
+	desc := findings[0].Description
+	for _, sev := range model.AllSeverities() {
+		name := strings.ToLower(sev.String())
+		if n := strings.Count(desc, " "+name); n > 1 {
+			t.Errorf("%q appears %d times in the description, which counts the same "+
+				"vulnerabilities twice:\n%s", name, n, desc)
+		}
+	}
+
+	// CRITICAL and HIGH both fold to the top level, so the count for it is 2
+	// and it is stated once.
+	top := strings.ToLower(model.AllSeverities()[0].String())
+	if got := findings[0].Evidence[top]; got != "2" {
+		t.Errorf("evidence[%q] = %q, want 2", top, got)
+	}
+}
