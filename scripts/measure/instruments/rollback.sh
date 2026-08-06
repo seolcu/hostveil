@@ -32,7 +32,13 @@ MARK=${MEASURE_MARK:-/tmp/hostveil-measure-mark}
 # the file it created" from "the file was never watched".
 ENUMERATED_DIRS=${MEASURE_ENUMERATED_DIRS:-/etc/sysctl.d}
 
-ids() { hostveil history 2>/dev/null | grep -oE 'rollback [0-9]{8}-[0-9.]+-[0-9a-f]+-[0-9a-f]+' | awk '{print $2}'; }
+# `|| true` because grep exits 1 when it matches nothing, and nothing is what
+# it matches on a host that has never applied a fix — which is every host the
+# documentation tells you to run this on ("a container or a throwaway VM").
+# Under `set -euo pipefail` that killed the instrument, `rb mark` with it, and
+# run.sh two lines into a four-phase run. Invisible on a host that has any
+# checkpoint at all, which is every host it had been run on.
+ids() { hostveil history 2>/dev/null | grep -oE 'rollback [0-9]{8}-[0-9.]+-[0-9a-f]+-[0-9a-f]+' | awk '{print $2}' || true; }
 
 case "${1:-}" in
 candidates)
