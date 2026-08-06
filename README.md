@@ -111,6 +111,7 @@ hostveil                 # interactive TUI (default on a terminal)
 hostveil scan            # print a scored report (add -v for details, --json for JSON)
 hostveil fix <id>        # preview, then apply the fix for one finding
 hostveil fix --all       # apply every safe (Auto) fix at once
+hostveil fix --all --review  # and the Review ones too, after reading what they are
 hostveil rollback <id>   # undo a previously applied fix
 hostveil history         # list applied fixes and their rollback IDs
 hostveil explain <id>    # explain a finding (add --ai for a local-LLM second opinion)

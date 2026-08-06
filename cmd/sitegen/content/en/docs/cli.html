@@ -58,6 +58,7 @@ hostveil fix --all [flags]</code></pre></div>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--all</code></td><td><code>false</code></td><td>Apply every safe (Auto-fix) finding at once.</td></tr>
+                  <tr><td><code>--review</code></td><td><code>false</code></td><td>With <code>--all</code>, apply the Review fixes too, each through its first alternative. They are listed separately and counted separately: a Review fix is one hostveil can perform and will not perform unattended, because it can cut off access to this host or runs a command with no checkpoint to undo.</td></tr>
                   <tr><td><code>--action N</code></td><td><code>-1</code></td><td>For a Review fix, the 0-based alternative to apply.</td></tr>
                   <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
                   <tr><td><code>--yes</code></td><td><code>false</code></td><td>Apply without the interactive confirmation.</td></tr>

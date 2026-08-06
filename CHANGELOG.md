@@ -24,6 +24,24 @@ operator actually takes.
   that to a banner. Both registries now lead with it, and neither describes
   itself as temporary any more.
 
+* **fix:** `fix --all --review` applies the Review fixes too, each through its
+  first alternative. "Fix everything that needs no human" and "fix everything
+  hostveil can" are different requests and only the first had a command, so
+  every SSH hardening option, every kernel parameter and every image update
+  needed one invocation apiece. The classification does not move — a Review fix
+  is still one that can cut off access to this host or has more than one
+  defensible answer — and the two lists are printed and counted separately, so
+  saying yes to them is still saying yes to them. On a seeded host it is the
+  difference between the SSH domain reaching 44 and reaching 100.
+
+* **updates:** enabling automatic security updates is an Auto fix on a host
+  where the mechanism is already installed, which on Debian and Ubuntu is the
+  usual state. The remediation there is two keys in
+  `/etc/apt/apt.conf.d/20auto-upgrades` — a file edit, reversible from a
+  checkpoint — and it was being served by the same `apt-get install` a host
+  without the package needs, which made an exec action out of a two-line edit
+  and put the most ordinary hardening step there is behind a human.
+
 * **ci:** the measurement harness measures the *reviewed* path too. It ran
   `fix --all`, which applies Auto fixes only — the unattended path, and
   deliberately the most conservative thing hostveil does. It is not the path

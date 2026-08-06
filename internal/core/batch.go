@@ -11,6 +11,28 @@ import (
 // anything without an auto fix. It is the shared implementation behind
 // "fix everything safe", so no UI reimplements the batch loop.
 func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model.BatchOutcome {
+	return e.applyBatch(ctx, findings, false)
+}
+
+// ApplyBatchWithReviewed is the same loop with the Review fixes included,
+// each applied through its *first* alternative — which every builder in the
+// registry writes as the primary remediation, the one the finding's how-to-fix
+// describes.
+//
+// It exists because "fix everything hostveil can" and "fix everything that
+// needs no human" are different requests, and only the second had a command.
+// The classification does not move: a Review fix is still one that can cut off
+// access to the host or has more than one defensible answer, and the caller
+// has to say, in the command, that it accepts them. What changes is that
+// accepting them no longer means running the tool once per finding.
+//
+// The batch still refuses anything the registry does not answer, so this can
+// never apply a fix nobody wrote.
+func (e *Engine) ApplyBatchWithReviewed(ctx context.Context, findings []model.Finding) model.BatchOutcome {
+	return e.applyBatch(ctx, findings, true)
+}
+
+func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, reviewed bool) model.BatchOutcome {
 	e.applyMu.Lock()
 	defer e.applyMu.Unlock()
 
@@ -27,12 +49,22 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
-		if f.Fixed || f.Remediation != model.RemediationAuto {
+		eligible := f.Remediation == model.RemediationAuto ||
+			(reviewed && f.Remediation == model.RemediationReview)
+		if f.Fixed || !eligible {
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
 		fx, ok, err := e.buildFix(f)
-		if !ok || err != nil || len(fx.Actions) != 1 {
+		if !ok || err != nil || len(fx.Actions) == 0 {
+			out.Skipped = append(out.Skipped, f.ID)
+			continue
+		}
+		// An Auto fix is one action by definition (fix.Validate enforces it),
+		// and a batch that silently picked one of several would be choosing
+		// for the operator. A reviewed batch takes the first alternative
+		// because that is where every builder puts the primary remediation.
+		if !reviewed && len(fx.Actions) != 1 {
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
