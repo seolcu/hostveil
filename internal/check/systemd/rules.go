@@ -68,8 +68,8 @@ var rules = []rule{
 		// closes buys little there; for a service running as somebody else it
 		// is the difference between a compromise staying inside that account
 		// and walking out of it.
-		sev:        model.SeverityHardening,
-		sevNonRoot: model.SeverityWeak,
+		sev:        model.SeverityLow,
+		sevNonRoot: model.SeverityMedium,
 		desc: "NoNewPrivileges is off, so anything this service runs can gain privileges through a setuid binary — the standard way a foothold inside a service becomes a foothold outside it. " +
 			"It costs nothing on a service that does not deliberately escalate, which is why it is the same protection the container domain checks for under the name no-new-privileges.",
 		directive: "NoNewPrivileges=yes",
@@ -81,8 +81,8 @@ var rules = []rule{
 		// The reverse of the rule above: this is what stands between a root
 		// service and the rest of the filesystem, and it is worth most
 		// exactly where NoNewPrivileges is worth least.
-		sev:        model.SeverityWeak,
-		sevNonRoot: model.SeverityHardening,
+		sev:        model.SeverityMedium,
+		sevNonRoot: model.SeverityLow,
 		desc: "ProtectSystem is off, so this service can write to /usr, /boot, and /etc. A compromised service that can edit /etc owns every login on the host; one that can write /usr can replace a binary something else runs as root. " +
 			"ProtectSystem=full mounts those read-only for this service alone and needs no change to the program itself.",
 		directive: "ProtectSystem=full",
@@ -91,8 +91,8 @@ var rules = []rule{
 	{
 		id:         "systemd.protect-home",
 		title:      "A service can read every user's home directory",
-		sev:        model.SeverityWeak,
-		sevNonRoot: model.SeverityHardening,
+		sev:        model.SeverityMedium,
+		sevNonRoot: model.SeverityLow,
 		desc: "ProtectHome is off, so this service can read /home, /root, and /run/user — the SSH private keys, cloud credentials, and password databases of everyone with an account on this host. " +
 			"Almost no self-hosted service has any business there; ProtectHome=yes hides them from this service without affecting anything else.",
 		directive: "ProtectHome=yes",
@@ -101,7 +101,7 @@ var rules = []rule{
 	{
 		id:    "systemd.private-tmp",
 		title: "A service shares /tmp with everything else on the host",
-		sev:   model.SeverityHardening,
+		sev:   model.SeverityLow,
 		desc: "PrivateTmp is off, so this service reads and writes the same /tmp as every other process. That is the ground the symlink and hardlink races live on: another local process can predict a temporary file's name and have this service overwrite something it chooses. " +
 			"PrivateTmp=yes gives the service a /tmp of its own.",
 		directive: "PrivateTmp=yes",

@@ -258,7 +258,7 @@ func countDnfSecurityAdvisories(out string) int {
 // operator believes the work is done.
 func rebootFinding(howToFix string) model.Finding {
 	return model.NewFinding("updates.reboot-required", "A reboot is needed for installed security updates to take effect",
-		model.SeverityExposed, model.SourceUpdates, model.RemediationManual,
+		model.SeverityHigh, model.SourceUpdates, model.RemediationManual,
 		model.WithDescription("Updates to the kernel or a core library have been installed, but the running system is still using the old code held in memory. Until this host restarts, it stays vulnerable to exactly the issues those patches fixed — and because the packages already show as up to date, it is easy to believe the work is finished."),
 		model.WithHowToFix("Restart the host when you can take the downtime: `"+howToFix+"`. Check what will restart with it first if you run services without a restart policy."),
 		model.WithEvidence("mechanism", "reboot flag"),
@@ -269,9 +269,9 @@ func rebootFinding(howToFix string) model.Finding {
 // Severity scales with the count: a couple of pending patches is routine drift,
 // dozens means automatic updates are not actually working.
 func pendingFinding(n int, howToFix string) model.Finding {
-	sev := model.SeverityWeak
+	sev := model.SeverityMedium
 	if n >= 10 {
-		sev = model.SeverityExposed
+		sev = model.SeverityHigh
 	}
 	return model.NewFinding("updates.pending-security", fmt.Sprintf("%d security update(s) are available but not installed", n),
 		sev, model.SourceUpdates, model.RemediationManual,
@@ -283,7 +283,7 @@ func pendingFinding(n int, howToFix string) model.Finding {
 
 func disabledFinding(mechanism, howToFix string) model.Finding {
 	return model.NewFinding("updates.disabled", "Automatic security updates are not enabled",
-		model.SeverityWeak, model.SourceUpdates, model.RemediationReview,
+		model.SeverityMedium, model.SourceUpdates, model.RemediationReview,
 		model.WithDescription("Without automatic security updates, known vulnerabilities in your OS and its packages stay unpatched until you manually update. Most self-hosters forget, leaving public services exploitable for months."),
 		model.WithHowToFix(howToFix),
 		model.WithEvidence("mechanism", mechanism),

@@ -36,7 +36,7 @@ usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the 
 # Seeded before the stacks come up in [9/10], so the daemon restart does not
 # bounce them.
 
-# dockerd.api-unauthenticated (Critical). The drop-in is generated from the
+# dockerd.api-unauthenticated (High). The drop-in is generated from the
 # CURRENT ExecStart rather than hardcoded, so it survives Docker changing its
 # packaged flags. The bare `ExecStart=` line is mandatory: without it systemd
 # rejects a second ExecStart on a Type=notify service. And the socket goes
@@ -49,7 +49,7 @@ printf '[Service]\nExecStart=\nExecStart=%s -H tcp://0.0.0.0:2375\n' \
   "${CURRENT_EXECSTART:-/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock}" \
   > /etc/systemd/system/docker.service.d/10-hostveil-demo.conf
 
-# dockerd.socket-world-writable (Critical). Set on the socket unit, not with
+# dockerd.socket-world-writable (High). Set on the socket unit, not with
 # chmod: dockerd recreates the socket from this unit at every start, so a
 # chmod would be gone by the time hostveil looked — and the unit drop-in is
 # the misconfiguration people actually make.
@@ -148,11 +148,12 @@ echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
 # runtime by its home-directory layout and judges the config and file modes,
 # which is exactly the ground these fixtures cover.
 #
-# The one thing it cannot show is the listener cross-check. With no gateway
-# actually bound to :18789, agent.gateway-exposed reports High from the
-# config alone; on a host where the gateway is really running with no
-# firewall it escalates to Critical. To see that in the demo, run something
-# on the port first:  python3 -m http.server 18789 --bind 0.0.0.0 &
+# The one thing it cannot show is the listener cross-check. The finding is
+# High either way — the firewall and the listener decide the confidence, not
+# the level, and both ride in the evidence — but with nothing bound to
+# :18789 the evidence says the binding came from the config rather than from
+# an observed socket. To see the other case in the demo, run something on
+# the port first:  python3 -m http.server 18789 --bind 0.0.0.0 &
 install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.openclaw
 install -d -m 0755 -o vagrant -g vagrant /home/vagrant/.openclaw/credentials  # too open → agent.secret-exposed
 install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.openclaw/state

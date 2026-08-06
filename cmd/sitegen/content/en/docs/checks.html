@@ -30,16 +30,17 @@
               <table>
                 <thead><tr><th>Level</th><th>What it means</th><th>Takes</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev exposed">EXPOSED</span></td><td>Reachable or usable <em>right now</em>, from off the host, by someone holding nothing. An open service with no authentication, a login with no password, a container that has already been handed host root. Nothing has to be broken first.</td><td>1/2 of what remains</td></tr>
-                  <tr><td><span class="sev weak">WEAK</span></td><td>A boundary that gives way to a foothold, a guessed credential, or a local account. The attacker needs something they do not have yet, and this is what makes getting it worthwhile.</td><td>1/8</td></tr>
-                  <tr><td><span class="sev hardening">HARDENING</span></td><td>Defence in depth. No known path today; it narrows what a future compromise reaches.</td><td>1/16</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>Reachable or usable <em>right now</em>, from off the host, by someone holding nothing. An open service with no authentication, a login with no password, a container that has already been handed host root. Nothing has to be broken first.</td><td>1/2 of what remains</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>A boundary that gives way to a foothold, a guessed credential, or a local account. The attacker needs something they do not have yet, and this is what makes getting it worthwhile.</td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>Defence in depth. No known path today; it narrows what a future compromise reaches.</td><td>1/16</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>The names are deliberately not adjectives about the finding. "Critical" invites an argument about whether something is really critical; <strong>Exposed</strong> is a claim about your host that is either true or false.</p>
+            <p><strong>Three levels, not four, and the definitions above are the whole taxonomy.</strong> The names are ordinary because a name has one job here — carrying the order — and it has to do that on a chip, in one line of <code>--json</code>, and in a SARIF level, where there is no room for anything else. What each level <em>means</em> is the column beside it, and it is a claim about your host rather than an opinion about the finding.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.12</span>
-              <p>These replace Critical / High / Medium / Low, which hostveil inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so no individual rating survives into a finding, and the four levels were left asking a question a config file cannot answer. <strong>Exposed</strong> is exactly what Critical and High were together, so <code>scan</code>'s exit code and the SARIF export mean what they always did.</p>
+              <p>hostveil used to have four levels — Critical / High / Medium / Low — inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so what reaches a finding is one level for the whole image rather than a rating per CVE, and the fourth level was left asking a question a config file cannot answer.</p>
+              <p><strong>HIGH is exactly what Critical and High were together</strong>, so <code>scan</code>'s exit code and the SARIF export mean what they always did. If you are comparing against Trivy's own output, note that a vulnerability Trivy calls CRITICAL lands here as HIGH: hostveil has three levels and Trivy has four, and the top of one is not the top of the other by name.</p>
             </div>
             <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three. <a href="scoring">Scoring</a> is the whole model: the arithmetic, a worked example from a real scan, and what the number cannot tell you.</p>
             <p>A finding hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
@@ -80,7 +81,7 @@
             </div>
             <p>Both UIs print the reason above the findings list — <em>"Container partial: cannot inspect containers started outside Compose"</em>, <em>"CVEs skipped: Trivy not installed"</em>. An excluded axis is never scored 100: a scan that could not see your images is not a scan that found your images clean. This is why running without root produces a lower, not a higher, score than running with it.</p>
 
-            <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev exposed">EXPOSED</span> — useful as a CI or cron gate.</p>
+            <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev high">HIGH</span> — useful as a CI or cron gate.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
             <p>Parsed natively from <code>sshd_config</code>, following <code>Include</code> directives into <code>sshd_config.d/</code>. That matters on Debian and Ubuntu, which put the <code>Include</code> at the top of the file: <code>sshd</code> keeps the first value it obtains for each keyword, so a drop-in wins over the lines below it. Reading these needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>. A fix edits the file the winning directive actually lives in.</p>
@@ -88,15 +89,15 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ssh.emptypasswords</code></td><td>Empty passwords are permitted</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>ssh.rootlogin</code></td><td>Root login with a password is allowed</td><td><span class="sev exposed">EXPOSED</span></td><td>Review</td></tr>
-                  <tr><td><code>ssh.passwordauth</code></td><td>Password authentication is allowed</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>ssh.gatewayports</code></td><td>Remote-forwarded ports are exposed to the network</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>ssh.hostbasedauth</code></td><td>Host-based authentication is enabled</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>ssh.kbdinteractive</code></td><td>Interactive password prompts survive PasswordAuthentication no</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>ssh.maxauthtries</code></td><td>Too many auth attempts per connection</td><td><span class="sev hardening">HARDENING</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>ssh.logingracetime</code></td><td>Unauthenticated connections are held open too long</td><td><span class="sev hardening">HARDENING</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev hardening">HARDENING</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.emptypasswords</code></td><td>Empty passwords are permitted</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td>Root login with a password is allowed</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td>Password authentication is allowed</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.gatewayports</code></td><td>Remote-forwarded ports are exposed to the network</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.hostbasedauth</code></td><td>Host-based authentication is enabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.kbdinteractive</code></td><td>Interactive password prompts survive PasswordAuthentication no</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td>Too many auth attempts per connection</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.logingracetime</code></td><td>Unauthenticated connections are held open too long</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                 </tbody>
               </table>
             </div>
@@ -107,24 +108,24 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds020</code></td><td>Shares the host PID namespace</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev weak">WEAK</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds021</code></td><td>Shares the host IPC namespace</td><td><span class="sev weak">WEAK</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev weak">WEAK</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev weak">WEAK</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev hardening">HARDENING</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>compose.ds022</code></td><td>Container filesystem is writable</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev hardening">HARDENING</span></td><td>Review</td></tr>
-                  <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker socket mounted into a container</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>Datastore exposed on all interfaces</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>Container runs in privileged mode</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>Admin panel exposed on all interfaces</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>Container uses host network mode</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>Sensitive host path mounted read-write</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>Adds a dangerous Linux capability</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>Shares the host PID namespace</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>Hardcoded secret in the environment</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds006</code></td><td>Missing no-new-privileges hardening</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>Shares the host IPC namespace</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>Container runs as root</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>Container filesystem is writable</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -134,9 +135,9 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, nftables, or iptables)</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>firewall.default-allow</code></td><td>A firewall is running but its default inbound policy accepts everything</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>firewall.docker-bypass</code></td><td>Published container ports are reachable despite an active ufw</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, nftables, or iptables)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.default-allow</code></td><td>A firewall is running but its default inbound policy accepts everything</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>Published container ports are reachable despite an active ufw</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -146,9 +147,9 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev exposed">EXPOSED</span> / <span class="sev weak">WEAK</span></td><td>Manual</td></tr>
-                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -159,9 +160,9 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -172,8 +173,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -184,12 +185,12 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code> is more permissive than <code>0640</code></td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code> is writable by non-root users</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev weak">WEAK</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code> is more permissive than <code>0640</code></td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code> is writable by non-root users</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
                 </tbody>
               </table>
             </div>
@@ -203,14 +204,14 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>sysctl.ptrace-scope</code></td><td>Any process can debug its siblings and read their memory</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN-flood protection is off</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP redirects can rewrite this host's routing</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.protected-links</code></td><td>Symlink/hardlink race protections are disabled</td><td><span class="sev weak">WEAK</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.kptr-restrict</code></td><td>Kernel pointer addresses are visible to all users</td><td><span class="sev hardening">HARDENING</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>Any user can read the kernel log</td><td><span class="sev hardening">HARDENING</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq is fully enabled</td><td><span class="sev hardening">HARDENING</span></td><td>Review</td></tr>
-                  <tr><td><code>sysctl.rp-filter</code></td><td>Source-address spoofing filter is off (strict and loose both pass)</td><td><span class="sev hardening">HARDENING</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>Any process can debug its siblings and read their memory</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN-flood protection is off</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP redirects can rewrite this host's routing</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>Symlink/hardlink race protections are disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>Kernel pointer addresses are visible to all users</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>Any user can read the kernel log</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq is fully enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.rp-filter</code></td><td>Source-address spoofing filter is off (strict and loose both pass)</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -224,18 +225,18 @@
               <table>
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>The Docker API is served over TCP with no TLS client verification — unauthenticated root for anyone who can reach the port</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.socket-world-writable</code></td><td>Every local account can connect to the Docker socket, and so become root</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>The API is encrypted but accepts any client — TLS without <code>tlsverify</code> authenticates the server, not the caller</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.group-members</code></td><td>Accounts other than root hold the socket's group, which is root-equivalent with no password prompt and no audit record</td><td><span class="sev weak">WEAK</span> / <span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.no-new-privileges</code></td><td>Containers can still gain privileges through setuid binaries</td><td><span class="sev weak">WEAK</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.userns-remap</code></td><td>User namespaces are not remapped, so container root is host root</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.live-restore</code></td><td>Restarting the daemon stops every container, which is why daemon updates get deferred</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>The Docker API is served over TCP with no TLS client verification — unauthenticated root for anyone who can reach the port</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>Every local account can connect to the Docker socket, and so become root</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>The API is encrypted but accepts any client — TLS without <code>tlsverify</code> authenticates the server, not the caller</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>Accounts other than root hold the socket's group, which is root-equivalent with no password prompt and no audit record</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>Containers can still gain privileges through setuid binaries</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>User namespaces are not remapped, so container root is host root</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>Restarting the daemon stops every container, which is why daemon updates get deferred</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><code>dockerd.group-members</code> is <span class="sev weak">WEAK</span> when the accounts holding the group are people, and <span class="sev exposed">EXPOSED</span> when any of them is a service account — one with a system UID or no interactive login. Nobody deliberately grants a CI runner or a monitoring agent the ability to become root, and a credential that never logs in is one nobody is watching.</p>
-            <p>A loopback-only TCP socket is not flagged: it reaches nothing the unix socket did not, and it is the documented way to put a proxy in front of the daemon. A daemon running <strong>rootless</strong> has <code>userns-remap</code> and <code>group-members</code> suppressed. Its API finding stays <span class="sev exposed">EXPOSED</span>: rootless bounds the damage to that user's containers rather than the host, which is a difference the description reports, but it does not make the port any harder to reach. <code>live-restore</code> is suppressed on a swarm node, where Docker does not support it.</p>
+            <p><code>dockerd.group-members</code> is <span class="sev medium">MEDIUM</span> when the accounts holding the group are people, and <span class="sev high">HIGH</span> when any of them is a service account — one with a system UID or no interactive login. Nobody deliberately grants a CI runner or a monitoring agent the ability to become root, and a credential that never logs in is one nobody is watching.</p>
+            <p>A loopback-only TCP socket is not flagged: it reaches nothing the unix socket did not, and it is the documented way to put a proxy in front of the daemon. A daemon running <strong>rootless</strong> has <code>userns-remap</code> and <code>group-members</code> suppressed. Its API finding stays <span class="sev high">HIGH</span>: rootless bounds the damage to that user's containers rather than the host, which is a difference the description reports, but it does not make the port any harder to reach. <code>live-restore</code> is suppressed on a swarm node, where Docker does not support it.</p>
 
             <h2 id="systemd">Service hardening <code>systemd.</code></h2>
             <p>Roughly half of a self-hosted server is not in a container. The Compose domain reads what your containers declare — privileged, running as root, no-new-privileges off — and a service started by a unit file has exactly the same decisions made about it. Until this domain existed, nothing looked at them.</p>
@@ -245,14 +246,14 @@
               <table>
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev hardening">HARDENING</span> / <span class="sev weak">WEAK</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev weak">WEAK</span> / <span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev weak">WEAK</span> / <span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev hardening">HARDENING</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><strong>Two severities, and which one applies depends on the account.</strong> <code>no-new-privileges</code> is <span class="sev weak">WEAK</span> on a service running as somebody other than root and <span class="sev hardening">HARDENING</span> on one running as root — a root service can already do anything, so the setuid path it closes buys little there. The two filesystem protections go the other way for the same reason: they are worth most exactly where <code>no-new-privileges</code> is worth least.</p>
+            <p><strong>Two severities, and which one applies depends on the account.</strong> <code>no-new-privileges</code> is <span class="sev medium">MEDIUM</span> on a service running as somebody other than root and <span class="sev low">LOW</span> on one running as root — a root service can already do anything, so the setuid path it closes buys little there. The two filesystem protections go the other way for the same reason: they are worth most exactly where <code>no-new-privileges</code> is worth least.</p>
             <p><strong>Every finding here is Manual, on purpose.</strong> The drop-in is two lines and hostveil could write it — but writing it is not the same as knowing it is safe. <code>ProtectSystem=full</code> breaks a service that writes under <code>/usr</code>; <code>PrivateTmp=yes</code> breaks two services that hand each other files through <code>/tmp</code>. Neither failure shows up until the next restart, which on a self-hosted box is the next reboot — and the service that does not come back is the one holding your data. So the how-to-fix carries the exact path and the exact two lines, and you pick the moment to restart and watch.</p>
             <p>A property this systemd does not implement is reported as nothing at all, and nothing is not evidence that a protection is off — those are left alone rather than turned into a finding.</p>
 
@@ -264,15 +265,15 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.secret-exposed</code></td><td>A credentials file or directory is readable beyond its owner</td><td><span class="sev exposed">EXPOSED</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>agent.exec-unrestricted</code></td><td>The agent may run shell commands with no approval step</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.elevated-enabled</code></td><td>Elevated (host-level) command execution is enabled</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.control-ui-insecure</code></td><td>The control UI has its auth or device-identity checks disabled</td><td><span class="sev exposed">EXPOSED</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.config-perms</code></td><td>A config or state path is more permissive than upstream ships it</td><td><span class="sev weak">WEAK</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>agent.ssrf-private-network</code></td><td>The agent browser may reach private-network addresses</td><td><span class="sev weak">WEAK</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.secret-exposed</code></td><td>A credentials file or directory is readable beyond its owner</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>The agent may run shell commands with no approval step</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>Elevated (host-level) command execution is enabled</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>The control UI has its auth or device-identity checks disabled</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.config-perms</code></td><td>A config or state path is more permissive than upstream ships it</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>The agent browser may reach private-network addresses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

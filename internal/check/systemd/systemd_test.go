@@ -190,14 +190,14 @@ func TestSeverityFollowsTheAccount(t *testing.T) {
 
 	nnpRoot, _ := find(asRoot, "systemd.no-new-privileges", "root.service")
 	nnpUser, _ := find(asUser, "systemd.no-new-privileges", "user.service")
-	if nnpRoot.Severity != model.SeverityHardening || nnpUser.Severity != model.SeverityWeak {
+	if nnpRoot.Severity != model.SeverityLow || nnpUser.Severity != model.SeverityMedium {
 		t.Errorf("no-new-privileges: root=%v user=%v, want Low and Medium",
 			nnpRoot.Severity, nnpUser.Severity)
 	}
 
 	sysRoot, _ := find(asRoot, "systemd.protect-system", "root.service")
 	sysUser, _ := find(asUser, "systemd.protect-system", "user.service")
-	if sysRoot.Severity != model.SeverityWeak || sysUser.Severity != model.SeverityHardening {
+	if sysRoot.Severity != model.SeverityMedium || sysUser.Severity != model.SeverityLow {
 		t.Errorf("protect-system: root=%v user=%v, want Medium and Low",
 			sysRoot.Severity, sysUser.Severity)
 	}

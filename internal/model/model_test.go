@@ -107,7 +107,7 @@ func TestRemediationFixability(t *testing.T) {
 }
 
 func TestFindingValidate(t *testing.T) {
-	good := NewFinding("compose.ds016", "Docker socket mounted", SeverityExposed, SourceCompose, RemediationReview)
+	good := NewFinding("compose.ds016", "Docker socket mounted", SeverityHigh, SourceCompose, RemediationReview)
 	if err := good.Validate(); err != nil {
 		t.Errorf("well-formed finding failed validation: %v", err)
 	}
@@ -210,8 +210,8 @@ func TestScoreCleanHostIsPerfect(t *testing.T) {
 
 func TestScorePenalizesCorrectAxis(t *testing.T) {
 	findings := []Finding{
-		NewFinding("compose.ds001", "privileged", SeverityWeak, SourceCompose, RemediationAuto),
-		NewFinding("ssh.rootlogin", "root login", SeverityExposed, SourceSSH, RemediationReview),
+		NewFinding("compose.ds001", "privileged", SeverityMedium, SourceCompose, RemediationAuto),
+		NewFinding("ssh.rootlogin", "root login", SeverityHigh, SourceSSH, RemediationReview),
 	}
 	sb := ScoreReport(findings, nil)
 	var compose, ssh ScoreAxis
@@ -219,13 +219,13 @@ func TestScorePenalizesCorrectAxis(t *testing.T) {
 		switch ax.Source {
 		case SourceCompose:
 			compose = ax
-			if ax.Penalty <= 0 || ax.Count(SeverityWeak) != 1 {
-				t.Errorf("container axis penalty=%d weak=%d", ax.Penalty, ax.Count(SeverityWeak))
+			if ax.Penalty <= 0 || ax.Count(SeverityMedium) != 1 {
+				t.Errorf("container axis penalty=%d medium=%d", ax.Penalty, ax.Count(SeverityMedium))
 			}
 		case SourceSSH:
 			ssh = ax
-			if ax.Penalty <= 0 || ax.Count(SeverityExposed) != 1 {
-				t.Errorf("ssh axis penalty=%d exposed=%d", ax.Penalty, ax.Count(SeverityExposed))
+			if ax.Penalty <= 0 || ax.Count(SeverityHigh) != 1 {
+				t.Errorf("ssh axis penalty=%d high=%d", ax.Penalty, ax.Count(SeverityHigh))
 			}
 		default:
 			if ax.Penalty != 0 || ax.Score != 100 {
@@ -235,9 +235,9 @@ func TestScorePenalizesCorrectAxis(t *testing.T) {
 	}
 	// Penalties are a share of each axis's own cap, so they are not
 	// comparable across axes. Scores are: an Exposed finding must cost more
-	// of its axis than a Weak one costs of its own.
+	// of its axis than a Medium one costs of its own.
 	if ssh.Score >= compose.Score {
-		t.Errorf("exposed axis scored %d, weak axis %d — exposed must cost more", ssh.Score, compose.Score)
+		t.Errorf("high axis scored %d, medium axis %d — high must cost more", ssh.Score, compose.Score)
 	}
 	if sb.Overall >= 100 {
 		t.Errorf("score should be reduced, got %d", sb.Overall)
@@ -245,7 +245,7 @@ func TestScorePenalizesCorrectAxis(t *testing.T) {
 }
 
 func TestScoreDeduplicates(t *testing.T) {
-	f := NewFinding("compose.ds001", "privileged", SeverityExposed, SourceCompose, RemediationAuto, WithService("web"))
+	f := NewFinding("compose.ds001", "privileged", SeverityHigh, SourceCompose, RemediationAuto, WithService("web"))
 	one := ScoreReport([]Finding{f}, nil)
 	two := ScoreReport([]Finding{f, f}, nil)
 	if one.Overall != two.Overall {
@@ -254,7 +254,7 @@ func TestScoreDeduplicates(t *testing.T) {
 }
 
 func TestScoreExcludesFixed(t *testing.T) {
-	f := NewFinding("compose.ds001", "privileged", SeverityExposed, SourceCompose, RemediationAuto)
+	f := NewFinding("compose.ds001", "privileged", SeverityHigh, SourceCompose, RemediationAuto)
 	f.Fixed = true
 	if got := ScoreReport([]Finding{f}, nil).Overall; got != 100 {
 		t.Errorf("fixed finding penalized score: %d", got)
@@ -267,7 +267,7 @@ func TestScoreExcludesFixed(t *testing.T) {
 // because the penalty is renormalized over a smaller cap sum.
 func TestScoreRenormalizesWhenCVESkipped(t *testing.T) {
 	findings := []Finding{
-		NewFinding("compose.ds016", "docker socket", SeverityExposed, SourceCompose, RemediationReview),
+		NewFinding("compose.ds016", "docker socket", SeverityHigh, SourceCompose, RemediationReview),
 	}
 	ranAll := map[Source]ScanState{
 		SourceCompose: ScanDone, SourceSSH: ScanDone, SourceFirewall: ScanDone,
@@ -334,15 +334,16 @@ func axesBySource(s ScoreBreakdown) map[Source]ScoreAxis {
 }
 
 // The regression this whole model exists for: summing severities meant two
-// Criticals exhausted an axis and every finding after that was free. An
+// top-severity findings exhausted an axis and every finding after that was
+// free. An
 // axis pinned at 0 cannot tell a bad host from a catastrophic one.
-func TestScoreDoesNotSaturateOnASecondCritical(t *testing.T) {
+func TestScoreDoesNotSaturateOnASecondTopFinding(t *testing.T) {
 	one := ScoreReport([]Finding{
-		NewFinding("cve.outdated-image", "a", SeverityExposed, SourceCVE, RemediationReview, WithService("a")),
+		NewFinding("cve.outdated-image", "a", SeverityHigh, SourceCVE, RemediationReview, WithService("a")),
 	}, nil)
 	two := ScoreReport([]Finding{
-		NewFinding("cve.outdated-image", "a", SeverityExposed, SourceCVE, RemediationReview, WithService("a")),
-		NewFinding("cve.outdated-image", "b", SeverityExposed, SourceCVE, RemediationReview, WithService("b")),
+		NewFinding("cve.outdated-image", "a", SeverityHigh, SourceCVE, RemediationReview, WithService("a")),
+		NewFinding("cve.outdated-image", "b", SeverityHigh, SourceCVE, RemediationReview, WithService("b")),
 	}, nil)
 
 	got := func(sb ScoreBreakdown) uint8 {
@@ -355,10 +356,10 @@ func TestScoreDoesNotSaturateOnASecondCritical(t *testing.T) {
 		return 0
 	}
 	if got(two) == 0 {
-		t.Error("two criticals must not zero an axis; that is the saturation bug")
+		t.Error("two High findings must not zero an axis; that is the saturation bug")
 	}
 	if got(two) >= got(one) {
-		t.Errorf("second critical did not cost anything: %d then %d", got(one), got(two))
+		t.Errorf("the second High finding did not cost anything: %d then %d", got(one), got(two))
 	}
 }
 
@@ -367,7 +368,7 @@ func TestScoreIsMonotonic(t *testing.T) {
 	var findings []Finding
 	prev := uint8(100)
 	for i := range 12 {
-		findings = append(findings, NewFinding("compose.ds001", "x", SeverityExposed,
+		findings = append(findings, NewFinding("compose.ds001", "x", SeverityHigh,
 			SourceCompose, RemediationManual, WithService(string(rune('a'+i)))))
 		got := ScoreReport(findings, nil).Overall
 		if got > prev {
@@ -384,10 +385,10 @@ func TestScoreIsMonotonic(t *testing.T) {
 // own lie — but must not cost as much as one the user could act on.
 func TestScoreWeighsUnavailableLighter(t *testing.T) {
 	actionable := ScoreReport([]Finding{
-		NewFinding("cve.outdated-image", "a", SeverityExposed, SourceCVE, RemediationReview),
+		NewFinding("cve.outdated-image", "a", SeverityHigh, SourceCVE, RemediationReview),
 	}, nil).Overall
 	unfixable := ScoreReport([]Finding{
-		NewFinding("cve.unpatched-image", "a", SeverityExposed, SourceCVE, RemediationUnavailable),
+		NewFinding("cve.unpatched-image", "a", SeverityHigh, SourceCVE, RemediationUnavailable),
 	}, nil).Overall
 
 	if unfixable <= actionable {
@@ -406,7 +407,7 @@ func TestScoreRewardsAWellMaintainedHost(t *testing.T) {
 	var findings []Finding
 	for i := range 4 {
 		findings = append(findings, NewFinding("cve.unpatched-image", "no patch yet",
-			SeverityExposed, SourceCVE, RemediationUnavailable, WithService(string(rune('a'+i)))))
+			SeverityHigh, SourceCVE, RemediationUnavailable, WithService(string(rune('a'+i)))))
 	}
 	sb := ScoreReport(findings, nil)
 	for _, ax := range sb.Axes {
@@ -419,11 +420,11 @@ func TestScoreRewardsAWellMaintainedHost(t *testing.T) {
 	}
 }
 
-// A small cap used to be its own bug: fileperms caps at 6, so one Critical
+// A small cap used to be its own bug: fileperms caps at 6, so one High
 // (penalty 8) clamped past the cap and zeroed the axis outright.
 func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 	sb := ScoreReport([]Finding{
-		NewFinding("fileperms.shadow", "world-readable", SeverityExposed, SourceFilePerms, RemediationManual),
+		NewFinding("fileperms.shadow", "world-readable", SeverityHigh, SourceFilePerms, RemediationManual),
 	}, nil)
 	for _, ax := range sb.Axes {
 		if ax.Source == SourceFilePerms && ax.Score == 0 {

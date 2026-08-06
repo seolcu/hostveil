@@ -27,8 +27,11 @@ import (
 //
 // Ink/Ink2/Ink3 are the background and its two raised surfaces; Line and
 // Line2 are hairlines, with Line2 doubling as the selection ground; Bone and
-// Slate are primary and muted text. The remaining five are the only ones that
-// mean anything: four severity steps and safety.
+// Slate are primary and muted text. The remaining five are the only ones
+// that mean anything: four heats and safety. Only three of the heats carry a
+// severity — the fourth serves the score bands, which have four — so do not
+// read this list as one colour per level. severityColor in internal/ui/tui
+// is where that mapping actually lives.
 type Palette struct {
 	Ink   string
 	Ink2  string
@@ -111,7 +114,7 @@ var themes = []Theme{
 		Palette: Palette{
 			// Nord's Polar Night starts at #2e3440, which is the lightest
 			// background of any theme here — light enough that its Aurora red
-			// lands at 3:1 against it, and a Critical finding that reads as a
+			// lands at 3:1 against it, and a High finding that reads as a
 			// suggestion is worse than no theme at all. The ramp is shifted
 			// down one step instead: #2e3440 becomes the raised surface and
 			// the page sits below it, which buys enough room to keep Aurora

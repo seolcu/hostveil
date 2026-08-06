@@ -5,9 +5,9 @@ import "testing"
 func report(findings ...Finding) Report { return Report{Findings: findings} }
 
 func TestComputeDelta(t *testing.T) {
-	a := NewFinding("compose.ds001", "a", SeverityExposed, SourceCompose, RemediationManual, WithService("app"))
-	b := NewFinding("ssh.rootlogin", "b", SeverityExposed, SourceSSH, RemediationReview)
-	c := NewFinding("firewall.inactive", "c", SeverityExposed, SourceFirewall, RemediationManual)
+	a := NewFinding("compose.ds001", "a", SeverityHigh, SourceCompose, RemediationManual, WithService("app"))
+	b := NewFinding("ssh.rootlogin", "b", SeverityHigh, SourceSSH, RemediationReview)
+	c := NewFinding("firewall.inactive", "c", SeverityHigh, SourceFirewall, RemediationManual)
 
 	prev := report(a, b) // had a, b
 	curr := report(b, c) // b remains, c is new, a resolved
@@ -28,7 +28,7 @@ func TestComputeDelta(t *testing.T) {
 }
 
 func TestComputeDeltaFixedFindingsResolved(t *testing.T) {
-	a := NewFinding("compose.ds001", "a", SeverityExposed, SourceCompose, RemediationAuto, WithService("app"))
+	a := NewFinding("compose.ds001", "a", SeverityHigh, SourceCompose, RemediationAuto, WithService("app"))
 	prev := report(a)
 	fixed := a
 	fixed.Fixed = true
@@ -45,10 +45,10 @@ func TestComputeDeltaFixedFindingsResolved(t *testing.T) {
 // while the number of vulnerabilities behind it moved. Three new CVEs in
 // an image is exactly the signal the per-CVE findings used to carry.
 func TestComputeDeltaDetectsMovementUnderAStableKey(t *testing.T) {
-	before := NewFinding("cve.outdated-image", "outdated", SeverityExposed,
+	before := NewFinding("cve.outdated-image", "outdated", SeverityHigh,
 		SourceCVE, RemediationReview, WithService("cloud/nextcloud"),
 		WithEvidence("count", "3627"), WithEvidence("cves", "CVE-1, CVE-2"))
-	after := NewFinding("cve.outdated-image", "outdated", SeverityExposed,
+	after := NewFinding("cve.outdated-image", "outdated", SeverityHigh,
 		SourceCVE, RemediationReview, WithService("cloud/nextcloud"),
 		WithEvidence("count", "3630"), WithEvidence("cves", "CVE-1, CVE-2, CVE-3"))
 
@@ -74,9 +74,9 @@ func TestComputeDeltaDetectsMovementUnderAStableKey(t *testing.T) {
 
 // A finding that got worse in place must not read as unchanged.
 func TestComputeDeltaDetectsSeverityMovement(t *testing.T) {
-	before := NewFinding("cve.outdated-image", "t", SeverityWeak, SourceCVE,
+	before := NewFinding("cve.outdated-image", "t", SeverityMedium, SourceCVE,
 		RemediationReview, WithService("media/redis"))
-	after := NewFinding("cve.outdated-image", "t", SeverityExposed, SourceCVE,
+	after := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE,
 		RemediationReview, WithService("media/redis"))
 
 	d := ComputeDelta(report(before), report(after))
@@ -91,9 +91,9 @@ func TestComputeDeltaDetectsSeverityMovement(t *testing.T) {
 // Prose is edited by releases, not by the host. Rewording a description
 // must not make every finding on every machine report as changed.
 func TestComputeDeltaIgnoresProse(t *testing.T) {
-	before := NewFinding("ssh.rootlogin", "t", SeverityExposed, SourceSSH,
+	before := NewFinding("ssh.rootlogin", "t", SeverityHigh, SourceSSH,
 		RemediationReview, WithDescription("old wording"), WithHowToFix("old fix text"))
-	after := NewFinding("ssh.rootlogin", "t", SeverityExposed, SourceSSH,
+	after := NewFinding("ssh.rootlogin", "t", SeverityHigh, SourceSSH,
 		RemediationReview, WithDescription("new wording"), WithHowToFix("new fix text"))
 
 	d := ComputeDelta(report(before), report(after))
@@ -107,10 +107,10 @@ func TestComputeDeltaIgnoresProse(t *testing.T) {
 
 // The question the per-CVE findings used to answer: which ones are new.
 func TestEvidenceListDeltaNamesMembers(t *testing.T) {
-	before := NewFinding("cve.outdated-image", "t", SeverityExposed, SourceCVE,
+	before := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE,
 		RemediationReview, WithService("cloud/nextcloud"),
 		WithEvidence("cves", "CVE-1, CVE-2, CVE-3"))
-	after := NewFinding("cve.outdated-image", "t", SeverityExposed, SourceCVE,
+	after := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE,
 		RemediationReview, WithService("cloud/nextcloud"),
 		WithEvidence("cves", "CVE-2, CVE-3, CVE-4, CVE-5"))
 
@@ -131,9 +131,9 @@ func TestEvidenceListDeltaNamesMembers(t *testing.T) {
 // reported as one.
 func TestEvidenceListDeltaIgnoresReordering(t *testing.T) {
 	c := FindingChange{
-		Previous: NewFinding("x", "t", SeverityExposed, SourceCVE, RemediationManual,
+		Previous: NewFinding("x", "t", SeverityHigh, SourceCVE, RemediationManual,
 			WithEvidence("cves", "CVE-1, CVE-2")),
-		Current: NewFinding("x", "t", SeverityExposed, SourceCVE, RemediationManual,
+		Current: NewFinding("x", "t", SeverityHigh, SourceCVE, RemediationManual,
 			WithEvidence("cves", "CVE-2, CVE-1")),
 	}
 	added, removed := c.EvidenceListDelta("cves")
@@ -146,9 +146,9 @@ func TestEvidenceListDeltaIgnoresReordering(t *testing.T) {
 // as a new CVE, with no per-domain knowledge in the diff.
 func TestEvidenceListDeltaIsNotCVESpecific(t *testing.T) {
 	c := FindingChange{
-		Previous: NewFinding("accounts.emptypassword", "t", SeverityExposed,
+		Previous: NewFinding("accounts.emptypassword", "t", SeverityHigh,
 			SourceAccounts, RemediationManual, WithEvidence("accounts", "guest")),
-		Current: NewFinding("accounts.emptypassword", "t", SeverityExposed,
+		Current: NewFinding("accounts.emptypassword", "t", SeverityHigh,
 			SourceAccounts, RemediationManual, WithEvidence("accounts", "guest, backup")),
 	}
 	added, _ := c.EvidenceListDelta("accounts")

@@ -74,7 +74,7 @@ func TestEngineScanEndToEnd(t *testing.T) {
 
 	report := engine.Scan(context.Background(), nil)
 
-	// The two critical/high misconfigurations must surface.
+	// The two top-severity misconfigurations must surface.
 	ids := map[string]bool{}
 	for _, f := range report.Findings {
 		ids[f.ID] = true
@@ -248,7 +248,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 	}{
 		{
 			name: "checker Review beats registered Auto",
-			finding: model.NewFinding("ssh.passwordauth", "password auth", model.SeverityWeak,
+			finding: model.NewFinding("ssh.passwordauth", "password auth", model.SeverityMedium,
 				model.SourceSSH, model.RemediationReview,
 				model.WithEvidence("config", "/etc/ssh/sshd_config")),
 			want: model.RemediationReview,
@@ -256,7 +256,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "checker Auto and registered Auto stays Auto",
-			finding: model.NewFinding("compose.ds018", "exposed datastore", model.SeverityExposed,
+			finding: model.NewFinding("compose.ds018", "exposed datastore", model.SeverityHigh,
 				model.SourceCompose, model.RemediationAuto,
 				model.WithService("cache"),
 				model.WithMetadata("file", "/tmp/docker-compose.yml"),
@@ -266,7 +266,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "fixable but unregistered is demoted to Manual",
-			finding: model.NewFinding("compose.ds016", "docker socket", model.SeverityExposed,
+			finding: model.NewFinding("compose.ds016", "docker socket", model.SeverityHigh,
 				model.SourceCompose, model.RemediationReview,
 				model.WithService("app"),
 				model.WithMetadata("file", "/tmp/docker-compose.yml")),
@@ -275,7 +275,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "CVE image rollup keeps its fix",
-			finding: model.NewFinding("cve.outdated-image", "outdated image", model.SeverityExposed,
+			finding: model.NewFinding("cve.outdated-image", "outdated image", model.SeverityHigh,
 				model.SourceCVE, model.RemediationReview,
 				model.WithService("stack/cache"),
 				model.WithMetadata("file", "/tmp/docker-compose.yml"),
@@ -286,7 +286,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "digest-pinned rollup is demoted to Manual",
-			finding: model.NewFinding("cve.outdated-image", "outdated image", model.SeverityExposed,
+			finding: model.NewFinding("cve.outdated-image", "outdated image", model.SeverityHigh,
 				model.SourceCVE, model.RemediationManual,
 				model.WithService("stack/cache"),
 				model.WithMetadata("file", "/tmp/docker-compose.yml"),
@@ -297,7 +297,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "an individual CVE never resolves to the rollup's fix",
-			finding: model.NewFinding("cve.cve-2021-1234", "openssl overflow", model.SeverityExposed,
+			finding: model.NewFinding("cve.cve-2021-1234", "openssl overflow", model.SeverityHigh,
 				model.SourceCVE, model.RemediationReview,
 				model.WithService("stack/cache"),
 				model.WithMetadata("file", "/tmp/docker-compose.yml"),
@@ -307,7 +307,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 		},
 		{
 			name: "firewall has no fix at all",
-			finding: model.NewFinding("firewall.inactive", "no firewall", model.SeverityExposed,
+			finding: model.NewFinding("firewall.inactive", "no firewall", model.SeverityHigh,
 				model.SourceFirewall, model.RemediationReview),
 			want: model.RemediationManual,
 			why:  "enabling a firewall over SSH is not automatable safely",

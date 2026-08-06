@@ -102,19 +102,19 @@ func New() *Checker { return &Checker{Rules: defaultRules(), OwnerUID: rootUID} 
 
 func defaultRules() []Rule {
 	return []Rule{
-		{Path: "/etc/shadow", MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.shadow",
+		{Path: "/etc/shadow", MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow",
 			Title: "/etc/shadow is more permissive than it should be",
 			Desc:  "/etc/shadow holds every account's password hash. If it is readable or writable beyond root (and the shadow group), those hashes can be stolen and cracked offline, or an attacker can set a password directly."},
-		{Path: "/etc/passwd", MaxMode: 0o644, Sev: model.SeverityExposed, ID: "fileperms.passwd",
+		{Path: "/etc/passwd", MaxMode: 0o644, Sev: model.SeverityHigh, ID: "fileperms.passwd",
 			Title: "/etc/passwd is writable by non-root users",
 			Desc:  "/etc/passwd defines every account. If it is writable by anyone but root, a local user can add an account or change a UID to escalate to root."},
-		{Path: "/etc/group", MaxMode: 0o644, Sev: model.SeverityExposed, ID: "fileperms.group",
+		{Path: "/etc/group", MaxMode: 0o644, Sev: model.SeverityHigh, ID: "fileperms.group",
 			Title: "/etc/group is writable by non-root users",
 			Desc:  "/etc/group defines group membership. If it is writable by non-root users, a local user can add themselves to a privileged group (e.g. sudo, docker) and escalate."},
-		{Path: "/etc/ssh/sshd_config", MaxMode: 0o644, Sev: model.SeverityWeak, ID: "fileperms.sshd-config",
+		{Path: "/etc/ssh/sshd_config", MaxMode: 0o644, Sev: model.SeverityMedium, ID: "fileperms.sshd-config",
 			Title: "sshd_config is writable by non-root users",
 			Desc:  "If the SSH server config is writable by non-root users, an attacker can weaken it (re-enable root login or password auth) and take over remote access."},
-		{Path: "/etc/ssh/ssh_host_*_key", Glob: true, MaxMode: 0o640, Sev: model.SeverityExposed, ID: "fileperms.hostkey",
+		{Path: "/etc/ssh/ssh_host_*_key", Glob: true, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.hostkey",
 			Title: "SSH host private key is readable beyond root",
 			Desc:  "An SSH host private key readable by non-root users lets them impersonate this server, enabling man-in-the-middle attacks on anyone connecting over SSH."},
 	}
@@ -206,7 +206,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		sort.Strings(wrongOwner)
 		findings = append(findings, model.NewFinding(ownerFindingID,
 			"A sensitive system file is not owned by root",
-			model.SeverityExposed, model.SourceFilePerms, model.RemediationManual,
+			model.SeverityHigh, model.SourceFilePerms, model.RemediationManual,
 			model.WithDescription("These files are owned by an account other than root. Permission bits are only half of who can read and write a file — the other half is who the owner is. A mode-0600 /etc/shadow grants everything to its owner and nothing to anyone else, so if that owner is an ordinary user, they hold every password hash on the host while the permissions look exactly right."),
 			model.WithHowToFix("Restore root ownership, e.g. `chown root:root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too — /etc/shadow is usually root:shadow. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
 			model.WithEvidence("files", strings.Join(wrongOwner, model.EvidenceSeparator)),

@@ -112,8 +112,9 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// only corroborates it and sharpens the severity. Losing a confidence
 	// booster is not losing ground.
 	listeners, _ := platform.Listeners(ctx, env.Runner)
-	// Likewise the firewall: it decides only whether an exposed gateway is
-	// High or Critical, never whether the finding exists.
+	// Likewise the firewall: it sharpens what the evidence can say about a
+	// reachable gateway, never whether the finding exists — and since the
+	// levels merged it does not move the level either. See gatewayFindings.
 	fwStatus, _ := firewall.Probe(ctx, env.Runner)
 
 	var findings []model.Finding
@@ -222,9 +223,9 @@ func modeFindings(s scan) []model.Finding {
 		id, title, desc := "agent.config-perms",
 			s.in.rt.Display+" configuration is readable beyond its owner",
 			"This file configures an agent that can run commands and hold credentials. Any account able to read it learns how the agent is set up; any account able to write it can retarget the agent."
-		sev := model.SeverityWeak
+		sev := model.SeverityMedium
 		if rule.Secret {
-			id, sev = "agent.secret-exposed", model.SeverityExposed
+			id, sev = "agent.secret-exposed", model.SeverityHigh
 			title = s.in.rt.Display + " credentials are readable beyond their owner"
 			desc = "This path holds the API keys the agent authenticates with. Every account on this host can read it, so any of them — or anything running as them — can take those keys and spend, read, or act with them elsewhere."
 		}
@@ -320,9 +321,9 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 	// observed listener with no firewall behind it is reachable now, today —
 	// and so, on the urgency scale, is a gateway bound to a routable address
 	// with a firewall in front of it that the operator may have opened. Both
-	// are Exposed; what the firewall status changes is the confidence, which
+	// are High; what the firewall status changes is the confidence, which
 	// rides in the evidence rather than in the level.
-	sev := model.SeverityExposed
+	sev := model.SeverityHigh
 
 	opts := []model.FindingOption{
 		model.WithService(s.in.subject()),
@@ -346,7 +347,7 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 
 	// Authentication is only judged once the gateway is actually exposed.
 	// Every one of these runtimes treats "no auth on loopback" as a
-	// legitimate single-user default, so flagging it would put a Critical on
+	// legitimate single-user default, so flagging it would put a High on
 	// a correct install — a score you could not improve by doing everything
 	// right.
 	if s.cfgKnown && gw.AuthKey != "" {
@@ -363,7 +364,7 @@ func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) 
 			}
 			out = append(out, model.NewFinding("agent.auth-disabled",
 				s.in.rt.Display+" gateway accepts requests with no authentication",
-				model.SeverityExposed, model.SourceAgent, model.RemediationManual,
+				model.SeverityHigh, model.SourceAgent, model.RemediationManual,
 				model.WithService(s.in.subject()),
 				model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
 				model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well — authentication is the second line, not the first."),

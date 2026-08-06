@@ -58,7 +58,7 @@ func TestACheckerDeclaringManualIsNotOverruledByTheRegistry(t *testing.T) {
 
 	findings := []model.Finding{model.NewFinding(
 		"compose.ds016", "Port published on all interfaces",
-		model.SeverityExposed, model.SourceCompose, model.RemediationManual)}
+		model.SeverityHigh, model.SourceCompose, model.RemediationManual)}
 
 	e.classify(findings)
 
@@ -80,7 +80,7 @@ func TestUnavailableSurvivesARegisteredFix(t *testing.T) {
 
 	findings := []model.Finding{model.NewFinding(
 		"cve.outdated-image", "Image ships known vulnerabilities",
-		model.SeverityExposed, model.SourceCVE, model.RemediationUnavailable)}
+		model.SeverityHigh, model.SourceCVE, model.RemediationUnavailable)}
 
 	e.classify(findings)
 
@@ -97,7 +97,7 @@ func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 
 	findings := []model.Finding{{
 		ID: "ssh.rootlogin", Title: "t",
-		Severity: model.SeverityExposed, Source: model.SourceSSH,
+		Severity: model.SeverityHigh, Source: model.SourceSSH,
 	}}
 
 	e.classify(findings)
@@ -120,7 +120,7 @@ func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
 
 	findings := []model.Finding{model.NewFinding(
 		"updates.disabled", "Automatic security updates are not enabled",
-		model.SeverityWeak, model.SourceUpdates, model.RemediationAuto)}
+		model.SeverityMedium, model.SourceUpdates, model.RemediationAuto)}
 	e.classify(findings)
 
 	p, err := e.PreviewFix(findings[0])

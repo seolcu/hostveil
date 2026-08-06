@@ -46,9 +46,9 @@ function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 
 // Enum values arrive as names now, not ordinals, so anything that needs the
 // model's ordering asks for it. rank is the row's position in the table the
-// engine declared; sorting by the name itself would put "critical" after
-// "high" and domains in alphabetical order, which is not an ordering anyone
-// chose.
+// engine declared; sorting by the name itself would put "low" before
+// "medium" and domains in alphabetical order, which is not an ordering
+// anyone chose.
 function rank(table, key) { return (table[key] && table[key].rank) ?? 1e9; }
 function byRank(table) { return (a, b) => rank(table, a) - rank(table, b); }
 
@@ -103,11 +103,25 @@ function el(tag, attrs = {}, ...kids) {
 }
 
 // sevName doubles as the CSS class for a finding's gutter and its severity
-// chip (.finding.critical, .over-chip.sev-critical), so the stylesheet and
-// the exports share one spelling. There used to be two tables here that
+// chip (.finding.high, .over-chip.sev-high), so the stylesheet and the
+// exports share one spelling. There used to be two tables here that
 // differed only in whether Medium was "med" or "medium", and only the
 // second one matched the stylesheet.
 function sevName(f) { return (SEV[f.severity] && SEV[f.severity].name) || "unknown"; }
+
+// topSeverity is the most urgent level the engine declared — rank 0 in the
+// table it exported, whatever that level is called this release.
+//
+// Asking for it by name is what this used to do, against a name the model
+// had stopped using: the verdict headline counted findings whose severity
+// was "critical" long after the four-level scale was gone, so the count was
+// always zero and the headline it gates silently never appeared again. A
+// hard-coded enum name in a renderer is a bug with a delayed fuse; the
+// export carries rank precisely so nothing here has to spell a level.
+function topSeverity() {
+  for (const [key, sev] of Object.entries(SEV)) if (sev.rank === 0) return key;
+  return null;
+}
 function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
 function remLabel(r) { return (REM[r] && REM[r].label) || "Unclassified"; }
 function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
@@ -330,17 +344,18 @@ function renderDomainNotice() {
 function renderVerdict(all) {
   const box = document.getElementById("verdict");
   const autos = all.filter(isAuto).length;
-  const crit = all.filter((f) => sevName(f) === "critical").length;
+  const top = topSeverity();
+  const crit = top === null ? 0 : all.filter((f) => f.severity === top).length;
   const scored = (report.score.axes || []).filter((a) => a.applicable).length;
   const gaps = incompleteDomains().length;
 
   // The headline is a claim the scan can defend. With nothing scannable
   // there is no claim to make, which is the same reason the gauge refuses a
-  // number: "no criticals" and "nobody looked" are opposite readings.
+  // number: "nothing reachable" and "nobody looked" are opposite readings.
   const head = report.score.applicable === false
     ? "This host could not be scanned."
     : crit > 0
-      ? `${crit} critical finding${crit === 1 ? " is" : "s are"} exposed right now.`
+      ? `${crit} finding${crit === 1 ? " is" : "s are"} reachable right now.`
       : `This host is ${bandFor(report.score.overall).verdict}.`;
 
   const acts = el("div", { class: "v-acts" });
@@ -530,7 +545,7 @@ function render() {
 // out of the list, which is exactly the kind of thing that looks fine until
 // it does not.
 //
-// A severity with nothing at it gets no lane. A "Critical · 0" header is a
+// A severity with nothing at it gets no lane. A "High · 0" header is a
 // row of screen spent announcing that nothing happened, and four of them on
 // a clean host is the whole list.
 function laneRows(items, row) {

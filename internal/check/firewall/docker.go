@@ -41,7 +41,7 @@ var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
 // Postgres open to the world scored better than one with no firewall and
 // nothing running.
 //
-// It reports nothing unless every condition holds, because a Critical finding
+// It reports nothing unless every condition holds, because a top-severity finding
 // that fires on a correctly configured host is worse than none:
 //
 //   - ufw is the active firewall. firewalld and plain nftables interact with
@@ -80,7 +80,7 @@ func checkDockerBypass(ctx context.Context, r platform.CommandRunner, daemonConf
 	list := describePorts(published)
 	return []model.Finding{
 		model.NewFinding("firewall.docker-bypass", "Container ports bypass the ufw firewall",
-			model.SeverityExposed, model.SourceFirewall, model.RemediationManual,
+			model.SeverityHigh, model.SourceFirewall, model.RemediationManual,
 			model.WithDescription("ufw is active, but Docker publishes container ports by writing its own rules ahead of ufw's. Traffic to a published port is accepted before ufw ever sees it, so `ufw deny` on these ports does nothing and they are reachable from any network this host is on — including the internet, on a VPS. The firewall looks correct in `ufw status` while these ports are open."),
 			model.WithHowToFix("Either publish only to loopback (`-p 127.0.0.1:6379:6379`, or `ports: [\"127.0.0.1:6379:6379\"]` in Compose) and reach the service over an SSH tunnel or VPN, or install the ufw-docker rules in /etc/ufw/after.rules so the DOCKER-USER chain enforces your ufw policy. Published ports: "+list+"."),
 			model.WithEvidence("published", list),

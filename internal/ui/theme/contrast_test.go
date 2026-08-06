@@ -48,7 +48,7 @@ func contrast(fg, bg string) float64 {
 // meet them.
 //
 // Low is the one exception, at 3.5:1. It is deliberately the quietest color
-// in the system — a Low finding that shouted would drown out a Critical one.
+// in the system — a Low finding that shouted would drown out a High one.
 // Anything below 3.5 stops being quiet and starts being unreadable; the
 // first drafts of Nord and Tokyo Night sat at 2.4 and 2.8, and One Dark's
 // own #767d8c sits at 3.39.

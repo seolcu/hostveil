@@ -256,7 +256,7 @@ func TestRepullFixTargetsTheComposeFile(t *testing.T) {
 // projects' same-named services stay distinct in Key(). The docker command
 // must still use the bare name from the compose file.
 func TestRepullUsesTheUnqualifiedServiceName(t *testing.T) {
-	f := model.NewFinding("cve.outdated-image", "t", model.SeverityExposed,
+	f := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
 		model.SourceCVE, model.RemediationReview,
 		model.WithService("cloud/db"),
 		model.WithMetadata("file", "/opt/cloud/docker-compose.yml"),
@@ -281,7 +281,7 @@ func TestRepullUsesTheUnqualifiedServiceName(t *testing.T) {
 // A pull on a digest is a no-op by construction. The builder refuses, and a
 // build error is how classify learns there is no fix.
 func TestRepullRefusesDigestPinnedImages(t *testing.T) {
-	f := model.NewFinding("cve.outdated-image", "t", model.SeverityExposed,
+	f := model.NewFinding("cve.outdated-image", "t", model.SeverityHigh,
 		model.SourceCVE, model.RemediationManual,
 		model.WithService("app"),
 		model.WithMetadata("file", "/tmp/docker-compose.yml"),
@@ -406,7 +406,7 @@ func TestTightenPreservesModeDir(t *testing.T) {
 }
 
 func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
-	f := model.NewFinding("fileperms.hostkey", "t", model.SeverityExposed,
+	f := model.NewFinding("fileperms.hostkey", "t", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", strings.Join(
 			[]string{"/etc/ssh/ssh_host_rsa_key", "/etc/ssh/ssh_host_ed25519_key"},
@@ -443,7 +443,7 @@ func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
 		{"paths": "/etc/shadow"}, // no expected mode
 		{"paths": "/etc/shadow", "expected": "not-a-mode"},
 	} {
-		f := model.NewFinding("fileperms.shadow", "t", model.SeverityExposed,
+		f := model.NewFinding("fileperms.shadow", "t", model.SeverityHigh,
 			model.SourceFilePerms, model.RemediationAuto)
 		for k, v := range ev {
 			model.WithEvidence(k, v)(&f)
@@ -462,7 +462,7 @@ func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
 // output.
 func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 	want := []string{"/home/me/logs, old/config.json", "/etc/plain"}
-	f := model.NewFinding("fileperms.shadow", "t", model.SeverityExposed,
+	f := model.NewFinding("fileperms.shadow", "t", model.SeverityHigh,
 		model.SourceFilePerms, model.RemediationAuto,
 		model.WithEvidence("paths", strings.Join(want, model.PathListSeparator)),
 		model.WithEvidence("expected", "0600"),

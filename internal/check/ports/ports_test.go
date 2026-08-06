@@ -52,7 +52,7 @@ LISTEN 0 128 [::]:6379 [::]:* users:(("redis-server",pid=999,fd=7))`
 	if !ok {
 		t.Fatalf("expected ports.exposed-datastore, got %v", fs)
 	}
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", f.Severity)
 	}
 	if f.Evidence["port"] != "6379" || f.Evidence["process"] != "redis-server" {
@@ -148,7 +148,7 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 	if !ok {
 		t.Fatalf("expected ports.exposed with no firewall, got %v", fs)
 	}
-	if f.Severity != model.SeverityHardening {
+	if f.Severity != model.SeverityLow {
 		t.Errorf("generic exposure severity = %v, want low", f.Severity)
 	}
 	if strings.Contains(f.Evidence["ports"], "22") {

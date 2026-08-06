@@ -23,23 +23,23 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
               <table>
                 <thead><tr><th>Severity</th><th>What it claims about your host</th><th>Takes</th><th>Decimal</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev exposed">EXPOSED</span></td><td>Reachable right now, from off the host, by someone holding nothing.</td><td>1/2 of what remains</td><td>0.5</td></tr>
-                  <tr><td><span class="sev weak">WEAK</span></td><td>Gives way to a foothold, a guessed credential, or a local account.</td><td>1/8</td><td>0.125</td></tr>
-                  <tr><td><span class="sev hardening">HARDENING</span></td><td>No known path today; it narrows what a future compromise reaches.</td><td>1/16</td><td>0.0625</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>Reachable right now, from off the host, by someone holding nothing.</td><td>1/2 of what remains</td><td>0.5</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>Gives way to a foothold, a guessed credential, or a local account.</td><td>1/8</td><td>0.125</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>No known path today; it narrows what a future compromise reaches.</td><td>1/16</td><td>0.0625</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>The anchor is the first row: <strong>one Exposed finding costs exactly half of whatever the axis has left.</strong> The other two levels are defined against that and have no independent meaning. The 4× gap between Exposed and Weak is the point of the three-level taxonomy rather than an accident of it — under the four-level scale these replaced, the top two levels were 8 and 5, which is not a gap you can feel.</p>
+            <p>The anchor is the first row: <strong>one High finding costs exactly half of whatever the axis has left.</strong> The other two levels are defined against that and have no independent meaning. The 4× gap between High and Medium is the point of the taxonomy rather than an accident of it. The names are the familiar three, but there are only three: the scale this replaced had a fourth level above High, and its top two were 8 and 5 — which is not a gap you can feel. Merging them is what buys the gap.</p>
             <p>Four consequences worth having in mind when you read an axis.</p>
-            <p><strong>The same finding costs more on a healthy axis than on a damaged one.</strong> An Exposed finding on an untouched axis costs 50 points. The identical finding on an axis already down to <code>remaining = 0.25</code> costs 12.5. That is the model working: the second time your SSH daemon hands out unauthenticated root, it is not twice as bad.</p>
-            <p><strong>An axis never actually reaches zero.</strong> The largest weight is 1/2, so every factor is at least 1/2 and the product stays above zero forever. Eight Exposed findings run an axis down 100 → 50 → 25 → 13 → 6 → 3 → 2 → 1 → 0; the displayed 0 at the eighth is <code>round(0.390625)</code>, not arithmetic exhaustion. A ninth finding still shrinks <code>remaining</code>, and removing findings from an axis pinned at 0 lifts it back off in a way that does not look linear.</p>
+            <p><strong>The same finding costs more on a healthy axis than on a damaged one.</strong> A High finding on an untouched axis costs 50 points. The identical finding on an axis already down to <code>remaining = 0.25</code> costs 12.5. That is the model working: the second time your SSH daemon hands out unauthenticated root, it is not twice as bad.</p>
+            <p><strong>An axis never actually reaches zero.</strong> The largest weight is 1/2, so every factor is at least 1/2 and the product stays above zero forever. Eight High findings run an axis down 100 → 50 → 25 → 13 → 6 → 3 → 2 → 1 → 0; the displayed 0 at the eighth is <code>round(0.390625)</code>, not arithmetic exhaustion. A ninth finding still shrinks <code>remaining</code>, and removing findings from an axis pinned at 0 lifts it back off in a way that does not look linear.</p>
             <p><strong>Order does not matter.</strong> Multiplication commutes, and every weight is a dyadic fraction — 1/2, 1/8, 1/16, 1/32, 1/64 — so each factor is exactly representable in binary floating point. There is no &ldquo;the first finding counts most&rdquo; behaviour to discover. Nothing you can see moves if the findings arrive in a different order: every score and every penalty is identical, and the engine sorts findings before scoring in any case.</p>
-            <p><strong>An axis can never read 100 once anything lands on it.</strong> The smallest weight in the model is 1/64, so even a lone unpatchable Hardening finding puts an untouched axis at <code>round(98.4375)</code> = 98.</p>
+            <p><strong>An axis can never read 100 once anything lands on it.</strong> The smallest weight in the model is 1/64, so even a lone unpatchable Low finding puts an untouched axis at <code>round(98.4375)</code> = 98.</p>
 
             <h3 id="score-vs-penalty">Score and penalty are two different numbers</h3>
             <p>Each axis reports both, and they are rounded independently from the same <code>remaining</code>. The <strong>score</strong> is the axis on its own terms, 0–100. The <strong>penalty</strong> is what that axis contributed to the headline number, expressed in the axis&rsquo;s own cap.</p>
             <p>The score is <code>round(100 × remaining)</code> and not <code>100 - penalty × 100 / cap</code>, for resolution: a cap-6 axis has only seven possible integer penalties, so deriving the score from the penalty would give that axis seven distinct scores. Drawing from <code>remaining</code> gives every axis the full range no matter how small its cap.</p>
-            <p>The visible consequence is that <strong>the displayed penalties do not have to add up to <code>100 - overall</code></strong>, and this is not a bug. With all twelve domains running and exactly one Hardening finding on File permissions (cap 5), one on Kernel hardening (cap 5), and one on Service hardening (cap 6):</p>
+            <p>The visible consequence is that <strong>the displayed penalties do not have to add up to <code>100 - overall</code></strong>, and this is not a bug. With all twelve domains running and exactly one Low finding on File permissions (cap 5), one on Kernel hardening (cap 5), and one on Service hardening (cap 6):</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Axis</th><th>Cap</th><th>remaining</th><th>Score</th><th>Penalty</th></tr></thead>
@@ -53,22 +53,22 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             <p>Three axes reporting a penalty of 0, and an overall of 99 — because the overall sums the <em>unrounded</em> contributions (0.3125 + 0.3125 + 0.375 = 1.0) and rounds once at the end. Rounding each axis first would have made those three findings free, which is exactly the failure the next section is about, arriving by a smaller door.</p>
             <div class="callout">
               <span class="callout-label">Rounding, precisely</span>
-              <p>Everywhere in the model, rounding is <strong>half away from zero</strong> — 12.5 becomes 13, 1.5 becomes 2. Not banker&rsquo;s rounding. The two levels round different quantities, so ties break in different directions: an axis rounds the share it <em>kept</em>, so ties go in your favour, while the overall rounds the share you <em>lost</em> and subtracts, so ties go against you. An SSH Hardening finding (14 × 0.0625 = 0.875) plus a CVE Hardening finding (10 × 0.0625 = 0.625) total exactly 1.5, which rounds to 2 — overall 98, where rounding the kept share would have given 99.</p>
+              <p>Everywhere in the model, rounding is <strong>half away from zero</strong> — 12.5 becomes 13, 1.5 becomes 2. Not banker&rsquo;s rounding. The two levels round different quantities, so ties break in different directions: an axis rounds the share it <em>kept</em>, so ties go in your favour, while the overall rounds the share you <em>lost</em> and subtracts, so ties go against you. An SSH Low finding (14 × 0.0625 = 0.875) plus a CVE Low finding (10 × 0.0625 = 0.625) total exactly 1.5, which rounds to 2 — overall 98, where rounding the kept share would have given 99.</p>
             </div>
 
             <h3 id="one-finding">What counts as one finding</h3>
             <p>Before a finding erodes anything, three guards run in order. The third is invisible on a healthy build and worth knowing about anyway: a finding from a domain with no scoring axis is dropped, because there is nothing for it to erode.</p>
             <p><strong>Fixed findings are skipped entirely.</strong> Apply a fix and the number moves immediately, before any rescan — no erosion, and it drops out of the per-severity counts too.</p>
             <p><strong>Duplicates collapse.</strong> A finding&rsquo;s identity is <code>source|id|service</code>, so the same rule firing on the same service twice is scored once. The same rule on <em>different</em> services is two findings and erodes twice, which is the normal case for Compose rules across a dozen containers — <code>compose.ds008</code> on eleven services is eleven findings, and it should be. Because the source is part of the identity, deduplication can never reach across axes.</p>
-            <p>A Fixed finding does not claim its identity on the way past, so it can never suppress an identical unfixed one regardless of what order they arrive in. And the per-severity counts an axis reports are incremented in the same guarded step as the erosion, which means every finding in those counts moved the axis — if it says <em>2 exposed, 1 weak, 2 hardening</em>, those five each took a share. The guarantee runs one way only: a severity this build does not recognise erodes the axis and matches no count slot, so an axis can move with every count at zero.</p>
+            <p>A Fixed finding does not claim its identity on the way past, so it can never suppress an identical unfixed one regardless of what order they arrive in. And the per-severity counts an axis reports are incremented in the same guarded step as the erosion, which means every finding in those counts moved the axis — if it says <em>2 high, 1 medium, 2 low</em>, those five each took a share. The guarantee runs one way only: a severity this build does not recognise erodes the axis and matches no count slot, so an axis can move with every count at zero.</p>
             <div class="callout">
               <span class="callout-label">No finding is ever free</span>
-              <p>A severity this build does not recognise — a level added to the enum that this code path was never taught about — is priced as <span class="sev weak">WEAK</span>, not as zero. (It cannot arrive from a file: reading a scan snapshot rejects an unknown severity outright rather than guessing.) The failure mode of a scoring model is a finding that quietly costs nothing, and defaulting to the middle of the scale is the cheap way to never have one.</p>
+              <p>A severity this build does not recognise — a level added to the enum that this code path was never taught about — is priced as <span class="sev medium">MEDIUM</span>, not as zero. (It cannot arrive from a file: reading a scan snapshot rejects an unknown severity outright rather than guessing.) The failure mode of a scoring model is a finding that quietly costs nothing, and defaulting to the middle of the scale is the cheap way to never have one.</p>
             </div>
 
             <h2 id="why-multiplicative">Why multiplicative, and not additive</h2>
             <p>The obvious model is to give each severity a number of points, add them up per axis, and clamp at the axis&rsquo;s weight. hostveil did that, and it produced a score that stopped responding to the host.</p>
-            <p>Under 8 / 2 / 1 points and a cap-14 axis, two Exposed findings sum to 16, clamp at 14, and the axis is at 0. <strong>Every finding after that is free.</strong> The third, the fourth and the fiftieth cost nothing, because there is nothing left to take. A host with 27 container findings scored identically to a host with 3, and both the CVE and container axes sat pinned at 0 on essentially every real machine.</p>
+            <p>Under 8 / 2 / 1 points and a cap-14 axis, two High findings sum to 16, clamp at 14, and the axis is at 0. <strong>Every finding after that is free.</strong> The third, the fourth and the fiftieth cost nothing, because there is nothing left to take. A host with 27 container findings scored identically to a host with 3, and both the CVE and container axes sat pinned at 0 on essentially every real machine.</p>
             <p>That is bad measurement, but the worse half is what it teaches. An operator who fixes two of their five SSH findings watches the number not move, because the axis was clamped before their work started and is still clamped after it. The tool tells them the work was pointless. A hardening score whose response to hardening is nothing is not a score.</p>
             <p>Multiplicative erosion has no clamp to hit. Each finding takes a share of what remains, so the axis asymptotes toward zero and never arrives — the fiftieth finding still costs something, and removing any one finding moves the number back. The cost of a finding falls as the axis degrades, which is the right shape: the marginal danger of the tenth exposed service genuinely is lower than the first. But it never reaches zero, so the model never stops listening.</p>
 
@@ -82,11 +82,11 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
                 <thead><tr><th>Finding</th><th>Severity</th><th>weight</th><th>1 − weight</th><th>remaining</th></tr></thead>
                 <tbody>
                   <tr><td><em>(start)</em></td><td>—</td><td>—</td><td>—</td><td>1</td></tr>
-                  <tr><td><code>ssh.emptypasswords</code></td><td><span class="sev exposed">EXPOSED</span></td><td>1/2</td><td>1/2</td><td>1/2 = 0.5</td></tr>
-                  <tr><td><code>ssh.rootlogin</code></td><td><span class="sev exposed">EXPOSED</span></td><td>1/2</td><td>1/2</td><td>1/4 = 0.25</td></tr>
-                  <tr><td><code>ssh.passwordauth</code></td><td><span class="sev weak">WEAK</span></td><td>1/8</td><td>7/8</td><td>7/32 = 0.21875</td></tr>
-                  <tr><td><code>ssh.logingracetime</code></td><td><span class="sev hardening">HARDENING</span></td><td>1/16</td><td>15/16</td><td>105/512 = 0.205078125</td></tr>
-                  <tr><td><code>ssh.maxauthtries</code></td><td><span class="sev hardening">HARDENING</span></td><td>1/16</td><td>15/16</td><td><strong>1575/8192 = 0.1922607421875</strong></td></tr>
+                  <tr><td><code>ssh.emptypasswords</code></td><td><span class="sev high">HIGH</span></td><td>1/2</td><td>1/2</td><td>1/2 = 0.5</td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td><span class="sev high">HIGH</span></td><td>1/2</td><td>1/2</td><td>1/4 = 0.25</td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td><span class="sev medium">MEDIUM</span></td><td>1/8</td><td>7/8</td><td>7/32 = 0.21875</td></tr>
+                  <tr><td><code>ssh.logingracetime</code></td><td><span class="sev low">LOW</span></td><td>1/16</td><td>15/16</td><td>105/512 = 0.205078125</td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td><span class="sev low">LOW</span></td><td>1/16</td><td>15/16</td><td><strong>1575/8192 = 0.1922607421875</strong></td></tr>
                 </tbody>
               </table>
             </div>
@@ -144,8 +144,8 @@ overall   = 100 - round(57.246554 × 100 / 84)
               <table>
                 <thead><tr><th>You fix…</th><th>Additive</th><th>Multiplicative</th></tr></thead>
                 <tbody>
-                  <tr><td>both <span class="sev hardening">HARDENING</span> findings</td><td>0 → <strong>0</strong> (sum is still 18, still clamps)</td><td>19 → <strong>22</strong></td></tr>
-                  <tr><td>both <span class="sev exposed">EXPOSED</span> findings</td><td>0 → 71</td><td>19 → <strong>77</strong></td></tr>
+                  <tr><td>both <span class="sev low">LOW</span> findings</td><td>0 → <strong>0</strong> (sum is still 18, still clamps)</td><td>19 → <strong>22</strong></td></tr>
+                  <tr><td>both <span class="sev high">HIGH</span> findings</td><td>0 → 71</td><td>19 → <strong>77</strong></td></tr>
                 </tbody>
               </table>
             </div>
@@ -167,8 +167,8 @@ overall   = 100 - round(57.246554 × 100 / 84)
                 </tbody>
               </table>
             </div>
-            <p>Additive overall: <code>100 - round(75 × 100 / 84)</code> = <strong>11</strong>, against the real <strong>32</strong>. Seven of the ten applicable axes read exactly 0 — including Kernel hardening, which has one Weak finding and four Hardening findings and genuinely scores 68. A host where seven axes are all &ldquo;0&rdquo; has no next step to offer you.</p>
-            <p>The container axis is the cleanest statement of the point. It carries 52 findings — 8 Exposed, 16 Weak, 28 Hardening. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
+            <p>Additive overall: <code>100 - round(75 × 100 / 84)</code> = <strong>11</strong>, against the real <strong>32</strong>. Seven of the ten applicable axes read exactly 0 — including Kernel hardening, which has one Medium finding and four Low findings and genuinely scores 68. A host where seven axes are all &ldquo;0&rdquo; has no next step to offer you.</p>
+            <p>The container axis is the cleanest statement of the point. It carries 52 findings — 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
 
             <h2 id="caps">A cap is a weight, never a threshold</h2>
             <p>Each axis carries a cap, and the twelve caps sum to exactly 100. The sum is a readability decision rather than an arithmetic requirement: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
@@ -265,9 +265,9 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
               <table>
                 <thead><tr><th>Severity</th><th>Normally takes</th><th>Unavailable takes</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev exposed">EXPOSED</span></td><td>1/2</td><td>1/8 (0.125)</td></tr>
-                  <tr><td><span class="sev weak">WEAK</span></td><td>1/8</td><td>1/32 (0.03125)</td></tr>
-                  <tr><td><span class="sev hardening">HARDENING</span></td><td>1/16</td><td>1/64 (0.015625)</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>1/2</td><td>1/8 (0.125)</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>1/8</td><td>1/32 (0.03125)</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>1/16</td><td>1/64 (0.015625)</td></tr>
                 </tbody>
               </table>
             </div>
@@ -280,7 +280,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
 
             <h2 id="limits">What the score does not tell you</h2>
             <p>The honest limits, including the ones that look like bugs and are not.</p>
-            <p><strong>100 does not mean no findings.</strong> One Hardening finding on a cap-5 axis with all domains running contributes 5 × 0.0625 = 0.3125, which rounds to 0 loss. The overall reads 100 with a finding on screen. Read it as <em>nothing material is outstanding</em>, never as <em>nothing was found</em> — and read the axis breakdown, which will show that axis at 94.</p>
+            <p><strong>100 does not mean no findings.</strong> One Low finding on a cap-5 axis with all domains running contributes 5 × 0.0625 = 0.3125, which rounds to 0 loss. The overall reads 100 with a finding on screen. Read it as <em>nothing material is outstanding</em>, never as <em>nothing was found</em> — and read the axis breakdown, which will show that axis at 94.</p>
             <p><strong>An axis at 0 is not a floor.</strong> It is a display value; <code>remaining</code> is still positive and still moving. Fixing findings on a 0 axis does work, and the number will start climbing once enough of them are gone. That is why the axis breakdown lists counts as well as a score.</p>
             <p><strong>The number moves before the host does.</strong> Fixed findings leave the score immediately, at apply time. A sysctl drop-in that takes effect at the next boot, or an <code>sshd_config</code> edit that <code>sshd</code> will not read until it restarts, has already improved your score while the running system is unchanged. <code>hostveil fix</code> re-checks and tells you when this has happened.</p>
             <p><strong>Two hosts&rsquo; scores are not comparable</strong>, as above. Neither are two scans of the same host across a change in what is installed: install Trivy and the Vulnerabilities axis joins the average, which will move the overall without anything about your configuration having changed.</p>

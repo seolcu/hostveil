@@ -7,7 +7,7 @@ package model
 // there is only one of those to make.
 //
 // Careful: a Band runs the opposite way to a Severity. A high score is a
-// good host, so BandGood is the top of the range, while SeverityExposed is
+// good host, so BandGood is the top of the range, while SeverityHigh is
 // the top of its own. The two vocabularies met in the TUI, where the band
 // for a mid-range score and the color for a Medium finding are the same
 // palette role, and reading that code as if band meant severity gets the

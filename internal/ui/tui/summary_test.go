@@ -23,10 +23,10 @@ func summaryReport() model.Report {
 				sev, model.SourceCompose, rem, model.WithService(fmt.Sprintf("svc-%d", i))))
 		}
 	}
-	add(3, "compose.ds018", model.SeverityExposed, model.RemediationAuto)
-	add(5, "compose.ds016", model.SeverityWeak, model.RemediationManual)
-	add(7, "compose.ds012", model.SeverityWeak, model.RemediationAuto)
-	add(11, "compose.ds022", model.SeverityHardening, model.RemediationManual)
+	add(3, "compose.ds018", model.SeverityHigh, model.RemediationAuto)
+	add(5, "compose.ds016", model.SeverityMedium, model.RemediationManual)
+	add(7, "compose.ds012", model.SeverityMedium, model.RemediationAuto)
+	add(11, "compose.ds022", model.SeverityLow, model.RemediationManual)
 
 	axes := []model.ScoreAxis{{ID: "compose", Label: "compose", Applicable: true, Score: 42}}
 	return model.Report{
@@ -50,32 +50,32 @@ func summaryModel(w, h int) *appModel {
 func plain(s string) string { return ansiSeq.ReplaceAllString(s, "") }
 
 // The chip row is the dashboard's filter bar: how much of this wall of
-// findings is Critical, and how much of it hostveil can fix on its own.
+// findings is High, and how much of it hostveil can fix on its own.
 // Before it, the TUI answered neither without scrolling and counting.
 func TestChipRowCarriesTheSeveritySpreadAndFixableCount(t *testing.T) {
 	m := summaryModel(120, 30)
 	row := plain(m.chipRow(200))
-	for _, want := range []string{"EXPO 3", "WEAK 12", "HRDN 11", "FIXABLE 10"} {
+	for _, want := range []string{"HIGH 3", "MED 12", "LOW 11", "FIXABLE 10"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("chip row does not carry %q: %q", want, row)
 		}
 	}
-	if !strings.Contains(plain(m.View().Content), "EXPO 3") {
+	if !strings.Contains(plain(m.View().Content), "HIGH 3") {
 		t.Errorf("the chip row is not on the list screen:\n%s", m.View().Content)
 	}
 }
 
 // A severity nothing is at gets no chip, exactly as in the dashboard. An
-// "EXPO 0" is a row of screen spent saying nothing happened.
+// "HIGH 0" is a row of screen spent saying nothing happened.
 func TestChipRowOmitsAnEmptySeverity(t *testing.T) {
 	m := summaryModel(120, 30)
 	m.report.Findings = m.report.Findings[:3] // the exposed ones only
 	m.active = m.report.Select(m.filter)
 	row := plain(m.chipRow(200))
-	if !strings.Contains(row, "EXPO 3") {
+	if !strings.Contains(row, "HIGH 3") {
 		t.Fatalf("chip row lost the severity that is present: %q", row)
 	}
-	for _, gone := range []string{"WEAK", "HRDN"} {
+	for _, gone := range []string{"MED", "LOW"} {
 		if strings.Contains(row, gone) {
 			t.Errorf("chip row shows %q with nothing at it: %q", gone, row)
 		}
@@ -89,8 +89,8 @@ func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 	m := summaryModel(120, 30)
 	before := plain(m.chipRow(200))
 
-	exposed := model.SeverityExposed
-	m.filter.MinSeverity = &exposed
+	high := model.SeverityHigh
+	m.filter.MinSeverity = &high
 	m.filter.FixableOnly = true
 	m.active = m.report.Select(m.filter)
 	if len(m.active) == len(m.report.Findings) {
@@ -98,7 +98,7 @@ func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 	}
 
 	after := plain(m.chipRow(200))
-	for _, want := range []string{"EXPO 3", "WEAK 12", "HRDN 11", "FIXABLE 10"} {
+	for _, want := range []string{"HIGH 3", "MED 12", "LOW 11", "FIXABLE 10"} {
 		if !strings.Contains(after, want) {
 			t.Errorf("filtering changed the count %q:\n before %q\n after  %q", want, before, after)
 		}
@@ -112,8 +112,8 @@ func TestActiveChipIsFilled(t *testing.T) {
 	m := summaryModel(120, 30)
 	off := m.chipRow(200)
 
-	exposed := model.SeverityExposed
-	m.filter.MinSeverity = &exposed
+	high := model.SeverityHigh
+	m.filter.MinSeverity = &high
 	m.filter.FixableOnly = true
 	m.active = m.report.Select(m.filter)
 
@@ -181,8 +181,8 @@ func TestANarrowedListSaysSoInPlainText(t *testing.T) {
 		t.Errorf("an unfiltered list does not simply count its findings:\n%s", got)
 	}
 
-	exposed := model.SeverityExposed
-	m.filter.MinSeverity = &exposed
+	high := model.SeverityHigh
+	m.filter.MinSeverity = &high
 	m.active = m.report.Select(m.filter)
 	if got := plain(strings.Join(m.listRows(20), "\n")); !strings.Contains(got, "FINDINGS · 3/26") {
 		t.Errorf("a filtered list does not print shown/total:\n%s", got)
@@ -191,12 +191,12 @@ func TestANarrowedListSaysSoInPlainText(t *testing.T) {
 
 // A severity threshold is a range. Every chip at or above it is describing
 // rows that are on screen, so every one of them reads as active — showing
-// EXPO dim on a list of nothing but exposed findings is the opposite of the
+// the HIGH chip dim on a list of nothing but High findings is the opposite of the
 // truth.
 func TestSeverityChipsAboveTheThresholdAreAllActive(t *testing.T) {
 	m := summaryModel(120, 30)
-	weak := model.SeverityWeak
-	m.filter.MinSeverity = &weak
+	medium := model.SeverityMedium
+	m.filter.MinSeverity = &medium
 	m.active = m.report.Select(m.filter)
 
 	// The counts are the fixture's, read off it rather than written out, so
@@ -212,8 +212,8 @@ func TestSeverityChipsAboveTheThresholdAreAllActive(t *testing.T) {
 		sev  model.Severity
 		want bool
 	}{
-		{model.SeverityExposed, true},
-		{model.SeverityWeak, true}, {model.SeverityHardening, false},
+		{model.SeverityHigh, true},
+		{model.SeverityMedium, true}, {model.SeverityLow, false},
 	} {
 		label := fmt.Sprintf("%s %d", sevAbbr(tc.sev), counts[tc.sev])
 		want := m.chip(label, tc.want, s.severityColor(tc.sev))
@@ -338,8 +338,8 @@ func TestFrameHeightHoldsWithCoverageAndChips(t *testing.T) {
 // genuinely clean host into the other wrong one.
 func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
 	filtered := summaryModel(100, 24)
-	exposed := model.SeverityExposed
-	filtered.filter.MinSeverity = &exposed
+	high := model.SeverityHigh
+	filtered.filter.MinSeverity = &high
 	filtered.filter.Source = model.SourceSSH // nothing in this report is SSH
 	filtered.active = filtered.report.Select(filtered.filter)
 	if len(filtered.active) != 0 {
@@ -434,7 +434,7 @@ func TestThePaneNamesTheKeysThatActOnWhatItShows(t *testing.T) {
 // container names can be read down. It goes back to trailing the title only
 // when the row is too narrow for the gap to be a column at all.
 func TestTheServiceIsSetFlushRightWhenThereIsRoom(t *testing.T) {
-	f := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityExposed,
+	f := model.NewFinding("compose.ds018", "Datastore exposed", model.SeverityHigh,
 		model.SourceCompose, model.RemediationAuto, model.WithService("redis"))
 	m := summaryModel(140, 30)
 

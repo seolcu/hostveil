@@ -11,7 +11,7 @@ import (
 //
 // The distinction is not academic. Source's table starts at SourceCompose
 // (1) because SourceUnset owns 0, so its rows sit one off from their values;
-// Severity's starts at SeverityExposed (0), so its rows do not. Indexing by
+// Severity's starts at SeverityHigh (0), so its rows do not. Indexing by
 // position works for one and is an off-by-one for the other, and the two
 // tables sit in the same package looking identical. Since these values are
 // serialized as bare integers into on-disk scan snapshots, that off-by-one

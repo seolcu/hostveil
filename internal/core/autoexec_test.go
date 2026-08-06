@@ -43,7 +43,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 	// which nothing stops.
 	findings := []model.Finding{model.NewFinding(
 		"updates.disabled", "Automatic security updates are not enabled",
-		model.SeverityWeak, model.SourceUpdates, model.RemediationAuto)}
+		model.SeverityMedium, model.SourceUpdates, model.RemediationAuto)}
 
 	e.classify(findings)
 

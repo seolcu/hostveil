@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -28,7 +30,7 @@ var (
 	// <tr><td>Container exposure</td><td>20</td></tr> — a whole-cell number,
 	// so the severity-share table ("1/2 of what remains") cannot match.
 	weightRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td></tr>`)
-	// <span class="sev exposed">EXPOSED</span>, wherever one appears.
+	// <span class="sev high">HIGH</span>, wherever one appears.
 	severityChip = regexp.MustCompile(`<span class="sev ([a-z\-]+)">([^<]*)</span>`)
 	// The severity cell of a finding row: everything between the description
 	// and the Fix column, which is where one or two chips live.
@@ -290,7 +292,7 @@ var reliefProse = map[int]map[string]string{
 // prose actually makes, rather than an arithmetic identity standing in for it.
 func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
 	t.Helper()
-	f := model.NewFinding("ssh.probe", "t", model.SeverityExposed, model.SourceSSH, rem)
+	f := model.NewFinding("ssh.probe", "t", model.SeverityHigh, model.SourceSSH, rem)
 	for _, ax := range model.ScoreReport([]model.Finding{f}, nil).Axes {
 		if ax.Source == model.SourceSSH {
 			return int(ax.Score)
@@ -306,15 +308,15 @@ func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
 // failure with a pointer to what to edit.
 //
 // It asks the scorer rather than multiplying two constants together. The
-// previous version asserted SeverityExposed.Penalty()*2 == 16, which reads
-// as "one Critical costs half" but never touches criticalHalves — the
+// previous version asserted SeverityHigh.Penalty()*2 == 16, which reads
+// as "one Critical costs half" but never touches topHalves — the
 // denominator that decides it. Doubling that constant halves every finding's
 // weight, the docs' "half" becomes a quarter on every page, and this passed.
 func TestScoringProseTripwire(t *testing.T) {
 	// "One Critical takes half of whatever an axis has left."
 	full := axisScoreWith(t, model.RemediationAuto)
 	if full != 50 {
-		t.Errorf("one Exposed finding now leaves an axis at %d, not 50; docs in "+
+		t.Errorf("one High finding now leaves an axis at %d, not 50; docs in "+
 			"content/{en,ko}/docs/{scoring,checks,faq}.html say \"half\" and need rewriting", full)
 	}
 
@@ -336,6 +338,129 @@ func TestScoringProseTripwire(t *testing.T) {
 			t.Errorf("%s: checks page does not state the Unavailable relief as %q "+
 				"(the constant makes it 1/%d); content/%s/docs/scoring.html states it too",
 				lang, phrases[lang], relief, lang)
+		}
+	}
+}
+
+// The CLI reference documents the exact strings `scan --json` can put in
+// each enumerated field, and that sentence is a contract: somebody is
+// writing a `jq` filter against it.
+//
+// It went stale silently. The severity levels were renamed and the page went
+// on listing the previous names — beside a sample payload that also carried
+// one — while the prose two paragraphs up had already been updated, so the
+// page contradicted itself and still built green. Nothing read these values
+// because they are prose in a <code> tag rather than a table row.
+func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
+	for _, lang := range docLangs {
+		page := docsPage(t, lang, "cli")
+		for _, want := range jsonEnumNames() {
+			if !strings.Contains(page, "<code>"+want+"</code>") {
+				t.Errorf("%s cli reference does not list %q as a `scan --json` value, "+
+					"and the encoder emits it", lang, want)
+			}
+		}
+		// And nothing a previous release emitted, which is what makes this a
+		// tripwire rather than a spell-checker: a name that only survives in
+		// the legacy read path must not be documented as output.
+		for _, gone := range []string{"exposed", "weak", "hardening", "critical"} {
+			if strings.Contains(page, "<code>"+gone+"</code>") {
+				t.Errorf("%s cli reference still documents %q as a `scan --json` value; "+
+					"hostveil reads that name but has not written it since it was renamed", lang, gone)
+			}
+		}
+	}
+}
+
+// jsonEnumNames is every name the enumerated fields of `scan --json` can
+// hold, taken from the model rather than restated.
+func jsonEnumNames() []string {
+	var out []string
+	for _, s := range model.AllSeverities() {
+		out = append(out, s.String())
+	}
+	for _, k := range model.AllRemediationKinds() {
+		if k == model.RemediationUnset {
+			continue // never reaches a validated finding
+		}
+		out = append(out, k.String())
+	}
+	return out
+}
+
+// landingPage and siteStylesheet reach the two files this needs. The
+// content is embedded like every other page; the stylesheet is not
+// generated and so lives outside the embed, and is read off disk relative
+// to this package.
+func landingPage(t *testing.T, lang string) string {
+	t.Helper()
+	b, err := assets.ReadFile("content/" + lang + "/index.html")
+	if err != nil {
+		t.Fatalf("read %s landing page: %v", lang, err)
+	}
+	return string(b)
+}
+
+func siteStylesheet(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "site", "styles.css"))
+	if err != nil {
+		t.Fatalf("read site/styles.css: %v", err)
+	}
+	return string(b)
+}
+
+// landingFinding matches the example findings in the landing page hero,
+// which carry a severity in a different shape from the docs chips: the class
+// is on the row and the level is spelled out beside it.
+var landingFinding = regexp.MustCompile(`<div class="finding ([a-z\-]+)"><span>([^<]*)</span>`)
+
+// TestTheLandingPageMockupNamesRealLevels covers the one place a severity
+// appears outside the docs, and it is the place where this already broke.
+//
+// site/styles.css styles the hero's example findings by level name. When the
+// levels were renamed the content moved and the stylesheet did not, so for a
+// release the first thing a visitor saw was three findings whose severity
+// colour and left border were simply absent — which looks like a design
+// choice, not like a bug. Nothing caught it because every severity test
+// pointed at the docs.
+func TestTheLandingPageMockupNamesRealLevels(t *testing.T) {
+	known := map[string]bool{}
+	for _, s := range model.AllSeverities() {
+		known[s.String()] = true
+	}
+	css := siteStylesheet(t)
+
+	for _, lang := range docLangs {
+		page := landingPage(t, lang)
+		rows := landingFinding.FindAllStringSubmatch(page, -1)
+		if len(rows) == 0 {
+			t.Fatalf("%s: no example findings parsed from the landing page; the markup changed", lang)
+		}
+		for _, r := range rows {
+			class, text := r[1], r[2]
+			if !known[class] {
+				t.Errorf("%s: the landing page mockup uses severity class %q, which is not one of %v",
+					lang, class, model.AllSeverities())
+				continue
+			}
+			if !strings.EqualFold(text, class) {
+				t.Errorf("%s: the landing page mockup is styled %q but reads %q", lang, class, text)
+			}
+		}
+	}
+
+	// Every level, not only the ones the mockup happens to use. The
+	// stylesheet carried the four-level palette for two renames and nothing
+	// noticed, because the hero only ever shows two of the three.
+	for _, sev := range model.AllSeverities() {
+		if !strings.Contains(css, ".finding."+sev.String()+" ") {
+			t.Errorf("site/styles.css has no rule for .finding.%s", sev)
+		}
+	}
+	for _, dead := range []string{"critical"} {
+		if strings.Contains(css, ".finding."+dead+" ") {
+			t.Errorf("site/styles.css still styles .finding.%s, which no severity is called", dead)
 		}
 	}
 }
@@ -371,7 +496,7 @@ func TestEverySeverityChipNamesARealLevel(t *testing.T) {
 				continue
 			}
 			// The class and the word have to be the same level. A chip reading
-			// EXPOSED in the colour of hardening is worse than either alone.
+			// HIGH in the colour of low is worse than either alone.
 			if !strings.EqualFold(text, class) {
 				t.Errorf("%s: severity chip is styled %q but reads %q", lang, class, text)
 			}

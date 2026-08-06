@@ -185,16 +185,20 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 	for _, tc := range []struct{ shape, what string }{
 		{`1: "Container"`, "a domain table"},
 		{`container: "Container"`, "an axis-label table"},
-		{`["critical", "high", "medium", "low"]`, "a severity name table"},
-		{`["crit", "high", "med", "low"]`, "a severity abbreviation table"},
-		{`["crit", "high", "medium", "low"]`, "a severity CSS-class table"},
+		// Built from the model rather than written out, because a literal
+		// here is a guard keyed to one generation of the scale: these three
+		// rows named the four-level names, so the table they had to catch
+		// after the merge — the current three, in order — went straight
+		// past them. A guard against a stale copy must not itself be one.
+		{severityArrayLiteral(model.Severity.String), "a severity name table"},
+		{severityArrayLiteral(model.Severity.Abbr), "a severity abbreviation table"},
 		{`"Unclassified", "Auto-fix"`, "a remediation label table"},
 		{`>= 80 ?`, "the score band thresholds"},
 		{`SCAN_DONE = `, "the scan-state ordinals"},
 		{`REM_AUTO = `, "the remediation ordinals"},
 		// The enums cross the wire as names now, so subtracting two of them
 		// is not a sort — it is NaN, and Array.sort leaves the order it found.
-		// Silent, and it would put Low findings above Critical ones.
+		// Silent, and it would put Low findings above High ones.
 		{`a.severity - b.severity`, "an arithmetic severity sort"},
 		{`a.source - b.source`, "an arithmetic domain sort"},
 	} {
@@ -202,4 +206,16 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 			t.Errorf("app.js has %s again (%s); it must read window.HOSTVEIL_MODEL", tc.what, tc.shape)
 		}
 	}
+}
+
+// severityArrayLiteral renders the severities as the JavaScript array
+// literal a hand-written copy of the table would most likely be — the levels
+// in the model's own order, which is the order anyone re-adding the table
+// would type them in.
+func severityArrayLiteral(of func(model.Severity) string) string {
+	parts := make([]string, 0, len(model.AllSeverities()))
+	for _, s := range model.AllSeverities() {
+		parts = append(parts, fmt.Sprintf("%q", of(s)))
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }

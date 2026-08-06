@@ -24,7 +24,7 @@
                 </tbody>
               </table>
             </div>
-            <p>Exit code: <code>1</code> if any unfixed finding is Exposed, <code>3</code> if a detection domain failed outright, otherwise <code>0</code> — see <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
+            <p>Exit code: <code>1</code> if any unfixed finding is High, <code>3</code> if a detection domain failed outright, otherwise <code>0</code> — see <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
 
             <h3 id="json-shape">What <code>--json</code> looks like</h3>
             <p>Every enumerated field is a lowercase name, not a number:</p>
@@ -33,7 +33,7 @@
     {
       "id": "ssh.rootlogin",
       "title": "SSH permits root login with a password",
-      "severity": "exposed",
+      "severity": "high",
       "source": "ssh",
       "remediation": "review"
     }
@@ -43,7 +43,7 @@
     {"source": "cve", "state": "skipped", "reason": "trivy is not installed"}
   ]
 }</code></pre></div>
-            <p><code>severity</code> is one of <code>exposed</code>, <code>weak</code>, <code>hardening</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> — and a domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
+            <p><code>severity</code> is one of <code>high</code>, <code>medium</code>, <code>low</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> — and a domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.12</span>
               <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>
@@ -142,8 +142,8 @@ hostveil history --scans</code></pre></div>
               <table>
                 <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
                 <tbody>
-                  <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed Exposed findings).</td></tr>
-                  <tr><td><code>1</code></td><td><code>scan</code> found unfixed Exposed findings, or a command failed.</td></tr>
+                  <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed High findings).</td></tr>
+                  <tr><td><code>1</code></td><td><code>scan</code> found unfixed High findings, or a command failed.</td></tr>
                   <tr><td><code>2</code></td><td>Usage error — unknown command or missing required argument.</td></tr>
                   <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail outright, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this — both are reported in the output instead.</td></tr>
                 </tbody>

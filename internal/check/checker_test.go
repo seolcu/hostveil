@@ -36,7 +36,7 @@ func (s stubChecker) Check(context.Context, platform.Env) ([]model.Finding, erro
 
 func oneFinding() []model.Finding {
 	return []model.Finding{model.NewFinding(
-		"cve.CVE-2024-0001", "vulnerable package", model.SeverityExposed,
+		"cve.CVE-2024-0001", "vulnerable package", model.SeverityHigh,
 		model.SourceCVE, model.RemediationManual)}
 }
 

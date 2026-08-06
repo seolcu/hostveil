@@ -175,7 +175,7 @@ func TestUnauthenticatedTCPFromDaemonJSON(t *testing.T) {
 	fs := h.check(t, env(hardenedInfo, "-H fd://"))
 
 	f := mustFind(t, fs, "dockerd.api-unauthenticated")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want Critical", f.Severity)
 	}
 	if got := f.Evidence["endpoints"]; got != "tcp://0.0.0.0:2375" {
@@ -223,15 +223,17 @@ func TestTLSVerifiedFromExecStartIsClean(t *testing.T) {
 	mustNotFind(t, fs, "dockerd.api-tls-unverified")
 }
 
-// TLS without client verification is encryption without authorization: a
-// rung below Critical, but never clean and never the unauthenticated finding.
-func TestTLSWithoutVerifyIsHighNotCritical(t *testing.T) {
+// TLS without client verification is encryption without authorization:
+// never clean, and never collapsed into the unauthenticated finding. Both
+// are High — the point of the test is that they stay two findings with two
+// remediations rather than one.
+func TestTLSWithoutVerifyIsItsOwnFinding(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"],"tls":true,"tlscert":"/etc/docker/cert.pem"}`,
 		cleanGroup, cleanPasswd, 0o660)
 	fs := h.check(t, env(hardenedInfo, "-H fd://"))
 
 	f := mustFind(t, fs, "dockerd.api-tls-unverified")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want High", f.Severity)
 	}
 	mustNotFind(t, fs, "dockerd.api-unauthenticated")
@@ -302,7 +304,7 @@ func TestMissingSsIsNotPartial(t *testing.T) {
 func TestWorldWritableSocket(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o666)
 	f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.socket-world-writable")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want Critical", f.Severity)
 	}
 	if f.Evidence["mode"] != "0666" {
@@ -340,7 +342,7 @@ func TestGroupMembersAreMediumForHumans(t *testing.T) {
 	h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice\n",
 		cleanPasswd+"alice:x:1000:2000::/home/alice:/bin/bash\n", 0o660)
 	f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
-	if f.Severity != model.SeverityWeak {
+	if f.Severity != model.SeverityMedium {
 		t.Errorf("severity = %v, want Medium for a human administrator", f.Severity)
 	}
 	if f.Evidence["members"] != "alice" {
@@ -354,7 +356,7 @@ func TestGroupMembersEscalateForServiceAccounts(t *testing.T) {
 	h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice,ci_runner\n",
 		cleanPasswd+"alice:x:1000:2000::/home/alice:/bin/bash\nci_runner:x:997:997::/nonexistent:/usr/sbin/nologin\n", 0o660)
 	f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want High when a service account holds the group", f.Severity)
 	}
 	if !strings.Contains(f.Description, "ci_runner") {
@@ -367,7 +369,7 @@ func TestHighUIDNologinAccountIsAServiceAccount(t *testing.T) {
 	h := host(t, "", "root:x:0:\ndocker:x:%GID%:runner\n",
 		cleanPasswd+"runner:x:3000:3000::/srv/runner:/bin/false\n", 0o660)
 	f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want High", f.Severity)
 	}
 }
@@ -449,7 +451,7 @@ func TestRootlessDowngradesTheAPIFinding(t *testing.T) {
 	const rootless = `{"SecurityOptions":["name=rootless","name=no-new-privileges","name=userns"],"LiveRestoreEnabled":true}`
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375"]}`, cleanGroup, cleanPasswd, 0o660)
 	f := mustFind(t, h.check(t, env(rootless, "-H fd://")), "dockerd.api-unauthenticated")
-	if f.Severity != model.SeverityExposed {
+	if f.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want High on a rootless daemon", f.Severity)
 	}
 }
@@ -627,7 +629,7 @@ func TestServiceAccountShellsAcrossDistributions(t *testing.T) {
 			h := host(t, "", "root:x:0:\ndocker:x:%GID%:runner\n",
 				cleanPasswd+"runner:x:3000:3000::/srv/runner:"+shell+"\n", 0o660)
 			f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
-			if f.Severity != model.SeverityExposed {
+			if f.Severity != model.SeverityHigh {
 				t.Errorf("a docker-group member with shell %q has no interactive login, "+
 					"so the finding must be High, got %v", shell, f.Severity)
 			}
@@ -644,7 +646,7 @@ func TestHumanAdministratorStaysMedium(t *testing.T) {
 			h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice\n",
 				cleanPasswd+"alice:x:3000:3000::/home/alice:"+shell+"\n", 0o660)
 			f := mustFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.group-members")
-			if f.Severity != model.SeverityWeak {
+			if f.Severity != model.SeverityMedium {
 				t.Errorf("shell %q is a real login, so the finding must stay Medium, got %v", shell, f.Severity)
 			}
 		})
