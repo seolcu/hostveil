@@ -158,7 +158,7 @@ has been rolled back.
 
 ```bash
 # On the demo VM, or any host you are willing to have edited.
-vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -p seeded /tmp/out.json'
+vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -c -p seeded /tmp/out.json'
 
 # The control group: hardened from the CIS Benchmarks, without hostveil.
 vagrant ssh -c 'sudo /vagrant/scripts/measure/control.sh'
@@ -166,15 +166,17 @@ vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -p control /tmp/control.jso
 ```
 
 Results are committed under `docs/measurements/` and published on the
-[Measured results](https://hostveil.dev/docs/measurements) page, whose figures
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page, whose figures
 are pinned against the committed JSON by `internal/docs/measurements_test.go`.
 A stale number on the page is a test failure, not a reading error.
 
-The harness runs nightly and asserts only two things, because only two of
-them are promises rather than observations: that rolling every fix back
-restores each changed file byte for byte, and that hostveil's own score moved
-at all. Everything else is recorded, including the instruments that did not
-move.
+Pass `-c` and the run exits non-zero on the only two claims in its output
+that are promises rather than observations: that rolling every fix back
+restored each changed file byte for byte, and that hostveil's own score moved
+at all. Everything else is recorded and nothing else is asserted — those
+numbers move for reasons no diff is responsible for, and a check that turns
+red for a Lynis release is a check somebody disables, taking the two real
+ones with it.
 
 ### Provider setup by platform
 

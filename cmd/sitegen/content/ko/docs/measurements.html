@@ -114,8 +114,8 @@ go build -o /usr/local/bin/hostveil ./cmd/hostveil
 
 # Lynis와 docker-bench-security는 선택입니다. 없으면 조용히
 # 건너뛰는 대신 "없음"으로 기록됩니다.
-sudo scripts/measure/run.sh -p seeded /tmp/measurement.json</code></pre></div>
-            <p>커밋된 실행 결과는 <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>에 있고, 이 페이지의 모든 수치는 그중 최신 것과 테스트로 대조됩니다 — 여기 낡은 숫자가 남아 있으면 빌드가 깨지며, 독자가 알아채야 할 일이 아닙니다. 하니스는 야간 워크플로에서도 돌며, 거기서는 관측이 아니라 약속에 해당하는 두 가지만 단언합니다. 롤백이 바뀐 파일을 전부 정확히 복원한다는 것, 그리고 hostveil 자신의 점수가 어쨌든 움직였다는 것.</p>
+sudo scripts/measure/run.sh -c -p seeded /tmp/measurement.json</code></pre></div>
+            <p>커밋된 실행 결과는 <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>에 있고, 이 페이지의 모든 수치는 그중 최신 것과 테스트로 대조됩니다 — 여기 낡은 숫자가 남아 있으면 빌드가 깨지며, 독자가 알아채야 할 일이 아닙니다. <code>-c</code>를 붙이면 출력 중 관측이 아니라 약속에 해당하는 두 가지에 대해 0이 아닌 종료 코드로 실패합니다. 롤백이 바뀐 파일을 전부 정확히 복원했다는 것, 그리고 hostveil 자신의 점수가 어쨌든 움직였다는 것. 그 밖에는 아무것도 단언하지 않습니다. 이 페이지의 나머지 숫자는 hostveil의 변경과 무관한 이유로도 움직이기 때문입니다.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="scoring">← 점수 산정</a>

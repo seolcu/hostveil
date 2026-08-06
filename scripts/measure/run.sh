@@ -20,10 +20,16 @@
 # you are willing to have edited: it applies every Auto fix and then rolls
 # them all back.
 #
-#   scripts/measure/run.sh [-p profile] [output.json]
+#   scripts/measure/run.sh [-c] [-p profile] [output.json]
 #
 # Requires root. Lynis and docker-bench-security are optional — a missing one
 # is recorded as absent rather than passed over silently.
+#
+# -c exits non-zero when either of hostveil's two promises breaks. Nothing
+# else here is asserted, because everything else is an observation: an
+# instrument moves for reasons that have nothing to do with a diff — a Lynis
+# release, a new distribution default — and a check that turns red for those
+# is a check somebody turns off.
 #
 # The order below is the whole design. Rollback fidelity is judged against
 # hashes taken *before* the fixes ran, on paths hostveil's own scan named, so
@@ -33,10 +39,12 @@ set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 PROFILE=seeded
-while getopts ":p:" opt; do
+CHECK=0
+while getopts ":cp:" opt; do
   case "$opt" in
+    c) CHECK=1 ;;
     p) PROFILE=$OPTARG ;;
-    *) echo "usage: $0 [-p profile] [output.json]" >&2; exit 2 ;;
+    *) echo "usage: $0 [-c] [-p profile] [output.json]" >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -161,3 +169,11 @@ measure_all restored
 
 "$HERE/report.py" "$WORK" "$PROFILE" > "$OUT"
 say "wrote $OUT"
+
+if [ "$CHECK" = 1 ]; then
+  if [ "$OUT" = /dev/stdout ]; then
+    echo "measure: -c needs an output file to read back" >&2
+    exit 2
+  fi
+  "$HERE/check.py" "$OUT"
+fi

@@ -207,8 +207,8 @@ that file reads it again.
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the
 [Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run it
-yourself with `scripts/measure/run.sh` — on a container or a throwaway VM, not
-your own machine.
+yourself with `scripts/measure/run.sh -c` — on a container or a throwaway VM,
+not your own machine.
 
 ## Interfaces
 
