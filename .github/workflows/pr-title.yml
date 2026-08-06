@@ -16,6 +16,11 @@ on:
 permissions:
   pull-requests: read
 
+# A title is edited until it passes, and only the last edit matters.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest

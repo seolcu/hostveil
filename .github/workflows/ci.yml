@@ -10,9 +10,22 @@ on:
   # passed. Adding this does not change when CI runs on its own.
   workflow_call:
 
+# One run per pull request at a time: pushing twice in a minute used to leave
+# both runs queued for a runner, and the answer everyone waits for is the one
+# for the newest commit. Cancelling is scoped to pull requests — a push to
+# main and the release workflow's call of this gate must never be cancelled by
+# anything, least of all by each other.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The gate takes about two minutes. Ten is not a target, it is the point
+    # past which the job is stuck rather than slow, and a stuck job holds the
+    # pull request until somebody notices.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -89,12 +102,19 @@ jobs:
       # rather than being caught on the pull request that caused it.
       # Compiling is enough: the tests only pass meaningfully on the platform
       # they run on, and a build break is what actually escapes review.
-      - name: Cross-compile every release target
+      # Concurrently, and without linux/amd64: the Build step above is that
+      # target, so compiling it again is a third of this step spent proving
+      # something already proved. The remaining three are independent, and
+      # sequentially they were the second-slowest step in the gate.
+      - name: Cross-compile every other release target
         run: |
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+          pids=""
+          for target in linux/arm64 darwin/amd64 darwin/arm64; do
             echo "building $target"
-            GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+            GOOS="${target%/*}" GOARCH="${target#*/}" go build ./... &
+            pids="$pids $!"
           done
+          for pid in $pids; do wait "$pid"; done
 
       # shellcheck over install.sh, which nothing covered. actionlint checks
       # the shell inside `run:` blocks in workflows, not standalone scripts —

@@ -20,7 +20,19 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # A container is built and driven through scan → fix → rollback here, and
+    # a change to prose cannot alter what that does. Not a required check, so
+    # skipping it leaves nothing pending.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "site/**"
+      - "cmd/sitegen/content/**"
   workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
