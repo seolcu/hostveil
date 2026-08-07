@@ -22,37 +22,36 @@ One binary, no config file, no cloud account.
 
 ---
 
-Self-hosting is booming, but most people running Jellyfin, Nextcloud, a
-game server, or a local LLM are not security experts — and a single
-misconfiguration can turn into a serious breach. hostveil is a **guided
-hardening tool** for exactly those people. Point it at a Linux server: it
-scans the highest-impact areas, merges everything into one 0–100 score,
-explains each finding without jargon, and walks you through fixing it —
-showing the exact change, backing up the original first, and letting you
-undo any fix with one command.
+Most people running Jellyfin, Nextcloud, a game server or a local LLM at home
+are not security experts, and one bad default is enough to lose the box.
+hostveil is a hardening tool for those servers. Run it and it checks the places
+that matter most, gives you a single 0–100 score, describes each problem
+without jargon, and offers to fix it. It shows you the change before making it,
+backs up the file first, and lets you undo any fix with one command.
 
 ## What it checks
 
-Every finding is named for the domain that found it, so the prefix in the
-second column is what you type into `hostveil fix` and `hostveil explain`.
+Findings are named after the domain that found them. The prefix in the second
+column is what you pass to `hostveil fix` and `hostveil explain`.
 
 | Domain | Findings | What it looks at | Needs |
 | --- | --- | --- | --- |
-| **Docker / Compose** | `compose.*` | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, shared PID and IPC namespaces, writable root filesystems, missing no-new-privileges, hardcoded secrets, and more — a native audit of your Compose files, plus containers started with plain `docker run` | Docker |
-| **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding — parsed natively from `sshd_config`, following `Include` into `sshd_config.d/` | — |
-| **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables, or iptables is actually active — and whether published container ports are quietly bypassing it | — |
+| **Docker / Compose** | `compose.*` | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, shared PID and IPC namespaces, writable root filesystems, missing no-new-privileges, hardcoded secrets, and more. Your Compose files are audited natively, and so are containers started with a plain `docker run` | Docker |
+| **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding. Parsed from `sshd_config` directly, following `Include` into `sshd_config.d/` | — |
+| **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables or iptables is actually active, and whether published container ports are quietly bypassing it | — |
 | **Auto-updates** | `updates.*` | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
-| **Exposed services** | `ports.*` | Host processes listening on a non-loopback address — the natively-installed database, admin panel, or app your Compose audit can't see, read from `ss` | `ss` |
-| **Accounts** | `accounts.*` | Non-root accounts with root's UID (0) and login accounts with an empty password, parsed from `/etc/passwd` and `/etc/shadow` | root (for `/etc/shadow`) |
+| **Exposed services** | `ports.*` | Host processes listening on a non-loopback address, read from `ss`. This is the natively installed database, admin panel or app that a Compose audit cannot see | `ss` |
+| **Accounts** | `accounts.*` | Non-root accounts with root's UID (0), and login accounts with an empty password, parsed from `/etc/passwd` and `/etc/shadow` | root (for `/etc/shadow`) |
 | **File permissions** | `fileperms.*` | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
-| **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes — OpenClaw and Hermes Agent: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, the sandbox disabled, and loose permissions on the config and the API keys beside it | — |
-| **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys` — the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
-| **Docker daemon** | `dockerd.*` | The daemon underneath your containers: an API served over TCP without TLS client verification (unauthenticated root for anyone who can reach the port), a world-writable socket, who holds the socket's group, and the defaults — no-new-privileges, userns-remap, live-restore | Docker |
+| **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes, OpenClaw and Hermes Agent: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, a disabled sandbox, and loose permissions on the config and the API keys beside it | — |
+| **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys`: the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
+| **Docker daemon** | `dockerd.*` | The daemon underneath your containers. An API served over TCP without TLS client verification is unauthenticated root for anyone who can reach the port; hostveil also checks for a world-writable socket, who holds the socket's group, and the defaults for no-new-privileges, userns-remap and live-restore | Docker |
 | **Service hardening** | `systemd.*` | The units you installed yourself, read as systemd's own *effective* configuration: whether a service can gain privileges through setuid, write to `/usr` and `/etc`, read every user's home directory, or share `/tmp` with the rest of the host. Distribution units are left to the distribution | systemd |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
-Missing Docker or Trivy? Those domains are skipped cleanly and the score is
-renormalized so you are never handed a misleadingly perfect result.
+If Docker or Trivy is missing, those domains are skipped and the score is
+renormalized over the ones that ran, so a partial scan never comes back as a
+misleadingly perfect result.
 
 ## Install
 
@@ -60,42 +59,40 @@ renormalized so you are never handed a misleadingly perfect result.
 curl -fsSL https://hostveil.seolcu.com/install.sh | bash
 ```
 
-Or install a native package from the [latest release](https://github.com/seolcu/hostveil/releases/latest)
-— reasonable if you would rather not pipe a script into a shell, especially
-for a security tool:
+If you would rather not pipe a script into a shell, which is a reasonable
+position for a security tool, install a native package from the
+[latest release](https://github.com/seolcu/hostveil/releases/latest):
 
 ```bash
 sudo apt install ./hostveil_<version>_linux_amd64.deb   # or dnf install ./hostveil-<version>.x86_64.rpm
 ```
 
-The package installs the same binary to the same path (`/usr/bin/hostveil`),
-so it and the installer are interchangeable. Docker and `iproute2` are
-*recommended*, never required: without them those domains report N/A rather
-than hostveil failing.
+The package puts the same binary in the same place (`/usr/bin/hostveil`), so
+either route works. Docker and `iproute2` are recommended but not required.
+Without them, those domains report N/A instead of failing the scan.
 
-Or, if you have Go 1.26+ and would rather build it yourself:
+To build it yourself you need Go 1.26 or later:
 
 ```bash
 go install github.com/seolcu/hostveil/cmd/hostveil@latest
 ```
 
-Trivy is optional — install it any time to enable image CVE scanning.
+Trivy is optional. Install it whenever you want image CVE scanning.
 
-To **upgrade**, re-run the same command: the binary is replaced and your saved
-scans and rollback checkpoints are left alone. To **uninstall**:
+To **upgrade**, run the same command again. It replaces the binary and leaves
+your saved scans and rollback checkpoints alone. To **uninstall**:
 
 ```bash
 curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall
 ```
 
-That removes the binary and prints where the state directory is, without
-deleting it — those checkpoints are the backups of every file hostveil has
-edited on the host, and uninstalling is not a decision to give up the ability
-to undo them.
+That removes the binary and prints where the state directory is without
+deleting it. Those checkpoints are the backups of every file hostveil has
+edited on the host, and you may well still want to undo one after uninstalling.
 
 Release archives are built by GitHub Actions and carry a signed build
 provenance attestation, so you can confirm a download really came from this
-repo's release workflow before running it:
+repo's release workflow before you run it:
 
 ```bash
 gh attestation verify hostveil-linux-amd64.tar.gz --repo seolcu/hostveil
@@ -118,18 +115,18 @@ hostveil explain <id>    # explain a finding (add --ai for a local-LLM second op
 hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
 ```
 
-Some checks (SSH, firewall) read root-owned files, and applying fixes needs
-root too. So `hostveil` **elevates itself with `sudo` automatically** — you'll
-see the same sudo password prompt as `sudo hostveil`, and after authenticating
-it continues in the same terminal. `version` and `help` never prompt.
+Some checks read root-owned files, and applying a fix needs root, so hostveil
+re-runs itself under `sudo` when it has to. You get the same password prompt as
+`sudo hostveil` and it carries on in the same terminal afterwards. `version`
+and `help` never prompt.
 
-To run unprivileged (scripts/CI), set `HOSTVEIL_NO_SUDO=1`; the root-owned
-domains are then skipped with a clear message.
+For scripts and CI, set `HOSTVEIL_NO_SUDO=1`. The root-only domains are then
+skipped with a message saying so.
 
 ### Using it as a CI or cron gate
 
-`hostveil scan` reports what it found in its exit status, so a scheduled
-check needs no output parsing:
+`hostveil scan` reports what it found in its exit status, so a scheduled check
+does not have to parse any output.
 
 | Code | Meaning |
 | --- | --- |
@@ -141,68 +138,114 @@ check needs no output parsing:
 HOSTVEIL_NO_SUDO=1 hostveil scan --json > report.json || echo "action needed"
 ```
 
-`--sarif` emits SARIF 2.1.0 instead — the format GitHub code scanning and most
-CI systems ingest — with one rule per finding ID and a stable fingerprint per
-finding, so a consumer can track one across scans. The score and per-domain
-coverage ride in the run's properties, because a SARIF file with no results
-from a scan that could not look would otherwise read as a clean host.
-`--output FILE` writes whichever format you picked, and the exit status does
-not vary by format or destination — the contract is the exit code.
+`--sarif` writes SARIF 2.1.0 instead, the format GitHub code scanning and most
+CI systems ingest. There is one rule per finding ID and a stable fingerprint
+per finding, so a consumer can follow a single finding across scans. The score
+and the per-domain coverage travel in the run's properties, because a SARIF
+file with no results reads as a clean host and a scan that could not look
+produces exactly that. `--output FILE` writes whichever format you picked. The
+exit status never varies by format or destination; the exit code is the
+contract.
 
-`--only` and `--skip` scope a run to some domains (`--only ssh,firewall`). The
-domains that did not run report N/A, never 100, and a partial scan is
+`--only` and `--skip` narrow a run to some domains (`--only ssh,firewall`). The
+domains that did not run report N/A rather than 100, and a partial scan is
 deliberately not saved as the baseline for the next delta.
 
-Code **3** matters more than it looks. A failed domain contributes no
-findings, so without it an unreachable Docker socket silences the two
-heaviest axes and the pipeline sees a clean run — a blind scan and a healthy
-host are indistinguishable to the one consumer that never reads the output.
-A domain skipped for a missing dependency, or degraded to partial coverage,
-does not change the status; both are reported in the output instead.
+Exit code **3** is worth wiring up. A failed domain contributes no findings, so
+without it an unreachable Docker socket silences the two heaviest axes and the
+pipeline sees a clean run. To a consumer that never reads the output, a blind
+scan and a healthy host look identical. A domain skipped for a missing
+dependency, or one that managed only partial coverage, does not change the exit
+status; both are reported in the output instead.
 
-Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
+Other commands exit 0 on success, 1 on failure and 2 on a usage error.
 
 ### When something looks wrong
 
-Set `HOSTVEIL_DEBUG=1` to trace every command hostveil runs against the host —
-what ran, how long it took, and whether it failed — to stderr:
+`HOSTVEIL_DEBUG=1` traces every command hostveil runs against the host to
+stderr: what ran, how long it took, and whether it failed.
 
 ```bash
 HOSTVEIL_DEBUG=1 hostveil scan
 ```
 
-That is the right thing to attach to a bug report about a domain being skipped
-or a check reporting the wrong thing. Command *output* is deliberately never
-logged: `docker inspect` reports the resolved environment of every container,
-so a trace that included it would routinely be a credential leak.
+Attach that to a bug report about a domain being skipped or a check reporting
+the wrong thing. Command *output* is never logged, deliberately: `docker
+inspect` prints the resolved environment of every container, so a trace that
+included it would leak credentials as a matter of routine.
 
 See [Troubleshooting](https://hostveil.seolcu.com/docs/troubleshooting) for what
-Degraded, a declined rollback, an empty history, and exit code 3 mean.
+Degraded, a declined rollback, an empty history and exit code 3 mean.
 
 ## How fixing works
 
-Every finding is classified so the tool never mutates blindly:
+Every finding is classified, so the tool never changes anything blindly:
 
-- **Auto** — one clearly-correct change. You still see it first.
-- **Review** — several valid alternatives; you choose one.
-- **Manual** — no safe automation; hostveil explains what to do instead.
+- **Auto** — one clearly correct change. You still see it first.
+- **Review** — several valid alternatives; you pick one.
+- **Manual** — nothing safe to automate, so hostveil explains what to do
+  instead.
 
-Applying a fix always **shows the exact diff or command**, **backs up the
-original file to a checkpoint**, then applies it. `hostveil rollback`
-restores the backup — and because every UI (CLI, TUI, web) goes through the
-same engine, a fix applied anywhere is reversible.
+Applying a fix always shows you the exact diff or command, backs the original
+file up to a checkpoint, and only then applies it. `hostveil rollback` restores
+that backup. All three interfaces run on one engine, so a fix applied in any of
+them can be undone from any of them.
+
+## How the score works
+
+The score is one number between 0 and 100, and it is built so that it cannot
+flatter a host.
+
+Each domain is an axis with a fixed share of the 100: container exposure 14,
+SSH 14, CVEs 10, firewall 9, exposed services 8, AI agent runtimes 8, updates
+7, accounts 7, the Docker daemon 7, service hardening 6, kernel hardening 5,
+file permissions 5. Only the domains that actually ran are counted. A skipped
+one is reported N/A and the remaining caps are renormalized over it, so a host
+without Docker is not quietly handed 14 free points. If nothing ran at all, the
+score is N/A rather than 100.
+
+Inside an axis, each finding erodes what is left instead of subtracting a fixed
+number of points:
+
+```
+remaining  = remaining × (1 − weight)      for each finding
+axis score = cap × remaining
+```
+
+One High finding takes half the axis, a Medium an eighth, a Low a sixteenth.
+Because every finding takes a share of the remainder, the axis approaches zero
+without reaching it, and the tenth finding still costs something. The model
+this replaced summed penalties and clamped at zero, so two findings exhausted
+most axes and everything after them was free: a host with 27 container findings
+scored the same as one with 3.
+
+Two adjustments sit on top of that.
+
+- **The same finding ID repeated on one axis is damped.** Four services all
+  missing `no-new-privileges` is one mistake made four times, not four separate
+  mistakes, so the second instance costs half its weight and the third a third.
+  It never reaches zero: at ten the mistake is systematic, which is worse than
+  one and not ten times worse.
+- **A finding nothing can fix yet counts a quarter.** Every image ships CVEs
+  with no upstream patch. Charging those in full pins the axis at 0 for a
+  perfectly maintained host, and charging nothing would pretend the risk isn't
+  there.
+
+The full model, including why each cap is the size it is, is on the
+[Scoring](https://hostveil.seolcu.com/docs/scoring) page.
 
 ### Does it actually work?
 
-hostveil's own score going up after hostveil's fixes proves nothing — the same
-code decides what a finding is and what the number should be afterwards. So the
-repository carries a harness that measures a seeded host with tools that have
-never heard of it: Lynis, Docker's CIS benchmark, a TCP scan from off the host,
-and the kernel's own list of listening sockets.
+hostveil's own score going up after hostveil's own fixes proves nothing. The
+same code decides what counts as a finding and what the number should be
+afterwards. So the repository carries a harness that measures a seeded host
+with tools that have never heard of hostveil: Lynis, Docker's CIS benchmark, a
+TCP scan from off the host, and the kernel's own list of listening sockets.
 
-On a real ARM64 server seeded like an ordinary self-hosted box — Nextcloud with
-PostgreSQL, Jellyfin with Redis, Portainer with Watchtower, every port on
-`0.0.0.0`, root SSH login allowed, no firewall, no automatic updates:
+The host is a real ARM64 server seeded like an ordinary self-hosted box.
+Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower,
+every port on `0.0.0.0`, root SSH login allowed, no firewall, no automatic
+updates.
 
 | Measured by | Before | After `fix --all --review` |
 | --- | --- | --- |
@@ -213,27 +256,27 @@ PostgreSQL, Jellyfin with Redis, Portainer with Watchtower, every port on
 | hostveil score | 42 | **59** |
 
 The five ports that stopped answering are PostgreSQL, Redis, Nextcloud,
-Jellyfin and Portainer. The two that remain are SSH and a natively installed
-Redis that hostveil reports and **declines to fix**, because the config file
-differs per datastore and the finding does not carry its path.
+Jellyfin and Portainer. The two still answering are SSH and a natively
+installed Redis, which hostveil reports and then declines to fix because the
+config file differs per datastore and the finding does not carry its path.
 
-Every file the fixes changed was restored byte for byte on rollback — 5 of 5,
-across 33 checkpoints. Seven of the sixteen reviewed fixes leave nothing to roll
-back at all (six image updates and enabling unattended-upgrades), and hostveil
-marks each of them `[not reversible]` in its own history rather than implying
-the undo is total.
+Rollback restored every file the fixes changed, byte for byte: 5 of 5, across
+33 checkpoints. Seven of the sixteen reviewed fixes leave nothing to roll back
+at all, six image updates and enabling unattended-upgrades, and hostveil marks
+each of those `[not reversible]` in its own history rather than implying the
+undo is total.
 
-What did *not* move is on the page too: the container domain never leaves 0/100,
-because what remains there is Manual by design — a Docker socket mounted into
-Portainer, host networking, secrets in the environment — and two of Lynis's
-three warnings are a second UID 0 account hostveil finds and refuses to delete,
+What did *not* move is published too. The container domain never leaves 0/100,
+because what remains there is Manual by design: a Docker socket mounted into
+Portainer, host networking, secrets in the environment. Two of Lynis's three
+warnings are a second UID 0 account that hostveil finds and refuses to delete,
 since `userdel` cannot be undone from a checkpoint.
 
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the
 [Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run it
-yourself with `scripts/measure/run.sh -c` — on a container or a throwaway VM,
-not your own machine.
+yourself with `scripts/measure/run.sh -c`, on a container or a throwaway VM
+rather than your own machine.
 
 ## Interfaces
 
@@ -242,46 +285,47 @@ not your own machine.
        alt="hostveil's terminal UI: the same score and per-domain meters over a keyboard-driven findings list">
 </p>
 
-- **TUI** — keyboard-driven, the default when you run `hostveil` on a terminal.
+- **TUI** — keyboard-driven, and what you get when you run `hostveil` on a
+  terminal.
 - **Web** — `hostveil serve`, a localhost-bound dashboard. It prints a URL
   carrying a one-off access token; open that exact URL. Loopback keeps the
-  dashboard off the network, but not away from other accounts on the same
-  machine — and it runs as root. For remote access, forward the port over SSH
-  rather than changing `--addr`, which cannot expose it.
+  dashboard off the network but not away from other accounts on the same
+  machine, and it runs as root. For remote access, forward the port over SSH.
+  Changing `--addr` will not expose it.
 - **CLI** — scriptable `scan` / `fix` / `rollback` with `--json` output.
 
 All three are thin layers over one shared engine, so they behave identically.
 
-The TUI and the dashboard share five color themes — `onedark` (the
-default), `gruvbox`, `nord`, `catppuccin`, `tokyonight`. Press `t` in the TUI
-to pick one and have it remembered, use the picker in the dashboard's status
-bar, or set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
+The TUI and the dashboard share five color themes: `onedark` (the default),
+`gruvbox`, `nord`, `catppuccin` and `tokyonight`. Press `t` in the TUI to pick
+one and have it remembered, use the picker in the dashboard's status bar, or
+set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
 
-They share six screen arrangements as well — `console` (the default) puts a
-domain rail down the left carrying every score and every coverage gap, and
+They share six screen arrangements as well. `console`, the default, puts a
+domain rail down the left carrying every score and every coverage gap;
 `split`, `triage`, `railverdict`, `lanes` and `inline` are the rest. Press `l`
 in the TUI or use the dashboard's status-bar picker. No single arrangement
 suits both a wide window and an 80-column terminal, so the default answers the
 common case and the picker answers the rest.
 
-The TUI and `scan` can also draw their status markers from a patched
-[Nerd Font](https://www.nerdfonts.com/) — `--glyphs nerd`, or
-`HOSTVEIL_GLYPHS=nerd` once. It is opt-in rather than detected, because a
-terminal cannot be asked what font it is using and a missing glyph is drawn
-in the same single cell a present one would be. The default set is plain
-Unicode and renders everywhere.
+The TUI and `scan` can draw their status markers from a patched
+[Nerd Font](https://www.nerdfonts.com/) instead: `--glyphs nerd`, or
+`HOSTVEIL_GLYPHS=nerd` once. This is opt-in rather than detected, because a
+terminal cannot be asked what font it is using and a missing glyph occupies the
+same single cell a present one would. The default set is plain Unicode and
+renders everywhere.
 
-Any Nerd Font build works — Mono or not. The symbols are drawn from the
-Font Awesome block, which is present in every patched font and one cell wide
-in all of them; the glyphs that go double-width in a non-Mono build are the
-Powerline and icon ranges, which hostveil does not use.
+Any Nerd Font build works, Mono or not. The symbols come from the Font Awesome
+block, which is present in every patched font and one cell wide in all of them.
+The glyphs that go double-width in a non-Mono build are the Powerline and icon
+ranges, which hostveil does not use.
 
 ## AI (optional, advisory only)
 
-`hostveil explain <id> --ai` adds a plain-language explanation from a local
-LLM (Ollama by default), so nothing leaves your host. AI is strictly
-advisory — it never applies changes — and every explanation, score, and fix
-works with no AI at all.
+`hostveil explain <id> --ai` adds a plain-language explanation from a local LLM
+(Ollama by default), so nothing leaves your host. AI is strictly advisory and
+never applies changes. Every explanation, score and fix works with no AI at
+all.
 
 ## How it compares
 
@@ -297,13 +341,13 @@ security experts.
   reports rather than fixes.
 - **[Trivy](https://github.com/aquasecurity/trivy)** scans images and
   filesystems for known CVEs and misconfigurations. It's excellent at that one
-  job — hostveil actually *runs* Trivy for its CVE domain — but it doesn't look
-  at your SSH config, firewall, or accounts.
+  job, and hostveil actually *runs* Trivy for its CVE domain, but it doesn't
+  look at your SSH config, firewall or accounts.
 
-hostveil's angle is to merge the host, your containers, and image CVEs into a
-single 0–100 score, explain each finding in plain language, and then **apply
-the fix** — with a preview, a backup, and one-command rollback. One binary, and
-no report to interpret.
+hostveil's angle is to merge the host, your containers and image CVEs into a
+single 0–100 score, explain each finding in plain language, and then apply the
+fix, with a preview, a backup and one-command rollback. One binary, and no
+report to interpret.
 
 ## Build from source
 
