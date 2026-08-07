@@ -131,7 +131,8 @@
             <p>Every detection domain gets one <strong>axis</strong>. An axis starts at 100 with nothing against it, and each finding on it takes a share of what is <em>left</em>:</p>
             <div class="code-block"><pre><code>remaining = 1.0
 for each finding on this axis:
-    remaining *= 1 - weight(finding)
+    nth = how many findings with this ID came before it, + 1
+    remaining *= 1 - weight(finding) / nth
 
 score   = round(100 × remaining)
 penalty = round(cap × (1 - remaining))</code></pre></div>
@@ -148,9 +149,10 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             </div>
             <p>The anchor is the first row: <strong>one High finding costs exactly half of whatever the axis has left.</strong> The other two levels are defined against that and have no independent meaning. The 4× gap between High and Medium is the point of the taxonomy rather than an accident of it. The names are the familiar three, but there are only three: the scale this replaced had a fourth level above High, and its top two were 8 and 5 — which is not a gap you can feel. Merging them is what buys the gap.</p>
             <p>Four consequences worth having in mind when you read an axis.</p>
+            <p><strong>The same mistake made twice is worse than once, and not twice as bad.</strong> A compose file where four services are all missing <code>user:</code> is one line missing, written four times — not four independent risks. So the second instance of a finding ID costs half its weight, the third a third, the fourth a quarter. Without that, an axis was buried for running more services rather than worse ones: a self-hoster deploys twenty containers from one template, and one missing line pinned the axis at zero. It is not free after the first either — the tenth instance says the mistake is systematic, which is worse than the first, just not ten times worse.</p>
             <p><strong>The same finding costs more on a healthy axis than on a damaged one.</strong> A High finding on an untouched axis costs 50 points. The identical finding on an axis already down to <code>remaining = 0.25</code> costs 12.5. That is the model working: the second time your SSH daemon hands out unauthenticated root, it is not twice as bad.</p>
             <p><strong>An axis never actually reaches zero.</strong> The largest weight is 1/2, so every factor is at least 1/2 and the product stays above zero forever. Eight High findings run an axis down 100 → 50 → 25 → 13 → 6 → 3 → 2 → 1 → 0; the displayed 0 at the eighth is <code>round(0.390625)</code>, not arithmetic exhaustion. A ninth finding still shrinks <code>remaining</code>, and removing findings from an axis pinned at 0 lifts it back off in a way that does not look linear.</p>
-            <p><strong>Order does not matter.</strong> Multiplication commutes, and every weight is a dyadic fraction — 1/2, 1/8, 1/16, 1/32, 1/64 — so each factor is exactly representable in binary floating point. There is no &ldquo;the first finding counts most&rdquo; behaviour to discover. Nothing you can see moves if the findings arrive in a different order: every score and every penalty is identical, and the engine sorts findings before scoring in any case.</p>
+            <p><strong>Order does not matter.</strong> Multiplication commutes, so the order findings arrive in cannot change the product. The damping for repeats would put that at risk on its own — one ID can carry two severities, and whichever instance was seen first would pay full price — so within an ID the heaviest instance is sorted to the front and pays it. The factors are then the same sequence whatever order the findings came in, which also makes the arithmetic bit-identical: the severity weights are dyadic fractions (1/2, 1/8, 1/16) and exact in binary, while the divisors for repeats (1/3, 1/6, …) are not, and a fixed order is what stops that difference from being visible.</p>
             <p><strong>An axis can never read 100 once anything lands on it.</strong> The smallest weight in the model is 1/64, so even a lone unpatchable Low finding puts an untouched axis at <code>round(98.4375)</code> = 98.</p>
 
             <h3 id="score-vs-penalty">Score and penalty are two different numbers</h3>

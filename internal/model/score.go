@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"math"
+	"sort"
 )
 
 // ScoreBreakdown is the 0-100 security score plus its per-axis detail.
@@ -229,10 +230,29 @@ const topHalves = 16
 const unavailableRelief = 4
 
 // weight returns the share of an axis's remaining credit a finding takes.
-func weight(f Finding) float64 {
+//
+// nth is which instance of this finding's ID it is on this axis, counting
+// from 1, and it divides the weight: the same mistake made four times costs
+// 1 + 1/2 + 1/3 + 1/4 of one, not four of one.
+//
+// The instances are not independent risks. A compose file where four services
+// all lack `user:` is one mistake written four times, and a self-hoster runs
+// many services from one template, so the old arithmetic buried an axis for
+// having more services rather than worse ones: four Mediums of a single ID
+// took 41% of what was left, and on a twenty-service host the axis was pinned
+// at zero by one line missing from a file.
+//
+// It is not free after the first, either. The tenth instance says the mistake
+// is systematic, which is worse than the first — just not ten times worse,
+// and the harmonic series is the shape of "worse, with diminishing returns"
+// that needs no threshold to argue about.
+func weight(f Finding, nth int) float64 {
 	w := float64(f.Severity.Penalty()) / topHalves
 	if f.Remediation == RemediationUnavailable {
 		w /= unavailableRelief
+	}
+	if nth > 1 {
+		w /= float64(nth)
 	}
 	return w
 }
@@ -281,6 +301,16 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	}
 
 	seen := make(map[string]bool, len(findings))
+	// Findings grouped by the axis they land on and the ID they share, so a
+	// repeat of one mistake can cost less than the first of its kind. Keyed
+	// by axis as well as ID: the same ID on two axes is two different
+	// mistakes and neither damps the other.
+	type group struct {
+		axis int
+		id   string
+	}
+	groups := make(map[group][]Finding, len(findings))
+	order := make([]group, 0, len(findings))
 	for _, f := range findings {
 		if f.Fixed {
 			continue
@@ -294,7 +324,11 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 		}
 		seen[f.Key()] = true
 
-		remaining[idx] *= 1 - weight(f)
+		g := group{idx, f.ID}
+		if _, ok := groups[g]; !ok {
+			order = append(order, g)
+		}
+		groups[g] = append(groups[g], f)
 
 		axis := &axes[idx]
 		for i := range axis.Counts {
@@ -302,6 +336,19 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 				axis.Counts[i].N++
 				break
 			}
+		}
+	}
+
+	for _, g := range order {
+		fs := groups[g]
+		// Heaviest first, so the divisor lands on the cheaper instances and
+		// the answer does not depend on the order the findings arrived in.
+		// One ID can carry two severities — a CVE roll-up is the worst level
+		// in that image, which differs per image — and without this the same
+		// two findings scored differently depending on which was seen first.
+		sort.SliceStable(fs, func(i, j int) bool { return weight(fs[i], 1) > weight(fs[j], 1) })
+		for n, f := range fs {
+			remaining[g.axis] *= 1 - weight(f, n+1)
 		}
 	}
 
