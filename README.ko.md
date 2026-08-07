@@ -303,8 +303,10 @@ TUI와 대시보드는 다섯 가지 색상 테마를 함께 씁니다. `onedark
 화면 배치도 여섯 가지를 함께 씁니다. 기본값인 `console`은 왼쪽에 영역 레일을
 두어 모든 점수와 커버리지 공백을 담고, 나머지는 `split`, `triage`,
 `railverdict`, `lanes`, `inline`입니다. TUI에서는 `l`, 대시보드에서는 상태
-표시줄의 선택기로 고릅니다. 넓은 창과 80칸 터미널에 동시에 맞는 배치는 없어서,
-기본값이 흔한 경우를 맡고 선택기가 나머지를 맡습니다.
+표시줄의 선택기로 고르면 그 선택을 기억합니다. `--layout console`이나
+`HOSTVEIL_LAYOUT=console`로 지정할 수도 있고, `hostveil`과 `hostveil serve`
+양쪽에서 됩니다. 넓은 창과 80칸 터미널에 동시에 맞는 배치는 없어서, 기본값이
+흔한 경우를 맡고 선택기가 나머지를 맡습니다.
 
 TUI와 `scan`은 상태 기호를 패치된 [Nerd Font](https://www.nerdfonts.com/)에서
 가져올 수도 있습니다. `--glyphs nerd`를 주거나 `HOSTVEIL_GLYPHS=nerd`를 한 번

@@ -133,6 +133,19 @@ func readEnvNames(t *testing.T) []string {
 			if s, ok := consts[arg.Name]; ok {
 				names = append(names, s)
 			}
+		case *ast.SelectorExpr:
+			// os.Getenv(tui.LayoutEnv) — a const another package exports.
+			// Without this arm the read is invisible here and the variable
+			// goes undocumented with both tests still passing, which is the
+			// failure mode this file exists to prevent, one level up.
+			//
+			// consts is flat and keyed by name rather than by package, so two
+			// packages exporting the same const name would collide. They do
+			// not today, and a collision would have to be between two names
+			// whose values both start with HOSTVEIL_ to matter at all.
+			if s, ok := consts[arg.Sel.Name]; ok {
+				names = append(names, s)
+			}
 		}
 	}
 

@@ -42,6 +42,16 @@ type Server struct {
 	// in the browser is stored there and overrides it for that browser only,
 	// so two people pointed at the same dashboard can read it differently.
 	theme string
+	// layout is the arrangement the page starts in, resolved the same way and
+	// overridden the same way: the browser's own picker stores a choice in
+	// localStorage and that wins for that browser.
+	//
+	// It is served rather than compiled in for the reason the theme is. The
+	// dashboard had no way to be started in an arrangement at all — the only
+	// route to one was the picker, so `hostveil serve` in a kiosk, a
+	// screenshot script or a systemd unit always opened on the shipped
+	// default and had to be clicked.
+	layout string
 	// token gates every route. See newToken for why loopback alone is not
 	// enough of a boundary here.
 	token string
@@ -55,10 +65,11 @@ type Server struct {
 }
 
 // New builds a web Server bound to addr (e.g. "127.0.0.1:8787"), rendering in
-// the theme named by themeID (see internal/ui/theme; an unknown or empty ID
-// falls back to the default).
-func New(engine *core.Engine, addr, themeID string) *Server {
-	return &Server{engine: engine, addr: addr, theme: themeID, token: newToken()}
+// the theme named by themeID and opening in the arrangement named by layoutID
+// (see internal/ui/theme and layout.go; an unknown or empty ID of either falls
+// back to that registry's default).
+func New(engine *core.Engine, addr, themeID, layoutID string) *Server {
+	return &Server{engine: engine, addr: addr, theme: themeID, layout: layoutID, token: newToken()}
 }
 
 // newToken mints the per-run access token.
@@ -325,7 +336,7 @@ func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleLayoutJS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, layoutJS())
+	_, _ = io.WriteString(w, layoutJS(s.layout))
 }
 
 func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {

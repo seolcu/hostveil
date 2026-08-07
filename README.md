@@ -313,9 +313,11 @@ set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
 They share six screen arrangements as well. `console`, the default, puts a
 domain rail down the left carrying every score and every coverage gap;
 `split`, `triage`, `railverdict`, `lanes` and `inline` are the rest. Press `l`
-in the TUI or use the dashboard's status-bar picker. No single arrangement
-suits both a wide window and an 80-column terminal, so the default answers the
-common case and the picker answers the rest.
+in the TUI or use the dashboard's status-bar picker, and the choice is
+remembered. `--layout console` and `HOSTVEIL_LAYOUT=console` set it too, on
+both `hostveil` and `hostveil serve`. No single arrangement suits both a wide
+window and an 80-column terminal, so the default answers the common case and
+the picker answers the rest.
 
 The TUI and `scan` can draw their status markers from a patched
 [Nerd Font](https://www.nerdfonts.com/) instead: `--glyphs nerd`, or

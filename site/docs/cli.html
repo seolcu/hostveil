@@ -227,13 +227,14 @@ hostveil history --scans</code></pre></div>
 
             <h2 id="serve">serve</h2>
             <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
-            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>Address to bind the dashboard to.</td></tr>
-                  <tr><td><code>--theme NAME</code></td><td><code>onedark</code></td><td>Color theme the dashboard opens in.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td>remembered, else <code>onedark</code></td><td>Color theme the dashboard opens in.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>remembered, else <code>console</code></td><td>Screen arrangement the dashboard opens in. A choice made in the browser&rsquo;s own picker is stored there and wins for that browser, so this sets what a browser that has never chosen gets.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -248,7 +249,7 @@ hostveil history --scans</code></pre></div>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>remembered, else <code>onedark</code></td><td>Color theme: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
-                  <tr><td><code>--layout NAME</code></td><td>remembered, else <code>split</code></td><td>Temporary. Six arrangements ship behind a picker so one can be chosen: <code>split</code>, <code>triage</code>, <code>console</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. Press <code>l</code> inside the TUI.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>remembered, else <code>console</code></td><td>Screen arrangement: <code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. Press <code>l</code> inside the TUI to change it and have the choice remembered. Precedence is this flag &gt; <code>HOSTVEIL_LAYOUT</code> &gt; the remembered choice &gt; <code>console</code>.</td></tr>
                   <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font — install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
                 </tbody>
               </table>

@@ -114,13 +114,17 @@
             <p><strong>Nothing here measures whether you get breached.</strong> Every instrument on this page, ours included, measures configuration. That is the honest limit of what a scanner reading files can claim.</p>
 
             <h2 id="reproduce">Reproduce it</h2>
-            <p>The harness is in the repository, and it edits the host it runs on — point it at a container or a throwaway VM, never at your own machine.</p>
+            <p>Both halves are in the repository: the script that builds the host, and the harness that measures it. Both edit the host they run on, irreversibly — point them at a container or a throwaway VM, never at your own machine. <code>seed.sh</code> refuses to run anywhere that does not look like one.</p>
             <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil &amp;&amp; cd hostveil
 go build -o /usr/local/bin/hostveil ./cmd/hostveil
 
-# Lynis and docker-bench-security are optional; a missing one is
-# recorded as absent rather than passed over.
+# Puts the host into the profile every figure above was taken on, and
+# installs the three instruments. It permits root SSH login, adds a
+# second UID 0 account and publishes databases on 0.0.0.0.
+sudo scripts/measure/seed.sh
+
 sudo scripts/measure/run.sh -c -p seeded /tmp/measurement.json</code></pre></div>
+            <p>The seeding used to live outside the repository, which made these instructions incomplete in the way that matters: they told you to measure, and left you to guess the host. It also let the fixture drift away from the product without anything noticing — a copy of it wrote the OpenClaw config to <code>~/.config/openclaw/</code>, which is not a path the agent checker scans, so the domain reported no runtime found on a host seeded to run two. Every path the seed writes is now held against the checker&rsquo;s own table by a test.</p>
             <p>The run above was made three times against three separately seeded hosts, on the same binary. Every figure came out identical wherever the same instruments were installed — the same scores, the same three CIS check IDs cleared at the restart and the same fourth at the reviewed phase, the same ports, the same five files restored. The differences between the three were the instruments themselves: an earlier host had no Trivy, so its CVE axis was N/A and its overall score was correspondingly higher, since an excluded axis leaves the denominator rather than scoring zero. The run published here is the one where every instrument was present, and the harness prints what it could not find rather than passing over it. Committed runs live in <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>, and every figure on this page is checked against the newest of them by a test — a stale number here is a failing build, not something a reader has to catch. Pass <code>-c</code> and the run also exits non-zero on the only two claims in its output that are promises rather than observations: that rollback restored every changed file exactly, and that hostveil&rsquo;s own score moved at all. Nothing else is asserted, because everything else on this page moves for reasons no change to hostveil is responsible for.</p>
 
             <div class="docs-pager">
