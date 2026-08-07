@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -22,8 +23,16 @@ type Ollama struct {
 
 // NewOllama builds an Ollama provider, reading HOSTVEIL_OLLAMA_HOST and
 // HOSTVEIL_OLLAMA_MODEL when set, with local defaults.
+//
+// A trailing slash on the host is trimmed. Host is used as a prefix — the
+// paths are appended to it — so "http://x:11434/" used to build
+// "http://x:11434//api/version". Ollama itself tolerates that, which is what
+// let it survive: the double slash is invisible until something in front of
+// Ollama does not tolerate it, and then the symptom is that the AI says
+// nothing, on a path where saying nothing is also what success looks like
+// when no server is running.
 func NewOllama() *Ollama {
-	host := envOr("HOSTVEIL_OLLAMA_HOST", "http://127.0.0.1:11434")
+	host := strings.TrimRight(envOr("HOSTVEIL_OLLAMA_HOST", "http://127.0.0.1:11434"), "/")
 	modelName := envOr("HOSTVEIL_OLLAMA_MODEL", "llama3.2")
 	return &Ollama{Host: host, Model: modelName, http: &http.Client{Timeout: 60 * time.Second}}
 }
