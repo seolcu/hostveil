@@ -40,10 +40,10 @@ func TestRepeatsOfOneFindingCostLessEachTime(t *testing.T) {
 	distinct := axis([]Finding{med("compose.ds009", "a"), med("compose.ds006", "b"),
 		med("compose.ds012", "c"), med("compose.ds022", "d")})
 
-	if !(one > four) {
+	if one <= four {
 		t.Errorf("four repeats (%d) did not cost more than one (%d)", four, one)
 	}
-	if !(four > distinct) {
+	if four <= distinct {
 		t.Errorf("four repeats of one mistake (%d) cost as much as four different ones (%d)", four, distinct)
 	}
 	// And the old pathology must not return by another door: a pile of
