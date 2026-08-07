@@ -97,8 +97,22 @@ install -m 0644 "$DEMO/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostve
 systemctl enable ssh >/dev/null 2>&1 || true
 systemctl restart ssh >/dev/null 2>&1 || systemctl restart sshd >/dev/null 2>&1 || true
 
-say "firewall installed and left off, automatic updates off"
+say "firewall installed and left off, automatic updates installed and switched off"
 ufw --force disable >/dev/null 2>&1 || true
+
+# unattended-upgrades is *installed* and then switched off, because that is
+# what an ordinary Ubuntu box looks like: the package ships with the
+# distribution and the operator turns it off, or a minimal image leaves the
+# periodic keys at zero.
+#
+# The distinction decides which remediation hostveil offers, so seeding it
+# wrong measures the wrong path. Writing the config for a package that is not
+# installed — which this script used to do — produces a host no distribution
+# ships: the finding then carries no config path, hostveil offers the exec
+# install instead of the one-file edit, and apt's postinst leaves an existing
+# "0" alone, so the fix completes and the finding survives. The harness caught
+# it, as an apt config file changing with no before-state recorded for it.
+apt-get install -y -qq unattended-upgrades >/dev/null 2>&1 || true
 systemctl disable --now unattended-upgrades >/dev/null 2>&1 || true
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "0";
