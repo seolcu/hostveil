@@ -308,23 +308,11 @@ func (s *Store) pruneCheckpoints() {
 // changing its bytes. The resulting checkpoint is Reversible — Files is
 // non-empty — but stores no blobs.
 func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoint, error) {
-	dir := filepath.Join(s.checkpointsDir(), cp.ID)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return Checkpoint{}, err
-	}
-
-	cp.Files = cp.Files[:0]
+	files := make([]BackedFile, 0, len(modes))
 	for path, mode := range modes {
-		cp.Files = append(cp.Files, BackedFile{Path: path, Mode: mode})
+		files = append(files, BackedFile{Path: path, Mode: mode})
 	}
-	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
-
-	if err := s.writeMeta(dir, cp); err != nil {
-		discardUnfinished(dir, cp.ID)
-		return Checkpoint{}, err
-	}
-	s.pruneCheckpoints()
-	return cp, nil
+	return s.saveBlobless(cp, files)
 }
 
 // SaveCreations writes a checkpoint for a fix that created files which did
@@ -342,15 +330,30 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 // carries a single Path. If one is ever written, this is where it breaks,
 // loudly, rather than silently checkpointing half of it.
 func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error) {
+	files := make([]BackedFile, 0, len(paths))
+	for _, path := range paths {
+		files = append(files, BackedFile{Path: path, Created: true})
+	}
+	return s.saveBlobless(cp, files)
+}
+
+// saveBlobless writes a checkpoint whose entries name paths and carry no
+// backed-up bytes — the shared body of SaveModes and SaveCreations, which
+// differ only in the BackedFile they build.
+//
+// It is one function rather than two identical ones because the order here is
+// load-bearing and belongs in a single place: the metadata file is written
+// last, so a checkpoint exists exactly when its metadata does, and a failed
+// write takes the half-built directory with it rather than leaving something
+// List would later report as damaged. Two copies of that is two chances for
+// the next edit to land in one of them.
+func (s *Store) saveBlobless(cp Checkpoint, files []BackedFile) (Checkpoint, error) {
 	dir := filepath.Join(s.checkpointsDir(), cp.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return Checkpoint{}, err
 	}
 
-	cp.Files = cp.Files[:0]
-	for _, path := range paths {
-		cp.Files = append(cp.Files, BackedFile{Path: path, Created: true})
-	}
+	cp.Files = files
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
 
 	if err := s.writeMeta(dir, cp); err != nil {

@@ -23,18 +23,43 @@ import (
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
+// Reading is one parameter as this kernel gave it. Present is false when the
+// /proc/sys file is absent — the knob is not built into this kernel, which is
+// not the same as the knob being set to zero and is the distinction the whole
+// domain turns on.
+type Reading struct {
+	Value   int64
+	Present bool
+}
+
 // Rule audits one kernel parameter (or a small set that shares one
 // remediation). Flagged decides from the values that exist on this kernel;
-// a key whose /proc/sys file is absent simply is not in the map — the knob
-// does not exist on this kernel, so there is nothing to harden.
+// a parameter this kernel does not have arrives Present: false, so there is
+// nothing to harden.
 type Rule struct {
-	ID      string
-	Title   string
-	Sev     model.Severity
-	Desc    string
-	Keys    []string // dotted sysctl names, e.g. "kernel.kptr_restrict"
-	Want    string   // the sysctl.d line(s) the how-to-fix recommends
-	Flagged func(vals map[string]int64) bool
+	ID    string
+	Title string
+	Sev   model.Severity
+	Desc  string
+	Keys  []string // dotted sysctl names, e.g. "kernel.kptr_restrict"
+	Want  string   // the sysctl.d line(s) the how-to-fix recommends
+
+	// Flagged is handed the readings for Keys, in Keys order, and nothing
+	// else. Use is/isNot/below/anyIs rather than writing one out.
+	//
+	// It used to take the whole reading as a map, and every rule spelled its
+	// own key out a second time inside the closure to look it up. Two copies
+	// of one string with nothing holding them together, and a divergence
+	// between them fails in the worst available direction: the map is built
+	// from Keys, so a closure asking for anything else gets the zero value
+	// with ok=false, answers "not flagged", and the rule silently stops
+	// existing on every host. Not a rule that reports the wrong thing — a
+	// rule that reports nothing, which is indistinguishable from a clean
+	// kernel.
+	//
+	// Passing the values positionally is what makes that unrepresentable:
+	// there is no key to get wrong, because there is no key.
+	Flagged func(vals []Reading) bool
 
 	// Set is the same recommendation as Want in machine-readable form: the
 	// exact key=value pairs a fix writes into a drop-in or passes to
@@ -72,83 +97,97 @@ func New() *Checker {
 	}
 }
 
+// The predicates the rules use. A rule with one key reads as `is(0)`, and
+// there is no second copy of its key to drift from Keys.
+//
+// Each takes the readings for the rule's own Keys. A parameter this kernel
+// does not have is never a finding: an absent knob cannot be misconfigured,
+// and treating Present: false as a zero would flag every kernel built without
+// Yama for having ptrace_scope "set to 0".
+
+// is flags the single key when the kernel has it and it equals n.
+func is(n int64) func([]Reading) bool {
+	return func(v []Reading) bool { return v[0].Present && v[0].Value == n }
+}
+
+// isNot flags the single key when the kernel has it and it is anything but n.
+func isNot(n int64) func([]Reading) bool {
+	return func(v []Reading) bool { return v[0].Present && v[0].Value != n }
+}
+
+// below flags the single key when the kernel has it and it is under n.
+func below(n int64) func([]Reading) bool {
+	return func(v []Reading) bool { return v[0].Present && v[0].Value < n }
+}
+
+// anyIs flags when any key the kernel has equals n. For the rules where two
+// parameters share one remediation and either one being off is the finding.
+func anyIs(n int64) func([]Reading) bool {
+	return func(vals []Reading) bool {
+		for _, v := range vals {
+			if v.Present && v.Value == n {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 func defaultRules() []Rule {
 	return []Rule{
 		{
 			ID: "sysctl.ptrace-scope", Title: "Any process can debug its siblings",
-			Sev:  model.SeverityMedium,
-			Desc: "kernel.yama.ptrace_scope is 0, so every process can attach a debugger to any other process of the same user and read its memory — including the session tokens inside a running agent, browser, or password manager. Setting it to 1 limits attaching to direct children.",
-			Keys: []string{"kernel.yama.ptrace_scope"},
-			Want: "kernel.yama.ptrace_scope = 1",
-			Set:  []string{"kernel.yama.ptrace_scope=1"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["kernel.yama.ptrace_scope"]
-				return ok && val == 0
-			},
+			Sev:     model.SeverityMedium,
+			Desc:    "kernel.yama.ptrace_scope is 0, so every process can attach a debugger to any other process of the same user and read its memory — including the session tokens inside a running agent, browser, or password manager. Setting it to 1 limits attaching to direct children.",
+			Keys:    []string{"kernel.yama.ptrace_scope"},
+			Want:    "kernel.yama.ptrace_scope = 1",
+			Set:     []string{"kernel.yama.ptrace_scope=1"},
+			Flagged: is(0),
 		},
 		{
 			ID: "sysctl.syncookies", Title: "TCP SYN-flood protection is off",
-			Sev:  model.SeverityMedium,
-			Desc: "net.ipv4.tcp_syncookies lets listening services survive a SYN-flood denial of service. It costs nothing in normal operation and only activates under attack, which is why every mainstream distribution ships it on.",
-			Keys: []string{"net.ipv4.tcp_syncookies"},
-			Want: "net.ipv4.tcp_syncookies = 1",
-			Set:  []string{"net.ipv4.tcp_syncookies=1"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["net.ipv4.tcp_syncookies"]
-				return ok && val != 1
-			},
+			Sev:     model.SeverityMedium,
+			Desc:    "net.ipv4.tcp_syncookies lets listening services survive a SYN-flood denial of service. It costs nothing in normal operation and only activates under attack, which is why every mainstream distribution ships it on.",
+			Keys:    []string{"net.ipv4.tcp_syncookies"},
+			Want:    "net.ipv4.tcp_syncookies = 1",
+			Set:     []string{"net.ipv4.tcp_syncookies=1"},
+			Flagged: isNot(1),
 		},
 		{
 			ID: "sysctl.accept-redirects", Title: "ICMP redirects are accepted",
-			Sev:  model.SeverityMedium,
-			Desc: "Accepting ICMP redirect messages lets a machine on the same network rewrite this host's routing decisions — a classic man-in-the-middle primitive. A server has no use for them.",
-			Keys: []string{"net.ipv4.conf.all.accept_redirects"},
-			Want: "net.ipv4.conf.all.accept_redirects = 0",
-			Set:  []string{"net.ipv4.conf.all.accept_redirects=0"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["net.ipv4.conf.all.accept_redirects"]
-				return ok && val != 0
-			},
+			Sev:     model.SeverityMedium,
+			Desc:    "Accepting ICMP redirect messages lets a machine on the same network rewrite this host's routing decisions — a classic man-in-the-middle primitive. A server has no use for them.",
+			Keys:    []string{"net.ipv4.conf.all.accept_redirects"},
+			Want:    "net.ipv4.conf.all.accept_redirects = 0",
+			Set:     []string{"net.ipv4.conf.all.accept_redirects=0"},
+			Flagged: isNot(0),
 		},
 		{
 			ID: "sysctl.protected-links", Title: "Symlink and hardlink protections are disabled",
-			Sev:  model.SeverityMedium,
-			Desc: "fs.protected_symlinks and fs.protected_hardlinks close a family of /tmp link races that local attackers use to trick privileged processes into overwriting files of the attacker's choosing. Every mainstream distribution ships both enabled.",
-			Keys: []string{"fs.protected_symlinks", "fs.protected_hardlinks"},
-			Want: "fs.protected_symlinks = 1 and fs.protected_hardlinks = 1",
-			Set:  []string{"fs.protected_symlinks=1", "fs.protected_hardlinks=1"},
-			Flagged: func(v map[string]int64) bool {
-				for _, k := range []string{"fs.protected_symlinks", "fs.protected_hardlinks"} {
-					if val, ok := v[k]; ok && val == 0 {
-						return true
-					}
-				}
-				return false
-			},
+			Sev:     model.SeverityMedium,
+			Desc:    "fs.protected_symlinks and fs.protected_hardlinks close a family of /tmp link races that local attackers use to trick privileged processes into overwriting files of the attacker's choosing. Every mainstream distribution ships both enabled.",
+			Keys:    []string{"fs.protected_symlinks", "fs.protected_hardlinks"},
+			Want:    "fs.protected_symlinks = 1 and fs.protected_hardlinks = 1",
+			Set:     []string{"fs.protected_symlinks=1", "fs.protected_hardlinks=1"},
+			Flagged: anyIs(0),
 		},
 		{
 			ID: "sysctl.kptr-restrict", Title: "Kernel pointer addresses are visible to all users",
-			Sev:  model.SeverityLow,
-			Desc: "With kernel.kptr_restrict at 0, /proc exposes raw kernel pointers to any local user. Those addresses defeat kernel address-space randomization, handing a local exploit the memory layout it needs.",
-			Keys: []string{"kernel.kptr_restrict"},
-			Want: "kernel.kptr_restrict = 1",
-			Set:  []string{"kernel.kptr_restrict=1"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["kernel.kptr_restrict"]
-				return ok && val < 1
-			},
+			Sev:     model.SeverityLow,
+			Desc:    "With kernel.kptr_restrict at 0, /proc exposes raw kernel pointers to any local user. Those addresses defeat kernel address-space randomization, handing a local exploit the memory layout it needs.",
+			Keys:    []string{"kernel.kptr_restrict"},
+			Want:    "kernel.kptr_restrict = 1",
+			Set:     []string{"kernel.kptr_restrict=1"},
+			Flagged: below(1),
 		},
 		{
 			ID: "sysctl.dmesg-restrict", Title: "Any user can read the kernel log",
-			Sev:  model.SeverityLow,
-			Desc: "The kernel log leaks addresses, hardware details, and stack traces that make local privilege-escalation exploits easier to build. With kernel.dmesg_restrict at 0, every account can read it.",
-			Keys: []string{"kernel.dmesg_restrict"},
-			Want: "kernel.dmesg_restrict = 1",
-			Set:  []string{"kernel.dmesg_restrict=1"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["kernel.dmesg_restrict"]
-				return ok && val != 1
-			},
+			Sev:     model.SeverityLow,
+			Desc:    "The kernel log leaks addresses, hardware details, and stack traces that make local privilege-escalation exploits easier to build. With kernel.dmesg_restrict at 0, every account can read it.",
+			Keys:    []string{"kernel.dmesg_restrict"},
+			Want:    "kernel.dmesg_restrict = 1",
+			Set:     []string{"kernel.dmesg_restrict=1"},
+			Flagged: isNot(1),
 		},
 		{
 			ID: "sysctl.sysrq", Title: "Magic SysRq is fully enabled",
@@ -159,22 +198,16 @@ func defaultRules() []Rule {
 			Set:  []string{"kernel.sysrq=0"},
 			// Only the fully-enabled value is flagged: anything else is
 			// either off or a deliberate restricted mask.
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["kernel.sysrq"]
-				return ok && val == 1
-			},
+			Flagged: is(1),
 		},
 		{
 			ID: "sysctl.rp-filter", Title: "Source-address spoofing filter is off",
-			Sev:  model.SeverityLow,
-			Desc: "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
-			Keys: []string{"net.ipv4.conf.all.rp_filter"},
-			Want: "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",
-			Set:  []string{"net.ipv4.conf.all.rp_filter=1"},
-			Flagged: func(v map[string]int64) bool {
-				val, ok := v["net.ipv4.conf.all.rp_filter"]
-				return ok && val == 0
-			},
+			Sev:     model.SeverityLow,
+			Desc:    "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
+			Keys:    []string{"net.ipv4.conf.all.rp_filter"},
+			Want:    "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",
+			Set:     []string{"net.ipv4.conf.all.rp_filter=1"},
+			Flagged: is(0),
 		},
 	}
 }
@@ -204,13 +237,13 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	covered := 0
 	byKey := origins(c.ConfDirs, c.ConfFile)
 	for _, r := range c.Rules {
-		vals := map[string]int64{}
+		vals := make([]Reading, len(r.Keys))
 		failed := false
-		for _, key := range r.Keys {
+		for i, key := range r.Keys {
 			v, err := c.readKey(key)
 			switch {
 			case err == nil:
-				vals[key] = v
+				vals[i] = Reading{Value: v, Present: true}
 			case os.IsNotExist(err):
 				// absent knob — nothing to audit
 			default:
@@ -283,11 +316,11 @@ func (c *Checker) readKey(key string) (int64, error) {
 
 // evidenceFor renders the observed values in rule-key order, so evidence is
 // stable across scans and a repeat scan produces no delta nobody caused.
-func evidenceFor(keys []string, vals map[string]int64) string {
+func evidenceFor(keys []string, vals []Reading) string {
 	var parts []string
-	for _, k := range keys {
-		if v, ok := vals[k]; ok {
-			parts = append(parts, fmt.Sprintf("%s=%d", k, v))
+	for i, k := range keys {
+		if vals[i].Present {
+			parts = append(parts, fmt.Sprintf("%s=%d", k, vals[i].Value))
 		}
 	}
 	return strings.Join(parts, model.EvidenceSeparator)

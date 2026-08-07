@@ -176,14 +176,14 @@ func parseAssignment(line string) (key string, value int64, ok bool) {
 // file that sets a *different* value is not why the parameter is weak —
 // something set it at runtime instead — and naming it would send the operator
 // to edit a line that already says the right thing.
-func originOf(keys []string, vals map[string]int64, byKey map[string]assignment) (assignment, bool) {
+func originOf(keys []string, vals []Reading, byKey map[string]assignment) (assignment, bool) {
 	var best assignment
 	found := false
-	for _, k := range keys {
-		running, read := vals[k]
-		if !read {
+	for i, k := range keys {
+		if !vals[i].Present {
 			continue // knob absent from this kernel; nothing was audited
 		}
+		running := vals[i].Value
 		a, ok := byKey[k]
 		if !ok || a.Value != running {
 			continue

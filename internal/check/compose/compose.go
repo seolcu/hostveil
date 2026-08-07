@@ -258,20 +258,9 @@ var datastoreImages = map[string]bool{
 }
 
 func ruleExposedDatastore(s compose.Service) (model.Finding, bool) {
-	if !datastoreImages[imageBasename(s.Image)] {
-		return model.Finding{}, false
-	}
-	for _, p := range s.Ports {
-		if p.ExposedOnAllInterfaces() {
-			return f("ds018", "Datastore exposed on all network interfaces", model.SeverityHigh, model.RemediationAuto, s.Name,
-				model.WithDescription("A database or cache published on 0.0.0.0 is reachable from the internet if the host has a public IP. Many datastores have no authentication by default, so anyone can read, wipe, or plant data — a common route to full host takeover."),
-				model.WithHowToFix("Bind the port to 127.0.0.1 (e.g. `127.0.0.1:6379:6379`) so only the host can reach it, and set a strong password. Do not expose datastores to the internet."),
-				model.WithEvidence("image", s.Image),
-				model.WithEvidence("port", p.HostPort),
-			), true
-		}
-	}
-	return model.Finding{}, false
+	return exposedImage(s, datastoreImages, "ds018", "Datastore exposed on all network interfaces",
+		"A database or cache published on 0.0.0.0 is reachable from the internet if the host has a public IP. Many datastores have no authentication by default, so anyone can read, wipe, or plant data — a common route to full host takeover.",
+		"Bind the port to 127.0.0.1 (e.g. `127.0.0.1:6379:6379`) so only the host can reach it, and set a strong password. Do not expose datastores to the internet.")
 }
 
 var adminPanelImages = map[string]bool{
@@ -280,20 +269,34 @@ var adminPanelImages = map[string]bool{
 }
 
 func ruleExposedAdminPanel(s compose.Service) (model.Finding, bool) {
-	if !adminPanelImages[imageBasename(s.Image)] {
+	return exposedImage(s, adminPanelImages, "ds019", "Admin panel exposed on all network interfaces",
+		"Management UIs like this one are high-value targets. Exposed to the internet they invite credential-stuffing and known-CVE exploitation that can hand over your whole stack.",
+		"Bind the port to 127.0.0.1 and reach it over a VPN or SSH tunnel, or put it behind an authenticating reverse proxy.")
+}
+
+// exposedImage is ds018 and ds019: this service runs an image from a set worth
+// naming, and it publishes a port on every interface.
+//
+// The two rules were written out twice and differed only in the set and the
+// prose, which left the one thing that is not prose in only one of the copies:
+// the port evidence below is load-bearing. buildBindLoopback needs the host
+// port, and without it the fix fails to build and classify silently demotes
+// the finding to Manual — a UI shows no button and nothing reports why. Stated
+// once now, for both.
+func exposedImage(s compose.Service, images map[string]bool, id, title, desc, howToFix string) (model.Finding, bool) {
+	if !images[imageBasename(s.Image)] {
 		return model.Finding{}, false
 	}
 	for _, p := range s.Ports {
-		if p.ExposedOnAllInterfaces() {
-			return f("ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.RemediationAuto, s.Name,
-				model.WithDescription("Management UIs like this one are high-value targets. Exposed to the internet they invite credential-stuffing and known-CVE exploitation that can hand over your whole stack."),
-				model.WithHowToFix("Bind the port to 127.0.0.1 and reach it over a VPN or SSH tunnel, or put it behind an authenticating reverse proxy."),
-				model.WithEvidence("image", s.Image),
-				// buildBindLoopback needs the host port; without it the fix
-				// fails to build and classify silently demotes ds019 to Manual.
-				model.WithEvidence("port", p.HostPort),
-			), true
+		if !p.ExposedOnAllInterfaces() {
+			continue
 		}
+		return f(id, title, model.SeverityHigh, model.RemediationAuto, s.Name,
+			model.WithDescription(desc),
+			model.WithHowToFix(howToFix),
+			model.WithEvidence("image", s.Image),
+			model.WithEvidence("port", p.HostPort),
+		), true
 	}
 	return model.Finding{}, false
 }

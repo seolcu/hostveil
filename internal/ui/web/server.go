@@ -320,29 +320,35 @@ func hostFromURL(u string) string {
 // --- handlers ---
 
 func (s *Server) handleThemesCSS(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	// No caching: the served default changes with --theme, and a stale
-	// stylesheet would silently keep the previous run's palette.
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, theme.CSS(s.theme))
+	serveGenerated(w, "text/css; charset=utf-8", theme.CSS(s.theme))
 }
 
 func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, theme.JS(s.theme))
+	serveGenerated(w, "text/javascript; charset=utf-8", theme.JS(s.theme))
 }
 
 func (s *Server) handleLayoutJS(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, layoutJS(s.layout))
+	serveGenerated(w, "text/javascript; charset=utf-8", layoutJS(s.layout))
 }
 
 func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	serveGenerated(w, "text/javascript; charset=utf-8", modelJS())
+}
+
+// serveGenerated writes an asset this process generated for this run, rather
+// than one shipped in the binary.
+//
+// It exists for the Cache-Control line. What these routes serve depends on
+// flags resolved at startup — the palette on --theme, the arrangement on
+// --layout — so a browser that cached one would keep the previous run's
+// appearance and there is nothing in the URL to tell it apart. The four
+// handlers each set it by hand, which made it something a fifth route could
+// omit with no test and no symptom until somebody restarted with a different
+// flag and got the old look.
+func serveGenerated(w http.ResponseWriter, contentType, body string) {
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, modelJS())
+	_, _ = io.WriteString(w, body)
 }
 
 // resultPayload is the dashboard's view of a scan: the report, plus how it
