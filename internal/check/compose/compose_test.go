@@ -189,6 +189,37 @@ func TestInlineSecretDetected(t *testing.T) {
 	}
 }
 
+// The same file written the other way. compose accepts a list of KEY=value
+// as well as a map, and the fixtures here only ever used the map — so the
+// list branch of the parser was executed by no test in the repository, and a
+// break in it would not fail: the service would come back with no environment
+// and a compose file full of passwords would audit clean.
+func TestInlineSecretDetectedInTheListForm(t *testing.T) {
+	got := findingsFor(t, `services:
+  db:
+    image: myapp
+    environment:
+      - POSTGRES_PASSWORD=hunter2secret
+      - OTHER_VAR=${FROM_ENV}`)
+	if _, ok := got["compose.dr005"]; !ok {
+		t.Errorf("a hardcoded secret in the list form was not detected, got %v", keys(got))
+	}
+}
+
+// And the pass-through form, which names a variable and takes its value from
+// the host's environment. There is no secret in the file, and reading the
+// name as the value would report one on a file that hardcodes nothing.
+func TestPassThroughVariableIsNotAHardcodedSecret(t *testing.T) {
+	got := findingsFor(t, `services:
+  db:
+    image: myapp
+    environment:
+      - POSTGRES_PASSWORD`)
+	if _, ok := got["compose.dr005"]; ok {
+		t.Error("`- POSTGRES_PASSWORD` with no value was reported as a hardcoded secret")
+	}
+}
+
 func TestReferencedSecretNotFlagged(t *testing.T) {
 	got := findingsFor(t, `services:
   db:
