@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The measured-results page publishes numbers that came off a real host, and
@@ -51,16 +52,37 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 	if len(names) == 0 {
 		t.Fatal("docs/measurements/ holds no committed run, so the page's figures rest on nothing")
 	}
+	// Newest by the run's own measured_at, not by filename. Filename order
+	// was the rule and it is a trap: a second run on one day sorts *before*
+	// the first, because "…-arm64-v3.13.json" and "…-arm64.json" first differ
+	// at '-' against '.', and '-' is the smaller byte. The page would then be
+	// pinned against the older run while every number on it came from the
+	// newer one, and the failure would read as a page that cites figures no
+	// run supports.
 	sort.Strings(names)
-	name := names[len(names)-1]
-
+	var name string
 	var doc map[string]any
-	b, err := os.ReadFile(filepath.Join(dir, name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(b, &doc); err != nil {
-		t.Fatalf("%s is not valid JSON: %v", name, err)
+	var newest time.Time
+	for _, n := range names {
+		var d map[string]any
+		b, err := os.ReadFile(filepath.Join(dir, n))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatalf("%s is not valid JSON: %v", n, err)
+		}
+		s, _ := d["measured_at"].(string)
+		at, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			t.Fatalf("%s has no parseable measured_at (%q): a run that cannot say when it "+
+				"ran cannot be ordered against the others", n, s)
+		}
+		// Not-after, so ties keep the lexicographically last — the old rule,
+		// which is as good an answer as any when two runs claim one instant.
+		if name == "" || !at.Before(newest) {
+			name, doc, newest = n, d, at
+		}
 	}
 	return name, doc
 }

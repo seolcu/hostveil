@@ -249,28 +249,37 @@ updates.
 
 | Measured by | Before | After `fix --all --review` |
 | --- | --- | --- |
-| **Ports answering from off the host** | 7 | **2** |
+| **Ports answering from off the host** | 7 | **1** |
 | CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
-| Lynis hardening index | 56 | **60** |
+| Lynis hardening index | 56 | **61** |
 | hostveil's SSH domain | 18/100 | **100/100** |
-| hostveil score | 42 | **59** |
+| hostveil score | 43 | **66** |
 
-The five ports that stopped answering are PostgreSQL, Redis, Nextcloud,
-Jellyfin and Portainer. The two still answering are SSH and a natively
-installed Redis, which hostveil reports and then declines to fix because the
-config file differs per datastore and the finding does not carry its path.
+Five of those ports went quiet when the services restarted into their new
+Compose files: PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The sixth
+is the interesting one. It is a natively installed Redis that hostveil reports
+and then declines to fix, because the config file differs per datastore and the
+finding does not carry its path — and it stopped answering anyway, because
+hostveil turned the firewall on. Only SSH still answers.
+
+The kernel and the scanner disagree at that point, and both are right: two
+sockets are still bound to a routable address, and one of them is reachable
+from off the host. A bind address and a packet filter are different claims
+about a port, so the page reports both.
 
 Rollback restored every file the fixes changed, byte for byte: 5 of 5, across
-33 checkpoints. Seven of the sixteen reviewed fixes leave nothing to roll back
-at all, six image updates and enabling unattended-upgrades, and hostveil marks
-each of those `[not reversible]` in its own history rather than implying the
-undo is total.
+33 checkpoints. Eight of the seventeen reviewed fixes leave nothing to roll
+back at all — six image updates, enabling the firewall, and switching on
+unattended-upgrades — and hostveil marks each of those `[not reversible]` in
+its own history rather than implying the undo is total.
 
-What did *not* move is published too. The container domain never leaves 0/100,
-because what remains there is Manual by design: a Docker socket mounted into
-Portainer, host networking, secrets in the environment. Two of Lynis's three
-warnings are a second UID 0 account that hostveil finds and refuses to delete,
-since `userdel` cannot be undone from a checkpoint.
+What did *not* move is published too. The container domain goes 0 → 2 out of
+100, because what remains there is Manual by design: a Docker socket mounted
+into Portainer, host networking, secrets in the environment. Two of Lynis's
+three warnings are a second UID 0 account that hostveil finds and refuses to
+delete, since `userdel` cannot be undone from a checkpoint. And the CVE domain
+went *down*, 25 → 16: updating six images pulled six current tags, each with
+its own published vulnerabilities. A newer image is not a patched one.
 
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the

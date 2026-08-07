@@ -186,6 +186,23 @@
         </div>
       </section>
 
+      <section class="section" id="measured">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">측정</p>
+            <h2>호스트 밖에서 응답하던 포트 일곱 개, 그다음엔 하나.</h2>
+            <p>hostveil이 고친 뒤에 hostveil의 점수가 오르는 건 아무 증명도 되지 않습니다. 그래서 시드 서버를 hostveil을 전혀 모르는 도구들로 쟀습니다. Lynis, Docker의 CIS 벤치마크, 그리고 다른 기계에서 쏜 TCP 스캔입니다. 고치기 전과, 제안받은 수정을 전부 받아들인 뒤를 각각 쟀습니다.</p>
+          </div>
+          <div class="stats-grid measured-grid">
+            <div><strong>7 → 1</strong><span>호스트 밖에서 응답하는 포트</span></div>
+            <div><strong>16 → 20</strong><span>CIS Docker 벤치마크 통과 항목</span></div>
+            <div><strong>56 → 61</strong><span>Lynis 하드닝 지수</span></div>
+            <div><strong>43 → 66</strong><span>hostveil 점수</span></div>
+          </div>
+          <p class="measured-note">Nextcloud, Jellyfin, Portainer와 그 데이터스토어를 돌리는 실제 ARM64 서버 한 대입니다. 모든 포트가 <code>0.0.0.0</code>에 열려 있고, root SSH 로그인이 허용돼 있고, 방화벽은 꺼져 있었습니다. 수정이 건드린 파일은 롤백으로 전부 바이트 단위까지 복원됐습니다. <a href="docs/measurements">어떻게 쟀고 무엇이 움직이지 않았는지 &rarr;</a></p>
+        </div>
+      </section>
+
       <section class="section flow-section">
         <div class="container">
           <div class="section-heading">
