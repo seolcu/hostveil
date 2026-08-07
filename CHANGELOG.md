@@ -2,6 +2,65 @@
 
 ## Unreleased
 
+## [3.13.0](https://github.com/seolcu/hostveil/compare/v3.12.0...v3.13.0) (2026-08-07)
+
+hostveil can turn a firewall on now. On the measured host that is worth more
+than every Compose edit put together: the port it closed belongs to a Redis
+hostveil reports and *declines* to fix, and it stopped answering anyway. Ports
+answering from off the host go **7 → 1** on the seeded server, and the score
+**43 → 66**.
+
+### Features
+
+* **fix:** `firewall.inactive` — a High finding on every host without a
+  firewall — is fixable. What was missing was never the commands; it was that
+  the checker recorded no SSH port, so hostveil could not know what to keep
+  open. It reads one from the kernel's socket table now, the port sshd is
+  *actually* serving on rather than the one its config claims, and allows that
+  port before enabling the policy. **No port, no fix**: a host on 2222 whose
+  port could not be read gets nothing rather than a lockout that looks like
+  knowledge. ufw only, because the other front-ends take rules different enough
+  that a guessed one is a lockout by another route.
+
+* **model:** the same mistake made four times is not four mistakes. A compose
+  file where four services all lack `user:` is one line missing, written four
+  times, and the score charged it as four independent risks — so an axis was
+  buried for running more services rather than worse ones. Repeats of one
+  finding ID on one axis are damped harmonically now: the second costs half its
+  weight, the third a third, never zero, because at ten the mistake is
+  systematic. Within an ID the heaviest instance is sorted first and pays full
+  price, which is what keeps the score independent of the order findings
+  arrive in.
+
+* **site:** a Korean-speaking reader lands on the Korean page. Once, guarded by
+  the choice they made last time, because a redirect that overrides an explicit
+  language switch is worse than no redirect.
+
+### Documentation
+
+* **docs:** the scoring model is in the README, in both languages. The file
+  most people read asked them to trust a 0–100 number through eight sections
+  and never said how it was computed.
+
+* **docs:** both READMEs are rewritten. One habit was everywhere — a sentence,
+  an em-dash, then the sentence explaining itself — forty-two of them in
+  English and forty-three in Korean, and a reader learns to skip the half after
+  the dash, which is where the facts were. The Korean was English clause
+  structure carried over word by word and is now written as Korean.
+
+* **site:** the marketing page carries a measured result. It had none, which is
+  the one place a reader decides whether to trust any of it.
+
+### Bug Fixes
+
+* **docs:** the measurements page picked its run by filename, so a second run
+  on one day sorted *before* the first and the page would have been checked
+  against the older one while every number came from the newer. It reads
+  `measured_at` now. Its narrative is pinned too — the port lists, the cleared
+  CIS check IDs, and the SSH and container axes — after the prose went stale
+  claiming the containers were stubs that blinded the external scan while the
+  scan was reporting seven ports.
+
 ## [3.12.0](https://github.com/seolcu/hostveil/compare/v3.11.0...v3.12.0) (2026-08-07)
 
 The six arrangements shipped behind a picker in 3.11.0 are settled: **C ·
