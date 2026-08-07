@@ -72,7 +72,6 @@ var declineReasons = map[string]string{
 	// firewall
 	"firewall.default-allow": "Default-deny takes effect the moment it is set, on the SSH session you are issuing it from, and an exec fix leaves no checkpoint to undo a lockout.",
 	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",
-	"firewall.inactive":      "The finding records no SSH port, interface, or session, so enabling default-deny could lock you out of the host with no checkpoint to undo it.",
 
 	// updates
 	"updates.pending-security": "An upgrade is unbounded — a new kernel, restarted services, prompts about modified config files — and no checkpoint reverses any of it.",

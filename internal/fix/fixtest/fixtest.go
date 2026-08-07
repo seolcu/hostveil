@@ -34,5 +34,7 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("paths", "/etc/shadow"),
 		model.WithEvidence("expected", "0640"),
 		model.WithEvidence("set", "kernel.kptr_restrict=1"),
+		model.WithEvidence("ssh_port", "22"),
+		model.WithEvidence("available", "ufw"),
 	)
 }

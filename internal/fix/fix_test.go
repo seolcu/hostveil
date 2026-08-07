@@ -82,7 +82,6 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 // not quietly reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
 	declined := map[string]string{
-		"firewall.inactive":        "enabling a default-deny firewall over SSH can lock the user out, and exec fixes have no rollback",
 		"firewall.docker-bypass":   "republishing to loopback means editing an unknown compose file and recreating the container; the ufw-docker alternative is firewall policy with no rollback",
 		"updates.reboot-required":  "rebooting is exec with no checkpoint and takes every service down; only the operator knows when that is acceptable",
 		"updates.pending-security": "apt/dnf upgrade is exec, unbounded, and can restart services or prompt about config files — nothing a checkpoint can undo",
@@ -141,7 +140,7 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"fileperms.owner":        "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
 		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
 		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
-		"ports.exposed":          "the aggregate finding's remediation is firewall.inactive's, and is declined for the same reason",
+		"ports.exposed":          "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
 		"accounts.uid0":          "userdel is exec, irreversible, and takes the home directory with it; hostveil cannot tell a backdoor from a deliberate second root",
 		"accounts.emptypassword": "passwd -l is exec, and the account it locks may be the only way the operator reaches the machine",
 	}

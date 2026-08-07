@@ -37,6 +37,15 @@ package fix
 // shape — one mechanical action — and does not override a checker that
 // asked for Review.
 //
+// firewall.inactive was on the list below until the checker started
+// recording the port sshd is actually listening on. The refusal was never
+// about the commands — it was that hostveil could not know which port to keep
+// open, and a firewall enabled without that answer locks the operator out with
+// no checkpoint to undo it. With the port in evidence the fix allows it first
+// and enables the policy second, as two commands of one action, and stays
+// Review: the change cannot be rolled back and it takes every other inbound
+// port with it, both of which an operator should decide rather than discover.
+//
 // # Findings deliberately left without a fix
 //
 // These are fixable in principle and are demoted to Manual on purpose.
@@ -81,11 +90,6 @@ package fix
 //     have no checkpoint, so a lockout has no undo. The how-to-fix says to
 //     allow SSH first, which is advice a person can follow in order and a
 //     fix cannot: hostveil does not know which port that session is on.
-//   - firewall.inactive — the only remediation is enabling a firewall, and
-//     the checker records no SSH port, interface, or session data. Enabling
-//     a default-deny policy on a box reached over SSH can lock the user out
-//     irrecoverably, and it also drops every service the ports checker just
-//     enumerated. Exec fixes have no checkpoint, so there is no undo.
 //   - ports.exposed-datastore, ports.exposed-admin — these describe
 //     natively-installed daemons, not containers. Binding one to loopback
 //     means editing redis.conf's `bind`, or postgresql.conf's
@@ -394,6 +398,7 @@ func Default() *Registry {
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)
+	registerFirewall(r)
 	registerAgent(r)
 	registerSysctl(r)
 	return r
