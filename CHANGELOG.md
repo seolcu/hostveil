@@ -2,6 +2,68 @@
 
 ## Unreleased
 
+## [3.14.0](https://github.com/seolcu/hostveil/compare/v3.13.0...v3.14.0) (2026-08-07)
+
+The published measurement rested on a script nobody could see. Committing it
+found two bugs in the fixture within an hour, and the run it produces now
+covers **twelve domains instead of eleven** — so the headline score is *lower*
+than 3.13.0's and the measurement is better.
+
+### Features
+
+* **cmd:** `scripts/measure/seed.sh` puts a throwaway host into the profile the
+  published figures were taken on. It was the missing half of "reproduce it":
+  the harness measures whatever host it is pointed at, and how to get that host
+  lived outside the repository. Shellchecked in CI, sharing `demo/seed` and
+  `demo/stacks` with the Vagrant demo so there is one description of this host,
+  and it refuses to run anywhere that does not look like a container or a VM.
+
+* **cmd:** `HOSTVEIL_LAYOUT`, and `--layout` on `serve`. The arrangement was the
+  odd one out: `--theme` and `--glyphs` each resolve flag > environment >
+  remembered > default through a tested function, and the arrangement had a
+  flag, a picker and a file read by hand with no environment layer at all — so
+  the one way to set something for a systemd unit or a shell profile did not
+  exist for it. The dashboard, meanwhile, had no route to an arrangement except
+  clicking the picker.
+
+### Bug Fixes
+
+* **check:** the measurement seeding wrote OpenClaw's config to
+  `~/.config/openclaw/`, which the agent checker does not scan. The domain
+  reported "no agent runtime found" on a host seeded to run two, and an
+  excluded axis leaves the denominator rather than scoring zero, so the missing
+  domain was worth points. Both seeders' paths are now held against the
+  checker's own table by a test.
+
+* **ai:** a trailing slash on `HOSTVEIL_OLLAMA_HOST` reached the request path,
+  so `http://x:11434/` asked for `//api/version`. Ollama tolerates it, which is
+  what let it survive — the symptom is the AI saying nothing, which is also
+  what success looks like when no server is running. Trimmed at construction;
+  the environment reference used to document the double slash rather than fix
+  it.
+
+* **cmd:** both environment-variable harvests were blind to a qualified
+  constant, so `os.Getenv(pkg.Const)` fell out of the switch — a new variable
+  would be undocumented *and* dropped by sudo's `env_reset` with every test
+  green. That is the failure `carriedThroughSudo` exists to prevent, arriving
+  through the test rather than the code.
+
+* **ci:** the seed wrote an apt config for a package it never installed, which
+  no distribution ships. Whether the package is present decides which
+  remediation hostveil offers, so that host measured the wrong path: it got the
+  apt install, the postinst left the existing `"0"` alone, and the fix
+  completed with the finding still standing.
+
+### Tests
+
+* **ai** 29.8% → 91.5%, **history** 66.0% → 75.2%, **compose** 72.8% → 78.1%.
+  Every function that talks to Ollama was untested; so were the two undo shapes
+  that are not "write these bytes back", including the only code path whose
+  undo is a *delete*; so was the list form of `environment`, which is half of
+  what compose files in the wild use and whose failure mode is a file full of
+  hardcoded passwords auditing clean.
+
+
 ## [3.13.0](https://github.com/seolcu/hostveil/compare/v3.12.0...v3.13.0) (2026-08-07)
 
 hostveil can turn a firewall on now. On the measured host that is worth more
