@@ -5,6 +5,7 @@ package firewall
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -101,14 +102,43 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			Reason: "cannot read firewall state — re-run with sudo to check the host firewall",
 		}
 	}
-	return []model.Finding{
+	findings := []model.Finding{
 		model.NewFinding("firewall.inactive", "No active host firewall",
 			model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
 			model.WithDescription("Without a firewall, every port a service binds to 0.0.0.0 is reachable from any network the host is on. A firewall is your backstop when a container or service is accidentally exposed."),
 			model.WithHowToFix("Enable a firewall that defaults to denying inbound traffic and allow only what you need (e.g. SSH). Important: allow your SSH port before enabling the firewall so you do not lock yourself out."),
 			model.WithEvidence("available", strings.Join(availableTools(env.Runner), ", ")),
 		),
-	}, nil
+	}
+	// The port SSH is *actually* listening on, when it can be seen. It is
+	// what makes this finding fixable at all: enabling a default-deny policy
+	// without allowing SSH first locks the operator out of the host, with no
+	// checkpoint to undo it, so the fix may not exist unless the port is
+	// known. Read from the kernel's socket table rather than sshd_config
+	// because a config that says one thing and a daemon that is serving on
+	// another is exactly the case that would lock someone out.
+	if port, ok := sshPort(ctx, env.Runner); ok {
+		findings[0].Evidence["ssh_port"] = strconv.Itoa(port)
+	}
+	return findings, nil
+}
+
+// sshPort finds the port sshd is listening on. "Cannot tell" is a real
+// answer here and is reported as one: no port, no fix.
+func sshPort(ctx context.Context, r platform.CommandRunner) (int, bool) {
+	if !platform.Has(r, "ss") {
+		return 0, false
+	}
+	ls, err := platform.Listeners(ctx, r)
+	if err != nil {
+		return 0, false
+	}
+	for _, l := range ls {
+		if strings.Contains(l.Proc, "sshd") {
+			return l.Port, true
+		}
+	}
+	return 0, false
 }
 
 // Status is the outcome of probing the host's firewall front-ends.
