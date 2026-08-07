@@ -95,7 +95,7 @@ func TestLayoutIDsAreUniqueSlugs(t *testing.T) {
 // setting it, so a script that only declared the list would leave every
 // browser on an unset attribute.
 func TestLayoutJSCarriesTheRegistryAndApplies(t *testing.T) {
-	js := layoutJS()
+	js := layoutJS("")
 	for _, l := range Layouts() {
 		if !strings.Contains(js, `"`+l.ID+`"`) {
 			t.Errorf("/layout.js does not carry layout %q", l.ID)
@@ -242,5 +242,30 @@ func TestTheLaneButtonSaysItSelectsRatherThanFixes(t *testing.T) {
 	// apply endpoint: one path to that POST, not two.
 	if strings.Contains(body, "fetch(") || strings.Contains(body, "/api/fix") {
 		t.Error("laneRows posts to the API itself instead of going through the batch bar")
+	}
+}
+
+// The served default is what `serve --layout` resolved to, so a browser with
+// no stored choice opens in the arrangement the operator asked for. Before
+// this the only route to an arrangement was the picker, so a kiosk, a
+// screenshot script or a systemd unit always got the shipped one.
+func TestLayoutJSServesTheRequestedStartArrangement(t *testing.T) {
+	want := Layouts()[len(Layouts())-1].ID
+	if want == DefaultLayout().ID {
+		t.Fatal("the registry has one arrangement; this test needs two")
+	}
+	js := layoutJS(want)
+	if !strings.Contains(js, `window.HOSTVEIL_LAYOUT_DEFAULT = "`+want+`"`) {
+		t.Errorf("/layout.js does not open in %q", want)
+	}
+	// And an ID from a registry this build does not have must not reach the
+	// page: the applier compares against the list and would leave the
+	// attribute unset, which paints the base arrangement rather than any
+	// registered one.
+	for _, bad := range []string{"", "not-an-arrangement"} {
+		js := layoutJS(bad)
+		if !strings.Contains(js, `window.HOSTVEIL_LAYOUT_DEFAULT = "`+DefaultLayout().ID+`"`) {
+			t.Errorf("layoutJS(%q) did not fall back to the shipped arrangement", bad)
+		}
 	}
 }

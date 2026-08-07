@@ -243,9 +243,12 @@ Nextcloud+PostgreSQL, Jellyfin+Redis, Portainer+Watchtower가 모든 포트를
 | --- | --- | --- |
 | **호스트 밖에서 응답하는 포트** | 7 | **1** |
 | CIS Docker 벤치마크 (통과 / 경고) | 16 / 16 | **20 / 12** |
-| Lynis 하드닝 지수 | 56 | **61** |
+| Lynis 하드닝 지수 | 57 | **61** |
 | hostveil SSH 영역 | 18/100 | **100/100** |
-| hostveil 점수 | 43 | **66** |
+| hostveil 점수 | 40 | **59** |
+
+이 수치를 만든 호스트는 저장소 안의 `scripts/measure/seed.sh`입니다. 그래서 위
+실행은 믿고 넘어가야 하는 것이 아니라 직접 재현할 수 있는 것입니다.
 
 그중 다섯 개는 서비스가 새 Compose 파일로 재시작하면서 조용해졌습니다.
 PostgreSQL, Redis, Nextcloud, Jellyfin, Portainer입니다. 여섯 번째가 흥미롭습니다.
@@ -268,9 +271,12 @@ PostgreSQL, Redis, Nextcloud, Jellyfin, Portainer입니다. 여섯 번째가 흥
 것이 설계상 수동이기 때문입니다. Portainer에 마운트된 Docker 소켓, 호스트
 네트워킹, 환경 변수 속 비밀값이 그렇습니다. Lynis 경고 3건 중 2건은 hostveil이
 찾아놓고 삭제를 거절한 두 번째 UID 0 계정입니다. `userdel`은 체크포인트로 되돌릴
-수 없으니까요. 그리고 CVE 영역은 오히려 *내려갔습니다*. 25 → 16입니다. 이미지
-6개를 갱신하면 최신 태그 6개를 받아 오고, 그 태그에도 각자 공개된 취약점이
-있습니다. 더 새로운 이미지가 패치된 이미지는 아닙니다.
+수 없으니까요. AI 에이전트 영역도 0 → 1로 거의 움직이지 않습니다. 파일 권한
+항목은 고쳐지고 설정 항목은 고쳐지지 않는데, OpenClaw의 설정이 사용자들이 주석을
+많이 다는 JSON5이고 hostveil에는 그것을 보존하는 인코더가 없기 때문입니다.
+그리고 CVE 영역은 오히려 *내려갔습니다*. 44 → 16입니다. 이미지 6개를 갱신하면
+최신 태그 6개를 받아 오고, 그 태그에도 각자 공개된 취약점이 있습니다. 더 새로운
+이미지가 패치된 이미지는 아닙니다.
 
 숫자와 방법, 움직이지 않은 계기들, 엉뚱한 이유로 통과된 항목 하나까지
 [측정 결과](https://hostveil.seolcu.com/ko/docs/measurements) 페이지에 있습니다.
@@ -303,8 +309,10 @@ TUI와 대시보드는 다섯 가지 색상 테마를 함께 씁니다. `onedark
 화면 배치도 여섯 가지를 함께 씁니다. 기본값인 `console`은 왼쪽에 영역 레일을
 두어 모든 점수와 커버리지 공백을 담고, 나머지는 `split`, `triage`,
 `railverdict`, `lanes`, `inline`입니다. TUI에서는 `l`, 대시보드에서는 상태
-표시줄의 선택기로 고릅니다. 넓은 창과 80칸 터미널에 동시에 맞는 배치는 없어서,
-기본값이 흔한 경우를 맡고 선택기가 나머지를 맡습니다.
+표시줄의 선택기로 고르면 그 선택을 기억합니다. `--layout console`이나
+`HOSTVEIL_LAYOUT=console`로 지정할 수도 있고, `hostveil`과 `hostveil serve`
+양쪽에서 됩니다. 넓은 창과 80칸 터미널에 동시에 맞는 배치는 없어서, 기본값이
+흔한 경우를 맡고 선택기가 나머지를 맡습니다.
 
 TUI와 `scan`은 상태 기호를 패치된 [Nerd Font](https://www.nerdfonts.com/)에서
 가져올 수도 있습니다. `--glyphs nerd`를 주거나 `HOSTVEIL_GLYPHS=nerd`를 한 번

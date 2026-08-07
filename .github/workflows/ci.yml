@@ -116,12 +116,14 @@ jobs:
           done
           for pid in $pids; do wait "$pid"; done
 
-      # shellcheck over install.sh, which nothing covered. actionlint checks
-      # the shell inside `run:` blocks in workflows, not standalone scripts —
-      # and this is 10 KB of privileged bash that pipes into sudo on machines
-      # hostveil has never seen. The runner ships shellcheck.
-      - name: Lint install.sh
-        run: shellcheck scripts/install.sh
+      # shellcheck over the standalone scripts, which nothing covered.
+      # actionlint checks the shell inside `run:` blocks in workflows, not
+      # scripts on disk. install.sh is 10 KB of privileged bash that pipes into
+      # sudo on machines hostveil has never seen; seed.sh permits root SSH
+      # login and adds a second UID 0 account, and is published beside an
+      # invitation to run it. The runner ships shellcheck.
+      - name: Lint shell scripts
+        run: shellcheck scripts/install.sh scripts/measure/seed.sh
 
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...

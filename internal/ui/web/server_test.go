@@ -39,7 +39,7 @@ func testServer(t *testing.T) (*Server, string) {
 		Runner:   checktest.ComposeProjects(map[string]string{"demo": path}),
 	})
 	engine.Scan(context.Background(), nil)
-	return New(engine, "127.0.0.1:0", "nord"), path
+	return New(engine, "127.0.0.1:0", "nord", "lanes"), path
 }
 
 // authedClient returns a client carrying the dashboard's access token in its

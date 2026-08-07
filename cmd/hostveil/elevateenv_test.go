@@ -185,6 +185,18 @@ func readEnvNames(t *testing.T) []string {
 					t.Errorf("os.%s is called with %s, which this harvest cannot resolve — "+
 						"a variable it cannot see is one nothing checks", sel.Sel.Name, arg.Name)
 				}
+			default:
+				// Anything else — os.Getenv(pkg.Const), os.Getenv(name) — is a
+				// read this harvest cannot resolve, and the arm above already
+				// says why that must be loud. It used to fall out of the
+				// switch instead, so a qualified constant was invisible: the
+				// variable would be undocumented and uncarried with every test
+				// here still green, which is the failure this whole file is a
+				// monument to, arriving through the test rather than the code.
+				t.Errorf("os.%s is called with a %T this harvest cannot resolve. Give the name a "+
+					"const in this package, or teach the harvest to see it — do not leave it "+
+					"unreadable, because an unread variable is silently empty under sudo",
+					sel.Sel.Name, arg)
 			}
 			return true
 		})

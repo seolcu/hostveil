@@ -130,9 +130,9 @@
               <table>
                 <tbody>
                   <tr><td>운영체제</td><td><code data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code></td></tr>
-                  <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil 3.13.0</code></td></tr>
-                  <tr><td>측정 시각</td><td><code data-measured="measured_at">2026-08-07T02:48:54+00:00</code></td></tr>
-                  <tr><td>수정 전 발견 항목</td><td>시도한 12개 도메인 중 실행된 <span data-measured="phases.before.hostveil.domains_run">11</span>개에서 <span data-measured="phases.before.hostveil.findings">76</span>건</td></tr>
+                  <tr><td>hostveil</td><td><code data-measured="hostveil_version">hostveil 3.14.0</code></td></tr>
+                  <tr><td>측정 시각</td><td><code data-measured="measured_at">2026-08-07T04:55:32+00:00</code></td></tr>
+                  <tr><td>수정 전 발견 항목</td><td>시도한 12개 도메인 중 실행된 <span data-measured="phases.before.hostveil.domains_run">12</span>개에서 <span data-measured="phases.before.hostveil.findings">83</span>건</td></tr>
                 </tbody>
               </table>
             </div>
@@ -174,10 +174,10 @@
               <table>
                 <thead><tr><th>측정 항목</th><th>before</th><th>after</th><th>restarted</th><th>reviewed</th><th>restored</th></tr></thead>
                 <tbody>
-                  <tr><td>hostveil 점수</td><td data-measured="phases.before.hostveil.overall">43</td><td data-measured="phases.after.hostveil.overall">49</td><td data-measured="phases.restarted.hostveil.overall">52</td><td data-measured="phases.reviewed.hostveil.overall">66</td><td data-measured="phases.restored.hostveil.overall">43</td></tr>
-                  <tr><td>hostveil 발견 항목</td><td data-measured="phases.before.hostveil.findings">76</td><td data-measured="phases.after.hostveil.findings">58</td><td data-measured="phases.restarted.hostveil.findings">55</td><td data-measured="phases.reviewed.hostveil.findings">44</td><td data-measured="phases.restored.hostveil.findings">80</td></tr>
-                  <tr><td>Lynis 하드닝 지수</td><td data-measured="phases.before.lynis.hardening_index">56</td><td data-measured="phases.after.lynis.hardening_index">57</td><td data-measured="phases.restarted.lynis.hardening_index">57</td><td data-measured="phases.reviewed.lynis.hardening_index">61</td><td data-measured="phases.restored.lynis.hardening_index">58</td></tr>
-                  <tr><td>Lynis 제안</td><td data-measured="phases.before.lynis.suggestions">41</td><td data-measured="phases.after.lynis.suggestions">41</td><td data-measured="phases.restarted.lynis.suggestions">41</td><td data-measured="phases.reviewed.lynis.suggestions">40</td><td data-measured="phases.restored.lynis.suggestions">40</td></tr>
+                  <tr><td>hostveil 점수</td><td data-measured="phases.before.hostveil.overall">40</td><td data-measured="phases.after.hostveil.overall">44</td><td data-measured="phases.restarted.hostveil.overall">47</td><td data-measured="phases.reviewed.hostveil.overall">59</td><td data-measured="phases.restored.hostveil.overall">37</td></tr>
+                  <tr><td>hostveil 발견 항목</td><td data-measured="phases.before.hostveil.findings">83</td><td data-measured="phases.after.hostveil.findings">65</td><td data-measured="phases.restarted.hostveil.findings">62</td><td data-measured="phases.reviewed.hostveil.findings">52</td><td data-measured="phases.restored.hostveil.findings">92</td></tr>
+                  <tr><td>Lynis 하드닝 지수</td><td data-measured="phases.before.lynis.hardening_index">57</td><td data-measured="phases.after.lynis.hardening_index">59</td><td data-measured="phases.restarted.lynis.hardening_index">59</td><td data-measured="phases.reviewed.lynis.hardening_index">61</td><td data-measured="phases.restored.lynis.hardening_index">58</td></tr>
+                  <tr><td>Lynis 제안</td><td data-measured="phases.before.lynis.suggestions">39</td><td data-measured="phases.after.lynis.suggestions">39</td><td data-measured="phases.restarted.lynis.suggestions">39</td><td data-measured="phases.reviewed.lynis.suggestions">39</td><td data-measured="phases.restored.lynis.suggestions">39</td></tr>
                   <tr><td>CIS Docker PASS</td><td data-measured="phases.before.docker_bench.results.PASS">16</td><td data-measured="phases.after.docker_bench.results.PASS">16</td><td data-measured="phases.restarted.docker_bench.results.PASS">19</td><td data-measured="phases.reviewed.docker_bench.results.PASS">20</td><td data-measured="phases.restored.docker_bench.results.PASS">16</td></tr>
                   <tr><td>CIS Docker WARN</td><td data-measured="phases.before.docker_bench.results.WARN">16</td><td data-measured="phases.after.docker_bench.results.WARN">16</td><td data-measured="phases.restarted.docker_bench.results.WARN">13</td><td data-measured="phases.reviewed.docker_bench.results.WARN">12</td><td data-measured="phases.restored.docker_bench.results.WARN">16</td></tr>
                   <tr><td>와일드카드/라우팅 가능 바인딩 포트</td><td data-measured="phases.before.listeners.count">7</td><td data-measured="phases.after.listeners.count">7</td><td data-measured="phases.restarted.listeners.count">2</td><td data-measured="phases.reviewed.listeners.count">2</td><td data-measured="phases.restored.listeners.count">7</td></tr>
@@ -185,7 +185,7 @@
                 </tbody>
               </table>
             </div>
-            <p><code>hostveil fix --all --yes</code>가 <strong data-measured="fixes.attempted">24</strong>건을 적용했고 실패는 없었습니다. 이어서 <code>fix --all --review --yes</code>가 <strong data-measured="reviewed.applied">17</strong>건을 더 제안했고, 그중 <span data-measured="reviewed.left_a_checkpoint">9</span>건이 체크포인트를 남겼으며 <span data-measured="reviewed.not_reversible">8</span>건은 남기지 않았습니다 — 이미지 갱신 6건과 unattended-upgrades로, hostveil이 자신의 히스토리에 각각 <code>[not reversible]</code>로 표시하고 아래의 롤백으로도 되돌아가지 않습니다.</p>
+            <p><code>hostveil fix --all --yes</code>가 <strong data-measured="fixes.attempted">28</strong>건을 적용했고 실패는 없었습니다. 이어서 <code>fix --all --review --yes</code>가 <strong data-measured="reviewed.applied">16</strong>건을 더 제안했고, 그중 <span data-measured="reviewed.left_a_checkpoint">9</span>건이 체크포인트를 남겼으며 <span data-measured="reviewed.not_reversible">7</span>건은 남기지 않았습니다 — 이미지 갱신 6건과 unattended-upgrades로, hostveil이 자신의 히스토리에 각각 <code>[not reversible]</code>로 표시하고 아래의 롤백으로도 되돌아가지 않습니다.</p>
 
             <h3 id="moved">움직인 것</h3>
             <p><strong>호스트 밖에서 응답하던 것들.</strong> 서비스를 재시작하자 다른 네트워크 네임스페이스에서 오는 TCP 연결에 포트 다섯 개가 응답을 멈췄습니다. <code data-measured="deltas.external_scan_reachable_tcp.restarted.cleared">5432, 6380, 8080, 8096, 9000</code>, 각각 PostgreSQL, Redis, Nextcloud, Jellyfin, Portainer입니다. 이 페이지에서 가장 논쟁의 여지가 없는 결과입니다. 해석한 것이 없고, 바인드 주소가 바뀌었고, 서비스가 닿지 않게 됐습니다.</p>
@@ -193,12 +193,13 @@
             <p>그래서 커널과 스캐너의 말이 여기서 갈리는데, 그 어긋남이 가치 있습니다. 검토 수정 뒤에도 라우팅 가능한 주소에 묶여 있는 소켓은 <span data-measured="phases.reviewed.listeners.count">2</span>개이고, 그중 호스트 밖에서 응답하는 것은 <span data-measured="phases.reviewed.external_scan.count">1</span>개입니다. 바인드 주소와 패킷 필터는 포트에 대한 서로 다른 주장이고 둘 다 참입니다. 이 페이지는 듣기 좋은 쪽을 고르는 대신 둘 다 적습니다.</p>
             <p><strong>CIS Docker 벤치마크.</strong> 재시작 시점에 세 항목이 통과로 바뀌고 — <code data-measured="deltas.docker_bench_warnings.restarted.cleared">5.14, 5.26, 5.3</code> — 검토 수정까지 수락하자 네 번째가 통과했습니다: <strong>5.11</strong>, <em>컨테이너의 메모리 사용량이 제한되어 있는가</em>, 즉 <code>compose.ds010</code>입니다. 5.14는 <em>컨테이너 인바운드 트래픽이 특정 호스트 인터페이스에 바인딩되어 있는가</em>, 5.26은 <em>컨테이너가 추가 권한을 획득하지 못하도록 제한되어 있는가</em> — 각각 포트 바인딩과 <code>no-new-privileges</code>이고, hostveil을 한 번도 들어본 적 없는 도구가 확인해 준 것입니다. 5.3은 사정이 다릅니다. 아래를 보세요.</p>
             <p><strong>SSH, 다만 검토 경로에서만.</strong> hostveil의 SSH 영역은 무인 수정으로 <span data-measured="phases.before.hostveil.axes.ssh">18</span> → <span data-measured="phases.after.hostveil.axes.ssh">44</span>, 검토 수정까지 수락하면 <span data-measured="phases.before.hostveil.axes.ssh">18</span> → <strong><span data-measured="phases.reviewed.hostveil.axes.ssh">100</span></strong>이 됩니다. 이 간극이 <em>reviewed</em> 열이 존재하는 이유 전부입니다. root 로그인과 비밀번호 인증은 가장 중요한 두 항목이면서, 당신이 보고 있지 않을 때 hostveil이 끄지 않는 두 항목입니다 — 잘못하면 그 명령을 내리고 있는 세션이 끊기니까요.</p>
-            <p><strong>Lynis도 마침내.</strong> 하드닝 지수가 <span data-measured="phases.before.lynis.hardening_index">56</span> → <span data-measured="phases.reviewed.lynis.hardening_index">61</span>이 됐고, 사라진 제안은 귀속이 분명합니다: <code data-measured="deltas.lynis_suggestions.reviewed.cleared">PKGS-7420</code>, <em>자동으로 업그레이드를 내려받아 적용하는 도구가 있는가</em> — hostveil이 unattended-upgrades를 켰기 때문입니다. 무인 경로만 보면 같은 지수가 1점 움직입니다. 그 경로만 재던 것이 이 페이지의 이전 판이 "Lynis는 움직이지 않는다"고 보고했던 이유입니다.</p>
+            <p><strong>Lynis도 마침내.</strong> 하드닝 지수가 <span data-measured="phases.before.lynis.hardening_index">57</span> → <span data-measured="phases.reviewed.lynis.hardening_index">61</span>이 됐고, 사라진 제안은 귀속이 분명합니다: <code data-measured="deltas.lynis_suggestions.reviewed.cleared"></code>, <em>자동으로 업그레이드를 내려받아 적용하는 도구가 있는가</em> — hostveil이 unattended-upgrades를 켰기 때문입니다. 무인 경로만 보면 같은 지수가 1점 움직입니다. 그 경로만 재던 것이 이 페이지의 이전 판이 "Lynis는 움직이지 않는다"고 보고했던 이유입니다.</p>
 
             <h3 id="unmoved">움직이지 않은 것</h3>
             <p><strong>hostveil의 컨테이너 축은 100점 만점에 <span data-measured="phases.before.hostveil.axes.container">0</span> → <span data-measured="phases.reviewed.hostveil.axes.container">2</span>였습니다.</strong> Compose 파일에 대해 가진 수정을 전부 적용했는데도 바닥에 머물렀습니다. 남은 것이 설계상 수동이기 때문입니다 — Portainer와 Watchtower에 마운트된 Docker 소켓, 호스트 네트워킹, 환경 변수 속 비밀값. 소켓 마운트를 떼면 그것을 필요로 하는 두 도구가 망가지고, hostveil은 그 판단을 대신 하지 않습니다.</p>
             <p><strong>Lynis 경고 3건 중 2건은 hostveil이 찾아놓고 거절한 항목입니다.</strong> <code>AUTH-9204</code>는 <em>UID가 0인 사용자 확인</em>, <code>AUTH-9208</code>은 <em>passwd의 중복 계정 확인</em> — 둘 다 심어 둔 두 번째 root이고, hostveil은 이를 <code>accounts.uid0</code>으로 보고하고 손대지 않습니다. 계정 삭제는 체크포인트로 되돌릴 수 없습니다. <code>userdel</code>은 계정과 그룹과 메일 스풀을 가져가고, 그 계정이 소유하던 모든 파일을 UID 고아로 남깁니다. 두 도구가 겹치는 땅은 실재하고, hostveil은 그것을 취하지 않기로 택한 것입니다.</p>
-            <p><strong>컨테이너 이미지 6개를 갱신했더니 CVE 축이 <em>내려갔습니다</em>. <span data-measured="phases.before.hostveil.axes.cve">25</span> → <span data-measured="phases.reviewed.hostveil.axes.cve">16</span>입니다.</strong> 더 새로운 이미지가 패치된 이미지는 아닙니다. 여섯 개 모두 최신 태그를 받아 왔고, 그 태그에도 각자 공개된 취약점이 있습니다. 재시작 후 컨테이너가 더 많이 떠 있으면 스캔되는 이미지도 늘어납니다. 이 페이지에서 hostveil이 제안한 대로 했는데 숫자가 나빠진 가장 분명한 사례이고, 여기 적는 이유는 좋은 쪽으로 움직인 수치만 보여 주는 페이지야말로 이 페이지가 반대하는 그것이기 때문입니다.</p>
+            <p><strong>컨테이너 이미지 6개를 갱신했더니 CVE 축이 <em>내려갔습니다</em>. <span data-measured="phases.before.hostveil.axes.cve">44</span> → <span data-measured="phases.reviewed.hostveil.axes.cve">16</span>입니다.</strong> 더 새로운 이미지가 패치된 이미지는 아닙니다. 여섯 개 모두 최신 태그를 받아 왔고, 그 태그에도 각자 공개된 취약점이 있습니다. 재시작 후 컨테이너가 더 많이 떠 있으면 스캔되는 이미지도 늘어납니다. 이 페이지에서 hostveil이 제안한 대로 했는데 숫자가 나빠진 가장 분명한 사례이고, 여기 적는 이유는 좋은 쪽으로 움직인 수치만 보여 주는 페이지야말로 이 페이지가 반대하는 그것이기 때문입니다.</p>
+            <p><strong>AI 에이전트 축은 <span data-measured="phases.before.hostveil.axes.agent">0</span> → <span data-measured="phases.reviewed.hostveil.axes.agent">1</span>이었습니다.</strong> 파일 권한 관련 두 건은 고쳐졌고, 설정 자체에 관한 항목은 전부 고쳐지지 않았습니다. 모두 같은 이유로 의도적 미수정 목록에 있습니다. OpenClaw의 설정은 JSON5이고 사용자들이 주석을 많이 답니다. hostveil에는 왕복 보존 인코더가 없어서 다시 인코딩하면 그 주석을 조용히 지우게 됩니다. 컨테이너 다음으로 이 호스트에서 가장 많은 점수를 깎는 영역이고, hostveil이 탐지는 하되 아직 고치지 못하는 지점을 가장 분명하게 보여 줍니다.</p>
             <p><strong><em>after</em> 열에서는 hostveil 자신의 숫자 외에 아무것도 움직이지 않았습니다.</strong> 수정 24건이 적용됐고 디스크의 파일 5개가 바뀌었는데, CIS Docker 벤치마크도 외부 스캔도 커널의 소켓 목록도 동일한 호스트를 보고했습니다. 이것이 파일을 편집하는 수정 도구의 정직한 모습이고, 재시작 열이 존재하는 이유입니다.</p>
 
             <div class="callout warn">
@@ -212,10 +213,10 @@
             <div class="docs-table-wrap">
               <table>
                 <tbody>
-                  <tr><td>감시한 경로</td><td data-measured="rollback.paths_watched">17</td></tr>
-                  <tr><td>수정이 바꾼 경로</td><td data-measured="rollback.paths_changed_by_fixes">5</td></tr>
-                  <tr><td>바이트 단위로 복원된 경로</td><td data-measured="rollback.paths_restored_exactly">5</td></tr>
-                  <tr><td>롤백한 체크포인트</td><td data-measured="rollback.checkpoints_rolled_back">33</td></tr>
+                  <tr><td>감시한 경로</td><td data-measured="rollback.paths_watched">20</td></tr>
+                  <tr><td>수정이 바꾼 경로</td><td data-measured="rollback.paths_changed_by_fixes">6</td></tr>
+                  <tr><td>바이트 단위로 복원된 경로</td><td data-measured="rollback.paths_restored_exactly">6</td></tr>
+                  <tr><td>롤백한 체크포인트</td><td data-measured="rollback.checkpoints_rolled_back">37</td></tr>
                   <tr><td><strong>복원율</strong></td><td><strong data-measured="rollback.fidelity">100</strong>%</td></tr>
                 </tbody>
               </table>
@@ -226,19 +227,23 @@
             <h2 id="limits">이 결과가 보여주지 않는 것</h2>
             <p><strong>호스트 하나, 설정 하나입니다.</strong> 표본 조사가 아니라 심어 둔 컨테이너 한 대입니다. 여기서 무슨 일이 있었는지를 말할 뿐, 당신의 호스트에서 무슨 일이 있을지는 말하지 않습니다.</p>
             <p><strong>Auto 수정만 적용했습니다.</strong> <code>fix --all</code>은 <a href="fixing#auto-standard">Auto</a>로 분류된 수정만 적용합니다. Review와 Manual 항목 — <code>PermitRootLogin</code>, 방화벽, Docker TCP 소켓, 두 번째 root 계정 — 은 전부 그대로 남았고, 그 하나하나가 위에서 잰 어떤 것보다도 큰 변화입니다. 이 수치는 천장이 아니라 바닥입니다.</p>
-            <p><strong>영역 하나는 실행되지 않았습니다.</strong> 에이전트 런타임이 설치돼 있지 않아 AI 에이전트 축은 N/A이고, 여기 어떤 숫자에도 반영되지 않았습니다. 나머지 열한 개는 CVE를 포함해 전부 실행됐습니다. 이 실행에는 Trivy가 설치돼 있었습니다.</p>
+            <p><strong>모든 영역이 실행됐습니다.</strong> CVE와 AI 에이전트 런타임을 포함해 열두 개 전부입니다. 이 페이지의 이전 판은 열한 개와 더 높은 점수를 적었는데, 시드가 에이전트 설정을 체커가 보지 않는 경로에 썼기 때문입니다. 그래서 같은 페이지가 런타임 두 개를 돌린다고 설명한 호스트에서 그 영역이 N/A로 나왔고, 제외된 축은 0점을 받는 대신 분모에서 빠지므로 총점은 오히려 높아졌습니다. 시드는 이제 저장소에 있고, 그 경로들은 체커와 테스트로 대조됩니다.</p>
             <p><strong>스캔은 인터넷이 아니라 Docker 브리지에서 옵니다.</strong> 다른 네트워크 네임스페이스에서 <code>0.0.0.0</code>에 묶인 것에 닿으므로 재려는 속성은 정확히 잽니다. 다만 클라우드 제공자의 보안 그룹까지 통과하지는 않습니다. 여기서 응답하는 포트라도 기계 밖에서는 닿지 않을 수 있고, 여기서 거절된 포트는 누구에게나 거절됩니다.</p>
             <p><strong>여기 어떤 것도 침해 여부를 재지 않습니다.</strong> 우리 것을 포함해 이 페이지의 모든 계측기는 설정을 잽니다. 파일을 읽는 스캐너가 주장할 수 있는 정직한 한계가 거기까지입니다.</p>
 
             <h2 id="reproduce">직접 재현하기</h2>
-            <p>하니스는 저장소에 있고, 실행되는 호스트를 편집합니다. 컨테이너나 버려도 되는 VM에 겨누세요. 본인 머신에는 절대 겨누지 마세요.</p>
+            <p>양쪽 다 저장소에 있습니다. 호스트를 만드는 스크립트와, 그것을 재는 하네스입니다. 둘 다 실행되는 호스트를 되돌릴 수 없게 편집하니, 컨테이너나 버려도 되는 VM에 겨누세요. 본인 머신에는 절대 겨누지 마세요. <code>seed.sh</code>는 그렇게 보이지 않는 곳에서는 실행을 거부합니다.</p>
             <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil &amp;&amp; cd hostveil
 go build -o /usr/local/bin/hostveil ./cmd/hostveil
 
-# Lynis와 docker-bench-security는 선택입니다. 없으면 조용히
-# 건너뛰는 대신 "없음"으로 기록됩니다.
+# 위 수치를 전부 잰 그 프로필로 호스트를 만들고, 계기 세 개를 설치합니다.
+# root SSH 로그인을 허용하고, UID 0 계정을 하나 더 만들고,
+# 데이터베이스를 0.0.0.0에 공개합니다.
+sudo scripts/measure/seed.sh
+
 sudo scripts/measure/run.sh -c -p seeded /tmp/measurement.json</code></pre></div>
-            <p>위 실행은 같은 바이너리로, 따로 시드한 호스트 세 대에서 세 번 했습니다. 같은 계기가 설치된 곳이라면 수치가 전부 똑같이 나왔습니다. 같은 점수, 재시작 단계에서 해소된 CIS 점검 ID 3개와 검토 단계의 네 번째도 같고, 포트도, 복원된 파일 5개도 같습니다. 세 번의 차이는 계기 자체였습니다. 앞선 호스트 한 대에는 Trivy가 없어서 CVE 축이 N/A였고, 그만큼 총점이 더 높게 나왔습니다. 제외된 축은 0점을 받는 대신 분모에서 빠지기 때문입니다. 여기 실은 것은 계기가 전부 갖춰진 실행이며, 하네스는 찾지 못한 계기를 조용히 넘기지 않고 그렇다고 적습니다. 커밋된 실행 결과는 <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>에 있고, 이 페이지의 모든 수치는 그중 최신 것과 테스트로 대조됩니다 — 여기 낡은 숫자가 남아 있으면 빌드가 깨지며, 독자가 알아채야 할 일이 아닙니다. <code>-c</code>를 붙이면 출력 중 관측이 아니라 약속에 해당하는 두 가지에 대해 0이 아닌 종료 코드로 실패합니다. 롤백이 바뀐 파일을 전부 정확히 복원했다는 것, 그리고 hostveil 자신의 점수가 어쨌든 움직였다는 것. 그 밖에는 아무것도 단언하지 않습니다. 이 페이지의 나머지 숫자는 hostveil의 변경과 무관한 이유로도 움직이기 때문입니다.</p>
+            <p>시드는 원래 저장소 밖에 있었고, 그래서 이 안내는 가장 중요한 지점에서 불완전했습니다. 재라고만 하고 호스트는 알아서 맞추라는 셈이었으니까요. 게다가 픽스처가 제품과 어긋나도 아무도 알아채지 못했습니다. 그 사본 하나는 OpenClaw 설정을 <code>~/.config/openclaw/</code>에 썼는데, 에이전트 체커가 보지 않는 경로입니다. 그래서 런타임 두 개를 심어 둔 호스트에 대해 "런타임 없음"이라고 보고했습니다. 이제 시드가 쓰는 모든 경로는 체커 자신의 표와 테스트로 대조됩니다.</p>
+            <p>위 실행은 같은 바이너리로, 따로 시드한 호스트들에서 여러 번 반복했습니다. 호스트를 설명하는 수치는 매번 같게 나왔습니다. 같은 점수, 재시작 단계에서 해소된 CIS 점검 ID 3개와 검토 단계의 네 번째도 같고, 포트도, 복원된 파일도 같습니다. 실행 사이에 달라진 것은 호스트가 아니라 재는 쪽과 심어 둔 쪽이었습니다. Trivy가 없는 호스트는 CVE 축을 N/A로 보고했고 그만큼 총점이 높게 나왔습니다. 제외된 축은 0점을 받는 대신 분모에서 빠지기 때문입니다. 에이전트 설정이 엉뚱한 경로로 간 호스트도 그 영역에서 똑같은 일이 벌어졌습니다. 시드를 저장소에 커밋하고 테스트로 묶은 이유가 이것이고, 이전 실행이 열한 개였던 영역이 이번에 열두 개인 이유도 이것입니다. 커밋된 실행 결과는 <a href="https://github.com/seolcu/hostveil/tree/main/docs/measurements"><code>docs/measurements/</code></a>에 있고, 이 페이지의 모든 수치는 그중 최신 것과 테스트로 대조됩니다 — 여기 낡은 숫자가 남아 있으면 빌드가 깨지며, 독자가 알아채야 할 일이 아닙니다. <code>-c</code>를 붙이면 출력 중 관측이 아니라 약속에 해당하는 두 가지에 대해 0이 아닌 종료 코드로 실패합니다. 롤백이 바뀐 파일을 전부 정확히 복원했다는 것, 그리고 hostveil 자신의 점수가 어쨌든 움직였다는 것. 그 밖에는 아무것도 단언하지 않습니다. 이 페이지의 나머지 숫자는 hostveil의 변경과 무관한 이유로도 움직이기 때문입니다.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="scoring">← 점수 산정</a>

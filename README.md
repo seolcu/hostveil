@@ -251,9 +251,13 @@ updates.
 | --- | --- | --- |
 | **Ports answering from off the host** | 7 | **1** |
 | CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
-| Lynis hardening index | 56 | **61** |
+| Lynis hardening index | 57 | **61** |
 | hostveil's SSH domain | 18/100 | **100/100** |
-| hostveil score | 43 | **66** |
+| hostveil score | 40 | **59** |
+
+The host that produces those numbers is `scripts/measure/seed.sh`, in this
+repository, so the run above is one you can reproduce rather than one you have
+to take on trust.
 
 Five of those ports went quiet when the services restarted into their new
 Compose files: PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The sixth
@@ -277,9 +281,12 @@ What did *not* move is published too. The container domain goes 0 → 2 out of
 100, because what remains there is Manual by design: a Docker socket mounted
 into Portainer, host networking, secrets in the environment. Two of Lynis's
 three warnings are a second UID 0 account that hostveil finds and refuses to
-delete, since `userdel` cannot be undone from a checkpoint. And the CVE domain
-went *down*, 25 → 16: updating six images pulled six current tags, each with
-its own published vulnerabilities. A newer image is not a patched one.
+delete, since `userdel` cannot be undone from a checkpoint. The AI-agent
+domain barely moves either, 0 → 1: the file-mode findings are fixed and the
+config ones are not, because OpenClaw's config is JSON5 that users comment
+heavily and hostveil has no round-tripper for it. And the CVE domain went
+*down*, 44 → 16: updating six images pulled six current tags, each with its
+own published vulnerabilities. A newer image is not a patched one.
 
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the
@@ -313,9 +320,11 @@ set it explicitly with `--theme nord` or `HOSTVEIL_THEME=nord`.
 They share six screen arrangements as well. `console`, the default, puts a
 domain rail down the left carrying every score and every coverage gap;
 `split`, `triage`, `railverdict`, `lanes` and `inline` are the rest. Press `l`
-in the TUI or use the dashboard's status-bar picker. No single arrangement
-suits both a wide window and an 80-column terminal, so the default answers the
-common case and the picker answers the rest.
+in the TUI or use the dashboard's status-bar picker, and the choice is
+remembered. `--layout console` and `HOSTVEIL_LAYOUT=console` set it too, on
+both `hostveil` and `hostveil serve`. No single arrangement suits both a wide
+window and an 80-column terminal, so the default answers the common case and
+the picker answers the rest.
 
 The TUI and `scan` can draw their status markers from a patched
 [Nerd Font](https://www.nerdfonts.com/) instead: `--glyphs nerd`, or

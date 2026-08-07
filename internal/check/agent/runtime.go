@@ -110,6 +110,21 @@ type Runtime struct {
 // exhaustively; hostveil's job is the host-observable half — what is actually
 // listening, what is actually readable — scored beside the other domains.
 func defaultRuntimes() []Runtime {
+	return runtimes()
+}
+
+// DefaultRuntimes is defaultRuntimes, exported for one caller outside this
+// package: internal/docs holds the fixtures that seed a measured host against
+// the paths named here.
+//
+// It is exported for the same reason platform.DockerProbeArgv is. A fixture
+// that writes ~/.config/openclaw/config.json instead of ~/.openclaw/openclaw.json
+// does not fail — the domain reports "no agent runtime found", which is a clean
+// result, on a host seeded to run two. Nothing catches that except a test that
+// can read this table, and a test in this package cannot see the scripts.
+func DefaultRuntimes() []Runtime { return runtimes() }
+
+func runtimes() []Runtime {
 	return []Runtime{
 		{
 			Name:    "openclaw",

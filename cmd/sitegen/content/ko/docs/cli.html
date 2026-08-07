@@ -110,13 +110,14 @@ hostveil history --scans</code></pre></div>
 
             <h2 id="serve">serve</h2>
             <p>localhost 웹 대시보드를 실행합니다. <code>hostveil web</code>은 별칭입니다.</p>
-            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME]</code></pre></div>
+            <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>대시보드를 바인딩할 주소입니다.</td></tr>
-                  <tr><td><code>--theme NAME</code></td><td><code>onedark</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>console</code></td><td>대시보드가 처음 표시될 화면 배치입니다. 브라우저의 선택기로 고른 값은 그 브라우저에 저장되어 이 값을 이깁니다. 따라서 이 옵션은 아직 아무것도 고르지 않은 브라우저가 보게 될 배치를 정합니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -131,7 +132,7 @@ hostveil history --scans</code></pre></div>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>색상 테마: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
-                  <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>split</code></td><td>임시 옵션입니다. 하나를 고르기 위해 여섯 가지 배치를 함께 담아두었습니다: <code>split</code>, <code>triage</code>, <code>console</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르세요.</td></tr>
+                  <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>console</code></td><td>화면 배치입니다: <code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르면 바꿀 수 있고 그 선택을 기억합니다. 우선순위는 이 플래그 &gt; <code>HOSTVEIL_LAYOUT</code> &gt; 기억된 값 &gt; <code>console</code>입니다.</td></tr>
                   <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다 — 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 자동 감지가 아니라 명시적 선택이며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                 </tbody>
               </table>
