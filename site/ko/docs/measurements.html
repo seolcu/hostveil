@@ -20,6 +20,34 @@
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="../../docs.css">
     <script src="../../docs.js" defer></script>
+    <script>
+      // Send a Korean-speaking reader to the Korean page, once.
+      //
+      // GitHub Pages serves files, not content negotiation, so the only place
+      // this decision can be made is here — and the risk of making it here is
+      // trapping someone: a reader who deliberately clicked "English" must not
+      // be bounced back on the next click. So the switcher records that choice
+      // and this defers to it forever after.
+      //
+      // Only from the English page, only when the browser's own preference
+      // list actually leads with Korean, and never when a crawler is reading
+      // (they do not run this) — the hreflang links above are what they read.
+      (function () {
+        try {
+          if (document.documentElement.lang !== "en") return;
+          if (localStorage.getItem("hostveil.lang")) return;
+          var prefs = navigator.languages || [navigator.language || ""];
+          for (var i = 0; i < prefs.length; i++) {
+            var tag = String(prefs[i]).toLowerCase();
+            if (tag === "ko" || tag.indexOf("ko-") === 0) {
+              location.replace("/docs/measurements" + location.hash);
+              return;
+            }
+            if (tag.indexOf("en") === 0) return; // English first: stay
+          }
+        } catch (e) { /* private mode, no storage: the English page is fine */ }
+      })();
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 건너뛰기</a>
@@ -35,7 +63,7 @@
           <a href="../#features">기능</a>
           <a href="../#install">설치</a>
           <a href="https://github.com/seolcu/hostveil">GitHub</a>
-          <a class="lang-switch" href="/docs/measurements" lang="en" hreflang="en">English</a>
+          <a class="lang-switch" href="/docs/measurements" lang="en" hreflang="en" onclick="try{localStorage.setItem('hostveil.lang','en')}catch(e){}">English</a>
         </div>
       </nav>
     </header>

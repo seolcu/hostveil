@@ -16,7 +16,7 @@
           <a href="#install">{{.LNavInstall}}</a>
           <a href="{{.LDocsHref}}">{{.LNavDocs}}</a>
           <a href="https://github.com/seolcu/hostveil">GitHub</a>
-          <a class="lang-switch" href="{{.LangHref}}" lang="{{.LangLang}}" hreflang="{{.LangLang}}">{{.LangLabel}}</a>
+          <a class="lang-switch" href="{{.LangHref}}" lang="{{.LangLang}}" hreflang="{{.LangLang}}" onclick="try{localStorage.setItem('hostveil.lang','{{.LangLang}}')}catch(e){}">{{.LangLabel}}</a>
         </div>
       </nav>
     </header>

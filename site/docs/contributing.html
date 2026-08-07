@@ -20,6 +20,34 @@
     <link rel="stylesheet" href="../docs.css">
     <script src="../docs.js" defer></script>
     <script src="../lang-suggest.js" defer></script>
+    <script>
+      // Send a Korean-speaking reader to the Korean page, once.
+      //
+      // GitHub Pages serves files, not content negotiation, so the only place
+      // this decision can be made is here — and the risk of making it here is
+      // trapping someone: a reader who deliberately clicked "English" must not
+      // be bounced back on the next click. So the switcher records that choice
+      // and this defers to it forever after.
+      //
+      // Only from the English page, only when the browser's own preference
+      // list actually leads with Korean, and never when a crawler is reading
+      // (they do not run this) — the hreflang links above are what they read.
+      (function () {
+        try {
+          if (document.documentElement.lang !== "en") return;
+          if (localStorage.getItem("hostveil.lang")) return;
+          var prefs = navigator.languages || [navigator.language || ""];
+          for (var i = 0; i < prefs.length; i++) {
+            var tag = String(prefs[i]).toLowerCase();
+            if (tag === "ko" || tag.indexOf("ko-") === 0) {
+              location.replace("/ko/docs/contributing" + location.hash);
+              return;
+            }
+            if (tag.indexOf("en") === 0) return; // English first: stay
+          }
+        } catch (e) { /* private mode, no storage: the English page is fine */ }
+      })();
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -35,7 +63,7 @@
           <a href="../#features">Features</a>
           <a href="../#install">Install</a>
           <a href="https://github.com/seolcu/hostveil">GitHub</a>
-          <a class="lang-switch" href="/ko/docs/contributing" lang="ko" hreflang="ko">한국어</a>
+          <a class="lang-switch" href="/ko/docs/contributing" lang="ko" hreflang="ko" onclick="try{localStorage.setItem('hostveil.lang','ko')}catch(e){}">한국어</a>
         </div>
       </nav>
     </header>
