@@ -191,6 +191,49 @@ file up to a checkpoint, and only then applies it. `hostveil rollback` restores
 that backup. All three interfaces run on one engine, so a fix applied in any of
 them can be undone from any of them.
 
+## How the score works
+
+The score is one number between 0 and 100, and it is built so that it cannot
+flatter a host.
+
+Each domain is an axis with a fixed share of the 100: container exposure 14,
+SSH 14, CVEs 10, firewall 9, exposed services 8, AI agent runtimes 8, updates
+7, accounts 7, the Docker daemon 7, service hardening 6, kernel hardening 5,
+file permissions 5. Only the domains that actually ran are counted. A skipped
+one is reported N/A and the remaining caps are renormalized over it, so a host
+without Docker is not quietly handed 14 free points. If nothing ran at all, the
+score is N/A rather than 100.
+
+Inside an axis, each finding erodes what is left instead of subtracting a fixed
+number of points:
+
+```
+remaining  = remaining × (1 − weight)      for each finding
+axis score = cap × remaining
+```
+
+One High finding takes half the axis, a Medium an eighth, a Low a sixteenth.
+Because every finding takes a share of the remainder, the axis approaches zero
+without reaching it, and the tenth finding still costs something. The model
+this replaced summed penalties and clamped at zero, so two findings exhausted
+most axes and everything after them was free: a host with 27 container findings
+scored the same as one with 3.
+
+Two adjustments sit on top of that.
+
+- **The same finding ID repeated on one axis is damped.** Four services all
+  missing `no-new-privileges` is one mistake made four times, not four separate
+  mistakes, so the second instance costs half its weight and the third a third.
+  It never reaches zero: at ten the mistake is systematic, which is worse than
+  one and not ten times worse.
+- **A finding nothing can fix yet counts a quarter.** Every image ships CVEs
+  with no upstream patch. Charging those in full pins the axis at 0 for a
+  perfectly maintained host, and charging nothing would pretend the risk isn't
+  there.
+
+The full model, including why each cap is the size it is, is on the
+[Scoring](https://hostveil.seolcu.com/docs/scoring) page.
+
 ### Does it actually work?
 
 hostveil's own score going up after hostveil's own fixes proves nothing. The
