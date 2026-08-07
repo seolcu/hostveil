@@ -118,11 +118,13 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"agent.control-ui-insecure":  "same JSON5 edit problem",
 		"agent.ssrf-private-network": "same JSON5 edit problem",
 
-		// Every sysctl.* finding, one shared reason: the /etc/sysctl.d
-		// drop-in does not exist and edit actions cannot create files;
-		// applying the live value is exec (never Auto); and a
-		// write-then-apply pair is sequential steps, not the independent
-		// alternatives Review requires.
+		// sysctl.* was on this list and is not any more. The reason it gave
+		// — that the drop-in does not exist and an edit action cannot create
+		// a file — stopped being true when Action grew CreateIfMissing, and
+		// the reason outlived it here by one release. If a fix is registered
+		// for something this map names, the loop below fails; nothing catches
+		// a stale *comment*, so it is written down as history rather than
+		// deleted, and register.go carries the argument.
 
 		// Every dockerd.* finding, one shared reason: the checker reads the
 		// running daemon's state while a fix would edit a file the daemon

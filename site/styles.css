@@ -987,3 +987,23 @@ figcaption strong {
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* The measured band reuses .stats-grid, which is drawn for the trust strip
+   directly under the hero: no top border, because the header supplies one
+   there. In the middle of the page it needs its own, or the first row of
+   figures floats free of the heading above it. */
+.measured-grid {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+/* No breakpoint of its own: .stats-grid already drops to two columns and
+   then to one, and a rule added down here would win against them by
+   position and pin the band at two on a phone. */
+
+.measured-note {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
