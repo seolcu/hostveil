@@ -2,6 +2,63 @@
 
 ## Unreleased
 
+## [3.14.2](https://github.com/seolcu/hostveil/compare/v3.14.1...v3.14.2) (2026-08-12)
+
+Everything here came out of one session of actually running the demo instead
+of testing it. The CVE domain had been trading coverage for speed on every
+scan since it was parallelised, and the demo VM could not be started at all on
+a stock Fedora workstation.
+
+### Bug Fixes
+
+* **cve:** four Trivy processes cannot share one cache
+  ([#684](https://github.com/seolcu/hostveil/issues/684)). Image scans run
+  four at a time, and Trivy's filesystem cache is a single-writer BoltDB — the
+  process that loses the lock does not slow down, it exits. The same host
+  scanned twice gave different answers: 1 of 7 images and a vulnerability axis
+  of 44/100, then 3 of 7 and 25/100, against a true 16/100. The direction is
+  the problem. An image that fails to scan contributes no vulnerabilities, so
+  **the score improved the less of the host it saw** — and the worst case is
+  the first scan on a fresh machine, which is the one people form an opinion
+  from. The coverage machinery was not silent about it: every run carried
+  `~ cve partial` and the axis was flagged Degraded. But a Degraded axis is
+  still scored, deliberately, so the honest flag sat beside a number wrong by
+  28 points. Fixed in two halves, neither of which works alone: the
+  vulnerability DB is downloaded once before the fan-out (without it, all four
+  scans race to fetch it and all four die), and each scan keeps its analysis
+  cache to itself. The warm-up carries the flag it is testing and doubles as
+  the capability probe, so a Trivy that rejects `--cache-backend memory` — it
+  is experimental, and the value is newer than the flag — falls back to
+  scanning one image at a time rather than failing every image.
+
+* **demo:** the demo VM could not start on a stock Linux workstation
+  ([#683](https://github.com/seolcu/hostveil/issues/683)). An unprivileged
+  libvirt client resolves to `qemu:///session`, which has no management
+  network, so the VM booted, never got an address, and Vagrant gave up minutes
+  later with *"not yet ready for SSH"* — then left a domain behind that made
+  the next attempt fail with *"Name demo_default is already taken"*, which
+  reads as a name collision and leads nowhere. `run.sh` now pins the system
+  URI, checks that libvirt is reachable before starting anything, and reports
+  a leftover domain with the commands that clear it. The troubleshooting entry
+  for a VM with no internet was pointing at `virbr0`, which this demo does not
+  use, so following it changed nothing; it now reads the right bridge out of
+  the network, keeps the rules across reboots, and accepts replies rather than
+  new inbound connections — this VM publishes an unauthenticated Docker API on
+  purpose. And a build that cannot find its Go toolchain now says the machine
+  is half-provisioned instead of reporting it as a build failure.
+
+* **demo:** the demo did not fit on the disk it asked for
+  ([#685](https://github.com/seolcu/hostveil/issues/685)). The box ships
+  8.7GB; a provisioned VM sat at 95% full with 492MB free, because the seven
+  outdated images are 3.8GB and Trivy's DB is another 1.2GB. Trivy unpacks an
+  image before scanning it, so the two 1.32GB images could not be scanned at
+  all, at any level of concurrency — and a vulnerability score that skipped
+  the heaviest images was better than the truth, on the machine whose whole
+  job is to demonstrate finding problems. Now 24GB, which is sparse and costs
+  what it uses. A first scan on a freshly created VM went from 4 of 7 images
+  and 25/100 to 7 of 7 and 16/100 — the same answer every later scan already
+  gave.
+
 ## [3.14.1](https://github.com/seolcu/hostveil/compare/v3.14.0...v3.14.1) (2026-08-11)
 
 One fix, and two claims that had quietly stopped being checked. The fix is a
