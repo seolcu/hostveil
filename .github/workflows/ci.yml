@@ -96,6 +96,20 @@ jobs:
         run: |
           cd scripts && sha256sum -c install.sh.sha256
 
+      # The cross-compile below covers what goreleaser *builds*; this covers
+      # what it is *told* to build. Archives, checksums, SBOM hooks and the
+      # ldflags that stamp the version live in .goreleaser.yaml, and nothing
+      # reads that file until a tag exists — by which time the release has
+      # already been published, because a maintainer creates it to make the
+      # tag. A config error there therefore surfaces as a live release with no
+      # artifacts, which is the situation demote-on-failure exists to clean up
+      # after. `check` is a parse and validate, so it costs seconds and needs
+      # no token.
+      - name: Validate the release config
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          args: check
+
       # goreleaser builds linux and darwin on amd64 and arm64, and until this
       # existed the first compile of three of those four targets happened
       # during a release — where a failure demotes the release to a draft
@@ -122,8 +136,16 @@ jobs:
       # sudo on machines hostveil has never seen; seed.sh permits root SSH
       # login and adds a second UID 0 account, and is published beside an
       # invitation to run it. The runner ships shellcheck.
+      #
+      # Every script, found rather than listed. The list used to name those
+      # two, and the eleven it left out were no less privileged: measure/run.sh
+      # is root and edits the host it measures, and instruments/rollback.sh
+      # computes the rollback-fidelity claim check.py fails the run over. All
+      # of them were already clean, so naming two was costing coverage and
+      # buying nothing — and a hand-kept list is how the next script joins the
+      # repo unchecked.
       - name: Lint shell scripts
-        run: shellcheck scripts/install.sh scripts/measure/seed.sh
+        run: find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
 
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...
