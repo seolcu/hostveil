@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+## [3.14.1](https://github.com/seolcu/hostveil/compare/v3.14.0...v3.14.1) (2026-08-11)
+
+One fix, and two claims that had quietly stopped being checked. The fix is a
+guard nothing could reach; the checks are the reason to care, because a guard
+nothing walks past is exactly what a stale test looks like from the outside.
+
+### Bug Fixes
+
+* **web:** judge the whole authority in the dashboard's Host allowlist
+  ([#680](https://github.com/seolcu/hostveil/issues/680)). The dashboard binds
+  to loopback and then refuses any request whose `Host` is not one, because
+  loopback binding stops the network but not DNS rebinding — a page on the open
+  internet can resolve its own name to `127.0.0.1` and have the operator's
+  browser deliver a request to a dashboard that applies fixes as root. The
+  check split the authority with `net.SplitHostPort` and discarded the port.
+  That function splits at the *last* colon and never asks whether what follows
+  is a number, so `127.0.0.1:8787.evil.example.com` parsed as the host
+  `127.0.0.1` — and the allowlist looked at the host, found loopback, and said
+  yes to an authority naming somebody else's domain. Nothing was reachable
+  through it, and the honest reason is the browser rather than anything here: a
+  non-numeric port makes the URL unparseable, so the rebinding attack this list
+  defends against cannot produce one. It is fixed anyway, because a host check
+  that credits the wrong host is one refactor away from being load-bearing.
+  Fixing it surfaced the opposite failure, which *is* reachable:
+  `SplitHostPort` strips the brackets from an IPv6 literal only when it
+  succeeds, so `http://[::1]/` — no port at all, exactly what a browser sends —
+  arrived as the string `[::1]` and was refused by the very list that names
+  `::1`. Both halves are now pinned by a table test, and one more through the
+  middleware, because a guard that is correct but unwired protects nothing.
+
+* **cmd:** `--addr` in `hostveil --help` took an argument it does not take. It
+  is `host:port` and the port is not optional — `--addr 127.0.0.1` fails to
+  listen at all. The CLI and interfaces pages, meanwhile, said a non-loopback
+  `--addr` "answers nothing" and "refuses every request". It refuses everything
+  that reaches the machine by IP or hostname, which is the claim that matters,
+  but a forwarded port keeps working — the browser says localhost either way.
+  Written the loose way, the reader who follows the `ssh -L` advice on the same
+  line is told it cannot work.
+
+* **ci:** the E2E step that proves a skipped domain is never scored 100
+  selected domains on `.state == 3`, and
+  [#656](https://github.com/seolcu/hostveil/issues/656) changed every enum to
+  marshal as its name. From that commit on the selection matched no domain, so
+  the step passed on every pull request without once looking at one — a vacuous
+  jq selection is indistinguishable from a clean result. It selects by name
+  now, and asserts that it matched something before asserting anything about
+  it. Two lists with the same shape are pinned by tests in `internal/docs`
+  rather than by memory: the nightly fuzz matrix against every `Fuzz*` target
+  that exists, and CI's cross-compile loop against the targets
+  `.goreleaser.yaml` actually ships. `.goreleaser.yaml` is itself validated in
+  CI now — nothing read it until a tag existed, by which time the release was
+  already public — and the shellcheck step finds all thirteen scripts in the
+  repository instead of naming two of them.
+
 ## [3.14.0](https://github.com/seolcu/hostveil/compare/v3.13.0...v3.14.0) (2026-08-07)
 
 The published measurement rested on a script nobody could see. Committing it
