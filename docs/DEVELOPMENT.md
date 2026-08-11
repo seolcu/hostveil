@@ -189,6 +189,13 @@ sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt "$USER"     # then log out/in
 ```
 
+Use `demo/run.sh`, or export `LIBVIRT_DEFAULT_URI=qemu:///system` before
+raw `vagrant`. An unprivileged libvirt client resolves to `qemu:///session`,
+which has no management network, so the VM boots and never gets an address —
+Vagrant reports *"not yet ready for SSH"* minutes later and leaves a domain
+behind that makes the next attempt fail with *"already taken"*. `run.sh`
+sets the URI and checks for that leftover; raw `vagrant` does neither.
+
 If the host also runs **Docker**, Docker sets the kernel `FORWARD` policy to
 DROP, which blocks the VM's outbound network (apt/curl time out during
 provisioning). Allow the libvirt bridge to forward + masquerade — see the

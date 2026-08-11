@@ -10,8 +10,8 @@ from a `git clone`.
 
 ```
 cd demo
-vagrant up            # boots + provisions the vulnerable server (first run: a few minutes)
-vagrant ssh           # you're now on the "home server"
+./run.sh up           # boots + provisions the vulnerable server (first run: a few minutes)
+./run.sh shell        # you're now on the "home server"
   hostveil scan       # see the findings (auto-elevates with sudo)
 ```
 
@@ -62,7 +62,11 @@ cd demo
 
 Prefer raw Vagrant? `vagrant up` / `vagrant ssh` work too (run
 `./run.sh up` once after a boot to start the stacks — they intentionally
-have no restart policy, so they don't come back on their own).
+have no restart policy, so they don't come back on their own). **On Linux,
+export `LIBVIRT_DEFAULT_URI=qemu:///system` first.** An unprivileged libvirt
+client resolves to `qemu:///session`, which has no management network: the
+VM boots, never gets an address, and Vagrant gives up minutes later with
+*"not yet ready for SSH"*. `run.sh` sets it for you; raw `vagrant` does not.
 
 > Inside the VM, plain `hostveil` re-executes itself under **sudo**
 > automatically so it can read root-owned config (`/etc/ssh/sshd_config`) and
@@ -138,21 +142,60 @@ Tear it down completely with `./run.sh destroy`.
 
 ## Troubleshooting
 
-**The VM has no internet during `vagrant up` (Linux + libvirt + Docker on the host).**
-If the host also runs Docker, Docker sets the kernel's `FORWARD` policy to
-DROP, which blocks the libvirt VM's NAT traffic (you'll see apt/curl time
-out inside the VM). Allow the VM's bridge to forward and masquerade out:
+**`Name demo_default of domain about to create is already taken`.** A libvirt
+domain exists that Vagrant has no record of — the leftovers of a creation that
+did not finish. Vagrant's message reads as a name collision, but renaming
+nothing will help; the domain is unreachable anyway, because an unfinished VM
+never had an SSH key inserted. Remove it and start again:
 
 ```bash
-sudo firewall-cmd --zone="$(firewall-cmd --get-default-zone)" --add-masquerade
-sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -i virbr0 -j ACCEPT
-sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -o virbr0 -j ACCEPT
+virsh -c qemu:///system destroy demo_default        # only if it is still running
+virsh -c qemu:///system undefine demo_default --remove-all-storage
 ```
 
-These apply immediately. To keep them across reboots, append `--permanent`
-to each (then `sudo firewall-cmd --reload`). Then re-run `vagrant provision`.
-This does **not** affect teammates using VirtualBox (macOS/Windows), whose
-NAT is independent of the host firewall.
+`./run.sh up` checks for this and says so before Vagrant gets the chance. The
+usual way to get one is the `qemu:///session` trap described above.
+
+**The VM has no internet during `vagrant up` (Linux + libvirt + Docker on the host).**
+If the host also runs Docker, Docker sets the kernel's `FORWARD` policy to
+DROP, which blocks the libvirt VM's NAT traffic — provisioning dies at the
+Docker install with `curl: (28) ... Timeout was reached`. The giveaway is
+that the VM looks half-connected: DNS resolves and the gateway pings,
+because both are the bridge itself, and everything that has to be *forwarded*
+times out. Allow that bridge to forward:
+
+```bash
+br=$(virsh -c qemu:///system net-dumpxml vagrant-libvirt |
+  sed -n "s/.*<bridge name='\([^']*\)'.*/\1/p")
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 \
+  -i "$br" -j ACCEPT
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 \
+  -o "$br" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+sudo firewall-cmd --reload
+```
+
+Then `vagrant provision` to finish the run that failed.
+
+Three things that are easy to get wrong here, and each of them costs you
+another five-minute timeout:
+
+- **It is not `virbr0`.** That is the `default` libvirt network, which this
+  demo does not use — the VM is on `vagrant-libvirt`, usually `virbr1`. Hence
+  reading the name out of the network rather than typing it.
+- **`--permanent` is not optional in practice.** Runtime rules are gone after
+  a reboot, and Docker sets the policy again the moment it starts, so the
+  problem comes back looking brand new.
+- **Inbound is replies only.** This VM publishes an *unauthenticated Docker
+  API* on 2375 — that is the point of `dockerd.api-unauthenticated` — so
+  nothing should be able to open a connection *to* it. Outbound plus
+  `RELATED,ESTABLISHED` is all the provisioning needs. `vagrant ssh` and the
+  forwarded 8787 are unaffected either way: the host sits on that bridge
+  directly, so its own traffic never passes through `FORWARD`.
+
+No masquerade rule is needed. The `vagrant-libvirt` network is
+`forward mode='nat'`, so libvirt already masquerades for it; the only thing
+in the way is the forwarding policy. And none of this affects teammates on
+VirtualBox (macOS/Windows), whose NAT is independent of the host firewall.
 
 ## What's deliberately vulnerable
 
