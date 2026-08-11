@@ -75,10 +75,12 @@ func TestOneDarkUnchanged(t *testing.T) {
 		Line: "#181a1f", Line2: "#3e4451",
 		Bone:  "#c8ccd4", // One Dark's fg #abb2bf, lifted for a denser view
 		Slate: "#8e939b", // #7f848e was 3.73:1 on ink, floor is 4.5
-		Crit:  "#e17079", // #e06c75 was 4.38:1 on ink
+		Crit:  "#ed7379", // #e06c75 was 4.38:1 on ink; #e17079 quantised to grey
 		High:  "#d19a66", Med: "#e5c07b",
 		Low:  "#79808e", // #767d8c was 3.39:1 on ink, floor is 3.5
 		Safe: "#98c379",
+		// One Dark's blue, for structure only — see the Palette doc comment.
+		Accent: "#61afef",
 	}
 	got, ok := Lookup("onedark")
 	if !ok {

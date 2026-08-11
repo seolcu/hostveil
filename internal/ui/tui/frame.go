@@ -314,12 +314,38 @@ func (m *appModel) footerRows(hint string) []string {
 	if hint == "" {
 		return nil
 	}
-	dim := m.sty().dim
 	out := []string{m.rule(m.ruleRow(), "┴")}
 	for _, line := range strings.Split(m.wrapHint(hint), "\n") {
-		out = append(out, dim.Render(line))
+		out = append(out, m.styleHintLine(line))
 	}
 	return out
+}
+
+// styleHintLine picks the key out of each hint item and leaves the rest dim.
+//
+// The footer is fourteen bindings in one grey, which is the least scannable
+// thing on the screen: every key hostveil has is written down there and none
+// of them is findable. Colouring the key and only the key turns the row into
+// a column of things you can press — and it is structure, not risk, so it
+// spends the accent rather than one of the heats.
+//
+// The split is the one wrapHint already relies on: items are separated by
+// three spaces, and inside an item the key is everything before the first
+// single space ("↑/↓ move", "enter roll back", "space select"). An item with
+// no space is drawn as a key, which is what a bare word in this row is.
+func (m *appModel) styleHintLine(line string) string {
+	s := m.sty()
+	const sep = "   "
+	items := strings.Split(line, sep)
+	for i, item := range items {
+		key, rest, ok := strings.Cut(item, " ")
+		if !ok {
+			items[i] = s.accent.Render(item)
+			continue
+		}
+		items[i] = s.accent.Render(key) + s.dim.Render(" "+rest)
+	}
+	return strings.Join(items, s.dim.Render(sep))
 }
 
 func (m *appModel) ruleRow() string { return m.ruleRowOf(m.width) }
