@@ -122,7 +122,7 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
             <p>The command prints a URL containing a one-off access token; open that URL rather than typing the bare address. Every route requires the token, because loopback does not separate the operator from other local accounts and the dashboard runs as root.</p>
-            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds but refuses every request, and hostveil says so. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
+            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds, then refuses anything that reaches this machine by IP or hostname, and hostveil says so. A forwarded port keeps working, because the browser says localhost either way. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
 
             <h2 id="tui">tui</h2>
             <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>

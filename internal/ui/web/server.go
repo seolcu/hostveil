@@ -18,6 +18,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/core"
@@ -263,10 +265,28 @@ func tokenEqual(got, want string) bool {
 
 // hostAllowed permits only loopback hosts, blocking DNS-rebinding attacks
 // that would let a malicious website reach the local dashboard.
+//
+// The port has to be checked, not just discarded. net.SplitHostPort splits at
+// the last colon and never asks whether what follows is a number, so
+// "127.0.0.1:8787.evil.example.com" parses as host 127.0.0.1 with the
+// attacker's domain as its port — and returned the loopback host this
+// allowlist is written to trust. That is the same authority the Origin check
+// already refuses; hostFromURL was moved onto net/url for exactly this reason
+// and this function was left comparing an approximation. No browser will emit
+// it, since a non-numeric port makes the URL unparseable, so nothing here was
+// reachable through the rebinding attack the allowlist defends against — but
+// a host check that credits the wrong host is not worth reasoning about twice.
+//
+// An authority with no port carries an IPv6 literal in brackets, which
+// SplitHostPort strips only when it succeeds. Without stripping them here,
+// http://[::1]/ is refused by the very list that names ::1.
 func hostAllowed(host string) bool {
-	h, _, err := net.SplitHostPort(host)
-	if err != nil {
-		h = host
+	h, port, err := net.SplitHostPort(host)
+	switch {
+	case err != nil:
+		h = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	case !isNumericPort(port):
+		return false
 	}
 	switch h {
 	case "127.0.0.1", "::1", "localhost", "":
@@ -274,6 +294,17 @@ func hostAllowed(host string) bool {
 	default:
 		return false
 	}
+}
+
+// isNumericPort reports whether p is a port number and nothing else. An empty
+// port is the "host:" form, which addresses the default port rather than a
+// name of the attacker's choosing.
+func isNumericPort(p string) bool {
+	if p == "" {
+		return true
+	}
+	_, err := strconv.ParseUint(p, 10, 16)
+	return err == nil
 }
 
 // sameOrigin ensures a mutating request originated from the dashboard

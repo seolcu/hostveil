@@ -541,6 +541,59 @@ func TestThemeAssetsAreGuarded(t *testing.T) {
 	}
 }
 
+// The Host allowlist is one string comparison away from crediting the wrong
+// host, and net.SplitHostPort will not stop it: that function splits at the
+// last colon and never asks whether what follows is a number, so an authority
+// whose "port" is the attacker's domain parses as the loopback host. The
+// Origin check was moved onto net/url for this exact authority and this one
+// was left behind, so both halves are pinned here.
+//
+// The refusals matter more than the acceptances, but the acceptances are what
+// keep a tightened check from quietly locking the operator out of their own
+// dashboard — http://[::1]/ sends a bracketed authority with no port at all.
+func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
+	for _, tc := range []struct {
+		host string
+		want bool
+		why  string
+	}{
+		{"127.0.0.1:8787", true, "the address hostveil prints"},
+		{"localhost:8787", true, "how a browser usually says it"},
+		{"[::1]:8787", true, "IPv6 loopback with a port"},
+		{"[::1]", true, "IPv6 loopback with no port, as http://[::1]/ sends it"},
+		{"127.0.0.1", true, "bare loopback, no port"},
+		{"localhost", true, "bare name, no port"},
+		{"127.0.0.1:", true, "empty port addresses the default, not a name"},
+
+		{"evil.example.com", false, "a plain hostile name"},
+		{"localhost.evil.com", false, "a name that merely starts with one of ours"},
+		{"127.0.0.1.evil.example.com", false, "the same trick with the IP"},
+		{"127.0.0.1:8787.evil.example.com", false, "hostile domain smuggled in as the port"},
+		{"localhost:8787.evil.example.com", false, "the same, behind the name"},
+		{"[::1]:evil.example.com", false, "and again behind the IPv6 literal"},
+		{"10.0.0.5:8787", false, "a real address on the LAN"},
+		{"[evil.example.com]", false, "brackets do not make a host loopback"},
+	} {
+		if got := hostAllowed(tc.host); got != tc.want {
+			t.Errorf("hostAllowed(%q) = %v, want %v — %s", tc.host, got, tc.want, tc.why)
+		}
+	}
+}
+
+// And the same authority, refused through the middleware rather than the
+// function, because a guard that is correct but unwired protects nothing.
+func TestAGuestPortSmugglingAHostnameIsRefused(t *testing.T) {
+	s, _ := testServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/result", nil)
+	req.Host = "127.0.0.1:8787.evil.example.com"
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("a hostile domain smuggled in as the port returned %d, want %d",
+			rec.Code, http.StatusForbidden)
+	}
+}
+
 // Moving the palette out of app.css and into a generated stylesheet means the
 // two files now have to agree: every var(--x) the layout reads must be one the
 // theme package declares. A typo, or a variable added to app.css and never to
