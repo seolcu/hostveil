@@ -158,19 +158,44 @@ usual way to get one is the `qemu:///session` trap described above.
 
 **The VM has no internet during `vagrant up` (Linux + libvirt + Docker on the host).**
 If the host also runs Docker, Docker sets the kernel's `FORWARD` policy to
-DROP, which blocks the libvirt VM's NAT traffic (you'll see apt/curl time
-out inside the VM). Allow the VM's bridge to forward and masquerade out:
+DROP, which blocks the libvirt VM's NAT traffic — provisioning dies at the
+Docker install with `curl: (28) ... Timeout was reached`. The giveaway is
+that the VM looks half-connected: DNS resolves and the gateway pings,
+because both are the bridge itself, and everything that has to be *forwarded*
+times out. Allow that bridge to forward:
 
 ```bash
-sudo firewall-cmd --zone="$(firewall-cmd --get-default-zone)" --add-masquerade
-sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -i virbr0 -j ACCEPT
-sudo firewall-cmd --direct --add-rule ipv4 filter FORWARD 0 -o virbr0 -j ACCEPT
+br=$(virsh -c qemu:///system net-dumpxml vagrant-libvirt |
+  sed -n "s/.*<bridge name='\([^']*\)'.*/\1/p")
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 \
+  -i "$br" -j ACCEPT
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 \
+  -o "$br" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+sudo firewall-cmd --reload
 ```
 
-These apply immediately. To keep them across reboots, append `--permanent`
-to each (then `sudo firewall-cmd --reload`). Then re-run `vagrant provision`.
-This does **not** affect teammates using VirtualBox (macOS/Windows), whose
-NAT is independent of the host firewall.
+Then `vagrant provision` to finish the run that failed.
+
+Three things that are easy to get wrong here, and each of them costs you
+another five-minute timeout:
+
+- **It is not `virbr0`.** That is the `default` libvirt network, which this
+  demo does not use — the VM is on `vagrant-libvirt`, usually `virbr1`. Hence
+  reading the name out of the network rather than typing it.
+- **`--permanent` is not optional in practice.** Runtime rules are gone after
+  a reboot, and Docker sets the policy again the moment it starts, so the
+  problem comes back looking brand new.
+- **Inbound is replies only.** This VM publishes an *unauthenticated Docker
+  API* on 2375 — that is the point of `dockerd.api-unauthenticated` — so
+  nothing should be able to open a connection *to* it. Outbound plus
+  `RELATED,ESTABLISHED` is all the provisioning needs. `vagrant ssh` and the
+  forwarded 8787 are unaffected either way: the host sits on that bridge
+  directly, so its own traffic never passes through `FORWARD`.
+
+No masquerade rule is needed. The `vagrant-libvirt` network is
+`forward mode='nat'`, so libvirt already masquerades for it; the only thing
+in the way is the forwarding policy. And none of this affects teammates on
+VirtualBox (macOS/Windows), whose NAT is independent of the host firewall.
 
 ## What's deliberately vulnerable
 

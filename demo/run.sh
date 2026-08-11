@@ -97,7 +97,27 @@ start_stacks() {
 # whatever binary the *first* provision produced, silently testing stale code.
 rebuild() {
   vagrant rsync
-  vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil'
+  vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil' && return 0
+
+  # A build that cannot find its compiler usually means provision.sh never
+  # reached the end — the first `up` timed out installing something, which on
+  # a host running Docker is the norm rather than the exception (see
+  # Troubleshooting in README.md). Vagrant records the VM as provisioned
+  # anyway, so the next `up` skips straight past it and this build is the
+  # first thing to notice, in words about Go. Costs an extra round trip only
+  # on the path that has already failed.
+  vagrant ssh -c 'test -x /usr/local/go/bin/go' >/dev/null 2>&1 && return 1
+  cat >&2 <<'EOF'
+
+There is no Go toolchain in the VM, so provisioning never finished — this is
+a half-built machine, not a build failure. Finish it:
+
+  vagrant provision
+
+If it dies again at a download timing out, the VM has no route to the
+internet: see "The VM has no internet during vagrant up" in demo/README.md.
+EOF
+  exit 1
 }
 
 case "${1:-up}" in
