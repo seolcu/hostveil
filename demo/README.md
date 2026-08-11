@@ -35,8 +35,22 @@ sudo usermod -aG libvirt "$USER"     # then log out/in (or: newgrp libvirt)
 ### macOS / Windows / other Linux (teammates)
 1. Install **Vagrant**: <https://developer.hashicorp.com/vagrant/install>
 2. Install **VirtualBox**: <https://www.virtualbox.org/wiki/Downloads>
+3. `vagrant plugin install vagrant-disksize`
 
 That's it — the same `Vagrantfile` picks libvirt or VirtualBox automatically.
+
+> **On the disk.** The box ships 8.7GB and this demo does not fit: the seven
+> outdated images are 3.8GB and Trivy's vulnerability DB is another 1.2GB. The
+> `Vagrantfile` asks for 24GB, which is sparse and costs what it uses. libvirt
+> does this on its own; VirtualBox needs the plugin above, and without it the
+> demo still comes up but the CVE domain runs out of room — Trivy unpacks an
+> image to scan it, so the two 1.32GB images cannot be scanned at all, and a
+> vulnerability score that skipped the heaviest images is *better* than the
+> truth. hostveil says "partial" when this happens; the number beside it is
+> still wrong.
+>
+> An existing VM keeps the disk it was built with. `./run.sh destroy` then
+> `./run.sh up` to pick up the new size.
 
 > **Apple Silicon (M1–M4) Macs**: VirtualBox/amd64 boxes don't run there.
 > Use a VM tool with an arm64 Ubuntu box (e.g. UTM/qemu or `vagrant` with the

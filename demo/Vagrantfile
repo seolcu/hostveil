@@ -22,12 +22,40 @@ Vagrant.configure("2") do |config|
   config.vm.provider "libvirt" do |lv|
     lv.memory = 2048
     lv.cpus = 2
+
+    # The box ships an 8.7GB disk and this demo does not fit on it. The seven
+    # deliberately-outdated images are 3.8GB, Trivy's vulnerability DB is
+    # another 1.2GB, and Ubuntu and the Go toolchain take most of what is
+    # left — a provisioned VM sat at 95% full with 492MB free.
+    #
+    # That is not merely tight, it silently changes what the demo shows.
+    # Trivy exports an image to a temp file before scanning it, so an image
+    # larger than the free space cannot be scanned at all: jellyfin and
+    # nextcloud are 1.32GB each, and both failed with "no space left on
+    # device" however few scans ran at once. hostveil reported it honestly as
+    # partial coverage — and a vulnerability axis that skipped the two
+    # heaviest images scored *better* than the truth, which is the one thing
+    # a demo of a security tool must not do.
+    #
+    # qcow2 is sparse, so this costs what it uses and not 24GB.
+    lv.machine_virtual_size = 24
   end
 
   config.vm.provider "virtualbox" do |vb|
     vb.name = "hostveil-homelab"
     vb.memory = 2048
     vb.cpus = 2
+  end
+
+  # VirtualBox has no equivalent of machine_virtual_size built in, so the same
+  # disk problem needs a plugin there: `vagrant plugin install vagrant-disksize`.
+  # Guarded rather than required, because an unconditional `config.disksize`
+  # is an unknown-configuration error on every machine that does not have it —
+  # which would break the libvirt path over a setting it does not use. Without
+  # the plugin the demo still comes up; the CVE domain is the part that runs
+  # out of room, and it says so.
+  if Vagrant.has_plugin?("vagrant-disksize")
+    config.disksize.size = "24GB"
   end
 
   # Provision the vulnerable server and build hostveil from /hostveil.
