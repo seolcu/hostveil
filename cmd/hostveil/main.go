@@ -190,7 +190,8 @@ TUI and dashboard flags:
                   nerd draws them from a patched Nerd Font; a terminal cannot
                   be asked what font it has, so this is opt-in. Also on scan,
                   and settable once with HOSTVEIL_GLYPHS.
-  --addr HOST     serve only: address to bind the dashboard to. The dashboard
+  --addr ADDR     serve only: host:port to bind the dashboard to (default
+                  127.0.0.1:8787); the port is not optional. The dashboard
                   answers only requests addressed to localhost, so this cannot
                   publish it to the network; forward the port over SSH instead.
 
