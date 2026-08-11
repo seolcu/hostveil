@@ -391,6 +391,55 @@ func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 	if len(fs) == 0 {
 		return s.dim.Render(truncate("clean", w))
 	}
+
+	// Dropped between terms, never through one — the same call the chip row
+	// makes, and for the same reason: a truncated label is obviously
+	// truncated, while a truncated *count* is a different number. Clipping the
+	// joined row left "9 high · 16 med · 28", which reports 28 of a severity
+	// it does not name and says nothing at all about the one it cut.
+	//
+	// The terms are in most-severe-first order, so what falls off the end is
+	// the level that matters least.
+	parts, sep := m.severityMixParts(fs, compact), s.dim.Render(" · ")
+	if compact {
+		sep = s.dim.Render("·")
+	}
+	row := ""
+	for i, p := range parts {
+		cand := p
+		if i > 0 {
+			cand = sep + p
+		}
+		if lipgloss.Width(row)+lipgloss.Width(cand) > w {
+			break
+		}
+		row += cand
+	}
+	return row
+}
+
+// severityMixRow builds the line without fitting it to anything, which is the
+// only form the width of it can be asked about.
+//
+// Split out because folding the clip into the builder made the question
+// unanswerable: mixIsCompact measured a string that had already been cut to
+// the width it was being compared against, so it was never wider, the rail
+// never fell back, and a mix that did not fit was drawn cut off after
+// "9 high · 16 med · 28" — a count truncated into a different number, which is
+// the one thing this line exists to report.
+func (m *appModel) severityMixRow(fs []model.Finding, compact bool) string {
+	s := m.sty()
+	if compact {
+		return strings.Join(m.severityMixParts(fs, true), s.dim.Render("·"))
+	}
+	return strings.Join(m.severityMixParts(fs, false), s.dim.Render(" · "))
+}
+
+// severityMixParts is one styled term per severity present, most severe
+// first. Kept apart from the joining so the row can be assembled a term at a
+// time when it has to be cut.
+func (m *appModel) severityMixParts(fs []model.Finding, compact bool) []string {
+	s := m.sty()
 	counts := map[model.Severity]int{}
 	for _, f := range fs {
 		counts[f.Severity]++
@@ -409,10 +458,7 @@ func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 		}
 		parts = append(parts, st.Render(fmt.Sprintf("%d %s", n, strings.ToLower(sevAbbr(sev)))))
 	}
-	if compact {
-		return clip(strings.Join(parts, s.dim.Render("·")), w)
-	}
-	return clip(strings.Join(parts, s.dim.Render(" · ")), w)
+	return parts
 }
 
 // mixIsCompact decides the spelling once for the whole rail, rather than each
@@ -426,7 +472,10 @@ func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 // different kind of thing rather than as the same thing abbreviated.
 func (m *appModel) mixIsCompact(byDomain map[model.Source][]model.Finding, w int) bool {
 	for _, fs := range byDomain {
-		if lipgloss.Width(m.severityMix(fs, w, false)) > w {
+		if len(fs) == 0 {
+			continue // "clean" is one word and fits wherever the counts would
+		}
+		if lipgloss.Width(m.severityMixRow(fs, false)) > w {
 			return true
 		}
 	}

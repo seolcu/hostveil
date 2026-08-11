@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
 // summaryReport is a host with a mixed severity spread, some fixable
@@ -450,5 +451,106 @@ func TestTheServiceIsSetFlushRightWhenThereIsRoom(t *testing.T) {
 	narrow := plain(m.findingRow(f, false, 46))
 	if strings.Contains(narrow, "exposed   ") {
 		t.Errorf("a narrow row still spends columns on the gap: %q", narrow)
+	}
+}
+
+// A domain that ran always colors a cell, and a domain that did not never
+// does. These are the two states the whole scanner is built to keep apart —
+// "nothing there" and "I could not look" — and in a six-cell meter filling by
+// score they arrived identical: Container at 0 and a skipped CVE domain both
+// drew six empty cells.
+//
+// Asserted on the string rather than through the model, because the bug was
+// never in the arithmetic. 0 of 6 is correctly zero cells; it is the drawing
+// that had to change.
+func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
+	s := newStyles(theme.Default())
+	const w = 6
+	filled := func(bar string) int { return strings.Count(plain(bar), "█") }
+
+	for _, score := range []uint8{0, 1, 8, 16} {
+		if got := filled(s.meterAtLeastOne(score, w, s.band(score), true)); got < 1 {
+			t.Errorf("an axis that ran and scored %d drew %d filled cells; a domain in "+
+				"the worst shape on the host must not render as an empty track, which "+
+				"is what a skipped domain is drawn as on purpose", score, got)
+		}
+	}
+	if got := filled(s.meterAtLeastOne(0, w, s.cLine, false)); got != 0 {
+		t.Errorf("an axis that did not run drew %d filled cells, want 0 — a skipped "+
+			"domain with ink in its meter reads as a score", got)
+	}
+	// And the floor is a floor, not a rewrite: a real score still fills what
+	// it earned.
+	if got := filled(s.meterAtLeastOne(100, w, s.cSafe, true)); got != w {
+		t.Errorf("a perfect score filled %d of %d cells", got, w)
+	}
+	if got := filled(s.meterAtLeastOne(50, w, s.cMed, true)); got != w/2 {
+		t.Errorf("a half score filled %d of %d cells, want %d", got, w, w/2)
+	}
+}
+
+// The rail's severity mix has two spellings and must never show a third: a
+// count cut off partway is a different number, and this line exists to be read
+// as numbers. "9 high · 16 med · 28 low" clipped to twenty columns is
+// "9 high · 16 med · 28", which says the host has 28 low findings when it has
+// 28 of them and something else entirely about the rest.
+//
+// The spelling is also chosen once for the whole rail rather than per domain,
+// because the busiest domain has the widest counts — so deciding row by row
+// abbreviated exactly the first row and left the eleven under it long.
+func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
+	m := modeModels(150, 30)["list"]
+	var fs []model.Finding
+	for range 9 {
+		fs = append(fs, model.Finding{Severity: model.SeverityHigh})
+	}
+	for range 16 {
+		fs = append(fs, model.Finding{Severity: model.SeverityMedium})
+	}
+	for range 28 {
+		fs = append(fs, model.Finding{Severity: model.SeverityLow})
+	}
+	byDomain := map[model.Source][]model.Finding{model.SourceCompose: fs}
+
+	// Every term the two spellings can produce. Anything the rail draws has to
+	// be one of these, whole — dropping "28 low" off the end is fine, printing
+	// "28" is not.
+	whole := map[string]bool{
+		"9 high": true, "16 med": true, "28 low": true,
+		"9H": true, "16M": true, "28L": true,
+	}
+	for w := 6; w <= 40; w++ {
+		compact := m.mixIsCompact(byDomain, w)
+		got := plain(m.severityMix(fs, w, compact))
+		if lipgloss.Width(got) > w {
+			t.Errorf("at %d columns the mix is %d wide: %q", w, lipgloss.Width(got), got)
+		}
+		if got == "" {
+			continue // nothing fits; an empty line beats a wrong number
+		}
+		sep := " · "
+		if compact {
+			sep = "·"
+		}
+		for _, term := range strings.Split(got, sep) {
+			if !whole[term] {
+				t.Errorf("at %d columns the mix rendered %q, whose term %q is not a "+
+					"complete count — a count cut in half reads as a number the host "+
+					"does not have", w, got, term)
+			}
+		}
+		if compact && lipgloss.Width("9 high · 16 med · 28 low") <= w {
+			t.Errorf("at %d columns the mix abbreviated with room for the long form", w)
+		}
+		// The point of choosing a spelling is that the short one says
+		// everything the long one does in less room. Where the short form fits
+		// and the long one does not, the rail has to switch — dropping "28
+		// low" to keep the long spelling hides a level it had room to report.
+		if w >= lipgloss.Width("9H·16M·28L") && w < lipgloss.Width("9 high · 16 med · 28 low") {
+			if n := len(strings.Split(got, sep)); n != 3 {
+				t.Errorf("at %d columns the mix showed %d of 3 levels (%q); the short "+
+					"spelling fits and reports all three", w, n, got)
+			}
+		}
 	}
 }
