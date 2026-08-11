@@ -79,7 +79,11 @@ func TestFooterIsPinned(t *testing.T) {
 	}
 	for name, m := range modeModels(100, 34) {
 		lines := strings.Split(m.View().Content, "\n")
-		last := lines[len(lines)-1]
+		// Compared without styling: the key in each hint is drawn in the
+		// accent and its description in slate, so the row is a run of escape
+		// sequences with the words spread through it. What is being asserted
+		// is where the hints are, not what colour they came out.
+		last := plain(lines[len(lines)-1])
 		if !strings.Contains(last, want[name]) {
 			t.Errorf("%s: last row should end the key hints (%q), got %q", name, want[name], last)
 		}

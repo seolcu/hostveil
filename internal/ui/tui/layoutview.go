@@ -271,6 +271,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	// every real host the reason was the thing that dropped out, in the one
 	// arrangement whose whole claim is that it carries it.
 	dense := 1+2*len(axes) <= budget
+	compactMix := m.mixIsCompact(byDomain, w-4)
 
 	// Built per domain and flattened afterwards, so a rail that does not fit
 	// is cut between domains and can say how many whole ones it dropped. Cut
@@ -286,7 +287,7 @@ func (m *appModel) railRows(w, budget int) []string {
 		// attribute does not survive a screenshot or a pipe.
 		marker := "  "
 		if on {
-			marker = s.bone.Render(m.gl.Of(glyph.Cursor) + " ")
+			marker = s.accent.Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 
 		val := "N/A"
@@ -325,7 +326,13 @@ func (m *appModel) railRows(w, budget int) []string {
 			if ax.Applicable {
 				pct, c = min(ax.Score, 100), s.band(ax.Score)
 			}
-			row += " " + s.meter(pct, meterW, c)
+			row += " " + s.meterAtLeastOne(pct, meterW, c, ax.Applicable)
+		}
+		// The number takes its band's color rather than plain bone. A meter
+		// six cells wide cannot separate 0 from 8, and those are the domains
+		// worth looking at first; the digits can, and they are already there.
+		if ax.Applicable {
+			valStyle = lipgloss.NewStyle().Foreground(s.band(ax.Score))
 		}
 		row += valStyle.Render(fmt.Sprintf("%*s", valW, val))
 
@@ -335,7 +342,13 @@ func (m *appModel) railRows(w, budget int) []string {
 			block = append(block, s.dim.Render(truncate("  "+strings.ToLower(state[ax.Source].String())+
 				" — "+reasonOr(reason[ax.Source], "did not run"), w)))
 		case dense:
-			block = append(block, "  "+m.severityMix(byDomain[ax.Source], w-2))
+			// Indented one step past the domain name it belongs to. The rail
+			// is twelve domains of two rows each with nothing between them,
+			// and at the same indent the pairs did not read as pairs — the
+			// mix line looked like another domain whose name happened to be a
+			// list of numbers. Two columns is the cheapest hierarchy there
+			// is, and the only one the row budget can afford.
+			block = append(block, "    "+m.severityMix(byDomain[ax.Source], w-4, compactMix))
 		}
 		blocks = append(blocks, block)
 	}
@@ -348,7 +361,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	if lipgloss.Width(head) > w {
 		head = fmt.Sprintf("DOMAINS · %d", len(all))
 	}
-	out := []string{s.dim.Render(truncate(head, w))}
+	out := []string{s.accent.Render(truncate(head, w))}
 	for i, b := range blocks {
 		// Truncating the rail is the last resort, and it says so: a rail that
 		// simply stopped would read as a host with six domains.
@@ -373,7 +386,7 @@ func (m *appModel) railRows(w, budget int) []string {
 // what the rail was widened to hold. Below that it falls back to "3H·1M·2L",
 // because a mix cut off after "3 high · 1 m" has lost the count it was
 // drawn for, and one letter per level still reads.
-func (m *appModel) severityMix(fs []model.Finding, w int) string {
+func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 	s := m.sty()
 	if len(fs) == 0 {
 		return s.dim.Render(truncate("clean", w))
@@ -383,20 +396,41 @@ func (m *appModel) severityMix(fs []model.Finding, w int) string {
 		counts[f.Severity]++
 	}
 
-	var full, compact []string
+	var parts []string
 	for _, sev := range model.AllSeverities() {
 		n := counts[sev]
 		if n == 0 {
 			continue
 		}
 		st := lipgloss.NewStyle().Foreground(s.severityColor(sev))
-		full = append(full, st.Render(fmt.Sprintf("%d %s", n, strings.ToLower(sevAbbr(sev)))))
-		compact = append(compact, st.Render(strconv.Itoa(n)+string([]rune(sevAbbr(sev))[0])))
+		if compact {
+			parts = append(parts, st.Render(strconv.Itoa(n)+string([]rune(sevAbbr(sev))[0])))
+			continue
+		}
+		parts = append(parts, st.Render(fmt.Sprintf("%d %s", n, strings.ToLower(sevAbbr(sev)))))
 	}
-	if row := strings.Join(full, s.dim.Render(" · ")); lipgloss.Width(row) <= w {
-		return row
+	if compact {
+		return clip(strings.Join(parts, s.dim.Render("·")), w)
 	}
-	return clip(strings.Join(compact, s.dim.Render("·")), w)
+	return clip(strings.Join(parts, s.dim.Render(" · ")), w)
+}
+
+// mixIsCompact decides the spelling once for the whole rail, rather than each
+// domain choosing for itself.
+//
+// Deciding per domain is what shipped, and it made the rail's *first* row the
+// odd one out on every host that has one: the busiest domain has the widest
+// counts, so it was the one that overflowed and fell back, and the top of the
+// column read "9H·16M·28L" over eleven rows of "2 high · 1 med · 3 low". The
+// eye reads a column by its shape, and one row in a different shape reads as a
+// different kind of thing rather than as the same thing abbreviated.
+func (m *appModel) mixIsCompact(byDomain map[model.Source][]model.Finding, w int) bool {
+	for _, fs := range byDomain {
+		if lipgloss.Width(m.severityMix(fs, w, false)) > w {
+			return true
+		}
+	}
+	return false
 }
 
 // --- spark strip (B · Triage, I · Inline) ---

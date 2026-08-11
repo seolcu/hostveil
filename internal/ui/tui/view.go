@@ -25,15 +25,16 @@ import (
 // internal/ui/theme — one registry, shared with the dashboard — and a themed
 // TUI needs to rebuild them at runtime, which a package var cannot do.
 type styles struct {
-	cInk   color.Color
-	cLine  color.Color
-	cBone  color.Color
-	cSlate color.Color
-	cCrit  color.Color
-	cHigh  color.Color
-	cMed   color.Color
-	cLow   color.Color
-	cSafe  color.Color
+	cInk    color.Color
+	cLine   color.Color
+	cBone   color.Color
+	cSlate  color.Color
+	cCrit   color.Color
+	cHigh   color.Color
+	cMed    color.Color
+	cLow    color.Color
+	cSafe   color.Color
+	cAccent color.Color
 
 	bone  lipgloss.Style
 	dim   lipgloss.Style
@@ -41,21 +42,27 @@ type styles struct {
 	brand lipgloss.Style
 	sel   lipgloss.Style
 	track lipgloss.Style
+	// accent draws structure: which panel this is, where the cursor is, and
+	// which key does the thing. Never risk — the heats own that, and a header
+	// that borrowed one would be claiming the panel is dangerous.
+	accent lipgloss.Style
 }
 
 func newStyles(t theme.Theme) *styles {
 	p := t.Palette
 	s := &styles{
-		cInk:   lipgloss.Color(p.Ink),
-		cLine:  lipgloss.Color(p.Line2),
-		cBone:  lipgloss.Color(p.Bone),
-		cSlate: lipgloss.Color(p.Slate),
-		cCrit:  lipgloss.Color(p.Crit),
-		cHigh:  lipgloss.Color(p.High),
-		cMed:   lipgloss.Color(p.Med),
-		cLow:   lipgloss.Color(p.Low),
-		cSafe:  lipgloss.Color(p.Safe),
+		cInk:    lipgloss.Color(p.Ink),
+		cLine:   lipgloss.Color(p.Line2),
+		cBone:   lipgloss.Color(p.Bone),
+		cSlate:  lipgloss.Color(p.Slate),
+		cCrit:   lipgloss.Color(p.Crit),
+		cHigh:   lipgloss.Color(p.High),
+		cMed:    lipgloss.Color(p.Med),
+		cLow:    lipgloss.Color(p.Low),
+		cSafe:   lipgloss.Color(p.Safe),
+		cAccent: lipgloss.Color(p.Accent),
 	}
+	s.accent = lipgloss.NewStyle().Foreground(s.cAccent)
 	s.bone = lipgloss.NewStyle().Foreground(s.cBone)
 	s.dim = lipgloss.NewStyle().Foreground(s.cSlate)
 	s.safe = lipgloss.NewStyle().Foreground(s.cSafe)
@@ -113,6 +120,27 @@ func (s *styles) band(v uint8) color.Color {
 	default:
 		return s.cCrit
 	}
+}
+
+// meterAtLeastOne is meter, except that a domain which ran always colors at
+// least one cell.
+//
+// The rail's meters fill by score, so the domains in the worst shape drew the
+// least ink: on a real host, Container at 0, Dockerd at 10 and CVEs at 16
+// filled nothing of six cells while the two clean domains filled all six in
+// green. Scanning the rail, the eye landed on what was fine. Worse, an empty
+// track is what a *skipped* domain is drawn as deliberately — so the two
+// states the whole scanner exists to keep apart, "nothing there" and "I could
+// not look", arrived as the same row.
+//
+// One cell is enough to separate them and does not overstate the score: the
+// number beside it carries the value, and it is now drawn in the same band
+// color.
+func (s *styles) meterAtLeastOne(pct uint8, width int, c color.Color, ran bool) string {
+	if ran && width > 0 && int(pct)*width/100 == 0 {
+		pct = uint8(min(100, (100+width-1)/width))
+	}
+	return s.meter(pct, width, c)
 }
 
 // meter renders a segmented bar: filled blocks in c, empty in the track.
@@ -530,7 +558,7 @@ func (m *appModel) listColumn(budget, w int) []string {
 		if t := m.activeTotal(); t != len(m.active) {
 			count = fmt.Sprintf("FINDINGS · %d/%d", len(m.active), t)
 		}
-		h := s.dim.Render(count)
+		h := s.accent.Render(count)
 		if n := len(m.selected); n > 0 {
 			h += s.safe.Render(fmt.Sprintf("   %s %d marked", m.gl.Of(glyph.OK), n))
 		}
@@ -647,7 +675,12 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		if m.selected[f.Key()] {
 			mark = s.safe.Render(padRight(m.gl.Of(glyph.OK)+" ", markW))
 		} else {
-			mark = s.dim.Render(padRight("· ", markW))
+			// Safe, not slate. The dot means hostveil can fix this row by
+			// itself, which is the same claim the FIXABLE chip makes and
+			// spends the same color on — and drawn in the muted grey it was
+			// the only mark on the screen that said something while looking
+			// like it did not.
+			mark = s.safe.Render(padRight("· ", markW))
 		}
 	}
 	sev := sevAbbr(f.Severity)
@@ -1053,7 +1086,7 @@ func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
 	out = append(out, s.dim.Render(truncate(meta, w)), "")
 	out = append(out, styledRows(s.bone, wrap(f.Description, w))...)
 	if f.HowToFix != "" {
-		out = append(out, "", s.dim.Render("HOW TO FIX"))
+		out = append(out, "", s.accent.Render("HOW TO FIX"))
 		out = append(out, styledRows(s.bone, wrap(f.HowToFix, w))...)
 	}
 	// Under the instructions, not above them: a reader with no fix button
@@ -1061,11 +1094,11 @@ func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
 	// second. Dim, because it explains an absence rather than asking for
 	// anything.
 	if f.WhyNoFix != "" {
-		out = append(out, "", s.dim.Render("WHY THERE IS NO FIX BUTTON"))
+		out = append(out, "", s.accent.Render("WHY THERE IS NO FIX BUTTON"))
 		out = append(out, styledRows(s.dim, wrap(f.WhyNoFix, w))...)
 	}
 	if m.aiBusy || m.aiText != "" || m.aiErr != "" {
-		out = append(out, "", s.dim.Render("AI EXPLANATION (ADVISORY)"))
+		out = append(out, "", s.accent.Render("AI EXPLANATION (ADVISORY)"))
 		switch {
 		case m.aiBusy:
 			out = append(out, s.dim.Render("asking the local AI model…"))

@@ -1,9 +1,14 @@
 // Package theme is the single source of truth for hostveil's colors.
 //
-// hostveil's design system is a monochrome console — bone text on ink,
-// all-monospace, dense — where the ONLY things that carry color are risk
-// (severity) and safety. A theme swaps the twelve hexes that system is drawn
-// from; it does not change what any of them mean.
+// hostveil's design system is a near-monochrome console — bone text on ink,
+// all-monospace, dense — where the only things that carry color are risk
+// (severity), safety, and structure. A theme swaps the thirteen hexes that
+// system is drawn from; it does not change what any of them mean.
+//
+// Structure is the newest of the three and the narrowest: which panel this
+// is, where the cursor is, which key does the thing. It is drawn in Accent
+// and never in a heat, because a header that borrowed one would be saying the
+// panel is dangerous.
 //
 // The palettes used to be written down twice, as lipgloss colors in the TUI
 // and as CSS custom properties in the web dashboard, each file claiming in a
@@ -22,29 +27,41 @@ import (
 	"strings"
 )
 
-// Palette is the twelve semantic roles the design system draws from.
+// Palette is the thirteen semantic roles the design system draws from.
 // Every value is a lowercase "#rrggbb" string.
 //
 // Ink/Ink2/Ink3 are the background and its two raised surfaces; Line and
 // Line2 are hairlines, with Line2 doubling as the selection ground; Bone and
-// Slate are primary and muted text. The remaining five are the only ones
-// that mean anything: four heats and safety. Only three of the heats carry a
-// severity — the fourth serves the score bands, which have four — so do not
-// read this list as one colour per level. severityColor in internal/ui/tui
-// is where that mapping actually lives.
+// Slate are primary and muted text. The remaining six are the only ones
+// that mean anything: four heats, safety, and structure. Only three of the
+// heats carry a severity — the fourth serves the score bands, which have four
+// — so do not read this list as one colour per level. severityColor in
+// internal/ui/tui is where that mapping actually lives.
+//
+// Accent is the newest and the one that changed the rule above it. This
+// system was monochrome-plus-risk: color meant danger or safety and nothing
+// else, and every navigational thing on screen — panel headers, the key
+// letters in the footer, the marker on the filtered domain — was drawn in the
+// same muted grey as the text it was meant to be distinguished from. That is
+// defensible as a principle and it read as an absence, particularly at 256
+// colors where the cool greys a theme is recognised by all flatten to neutral.
+// Accent is each theme's own blue, spent only on structure: where you are and
+// how to move, never how bad something is. Risk and safety keep their
+// monopoly on the heats.
 type Palette struct {
-	Ink   string
-	Ink2  string
-	Ink3  string
-	Line  string
-	Line2 string
-	Bone  string
-	Slate string
-	Crit  string
-	High  string
-	Med   string
-	Low   string
-	Safe  string
+	Ink    string
+	Ink2   string
+	Ink3   string
+	Line   string
+	Line2  string
+	Bone   string
+	Slate  string
+	Crit   string
+	High   string
+	Med    string
+	Low    string
+	Safe   string
+	Accent string
 }
 
 // Theme is a named palette. ID is what a user types (--theme, HOSTVEIL_THEME,
@@ -63,7 +80,7 @@ var themes = []Theme{
 		ID:   "onedark",
 		Name: "One Dark",
 		Palette: Palette{
-			// Atom's One Dark. Eight of the twelve roles map onto its
+			// Atom's One Dark. Eight of the thirteen roles map onto its
 			// published values unchanged; the other four needed a decision.
 			// (Three of the four are the contrast lifts below; the fourth is
 			// Bone, which is a judgement rather than a floor. This said
@@ -88,11 +105,18 @@ var themes = []Theme{
 			// that one is a judgement rather than a floor: an editor sets a few
 			// hundred glyphs on screen and this sets thousands, and at editor
 			// weight the denser view reads grey rather than written.
+			//
+			// Crit carries a second lift, for the quantiser rather than for a
+			// human eye. At #e17079 it fell off the colour cube entirely and
+			// came out as xterm 246 — a flat grey — on every terminal without
+			// truecolor, which over SSH is nearly all of them. High severity,
+			// the level that means reachable now from off the host, was drawn
+			// in a grey. See TestEveryHeatSurvivesA256ColorTerminal.
 			Ink: "#282c34", Ink2: "#21252b", Ink3: "#2f343f",
 			Line: "#181a1f", Line2: "#3e4451",
 			Bone: "#c8ccd4", Slate: "#8e939b",
-			Crit: "#e17079", High: "#d19a66", Med: "#e5c07b", Low: "#79808e",
-			Safe: "#98c379",
+			Crit: "#ed7379", High: "#d19a66", Med: "#e5c07b", Low: "#79808e",
+			Safe: "#98c379", Accent: "#61afef",
 		},
 	},
 	{
@@ -105,7 +129,7 @@ var themes = []Theme{
 			// Gruvbox's bright red and its "gray" both sit a step below the
 			// contrast floor on the raised surface; lifted just past it.
 			Crit: "#fb533f", High: "#fe8019", Med: "#fabd2f", Low: "#877a6f",
-			Safe: "#b8bb26",
+			Safe: "#b8bb26", Accent: "#83a598",
 		},
 	},
 	{
@@ -119,11 +143,17 @@ var themes = []Theme{
 			// down one step instead: #2e3440 becomes the raised surface and
 			// the page sits below it, which buys enough room to keep Aurora
 			// orange, yellow and green exactly as published.
+			//
+			// Slate is nudged six units greener than Nord's own muted blue.
+			// It and Low both quantised to xterm 103 — muted text and a Low
+			// finding rendered as one pixel value on any terminal short of
+			// truecolor. The quieter of the two keeps its published value and
+			// the text moves, since Low's whole job is to sit still.
 			Ink: "#22262e", Ink2: "#2a2f3a", Ink3: "#2e3440",
 			Line: "#3b4252", Line2: "#4c566a",
-			Bone: "#eceff4", Slate: "#8d96af",
+			Bone: "#eceff4", Slate: "#8d9caf",
 			Crit: "#cf818a", High: "#d08770", Med: "#ebcb8b", Low: "#76839d",
-			Safe: "#a3be8c",
+			Safe: "#a3be8c", Accent: "#88c0d0",
 		},
 	},
 	{
@@ -134,7 +164,7 @@ var themes = []Theme{
 			Line: "#313244", Line2: "#45475a",
 			Bone: "#cdd6f4", Slate: "#9399b2",
 			Crit: "#f38ba8", High: "#fab387", Med: "#f9e2af", Low: "#6f7389",
-			Safe: "#a6e3a1",
+			Safe: "#a6e3a1", Accent: "#89b4fa",
 		},
 	},
 	{
@@ -144,8 +174,13 @@ var themes = []Theme{
 			Ink: "#1a1b26", Ink2: "#16161e", Ink3: "#24283b",
 			Line: "#292e42", Line2: "#3b4261",
 			Bone: "#c0caf5", Slate: "#9aa5ce",
+			// The accent is nine units bluer than Tokyo Night's published blue,
+			// which quantised one index off this theme's own muted text — two
+			// cube entries differing in a single channel, so the colour that
+			// says "here is how to move" and the colour that says "you may
+			// skip this" arrived the same.
 			Crit: "#f7768e", High: "#ff9e64", Med: "#e0af68", Low: "#676ea1",
-			Safe: "#9ece6a",
+			Safe: "#9ece6a", Accent: "#71a2f7",
 		},
 	},
 }
@@ -187,7 +222,7 @@ func (p Palette) vars() map[string]string {
 		"--line": p.Line, "--line-2": p.Line2,
 		"--bone": p.Bone, "--slate": p.Slate,
 		"--crit": p.Crit, "--high": p.High, "--med": p.Med, "--low": p.Low,
-		"--safe": p.Safe,
+		"--safe": p.Safe, "--accent": p.Accent,
 	}
 }
 

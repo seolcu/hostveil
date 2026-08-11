@@ -57,12 +57,17 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 		"bone": 4.5, "slate": 4.5,
 		"crit": 4.5, "high": 4.5, "med": 4.5, "safe": 4.5,
 		"low": 3.5,
+		// The accent is set on panel headers and on the key letters in the
+		// footer — small text a reader is meant to pick out of a dim row, so
+		// it takes the normal-text floor and not Low's exception.
+		"accent": 4.5,
 	}
 	for _, th := range All() {
 		p := th.Palette
 		roles := map[string]string{
 			"bone": p.Bone, "slate": p.Slate,
 			"crit": p.Crit, "high": p.High, "med": p.Med, "low": p.Low, "safe": p.Safe,
+			"accent": p.Accent,
 		}
 		// Both grounds a finding is ever drawn on: the page and the raised
 		// surface used by hovered/selected rows and the fix preview box.
