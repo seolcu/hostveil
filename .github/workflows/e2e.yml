@@ -222,12 +222,26 @@ jobs:
           # expected, not a failure.
           hostveil scan --json > /tmp/scan3.json || true
 
+          # Nothing below is worth anything if the selection matches no
+          # domain, so the count is asserted first. ScanState marshals as its
+          # name, and this step used to select on the ordinal instead: once
+          # #656 changed the encoding that matched nothing, `bad` was empty
+          # however the scan turned out, and a step named for the invariant
+          # went on passing without ever testing it. There is no Docker and no
+          # Trivy here, so at least one domain is always Skipped — if none is,
+          # the report changed shape and this step is looking at the wrong
+          # thing. internal/docs/e2e_test.go pins the literal below against
+          # what the model actually writes.
+          skipped=$(jq '[.domains[] | select(.state == "skipped")] | length' /tmp/scan3.json)
+          test "$skipped" -gt 0 || {
+            echo "no domain reported Skipped, so this step asserts nothing"; exit 1; }
+
           # Every domain reported Skipped must have a non-applicable axis. A
           # skipped domain scored 100 is the failure this whole invariant
           # exists to prevent, and it is invisible in the printed report.
           bad=$(jq -r '
             (.score.axes | map({key: (.source|tostring), value: .}) | from_entries) as $ax
-            | .domains[] | select(.state == 3)
+            | .domains[] | select(.state == "skipped")
             | select($ax[(.source|tostring)].applicable)
             | .source' /tmp/scan3.json)
           test -z "$bad" || { echo "skipped domains still scored: $bad"; exit 1; }

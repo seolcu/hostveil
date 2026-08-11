@@ -18,6 +18,9 @@ export VAGRANT_CWD="$PWD"
 # Bring every stack up inside the VM (idempotent). Stacks have no restart
 # policy on purpose, so they need starting after each boot.
 start_stacks() {
+  # Single quotes on purpose: $d is the guest's loop variable and must reach
+  # the guest shell unexpanded. Expanding it here would send one empty path.
+  # shellcheck disable=SC2016
   vagrant ssh -c 'for d in /opt/stacks/*/; do (cd "$d" && sudo docker compose up -d); done' 2>/dev/null
 }
 

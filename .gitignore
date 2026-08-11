@@ -22,3 +22,4 @@ test-results/
 # commit because nothing here excluded it.
 __pycache__/
 *.py[cod]
+reports/
