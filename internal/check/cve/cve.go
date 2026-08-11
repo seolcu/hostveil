@@ -151,6 +151,73 @@ type target struct {
 // load spike.
 const scanParallelism = 4
 
+// dbTimeout bounds the one-off vulnerability-DB download in warmCache. It is
+// the same budget a single image scan gets, because on a cold cache that is
+// most of what an image scan spends its time on.
+const dbTimeout = 5 * time.Minute
+
+// memoryCache makes a Trivy process keep its analysis cache to itself instead
+// of in the shared directory, which is what allows more than one of them to
+// run at a time.
+//
+// Trivy's filesystem cache is a single-writer BoltDB. Two processes that both
+// want it is not a rare interleaving — it is the ordinary case when four start
+// together, and the loser does not degrade, it exits: "unable to initialize fs
+// cache: cache may be in use by another process". So the parallelism above was
+// quietly costing coverage on every scan it sped up.
+//
+// The damage is not that findings go missing. It is that they go missing in
+// the flattering direction: an image that could not be scanned contributes no
+// vulnerabilities, so the axis reads *better* the less of the host it saw. The
+// demo VM's vulnerability axis scored 44/100 on a run that reached 1 of its 7
+// images, 25/100 on a run that reached 3, and 16/100 — the truth — on the run
+// that reached all seven.
+//
+// hostveil said "partial" every time, which is the coverage machinery working
+// exactly as designed: a domain that could not look never claims it found
+// nothing. But a Degraded axis is still scored, deliberately, so the honest
+// flag sat beside a number that was wrong by 28 points.
+//
+// Warming the cache first is the obvious fix and it is not enough. Four
+// concurrent scans on that host, controlled for image set and run against an
+// already-populated cache:
+//
+//	shared cache   3 of 4 succeed   one exits on the lock
+//	this commit    4 of 4
+//
+// because the contention is over the lock rather than over the contents.
+var memoryCache = []string{"--cache-backend", "memory"}
+
+// warmCache downloads the vulnerability DB before the fan-out, and reports
+// whether Trivy accepted the memory cache backend.
+//
+// Both halves are needed and neither is sufficient. Without the DB on disk,
+// four scans race to download it and *all four* fail, memory backend or not —
+// the backend only decides where an image's analysis goes, and the DB is
+// shared either way. Without the memory backend, they race for the cache lock.
+//
+// It doubles as the capability probe, which is why it carries the flag it is
+// testing: `--cache-backend` is marked experimental, `memory` is newer than
+// the flag itself, and an unsupported value fails immediately and legibly
+// ("unknown cache type"). Nothing here can tell that apart from a download
+// that failed for want of a network, and it does not need to — either way the
+// fast path is not available, and the caller falls back to scanning one image
+// at a time, which is correct on every version of Trivy there has ever been.
+// Downloading the DB with the flag set is safe: the backend governs the
+// analysis cache only, and the DB still lands on disk where the scans will
+// find it.
+//
+// Costs 45ms once the DB is present.
+func warmCache(ctx context.Context, r platform.CommandRunner) error {
+	ctx, cancel := context.WithTimeout(ctx, dbTimeout+time.Minute)
+	defer cancel()
+
+	args := append([]string{"image", "--download-db-only",
+		"--timeout", dbTimeout.String(), "--quiet", "--no-progress"}, memoryCache...)
+	_, err := r.Run(ctx, "trivy", args...)
+	return err
+}
+
 // scanAll scans every target with bounded concurrency and returns the merged
 // findings, how many failed, and the first failure in target order.
 //
@@ -165,8 +232,21 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 	}
 	results := make([]result, len(targets))
 
+	// One target races nothing, so it takes the plain path: the shared cache
+	// it populates is the one a later scan of the same image will reuse.
+	//
+	// For more than one, the fast path has to be earned. Where Trivy will not
+	// give both halves of it, the scans go one at a time rather than four at
+	// a time into a lock they cannot share — slower than this domain was
+	// yesterday, and the first version of it that reports what it actually
+	// examined.
+	cacheArgs, parallelism := []string(nil), 1
+	if len(targets) > 1 && warmCache(ctx, r) == nil {
+		cacheArgs, parallelism = memoryCache, scanParallelism
+	}
+
 	var wg sync.WaitGroup
-	slots := make(chan struct{}, scanParallelism)
+	slots := make(chan struct{}, parallelism)
 	for i, t := range targets {
 		wg.Add(1)
 		go func() {
@@ -174,7 +254,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 			slots <- struct{}{}
 			defer func() { <-slots }()
 
-			fs, err := scanImage(ctx, r, t.image, t.service, t.file, t.project)
+			fs, err := scanImage(ctx, r, cacheArgs, t.image, t.service, t.file, t.project)
 			if err == nil && t.standalone {
 				fs = demoteToManual(fs)
 			}
@@ -250,14 +330,18 @@ func demoteToManual(fs []model.Finding) []model.Finding {
 	return fs
 }
 
-func scanImage(ctx context.Context, r platform.CommandRunner, image, service, file, project string) ([]model.Finding, error) {
+// scanImage scans one image. cacheArgs is the cache-backend selection scanAll
+// settled on for this run, empty where the scans are running one at a time and
+// the shared cache is safe to use.
+func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string, image, service, file, project string) ([]model.Finding, error) {
 	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
 	defer cancel()
 
-	out, err := r.Run(ctx, "trivy", "image",
+	args := append([]string{"image",
 		"--severity", "CRITICAL,HIGH,MEDIUM",
 		"--timeout", imageTimeout.String(),
-		"--format", "json", "--quiet", "--no-progress", image)
+		"--format", "json", "--quiet", "--no-progress"}, cacheArgs...)
+	out, err := r.Run(ctx, "trivy", append(args, image)...)
 	if err != nil {
 		return nil, err
 	}

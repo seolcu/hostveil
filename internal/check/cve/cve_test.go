@@ -63,6 +63,9 @@ type scriptRunner struct {
 	psErr    bool
 	trivy    map[string]string // image → JSON output
 	trivyErr map[string]bool   // image → fail
+	// warmErr fails the vulnerability-DB download, which is what an
+	// air-gapped host with a hand-seeded DB looks like.
+	warmErr bool
 
 	// The checker scans images concurrently, so this fake is called from
 	// several goroutines at once. Only the recording needs guarding — the
@@ -70,6 +73,10 @@ type scriptRunner struct {
 	// it. The real DefaultRunner is stateless and needs none of this.
 	mu   sync.Mutex
 	argv []string // the last trivy argv, for flag assertions
+	// calls records every trivy invocation in order: "warm" for the DB
+	// download, the image name for a scan. The order is the point — the
+	// download has to finish before the first scan starts.
+	calls []string
 }
 
 // lastArgv returns the most recent trivy invocation's arguments.
@@ -77,6 +84,13 @@ func (s *scriptRunner) lastArgv() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return slices.Clone(s.argv)
+}
+
+// trivyCalls returns what trivy was asked to do, in order.
+func (s *scriptRunner) trivyCalls() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.calls)
 }
 
 func (s *scriptRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
@@ -95,11 +109,20 @@ func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]by
 		return []byte(s.psIDs), nil
 	case name == "docker" && args[0] == "inspect":
 		return []byte(s.inspectJSON), nil
+	case name == "trivy" && slices.Contains(args, "--download-db-only"):
+		s.mu.Lock()
+		s.calls = append(s.calls, "warm")
+		s.mu.Unlock()
+		if s.warmErr {
+			return nil, errors.New("failed to download vulnerability DB")
+		}
+		return nil, nil
 	case name == "trivy":
+		image := args[len(args)-1]
 		s.mu.Lock()
 		s.argv = args
+		s.calls = append(s.calls, image)
 		s.mu.Unlock()
-		image := args[len(args)-1]
 		if s.trivyErr[image] {
 			return nil, errors.New("failed to download vulnerability DB")
 		}
@@ -129,6 +152,67 @@ const oneVuln = `{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2021-12
 
 // Some images unscannable is Degraded: the findings we did get are real and
 // worth keeping, but the picture is incomplete and must say so.
+// Concurrent Trivy processes cannot share one cache directory, and this
+// checker starts four. Both halves of the fix are pinned here because either
+// one alone leaves the scan failing: without the DB downloaded first, all four
+// race to fetch it and all four die; without a private analysis cache, they
+// race for its lock and most die. On the demo VM that showed up as 1 of 7
+// images covered and a vulnerability axis of 44/100 where the truth was 16 —
+// wrong in the flattering direction, because an image that could not be
+// scanned contributes no vulnerabilities.
+//
+// Order is asserted, not just presence. A DB download that happens somewhere
+// in the middle of the fan-out prevents nothing.
+func TestConcurrentScansDoNotShareOneTrivyCache(t *testing.T) {
+	r := composeProject(t)
+	r.trivy["redis:7"] = oneVuln
+	r.trivy["postgres:13"] = oneVuln
+
+	if _, err := New().Check(context.Background(), platform.Env{Runner: r}); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+
+	calls := r.trivyCalls()
+	if len(calls) == 0 || calls[0] != "warm" {
+		t.Fatalf("trivy was called as %v; the DB download has to come first, or "+
+			"the image scans race to fetch it and every one of them fails", calls)
+	}
+	if slices.Contains(calls[1:], "warm") {
+		t.Errorf("the DB was downloaded more than once: %v", calls)
+	}
+	if argv := r.lastArgv(); !slices.Contains(argv, "--cache-backend") {
+		t.Errorf("image scans ran as %v, with no private analysis cache; four of "+
+			"those at once contend for one BoltDB lock and the losers exit", argv)
+	}
+}
+
+// The fast path is not available on every Trivy: `--cache-backend` is
+// experimental and `memory` is newer than the flag. An unsupported value fails
+// the warm-up exactly like a host with no network does, and nothing here can
+// tell those apart — so both fall back to scanning one image at a time, which
+// no version of Trivy has ever had trouble with.
+//
+// Treating the warm-up as a dependency instead would turn a working offline
+// scan into no scan at all: a bigger hole than the one being closed.
+func TestAFailedWarmUpScansSeriallyRatherThanNotAtAll(t *testing.T) {
+	r := composeProject(t)
+	r.warmErr = true
+	r.trivy["redis:7"] = oneVuln
+	r.trivy["postgres:13"] = oneVuln
+
+	findings, err := New().Check(context.Background(), platform.Env{Runner: r})
+	if err != nil {
+		t.Fatalf("a failed warm-up stopped the scan: %v", err)
+	}
+	if len(findings) == 0 {
+		t.Fatal("no findings; the images were never scanned after the warm-up failed")
+	}
+	if argv := r.lastArgv(); slices.Contains(argv, "--cache-backend") {
+		t.Errorf("image scans ran as %v; the flag the warm-up just failed on must "+
+			"not be handed to the scans, or a Trivy that rejects it fails them all", argv)
+	}
+}
+
 func TestCVEPartialScanIsDegraded(t *testing.T) {
 	r := composeProject(t)
 	r.trivy["redis:7"] = oneVuln
