@@ -2,6 +2,65 @@
 
 ## Unreleased
 
+## [3.14.3](https://github.com/seolcu/hostveil/compare/v3.14.2...v3.14.3) (2026-08-12)
+
+The terminal UI, on the terminals it is actually used from. A screenshot of a
+scan over SSH had 42 High findings on it and not one red pixel, and working
+out why turned up three defects and one thing the palette had never been held
+to.
+
+### Bug Fixes
+
+* **ui:** High severity was drawn in grey on every terminal that is not
+  truecolor ([#687](https://github.com/seolcu/hostveil/issues/687)). SSH does
+  not forward `COLORTERM`, so a remote session runs at 256 colors — which for
+  a tool whose whole subject is remote servers is the normal case, not an edge
+  one. The palette hexes are therefore inputs to a quantiser, and
+  `ansi.Convert256` maps a colour into the 6×6×6 cube by truncating each
+  channel and then takes the nearest *greyscale* entry instead where that is
+  closer in HSLuv. One Dark's Crit sat on the wrong side of that line:
+  `#e17079` came out as flat grey 246. The level that means "reachable now,
+  from off-host, by someone holding nothing" was the only severity on the
+  screen drawn without a colour. Crit moves twelve units with its hue
+  untouched, and every theme is now held to what a 256-colour terminal
+  actually renders — the heats must land on the cube and no two roles may
+  collapse onto one index. That test found a second, unrelated collision:
+  Nord's muted text and a Low finding were the same pixel value.
+
+  Colour may now carry structure as well as risk and safety. Panel headers,
+  the marker on the filtered domain, the detail pane's section headings and
+  the key letters in the footer were all drawn in the same muted grey as the
+  text they were meant to be distinguished from; they take a thirteenth
+  palette role, each theme's own blue, which the dashboard reads through the
+  same generated stylesheet. The heats keep their monopoly on risk.
+
+* **tui:** the rail hid the domains worth looking at. Its meters fill by
+  score, so a host with Container at 0, Dockerd at 10 and CVEs at 16 drew
+  nothing at all for those while the two clean domains filled six cells of
+  green — and an empty track is exactly how a *skipped* domain is drawn on
+  purpose, so "nothing there" and "I could not look" arrived as the same row.
+  A domain that ran now colours at least one cell and its score takes the
+  band's colour, so a 0 reads red without the meter having to resolve it.
+  Domains are separated by a blank line where the rows exist, since twelve of
+  them packed into twenty-four with nothing between any two is what "hard to
+  read" meant.
+
+* **tui:** the rail's severity mix was cut through a count
+  ([#688](https://github.com/seolcu/hostveil/issues/688)). `9 high · 16 med ·
+  28 low` clipped to the column reported 28 findings of a severity it did not
+  name and said nothing about the one it cut. The row is assembled a term at a
+  time now and dropped between terms, never through one — the same call the
+  chip bar already makes. The spelling is also chosen once for the whole rail
+  rather than per domain, because the busiest domain has the widest counts, so
+  deciding row by row abbreviated exactly the first row and left the eleven
+  under it long.
+
+* **tui:** the footer offered `press` and `any` as keys
+  ([#689](https://github.com/seolcu/hostveil/issues/689)). Picking the key out
+  of each hint took the first word of it, and two of the hints are sentences —
+  including the confirmation for overwriting a file that rollback refused to
+  touch. Only real bindings are picked out now.
+
 ## [3.14.2](https://github.com/seolcu/hostveil/compare/v3.14.1...v3.14.2) (2026-08-12)
 
 Everything here came out of one session of actually running the demo instead
