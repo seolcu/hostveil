@@ -346,14 +346,14 @@ pre.diff .ctx { color: var(--slate); }
 .rail { flex: 0 0 218px; border-right: 1px solid var(--line); background: var(--ink-2);
   display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
 .rail[hidden] { display: none; }
-.rail .rail-head { padding: 11px 15px 6px; color: var(--slate);
+.rail .rail-head { padding: 11px 15px 6px; color: var(--accent);
   font-size: 10px; letter-spacing: 1.3px; text-transform: uppercase; }
 .rail .dom { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px;
   padding: 6px 15px; border-left: 2px solid transparent; cursor: pointer; text-align: left;
   background: transparent; border-top: 0; border-right: 0; border-bottom: 0; width: 100%;
   color: inherit; font: 13px/1.5 var(--mono); letter-spacing: 0; text-transform: none; }
 .rail .dom:hover { background: var(--ink-3); }
-.rail .dom.on { background: var(--ink-3); border-left-color: var(--bone); }
+.rail .dom.on { background: var(--ink-3); border-left-color: var(--accent); }
 .rail .dom .n { color: var(--bone); font-size: 12.5px; text-align: left; }
 .rail .dom.on .n { font-weight: 700; }
 .rail .dom.na .n { color: var(--slate); }
