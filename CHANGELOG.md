@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+## [3.14.4](https://github.com/seolcu/hostveil/compare/v3.14.3...v3.14.4) (2026-08-12)
+
+Two things 3.14.3 got wrong, found by looking at the parts of it nobody had
+looked at yet: the dashboard, and the harness that audits hostveil from
+outside.
+
+### Bug Fixes
+
+* **web:** the dashboard turned one panel header blue and left the other grey
+  ([#691](https://github.com/seolcu/hostveil/issues/691)). 3.14.3 gave the
+  design system a third thing colour is allowed to mean — structure — and
+  spent it in the terminal on panel headers, the marker on the filtered
+  domain, the detail headings and the footer's key letters. The dashboard was
+  meant to take the same four and took three: the findings pane's title turned
+  blue while the rail's header, two hundred pixels to its left, stayed the
+  muted grey it had always been, and the rail's marker for the filtered domain
+  kept a bone edge beside a filter chip that had already gone blue. Not a
+  broken page — a page that looks deliberate and says something untrue about
+  what its colours mean. Every structural rule is now listed in a test that
+  requires the accent and forbids the heats.
+
+* **ci:** a Lynis that never ran was recorded as a Lynis with nothing to say
+  ([#693](https://github.com/seolcu/hostveil/issues/693)). The measurement
+  harness exists so the numbers are somebody else's, and its Lynis instrument
+  reported `hardening_index: null, warnings: 0, suggestions: 0` on a host
+  where Lynis is not installed — which is the shape of a clean result. The
+  missing binary was swallowed by `|| true` and the missing report by a bare
+  `except FileNotFoundError`. That is the rule the scanner itself is built on,
+  broken by the thing whose job is to audit the scanner. Both cases are
+  explicit now, and the test runs the instruments in an environment without
+  their tools rather than grepping them for the word "error".
+
+  `DEVELOPMENT.md` also pointed at `/vagrant/scripts/measure/run.sh`, and the
+  repository is mounted at `/hostveil` in that VM — three commands in the
+  section whose whole purpose is letting somebody reproduce the published
+  measurements, all of them "No such file or directory". A test reads the
+  mount point out of the Vagrantfile and holds the docs to it.
+
 ## [3.14.3](https://github.com/seolcu/hostveil/compare/v3.14.2...v3.14.3) (2026-08-12)
 
 The terminal UI, on the terminals it is actually used from. A screenshot of a
