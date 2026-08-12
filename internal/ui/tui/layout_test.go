@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -205,5 +206,47 @@ func TestThemePickerFitsTerminalWidth(t *testing.T) {
 				t.Errorf("width=%d: line is %d columns:\n  %q", w, got, line)
 			}
 		}
+	}
+}
+
+// The rail has three tiers of the same row budget, and the one that matters is
+// that the gaps go before a domain does. Twelve domains packed into
+// twenty-four rows with nothing between any two is the thing that was called
+// hard to read; a blank line between blocks fixes it and costs a row each,
+// which not every terminal has.
+func TestTheRailSpendsRowsOnGapsOnlyAfterItHasEveryDomain(t *testing.T) {
+	m := modeModels(150, 60)["list"]
+	n := len(m.report.Score.Axes)
+	if n < 3 {
+		t.Fatalf("the fixture has %d axes; this test needs a few", n)
+	}
+	countDomains := func(rows []string) int {
+		seen := 0
+		for _, r := range rows {
+			// a domain row is the one carrying a meter or an N/A value
+			if strings.Contains(plain(r), "░") || strings.Contains(plain(r), "N/A") {
+				seen++
+			}
+		}
+		return seen
+	}
+
+	roomy := m.railRows(24, 3*n+4)
+	if countDomains(roomy) != n {
+		t.Fatalf("with room to spare the rail showed %d of %d domains", countDomains(roomy), n)
+	}
+	if !slices.Contains(roomy, "") {
+		t.Error("with a row per domain to spare the rail still has no gap between " +
+			"blocks; the indent alone is what was called hard to read")
+	}
+
+	// One row short of airy: every domain survives, the gaps do not.
+	tight := m.railRows(24, 3*n-1)
+	if got := countDomains(tight); got != n {
+		t.Errorf("at one row below airy the rail dropped to %d of %d domains — the "+
+			"gaps are the decoration and the domains are the content", got, n)
+	}
+	if slices.Contains(tight, "") {
+		t.Error("the rail kept its gaps at a budget that cannot afford them")
 	}
 }

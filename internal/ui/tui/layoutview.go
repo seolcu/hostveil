@@ -273,6 +273,21 @@ func (m *appModel) railRows(w, budget int) []string {
 	dense := 1+2*len(axes) <= budget
 	compactMix := m.mixIsCompact(byDomain, w-4)
 
+	// Airy spends one more row per domain on the gap between them.
+	//
+	// Dense packs twelve domains into twenty-four rows with nothing between
+	// any two, and the first thing said about it was that the column is hard
+	// to read — which it is: the eye has to work out for itself that a name
+	// and the counts under it are one thing while the next name is another.
+	// The indent under each name says so, and a blank line says it louder for
+	// the price of a row.
+	//
+	// Only when the rows are actually there. This is the third tier of the
+	// same budget the two above it come out of, so a terminal that cannot
+	// afford it keeps every domain and loses the gaps rather than the other
+	// way round: head + 2 rows each + one gap between each pair.
+	airy := dense && 3*len(axes) <= budget
+
 	// Built per domain and flattened afterwards, so a rail that does not fit
 	// is cut between domains and can say how many whole ones it dropped. Cut
 	// by row instead and the tail lands mid-domain: a score with the mix that
@@ -363,6 +378,9 @@ func (m *appModel) railRows(w, budget int) []string {
 	}
 	out := []string{s.accent.Render(truncate(head, w))}
 	for i, b := range blocks {
+		if airy && i > 0 {
+			b = append([]string{""}, b...)
+		}
 		// Truncating the rail is the last resort, and it says so: a rail that
 		// simply stopped would read as a host with six domains.
 		if len(out)+len(b) > budget {
