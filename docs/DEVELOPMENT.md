@@ -139,9 +139,20 @@ vagrant ssh -c 'tmux send-keys -t 0 t; sleep 1; tmux capture-pane -p -t 0'   # -
 firefox --headless --no-remote --profile "$(mktemp -d)" \
         --window-size=1400,900 --screenshot out.png http://localhost:8787/
 
-# What actually reaches the terminal, escape sequence by escape sequence
-vagrant ssh -c 'script -q -c "hostveil tui" /tmp/raw.log'
+# What actually reaches the terminal, escape sequence by escape sequence.
+# stty is not optional: `vagrant ssh -c` has no terminal for script(1) to copy
+# a size from, so the pty it builds is 0x0 and bubbletea draws nothing into it
+# — you get the altscreen and cursor setup, not one glyph. Feed it a quit key,
+# or it runs until the timeout.
+vagrant ssh -c '(sleep 90; printf q) | script -qfc "stty rows 45 cols 200; sudo -E env TERM=xterm-256color hostveil" /tmp/raw.log'
+vagrant ssh -c "grep -o '38;5;[0-9]*' /tmp/raw.log | sort | uniq -c | sort -rn"
 ```
+
+Use `tmux capture-pane` when you want to *read* the screen and the raw log
+when you want to know which palette entry drew something — the palettes are
+24-bit hex and SSH does not forward `COLORTERM`, so what a remote session
+actually receives is the quantised 256-colour index and not the hex
+(`internal/ui/tui/quantize_test.go` holds every theme to that).
 
 The TUI also has a snapshot hook for documentation frames: `HOSTVEIL_SNAPSHOT=/path
 go test ./internal/ui/tui -run TestSnapshotDump`.
@@ -158,11 +169,11 @@ has been rolled back.
 
 ```bash
 # On the demo VM, or any host you are willing to have edited.
-vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -c -p seeded /tmp/out.json'
+vagrant ssh -c 'sudo /hostveil/scripts/measure/run.sh -c -p seeded /tmp/out.json'
 
 # The control group: hardened from the CIS Benchmarks, without hostveil.
-vagrant ssh -c 'sudo /vagrant/scripts/measure/control.sh'
-vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -p control /tmp/control.json'
+vagrant ssh -c 'sudo /hostveil/scripts/measure/control.sh'
+vagrant ssh -c 'sudo /hostveil/scripts/measure/run.sh -p control /tmp/control.json'
 ```
 
 Results are committed under `docs/measurements/` and published on the
