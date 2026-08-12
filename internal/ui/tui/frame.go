@@ -331,21 +331,45 @@ func (m *appModel) footerRows(hint string) []string {
 //
 // The split is the one wrapHint already relies on: items are separated by
 // three spaces, and inside an item the key is everything before the first
-// single space ("↑/↓ move", "enter roll back", "space select"). An item with
-// no space is drawn as a key, which is what a bare word in this row is.
+// single space ("↑/↓ move", "enter roll back", "space select").
+//
+// The first word is only picked out when it is actually a key, which is not
+// the same thing. Two of these hints are sentences — "press any key to
+// continue" and "any other key cancel" — and taking their first word offered
+// `press` and `any` as bindings, on screens where one of them is the
+// confirmation for overwriting a file. Highlighting a key that does not exist
+// is worse than missing one that does, so anything unrecognised stays dim.
 func (m *appModel) styleHintLine(line string) string {
 	s := m.sty()
 	const sep = "   "
 	items := strings.Split(line, sep)
 	for i, item := range items {
 		key, rest, ok := strings.Cut(item, " ")
-		if !ok {
+		switch {
+		case !ok && isKeyName(item):
 			items[i] = s.accent.Render(item)
-			continue
+		case ok && isKeyName(key):
+			items[i] = s.accent.Render(key) + s.dim.Render(" "+rest)
+		default:
+			items[i] = s.dim.Render(item)
 		}
-		items[i] = s.accent.Render(key) + s.dim.Render(" "+rest)
 	}
 	return strings.Join(items, s.dim.Render(sep))
+}
+
+// namedKeys are the bindings whose names are longer than one rune. A list
+// rather than a rule, because "esc" and "any" are the same shape and only one
+// of them is a key. A binding added without its name here loses the accent and
+// nothing else — the failure direction that costs polish rather than truth.
+var namedKeys = map[string]bool{
+	"enter": true, "esc": true, "space": true, "tab": true,
+	"ctrl+c": true, "↑/↓": true,
+}
+
+// isKeyName reports whether tok is something the operator can press. Every
+// single-rune binding qualifies (f, q, a, y, n, …); the rest are listed.
+func isKeyName(tok string) bool {
+	return namedKeys[tok] || utf8.RuneCountInString(tok) == 1
 }
 
 func (m *appModel) ruleRow() string { return m.ruleRowOf(m.width) }

@@ -167,3 +167,44 @@ func TestClipCountsCellsNotBytes(t *testing.T) {
 		t.Error("clip to zero columns must render nothing")
 	}
 }
+
+// The footer picks the key out of each hint and dims the rest, which is only
+// safe while it can tell a key from a word. Two of the hints are sentences,
+// and one of them is the confirmation for overwriting a file that rollback
+// refused to touch — a footer offering `any` as the key there is worse than a
+// footer with no colour at all.
+//
+// Asserted by rendering and asking which spans came back accented, because the
+// bug is entirely in what got the colour.
+func TestOnlyRealKeysAreHighlightedInTheFooter(t *testing.T) {
+	m := modeModels(120, 30)["list"]
+
+	for _, tc := range []struct {
+		hint string
+		keys []string // what must be accented
+		not  []string // what must not
+	}{
+		{"↑/↓ move   enter details   f fix   space select", []string{"↑/↓", "enter", "f", "space"}, nil},
+		{"press any key to continue", nil, []string{"press", "any"}},
+		{"y overwrite anyway   any other key cancel", []string{"y"}, []string{"any"}},
+		{"ctrl+c quit", []string{"ctrl+c"}, nil},
+	} {
+		got := m.styleHintLine(tc.hint)
+		for _, k := range tc.keys {
+			if !accented(m, got, k) {
+				t.Errorf("%q: %q should be picked out as a key", tc.hint, k)
+			}
+		}
+		for _, w := range tc.not {
+			if accented(m, got, w) {
+				t.Errorf("%q: %q was drawn as a key, and it is not one — the footer is "+
+					"the only documentation these bindings have", tc.hint, w)
+			}
+		}
+	}
+}
+
+// accented reports whether tok appears in rendered wearing the accent.
+func accented(m *appModel, rendered, tok string) bool {
+	return strings.Contains(rendered, m.sty().accent.Render(tok))
+}
