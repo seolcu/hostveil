@@ -167,6 +167,12 @@ it — Lynis, docker-bench-security, and a TCP connect scan from a container
 off the host — run before the fixes, after them, and again after every fix
 has been rolled back.
 
+The auditors are installed by `scripts/measure/seed.sh`, which is what puts a
+throwaway host into the profile the published figures were taken on. The demo
+VM is built by `demo/provision.sh` instead and has neither Lynis nor
+docker-bench, so the harness there measures hostveil and the port scan and
+records the other two as missing — a full run wants a seeded host.
+
 ```bash
 # On the demo VM, or any host you are willing to have edited.
 vagrant ssh -c 'sudo /hostveil/scripts/measure/run.sh -c -p seeded /tmp/out.json'

@@ -14,6 +14,14 @@
 # hostveil cleared is exactly what leaves it.
 set -euo pipefail
 
+# An auditor that did not run must not be reported as an auditor that found
+# nothing. Without this the block below emits hardening_index null with zero
+# warnings and zero suggestions, which is the JSON a perfectly hardened host
+# would produce — and the demo VM has no lynis, because the tools come from
+# scripts/measure/seed.sh and that is not what provisions it. dockerbench.sh
+# already refuses this way; this one was measuring its own absence as a pass.
+command -v lynis >/dev/null || { echo '{"error":"lynis not installed"}'; exit 0; }
+
 lynis audit system --quick --quiet --no-colors >/dev/null 2>&1 || true
 
 python3 - <<'PY'
@@ -33,7 +41,8 @@ try:
         elif key == "tests_executed":
             tests = len([t for t in value.split("|") if t])
 except FileNotFoundError:
-    pass
+    print(json.dumps({"error": "lynis left no report at " + report}))
+    raise SystemExit(0)
 print(json.dumps({
     "hardening_index": idx,
     "tests_executed": tests,
