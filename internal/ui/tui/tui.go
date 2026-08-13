@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -87,6 +88,25 @@ type appModel struct {
 	// scanCh is the live scan's event channel, held so Update can re-arm
 	// the waiter after each event.
 	scanCh chan model.ScanEvent
+
+	// scanPlan is the domains this scan will run, asked of the engine before
+	// it starts, and scanState is where each of them has got to. Together
+	// they are the denominator and the rows: the events say what has
+	// happened and never what is left, so a screen built from events alone
+	// can count upwards and cannot draw a bar.
+	//
+	// scanPlan is empty when there is no engine to ask — every model built
+	// as a bare struct literal in the tests — and the screen then falls back
+	// to the domains it has heard about, which is what it drew before.
+	scanPlan  []model.Source
+	scanState map[model.Source]model.ScanState
+	// scanStartedAt is when this scan began and scanElapsed is how long ago
+	// that was, refreshed by the ticker. The elapsed figure is stored rather
+	// than read at render time on purpose: View must be a pure function of
+	// the model, and a clock read inside it would make two renders of one
+	// state differ.
+	scanStartedAt time.Time
+	scanElapsed   time.Duration
 
 	// Advisory AI explanation state for the detail view. Cleared whenever
 	// the inspected finding changes, so a slow answer cannot land under the
@@ -274,11 +294,41 @@ func waitForScanEvent(ch chan model.ScanEvent) tea.Cmd {
 	}
 }
 
-// startScan wires both halves together.
+// scanTickMsg advances the elapsed clock on the scanning screen.
+type scanTickMsg struct{}
+
+// scanTick is how often the elapsed figure is refreshed. A second, because
+// that is the resolution the figure is shown at — a faster tick would redraw
+// the screen without changing a character on it.
+const scanTick = time.Second
+
+func tickScan() tea.Cmd {
+	return tea.Tick(scanTick, func(time.Time) tea.Msg { return scanTickMsg{} })
+}
+
+// startScan wires the halves together: the scan itself, the event waiter, and
+// the clock.
+//
+// The plan is asked of the engine before anything runs. Nothing else can
+// supply it — a checker announces itself when it starts, so a screen built
+// from the events alone knows the domains that have begun and not the ones
+// still queued, and a list that grows as the scan proceeds is a worse answer
+// to "is this hung" than no list at all.
 func (m *appModel) startScan() tea.Cmd {
 	m.scanDone, m.scanRunning = 0, map[model.Source]bool{}
+	m.scanPlan, m.scanState = nil, map[model.Source]model.ScanState{}
+	if m.engine != nil {
+		// The plan is the list of rows; the state map is only what has been
+		// heard since. Seeding the map with ScanPending would be seeding it
+		// with the zero value, which is what a missing key already reads as —
+		// and it would also make the screen draw a full list from a stale map
+		// if the plan were ever lost, hiding exactly the failure the plan
+		// exists to prevent.
+		m.scanPlan = m.engine.PlannedDomains(core.ScanOptions{})
+	}
+	m.scanStartedAt, m.scanElapsed = time.Now(), 0
 	m.scanCh = make(chan model.ScanEvent, scanEventBuffer)
-	return tea.Batch(scanCmd(m.runCtx(), m.engine, m.scanCh), waitForScanEvent(m.scanCh))
+	return tea.Batch(scanCmd(m.runCtx(), m.engine, m.scanCh), waitForScanEvent(m.scanCh), tickScan())
 }
 
 // noteScanEvent folds one event into the progress state.
@@ -292,13 +342,38 @@ func (m *appModel) noteScanEvent(ev model.ScanEvent) {
 	if m.scanRunning == nil {
 		m.scanRunning = map[model.Source]bool{}
 	}
+	if m.scanState == nil {
+		m.scanState = map[model.Source]model.ScanState{}
+	}
 	if ev.State == model.ScanRunning {
 		m.scanRunning[ev.Source] = true
 	} else if m.scanRunning[ev.Source] {
 		delete(m.scanRunning, ev.Source)
 		m.scanDone++
 	}
+	// The state is recorded for every event including the ones that arrive
+	// for a domain the plan does not name — the plan is empty when there is
+	// no engine to ask, and the screen falls back to what it has heard.
+	m.scanState[ev.Source] = ev.State
 	m.status = m.scanStatus()
+}
+
+// scanDomains is what the scanning screen draws a row for: the plan when
+// there is one, and otherwise the domains that have announced themselves.
+//
+// The fallback keeps registry order out of it — a scan whose plan is unknown
+// is one the tests built by hand, and sorting by label is the only stable
+// order available.
+func (m *appModel) scanDomains() []model.Source {
+	if len(m.scanPlan) > 0 {
+		return m.scanPlan
+	}
+	out := make([]model.Source, 0, len(m.scanState))
+	for src := range m.scanState {
+		out = append(out, src)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Label() < out[j].Label() })
+	return out
 }
 
 // scanStatus is the line the scanning screen shows.
@@ -435,6 +510,18 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.noteScanEvent(msg.event)
 		return m, waitForScanEvent(m.scanCh)
+
+	case scanTickMsg:
+		// The clock stops with the screen. Re-arming only while scanning is
+		// what keeps a finished run from redrawing the findings list once a
+		// second forever, and it is also why the elapsed figure is stored:
+		// View reads it, never the clock, so two renders of one state are
+		// identical whatever the wall time between them.
+		if m.mode != modeScanning {
+			return m, nil
+		}
+		m.scanElapsed = time.Since(m.scanStartedAt)
+		return m, tickScan()
 
 	case scannedMsg:
 		m.report = msg.report

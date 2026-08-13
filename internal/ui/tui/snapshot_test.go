@@ -109,7 +109,40 @@ func dumpEveryMode(t *testing.T, dir string) {
 		}
 	}
 
-	dump("01-scanning", newModel(modeScanning))
+	// A scan part way through, driven by the same events a real one emits
+	// rather than posed. It used to be the bare model with status set, which
+	// is a state no run ever reaches: the screen draws the plan and the
+	// per-domain progress, and a model that has heard nothing draws neither.
+	// So the one frame claiming to show a scan showed the empty fallback, and
+	// the set that covers "every mode" did not cover what this mode renders.
+	scanning := newModel(modeScanning)
+	scanning.scanPlan = model.AllSources()
+	scanning.scanState = map[model.Source]model.ScanState{}
+	for _, ev := range []model.ScanEvent{
+		{Source: model.SourceSSH, State: model.ScanRunning},
+		{Source: model.SourceSSH, State: model.ScanDone},
+		{Source: model.SourceFirewall, State: model.ScanRunning},
+		{Source: model.SourceFirewall, State: model.ScanDone},
+		{Source: model.SourceAccounts, State: model.ScanRunning},
+		{Source: model.SourceAccounts, State: model.ScanDone},
+		{Source: model.SourceUpdates, State: model.ScanRunning},
+		{Source: model.SourceUpdates, State: model.ScanDone},
+		{Source: model.SourceFilePerms, State: model.ScanRunning},
+		{Source: model.SourceFilePerms, State: model.ScanDone},
+		{Source: model.SourceSysctl, State: model.ScanRunning},
+		{Source: model.SourceSysctl, State: model.ScanDone},
+		{Source: model.SourcePorts, State: model.ScanRunning},
+		{Source: model.SourcePorts, State: model.ScanDegraded},
+		{Source: model.SourceAgent, State: model.ScanRunning},
+		{Source: model.SourceAgent, State: model.ScanSkipped},
+		// Still working, which on a real host is where the wait is.
+		{Source: model.SourceCompose, State: model.ScanRunning},
+		{Source: model.SourceCVE, State: model.ScanRunning},
+	} {
+		scanning.noteScanEvent(ev)
+	}
+	scanning.scanElapsed = 47 * time.Second
+	dump("01-scanning", scanning)
 
 	list := newModel(modeList)
 	list.cursor = 3
