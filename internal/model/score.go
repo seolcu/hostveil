@@ -490,7 +490,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 		// Score comes from the fraction directly, not from the rounded
 		// penalty. Deriving it from penalty/cap would give a cap-6 axis
 		// only seven distinct scores.
-		axes[i].Score = uint8(math.Round(100 * remaining[i])) //nolint:gosec // remaining is 0-1
+		axes[i].Score = uint8(math.Round(100 * remaining[i])) // remaining is 0-1
 		axes[i].Penalty = int(math.Round(float64(axes[i].MaxPenalty) * lost))
 		if axes[i].Applicable {
 			totalPenalty += float64(axes[i].MaxPenalty) * lost
@@ -520,5 +520,5 @@ func renormalize(penalty float64, ranCapSum int) uint8 {
 	if scaled < 0 {
 		scaled = 0
 	}
-	return uint8(100 - scaled) //nolint:gosec // bounded 0-100
+	return uint8(100 - scaled) // bounded 0-100
 }

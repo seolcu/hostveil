@@ -260,9 +260,15 @@ func render(t *template.Template, name, out string, v View) error {
 		return err
 	}
 	body := strings.TrimRight(buf.String(), "\n") + "\n"
+	// G301/G306: sitegen writes the published website into the repository.
+	// A directory nobody can enter and a file nobody can read is not a site,
+	// and this never runs on a host — it runs in CI and on a maintainer's
+	// machine, producing content that is then committed and served.
+	//nolint:gosec // G301: generated site output, meant to be readable
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 		return err
 	}
+	//nolint:gosec // G306: generated site output, meant to be readable
 	return os.WriteFile(out, []byte(body), 0o644)
 }
 
@@ -290,6 +296,10 @@ func prune(outDir string) error {
 			return err
 		}
 		for _, m := range matches {
+			// G703: the paths come from a glob rooted at outDir, which is the
+			// site directory this program owns and rewrites on every run. There
+			// is no external input anywhere in the expression.
+			//nolint:gosec // G703: globbed from the output directory it owns
 			if err := os.Remove(m); err != nil {
 				return err
 			}

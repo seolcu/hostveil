@@ -29,7 +29,7 @@ func TestBandBoundaries(t *testing.T) {
 func TestBandIsTotalAndMonotonic(t *testing.T) {
 	prev := BandFor(0)
 	for v := 0; v <= 100; v++ {
-		b := BandFor(uint8(v)) //nolint:gosec // bounded by the loop
+		b := BandFor(uint8(v)) // bounded by the loop
 		if b.String() == "" {
 			t.Fatalf("BandFor(%d) has no name", v)
 		}
@@ -46,7 +46,7 @@ func TestBandIsTotalAndMonotonic(t *testing.T) {
 func TestEveryBandIsReachable(t *testing.T) {
 	seen := map[Band]bool{}
 	for v := 0; v <= 100; v++ {
-		seen[BandFor(uint8(v))] = true //nolint:gosec // bounded by the loop
+		seen[BandFor(uint8(v))] = true // bounded by the loop
 	}
 	for _, b := range Bands() {
 		if !seen[b] {

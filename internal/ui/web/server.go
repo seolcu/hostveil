@@ -262,6 +262,13 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 	if !tokenEqual(r.URL.Query().Get("t"), s.token) {
 		return false
 	}
+	// Secure is deliberately unset, which is what gosec's G124 sees. The
+	// dashboard is plain HTTP on loopback and cannot be anything else — it
+	// has no certificate and no name to put on one — so a Secure cookie
+	// would simply never be sent and every request would arrive
+	// unauthenticated. HttpOnly and SameSite=Strict are both set, and the
+	// transport is a socket on this machine that never reaches a network.
+	//nolint:gosec // G124: loopback HTTP has no TLS for Secure to require
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    s.token,

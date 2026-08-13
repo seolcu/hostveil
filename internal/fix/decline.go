@@ -55,6 +55,11 @@ func DeclinedIDs() []string {
 // keeps JSON5 comments. internal/json5 is that editor, four of the seven are
 // registered now, and the three left each say something different — which is
 // what the shared sentence had been hiding.
+// G101: gosec reads the words "secret", "credentials" and "password" in
+// the sentences below and calls them hardcoded credentials. They are the
+// prose hostveil shows an operator to explain why it will not fix a finding.
+//
+//nolint:gosec // G101: these are explanations, not secrets
 var declineReasons = map[string]string{
 	// compose
 	"compose.dr001": "Removing host networking leaves the service unreachable unless the ports it needs are published in its place, and the finding does not carry them.",

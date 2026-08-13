@@ -63,7 +63,7 @@ func TestScreenshotServe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen on %s: %v", addr, err)
 	}
-	defer ln.Close() //nolint:errcheck // the process is going away
+	defer ln.Close() // the process is going away
 
 	fmt.Printf("\nscreenshot fixture at http://%s/?t=%s\n\n", ln.Addr(), s.token)
 

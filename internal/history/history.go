@@ -479,6 +479,11 @@ func IsDamaged(err error) bool {
 
 // Get loads one checkpoint by ID.
 func (s *Store) Get(id string) (Checkpoint, error) {
+	// G304: the variable is a checkpoint ID, joined under the store's own
+	// directory. It reaches here from a UI that got it out of List, so it
+	// names something this process wrote — and the read is of hostveil's own
+	// state, not of anything the ID could point at outside it.
+	//nolint:gosec // G304: a checkpoint ID under the store's own directory
 	data, err := os.ReadFile(filepath.Join(s.checkpointsDir(), id, "meta.json"))
 	if err != nil {
 		return Checkpoint{}, err
@@ -529,7 +534,7 @@ func checkUnmodified(cp Checkpoint, bf BackedFile, known recordedWrites) error {
 	if cp.AppliedSHA256[bf.Path] == "" {
 		return nil // this checkpoint predates the recording; cannot tell
 	}
-	data, err := os.ReadFile(bf.Path) //nolint:gosec // path recorded by a fix this tool applied
+	data, err := os.ReadFile(bf.Path) // path recorded by a fix this tool applied
 	if err != nil {
 		return nil
 	}
@@ -652,6 +657,9 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		if bf.Blob == "" {
 			continue // mode-only entry; the contents were never touched
 		}
+		// G304: a blob name out of the checkpoint's own metadata, joined
+		// under that checkpoint's directory. Both were written by Save.
+		//nolint:gosec // G304: a blob this store wrote, in its own directory
 		data, err := os.ReadFile(filepath.Join(dir, bf.Blob))
 		if err != nil {
 			return cp, err

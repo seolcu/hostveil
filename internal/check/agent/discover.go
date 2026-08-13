@@ -33,7 +33,7 @@ var skeletonHomes = map[string]bool{
 // Results are deduplicated by home directory, because two accounts sharing a
 // home would otherwise produce two identical findings for one config file.
 func homes(passwdPath string) ([]userHome, error) {
-	b, err := os.ReadFile(passwdPath) //nolint:gosec // caller-supplied system path
+	b, err := os.ReadFile(passwdPath) //nolint:gosec // G304: caller-supplied system path
 	if err != nil {
 		return nil, err
 	}

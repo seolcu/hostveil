@@ -100,7 +100,7 @@ func readEditTarget(a fix.Action) (data []byte, creating bool, err error) {
 		// walked into reading a file it was not pointed at.
 		data, err = platform.ReadFileNoFollow(a.Path, maxEditBytes)
 	} else {
-		data, err = os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+		data, err = os.ReadFile(a.Path) // path from a discovered finding
 	}
 	switch {
 	case err == nil:

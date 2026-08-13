@@ -33,7 +33,7 @@ find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck   # only
 go run github.com/goreleaser/goreleaser/v2@latest check     # only if you touched .goreleaser.yaml
 ```
 
-Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell.
+Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell, gosec, nolintlint. gosec is scoped to shipped code — a test writing a fixture into `t.TempDir` is describing its own scaffolding — and every suppression under it names the rule and says why. It was switched on because twenty `//nolint` directives were silencing linters that were not enabled anywhere, which made eighteen carefully written justifications decoration; `nolintlint` catches the next one that stops suppressing anything, and `internal/docs/nolint_test.go` catches the case it cannot see — a directive naming a linter the config does not run at all.
 `golangci-lint` has to be the released binary, not `go run …@v2.12.2`. The published module is built against an older toolchain than this one targets, and `go run` refuses before it reads the config — *"the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version"* — so the command that looks like it lints actually lints nothing, and the first thing that catches the staticcheck finding is CI. Fetch the release the way CI's action does:
 
 ```bash

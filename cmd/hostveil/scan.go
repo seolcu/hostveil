@@ -82,6 +82,11 @@ func cmdScan(ctx context.Context, args []string) int {
 	}
 
 	if output != "" {
+		// G306: a report the operator asked to be written, and asked for by
+		// name. 0644 is what every other tool writes an output file as, and
+		// tightening it to 0600 would mean a scan run under sudo produced a
+		// SARIF file the user's own CI could not read.
+		//nolint:gosec // G306: an output file the caller named, not state
 		if err := os.WriteFile(output, []byte(rendered), 0o644); err != nil {
 			fmt.Fprintln(os.Stderr, "hostveil:", err)
 			return 1

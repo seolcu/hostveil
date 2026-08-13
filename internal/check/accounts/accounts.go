@@ -46,7 +46,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	if ok, why := platform.AuditableOS(); !ok {
 		return false, why + ", where " + c.PasswdPath + " does not describe the accounts"
 	}
-	f, err := os.Open(c.PasswdPath) //nolint:gosec // fixed system path
+	f, err := os.Open(c.PasswdPath) // fixed system path
 	if err != nil {
 		return false, "cannot read " + c.PasswdPath
 	}
@@ -56,7 +56,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 
 // Check parses the user databases and emits account-hygiene findings.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
-	passwd, err := os.ReadFile(c.PasswdPath) //nolint:gosec // fixed system path
+	passwd, err := os.ReadFile(c.PasswdPath) // fixed system path
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	// scan reported full marks for account hygiene having never looked at a
 	// single password, which is the same lie that once produced a perfect CVE
 	// score on an unscanned host.
-	shadow, err := os.ReadFile(c.ShadowPath) //nolint:gosec // fixed system path
+	shadow, err := os.ReadFile(c.ShadowPath) // fixed system path
 	if err != nil {
 		return findings, &check.PartialError{
 			Reason: "cannot read " + c.ShadowPath +

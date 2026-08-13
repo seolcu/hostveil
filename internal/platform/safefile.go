@@ -25,6 +25,12 @@ import (
 // normally. The fstat check happens on the open descriptor, so there is no
 // gap for the file to be swapped between the check and the read.
 func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
+	// G304: the variable path is the point, and this function is the
+	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// refuses to hang on a FIFO, and the checks below run on the descriptor
+	// rather than on the name. Flagging the safe opener while the plain
+	// os.ReadFile calls it replaces go unflagged is the finding backwards.
+	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
@@ -55,6 +61,12 @@ func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 // opened and nothing else. A symlink at path fails with ELOOP rather than
 // chmod'ing its target.
 func ChmodNoFollow(path string, mode os.FileMode) error {
+	// G304: the variable path is the point, and this function is the
+	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// refuses to hang on a FIFO, and the checks below run on the descriptor
+	// rather than on the name. Flagging the safe opener while the plain
+	// os.ReadFile calls it replaces go unflagged is the finding backwards.
+	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return err

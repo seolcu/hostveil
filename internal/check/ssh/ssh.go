@@ -36,7 +36,7 @@ func (*Checker) Source() model.Source { return model.SourceSSH }
 // without the privileges needed to read it — both are clean skips with an
 // actionable reason, never a scan error.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
-	f, err := os.Open(c.ConfigPath) //nolint:gosec // fixed system path
+	f, err := os.Open(c.ConfigPath) // fixed system path
 	if err != nil {
 		switch {
 		case os.IsNotExist(err):
@@ -210,6 +210,10 @@ func (p *includeParser) readInto(path string, depth int) {
 	}
 	p.visited[path] = true
 
+	// G703: path came from expanding an Include glob inside sshd_config,
+	// which is a root-owned file this checker only reads. An operator who
+	// can write it can already do anything this process could.
+	//nolint:gosec // G703: from sshd_config's own Include, read-only
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return // sshd ignores directories matched by a glob

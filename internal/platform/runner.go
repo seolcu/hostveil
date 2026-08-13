@@ -108,6 +108,11 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 		ctx, cancel = context.WithTimeout(ctx, limit)
 		defer cancel()
 	}
+	// G204: this is the seam. Every command hostveil runs arrives here as
+	// argv from a checker or a fix — never a shell string, which is the
+	// property that matters and the one gosec cannot see. Refusing a
+	// variable command here would leave the tool able to run nothing.
+	//nolint:gosec // G204: the command seam; argv only, never a shell
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = waitDelay
 	cmd.Env = append(os.Environ(), "LC_ALL=C")
