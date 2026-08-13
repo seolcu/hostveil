@@ -171,15 +171,16 @@ func (m *appModel) verdictRows(w int) []string {
 	s := m.sty()
 	all := m.report.Select(model.Filter{})
 
-	high, autos := 0, 0
+	high := 0
 	for _, f := range all {
 		if f.Severity == model.SeverityHigh {
 			high++
 		}
-		if f.Remediation == model.RemediationAuto {
-			autos++
-		}
 	}
+	// The counts above describe the host and are deliberately unfiltered; the
+	// one below describes a keystroke and must not be. The action line names
+	// `a`, and `a` applies over the list on screen — see Report.AutoFixable.
+	autos := len(m.report.AutoFixable(m.filter))
 
 	var head string
 	var headC = s.cBone

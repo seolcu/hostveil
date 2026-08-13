@@ -554,3 +554,52 @@ func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 		}
 	}
 }
+
+// The bar's number and the key's behaviour are the same claim, and until now
+// nothing compared them.
+//
+// batchRow counted over the *unfiltered* report while startBatch applies over
+// m.active, which is the filtered list. So narrowing to one domain or one
+// severity left the bar offering "fix all N safe" for an N that included
+// findings the key would not touch — the screen promising work it then did not
+// do, with no error and no way for the operator to notice except by counting
+// the list afterwards.
+func TestTheBatchBarCountsWhatTheBatchKeyWouldApply(t *testing.T) {
+	med, high := model.SeverityMedium, model.SeverityHigh
+	filters := map[string]model.Filter{
+		"no filter":     {},
+		"medium and up": {MinSeverity: &med},
+		"fixable only":  {FixableOnly: true},
+		"by domain":     {Source: model.SourceCompose},
+		// The case that exposes it: the fixture's two Auto findings sit at
+		// different severities, so a High floor drops one of them from the
+		// list the key acts on while the unfiltered count still includes it.
+		"high only": {MinSeverity: &high},
+	}
+	for name, flt := range filters {
+		t.Run(name, func(t *testing.T) {
+			m := summaryModel(120, 30)
+			m.filter = flt
+			m.rebuildActive()
+
+			// What the key would apply, computed the way startBatch does.
+			want := 0
+			for _, f := range m.active {
+				if f.Remediation == model.RemediationAuto {
+					want++
+				}
+			}
+
+			got := plain(m.batchRow(120))
+			if want == 0 {
+				if strings.Contains(got, "fix all") {
+					t.Errorf("the bar offers a batch with nothing to apply: %q", got)
+				}
+				return
+			}
+			if !strings.Contains(got, fmt.Sprintf("fix all %d safe", want)) {
+				t.Errorf("the bar says %q, but `a` would apply %d", got, want)
+			}
+		})
+	}
+}

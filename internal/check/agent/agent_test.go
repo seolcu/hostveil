@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -867,5 +868,62 @@ func TestSystemAccountsAreNotProbed(t *testing.T) {
 	}
 	if len(hs) != 1 || hs[0].Name != "alice" {
 		t.Errorf("got %+v, want just alice", hs)
+	}
+}
+
+// recordingRunner notes every command a checker runs, so a test can assert
+// about work that did *not* happen.
+//
+// Absence is the thing this package is otherwise blind to: an unscripted
+// command already fails loudly, but a command that is scripted and simply no
+// longer needed costs a subprocess on every scan of every host and produces
+// no symptom at all. That is what the agent checker was doing with the
+// firewall probe — up to four binaries, run and discarded.
+type recordingRunner struct {
+	platform.CommandRunner
+	mu  sync.Mutex
+	ran []string
+}
+
+func (r *recordingRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	r.mu.Lock()
+	r.ran = append(r.ran, strings.TrimSpace(name+" "+strings.Join(args, " ")))
+	r.mu.Unlock()
+	return r.CommandRunner.Run(ctx, name, args...)
+}
+
+func (r *recordingRunner) commands() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.ran...)
+}
+
+// The agent domain judges a config and a listening socket. It used to ask the
+// firewall as well, hand the answer to gatewayFindings, and have that function
+// never read it — so every scan on every host ran ufw, firewall-cmd, nft and
+// iptables to build an argument that was thrown away.
+//
+// The severity levels merging is what made it dead: blast radius is not
+// urgency, so a reachable gateway behind a firewall is the same level as one
+// without. The parameter outlived the use, and nothing failed, so nothing
+// said so.
+func TestTheAgentDomainDoesNotProbeTheFirewall(t *testing.T) {
+	h := newHost(t, "alice")
+	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"lan","auth":{"mode":"none"}}}`, 0o600)
+
+	base := checktest.New().Listeners(ssLine("0.0.0.0", 18789, "node")).Env()
+	rec := &recordingRunner{CommandRunner: base.Runner}
+	base.Runner = rec
+
+	if _, err := h.checker().Check(context.Background(), base); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, cmd := range rec.commands() {
+		for _, tool := range firewall.ProbedTools {
+			if strings.HasPrefix(cmd, tool+" ") || cmd == tool {
+				t.Errorf("the agent checker ran %q; it does not read the firewall's answer", cmd)
+			}
+		}
 	}
 }

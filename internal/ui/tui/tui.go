@@ -33,9 +33,18 @@ const (
 	// message because the answer is destructive and one-way.
 	modeForceConfirm
 	modeTheme
-	// modeLayout is the temporary arrangement picker; it goes when one of
-	// the six is chosen.
+	// modeLayout is the arrangement picker.
 	modeLayout
+
+	// modeCount bounds the enum so a test can walk every mode instead of
+	// listing them.
+	//
+	// The list was written out by hand and fell two behind: the frame test
+	// called itself "the regression net for the whole composer" while
+	// covering eight of ten, and modeForceConfirm — the screen shown when a
+	// rollback is declined because the file changed — was never rendered at
+	// any terminal size by any test. Keep this last.
+	modeCount
 )
 
 type appModel struct {
@@ -165,7 +174,7 @@ func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
 // runCtx is the context every engine call from the TUI runs under.
 //
 // It exists because appModel is also built as a bare struct literal — the
-// layout and frame tests do it for all eight modes — and such a model has no
+// layout and frame tests do it for every mode — and such a model has no
 // context. Before this, a batch fix issued from one of those panicked on a
 // nil dereference inside the engine. Falling back to Background keeps the
 // zero value renderable and drivable; production always goes through New.
@@ -594,7 +603,6 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		m.mode = modeScanning
 		m.status = "Rescanning…"
-		m.status = "Rescanning…"
 		return m, m.startScan()
 	case "h":
 		return m, historyCmd(m.engine)
@@ -802,11 +810,7 @@ func (m *appModel) startBatch() tea.Cmd {
 			}
 		}
 	} else {
-		for _, f := range m.active {
-			if f.Remediation == model.RemediationAuto {
-				sel = append(sel, f)
-			}
-		}
+		sel = m.report.AutoFixable(m.filter)
 	}
 	if len(sel) == 0 {
 		m.status = "No auto-fixable findings to apply."

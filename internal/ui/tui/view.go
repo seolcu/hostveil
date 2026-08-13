@@ -789,12 +789,10 @@ func (m *appModel) idColumnWidth(w int) int {
 // wrong half the time.
 func (m *appModel) batchRow(w int) string {
 	s := m.sty()
-	autos := 0
-	for _, f := range m.report.Select(model.Filter{}) {
-		if f.Remediation == model.RemediationAuto {
-			autos++
-		}
-	}
+	// The current filter, not the whole report: `a` applies over the list
+	// that is on screen, and a bar counting anything else promises work the
+	// key will not do. See Report.AutoFixable.
+	autos := len(m.report.AutoFixable(m.filter))
 	switch {
 	case len(m.selected) > 0:
 		return clip(s.safe.Render(fmt.Sprintf("a  fix the %d marked", len(m.selected)))+

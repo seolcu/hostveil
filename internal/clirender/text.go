@@ -130,12 +130,7 @@ func nextSteps(active []model.Finding, opts Options) string {
 	}
 	c := palette(opts.Color)
 
-	auto := 0
-	for _, f := range active {
-		if f.Remediation == model.RemediationAuto {
-			auto++
-		}
-	}
+	auto := len(model.AutoFixable(active))
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "\n%sNext:%s\n", c.bold, c.reset)

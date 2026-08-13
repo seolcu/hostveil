@@ -189,6 +189,34 @@ func (r Report) Select(flt Filter) []Finding {
 	return out
 }
 
+// AutoFixable returns the findings inside the filter that "fix all safe"
+// would apply — the unfixed ones hostveil can apply unattended.
+//
+// It takes a filter because the answer depends on one, and every caller that
+// counted these by hand had to decide which filter it meant without saying
+// so. The TUI got it wrong in the one way that shows: its batch bar counted
+// over the whole report while its `a` key applied over the filtered list, so
+// narrowing to one severity left the screen offering "fix all 10 safe" and
+// the key applying three. Nothing failed — the operator would have to count
+// the list afterwards to notice.
+//
+// Pass the zero Filter for "every finding on this host", which is what the
+// dashboard and the CLI's next-steps both mean.
+func (r Report) AutoFixable(flt Filter) []Finding { return AutoFixable(r.Select(flt)) }
+
+// AutoFixable is the same question asked of a slice a caller already has,
+// so a renderer holding the filtered findings does not have to rebuild them
+// to count what the key would apply.
+func AutoFixable(findings []Finding) []Finding {
+	out := make([]Finding, 0, len(findings))
+	for _, f := range findings {
+		if !f.Fixed && f.Remediation == RemediationAuto {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 // SortFindings orders findings by severity (most severe first), then
 // source, then ID, for stable presentation across all UIs.
 func SortFindings(findings []Finding) {
