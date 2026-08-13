@@ -386,3 +386,42 @@ func TestTheRunAttributeActuallyMatches(t *testing.T) {
 		})
 	}
 }
+
+// TestNoPublishedFigureIsEmpty rejects a pin that cannot fail.
+//
+// renderJSON returns "" for an empty list, and an empty cell shows "" too, so
+// the two match and the assertion passes without looking at anything. That is
+// how this page came to carry the sentence "the suggestion it cleared is
+// attributable: <code data-measured="deltas.lynis_suggestions.reviewed.cleared">
+// </code>, detect toolkit to…" against a run that cleared no suggestion at all:
+// the newest run records an empty list there, the element rendered blank, and
+// the claim around it went on being made for two releases.
+//
+// It is the same defect as the CI selector in 3.14.1 that matched no domain
+// after the enum changed encoding and passed on every pull request. A check
+// whose subject is absent is not a check.
+//
+// A figure that is genuinely empty — a list of nothing, a count of zero
+// occurrences — belongs in prose, or as the count rather than the contents.
+func TestNoPublishedFigureIsEmpty(t *testing.T) {
+	name, doc := newestMeasurement(t)
+
+	for _, lang := range []string{"en", "ko"} {
+		for _, c := range measuredCell.FindAllStringSubmatch(measuredPage(t, lang), -1) {
+			path := c[1]
+			if runOf(c[0]) != "" {
+				continue
+			}
+			want, err := resolveJSON(doc, path)
+			if err != nil {
+				continue // the test above reports an unresolvable path
+			}
+			if renderJSON(want) == "" {
+				t.Errorf("%s: data-measured=%q renders as nothing against %s, so the "+
+					"sentence around it is claiming something no test can check. "+
+					"Say it in prose, or cite a count instead of the contents.",
+					lang, path, name)
+			}
+		}
+	}
+}
