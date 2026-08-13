@@ -142,7 +142,7 @@ func TestNeedsRootExcludesPrintOnlyCommands(t *testing.T) {
 			t.Errorf("%q should not trigger elevation", cmd)
 		}
 	}
-	for _, cmd := range []string{"scan", "tui", "fix", "serve", "web", "explain", "rollback", "history"} {
+	for _, cmd := range []string{"scan", "tui", "fix", "serve", "web", "explain", "rollback", "history", "update", "uninstall"} {
 		if !needsRoot(cmd) {
 			t.Errorf("%q reads root-only state and should elevate", cmd)
 		}

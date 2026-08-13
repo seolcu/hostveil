@@ -284,6 +284,49 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
 
+            <h2 id="update">update</h2>
+            <p>hostveil을 최신 릴리스로 업데이트합니다.</p>
+            <div class="code-block"><pre><code>hostveil update
+hostveil update --check</code></pre></div>
+            <p>이 바이너리가 어떻게 설치됐는지 확인해 같은 방식으로 업데이트합니다. 호스트에 무엇이 있는지를 두고 서로 다른 말을 하는 도구가 생기지 않도록 하기 위해서입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>설치 방식</th><th>update가 하는 일</th></tr></thead>
+                <tbody>
+                  <tr><td>설치 스크립트</td><td>릴리스 아카이브를 받아 바이너리를 제자리에서 교체합니다.</td></tr>
+                  <tr><td><code>.deb</code></td><td>릴리스의 <code>.deb</code>을 받아 <code>apt-get</code>으로 설치합니다. dpkg가 파일시스템을 계속 정확히 기술하도록.</td></tr>
+                  <tr><td><code>.rpm</code></td><td>같은 방식으로 <code>dnf</code>를 씁니다.</td></tr>
+                  <tr><td><code>go install</code></td><td>Go 툴체인으로 소스에서 다시 빌드합니다. 직접 빌드한 바이너리를 배포본으로 바꿔치우면 그 빌드를 말없이 버리는 셈입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>검증은 선택이 아닙니다. 받은 파일을 릴리스의 체크섬 파일과 대조해 맞지 않으면 버리고, GitHub CLI가 있으면 서명된 빌드 프로버넌스도 검증합니다. 프로버넌스 검증이 <em>실패</em>하면 업데이트를 중단하고, <code>gh</code>가 없어서 검증을 못 한 경우는 안내로 끝냅니다. 체크섬은 바이트가 온전히 도착했다는 것만 증명하고 누가 만들었는지는 말해 주지 않기 때문입니다.</p>
+            <p>설치 방식을 알아낼 수 없으면 아무것도 하지 않고 그 사실을 알립니다. 거기서 추측하는 것은 다른 도구가 자기 것이라고 믿는 파일을 덮어쓰는 일입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>하는 일</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--check</code></td><td>새 버전이 있는지만 알리고 설치하지 않습니다. 종료 코드 <code>10</code>이면 업데이트가 있고 <code>0</code>이면 최신이라, cron 작업이 문장을 읽지 않고 분기할 수 있습니다.</td></tr>
+                  <tr><td><code>--yes</code></td><td>설치 전에 묻지 않습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="uninstall">uninstall</h2>
+            <p>설치할 때 쓴 도구로 hostveil을 제거합니다.</p>
+            <div class="code-block"><pre><code>hostveil uninstall</code></pre></div>
+            <p>패키지로 설치했다면 <code>apt-get remove</code>나 <code>dnf remove</code>로 제거하고, 그 외에는 바이너리를 지웁니다.</p>
+            <p><strong>저장된 스캔 기록과 롤백 체크포인트는 건드리지 않으며</strong>, 묻기 전에 그 위치를 먼저 알려 줍니다. 그 체크포인트는 이 호스트에서 hostveil이 고친 모든 파일의 백업이라, 프로그램을 지운다는 것이 그 작업을 되돌릴 능력까지 버릴 이유는 되지 않습니다. 확신이 서면 직접 지우세요.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>하는 일</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--yes</code></td><td>제거 전에 묻지 않습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+
             <div class="docs-pager">
               <a class="button secondary" href="ai">← AI 설명</a>
               <a class="button primary" href="environment">환경 변수 →</a>

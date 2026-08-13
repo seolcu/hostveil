@@ -170,6 +170,8 @@
                   <tr><td><code>GOOGLE_CLOUD_SHELL</code></td><td>set by Google Cloud Shell</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td>Promotes the TUI to 24-bit color, like <code>COLORTERM</code>, without <code>COLORTERM</code> being set. Read four lines from <code>WT_SESSION</code> in the same function, and listed for the same reason.</td></tr>
                   <tr><td><code>TERMINFO</code></td><td>unset — the system database</td><td>A directory holding a terminfo database</td><td>Where the TUI looks up what <code>TERM</code> can do. It decides the answer to the truecolor probe and which key table the TUI decodes with, so pointing it at a database that does not describe your terminal produces wrong colors or keys that do nothing. <code>hostveil scan</code> never reads a terminfo entry.</td></tr>
                   <tr><td><code>TERMINFO_DIRS</code></td><td>unset</td><td>Colon-separated directories</td><td>The same lookup, searched after <code>TERMINFO</code>.</td></tr>
+                  <tr><td><code>GOBIN</code></td><td>Read by <code>hostveil update</code> and <code>hostveil uninstall</code> only, to recognise a binary that <code>go install</code> put there. Such a binary is rebuilt from source rather than replaced with a published one. hostveil never sets it.</td></tr>
+                  <tr><td><code>GOPATH</code></td><td>The same question when <code>GOBIN</code> is unset: <code>$GOPATH/bin</code>, and failing that <code>~/go/bin</code>.</td></tr>
                 </tbody>
               </table>
             </div>

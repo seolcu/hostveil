@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/selfupdate"
 )
 
 // The CLI reference on the website restates this package's flag sets, and
@@ -25,13 +27,15 @@ import (
 // docSection maps a function in this package to the <h2 id="…"> section of
 // the CLI reference that documents it.
 var docSection = map[string]string{
-	"cmdScan":     "scan",
-	"cmdFix":      "fix",
-	"cmdRollback": "rollback",
-	"cmdExplain":  "explain",
-	"cmdServe":    "serve",
-	"cmdTUI":      "tui",
-	"cmdHistory":  "history",
+	"cmdScan":      "scan",
+	"cmdFix":       "fix",
+	"cmdRollback":  "rollback",
+	"cmdExplain":   "explain",
+	"cmdServe":     "serve",
+	"cmdTUI":       "tui",
+	"cmdHistory":   "history",
+	"cmdUpdate":    "update",
+	"cmdUninstall": "uninstall",
 }
 
 var docLangs = []string{"en", "ko"}
@@ -224,5 +228,89 @@ func TestEverySubcommandHasAReferenceSection(t *testing.T) {
 			}
 		}
 		_ = documented
+	}
+}
+
+// Every subcommand this package defines has to be classified and documented.
+//
+// Both lists that decide those things are hand-maintained maps — docSection
+// here, and needsRoot's switch — and adding a subcommand fails neither of
+// them. A command that nobody added to needsRoot runs unprivileged and
+// discovers it needed root half way through; one nobody added to the CLI
+// reference is a command users find by reading the help text and nowhere else.
+//
+// The harvest is from the dispatch switch rather than from function names, so
+// a cmdXxx helper that is not a subcommand does not have to be excused here.
+func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "main.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dispatched := map[string]string{} // command name -> handler
+	ast.Inspect(file, func(n ast.Node) bool {
+		cl, ok := n.(*ast.CaseClause)
+		if !ok {
+			return true
+		}
+		var handler string
+		ast.Inspect(cl, func(m ast.Node) bool {
+			if call, ok := m.(*ast.CallExpr); ok {
+				if id, ok := call.Fun.(*ast.Ident); ok && strings.HasPrefix(id.Name, "cmd") {
+					handler = id.Name
+				}
+			}
+			return true
+		})
+		if handler == "" {
+			return true
+		}
+		for _, e := range cl.List {
+			if lit, ok := e.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+				if name, err := strconv.Unquote(lit.Value); err == nil {
+					dispatched[name] = handler
+				}
+			}
+		}
+		return true
+	})
+	if len(dispatched) < 7 {
+		t.Fatalf("harvested only %d subcommands from the dispatch switch; the walk is broken", len(dispatched))
+	}
+
+	for name, handler := range dispatched {
+		if !needsRoot(name) {
+			t.Errorf("%q dispatches to %s and needsRoot says it does not need root; "+
+				"if that is right, add it to the print-only list in cli_test.go and say why here",
+				name, handler)
+		}
+		if _, ok := docSection[handler]; !ok {
+			t.Errorf("%s handles %q and has no entry in docSection, so the CLI reference is not "+
+				"checked for it in either language", handler, name)
+		}
+	}
+}
+
+// The version this binary is stamped with and the version the updater resolves
+// have to compare equal when they are the same release.
+//
+// They are produced by different things and disagree about the leading v:
+// goreleaser passes `-X main.version=v{{.Version}}`, and the updater trims the
+// tag because an asset URL needs it trimmed. Comparing them raw is never true,
+// and the symptom is that `hostveil update` on a current host announces an
+// update and reinstalls what is already there.
+//
+// Pinned against the real `version` variable rather than a literal, so a change
+// to how the build stamps it lands here.
+func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
+	stamped := version
+	if !strings.HasPrefix(stamped, "v") {
+		t.Fatalf("version = %q; goreleaser stamps a leading v and this test is about that", stamped)
+	}
+	resolved := strings.TrimPrefix(stamped, "v")
+	if !selfupdate.SameVersion(stamped, resolved) {
+		t.Errorf("SameVersion(%q, %q) is false, so `hostveil update` would offer the version it is running",
+			stamped, resolved)
 	}
 }

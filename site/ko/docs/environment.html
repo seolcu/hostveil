@@ -170,6 +170,8 @@
                   <tr><td><code>GOOGLE_CLOUD_SHELL</code></td><td>Google Cloud Shell이 설정</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td><code>COLORTERM</code>이 없어도 TUI를 24비트 색으로 올립니다. 같은 함수에서 <code>WT_SESSION</code> 네 줄 아래에 있고, 적어 두는 이유도 같습니다.</td></tr>
                   <tr><td><code>TERMINFO</code></td><td>미설정 — 시스템 데이터베이스</td><td>terminfo 데이터베이스가 있는 디렉터리</td><td>TUI가 <code>TERM</code>의 능력을 찾아보는 곳입니다. 트루컬러 질의의 답과 TUI가 키를 해석하는 표를 여기서 정하므로, 실제 터미널을 설명하지 않는 데이터베이스를 가리키면 색이 틀리거나 키가 먹지 않습니다. <code>hostveil scan</code>은 terminfo 항목을 전혀 읽지 않습니다.</td></tr>
                   <tr><td><code>TERMINFO_DIRS</code></td><td>미설정</td><td>콜론으로 구분된 디렉터리들</td><td>같은 조회이고, <code>TERMINFO</code> 다음으로 찾습니다.</td></tr>
+                  <tr><td><code>GOBIN</code></td><td><code>hostveil update</code>와 <code>hostveil uninstall</code>에서만 읽습니다. <code>go install</code>이 놓은 바이너리인지 알아내기 위해서이고, 그런 바이너리는 배포본으로 교체하지 않고 소스에서 다시 빌드합니다. hostveil이 설정하지는 않습니다.</td></tr>
+                  <tr><td><code>GOPATH</code></td><td><code>GOBIN</code>이 없을 때 같은 질문에 답합니다. <code>$GOPATH/bin</code>이고, 그것도 없으면 <code>~/go/bin</code>입니다.</td></tr>
                 </tbody>
               </table>
             </div>
