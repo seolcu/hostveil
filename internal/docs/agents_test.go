@@ -232,6 +232,22 @@ func TestReferencedPathsExist(t *testing.T) {
 // (`compose.ds016`, `cve.*`) and are emphatically not Go symbols.
 var pkgRef = regexp.MustCompile(`^([a-z][a-z0-9]*)\.([A-Z][A-Za-z0-9_]*)(\(\))?$`)
 
+// bareSymbol matches a backticked identifier with no package in front of it —
+// `applyEdit`, `preserveOwner`, `resolvedKind` — which is how this document
+// names most of the unexported things it talks about.
+//
+// It exists because pkgRef could not see the one that went wrong: the doc
+// said `writeFileAtomic` where the function is `platform.WriteFileAtomic`, and
+// the uppercase requirement meant the misspelling was not a symbol reference
+// at all, so nothing looked for it. A name that is *nearly* right is worse
+// than one that is obviously wrong — a reader greps for it, finds nothing,
+// and concludes the document is describing an older version of the code.
+//
+// camelCase only, and two or more words. Single words (`ufw`, `sudo`) are
+// ordinary prose, and snake_case in this document is always a config file or
+// a sudo option — `sshd_config`, `env_reset`, `env_keep` — never a Go name.
+var bareSymbol = regexp.MustCompile(`^([a-z][a-z0-9]*(?:[A-Z][A-Za-z0-9]*)+)(\(\))?$`)
+
 // declaredNames returns every top-level name the .go files in dir declare —
 // funcs and methods, types, vars, and consts.
 //
@@ -274,6 +290,55 @@ func declaredNames(t *testing.T, dir string) map[string]bool {
 		}
 	}
 	return names
+}
+
+// TestBareSymbolsExistSomewhere is the same check for the names this document
+// writes without a package in front of them.
+//
+// It searches the whole tree rather than one directory, because a bare name
+// carries no package to look in — which makes it weaker than
+// TestReferencedSymbolsExist and still enough for the case it was written
+// for: a name that exists nowhere at all.
+func TestBareSymbolsExistSomewhere(t *testing.T) {
+	root := repoRoot(t)
+	declared := allDeclaredNames(t, root)
+	checked := 0
+	for _, tok := range tokens(t) {
+		m := bareSymbol.FindStringSubmatch(tok)
+		if m == nil {
+			continue
+		}
+		checked++
+		if !declared[m[1]] {
+			t.Errorf("AGENTS.md names %q, and nothing in the tree declares it — "+
+				"a name that is nearly right sends a reader looking for code that is not there", tok)
+		}
+	}
+	if checked < 5 {
+		t.Fatalf("only %d bare symbols were checked; the pattern has stopped matching", checked)
+	}
+}
+
+// allDeclaredNames is declaredNames over every package under internal/ and
+// cmd/, for the bare-name check that has no package to narrow to.
+func allDeclaredNames(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	for _, top := range []string{"internal", "cmd"} {
+		err := filepath.WalkDir(filepath.Join(root, top), func(path string, d os.DirEntry, err error) error {
+			if err != nil || !d.IsDir() {
+				return err
+			}
+			for name := range declaredNames(t, path) {
+				out[name] = true
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s: %v", top, err)
+		}
+	}
+	return out
 }
 
 // TestReferencedSymbolsExist catches the rename that a path check cannot: the
