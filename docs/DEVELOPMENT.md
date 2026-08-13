@@ -157,6 +157,48 @@ actually receives is the quantised 256-colour index and not the hex
 The TUI also has a snapshot hook for documentation frames: `HOSTVEIL_SNAPSHOT=/path
 go test ./internal/ui/tui -run TestSnapshotDump`.
 
+### The two screenshots on the website
+
+`site/assets/tui.png` and `site/assets/web.png` are the only claims the site
+makes that a reader believes on sight, and they were the only ones no test
+checked. `tui.png` spent two releases showing a four-level severity scale that
+had already been replaced by three. Both are covered now, differently, because
+only one of them can be re-rendered from Go.
+
+**`tui.png` is regenerated, not photographed.** The frame it is made from is
+committed at `internal/ui/tui/testdata/site-frame.ans`, and
+`TestSiteFrameIsCurrent` re-renders it on every test run and fails with the
+first differing line when the interface moves. To update both after reviewing
+that diff:
+
+```bash
+HOSTVEIL_SNAPSHOT="$PWD/internal/ui/tui/testdata/site-frame.ans" \
+  go test ./internal/ui/tui -run TestSnapshotDump
+python3 scripts/ansi2png.py internal/ui/tui/testdata/site-frame.ans site/assets/tui.png
+```
+
+`ansi2png.py` needs DejaVu Sans Mono, which is the face the published image is
+set in — `apt install fonts-dejavu-core`, `dnf install dejavu-sans-mono-fonts`.
+It says so if the font is missing. `HOSTVEIL_ANSI2PNG_BG`/`_FG` override the
+ground and default ink, which a capture of a non-default theme needs: a
+terminal capture cannot carry them, so the renderer assumes One Dark's `Ink`
+and `Bone`.
+
+**`web.png` is photographed, so its *inputs* are pinned instead.** There is no
+headless browser in the test suite, so `TestDashboardScreenshotStampIsCurrent`
+hashes everything that decides what that page looks like — the generated
+`/model.js`, `/themes.css` and `/theme.js`, plus the three embedded assets —
+against `internal/ui/web/testdata/web-shot.stamp`, and names which one moved.
+Re-shoot it with the Firefox command above, then:
+
+```bash
+HOSTVEIL_UPDATE_STAMP=1 go test ./internal/ui/web -run TestDashboardScreenshotStampIsCurrent
+```
+
+Neither check can tell you the picture is *good*. What they guarantee is that
+nobody ships an interface change without being told the picture is now a
+picture of something else.
+
 ### Measuring hostveil with tools that are not hostveil
 
 The end-to-end job checks that the score improves after `fix --all`. That
