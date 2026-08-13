@@ -21,7 +21,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		id, args = args[0], args[1:]
 	}
-	if code := parseFlags(fs, args); code >= 0 {
+	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
 	if id == "" {
@@ -73,7 +73,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 func cmdHistory(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("history", flag.ContinueOnError)
 	scans := fs.Bool("scans", false, "show the score of every past scan instead of the applied-fix log")
-	if code := parseFlags(fs, args); code >= 0 {
+	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
 	if *scans {

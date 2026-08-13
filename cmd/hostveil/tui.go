@@ -16,7 +16,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
 	layoutID := fs.String("layout", "", "screen arrangement ("+strings.Join(tui.LayoutIDs(), ", ")+")")
 	glyphSet := fs.String("glyphs", "", "symbol set ("+glyphList()+")")
-	if code := parseFlags(fs, args); code >= 0 {
+	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
 	lay, err := resolveLayout(*layoutID)

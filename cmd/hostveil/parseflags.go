@@ -23,3 +23,29 @@ func parseFlags(fs *flag.FlagSet, args []string) int {
 		return 2 // flag already printed the error and the usage
 	}
 }
+
+// parseAndElevate is parseFlags followed by the re-exec under sudo, and is
+// what every subcommand calls.
+//
+// The order is the point. Elevation used to happen in run(), before dispatch
+// and therefore before any subcommand had looked at its arguments — so
+// `hostveil --theme no-such-theme` asked for a password, took it, re-executed
+// as root, and *then* exited 2 on a usage error. resolveCommand routes any
+// leading flag to scan, which is root-benefiting, so a typo cost a password
+// every time.
+//
+// Doing it here rather than at each call site keeps the two in one place, and
+// fs.Name() is already the subcommand name needsRoot is keyed on. The two
+// print-only commands never reach this, which is what keeps `version` and
+// `help` from prompting.
+//
+// parseFlags stays separate so a test can exercise the parsing without a
+// process that replaces itself; TestNoCommandParsesFlagsWithoutElevating holds
+// the commands to this one.
+func parseAndElevate(fs *flag.FlagSet, args []string) int {
+	if code := parseFlags(fs, args); code >= 0 {
+		return code
+	}
+	maybeElevate(fs.Name()) // on success the process is replaced and does not return
+	return -1
+}
