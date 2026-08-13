@@ -53,8 +53,13 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		for _, name := range p.ServiceNames() {
 			for _, fnd := range auditService(p.Services[name]) {
 				// Record where the fix layer should apply the change.
+				// "file" names the project; "files" is what a fix resolves
+				// against. On a layered project the merged state is what
+				// docker runs, so the file to edit is the one that decides
+				// this setting — which is not necessarily the first.
 				fnd.Metadata = mergeMeta(fnd.Metadata, map[string]string{
 					"file":    p.File,
+					"files":   strings.Join(p.Files, model.PathListSeparator),
 					"service": name,
 				})
 				findings = append(findings, fnd)
