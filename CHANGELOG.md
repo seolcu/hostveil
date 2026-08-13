@@ -1,6 +1,71 @@
 # Changelog
 
-## Unreleased
+## [3.18.0](https://github.com/seolcu/hostveil/compare/v3.17.0...v3.18.0) (2026-08-14)
+
+Installing hostveil took one command and updating it took the whole URL again.
+This release closes that: `hostveil update` and `hostveil uninstall` act through
+whichever tool put the binary there, and a scan says once a day when a newer
+release exists.
+
+The update path was written, then run, and running it is what found the four
+bugs listed under Bug Fixes. Every one of them was silent.
+
+### Features
+
+* **cmd:** `hostveil update` and `hostveil uninstall`
+  ([#726](https://github.com/seolcu/hostveil/issues/726)). Each works out how
+  this binary was installed and acts the same way: the install script's binary
+  is replaced in place, a `.deb` is updated with the release's own `.deb`
+  through `apt-get` so dpkg keeps describing the filesystem correctly, an
+  `.rpm` the same through `dnf`, and a `go install` binary is rebuilt from
+  source rather than overwritten with somebody else's build. Only an origin
+  hostveil cannot identify falls back to printing advice, because guessing
+  there means overwriting a file another tool believes it owns.
+
+  Verification is a gate rather than a warning. The download is checked against
+  the release's checksums file and discarded if it does not match, and where
+  the GitHub CLI is present the signed build provenance is verified too. A
+  provenance check that fails stops the update; one that cannot run because
+  `gh` is not installed is a note, since a checksum proves the bytes arrived
+  intact and nothing about who produced them.
+
+  Uninstalling leaves the saved scans and rollback checkpoints alone and prints
+  where they are before it asks rather than after. Those are the backups of
+  every file hostveil edited on that host.
+
+* **cmd:** a once-a-day update check, notice only
+  ([#726](https://github.com/seolcu/hostveil/issues/726)). A scan, the
+  dashboard and the TUI each refresh a cached answer in the background and
+  print one line when a newer release exists. Nothing waits for the request,
+  nothing is installed, and a check that fails says nothing: a host behind a
+  proxy does not have a problem hostveil should be reporting under a security
+  scan. The line appears in human output only, never in `--json`, SARIF, or a
+  report written to a file. `HOSTVEIL_NO_UPDATE_CHECK=1` stops it contacting
+  GitHub at all.
+
+### Bug Fixes
+
+* **release:** the `.deb` and `.rpm` archives now carry a provenance
+  attestation ([#726](https://github.com/seolcu/hostveil/issues/726)). They
+  were left out of `subject-path`, so a packaged host's own update refused its
+  provenance check and stopped.
+
+* **cmd:** `update --check` no longer asks for a password
+  ([#726](https://github.com/seolcu/hostveil/issues/726)). It makes one request
+  and writes nothing. It is the one command whose need for root depends on its
+  flags, and the guard test that would have caught this was rewritten to state
+  the real rule rather than the shape it had assumed.
+
+* **cmd:** an update on a current host is no longer offered forever
+  ([#726](https://github.com/seolcu/hostveil/issues/726)). goreleaser stamps
+  `v3.17.0` and the release tag is trimmed to `3.17.0` to build an asset URL,
+  so the two never compared equal.
+
+* **cmd:** an install that changed nothing is no longer reported as success
+  ([#726](https://github.com/seolcu/hostveil/issues/726)). `apt-get install` on
+  a version dpkg already records exits 0 having done nothing, and so does a
+  `go install` that resolves to a cached build. hostveil now asks the binary
+  its version afterwards.
 
 ### Documentation
 
