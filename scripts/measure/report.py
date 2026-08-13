@@ -197,6 +197,36 @@ def version():
         return ""
 
 
+# Where seed.sh records what it was able to make true of this host.
+SEED_MANIFEST = os.environ.get(
+    "SEED_MANIFEST", "/var/lib/hostveil-measure/seeded.json"
+)
+
+
+def seeded_manifest():
+    """What the fixture managed to seed, and what this distribution could not.
+
+    The measurement is only comparable across distributions if the host means
+    the same thing on each, and it cannot always: Alpine ships no
+    unattended-upgrade mechanism, so there is no "automatic updates are off"
+    weakness there to find. The updates axis then reads better on Alpine for a
+    reason that has nothing to do with hostveil.
+
+    Publishing the score without saying so would be the same mistake the
+    scanner itself is built against — an absence read as an all-clear — so the
+    manifest travels with the numbers rather than living in somebody's memory
+    of how the host was built.
+
+    A run on a host seeded by an older copy of seed.sh has no manifest, and
+    that is reported as absent rather than as an empty one: "nothing was
+    recorded" and "nothing was missing" are the two readings this whole
+    harness exists to keep apart.
+    """
+    if not os.path.exists(SEED_MANIFEST):
+        return {"error": "no seed manifest at " + SEED_MANIFEST}
+    return read_json(SEED_MANIFEST)
+
+
 def main():
     if len(sys.argv) != 3:
         print(__doc__.strip(), file=sys.stderr)
@@ -215,6 +245,7 @@ def main():
 
     doc = {
         "profile": profile,
+        "seeded": seeded_manifest(),
         "measured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(
             timespec="seconds"
         ),
