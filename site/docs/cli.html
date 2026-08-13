@@ -226,6 +226,11 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
 
+            <h3 id="serve-ssh">Over SSH</h3>
+            <p>The dashboard listens on the loopback interface, so the address it prints is that address <em>on the server</em> — typing it into the browser on your laptop reaches your laptop. When <code>hostveil serve</code> sees it is running in an SSH session it prints the forwarding command to run on your own machine, using the address your client actually reached:</p>
+            <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
+            <p>Leave that open, then open the printed URL on your own machine. hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
+
             <h2 id="explain">explain</h2>
             <p>Explain a finding in plain language.</p>
             <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>

@@ -111,6 +111,20 @@ var carriedThroughSudo = []string{
 	// look like it had turned the check off while the elevated run went on
 	// making it, which is the exact failure this list exists to prevent.
 	"HOSTVEIL_NO_UPDATE_CHECK",
+	// Not hostveil's own, and carried for the same reason as the one above:
+	// serve elevates, so the process that prints the SSH tunnel command is
+	// the child, and sudo's env_reset drops this. Without it hostveil would
+	// decide it was on a console — on the path every remote operator takes —
+	// and print a loopback URL with no way to reach it.
+	//
+	// Worth knowing: every other name here is opt-in, so the assignment form
+	// below is exercised only when somebody set one. sshd sets this on every
+	// remote session, so from here on nearly every elevated remote run passes
+	// an assignment to sudo. That is the same mechanism, not a new one, and
+	// sudo permits it because SSH_CONNECTION is not one of the names its
+	// env_delete blocks — but the blast radius of the mechanism failing is
+	// now every remote run rather than the few that set a theme.
+	"SSH_CONNECTION",
 	"NO_COLOR",
 }
 

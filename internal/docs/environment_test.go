@@ -193,6 +193,15 @@ func readEnvNames(t *testing.T) []string {
 				if fn.Name == "envOr" {
 					add(call.Args[0])
 				}
+				// getenv("X") where getenv is an injected func(string) string,
+				// which is how this repository tests anything that reads the
+				// environment. sshHint takes os.Getenv as a parameter, so the
+				// name it reads appeared in no os.Getenv call anywhere and
+				// this page could have gone on omitting it with every test
+				// here green.
+				if strings.EqualFold(fn.Name, "getenv") || strings.EqualFold(fn.Name, "lookupenv") {
+					add(call.Args[0])
+				}
 			}
 			return true
 		})
