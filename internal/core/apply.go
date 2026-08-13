@@ -158,6 +158,20 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		mode = fi.Mode().Perm()
 	}
 	if err := platform.WriteFileAtomic(a.Path, next, mode); err != nil {
+		// The checkpoint is already on disk and `hostveil history` will list
+		// it as an applied, reversible fix — for a change that never landed.
+		// Worse, its AppliedSHA256 permanently asserts to recordedWrites that
+		// hostveil wrote bytes it did not, which weakens the external-edit
+		// guard for this path from here on.
+		//
+		// So the checkpoint goes with the failure. applyMode reports the same
+		// class of failure by naming how far it got, because its writes are
+		// partial by nature; an edit is one atomic rename, so here there is
+		// nothing to keep.
+		if rmErr := e.store.Discard(saved.ID); rmErr != nil {
+			return model.FixOutcome{}, fmt.Errorf("%w — and the backup at %s could not be discarded: %v",
+				err, saved.ID, rmErr)
+		}
 		return model.FixOutcome{}, err
 	}
 

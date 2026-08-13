@@ -727,3 +727,49 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 		t.Errorf("applied = %v, want the one auto fix", out.Applied)
 	}
 }
+
+// A checkpoint must not outlive the write it describes.
+//
+// The backup is taken first, deliberately — nothing is written until there is
+// something to go back to. But when the write then fails, the checkpoint that
+// survives says a reversible fix was applied to a file that never changed:
+// `hostveil history` lists it with a full diff, and its AppliedSHA256 asserts
+// to the external-edit guard, permanently, that hostveil wrote bytes it did
+// not.
+func TestAFailedWriteLeavesNoCheckpointBehind(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e := fixEngine(t)
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("cache"), model.WithMetadata("file", path),
+		model.WithEvidence("port", "6379"))
+
+	// The write goes through a temp file beside the target, so an unwritable
+	// directory fails it — after the backup, which is the ordering that
+	// produces the stale checkpoint.
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	if _, err := e.ApplyFix(context.Background(), f, 0); err == nil {
+		t.Fatal("apply reported success with an unwritable target directory")
+	}
+	cps, err := e.ListCheckpoints()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cps) != 0 {
+		t.Errorf("a failed write left %d checkpoint(s) behind: %+v", len(cps), cps)
+	}
+	if after, _ := os.ReadFile(path); string(after) != orig {
+		t.Errorf("the target changed despite the failure:\n%s", after)
+	}
+}

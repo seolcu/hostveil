@@ -51,6 +51,20 @@ func (e *Engine) rollback(id string, force bool) (model.RollbackOutcome, error) 
 		restore = e.store.RollbackForce
 	}
 	cp, err := restore(id)
+	// A partial restore is the one failure that still changed the host, so
+	// the outcome has to survive it: the operator needs the list of files
+	// that did move before they can decide anything. Everything else —
+	// a declined external edit, a corrupt blob, an unreadable checkpoint —
+	// happens before the first write, and there is nothing to report.
+	var partial *history.PartialRestoreError
+	if errors.As(err, &partial) {
+		return model.RollbackOutcome{
+			CheckpointID:   cp.ID,
+			RestartService: cp.RestartService,
+			RestoredFiles:  partial.Restored,
+			FailedFiles:    partial.Failed,
+		}, err
+	}
 	if err != nil {
 		return model.RollbackOutcome{}, err
 	}

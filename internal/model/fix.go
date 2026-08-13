@@ -106,8 +106,17 @@ func (o BatchOutcome) Summary() string {
 // NewScore let a long-lived UI refresh its list and gauge straight from the
 // response, exactly as NewScore does after an apply.
 type RollbackOutcome struct {
-	CheckpointID   string         `json:"checkpoint_id"`
-	RestoredFiles  []string       `json:"restored_files"`
+	CheckpointID  string   `json:"checkpoint_id"`
+	RestoredFiles []string `json:"restored_files"`
+	// FailedFiles is set only when a restore wrote some of a checkpoint's
+	// files and could not write the others — a disk that filled, a path that
+	// vanished between the pre-flight check and the write.
+	//
+	// It is on the outcome rather than only in the error because that state
+	// is the one an operator most needs described: rollback keeps no backup
+	// of its own, so there is nothing to retry from and nothing to undo, and
+	// the only useful thing left is to say which files are which.
+	FailedFiles    []string       `json:"failed_files,omitempty"`
 	RestartService string         `json:"restart_service,omitempty"`
 	Unfixed        []string       `json:"unfixed,omitempty"` // findings no longer marked fixed
 	NewScore       ScoreBreakdown `json:"new_score"`

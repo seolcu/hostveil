@@ -256,3 +256,89 @@ func TestUndoShapesSurviveTheMetadataRoundTrip(t *testing.T) {
 		t.Error("the recorded mode did not survive the round trip")
 	}
 }
+
+// A rollback that cannot finish must still say what it did.
+//
+// The pre-flight checks exist because "some files restored and others not is a
+// state neither the host nor the report describes" — their own words. They
+// cannot make it impossible, though: a disk fills, a path vanishes between the
+// check and the write. When that happens the loop used to return on the first
+// error, leaving the earlier paths already written and the caller holding
+// nothing but an error, with no way to name a single file that had moved.
+func TestAPartialRestoreNamesBothHalves(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	dir := t.TempDir()
+	s := NewStore(dir)
+
+	// Two files backed up together. The second lives in a directory that
+	// becomes unwritable before the rollback, so the first restores and the
+	// second cannot.
+	okDir, badDir := filepath.Join(dir, "ok"), filepath.Join(dir, "bad")
+	for _, d := range []string{okDir, badDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a, b := filepath.Join(okDir, "a.conf"), filepath.Join(badDir, "b.conf")
+	for _, p := range []string{a, b} {
+		if err := os.WriteFile(p, []byte("before\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cp := Checkpoint{ID: NewID("ssh.rootlogin"), FindingID: "ssh.rootlogin", Label: "two files"}
+	saved, err := s.Save(cp, map[string][]byte{a: []byte("before\n"), b: []byte("before\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{a, b} {
+		if err := os.WriteFile(p, []byte("after\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(badDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(badDir, 0o755) })
+
+	_, err = s.Rollback(saved.ID)
+	var partial *PartialRestoreError
+	if !errors.As(err, &partial) {
+		t.Fatalf("rollback err = %v, want a partial-restore error naming both halves", err)
+	}
+	if len(partial.Restored) != 1 || partial.Restored[0] != a {
+		t.Errorf("restored = %v, want just %s", partial.Restored, a)
+	}
+	if len(partial.Failed) != 1 || partial.Failed[0] != b {
+		t.Errorf("failed = %v, want just %s", partial.Failed, b)
+	}
+	// And the half that could be restored actually was — stopping at the
+	// first error would have left this one untouched if it sorted second.
+	if got, _ := os.ReadFile(a); string(got) != "before\n" {
+		t.Errorf("the restorable file was not restored: %q", got)
+	}
+}
+
+// A mode-only entry whose file the operator deleted is not a failed rollback.
+// The Created branch tolerates exactly this, deliberately; the chmod did not.
+func TestRestoringTheModeOfADeletedFileIsNotAFailure(t *testing.T) {
+	dir := t.TempDir()
+	s := NewStore(dir)
+	target := filepath.Join(dir, "gone.conf")
+	if err := os.WriteFile(target, []byte("x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := s.SaveModes(Checkpoint{ID: NewID("fileperms.shadow"), FindingID: "fileperms.shadow",
+		Label: "tighten"}, map[string]os.FileMode{target: 0o644})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(target); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Rollback(saved.ID); err != nil {
+		t.Errorf("rollback of a mode-only entry whose file is gone: %v", err)
+	}
+}
