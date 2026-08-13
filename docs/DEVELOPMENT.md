@@ -154,8 +154,48 @@ when you want to know which palette entry drew something — the palettes are
 actually receives is the quantised 256-colour index and not the hex
 (`internal/ui/tui/quantize_test.go` holds every theme to that).
 
-The TUI also has a snapshot hook for documentation frames: `HOSTVEIL_SNAPSHOT=/path
-go test ./internal/ui/tui -run TestSnapshotDump`.
+### Capturing the whole interface
+
+All three surfaces draw the same written-down host — `uitest.PublishedReport` —
+so a set of captures is a set of pictures of one machine rather than of three
+machines that happened to be to hand. Every hook is a test that skips unless its
+environment variable is set, so none of them runs in CI.
+
+```bash
+# TUI — one .ans per screen into a directory (a file path gets the site frame)
+HOSTVEIL_SNAPSHOT=/tmp/frames go test ./internal/ui/tui -run TestSnapshotDump
+
+# CLI — the four shapes `hostveil scan` prints
+HOSTVEIL_SNAPSHOT=/tmp/cli go test ./internal/clirender -run TestSnapshotDump
+
+# Dashboard — serves the fixture, prints a URL, exits after 45s
+HOSTVEIL_SCREENSHOT_ADDR=127.0.0.1:8788 go test ./internal/ui/web -run TestScreenshotServe -v
+```
+
+A palette and an arrangement are the two things only a picture can review, and
+each hook was reachable in exactly one of each — so reviewing the other five of
+either meant clicking through a live dashboard on some host, which is the drift
+these hooks were written to remove. Both are selectable, and an unknown ID is a
+hard failure rather than a silent fall back to the default: a typo would
+otherwise produce a full set of frames named after the palette asked for and
+drawn in another.
+
+```bash
+HOSTVEIL_SNAPSHOT_THEME=nord    HOSTVEIL_SNAPSHOT_LAYOUT=lanes    …  # TUI
+HOSTVEIL_SCREENSHOT_THEME=nord  HOSTVEIL_SCREENSHOT_LAYOUT=lanes  …  # dashboard
+```
+
+Rendering a `.ans` to PNG is `scripts/ansi2png.py`. A capture of a non-default
+palette needs its ground and ink passed in, since a terminal capture cannot
+carry them and the renderer assumes One Dark's:
+
+| theme | `HOSTVEIL_ANSI2PNG_BG` | `HOSTVEIL_ANSI2PNG_FG` |
+| --- | --- | --- |
+| `onedark` (default) | `#282c34` | `#c8ccd4` |
+| `gruvbox` | `#1d2021` | `#ebdbb2` |
+| `nord` | `#22262e` | `#eceff4` |
+| `catppuccin` | `#1e1e2e` | `#cdd6f4` |
+| `tokyonight` | `#1a1b26` | `#c0caf5` |
 
 ### The two screenshots on the website
 
