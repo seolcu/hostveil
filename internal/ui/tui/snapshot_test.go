@@ -3,11 +3,52 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 )
+
+// The palette and arrangement the dump renders in. Both default to what a
+// first run shows, so the committed frames do not move; both are named because
+// a palette change and an arrangement change are exactly the two things a
+// screenshot is the only honest review of, and neither is visible in the one
+// arrangement the dumper used to be hardwired to.
+//
+// An unknown ID is a hard failure rather than a silent fall back to the
+// default: a typo would otherwise produce a full set of frames that look
+// right, are named after the theme asked for, and are drawn in another one.
+const (
+	snapshotThemeEnv  = "HOSTVEIL_SNAPSHOT_THEME"
+	snapshotLayoutEnv = "HOSTVEIL_SNAPSHOT_LAYOUT"
+)
+
+func snapshotTheme(t *testing.T) theme.Theme {
+	t.Helper()
+	id := os.Getenv(snapshotThemeEnv)
+	if id == "" {
+		return theme.Default()
+	}
+	th, ok := theme.Lookup(id)
+	if !ok {
+		t.Fatalf("%s=%q is not a theme; have %s", snapshotThemeEnv, id, strings.Join(theme.IDs(), ", "))
+	}
+	return th
+}
+
+func snapshotLayout(t *testing.T) string {
+	t.Helper()
+	id := os.Getenv(snapshotLayoutEnv)
+	if id == "" {
+		return ""
+	}
+	if _, ok := LookupLayout(id); !ok {
+		t.Fatalf("%s=%q is not an arrangement; have %s", snapshotLayoutEnv, id, strings.Join(LayoutIDs(), ", "))
+	}
+	return id
+}
 
 // dumpEveryMode writes one .ans per screen into dir, in the order a user
 // meets them. Reached from TestSnapshotDump when HOSTVEIL_SNAPSHOT names a
@@ -53,9 +94,11 @@ func dumpEveryMode(t *testing.T, dir string) {
 	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states)}
 	delta := model.Delta{Resolved: findings[:2], New: findings[2:3], StillPresent: 12}
 
+	pal, lay := snapshotTheme(t), snapshotLayout(t)
 	newModel := func(md mode) *appModel {
 		m := &appModel{mode: md, width: W, height: H, report: rep, delta: delta,
-			selected: map[string]bool{}, status: "Scanning…"}
+			selected: map[string]bool{}, status: "Scanning…", layout: lay}
+		m.setTheme(pal)
 		m.rebuildActive()
 		return m
 	}
@@ -147,7 +190,8 @@ func dumpEveryMode(t *testing.T, dir string) {
 	dump("10-theme", th)
 
 	clean := &appModel{mode: modeList, width: W, height: H, selected: map[string]bool{},
-		report: model.Report{Score: model.ScoreReport(nil, states)}}
+		report: model.Report{Score: model.ScoreReport(nil, states)}, layout: lay}
+	clean.setTheme(pal)
 	clean.rebuildActive()
 	dump("11-clean", clean)
 
