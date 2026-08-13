@@ -86,8 +86,6 @@ func run(ctx context.Context, args []string) int {
 
 	cmd, args := resolveCommand(args, isInteractive())
 
-	maybeElevate(cmd) // on success the process is replaced by sudo and does not return
-
 	switch cmd {
 	case "scan":
 		return cmdScan(ctx, args)

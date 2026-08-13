@@ -49,7 +49,7 @@ func cmdFix(ctx context.Context, args []string) int {
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		findingID, args = args[0], args[1:]
 	}
-	if code := parseFlags(fs, args); code >= 0 {
+	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
 

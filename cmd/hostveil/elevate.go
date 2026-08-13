@@ -38,7 +38,15 @@ func maybeElevate(cmd string) {
 	}
 	sudo, err := exec.LookPath("sudo")
 	if err != nil {
-		return // no sudo available — run unprivileged, checks degrade gracefully
+		// Say so. The two lines below explain why hostveil is *asking* for a
+		// password; this is the case where it cannot ask, and it said nothing
+		// at all — so the operator learned they needed root domain by domain,
+		// half way through a scan, from findings that read like a broken tool
+		// rather than a missing privilege. Same channel and same reason:
+		// stderr, so --json on stdout stays clean.
+		fmt.Fprintln(os.Stderr, "hostveil: no sudo on PATH, so this runs as "+
+			"the current user; the checks that need root will report what they could not read.")
+		return
 	}
 	exe, err := os.Executable()
 	if err != nil {
