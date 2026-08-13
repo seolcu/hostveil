@@ -136,6 +136,13 @@ button:disabled { opacity: .45; cursor: default; }
   width: 72px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
 .axis .meter { width: 92px; height: 8px; flex: 0 1 92px; min-width: 32px; }
 .axis-val { font-size: 11px; min-width: 30px; }
+/* The headroom: what the score becomes once every fix hostveil offers is
+   applied. Slate and small on purpose — it is context for the number beside
+   it, not a second number competing with it, and it is absent entirely on a
+   row with nothing to fix. */
+.axis-after, .dom .after, .gauge-after { color: var(--slate); font-size: 11px; }
+.gauge-after { font-size: 12px; margin-left: 10px; white-space: nowrap; }
+.dom .after { margin-left: 4px; }
 .axis.na .axis-val { color: var(--slate); }
 .axis.partial .axis-val { color: var(--med); }
 

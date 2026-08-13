@@ -34,7 +34,9 @@ func Text(r model.Report, opts Options) string {
 	if !r.Score.Applicable {
 		fmt.Fprintf(&b, "%sSecurity score: %sN/A — no domain could be scanned%s\n\n", c.bold, c.dim, c.reset)
 	} else {
-		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s\n\n", c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset)
+		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s%s\n\n",
+			c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset,
+			afterFixes(c, r.Score.Applicable, r.Score.Overall, r.Score.AfterFixes))
 	}
 
 	for _, ax := range r.Score.Axes {
@@ -49,7 +51,8 @@ func Text(r model.Report, opts Options) string {
 		if ax.Degraded {
 			partial = c.yellow + " (partial)" + c.reset
 		}
-		fmt.Fprintf(&b, "  %-22s %3d/100  %s%s\n", ax.Label, ax.Score, counts, partial)
+		fmt.Fprintf(&b, "  %-22s %3d/100  %s%s%s\n", ax.Label, ax.Score, counts, partial,
+			afterFixes(c, ax.Applicable, ax.Score, ax.AfterFixes))
 	}
 	b.WriteString("\n")
 
@@ -351,3 +354,17 @@ func wrap(s string, width int, indent string) string {
 // minWrapWidth is the floor for a computed width; one word per line is
 // unreadable in a way an overrun is not.
 const minWrapWidth = 8
+
+// afterFixes renders the headroom note, or nothing.
+//
+// Nothing is the common case and it has to stay that way: an arrow pointing
+// at the number it starts from is noise on every clean host, and a number
+// beside an N/A axis is a claim about a domain nobody looked at. The three
+// UIs each own their own formatting and all three answer these two questions
+// the same way — TestEveryUIHidesAfterFixesTheSameWay pins that.
+func afterFixes(c colors, applicable bool, score, after uint8) string {
+	if !applicable || after <= score {
+		return ""
+	}
+	return fmt.Sprintf("%s  → %d after fixes%s", c.dim, after, c.reset)
+}

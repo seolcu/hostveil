@@ -105,6 +105,11 @@ func SARIF(r model.Report, version string) (string, error) {
 			"score":      ax.Score,
 			"applicable": ax.Applicable,
 			"degraded":   ax.Degraded,
+			// Unconditional here, unlike in the three UIs. A property bag is
+			// read by a machine that can compare two numbers itself, and a
+			// key that appears only sometimes is harder to consume than one
+			// that is occasionally equal to its neighbour.
+			"after_fixes": ax.AfterFixes,
 		}
 	}
 
@@ -123,6 +128,7 @@ func SARIF(r model.Report, version string) (string, error) {
 			"results": results,
 			"properties": map[string]any{
 				"score":           r.Score.Overall,
+				"scoreAfterFixes": r.Score.AfterFixes,
 				"scoreApplicable": r.Score.Applicable,
 				"axes":            axes,
 				"domains":         domains,

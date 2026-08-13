@@ -17,6 +17,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/uitest"
 )
 
 func sampleReport() model.Report {
@@ -56,33 +57,7 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 // makes beside it instead of just looking alarming.
 func siteFrame(t *testing.T) string {
 	t.Helper()
-	findings := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/redis"),
-			model.WithDescription("The redis container publishes port 6379 on 0.0.0.0, so anything that can reach this host can reach the datastore. Redis has no authentication enabled by default, which means a full read and write of everything the service keeps there."),
-			model.WithHowToFix("Bind the published port to 127.0.0.1 so only this host can connect, and reach it from other containers over the compose network instead.")),
-		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
-		model.NewFinding("cve.outdated-image", "12 fixable vulnerabilities in nextcloud:27.1.3", model.SeverityHigh, model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud")),
-		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview),
-		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
-		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
-		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
-		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityMedium, model.SourceFirewall, model.RemediationReview),
-		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
-		model.NewFinding("sysctl.kptr-restrict", "Kernel pointers are readable by unprivileged users", model.SeverityLow, model.SourceSysctl, model.RemediationReview),
-		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
-		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("media/jellyfin")),
-		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
-	}
-	states := map[model.Source]model.ScanState{
-		model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone,
-		model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone,
-		model.SourceCVE: model.ScanDone, model.SourceAccounts: model.ScanDone,
-		model.SourceFilePerms: model.ScanDone, model.SourceSysctl: model.ScanDone,
-		model.SourceSystemd: model.ScanDone, model.SourcePorts: model.ScanDegraded,
-	}
-	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states), Domains: []model.DomainResult{
-		{Source: model.SourceAgent, State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
-	}}
+	rep := uitest.PublishedReport()
 
 	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
 	m = send(m, tea.WindowSizeMsg{Width: 150, Height: 31})

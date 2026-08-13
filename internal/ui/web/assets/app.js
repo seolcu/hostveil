@@ -137,6 +137,20 @@ function scanComplete(state) { return !!(SCAN[state] && SCAN[state].complete); }
 // model.BandFor does. The thresholds were written out four times before
 // this, and the CLI's copy had one fewer arm than the rest.
 function bandFor(v) { return BANDS.find((b) => v >= b.min) || { cls: "b-na", verdict: "unscored" }; }
+// afterFixesNote decides whether the headroom is worth a cell, and returns
+// zero or one of them so a caller can spread it into a child list.
+//
+// Two refusals, and every interface makes the same two: nothing beside an N/A
+// axis, because a number there is a claim about a domain nobody looked at;
+// and nothing when the figure equals the score, because an arrow pointing at
+// where it already is says the fixes are worth nothing. On a well-kept host
+// that is most rows, and the column has to stay quiet on them or it becomes
+// decoration.
+function afterFixesNote(applicable, score, after, render) {
+  if (applicable === false || typeof after !== "number" || after <= score) return [];
+  return [render(after)];
+}
+
 function band(v) { return bandFor(v).cls; }
 
 function meter(pct, bandClass) {
@@ -398,7 +412,9 @@ function renderRail(all) {
       el("span", { class: "n" }, srcLabel(ax.source)),
       el("span", { class: "s" },
         !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score)),
-      ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na")
+      ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
+      ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
+                        (n) => el("span", { class: "after" }, `\u2192${n}`))
     );
 
     if (!ax.applicable) {
@@ -443,7 +459,9 @@ function render() {
     ...(score.applicable === false
       ? [el("span", { class: "gauge-na" }, "N/A — nothing could be scanned")]
       : [meter(score.overall, band(score.overall)),
-         el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` })])
+         el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` }),
+         ...afterFixesNote(score.applicable, score.overall, score.after_fixes,
+                           (n) => el("span", { class: "gauge-after" }, `${n} after fixes`))])
   );
 
   // Per-axis bars. The short domain label, not the axis label: the column
@@ -460,7 +478,9 @@ function render() {
         // A degraded axis is scored from an incomplete picture; the "~" keeps
         // it from reading as a full clean result.
         el("span", { class: "axis-val" },
-          !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score))
+          !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score)),
+        ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
+                          (n) => el("span", { class: "axis-after" }, `\u2192${n}`))
       )
     )
   );
