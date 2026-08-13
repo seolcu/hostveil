@@ -161,9 +161,14 @@ func dnfEnv(outputs map[string]string) platform.Env {
 
 func dnfClean() map[string]string {
 	return map[string]string{
-		"systemctl is-enabled dnf-automatic.timer": "enabled\n",
-		"needs-restarting -r":                      "No core libraries or services have been updated since boot-up.\nReboot should not be necessary.\n",
-		"dnf -q updateinfo list security":          "",
+		// The checker asks whether the unit exists before asking whether it
+		// is on, so that "systemctl is not here" cannot be read as "the timer
+		// is off". A fixture that scripts only the second question describes
+		// a host systemd never answered about.
+		"systemctl show dnf-automatic.timer --property=LoadState": "LoadState=loaded\n",
+		"systemctl is-enabled dnf-automatic.timer":                "enabled\n",
+		"needs-restarting -r":                                     "No core libraries or services have been updated since boot-up.\nReboot should not be necessary.\n",
+		"dnf -q updateinfo list security":                         "",
 	}
 }
 
@@ -335,7 +340,84 @@ func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 	if !strings.Contains(partial.Reason, "reboot") || !strings.Contains(partial.Reason, "security updates") {
 		t.Errorf("both failures should be named: %q", partial.Reason)
 	}
-	if partial.Covered != 0 || partial.Total != 2 {
-		t.Errorf("coverage = %d/%d, want 0/2", partial.Covered, partial.Total)
+	// Three questions now: whether automatic updates are configured, whether
+	// a reboot is pending, and whether anything is waiting. The first is
+	// answered here, so one of three is covered.
+	if partial.Covered != 1 || partial.Total != 3 {
+		t.Errorf("coverage = %d/%d, want 1/3", partial.Covered, partial.Total)
+	}
+}
+
+// "systemctl is not here" must not be reported as "automatic updates are off".
+//
+// `systemctl is-enabled` exits non-zero for a disabled unit and for a host
+// with no systemd alike, and the checker read both as the positive claim that
+// updates are switched off — on a machine where nothing had been consulted.
+// That is the confusion the whole scanner is built to refuse, made in a
+// domain whose finding is one of the most commonly acted on.
+func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
+	env := platform.Env{
+		PackageManager: platform.PMDnf,
+		Runner: checktest.New().Without("systemctl").Outputs(map[string]string{
+			"needs-restarting -r":             "Reboot should not be necessary.\n",
+			"dnf -q updateinfo list security": "",
+		}),
+	}
+
+	fs, err := New().Check(context.Background(), env)
+	for _, f := range fs {
+		if f.ID == "updates.disabled" {
+			t.Error("a host with no systemctl was reported as having automatic updates switched off")
+		}
+	}
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError naming what could not be consulted, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "systemctl") {
+		t.Errorf("the gap does not say systemctl was unavailable: %q", partial.Reason)
+	}
+}
+
+// A unit systemd does not have is a real answer: dnf-automatic is not
+// installed, which is the finding. This is the one case where a non-zero exit
+// means something rather than nothing.
+func TestAnAbsentTimerIsStillReportedAsDisabled(t *testing.T) {
+	out := dnfClean()
+	out["systemctl show dnf-automatic.timer --property=LoadState"] = "LoadState=not-found\n"
+	fs, err := New().Check(context.Background(), dnfEnv(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 1 || fs[0].ID != "updates.disabled" {
+		t.Errorf("expected one updates.disabled finding, got %v", ids(fs))
+	}
+}
+
+// An apt config that cannot be read is not a config that says "off". An
+// absent one is, though — nothing has configured unattended upgrades.
+func TestAnUnreadableAptConfigIsACoverageGap(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads through a mode-000 file")
+	}
+	path := filepath.Join(t.TempDir(), "20auto-upgrades")
+	if err := os.WriteFile(path, []byte(`APT::Periodic::Unattended-Upgrade "1";`), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	c := New()
+	c.AptConfigPath = path
+	env := platform.Env{PackageManager: platform.PMApt, Runner: checktest.New().Outputs(map[string]string{
+		"apt list --upgradable": "Listing...\n",
+	})}
+
+	fs, err := c.Check(context.Background(), env)
+	for _, f := range fs {
+		if f.ID == "updates.disabled" {
+			t.Error("an unreadable config was reported as automatic updates being off")
+		}
+	}
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError, got %v", err)
 	}
 }

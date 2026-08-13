@@ -3,6 +3,7 @@ package compose
 import (
 	"context"
 	"errors"
+	compose "github.com/seolcu/hostveil/internal/compose"
 	"strings"
 	"testing"
 
@@ -254,5 +255,27 @@ func TestWellConfiguredStandaloneContainerIsClean(t *testing.T) {
 	}]`
 	if fs := check2(t, runRunner{inspect: good}); len(fs) != 0 {
 		t.Errorf("a correctly configured container should be clean, got %v", fs)
+	}
+}
+
+// The demotion has to fill the field the interfaces actually read. A
+// `docker run` container's findings are Manual for a reason that is specific
+// to that container, not to the finding ID — so the registry cannot answer it
+// and the checker has to.
+func TestAContainerDemotionSaysWhyInTheFieldTheUIReads(t *testing.T) {
+	fs := auditContainer(compose.Container{
+		Name:    "db",
+		Service: compose.Service{Ports: []compose.Port{{HostIP: "0.0.0.0", HostPort: "5432", ContainerPort: "5432", Published: true}}},
+	})
+	if len(fs) == 0 {
+		t.Fatal("the fixture produced no findings")
+	}
+	for _, f := range fs {
+		if f.Remediation != model.RemediationManual {
+			t.Errorf("%s: remediation = %v, want Manual", f.ID, f.Remediation)
+		}
+		if f.WhyNoFix == "" {
+			t.Errorf("%s: Manual with nothing in WhyNoFix — the panel that asks this question renders blank", f.ID)
+		}
 	}
 }

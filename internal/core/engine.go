@@ -248,7 +248,14 @@ func (e *Engine) classify(findings []model.Finding) {
 			findings[i].Remediation = model.RemediationManual
 		}
 		if !findings[i].Remediation.IsFixable() {
-			findings[i].WhyNoFix = fix.WhyNoFix(findings[i].ID)
+			// A checker that already said why keeps its own words. The
+			// registry answers by ID, and an ID can be registered while a
+			// particular *finding* of it is unfixable — a container started
+			// with `docker run` has no compose file to edit — so overwriting
+			// here would replace a specific reason with an empty one.
+			if findings[i].WhyNoFix == "" {
+				findings[i].WhyNoFix = fix.WhyNoFix(findings[i].ID)
+			}
 		}
 	}
 }

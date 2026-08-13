@@ -155,6 +155,12 @@ func auditContainer(c compose.Container) []model.Finding {
 			continue
 		}
 		f.Remediation = model.RemediationManual
+		// The reason goes in WhyNoFix as well as the how-to-fix, because the
+		// interfaces have a place built for exactly this question and it was
+		// coming up empty here. fix.WhyNoFix answers from the declined list,
+		// and every one of these IDs *is* registered — it is the container
+		// that cannot be fixed, not the finding — so nothing filled it in.
+		f.WhyNoFix = "This container was started with `docker run`, not Compose, so there is no file for hostveil to edit."
 		f.HowToFix = "This container was started with `docker run`, not Compose, so there is no file to edit. " +
 			"Recreate it with the corrected flag, or move it into a compose file where hostveil can fix it for you. " + f.HowToFix
 		f.Evidence = mergeMeta(f.Evidence, map[string]string{"managed_by": "docker run"})
