@@ -557,14 +557,14 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.status = "Fix failed: " + msg.err.Error()
 		} else {
-			m.status = applySummary(msg.outcome)
+			m.status = m.applySummary(msg.outcome)
 			m.refreshFromEngine()
 		}
 		m.mode = modeMessage
 		return m, nil
 
 	case batchAppliedMsg:
-		m.status = batchSummary(msg.outcome)
+		m.status = m.batchSummary(msg.outcome)
 		m.refreshFromEngine()
 		m.selected = map[string]bool{}
 		m.mode = modeMessage
@@ -605,7 +605,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mode = modeMessage
 			return m, nil
 		}
-		m.status = rollbackSummary(msg.outcome)
+		m.status = m.rollbackSummary(msg.outcome)
 		m.refreshFromEngine()
 		m.mode = modeMessage
 		return m, nil
@@ -1017,47 +1017,62 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-func applySummary(o model.FixOutcome) string {
-	var b strings.Builder
-	b.WriteString("✓ Fix applied. ")
+// The three summaries below are methods rather than package functions so they
+// can reach the glyph set. As functions they could not, so each wrote a
+// literal "✓" — and with --glyphs nerd every other tick on the screen was a
+// patched glyph while these three were not, which is the drift internal/glyph
+// exists to make impossible.
+//
+// Each returns lines rather than one sentence. They used to concatenate
+// clauses into a paragraph, which the message screen then word-wrapped: the
+// result broke wherever the column happened to fall ("You may need to /
+// restart 'redis'."), and four separate facts — what happened, what it cost,
+// how to undo it, what to restart — read as one run-on remark. They are
+// separate facts, so they are separate lines.
+
+func (m *appModel) applySummary(o model.FixOutcome) string {
+	lines := []string{m.gl.Of(glyph.OK) + " Fix applied.", ""}
+	lines = append(lines, fmt.Sprintf("New score: %d/100", o.NewScore.Overall))
 	if o.CheckpointID != "" {
 		// The checkpoint ID used to be printed here, which was a dead end:
 		// acting on it meant quitting to the CLI. Point at the history
 		// screen instead, where it can be rolled back in place.
-		b.WriteString("Press h to undo it. ")
+		lines = append(lines, "Press h to undo it.")
 	}
-	fmt.Fprintf(&b, "New score: %d/100.", o.NewScore.Overall)
 	if o.RestartHint != "" {
-		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartHint)
+		lines = append(lines, "", m.gl.Of(glyph.Warning)+" You may need to restart '"+o.RestartHint+"'.")
 	}
 	if o.VerifyMessage != "" {
-		b.WriteString(" " + o.VerifyMessage)
+		lines = append(lines, "", o.VerifyMessage)
 	}
-	return b.String()
+	return strings.Join(lines, "\n")
 }
 
-func rollbackSummary(o model.RollbackOutcome) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "✓ Rolled back. Restored %d file", len(o.RestoredFiles))
-	if len(o.RestoredFiles) != 1 {
-		b.WriteString("s")
+func (m *appModel) rollbackSummary(o model.RollbackOutcome) string {
+	files := "files"
+	if len(o.RestoredFiles) == 1 {
+		files = "file"
 	}
-	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
+	lines := []string{
+		m.gl.Of(glyph.OK) + " Rolled back.", "",
+		fmt.Sprintf("Restored %d %s", len(o.RestoredFiles), files),
+		fmt.Sprintf("New score: %d/100", o.NewScore.Overall),
+	}
 	if o.RestartService != "" {
-		fmt.Fprintf(&b, " You may need to restart '%s'.", o.RestartService)
+		lines = append(lines, "", m.gl.Of(glyph.Warning)+" You may need to restart '"+o.RestartService+"'.")
 	}
-	return b.String()
+	return strings.Join(lines, "\n")
 }
 
-func batchSummary(o model.BatchOutcome) string {
+func (m *appModel) batchSummary(o model.BatchOutcome) string {
 	// The claim comes from the engine; this adds only the tick and the one
 	// thing that is genuinely local — which key reaches the history view.
 	// The fixes that did land are already on the host with checkpoints
 	// waiting there, and an operator who thinks the batch completed has no
 	// reason to go looking.
-	s := "✓ " + o.Message
+	lines := []string{m.gl.Of(glyph.OK) + " " + o.Message}
 	if o.Interrupted {
-		s += " Press h to see what was applied."
+		lines = append(lines, "", "Press h to see what was applied.")
 	}
-	return s
+	return strings.Join(lines, "\n")
 }
