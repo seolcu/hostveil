@@ -2,9 +2,11 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/fix"
@@ -88,5 +90,30 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 	}
 	if string(data) != "services:\n  app:\n    image: myapp\n" {
 		t.Errorf("rollback left the file as %q", data)
+	}
+}
+
+// A fix that exists and cannot be built is a defect in hostveil, and the
+// batch used to report it as Skipped — the same word it uses for "there is no
+// fix for this finding". One of those is a fact about the host and the other
+// is a bug, and collapsing them is what guarantees nobody looks.
+func TestABatchReportsABrokenFixAsFailedNotSkipped(t *testing.T) {
+	broken := fix.NewRegistry()
+	broken.Register("compose.ds018", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{}, errors.New("finding carries no 'port' evidence")
+	})
+	e := New(Config{Fixes: broken, Store: history.NewStore(t.TempDir())})
+
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("cache"))
+	out := e.ApplyBatch(context.Background(), []model.Finding{f})
+
+	if len(out.Skipped) != 0 {
+		t.Errorf("a fix that failed to build was reported as skipped: %v", out.Skipped)
+	}
+	if msg, ok := out.Failed[f.ID]; !ok {
+		t.Errorf("Failed does not mention %s: %+v", f.ID, out)
+	} else if !strings.Contains(msg, "port") {
+		t.Errorf("the failure does not carry the builder's reason: %q", msg)
 	}
 }

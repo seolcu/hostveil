@@ -6,7 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/core"
@@ -187,12 +189,26 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	// per-failure detail and the rollback hint are the CLI's own — it has
 	// the room for the first and is the only place the second is a command
 	// you can type.
-	fmt.Printf("\n✓ %s\n", out.Message)
-	for id, msg := range out.Failed {
-		fmt.Printf("  ✗ %s: %s\n", id, msg)
+	// The tick is a claim, so it is only made when nothing failed. A batch
+	// that applied nothing and failed three times used to print
+	// "✓ Applied 0 · failed 3" and exit 0 — which is what a cron wrapper
+	// reads as a clean run on a host where every fix was refused.
+	mark := "✓"
+	if len(out.Failed) > 0 {
+		mark = "✗"
+	}
+	fmt.Printf("\n%s %s\n", mark, out.Message)
+	// Sorted, because a map range reorders the failures between runs and the
+	// first thing anyone does with this output is diff two of them.
+	for _, id := range slices.Sorted(maps.Keys(out.Failed)) {
+		fmt.Printf("  ✗ %s: %s\n", id, out.Failed[id])
 	}
 	fmt.Println("Roll back any change with: hostveil history")
-	if out.Interrupted {
+	// The exit code is the CI contract, the same one `scan` documents: a
+	// non-zero status means the run did not do what it was asked to. A fix
+	// that failed is exactly that, and it was invisible to every unattended
+	// caller until now.
+	if out.Interrupted || len(out.Failed) > 0 {
 		return 1
 	}
 	return 0

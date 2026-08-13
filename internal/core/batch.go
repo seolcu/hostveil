@@ -56,7 +56,16 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 			continue
 		}
 		fx, ok, err := e.buildFix(f)
-		if !ok || err != nil || len(fx.Actions) == 0 {
+		// A fix that exists and could not be built is a defect in hostveil,
+		// not a property of the finding — a malformed registration, or
+		// evidence the checker did not write. Reporting it as Skipped made it
+		// indistinguishable from "there is no fix for this", which is the one
+		// reading that guarantees nobody ever looks.
+		if err != nil {
+			out.Failed[f.ID] = err.Error()
+			continue
+		}
+		if !ok || len(fx.Actions) == 0 {
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}

@@ -171,6 +171,43 @@ func TestFixAllAppliesOnlyTheSafeOnes(t *testing.T) {
 	}
 }
 
+// A batch where every fix failed used to print "✓ Applied 0 · failed 3" and
+// exit 0.
+//
+// The tick and the status are the two things an unattended caller reads, and
+// both said the run had gone fine. `scan` has documented the opposite
+// contract since it was written — a non-zero status means the run did not do
+// what it was asked — and `fix --all` is the command most likely to be in a
+// cron line.
+func TestFixAllReportsFailureWhenNothingCouldBeApplied(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory, so the fix cannot be made to fail this way")
+	}
+	path := fixtureHost(t)
+
+	// The fix writes through a temp file beside the target, so a directory
+	// nobody may write to is what stops it — and it stops it at the write,
+	// after the backup, which is the failure shape that matters.
+	dir := filepath.Dir(path)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	code, out := runCmd(t, func() int {
+		return cmdFix(context.Background(), []string{"--all", "--yes"})
+	})
+	if code == 0 {
+		t.Errorf("exit = 0 on a batch where every fix failed\n%s", out)
+	}
+	if strings.Contains(out, "✓") {
+		t.Errorf("a failed batch is marked with a tick:\n%s", out)
+	}
+	if !strings.Contains(out, "failed") {
+		t.Errorf("the summary does not say anything failed:\n%s", out)
+	}
+}
+
 // --- rollback and history ---
 
 func TestHistoryThenRollbackRestoresTheFile(t *testing.T) {
