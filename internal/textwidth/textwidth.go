@@ -110,6 +110,11 @@ func Truncate(s string, max int) string {
 	return narrow.Truncate(s, max, "…")
 }
 
+// MinWrap is the floor Wrap applies to a computed width. A narrow terminal
+// wrapping prose to one word per line is unreadable in a way an overrun is
+// not: the text runs past the edge, which the reader can still follow.
+const MinWrap = 8
+
 // Wrap reflows s to lines of at most width columns, prefixing every line
 // after the first with indent.
 //
@@ -120,10 +125,15 @@ func Truncate(s string, max int) string {
 // The indent is not counted against the width. Callers pass a width they
 // have already reduced by the indent they want, which is how both callers
 // used it before this moved here.
-func Wrap(s string, width, minWidth int, indent string) string {
-	if width < minWidth {
-		width = minWidth
-	}
+//
+// The floor is MinWrap and is applied here rather than passed in. It used to
+// be a parameter, and both callers passed the same 8 from a constant of their
+// own with near-identical comments justifying it — an extraction that moved
+// the function and left the number behind twice. A parameter no caller varies
+// is not flexibility, it is two more places for the answer to change in only
+// one of them.
+func Wrap(s string, width int, indent string) string {
+	width = max(width, MinWrap)
 	words := strings.Fields(s)
 	if len(words) == 0 {
 		return ""

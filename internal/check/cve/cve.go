@@ -70,7 +70,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 
 	for _, p := range projects {
-		for _, name := range sortedServiceNames(p) {
+		for _, name := range p.ServiceNames() {
 			svc := p.Services[name]
 			add(target{image: svc.Image, service: svc.Name, file: p.File, project: p.Name})
 		}
@@ -132,6 +132,20 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // target is one image to scan, plus the attribution its findings carry.
 // standalone marks a container no compose file describes, whose findings are
 // demoted to Manual because the registered fix has no file to act on.
+// target is one image to scan and where it came from.
+//
+// The four strings travel together because they were travelling together
+// anyway — as four positional parameters on scanImage, parseTrivy, imageOpts,
+// outdatedFinding and unpatchedFinding, in that order, five times. Four
+// adjacent same-typed arguments transpose silently: swap service and file and
+// the finding names a path as its service and a service as its file, renders
+// without complaint, and is wrong in the two fields an operator uses to find
+// the thing.
+//
+// internal/ui/tui's Opts already states this rule for itself — "one struct
+// rather than three parameters because the third would have been the one that
+// tipped the signature into being read wrong at a call site." This is the same
+// rule, one argument later.
 type target struct {
 	image      string
 	service    string
@@ -254,7 +268,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 			slots <- struct{}{}
 			defer func() { <-slots }()
 
-			fs, err := scanImage(ctx, r, cacheArgs, t.image, t.service, t.file, t.project)
+			fs, err := scanImage(ctx, r, cacheArgs, t)
 			if err == nil && t.standalone {
 				fs = demoteToManual(fs)
 			}
@@ -274,18 +288,6 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 		findings = append(findings, res.findings...)
 	}
 	return findings, failed, firstErr
-}
-
-// sortedServiceNames returns a project's service names in a stable order.
-// Ranging a map directly would vary the scan order between runs, which
-// decides which image's failure is reported as the first one.
-func sortedServiceNames(p compose.Project) []string {
-	names := make([]string, 0, len(p.Services))
-	for name := range p.Services {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }
 
 type trivyReport struct {
@@ -333,7 +335,7 @@ func demoteToManual(fs []model.Finding) []model.Finding {
 // scanImage scans one image. cacheArgs is the cache-backend selection scanAll
 // settled on for this run, empty where the scans are running one at a time and
 // the shared cache is safe to use.
-func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string, image, service, file, project string) ([]model.Finding, error) {
+func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string, t target) ([]model.Finding, error) {
 	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
 	defer cancel()
 
@@ -341,17 +343,17 @@ func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string
 		"--severity", "CRITICAL,HIGH,MEDIUM",
 		"--timeout", imageTimeout.String(),
 		"--format", "json", "--quiet", "--no-progress"}, cacheArgs...)
-	out, err := r.Run(ctx, "trivy", append(args, image)...)
+	out, err := r.Run(ctx, "trivy", append(args, t.image)...)
 	if err != nil {
 		return nil, err
 	}
-	return parseTrivy(out, image, service, file, project)
+	return parseTrivy(out, t)
 }
 
-func parseTrivy(out []byte, image, service, file, project string) ([]model.Finding, error) {
+func parseTrivy(out []byte, t target) ([]model.Finding, error) {
 	var report trivyReport
 	if err := json.Unmarshal(out, &report); err != nil {
-		return nil, fmt.Errorf("decode trivy output for %s: %w", image, err)
+		return nil, fmt.Errorf("decode trivy output for %s: %w", t.image, err)
 	}
 
 	// Split into the two groups that have genuinely different remediations:
@@ -375,10 +377,10 @@ func parseTrivy(out []byte, image, service, file, project string) ([]model.Findi
 	}
 
 	var findings []model.Finding
-	if f, ok := outdatedFinding(image, service, file, project, fixable); ok {
+	if f, ok := outdatedFinding(t, fixable); ok {
 		findings = append(findings, f)
 	}
-	if f, ok := unpatchedFinding(image, service, file, project, unpatched); ok {
+	if f, ok := unpatchedFinding(t, unpatched); ok {
 		findings = append(findings, f)
 	}
 	return findings, nil
@@ -494,13 +496,13 @@ func imageService(project, service string) string {
 	return project + "/" + service
 }
 
-func imageOpts(image, service, file, project string) []model.FindingOption {
+func imageOpts(t target) []model.FindingOption {
 	return []model.FindingOption{
-		model.WithService(imageService(project, service)),
-		model.WithEvidence("image", image),
-		model.WithMetadata("file", file),
-		model.WithMetadata("service", service),
-		model.WithMetadata("project", project),
+		model.WithService(imageService(t.project, t.service)),
+		model.WithEvidence("image", t.image),
+		model.WithMetadata("file", t.file),
+		model.WithMetadata("service", t.service),
+		model.WithMetadata("project", t.project),
 	}
 }
 
@@ -522,23 +524,23 @@ func imageReferenceIsMutable(image string) bool {
 // outdatedFinding reports the vulnerabilities a newer image would fix. It
 // carries the only CVE remediation hostveil can actually perform; see the fix
 // registry's doc comment for why no per-CVE finding does.
-func outdatedFinding(image, service, file, project string, g group) (model.Finding, bool) {
+func outdatedFinding(t target, g group) (model.Finding, bool) {
 	if g.empty() {
 		return model.Finding{}, false
 	}
 
 	rem := model.RemediationReview
 	reference := "tag"
-	howToFix := fmt.Sprintf("Re-pull the image and recreate the service: `docker compose -f %s pull %s && docker compose -f %s up -d %s`. This re-resolves the tag to whatever it points at now; it does not guarantee that every listed CVE is fixed.", file, service, file, service)
-	if !imageReferenceIsMutable(image) {
+	howToFix := fmt.Sprintf("Re-pull the t.image and recreate the service: `docker compose -f %s pull %s && docker compose -f %s up -d %s`. This re-resolves the tag to whatever it points at now; it does not guarantee that every listed CVE is fixed.", t.file, t.service, t.file, t.service)
+	if !imageReferenceIsMutable(t.image) {
 		rem = model.RemediationManual
 		reference = "digest"
-		howToFix = "This service pins its image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. hostveil cannot compute which digest carries the fixes, so it will not guess."
+		howToFix = "This t.service pins its t.image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. hostveil cannot compute which digest carries the fixes, so it will not guess."
 	}
 
-	opts := append(imageOpts(image, service, file, project),
-		model.WithDescription(fmt.Sprintf("The image %s ships %d vulnerabilit%s that are already fixed upstream (%s). Most severe: %s. Run with --json for the full list.",
-			image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
+	opts := append(imageOpts(t),
+		model.WithDescription(fmt.Sprintf("The t.image %s ships %d vulnerabilit%s that are already fixed upstream (%s). Most severe: %s. Run with --json for the full list.",
+			t.image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
 		model.WithHowToFix(howToFix),
 		model.WithEvidence("reference", reference),
 		model.WithEvidence("worst_cve", g.sorted()[0]),
@@ -558,15 +560,15 @@ func outdatedFinding(image, service, file, project string, g group) (model.Findi
 // lie this domain told once before, arrived at from the other direction. It
 // also keeps `hostveil scan`'s non-zero exit working for an image whose only
 // Critical has no patch.
-func unpatchedFinding(image, service, file, project string, g group) (model.Finding, bool) {
+func unpatchedFinding(t target, g group) (model.Finding, bool) {
 	if g.empty() {
 		return model.Finding{}, false
 	}
 
-	opts := append(imageOpts(image, service, file, project),
-		model.WithDescription(fmt.Sprintf("The image %s ships %d vulnerabilit%s with no patched version available upstream (%s). Most severe: %s. Run with --json for the full list.",
-			image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
-		model.WithHowToFix("There is nothing to update to yet. Track the advisories, and consider whether the exposed component is reachable in your setup, whether a mitigation exists, or whether a differently-based image would carry less risk."),
+	opts := append(imageOpts(t),
+		model.WithDescription(fmt.Sprintf("The t.image %s ships %d vulnerabilit%s with no patched version available upstream (%s). Most severe: %s. Run with --json for the full list.",
+			t.image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
+		model.WithHowToFix("There is nothing to update to yet. Track the advisories, and consider whether the exposed component is reachable in your setup, whether a mitigation exists, or whether a differently-based t.image would carry less risk."),
 	)
 	opts = append(opts, g.evidence()...)
 

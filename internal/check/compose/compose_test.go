@@ -18,7 +18,7 @@ func findingsFor(t *testing.T, yaml string) map[string]model.Finding {
 		t.Fatalf("parse: %v", err)
 	}
 	byID := map[string]model.Finding{}
-	for _, name := range sortedServiceNames(proj) {
+	for _, name := range proj.ServiceNames() {
 		for _, f := range auditService(proj.Services[name]) {
 			if f.Validate() != nil {
 				t.Errorf("rule produced invalid finding: %+v", f)
@@ -301,7 +301,7 @@ func TestEmittedFindingsCarryWhatTheirFixNeeds(t *testing.T) {
 
 	registry := fix.Default()
 	var checked int
-	for _, name := range sortedServiceNames(proj) {
+	for _, name := range proj.ServiceNames() {
 		for _, f := range auditService(proj.Services[name]) {
 			// Mirror what Checker.Check attaches before the engine sees it.
 			f.Metadata = mergeMeta(f.Metadata, map[string]string{

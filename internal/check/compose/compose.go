@@ -6,7 +6,6 @@ package compose
 
 import (
 	"context"
-	"sort"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -51,7 +50,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 	var findings []model.Finding
 	for _, p := range projects {
-		for _, name := range sortedServiceNames(p) {
+		for _, name := range p.ServiceNames() {
 			for _, fnd := range auditService(p.Services[name]) {
 				// Record where the fix layer should apply the change.
 				fnd.Metadata = mergeMeta(fnd.Metadata, map[string]string{
@@ -172,15 +171,6 @@ func mergeMeta(base, add map[string]string) map[string]string {
 		base[k] = v
 	}
 	return base
-}
-
-func sortedServiceNames(p compose.Project) []string {
-	names := make([]string, 0, len(p.Services))
-	for name := range p.Services {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }
 
 // auditService runs every rule against one service and returns its findings.

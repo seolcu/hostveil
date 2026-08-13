@@ -7,6 +7,7 @@ package compose
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -242,6 +243,22 @@ func (s *StringOrList) UnmarshalYAML(node *yaml.Node) error {
 
 // ParseFile reads and parses a compose file at path into a Project. The
 // project name defaults to the parent directory name.
+// ServiceNames returns the project's service names in a stable order.
+//
+// Ranging a Project's map directly varies the order between runs, which
+// decides which service's failure is reported as the first one — so both
+// container checkers sorted, and both wrote out the same six lines to do it.
+// Only one of the two copies carried that sentence, which made the other the
+// one that could quietly stop sorting.
+func (p Project) ServiceNames() []string {
+	names := make([]string, 0, len(p.Services))
+	for name := range p.Services {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func ParseFile(path string) (Project, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // path comes from docker compose ls
 	if err != nil {

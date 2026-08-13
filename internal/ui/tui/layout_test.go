@@ -41,12 +41,21 @@ func decodeRune(s string) (rune, int) {
 	return 0, 1
 }
 
-// layoutReport has all nine domains, which is what a real host produces and
-// what made the axes strip 213 columns wide.
+// layoutReport has every domain, which is what a real host produces and what
+// made the axes strip too wide for any ordinary terminal — the reason the
+// arrangements exist at all.
+//
+// Derived from AllSources rather than listed. The list was written out by
+// hand at nine and stayed there while three more domains arrived, so the
+// frame-width tests that lean on this fixture were measuring a strip three
+// cells narrower than the one a user sees, and the sentence above it said
+// "all nine" for two releases after that stopped being true.
 func layoutReport() model.Report {
 	axes := []model.ScoreAxis{}
-	for _, id := range []string{"container", "ssh", "cve", "firewall", "ports", "accounts", "fileperms", "updates", "agent"} {
-		axes = append(axes, model.ScoreAxis{ID: id, Label: id, Applicable: true, Score: 42})
+	for _, src := range model.AllSources() {
+		axes = append(axes, model.ScoreAxis{
+			ID: src.String(), Label: src.Label(), Source: src, Applicable: true, Score: 42,
+		})
 	}
 	axes[2].Applicable = false // an N/A axis
 	axes[4].Degraded = true    // and a degraded one
