@@ -508,6 +508,88 @@ func TestEachDangerKeyTriggersItsFinding(t *testing.T) {
 	}
 }
 
+// The remediation kind is read off the safe values in the rule table, not
+// declared by hand: no safe value means the operator decides, one means it is
+// mechanical, two mean there is a choice to make.
+func TestDangerFindingKindFollowsTheSafeValues(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  string
+		id   string
+		want model.RemediationKind
+		set  string
+		alt  string
+	}{
+		{
+			name: "one safe value is Auto",
+			cfg:  `{"tools":{"elevated":{"enabled":true}}}`,
+			id:   "agent.elevated-enabled",
+			want: model.RemediationAuto,
+			set:  "tools.elevated.enabled=false",
+		},
+		{
+			name: "two safe values are Review",
+			cfg:  `{"tools":{"exec":{"security":"full"}}}`,
+			id:   "agent.exec-unrestricted",
+			want: model.RemediationReview,
+			set:  `tools.exec.security="deny"`,
+			alt:  `tools.exec.security="ask"`,
+		},
+		{
+			name: "a key with only a bad value stays Manual",
+			cfg:  `{"agents":{"defaults":{"sandbox":{"mode":"off"}}}}`,
+			id:   "agent.sandbox-off",
+			want: model.RemediationManual,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHost(t, "alice")
+			h.write("alice", ".openclaw/openclaw.json", c.cfg, 0o600)
+
+			fs, err := h.checker().Check(context.Background(), envNoFirewall(""))
+			if err != nil {
+				t.Fatal(err)
+			}
+			f, ok := findByID(fs, c.id)
+			if !ok {
+				t.Fatalf("no %s finding", c.id)
+			}
+			if f.Remediation != c.want {
+				t.Errorf("remediation = %v, want %v", f.Remediation, c.want)
+			}
+			if got := f.Evidence["set"]; got != c.set {
+				t.Errorf(`evidence["set"] = %q, want %q`, got, c.set)
+			}
+			if got := f.Evidence["set-alt"]; got != c.alt {
+				t.Errorf(`evidence["set-alt"] = %q, want %q`, got, c.alt)
+			}
+		})
+	}
+}
+
+// A Manual finding must carry no values at all. Evidence a fix could read is
+// evidence a fix will read, and the whole reason sandbox-off is Manual is
+// that nothing here knows what to write.
+func TestManualDangerFindingCarriesNoValuesToWrite(t *testing.T) {
+	h := newHost(t, "alice")
+	h.write("alice", ".openclaw/openclaw.json", `{"agents":{"defaults":{"sandbox":{"mode":"off"}}}}`, 0o600)
+
+	fs, err := h.checker().Check(context.Background(), envNoFirewall(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok := findByID(fs, "agent.sandbox-off")
+	if !ok {
+		t.Fatal("no agent.sandbox-off finding")
+	}
+	for _, k := range []string{"set", "set-alt"} {
+		if v := f.Evidence[k]; v != "" {
+			t.Errorf("a Manual finding carries %q evidence %q", k, v)
+		}
+	}
+}
+
 // Two keys describing the same weakening are one problem, and the operator
 // should see it once — with both keys named.
 func TestSharedIDDangerRulesCollapseToOneFinding(t *testing.T) {

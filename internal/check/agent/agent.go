@@ -412,8 +412,7 @@ func matchListener(listeners []platform.Listener, port int, procs []string) (pla
 // operator sees one problem rather than the same problem twice.
 func dangerFindings(s scan) []model.Finding {
 	type hit struct {
-		rule DangerRule
-		keys []string
+		rules []DangerRule
 	}
 	byID := map[string]*hit{}
 	var order []string
@@ -424,24 +423,38 @@ func dangerFindings(s scan) []model.Finding {
 			continue
 		}
 		if h, seen := byID[dr.ID]; seen {
-			h.keys = append(h.keys, dr.Key)
+			h.rules = append(h.rules, dr)
 			continue
 		}
-		byID[dr.ID] = &hit{rule: dr, keys: []string{dr.Key}}
+		byID[dr.ID] = &hit{rules: []DangerRule{dr}}
 		order = append(order, dr.ID)
 	}
 
 	out := make([]model.Finding, 0, len(order))
 	for _, id := range order {
 		h := byID[id]
-		out = append(out, model.NewFinding(id, h.rule.Title, h.rule.Sev,
-			model.SourceAgent, model.RemediationManual,
+		first := h.rules[0]
+		keys := make([]string, 0, len(h.rules))
+		for _, r := range h.rules {
+			keys = append(keys, r.Key)
+		}
+
+		opts := []model.FindingOption{
 			model.WithService(s.in.subject()),
-			model.WithDescription(h.rule.Desc),
-			model.WithHowToFix(h.rule.HowToFix),
-			model.WithEvidence("settings", strings.Join(h.keys, model.EvidenceSeparator)),
+			model.WithDescription(first.Desc),
+			model.WithHowToFix(first.HowToFix),
+			model.WithEvidence("settings", strings.Join(keys, model.EvidenceSeparator)),
 			model.WithEvidence("config", s.in.path(s.in.rt.Config)),
-		))
+		}
+		kind, primary, alt := remediation(s.in.rt, h.rules)
+		if primary != "" {
+			opts = append(opts, model.WithEvidence("set", primary))
+		}
+		if alt != "" {
+			opts = append(opts, model.WithEvidence("set-alt", alt))
+		}
+		out = append(out, model.NewFinding(id, first.Title, first.Sev,
+			model.SourceAgent, kind, opts...))
 	}
 	return out
 }

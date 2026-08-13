@@ -49,6 +49,24 @@ type Action struct {
 	// silently creating one would be worse than failing.
 	CreateIfMissing bool
 
+	// NoFollow refuses to read the target through a symlink.
+	//
+	// It exists for the edits whose path is inside a user's home, where the
+	// account being audited controls every component of it while hostveil
+	// runs as root. Without it, replacing ~/.openclaw/openclaw.json with a
+	// link to a root-only file between the scan and the fix would have root
+	// read that file and render it into a preview diff for anyone at the
+	// dashboard. The write side is already safe — WriteFileAtomic renames
+	// over the link rather than through it — so the read is the whole
+	// exposure, and refusing it is the discipline the mode fixes in
+	// register.go committed every later home-directory fix to.
+	//
+	// Opt-in, because a symlinked target is legitimate elsewhere and a
+	// blanket refusal would break the fix that depends on one: Ubuntu ships
+	// /etc/sysctl.d/99-sysctl.conf as a link to /etc/sysctl.conf, which is
+	// exactly the file persistSysctl resolves to and edits on purpose.
+	NoFollow bool
+
 	// VerifyCmd is an optional argv that validates an edit action's *result*
 	// before it is written. Exactly one element must be VerifyPathToken; the
 	// engine substitutes a temporary file holding the bytes Transform

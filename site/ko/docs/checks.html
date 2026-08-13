@@ -385,16 +385,17 @@
                   <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td>검토</td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>설정 관련 항목이 <strong>수동</strong>인 것은 의도된 선택입니다. OpenClaw 설정은 JSON5라 사용자가 직접 쓴 주석이 들어 있는데, hostveil이 키 하나만 고치려 해도 파일을 다시 쓰면서 그 주석을 지우게 됩니다. Hermes 설정값은 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 것인지 판별할 수 없습니다. 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수도 있습니다. 그래서 hostveil은 설명만 하고 수정은 사용자에게 맡깁니다.</p>
+            <p>설정 관련 항목은 이제 대부분 고칠 수 있습니다. OpenClaw 설정은 JSON5라 사용자가 직접 쓴 주석이 들어 있는데, hostveil은 값 하나에 해당하는 바이트만 정확히 바꾸고 나머지 파일은 건드리지 않습니다. 그리고 자기가 쓴 결과를 다시 읽어, 지정한 키 외에 달라진 것이 있으면 저장을 거부합니다. 키 하나를 바꾼 변경은 한 줄 diff로 남고, 주석은 쓴 자리에 그대로 있습니다.</p>
+            <p>세 항목은 여전히 <strong>수동</strong>이며, 이유는 각각 다릅니다. <code>agent.sandbox-off</code>는 <code>off</code>가 잘못됐다는 것은 알아도 샌드박스를 켜는 값이 무엇인지 모르며, 찍어서 넣은 값은 조치가 아닙니다. <code>agent.auth-disabled</code>는 키가 아예 없는 상태가 안전한 설정인데(OpenClaw는 이 값이 없으면 닫힌 쪽으로 동작합니다) hostveil은 값을 바꿀 뿐 지우지는 않습니다. 그리고 노출된 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수 있습니다. Hermes 설정은 전부 손대지 않습니다. 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 값인지 판별할 수 없기 때문입니다.</p>
             <p>자동 수정되는 것은 권한 관련 두 항목뿐이며, 둘 다 접근 권한을 <em>줄이기만</em> 하는 <code>chmod</code>입니다. 체크포인트가 남으므로 <code>hostveil rollback</code>으로 이전 권한을 그대로 되돌릴 수 있습니다.</p>
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>

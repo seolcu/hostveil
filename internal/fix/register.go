@@ -158,22 +158,11 @@ package fix
 //     original improves nothing. More to the point, by the time the secret
 //     is found it has already leaked into backups and git history, so the
 //     real remediation is rotating it, which hostveil cannot do.
-//   - agent.gateway-exposed, agent.auth-disabled, agent.exec-unrestricted,
-//     agent.elevated-enabled, agent.sandbox-off, agent.control-ui-insecure,
-//     agent.ssrf-private-network — all seven reduce to editing one key in a
-//     runtime's config, and neither runtime can be edited safely. OpenClaw's
-//     config is JSON5 carrying the operator's own comments and trailing
-//     commas; hostveil has no JSON5 round-tripper, and re-encoding through
-//     encoding/json deletes every comment in the file. (internal/compose's
-//     minimal text surgery exists precisely to avoid that class of damage,
-//     and it is YAML-specific.) Hermes is worse: its bind and auth may come
-//     from config, from ~/.hermes/.env, from a systemd unit, or from a
-//     docker -e flag, and the finding cannot tell which is in force, so an
-//     edit could silently change nothing. There is also no second
-//     independent alternative to pair any of these with, which Review
-//     requires. agent.gateway-exposed fails the recoverability test on top
-//     of all that: rebinding a gateway to loopback can cut an operator off
-//     from the agent they administer remotely.
+//   - agent.gateway-exposed — rebinding a gateway to loopback can cut an
+//     operator off from the agent they administer remotely, which is
+//     firewall.inactive's recoverability criterion. The other agent config
+//     keys are fixable now; see "The agent config keys" below for what
+//     changed and for the two that are declined for their own reasons.
 //   - compose.ds012 — the remediation is a healthcheck, and the right one
 //     depends entirely on what the service exposes: an HTTP path, a CLI
 //     probe, a port to open. A static audit cannot learn any of them, and a
@@ -244,6 +233,66 @@ package fix
 // otherwise turn `fix --all` into root tightening the password database off
 // the host. Any future Auto fix whose target another account can influence
 // owes the same discipline.
+//
+// That obligation came due immediately: the agent config-key fixes below are
+// the first edits — writes, not chmods — aimed at a path inside a home, and
+// they carry Action.NoFollow so the read refuses a symlink the way the chmod
+// already did. The write never needed it, because WriteFileAtomic renames
+// over a link rather than through it; the read did, because a preview
+// renders the file it read into a diff, and root reading an arbitrary file
+// for somebody is the whole of the exposure.
+//
+// # The agent config keys, and what a JSON5 editor did and did not settle
+//
+// Seven agent.* findings were declined together above, for one shared
+// reason: they all reduce to editing a key in OpenClaw's config, that config
+// is JSON5 carrying the operator's own comments and trailing commas, and
+// re-encoding it through encoding/json deletes every one of them. There was
+// no editor that could make a one-key change without doing that damage.
+//
+// internal/json5 is that editor, built the way internal/compose/edit.go is —
+// locate the value's bytes, replace exactly those, leave the rest alone —
+// with one difference worth knowing. compose can fall back to re-encoding
+// the whole document through yaml.v3 when its text surgery is not provably
+// right, because yaml.v3 keeps comments. There is no such fallback here, so
+// a rendering that cannot be proven correct is an error and the fix is not
+// offered. That is also what stands in for a VerifyCmd: neither runtime
+// ships a config validator, and `Bytes` re-parses its own output and refuses
+// it unless the tree matches the original with exactly the named keys
+// changed.
+//
+// Four findings became fixable, and the shape follows from the table rather
+// than from a decision made here. internal/check/agent's DangerRule now
+// carries the safe values for each key, and the checker reads the finding's
+// remediation kind off them: one safe value is Auto, two are Review.
+// agent.exec-unrestricted is the Review case — tools.exec.security is deny
+// or ask, and which is right depends on whether the agent is meant to run
+// commands at all, so they are independent alternatives rather than a
+// sequence. agent.elevated-enabled, agent.control-ui-insecure and
+// agent.ssrf-private-network each have exactly one correct value, are one
+// mechanical file edit, and cannot sever anyone's access to the host.
+//
+// Two stayed declined, and the JSON5 editor is why the real reasons are now
+// visible rather than hidden behind the shared one:
+//
+//   - agent.sandbox-off — hostveil knows `off` is wrong and does not know
+//     what turns the sandbox on. No value in this repository, in the rule
+//     table or in the finding's own how-to-fix, names a mode. Writing a
+//     guessed enum into somebody's agent config is the invented mapping the
+//     per-CVE fixes are declined for, arriving by another route, so the rule
+//     carries no safe value and the finding stays Manual.
+//   - agent.auth-disabled — same shape, plus one thing the editor cannot
+//     express. OpenClaw fails closed when gateway.auth.mode is unset, so the
+//     safe posture is an *absent* key, and internal/json5 replaces values
+//     and deliberately neither creates nor deletes them. Setting some other
+//     mode instead would require knowing which modes exist.
+//
+// Hermes has no danger rules at all, and if it gains some they are not
+// covered by any of this: its bind and auth may come from the config, from
+// ~/.hermes/.env, from a systemd unit, or from a docker -e flag, and the
+// finding cannot tell which is in force, so an edit could silently change
+// nothing. The checker refuses to emit safe values for a non-JSON5 runtime
+// for exactly that reason.
 //
 // # The kernel-hardening fixes, and why they stopped being declined
 //
