@@ -188,10 +188,7 @@ func (m *appModel) View() tea.View {
 			func(n int) []string { return m.clipRows(m.previewRows(), n) })
 
 	case modeMessage:
-		content = m.compose(compactHeader(""), nil, "press any key to continue",
-			func(n int) []string {
-				return centerRows(m.wrapRows(s.bone, m.status, m.proseWidth(bodyInset), bodyInset), n)
-			})
+		content = m.compose(compactHeader(""), nil, "press any key to continue", m.messageRows)
 
 	case modeHistory:
 		content = m.compose(compactHeader(""), nil, historyHint, m.historyRows)
@@ -350,6 +347,28 @@ func (m *appModel) listHintFor() string {
 		return laneListHint
 	}
 	return listHint
+}
+
+// messageRows draws the one-screen result of an action — a fix applied, a
+// rollback done, a batch finished, or the error from any of them.
+//
+// It wraps each line of m.status separately and keeps the blank ones, which
+// is the whole difference from what it did before. The summaries hand it a
+// what-happened line, the facts under it, and a warning below those; wrapping
+// the lot as one paragraph — which is what textwidth.Wrap does, since
+// strings.Fields treats a newline as a space — turned four separate facts
+// into a run-on remark that broke wherever the column happened to fall.
+func (m *appModel) messageRows(n int) []string {
+	s := m.sty()
+	var out []string
+	for _, para := range strings.Split(m.status, "\n") {
+		if strings.TrimSpace(para) == "" {
+			out = append(out, "")
+			continue
+		}
+		out = append(out, m.wrapRows(s.bone, para, m.proseWidth(bodyInset), bodyInset)...)
+	}
+	return centerRows(out, n)
 }
 
 // scanningRows draws the scan in progress: a bar over the domains that will
@@ -1219,10 +1238,22 @@ func (m *appModel) previewRows() []string {
 	s := m.sty()
 	idx := clamp(m.previewAction, 0, len(m.preview.Actions)-1)
 
+	// What this fix is, before what it does. The header above carries only the
+	// fix's label, so the screen an operator reads immediately before pressing
+	// y did not name the finding it repairs, whether hostveil considers it
+	// safe to apply unattended, or the file it edits — while the rollback
+	// confirmation, which asks a strictly smaller question, said all three.
+	meta := strings.ToUpper(m.preview.FindingID + "  ·  " + m.preview.Kind.String())
+	if p := m.preview.Actions[clamp(m.previewAction, 0, len(m.preview.Actions)-1)].Path; p != "" {
+		meta += "  ·  " + p
+	}
+	out := []string{""}
+	out = append(out, indentRows([]string{s.dim.Render(truncate(meta, m.proseWidth(bodyInset)))}, bodyInset)...)
+	out = append(out, "")
+
 	// Every block below sits at bodyInset and every nested one a step further
 	// in, which is what the dashboard's .fixbox-body does with padding: the
 	// label, the options under it, the warning, the commands.
-	out := []string{""}
 	if len(m.preview.Actions) > 1 {
 		out = append(out, indentRows([]string{s.dim.Render("Alternatives (press a number):")}, bodyInset)...)
 		for _, a := range m.preview.Actions {
@@ -1252,6 +1283,13 @@ func (m *appModel) previewRows() []string {
 	switch a.Type {
 	case "edit", "mode":
 		out = append(out, indentRows(s.diffRows(a.Diff), bodyInset)...)
+		// The reassurance belongs on the screen where the decision is made.
+		// An exec action already says the opposite here, through its warning
+		// — "there is no rollback checkpoint" — and saying only the alarming
+		// half leaves the operator to infer the safe half from its absence.
+		out = append(out, "")
+		out = append(out, indentRows([]string{s.safe.Render(
+			m.gl.Of(glyph.OK) + " hostveil backs the file up before writing, and h undoes this.")}, bodyInset)...)
 	case "exec":
 		out = append(out, indentRows([]string{s.dim.Render("These commands will run:")}, bodyInset)...)
 		for _, cmd := range a.Commands {

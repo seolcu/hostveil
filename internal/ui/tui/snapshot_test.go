@@ -191,8 +191,18 @@ func dumpEveryMode(t *testing.T, dir string) {
 	}
 	dump("06-preview-exec", pv2)
 
+	// Composed by the code that composes it in a real run, not written out
+	// here. A hand-written string is a picture of what somebody thought the
+	// message said — which is how this frame went on showing a single wrapped
+	// paragraph after the summaries had been split into lines, and how the
+	// scanning frame showed a state no run reaches.
 	msg := newModel(modeMessage)
-	msg.status = "✓ Fix applied. Press h to undo it. New score: 61/100. You may need to restart 'redis'."
+	msg.status = msg.applySummary(model.FixOutcome{
+		Success:      true,
+		CheckpointID: "20260726-140300-compose-ds018",
+		RestartHint:  "redis",
+		NewScore:     model.ScoreReport(findings[1:], states),
+	})
 	dump("07-message", msg)
 
 	// A fixed date: the history rows show a timestamp, and time.Now() would
