@@ -22,6 +22,9 @@ import (
 type Checker struct {
 	// AptConfigPath is the apt periodic-upgrade config; overridable for tests.
 	AptConfigPath string
+	// AptConfDirPath is the directory apt reads fragments from; overridable
+	// for tests.
+	AptConfDirPath string
 	// RebootRequiredPath is the flag file apt's packages touch when a
 	// installed update needs a reboot to take effect; overridable for tests.
 	RebootRequiredPath string
@@ -77,10 +80,17 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
 	var reasons []string
-	enabled, ok := aptUnattendedEnabled(c.AptConfigPath)
+	// apt reads every fragment in apt.conf.d and the last assignment wins, so
+	// the question is what apt resolves the option to — not what one file
+	// says. Reading 20auto-upgrades alone reported "disabled" as "enabled" on
+	// any host carrying 99-disable-auto-upgrades, which cloud images and
+	// several hardening guides ship, and the fix then wrote into the file
+	// that loses. See aptorigin.go.
+	enabled, ok := c.aptEnabled(ctx, env)
 	switch {
 	case !ok:
-		reasons = append(reasons, "cannot read "+c.AptConfigPath+" to tell whether unattended upgrades are enabled")
+		reasons = append(reasons, "cannot tell whether unattended upgrades are enabled: neither `apt-config dump "+
+			periodicKey+"` nor "+c.AptConfigPath+" could be read")
 	case !enabled:
 		// Whether the package is already here decides what the remediation
 		// *is*, and therefore whether hostveil can do it unattended. Ubuntu
@@ -93,6 +103,14 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		if platform.Has(env.Runner, "unattended-upgrade") {
 			f.Evidence["installed"] = "true"
 			f.Evidence["config"] = c.AptConfigPath
+			// The file whose assignment apt reads last, when one exists.
+			// Writing into 20auto-upgrades while a later fragment sets the
+			// same option to "0" is a fix apt never sees. Same shape, and the
+			// same evidence key, as the sysctl domain's winner.
+			if origin := aptOrigin(c.AptConfDir()); origin != "" {
+				f.Evidence["set-by"] = origin
+				f.Evidence["config"] = origin
+			}
 			f.HowToFix = "unattended-upgrades is installed but switched off. Set both periodic keys in " +
 				c.AptConfigPath + ": `APT::Periodic::Update-Package-Lists \"1\";` and " +
 				"`APT::Periodic::Unattended-Upgrade \"1\";`."
@@ -353,4 +371,25 @@ func disabledFinding(mechanism, howToFix string) model.Finding {
 		model.WithHowToFix(howToFix),
 		model.WithEvidence("mechanism", mechanism),
 	)
+}
+
+// AptConfDir is the directory apt reads its fragments from, overridable for
+// tests alongside AptConfigPath.
+func (c *Checker) AptConfDir() string {
+	if c.AptConfDirPath != "" {
+		return c.AptConfDirPath
+	}
+	return aptConfDir
+}
+
+// aptEnabled reports whether unattended upgrades are in force, asking apt
+// first and falling back to the conventional file only where apt cannot be
+// asked. The second return is whether the question could be answered at all.
+func (c *Checker) aptEnabled(ctx context.Context, env platform.Env) (enabled, ok bool) {
+	if value, set, asked := aptEffective(ctx, env.Runner); asked {
+		// apt answered. An unset option is a definite "not enabled" — that is
+		// exactly the finding — and any value other than "0" enables it.
+		return set && value != "0", true
+	}
+	return aptUnattendedEnabled(c.AptConfigPath)
 }

@@ -190,3 +190,29 @@ func TestBothFirewallGapsAreReported(t *testing.T) {
 		t.Errorf("the second gap is missing: %q", partial.Reason)
 	}
 }
+
+// sshd serving on two ports at once is how an operator changes the SSH port
+// without locking themselves out: the old and the new both open until the new
+// one is proven, then the old is dropped. The evidence has to carry both, or
+// the fix allows one and `ufw --force enable` severs the other with no
+// checkpoint to undo it.
+func TestTheFindingNamesEveryPortSSHDIsListeningOn(t *testing.T) {
+	ss := `LISTEN 0 128 0.0.0.0:2222 0.0.0.0:* users:(("sshd",pid=1,fd=3))
+LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=1,fd=4))
+LISTEN 0 128 [::]:22 [::]:* users:(("sshd",pid=1,fd=5))
+LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("nginx",pid=9,fd=6))
+`
+	env := checktest.New().Without(ProbedTools...).Listeners(ss).Env()
+	fs, err := New().Check(context.Background(), env)
+	if err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	if len(fs) == 0 {
+		t.Fatal("a host with no firewall reported nothing")
+	}
+	// Sorted and deduplicated: the same port on IPv4 and IPv6 is one port,
+	// and the order must not churn between scans over one host state.
+	if got, want := fs[0].Evidence["ssh_port"], "22,2222"; got != want {
+		t.Errorf("ssh_port = %q, want %q", got, want)
+	}
+}

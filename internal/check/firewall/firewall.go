@@ -6,6 +6,7 @@ package firewall
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -127,8 +128,12 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// known. Read from the kernel's socket table rather than sshd_config
 	// because a config that says one thing and a daemon that is serving on
 	// another is exactly the case that would lock someone out.
-	if port, ok := sshPort(ctx, env.Runner); ok {
-		findings[0].Evidence["ssh_port"] = strconv.Itoa(port)
+	if ports, ok := sshPorts(ctx, env.Runner); ok {
+		parts := make([]string, 0, len(ports))
+		for _, p := range ports {
+			parts = append(parts, strconv.Itoa(p))
+		}
+		findings[0].Evidence["ssh_port"] = strings.Join(parts, ",")
 	}
 	return findings, nil
 }
@@ -153,22 +158,37 @@ func mergePartial(a, b *check.PartialError) *check.PartialError {
 	}
 }
 
-// sshPort finds the port sshd is listening on. "Cannot tell" is a real
-// answer here and is reported as one: no port, no fix.
-func sshPort(ctx context.Context, r platform.CommandRunner) (int, bool) {
+// sshPorts finds every port sshd is listening on. "Cannot tell" is a real
+// answer here and is reported as one: no ports, no fix.
+//
+// Every one of them, not the first. sshd serving on two ports at once is how
+// an operator changes the SSH port without locking themselves out — `Port 22`
+// and `Port 2222` together, verify the new one works, then drop the old.
+// Returning only the first meant the fix allowed one and `ufw --force enable`
+// severed the other, with no checkpoint to undo it. The fix's entire
+// justification is that hostveil now knows which port to keep open, and it
+// knew one of them.
+//
+// Sorted and deduplicated so the evidence, the label and the argv do not
+// churn between scans over what is one host state.
+func sshPorts(ctx context.Context, r platform.CommandRunner) ([]int, bool) {
 	if !platform.Has(r, "ss") {
-		return 0, false
+		return nil, false
 	}
 	ls, err := platform.Listeners(ctx, r)
 	if err != nil {
-		return 0, false
+		return nil, false
 	}
+	seen := map[int]bool{}
+	var ports []int
 	for _, l := range ls {
-		if strings.Contains(l.Proc, "sshd") {
-			return l.Port, true
+		if strings.Contains(l.Proc, "sshd") && !seen[l.Port] {
+			seen[l.Port] = true
+			ports = append(ports, l.Port)
 		}
 	}
-	return 0, false
+	sort.Ints(ports)
+	return ports, len(ports) > 0
 }
 
 // Status is the outcome of probing the host's firewall front-ends.
