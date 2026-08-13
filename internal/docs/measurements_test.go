@@ -34,7 +34,35 @@ import (
 // page is supposed to describe. Older runs stay in the directory as a record
 // and are not checked against anything: they are what the host looked like
 // then.
-var measuredCell = regexp.MustCompile(`data-measured="([^"]+)"[^>]*>([^<]*)<`)
+var measuredCell = regexp.MustCompile(`<[^<>]*data-measured="([^"]+)"[^<>]*>([^<]*)<`)
+
+// runAttr names the run a figure came off, when it is not the newest one.
+//
+//	<td data-measured-run="2026-08-14-seeded-fedora.json"
+//	    data-measured="phases.before.hostveil.overall">41</td>
+//
+// One run was enough while the page described one host. It cannot describe
+// what changes across distributions from a single file, and the alternative —
+// citing the extra runs in prose — puts the figures nobody checks right beside
+// the figures somebody does, which is worse than not publishing them.
+//
+// It is read out of the tag measuredCell matched rather than by a pattern of
+// its own, so the two attributes may be written in either order. A pattern
+// requiring one order would not fail on the other one: it would fall through
+// to the default and check a Fedora figure against the Debian run, which is
+// the quiet kind of wrong this file exists to prevent.
+//
+// Opt-in, so a page that says nothing about runs is still pinned to the
+// newest one exactly as before.
+var runAttr = regexp.MustCompile(`data-measured-run="([^"]+)"`)
+
+// runOf returns the run a matched cell names, or "" for the newest.
+func runOf(tag string) string {
+	if m := runAttr.FindStringSubmatch(tag); m != nil {
+		return m[1]
+	}
+	return ""
+}
 
 func newestMeasurement(t *testing.T) (string, map[string]any) {
 	t.Helper()
@@ -156,6 +184,10 @@ func TestEveryPublishedFigureCameOffTheCommittedRun(t *testing.T) {
 		}
 		for _, c := range cells {
 			path, shown := c[1], strings.TrimSpace(c[2])
+			// Cells naming their own run are checked below, against that run.
+			if runOf(c[0]) != "" {
+				continue
+			}
 			want, err := resolveJSON(doc, path)
 			if err != nil {
 				t.Errorf("%s: data-measured=%q does not resolve in %s: %v", lang, path, name, err)
@@ -171,6 +203,55 @@ func TestEveryPublishedFigureCameOffTheCommittedRun(t *testing.T) {
 	}
 }
 
+// TestEveryFigureNamingItsOwnRunCameOffThatRun is the same guarantee for the
+// figures that describe a host other than the one the page leads with.
+//
+// A cross-distribution result is several runs published side by side, and the
+// pin has to follow each figure to the file it came from — otherwise the
+// Fedora column is checked against the Debian run, which either fails for no
+// reason or, where the numbers happen to agree, passes without looking.
+func TestEveryFigureNamingItsOwnRunCameOffThatRun(t *testing.T) {
+	loaded := map[string]map[string]any{}
+
+	for _, lang := range []string{"en", "ko"} {
+		for _, c := range measuredCell.FindAllStringSubmatch(measuredPage(t, lang), -1) {
+			run := runOf(c[0])
+			if run == "" {
+				continue
+			}
+			path, shown := c[1], strings.TrimSpace(c[2])
+			doc, seen := loaded[run]
+			if !seen {
+				b, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "measurements", run))
+				if err != nil {
+					t.Errorf("%s: the page cites %s, which is not committed under docs/measurements/: %v",
+						lang, run, err)
+					loaded[run] = nil
+					continue
+				}
+				if err := json.Unmarshal(b, &doc); err != nil {
+					t.Errorf("%s: %s does not parse: %v", lang, run, err)
+					loaded[run] = nil
+					continue
+				}
+				loaded[run] = doc
+			}
+			if doc == nil {
+				continue
+			}
+			want, err := resolveJSON(doc, path)
+			if err != nil {
+				t.Errorf("%s: data-measured=%q does not resolve in %s: %v", lang, path, run, err)
+				continue
+			}
+			if got := renderJSON(want); got != shown && shown != "—" {
+				t.Errorf("%s: the page says %q for %s in %s, and that run records %q",
+					lang, shown, path, run, got)
+			}
+		}
+	}
+}
+
 // And both languages must cite the same figures. The Korean page is a
 // translation of an argument about numbers, so a figure updated on one and
 // not the other is the same staleness this file exists to catch, arriving
@@ -179,7 +260,15 @@ func TestBothLanguagesCiteTheSameFigures(t *testing.T) {
 	paths := map[string][]string{}
 	for _, lang := range []string{"en", "ko"} {
 		for _, c := range measuredCell.FindAllStringSubmatch(measuredPage(t, lang), -1) {
-			paths[lang] = append(paths[lang], c[1])
+			// Keyed by run as well as path. Once the page publishes several
+			// hosts, the same JSON path appears once per distribution, and
+			// comparing paths alone would call a page citing Fedora's score
+			// equal to one citing Alpine's.
+			key := c[1]
+			if run := runOf(c[0]); run != "" {
+				key = run + " " + key
+			}
+			paths[lang] = append(paths[lang], key)
 		}
 		slices.Sort(paths[lang])
 		paths[lang] = slices.Compact(paths[lang])
@@ -232,5 +321,68 @@ func TestTheCommittedRunActuallyRestoredTheHost(t *testing.T) {
 		if list, ok := v.([]any); ok && len(list) > 0 {
 			t.Errorf("%s records %s = %v", name, path, list)
 		}
+	}
+}
+
+// TestTheRunAttributeActuallyMatches proves the mechanism before anything
+// depends on it.
+//
+// Nothing on the page carries data-measured-run yet, so the test above passes
+// without resolving a single figure. A pin that has never matched anything is
+// indistinguishable from a pin that does not work, and this repository has
+// already shipped one: e2e.yml selected domains on an enum's old integer,
+// matched nothing after the encoding changed to names, and its assertion
+// passed on every pull request without once looking at a domain.
+func TestTheRunAttributeActuallyMatches(t *testing.T) {
+	cases := []struct {
+		name, cell, wantRun, wantPath, wantText string
+	}{
+		{
+			name:     "run first",
+			cell:     `<td data-measured-run="2026-08-14-seeded-fedora.json" data-measured="phases.before.hostveil.overall">41</td>`,
+			wantRun:  "2026-08-14-seeded-fedora.json",
+			wantPath: "phases.before.hostveil.overall",
+			wantText: "41",
+		},
+		{
+			// Both orders, because a page author will write both and the one
+			// that is not matched fails silently rather than loudly.
+			name:     "run second",
+			cell:     `<td data-measured="phases.after.lynis.hardening_index" data-measured-run="2026-08-14-seeded-alpine.json">63</td>`,
+			wantRun:  "2026-08-14-seeded-alpine.json",
+			wantPath: "phases.after.lynis.hardening_index",
+			wantText: "63",
+		},
+		{
+			name:     "no run names the newest",
+			cell:     `<td data-measured="phases.before.hostveil.overall">40</td>`,
+			wantRun:  "",
+			wantPath: "phases.before.hostveil.overall",
+			wantText: "40",
+		},
+		{
+			name:     "a span, not only a cell",
+			cell:     `<span data-measured="phases.reviewed.hostveil.axes.ssh">100</span>`,
+			wantRun:  "",
+			wantPath: "phases.reviewed.hostveil.axes.ssh",
+			wantText: "100",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := measuredCell.FindStringSubmatch(tc.cell)
+			if m == nil {
+				t.Fatal("the pattern does not match the markup the page is told to write")
+			}
+			if got := runOf(m[0]); got != tc.wantRun {
+				t.Errorf("run = %q, want %q", got, tc.wantRun)
+			}
+			if m[1] != tc.wantPath {
+				t.Errorf("path = %q, want %q", m[1], tc.wantPath)
+			}
+			if strings.TrimSpace(m[2]) != tc.wantText {
+				t.Errorf("text = %q, want %q", m[2], tc.wantText)
+			}
+		})
 	}
 }
