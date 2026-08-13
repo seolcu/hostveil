@@ -80,6 +80,43 @@ type ScanOptions struct {
 // Partial reports whether the options describe less than a full scan.
 func (o ScanOptions) Partial() bool { return len(o.Only) > 0 }
 
+// PlannedDomains names the domains a scan with these options will run, in the
+// order the registry holds them.
+//
+// A progress display needs a denominator and the event stream cannot supply
+// one: a checker reports when it starts and when it finishes, so a reader can
+// count what has happened and never what is left. model.AllSources() is the
+// wrong answer — it is the domains that exist, not the ones this engine was
+// built with, and it ignores Only entirely.
+//
+// The selection is shared with ScanWith rather than restated. A plan that
+// disagrees with the run is worse than no plan: a bar that reaches eleven of
+// twelve and stops there reads as a hang, which is the one thing a progress
+// display exists to rule out.
+func (e *Engine) PlannedDomains(opts ScanOptions) []model.Source {
+	planned := e.plannedCheckers(opts)
+	out := make([]model.Source, 0, len(planned))
+	for _, c := range planned {
+		out = append(out, c.Source())
+	}
+	return out
+}
+
+// plannedCheckers applies ScanOptions to the registry.
+func (e *Engine) plannedCheckers(opts ScanOptions) []check.Checker {
+	all := e.registry.Checkers()
+	if !opts.Partial() {
+		return all
+	}
+	var subset []check.Checker
+	for _, c := range all {
+		if slices.Contains(opts.Only, c.Source()) {
+			subset = append(subset, c)
+		}
+	}
+	return subset
+}
+
 // Scan runs every checker concurrently, scores the merged findings, stores
 // the result as the engine's current report, and returns it. progress may
 // be nil; if non-nil it receives a ScanEvent as each checker starts and
@@ -112,13 +149,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	env := platform.Detect(ctx, platform.NewScanCache(e.runner))
 	registry := e.registry
 	if opts.Partial() {
-		var subset []check.Checker
-		for _, c := range e.registry.Checkers() {
-			if slices.Contains(opts.Only, c.Source()) {
-				subset = append(subset, c)
-			}
-		}
-		registry = check.NewRegistry(subset...)
+		registry = check.NewRegistry(e.plannedCheckers(opts)...)
 	}
 	results := registry.Run(ctx, env, progress)
 

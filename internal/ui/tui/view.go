@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -351,10 +352,106 @@ func (m *appModel) listHintFor() string {
 	return listHint
 }
 
-// scanningRows is the whole scan screen: one status line, held in the middle
-// of an otherwise empty frame.
+// scanningRows draws the scan in progress: a bar over the domains that will
+// run, one row each, and how long it has been going.
+//
+// It used to be the status line alone, centred in an otherwise empty frame,
+// which answered neither question an operator has while waiting. "Is it
+// hung?" needs to name what is working now — almost always the CVE domain,
+// which on a host with many images takes minutes. "How far in?" needs a
+// denominator, which the events cannot supply and the engine can.
+//
+// There is deliberately no estimate of the time remaining. Eleven of the
+// twelve domains together finish inside a second; the twelfth shells out to
+// Trivy, whose duration depends on the images, their size, and whether the
+// vulnerability database needs downloading first. Nearly all of the unknown
+// is in the one domain nothing can predict, and a number that is confidently
+// wrong for the whole wait is worse than no number — the same reason a
+// skipped domain is scored N/A rather than 100.
 func (m *appModel) scanningRows(n int) []string {
-	return centerRows(m.wrapRows(m.sty().dim, m.status, m.proseWidth(bodyInset), bodyInset), n)
+	s := m.sty()
+	domains := m.scanDomains()
+	if len(domains) == 0 {
+		// Nothing has been heard yet and there was no engine to ask. The
+		// status line is all there is, and it is what this screen was.
+		return centerRows(m.wrapRows(s.dim, m.status, m.proseWidth(bodyInset), bodyInset), n)
+	}
+
+	// Narrow enough to read as one block rather than a band across a wide
+	// terminal, and wide enough for the longest domain name beside its state.
+	width := min(m.proseWidth(bodyInset), 34)
+	head := fmt.Sprintf("Scanning %d of %d domains", m.scanDone, len(domains))
+	if m.scanElapsed >= time.Second {
+		head += "   " + formatElapsed(m.scanElapsed)
+	}
+
+	rows := []string{
+		s.brand.Render(head),
+		s.meterAtLeastOne(scanPercent(m.scanDone, len(domains)), width, s.cAccent, m.scanDone > 0),
+		"",
+	}
+	for _, src := range domains {
+		rows = append(rows, m.scanDomainRow(src, width))
+	}
+	return centerRows(indentRows(rows, bodyInset), n)
+}
+
+// scanPercent is how much of the plan has finished, as a meter takes it.
+func scanPercent(done, total int) uint8 {
+	if total <= 0 {
+		return 0
+	}
+	//nolint:gosec // G115: done <= total, so the quotient is bounded by 100
+	return uint8(min(100, done*100/total))
+}
+
+// scanDomainRow is one domain's line: a mark, its name, and where it got to,
+// with the state right-aligned so the column reads down and the row is exactly
+// as wide as the bar above it.
+//
+// The mark comes from the glyph table because these are the same states the
+// coverage notices draw at the end of a scan, and a domain reported as skipped
+// while running must not be marked differently from the same domain in the
+// report a second later.
+//
+// Every piece is measured and cut before it is styled. Truncating the styled
+// row instead cuts inside an escape sequence — truncate counts columns of the
+// bytes it is given, and an escape is bytes with no columns — which puts the
+// sequence's own digits on the screen.
+func (m *appModel) scanDomainRow(src model.Source, width int) string {
+	s := m.sty()
+
+	mark, style, note := " ", s.dim, "waiting"
+	switch m.scanState[src] {
+	case model.ScanRunning:
+		mark, style, note = m.gl.Of(glyph.Cursor), s.bone, "scanning…"
+	case model.ScanDone:
+		mark, style, note = m.gl.Of(glyph.OK), s.safe, "done"
+	case model.ScanSkipped:
+		mark, style, note = m.gl.Of(glyph.Skipped), s.dim, "skipped"
+	case model.ScanDegraded:
+		mark, style, note = m.gl.Of(glyph.Partial), lipgloss.NewStyle().Foreground(s.cHigh), "partial"
+	case model.ScanError:
+		mark, style, note = m.gl.Of(glyph.Failed), lipgloss.NewStyle().Foreground(s.cCrit), "failed"
+	case model.ScanPending:
+	}
+
+	markW := lipgloss.Width(mark) + 1
+	noteW := lipgloss.Width(note)
+	nameW := max(1, width-markW-noteW-1)
+	name := truncate(src.Label(), nameW)
+	gap := max(1, width-markW-lipgloss.Width(name)-noteW)
+	return style.Render(mark+" "+name) + strings.Repeat(" ", gap) + s.dim.Render(note)
+}
+
+// formatElapsed writes a duration the way a stopwatch does. Seconds only up
+// to a minute, because that is the whole of an ordinary scan.
+func formatElapsed(d time.Duration) string {
+	secs := int(d.Seconds())
+	if secs < 60 {
+		return fmt.Sprintf("%ds", secs)
+	}
+	return fmt.Sprintf("%d:%02d", secs/60, secs%60)
 }
 
 // minVerdictBody is how many rows must remain for the verdict band to be
