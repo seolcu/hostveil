@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/textwidth"
 )
 
 // What a terminal interface has instead of borders and shadows is the grid:
@@ -307,5 +308,108 @@ func TestEveryHistoryRowPutsItsLabelInTheSamePlace(t *testing.T) {
 		} else if at != labelAt {
 			t.Errorf("checkpoint %d: label starts at column %d, the rows before it start at %d", i, at, labelAt)
 		}
+	}
+}
+
+// The header's own rows, measured before the frame clips them.
+//
+// TestEveryArrangementHoldsItsGridAtEveryWidth sweeps the same widths and
+// could not see this: it measures View().Content, and compose clips every row
+// to the terminal before joining them. So a header row composed one column too
+// wide is not a wide row by the time that test looks — it is a row with its
+// last column missing, which no width assertion can be written against.
+//
+// What the missing column was is the reason this is worth a test of its own.
+// The axes strip budgeted four columns for a value that can be "100~", so the
+// clip landed exactly on the "~" and a degraded axis rendered as a clean 100 —
+// the marker that keeps a partial result from reading as a complete one,
+// removed by the guard that was supposed to keep the layout honest.
+//
+// It only happens at the widths where the strip fits exactly (w ≡ 22 mod 25
+// with the old cell), which is why the sweep's other eighteen widths absorbed
+// the extra column into the trailing gap and said nothing.
+func TestTheHeaderComposesRowsThatFitBeforeTheFrameClipsThem(t *testing.T) {
+	// The sweep's own widths, plus the ones where a whole number of cells fits
+	// exactly (axisCell+axisGap apart) — those are the only widths with no
+	// trailing gap to absorb an over-wide cell, and so the only ones where the
+	// fault reaches the clip. The floor is 30, the same floor the sweep uses:
+	// below one cell the strip is deliberately over-wide rather than dividing
+	// by zero, which axesLine says in as many words.
+	// Under RUNEWIDTH_EASTASIAN the meter's block elements are two columns
+	// each — they are East Asian Ambiguous, like the "·" and "→" the
+	// textwidth package's doc comment already names — so an eight-cell meter
+	// occupies sixteen and every strip on the screen composes far past the
+	// terminal. That is a real defect and a separate one: it is about how the
+	// meters are *built* (a rune count, not a column budget), not about how
+	// wide a value is, and it predates this test by every release that has
+	// had a meter in it. Recorded here rather than left as a hole, because a
+	// test that quietly measures nothing in a mode is worse than one that
+	// says which mode it gave up on.
+	if textwidth.Of("█") > 1 {
+		t.Skip("meters are built by rune count, so every strip overflows under RUNEWIDTH_EASTASIAN; that is its own fix")
+	}
+	widths := []int{200, 160, 132, 127, 120, 110, 101, 100, 96, 88, 84, 80, 76, 75, 72, 64, 56, 49, 48, 44, 40, 36, 30}
+	for _, l := range Layouts() {
+		for _, w := range widths {
+			m := layoutModel(l.ID, w, 34)
+			// Only the renderer this arrangement actually draws with: an
+			// arrangement whose rail carries the numbers draws neither strip,
+			// and measuring one it never calls would fail on nothing.
+			composed := map[string]string{"delta": m.deltaLine()}
+			switch m.axesStyle() {
+			case axesFull:
+				composed["axes strip"] = m.axesLine()
+			case axesSpark:
+				composed["spark axes"] = m.sparkAxesLine(w)
+			case axesNone:
+			}
+			for name, row := range composed {
+				for i, line := range strings.Split(row, "\n") {
+					if line == "" {
+						continue
+					}
+					if got := visibleWidth(line); got > w {
+						t.Errorf("%s at width %d: the %s composed row %d at %d columns; the frame will clip %d off the end",
+							l.ID, w, name, i, got, got-w)
+					}
+				}
+			}
+		}
+	}
+}
+
+// And the rail keeps a space between the meter and the number.
+//
+// The value is right-aligned into a fixed field, so a value as wide as the
+// field has no gap in front of it and the digits butt against the bar. The
+// only value that wide is "100~" — a domain that covered part of its ground
+// and found nothing in that part — so every fixture in this package rendered
+// the roomy case and none rendered this one.
+func TestTheRailKeepsTheMeterAndTheNumberApart(t *testing.T) {
+	m := layoutModel("console", 100, 40)
+	var seen bool
+	for _, row := range m.railRows(railWidth, 40) {
+		// Runes, not bytes: the meter is drawn in block elements, so a byte
+		// index one past the last one lands inside it.
+		rs := []rune(plain(row))
+		bar := -1
+		for i, r := range rs {
+			if r == '█' || r == '░' {
+				bar = i
+			}
+		}
+		if bar < 0 || bar+1 >= len(rs) {
+			continue // a domain that did not run draws no meter
+		}
+		value := strings.TrimSpace(string(rs[bar+1:]))
+		if value == "100~" {
+			seen = true
+		}
+		if rs[bar+1] != ' ' {
+			t.Errorf("no gap between the meter and the value %q: %q", value, string(rs))
+		}
+	}
+	if !seen {
+		t.Error("the fixture no longer contains a degraded axis scoring 100, which is the only value wide enough to close the gap")
 	}
 }

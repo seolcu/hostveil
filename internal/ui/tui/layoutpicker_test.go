@@ -36,11 +36,18 @@ func layoutFixture() model.Report {
 	add(7, "ssh.rootlogin", model.SeverityMedium, model.RemediationAuto, model.SourceSSH)
 	add(11, "ports.exposed", model.SeverityLow, model.RemediationManual, model.SourcePorts)
 
+	// Firewall is degraded and carries no findings, so it scores 100 and its
+	// value text is "100~" — the widest an axis value can be, and one column
+	// more than every renderer used to budget for it. The fixture had a
+	// degraded domain already, but a degraded domain *with* findings scores
+	// below 100 and fits, which is why every width sweep in this package
+	// passed over the overflow for as long as it existed.
 	states := map[model.Source]model.ScanState{
-		model.SourceCompose: model.ScanDone,
-		model.SourceSSH:     model.ScanDone,
-		model.SourcePorts:   model.ScanDegraded,
-		model.SourceCVE:     model.ScanSkipped,
+		model.SourceCompose:  model.ScanDone,
+		model.SourceSSH:      model.ScanDone,
+		model.SourcePorts:    model.ScanDegraded,
+		model.SourceFirewall: model.ScanDegraded,
+		model.SourceCVE:      model.ScanSkipped,
 	}
 	return model.Report{
 		Findings: fs,
@@ -49,6 +56,7 @@ func layoutFixture() model.Report {
 			{Source: model.SourceCompose, State: model.ScanDone, FindingCount: 8},
 			{Source: model.SourceSSH, State: model.ScanDone, FindingCount: 7},
 			{Source: model.SourcePorts, State: model.ScanDegraded, Reason: "the firewall would not answer"},
+			{Source: model.SourceFirewall, State: model.ScanDegraded, Reason: "cannot read the DOCKER-USER chain"},
 			{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy is not installed"},
 		},
 	}
