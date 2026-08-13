@@ -35,20 +35,33 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// No port, no fix. A firewall enabled without knowing which port to keep
 	// open is the lockout this refused to risk for years, and "I could not
 	// tell" must not quietly become "22".
-	raw := f.Evidence["ssh_port"]
-	port, err := strconv.Atoi(raw)
-	if err != nil || port <= 0 || port > 65535 {
-		return Fix{}, fmt.Errorf("finding %s does not name the port sshd is listening on, "+
-			"so enabling a firewall could lock the operator out", f.ID)
+	// Every port sshd is listening on, not the first. Two at once is how an
+	// operator changes the SSH port without locking themselves out — the old
+	// and the new both open until the new one is proven — and allowing one of
+	// them before a default-deny policy severs the other, with no checkpoint.
+	ports, err := parseSSHPorts(f.Evidence["ssh_port"])
+	if err != nil {
+		return Fix{}, fmt.Errorf("finding %s does not name the port(s) sshd is listening on, "+
+			"so enabling a firewall could lock the operator out: %w", f.ID, err)
 	}
 	if !strings.Contains(f.Evidence["available"], "ufw") {
 		return Fix{}, fmt.Errorf("finding %s reports no ufw, and the other front-ends "+
 			"take rules this fix cannot write safely", f.ID)
 	}
-	p := strconv.Itoa(port)
+	list := make([]string, 0, len(ports))
+	for _, p := range ports {
+		list = append(list, strconv.Itoa(p))
+	}
+	spelled := strings.Join(list, " and ")
+	allow := make([][]string, 0, len(list)+1)
+	for _, p := range list {
+		allow = append(allow, []string{"ufw", "allow", p + "/tcp"})
+	}
+	allow = append(allow, []string{"ufw", "--force", "enable"})
+
 	return Fix{
 		FindingID: f.ID,
-		Label:     "Enable ufw, allowing SSH on port " + p + " first",
+		Label:     "Enable ufw, allowing SSH on port " + spelled + " first",
 		// Declared Auto — one mechanical action — and demoted to Review by
 		// EffectiveKind because it is exec, which is the same route
 		// updates.disabled takes. Validate reserves the Review kind for
@@ -56,15 +69,31 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		// has one procedure whose steps are ordered, not a choice.
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
-			Label: "Allow SSH on " + p + "/tcp, then enable ufw with a default-deny inbound policy",
-			Warning: "Every inbound port except " + p + "/tcp stops being reachable the moment this " +
+			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
+			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
 				"runs, including anything a container publishes. There is no rollback checkpoint — " +
 				"exec fixes are not file-backed — so undoing it means `ufw disable` by hand.",
-			Kind: ActionExec,
-			Commands: [][]string{
-				{"ufw", "allow", p + "/tcp"},
-				{"ufw", "--force", "enable"},
-			},
+			Kind:     ActionExec,
+			Commands: allow,
 		}},
 	}, nil
+}
+
+// parseSSHPorts reads the comma-separated list of ports the checker observed
+// sshd listening on. Every one has to be a real port: a list hostveil cannot
+// fully parse is one it cannot fully allow, and allowing the part it
+// understood before a default-deny policy is how the other part gets severed.
+func parseSSHPorts(raw string) ([]int, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, fmt.Errorf("no port recorded")
+	}
+	var out []int
+	for _, field := range strings.Split(raw, ",") {
+		port, err := strconv.Atoi(strings.TrimSpace(field))
+		if err != nil || port <= 0 || port > 65535 {
+			return nil, fmt.Errorf("%q is not a port", field)
+		}
+		out = append(out, port)
+	}
+	return out, nil
 }

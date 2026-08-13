@@ -81,3 +81,54 @@ func TestNoFirewallFixWithoutUfw(t *testing.T) {
 		t.Error("a fix was offered for a host with no ufw")
 	}
 }
+
+// Two ports at once is how an operator changes the SSH port without locking
+// themselves out: `Port 22` and `Port 2222` both listening, verify the new
+// one, then drop the old. The fix allowed the first and `ufw --force enable`
+// severed the second, with no checkpoint to undo it — on a host reached only
+// over SSH.
+//
+// The whole justification for this fix existing is that hostveil now knows
+// which port to keep open. It knew one of them.
+func TestTheFirewallFixAllowsEverySSHPortBeforeItClosesEverything(t *testing.T) {
+	f := model.NewFinding("firewall.inactive", "t", model.SeverityHigh, model.SourceFirewall,
+		model.RemediationReview,
+		model.WithEvidence("ssh_port", "22,2222"),
+		model.WithEvidence("available", "ufw"))
+
+	fx, err := buildEnableFirewall(f)
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	cmds := fx.Actions[0].Commands
+	if len(cmds) != 3 {
+		t.Fatalf("got %d commands, want an allow per port plus the enable: %v", len(cmds), cmds)
+	}
+	for i, want := range [][]string{
+		{"ufw", "allow", "22/tcp"},
+		{"ufw", "allow", "2222/tcp"},
+		{"ufw", "--force", "enable"},
+	} {
+		if strings.Join(cmds[i], " ") != strings.Join(want, " ") {
+			t.Errorf("command %d is %v, want %v — every port has to be open before the policy closes", i, cmds[i], want)
+		}
+	}
+	if !strings.Contains(fx.Actions[0].Warning, "2222") {
+		t.Errorf("the warning does not name both ports: %q", fx.Actions[0].Warning)
+	}
+}
+
+// A list hostveil cannot fully parse is one it cannot fully allow, and
+// allowing the part it understood before a default-deny policy is how the
+// rest gets severed.
+func TestTheFirewallFixRefusesAPartlyReadablePortList(t *testing.T) {
+	for _, raw := range []string{"22,", "22,nonsense", "", "0"} {
+		f := model.NewFinding("firewall.inactive", "t", model.SeverityHigh, model.SourceFirewall,
+			model.RemediationReview,
+			model.WithEvidence("ssh_port", raw),
+			model.WithEvidence("available", "ufw"))
+		if _, err := buildEnableFirewall(f); err == nil {
+			t.Errorf("ssh_port=%q built a fix; a port list that does not fully parse must not enable a default-deny policy", raw)
+		}
+	}
+}
