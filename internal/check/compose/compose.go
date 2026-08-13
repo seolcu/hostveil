@@ -51,7 +51,13 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	var findings []model.Finding
 	for _, p := range projects {
 		for _, name := range p.ServiceNames() {
-			for _, fnd := range auditService(p.Services[name]) {
+			svc := p.Services[name]
+			for _, fnd := range auditService(svc) {
+				// The compose file is not the only place a healthcheck can
+				// come from. See imageDeclaresHealthcheck.
+				if fnd.ID == "compose.ds012" && imageDeclaresHealthcheck(ctx, env.Runner, svc.Image) {
+					continue
+				}
 				// Record where the fix layer should apply the change.
 				// "file" names the project; "files" is what a fix resolves
 				// against. On a layered project the merged state is what
