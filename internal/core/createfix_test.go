@@ -132,6 +132,58 @@ func TestRollbackDeclinesToDeleteAnEditedFile(t *testing.T) {
 	}
 }
 
+// And the escape hatch the declined rollback exists to offer.
+//
+// core.RollbackForce had no test at all. The two lines that select it —
+//
+//	restore := e.store.Rollback
+//	if force { restore = e.store.RollbackForce }
+//
+// invert without anything noticing, and inverted they mean an ordinary
+// rollback silently discards an operator's later edits: the exact outcome the
+// external-edit refusal exists to prevent, reached through the code that
+// implements it.
+func TestForcingADeclinedRollbackRestoresAndRescores(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
+	e := createEngine(t, path)
+	e.state.current = model.Report{Findings: []model.Finding{createFinding()}}
+
+	out, err := e.ApplyFix(context.Background(), createFinding(), 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("kernel.kptr_restrict = 2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Rollback(out.CheckpointID); !IsExternalEdit(err) {
+		t.Fatalf("the ordinary rollback did not decline: %v", err)
+	}
+
+	forced, err := e.RollbackForce(out.CheckpointID)
+	if err != nil {
+		t.Fatalf("forced rollback: %v", err)
+	}
+	// The fix created the file, so restoring means removing it.
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the forced rollback left the file in place: %v", err)
+	}
+	if forced.CheckpointID != out.CheckpointID {
+		t.Errorf("outcome names %q, want %q", forced.CheckpointID, out.CheckpointID)
+	}
+	// And the report followed: forcing goes through the same tail as an
+	// ordinary rollback, so the finding comes back and the score moves.
+	if len(forced.Unfixed) == 0 {
+		t.Error("the forced rollback did not un-mark the finding it undid")
+	}
+	if cur, ok := e.Current(); ok {
+		for _, f := range cur.Findings {
+			if f.ID == createFinding().ID && f.Fixed {
+				t.Error("the report still shows the finding as fixed after a forced rollback")
+			}
+		}
+	}
+}
+
 // Deleting a file that is already gone is the desired end state, not a
 // failure. An operator who removed the drop-in by hand and then rolled back
 // should get success, not an error describing what they already did.
