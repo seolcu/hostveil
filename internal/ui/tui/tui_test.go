@@ -41,6 +41,66 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 	return next
 }
 
+// siteFrame renders the one frame the website publishes.
+//
+// It is a function rather than inline in the dumper because the pinning test
+// in siteframe_test.go has to render the identical thing: a screenshot
+// reviewed against one frame and regenerated from another is not pinned at
+// all.
+//
+// 150x31 and the three-pane console arrangement, because that is what the
+// page has room for and what a terminal wide enough to use hostveil actually
+// shows. The fixture is deliberately a mixed host rather than a wrecked one —
+// a degraded domain, a skipped one, findings at all three levels, and a
+// couple marked for a batch fix — so the picture carries the claims the page
+// makes beside it instead of just looking alarming.
+func siteFrame(t *testing.T) string {
+	t.Helper()
+	findings := []model.Finding{
+		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/redis"),
+			model.WithDescription("The redis container publishes port 6379 on 0.0.0.0, so anything that can reach this host can reach the datastore. Redis has no authentication enabled by default, which means a full read and write of everything the service keeps there."),
+			model.WithHowToFix("Bind the published port to 127.0.0.1 so only this host can connect, and reach it from other containers over the compose network instead.")),
+		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
+		model.NewFinding("cve.outdated-image", "12 fixable vulnerabilities in nextcloud:27.1.3", model.SeverityHigh, model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud")),
+		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview),
+		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
+		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
+		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
+		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityMedium, model.SourceFirewall, model.RemediationReview),
+		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
+		model.NewFinding("sysctl.kptr-restrict", "Kernel pointers are readable by unprivileged users", model.SeverityLow, model.SourceSysctl, model.RemediationReview),
+		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
+		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("media/jellyfin")),
+		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
+	}
+	states := map[model.Source]model.ScanState{
+		model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone,
+		model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone,
+		model.SourceCVE: model.ScanDone, model.SourceAccounts: model.ScanDone,
+		model.SourceFilePerms: model.ScanDone, model.SourceSysctl: model.ScanDone,
+		model.SourceSystemd: model.ScanDone, model.SourcePorts: model.ScanDegraded,
+	}
+	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states), Domains: []model.DomainResult{
+		{Source: model.SourceAgent, State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
+	}}
+
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
+	m = send(m, tea.WindowSizeMsg{Width: 150, Height: 31})
+	m = send(m, scannedMsg{report: rep})
+
+	// Mark a couple of auto-fixable findings. The frame is a documentation
+	// screenshot, and multi-select is one of the things the caption claims;
+	// an empty gutter shows the reader a feature that looks like it is not
+	// there.
+	am := m.(*appModel)
+	for _, f := range am.active {
+		if f.Remediation == model.RemediationAuto && len(am.selected) < 3 {
+			am.selected[f.Key()] = true
+		}
+	}
+	return am.View().Content
+}
+
 // TestSnapshotDump writes rendered TUI frames to HOSTVEIL_SNAPSHOT when it is
 // set, and is a no-op in normal test runs. It is how the frames in the
 // documentation are produced, and how a layout change is reviewed without a
@@ -59,35 +119,7 @@ func TestSnapshotDump(t *testing.T) {
 		dumpEveryMode(t, path)
 		return
 	}
-	findings := []model.Finding{
-		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
-		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
-		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview),
-		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
-		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("app")),
-		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
-		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("db")),
-	}
-	states := map[model.Source]model.ScanState{model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone, model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone}
-	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states), Domains: []model.DomainResult{
-		{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
-	}}
-
-	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}})
-	m = send(m, tea.WindowSizeMsg{Width: 96, Height: 34})
-	m = send(m, scannedMsg{report: rep})
-
-	// Mark a couple of auto-fixable findings. The frame is a documentation
-	// screenshot, and multi-select is one of the things the caption claims;
-	// an empty gutter shows the reader a feature that looks like it is not
-	// there.
-	am := m.(*appModel)
-	for _, f := range am.active {
-		if f.Remediation == model.RemediationAuto && len(am.selected) < 3 {
-			am.selected[f.Key()] = true
-		}
-	}
-	if err := os.WriteFile(path, []byte(am.View().Content), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(siteFrame(t)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
