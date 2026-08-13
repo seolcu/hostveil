@@ -23,6 +23,35 @@ type ScoreBreakdown struct {
 	// not "impossible", and this is the one number the whole tool is judged
 	// on.
 	Applicable bool `json:"applicable"`
+
+	// AfterFixes is Overall recomputed with every fix hostveil offers — Auto
+	// and Review both — treated as applied.
+	//
+	// It answers a question the score alone cannot, and that an operator
+	// reasonably reads the score as already answering. A host whose container
+	// axis sits at 2 after `fix --all` looks like a tool that did nothing,
+	// when what actually happened is that the findings still standing are
+	// Manual by design: a Docker socket mounted into Portainer, a second UID 0
+	// account, host networking. The number was right and it was being read as
+	// a verdict on the effort rather than on the host.
+	//
+	// The alternative was to charge Manual findings less, and it is the wrong
+	// trade in the exact place it looks tempting. unavailableRelief is
+	// defensible because nobody can fix those — no upstream patch exists.
+	// Manual means hostveil will not do it unattended, not that it cannot be
+	// done: the operator can delete the account or drop the socket mount this
+	// afternoon. Discounting a risk the operator is fully able to remove is
+	// the flattery this scoring model was rebuilt to refuse.
+	//
+	// So the risk is charged in full and the headroom is published beside it.
+	// Named for what it is rather than "achievable": the difference between
+	// this and 100 is what hostveil will not fix for you, which is not the
+	// same as what cannot be fixed.
+	//
+	// Equal to Overall when nothing is fixable, which is the case every UI
+	// must render as nothing at all rather than as an arrow to the same
+	// number.
+	AfterFixes uint8 `json:"after_fixes"`
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
@@ -44,12 +73,17 @@ type ScoreBreakdown struct {
 // projection of AllSeverities now, so a level added or removed reaches every
 // consumer without any of them being edited.
 type ScoreAxis struct {
-	ID         string          `json:"id"`
-	Label      string          `json:"label"`
-	Source     Source          `json:"source"`
-	Applicable bool            `json:"applicable"`
-	Degraded   bool            `json:"degraded,omitempty"`
-	Score      uint8           `json:"score"`
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	Source     Source `json:"source"`
+	Applicable bool   `json:"applicable"`
+	Degraded   bool   `json:"degraded,omitempty"`
+	Score      uint8  `json:"score"`
+	// AfterFixes is Score with every fix hostveil offers on this axis
+	// treated as applied. See ScoreBreakdown.AfterFixes; the per-axis one is
+	// what makes the aggregate actionable, because it says *where* the
+	// headroom is.
+	AfterFixes uint8           `json:"after_fixes"`
 	Penalty    int             `json:"penalty"`
 	MaxPenalty int             `json:"max_penalty"`
 	Counts     []SeverityCount `json:"counts"`
@@ -267,6 +301,48 @@ func weight(f Finding, nth int) float64 {
 // A nil states map means "every domain ran", the convention used by callers
 // that score a bare set of findings with no scan behind them.
 func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
+	b := scoreOnce(findings, states)
+
+	// And again, over the same findings with everything hostveil offers a
+	// button for marked fixed. See ScoreBreakdown.AfterFixes.
+	//
+	// Two calls rather than a second scoring rule: the loop below already
+	// skips a Fixed finding, so "what this would be after the fixes" is the
+	// same arithmetic on a different input, and there is no way for the two
+	// numbers to drift apart into two answers about one host.
+	after := scoreOnce(withOfferedFixesApplied(findings), states)
+	b.AfterFixes = after.Overall
+	for i := range b.Axes {
+		b.Axes[i].AfterFixes = after.Axes[i].Score
+	}
+	return b
+}
+
+// withOfferedFixesApplied returns findings with every one hostveil can
+// remediate marked Fixed.
+//
+// Review counts, not only Auto. The operator who wants to know what fixing
+// everything gets them is going to accept the Review fixes too — that is the
+// path scripts/measure/run.sh calls `reviewed`, and it exists precisely
+// because measuring only the unattended half measures half the tool.
+//
+// Remediation is read here rather than the registry being consulted, and that
+// is only correct because Engine.classify runs before scoring
+// (internal/core/engine.go) — so the value on the finding is already resolved
+// between the checker and the registry, which is to say it is exactly what
+// decides whether a UI draws a button.
+func withOfferedFixesApplied(findings []Finding) []Finding {
+	out := make([]Finding, len(findings))
+	copy(out, findings)
+	for i := range out {
+		if out[i].Remediation == RemediationAuto || out[i].Remediation == RemediationReview {
+			out[i].Fixed = true
+		}
+	}
+	return out
+}
+
+func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	axes := make([]ScoreAxis, len(axisDefs))
 	idxBySource := make(map[Source]int, len(axisDefs))
 	for i, def := range axisDefs {

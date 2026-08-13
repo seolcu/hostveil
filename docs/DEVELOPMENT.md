@@ -189,7 +189,23 @@ headless browser in the test suite, so `TestDashboardScreenshotStampIsCurrent`
 hashes everything that decides what that page looks like — the generated
 `/model.js`, `/themes.css` and `/theme.js`, plus the three embedded assets —
 against `internal/ui/web/testdata/web-shot.stamp`, and names which one moved.
-Re-shoot it with the Firefox command above, then:
+
+Re-shooting it does not need the demo VM. `TestScreenshotServe` puts the real
+dashboard — every route, asset and generated stylesheet from `Server.Handler`,
+on the default theme and arrangement — in front of the same fixture the
+terminal frame draws, so both published screenshots are pictures of one host:
+
+```bash
+HOSTVEIL_SCREENSHOT_ADDR=127.0.0.1:8788 HOSTVEIL_SCREENSHOT_SECONDS=120 \
+  go test ./internal/ui/web -run TestScreenshotServe -v      # prints a URL
+firefox --headless --no-remote --profile "$(mktemp -d)" \
+        --window-size=1500,760 --screenshot /tmp/web.png "<the URL>"
+cp /tmp/web.png site/assets/web.png
+```
+
+Shoot into `/tmp` and copy: Firefox's `--screenshot` fails silently when the
+output path contains non-ASCII characters, which a checkout under a path like
+`~/프로젝트/` has. Then:
 
 ```bash
 HOSTVEIL_UPDATE_STAMP=1 go test ./internal/ui/web -run TestDashboardScreenshotStampIsCurrent

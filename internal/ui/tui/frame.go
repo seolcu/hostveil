@@ -248,8 +248,16 @@ func (m *appModel) gaugeRow(meterW int) string {
 		return s.dim.Render("SECURITY ") + s.dim.Render("N/A — nothing could be scanned")
 	}
 	sc := m.report.Score.Overall
-	return s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
+	row := s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
 		s.bone.Render(fmt.Sprintf(" %d", sc)) + s.dim.Render("/100")
+	// The headroom, where there is any. A host whose remaining findings are
+	// all Manual sees nothing here, which is the point: an arrow to the
+	// number it started from would say the fixes are worth nothing, and this
+	// line is the one place every arrangement shares.
+	if after := m.report.Score.AfterFixes; m.report.Score.Applicable && after > sc {
+		row += s.dim.Render(fmt.Sprintf("   %d after fixes", after))
+	}
+	return row
 }
 
 // gaugeMeterWidth shrinks the full header's meter on a narrow terminal.

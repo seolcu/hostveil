@@ -357,13 +357,29 @@ func (m *appModel) railRows(w, budget int) []string {
 			block = append(block, s.dim.Render(truncate("  "+strings.ToLower(state[ax.Source].String())+
 				" — "+reasonOr(reason[ax.Source], "did not run"), w)))
 		case dense:
+			// The per-axis headroom rides on the mix row rather than the
+			// score row: the rail is about twenty columns wide and the score
+			// row has none to spare, while the mix row is usually eight
+			// characters of "3H·1M·6L" in twenty. Compact, because this
+			// column is a glance and the exact arithmetic is a keypress away.
 			// Indented one step past the domain name it belongs to. The rail
 			// is twelve domains of two rows each with nothing between them,
 			// and at the same indent the pairs did not read as pairs — the
 			// mix line looked like another domain whose name happened to be a
 			// list of numbers. Two columns is the cheapest hierarchy there
 			// is, and the only one the row budget can afford.
-			block = append(block, "    "+m.severityMix(byDomain[ax.Source], w-4, compactMix))
+			mix := m.severityMix(byDomain[ax.Source], w-4, compactMix)
+			if ax.Applicable && ax.AfterFixes > ax.Score {
+				// A literal arrow, not a glyph row: internal/glyph records why
+				// it has none, and "›" is already the rail's own marker for
+				// the domain the list is filtered to. One symbol meaning two
+				// things in one column is worse than a character the plain
+				// set does not own.
+				if note := s.dim.Render(fmt.Sprintf(" →%d", ax.AfterFixes)); lipgloss.Width(mix)+lipgloss.Width(note)+4 <= w {
+					mix += note
+				}
+			}
+			block = append(block, "    "+mix)
 		}
 		blocks = append(blocks, block)
 	}
