@@ -56,6 +56,11 @@ func maybeElevate(cmd string) {
 	// os.Environ() unchanged, and deliberately not carrying a marker of our
 	// own: sudo's env_reset drops everything it does not keep, so a variable
 	// set here would not reach the child. See alreadyElevated.
+	// G204: re-running hostveil's own argv under sudo is what this function
+	// is for. The program is sudo at a resolved path and the arguments are
+	// the ones this process was started with; there is no third party in it,
+	// and refusing a variable here would mean refusing to elevate at all.
+	//nolint:gosec // G204: re-execs this binary's own argv, by design
 	_ = syscall.Exec(sudo, argv, os.Environ())
 	// If Exec returns, it failed; fall through and run unprivileged.
 }

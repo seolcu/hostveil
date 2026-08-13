@@ -19,6 +19,10 @@ func Load(dir string) string {
 	if dir == "" {
 		return ""
 	}
+	// G304: dir is the state directory cmd/hostveil resolved, and prefFile
+	// is a constant. The variable is the directory, not the name, and the
+	// worst a wrong one does is fail to find a one-line preference file.
+	//nolint:gosec // G304: a fixed file name under the state directory
 	b, err := os.ReadFile(filepath.Join(dir, prefFile))
 	if err != nil {
 		return ""

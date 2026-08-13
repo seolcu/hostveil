@@ -138,6 +138,7 @@ func (s *styles) band(v uint8) color.Color {
 // color.
 func (s *styles) meterAtLeastOne(pct uint8, width int, c color.Color, ran bool) string {
 	if ran && width > 0 && int(pct)*width/100 == 0 {
+		//nolint:gosec // G115: min(100, …) bounds it before the conversion
 		pct = uint8(min(100, (100+width-1)/width))
 	}
 	return s.meter(pct, width, c)

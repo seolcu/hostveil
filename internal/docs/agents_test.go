@@ -171,7 +171,7 @@ func existsAnywhere(t *testing.T, root, name string) bool {
 	found := false
 	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil || found {
-			return nil //nolint:nilerr // an unreadable subtree is not a doc defect
+			return nil // an unreadable subtree is not a doc defect
 		}
 		if d.IsDir() {
 			switch d.Name() {

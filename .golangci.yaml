@@ -7,3 +7,27 @@ linters:
     - staticcheck
     - ineffassign
     - misspell
+    # gosec, because twenty //nolint:gosec directives were suppressing a
+    # linter that was not enabled anywhere. Every one of those carefully
+    # written justifications was decoration: nothing ran, so nothing was
+    # suppressed and nothing new would ever be caught. For a tool that reads
+    # /etc/shadow and runs as root, the security linter is worth running.
+    - gosec
+    # And nolintlint, so the next inert directive is caught the day it is
+    # written rather than found by somebody counting them.
+    - nolintlint
+  settings:
+    nolintlint:
+      # A suppression without a reason is the shape this whole change is
+      # about, and one that silences everything is worse than the finding.
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+  exclusions:
+    rules:
+      # gosec judges what ships. A test that writes a fixture into t.TempDir
+      # with generous permissions, or converts a loop counter, is describing
+      # its own scaffolding — and annotating twenty of those would train
+      # everyone to add the annotation rather than read the finding.
+      - path: _test\.go
+        linters: [gosec]

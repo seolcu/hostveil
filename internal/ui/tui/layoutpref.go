@@ -37,6 +37,9 @@ func LoadLayoutPref(dir string) string {
 	if dir == "" {
 		return ""
 	}
+	// G304: dir is the state directory cmd/hostveil resolved, and the file
+	// name is a constant. The variable is the directory, not the name.
+	//nolint:gosec // G304: a fixed file name under the state directory
 	b, err := os.ReadFile(filepath.Join(dir, layoutPrefFile))
 	if err != nil {
 		return ""

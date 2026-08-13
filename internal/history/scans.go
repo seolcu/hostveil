@@ -126,6 +126,9 @@ func (s *Store) ListReports() ([]ScanSnapshot, error) {
 		if err != nil {
 			continue
 		}
+		// G304: a directory entry this store wrote, read back from the
+		// store's own directory.
+		//nolint:gosec // G304: this store's own scan snapshots
 		data, err := os.ReadFile(filepath.Join(s.scansDir(), name))
 		if err != nil {
 			continue

@@ -184,7 +184,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 // aptUnattendedEnabled reports whether the apt periodic config enables
 // unattended upgrades.
 func aptUnattendedEnabled(path string) bool {
-	data, err := os.ReadFile(path) //nolint:gosec // fixed system path
+	data, err := os.ReadFile(path) //nolint:gosec // G304: fixed system path
 	if err != nil {
 		return false
 	}
