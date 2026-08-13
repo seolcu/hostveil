@@ -64,7 +64,7 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 // preserveOwner gives tmp the same uid/gid as the file it is about to
 // replace.
 //
-// It is separate from writeFileAtomic because it is the one piece of that
+// It is separate from WriteFileAtomic because it is the one piece of that
 // operation that has to reach past the os package: Go exposes no portable
 // way to read a file's owner, so it comes from the underlying stat, the same
 // way cmd/hostveil/elevate.go reaches for syscall.Exec. hostveil builds for
