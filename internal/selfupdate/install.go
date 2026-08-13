@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -136,4 +137,27 @@ func StateNote(dir string) string {
 	return "Saved scans and rollback checkpoints are still in:\n  " + dir +
 		"\nThose checkpoints are the backups of every file hostveil edited here.\n" +
 		"Delete them only if you no longer need to undo any of its fixes:\n  rm -rf " + dir
+}
+
+// InstalledVersion asks the binary at path what it is, which is the only way
+// to know an update took effect.
+//
+// It is not a formality. `apt-get install` on a package whose version dpkg
+// already records is a no-op that exits 0, so an update run against a host
+// whose binary was replaced by hand reported success while nothing changed:
+// dpkg said 3.17.0, apt agreed there was nothing to do, and the binary on disk
+// stayed where it was. Every other layer of this project refuses to claim a
+// change it has not confirmed, and this is where an updater does that.
+func InstalledVersion(ctx context.Context, r platform.CommandRunner, path string) (string, error) {
+	out, err := r.Run(ctx, path, "version")
+	if err != nil {
+		return "", err
+	}
+	// "hostveil v3.17.0" — the last field, with the leading v left on for
+	// SameVersion to deal with.
+	fields := strings.Fields(string(out))
+	if len(fields) == 0 {
+		return "", fmt.Errorf("%s printed nothing for `version`", path)
+	}
+	return fields[len(fields)-1], nil
 }

@@ -13,17 +13,26 @@ import (
 	"github.com/seolcu/hostveil/internal/selfupdate"
 )
 
-// updateClient is the HTTP client the update path uses.
+// The update path needs two clients, and sharing one is a bug that hides
+// until the first real download.
 //
-// Redirects are not followed on purpose: Latest reads the Location header of
-// /releases/latest to learn the version, and a client that followed it would
-// hand back the release page's HTML instead. Everything else here is a direct
-// asset URL.
-func updateClient() *http.Client {
+// resolveClient must NOT follow redirects: Latest learns the version by
+// reading the Location header of /releases/latest, and a client that followed
+// it would return the release page's HTML with no version in it.
+//
+// downloadClient must follow them: a release asset URL answers 302 and sends
+// the caller on to objects.githubusercontent.com. One shared no-redirect
+// client made every download fail with "returned 302 Found" — on the one path
+// a `--check` smoke test never reaches.
+func resolveClient() *http.Client {
 	return &http.Client{
-		Timeout:       2 * time.Minute,
+		Timeout:       30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
+}
+
+func downloadClient() *http.Client {
+	return &http.Client{Timeout: 5 * time.Minute}
 }
 
 func cmdUpdate(ctx context.Context, args []string) int {
@@ -34,8 +43,16 @@ func cmdUpdate(ctx context.Context, args []string) int {
 	)
 	fs.BoolVar(&check, "check", false, "report whether a newer version exists and exit without installing")
 	fs.BoolVar(&yes, "yes", false, "do not ask before installing")
-	if code := parseAndElevate(fs, args); code >= 0 {
+	// Parsed before elevating, and elevated only where root is actually
+	// needed. This is the one command whose need for root depends on its
+	// flags: --check makes a single HTTP request and writes nothing, so
+	// asking for a password to run it is the same defect as asking for one
+	// before a usage error.
+	if code := parseFlags(fs, args); code >= 0 {
 		return code
+	}
+	if !check {
+		maybeElevate("update") // on success the process is replaced and does not return
 	}
 
 	exe, err := os.Executable()
@@ -46,7 +63,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 	runner := platform.DefaultRunner{}
 	origin := selfupdate.DetectOrigin(ctx, runner, exe)
 
-	rel, err := selfupdate.Latest(ctx, updateClient())
+	rel, err := selfupdate.Latest(ctx, resolveClient())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
@@ -73,6 +90,20 @@ func cmdUpdate(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
+	// Confirmed, not assumed. `apt-get install` on a package whose version
+	// dpkg already records exits 0 having done nothing, and a `go install`
+	// that resolves to a cached build does the same. Printing a tick over
+	// that is the one thing this project refuses to do anywhere else.
+	switch now, err := selfupdate.InstalledVersion(ctx, runner, exe); {
+	case err != nil:
+		fmt.Printf("hostveil %s was installed, but asking the binary its version failed: %v\n", rel.Version, err)
+		return 1
+	case !selfupdate.SameVersion(now, rel.Version):
+		fmt.Fprintf(os.Stderr, "hostveil: the install reported success and %s still reports %s.\n", exe, now)
+		fmt.Fprintln(os.Stderr, "Nothing was changed. This happens when the package manager already "+
+			"records the new version, or when the binary on disk was replaced by hand.")
+		return 1
+	}
 	fmt.Printf("✓ hostveil %s installed.\n", rel.Version)
 	return 0
 }
@@ -95,7 +126,7 @@ func runUpdate(ctx context.Context, r platform.CommandRunner, o selfupdate.Origi
 	}
 
 	fmt.Printf("  · downloading %s\n", asset)
-	data, err := selfupdate.Download(ctx, updateClient(), rel)
+	data, err := selfupdate.Download(ctx, downloadClient(), rel)
 	if err != nil {
 		return err
 	}

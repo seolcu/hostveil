@@ -314,3 +314,21 @@ func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
 			stamped, resolved)
 	}
 }
+
+// The update path needs two HTTP clients with opposite redirect behaviour, and
+// sharing one is a bug that hides until the first real download.
+//
+// Latest learns the version from the Location header of /releases/latest, so
+// its client must not follow redirects. A release asset URL answers 302 and
+// sends the caller to objects.githubusercontent.com, so the download client
+// must. One shared no-redirect client made every download fail with "returned
+// 302 Found" — on the one path a `--check` smoke test never reaches, which is
+// exactly how it survived being tested.
+func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
+	if resolveClient().CheckRedirect == nil {
+		t.Error("the resolving client follows redirects, so Latest would read the release page instead of the tag")
+	}
+	if downloadClient().CheckRedirect != nil {
+		t.Error("the download client does not follow redirects, so every asset download fails on GitHub's 302")
+	}
+}
