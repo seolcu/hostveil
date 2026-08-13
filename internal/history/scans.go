@@ -97,10 +97,14 @@ type ScanSnapshot struct {
 	Data []byte
 }
 
-// scanIDTime is the timestamp layout NewScanID writes. The ids are
+// scanIDTime is idTimeLayout under the name this file reads it by. It is an
+// alias rather than a second string: they were two literals of the same
+// value, and the one thing neither could do was disagree loudly.
+//
+// The ids are
 // timestamp-prefixed so a lexical sort is chronological, which pruning and
 // LastReport both already rely on; this reads the same prefix back.
-const scanIDTime = "20060102-150405.000"
+const scanIDTime = idTimeLayout
 
 // ListReports returns every retained scan snapshot, oldest first.
 //

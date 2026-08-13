@@ -5,6 +5,7 @@ package firewall
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -85,11 +86,20 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		if which == "ufw" {
 			fs, err := checkDockerBypass(ctx, env.Runner, c.daemonConfig())
 			findings = append(findings, fs...)
-			// One reason is enough to mark the domain degraded, and the
-			// first is the more fundamental of the two.
-			if pe, ok := err.(*check.PartialError); ok && partial == nil {
-				partial = pe
-			} else if err != nil && !ok {
+			// Both gaps are reported, not the first. A domain can have more
+			// than one blind spot, and deciding to keep only the earlier one
+			// discards the other — which is the failure the two container
+			// checkers were fixed for, still here because this one kept a
+			// comment defending it.
+			//
+			// errors.As, not a bare type assertion: a PartialError that has
+			// been wrapped anywhere on the way up would otherwise fall to the
+			// branch below and take the whole domain's findings with it.
+			var pe *check.PartialError
+			switch {
+			case errors.As(err, &pe):
+				partial = mergePartial(partial, pe)
+			case err != nil:
 				return findings, err
 			}
 		}
@@ -121,6 +131,26 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		findings[0].Evidence["ssh_port"] = strconv.Itoa(port)
 	}
 	return findings, nil
+}
+
+// mergePartial joins two coverage gaps into one, so a domain with two blind
+// spots reports both.
+//
+// Keeping only the first is what internal/check/compose and internal/check/cve
+// were both fixed for: the counters under-report what went unexamined, and the
+// operator is told about one of the two things hostveil could not see.
+func mergePartial(a, b *check.PartialError) *check.PartialError {
+	switch {
+	case a == nil:
+		return b
+	case b == nil:
+		return a
+	}
+	return &check.PartialError{
+		Reason:  a.Reason + "; " + b.Reason,
+		Covered: a.Covered + b.Covered,
+		Total:   a.Total + b.Total,
+	}
 }
 
 // sshPort finds the port sshd is listening on. "Cannot tell" is a real

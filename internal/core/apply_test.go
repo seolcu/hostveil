@@ -3,11 +3,13 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"github.com/seolcu/hostveil/internal/check"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
@@ -725,5 +727,152 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 	}
 	if len(out.Applied) != 1 {
 		t.Errorf("applied = %v, want the one auto fix", out.Applied)
+	}
+}
+
+// A checkpoint must not outlive the write it describes.
+//
+// The backup is taken first, deliberately — nothing is written until there is
+// something to go back to. But when the write then fails, the checkpoint that
+// survives says a reversible fix was applied to a file that never changed:
+// `hostveil history` lists it with a full diff, and its AppliedSHA256 asserts
+// to the external-edit guard, permanently, that hostveil wrote bytes it did
+// not.
+func TestAFailedWriteLeavesNoCheckpointBehind(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e := fixEngine(t)
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("cache"), model.WithMetadata("file", path),
+		model.WithEvidence("port", "6379"))
+
+	// The write goes through a temp file beside the target, so an unwritable
+	// directory fails it — after the backup, which is the ordering that
+	// produces the stale checkpoint.
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	if _, err := e.ApplyFix(context.Background(), f, 0); err == nil {
+		t.Fatal("apply reported success with an unwritable target directory")
+	}
+	cps, err := e.ListCheckpoints()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cps) != 0 {
+		t.Errorf("a failed write left %d checkpoint(s) behind: %+v", len(cps), cps)
+	}
+	if after, _ := os.ReadFile(path); string(after) != orig {
+		t.Errorf("the target changed despite the failure:\n%s", after)
+	}
+}
+
+// slowRegistry builds a fix whose transform takes a while, so a test can
+// observe what another operation does while the lock is held.
+func slowRegistry(d time.Duration) *fix.Registry {
+	r := fix.NewRegistry()
+	r.Register("compose.ds018", func(f model.Finding) (fix.Fix, error) {
+		return fix.Fix{Kind: model.RemediationAuto, Label: "slow", Actions: []fix.Action{{
+			Label: "slow edit",
+			Kind:  fix.ActionEdit,
+			Path:  f.Metadata["file"],
+			Transform: func(in []byte) ([]byte, error) {
+				time.Sleep(d)
+				return append(in, []byte("after\n")...), nil
+			},
+		}}}, nil
+	})
+	return r
+}
+
+// "applyEdit refuses to write if the backup fails" is the first line of the
+// apply-order invariant, and nothing tested it. Reordering the two statements
+// passed the whole suite.
+//
+// It is the ordering that makes editing somebody's sshd_config a reasonable
+// thing to ask for: without a backup there is nothing to go back to, so a
+// write that happens first is a change with no undo.
+func TestNoBackupMeansNoWrite(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	target := filepath.Join(t.TempDir(), "docker-compose.yml")
+	orig := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(target, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// The state directory is what Save writes into, so a read-only one fails
+	// the backup while leaving the target perfectly writable.
+	stateDir := t.TempDir()
+	e := New(Config{Fixes: fix.Default(), Store: history.NewStore(stateDir)})
+	if err := os.Chmod(stateDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
+
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("cache"), model.WithMetadata("file", target),
+		model.WithEvidence("port", "6379"))
+
+	_, err := e.ApplyFix(context.Background(), f, 0)
+	if err == nil {
+		t.Fatal("apply succeeded with an unwritable state directory")
+	}
+	if !strings.Contains(err.Error(), "backup failed") {
+		t.Errorf("the error does not say the backup was what failed: %v", err)
+	}
+	if after, _ := os.ReadFile(target); string(after) != orig {
+		t.Errorf("the file was written despite the backup failing:\n%s", after)
+	}
+}
+
+// "One fix at a time, and a scan is a fix for this purpose."
+//
+// The apply-versus-apply half of that has a test. The half that is actually
+// surprising — that a scan takes the same lock — did not, and it is the half
+// the sentence was written to explain: a scan reads the files a fix is
+// part-way through writing, so a report built during one describes a host that
+// existed at no single moment.
+func TestAScanWaitsForAFixToFinish(t *testing.T) {
+	e := New(Config{
+		Registry: check.NewRegistry(),
+		Fixes:    slowRegistry(60 * time.Millisecond),
+		Store:    history.NewStore(t.TempDir()),
+	})
+	path := filepath.Join(t.TempDir(), "target.conf")
+	if err := os.WriteFile(path, []byte("before\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("cache"), model.WithMetadata("file", path))
+
+	var scanStarted, scanEnded time.Time
+	fixDone := make(chan time.Time, 1)
+	go func() {
+		_, _ = e.ApplyFix(context.Background(), f, 0)
+		fixDone <- time.Now()
+	}()
+
+	// Long enough for the apply to be inside its slow transform.
+	time.Sleep(20 * time.Millisecond)
+	scanStarted = time.Now()
+	e.Scan(context.Background(), nil)
+	scanEnded = time.Now()
+
+	finished := <-fixDone
+	if scanEnded.Before(finished) {
+		t.Errorf("the scan finished at %v, before the fix released the lock at %v — "+
+			"a scan that overlaps a fix reads a host part-way through being edited",
+			scanEnded.Sub(scanStarted), finished.Sub(scanStarted))
 	}
 }

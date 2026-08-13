@@ -3,6 +3,7 @@ package firewall
 import (
 	"context"
 	"errors"
+	"github.com/seolcu/hostveil/internal/platform"
 	"strings"
 	"testing"
 
@@ -161,5 +162,31 @@ func TestFirewallProbeStatuses(t *testing.T) {
 				t.Errorf("Probe() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// Two blind spots are two reasons. Keeping only the first is the failure the
+// two container checkers were fixed for.
+func TestBothFirewallGapsAreReported(t *testing.T) {
+	r := checktest.New().Only("ufw", "docker", "iptables").Docker("27.0.0").Outputs(map[string]string{
+		"ufw status": "Status: active\n",
+		// Active, but the default policy line is missing — gap one.
+		"ufw status verbose": "Status: active\n",
+		// A container publishing to the world, so the bypass check runs...
+		"docker ps --format {{.Names}}\t{{.Ports}}": "db\t0.0.0.0:5432->5432/tcp\n",
+		// ...and `iptables -S DOCKER-USER` is unscripted, so it cannot be
+		// read — gap two, on a host where gap one already happened.
+	})
+	_, err := New().Check(context.Background(), platform.Env{Runner: r})
+
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("want a PartialError, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "default inbound policy") {
+		t.Errorf("the first gap is missing: %q", partial.Reason)
+	}
+	if !strings.Contains(partial.Reason, "DOCKER-USER") {
+		t.Errorf("the second gap is missing: %q", partial.Reason)
 	}
 }

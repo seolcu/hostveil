@@ -160,6 +160,25 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 	return cp, nil
 }
 
+// Discard removes a finished checkpoint whose fix then failed to land.
+//
+// It is the narrow counterpart to discardUnfinished, which handles a Save that
+// never completed. This one handles the opposite order: the backup succeeded,
+// the write did not, and what is left describes a change the host never
+// received. Keeping it would put a reversible applied fix in `hostveil
+// history` for something that never happened, and — worse — leave its
+// AppliedSHA256 asserting to recordedWrites that hostveil wrote bytes it did
+// not, which weakens the external-edit guard for that path from then on.
+//
+// The caller must be sure the host is unchanged. Nothing here can check that,
+// which is why this is not exported as anything more general than its one use.
+func (s *Store) Discard(id string) error {
+	if id == "" {
+		return errors.New("refusing to discard an empty checkpoint id")
+	}
+	return os.RemoveAll(filepath.Join(s.checkpointsDir(), id))
+}
+
 // discardUnfinished removes the directory of a Save that could not complete,
 // so an ordinary failure leaves nothing for List to have to recognise and
 // ignore.
@@ -233,9 +252,19 @@ const maxCheckpoints = 200
 // be applied inside it.
 const minRetention = time.Hour
 
-// idTimeLayout is the timestamp prefix NewID and NewScanID mint. Pruning
-// reads an ID's age straight out of the directory name through it, which is
-// what keeps that path free of meta.json reads.
+// idTimeLayout is the timestamp prefix NewID and NewScanID mint, and both of
+// them format through it rather than restating it — which they used to do,
+// leaving three copies of one layout across two files while this constant's
+// own comment claimed to be what they wrote.
+//
+// The stakes are not equal on the two sides. A scan id that stops parsing
+// empties the trend, quietly. A *checkpoint* id that stops parsing makes every
+// checkpoint undatable, and pruneCheckpoints treats undatable as prunable — so
+// minRetention, the guarantee that a fix stays rollbackable however many
+// arrive at once, would evaporate without a single error.
+//
+// Pruning reads an ID's age straight out of the directory name through this,
+// which is what keeps that path free of meta.json reads.
 const idTimeLayout = "20060102-150405.000"
 
 // idTime recovers when an ID was minted from its timestamp prefix.
@@ -641,6 +670,19 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		blobs[bf.Path] = data
 	}
 
+	// Past this point the host is being written to, and the pre-flight above
+	// exists because a restore that stops half-way is a state neither the
+	// host nor the report describes. The pre-flight cannot make that
+	// impossible — a disk can fill, a file can vanish between the check and
+	// the write — so what is left is to finish the ones that can be finished
+	// and say exactly which those were.
+	//
+	// Returning on the first error, which this did, left the earlier paths
+	// restored, the later ones untouched, and the caller holding nothing but
+	// an error: Engine.rollback discarded the checkpoint, so no interface
+	// could name a single file that had moved.
+	var restored, failed []string
+	var errs []error
 	for _, bf := range cp.Files {
 		// The file did not exist before the fix, so restoring it means
 		// removing it. An already-absent file is the desired end state, not
@@ -653,8 +695,10 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// rather than being deleted out from under them.
 		if bf.Created {
 			if err := os.Remove(bf.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return cp, err
+				failed, errs = append(failed, bf.Path), append(errs, err)
+				continue
 			}
+			restored = append(restored, bf.Path)
 			continue
 		}
 		// A mode-only entry carries no blob: the fix changed permissions and
@@ -665,7 +709,8 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 			// interrupted restore destroys the very file it was recovering —
 			// and rollback keeps no backup of its own to try again from.
 			if err := platform.WriteFileAtomic(bf.Path, data, bf.Mode); err != nil {
-				return cp, err
+				failed, errs = append(failed, bf.Path), append(errs, err)
+				continue
 			}
 		}
 		// os.WriteFile applies its perm argument only when it creates the
@@ -677,12 +722,42 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// (agent.config-perms) and the account that owns the path can have
 		// replaced it with a symlink since the fix ran — os.Chmod would carry
 		// root's chmod through to the link's target.
-		if err := platform.ChmodNoFollow(bf.Path, bf.Mode); err != nil {
-			return cp, err
+		// A file that is no longer there is the same situation the Created
+		// branch above tolerates deliberately: the operator removed it, and
+		// failing to set the mode of something that does not exist is not a
+		// failure to restore it.
+		if err := platform.ChmodNoFollow(bf.Path, bf.Mode); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			failed, errs = append(failed, bf.Path), append(errs, err)
+			continue
 		}
+		restored = append(restored, bf.Path)
+	}
+	if len(errs) > 0 {
+		return cp, &PartialRestoreError{Restored: restored, Failed: failed, Err: errors.Join(errs...)}
 	}
 	return cp, nil
 }
+
+// PartialRestoreError reports a rollback that wrote some of a checkpoint's
+// files and not others.
+//
+// It exists so the answer to "what state is my host in now" is in the error
+// rather than absent from it. Rollback keeps no backup of its own, so there
+// is nothing to retry from automatically and nothing to undo — which makes
+// naming the two halves the only useful thing left to do.
+type PartialRestoreError struct {
+	Restored []string
+	Failed   []string
+	Err      error
+}
+
+func (e *PartialRestoreError) Error() string {
+	return fmt.Sprintf("restored %d of %d files; %d could not be written (%s): %v",
+		len(e.Restored), len(e.Restored)+len(e.Failed), len(e.Failed),
+		strings.Join(e.Failed, ", "), e.Err)
+}
+
+func (e *PartialRestoreError) Unwrap() error { return e.Err }
 
 // NewID returns a sortable checkpoint ID based on the current time and the
 // finding it fixes.
@@ -697,7 +772,7 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 // restores an intermediate state. Checkpoints are the only backup there
 // is, so an ID collision is silent data loss.
 func NewID(findingID string) string {
-	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8] + "-" + randomSuffix()
+	return time.Now().UTC().Format(idTimeLayout) + "-" + blobName(findingID)[:8] + "-" + randomSuffix()
 }
 
 // randomSuffix returns 4 bytes of hex. On the (practically impossible)
@@ -724,7 +799,7 @@ func randomSuffix() string {
 // which is the correct answer for two events at the same instant and is in
 // any case better than one of them not existing.
 func NewScanID() string {
-	return time.Now().UTC().Format("20060102-150405.000") + "-" + randomSuffix()
+	return time.Now().UTC().Format(idTimeLayout) + "-" + randomSuffix()
 }
 
 // blobName returns a filesystem-safe name derived from a path.
