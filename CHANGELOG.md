@@ -2,6 +2,91 @@
 
 ## Unreleased
 
+## [3.15.0](https://github.com/seolcu/hostveil/compare/v3.14.4...v3.15.0) (2026-08-13)
+
+Three things that had been declined, stale, or impossible for a reason that
+stopped being true. The largest scoring gap hostveil had — a domain it could
+detect and never fix — is mostly closed; the screenshot on the website has
+stopped describing a severity scale that no longer exists; and the measurement
+fixture builds a host on more than one distribution.
+
+### Features
+
+* **fix:** OpenClaw's config keys are fixable
+  ([#696](https://github.com/seolcu/hostveil/issues/696)). Seven `agent.*`
+  findings were declined together for one shared reason: they all reduce to
+  editing a key in a JSON5 config carrying the operator's own comments and
+  trailing commas, and re-encoding it through `encoding/json` deletes every one
+  of them. `internal/json5` is the editor that was missing — built the way
+  `internal/compose/edit.go` is, locating the value's bytes and replacing
+  exactly those, with the fallback deliberately absent because here a
+  re-encode *is* the damage. A rendering it cannot prove correct is an error
+  and the fix is not offered.
+
+  Four findings became fixable, and the shape is read off the rule table rather
+  than decided in the registry: one safe value is Auto, two are Review.
+  `agent.exec-unrestricted` is the Review case — `deny` and `ask` are a choice
+  about how the operator wants to work, not a sequence.
+
+  Three stayed declined, and removing the shared reason is what made their real
+  ones visible. `agent.sandbox-off`: hostveil knows `off` is wrong and nothing
+  in the project names the mode that turns the sandbox on, so any value it
+  wrote would be a guess wearing a fix's clothes. `agent.auth-disabled`: the
+  safe posture is an *absent* key, which an editor that only replaces values
+  cannot produce. `agent.gateway-exposed`: rebinding can cut an operator off
+  from the agent they administer remotely.
+
+  These are also the first edits aimed inside a user's home, so
+  `fix.Action.NoFollow` refuses to read through a symlink — the account owns
+  every component of that path while hostveil runs as root, and a preview
+  renders whatever it read into a diff.
+
+* **ci:** the measurement fixture builds a host on Fedora and Alpine, not only
+  Ubuntu ([#698](https://github.com/seolcu/hostveil/issues/698)). Every
+  published measurement was taken on Ubuntu, and not as a decision:
+  `seed.sh` called `apt-get` and `systemctl` directly, so Ubuntu was the only
+  host it could build. It goes through a distribution seam now, and the parts
+  that genuinely differ are handled where they differ — `get.docker.com` does
+  not support Alpine, `ufw` is Debian's where Fedora has firewalld, sshd's unit
+  is `ssh` on one and `sshd` on the others, and an `sshd_config` that does not
+  `Include` the drop-in directory gets the `Include` appended, because a
+  drop-in nothing reads seeds nothing.
+
+  What a distribution cannot express is recorded rather than skipped. Alpine
+  ships no unattended-upgrade mechanism, so its updates axis reads better for a
+  reason that has nothing to do with hostveil — and publishing that number
+  without saying so is an absence read as an all-clear, which is the failure
+  this whole tool is built against. The manifest travels into the measurement
+  JSON, and a host seeded by an older copy reports it as *absent* rather than
+  as an empty one.
+
+  A published figure may also name the run it came off, so the page can carry
+  several hosts side by side with each number still pinned to its own file.
+
+### Bug Fixes
+
+* **ui:** the published screenshot showed a severity scale hostveil had removed
+  ([#697](https://github.com/seolcu/hostveil/issues/697)). `site/assets/tui.png`
+  read `CRIT 8 · HIGH 16 · MED 22 · LOW 37` for two releases after the scale
+  became three levels. Every other claim the site makes is held to the code by
+  a test; the images were outside all of it.
+
+  A PNG cannot be the pinned thing — it comes out of PIL and a font, neither
+  pinned. What can be pinned is what the terminal drew, so the frame is
+  committed as text and re-rendered on every test run. The dashboard cannot be
+  re-rendered at all, so its *inputs* are hashed instead and the failure names
+  which one moved.
+
+  `scripts/ansi2png.py` could not have regenerated the asset in any case: it
+  hardcoded Debian's font path, understood only truecolor — so a capture off a
+  real host, which SSH degrades to xterm-256, came out monochrome — and drew on
+  a `#090b12` ground that no theme in this project contains.
+
+### Documentation
+
+* the Go Report Card badge now reads "retired", so it is gone from both READMEs
+  ([#695](https://github.com/seolcu/hostveil/issues/695)).
+
 ## [3.14.4](https://github.com/seolcu/hostveil/compare/v3.14.3...v3.14.4) (2026-08-12)
 
 Two things 3.14.3 got wrong, found by looking at the parts of it nobody had
