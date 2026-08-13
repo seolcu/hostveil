@@ -322,6 +322,10 @@ const imageTimeout = 5 * time.Minute
 func demoteToManual(fs []model.Finding) []model.Finding {
 	for i := range fs {
 		fs[i].Remediation = model.RemediationManual
+		// See the same line in internal/check/compose: these IDs are
+		// registered, so fix.WhyNoFix has nothing to say about them, and the
+		// panel that exists to answer "why is there no button" was blank.
+		fs[i].WhyNoFix = "This container was started with `docker run`, not Compose, so there is no compose file to pull through."
 		fs[i].HowToFix = "This container was started with `docker run`, not Compose, so hostveil cannot update it for you. " +
 			"Pull the image and recreate the container yourself. " + fs[i].HowToFix
 		if fs[i].Evidence == nil {

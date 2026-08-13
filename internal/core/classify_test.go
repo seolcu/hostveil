@@ -134,3 +134,43 @@ func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
 		t.Error("a preview of a command that cannot be rolled back is labelled Auto-fix")
 	}
 }
+
+// A finding whose ID has a registered fix can still be unfixable in
+// particular — a container started with `docker run` has no compose file for
+// the fix to edit — and the checker that demotes it says so.
+//
+// classify used to overwrite that with fix.WhyNoFix(id), which answers from
+// the declined list and has nothing for a registered ID. So on any host
+// running containers outside Compose, up to seven findings reached the
+// terminal's "WHY THERE IS NO FIX BUTTON" panel and the dashboard's with
+// nothing in them — the one state internal/fix/decline.go exists to prevent,
+// reached by a route no test covered.
+func TestAFindingKeepsTheReasonItsCheckerGave(t *testing.T) {
+	e := New(Config{Fixes: registryOf("compose.ds018", editAction()), Store: history.NewStore(t.TempDir())})
+
+	own := "This container was started with `docker run`, so there is no file to edit."
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationManual, model.WithService("db"))
+	f.WhyNoFix = own
+
+	findings := []model.Finding{f}
+	e.classify(findings)
+
+	if findings[0].WhyNoFix != own {
+		t.Errorf("the checker's reason was replaced with %q", findings[0].WhyNoFix)
+	}
+}
+
+// And a finding that said nothing still gets the registry's answer.
+func TestAFindingWithNoReasonStillGetsTheRegistrys(t *testing.T) {
+	e := New(Config{Fixes: fix.Default(), Store: history.NewStore(t.TempDir())})
+	f := model.NewFinding("compose.ds016", "docker socket", model.SeverityHigh, model.SourceCompose,
+		model.RemediationManual, model.WithService("portainer"))
+
+	findings := []model.Finding{f}
+	e.classify(findings)
+
+	if findings[0].WhyNoFix == "" {
+		t.Error("a declined finding with no reason of its own was left with none")
+	}
+}

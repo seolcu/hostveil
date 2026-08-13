@@ -6,7 +6,9 @@ package updates
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -74,7 +76,12 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
-	if !aptUnattendedEnabled(c.AptConfigPath) {
+	var reasons []string
+	enabled, ok := aptUnattendedEnabled(c.AptConfigPath)
+	switch {
+	case !ok:
+		reasons = append(reasons, "cannot read "+c.AptConfigPath+" to tell whether unattended upgrades are enabled")
+	case !enabled:
 		// Whether the package is already here decides what the remediation
 		// *is*, and therefore whether hostveil can do it unattended. Ubuntu
 		// ships unattended-upgrades installed and Debian's netinst offers it,
@@ -115,22 +122,58 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	// it cannot reach countAptSecurityUpdates.
 	out, err := env.Runner.Run(ctx, "apt", "list", "--upgradable")
 	if err != nil {
-		return findings, &check.PartialError{
-			Reason: "cannot list pending updates — checked that automatic updates are configured, but not whether they have caught up",
-		}
-	}
-	if n := countAptSecurityUpdates(string(out)); n > 0 {
+		reasons = append(reasons, "cannot list pending updates")
+	} else if n := countAptSecurityUpdates(string(out)); n > 0 {
 		findings = append(findings, pendingFinding(n, "sudo apt update && sudo apt upgrade"))
+	}
+
+	// Two questions here, as on the dnf side: whether automatic updates are
+	// configured, and whether anything is waiting. Both are reported when
+	// both go unanswered, rather than the first gap standing for the domain.
+	if len(reasons) > 0 {
+		return findings, &check.PartialError{
+			Reason:  strings.Join(reasons, "; "),
+			Covered: 2 - len(reasons),
+			Total:   2,
+		}
 	}
 	return findings, nil
 }
 
 func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
-	out, err := env.Runner.Run(ctx, "systemctl", "is-enabled", "dnf-automatic.timer")
-	if err != nil || strings.TrimSpace(string(out)) != "enabled" {
+	var reasons []string
+
+	// `systemctl is-enabled` exits non-zero for "disabled" and for "there is
+	// no systemctl here" alike, and reading the second as the first turns "I
+	// could not look" into the positive claim that automatic updates are off
+	// — on a host where nothing was consulted.
+	//
+	// So the unit is asked whether it exists first, the way the systemd
+	// domain does it: LoadState answers `loaded` only for a unit systemd
+	// actually read, and a command that cannot run at all answers nothing.
+	// A unit that is genuinely absent *is* the finding — dnf-automatic is
+	// not installed — and that is the one case where a non-zero exit is an
+	// answer rather than a silence.
+	state, err := env.Runner.Run(ctx, "systemctl", "show", "dnf-automatic.timer", "--property=LoadState")
+	switch {
+	case err != nil && !platform.Has(env.Runner, "systemctl"):
+		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl is not available")
+	case err != nil:
+		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl did not answer")
+	case !strings.Contains(string(state), "LoadState=loaded"):
+		// systemd answered and does not have the unit: it is not installed.
 		findings = append(findings, disabledFinding("dnf-automatic",
 			"Install and enable dnf-automatic: `dnf install dnf-automatic` then `systemctl enable --now dnf-automatic.timer` (configure it to apply security updates)."))
+	default:
+		out, err := env.Runner.Run(ctx, "systemctl", "is-enabled", "dnf-automatic.timer")
+		// The unit is loaded, so a non-zero exit here means disabled, static
+		// or masked — every one of which is "not enabled" and none of which
+		// is silence.
+		if err != nil || strings.TrimSpace(string(out)) != "enabled" {
+			findings = append(findings, disabledFinding("dnf-automatic",
+				"Enable it: `systemctl enable --now dnf-automatic.timer` (and configure it to apply security updates)."))
+		}
 	}
 
 	// Reasons accumulate rather than returning at the first one. Both probes
@@ -140,7 +183,6 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// so the reboot check came back unknown, the function returned, and
 	// pending security updates went uncounted on every such host — while the
 	// domain reported only that a reboot could not be determined.
-	var reasons []string
 
 	// `needs-restarting -r` exits non-zero precisely when a reboot IS
 	// required, so the exit status cannot be read as success or failure here.
@@ -174,8 +216,8 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		return findings, &check.PartialError{
 			Reason: strings.Join(reasons, "; ") +
 				" — checked that automatic updates are configured, but not whether they have caught up",
-			Covered: 2 - len(reasons),
-			Total:   2,
+			Covered: 3 - len(reasons),
+			Total:   3,
 		}
 	}
 	return findings, nil
@@ -183,10 +225,18 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 
 // aptUnattendedEnabled reports whether the apt periodic config enables
 // unattended upgrades.
-func aptUnattendedEnabled(path string) bool {
-	data, err := os.ReadFile(path) //nolint:gosec // fixed system path
-	if err != nil {
-		return false
+// The bool answers "enabled"; ok answers whether the file could be consulted
+// at all. An absent config is a real answer — nothing has configured
+// unattended upgrades, which is exactly the finding — but an unreadable one is
+// not, and reading a permission error as "disabled" is the same silence this
+// domain's systemctl probe used to produce.
+func aptUnattendedEnabled(path string) (enabled, ok bool) {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: fixed system path
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return false, true
+	case err != nil:
+		return false, false
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
@@ -194,10 +244,10 @@ func aptUnattendedEnabled(path string) bool {
 			continue
 		}
 		if strings.Contains(line, "Unattended-Upgrade") && strings.Contains(line, `"1"`) {
-			return true
+			return true, true
 		}
 	}
-	return false
+	return false, true
 }
 
 // rebootState is what `needs-restarting -r` told us, including the case
