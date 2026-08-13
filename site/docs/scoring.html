@@ -127,6 +127,22 @@
             <p><strong>It is not a certification.</strong> hostveil checks the paths that get self-hosters breached, which is a curated list and not an exhaustive one. A perfect score means the checks that ran found nothing material — it does not mean there is nothing to find.</p>
             <p>What it is good for is one host over time, and the axis breakdown underneath it. The headline number tells you whether last week&rsquo;s work moved anything; the per-axis scores tell you what to do next.</p>
 
+            <h2 id="bands">What a score is called</h2>
+            <p>Every interface completes the sentence &ldquo;This host is …&rdquo; from the overall score. There are four bands and the thresholds are fixed. The lower bound is inclusive, so a score of exactly 80 is <em>in good shape</em>.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Score</th><th>Band</th><th>The sentence you see</th></tr></thead>
+                <tbody>
+                  <tr><td>80–100</td><td><code>good</code></td><td>This host is in good shape.</td></tr>
+                  <tr><td>50–79</td><td><code>fair</code></td><td>This host is middling.</td></tr>
+                  <tr><td>25–49</td><td><code>poor</code></td><td>This host is exposed.</td></tr>
+                  <tr><td>0–24</td><td><code>critical</code></td><td>This host is wide open.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The band decides the colour of the meter as well as the wording, in all three interfaces. A host with nothing scannable shows <strong>N/A</strong> and no band at all, because there is no score to classify.</p>
+            <p>Bands run the opposite way to severities, which is worth saying once. A high <em>score</em> is a good host; a high <em>severity</em> is a bad finding.</p>
+
             <h2 id="formula">The formula</h2>
             <p>Every detection domain gets one <strong>axis</strong>. An axis starts at 100 with nothing against it, and each finding on it takes a share of what is <em>left</em>:</p>
             <div class="code-block"><pre><code>remaining = 1.0

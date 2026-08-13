@@ -9,6 +9,15 @@
               <p>Nothing is changed blindly. Every fix is <strong>previewed</strong> before it runs, the original file is <strong>backed up to a checkpoint</strong>, and <code>hostveil rollback</code> restores it byte-for-byte. Every interface drives the same engine, so a fix applied anywhere is reversible everywhere.</p>
             </div>
 
+            <div class="callout">
+              <span class="callout-label">Where the criteria are</span>
+              <p>Every judgement hostveil makes is written down somewhere you can check it.</p>
+              <p><a href="fixing#auto-standard">Auto-fix, Review and Manual</a>: the three tests a fix has to pass, and the four steps that settle which kind you are shown.<br>
+              <a href="checks#severity">High, Medium and Low</a>: the three definitions, and what each domain is worth.<br>
+              <a href="scoring">The score</a>: the arithmetic in full, a worked example from a real scan, and <a href="scoring#bands">what a given score is called</a>.<br>
+              <a href="cli#scan">The names in <code>--json</code> and SARIF</a>: every value a machine reads.</p>
+            </div>
+
             <h2>New here? Start with these</h2>
             <ul class="docs-cards">
               <li>

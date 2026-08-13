@@ -1,6 +1,6 @@
             <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / AI explanations</p>
             <h1>AI explanations</h1>
-            <p class="lead">AI in hostveil is optional, advisory-only, and local-first. It can add a second opinion in plain words — but it never applies changes, and everything works with no AI at all.</p>
+            <p class="lead">AI in hostveil is optional, advisory-only, and local-first. It can add a second opinion in plain words. It never applies changes, and everything works with no AI at all.</p>
 
             <h2>Using it</h2>
             <p>Add <code>--ai</code> to <code>explain</code> for an advisory explanation of a finding:</p>
@@ -8,11 +8,11 @@
               <button class="copy-btn" type="button" data-copy="hostveil explain ssh.rootlogin --ai">Copy</button>
               <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
             </div>
-            <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, hostveil says so and continues — the command never fails because AI is unavailable.</p>
-            <p>The same explanation is one action away in the other interfaces: the dashboard's finding panel has an <em>Explain with AI</em> button, and the TUI's detail view answers <code>e</code>. Both degrade the same way the CLI does — no Ollama means a one-line note, never an error.</p>
+            <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, hostveil says so and continues. The command never fails because AI is unavailable.</p>
+            <p>The same explanation is one action away in the other interfaces: the dashboard's finding panel has an <em>Explain with AI</em> button, and the TUI's detail view answers <code>e</code>. Both degrade the same way the CLI does: no Ollama means a one-line note, never an error.</p>
 
             <h2>Local by default</h2>
-            <p>The default provider is <strong>Ollama</strong>, running on your own machine — nothing leaves the host. Defaults:</p>
+            <p>The default provider is <strong>Ollama</strong>, running on your own machine, so nothing leaves the host. Defaults:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Setting</th><th>Default</th><th>Override</th></tr></thead>
@@ -31,11 +31,11 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             <h2>Advisory only, and private by design</h2>
             <div class="callout">
               <span class="callout-label">What the model can and can't do</span>
-              <p>The AI can only <strong>explain</strong> — it has no ability to apply, change, or drive any fix. Scores, findings, and fixes are computed entirely without it.</p>
+              <p>The AI can only <strong>explain</strong>. It has no ability to apply, change, or drive any fix. Scores, findings, and fixes are computed entirely without it.</p>
             </div>
             <div class="callout warn">
               <span class="callout-label">Privacy</span>
-              <p>Only human-readable fields are sent to the model — a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in.</p>
+              <p>Only human-readable fields are sent to the model: a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in.</p>
             </div>
 
             <div class="docs-pager">

@@ -221,6 +221,8 @@
 
             <h2 id="compose">Docker / Compose <code>compose.</code></h2>
             <p>A native audit of your Compose files — no external scanner required. Containers started with plain <code>docker run</code> are audited too, read from the daemon rather than a file. Those findings are always Manual: there is no file for a fix to edit, so hostveil tells you what to change when you recreate the container instead of offering a button that could not work.</p>
+            <p><strong>What counts as exposed.</strong> A published port is treated as reachable from every interface when its host address is <code>0.0.0.0</code>, <code>::</code>, or <strong>not written at all</strong>. That last case is the one that catches people: <code>"6379:6379"</code> names no address, and Docker binds it to every interface, so it is exposed by this rule and by the daemon. Only an explicit loopback address such as <code>"127.0.0.1:6379:6379"</code> is not, and a port with no host side at all is not published and never counts.</p>
+            <p>The rule is applied to the <em>merged</em> project, which is what <code>docker compose config</code> prints, not to any single file. Compose appends port mappings across files rather than replacing them, so a base file binding a service to loopback and an override republishing it leaves the service exposed. Reading the base alone would call that host clean.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>

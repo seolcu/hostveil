@@ -49,6 +49,21 @@
               <p>이 필드들은 예전에는 정수였고, 그래서 소비하는 쪽마다 순서표를 따로 들고 있어야 했습니다. hostveil은 정수 형식을 <em>읽기</em>는 계속 하므로 이전 버전이 남긴 스캔 스냅샷은 그대로 살아 있지만, 쓸 때는 이름만 씁니다.</p>
             </div>
 
+            <h3 id="sarif-levels">SARIF로 내보낼 때 심각도는 어떻게 되나</h3>
+            <p>SARIF의 등급도 셋이고 hostveil의 심각도도 셋이라 일대일로 대응합니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
+                <tbody>
+                  <tr><td><code>high</code></td><td><code>error</code></td><td>9.5</td></tr>
+                  <tr><td><code>medium</code></td><td><code>warning</code></td><td>5.5</td></tr>
+                  <tr><td><code>low</code></td><td><code>note</code></td><td>3.0</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>두 번째 숫자는 GitHub code scanning이 정렬과 필터에 쓰는 0에서 10 사이의 척도입니다. 구간이 critical 9.0, high 7.0, medium 4.0에서 시작하므로 <strong>hostveil의 High는 GitHub의 high가 아니라 <em>critical</em> 구간에 뜹니다.</strong></p>
+            <p>이름이 어긋나는 것은 의도한 것입니다. hostveil의 최상위 등급은 아무것도 갖지 않은 사람이 호스트 밖에서 지금 당장 닿을 수 있다는 뜻이고, code scanning에서 오늘 처리하라는 뜻의 구간은 critical입니다. 이름을 이름에 맞췄다면 그 항목들이 다음 스프린트에 볼 구간으로 내려갔을 겁니다.</p>
+
             <h2 id="fix">fix</h2>
             <p>발견 항목에 대한 수정을 미리 보고 적용합니다.</p>
             <div class="code-block"><pre><code>hostveil fix &lt;finding-id&gt; [flags]

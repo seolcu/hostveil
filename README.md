@@ -180,10 +180,33 @@ Degraded, a declined rollback, an empty history and exit code 3 mean.
 
 Every finding is classified, so the tool never changes anything blindly:
 
-- **Auto** — one clearly correct change. You still see it first.
-- **Review** — several valid alternatives; you pick one.
-- **Manual** — nothing safe to automate, so hostveil explains what to do
-  instead.
+| Kind | Meaning | hostveil can apply it |
+| --- | --- | --- |
+| **Auto-fix** | One clearly correct change. You still see it first. | Yes |
+| **Review** | Two or more independent alternatives; you pick one. | Yes |
+| **Manual** | Nothing safe to automate, so hostveil explains what to do instead. | No |
+| **Unavailable** | A real problem with no fix in existence yet, such as a CVE with no published patch. | No |
+
+`fix --all` applies only the Auto-fix ones.
+
+A finding is Auto-fix only when applying it unattended is defensible without
+you having looked at it, which takes all three of:
+
+1. **Reversible.** The action leaves a checkpoint that restores exactly what it
+   changed. A fix that runs a command has nothing to store, so it is never
+   Auto-fix.
+2. **Recoverable in practice.** If the change is wrong you must still be able
+   to reach the machine to undo it. Anything that can cut off your own access,
+   such as SSH authentication or firewall policy, fails this even when the
+   edit itself reverses cleanly.
+3. **Unambiguous.** Exactly one correct remediation, and applying it cannot
+   break a legitimate configuration.
+
+Failing one of the three makes a finding Review when there are two or more
+alternatives to choose between, and Manual when there is only one thing to do
+and no way to make it safe. The full procedure, including how a check and the
+fix registry settle a disagreement, is on
+[Fixing & rollback](https://hostveil.seolcu.com/docs/fixing).
 
 Applying a fix always shows you the exact diff or command, backs the original
 file up to a checkpoint, and only then applies it. `hostveil rollback` restores
@@ -211,12 +234,29 @@ remaining  = remaining × (1 − weight)      for each finding
 axis score = cap × remaining
 ```
 
-One High finding takes half the axis, a Medium an eighth, a Low a sixteenth.
+Severity answers how urgent a finding is, not how bad it could turn out to be.
+A scanner reading configuration cannot know what a compromise would cost you.
+What it can see is how much stands between an attacker and the problem right
+now, and that is what the three levels measure.
+
+| Level | What it means | Takes |
+| --- | --- | --- |
+| **High** | Reachable or usable right now, from off the host, by someone holding nothing. Nothing has to be broken first. | Half of what the axis has left |
+| **Medium** | A boundary that gives way to a foothold, a guessed credential, or a local account. | An eighth |
+| **Low** | Defence in depth. No known path today; it narrows what a future compromise reaches. | A sixteenth |
+
+Those three definitions are the whole taxonomy. The names only carry the order.
+The High row is the anchor and the other two are defined against it, which is
+why the gap between High and Medium is fourfold rather than one step.
+
 Because every finding takes a share of the remainder, the axis approaches zero
 without reaching it, and the tenth finding still costs something. The model
 this replaced summed penalties and clamped at zero, so two findings exhausted
 most axes and everything after them was free: a host with 27 container findings
 scored the same as one with 3.
+
+The overall score is also given a name in every interface: 80 and above is
+*in good shape*, 50 to 79 *middling*, 25 to 49 *exposed*, below 25 *wide open*.
 
 Two adjustments sit on top of that.
 
