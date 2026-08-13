@@ -531,15 +531,15 @@ func outdatedFinding(t target, g group) (model.Finding, bool) {
 
 	rem := model.RemediationReview
 	reference := "tag"
-	howToFix := fmt.Sprintf("Re-pull the t.image and recreate the service: `docker compose -f %s pull %s && docker compose -f %s up -d %s`. This re-resolves the tag to whatever it points at now; it does not guarantee that every listed CVE is fixed.", t.file, t.service, t.file, t.service)
+	howToFix := fmt.Sprintf("Re-pull the image and recreate the service: `docker compose -f %s pull %s && docker compose -f %s up -d %s`. This re-resolves the tag to whatever it points at now; it does not guarantee that every listed CVE is fixed.", t.file, t.service, t.file, t.service)
 	if !imageReferenceIsMutable(t.image) {
 		rem = model.RemediationManual
 		reference = "digest"
-		howToFix = "This t.service pins its t.image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. hostveil cannot compute which digest carries the fixes, so it will not guess."
+		howToFix = "This service pins its image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. hostveil cannot compute which digest carries the fixes, so it will not guess."
 	}
 
 	opts := append(imageOpts(t),
-		model.WithDescription(fmt.Sprintf("The t.image %s ships %d vulnerabilit%s that are already fixed upstream (%s). Most severe: %s. Run with --json for the full list.",
+		model.WithDescription(fmt.Sprintf("The image %s ships %d vulnerabilit%s that are already fixed upstream (%s). Most severe: %s. Run with --json for the full list.",
 			t.image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
 		model.WithHowToFix(howToFix),
 		model.WithEvidence("reference", reference),
@@ -566,9 +566,9 @@ func unpatchedFinding(t target, g group) (model.Finding, bool) {
 	}
 
 	opts := append(imageOpts(t),
-		model.WithDescription(fmt.Sprintf("The t.image %s ships %d vulnerabilit%s with no patched version available upstream (%s). Most severe: %s. Run with --json for the full list.",
+		model.WithDescription(fmt.Sprintf("The image %s ships %d vulnerabilit%s with no patched version available upstream (%s). Most severe: %s. Run with --json for the full list.",
 			t.image, len(g.ids), plural(len(g.ids)), g.summary(), g.worstList())),
-		model.WithHowToFix("There is nothing to update to yet. Track the advisories, and consider whether the exposed component is reachable in your setup, whether a mitigation exists, or whether a differently-based t.image would carry less risk."),
+		model.WithHowToFix("There is nothing to update to yet. Track the advisories, and consider whether the exposed component is reachable in your setup, whether a mitigation exists, or whether a differently-based image would carry less risk."),
 	)
 	opts = append(opts, g.evidence()...)
 
