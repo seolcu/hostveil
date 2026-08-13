@@ -355,6 +355,14 @@ package fix
 // exact path and the exact two lines, and the operator restarts it while
 // watching.
 //
+// Action.TakesEffectOn does not rescue this one the way it rescues the
+// compose warnings. There it makes an honest sentence out of a change whose
+// consequence is visible the moment the operator recreates the service; here
+// the consequence is a service that fails to start at the next boot, and
+// saying so in advance does not make an unattended tool the right thing to
+// have made the decision. The first paragraph is still the one that decides:
+// whether ProtectHome breaks this service is not visible from the unit.
+//
 // # The Docker daemon domain, declined whole
 //
 // dockerd.* has no registered fix at all — not one finding, and not because
@@ -379,6 +387,31 @@ package fix
 // and reports the finding again. A fix that improves the score without
 // improving the host is the objection already recorded for compose.ds016,
 // arriving by a different route.
+//
+// Half of that is now answerable and half is not, and the split is worth
+// recording so the next reader does not have to derive it again.
+//
+// Answered: Action.TakesEffectOn and model.VerifyPending exist, so hostveil
+// can write the file and say plainly that the change reaches the host at the
+// next daemon restart, instead of re-checking `docker info` and calling the
+// finding gone. The compose domain was doing exactly that — confirming a fix
+// over a container still running the old configuration — and it is the same
+// mismatch between the artifact a fix writes and the oracle a checker reads.
+//
+// Not answered: the score. markFixed and rescore run on a successful apply,
+// before any verification, so a pending fix still moves the number on a host
+// nothing has changed about. Until "applied" and "in force" are separated
+// there as well, registering these would put the second half of the original
+// objection back — improving the score without improving the host — with the
+// message alone being honest about it.
+//
+// And one blocker that has appeared since: daemon.json. internal/json5
+// replaces the value at a key path that ALREADY EXISTS and neither creates
+// nor deletes, so it cannot add `"no-new-privileges": true` to a file that
+// does not carry the key — which is every host that has not already set it,
+// i.e. every host with this finding. Editing it any other way means
+// re-encoding through encoding/json and reordering the operator's keys,
+// which is precisely the damage internal/json5 was written to prevent.
 //
 // The asymmetry with SSH is what makes this consistent rather than
 // arbitrary. The ssh checker reads sshd_config, which is the same artifact
