@@ -44,18 +44,43 @@ func PublishedReport() model.Report {
 		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("media/jellyfin")),
 		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 	}
-	states := map[model.Source]model.ScanState{
-		model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone,
-		model.SourceFirewall: model.ScanDone, model.SourceUpdates: model.ScanDone,
-		model.SourceCVE: model.ScanDone, model.SourceAccounts: model.ScanDone,
-		model.SourceFilePerms: model.ScanDone, model.SourceSysctl: model.ScanDone,
-		model.SourceSystemd: model.ScanDone, model.SourcePorts: model.ScanDegraded,
+	// Built from AllSources rather than listed, because a hand-written table
+	// keyed by Source is a copy waiting to go stale — and this one already
+	// had. SourceDockerd appeared in neither the states nor the domains, so
+	// the axis read as zero-value ScanPending: N/A with no DomainResult
+	// beside it and therefore no reason. "I could not look, and I will not
+	// say why" is the exact state the rail exists to prevent, and it was in
+	// both pictures published on the website.
+	//
+	// Only the exceptions are spelled out now. A thirteenth domain lands as
+	// ScanDone and shows up in the screenshots rather than vanishing from
+	// them.
+	//
+	// The exceptions also have to describe a host that could exist. Dockerd
+	// was briefly marked unreachable here, which cannot be true of a host
+	// whose CVE domain scored image vulnerabilities — Trivy reaches those
+	// images through the daemon. A fixture that contradicts itself teaches a
+	// reader the wrong thing about which domain depends on what.
+	exceptions := map[model.Source]model.DomainResult{
+		model.SourceAgent: {State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
+		model.SourcePorts: {State: model.ScanDegraded, Reason: "ss reported no process names — run as root to attribute listeners"},
 	}
+
+	states := map[model.Source]model.ScanState{}
+	var domains []model.DomainResult
+	for _, src := range model.AllSources() {
+		st := model.ScanDone
+		if ex, ok := exceptions[src]; ok {
+			st = ex.State
+			ex.Source = src
+			domains = append(domains, ex)
+		}
+		states[src] = st
+	}
+
 	return model.Report{
 		Findings: findings,
 		Score:    model.ScoreReport(findings, states),
-		Domains: []model.DomainResult{
-			{Source: model.SourceAgent, State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
-		},
+		Domains:  domains,
 	}
 }

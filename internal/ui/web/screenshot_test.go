@@ -3,12 +3,14 @@ package web
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/ui/theme"
+	"github.com/seolcu/hostveil/internal/ui/uitest"
 )
 
 // stampPath records what site/assets/web.png was a picture of.
@@ -97,7 +99,20 @@ type screenshotInput struct{ name, digest string }
 // left the terminal screenshot stale.
 func screenshotInputs(t *testing.T) []screenshotInput {
 	t.Helper()
+	// The fixture the picture is *of*, not only the code that draws it.
+	//
+	// Without this the stamp answered half the question: PR #701 changed
+	// uitest.PublishedReport — a domain appeared, another stopped being
+	// mislabelled — so the published screenshot became wrong while every
+	// input this hashed stayed identical and the alarm said nothing. What
+	// decides what the picture shows is the page *and* the data.
+	rep, err := json.Marshal(uitest.PublishedReport())
+	if err != nil {
+		t.Fatalf("encode the published fixture: %v", err)
+	}
+
 	out := []screenshotInput{
+		{"fixture", digest(string(rep))},
 		{"model.js", digest(modelJS())},
 		{"themes.css", digest(theme.CSS(theme.Default().ID))},
 		{"theme.js", digest(theme.JS(theme.Default().ID))},

@@ -31,11 +31,7 @@ func modeModels(w, h int) map[string]*appModel {
 	}
 
 	out := map[string]*appModel{}
-	for name, md := range map[string]mode{
-		"scanning": modeScanning, "list": modeList, "detail": modeDetail,
-		"preview": modePreview, "message": modeMessage, "history": modeHistory,
-		"rollback": modeRollbackConfirm, "theme": modeTheme,
-	} {
+	for md, name := range modeNames {
 		m := &appModel{
 			mode: md, width: w, height: h, report: r, selected: map[string]bool{},
 			status: "Scanning…", checkpoints: cps, preview: preview,
@@ -45,6 +41,40 @@ func modeModels(w, h int) map[string]*appModel {
 		out[name] = m
 	}
 	return out
+}
+
+// modeNames is every mode, and the test below requires it to stay that way.
+//
+// It replaces a hand-written list inside modeModels that had fallen two
+// behind the enum: modeForceConfirm and modeLayout were never built, so
+// "every mode" meant eight of ten and the two screens most likely to be
+// reached in a bad moment — a declined rollback, and the picker — were
+// composed by nobody.
+var modeNames = map[mode]string{
+	modeScanning:        "scanning",
+	modeList:            "list",
+	modeDetail:          "detail",
+	modePreview:         "preview",
+	modeMessage:         "message",
+	modeHistory:         "history",
+	modeRollbackConfirm: "rollback",
+	modeForceConfirm:    "force",
+	modeTheme:           "theme",
+	modeLayout:          "layout",
+}
+
+// A mode added without a name here is a mode no frame test renders, which is
+// exactly how the previous gap opened. Walking the enum's own range is what
+// makes that loud: modeCount is the only thing that has to be kept last.
+func TestEveryModeIsNamedForTheFrameTests(t *testing.T) {
+	for md := mode(0); md < modeCount; md++ {
+		if modeNames[md] == "" {
+			t.Errorf("mode %d has no entry in modeNames, so no frame test builds it", md)
+		}
+	}
+	if len(modeNames) != int(modeCount) {
+		t.Errorf("modeNames has %d entries for %d modes", len(modeNames), modeCount)
+	}
 }
 
 // The frame must be exactly the terminal, in both axes, in every mode. This

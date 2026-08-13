@@ -18,8 +18,15 @@ var version = "v3-dev"
 
 func main() {
 	ctx, stop := notifyContext(context.Background())
-	defer stop()
-	os.Exit(run(ctx, os.Args[1:]))
+	// Not deferred: os.Exit does not run deferred functions, so `defer stop()`
+	// here was a line that read like cleanup and never executed one. It
+	// matters less at process exit than the notifyContext comment below
+	// implies — the kernel reclaims the signal handler either way — but a
+	// defer that cannot run is worse than no defer: the next person moves it
+	// and assumes the pattern already worked.
+	code := run(ctx, os.Args[1:])
+	stop()
+	os.Exit(code)
 }
 
 // notifyContext gives the run one cancellable context, cancelled on Ctrl-C or
@@ -190,6 +197,10 @@ TUI and dashboard flags:
                   nerd draws them from a patched Nerd Font; a terminal cannot
                   be asked what font it has, so this is opt-in. Also on scan,
                   and settable once with HOSTVEIL_GLYPHS.
+  --layout NAME   Screen arrangement for tui and serve: console (default),
+                  split, triage, railverdict, lanes, inline. The TUI's picker
+                  (press l) remembers your choice; --layout and
+                  HOSTVEIL_LAYOUT override it.
   --addr ADDR     serve only: host:port to bind the dashboard to (default
                   127.0.0.1:8787); the port is not optional. The dashboard
                   answers only requests addressed to localhost, so this cannot
@@ -220,6 +231,7 @@ Environment:
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   HOSTVEIL_GLYPHS=SET  Symbol set for the TUI and scan: plain or nerd
+  HOSTVEIL_LAYOUT=NAME Screen arrangement for the TUI and the dashboard
   NO_COLOR=1           Disable colored output
 
   HOSTVEIL_OLLAMA_HOST=URL     Where the optional local LLM listens

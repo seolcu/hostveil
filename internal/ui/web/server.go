@@ -552,13 +552,11 @@ func (s *Server) handleFix(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 	report, _ := s.engine.Current()
-	var auto []model.Finding
-	for _, f := range report.Findings {
-		if !f.Fixed && f.Remediation == model.RemediationAuto {
-			auto = append(auto, f)
-		}
-	}
-	writeJSON(w, s.engine.ApplyBatch(hostWork(r), auto))
+	// The whole report, which is what the dashboard's button counts: its
+	// filter chips narrow the list, not the batch. The TUI means the other
+	// thing by the same words, and saying so through one helper is how the
+	// two stay deliberately different rather than accidentally so.
+	writeJSON(w, s.engine.ApplyBatch(hostWork(r), report.AutoFixable(model.Filter{})))
 }
 
 type fixRef struct {

@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/check"
-	"github.com/seolcu/hostveil/internal/check/firewall"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -112,10 +111,6 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// only corroborates it and sharpens the severity. Losing a confidence
 	// booster is not losing ground.
 	listeners, _ := platform.Listeners(ctx, env.Runner)
-	// Likewise the firewall: it sharpens what the evidence can say about a
-	// reachable gateway, never whether the finding exists — and since the
-	// levels merged it does not move the level either. See gatewayFindings.
-	fwStatus, _ := firewall.Probe(ctx, env.Runner)
 
 	var findings []model.Finding
 	var reasons []string
@@ -161,7 +156,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 
 		findings = append(findings, modeFindings(s)...)
-		findings = append(findings, gatewayFindings(s, listeners, fwStatus)...)
+		findings = append(findings, gatewayFindings(s, listeners)...)
 		if s.cfgKnown {
 			findings = append(findings, dangerFindings(s)...)
 		}
@@ -270,7 +265,16 @@ func secretKeysIn(s scan, path string) []string {
 
 // gatewayFindings judges the runtime's network exposure from its configured
 // bind, corroborated by what the host is actually listening on.
-func gatewayFindings(s scan, listeners []platform.Listener, fw firewall.Status) []model.Finding {
+// The firewall used to be probed for this and handed in. It stopped being
+// read when the severity levels merged — blast radius and confidence are not
+// urgency, so a reachable gateway behind a firewall is the same level as one
+// without — and the parameter outlived the use by long enough that the
+// comment at the call site still described it as load-bearing.
+//
+// What that cost was not a wrong answer, it was work: producing the argument
+// meant running up to four firewall binaries on every scan of every host and
+// throwing the result away. Nothing failed, so nothing said so.
+func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	gw := s.in.rt.Gateway
 	if gw.BindKey == "" {
 		return nil
