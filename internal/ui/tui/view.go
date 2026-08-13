@@ -1195,16 +1195,43 @@ func (m *appModel) detailRows() []string {
 // row. They differ in how much room they have and in nothing else, and a
 // second copy of this text is a second place for the AI box to be forgotten.
 func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
+	return append(m.detailHeaderRows(f, w), m.detailFactsRows(f, w)...)
+}
+
+// detailHeaderRows names the finding: severity and title, then the id, the
+// remediation kind and the service under them.
+//
+// It is split from the facts because the inline block does not want it. That
+// block is drawn immediately under the list row for the same finding, and the
+// row above it already carries the severity and the id — so two of these three
+// lines said again, four columns to the right, what the reader had just read.
+// The facts below are the same text in all three places and stay in one copy,
+// which is what the note on detailBodyRows is protecting.
+func (m *appModel) detailHeaderRows(f model.Finding, w int) []string {
 	s := m.sty()
-	out := []string{
-		lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
-			"  " + s.brand.Render(truncate(f.Title, max(1, w-lipgloss.Width(f.Severity.String())-2)))}
-	meta := strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
+	head := lipgloss.NewStyle().Foreground(s.severityColor(f.Severity)).Bold(true).Render(strings.ToUpper(f.Severity.String())) +
+		"  " + s.brand.Render(truncate(f.Title, max(1, w-lipgloss.Width(f.Severity.String())-2)))
+	return []string{head, s.dim.Render(truncate(m.detailMeta(f, true), w)), ""}
+}
+
+// detailMeta is the id/kind/service line. withID is false where the row above
+// is already showing the id.
+func (m *appModel) detailMeta(f model.Finding, withID bool) string {
+	meta := strings.ToUpper(f.Remediation.String())
+	if withID {
+		meta = strings.ToUpper(f.ID + "  ·  " + f.Remediation.String())
+	}
 	if f.Service != "" {
 		meta += "  ·  SERVICE: " + f.Service
 	}
-	out = append(out, s.dim.Render(truncate(meta, w)), "")
-	out = append(out, styledRows(s.bone, wrap(f.Description, w))...)
+	return meta
+}
+
+// detailFactsRows is everything a finding says about itself: what it means,
+// how to fix it, why there is no button where there is none, and the AI note.
+func (m *appModel) detailFactsRows(f model.Finding, w int) []string {
+	s := m.sty()
+	out := styledRows(s.bone, wrap(f.Description, w))
 	if f.HowToFix != "" {
 		out = append(out, "", s.accent.Render("HOW TO FIX"))
 		out = append(out, styledRows(s.bone, wrap(f.HowToFix, w))...)
