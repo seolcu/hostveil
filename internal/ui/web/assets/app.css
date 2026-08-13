@@ -288,10 +288,38 @@ pre.diff .del { color: var(--crit); }
 pre.diff .ctx { color: var(--slate); }
 .fixbox .row { display: flex; gap: 8px; }
 
-/* scrollbars — quiet */
+/* ── scrollbars — quiet, and said rather than inferred ──
+   The ::-webkit- rules are Chromium's; Firefox ignores every one of them and
+   was left to derive the scrollbar from `color-scheme: dark`, which themes.css
+   has set all along. That inference is not reliable: a headless Firefox draws
+   a pure white bar with color-scheme set and these rules present — measured,
+   both ways, against a page carrying nothing else — and every screenshot this
+   project has ever taken of the dashboard has a white stripe down the middle
+   of the findings column because of it. scrollbar-color fixes it outright.
+   No new roles: --line-2 is the hairline that doubles as the selection ground,
+   and is what the thumb was already drawn in.
+   The corner is Chromium's other half of the same problem. Declaring any
+   ::-webkit-scrollbar rule switches that element to a fully custom scrollbar
+   and turns off the color-scheme theming for the parts left unstyled, so the
+   square where a vertical and a horizontal bar meet fell back to the UA's
+   light default. */
+:root { scrollbar-color: var(--line-2) var(--ink); scrollbar-width: thin; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--line-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--slate); }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: var(--ink); }
+
+/* ── focus, for the controls that were not buttons ──
+   Buttons and the two selects have had a ring since they were added. The
+   checkboxes, the fix-alternative radios and the clickable finding rows had
+   none, so a keyboard user got the UA's own — which on Chromium is a white
+   outer ring around a black inner one, and half of that disappears on a dark
+   ground. Same ring as the buttons', so focus looks like one thing. */
+.pick:focus-visible,
+.alts input:focus-visible,
+.finding:focus-visible,
+.over-jump-row:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
 
 @media (max-width: 820px) {
   body { height: auto; overflow: visible; }
