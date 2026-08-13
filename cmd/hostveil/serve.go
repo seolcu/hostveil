@@ -78,7 +78,16 @@ func cmdServe(ctx context.Context, args []string) int {
 		fmt.Println(note + "\n")
 	}
 	fmt.Printf("hostveil is scanning the host; the dashboard opens on %s when it finishes.\n", addr)
-	fmt.Printf("Then open this exact URL — it carries the access token for this run:\n  %s\n", srv.URL())
+	// An SSH session is the common case for this command and the one where
+	// the URL below is correct and unusable: 127.0.0.1 typed into the browser
+	// on the operator's laptop is the laptop. Say so, and say what to run.
+	where := "Then open this exact URL"
+	if hint := sshHint(os.Getenv, addr); hint != "" {
+		fmt.Printf("\nYou are connected over SSH, so that address is this machine, not yours.\n"+
+			"Run this on your own machine and leave it open:\n\n  %s\n", hint)
+		where = "\nThen open this exact URL there"
+	}
+	fmt.Printf("%s — it carries the access token for this run:\n  %s\n", where, srv.URL())
 	if err := srv.ListenAndServe(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1

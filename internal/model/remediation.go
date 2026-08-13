@@ -23,6 +23,7 @@ type remediationDef struct {
 	kind    RemediationKind
 	name    string // stable lowercase name used in exports
 	label   string // human-facing label shown in the UIs
+	abbr    string // short form for surfaces with a width budget
 	fixable bool   // hostveil can offer to apply something
 }
 
@@ -40,11 +41,11 @@ type remediationDef struct {
 // "known to have no fix", it is one nobody has classified, and both must
 // refuse to offer a fix button.
 var remediationDefs = []remediationDef{
-	{RemediationUnset, "unset", "Unclassified", false},
-	{RemediationAuto, "auto", "Auto-fix", true},
-	{RemediationReview, "review", "Review", true},
-	{RemediationManual, "manual", "Manual", false},
-	{RemediationUnavailable, "unavailable", "Unavailable", false},
+	{RemediationUnset, "unset", "Unclassified", "?", false},
+	{RemediationAuto, "auto", "Auto-fix", "auto", true},
+	{RemediationReview, "review", "Review", "review", true},
+	{RemediationManual, "manual", "Manual", "manual", false},
+	{RemediationUnavailable, "unavailable", "Unavailable", "n/a", false},
 }
 
 var remediationIndex = indexBy(remediationDefs, func(d remediationDef) RemediationKind { return d.kind })
@@ -65,6 +66,22 @@ func (r RemediationKind) IsFixable() bool {
 // visible oddity for a silent disappearance.
 func (r RemediationKind) Valid() bool {
 	return r != RemediationUnset
+}
+
+// Abbr returns the short lowercase form for surfaces with a width budget —
+// the TUI's finding rows, which upper-case it.
+//
+// Every abbreviation is at most six characters, because the TUI pads the
+// column to that width and a longer one would shift every row. That is the
+// same contract Severity.Abbr carries, and the same reason.
+//
+// "n/a" rather than "none" for Unavailable: the finding is real and the
+// absence is of a *fix*, which is what N/A says on the score axes already.
+func (r RemediationKind) Abbr() string {
+	if d, ok := remediationIndex[r]; ok {
+		return d.abbr
+	}
+	return "?"
 }
 
 // String returns the stable lowercase name used in exports.

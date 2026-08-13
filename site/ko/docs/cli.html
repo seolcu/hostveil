@@ -226,6 +226,11 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
 
+            <h3 id="serve-ssh">SSH로 접속했을 때</h3>
+            <p>대시보드는 루프백에서만 듣기 때문에 출력되는 주소는 <em>서버 쪽</em> 주소입니다. 노트북 브라우저에 그대로 치면 노트북에 닿습니다. <code>hostveil serve</code>는 SSH 세션임을 알아채면, 클라이언트가 실제로 닿은 주소를 써서 본인 기기에서 실행할 포워딩 명령을 함께 출력합니다.</p>
+            <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
+            <p>그것을 띄워 둔 채로 본인 기기에서 출력된 URL을 엽니다. 대신 대시보드를 외부에 노출되는 주소로 바인딩하도록 권하지는 않습니다. 이 대시보드의 모든 경로는 root 권한으로 조치를 적용하거나 <code>/etc/shadow</code>를 읽은 스캔 결과를 다루고, 포워딩된 포트는 인증이 이미 끝난 같은 접근이기 때문입니다.</p>
+
             <h2 id="explain">explain</h2>
             <p>발견 항목을 쉬운 말로 설명합니다.</p>
             <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>

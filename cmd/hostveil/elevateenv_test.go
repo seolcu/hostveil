@@ -110,7 +110,11 @@ var notCarried = map[string]string{
 	"HOSTVEIL_NO_SUDO": "reaching the re-exec at all means this was unset",
 	"HOSTVEIL_ELEVATED": "the marker whose non-arrival through sudo is the entire reason " +
 		"SUDO_USER is the loop guard; carrying it would re-create the loop it replaced",
-	"SUDO_USER":         "sudo sets it in the child itself, which is what makes it the guard",
+	"SUDO_USER": "sudo sets it in the child itself, which is what makes it the guard",
+	"USER": "sudo sets it to the target user, and that is the value to ignore rather than " +
+		"preserve — sshHint reads SUDO_USER first for exactly that reason, and falls back to " +
+		"this one only where no elevation happened and it is already correct",
+	"LOGNAME":           "the same as USER, and read for the same fallback",
 	"HOSTVEIL_SNAPSHOT": "test-only, and it gates a test that never elevates",
 }
 
@@ -166,13 +170,41 @@ func readEnvNames(t *testing.T) []string {
 			if !ok || len(call.Args) == 0 {
 				return true
 			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "Getenv" && sel.Sel.Name != "LookupEnv" {
+			// os.Getenv("X"), and also getenv("X") where getenv is an
+			// injected func(string) string. The second shape is how this
+			// package tests anything that reads the environment, and it was
+			// invisible here: sshHint takes os.Getenv as a parameter, so the
+			// name it reads appeared in no os.Getenv call anywhere and the
+			// harvest below found nothing to check. A variable read through
+			// one indirection is exactly as silently empty under sudo as one
+			// read directly.
+			switch fn := call.Fun.(type) {
+			case *ast.SelectorExpr:
+				if fn.Sel.Name != "Getenv" && fn.Sel.Name != "LookupEnv" {
+					return true
+				}
+				if pkg, ok := fn.X.(*ast.Ident); !ok || pkg.Name != "os" {
+					return true
+				}
+			case *ast.Ident:
+				if !strings.EqualFold(fn.Name, "getenv") && !strings.EqualFold(fn.Name, "lookupenv") {
+					return true
+				}
+				// Literals only for the injected shape. The one non-literal
+				// read in this package is elevatedArgv's own loop over
+				// carriedThroughSudo, whose names are on the list by
+				// construction — erroring on it would make the list fail the
+				// test that exists to keep the list honest.
+				if lit, ok := call.Args[0].(*ast.BasicLit); ok {
+					if str, ok := stringLit(lit); ok {
+						names = append(names, str)
+					}
+				}
+				return true
+			default:
 				return true
 			}
-			if pkg, ok := sel.X.(*ast.Ident); !ok || pkg.Name != "os" {
-				return true
-			}
+			sel := &ast.SelectorExpr{Sel: ast.NewIdent("Getenv")}
 			switch arg := call.Args[0].(type) {
 			case *ast.BasicLit:
 				if s, ok := stringLit(arg); ok {
