@@ -41,24 +41,13 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 	return next
 }
 
-// TestSnapshotDump writes rendered TUI frames to HOSTVEIL_SNAPSHOT when it is
-// set, and is a no-op in normal test runs. It is how the frames in the
-// documentation are produced, and how a layout change is reviewed without a
-// terminal in front of you.
-//
-// A file path gets the one frame the website uses (site/assets/tui.png, at
-// its published 96x34); a directory gets every mode, one .ans per screen, for
-// eyeballing a change across the whole interface. There is deliberately one
-// hook rather than two — a second dumper drifts out of step with the first.
-func TestSnapshotDump(t *testing.T) {
-	path := os.Getenv("HOSTVEIL_SNAPSHOT")
-	if path == "" {
-		t.Skip("set HOSTVEIL_SNAPSHOT to dump a frame (a file for the site frame, a directory for every mode)")
-	}
-	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
-		dumpEveryMode(t, path)
-		return
-	}
+// siteFrame renders the one frame the website publishes, at its published
+// 96x34. It is a function rather than inline in the dumper because the
+// pinning test below has to render the identical thing: a screenshot that is
+// reviewed against one frame and regenerated from another is not pinned at
+// all.
+func siteFrame(t *testing.T) string {
+	t.Helper()
 	findings := []model.Finding{
 		model.NewFinding("compose.ds018", "Datastore exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationAuto, model.WithService("cache")),
 		model.NewFinding("compose.ds016", "Docker socket mounted into container", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("portainer")),
@@ -87,7 +76,28 @@ func TestSnapshotDump(t *testing.T) {
 			am.selected[f.Key()] = true
 		}
 	}
-	if err := os.WriteFile(path, []byte(am.View().Content), 0o600); err != nil {
+	return am.View().Content
+}
+
+// TestSnapshotDump writes rendered TUI frames to HOSTVEIL_SNAPSHOT when it is
+// set, and is a no-op in normal test runs. It is how the frames in the
+// documentation are produced, and how a layout change is reviewed without a
+// terminal in front of you.
+//
+// A file path gets the one frame the website uses (site/assets/tui.png, at
+// its published 96x34); a directory gets every mode, one .ans per screen, for
+// eyeballing a change across the whole interface. There is deliberately one
+// hook rather than two — a second dumper drifts out of step with the first.
+func TestSnapshotDump(t *testing.T) {
+	path := os.Getenv("HOSTVEIL_SNAPSHOT")
+	if path == "" {
+		t.Skip("set HOSTVEIL_SNAPSHOT to dump a frame (a file for the site frame, a directory for every mode)")
+	}
+	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+		dumpEveryMode(t, path)
+		return
+	}
+	if err := os.WriteFile(path, []byte(siteFrame(t)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
