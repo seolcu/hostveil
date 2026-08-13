@@ -17,8 +17,18 @@ import (
 // Project is one Docker Compose project: a name, the file it was parsed
 // from, and its services.
 type Project struct {
-	Name     string
-	File     string
+	Name string
+	// File is the first config file, which is what a project is named after
+	// in a message. It is NOT the file a fix should edit: on a layered
+	// project the merged state is what docker runs, and the setting that
+	// decides it may be declared in any of Files — or, for the sequence-typed
+	// keys compose appends rather than replaces, in several at once.
+	File string
+	// Files is every config file docker composes this project from, in the
+	// order it applies them. Later files win for scalars; ports and volumes
+	// are appended, so a wide binding in any one of them exposes the service
+	// however the others bind it.
+	Files    []string
 	Services map[string]Service
 }
 

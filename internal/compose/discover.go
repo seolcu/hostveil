@@ -99,7 +99,13 @@ func effectiveProject(ctx context.Context, r platform.CommandRunner, files []str
 
 	merged, err := r.Run(ctx, "docker", argv...)
 	if err == nil {
-		return Parse(files[0], merged)
+		proj, perr := Parse(files[0], merged)
+		// Every file, not just the one the merged content is labelled with.
+		// The label answers "what is this project called"; the list answers
+		// "which file decides this setting", and only the second is a
+		// question a fix can act on.
+		proj.Files = files
+		return proj, perr
 	}
 
 	// docker would not answer: an unset variable a mapping demands, a file it
@@ -110,7 +116,9 @@ func effectiveProject(ctx context.Context, r platform.CommandRunner, files []str
 	// back the wrong answer this exists to remove; the caller reports it as
 	// ground not covered instead.
 	if len(files) == 1 {
-		return ParseFile(files[0])
+		proj, perr := ParseFile(files[0])
+		proj.Files = files
+		return proj, perr
 	}
 	return Project{}, fmt.Errorf("cannot resolve the merged configuration of %s: %w",
 		strings.Join(files, ", "), err)

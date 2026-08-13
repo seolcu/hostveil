@@ -2,6 +2,7 @@ package fix
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/compose"
 	"github.com/seolcu/hostveil/internal/model"
@@ -42,16 +43,104 @@ func composeEdit(path, label, warning string, mutate func(*compose.Doc) error) A
 	}
 }
 
-func composeFilePath(f model.Finding) (string, error) {
-	path := f.Metadata["file"]
-	if path == "" {
-		return "", fmt.Errorf("finding %s has no compose file path", f.ID)
+// composeFiles is every config file the project is composed from, in the
+// order docker applies them.
+//
+// The older "file" key is the first of those, kept because it names the
+// project in a message. It was also what every builder edited, which is the
+// bug this list exists to close: on a layered project the merged state is what
+// docker runs, and the first file is not necessarily the one that decides
+// anything.
+func composeFiles(f model.Finding) ([]string, error) {
+	if list := f.Metadata["files"]; list != "" {
+		return strings.Split(list, model.PathListSeparator), nil
 	}
-	return path, nil
+	if path := f.Metadata["file"]; path != "" {
+		return []string{path}, nil
+	}
+	return nil, fmt.Errorf("finding %s has no compose file path", f.ID)
+}
+
+// composeScalarTarget is the file to edit when adding or replacing a scalar
+// key — security_opt, restart, mem_limit.
+//
+// Compose resolves scalars last-wins, so the file that decides is the last one
+// defining the service. Writing into an earlier one would be overwritten by
+// the merge and the fix would report a success docker never sees.
+func composeScalarTarget(f model.Finding) (string, error) {
+	files, err := composeFiles(f)
+	if err != nil {
+		return "", err
+	}
+	if len(files) == 1 {
+		return files[0], nil
+	}
+	for i := len(files) - 1; i >= 0; i-- {
+		proj, err := compose.ParseFile(files[i])
+		if err != nil {
+			continue // a file this scan could not read decides nothing it can prove
+		}
+		if _, ok := proj.Services[f.Service]; ok {
+			return files[i], nil
+		}
+	}
+	return "", fmt.Errorf("finding %s: none of the %d files this project is composed from defines %s, so there is no file to edit",
+		f.ID, len(files), f.Service)
+}
+
+// composePortTarget is the file to edit when rebinding a published port, and
+// it is a different question from the scalar one because compose *appends*
+// port mappings rather than replacing them. A wide binding in any one file
+// exposes the service however the others bind it, so rewriting one file while
+// another still publishes 0.0.0.0 changes nothing docker will do.
+//
+// One file publishing it wide: that is the file, and on the common layout —
+// a base binding to loopback and an override republishing it — this is the
+// override, which is precisely the file the old code did not edit.
+//
+// Several: hostveil declines. It is the same answer persistSysctl gives when
+// the file it would write is outranked. A fix that cannot name the deciding
+// file has not got one, and editing the first and reporting success is worse
+// than saying so.
+func composePortTarget(f model.Finding, port string) (string, error) {
+	files, err := composeFiles(f)
+	if err != nil {
+		return "", err
+	}
+	if len(files) == 1 {
+		return files[0], nil
+	}
+	var publishes []string
+	for _, path := range files {
+		proj, err := compose.ParseFile(path)
+		if err != nil {
+			continue
+		}
+		svc, ok := proj.Services[f.Service]
+		if !ok {
+			continue
+		}
+		for _, p := range svc.Ports {
+			if p.HostPort == port && p.ExposedOnAllInterfaces() {
+				publishes = append(publishes, path)
+				break
+			}
+		}
+	}
+	switch len(publishes) {
+	case 1:
+		return publishes[0], nil
+	case 0:
+		return "", fmt.Errorf("finding %s: port %s is published by the merge of %d files and by none of them alone, so hostveil cannot tell which one decides it",
+			f.ID, port, len(files))
+	default:
+		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings rather than replacing them — rewriting one would leave the others binding 0.0.0.0",
+			f.ID, port, strings.Join(publishes, " and "))
+	}
 }
 
 func buildAddNoNewPrivileges(f model.Finding) (Fix, error) {
-	path, err := composeFilePath(f)
+	path, err := composeScalarTarget(f)
 	if err != nil {
 		return Fix{}, err
 	}
@@ -65,7 +154,7 @@ func buildAddNoNewPrivileges(f model.Finding) (Fix, error) {
 }
 
 func buildAddRestart(f model.Finding) (Fix, error) {
-	path, err := composeFilePath(f)
+	path, err := composeScalarTarget(f)
 	if err != nil {
 		return Fix{}, err
 	}
@@ -88,7 +177,7 @@ var memLimits = []struct{ value, kind string }{
 }
 
 func buildSetMemLimit(f model.Finding) (Fix, error) {
-	path, err := composeFilePath(f)
+	path, err := composeScalarTarget(f)
 	if err != nil {
 		return Fix{}, err
 	}
@@ -122,7 +211,7 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 // directory to the file's parent, keeping relative env_file and build paths
 // resolvable.
 func buildRepullImage(f model.Finding) (Fix, error) {
-	path, err := composeFilePath(f)
+	path, err := composeScalarTarget(f)
 	if err != nil {
 		return Fix{}, err
 	}
@@ -165,13 +254,13 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 }
 
 func buildBindLoopback(f model.Finding) (Fix, error) {
-	path, err := composeFilePath(f)
-	if err != nil {
-		return Fix{}, err
-	}
 	hostPort := f.Evidence["port"]
 	if hostPort == "" {
 		return Fix{}, fmt.Errorf("finding %s has no host port to rebind", f.ID)
+	}
+	path, err := composePortTarget(f, hostPort)
+	if err != nil {
+		return Fix{}, err
 	}
 	svc := f.Service
 	warning := "After this, the service is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy."
