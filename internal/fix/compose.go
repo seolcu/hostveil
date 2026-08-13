@@ -170,9 +170,17 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 // memLimits are the alternatives offered for ds010. hostveil cannot know
 // what a service actually uses, so it offers defensible starting points and
 // lets the user pick rather than inventing a number.
+//
+// The typical container leads, because Actions[0] is the recommendation and
+// `fix --all --review` applies it without asking. This list used to lead with
+// 512m, the smallest — while the warning printed beside every alternative
+// said "Start generous, watch `docker stats`, and tighten later". A reviewed
+// batch therefore capped every unlimited container on the host at 512m, which
+// is what OOM-kills a media transcoder or a JVM. Leading with the smallest
+// value is the one order that contradicts the fix's own advice.
 var memLimits = []struct{ value, kind string }{
-	{"512m", "small service (proxy, exporter, static site)"},
 	{"1g", "typical application container"},
+	{"512m", "small service (proxy, exporter, static site)"},
 	{"2g", "database or JVM service"},
 }
 
