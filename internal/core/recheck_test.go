@@ -218,3 +218,61 @@ func TestEveryVerificationResultHasAMessage(t *testing.T) {
 		t.Errorf("the still-present message reads as a failure: %q", got)
 	}
 }
+
+// A re-check that no longer sees the finding has established that the
+// artifact the fix wrote is correct — and where that artifact is not what the
+// host is running from, that is all it has established.
+//
+// This is the case VerifyGone was quietly covering, in the dangerous
+// direction: the compose checker reads the project file, the compose fix edits
+// that file, so the re-check finds nothing and the operator is told "the
+// finding is gone" while the container still publishes the port on every
+// interface. A positive confirmation over an unchanged host is the worst
+// single thing this tool can say.
+func TestAnEditThatIsNotInForceYetIsNotReportedAsGone(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "docker-compose.yml")
+	if err := os.WriteFile(path, []byte("original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := fix.NewRegistry()
+	r.Register("fileperms.shadow", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{
+			Label: "edit the file", Kind: model.RemediationAuto,
+			Actions: []fix.Action{{
+				Label: "edit", Kind: fix.ActionEdit, Path: path,
+				TakesEffectOn: "`docker compose up -d redis`",
+				Transform:     func([]byte) ([]byte, error) { return []byte("fixed\n"), nil },
+			}},
+		}, nil
+	})
+	// A checker that reports nothing, i.e. the file now reads clean.
+	e := New(Config{Registry: check.NewRegistry(&stubChecker{src: model.SourceFilePerms}),
+		Fixes: r, Store: history.NewStore(t.TempDir())})
+	e.state.current = model.Report{Findings: []model.Finding{recheckFinding()}}
+
+	out, err := e.ApplyFix(context.Background(), recheckFinding(), 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if out.Verified != model.VerifyPending {
+		t.Errorf("Verified = %v, want pending: the checker read the file the fix just wrote, which says the file is correct and nothing about the host",
+			out.Verified)
+	}
+	if !strings.Contains(out.VerifyMessage, "does not reach the host") &&
+		!strings.Contains(out.VerifyMessage, "until") {
+		t.Errorf("the message does not say the change is not in force: %q", out.VerifyMessage)
+	}
+}
+
+// And an edit that IS the artifact in force still reports gone, or the state
+// would stop distinguishing anything.
+func TestAnImmediateEditIsStillReportedAsGone(t *testing.T) {
+	e := recheckEngine(t, &stubChecker{src: model.SourceFilePerms})
+	out, err := e.ApplyFix(context.Background(), recheckFinding(), 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if out.Verified != model.VerifyGone {
+		t.Errorf("Verified = %v, want gone", out.Verified)
+	}
+}
