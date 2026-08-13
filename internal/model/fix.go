@@ -174,6 +174,21 @@ const (
 	// its ground. "Could not look" is not "still broken", and it is not
 	// "fixed" either.
 	VerifyUnavailable
+	// VerifyPending means the domain was re-checked, no longer reports the
+	// finding, and the host has not changed yet.
+	//
+	// It is the case VerifyGone was quietly covering, and it covered it in
+	// the dangerous direction. A compose checker reads the project file; the
+	// compose fix edits it; so the re-check finds nothing and the operator is
+	// told "the finding is gone" while the container that is actually running
+	// still publishes the port on every interface. The score moves, the
+	// confirmation is positive, and nothing anywhere says the change is not
+	// in force.
+	//
+	// A fix declares this by setting Action.TakesEffectOn, naming what has to
+	// happen. Where that is set, "the artifact is correct" is all a re-check
+	// of that artifact can establish, and this says exactly that much.
+	VerifyPending
 )
 
 // String returns the lowercase name used in JSON and in every UI.
@@ -185,6 +200,8 @@ func (v FixVerification) String() string {
 		return "still-present"
 	case VerifyUnavailable:
 		return "unavailable"
+	case VerifyPending:
+		return "pending"
 	default:
 		return "not-run"
 	}
@@ -206,6 +223,12 @@ func (v FixVerification) Note(restartHint string) string {
 	switch v {
 	case VerifyGone:
 		return "Re-checked: the finding is gone."
+	case VerifyPending:
+		if restartHint != "" {
+			return "Re-checked: the file is correct. The change reaches the host when '" +
+				restartHint + "' is recreated — until then nothing running has changed."
+		}
+		return "Re-checked: the file is correct, and the change does not reach the host until what reads it is restarted."
 	case VerifyStillPresent:
 		if restartHint != "" {
 			return "Re-checked: the finding is still reported — the change may not take effect until '" +

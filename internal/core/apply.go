@@ -30,6 +30,15 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// container on the host. A batch ends with the operator rescanning
 	// anyway; a single fix is the one they are watching.
 	out.Verified, out.VerifyNote = e.verifyFix(ctx, f)
+	// A re-check that no longer sees the finding has established that the
+	// artifact the fix wrote is correct — and where that artifact is not what
+	// the host is running from, that is all it has established. See
+	// fix.Action.TakesEffectOn.
+	if out.Verified == model.VerifyGone {
+		if effect := e.takesEffectOn(f, actionIdx); effect != "" {
+			out.Verified, out.VerifyNote = model.VerifyPending, effect
+		}
+	}
 	out.VerifyMessage = out.Verified.Note(out.RestartHint)
 	return out, nil
 }
@@ -353,4 +362,14 @@ func countCommands(cmds [][]string) int {
 		}
 	}
 	return n
+}
+
+// takesEffectOn reports what has to happen before the applied action reaches
+// the host, or "" when the edit is in force as soon as it is written.
+func (e *Engine) takesEffectOn(f model.Finding, actionIdx int) string {
+	fx, ok, err := e.buildFix(f)
+	if err != nil || !ok || actionIdx < 0 || actionIdx >= len(fx.Actions) {
+		return ""
+	}
+	return fx.Actions[actionIdx].TakesEffectOn
 }

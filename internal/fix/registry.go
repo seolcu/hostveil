@@ -67,6 +67,28 @@ type Action struct {
 	// exactly the file persistSysctl resolves to and edits on purpose.
 	NoFollow bool
 
+	// TakesEffectOn names what has to happen before this edit reaches the
+	// host — "recreated with `docker compose up -d`", "a docker daemon
+	// restart". Empty means the edit is in force the moment it is written.
+	//
+	// It exists because the re-check cannot tell the difference on its own,
+	// and got it wrong in the dangerous direction. The compose checker reads
+	// the project file, the compose fix edits that file, so the re-check
+	// finds nothing and reports VerifyGone — "the finding is gone" — while
+	// the container that is actually running still publishes the port on
+	// every interface. A positive confirmation over an unchanged host is the
+	// worst single thing this tool can say.
+	//
+	// Where it is set, a re-check that no longer sees the finding reports
+	// VerifyPending instead, because reading the artifact the fix just wrote
+	// establishes that the artifact is correct and nothing more.
+	//
+	// This is also the whole of the objection register.go raises against the
+	// dockerd and systemd domains — "a fix would edit a file the running
+	// daemon will not read again until it restarts" — stated as a field
+	// rather than as a reason to have no fix at all.
+	TakesEffectOn string
+
 	// VerifyCmd is an optional argv that validates an edit action's *result*
 	// before it is written. Exactly one element must be VerifyPathToken; the
 	// engine substitutes a temporary file holding the bytes Transform

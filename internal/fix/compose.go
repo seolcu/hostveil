@@ -21,15 +21,19 @@ func registerCompose(r *Registry) {
 	r.Register("cve.outdated-image", buildRepullImage)
 }
 
-// composeEdit builds an edit action whose Transform loads the compose file,
-// applies mutate in memory, and renders it back — pure, so preview and
-// apply share it.
-func composeEdit(path, label, warning string, mutate func(*compose.Doc) error) Action {
+// composeEdit builds an edit action for a compose file.
+//
+// Every one of them carries TakesEffectOn, because a compose file is not what
+// docker is running from — it is what docker was told, once. The container
+// keeps its old configuration until it is recreated, so an edit here is
+// correct and not yet in force, and the re-check has to say which.
+func composeEdit(path, label, warning, service string, mutate func(*compose.Doc) error) Action {
 	return Action{
-		Label:   label,
-		Warning: warning,
-		Kind:    ActionEdit,
-		Path:    path,
+		Label:         label,
+		Warning:       warning,
+		Kind:          ActionEdit,
+		Path:          path,
+		TakesEffectOn: "`docker compose up -d " + service + "`",
 		Transform: func(in []byte) ([]byte, error) {
 			doc, err := compose.Load(in)
 			if err != nil {
@@ -148,7 +152,7 @@ func buildAddNoNewPrivileges(f model.Finding) (Fix, error) {
 	return Fix{
 		Label: "Add no-new-privileges to " + svc,
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Add security_opt no-new-privileges:true", "",
+		Actions: []Action{composeEdit(path, "Add security_opt no-new-privileges:true", recreateNote(svc), svc,
 			func(d *compose.Doc) error { return d.AddSecurityOpt(svc, "no-new-privileges:true") })},
 	}, nil
 }
@@ -162,7 +166,7 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 	return Fix{
 		Label: "Set restart policy for " + svc,
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Set restart: unless-stopped", "",
+		Actions: []Action{composeEdit(path, "Set restart: unless-stopped", recreateNote(svc), svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "restart", "unless-stopped") })},
 	}, nil
 }
@@ -190,11 +194,11 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 		return Fix{}, err
 	}
 	svc := f.Service
-	warning := "Too low a limit gets the container OOM-killed under load. Start generous, watch `docker stats`, and tighten later. This is a file edit, so it is fully reversible."
+	warning := "Too low a limit gets the container OOM-killed under load. Start generous, watch `docker stats`, and tighten later. This is a file edit, so it is fully reversible. " + recreateNote(svc)
 	actions := make([]Action, 0, len(memLimits))
 	for _, m := range memLimits {
 		actions = append(actions, composeEdit(path,
-			fmt.Sprintf("Limit %s to %s — %s", svc, m.value, m.kind), warning,
+			fmt.Sprintf("Limit %s to %s — %s", svc, m.value, m.kind), warning, svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "mem_limit", m.value) }))
 	}
 	return Fix{
@@ -271,11 +275,28 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 		return Fix{}, err
 	}
 	svc := f.Service
-	warning := "After this, the service is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy."
+	// It says "once recreated" because until then it is not true. The old
+	// wording — "After this, the service is reachable only from this host" —
+	// was false at apply time and stayed false indefinitely, on the highest
+	// severity fix in the compose domain.
+	warning := "Once " + svc + " is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. " + recreateNote(svc)
 	return Fix{
 		Label: fmt.Sprintf("Bind %s port %s to localhost", svc, hostPort),
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Bind published port to 127.0.0.1", warning,
+		Actions: []Action{composeEdit(path, "Bind published port to 127.0.0.1", warning, svc,
 			func(d *compose.Doc) error { return d.BindPortLoopback(svc, hostPort) })},
 	}, nil
+}
+
+// recreateNote is the sentence every compose edit carries, because none of
+// them changes anything that is running.
+//
+// buildRepullImage has said this since it was written — "This changes nothing
+// that is running: the image is downloaded but the container keeps using the
+// old one until you recreate it" — and it was the only fix in the domain that
+// did, on the least severe finding in it. The port-rebinding fixes said the
+// opposite.
+func recreateNote(svc string) string {
+	return "This edits the file, not the running container: `docker compose up -d " + svc +
+		"` is what puts the change into force."
 }
