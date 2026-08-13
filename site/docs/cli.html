@@ -284,6 +284,54 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
 
+            <h2 id="update">update</h2>
+            <p>Update hostveil to the latest published release.</p>
+            <div class="code-block"><pre><code>hostveil update
+hostveil update --check</code></pre></div>
+            <p>hostveil works out how this binary was installed and updates it the same way, so nothing ends up disagreeing about what is on the host:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Installed by</th><th>What update does</th></tr></thead>
+                <tbody>
+                  <tr><td>the install script</td><td>Downloads the release archive and replaces the binary in place.</td></tr>
+                  <tr><td>a <code>.deb</code></td><td>Downloads the release's own <code>.deb</code> and installs it with <code>apt-get</code>, so dpkg keeps describing the filesystem correctly.</td></tr>
+                  <tr><td>an <code>.rpm</code></td><td>The same through <code>dnf</code>.</td></tr>
+                  <tr><td><code>go install</code></td><td>Rebuilds from source with the Go toolchain. Replacing a binary you built with a published one would discard your build without saying so.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Verification is not optional. The download is checked against the release's own checksums file and discarded if it does not match, and where the GitHub CLI is present the signed build provenance is verified too. A provenance check that <em>fails</em> stops the update; one that cannot run because <code>gh</code> is not installed is a note, because a checksum proves the bytes arrived intact and nothing about who produced them.</p>
+            <p>If hostveil cannot tell how the binary was installed, it does nothing and says so. Guessing there means overwriting a file some other tool believes it owns.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--check</code></td><td>Report whether a newer version exists and exit without installing. Exit status <code>10</code> means an update is available, <code>0</code> means this is the latest, so a cron job can branch on it without reading the sentence.</td></tr>
+                  <tr><td><code>--yes</code></td><td>Do not ask before installing.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="update-check">The daily check</h3>
+            <p>A scan, a dashboard and the TUI each ask GitHub once a day whether a newer release exists, and print one line about it if there is. The request runs in the background, so nothing waits for it, and a run that fails is silent: a host behind a proxy is not a host with a problem hostveil should be reporting.</p>
+            <p>The line never appears in <code>--json</code>, in SARIF, or in a report written to a file with <code>-o</code>. Those are read by machines and read later.</p>
+            <p>hostveil never installs anything on its own. Set <code>HOSTVEIL_NO_UPDATE_CHECK=1</code> and it stops contacting GitHub entirely, except when you type <code>hostveil update</code>.</p>
+
+            <h2 id="uninstall">uninstall</h2>
+            <p>Remove hostveil, through whichever tool installed it.</p>
+            <div class="code-block"><pre><code>hostveil uninstall</code></pre></div>
+            <p>A packaged install is removed with <code>apt-get remove</code> or <code>dnf remove</code>; anything else deletes the binary.</p>
+            <p><strong>Your saved scans and rollback checkpoints are left alone</strong>, and hostveil prints where they are before it asks. Those checkpoints are the backups of every file it edited on this host, so removing the program is not a reason to throw away the ability to undo its work. Delete them yourself when you are sure.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--yes</code></td><td>Do not ask before removing.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+
             <div class="docs-pager">
               <a class="button secondary" href="ai">← AI explanations</a>
               <a class="button primary" href="environment">Environment variables →</a>

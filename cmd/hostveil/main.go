@@ -101,6 +101,10 @@ func run(ctx context.Context, args []string) int {
 		return cmdRollback(ctx, args)
 	case "history":
 		return cmdHistory(ctx, args)
+	case "update":
+		return cmdUpdate(ctx, args)
+	case "uninstall":
+		return cmdUninstall(ctx, args)
 	case "version":
 		fmt.Println("hostveil", version)
 		return 0
@@ -156,6 +160,8 @@ Usage:
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history               List applied fixes and their rollback IDs
+  hostveil update [--check]      Update hostveil to the latest release
+  hostveil uninstall             Remove hostveil, keeping its saved state
   hostveil version               Print the version (also: --version, -V)
   hostveil help                  Show this help (also: --help, -h)
 

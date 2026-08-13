@@ -102,10 +102,19 @@ func TestNoCommandParsesFlagsWithoutElevating(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A command may parse on its own only if it also elevates on its own.
+	// `update --check` is the case that needs this: it makes one HTTP request
+	// and writes nothing, so requiring a password for it is the same defect
+	// as requiring one before a usage error. What must never happen is a
+	// command that parses with no elevation anywhere, which runs unprivileged
+	// and finds out half way through.
+	direct := map[string][]string{}
+	elevates := map[string]bool{}
 	var checked int
 	for _, e := range entries {
 		name := e.Name()
-		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "parseflags.go" {
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") ||
+			name == "parseflags.go" || name == "elevate.go" {
 			continue
 		}
 		file, perr := parser.ParseFile(fset, name, nil, 0)
@@ -119,16 +128,27 @@ func TestNoCommandParsesFlagsWithoutElevating(t *testing.T) {
 				return true
 			}
 			id, ok := call.Fun.(*ast.Ident)
-			if !ok || id.Name != "parseFlags" {
+			if !ok {
 				return true
 			}
-			t.Errorf("%s calls parseFlags directly at %s; use parseAndElevate, or the command parses its flags and never asks for root",
-				name, fset.Position(call.Pos()))
+			switch id.Name {
+			case "maybeElevate":
+				elevates[name] = true
+			case "parseFlags":
+				direct[name] = append(direct[name], fset.Position(call.Pos()).String())
+			}
 			return true
 		})
 	}
 	if checked == 0 {
 		t.Fatal("no command files were read; the walk is looking in the wrong place")
+	}
+	for name, at := range direct {
+		if !elevates[name] {
+			t.Errorf("%s calls parseFlags directly at %s and never calls maybeElevate; "+
+				"use parseAndElevate, or the command parses its flags and never asks for root",
+				name, strings.Join(at, ", "))
+		}
 	}
 }
 

@@ -40,6 +40,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil: the TUI requires an interactive terminal; use `hostveil scan` instead.")
 		return 0
 	}
+	startUpdateCheck(ctx)
 	dir := stateDir()
 	opts := tui.ThemeOpts{
 		Initial: t,
@@ -52,6 +53,13 @@ func cmdTUI(ctx context.Context, args []string) int {
 	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: layOpts, Glyphs: gl}); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
+	}
+	// After the alternate screen is gone, so it lands in the scrollback the
+	// operator keeps rather than in a frame that is about to be erased. A
+	// status bar inside the TUI would compete with the scan for the one line
+	// this program has to say something urgent on.
+	if note := updateNotice(); note != "" {
+		fmt.Println(note)
 	}
 	return 0
 }

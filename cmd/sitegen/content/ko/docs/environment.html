@@ -16,6 +16,7 @@
                   <tr><td><code>HOSTVEIL_OLLAMA_HOST</code></td><td><code>http://127.0.0.1:11434</code></td><td>아무 베이스 URL</td><td>선택 사항인 로컬 LLM이 듣고 있는 주소입니다. 접두사로만 쓰여 <code>/api/version</code>과 <code>/api/generate</code>가 뒤에 붙습니다. 끝의 슬래시는 잘라내며, 그 밖에는 값을 파싱하거나 검증하지 않습니다. 빈 값은 미설정으로 취급합니다. 조언 전용이므로 <code>explain --ai</code>와 AI 버튼에만 영향을 주고, 서버가 닿지 않아도 점수·발견 항목·수정은 어느 것도 영향받지 않습니다.</td></tr>
                   <tr><td><code>HOSTVEIL_OLLAMA_MODEL</code></td><td><code>llama3.2</code></td><td>Ollama가 받아들이는 아무 모델 태그</td><td>어느 모델에게 물을지 정합니다. 로컬에서 검증하지 않으므로, 받아 두지 않은 모델이면 Ollama가 그 이름을 담은 오류로 답합니다. 빈 값은 미설정으로 취급합니다. 위의 호스트와 마찬가지로 조언 전용입니다.</td></tr>
                   <tr><td><code>HOSTVEIL_ELEVATED</code></td><td>미설정 — hostveil은 이 값을 설정하지 않음</td><td>비어 있지 않은 아무 문자열</td><td>권한 상승이 이미 끝났다고 알려서 hostveil이 <code>sudo</code>를 부르지 않게 합니다. hostveil 대신 권한을 올려 주는 래퍼 스크립트를 위한 변수입니다. 예전에는 hostveil이 자식 프로세스에 이 값을 직접 넣고 다시 읽었는데, 그 방식은 애초에 동작할 수 없었습니다 — 아래를 보세요.</td></tr>
+                  <tr><td><code>HOSTVEIL_NO_UPDATE_CHECK</code></td><td>아무 값이나 설정하면 hostveil이 스스로 GitHub에 연결하지 않습니다. 설정하지 않으면 스캔이 &ldquo;새 릴리스가 있는가&rdquo;의 캐시된 답을 하루에 최대 한 번 백그라운드로 갱신하며, 스캔이 그것을 기다리는 일은 없습니다. 결과는 사람이 읽는 보고서 아래 한 줄로만 나오고 <code>--json</code>, SARIF, 파일로 쓴 보고서에는 실리지 않습니다. <code>hostveil update</code>는 직접 실행하면 그대로 동작합니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -53,6 +54,8 @@
                   <tr><td><code>GOOGLE_CLOUD_SHELL</code></td><td>Google Cloud Shell이 설정</td><td><code>1</code>, <code>true</code>, <code>t</code></td><td><code>COLORTERM</code>이 없어도 TUI를 24비트 색으로 올립니다. 같은 함수에서 <code>WT_SESSION</code> 네 줄 아래에 있고, 적어 두는 이유도 같습니다.</td></tr>
                   <tr><td><code>TERMINFO</code></td><td>미설정 — 시스템 데이터베이스</td><td>terminfo 데이터베이스가 있는 디렉터리</td><td>TUI가 <code>TERM</code>의 능력을 찾아보는 곳입니다. 트루컬러 질의의 답과 TUI가 키를 해석하는 표를 여기서 정하므로, 실제 터미널을 설명하지 않는 데이터베이스를 가리키면 색이 틀리거나 키가 먹지 않습니다. <code>hostveil scan</code>은 terminfo 항목을 전혀 읽지 않습니다.</td></tr>
                   <tr><td><code>TERMINFO_DIRS</code></td><td>미설정</td><td>콜론으로 구분된 디렉터리들</td><td>같은 조회이고, <code>TERMINFO</code> 다음으로 찾습니다.</td></tr>
+                  <tr><td><code>GOBIN</code></td><td><code>hostveil update</code>와 <code>hostveil uninstall</code>에서만 읽습니다. <code>go install</code>이 놓은 바이너리인지 알아내기 위해서이고, 그런 바이너리는 배포본으로 교체하지 않고 소스에서 다시 빌드합니다. hostveil이 설정하지는 않습니다.</td></tr>
+                  <tr><td><code>GOPATH</code></td><td><code>GOBIN</code>이 없을 때 같은 질문에 답합니다. <code>$GOPATH/bin</code>이고, 그것도 없으면 <code>~/go/bin</code>입니다.</td></tr>
                 </tbody>
               </table>
             </div>

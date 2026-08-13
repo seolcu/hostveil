@@ -4,18 +4,20 @@ import "testing"
 
 func TestNeedsRoot(t *testing.T) {
 	cases := map[string]bool{
-		"scan":     true,
-		"tui":      true,
-		"fix":      true,
-		"serve":    true,
-		"web":      true,
-		"explain":  true,
-		"rollback": true,
-		"history":  true,
-		"version":  false,
-		"help":     false,
-		"":         false,
-		"bogus":    false,
+		"scan":      true,
+		"tui":       true,
+		"fix":       true,
+		"serve":     true,
+		"web":       true,
+		"explain":   true,
+		"rollback":  true,
+		"history":   true,
+		"update":    true,
+		"uninstall": true,
+		"version":   false,
+		"help":      false,
+		"":          false,
+		"bogus":     false,
 	}
 	for cmd, want := range cases {
 		if got := needsRoot(cmd); got != want {

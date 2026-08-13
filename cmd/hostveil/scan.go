@@ -51,6 +51,10 @@ func cmdScan(ctx context.Context, args []string) int {
 	}
 
 	engine := newEngine()
+	// Fired before the scan and read after it, so it costs the scan nothing:
+	// whatever it learns is picked up by this run if it came back in time and
+	// by the next one otherwise.
+	startUpdateCheck(ctx)
 	report := scanWithProgress(ctx, engine, scanOpts)
 
 	var rendered string
@@ -78,6 +82,15 @@ func cmdScan(ctx context.Context, args []string) int {
 		rendered = clirender.Text(report, opts)
 		if delta := engine.LastDelta(); delta.HasChanges() {
 			rendered += clirender.DeltaSummary(delta, opts)
+		}
+		// Human output only, and never to a file. --json and --sarif are read
+		// by machines that would have to be taught to ignore it, and a report
+		// written to a file is read later, when the notice is either stale or
+		// somebody else's business.
+		if output == "" {
+			if note := updateNotice(); note != "" {
+				rendered += "\n" + note + "\n"
+			}
 		}
 	}
 
