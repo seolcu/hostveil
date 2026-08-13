@@ -2,6 +2,90 @@
 
 ## Unreleased
 
+## [3.16.0](https://github.com/seolcu/hostveil/compare/v3.15.0...v3.16.0) (2026-08-13)
+
+A release about hostveil telling the truth when something goes wrong. The score
+now says what it would become if you accepted every fix on offer, so a number
+you cannot move is distinguishable from one you can; and eleven places that
+reported a failure as a success, a blind spot as a clean result, or a missing
+answer as a negative one have been made to say what actually happened.
+
+One of those was introduced during this cycle and never reached a release: a
+refactor's regular expression rewrote prose inside string literals, so every
+CVE finding read `The t.image nginx:1.21 ships …`. The full gate passed, and so
+did the frame and pixel comparisons offered as evidence that nothing had
+changed — because neither one renders a sentence a checker wrote. There is now
+a test that reads the prose of all twelve domains.
+
+Behind those: `AGENTS.md`'s headline invariant on apply order was wrong and
+contradicted itself six lines later, which matters because the recovery layer's
+safety argument rests on it; five invariants that were true and enforced by
+nothing are now pinned, each verified by breaking the code and watching the pin
+fail; and `gosec` is enabled, having found that twenty existing suppressions and
+the linter disagreed about where the risk was.
+
+### Features
+
+* **model:** the score says what it could be
+  ([#700](https://github.com/seolcu/hostveil/issues/700)). A score you cannot
+  improve by doing everything right measures nothing, and until now the only
+  number hostveil showed was the one you have. `ScoreBreakdown.AfterFixes` is
+  the same scoring run over the same findings with every Auto and Review fix
+  treated as applied, so an operator can tell a 61 that becomes an 88 from a 61
+  that stays a 61 because the remaining findings are Manual or have no upstream
+  patch. It is computed by calling the existing scorer twice rather than by a
+  second model of what a fix is worth, which is what keeps the two numbers
+  commensurable.
+
+### Bug Fixes
+
+* **cve:** the prose in five strings
+  ([#704](https://github.com/seolcu/hostveil/issues/704)). Restored, and pinned:
+  `internal/docs/prose_test.go` walks every string literal under
+  `internal/check`, `internal/fix` and `internal/model` through the AST and
+  fails on anything shaped like a leaked Go selector. The regex itself is held
+  to the four broken sentences and seven safe ones, in both directions.
+
+* **fix:** four failure paths that told the operator the wrong thing
+  ([#705](https://github.com/seolcu/hostveil/issues/705)). `fix --all` printed
+  `✓` and exited 0 when every fix in the batch failed, so an unattended wrapper
+  read a run that changed nothing as a success. A rollback that failed halfway
+  restored some files and reported nothing about which — the pre-check exists
+  to prevent exactly that state, and the write loop returned at the first
+  error anyway; it now accumulates and `RollbackOutcome` names the files that
+  did not move. A checkpoint whose write failed stayed on disk claiming, in its
+  `AppliedSHA256`, to have written bytes that were never written — permanently
+  weakening the external-edit guard on that path. And `ApplyBatch` reported a
+  fix that failed to build as `Skipped`, indistinguishable from a finding with
+  no fix at all.
+
+* **check:** three places where "I could not look" was reported as an answer
+  ([#706](https://github.com/seolcu/hostveil/issues/706)). `updates` read any
+  `systemctl` failure — the binary absent, systemd not booted, permission
+  denied — as a positive assertion that automatic security updates are off,
+  while the reboot check six lines below made that distinction carefully. It
+  now asks for `LoadState` and requires `loaded`; the apt path distinguishes an
+  absent config, which is a real answer, from an unreadable one, which is not.
+  `firewall` discarded its second coverage gap on purpose, which is the failure
+  both container checkers were fixed for. And on a `docker run` host, seven
+  findings demoted to Manual at runtime arrived with the "why is there no fix
+  button" panel empty, because the field that answers that question is
+  consulted for unregistered IDs only.
+
+* **tui:** the batch bar promised work the batch key would not do
+  ([#701](https://github.com/seolcu/hostveil/issues/701)). It counted Auto
+  findings over the unfiltered report while `a` applied over the filtered list,
+  so narrowing to one severity offered `fix all 10 safe` and applied three. All
+  five places that counted this by hand now go through
+  `Report.AutoFixable(Filter)`, and the dashboard's deliberately different
+  answer — its chips narrow the list, not the batch — is now deliberate rather
+  than accidental. In the same change: the agent checker stopped running four
+  firewall binaries per scan whose answer it had not read since the severity
+  levels merged, the composer's regression net grew from 8 of 10 modes to all
+  of them (the missing two included the screen shown when a rollback is
+  declined), and both published screenshots stopped showing a domain as N/A
+  with no reason beside it.
+
 ## [3.15.0](https://github.com/seolcu/hostveil/compare/v3.14.4...v3.15.0) (2026-08-13)
 
 Three things that had been declined, stale, or impossible for a reason that
