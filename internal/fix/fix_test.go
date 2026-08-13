@@ -106,17 +106,14 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"compose.ds022":       "read_only: true breaks any image that writes to its own filesystem, and the audit cannot infer the tmpfs mounts that would make it safe",
 		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 
-		// Every agent.* config-key finding. OpenClaw's config is JSON5 and
-		// re-encoding it would delete the operator's comments; Hermes' bind
-		// and auth may come from config, .env, a unit file, or a docker flag,
-		// and the finding cannot tell which is in force.
-		"agent.gateway-exposed":      "rebinding a gateway to loopback can cut the operator off from the agent they administer remotely",
-		"agent.auth-disabled":        "editing JSON5 without a round-tripper deletes the operator's comments, and there is no second alternative to make it a Review fix",
-		"agent.exec-unrestricted":    "same JSON5 edit problem; two keys can express it and the finding cannot pick one",
-		"agent.elevated-enabled":     "same JSON5 edit problem",
-		"agent.sandbox-off":          "same JSON5 edit problem, and enabling a sandbox can break tools the operator relies on",
-		"agent.control-ui-insecure":  "same JSON5 edit problem",
-		"agent.ssrf-private-network": "same JSON5 edit problem",
+		// The agent.* config-key findings that internal/json5 did NOT
+		// unblock. The editor removed one shared obstacle — re-encoding a
+		// JSON5 config deleted the operator's comments — and what is left
+		// here is what that obstacle was hiding, which is different for each
+		// of the three.
+		"agent.gateway-exposed": "rebinding a gateway to loopback can cut the operator off from the agent they administer remotely",
+		"agent.auth-disabled":   "nothing in hostveil knows which auth mode to write, and the safe posture is an absent key, which the editor deliberately cannot produce",
+		"agent.sandbox-off":     "hostveil knows `off` is wrong and does not know what turns the sandbox on; writing a guessed enum is the invented mapping the CVE fixes are declined for",
 
 		// sysctl.* was on this list and is not any more. The reason it gave
 		// — that the drop-in does not exist and an edit action cannot create

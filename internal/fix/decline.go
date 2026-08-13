@@ -50,10 +50,11 @@ func DeclinedIDs() []string {
 // of them is a summary of the finding, because a summary would be the one
 // thing the reader already has.
 //
-// Five of the agent findings share a sentence, and that is not a copy-paste
-// slip: the register argues all seven jointly, breaking out only
-// gateway-exposed's separate recoverability failure. Writing five different
-// sentences would be inventing five different reasons.
+// The agent findings used to share one sentence, because the register argued
+// all seven jointly: none of them could be edited without an editor that
+// keeps JSON5 comments. internal/json5 is that editor, four of the seven are
+// registered now, and the three left each say something different — which is
+// what the shared sentence had been hiding.
 var declineReasons = map[string]string{
 	// compose
 	"compose.dr001": "Removing host networking leaves the service unreachable unless the ports it needs are published in its place, and the finding does not carry them.",
@@ -93,13 +94,9 @@ var declineReasons = map[string]string{
 	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",
 
 	// agent
-	"agent.auth-disabled":        "The value can come from the config, an env file, a unit, or a docker flag, so an edit may change nothing, and OpenClaw's JSON5 cannot keep its comments.",
-	"agent.control-ui-insecure":  "OpenClaw's config is JSON5, hostveil has no round-tripper, and re-encoding deletes every comment in it \u2014 with no second alternative to pair the edit with.",
-	"agent.elevated-enabled":     "OpenClaw's config is JSON5, hostveil has no round-tripper, and re-encoding deletes every comment in it \u2014 with no second alternative to pair the edit with.",
-	"agent.exec-unrestricted":    "OpenClaw's config is JSON5, hostveil has no round-tripper, and re-encoding deletes every comment in it \u2014 with no second alternative to pair the edit with.",
-	"agent.gateway-exposed":      "Rebinding can cut you off from an agent you administer remotely, and the bind may come from an env file, a unit, or a docker flag rather than the config.",
-	"agent.sandbox-off":          "OpenClaw's config is JSON5, hostveil has no round-tripper, and re-encoding deletes every comment in it \u2014 with no second alternative to pair the edit with.",
-	"agent.ssrf-private-network": "OpenClaw's config is JSON5, hostveil has no round-tripper, and re-encoding deletes every comment in it \u2014 with no second alternative to pair the edit with.",
+	"agent.auth-disabled":   "OpenClaw fails closed when this key is absent, so the safe posture is no key at all \u2014 and hostveil replaces values rather than removing them.",
+	"agent.gateway-exposed": "Rebinding can cut you off from an agent you administer remotely, and the bind may come from an env file, a unit, or a docker flag rather than the config.",
+	"agent.sandbox-off":     "The sandbox is off and nothing in hostveil names the mode that turns it on, so any value it wrote into your config would be a guess wearing a fix's clothes.",
 
 	// dockerd
 	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and the daemon only reads the file at a restart.",

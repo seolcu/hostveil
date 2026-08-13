@@ -39,10 +39,24 @@ type ModeRule struct {
 //
 // Several rules may share an ID: two different keys can describe the same
 // weakening, and the operator should see one finding, not two.
+//
+// Good names the safe values this key may be set to, most-preferred first,
+// and it is what makes the finding fixable. An empty Good is a deliberate
+// statement rather than an omission: it means hostveil knows the value is
+// dangerous and does not know which value is right, so the finding stays
+// Manual. agents.defaults.sandbox.mode is the case — "off" is plainly wrong
+// and nothing here knows what turns the sandbox on, and a fix that writes a
+// guessed enum is the invented mapping the CVE fixes are declined for.
+//
+// A second entry in Good is what makes a finding Review instead of Auto: two
+// safe values that do not dominate each other are a choice for the operator,
+// not a sequence. tools.exec.security is deny or ask, and which one is right
+// depends on whether the agent is expected to run commands at all.
 type DangerRule struct {
 	ID       string
 	Key      string
 	Bad      []string
+	Good     []any
 	Sev      model.Severity
 	Title    string
 	Desc     string
@@ -155,6 +169,7 @@ func runtimes() []Runtime {
 			Danger: []DangerRule{
 				{
 					ID: "agent.exec-unrestricted", Key: "tools.exec.security", Bad: []string{"full"},
+					Good:     []any{"deny", "ask"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
 					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
@@ -162,6 +177,7 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.exec-unrestricted", Key: "tools.exec.ask", Bad: []string{"off"},
+					Good:     []any{"always"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
 					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
@@ -169,6 +185,7 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.elevated-enabled", Key: "tools.elevated.enabled", Bad: []string{"true"},
+					Good:     []any{false},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent is permitted to run elevated commands",
 					Desc:     "Elevated mode is the documented escape hatch out of the agent's sandbox and onto the host. Combined with any path by which an attacker can influence the agent's input, it turns prompt injection into host compromise.",
@@ -183,6 +200,7 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.control-ui-insecure", Key: "gateway.controlUi.allowInsecureAuth", Bad: []string{"true"},
+					Good:     []any{false},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent control UI has its auth safeguards disabled",
 					Desc:     "The control UI drives the agent. With its authentication safeguards switched off, anyone who can reach the UI — including anything running locally on this host — can operate the agent.",
@@ -190,6 +208,7 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.control-ui-insecure", Key: "gateway.controlUi.dangerouslyDisableDeviceAuth", Bad: []string{"true"},
+					Good:     []any{false},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent control UI has its auth safeguards disabled",
 					Desc:     "Device-identity checks are what stop an unknown client from pairing with the gateway. Disabled, any client that reaches the UI can act as an approved device.",
@@ -197,6 +216,7 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.ssrf-private-network", Key: "browser.ssrfPolicy.dangerouslyAllowPrivateNetwork", Bad: []string{"true"},
+					Good:     []any{false},
 					Sev:      model.SeverityMedium,
 					Title:    "Agent browser may reach private network addresses",
 					Desc:     "The agent's browser is permitted to fetch private and link-local addresses, so a page it visits can steer it into your LAN or a cloud metadata endpoint and read back the response — a server-side request forgery with an LLM driving it.",

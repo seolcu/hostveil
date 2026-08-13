@@ -49,6 +49,8 @@ jobs:
             target: FuzzParseTrivy
           - package: ./internal/diff
             target: FuzzUnified
+          - package: ./internal/json5
+            target: FuzzJSON5Edit
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7

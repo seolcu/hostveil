@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check/agent"
+	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/json5"
 )
 
 // seeders are the scripts that build a host hostveil is then measured or
@@ -172,4 +174,76 @@ func TestTheMeasurementsPageDescribesTheHostTheSeedBuilds(t *testing.T) {
 				"(looked for %q)", c.claim, c.evidence)
 		}
 	}
+}
+
+// TestSeededAgentConfigExercisesTheRegisteredFixes holds the fixture to the
+// registry rather than to the checker.
+//
+// The paths test above asks whether the seeded host produces agent findings
+// at all. This asks the next question, and it is the one the measurements
+// page rests on: whether the findings it produces are the ones hostveil can
+// now *fix*. The agent axis moved from "detects, cannot fix" to "fixes four
+// of seven" in this release, and a fixture that seeds only the three still
+// declined would publish an axis that does not move while nothing failed —
+// the same silence the path drift produced, one layer up.
+//
+// It reads demo/seed/openclaw.json, which measure/seed.sh and the Vagrant
+// demo both install, and requires every registered agent config-key fix to
+// have a key in it to act on.
+func TestSeededAgentConfigExercisesTheRegisteredFixes(t *testing.T) {
+	root := repoRoot(t)
+	raw, err := os.ReadFile(filepath.Join(root, "demo", "seed", "openclaw.json"))
+	if err != nil {
+		t.Fatalf("read the seeded OpenClaw config: %v", err)
+	}
+	cfg, err := json5.Decode(raw)
+	if err != nil {
+		t.Fatalf("the seeded config does not parse: %v", err)
+	}
+
+	registry := fix.Default()
+	seen := map[string]bool{}
+	for _, rt := range agent.DefaultRuntimes() {
+		if rt.Format != agent.FormatJSON5 {
+			continue
+		}
+		for _, rule := range rt.Danger {
+			if !registry.Has(rule.ID) || len(rule.Good) == 0 {
+				continue
+			}
+			if _, ok := lookupDotted(cfg, rule.Key); ok {
+				seen[rule.ID] = true
+			}
+		}
+	}
+
+	for _, rt := range agent.DefaultRuntimes() {
+		if rt.Format != agent.FormatJSON5 {
+			continue
+		}
+		for _, rule := range rt.Danger {
+			if !registry.Has(rule.ID) || seen[rule.ID] {
+				continue
+			}
+			t.Errorf("demo/seed/openclaw.json sets no key for %s, which hostveil can fix — "+
+				"the measured host would never exercise that fix", rule.ID)
+		}
+	}
+}
+
+// lookupDotted walks a dotted key path, the way internal/check/agent does.
+func lookupDotted(m map[string]any, dotted string) (any, bool) {
+	var cur any = m
+	for _, part := range strings.Split(dotted, ".") {
+		node, ok := cur.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		v, ok := node[part]
+		if !ok {
+			return nil, false
+		}
+		cur = v
+	}
+	return cur, true
 }

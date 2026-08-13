@@ -9,18 +9,18 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/seolcu/hostveil/internal/json5"
+	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 	"github.com/seolcu/hostveil/internal/secretkey"
 )
 
 // decodeConfig parses a runtime config into a generic tree.
 //
-// JSON5 is tried as strict JSON first and only re-parsed after stripping
-// comments and trailing commas if that fails. The strip pass is not a nicety:
-// OpenClaw documents its config as JSON5 and users comment it heavily, so
-// without it a commented config would be unparseable, every OpenClaw host
-// would report Degraded, and a flag that means "partial coverage" everywhere
-// means nothing anywhere.
+// The JSON5 half lives in internal/json5 because the fix that edits these
+// files needs the same parser. Two copies of a tolerant parser is two
+// answers to "is this key set", and the checker and the fix disagreeing
+// about that is how a fix reports success on a file it never understood.
 func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 	if format == FormatYAML {
 		var m map[string]any
@@ -29,106 +29,76 @@ func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 		}
 		return m, nil
 	}
-
-	var m map[string]any
-	if err := json.Unmarshal(b, &m); err == nil {
-		return m, nil
-	}
-	if err := json.Unmarshal(stripJSON5(b), &m); err != nil {
-		return nil, fmt.Errorf("parsing JSON5 config: %w", err)
-	}
-	return m, nil
+	return json5.Decode(b)
 }
 
-// stripJSON5 removes line comments, block comments, and trailing commas,
-// leaving something encoding/json will accept.
+// remediation decides how much human judgment a danger finding needs, and
+// records the values that would settle it.
 //
-// It tracks string literals so a "//" inside a value — a URL, most often — is
-// never mistaken for a comment. Comments are replaced by nothing rather than
-// by spaces except for the newline that ends a line comment, which is kept so
-// that a trailing comma before it is still recognised.
-func stripJSON5(b []byte) []byte {
-	out := make([]byte, 0, len(b))
-	inStr, esc := false, false
-	for i := 0; i < len(b); i++ {
-		c := b[i]
-		if inStr {
-			out = append(out, c)
-			switch {
-			case esc:
-				esc = false
-			case c == '\\':
-				esc = true
-			case c == '"':
-				inStr = false
-			}
-			continue
-		}
-		if c == '"' {
-			inStr = true
-			out = append(out, c)
-			continue
-		}
-		if c == '/' && i+1 < len(b) {
-			if b[i+1] == '/' {
-				for i < len(b) && b[i] != '\n' {
-					i++
-				}
-				if i < len(b) {
-					out = append(out, '\n')
-				}
-				continue
-			}
-			if b[i+1] == '*' {
-				i += 2
-				for i+1 < len(b) && (b[i] != '*' || b[i+1] != '/') {
-					i++
-				}
-				i++ // sit on the closing '/', the loop's i++ steps past it
-				continue
-			}
-		}
-		out = append(out, c)
+// The checker answers "how much judgment", never "does a fix exist" — that is
+// the registry's half, and Engine.classify resolves the two by caution. What
+// this decides is read straight off the rules that tripped:
+//
+//   - a key with no safe value in the table keeps the finding Manual. Nothing
+//     here knows what turns OpenClaw's sandbox on, and writing a guessed enum
+//     into somebody's config is worse than leaving the finding to them;
+//   - a key with two safe values makes it Review, because deny and ask are a
+//     choice about how the operator wants to work, not a sequence;
+//   - otherwise Auto: one mechanical value, in a file edit, that cannot cut
+//     anyone off from the host.
+//
+// The values travel as evidence rather than being re-derived by the fix,
+// because internal/fix cannot import this package and a second copy of this
+// table is a second answer to what "safe" means. Each is a JSON literal, so
+// `false` and `"deny"` stay distinguishable through the string.
+//
+// A runtime whose config is not JSON5 gets no values at all. Hermes has no
+// danger rules today; if it gains some, its bind and auth can come from the
+// config, an env file, a systemd unit or a docker flag, and editing the file
+// could silently change nothing. That decline is recorded in fix.Default.
+func remediation(rt Runtime, rules []DangerRule) (model.RemediationKind, string, string) {
+	if rt.Format != FormatJSON5 {
+		return model.RemediationManual, "", ""
 	}
-	return stripTrailingCommas(out)
+	choice := false
+	for _, r := range rules {
+		if len(r.Good) == 0 {
+			return model.RemediationManual, "", ""
+		}
+		if len(r.Good) > 1 {
+			choice = true
+		}
+	}
+
+	primary := make([]string, 0, len(rules))
+	alt := make([]string, 0, len(rules))
+	for _, r := range rules {
+		primary = append(primary, assignment(r.Key, r.Good[0]))
+		if len(r.Good) > 1 {
+			alt = append(alt, assignment(r.Key, r.Good[1]))
+		} else {
+			alt = append(alt, assignment(r.Key, r.Good[0]))
+		}
+	}
+	if !choice {
+		return model.RemediationAuto, strings.Join(primary, model.EvidenceSeparator), ""
+	}
+	return model.RemediationReview,
+		strings.Join(primary, model.EvidenceSeparator),
+		strings.Join(alt, model.EvidenceSeparator)
 }
 
-// stripTrailingCommas removes any comma whose next non-space character closes
-// an object or array. It is string-aware for the same reason stripJSON5 is.
-func stripTrailingCommas(b []byte) []byte {
-	out := make([]byte, 0, len(b))
-	inStr, esc := false, false
-	for i := 0; i < len(b); i++ {
-		c := b[i]
-		if inStr {
-			out = append(out, c)
-			switch {
-			case esc:
-				esc = false
-			case c == '\\':
-				esc = true
-			case c == '"':
-				inStr = false
-			}
-			continue
-		}
-		if c == '"' {
-			inStr = true
-			out = append(out, c)
-			continue
-		}
-		if c == ',' {
-			j := i + 1
-			for j < len(b) && (b[j] == ' ' || b[j] == '\t' || b[j] == '\n' || b[j] == '\r') {
-				j++
-			}
-			if j < len(b) && (b[j] == '}' || b[j] == ']') {
-				continue // drop the comma, keep the whitespace
-			}
-		}
-		out = append(out, c)
+// assignment renders one key=value pair for the "set" evidence, with the
+// value as a JSON literal so the fix knows whether to write false or "false".
+func assignment(key string, v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		// Every value in the table is a string or a bool, so this is
+		// unreachable; rendering it visibly is better than a pair the fix
+		// would silently misread.
+		return key + "=?"
 	}
-	return out
+	return key + "=" + string(b)
 }
 
 // lookup walks a dotted key path ("gateway.auth.mode") through a decoded

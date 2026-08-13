@@ -9,7 +9,14 @@ import (
 	"github.com/seolcu/hostveil/internal/diff"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/platform"
 )
+
+// maxEditBytes bounds a no-follow read of an edit target. The files that
+// need one are configs in a user's home, where a megabyte is generous and
+// an unbounded read is how a FIFO or /dev/zero at the end of the path turns
+// a fix into a process that never returns.
+const maxEditBytes = 1 << 20
 
 // PreviewFix returns, per available action, exactly what the fix would
 // change — a unified diff for edits, the command list for execs — WITHOUT
@@ -87,7 +94,14 @@ func previewEdit(a fix.Action) (string, error) {
 // permission denial or an EISDIR must not be mistaken for "not there yet"
 // and answered by creating something.
 func readEditTarget(a fix.Action) (data []byte, creating bool, err error) {
-	data, err = os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+	if a.NoFollow {
+		// A target inside somebody's home. See fix.Action.NoFollow: the
+		// account owns every component of the path, and root must not be
+		// walked into reading a file it was not pointed at.
+		data, err = platform.ReadFileNoFollow(a.Path, maxEditBytes)
+	} else {
+		data, err = os.ReadFile(a.Path) //nolint:gosec // path from a discovered finding
+	}
 	switch {
 	case err == nil:
 		return data, false, nil

@@ -101,15 +101,25 @@ var kindInDocs = func() map[string]model.RemediationKind {
 // registry's shape — and every place it is more cautious is the checker
 // asking for a human, which belongs in writing.
 //
-// Every entry is an SSH directive that can end the operator's own session.
-// The edit is reversible on disk and rolling it back needs the access it
-// just removed, which is criterion 2 of the Auto standard in
+// The SSH entries are all directives that can end the operator's own
+// session. The edit is reversible on disk and rolling it back needs the
+// access it just removed, which is criterion 2 of the Auto standard in
 // internal/fix/register.go, not criterion 1.
+//
+// The agent entry is there for a different reason, and it is the one case
+// where the registry's shape is not a constant. That fix reads the safe
+// values out of the finding, so how many independent alternatives it has
+// depends on which config keys tripped: tools.exec.security has two (deny,
+// ask) and tools.exec.ask has one. fixtest builds a finding carrying neither,
+// so the registry shapes the fix Auto here while a host where the security
+// key tripped hands the operator a choice. Review is what that operator is
+// shown, so Review is what the column says.
 var checkerAsksForMore = map[string]string{
-	"ssh.passwordauth":   "disabling passwords locks out anyone whose key is not already working",
-	"ssh.gatewayports":   "a published tunnel may be the only route to a service, including the operator's",
-	"ssh.hostbasedauth":  "the trusting host may be how the operator gets in",
-	"ssh.kbdinteractive": "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
+	"ssh.passwordauth":        "disabling passwords locks out anyone whose key is not already working",
+	"ssh.gatewayports":        "a published tunnel may be the only route to a service, including the operator's",
+	"ssh.hostbasedauth":       "the trusting host may be how the operator gets in",
+	"ssh.kbdinteractive":      "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
+	"agent.exec-unrestricted": "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
 }
 
 // TestDocumentedFixKindsMatchTheRegistry is the guard for the failure that
