@@ -109,6 +109,31 @@ const VerifyPathToken = "{}"
 // remediation kind, and one or more actions. For Review fixes the actions
 // are independent ALTERNATIVES (the user picks one), never sequential
 // steps.
+//
+// # Actions[0] is the recommendation
+//
+// The order is not incidental. Every interface lists the alternatives in it,
+// the TUI and the dashboard both preselect the first, and — the part that
+// makes it load-bearing — `fix --all --review` applies index 0 without asking.
+// So Actions[0] is what hostveil recommends, and it is what an operator who
+// does not read them gets.
+//
+// That was written down in three prose comments and enforced by nothing, and
+// one builder disagreed with it: ds010's memory limits led with 512m, the
+// smallest, while the warning printed beside every one of them said "start
+// generous… and tighten later". A reviewed batch therefore capped every
+// unlimited container on the host at 512m — a media transcoder or a JVM is
+// OOM-killed by that, which is the outcome the warning exists to prevent.
+//
+// Recommended means recommended *for unattended application*, which is not
+// always what a person would pick first. The sysctl fixes are the case:
+// register.go argues at length that persisting to a drop-in and applying to
+// the running kernel are a genuine choice with neither dominating. For a
+// batch there is no choice — the file-backed one leaves a checkpoint and
+// survives a reboot — so that is index 0, and the exec alternative sits
+// behind it for the human who wants the other thing.
+//
+// TestTheFirstAlternativeIsTheRecommendedOne pins every Review fix's index 0.
 type Fix struct {
 	FindingID string
 	Label     string
