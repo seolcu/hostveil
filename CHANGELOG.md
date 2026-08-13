@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Documentation
+
+* The rules behind every judgement are published
+  ([#724](https://github.com/seolcu/hostveil/issues/724)). Most of them already
+  were, so this fills what was actually missing, in the pages it belongs to.
+  The score bands and their wording, which appeared nowhere even though every
+  interface says "This host is wide open"; the `pending` verification result,
+  which the fixing page was the only one of five to omit; that index 0 is the
+  recommended alternative and what "recommended" means for an unattended batch;
+  the shape rule that makes the four-step classification procedure something a
+  reader can apply themselves; the SARIF level and `security-severity` mapping,
+  including why a hostveil High lands in GitHub's *critical* band on purpose;
+  checkpoint retention; and what counts as a port exposed on all interfaces.
+  The README is aligned with the site, which called the same kind two different
+  things. Each transcribed constant is pinned to its source, and the SARIF one
+  reads the values out of a real export rather than a second list.
+
+  Em dash density was measured against published guidance on machine-written
+  prose and was the one marker the docs actually carried: 12.4 per thousand
+  words in English, 13.5 in Korean, against a ceiling of about one. The two
+  worst pages are cleared in both languages and nothing written here uses any.
+
 ## [3.17.0](https://github.com/seolcu/hostveil/compare/v3.16.0...v3.17.0) (2026-08-14)
 
 The release where hostveil stopped saying things about the host that were not
