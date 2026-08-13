@@ -252,9 +252,19 @@ const maxCheckpoints = 200
 // be applied inside it.
 const minRetention = time.Hour
 
-// idTimeLayout is the timestamp prefix NewID and NewScanID mint. Pruning
-// reads an ID's age straight out of the directory name through it, which is
-// what keeps that path free of meta.json reads.
+// idTimeLayout is the timestamp prefix NewID and NewScanID mint, and both of
+// them format through it rather than restating it — which they used to do,
+// leaving three copies of one layout across two files while this constant's
+// own comment claimed to be what they wrote.
+//
+// The stakes are not equal on the two sides. A scan id that stops parsing
+// empties the trend, quietly. A *checkpoint* id that stops parsing makes every
+// checkpoint undatable, and pruneCheckpoints treats undatable as prunable — so
+// minRetention, the guarantee that a fix stays rollbackable however many
+// arrive at once, would evaporate without a single error.
+//
+// Pruning reads an ID's age straight out of the directory name through this,
+// which is what keeps that path free of meta.json reads.
 const idTimeLayout = "20060102-150405.000"
 
 // idTime recovers when an ID was minted from its timestamp prefix.
@@ -754,7 +764,7 @@ func (e *PartialRestoreError) Unwrap() error { return e.Err }
 // restores an intermediate state. Checkpoints are the only backup there
 // is, so an ID collision is silent data loss.
 func NewID(findingID string) string {
-	return time.Now().UTC().Format("20060102-150405.000") + "-" + blobName(findingID)[:8] + "-" + randomSuffix()
+	return time.Now().UTC().Format(idTimeLayout) + "-" + blobName(findingID)[:8] + "-" + randomSuffix()
 }
 
 // randomSuffix returns 4 bytes of hex. On the (practically impossible)
@@ -781,7 +791,7 @@ func randomSuffix() string {
 // which is the correct answer for two events at the same instant and is in
 // any case better than one of them not existing.
 func NewScanID() string {
-	return time.Now().UTC().Format("20060102-150405.000") + "-" + randomSuffix()
+	return time.Now().UTC().Format(idTimeLayout) + "-" + randomSuffix()
 }
 
 // blobName returns a filesystem-safe name derived from a path.
