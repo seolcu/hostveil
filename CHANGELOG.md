@@ -2,6 +2,102 @@
 
 ## Unreleased
 
+## [3.17.0](https://github.com/seolcu/hostveil/compare/v3.16.0...v3.17.0) (2026-08-14)
+
+The release where hostveil stopped saying things about the host that were not
+true. Three fixes were reporting success over a machine nothing had changed
+about, a fourth was applying the opposite of its own advice, and the test suite
+could not have told you about any of it — because nothing in it had ever fed a
+real fix's output back to the real checker.
+
+That instrument exists now, and it is what found the rest.
+
+### Features
+
+* **tui:** the scan screen draws what the model already knew
+  ([#712](https://github.com/seolcu/hostveil/issues/712)). One dim line in an
+  empty frame became a row per domain, a bar, and the elapsed time. The
+  progress was already on the model; the denominator had to come from the
+  engine, because a checker announces itself when it *starts* — so a reader of
+  the event stream can count what has happened and never what is left.
+  Deliberately no estimate of the time remaining: eleven of twelve domains
+  finish inside a second and the twelfth shells out to Trivy, so a figure would
+  be confidently wrong for most of the wait.
+
+### Bug Fixes
+
+* **compose:** edit the file that decides, or decline and say which ones do not
+  ([#718](https://github.com/seolcu/hostveil/issues/718)). The checker asks
+  docker for the merged project; the fix edited the *first* file of it. On a
+  base+override layout — which `discover.go` itself calls the ordinary case —
+  that rewrote one file while the other went on publishing the port on every
+  interface, and reported success with a checkpoint. Scalars now resolve
+  last-wins; ports are *appended* by compose, so where more than one file
+  publishes wide hostveil declines and names them. It also recovers a
+  capability that was being lost silently: the common layout failed to build
+  and demoted a fixable finding to Manual with no explanation.
+
+* **core:** a re-check of the file a fix wrote is not a re-check of the host
+  ([#720](https://github.com/seolcu/hostveil/issues/720)). `verifyFix` re-ran
+  the compose checker over the file the compose fix had just edited, found
+  nothing, and returned *"Re-checked: the finding is gone"* — while the
+  container still published the port. The warning agreed with it. New
+  `Action.TakesEffectOn` and `model.VerifyPending` say the file is correct and
+  the change reaches the host when the service is recreated.
+
+* **fix:** the first alternative is the recommendation, and one recommended the
+  opposite ([#719](https://github.com/seolcu/hostveil/issues/719)).
+  `fix --all --review` applies index 0 without asking, and `compose.ds010` led
+  with the *smallest* memory limit while the warning beside every alternative
+  said to start generous — so it capped every unlimited container at 512m.
+  Each Review fix's recommendation is now named in words, including what
+  "recommended" means for an unattended batch as against a person.
+
+* **check:** two layered configurations hostveil read one file of
+  ([#721](https://github.com/seolcu/hostveil/issues/721)). apt reads every
+  fragment in `apt.conf.d` last-wins, and hostveil read `20auto-upgrades`
+  alone — as did its fix, so checker and fix shared one wrong oracle and
+  confirmed each other. `apt-config dump` decides now. And the firewall fix
+  allowed only the *first* sshd listener, severing the second on any host
+  mid-port-migration, which is the standard way to change the SSH port without
+  locking yourself out.
+
+* **cmd:** ask for the password once the arguments make sense
+  ([#716](https://github.com/seolcu/hostveil/issues/716)). Elevation ran before
+  dispatch, so `hostveil --no-such-flag` took a password, re-executed as root,
+  and *then* exited 2 on a usage error. And when sudo is absent it now says so
+  instead of running unprivileged in silence.
+
+* **model:** a degraded axis scoring 100 is four columns, and every renderer
+  budgeted three ([#711](https://github.com/seolcu/hostveil/issues/711)). The
+  frame clipped the overflow, and what it cut was the `~` — so a partially
+  scanned axis read as a clean 100.
+
+* **tui:** the rail reads as pairs, the inline block stops repeating the row
+  above it ([#714](https://github.com/seolcu/hostveil/issues/714)), and two
+  screens that had the room and not the words
+  ([#713](https://github.com/seolcu/hostveil/issues/713)) — the fix preview did
+  not name the finding, the kind, or whether it could be undone, while the
+  rollback confirmation said all three.
+
+* **web:** tell Firefox what colour the scrollbar is
+  ([#715](https://github.com/seolcu/hostveil/issues/715)). `color-scheme: dark`
+  was already set and is not enough; measured against a control page, every
+  dashboard screenshot this project has taken had a white stripe down it.
+
+### Under it
+
+`internal/fix`'s round-trip test ([#717](https://github.com/seolcu/hostveil/issues/717))
+takes a host the real checker flags, applies the real registered fix, and hands
+the result back to the same checker. Nothing had ever done that. Its limit is
+written into the file too: it uses one oracle at both ends, so it cannot see a
+checker reading the wrong artifact — which is the apt bug, found separately.
+
+And the two domains declined *whole* — `dockerd.*` and `systemd.*`, eleven
+findings — were re-examined and stay declined, with what changed and what did
+not now recorded ([#722](https://github.com/seolcu/hostveil/issues/722)).
+Fix coverage is unchanged at 37 of 74 findings. That is the honest number.
+
 ## [3.16.0](https://github.com/seolcu/hostveil/compare/v3.15.0...v3.16.0) (2026-08-13)
 
 A release about hostveil telling the truth when something goes wrong. The score
