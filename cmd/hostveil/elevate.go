@@ -106,6 +106,11 @@ var carriedThroughSudo = []string{
 	"HOSTVEIL_LAYOUT",
 	"HOSTVEIL_OLLAMA_HOST",
 	"HOSTVEIL_OLLAMA_MODEL",
+	// Carried, not excused. scan elevates, so the process that would make the
+	// request is the child: a variable that did not survive the re-exec would
+	// look like it had turned the check off while the elevated run went on
+	// making it, which is the exact failure this list exists to prevent.
+	"HOSTVEIL_NO_UPDATE_CHECK",
 	"NO_COLOR",
 }
 

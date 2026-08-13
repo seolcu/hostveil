@@ -202,3 +202,28 @@ func cmdUninstall(ctx context.Context, args []string) int {
 	fmt.Println("✓ hostveil removed.")
 	return 0
 }
+
+// noUpdateCheckEnv turns the background check off entirely.
+const noUpdateCheckEnv = "HOSTVEIL_NO_UPDATE_CHECK"
+
+// startUpdateCheck refreshes the cached "is there a newer release" answer, at
+// most once a day, without the scan waiting for it.
+//
+// Opt-out, because a security tool that reaches the network on its own has to
+// be stoppable: HOSTVEIL_NO_UPDATE_CHECK=1 and hostveil never contacts GitHub
+// unless you type `hostveil update`.
+func startUpdateCheck(ctx context.Context) {
+	if os.Getenv(noUpdateCheckEnv) != "" {
+		return
+	}
+	selfupdate.CheckInBackground(ctx, resolveClient(), stateDir(), time.Now())
+}
+
+// updateNotice is the one line to append to human output, or "" when there is
+// nothing to say.
+func updateNotice() string {
+	if os.Getenv(noUpdateCheckEnv) != "" {
+		return ""
+	}
+	return selfupdate.LoadCache(stateDir()).Notice(version)
+}

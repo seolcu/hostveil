@@ -195,6 +195,11 @@ hostveil update --check</code></pre></div>
               </table>
             </div>
 
+            <h3 id="update-check">The daily check</h3>
+            <p>A scan, a dashboard and the TUI each ask GitHub once a day whether a newer release exists, and print one line about it if there is. The request runs in the background, so nothing waits for it, and a run that fails is silent: a host behind a proxy is not a host with a problem hostveil should be reporting.</p>
+            <p>The line never appears in <code>--json</code>, in SARIF, or in a report written to a file with <code>-o</code>. Those are read by machines and read later.</p>
+            <p>hostveil never installs anything on its own. Set <code>HOSTVEIL_NO_UPDATE_CHECK=1</code> and it stops contacting GitHub entirely, except when you type <code>hostveil update</code>.</p>
+
             <h2 id="uninstall">uninstall</h2>
             <p>Remove hostveil, through whichever tool installed it.</p>
             <div class="code-block"><pre><code>hostveil uninstall</code></pre></div>

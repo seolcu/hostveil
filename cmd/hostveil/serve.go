@@ -71,6 +71,12 @@ func cmdServe(ctx context.Context, args []string) int {
 	// before the listener opens, and on a host with many images that is
 	// minutes. Announcing the URL as live meant the operator opened it,
 	// got connection-refused, and had nothing to tell them to wait.
+	startUpdateCheck(ctx)
+	// Before the URL, so the URL stays the last thing on screen and the line
+	// somebody is about to copy is not the one above the one they wanted.
+	if note := updateNotice(); note != "" {
+		fmt.Println(note + "\n")
+	}
 	fmt.Printf("hostveil is scanning the host; the dashboard opens on %s when it finishes.\n", addr)
 	fmt.Printf("Then open this exact URL — it carries the access token for this run:\n  %s\n", srv.URL())
 	if err := srv.ListenAndServe(ctx); err != nil {
