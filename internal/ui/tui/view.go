@@ -252,11 +252,17 @@ func (m *appModel) deltaLine() string {
 }
 
 // axisCell is the rendered width of one axis: a 10-column id, an 8-column
-// meter, and a 4-column value. axisGap separates two of them. The id is
-// 10 wide, not 9, so the longest ids ("container", "fileperms") keep a
-// space before the meter instead of butting straight against it.
+// meter, and the value with a space in front of it. axisGap separates two of
+// them. The id is 10 wide, not 9, so the longest ids ("container",
+// "fileperms") keep a space before the meter instead of butting straight
+// against it.
+//
+// The value's width comes from model rather than being written down here.
+// It was a hand-picked 4 — one space and three columns, which is what a score
+// looks like — and the case that needs five is a degraded axis scoring 100.
+// See model.ValueTextWidth for what the missing column cost.
 const (
-	axisCell = 10 + 8 + 4
+	axisCell = 10 + 8 + 1 + model.ValueTextWidth
 	axisGap  = 3
 )
 
@@ -277,12 +283,12 @@ func (m *appModel) axesLine() string {
 		// is decided here is only how it is drawn: an empty track for an axis
 		// that did not run, a meter for one that did, and a fixed width so
 		// the columns line up whichever it is.
+		value := fmt.Sprintf(" %-*s", model.ValueTextWidth, ax.ValueText())
 		if !ax.Applicable {
-			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(" "+ax.ValueText()))
+			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(value))
 			continue
 		}
-		cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+
-			s.bone.Render(fmt.Sprintf(" %-3s", ax.ValueText())))
+		cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+s.bone.Render(value))
 	}
 	if len(cells) == 0 {
 		return ""

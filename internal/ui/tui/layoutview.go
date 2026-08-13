@@ -313,7 +313,13 @@ func (m *appModel) railRows(w, budget int) []string {
 		}
 
 		// name + meter + value, right-aligned value so the column reads down.
-		const valW = 4
+		//
+		// The field is one wider than the widest value, which is what keeps a
+		// space between the meter and the number. At exactly the value's width
+		// a degraded axis scoring 100 filled the field and the digits butted
+		// straight against the bar — visible on any host with a partial domain
+		// that found nothing, and on no other host at all.
+		valW := 1 + model.ValueTextWidth
 		meterW := 6
 		nameW := w - 2 - meterW - 1 - valW
 		if nameW < 4 {

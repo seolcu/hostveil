@@ -128,6 +128,20 @@ func (a ScoreAxis) ValueText() string {
 	}
 }
 
+// ValueTextWidth is the widest ValueText can be: "100~", a degraded axis on a
+// domain that ran, covered only part of its ground, and found nothing in the
+// part it covered.
+//
+// It is here because a terminal budgets columns, and every renderer that lays
+// the axis values out in a column had picked the number by hand — all of them
+// picking three, because three is what a score looks like and the widest case
+// needs a host that is both partially scanned and clean on the part that was
+// scanned. The consequence was not a cosmetic one: the strip composed a row
+// one column past the terminal, the frame clipped it, and what the clip cut
+// off was the "~" — so a degraded axis read as a clean 100, which is the exact
+// lie the marker exists to prevent.
+const ValueTextWidth = 4
+
 // Headroom is what this axis becomes once every fix hostveil offers on it is
 // applied, and whether that is worth showing at all.
 //
