@@ -73,6 +73,29 @@ func newStyles(t theme.Theme) *styles {
 	return s
 }
 
+// kindStyle colors the remediation column.
+//
+// Deliberately not a heat. The severity column two fields to the left is
+// already drawn in crit/high/med/low, and painting the kind in one of those
+// too would put two differently-meaning colours from the same set on one row —
+// a HIGH row whose kind came out yellow reads as a row that is somehow both.
+//
+// So: safe for Auto, which is the same green the pick marker already spends on
+// the same claim; accent for Review, which is the colour this TUI uses for
+// "there is a key here that does something"; and the muted grey for the three
+// kinds that offer no button at all, which is what the grey means everywhere
+// else on the screen.
+func (s *styles) kindStyle(r model.RemediationKind) lipgloss.Style {
+	switch r {
+	case model.RemediationAuto:
+		return s.safe
+	case model.RemediationReview:
+		return s.accent
+	default:
+		return s.dim
+	}
+}
+
 // sty returns the active styles, building them on first use. The lazy build
 // is deliberate: an appModel is a plain struct that several call sites (and
 // every layout test) construct as a literal, and a zero value must render in
@@ -806,6 +829,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		}
 	}
 	sev := sevAbbr(f.Severity)
+	kind := kindAbbr(f.Remediation)
 
 	// Budget the row from what is actually drawn rather than a fixed 46.
 	// The old constant did not account for the trailing service suffix at
@@ -815,12 +839,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// neither has a safe upper bound.
 	gutterAndMark := lipgloss.Width("▌") + markW
 	idW := m.idColumnWidth(w)
-	body := fmt.Sprintf("%-4s %-*s ", sev, idW, truncate(f.ID, idW))
-
-	if cursor {
-		title := truncate(f.Title, w-gutterAndMark-lipgloss.Width(body))
-		return gutter + mark + s.sel.Render(padRight(body+title, w-gutterAndMark))
-	}
+	body := fmt.Sprintf("%-4s %-*s %-*s ", sev, kindColumns, kind, idW, truncate(f.ID, idW))
 
 	// The suffix is dropped rather than truncated when there is no room for
 	// it: a service name cut to "(clo…" identifies nothing, and the title is
@@ -833,13 +852,19 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// (openclaw@root)" — the service named in full beside a single letter of
 	// the problem. The service qualifies the title; a title with nothing left
 	// of it has nothing to qualify.
+	//
+	// This is computed once, for the cursor row and every other row alike.
+	// It used to be computed twice, and the cursor branch simply did not do
+	// the suffix half — so moving the cursor onto a row erased the one
+	// column that said which container it was about, on the row the operator
+	// was by definition looking at.
 	const minTitleWidth = 16
-	suffix := m.serviceSuffix(f)
+	plainSuffix := serviceLabel(f)
 	avail := w - gutterAndMark - lipgloss.Width(body)
-	if sw := lipgloss.Width(suffix); sw > avail || avail-sw < minTitleWidth {
-		suffix = ""
+	if sw := lipgloss.Width(plainSuffix); sw > avail || avail-sw < minTitleWidth {
+		plainSuffix = ""
 	}
-	title := truncate(f.Title, avail-lipgloss.Width(suffix))
+	title := truncate(f.Title, avail-lipgloss.Width(plainSuffix))
 
 	// The service is set flush right, the way the dashboard's row does it,
 	// rather than trailing the title. Two reasons, and the second is the one
@@ -857,17 +882,39 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// once per finding whose title was nearly long enough. Ragged in a way
 	// that reads as a rendering fault, and next to a pane separator it *is*
 	// one: the row no longer reaches the line beside it.
-	if gap := avail - lipgloss.Width(title) - lipgloss.Width(suffix); suffix != "" && gap > 0 {
+	if gap := avail - lipgloss.Width(title) - lipgloss.Width(plainSuffix); plainSuffix != "" && gap > 0 {
 		title = padRight(title, lipgloss.Width(title)+gap)
 	}
+
+	if cursor {
+		// One Render over the whole row. The suffix cannot carry its own dim
+		// style here — inverse video is the selection, and a second colour
+		// inside it reads as a rendering fault rather than as a quieter
+		// column.
+		return gutter + mark + s.sel.Render(padRight(body+title+plainSuffix, w-gutterAndMark))
+	}
+
 	// The severity is padded to the same %-4s the budget above was computed
 	// from. It was not, and the two disagreed by exactly the difference
 	// between "HIGH" and "MED": every medium and low row was rendered a column
 	// narrower than the arithmetic that laid it out, so the id column stepped
 	// left for those rows and the right-aligned service stopped one short of
 	// the pane separator. Two visible faults, one missing pad.
-	return gutter + mark + lipgloss.NewStyle().Foreground(sevC).Render(fmt.Sprintf("%-4s", sev)) +
-		s.dim.Render(fmt.Sprintf(" %-*s ", idW, truncate(f.ID, idW))) + s.bone.Render(title) + suffix
+	return gutter + mark +
+		lipgloss.NewStyle().Foreground(sevC).Render(fmt.Sprintf("%-4s", sev)) +
+		s.kindStyle(f.Remediation).Render(fmt.Sprintf(" %-*s", kindColumns, kind)) +
+		s.dim.Render(fmt.Sprintf(" %-*s ", idW, truncate(f.ID, idW))) +
+		s.bone.Render(title) + s.dim.Render(plainSuffix)
+}
+
+// kindColumns is the width of the remediation column. Six, because that is
+// the longest abbreviation the enum has ("review", "manual"), and the column
+// is padded to it so the id column below it does not step left and right
+// down the list.
+const kindColumns = 6
+
+func kindAbbr(r model.RemediationKind) string {
+	return strings.ToUpper(r.Abbr())
 }
 
 // markColumns is the width of the pick-marker column, which is the widest of
@@ -1172,11 +1219,19 @@ func sevAbbr(s model.Severity) string {
 	return strings.ToUpper(s.Abbr())
 }
 
-func (m *appModel) serviceSuffix(f model.Finding) string {
+// serviceLabel is the unstyled suffix. It is unstyled because the cursor row
+// needs the same text inside one inverse-video Render, and a pre-styled
+// string cannot be put there — which is how the cursor row came to be built
+// by a separate branch that dropped the suffix entirely.
+func serviceLabel(f model.Finding) string {
 	if f.Service == "" {
 		return ""
 	}
-	return m.sty().dim.Render("  (" + f.Service + ")")
+	return "  (" + f.Service + ")"
+}
+
+func (m *appModel) serviceSuffix(f model.Finding) string {
+	return m.sty().dim.Render(serviceLabel(f))
 }
 
 func (m *appModel) detailRows() []string {

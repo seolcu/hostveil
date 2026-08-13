@@ -7,6 +7,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/ui/theme"
 	"github.com/seolcu/hostveil/internal/ui/web"
 )
 
@@ -425,8 +426,7 @@ func TestInlineOpensUnderTheCursorAndKeepsTheListAround(t *testing.T) {
 	}
 	// The block must sit directly under the cursor's row and before the next
 	// finding: an inline detail that is not inline is a pane drawn in the
-	// wrong place. The cursor's own row is matched on its ID rather than its
-	// service, because the selected row is padded and drops the suffix.
+	// wrong place.
 	blockRow := -1
 	for i, r := range rows {
 		if strings.HasPrefix(plain(r), "  │ ") {
@@ -437,9 +437,26 @@ func TestInlineOpensUnderTheCursorAndKeepsTheListAround(t *testing.T) {
 	if blockRow < 1 || !strings.Contains(plain(rows[blockRow-1]), "compose.ds018") {
 		t.Errorf("the block opened at row %d, not under a finding row:\n%s", blockRow, joined)
 	}
-	if n := strings.Count(plain(rows[blockRow-1]), "svc-"); n != 0 {
-		t.Errorf("row %d is not the selected row", blockRow-1)
+	// And that row is the *selected* one, checked on the selection styling
+	// rather than on a missing service suffix. It used to be the latter,
+	// because the cursor row was built by a branch that dropped the suffix —
+	// so the test encoded the defect as the way to recognise the row, and
+	// would have gone on passing if the row had stopped being selected at all.
+	if !isSelectedRow(rows[blockRow-1]) {
+		t.Errorf("row %d is not drawn as the selected row:\n%q", blockRow-1, rows[blockRow-1])
 	}
+}
+
+// isSelectedRow reports whether a rendered row carries the selection's
+// background, which is the only thing that distinguishes it once the content
+// is the same shape as every other row's.
+func isSelectedRow(row string) bool {
+	bg := newStyles(theme.Default()).sel.Render("x")
+	seq := ansiSeq.FindAllString(bg, -1)
+	if len(seq) == 0 {
+		return false
+	}
+	return strings.Contains(row, seq[0])
 }
 
 // "Nothing reachable" and "nobody looked" are opposite readings, and the verdict
