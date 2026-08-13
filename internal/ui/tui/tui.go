@@ -195,6 +195,23 @@ func (m *appModel) clearAI() {
 // rebuildActive re-derives the visible list from the current report and
 // filter, keeping the cursor in range. The single place both scan and fix
 // refresh the list through.
+// refreshFromEngine re-reads the engine's authoritative report.
+//
+// Every message that changes the host has to end here: the engine has already
+// marked the finding fixed (or un-marked it, after a rollback) and rescored,
+// and the list is drawn from m.report. A handler that forgets leaves the
+// screen showing a finding the engine knows is gone — no error, no log, just
+// a list that is quietly one round out of date.
+//
+// It was written out three times, which is three chances for a fourth
+// message to be added without it.
+func (m *appModel) refreshFromEngine() {
+	if cur, ok := m.engine.Current(); ok {
+		m.report = cur
+		m.rebuildActive()
+	}
+}
+
 func (m *appModel) rebuildActive() {
 	m.active = m.report.Select(m.filter)
 	m.cursor = clamp(m.cursor, 0, len(m.active)-1)
@@ -454,21 +471,14 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "Fix failed: " + msg.err.Error()
 		} else {
 			m.status = applySummary(msg.outcome)
-			// Refresh from the engine's authoritative state.
-			if cur, ok := m.engine.Current(); ok {
-				m.report = cur
-				m.rebuildActive()
-			}
+			m.refreshFromEngine()
 		}
 		m.mode = modeMessage
 		return m, nil
 
 	case batchAppliedMsg:
 		m.status = batchSummary(msg.outcome)
-		if cur, ok := m.engine.Current(); ok {
-			m.report = cur
-			m.rebuildActive()
-		}
+		m.refreshFromEngine()
 		m.selected = map[string]bool{}
 		m.mode = modeMessage
 		return m, nil
@@ -509,12 +519,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.status = rollbackSummary(msg.outcome)
-		// Refresh from the engine, which has already un-marked the finding
-		// and rescored, so the restored finding reappears in the list.
-		if cur, ok := m.engine.Current(); ok {
-			m.report = cur
-			m.rebuildActive()
-		}
+		m.refreshFromEngine()
 		m.mode = modeMessage
 		return m, nil
 

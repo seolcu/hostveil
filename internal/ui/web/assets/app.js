@@ -151,6 +151,19 @@ function afterFixesNote(applicable, score, after, render) {
   return [render(after)];
 }
 
+// The axis's score as every interface writes it. model.ScoreAxis.ValueText is
+// the same three arms in Go; this is the one copy that cannot call it, and
+// internal/docs/afterfixes_test.go holds the two together by reading this
+// file.
+//
+// The "~" is the load-bearing part: a degraded axis is scored from an
+// incomplete picture, and an unmarked score on one says a domain vouches for
+// ground it never looked at.
+function axisValueText(ax) {
+  if (!ax.applicable) return "N/A";
+  return ax.degraded ? `${ax.score}~` : String(ax.score);
+}
+
 function band(v) { return bandFor(v).cls; }
 
 function meter(pct, bandClass) {
@@ -410,8 +423,7 @@ function renderRail(all) {
     });
     row.append(
       el("span", { class: "n" }, srcLabel(ax.source)),
-      el("span", { class: "s" },
-        !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score)),
+      el("span", { class: "s" }, axisValueText(ax)),
       ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
       ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
                         (n) => el("span", { class: "after" }, `\u2192${n}`))
@@ -477,8 +489,7 @@ function render() {
         ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
         // A degraded axis is scored from an incomplete picture; the "~" keeps
         // it from reading as a full clean result.
-        el("span", { class: "axis-val" },
-          !ax.applicable ? "N/A" : ax.degraded ? `${ax.score}~` : String(ax.score)),
+        el("span", { class: "axis-val" }, axisValueText(ax)),
         ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
                           (n) => el("span", { class: "axis-after" }, `\u2192${n}`))
       )

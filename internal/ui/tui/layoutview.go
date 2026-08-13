@@ -306,14 +306,10 @@ func (m *appModel) railRows(w, budget int) []string {
 			marker = s.accent.Render(m.gl.Of(glyph.Cursor) + " ")
 		}
 
-		val := "N/A"
+		val := ax.ValueText()
 		valStyle := s.dim
-		switch {
-		case !ax.Applicable:
-		case ax.Degraded:
-			val, valStyle = strconv.Itoa(int(ax.Score))+"~", s.bone
-		default:
-			val, valStyle = strconv.Itoa(int(ax.Score)), s.bone
+		if ax.Applicable {
+			valStyle = s.bone
 		}
 
 		// name + meter + value, right-aligned value so the column reads down.
@@ -370,13 +366,13 @@ func (m *appModel) railRows(w, budget int) []string {
 			// list of numbers. Two columns is the cheapest hierarchy there
 			// is, and the only one the row budget can afford.
 			mix := m.severityMix(byDomain[ax.Source], w-4, compactMix)
-			if ax.Applicable && ax.AfterFixes > ax.Score {
+			if after, show := ax.Headroom(); show {
 				// A literal arrow, not a glyph row: internal/glyph records why
 				// it has none, and "›" is already the rail's own marker for
 				// the domain the list is filtered to. One symbol meaning two
 				// things in one column is worse than a character the plain
 				// set does not own.
-				if note := s.dim.Render(fmt.Sprintf(" →%d", ax.AfterFixes)); lipgloss.Width(mix)+lipgloss.Width(note)+4 <= w {
+				if note := s.dim.Render(fmt.Sprintf(" →%d", after)); lipgloss.Width(mix)+lipgloss.Width(note)+4 <= w {
 					mix += note
 				}
 			}
@@ -536,14 +532,9 @@ func (m *appModel) sparkAxesLine(w int) string {
 	var row string
 	shown := 0
 	for _, ax := range m.report.Score.Axes {
-		val := "N/A"
-		c := s.cSlate
-		switch {
-		case !ax.Applicable:
-		case ax.Degraded:
-			val, c = strconv.Itoa(int(ax.Score))+"~", s.band(ax.Score)
-		default:
-			val, c = strconv.Itoa(int(ax.Score)), s.band(ax.Score)
+		val, c := ax.ValueText(), s.cSlate
+		if ax.Applicable {
+			c = s.band(ax.Score)
 		}
 		cell := s.dim.Render(sourceLabel(ax.Source)+" ") + lipgloss.NewStyle().Foreground(c).Bold(true).Render(val)
 		cand := cell

@@ -36,7 +36,7 @@ func Text(r model.Report, opts Options) string {
 	} else {
 		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s%s\n\n",
 			c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset,
-			afterFixes(c, r.Score.Applicable, r.Score.Overall, r.Score.AfterFixes))
+			headroomNote(c, r.Score))
 	}
 
 	for _, ax := range r.Score.Axes {
@@ -44,15 +44,16 @@ func Text(r model.Report, opts Options) string {
 			fmt.Fprintf(&b, "  %-22s %s%s%s\n", ax.Label, c.dim, "N/A (not run)", c.reset)
 			continue
 		}
-		counts := severityCounts(ax)
-		// A degraded axis is scored from an incomplete picture, so it is
-		// marked: an unlabelled score here reads as a clean result.
+		// The CLI spells the partial marker out where the other interfaces
+		// use "~" — a report piped to a file has room for the word. What it
+		// must not do is omit it, which is why the decision itself lives on
+		// the axis: see model.ScoreAxis.ValueText.
 		partial := ""
 		if ax.Degraded {
 			partial = c.yellow + " (partial)" + c.reset
 		}
-		fmt.Fprintf(&b, "  %-22s %3d/100  %s%s%s\n", ax.Label, ax.Score, counts, partial,
-			afterFixes(c, ax.Applicable, ax.Score, ax.AfterFixes))
+		fmt.Fprintf(&b, "  %-22s %3d/100  %s%s%s\n", ax.Label, ax.Score, severityCounts(ax), partial,
+			headroomNote(c, ax))
 	}
 	b.WriteString("\n")
 
@@ -343,12 +344,8 @@ func scoreColor(c colors, score uint8) string {
 // roughly two-thirds of the width it was given, and the TUI's copy of this
 // function had the same flaw — which is why there is now one of it.
 func wrap(s string, width int, indent string) string {
-	return textwidth.Wrap(s, width, minWrapWidth, indent)
+	return textwidth.Wrap(s, width, indent)
 }
-
-// minWrapWidth is the floor for a computed width; one word per line is
-// unreadable in a way an overrun is not.
-const minWrapWidth = 8
 
 // afterFixes renders the headroom note, or nothing.
 //
@@ -357,8 +354,14 @@ const minWrapWidth = 8
 // beside an N/A axis is a claim about a domain nobody looked at. The three
 // UIs each own their own formatting and all three answer these two questions
 // the same way — TestEveryUIHidesAfterFixesTheSameWay pins that.
-func afterFixes(c colors, applicable bool, score, after uint8) string {
-	if !applicable || after <= score {
+// headroom is anything that knows whether its own headroom is worth showing —
+// one axis, or the overall score. The rule itself lives in internal/model;
+// this only renders what it decided.
+type headroom interface{ Headroom() (uint8, bool) }
+
+func headroomNote(c colors, h headroom) string {
+	after, show := h.Headroom()
+	if !show {
 		return ""
 	}
 	return fmt.Sprintf("%s  → %d after fixes%s", c.dim, after, c.reset)

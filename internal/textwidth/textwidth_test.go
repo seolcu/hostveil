@@ -71,7 +71,7 @@ func TestTruncateKeepsWhatFits(t *testing.T) {
 // two-thirds of the width it was given.
 func TestWrapFillsTheWidthItIsGiven(t *testing.T) {
 	const width = 40
-	lines := strings.Split(Wrap(ko, width, 8, ""), "\n")
+	lines := strings.Split(Wrap(ko, width, ""), "\n")
 	if len(lines) < 2 {
 		t.Fatalf("fixture did not wrap at width %d: %q", width, lines)
 	}
@@ -94,7 +94,7 @@ func TestWrapFillsTheWidthItIsGiven(t *testing.T) {
 
 func TestWrapASCIIIsUnchangedInSpirit(t *testing.T) {
 	const width = 40
-	for _, l := range strings.Split(Wrap("the quick brown fox jumps over the lazy dog and keeps going", width, 8, ""), "\n") {
+	for _, l := range strings.Split(Wrap("the quick brown fox jumps over the lazy dog and keeps going", width, ""), "\n") {
 		if w := Of(l); w > width {
 			t.Errorf("line is %d columns, over %d: %q", w, width, l)
 		}
@@ -102,7 +102,7 @@ func TestWrapASCIIIsUnchangedInSpirit(t *testing.T) {
 }
 
 func TestWrapIndentsContinuationLines(t *testing.T) {
-	out := Wrap("alpha beta gamma delta epsilon zeta eta theta", 20, 8, "  ")
+	out := Wrap("alpha beta gamma delta epsilon zeta eta theta", 20, "  ")
 	lines := strings.Split(out, "\n")
 	if len(lines) < 2 {
 		t.Fatalf("expected a wrap: %q", out)
@@ -122,7 +122,7 @@ func TestWrapIndentsContinuationLines(t *testing.T) {
 // lines cannot be copied.
 func TestWrapDoesNotSplitAWordTooWideToFit(t *testing.T) {
 	long := "/home/seolcu/프로젝트/hostveil/internal/textwidth/textwidth.go"
-	out := Wrap("see "+long+" now", 10, 8, "")
+	out := Wrap("see "+long+" now", 10, "")
 	if !strings.Contains(out, long) {
 		t.Errorf("the long word was split:\n%s", out)
 	}
@@ -130,7 +130,7 @@ func TestWrapDoesNotSplitAWordTooWideToFit(t *testing.T) {
 
 func TestWrapEmptyInput(t *testing.T) {
 	for _, s := range []string{"", "   ", "\t\n"} {
-		if got := Wrap(s, 40, 8, ""); got != "" {
+		if got := Wrap(s, 40, ""); got != "" {
 			t.Errorf("Wrap(%q) = %q, want empty", s, got)
 		}
 	}
@@ -140,7 +140,7 @@ func TestWrapEmptyInput(t *testing.T) {
 // producing one word per line.
 func TestWrapHasAMinimumWidth(t *testing.T) {
 	for _, w := range []int{-10, 0, 3} {
-		out := Wrap("alpha beta gamma delta", w, 8, "")
+		out := Wrap("alpha beta gamma delta", w, "")
 		for _, l := range strings.Split(out, "\n") {
 			if Of(l) > 8 && len(strings.Fields(l)) > 1 {
 				t.Errorf("width %d produced an over-wide line: %q", w, l)

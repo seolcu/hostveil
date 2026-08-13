@@ -271,18 +271,17 @@ func (m *appModel) axesLine() string {
 	var cells []string
 	for _, ax := range m.report.Score.Axes {
 		label := s.dim.Render(fmt.Sprintf("%-10s", ax.ID))
-		switch {
-		case !ax.Applicable:
-			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(" N/A"))
-		case ax.Degraded:
-			// Scored, but from an incomplete picture — the "~" says so, since
-			// a bare number here reads as a full result. Padded to the same
-			// width as an undegraded value so the columns still line up.
-			cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+
-				s.bone.Render(fmt.Sprintf(" %-3s", strconv.Itoa(int(ax.Score))+"~")))
-		default:
-			cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+s.bone.Render(fmt.Sprintf(" %-3d", ax.Score)))
+		// The text is model's decision — N/A, a number, or a number with the
+		// "~" that keeps a partial result from reading as a clean one. What
+		// is decided here is only how it is drawn: an empty track for an axis
+		// that did not run, a meter for one that did, and a fixed width so
+		// the columns line up whichever it is.
+		if !ax.Applicable {
+			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(" "+ax.ValueText()))
+			continue
 		}
+		cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+
+			s.bone.Render(fmt.Sprintf(" %-3s", ax.ValueText())))
 	}
 	if len(cells) == 0 {
 		return ""
@@ -435,7 +434,7 @@ func (m *appModel) paneRows(w, budget int) []string {
 		return centerRows([]string{s.dim.Render(truncate("Nothing to show.", w))}, budget)
 	}
 	f := m.active[m.cursor]
-	body := indentRows(m.detailBodyRows(f, max(minWrapWidth, min(w-2*paneInset, maxProse))), paneInset)
+	body := indentRows(m.detailBodyRows(f, max(textwidth.MinWrap, min(w-2*paneInset, maxProse))), paneInset)
 	out := make([]string, 0, len(body)+4)
 	out = append(out, body...)
 	// The dashboard closes this pane with a row of buttons — Preview fix,
@@ -494,7 +493,7 @@ func (m *appModel) emptyListRows(chips string, w int) []string {
 		warn := lipgloss.NewStyle().Foreground(s.cHigh)
 		msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
 			m.report.IncompleteDomains())
-		return m.wrapRows(warn, msg, max(minWrapWidth, min(w-2*bodyInset, maxProse)), bodyInset)
+		return m.wrapRows(warn, msg, max(textwidth.MinWrap, min(w-2*bodyInset, maxProse)), bodyInset)
 	default:
 		return indentRows([]string{s.safe.Render("No problems found. Clean.")}, bodyInset)
 	}
@@ -1153,7 +1152,7 @@ func (m *appModel) previewRows() []string {
 		out = append(out, indentRows([]string{s.dim.Render("These commands will run:")}, bodyInset)...)
 		for _, cmd := range a.Commands {
 			out = append(out, indentRows([]string{s.dim.Render(truncate("$ "+strings.Join(cmd, " "),
-				max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
+				max(textwidth.MinWrap, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 		}
 	default:
 		// Never leave the apply/cancel footer with an empty body above it.
@@ -1251,7 +1250,7 @@ func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool, idW int) stri
 	const whenW = 11 // "01-02 15:04"
 	when := cp.CreatedAt.Local().Format("01-02 15:04")
 	id := truncate(cp.FindingID, idW)
-	inner := max(minWrapWidth, m.width-2*bodyInset)
+	inner := max(textwidth.MinWrap, m.width-2*bodyInset)
 	label := truncate(cp.Label, max(1, inner-whenW-idW-2))
 	line := fmt.Sprintf("%-*s %-*s %s", whenW, when, idW, id, label)
 	if cursor {
@@ -1381,7 +1380,7 @@ func (m *appModel) rollbackRows() []string {
 	out = append(out, indentRows([]string{s.dim.Render("Restores:")}, bodyInset)...)
 	for _, p := range cp.Files {
 		out = append(out, indentRows([]string{s.bone.Render(truncate(p,
-			max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
+			max(textwidth.MinWrap, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 	}
 	out = append(out, "")
 	if cp.RestartService != "" {
@@ -1419,7 +1418,7 @@ func (m *appModel) forceRows() []string {
 		out = append(out, indentRows([]string{s.dim.Render("Would overwrite:")}, bodyInset)...)
 		for _, p := range cp.Files {
 			out = append(out, indentRows([]string{s.bone.Render(truncate(p,
-				max(minWrapWidth, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
+				max(textwidth.MinWrap, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
 		}
 	}
 	return out
@@ -1573,7 +1572,7 @@ const maxProse = 74
 // proseWidth is how wide running text is set inside a region with this
 // margin on both sides.
 func (m *appModel) proseWidth(inset int) int {
-	return max(minWrapWidth, min(m.width-2*inset, maxProse))
+	return max(textwidth.MinWrap, min(m.width-2*inset, maxProse))
 }
 
 // indentRows shifts every row right, wrapped continuations included. Blank
@@ -1599,7 +1598,7 @@ func (m *appModel) wrapRows(st lipgloss.Style, text string, contentW, n int) []s
 	if text == "" {
 		return nil
 	}
-	return indentRows(styledRows(st, wrap(text, max(minWrapWidth, contentW))), n)
+	return indentRows(styledRows(st, wrap(text, max(textwidth.MinWrap, contentW))), n)
 }
 
 // hangingRows is wrapRows for a block led by a marker — the ⚠ of a warning —
@@ -1607,7 +1606,7 @@ func (m *appModel) wrapRows(st lipgloss.Style, text string, contentW, n int) []s
 // marker.
 func (m *appModel) hangingRows(st lipgloss.Style, marker, text string, contentW, n int) []string {
 	lead := lipgloss.Width(marker)
-	lines := strings.Split(wrap(text, max(minWrapWidth, contentW-lead)), "\n")
+	lines := strings.Split(wrap(text, max(textwidth.MinWrap, contentW-lead)), "\n")
 	out := make([]string, 0, len(lines))
 	for i, l := range lines {
 		if i == 0 {
@@ -1619,18 +1618,13 @@ func (m *appModel) hangingRows(st lipgloss.Style, marker, text string, contentW,
 	return indentRows(out, n)
 }
 
-// minWrapWidth is the floor wrap applies to a computed width. A narrow
-// terminal can drive the budget to nothing, and one word per line is
-// unreadable in a way an overrun is not.
-const minWrapWidth = 8
-
 // wrap reflows s to width display columns.
 //
 // It used to count bytes, so Hangul wrapped at roughly two-thirds of the
 // width it was given — 24 columns used of 40. `explain --ai` renders
 // whatever the local model wrote, which is the path that reaches this with
 // text the byte count is wrong about.
-func wrap(s string, width int) string { return textwidth.Wrap(s, width, minWrapWidth, "") }
+func wrap(s string, width int) string { return textwidth.Wrap(s, width, "") }
 
 // trendLine renders the score of every retained scan as one row.
 //

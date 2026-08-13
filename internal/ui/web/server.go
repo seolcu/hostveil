@@ -66,12 +66,30 @@ type Server struct {
 	baseCtx context.Context
 }
 
-// New builds a web Server bound to addr (e.g. "127.0.0.1:8787"), rendering in
-// the theme named by themeID and opening in the arrangement named by layoutID
-// (see internal/ui/theme and layout.go; an unknown or empty ID of either falls
-// back to that registry's default).
-func New(engine *core.Engine, addr, themeID, layoutID string) *Server {
-	return &Server{engine: engine, addr: addr, theme: themeID, layout: layoutID, token: newToken()}
+// Opts is what the dashboard is told before it starts, beyond the engine and
+// the address.
+//
+// It is a struct because the two IDs are adjacent same-typed strings and
+// transposing them fails silently in the worst available way: layoutJS and
+// theme.CSS both fall back to their registry's default for an ID they do not
+// recognise — deliberately, so a caller may pass whatever it has — so
+// `--theme gruvbox --layout lanes` handed over the wrong way round produces
+// the shipped theme and the shipped arrangement, with nothing logged and
+// nothing on screen to say the flags were read at all.
+//
+// internal/ui/tui/tui.go's Opts states the same rule and gives the same
+// reason. The dashboard was the caller that had not been brought to it.
+type Opts struct {
+	// Theme and Layout are IDs, resolved from --theme/--layout, the
+	// environment, or the remembered choice. An unknown or empty one falls
+	// back to that registry's default.
+	Theme  string
+	Layout string
+}
+
+// New builds a web Server bound to addr (e.g. "127.0.0.1:8787").
+func New(engine *core.Engine, addr string, opts Opts) *Server {
+	return &Server{engine: engine, addr: addr, theme: opts.Theme, layout: opts.Layout, token: newToken()}
 }
 
 // newToken mints the per-run access token.

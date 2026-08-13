@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"sort"
+	"strconv"
 )
 
 // ScoreBreakdown is the 0-100 security score plus its per-axis detail.
@@ -87,6 +88,60 @@ type ScoreAxis struct {
 	Penalty    int             `json:"penalty"`
 	MaxPenalty int             `json:"max_penalty"`
 	Counts     []SeverityCount `json:"counts"`
+}
+
+// Headroom is the overall score's version of ScoreAxis.Headroom, and follows
+// the same rule for the same reason: nothing to show when the fixes would not
+// move it, and nothing to show when no domain ran.
+func (b ScoreBreakdown) Headroom() (uint8, bool) {
+	if !b.Applicable || b.AfterFixes <= b.Overall {
+		return 0, false
+	}
+	return b.AfterFixes, true
+}
+
+// ValueText is the axis's score as every interface writes it: "N/A" when the
+// domain did not run, the score with a "~" when it ran but covered only part
+// of its ground, and the bare number otherwise.
+//
+// It is here rather than in each renderer because it was in each renderer —
+// the same three-arm decision in the CLI, twice in the terminal's
+// arrangements, once more in its axes strip, and again in the dashboard's
+// JavaScript. Nothing compared them.
+//
+// The "~" is the part that matters. A degraded axis is scored from an
+// incomplete picture, and an unmarked score on one is the same lie
+// Applicable exists to prevent, just in smaller print: it says a domain
+// vouches for ground it never looked at. One renderer quietly dropping the
+// marker would have looked like a cleaner number.
+//
+// Colour stays with the renderers. A terminal has a palette, a stylesheet has
+// a class, and neither belongs in a value type.
+func (a ScoreAxis) ValueText() string {
+	switch {
+	case !a.Applicable:
+		return "N/A"
+	case a.Degraded:
+		return strconv.Itoa(int(a.Score)) + "~"
+	default:
+		return strconv.Itoa(int(a.Score))
+	}
+}
+
+// Headroom is what this axis becomes once every fix hostveil offers on it is
+// applied, and whether that is worth showing at all.
+//
+// The second return is the whole point: every interface hides the figure
+// under the same two conditions — nothing when it equals the score, because
+// an arrow pointing where it started says the fixes are worth nothing, and
+// nothing beside an N/A axis, because a number there is a claim about a
+// domain nobody looked at. Those two conditions were written out in each
+// renderer and held together only by a test that greps for them.
+func (a ScoreAxis) Headroom() (uint8, bool) {
+	if !a.Applicable || a.AfterFixes <= a.Score {
+		return 0, false
+	}
+	return a.AfterFixes, true
 }
 
 // SeverityCount is how many findings of one severity landed on an axis.

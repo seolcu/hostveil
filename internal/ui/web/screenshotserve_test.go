@@ -49,7 +49,7 @@ func TestScreenshotServe(t *testing.T) {
 	// silently pass on them. The published picture has to show what a person
 	// gets when they type `hostveil serve` and choose nothing.
 	base, _ := testServer(t)
-	s := New(base.engine, addr, theme.Default().ID, DefaultLayout().ID)
+	s := New(base.engine, addr, Opts{Theme: theme.Default().ID, Layout: DefaultLayout().ID})
 	real := s.Handler()
 	rep := uitest.PublishedReport()
 

@@ -361,7 +361,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
         ]}
       ]
     }`
-	fs, err := parseTrivy([]byte(out), "myimage:1", "web", "/tmp/docker-compose.yml", "stack")
+	fs, err := parseTrivy([]byte(out), target{image: "myimage:1", service: "web", file: "/tmp/docker-compose.yml", project: "stack"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +404,7 @@ func TestNoPerCVEFindings(t *testing.T) {
       {"VulnerabilityID":"CVE-2021-1234","PkgName":"openssl","FixedVersion":"1.1","Severity":"HIGH"},
       {"VulnerabilityID":"CVE-2022-9999","PkgName":"zlib","FixedVersion":"","Severity":"CRITICAL"}
     ]}]}`
-	fs, err := parseTrivy([]byte(out), "myimage:1", "web", "f", "p")
+	fs, err := parseTrivy([]byte(out), target{image: "myimage:1", service: "web", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,7 +424,7 @@ func TestAllUnfixableStillReportsTheImage(t *testing.T) {
       {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"","Severity":"CRITICAL"},
       {"VulnerabilityID":"CVE-2","PkgName":"b","FixedVersion":"","Severity":"HIGH"}
     ]}]}`
-	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "f", "p")
+	fs, err := parseTrivy([]byte(out), target{image: "redis:7", service: "cache", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +443,7 @@ func TestAllUnfixableStillReportsTheImage(t *testing.T) {
 
 // A genuinely clean image produces nothing at all.
 func TestCleanImageProducesNoFindings(t *testing.T) {
-	fs, err := parseTrivy([]byte(`{"Results":[]}`), "redis:7", "cache", "f", "p")
+	fs, err := parseTrivy([]byte(`{"Results":[]}`), target{image: "redis:7", service: "cache", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -461,12 +461,12 @@ func TestWorstListIsDeterministic(t *testing.T) {
 	}
 	out := `{"Results":[{"Vulnerabilities":[` + strings.Join(vulns, ",") + `]}]}`
 
-	first, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+	first, err := parseTrivy([]byte(out), target{image: "img", service: "svc", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for range 5 {
-		again, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+		again, err := parseTrivy([]byte(out), target{image: "img", service: "svc", file: "f", project: "p"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -497,11 +497,11 @@ func TestImageFindingsAreUniquePerProject(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
       {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"HIGH"}
     ]}]}`
-	a, err := parseTrivy([]byte(out), "postgres:13", "db", "/cloud/compose.yml", "cloud")
+	a, err := parseTrivy([]byte(out), target{image: "postgres:13", service: "db", file: "/cloud/compose.yml", project: "cloud"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := parseTrivy([]byte(out), "mysql:8", "db", "/mgmt/compose.yml", "mgmt")
+	b, err := parseTrivy([]byte(out), target{image: "mysql:8", service: "db", file: "/mgmt/compose.yml", project: "mgmt"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +537,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
       {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"MEDIUM"},
       {"VulnerabilityID":"CVE-2","PkgName":"b","FixedVersion":"","Severity":"CRITICAL"}
     ]}]}`
-	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "/stack/docker-compose.yml", "stack")
+	fs, err := parseTrivy([]byte(out), target{image: "redis:7", service: "cache", file: "/stack/docker-compose.yml", project: "stack"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +562,7 @@ func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
       {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"","Severity":"CRITICAL"}
     ]}]}`
-	fs, err := parseTrivy([]byte(out), "redis:7", "cache", "f", "p")
+	fs, err := parseTrivy([]byte(out), target{image: "redis:7", service: "cache", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -582,7 +582,7 @@ func TestRollupForDigestPinnedImageIsManual(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
       {"VulnerabilityID":"CVE-1","PkgName":"a","FixedVersion":"2","Severity":"HIGH"}
     ]}]}`
-	fs, err := parseTrivy([]byte(out), "redis@sha256:abc123", "cache", "f", "p")
+	fs, err := parseTrivy([]byte(out), target{image: "redis@sha256:abc123", service: "cache", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +645,7 @@ func TestOneRollupPerImage(t *testing.T) {
 }
 
 func TestParseTrivyGarbageErrors(t *testing.T) {
-	if _, err := parseTrivy([]byte("not json"), "img", "svc", "f", "p"); err == nil {
+	if _, err := parseTrivy([]byte("not json"), target{image: "img", service: "svc", file: "f", project: "p"}); err == nil {
 		t.Error("expected error on non-JSON trivy output")
 	}
 }
@@ -656,7 +656,7 @@ func FuzzParseTrivy(f *testing.F) {
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`garbage`))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseTrivy(data, "img", "svc", "f", "p")
+		_, _ = parseTrivy(data, target{image: "img", service: "svc", file: "f", project: "p"})
 	})
 }
 
@@ -680,7 +680,7 @@ func TestSummaryNamesEachSeverityOnce(t *testing.T) {
 		{"VulnerabilityID":"CVE-2","PkgName":"p","FixedVersion":"2","Severity":"HIGH"},
 		{"VulnerabilityID":"CVE-3","PkgName":"p","FixedVersion":"2","Severity":"MEDIUM"}]}]}`
 
-	findings, err := parseTrivy([]byte(out), "img", "svc", "f", "p")
+	findings, err := parseTrivy([]byte(out), target{image: "img", service: "svc", file: "f", project: "p"})
 	if err != nil {
 		t.Fatal(err)
 	}

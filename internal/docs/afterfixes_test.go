@@ -23,40 +23,34 @@ import (
 // prose until one renderer forgets it. It reads the sources rather than
 // rendering, because two of the three cannot be rendered here — the dashboard
 // is JavaScript and SARIF is a machine format with its own answer.
-var afterFixesGuards = map[string][]string{
-	// The CLI funnels both call sites through one helper, so the guard is
-	// stated once and both inherit it.
-	filepath.Join("internal", "clirender", "text.go"): {
-		"!applicable || after <= score",
-	},
-	// The TUI states it twice because the two places are different shapes:
-	// a header line that has room for words and a rail cell that does not.
-	filepath.Join("internal", "ui", "tui", "frame.go"): {
-		"m.report.Score.Applicable && after > sc",
-	},
-	filepath.Join("internal", "ui", "tui", "layoutview.go"): {
-		"ax.Applicable && ax.AfterFixes > ax.Score",
-	},
-	// The dashboard funnels both of its call sites through one helper too.
-	filepath.Join("internal", "ui", "web", "assets", "app.js"): {
-		"applicable === false || typeof after !== \"number\" || after <= score",
-	},
+// The Go renderers all call model.ScoreAxis.Headroom and
+// model.ScoreAxis.ValueText now, so the compiler holds them together and
+// there is nothing here to check. The dashboard is the one copy that cannot
+// call either — it is JavaScript reading /api/result — so it is the one this
+// reads.
+//
+// That is the point of the shrinking. This file used to grep four sources for
+// the same guard, which is a test that fails when somebody rewrites a
+// condition into an equivalent one and passes when they get the logic wrong
+// in the same words. One irreducible copy is worth grepping for; four are a
+// sign the rule is in the wrong place.
+var dashboardRules = map[string]string{
+	"the headroom is hidden when it would say nothing": `applicable === false || typeof after !== "number" || after <= score`,
+	"a degraded axis keeps its marker":                 "`${ax.score}~`",
+	"an axis that did not run says so":                 `if (!ax.applicable) return "N/A"`,
 }
 
-func TestEveryUIHidesAfterFixesTheSameWay(t *testing.T) {
-	for rel, wants := range afterFixesGuards {
-		b, err := os.ReadFile(filepath.Join(repoRoot(t), rel))
-		if err != nil {
-			t.Errorf("read %s: %v", rel, err)
-			continue
-		}
-		src := string(b)
-		for _, want := range wants {
-			if !strings.Contains(src, want) {
-				t.Errorf("%s no longer guards the after-fixes figure with %q.\n"+
-					"Both refusals have to hold in every interface: nothing when it equals the "+
-					"score, nothing when the axis is N/A.", rel, want)
-			}
+func TestTheDashboardKeepsTheRulesItCannotCallIntoGoFor(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(repoRoot(t), "internal", "ui", "web", "assets", "app.js"))
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	src := string(b)
+	for what, want := range dashboardRules {
+		if !strings.Contains(src, want) {
+			t.Errorf("app.js no longer states that %s (looked for %s).\n"+
+				"The Go interfaces get this from model.ScoreAxis; this file is the copy "+
+				"that cannot, so it is the copy that has to be read.", what, want)
 		}
 	}
 }
