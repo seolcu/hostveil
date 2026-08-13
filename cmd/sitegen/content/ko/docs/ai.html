@@ -8,11 +8,11 @@
               <button class="copy-btn" type="button" data-copy="hostveil explain ssh.rootlogin --ai">Copy</button>
               <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
             </div>
-            <p>내장된 쉬운 말 설명은 항상 먼저 출력되며, <code>--ai</code>는 <em>AI 설명(조언)</em> 섹션을 뒤에 덧붙입니다. 모델에 연결할 수 없으면 hostveil은 그 사실을 알리고 계속 진행합니다 — AI를 사용할 수 없다고 해서 명령이 실패하는 일은 없습니다.</p>
-            <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다 — Ollama가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
+            <p>내장된 쉬운 말 설명은 항상 먼저 출력되며, <code>--ai</code>는 <em>AI 설명(조언)</em> 섹션을 뒤에 덧붙입니다. 모델에 연결할 수 없으면 hostveil은 그 사실을 알리고 계속 진행합니다. AI를 사용할 수 없다고 해서 명령이 실패하는 일은 없습니다.</p>
+            <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다. Ollama가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
 
             <h2>기본은 로컬</h2>
-            <p>기본 제공자는 <strong>Ollama</strong>이며, 사용자 본인의 머신에서 실행됩니다 — 아무것도 호스트 밖으로 나가지 않습니다. 기본값:</p>
+            <p>기본 제공자는 <strong>Ollama</strong>이며, 사용자 본인의 머신에서 실행되므로 아무것도 호스트 밖으로 나가지 않습니다. 기본값:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>설정</th><th>기본값</th><th>재정의</th></tr></thead>
@@ -31,11 +31,11 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             <h2>조언 전용이며, 설계상 비공개</h2>
             <div class="callout">
               <span class="callout-label">모델이 할 수 있는 것과 할 수 없는 것</span>
-              <p>AI는 오직 <strong>설명</strong>만 할 수 있습니다 — 어떤 수정도 적용·변경·주도할 능력이 없습니다. 점수, 발견 항목, 수정은 전적으로 AI 없이 계산됩니다.</p>
+              <p>AI는 오직 <strong>설명</strong>만 할 수 있습니다. 어떤 수정도 적용·변경·주도할 능력이 없습니다. 점수, 발견 항목, 수정은 전적으로 AI 없이 계산됩니다.</p>
             </div>
             <div class="callout warn">
               <span class="callout-label">개인정보 보호</span>
-              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다 — 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 선택적으로 참여하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다.</p>
+              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다. 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 선택적으로 참여하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다.</p>
             </div>
 
             <div class="docs-pager">

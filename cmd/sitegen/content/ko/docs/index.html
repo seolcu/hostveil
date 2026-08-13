@@ -9,6 +9,15 @@
               <p>아무것도 눈감고 바꾸지 않습니다. 모든 수정은 실행 전에 <strong>미리보기</strong>되고, 원본 파일은 <strong>체크포인트로 백업</strong>되며, <code>hostveil rollback</code>이 바이트 단위 그대로 복원합니다. 모든 인터페이스가 같은 엔진을 구동하므로, 어디서 적용한 수정이든 어디서나 되돌릴 수 있습니다.</p>
             </div>
 
+            <div class="callout">
+              <span class="callout-label">판단 기준은 어디에</span>
+              <p>hostveil이 내리는 판단은 전부 확인할 수 있는 자리에 적혀 있습니다.</p>
+              <p><a href="fixing#auto-standard">자동 수정, 검토, 수동</a>: 조치가 통과해야 하는 세 가지 시험과, 어느 종류로 보일지 정하는 네 단계.<br>
+              <a href="checks#severity">high, medium, low</a>: 세 단계의 정의와 도메인별 몫.<br>
+              <a href="scoring">점수</a>: 산식 전체, 실제 스캔으로 만든 예시, 그리고 <a href="scoring#bands">그 점수를 뭐라고 부르는지</a>.<br>
+              <a href="cli#scan"><code>--json</code>과 SARIF의 값</a>: 기계가 읽는 모든 값.</p>
+            </div>
+
             <h2>처음이신가요? 여기서 시작하세요</h2>
             <ul class="docs-cards">
               <li>

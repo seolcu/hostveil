@@ -807,3 +807,14 @@ func blobName(path string) string {
 	sum := sha256.Sum256([]byte(path))
 	return hex.EncodeToString(sum[:])
 }
+
+// RetentionPolicy reports how many checkpoints are kept and how long a recent
+// one is held back from that cap.
+//
+// Exported so the published documentation can be pinned against these two
+// numbers rather than restating them and drifting. "How far back can I roll
+// back?" is a question a user is entitled to a written answer to, and a
+// written answer that has gone stale is worse than none.
+func RetentionPolicy() (count int, window time.Duration) {
+	return maxCheckpoints, minRetention
+}

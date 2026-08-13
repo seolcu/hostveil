@@ -166,6 +166,21 @@
               <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>
             </div>
 
+            <h3 id="sarif-levels">What SARIF export does with severity</h3>
+            <p>SARIF has three levels where hostveil has three, so the mapping is one to one:</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
+                <tbody>
+                  <tr><td><code>high</code></td><td><code>error</code></td><td>9.5</td></tr>
+                  <tr><td><code>medium</code></td><td><code>warning</code></td><td>5.5</td></tr>
+                  <tr><td><code>low</code></td><td><code>note</code></td><td>3.0</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The second number is the 0 to 10 scale GitHub code scanning sorts and filters by. Its buckets start at 9.0 for critical, 7.0 for high and 4.0 for medium, so <strong>a hostveil High appears in GitHub's <em>critical</em> band, not its high one.</strong></p>
+            <p>The mismatched words are deliberate. hostveil's top level means the problem is reachable right now, from off the host, by someone holding nothing, and the band that means act today in code scanning is critical. Mapping the word to the word would have put those findings in a band people triage next sprint.</p>
+
             <h2 id="fix">fix</h2>
             <p>Preview and apply the fix for a finding.</p>
             <div class="code-block"><pre><code>hostveil fix &lt;finding-id&gt; [flags]
