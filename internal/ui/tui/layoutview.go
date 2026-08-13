@@ -37,6 +37,30 @@ const (
 	minListWidth      = 40
 )
 
+// railBranch ties a domain's second row to the name above it, the way a reply
+// is indented under what it answers.
+//
+// The rail is twelve domains of two rows each with nothing between any two,
+// and an indent alone did not make the pairs read as pairs — the second row
+// looked like another domain whose name happened to be a list of counts, or a
+// word like "clean". The branch says which row belongs to which name.
+//
+// Both second rows use it, the severity mix and the reason a domain did not
+// run. They had different indents, two columns and four, so the rail carried
+// two depths of hierarchy at once — which is no hierarchy.
+//
+// A literal, not a glyph row. internal/glyph writes down why it has no arrow
+// (a row nothing asks for goes stale unnoticed) and the rail's own "→" follows
+// that rule; every grid character in this package — │ ┬ ┴ ├ ┤ ┼ ─ ▌ █ ░ — is a
+// literal too. The table is for marks that mean something; this is structure.
+const railBranch = "  └ "
+
+// railBranchW is the branch in columns, not runes. "└" is East Asian
+// Ambiguous, so under RUNEWIDTH_EASTASIAN it is two columns and the prefix is
+// five — and the three budgets keyed to it have to move together or
+// mixIsCompact decides the spelling against a width the render does not have.
+var railBranchW = lipgloss.Width(railBranch)
+
 // bodyColumns divides the terminal between the rail, the list and the pane.
 // A width of 0 means that column is not drawn at all. The returned widths
 // plus one separator column between each add up to exactly m.width, which is
@@ -272,7 +296,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	// every real host the reason was the thing that dropped out, in the one
 	// arrangement whose whole claim is that it carries it.
 	dense := 1+2*len(axes) <= budget
-	compactMix := m.mixIsCompact(byDomain, w-4)
+	compactMix := m.mixIsCompact(byDomain, w-railBranchW)
 
 	// Airy spends one more row per domain on the gap between them.
 	//
@@ -357,7 +381,7 @@ func (m *appModel) railRows(w, budget int) []string {
 		block := []string{row}
 		switch {
 		case !ax.Applicable:
-			block = append(block, s.dim.Render(truncate("  "+strings.ToLower(state[ax.Source].String())+
+			block = append(block, s.dim.Render(truncate(railBranch+strings.ToLower(state[ax.Source].String())+
 				" — "+reasonOr(reason[ax.Source], "did not run"), w)))
 		case dense:
 			// The per-axis headroom rides on the mix row rather than the
@@ -365,24 +389,18 @@ func (m *appModel) railRows(w, budget int) []string {
 			// row has none to spare, while the mix row is usually eight
 			// characters of "3H·1M·6L" in twenty. Compact, because this
 			// column is a glance and the exact arithmetic is a keypress away.
-			// Indented one step past the domain name it belongs to. The rail
-			// is twelve domains of two rows each with nothing between them,
-			// and at the same indent the pairs did not read as pairs — the
-			// mix line looked like another domain whose name happened to be a
-			// list of numbers. Two columns is the cheapest hierarchy there
-			// is, and the only one the row budget can afford.
-			mix := m.severityMix(byDomain[ax.Source], w-4, compactMix)
+			mix := m.severityMix(byDomain[ax.Source], w-railBranchW, compactMix)
 			if after, show := ax.Headroom(); show {
 				// A literal arrow, not a glyph row: internal/glyph records why
 				// it has none, and "›" is already the rail's own marker for
 				// the domain the list is filtered to. One symbol meaning two
 				// things in one column is worse than a character the plain
 				// set does not own.
-				if note := s.dim.Render(fmt.Sprintf(" →%d", after)); lipgloss.Width(mix)+lipgloss.Width(note)+4 <= w {
+				if note := s.dim.Render(fmt.Sprintf(" →%d", after)); lipgloss.Width(mix)+lipgloss.Width(note)+railBranchW <= w {
 					mix += note
 				}
 			}
-			block = append(block, "    "+mix)
+			block = append(block, railBranch+mix)
 		}
 		blocks = append(blocks, block)
 	}
@@ -594,13 +612,27 @@ const maxInlineRows = 10
 
 // inlineRows is the cursor's finding opened in place: the same text the
 // detail view shows, indented under the row it belongs to and bounded.
+//
+// Without the detail view's header. This block is drawn immediately under the
+// list row for the same finding, and that row already carries the severity and
+// the id — so the header repeated two of its three lines four columns to the
+// right of where the reader had just read them.
+//
+// It keeps the parts the row above cannot show. The remediation kind is on no
+// list row at all: the list marks only whether a finding is Auto-fixable, so
+// Review and Manual are indistinguishable there. The service is dropped from
+// the *cursor's* row specifically — findingRow computes the suffix in its
+// non-cursor branch only — which is to say it disappears from the one row the
+// panel belongs to.
 func (m *appModel) inlineRows(w int) []string {
 	if len(m.active) == 0 {
 		return nil
 	}
 	s := m.sty()
 	f := m.active[m.cursor]
-	body := m.detailBodyRows(f, w-4)
+	body := append(
+		[]string{s.dim.Render(truncate(m.detailMeta(f, false), w-4)), ""},
+		m.detailFactsRows(f, w-4)...)
 
 	out := make([]string, 0, len(body)+1)
 	for _, r := range body {
