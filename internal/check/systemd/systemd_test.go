@@ -86,9 +86,19 @@ func find(fs []model.Finding, id, service string) (model.Finding, bool) {
 func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 	fs := scan(t, operatorUnit("gitea.service", nil))
 
-	for _, want := range []string{
-		"systemd.no-new-privileges", "systemd.protect-system",
-		"systemd.protect-home", "systemd.private-tmp",
+	// Three of the four are Manual and one is not, and the split is the
+	// point rather than an inconsistency. protect-system, protect-home and
+	// private-tmp each break something the unit does not show — a service
+	// that hands another files through /tmp, one whose data lives in a home
+	// directory, one that writes under /usr — so hostveil cannot tell a safe
+	// unit from an unsafe one. NoNewPrivileges has no such blind spot, and
+	// the drop-in that turns it on is a file this checker already computes
+	// the path and contents of, so internal/fix writes it.
+	for want, kind := range map[string]model.RemediationKind{
+		"systemd.no-new-privileges": model.RemediationReview,
+		"systemd.protect-system":    model.RemediationManual,
+		"systemd.protect-home":      model.RemediationManual,
+		"systemd.private-tmp":       model.RemediationManual,
 	} {
 		f, ok := find(fs, want, "gitea.service")
 		if !ok {
@@ -105,10 +115,15 @@ func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 		if !strings.Contains(f.HowToFix, "systemctl restart gitea.service") {
 			t.Errorf("%s: how-to-fix must say the change needs a restart:\n%s", want, f.HowToFix)
 		}
-		// Manual by decision, and the decision is recorded in fix.Default's
-		// register — see TestEveryFindingIsEitherFixableOrDeclinedOnPurpose.
-		if f.Remediation != model.RemediationManual {
-			t.Errorf("%s: remediation = %v, want Manual", want, f.Remediation)
+		// The decision is recorded in fix.Default's register either way —
+		// see TestEveryFindingIsEitherFixableOrDeclinedOnPurpose.
+		if f.Remediation != kind {
+			t.Errorf("%s: remediation = %v, want %v", want, f.Remediation, kind)
+		}
+		// The fix layer cannot import this package, so the path it writes
+		// travels with the finding rather than being recomputed there.
+		if got := f.Metadata["dropin"]; got != "/etc/systemd/system/gitea.service.d/50-hostveil.conf" {
+			t.Errorf("%s: metadata[dropin] = %q", want, got)
 		}
 	}
 }

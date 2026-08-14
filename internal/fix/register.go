@@ -326,42 +326,50 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
-// # The service-hardening domain, declined whole
+// # The service-hardening domain, three of four declined
 //
-// systemd.* has no registered fix either, and the reason is the shape of the
-// failure rather than the shape of the edit. The edit is trivial: a drop-in
-// at /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service]
-// section and one directive, created by CreateIfMissing, reversed by
-// deleting the file, and `systemd-analyze verify` would validate it.
+// The edit is trivial for all four: a drop-in at
+// /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service] section
+// and one directive, created by CreateIfMissing, reversed by deleting the
+// file. What is not trivial is knowing it is safe, and for three of them it
+// is not knowable. systemd.protect-system breaks a service that writes under
+// /usr; systemd.private-tmp breaks two services that hand each other files
+// through /tmp; systemd.protect-home breaks anything whose data lives in a
+// home directory, which on a self-hosted box is common. None of that is
+// visible from the unit — it depends on what the program does — so no amount
+// of reading gets hostveil to "unambiguous". Those three stay declined.
 //
-// What is not trivial is knowing it is safe. ProtectSystem=full breaks a
-// service that writes under /usr; PrivateTmp=yes breaks two services that
-// hand each other files through /tmp; ProtectHome=yes breaks anything whose
-// data lives in a home directory, which on a self-hosted box is common. None
-// of that is visible from the unit — it depends on what the program does —
-// so no amount of reading gets hostveil to "unambiguous", and Auto is out.
+// Named one by one rather than as systemd.*, which is what this said while
+// the domain was declined whole. A glob now would cover the one that is not.
 //
-// Review is out for the same reason it is out for dockerd, arrived at from
-// the other direction: there is only one thing to do. A drop-in and a
-// restart are not two alternatives, they are one procedure in two steps, and
-// systemd has no equivalent of `sysctl -w` — no way to change a running
-// service's sandbox without restarting it — so there is no second
-// independent alternative to pair with.
+// NoNewPrivileges is registered, and separating it from the other three is
+// the whole of the change. It has no such blind spot: it closes the setuid
+// path, and nothing about the unit hides whether a service deliberately
+// escalates the way a unit hides which directories a program writes to. It is
+// also the same protection the container domain fixes automatically under the
+// same name.
 //
-// And the failure is delayed. A property this changes takes effect at the
-// next restart, which on a host like this is the next reboot; a service that
-// does not come back then is discovered later, by absence, with no obvious
-// connection to a fix applied weeks earlier. So the remediation carries the
-// exact path and the exact two lines, and the operator restarts it while
-// watching.
+// This paragraph used to argue the domain away whole, and two of its three
+// legs were about the other three rules. The third was about shape: "a
+// drop-in and a restart are not two alternatives, they are one procedure in
+// two steps, and systemd has no equivalent of `sysctl -w`". That leg is gone.
+// Action.TakesEffectOn is precisely the shape of "written now, in force when
+// X happens", and every compose fix stands on it; the sentence predates it.
 //
-// Action.TakesEffectOn does not rescue this one the way it rescues the
-// compose warnings. There it makes an honest sentence out of a change whose
-// consequence is visible the moment the operator recreates the service; here
-// the consequence is a service that fails to start at the next boot, and
-// saying so in advance does not make an unattended tool the right thing to
-// have made the decision. The first paragraph is still the one that decides:
-// whether ProtectHome breaks this service is not visible from the unit.
+// What survives is the delayed failure: a service that does not come back is
+// discovered at the next restart, which on a host like this can be the next
+// reboot. That rules out Auto and it is exactly what Review is for. The
+// checker declares Review, the registration here is one action — Auto's shape
+// and nothing more — and resolvedKind shows the operator the more cautious of
+// the two. firewall.inactive reaches the screen the same way.
+//
+// The re-check after applying it will still report the finding, and that is
+// correct rather than a failure. This checker asks systemd for each unit's
+// effective configuration, and systemd has not re-read the file; VerifyStillPresent
+// says so in the sentence it was written for — "the change may not take
+// effect until '<unit>' restarts". For the same reason the fix is absent from
+// internal/fix/roundtrip_test.go: the loop needs a checker that reads what the
+// fix wrote, and this one deliberately does not.
 //
 // # The Docker daemon domain, declined whole
 //
@@ -483,5 +491,6 @@ func Default() *Registry {
 	registerFirewall(r)
 	registerAgent(r)
 	registerSysctl(r)
+	registerSystemd(r)
 	return r
 }

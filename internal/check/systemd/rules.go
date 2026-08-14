@@ -33,6 +33,22 @@ type rule struct {
 	// directive is the [Service] line that turns the protection on.
 	directive string
 	flagged   func(u unit) bool
+	// remediation is how much human judgement this rule needs, and it is
+	// per-rule rather than per-domain because the four differ.
+	//
+	// Three of them break something the unit does not show — a service that
+	// hands another files through /tmp, one whose data lives in a home
+	// directory, one that writes under /usr — so hostveil has no way to tell
+	// a safe unit from an unsafe one and stays out of it. NoNewPrivileges
+	// carries no such blind spot: it closes the setuid path and nothing
+	// about the unit hides whether that matters.
+	//
+	// Review rather than Auto because a service that deliberately escalates
+	// stops coming back, and that is not a thing to do while nobody is
+	// watching. The registry's fix is one action, which is Auto's shape;
+	// resolvedKind takes the more cautious of the two, so this is what the
+	// operator is shown.
+	remediation model.RemediationKind
 }
 
 // on reports whether systemd read a boolean property as enabled. It prints
@@ -72,8 +88,9 @@ var rules = []rule{
 		sevNonRoot: model.SeverityMedium,
 		desc: "NoNewPrivileges is off, so anything this service runs can gain privileges through a setuid binary — the standard way a foothold inside a service becomes a foothold outside it. " +
 			"It costs nothing on a service that does not deliberately escalate, which is why it is the same protection the container domain checks for under the name no-new-privileges.",
-		directive: "NoNewPrivileges=yes",
-		flagged:   func(u unit) bool { return known(u.NoNewPrivileges) && !on(u.NoNewPrivileges) },
+		directive:   "NoNewPrivileges=yes",
+		remediation: model.RemediationReview,
+		flagged:     func(u unit) bool { return known(u.NoNewPrivileges) && !on(u.NoNewPrivileges) },
 	},
 	{
 		id:    "systemd.protect-system",
@@ -130,9 +147,18 @@ func (r rule) finding(u unit) model.Finding {
 	if runAs == "" {
 		runAs = "root (no User= set)"
 	}
+	kind := r.remediation
+	if kind == model.RemediationUnset {
+		kind = model.RemediationManual
+	}
 	return model.NewFinding(r.id, r.title, r.severityFor(u), model.SourceSystemd,
-		model.RemediationManual,
+		kind,
 		model.WithService(u.ID),
+		// Where the fix layer writes, decided by the half that computes it.
+		// internal/fix cannot import this package, and a path recomputed
+		// there would be a second answer to a question with one — the same
+		// reason the compose checker carries "file".
+		model.WithMetadata("dropin", dropInPath(u.ID)),
 		model.WithDescription(r.desc),
 		model.WithHowToFix(fmt.Sprintf(
 			"Create %s containing:\n\n    [Service]\n    %s\n\nThen run `systemctl daemon-reload` and `systemctl restart %s`. "+

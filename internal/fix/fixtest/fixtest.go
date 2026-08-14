@@ -24,6 +24,7 @@ func Finding(id string) model.Finding {
 		model.WithService("app"),
 		model.WithMetadata("file", "/tmp/docker-compose.yml"),
 		model.WithMetadata("service", "app"),
+		model.WithMetadata("dropin", "/tmp/50-hostveil.conf"),
 		model.WithEvidence("port", "6379"),
 		model.WithEvidence("config", "/etc/ssh/sshd_config"),
 		model.WithEvidence("mechanism", "dnf-automatic"),

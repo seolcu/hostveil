@@ -248,7 +248,7 @@
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>

@@ -113,8 +113,7 @@ var declineReasons = map[string]string{
 	"dockerd.userns-remap":          "It applies only to containers started after a restart that stops every container, and remapping rewrites the ownership of every bind mount on the host.",
 
 	// systemd
-	"systemd.no-new-privileges": "A drop-in plus a restart is one procedure in two steps rather than two alternatives, and a service that does not come back fails at the next restart.",
-	"systemd.private-tmp":       "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",
-	"systemd.protect-home":      "ProtectHome=yes breaks anything whose data lives in a home directory, which the unit does not show, and the failure surfaces only at the next restart.",
-	"systemd.protect-system":    "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
+	"systemd.private-tmp":    "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",
+	"systemd.protect-home":   "ProtectHome=yes breaks anything whose data lives in a home directory, which the unit does not show, and the failure surfaces only at the next restart.",
+	"systemd.protect-system": "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
 }
