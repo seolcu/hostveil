@@ -30,6 +30,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
+          check-latest: true
       - name: Check dependencies for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
 
@@ -56,6 +57,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
+          check-latest: true
 
       - name: Fuzz ${{ matrix.target }}
         run: go test ${{ matrix.package }} -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 5m

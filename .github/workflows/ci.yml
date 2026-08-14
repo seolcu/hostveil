@@ -33,6 +33,13 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: "1.26"
+          # check-latest, because without it `go-version: "1.26"` means
+          # "whatever 1.26.x this runner image happens to have cached", not
+          # "the newest 1.26.x". The image sat on 1.26.5 after 1.26.6 shipped
+          # and govulncheck failed the build on five standard-library
+          # vulnerabilities that were already fixed upstream. A version spec
+          # that reads as a range has to behave like one.
+          check-latest: true
 
       - name: Download dependencies
         run: go mod download
