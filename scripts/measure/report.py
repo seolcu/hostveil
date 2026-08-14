@@ -68,6 +68,10 @@ def host():
     except OSError:
         pass
     out["kernel"] = os.uname().release
+    # The architecture, because the page wants to say it and had nothing to
+    # say it from. It named one anyway, out of the filename — which is the
+    # one claim on that page nothing checked.
+    out["arch"] = os.uname().machine
     return out
 
 

@@ -125,7 +125,7 @@
             <p>아래는 일부러 잘못 설정한 호스트 하나에 대한 한 번의 실행입니다. 벤치마크가 아니라 증거입니다. 인용하기 전에 <a href="#limits">이 결과가 보여주지 않는 것</a>을 먼저 읽어 주세요.</p>
 
             <h2 id="host">측정한 호스트</h2>
-            <p>셀프호스터가 실제로 굴리는 잘못된 설정을 심어 둔 ARM64 서버입니다. 서비스는 흉내가 아니라 실제로 돕니다. Compose 스택 3개 — Nextcloud+PostgreSQL, Jellyfin+Redis, Portainer+Watchtower — 가 모든 포트를 <code>0.0.0.0</code>에 공개하고 <code>no-new-privileges</code>도 재시작 정책도 메모리 제한도 없으며, 빈 비밀번호와 root 로그인과 비밀번호 인증을 허용하는 SSH 드롭인, 설치돼 있지만 꺼져 있는 ufw, 꺼져 있는 자동 보안 업데이트, <code>0.0.0.0</code>에 바인딩된 네이티브 Redis, UID 0인 두 번째 계정, 모두가 읽을 수 있는 <code>/etc/shadow</code>, 그리고 API 키 옆에 설정 파일이 놓인 AI 에이전트 런타임 2개.</p>
+            <p>셀프호스터가 실제로 굴리는 잘못된 설정을 심어 둔 서버입니다. 서비스는 흉내가 아니라 실제로 돕니다. Compose 스택 3개 — Nextcloud+PostgreSQL, Jellyfin+Redis, Portainer+Watchtower — 가 모든 포트를 <code>0.0.0.0</code>에 공개하고 <code>no-new-privileges</code>도 재시작 정책도 메모리 제한도 없으며, 빈 비밀번호와 root 로그인과 비밀번호 인증을 허용하는 SSH 드롭인, 설치돼 있지만 꺼져 있는 ufw, 꺼져 있는 자동 보안 업데이트, <code>0.0.0.0</code>에 바인딩된 네이티브 Redis, UID 0인 두 번째 계정, 모두가 읽을 수 있는 <code>/etc/shadow</code>, 그리고 API 키 옆에 설정 파일이 놓인 AI 에이전트 런타임 2개.</p>
             <div class="docs-table-wrap">
               <table>
                 <tbody>
