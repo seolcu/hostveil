@@ -100,10 +100,18 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 // classify demote the finding to Manual, which is the same answer it
 // already gives when no fix is registered and the same promise the rest of
 // the engine makes: a UI never offers a button that leads nowhere.
-func (e *Engine) buildFix(f model.Finding) (fix.Fix, bool, error) {
+func (e *Engine) buildFix(f model.Finding) (built fix.Fix, ok bool, err error) {
 	if e.fixes == nil {
 		return fix.Fix{}, false, nil
 	}
+	// The whole body, not just Build: Validate reads the shape a builder
+	// returned, and a builder that half-built one is exactly the case where
+	// both can go wrong. See contain.go.
+	defer func() {
+		if r := recover(); r != nil {
+			built, ok, err = fix.Fix{}, false, crashError("deciding what to change", f.ID, r)
+		}
+	}()
 	fx, ok, err := e.fixes.Build(f)
 	if !ok || err != nil {
 		return fx, ok, err
@@ -119,7 +127,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if err != nil {
 		return model.FixOutcome{}, err
 	}
-	next, err := a.Transform(orig)
+	next, err := safeTransform(a, f.ID, orig)
 	if err != nil {
 		return model.FixOutcome{}, err
 	}
