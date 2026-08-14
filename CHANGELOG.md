@@ -1,5 +1,103 @@
 # Changelog
 
+## [3.19.0](https://github.com/seolcu/hostveil/compare/v3.18.0...v3.19.0) (2026-08-15)
+
+Two things the terminal did not say, one address it could not give you, and
+four ways hostveil could take itself down.
+
+The list had shown a finding's severity, id and title since it existed, and
+never which of the four kinds of fix it has — so Review, Manual and
+Unavailable were indistinguishable from each other and the only way to learn
+whether there was anything to press was to open the finding. The dashboard has
+said it on every row since the day it shipped.
+
+### Features
+
+* **tui:** the list names the fix kind, and the cursor row keeps its service
+  ([#729](https://github.com/seolcu/hostveil/issues/729)). Six columns of
+  AUTO / REVIEW / MANUAL / N/A, drawn in the green the pick marker already
+  spends on the same claim, the accent this interface uses for "there is a key
+  here", and the muted grey for the three kinds that offer no button.
+  Deliberately not a heat: the severity column two fields to the left is
+  already crit/high/med/low, and a HIGH row whose kind came out yellow reads
+  as a row that is somehow both.
+
+  The cursor row also stopped losing the service name. `findingRow` had two
+  branches that each laid the row out themselves and the cursor branch simply
+  did not append the suffix, so moving onto a row erased the one column saying
+  which container it was about — on the row the operator was by definition
+  looking at. A test had encoded that defect as the way to recognise the
+  cursor row, and now checks the selection styling instead.
+
+* **cmd:** `serve` prints the tunnel command when you are on SSH
+  ([#729](https://github.com/seolcu/hostveil/issues/729)). It printed
+  `http://127.0.0.1:8787/?t=…` and stopped, and on an SSH session that address
+  is the server — the URL was correct and unusable, and hostveil knew it was
+  in an SSH session the whole time. It now prints what to run on your own
+  machine, using the address your client actually reached rather than the
+  machine's hostname: those are guesses about what the client can route to,
+  this is the address a packet from that client demonstrably arrived on. It
+  does not offer to bind the dashboard somewhere routable instead — every
+  route on it applies fixes or reads a scan of `/etc/shadow`, as root, and a
+  forwarded port is the same access with the authentication already done.
+
+### Bug Fixes
+
+* **core:** a crashing fix ends that fix, not the process
+  ([#730](https://github.com/seolcu/hostveil/issues/730)).
+  `internal/check.runOne` has said since the beginning that a panic in one
+  checker degrades only that domain; the fix path said nothing, and it takes
+  more with it — `serve` runs as root and an unrecovered panic ends the
+  process for every request in flight, and `fix --all` loses both the fixes it
+  had not reached and the operator's chance to read what did land. A fix
+  builder reads the host to decide which file to edit, and a Transform is the
+  one place in this program where host-supplied bytes meet a hand-written
+  parser. Both are contained; a panic is now an ordinary error, which every
+  caller already handles.
+
+* **platform:** the command seam bounds memory as well as time
+  ([#730](https://github.com/seolcu/hostveil/issues/730)). It has bounded time
+  since it was written and never bounded memory. The two fail differently: a
+  hanging command is killed at the deadline, a *streaming* one is held in full
+  until it stops. The CVE checker runs several Trivy scans at once and the
+  hosts this is for are often 1 GB VPSes. 128 MiB, and exceeding it returns no
+  output and an error naming the command — handing back the first 128 MiB of a
+  JSON document gives a checker something that parses to a smaller, wrong
+  answer.
+
+* **check:** a healthcheck the image declares is still a healthcheck
+  ([#729](https://github.com/seolcu/hostveil/issues/729)). `compose.ds012`
+  asks a question about the container and answered it from the compose file
+  alone. On a real host this reported "No healthcheck defined" against a
+  container `docker ps` was showing as `healthy`, because the image declared
+  `HEALTHCHECK` in its own Dockerfile. The compose half asks the image now; a
+  miss keeps the finding.
+
+* **ci:** a version spec that reads as a range has to behave like one
+  ([#730](https://github.com/seolcu/hostveil/issues/730)). `actions/setup-go`
+  prefers a version already cached in the runner image, so `go-version: "1.26"`
+  meant "whatever 1.26.x this image happens to have" — and went on meaning
+  that after Go shipped fixes for five standard-library vulnerabilities. All
+  five workflows pass `check-latest: true` now. The local half of the same
+  problem is worse because it is silent: govulncheck reads the standard
+  library's version out of the Go that built it, and a distribution's patched
+  build reports something that does not parse as a release, so the standard
+  library is dropped from the scan and the run prints "No vulnerabilities
+  found." AGENTS.md says so now.
+
+* **docs:** the page named an architecture no run recorded
+  ([#731](https://github.com/seolcu/hostveil/issues/731)). "An ARM64 server
+  seeded with…" led the measurements page for four published runs, and not one
+  of them carried an architecture — the word came out of the filename. The
+  harness records it now, both pages stop naming one until a run supports it,
+  and a test holds that rule.
+
+* **docs:** three claims on the measurements page that no test was checking
+  ([#728](https://github.com/seolcu/hostveil/issues/728)). A pin that rendered
+  nothing asserted nothing, and the sentence around it went on naming a Lynis
+  suggestion this run did not clear. Two other figures belonged to the
+  previous run.
+
 ## [3.18.0](https://github.com/seolcu/hostveil/compare/v3.17.0...v3.18.0) (2026-08-14)
 
 Installing hostveil took one command and updating it took the whole URL again.
