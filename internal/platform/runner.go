@@ -39,6 +39,11 @@ type DefaultRunner struct {
 	// DefaultTimeout, which is what every production call site wants; it is a
 	// field so a test can assert the bound exists without waiting for it.
 	Timeout time.Duration
+
+	// MaxOutput bounds how much stdout one command may hand back. Zero means
+	// maxOutput, and it is a field for the same reason Timeout is: proving
+	// the ceiling exists should not require producing 128 MiB to hit it.
+	MaxOutput int
 }
 
 // DefaultTimeout bounds any command whose caller set no deadline of its own.
@@ -116,8 +121,70 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = waitDelay
 	cmd.Env = append(os.Environ(), "LC_ALL=C")
-	out, err := cmd.Output()
-	return out, describeContext(ctx, name, limit, withStderr(err))
+
+	// Bounded rather than cmd.Output(), which reads until the pipe closes.
+	// Time was bounded here from the start and memory was not, and the two
+	// fail differently: a command that hangs is killed at the deadline, while
+	// one that streams is held in full until it stops. The CVE checker runs
+	// several of these at once against a host that is often a 1 GB VPS, and
+	// `serve` does it as root — an OOM kill there ends the dashboard for
+	// every request in flight.
+	//
+	// stdout and stderr are captured separately because withStderr needs the
+	// message, and setting cmd.Stderr means exec no longer fills
+	// ExitError.Stderr for it.
+	cap_ := r.MaxOutput
+	if cap_ <= 0 {
+		cap_ = maxOutput
+	}
+	stdout := &capped{limit: cap_}
+	stderr := &capped{limit: maxStderrBytes}
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	err := cmd.Run()
+
+	// Overflow returns no output at all. Handing back the first 128 MiB of a
+	// JSON document would give a checker something that parses to a smaller,
+	// wrong answer, which is the failure this project spends most of its
+	// tests on: a partial look reported as a finished one.
+	if stdout.overflow {
+		return nil, fmt.Errorf("%s produced more than %d bytes of output and was not read; "+
+			"this domain is reported as failed rather than judged on part of it", name, cap_)
+	}
+	return stdout.buf, describeContext(ctx, name, limit, withStderr(err, stderr.buf))
+}
+
+// maxOutput bounds what one command may hand back.
+//
+// Generous on purpose: Trivy's JSON for a large image runs to tens of
+// megabytes and has to fit. This is a ceiling on a runaway, not a budget.
+const maxOutput = 128 << 20
+
+// maxStderrBytes bounds the diagnostic channel. cleanStderr cuts the message
+// to a line anyway, so anything past this was never going to be shown.
+const maxStderrBytes = 64 << 10
+
+// capped collects output up to a limit and remembers whether more arrived.
+//
+// Write always reports the full length. Reporting a short write would make
+// exec close the pipe and the command die of SIGPIPE, which reaches the
+// operator as a broken tool rather than as output hostveil declined to hold.
+type capped struct {
+	buf      []byte
+	limit    int
+	overflow bool
+}
+
+func (c *capped) Write(p []byte) (int, error) {
+	switch room := c.limit - len(c.buf); {
+	case room >= len(p):
+		c.buf = append(c.buf, p...)
+	case room > 0:
+		c.buf = append(c.buf, p[:room]...)
+		c.overflow = true
+	case len(p) > 0:
+		c.overflow = true
+	}
+	return len(p), nil
 }
 
 // describeContext turns the "signal: killed" a cancelled command reports into
@@ -149,12 +216,17 @@ const maxStderr = 200
 // os/exec otherwise strands on the error struct — leaving callers to report
 // the useless "exit status 1". The original error is wrapped, so errors.Is
 // and errors.As still work.
-func withStderr(err error) error {
+func withStderr(err error, captured []byte) error {
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) {
 		return err
 	}
-	msg := cleanStderr(exitErr.Stderr)
+	// Prefer what was captured here. ExitError.Stderr is only filled when
+	// exec owns the buffer, which it no longer does.
+	msg := cleanStderr(captured)
+	if msg == "" {
+		msg = cleanStderr(exitErr.Stderr)
+	}
 	if msg == "" {
 		return err
 	}
