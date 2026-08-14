@@ -115,11 +115,12 @@ var kindInDocs = func() map[string]model.RemediationKind {
 // key tripped hands the operator a choice. Review is what that operator is
 // shown, so Review is what the column says.
 var checkerAsksForMore = map[string]string{
-	"ssh.passwordauth":        "disabling passwords locks out anyone whose key is not already working",
-	"ssh.gatewayports":        "a published tunnel may be the only route to a service, including the operator's",
-	"ssh.hostbasedauth":       "the trusting host may be how the operator gets in",
-	"ssh.kbdinteractive":      "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
-	"agent.exec-unrestricted": "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
+	"ssh.passwordauth":          "disabling passwords locks out anyone whose key is not already working",
+	"ssh.gatewayports":          "a published tunnel may be the only route to a service, including the operator's",
+	"ssh.hostbasedauth":         "the trusting host may be how the operator gets in",
+	"ssh.kbdinteractive":        "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
+	"agent.exec-unrestricted":   "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
+	"systemd.no-new-privileges": "a service that deliberately escalates stops coming back, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
 }
 
 // TestDocumentedFixKindsMatchTheRegistry is the guard for the failure that

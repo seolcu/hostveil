@@ -174,6 +174,31 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if fi, err := os.Stat(a.Path); err == nil {
 		mode = fi.Mode().Perm()
 	}
+	// A file that may not exist may not have a directory either, and the two
+	// are the same situation from the caller's side. The sysctl and apt
+	// drop-ins land in directories every distribution ships, so this went
+	// unnoticed until a systemd drop-in — /etc/systemd/system/<unit>.d/ is
+	// created by whoever first overrides that unit, which is usually nobody.
+	// WriteFileAtomic stages its temp file beside the target, so a missing
+	// directory fails there rather than at the rename, after the checkpoint
+	// is already written.
+	//
+	// Rollback deletes the file and leaves the directory. By then it may hold
+	// a drop-in somebody else put there, and an empty .d directory changes
+	// nothing about how systemd reads the unit.
+	if creating {
+		// G301: 0755 and not 0750, because this is a configuration directory
+		// under /etc and the config in it is meant to be readable. `systemctl
+		// cat` run by the operator as themselves reads the drop-in hostveil
+		// wrote; at 0750 root:root it would not, and hostveil would have
+		// hidden the change it just made from the person who asked for it.
+		// Nothing secret is written here — the file holds one directive that
+		// is also in the finding, the preview and the checkpoint.
+		//nolint:gosec // G301: a config directory under /etc, readable on purpose
+		if err := os.MkdirAll(filepath.Dir(a.Path), 0o755); err != nil {
+			return model.FixOutcome{}, fmt.Errorf("creating the directory for %s: %w", a.Path, err)
+		}
+	}
 	if err := platform.WriteFileAtomic(a.Path, next, mode); err != nil {
 		// The checkpoint is already on disk and `hostveil history` will list
 		// it as an applied, reversible fix — for a change that never landed.

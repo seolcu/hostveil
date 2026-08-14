@@ -248,7 +248,7 @@
               <table>
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
