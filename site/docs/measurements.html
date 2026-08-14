@@ -125,7 +125,7 @@
             <p>What follows is one run against one deliberately misconfigured host. It is evidence, not a benchmark: read <a href="#limits">what this does not show</a> before quoting any of it.</p>
 
             <h2 id="host">The host</h2>
-            <p>An ARM64 server seeded with the misconfigurations self-hosters actually ship, running the services rather than stubbing them: three Compose stacks — Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower — publishing every port on <code>0.0.0.0</code>, with no <code>no-new-privileges</code>, no restart policy and no memory limits; an SSH drop-in permitting empty passwords, root login and password authentication; ufw installed and switched off; automatic security updates off; a natively installed Redis bound to <code>0.0.0.0</code>; a second UID 0 account; a world-readable <code>/etc/shadow</code>; and two AI agent runtimes with their config beside their API keys.</p>
+            <p>A server seeded with the misconfigurations self-hosters actually ship, running the services rather than stubbing them: three Compose stacks — Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower — publishing every port on <code>0.0.0.0</code>, with no <code>no-new-privileges</code>, no restart policy and no memory limits; an SSH drop-in permitting empty passwords, root login and password authentication; ufw installed and switched off; automatic security updates off; a natively installed Redis bound to <code>0.0.0.0</code>; a second UID 0 account; a world-readable <code>/etc/shadow</code>; and two AI agent runtimes with their config beside their API keys.</p>
             <div class="docs-table-wrap">
               <table>
                 <tbody>

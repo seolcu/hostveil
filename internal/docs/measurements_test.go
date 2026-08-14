@@ -425,3 +425,62 @@ func TestNoPublishedFigureIsEmpty(t *testing.T) {
 		}
 	}
 }
+
+// archWords are the ways this page could name an architecture.
+var archWords = regexp.MustCompile(`(?i)\b(arm64|aarch64|x86[_-]?64|amd64)\b`)
+
+// TestThePageOnlyNamesAnArchitectureTheRunRecorded closes the last unpinned
+// claim on this page.
+//
+// It read "An ARM64 server seeded with…" for four published runs, and no run
+// carried an architecture at all — `host` held id, kernel, pretty_name and
+// version_id, and nothing else. The word came out of the filename, which is
+// to say out of whoever typed the filename. Every other figure here resolves
+// against the committed JSON; this one asserted a hardware fact from prose.
+//
+// The harness records `arch` now (scripts/measure/report.py), so the sentence
+// can come back the moment a run carries one. Until then the page does not
+// say it, because "we could not tell" and "it was ARM64" are different
+// statements and only one of them was measured.
+//
+// The committed runs were deliberately left alone. Adding `arch` to them by
+// hand would be inventing measurement output, which is the failure this whole
+// page exists to argue against.
+func TestThePageOnlyNamesAnArchitectureTheRunRecorded(t *testing.T) {
+	name, doc := newestMeasurement(t)
+	recorded, err := resolveJSON(doc, "host.arch")
+	got := ""
+	if err == nil {
+		got = strings.ToLower(renderJSON(recorded))
+	}
+
+	for _, lang := range []string{"en", "ko"} {
+		for _, m := range archWords.FindAllString(measuredPage(t, lang), -1) {
+			word := strings.ToLower(m)
+			switch {
+			case got == "":
+				t.Errorf("%s: the page says %q and %s records no host.arch at all — "+
+					"either the run has to carry it or the page must not name one",
+					lang, m, name)
+			case !sameArch(word, got):
+				t.Errorf("%s: the page says %q and %s recorded %q", lang, m, name, got)
+			}
+		}
+	}
+}
+
+// sameArch treats the spellings of one machine as one machine. uname reports
+// aarch64 and x86_64; prose says arm64 and amd64, and a page failing over
+// that difference would be failing over vocabulary rather than over a claim.
+func sameArch(word, recorded string) bool {
+	group := func(s string) string {
+		switch strings.ToLower(strings.ReplaceAll(s, "-", "_")) {
+		case "arm64", "aarch64":
+			return "arm"
+		case "x86_64", "x8664", "amd64":
+			return "x86"
+		}
+		return s
+	}
+	return group(word) == group(recorded)
+}
