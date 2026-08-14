@@ -47,7 +47,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 		case fix.ActionEdit:
 			ap.Type = "edit"
 			ap.Path = a.Path
-			d, err := previewEdit(a)
+			d, err := previewEdit(a, f.ID)
 			if err != nil {
 				return model.FixPreview{}, err
 			}
@@ -72,12 +72,12 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 
 // previewEdit computes an edit action's diff purely: read the file, run the
 // pure Transform on a copy, diff the two. The live file is never written.
-func previewEdit(a fix.Action) (string, error) {
+func previewEdit(a fix.Action, id string) (string, error) {
 	orig, _, err := readEditTarget(a)
 	if err != nil {
 		return "", err
 	}
-	next, err := a.Transform(orig)
+	next, err := safeTransform(a, id, orig)
 	if err != nil {
 		return "", err
 	}
