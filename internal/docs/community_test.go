@@ -203,3 +203,53 @@ func TestPRTemplateGateMatchesAgentsMd(t *testing.T) {
 		t.Fatalf("only %d gate commands extracted from the template — extraction is broken, not the doc", checked)
 	}
 }
+
+// TestCitationKeywordsAreTopicShaped.
+//
+// CITATION.cff's keywords are also the repository's GitHub topics. That is not
+// a coincidence being documented after the fact — the topic list lives on
+// GitHub, where nothing in this repository can hold it, and a list with no
+// owner anywhere is the shape everything else in internal/docs exists to
+// prevent. This file is the owner.
+//
+// What can be checked locally is whether GitHub would accept each entry:
+// lowercase, digits and hyphens only, 50 characters at most, not starting or
+// ending with a hyphen. A keyword that fails those is silently dropped when
+// the topics are applied, so the repository would carry fewer topics than the
+// list says and nothing would report it.
+//
+// What cannot be checked here is whether the topics on GitHub actually match.
+// Applying them needs a token with repo scope, and a workflow holding one
+// permanently to automate a change made about once a year is a worse trade
+// than doing it by hand. The gap is stated rather than papered over.
+func TestCitationKeywordsAreTopicShaped(t *testing.T) {
+	var keywords []string
+	inList := false
+	for _, line := range strings.Split(readRepoFile(t, "CITATION.cff"), "\n") {
+		switch {
+		case strings.HasPrefix(line, "keywords:"):
+			inList = true
+		case inList && strings.HasPrefix(line, "  - "):
+			keywords = append(keywords, strings.TrimSpace(strings.TrimPrefix(line, "  - ")))
+		case inList && line != "" && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "#"):
+			inList = false
+		}
+	}
+	if len(keywords) < 5 {
+		t.Fatalf("parsed %d keywords out of CITATION.cff; the extraction is broken, not the file", len(keywords))
+	}
+
+	ok := regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$`)
+	seen := map[string]bool{}
+	for _, k := range keywords {
+		if !ok.MatchString(k) {
+			t.Errorf("keyword %q is not a shape GitHub accepts as a topic (lowercase letters, "+
+				"digits and hyphens, 50 characters, no leading or trailing hyphen) — it would be "+
+				"dropped without a word when the topics are applied", k)
+		}
+		if seen[k] {
+			t.Errorf("keyword %q is listed twice", k)
+		}
+		seen[k] = true
+	}
+}

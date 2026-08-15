@@ -69,6 +69,32 @@ cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
 
 The repo syncs on `up`/`reload` but **not** on `provision` — re-sync after editing code. See `demo/README.md` and `docs/DEVELOPMENT.md`.
 
+## Repository metadata
+
+The About box and the topics are the only published surface with no copy in
+this repository, so they are the one place nothing here can hold to the code.
+`CITATION.cff` is the closest thing to an owner: its `abstract` is the English
+description and its `keywords` are the topic list, and
+`TestCitationKeywordsAreTopicShaped` keeps every entry to a shape GitHub will
+accept — one it will not is dropped silently, leaving fewer topics than the
+list says.
+
+Applying them is by hand, because a workflow would need a token with `repo`
+scope stored permanently to automate a change made about once a year:
+
+```bash
+gh repo edit --description "<CITATION.cff's abstract, first sentence>" \
+  --add-topic security --add-topic hardening   # …the rest of keywords:
+```
+
+`gh` cannot set the **social preview image** at all — there is no REST endpoint
+for it. Settings → General → Social preview, 1280×640. It is what every link to
+this repository unfurls as, on every platform, so an empty one is a grey card
+carrying whatever the description says.
+
+Topics are not decoration here: a repository with none appears on no topic page
+and is findable only by its own name.
+
 ## Releasing
 
 Releases are cut by hand — by a maintainer or by an agent working in this repo — and the tag is what starts the pipeline. There is no release-please and no release pull request.

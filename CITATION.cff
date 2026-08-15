@@ -16,9 +16,26 @@ authors:
 repository-code: "https://github.com/seolcu/hostveil"
 url: "https://hostveil.seolcu.com/"
 license: GPL-3.0-or-later
+# These are also the repository's GitHub topics, which is why the list is
+# longer than a citation needs. GitHub topic pages are how a project of this
+# kind is found at all, the list lives on GitHub where nothing in this
+# repository can hold it, and this file is the closest thing to an owner it
+# has. TestCitationKeywordsAreTopicShaped keeps every entry to what GitHub
+# will accept.
 keywords:
   - security
-  - linux
-  - self-hosting
+  - security-tools
   - hardening
+  - linux
+  - self-hosted
+  - selfhosted
+  - homelab
   - docker
+  - docker-compose
+  - ssh
+  - cve
+  - sbom
+  - golang
+  - cli
+  - tui
+  - devsecops
