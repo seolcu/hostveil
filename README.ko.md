@@ -12,7 +12,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/seolcu/hostveil)](go.mod)
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
 
-[웹사이트](https://hostveil.seolcu.com/ko/) · [문서](https://hostveil.seolcu.com/ko/docs/) · [최신 릴리스](https://github.com/seolcu/hostveil/releases/latest)
+[웹사이트](https://hostveil.seolcu.com/ko/) · [문서](https://hostveil.seolcu.com/ko/docs/) · [변경 이력](CHANGELOG.ko.md) · [최신 릴리스](https://github.com/seolcu/hostveil/releases/latest)
 
 <p align="center">
   <img src="site/assets/web.png" width="900"

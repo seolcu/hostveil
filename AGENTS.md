@@ -98,7 +98,11 @@ go run ./cmd/sitegen && git diff --exit-code site/
 git log --oneline "$(git describe --tags --abbrev=0)"..main   # what is going in
 ```
 
-Write the changelog entry into `CHANGELOG.md` — grouped `### Features` / `### Bug Fixes`, newest version first, matching the existing shape — and land it on main through a normal pull request. Then create the release, which creates the tag:
+Write the changelog entry into **both** `CHANGELOG.md` and `CHANGELOG.ko.md` — grouped `### Features` / `### Bug Fixes` (`### 새 기능` / `### 버그 수정`), newest version first, matching the existing shape — and land them on main through a normal pull request. `TestBothChangelogsCoverTheSameReleases` fails the build when a version appears in one and not the other, because nothing else would: the release is already out by the time anyone notices, and a missing entry looks exactly like a release with nothing to say. Korean coverage starts at 3.20.1 and older releases are deliberately not backfilled.
+
+The release notes are the same two languages in one body — English first, then a `<details>` block for the Korean — because a release has one description and half the readership of this project reads Korean. Where a change is easier to show than to describe, capture it: `scripts/ansi2png.py` renders terminal output into hostveil's own palette, the same tool `site/assets/tui.png` comes from, and the images live under `site/assets/releases/`, one directory per version, so the notes can link them by URL. Capture a real run rather than composing a picture of one — the before/after images for 3.20.1 are two containers running two builds of the binary.
+
+Then create the release, which creates the tag:
 
 ```bash
 gh release create v3.2.0 --target "$(git rev-parse origin/main)" --title v3.2.0 --notes-file notes.md

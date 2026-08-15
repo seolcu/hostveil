@@ -1,5 +1,93 @@
 # Changelog
 
+**English** · [한국어](CHANGELOG.ko.md)
+
+## [3.20.1](https://github.com/seolcu/hostveil/compare/v3.20.0...v3.20.1) (2026-08-15)
+
+Three things that were wrong, two of them in public. A score that credited a
+fix the host had not seen, four published figures that contradicted the run
+they were measured from, and an SSH audit that ended at a `Match` block
+without saying so.
+
+### Bug Fixes
+
+* **core:** the score stops counting a fix that is not in force
+  ([#735](https://github.com/seolcu/hostveil/issues/735)). `applyFix` marked
+  the finding fixed and rescored *before anything had looked at the host*, and
+  `ApplyFix` only re-checked afterwards — so the message saying the finding was
+  still reported printed underneath a score that had already credited it.
+  Measured on a Debian container with the real binary: applying the
+  `sysctl.ptrace-scope` drop-in moved the score 78 → 80 with `/proc/sys`
+  completely unchanged. Two points for writing a file the kernel had not read.
+
+  `model.Finding.Pending` separates applied from in force. The finding stays
+  charged until the change reaches the host, while `Fixed` keeps meaning that
+  hostveil applied something, which is what stops a batch re-applying it. Ask
+  `Finding.Active` for whether a risk is standing and `IsAutoFixable` for
+  whether the batch would act.
+
+  Pending comes from `fix.Action.TakesEffectOn` — the fix's own declaration —
+  so the batch path, which does not verify, reaches the same answer as the
+  single path. `VerifyStillPresent` upgrades it and `VerifyUnavailable` does
+  not: "could not look" is not evidence, and letting it count would make
+  re-checking more pessimistic than not re-checking, so applying fixes one at a
+  time would score below `fix --all` over the same set.
+
+  `persistSysctl` gains the `TakesEffectOn` it should always have had. The
+  sysctl checker reads `/proc/sys` while the fix writes a drop-in, which is the
+  artifact-versus-oracle mismatch that field exists for; it was carrying the
+  fact in `Warning` prose where nothing could act on it.
+
+  `fix --all` on a container host now reports what it applied beside a score
+  that has not moved, so `BatchOutcome` names which fixes are waiting and on
+  what — without that sentence this trades a dishonest number for an
+  inexplicable one.
+
+  The `dockerd` register is rewritten rather than emptied. "Not answered: the
+  score" was its shared blocker and is now answered, and that unblocks none of
+  the seven: five need a key added to or removed from `daemon.json` and
+  `internal/json5` only rewrites values that already exist, and the other two
+  never rested on the score. `socket-world-writable` is the one whose reason
+  genuinely falls, and drop-in precedence plus a `Manual` declaration stand
+  where it stood.
+
+  This corrects the score between an apply and the next scan, and nothing more.
+  A rescan rebuilds findings from the checkers, so the published measurements
+  are unchanged — the harness rescans at every phase.
+
+* **docs:** the figures the guard never read
+  ([#736](https://github.com/seolcu/hostveil/issues/736)). `measurements.html`
+  has every figure pinned to the committed run, and that guard had been
+  extended twice while reading one file. The landing page and both READMEs
+  publish the same numbers with no guard at all, and they had drifted: the
+  page said "two of Lynis's **three** warnings" two paragraphs below its own
+  pinned **4**; the READMEs carried the v3.13.0 rollback tally (5 of 5 across
+  33 checkpoints, eight of seventeen reviewed fixes) beside the current run's
+  table, where it is 6 of 6 across 37 and seven of sixteen; and the ARM64
+  claim [#731](https://github.com/seolcu/hostveil/issues/731) removed from the
+  page — because no committed run records `host.arch` — was still standing in
+  four other files.
+
+  The architecture guard now reads every file that quotes a run, skipping code
+  spans, because a claim about the measured host and the name of a file on the
+  releases page are different statements. The landing page's four headline
+  figures carry `data-measured` and are checked per cell. Prose claims, which
+  no attribute can reach, are built from the run and required verbatim —
+  including the site's own section heading, which spells its figures as words
+  and so was invisible even to a search for the digits.
+
+* **check:** a `Match` block is a coverage gap, not a clean bill
+  ([#737](https://github.com/seolcu/hostveil/issues/737)). The `sshd_config`
+  parser stops at the first `Match` and recorded nothing. Stopping is right —
+  sshd applies those directives only to connections that match. Stopping in
+  silence is not: `Match Address 0.0.0.0/0` followed by
+  `PasswordAuthentication yes` permits passwords for every connection there
+  is, and the domain reported complete, with output byte-identical to the same
+  file without the block. It is Degraded now, naming the file and what went
+  unexamined. The gaps go through `check.Coverage`, so a config with an
+  unreadable include *and* a `Match` block reports both rather than whichever
+  was found first.
+
 ## [3.20.0](https://github.com/seolcu/hostveil/compare/v3.19.0...v3.20.0) (2026-08-15)
 
 The service-hardening domain had no registered fix for any of its four
