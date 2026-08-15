@@ -723,7 +723,7 @@ func (m *appModel) markLane() {
 	}
 	sev := m.active[m.cursor].Severity
 	for _, f := range m.active {
-		if f.Severity == sev && f.Remediation == model.RemediationAuto {
+		if f.Severity == sev && f.IsAutoFixable() {
 			m.selected[f.Key()] = true
 		}
 	}
@@ -880,7 +880,7 @@ func (m *appModel) toggleSelect() {
 		return
 	}
 	f := m.active[m.cursor]
-	if f.Remediation != model.RemediationAuto {
+	if !f.IsAutoFixable() {
 		return
 	}
 	k := f.Key()
@@ -918,7 +918,7 @@ func (m *appModel) presentSources() []model.Source {
 	seen := map[model.Source]bool{}
 	var out []model.Source
 	for _, f := range m.report.Findings {
-		if f.Fixed || seen[f.Source] {
+		if !f.Active() || seen[f.Source] {
 			continue
 		}
 		seen[f.Source] = true

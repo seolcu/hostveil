@@ -50,6 +50,19 @@ type FixOutcome struct {
 	// VerifyNote is the checker's own reason when the re-check could not
 	// run — shown under the message, not instead of it.
 	VerifyNote string `json:"verify_note,omitempty"`
+
+	// Pending reports that the fix is written and not in force, so the score
+	// in NewScore has deliberately not moved for it. See Finding.Pending.
+	Pending bool `json:"pending,omitempty"`
+	// TakesEffectOn is what has to happen for a pending fix to reach the
+	// host, copied from the action that declared it. Empty when Pending is
+	// false.
+	//
+	// It is on the outcome because the batch path had no way to say it at
+	// all: only ApplyFix re-checks, so `fix --all` wrote fourteen compose
+	// files and never once named the `docker compose up -d` that would put
+	// any of them in force.
+	TakesEffectOn string `json:"takes_effect_on,omitempty"`
 }
 
 // BatchOutcome is the result of applying every eligible Auto fix at once.
@@ -62,8 +75,20 @@ type BatchOutcome struct {
 	// simply never reached. A UI must say so: the checkpoints for whatever
 	// did land are on disk, and an operator who thinks the batch completed
 	// has no reason to go looking for them.
-	Interrupted bool           `json:"interrupted,omitempty"`
-	NewScore    ScoreBreakdown `json:"new_score"`
+	Interrupted bool `json:"interrupted,omitempty"`
+	// Pending names the applied fixes that are written and not in force, so
+	// they are a subset of Applied and not a fourth outcome — the arithmetic
+	// the Interrupted clause below does over Applied+Skipped+Failed is
+	// untouched.
+	//
+	// It exists because without it this change trades a dishonest number for
+	// an inexplicable one. Every compose fix is Auto and every one takes
+	// effect only at a recreate, so `fix --all` on a container host now
+	// reports what it applied beside a score that has not moved, and the
+	// operator is owed the sentence saying which fixes are waiting and on
+	// what.
+	Pending  []string       `json:"pending,omitempty"`
+	NewScore ScoreBreakdown `json:"new_score"`
 	// Message is the sentence every interface shows, rendered once by the
 	// engine from the fields above. It exists for the reason
 	// FixOutcome.VerifyMessage does, and the reason turned out to apply
@@ -92,6 +117,13 @@ func (o BatchOutcome) Summary() string {
 		fmt.Fprintf(&b, " · failed %d", n)
 	}
 	fmt.Fprintf(&b, ". New score: %d/100.", o.NewScore.Overall)
+	// Said after the score, because it is the explanation for it. A batch of
+	// compose fixes leaves the number where it found it, and "applied 14, new
+	// score 61/100" with 61 unchanged reads as a tool that did nothing unless
+	// this sentence follows it.
+	if n := len(o.Pending); n > 0 {
+		fmt.Fprintf(&b, " %d of them are written and not in force yet, so the score does not count them.", n)
+	}
 	// Every finding handed to a batch lands in exactly one of the three, so
 	// their sum is what was asked for — which is what makes "8 of 11" sayable
 	// without the caller passing the total back in.

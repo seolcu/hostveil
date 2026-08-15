@@ -15,8 +15,16 @@ import (
 )
 
 // ApplyFix applies one action of a finding's fix through the single
-// backup→apply→checkpoint→mark-fixed→rescore pipeline, and returns the
-// outcome. It is the ONLY path that mutates the host.
+// backup→apply→checkpoint→mark-fixed→rescore pipeline, then re-checks the
+// domain and rescores again if what it learned changed the answer. It is the
+// ONLY path that mutates the host.
+//
+// The second rescore is why the tail is shaped this way. The score used to be
+// computed once, inside applyFix, before anything had looked at the host — so
+// a fix that writes a compose file and a fix that changes what is running
+// moved the number identically, and the operator was told the finding was
+// still reported by a message printed underneath a score that had already
+// credited it. See model.Finding.Pending.
 func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (model.FixOutcome, error) {
 	e.applyMu.Lock()
 	defer e.applyMu.Unlock()
@@ -33,11 +41,24 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// A re-check that no longer sees the finding has established that the
 	// artifact the fix wrote is correct — and where that artifact is not what
 	// the host is running from, that is all it has established. See
-	// fix.Action.TakesEffectOn.
-	if out.Verified == model.VerifyGone {
-		if effect := e.takesEffectOn(f, actionIdx); effect != "" {
-			out.Verified, out.VerifyNote = model.VerifyPending, effect
-		}
+	// fix.Action.TakesEffectOn. applyFix has already read that declaration
+	// into out.Pending, so this needs the sentence, not a second Build.
+	if out.Verified == model.VerifyGone && out.Pending {
+		out.Verified, out.VerifyNote = model.VerifyPending, out.TakesEffectOn
+	}
+	// Pending is monotone and only ever set by positive evidence.
+	//
+	// A checker that has just re-reported the finding is holding evidence the
+	// host has not changed, so the score must not credit the fix — whatever
+	// the fix declared about itself. VerifyUnavailable is the opposite and
+	// deliberately does nothing here: "could not look" is not evidence, and
+	// treating it as pending would mean re-checking made the number worse, so
+	// an operator applying fixes one at a time would score below one who ran
+	// `fix --all` over exactly the same fixes.
+	if out.Verified == model.VerifyStillPresent && !out.Pending {
+		out.Pending = true
+		e.state.markFixed(f, true)
+		out.NewScore = e.state.rescore()
 	}
 	out.VerifyMessage = out.Verified.Note(out.RestartHint)
 	return out, nil
@@ -74,9 +95,21 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		return model.FixOutcome{Success: false, Error: err.Error()}, err
 	}
 
+	// Whether the host has actually changed, taken from the action already in
+	// hand. A fix that names what puts it in force is a fix whose artifact is
+	// not what the host reads, so writing it changed nothing an attacker can
+	// see — and the score below must not pretend otherwise.
+	//
+	// Read from the fix's own declaration rather than from a re-check so that
+	// it is the same answer on both paths: ApplyBatch does not verify, and a
+	// rule that needed verification would have made the batch the optimistic
+	// one, scoring a host higher for having fixed it in bulk.
+	outcome.Pending = action.TakesEffectOn != ""
+	outcome.TakesEffectOn = action.TakesEffectOn
+
 	// Mark the finding fixed and rescore — both inside the engine so no UI
 	// reimplements either.
-	e.state.markFixed(f)
+	e.state.markFixed(f, outcome.Pending)
 	outcome.Success = true
 	outcome.NewScore = e.state.rescore()
 	return outcome, nil
@@ -397,12 +430,10 @@ func countCommands(cmds [][]string) int {
 	return n
 }
 
-// takesEffectOn reports what has to happen before the applied action reaches
-// the host, or "" when the edit is in force as soon as it is written.
-func (e *Engine) takesEffectOn(f model.Finding, actionIdx int) string {
-	fx, ok, err := e.buildFix(f)
-	if err != nil || !ok || actionIdx < 0 || actionIdx >= len(fx.Actions) {
-		return ""
-	}
-	return fx.Actions[actionIdx].TakesEffectOn
-}
+// takesEffectOn is gone. It built the fix a second time purely to re-read
+// Action.TakesEffectOn out of an action applyFix already held in a local, and
+// once that value decides the score as well as the message, the second build
+// is not only wasted work but a second opinion: a registry that answered
+// differently between the two calls would mark a finding pending and score it
+// as though it were not. applyFix reads the action once and puts both the flag
+// and the sentence on the outcome.

@@ -217,7 +217,13 @@ const (
 // scored; it is reported in the output, not in the exit status.
 func exitCode(r model.Report) int {
 	for _, f := range r.Findings {
-		if f.Fixed {
+		// Active, not !Fixed, so the gate keeps meaning what it says: a High
+		// whose fix is written and not yet in force has not been dealt with.
+		// Defensive today — cmdScan always renders a fresh scan and ScanWith
+		// replaces the report wholesale, so neither flag survives into here —
+		// which is exactly why it is worth spelling out rather than leaving
+		// the next caller to discover the distinction.
+		if !f.Active() {
 			continue
 		}
 		if f.Severity == model.SeverityHigh {

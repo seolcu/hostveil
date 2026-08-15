@@ -123,6 +123,19 @@ func TestAStillPresentFindingIsReportedNotTreatedAsFailure(t *testing.T) {
 			t.Error("the finding was un-marked; verification must not change the Fixed decision")
 		}
 	}
+	// The score is the other half, and it moves where the Fixed mark does
+	// not. A mode fix declares nothing about taking effect later, so it was
+	// scored as in force the moment it was applied — and then the checker
+	// looked and still reported the finding. That is the host contradicting
+	// the credit, which is the one kind of evidence allowed to take it back.
+	if !out.Pending {
+		t.Error("the checker still reports the finding and the score still counts the fix")
+	}
+	for _, f := range cur.Findings {
+		if f.Key() == recheckFinding().Key() && !f.Active() {
+			t.Error("a finding the checker still reports is not being charged in the score")
+		}
+	}
 }
 
 // The rule the whole scan is built on, one level down: a re-check that was
@@ -147,6 +160,16 @@ func TestAnUnrunnableRecheckIsUnavailableNotAnAnswer(t *testing.T) {
 			}
 			if out.VerifyNote == "" {
 				t.Error("no reason given for the failed re-check")
+			}
+			// And it must not reach the score either, in either direction.
+			// Pending is set only by positive evidence: by the fix declaring
+			// that it takes effect later, or by a checker holding the finding
+			// in its hand. "Could not look" is neither. If it counted, then
+			// re-checking would make hostveil more pessimistic than not
+			// re-checking — and an operator applying fixes one at a time
+			// would score below one who ran `fix --all` over the same set.
+			if out.Pending {
+				t.Error("a re-check that established nothing was treated as evidence the fix is not in force")
 			}
 		})
 	}

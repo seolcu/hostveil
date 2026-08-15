@@ -256,10 +256,23 @@ func TestMultiSelectBatchApply(t *testing.T) {
 	if !strings.Contains(string(data), "127.0.0.1:6379:6379") || !strings.Contains(string(data), "127.0.0.1:6380:6380") {
 		t.Errorf("both datastores should be bound to loopback:\n%s", data)
 	}
+	// They stay on the list, marked pending. A compose file is not what the
+	// running container reads, so the port is still published until the stack
+	// is recreated and the score still charges it — and a row that vanished
+	// while the number stayed put would leave the operator with a score they
+	// cannot trace to anything.
+	var pending int
 	for _, f := range am.active {
 		if f.ID == "compose.ds018" {
-			t.Error("fixed datastores should be gone from the refreshed list")
+			if !f.Fixed || !f.Pending {
+				t.Errorf("ds018 is listed as untouched after being fixed: fixed=%v pending=%v",
+					f.Fixed, f.Pending)
+			}
+			pending++
 		}
+	}
+	if pending != 2 {
+		t.Errorf("both datastores should still be listed as pending, found %d", pending)
 	}
 	if len(am.selected) != 0 {
 		t.Error("selection should be cleared after a batch apply")
@@ -386,12 +399,22 @@ func TestFixFlowThroughEngine(t *testing.T) {
 	if !strings.Contains(string(data), "127.0.0.1:6379:6379") {
 		t.Errorf("fix not applied to file:\n%s", data)
 	}
-	// The engine marked ds018 fixed, so the refreshed active list no longer
-	// contains it.
+	// The engine marked ds018 fixed and pending — the file is correct and the
+	// container still runs the old configuration — so it stays on the
+	// refreshed list rather than disappearing while the score keeps charging
+	// it.
+	var found bool
 	for _, f := range am.active {
 		if f.ID == "compose.ds018" {
-			t.Error("fixed finding should be gone from the refreshed active list")
+			found = true
+			if !f.Fixed || !f.Pending {
+				t.Errorf("ds018 listed as untouched after being fixed: fixed=%v pending=%v",
+					f.Fixed, f.Pending)
+			}
 		}
+	}
+	if !found {
+		t.Error("a fix that is not in force yet dropped off the list; the score still counts it")
 	}
 }
 

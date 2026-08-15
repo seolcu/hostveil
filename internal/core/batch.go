@@ -51,6 +51,10 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 		}
 		eligible := f.Remediation == model.RemediationAuto ||
 			(reviewed && f.Remediation == model.RemediationReview)
+		// Fixed, not !Active: this asks whether hostveil has already applied
+		// something here, and for a pending fix it has. Asking Active would
+		// re-apply it on every batch until the operator restarted the service,
+		// writing a checkpoint each time over a file that had not changed.
 		if f.Fixed || !eligible {
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
@@ -77,11 +81,20 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
-		if _, err := e.applyFix(ctx, f, 0); err != nil {
+		res, err := e.applyFix(ctx, f, 0)
+		if err != nil {
 			out.Failed[f.ID] = err.Error()
 			continue
 		}
 		out.Applied = append(out.Applied, f.ID)
+		// A subset of Applied, not a fourth bucket: the fix was applied, and
+		// what is left is the restart. The batch does not re-check, so this
+		// comes from the action's own TakesEffectOn — which is the whole
+		// reason that declaration lives on the fix rather than being derived
+		// from a re-check nobody runs here.
+		if res.Pending {
+			out.Pending = append(out.Pending, f.ID)
+		}
 	}
 	out.NewScore = e.state.rescore()
 	// Rendered here, after the score, so every interface reports the same

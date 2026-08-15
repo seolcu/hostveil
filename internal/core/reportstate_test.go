@@ -37,7 +37,7 @@ func TestSnapshotDoesNotAliasTheStoredFindings(t *testing.T) {
 
 	// Mutating the state must not reach a snapshot already handed out.
 	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
-		model.SourceSSH, model.RemediationAuto))
+		model.SourceSSH, model.RemediationAuto), false)
 	if snap.Findings[0].Fixed {
 		t.Error("marking a finding fixed mutated a snapshot taken beforehand — " +
 			"the snapshot shares the engine's backing array")
@@ -68,7 +68,7 @@ func TestMarkAndUnmarkFixed(t *testing.T) {
 	target := model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
 		model.SourceSSH, model.RemediationAuto)
 
-	s.markFixed(target)
+	s.markFixed(target, false)
 	r, _ := s.snapshot()
 	if !r.Findings[0].Fixed || r.Findings[1].Fixed {
 		t.Fatalf("markFixed hit the wrong findings: %+v", r.Findings)
@@ -89,7 +89,7 @@ func TestMarkAndUnmarkFixed(t *testing.T) {
 func TestUnmarkFixedFallsBackToTheBareID(t *testing.T) {
 	s := stateWith("ssh.rootlogin")
 	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
-		model.SourceSSH, model.RemediationAuto))
+		model.SourceSSH, model.RemediationAuto), false)
 
 	if got := s.unmarkFixed(history.Checkpoint{FindingID: "ssh.rootlogin"}); len(got) != 1 {
 		t.Errorf("unmarkFixed on a pre-FindingKey checkpoint returned %v", got)
@@ -108,7 +108,7 @@ func TestReportStateIsSafeForConcurrentUse(t *testing.T) {
 	for range 8 {
 		wg.Add(4)
 		go func() { defer wg.Done(); _, _ = s.snapshot() }()
-		go func() { defer wg.Done(); s.markFixed(target) }()
+		go func() { defer wg.Done(); s.markFixed(target, false) }()
 		go func() { defer wg.Done(); _ = s.rescore() }()
 		go func() { defer wg.Done(); _ = s.unmarkFixed(history.Checkpoint{FindingKey: target.Key()}) }()
 	}

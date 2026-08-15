@@ -101,16 +101,31 @@ const legacyConfFile = "/etc/sysctl.conf"
 // that file instead. The finding's "set-by" evidence carries it as path:line;
 // only the path is used, because a line number recorded during the scan is
 // not a safe index into the bytes handed to a pure Transform later.
+// sysctlEffect is what puts a persisted parameter in force.
+//
+// Both persist actions carry it, and until they did this fact lived in their
+// Warning prose — "The running kernel keeps its current value until one of
+// those happens" — where a human could read it and nothing could act on it.
+// The sysctl checker reads /proc/sys, so the file this fix writes is not the
+// object the domain reports on: exactly the artifact-versus-oracle mismatch
+// Action.TakesEffectOn exists to declare, present since before the field did.
+//
+// It is the first alternative of a Review, so `fix --all --review` takes this
+// path — which is the path the measurement harness's reviewed phase takes, and
+// that harness never reboots.
+const sysctlEffect = "`sysctl --system`, or the next boot"
+
 func persistSysctl(f model.Finding, pairs []string) Action {
 	dropIn := dropInDir + "60-hostveil-" + strings.TrimPrefix(f.ID, "sysctl.") + ".conf"
 	origin := originPath(f)
 
 	if origin != "" && readAfter(origin, dropIn) && operatorOwned(origin) {
 		return Action{
-			Label:   "Persist it: correct " + origin,
-			Warning: "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden — this changes the line that actually decides the value. Takes effect at the next boot, or immediately if you then run `sysctl --system`.",
-			Kind:    ActionEdit,
-			Path:    origin,
+			Label:         "Persist it: correct " + origin,
+			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden — this changes the line that actually decides the value.",
+			TakesEffectOn: sysctlEffect,
+			Kind:          ActionEdit,
+			Path:          origin,
 			// No VerifyCmd: `sysctl -p` would *apply* the file rather than
 			// check it, and the transform below only ever rewrites the value
 			// of an existing assignment or appends a well-formed line, so it
@@ -122,7 +137,7 @@ func persistSysctl(f model.Finding, pairs []string) Action {
 	}
 
 	body := sysctlDropIn(f, pairs)
-	warning := "Takes effect at the next boot, or immediately if you then run `sysctl --system`. The running kernel keeps its current value until one of those happens."
+	warning := ""
 	if origin != "" && readAfter(origin, dropIn) {
 		// Reachable only if a distribution ships a late-sorting file setting
 		// an unsafe value, which none do — so hostveil does not edit
@@ -135,6 +150,7 @@ func persistSysctl(f model.Finding, pairs []string) Action {
 	return Action{
 		Label:           "Persist it: write " + dropIn,
 		Warning:         warning,
+		TakesEffectOn:   sysctlEffect,
 		Kind:            ActionEdit,
 		Path:            dropIn,
 		CreateIfMissing: true,

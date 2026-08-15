@@ -107,10 +107,10 @@ var declineReasons = map[string]string{
 	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and the daemon only reads the file at a restart.",
 	"dockerd.api-unauthenticated":   "Removing the TCP endpoint severs the exact channel a remote operator may administer this host through: DOCKER_HOST, a Portainer agent, a CI runner.",
 	"dockerd.group-members":         "Removing a member has no checkpoint, and the account it removes may be your own and the access you administer the daemon with.",
-	"dockerd.live-restore":          "Reloading the daemon has no checkpoint, and pairing it with the daemon.json edit is write-then-apply: sequential steps, not two independent alternatives.",
-	"dockerd.no-new-privileges":     "This is a daemon default that applies only to containers started after a restart, and restarting docker stops every container on the host.",
-	"dockerd.socket-world-writable": "systemd recreates the socket from docker.socket at every start, so a chmod is undone at the next restart and the honest remediation is a unit drop-in.",
-	"dockerd.userns-remap":          "It applies only to containers started after a restart that stops every container, and remapping rewrites the ownership of every bind mount on the host.",
+	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
+	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
+	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and hostveil cannot yet tell which docker.socket drop-in wins, so the one it wrote might never decide the mode.",
+	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that hostveil can only rewrite, not create.",
 
 	// systemd
 	"systemd.private-tmp":    "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",

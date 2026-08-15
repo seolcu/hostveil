@@ -666,8 +666,10 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 // lookup finds an active finding by ID (and optional service).
 func (s *Server) lookup(id, service string) (model.Finding, bool) {
 	report, _ := s.engine.Current()
+	// Active, not !Fixed: a pending finding is still on the page, so Explain
+	// and Preview have to resolve it or the two buttons 404 on a visible row.
 	for _, f := range report.Findings {
-		if f.Fixed || f.ID != id {
+		if !f.Active() || f.ID != id {
 			continue
 		}
 		if service == "" || f.Service == service {
