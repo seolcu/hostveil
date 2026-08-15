@@ -88,23 +88,45 @@ func notAFindingID(id string) bool {
 	return slices.Contains([]string{"yml", "yaml", "json", "json5", "conf", "sh", "go", "png", "ans"}, ext)
 }
 
-// fixtureFindingIDs collects every finding ID named anywhere under
-// internal/ui, including testdata.
+// fixtureRoots are the trees whose fixtures end up in front of a reader.
 //
-// The whole directory, not a list of fixture files. A list is a thing to
-// forget to add to, and the cost of over-collecting is only ever that a
-// genuine ID has to be a genuine ID — which is the rule anyway. Production UI
-// code does not name findings: it renders whatever the engine hands it.
+// internal/ui builds the two screenshots. scripts/ draws the social preview
+// card, which is the image every link to this repository unfurls as — the
+// same claim as the terminal screenshot, in the place with the widest reach
+// and the least chance of anyone checking it.
+var fixtureRoots = []string{
+	filepath.Join("internal", "ui"),
+	"scripts",
+}
+
+// fixtureFindingIDs collects every finding ID named anywhere under those
+// trees, including testdata.
+//
+// Whole directories, not a list of files. A list is a thing to forget to add
+// to, and the cost of over-collecting is only ever that a genuine ID has to be
+// a genuine ID — which is the rule anyway. Production UI code does not name
+// findings: it renders whatever the engine hands it.
 func fixtureFindingIDs(t *testing.T) []fixtureHit {
 	t.Helper()
-	root := filepath.Join(repoRoot(t), "internal", "ui")
+	var out []fixtureHit
+	for _, r := range fixtureRoots {
+		out = append(out, walkForFindingIDs(t, filepath.Join(repoRoot(t), r))...)
+	}
+	if len(out) == 0 {
+		t.Fatal("no finding IDs found in any fixture tree — the fixtures build the " +
+			"screenshots from findings, so finding none means this test is looking in the wrong place")
+	}
+	return out
+}
 
+func walkForFindingIDs(t *testing.T, root string) []fixtureHit {
+	t.Helper()
 	var out []fixtureHit
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !slices.Contains([]string{".go", ".ans", ".json"}, filepath.Ext(path)) {
+		if d.IsDir() || !slices.Contains([]string{".go", ".ans", ".json", ".py"}, filepath.Ext(path)) {
 			return nil
 		}
 		body, rerr := os.ReadFile(path)
@@ -127,10 +149,6 @@ func fixtureFindingIDs(t *testing.T) []fixtureHit {
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if len(out) == 0 {
-		t.Fatal("no finding IDs found anywhere under internal/ui — the fixtures build the " +
-			"screenshots from findings, so finding none means this test is looking in the wrong place")
 	}
 	return out
 }
