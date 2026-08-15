@@ -157,6 +157,26 @@ jobs:
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...
 
+      # The same suite in the other width mode, which is the one hostveil's
+      # own audience is most likely to be in.
+      #
+      # RUNEWIDTH_EASTASIAN=1 is an operator saying their terminal draws the
+      # East Asian Ambiguous class two columns wide, and hostveil honours it —
+      # internal/textwidth explains why it must, and lipgloss reads the same
+      # variable. Every glyph the frame and the meters are drawn from is in
+      # that class, so the whole layout is a different arithmetic there, and
+      # nothing ever ran it: the meters were built by rune count and every
+      # strip on the screen composed past the edge of the terminal, through
+      # every release that has had a meter in it.
+      #
+      # Only the packages that lay anything out, and without -race: this is a
+      # second pass over the same code for a different environment, not a
+      # second search for data races.
+      - name: Test in a double-width terminal
+        env:
+          RUNEWIDTH_EASTASIAN: "1"
+        run: go test -count=1 ./internal/ui/... ./internal/textwidth/ ./internal/clirender/ ./internal/glyph/ ./internal/model/
+
       # Reported, not gated. A threshold on a repository this size mostly
       # teaches people to write tests that move the number, and the useful
       # signal is which package dropped — which is visible right here in the

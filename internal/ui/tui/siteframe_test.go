@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/seolcu/hostveil/internal/textwidth"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,21 @@ const siteFramePath = "testdata/site-frame.ans"
 //	  -args -test.v  # HOSTVEIL_SNAPSHOT=internal/ui/tui/testdata/site-frame.ans
 //	python3 scripts/ansi2png.py internal/ui/tui/testdata/site-frame.ans site/assets/tui.png
 func TestSiteFrameIsCurrent(t *testing.T) {
+	// The committed frame is a capture of one terminal, and RUNEWIDTH_EASTASIAN
+	// makes a different one: every ambiguous glyph in it is two columns, so the
+	// whole layout is recomputed and a byte comparison fails on a picture that
+	// is perfectly correct for the terminal it was taken on. The published
+	// screenshot is narrow-mode because the page it sits on is read in a
+	// browser, not a terminal.
+	//
+	// Skipped rather than parameterised: two committed frames would be two
+	// things to regenerate, and the second would go stale first. The layout
+	// under this mode is covered by the alignment sweep and by
+	// TestNoRowOverrunsItsColumn, both of which measure rather than compare.
+	if textwidth.Of("█") > 1 {
+		t.Skip("the committed frame is a narrow-mode capture; this mode composes a different one")
+	}
+
 	want, err := os.ReadFile(siteFramePath)
 	if err != nil {
 		t.Fatalf("read the committed frame: %v", err)

@@ -169,26 +169,82 @@ func (s *styles) band(v uint8) color.Color {
 // One cell is enough to separate them and does not overstate the score: the
 // number beside it carries the value, and it is now drawn in the same band
 // color.
+// The two glyphs a meter is drawn from do not measure the same.
+//
+// █ is East Asian *Ambiguous*, so on a terminal that draws that class
+// double-width — which an operator says with RUNEWIDTH_EASTASIAN=1, and which
+// internal/textwidth explains hostveil must honour — it is two columns. ░ is
+// not ambiguous and is always one. That asymmetry is why a meter cannot be
+// built by repeating either glyph `width` times, and why it cannot be built by
+// dividing `width` by a single cell size either: the answer differs between
+// the filled half and the empty half of the same bar.
+//
+// So a meter is laid out in columns, the way frame.go's gridRow lays out the
+// frame's horizontal rules for exactly the same reason.
+func meterGlyphWidths() (on, off int) {
+	return lipgloss.Width("█"), lipgloss.Width("░")
+}
+
+// meterCells is the most filled blocks a budget of `width` columns can hold.
+//
+// It is what "how full is this bar" is measured in, and it is not `width`.
+// Building meters with strings.Repeat("█", width) — a rune count handed a
+// column budget — made every strip on the screen twice as wide as the space
+// computed for it under RUNEWIDTH_EASTASIAN, so the axes rail, the score gauge
+// and the domain meters all composed past the edge of the terminal and were
+// clipped. internal/ui/tui/alignment_test.go skipped itself in that mode from
+// #711 onward, saying "that is its own fix". This is it.
+func meterCells(width int) int {
+	on, _ := meterGlyphWidths()
+	if width < on {
+		return 0
+	}
+	return width / on
+}
+
 func (s *styles) meterAtLeastOne(pct uint8, width int, c color.Color, ran bool) string {
-	if ran && width > 0 && int(pct)*width/100 == 0 {
+	on, _ := meterGlyphWidths()
+	if cells := meterCells(width); ran && cells > 0 && width*int(pct)/100 < on {
+		// Enough to light one block, which is one `on` columns wide.
 		//nolint:gosec // G115: min(100, …) bounds it before the conversion
-		pct = uint8(min(100, (100+width-1)/width))
+		pct = uint8(min(100, (100*on+width-1)/width))
 	}
 	return s.meter(pct, width, c)
 }
 
-// meter renders a segmented bar: filled blocks in c, empty in the track.
+// meter renders a segmented bar occupying exactly `width` terminal columns:
+// filled blocks in c, the rest in the track.
+//
+// Exactly, in both modes. Callers lay out around a meter by subtracting its
+// width from their own, so a bar that came out narrower than it was given
+// would pull everything to its right along with it — which is the same defect
+// as the one this function was rewritten to fix, arriving from the other side.
 func (s *styles) meter(pct uint8, width int, c color.Color) string {
-	if width < 0 {
-		width = 0 // strings.Repeat panics on a negative count
+	if width < 1 {
+		return ""
 	}
-	filled := int(pct) * width / 100
-	if filled > width {
-		filled = width
+	onW, offW := meterGlyphWidths()
+
+	onCount := width * int(pct) / 100 / onW
+	if maxCells := meterCells(width); onCount > maxCells {
+		onCount = maxCells
 	}
-	on := lipgloss.NewStyle().Foreground(c).Render(strings.Repeat("█", filled))
-	off := s.track.Render(strings.Repeat("░", width-filled))
-	return on + off
+	rest := width - onCount*onW
+
+	var b strings.Builder
+	if onCount > 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(c).Render(strings.Repeat("█", onCount)))
+	}
+	if offCount := rest / offW; offCount > 0 {
+		b.WriteString(s.track.Render(strings.Repeat("░", offCount)))
+		rest -= offCount * offW
+	}
+	// Whatever a whole number of glyphs could not cover. One column at most
+	// today, and only when width is odd in a double-width terminal.
+	if rest > 0 {
+		b.WriteString(strings.Repeat(" ", rest))
+	}
+	return b.String()
 }
 
 // View draws the whole screen. Every mode goes through compose (see
@@ -315,7 +371,7 @@ func (m *appModel) axesLine() string {
 		// the columns line up whichever it is.
 		value := fmt.Sprintf(" %-*s", model.ValueTextWidth, ax.ValueText())
 		if !ax.Applicable {
-			cells = append(cells, label+s.track.Render(strings.Repeat("░", 8))+s.dim.Render(value))
+			cells = append(cells, label+s.meter(0, 8, s.cAccent)+s.dim.Render(value))
 			continue
 		}
 		cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+s.bone.Render(value))
@@ -1899,8 +1955,15 @@ func (m *appModel) trendLine() string {
 
 	// The most recent scans, not the oldest, when the terminal cannot hold
 	// them all. The label and the two scores cost about 24 columns.
+	//
+	// In points, not columns: every bar in the ramp — ▁▂▃▄▅▆▇█ and the · a
+	// scan with no score contributes — is East Asian Ambiguous, so on a
+	// terminal that draws that class wide each point is two columns and this
+	// line would be twice the space budgeted for it. Same arithmetic as
+	// meterCells, one screen over.
 	points := m.trend
-	if room := m.width - 26; room > 0 && len(points) > room {
+	perPoint := lipgloss.Width("▁")
+	if room := (m.width - 26) / perPoint; room > 0 && len(points) > room {
 		points = points[len(points)-room:]
 	}
 

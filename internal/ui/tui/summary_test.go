@@ -481,11 +481,17 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 	}
 	// And the floor is a floor, not a rewrite: a real score still fills what
 	// it earned.
-	if got := filled(s.meterAtLeastOne(100, w, s.cSafe, true)); got != w {
-		t.Errorf("a perfect score filled %d of %d cells", got, w)
+	//
+	// Against meterCells(w) rather than w, because w is a budget in terminal
+	// columns and a block is not always one of them — under
+	// RUNEWIDTH_EASTASIAN it is two. Asserting six blocks in a six-column
+	// meter is the exact conflation the meter itself used to make.
+	cells := meterCells(w)
+	if got := filled(s.meterAtLeastOne(100, w, s.cSafe, true)); got != cells {
+		t.Errorf("a perfect score filled %d of %d cells", got, cells)
 	}
-	if got := filled(s.meterAtLeastOne(50, w, s.cMed, true)); got != w/2 {
-		t.Errorf("a half score filled %d of %d cells, want %d", got, w, w/2)
+	if got := filled(s.meterAtLeastOne(50, w, s.cMed, true)); got != cells/2 {
+		t.Errorf("a half score filled %d of %d cells, want %d", got, cells, cells/2)
 	}
 }
 
