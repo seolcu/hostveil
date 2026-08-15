@@ -72,17 +72,17 @@ func dumpEveryMode(t *testing.T, dir string) {
 		model.NewFinding("ssh.rootlogin", "SSH permits root login with a password", model.SeverityHigh, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("PermitRootLogin is set to yes, so anyone who guesses the root password is root on this host."),
 			model.WithHowToFix("Set PermitRootLogin prohibit-password after confirming you have a working key-based login for a non-root user.")),
-		model.NewFinding("ports.database", "PostgreSQL is listening on a public interface", model.SeverityHigh, model.SourcePorts, model.RemediationManual, model.WithService("postgres")),
+		model.NewFinding("ports.exposed-datastore", "PostgreSQL is listening on a public interface", model.SeverityHigh, model.SourcePorts, model.RemediationManual, model.WithService("postgres")),
 		model.NewFinding("compose.ds019", "Admin panel exposed on all network interfaces", model.SeverityHigh, model.SourceCompose, model.RemediationManual, model.WithService("ops/portainer")),
-		model.NewFinding("accounts.nopasswd", "A sudoers rule grants NOPASSWD to a human account", model.SeverityHigh, model.SourceAccounts, model.RemediationManual, model.WithService("deploy")),
+		model.NewFinding("accounts.uid0", "A second account has root's UID 0", model.SeverityHigh, model.SourceAccounts, model.RemediationManual, model.WithService("deploy")),
 		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
 		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
 		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityMedium, model.SourceFirewall, model.RemediationReview),
-		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
-		model.NewFinding("agent.toolsopen", "An AI agent config allows unattended shell access", model.SeverityMedium, model.SourceAgent, model.RemediationManual, model.WithService("opencode")),
+		model.NewFinding("fileperms.shadow", "/etc/shadow is readable beyond root", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto),
+		model.NewFinding("agent.exec-unrestricted", "An AI agent config allows unattended shell access", model.SeverityMedium, model.SourceAgent, model.RemediationManual, model.WithService("opencode")),
 		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
-		model.NewFinding("compose.ds002", "Container runs as root", model.SeverityLow, model.SourceCompose, model.RemediationReview, model.WithService("ops/watchtower")),
-		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
+		model.NewFinding("compose.ds009", "Container runs as root", model.SeverityLow, model.SourceCompose, model.RemediationReview, model.WithService("ops/watchtower")),
+		model.NewFinding("ssh.maxauthtries", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 	}
 	states := map[model.Source]model.ScanState{
 		model.SourceCompose: model.ScanDone, model.SourceSSH: model.ScanDone,
@@ -215,8 +215,8 @@ func dumpEveryMode(t *testing.T, dir string) {
 		{ID: "cp6", FindingID: "compose.ds006", Label: "Add no-new-privileges to nextcloud", CreatedAt: base.Add(-42 * time.Minute), Reversible: true},
 		{ID: "cp5", FindingID: "updates.disabled", Label: "Enable unattended-upgrades", CreatedAt: base.Add(-3 * time.Hour), Reversible: true},
 		{ID: "cp4", FindingID: "firewall.inactive", Label: "Enable ufw with the current ports allowed", CreatedAt: base.Add(-26 * time.Hour), Reversible: false},
-		{ID: "cp3", FindingID: "fileperms.envfile", Label: "Restrict /opt/stacks/cloud/.env to the owner", CreatedAt: base.Add(-50 * time.Hour), Reversible: true},
-		{ID: "cp2", FindingID: "ssh.maxauth", Label: "Set MaxAuthTries to 3", CreatedAt: base.Add(-74 * time.Hour), Reversible: true},
+		{ID: "cp3", FindingID: "fileperms.shadow", Label: "Restrict /etc/shadow to root", CreatedAt: base.Add(-50 * time.Hour), Reversible: true},
+		{ID: "cp2", FindingID: "ssh.maxauthtries", Label: "Set MaxAuthTries to 3", CreatedAt: base.Add(-74 * time.Hour), Reversible: true},
 	}
 
 	hist := newModel(modeHistory)

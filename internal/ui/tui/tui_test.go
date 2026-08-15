@@ -144,11 +144,16 @@ func TestDetailAIExplanation(t *testing.T) {
 // TestListScrolls verifies the list viewport follows the cursor when there
 // are more findings than fit on screen.
 func TestListScrolls(t *testing.T) {
+	// One real finding across twenty services, which is what a compose host
+	// with twenty services actually looks like — and it keeps the fixture from
+	// naming twenty findings hostveil cannot report. The rows are told apart
+	// by service, so the scroll assertions below read those rather than the id.
 	var fs []model.Finding
 	for i := 0; i < 20; i++ {
-		fs = append(fs, model.NewFinding(fmt.Sprintf("compose.d%03d", i),
-			fmt.Sprintf("finding number %d", i), model.SeverityMedium,
-			model.SourceCompose, model.RemediationManual))
+		fs = append(fs, model.NewFinding("compose.ds006",
+			"Missing no-new-privileges hardening", model.SeverityMedium,
+			model.SourceCompose, model.RemediationManual,
+			model.WithService(fmt.Sprintf("stack/svc-%02d", i))))
 	}
 	rep := model.Report{Findings: fs, Score: model.ScoreReport(fs, nil)}
 
@@ -160,10 +165,10 @@ func TestListScrolls(t *testing.T) {
 	}
 
 	view := m.(*appModel).View().Content
-	if !strings.Contains(view, "compose.d019") {
+	if !strings.Contains(view, "svc-19") {
 		t.Error("the cursor's (last) finding should be visible after scrolling")
 	}
-	if strings.Contains(view, "compose.d000") {
+	if strings.Contains(view, "svc-00") {
 		t.Error("the first finding should have scrolled out of view")
 	}
 }

@@ -38,11 +38,11 @@ func PublishedReport() model.Report {
 		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening", model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/nextcloud")),
 		model.NewFinding("updates.disabled", "Automatic security updates are not enabled", model.SeverityMedium, model.SourceUpdates, model.RemediationAuto),
 		model.NewFinding("firewall.inactive", "ufw is installed but not enabled", model.SeverityMedium, model.SourceFirewall, model.RemediationReview),
-		model.NewFinding("fileperms.envfile", "An .env file is world-readable", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("cloud")),
+		model.NewFinding("fileperms.shadow", "/etc/shadow is readable beyond root", model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto),
 		model.NewFinding("sysctl.kptr-restrict", "Kernel pointers are readable by unprivileged users", model.SeverityLow, model.SourceSysctl, model.RemediationReview),
 		model.NewFinding("compose.ds008", "No restart policy set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/collabora")),
 		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationAuto, model.WithService("media/jellyfin")),
-		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
+		model.NewFinding("ssh.maxauthtries", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 	}
 	// Built from AllSources rather than listed, because a hand-written table
 	// keyed by Source is a copy waiting to go stale — and this one already
