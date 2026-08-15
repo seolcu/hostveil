@@ -38,7 +38,7 @@
             <p>{{.Heading}}</p>
             <ul>
 {{- range .Items}}
-              <li><a href="{{.Href}}"{{.ActiveAttr}}>{{.Label}}</a></li>
+              <li><a href="{{.Href}}"{{.ActiveAttr}}{{.ExtraAttrs}}>{{.Label}}</a></li>
 {{- end}}
             </ul>
           </div>

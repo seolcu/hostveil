@@ -492,3 +492,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── changelog ────────────────────────────────────────── */
+
+/* The changelog page is generated from CHANGELOG.md, so its shape is fixed:
+   one h2 per release, an optional intro paragraph, then h3 sections of
+   entries. The h2's existing top border already separates one release from
+   the next, which is most of what this page needs. */
+
+.docs-prose .changelog-date {
+  margin-left: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.62em;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+/* An entry is several paragraphs, not a line, so the gap between two of them
+   has to be larger than the gap inside one — otherwise a release with six
+   entries reads as one wall with bullets in it. */
+.docs-prose .changelog-entries > li {
+  margin-bottom: 22px;
+}
+
+.docs-prose .changelog-entries > li > p {
+  margin: 0 0 10px;
+}
+
+.docs-prose .changelog-entries > li > p:last-child {
+  margin-bottom: 0;
+}
+
+/* The first paragraph of an entry opens with the scope in bold — "core:",
+   "check:" — and that is the line the eye scans for down a long page. */
+.docs-prose .changelog-entries > li > p:first-child strong:first-child {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.94em;
+}

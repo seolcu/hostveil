@@ -280,6 +280,25 @@
         "ogDescription": "소스에서 빌드하기, 점검 실행, 저장소 구조, 점검 항목 추가, 데모 VM.",
         "nav": "기여하기"
       }
+    },
+    {
+      "slug": "changelog",
+      "group": "reference",
+      "ogType": "article",
+      "en": {
+        "title": "Changelog — hostveil docs",
+        "description": "Every hostveil release and what changed in it, generated from the repository's own CHANGELOG so the page and the file cannot disagree.",
+        "ogTitle": "hostveil changelog",
+        "ogDescription": "Every hostveil release and what changed in it.",
+        "nav": "Changelog"
+      },
+      "ko": {
+        "title": "변경 이력 — hostveil 문서",
+        "description": "hostveil의 모든 릴리스와 각각에서 바뀐 것. 저장소의 CHANGELOG에서 생성되므로 이 페이지와 파일이 어긋날 수 없습니다.",
+        "ogTitle": "hostveil 변경 이력",
+        "ogDescription": "hostveil의 모든 릴리스와 각각에서 바뀐 것.",
+        "nav": "변경 이력"
+      }
     }
   ]
 }

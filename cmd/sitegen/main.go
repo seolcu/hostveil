@@ -7,6 +7,10 @@
 //	go run ./cmd/sitegen         # writes into ./site
 //	go run ./cmd/sitegen out     # writes into ./out
 //
+// Run it from the repository root. The output directory is resolved against
+// the working directory, and so are CHANGELOG.md and CHANGELOG.ko.md, which
+// the changelog page is generated from — see changelog.go.
+//
 // The output is meant to stay byte-identical unless a template, fragment, or
 // manifest entry changes — CI enforces that with a git status check on site/.
 package main
@@ -79,6 +83,7 @@ type Strings struct {
 	SearchPlaceholder, SearchAria, SearchResultsAria                 string
 	GroupGettingStarted, GroupGuide, GroupReference                  string
 	FooterTagline, FooterNavAria, FooterDocs, FooterReleases         string
+	FooterChangelog                                                  string
 	LightboxAria                                                     string
 }
 
@@ -92,7 +97,8 @@ var chrome = map[string]Strings{
 		GroupGettingStarted: "Getting started", GroupGuide: "Guide", GroupReference: "Reference",
 		FooterTagline: "Guided security hardening for self-hosted Linux servers.", FooterNavAria: "Footer links",
 		FooterDocs: "Docs", FooterReleases: "Releases",
-		LightboxAria: "Enlarged screenshot",
+		FooterChangelog: "Changelog",
+		LightboxAria:    "Enlarged screenshot",
 	},
 	"ko": {
 		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "hostveil 홈",
@@ -103,14 +109,18 @@ var chrome = map[string]Strings{
 		GroupGettingStarted: "시작하기", GroupGuide: "가이드", GroupReference: "레퍼런스",
 		FooterTagline: "셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.", FooterNavAria: "푸터 링크",
 		FooterDocs: "문서", FooterReleases: "릴리스",
-		LightboxAria: "확대된 스크린샷",
+		FooterChangelog: "변경 이력",
+		LightboxAria:    "확대된 스크린샷",
 	},
 }
 
 var langName = map[string]string{"en": "English", "ko": "한국어"}
 
-// Item is one sidebar link; Group is one labelled sidebar section.
-type Item struct{ Href, Label, ActiveAttr string }
+// Group is one labelled sidebar section.
+// Item is one sidebar link. ExtraAttrs carries anything the link needs beyond
+// its href and active state — today only the flag that keeps a page out of the
+// docs search index.
+type Item struct{ Href, Label, ActiveAttr, ExtraAttrs string }
 type Group struct {
 	Heading string
 	Items   []Item
@@ -124,7 +134,7 @@ type View struct {
 	Canonical, HrefEn, HrefKo                          string
 	OGLocaleLine, AssetLinks                           string
 	BrandHref, DocsCurrentAttr                         string
-	LDocsHref, FooterDocsHref                          string
+	LDocsHref, FooterDocsHref, FooterChangelogHref     string
 	LangHref, LangLang, LangLabel                      string
 	Groups                                             []Group
 	Content                                            string
@@ -231,7 +241,18 @@ func sidebar(m Manifest, lang, current string) []Group {
 			if d.Slug == current {
 				active = ` class="active"`
 			}
-			g.Items = append(g.Items, Item{Href: href, Label: escText(nav), ActiveAttr: active})
+			// The changelog stays out of the docs search index. The index is
+			// built in the browser by fetching every page in this sidebar and
+			// splitting it per heading, and the changelog is thirty-one
+			// releases of prose about the same subjects the docs cover — it
+			// would outweigh every real page in the results and blow the
+			// sessionStorage cache the index is kept in. It is an archive with
+			// a heading per release, which is what its own page is for.
+			extra := ""
+			if d.Slug == changelogSlug {
+				extra = ` data-noindex`
+			}
+			g.Items = append(g.Items, Item{Href: href, Label: escText(nav), ActiveAttr: active, ExtraAttrs: extra})
 		}
 		groups = append(groups, g)
 	}
@@ -283,8 +304,36 @@ func fragment(kind, lang, slug string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimRight(string(b), "\n"), nil
+	frag := strings.TrimRight(string(b), "\n")
+
+	// The changelog page is its introduction, the releases themselves, and
+	// its pager — and only the middle one is generated. It is converted from
+	// CHANGELOG.md / CHANGELOG.ko.md so the page cannot say a different thing
+	// from the file; see cmd/sitegen/changelog.go.
+	//
+	// A marker rather than an append, so the fragment keeps deciding what
+	// comes before the entries and what comes after. Appending would have put
+	// the page's own footer above three thousand lines of release notes.
+	if kind == "docs" && slug == changelogSlug {
+		if !strings.Contains(frag, changelogMarker) {
+			return "", fmt.Errorf("content/%s/docs/%s.html has no %s, so the releases have nowhere to go",
+				lang, changelogSlug, changelogMarker)
+		}
+		entries, err := renderChangelog(lang)
+		if err != nil {
+			return "", err
+		}
+		frag = strings.Replace(frag, changelogMarker, entries, 1)
+	}
+	return frag, nil
 }
+
+// changelogSlug is the one page whose body is partly generated, and
+// changelogMarker is where the generated part goes.
+const (
+	changelogSlug   = "changelog"
+	changelogMarker = "<!--releases-->"
+)
 
 // prune removes previously-generated HTML so a removed or renamed slug does not
 // leave an orphaned page behind. It only touches the generated locations;
@@ -341,6 +390,7 @@ func main() {
 		v.BrandHref = "#top"
 		v.LDocsHref = docsPath(lang, "index")
 		v.FooterDocsHref = v.LDocsHref
+		v.FooterChangelogHref = docsPath(lang, changelogSlug)
 		v.AssetLinks = assetLinks("landing", lang)
 		frag, err := fragment("landing", lang, "")
 		must(err)
@@ -364,6 +414,7 @@ func main() {
 			v.LangHref = docsPath(other(lang), d.Slug)
 			v.BrandHref = "../"
 			v.FooterDocsHref = "./"
+			v.FooterChangelogHref = changelogSlug
 			v.AssetLinks = assetLinks("docs", lang)
 			v.Groups = sidebar(m, lang, d.Slug)
 			if d.Slug == "index" {
