@@ -162,6 +162,7 @@
   ]
 }</code></pre></div>
             <p><code>severity</code> is one of <code>high</code>, <code>medium</code>, <code>low</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> — and a domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
+            <p>A finding also carries <code>fixed</code> and, once something has been applied in the same run, <code>pending</code>. <code>fixed</code> means hostveil applied a fix for it; <code>pending</code> means the host has not read that fix yet, so the finding is still charged in the score and still counts toward the exit status. A consumer deciding whether a risk is standing should read <code>fixed &amp;&amp; !pending</code> rather than <code>fixed</code> alone. Both are omitted when false, and neither survives a fresh scan &mdash; a scan re-derives everything from the checkers.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.11</span>
               <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>

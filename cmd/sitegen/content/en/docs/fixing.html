@@ -48,7 +48,7 @@
               <p>A Review finding is one hostveil can fix completely — it will not do so while you are not looking. Applying one takes the same command plus the alternative you want, which is the next section.</p>
             </div>
 
-            <h2>Applying a fix</h2>
+            <h2 id="verify">Applying a fix</h2>
             <p>Preview and apply a single finding by its ID:</p>
             <div class="command-box">
               <button class="copy-btn" type="button" data-copy="hostveil fix ssh.rootlogin">Copy</button>
@@ -69,7 +69,8 @@
               </table>
             </div>
             <p>The middle two rows are worth telling apart. <em>Still reported</em> means the checker can see the old state; <em>not in force yet</em> means it cannot, because the checker reads the file the fix just wrote. The second is the more dangerous one to get wrong, so hostveil reports it separately rather than calling the finding gone over a host nothing has changed about.</p>
-            <p>Verification does <em>not</em> change whether the finding is marked fixed, and <code>fix --all</code> skips it: re-checking after each of twenty fixes would re-run a checker twenty times, and a batch ends with a rescan anyway.</p>
+            <p>Verification does <em>not</em> change whether the finding is marked fixed. What it can change is the <strong>score</strong>: a fix that is not in force has changed nothing an attacker can see, so the finding stays charged until it is. That does not depend on the re-check &mdash; a fix that needs a restart declares so itself, which is how <code>fix --all</code> reaches the same answer without re-checking anything, and reports how many of the fixes it applied are still waiting.</p>
+            <p><code>fix --all</code> skips the per-fix re-check for a different reason: running a checker after each of twenty fixes would run it twenty times, and a batch ends with a rescan anyway.</p>
             <p>The names in <code>--json</code> are the ones in the second column.</p>
 
             <h3 id="alternatives">Choosing a Review alternative</h3>

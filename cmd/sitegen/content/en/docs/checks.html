@@ -85,6 +85,7 @@
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
             <p>Parsed natively from <code>sshd_config</code>, following <code>Include</code> directives into <code>sshd_config.d/</code>. That matters on Debian and Ubuntu, which put the <code>Include</code> at the top of the file: <code>sshd</code> keeps the first value it obtains for each keyword, so a drop-in wins over the lines below it. Reading these needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>. A fix edits the file the winning directive actually lives in.</p>
+            <p>Reading stops at the first <code>Match</code>. sshd applies what follows only to connections that match, so a directive there does not describe the host the way a global one does &mdash; but not reading it is a gap, not a clean bill, so the domain is reported <a href="troubleshooting#degraded">Degraded</a> with the file named. <code>Match Address 0.0.0.0/0</code> followed by <code>PasswordAuthentication yes</code> puts passwords back for every connection there is, and a scan that called that host fully audited would be claiming something it never looked at.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
