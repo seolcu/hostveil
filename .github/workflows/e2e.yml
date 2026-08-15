@@ -258,3 +258,44 @@ jobs:
           grep -q 'hostveil\[trace\]' /tmp/trace.txt
           # stdout must be unaffected by the trace.
           HOSTVEIL_DEBUG=1 hostveil scan --json 2>/dev/null | jq -e . >/dev/null
+
+      # update and uninstall are the two commands that rewrite the installed
+      # binary and delete files, and they had no integration coverage at all —
+      # 57% and 44% in unit tests, which is the furthest a unit test gets from
+      # the thing being tested when the thing is "does it really remove the
+      # file".
+      #
+      # Last, because the second half deletes the binary every step above
+      # depends on.
+      - name: update and uninstall refuse a binary they did not install
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          # The build above put it in /usr/local/bin, which is not where any
+          # install path this program knows about puts it. Refusing there is
+          # the documented promise: guessing means overwriting a file some
+          # other tool believes it owns.
+          test -x /usr/local/bin/hostveil
+          hostveil uninstall --yes >/tmp/un.txt 2>&1 && exit 1
+          grep -qi 'could not tell how this binary was installed' /tmp/un.txt
+          test -x /usr/local/bin/hostveil   # and it is still there
+
+      - name: uninstall removes the binary and keeps the checkpoints
+        run: |
+          set -eux
+          export HOSTVEIL_NO_SUDO=1
+          # Where the install script puts it, which is the origin hostveil
+          # recognises without asking a package manager.
+          cp /usr/local/bin/hostveil /usr/bin/hostveil
+          hostveil scan >/dev/null 2>&1 || true
+          test -d /var/lib/hostveil
+
+          /usr/bin/hostveil uninstall --yes >/tmp/un2.txt 2>&1
+          test ! -e /usr/bin/hostveil
+
+          # The promise the docs make, and the reason uninstalling is not a
+          # decision to give up the ability to undo the fixes: the state
+          # directory survives, and the command to remove it is printed rather
+          # than run.
+          test -d /var/lib/hostveil
+          grep -q '/var/lib/hostveil' /tmp/un2.txt
