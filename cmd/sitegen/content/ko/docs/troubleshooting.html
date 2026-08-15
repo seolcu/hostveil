@@ -9,8 +9,15 @@
             <p>명령의 <em>출력</em>은 의도적으로 기록하지 않습니다. <code>docker inspect</code>는 모든 컨테이너의 환경 변수를 그대로 담고 있어서, 출력을 포함하면 추적 자체가 자격 증명 유출이 되기 때문입니다.</p>
 
             <h2 id="degraded">도메인이 “Degraded”로 표시됩니다</h2>
-            <p>체커가 실행되었지만 검사 대상의 <em>일부만</em> 확인했다는 뜻입니다. 보고된 발견 항목은 실제이고 점수에 반영되며, 확인하지 못한 부분은 사유에 명시됩니다. 흔한 원인: 읽을 수 없는 <code>Include</code> sshd 설정, 파싱할 수 없는 compose 파일, Trivy가 받아오지 못한 이미지, 열거하지 못한 컨테이너.</p>
+            <p>체커가 실행되었지만 검사 대상의 <em>일부만</em> 확인했다는 뜻입니다. 보고된 발견 항목은 실제이고 점수에 반영되며, 확인하지 못한 부분은 사유에 명시됩니다. 흔한 원인: <code>sshd_config</code>의 <code>Match</code> 블록, 읽을 수 없는 <code>Include</code> sshd 설정, 파싱할 수 없는 compose 파일, Trivy가 받아오지 못한 이미지, 열거하지 못한 컨테이너.</p>
+            <p><strong><code>Match</code> 블록은 그중 가장 최근에 추가된 원인이자, 대부분의 호스트가 실제로 마주치는 원인입니다.</strong> hostveil은 <code>sshd_config</code>를 첫 <code>Match</code>에서 읽기를 멈춥니다. sshd가 그 뒤의 지시어를 조건에 맞는 접속에만 적용하기 때문입니다 &mdash; 그 안의 지시어는 전역 지시어처럼 호스트를 설명하지 않습니다. 그래서 <code>Match User git</code>이나 <code>Match Address</code>가 있으면 SSH 도메인이 Degraded가 되고, 사유에 해당 파일이 적힙니다. 블록 위에서 찾은 항목은 실제이고 점수에도 반영되며, 블록 안은 읽지 않았습니다. 이건 의도한 동작입니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 허용되는데, 그런 호스트를 &ldquo;전부 점검했다&rdquo;고 보고하는 스캔은 확인하지도 않은 것을 말하는 셈이기 때문입니다.</p>
             <p>Degraded는 <strong>Skipped</strong>(의존성 부재 — 만점을 주는 대신 점수 산정에서 아예 제외)나 <strong>Error</strong>(체커가 완전히 실패)와 의도적으로 구분됩니다.</p>
+
+            <h2 id="score-did-not-move">수정을 적용했는데 점수가 그대로입니다</h2>
+            <p>컨테이너가 있는 호스트에서 <code>fix --all</code>의 결과로 이것은 정상이고, 정직한 결과입니다.</p>
+            <p>hostveil이 적용한 수정이 곧 호스트가 본 변경인 것은 아닙니다. Compose 파일은 컨테이너를 다시 만들 때, systemd 드롭인은 유닛을 다시 읽을 때, sysctl 드롭인은 다음 부팅이나 <code>sysctl --system</code> 때 읽힙니다. 그때까지 디스크의 파일은 올바르고 돌고 있는 시스템은 그대로입니다 &mdash; 그래서 해당 항목은 점수에서 계속 감점되고, 목록에도 남아 터미널에서는 <code>PEND</code>, 대시보드에서는 <em>적용됨 &mdash; 아직 반영 안 됨</em>으로 표시됩니다.</p>
+            <p><code>fix --all</code>은 몇 개가 기다리고 있는지 알려 주고, 각 수정은 무엇을 실행해야 반영되는지 함께 밝힙니다. 그 명령을 실행하고 다시 스캔하면 숫자가 움직입니다. 점수는 일한 양에 대한 영수증이 아니라 호스트에 대한 진술이고, 그 시점에 호스트는 아직 바뀌지 않았기 때문입니다.</p>
+            <p>규칙은 <a href="scoring#limits">점수 산정</a>에, 수정 후 재점검이 무엇을 확인해 주고 무엇은 확인해 주지 못하는지는 <a href="fixing#verify">수정 및 롤백</a>에 있습니다.</p>
 
             <h2 id="declined">롤백이 “외부에서 편집됨”이라고 거부합니다</h2>
             <p>해당 파일이 hostveil이 기록한 어떤 내용과도 일치하지 않습니다. 즉 수정 적용 이후 누군가 파일을 바꿨다는 뜻입니다. 롤백은 자체 백업을 남기지 않으므로, 복원하면 그 편집분이 되돌릴 수 없게 사라집니다. 그래서 대신 거부합니다.</p>

@@ -24,7 +24,7 @@
                   <tr><td><code>↑</code> <code>↓</code></td><td>Move the cursor. <code>k</code> and <code>j</code> work too.</td></tr>
                   <tr><td><code>Enter</code></td><td>Open the finding's detail: description, how to fix, and whether it can be fixed for you.</td></tr>
                   <tr><td><code>f</code></td><td>Preview the fix for the finding under the cursor, then <code>y</code> to apply or <code>n</code> to cancel. A Review fix offers numbered alternatives; press the number.</td></tr>
-                  <tr><td><code>Space</code></td><td>Mark an Auto-fix finding for a batch. Only Auto-fix rows can be marked.</td></tr>
+                  <tr><td><code>Space</code></td><td>Mark an Auto-fix finding for a batch. Only Auto-fix rows can be marked, and a row already applied and waiting on a restart is not one of them.</td></tr>
                   <tr><td><code>a</code></td><td>Apply the marked findings, or every Auto-fix one, if nothing is marked.</td></tr>
                   <tr><td><code>s</code></td><td>Cycle the minimum severity: High → Medium → Low → off.</td></tr>
                   <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan actually found something in.</td></tr>
@@ -40,6 +40,10 @@
               </table>
             </div>
             <p>Anything that changes the host, whether applying a fix or rolling one back, shows you the diff and asks first. There is no key that writes to disk without a preview in front of it.</p>
+
+            <h3 id="row">What a row says</h3>
+            <p>Each row carries the severity, the kind of fix, the finding id, the title, and the service it is about. The kind column is the one to scan down: <code>AUTO</code> in green means hostveil can apply it unattended, <code>REVIEW</code> in the accent means it will ask you to choose, and <code>MANUAL</code> or <code>N/A</code> in grey mean there is no button to press.</p>
+            <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet &mdash; a Compose file waiting on a recreate, a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
 
             <h2>Web: the localhost dashboard</h2>
             <p>Serve the same scan over HTTP when a browser is better for review:</p>

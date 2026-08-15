@@ -36,7 +36,7 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | Domain | Findings | What it looks at | Needs |
 | --- | --- | --- | --- |
 | **Docker / Compose** | `compose.*` | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, shared PID and IPC namespaces, writable root filesystems, missing no-new-privileges, hardcoded secrets, and more. Your Compose files are audited natively, and so are containers started with a plain `docker run` | Docker |
-| **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding. Parsed from `sshd_config` directly, following `Include` into `sshd_config.d/` | — |
+| **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding. Parsed from `sshd_config` directly, following `Include` into `sshd_config.d/`. Reading stops at the first `Match` block and the domain reports partial coverage, because a directive that applies to some connections is not a statement about the host | — |
 | **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables or iptables is actually active, and whether published container ports are quietly bypassing it | — |
 | **Auto-updates** | `updates.*` | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
 | **Exposed services** | `ports.*` | Host processes listening on a non-loopback address, read from `ss`. This is the natively installed database, admin panel or app that a Compose audit cannot see | `ss` |
@@ -200,6 +200,15 @@ Every finding is classified, so the tool never changes anything blindly:
 `fix --all` applies only the Auto-fix ones. `fix --all --review` applies the
 Review ones too, each through its first alternative — the command is where you
 say you have read what they are.
+
+**Applying a fix is not always a change the host has seen, and the score knows
+the difference.** A Compose file is read when the container is recreated, a
+systemd drop-in when the unit is reloaded, a sysctl drop-in at the next boot.
+Until then the file is correct and nothing an attacker can see has changed, so
+the finding stays charged and its row is marked `PEND`. `fix --all` says how
+many are waiting and each fix names the command that puts it in force. A score
+that moved on a host nothing had changed about would be measuring hostveil's
+activity rather than your server.
 
 A finding is Auto-fix only when applying it unattended is defensible without
 you having looked at it, which takes all three of:
@@ -395,6 +404,13 @@ ranges, which hostveil does not use.
 (Ollama by default), so nothing leaves your host. AI is strictly advisory and
 never applies changes. Every explanation, score and fix works with no AI at
 all.
+
+**The one request hostveil makes on its own** is a once-a-day check of the
+GitHub releases page, from `scan`, `tui` and `serve`, to notice that a newer
+version exists. It sends nothing about your host and the answer is cached.
+`HOSTVEIL_NO_UPDATE_CHECK=1` turns it off; nothing else in hostveil contacts
+the network unless you ask it to — `update`, and Trivy pulling vulnerability
+data during a CVE scan.
 
 ## How it compares
 

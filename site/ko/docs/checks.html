@@ -203,6 +203,7 @@
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
             <p><code>sshd_config</code>에서 직접 파싱하며, <code>Include</code> 지시어를 따라 <code>sshd_config.d/</code>까지 읽습니다. Debian과 Ubuntu는 <code>Include</code>를 파일 맨 위에 두고, <code>sshd</code>는 각 키워드에 대해 처음 얻은 값을 사용하므로 drop-in 파일이 아래 줄들을 이깁니다. 읽으려면 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 상승하여 이를 얻습니다. 수정은 실제로 적용되고 있는 지시어가 있는 파일에 가해집니다.</p>
+            <p>읽기는 첫 <code>Match</code>에서 멈춥니다. sshd가 그 뒤의 지시어를 조건에 맞는 접속에만 적용하므로, 그 안의 지시어는 전역 지시어처럼 호스트를 설명하지 않기 때문입니다 &mdash; 다만 읽지 않았다는 것은 &ldquo;문제 없음&rdquo;이 아니라 못 본 영역이므로, 도메인은 해당 파일을 밝히며 <a href="troubleshooting#degraded">Degraded</a>로 보고됩니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 다시 열리는데, 그런 호스트를 &ldquo;전부 점검했다&rdquo;고 하는 스캔은 들여다본 적도 없는 것을 주장하는 셈입니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
