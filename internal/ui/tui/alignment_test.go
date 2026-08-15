@@ -242,11 +242,11 @@ func TestEveryFindingRowPutsItsColumnsInTheSamePlace(t *testing.T) {
 	fs := []model.Finding{
 		model.NewFinding("cve.outdated-image", "Image has vulnerabilities with published fixes",
 			model.SeverityHigh, model.SourceCVE, model.RemediationReview, model.WithService("cloud/nextcloud")),
-		model.NewFinding("ssh.maxauth", "MaxAuthTries is higher than necessary",
+		model.NewFinding("ssh.maxauthtries", "MaxAuthTries is higher than necessary",
 			model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 		model.NewFinding("compose.ds006", "Missing no-new-privileges hardening",
 			model.SeverityMedium, model.SourceCompose, model.RemediationAuto, model.WithService("cloud/redis")),
-		model.NewFinding("fileperms.envfile", "An .env file is world-readable",
+		model.NewFinding("fileperms.shadow", "/etc/shadow is readable beyond root",
 			model.SeverityMedium, model.SourceFilePerms, model.RemediationAuto, model.WithService("ops")),
 	}
 	m := &appModel{mode: modeList, width: 100, height: 30, selected: map[string]bool{},
@@ -292,7 +292,7 @@ func TestEveryHistoryRowPutsItsLabelInTheSamePlace(t *testing.T) {
 		checkpoints: []model.Checkpoint{
 			{ID: "1", FindingID: "compose.ds018", Label: "Bind redis to loopback", CreatedAt: at, Reversible: true},
 			{ID: "2", FindingID: "firewall.inactive", Label: "Enable ufw", CreatedAt: at, Reversible: true},
-			{ID: "3", FindingID: "ssh.maxauth", Label: "Set MaxAuthTries to 3", CreatedAt: at, Reversible: false},
+			{ID: "3", FindingID: "ssh.maxauthtries", Label: "Set MaxAuthTries to 3", CreatedAt: at, Reversible: false},
 		}}
 
 	idW := m.checkpointIDWidth()

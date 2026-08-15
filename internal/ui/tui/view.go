@@ -1496,7 +1496,7 @@ func (m *appModel) historyRows(budget int) []string {
 // checkpointRow is one applied fix: when, what it was about, what it did.
 //
 // The id column is measured, not assumed. At a fixed %-15s every id longer
-// than fifteen — firewall.inactive, fileperms.envfile, updates.disabled, all
+// than fifteen — firewall.inactive, fileperms.sshd-config, updates.disabled, all
 // of them ordinary — pushed its own label right, so the labels stepped in and
 // out down a list whose whole job is to be scanned for the one you want to
 // undo.
