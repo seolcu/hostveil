@@ -40,14 +40,14 @@
       "ogType": "article",
       "en": {
         "title": "Installation — hostveil docs",
-        "description": "Install hostveil with one command, or build from source. Optional tools — Docker, Trivy, and Ollama — and what each one unlocks.",
+        "description": "Install hostveil with one command, a .deb or .rpm, or go install — and verify what you downloaded against the release's checksums and its signed build provenance.",
         "ogTitle": "Installation — hostveil docs",
         "ogDescription": "Install hostveil with one command, or build from source. Optional Docker, Trivy, and Ollama integrations.",
         "nav": "Installation"
       },
       "ko": {
         "title": "설치 — hostveil 문서",
-        "description": "한 줄 명령으로 hostveil을 설치하거나 소스에서 빌드하세요. 선택 도구인 Docker, Trivy, Ollama가 각각 무엇을 열어 주는지 알아보세요.",
+        "description": "명령 한 줄, .deb·.rpm, 또는 go install로 hostveil을 설치하고, 내려받은 것을 릴리스의 체크섬과 서명된 빌드 프로버넌스로 확인하세요.",
         "ogTitle": "설치 — hostveil 문서",
         "ogDescription": "한 줄 명령으로 hostveil을 설치하거나 소스에서 빌드하세요. 선택적인 Docker, Trivy, Ollama 연동.",
         "nav": "설치"
@@ -230,14 +230,14 @@
       "ogType": "article",
       "en": {
         "title": "FAQ — hostveil docs",
-        "description": "Common questions about hostveil: data privacy, whether fixes can break your server, Review tradeoffs, sudo, and optional Docker/Trivy/AI tooling.",
+        "description": "Common questions about hostveil: what it uploads, whether a fix can break a server, and how it differs from Lynis or a CIS benchmark.",
         "ogTitle": "FAQ — hostveil docs",
         "ogDescription": "Common questions about hostveil — privacy, safety, tradeoffs, sudo, and optional tooling.",
         "nav": "FAQ"
       },
       "ko": {
         "title": "자주 묻는 질문 — hostveil 문서",
-        "description": "hostveil에 대한 흔한 질문들: 데이터 프라이버시, 수정이 서버를 망가뜨릴 수 있는지, 검토(Review) 절충안, sudo, 선택적 Docker/Trivy/AI 도구.",
+        "description": "hostveil에 대해 자주 묻는 질문: 무엇을 전송하는지, 수정이 서버를 망가뜨릴 수 있는지, Lynis나 CIS 벤치마크와 무엇이 다른지.",
         "ogTitle": "자주 묻는 질문 — hostveil 문서",
         "ogDescription": "hostveil에 대한 흔한 질문들 — 프라이버시, 안전성, 절충안, sudo, 선택적 도구.",
         "nav": "자주 묻는 질문"
