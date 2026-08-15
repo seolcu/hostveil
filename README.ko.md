@@ -77,14 +77,21 @@ go install github.com/seolcu/hostveil/cmd/hostveil@latest
 
 Trivy는 선택입니다. 이미지 CVE 스캔이 필요해지면 그때 설치하면 됩니다.
 
-**업그레이드**는 같은 명령을 한 번 더 실행하면 됩니다. 바이너리만 바뀌고 저장된
-스캔과 롤백 체크포인트는 그대로입니다. **제거**는 이렇게 합니다.
+**업그레이드**와 **제거**는 hostveil이 직접 합니다.
 
 ```bash
-curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall
+hostveil update      # --check을 붙이면 아무것도 바꾸지 않고 확인만 합니다
+hostveil uninstall
 ```
 
-바이너리를 지우고 상태 디렉터리 위치를 알려 줄 뿐, 그 디렉터리를 지우지는
+`update`는 이 바이너리가 어떻게 설치됐는지 — 설치 스크립트, `.deb`, `.rpm`,
+`go install` — 알아내서 같은 방식으로 갱신합니다. 호스트에 무엇이 있는지를 두고
+서로 다른 말을 하는 상태가 생기지 않게요. 패키지로 설치한 곳에 설치 스크립트를
+다시 돌리면 dpkg나 rpm이 더 이상 소유하지 않는 파일을 계속 자기 것으로 알고
+있게 됩니다. 내려받은 파일은 릴리스의 체크섬과, GitHub CLI가 있으면 서명된 빌드
+프로버넌스와도 대조합니다.
+
+제거는 바이너리를 지우고 상태 디렉터리 위치를 알려 줄 뿐, 그 디렉터리를 지우지는
 않습니다. 그 안의 체크포인트는 hostveil이 고친 모든 파일의 백업이고, 제거한
 뒤에도 무언가를 되돌리고 싶어질 수 있으니까요.
 
@@ -108,8 +115,11 @@ hostveil fix --all       # 안전한(자동 수정) 항목을 한 번에 모두 
 hostveil fix --all --review  # 검토(Review) 항목까지, 무엇인지 읽고 나서
 hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
+hostveil history --scans # 저장된 모든 스캔의 점수, 오래된 것부터
 hostveil explain <id>    # 발견 항목 설명 (--ai로 로컬 LLM의 2차 소견 추가)
 hostveil serve           # 127.0.0.1:8787 웹 대시보드 (출력된 URL을 여세요)
+hostveil update          # 설치된 방식 그대로 이 바이너리를 갱신
+hostveil uninstall       # 체크포인트는 남기고 제거
 ```
 
 일부 점검은 root 소유 파일을 읽고 수정을 적용할 때도 root가 필요합니다. 그래서
@@ -184,7 +194,9 @@ HOSTVEIL_DEBUG=1 hostveil scan
 | **수동** | 안전하게 자동화할 방법이 없어서, 대신 무엇을 해야 하는지 설명합니다. | 아니요 |
 | **사용 불가** | 실재하는 문제지만 아직 세상에 고칠 방법이 없는 경우. 패치가 나오지 않은 CVE 같은 것입니다. | 아니요 |
 
-`fix --all`은 자동 수정만 적용합니다.
+`fix --all`은 자동 수정만 적용합니다. `fix --all --review`를 쓰면 검토 항목도
+각각의 첫 번째 대안으로 적용합니다. 무엇인지 읽고 받아들이겠다고 말하는 자리가
+바로 그 명령입니다.
 
 어떤 항목이 자동 수정이 되려면, 사용자가 보지 않은 채로 적용해도 변호할 수 있어야
 하고 그러려면 셋 다 만족해야 합니다.

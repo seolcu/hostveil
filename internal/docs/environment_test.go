@@ -46,6 +46,46 @@ func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
 	}
 }
 
+// TestEveryEnvironmentRowFillsTheColumnsItDeclares.
+//
+// The test above asks whether a variable is on the page, and answers by
+// looking for <code>NAME</code> anywhere in it — which a row with the wrong
+// number of cells satisfies completely. Five of them had two cells in a table
+// whose header declares four (Variable, Default, Values, What it does), so
+// the description rendered under *Default* and the last two columns rendered
+// empty, in both languages, on a live page.
+//
+// A reference table is a shape as much as a set of names. This reads the
+// header for the column count rather than hard-coding four, so the check
+// survives the table gaining a column.
+func TestEveryEnvironmentRowFillsTheColumnsItDeclares(t *testing.T) {
+	head := regexp.MustCompile(`(?s)<thead>.*?</thead>`)
+	cell := regexp.MustCompile(`<t[dh]\b`)
+	rowRE := regexp.MustCompile(`(?m)^\s*<tr>.*</tr>\s*$`)
+
+	for _, lang := range []string{"en", "ko"} {
+		page := readRepoFile(t, filepath.Join("cmd", "sitegen", "content", lang, "docs", "environment.html"))
+		heads := head.FindAllString(page, -1)
+		if len(heads) == 0 {
+			t.Fatalf("%s environment page has no table header at all", lang)
+		}
+		want := len(cell.FindAllString(heads[0], -1))
+		if want < 2 {
+			t.Fatalf("%s: read %d columns out of the header; the parse is broken", lang, want)
+		}
+		for _, r := range rowRE.FindAllString(page, -1) {
+			if strings.Contains(r, "<th") {
+				continue
+			}
+			if got := len(cell.FindAllString(r, -1)); got != want {
+				t.Errorf("%s environment page: a row has %d cells and the table declares %d, "+
+					"so its text renders in the wrong column and the last %d render empty:\n  %s",
+					lang, got, want, want-got, strings.TrimSpace(r)[:min(120, len(strings.TrimSpace(r)))])
+			}
+		}
+	}
+}
+
 // And `--help`, which is the reference a user reaches without a browser.
 //
 // The site pages were pinned and `--help` was not, so it drifted: --layout and

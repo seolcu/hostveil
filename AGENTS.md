@@ -15,7 +15,7 @@ go build ./cmd/hostveil     # produces ./hostveil
 go test ./...
 go test -race ./...         # what CI runs
 go test ./internal/check/ssh -run TestName        # single test
-go test ./internal/compose -run FuzzEdit -fuzz FuzzEdit   # fuzz targets: FuzzEdit, FuzzParse, FuzzParseTrivy
+go test ./internal/compose -run FuzzEdit -fuzz FuzzEdit   # fuzz targets: FuzzEdit, FuzzParse, FuzzParseTrivy, FuzzUnified, FuzzJSON5Edit
 scripts/bench.sh            # benchmarks (there is intentionally no Makefile)
 go run ./cmd/sitegen        # regenerate site/ — required whenever cmd/sitegen/ changes
 ```

@@ -78,14 +78,21 @@ go install github.com/seolcu/hostveil/cmd/hostveil@latest
 
 Trivy is optional. Install it whenever you want image CVE scanning.
 
-To **upgrade**, run the same command again. It replaces the binary and leaves
-your saved scans and rollback checkpoints alone. To **uninstall**:
+To **upgrade** or **uninstall**, hostveil does it itself:
 
 ```bash
-curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall
+hostveil update      # --check to ask without changing anything
+hostveil uninstall
 ```
 
-That removes the binary and prints where the state directory is without
+`update` works out how this binary was installed — the install script, a
+`.deb`, an `.rpm`, or `go install` — and updates it the same way, so nothing
+ends up disagreeing about what is on the host. Re-running the install script
+over a packaged install would leave dpkg or rpm describing a file it no longer
+owns. The download is checked against the release's checksums and, where the
+GitHub CLI is present, against the signed build provenance.
+
+Uninstalling removes the binary and prints where the state directory is without
 deleting it. Those checkpoints are the backups of every file hostveil has
 edited on the host, and you may well still want to undo one after uninstalling.
 
@@ -110,8 +117,11 @@ hostveil fix --all       # apply every safe (Auto) fix at once
 hostveil fix --all --review  # and the Review ones too, after reading what they are
 hostveil rollback <id>   # undo a previously applied fix
 hostveil history         # list applied fixes and their rollback IDs
+hostveil history --scans # the score of every saved scan, oldest first
 hostveil explain <id>    # explain a finding (add --ai for a local-LLM second opinion)
 hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
+hostveil update          # update this binary the way it was installed
+hostveil uninstall       # remove it, keeping your checkpoints
 ```
 
 Some checks read root-owned files, and applying a fix needs root, so hostveil
@@ -187,7 +197,9 @@ Every finding is classified, so the tool never changes anything blindly:
 | **Manual** | Nothing safe to automate, so hostveil explains what to do instead. | No |
 | **Unavailable** | A real problem with no fix in existence yet, such as a CVE with no published patch. | No |
 
-`fix --all` applies only the Auto-fix ones.
+`fix --all` applies only the Auto-fix ones. `fix --all --review` applies the
+Review ones too, each through its first alternative — the command is where you
+say you have read what they are.
 
 A finding is Auto-fix only when applying it unattended is defensible without
 you having looked at it, which takes all three of:

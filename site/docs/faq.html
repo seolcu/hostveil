@@ -127,7 +127,7 @@
             <p>You see the exact change before it applies, the original file is backed up to a checkpoint first, and <code>hostveil rollback</code> restores it byte-for-byte. Fixes that can't be automated safely are classified <strong>Manual</strong> and only explained, never applied. See <a href="fixing">Fixing &amp; rollback</a>.</p>
 
             <h2>What if a fix has tradeoffs?</h2>
-            <p>Then it's a <strong>Review</strong> fix, not Auto-fix. hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you.</p>
+            <p>Then it's a <strong>Review</strong> fix, not Auto-fix. hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you, unless you add <code>--review</code> &mdash; which applies each Review fix through its first alternative, the one its how-to-fix describes.</p>
 
             <h2>Do I need Docker or Trivy?</h2>
             <p>No. The SSH, firewall, and auto-update checks run natively with no extra tooling. The Docker/Compose audit needs Docker, and image CVE scanning needs Trivy — each is used when present and skipped cleanly when not, with the score renormalized so a skipped domain doesn't inflate your result.</p>
