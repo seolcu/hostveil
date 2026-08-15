@@ -57,20 +57,39 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // override any of them, so the domain is reported Degraded rather than
 // clean.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
-	cfg, unread, err := parseConfigFile(c.ConfigPath)
+	cfg, gaps, err := parseConfigFile(c.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
 	findings := auditConfig(cfg, c.ConfigPath)
-	if len(unread) > 0 {
-		return findings, &check.PartialError{
-			Reason: "could not read included sshd config: " + strings.Join(unread, ", ") +
-				" — settings there may override what was scanned",
-			Covered: cfg.filesRead,
-			Total:   cfg.filesRead + len(unread),
-		}
+
+	// A ledger rather than a return-on-first-gap, because this domain now has
+	// two ways to fall short and a config can hit both at once: an include
+	// that could not be read, and a Match block the parse stopped at. Deciding
+	// at the point a gap is found is how a checker keeps one and discards the
+	// other, which is the mistake check.Coverage exists to make unavailable.
+	var cov check.Coverage
+	cov.Covered(cfg.filesRead)
+	if len(gaps.unread) > 0 {
+		cov.Missed(len(gaps.unread), "could not read included sshd config: "+
+			strings.Join(gaps.unread, ", ")+" — settings there may override what was scanned")
 	}
-	return findings, nil
+	if gaps.matchIn != "" {
+		// Zero units: a Match block has no denominator. The directives inside
+		// it are precisely the ones that were not counted, so there is no
+		// number to add without inventing one.
+		cov.Missed(0, "stopped at a Match block in "+gaps.matchIn+
+			" — directives inside conditional blocks were not evaluated, and one there may "+
+			"re-enable what was scanned as disabled")
+	}
+	return findings, cov.Err()
+}
+
+// coverageGaps is what the parse could not account for: files it could not
+// read, and the file it stopped at.
+type coverageGaps struct {
+	unread  []string
+	matchIn string
 }
 
 // sshdConfig is the effective configuration: the first value seen for each
@@ -98,7 +117,7 @@ const maxIncludeDepth = 16
 // statically, so parsing stops at the first Match, in whichever file it
 // appears. The returned slice names include files that matched a glob but
 // could not be read.
-func parseConfigFile(path string) (sshdConfig, []string, error) {
+func parseConfigFile(path string) (sshdConfig, coverageGaps, error) {
 	p := &includeParser{
 		baseDir: filepath.Dir(path),
 		cfg: sshdConfig{
@@ -109,12 +128,12 @@ func parseConfigFile(path string) (sshdConfig, []string, error) {
 	}
 	data, err := os.ReadFile(path) //nolint:gosec // caller-supplied fixed system path
 	if err != nil {
-		return p.cfg, nil, err
+		return p.cfg, coverageGaps{}, err
 	}
 	p.visited[path] = true
 	p.cfg.filesRead++
 	p.parse(data, path, 0)
-	return p.cfg, p.unread, nil
+	return p.cfg, coverageGaps{unread: p.unread, matchIn: p.matchIn}, nil
 }
 
 type includeParser struct {
@@ -123,6 +142,22 @@ type includeParser struct {
 	visited map[string]bool
 	unread  []string
 	stopped bool // hit a Match block; everything after it is conditional
+	// matchIn is the file the first Match block was found in, and it is the
+	// whole reason stopped is not enough on its own.
+	//
+	// Stopping there is right: sshd applies a Match block only to connections
+	// it matches, so a directive under one does not describe the host the way
+	// a global directive does. What is wrong is stopping silently. Check
+	// already reports an include it could not READ as partial coverage,
+	// reasoning that "a directive in the unread file could override any of
+	// them" — and that is exactly the situation here, from the same parser,
+	// about directives this one chose not to read.
+	//
+	// `Match Address 0.0.0.0/0` followed by `PasswordAuthentication yes` puts
+	// passwords back for every connection on the host, and the domain reported
+	// clean and not degraded. That is "I could not look" passing for "nothing
+	// there", which is the one thing a checker here must never do.
+	matchIn string
 }
 
 // parse reads one config file's directives into the effective config.
@@ -162,6 +197,7 @@ func (p *includeParser) parse(data []byte, path string, depth int) {
 		switch strings.ToLower(key) {
 		case "match":
 			p.stopped = true
+			p.matchIn = path
 			return
 		case "include":
 			p.include(val, depth)

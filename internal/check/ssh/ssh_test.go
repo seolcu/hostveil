@@ -203,12 +203,12 @@ func TestIncludedFileWinsOverMainFile(t *testing.T) {
 		"sshd_config.d/90-lax.conf": "PermitRootLogin yes\n",
 	})
 	main := filepath.Join(dir, "sshd_config")
-	cfg, unread, err := parseConfigFile(main)
+	cfg, gaps, err := parseConfigFile(main)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(unread) != 0 {
-		t.Errorf("unexpected unread files: %v", unread)
+	if len(gaps.unread) != 0 {
+		t.Errorf("unexpected unread files: %v", gaps.unread)
 	}
 	got := idsOf(auditConfig(cfg, main))
 	f, ok := got["ssh.rootlogin"]
@@ -288,12 +288,12 @@ func TestIncludeHandlesCyclesAndMissingGlobs(t *testing.T) {
 		"a.conf":      "Include sshd_config\nPermitEmptyPasswords yes\n",
 	})
 	main := filepath.Join(dir, "sshd_config")
-	cfg, unread, err := parseConfigFile(main) // must terminate
+	cfg, gaps, err := parseConfigFile(main) // must terminate
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(unread) != 0 {
-		t.Errorf("a glob matching nothing is normal, not unread: %v", unread)
+	if len(gaps.unread) != 0 {
+		t.Errorf("a glob matching nothing is normal, not unread: %v", gaps.unread)
 	}
 	if effective(cfg, "PermitEmptyPasswords", "no") != "yes" {
 		t.Error("directives after a cyclic Include should still be parsed")
@@ -329,6 +329,77 @@ func TestUnreadableIncludeIsPartial(t *testing.T) {
 	// Findings are kept: PartialError means incomplete, not failed.
 	if _, ok := idsOf(fs)["ssh.rootlogin"]; !ok {
 		t.Error("a partial audit should still return the findings it did derive")
+	}
+}
+
+// TestAMatchBlockIsReportedAsAGapRatherThanScannedPast is the same rule as
+// the test above, for the blind spot this parser makes for itself.
+//
+// The parse stops at the first Match, and that is correct: sshd applies those
+// directives only to connections that match, so one under a Match does not
+// describe the host the way a global one does. What was wrong is that it
+// stopped in silence. `Match Address 0.0.0.0/0` matches every connection there
+// is, so the config below permits password authentication for everybody — and
+// the domain reported clean, not degraded, with a finding set that says
+// passwords are off.
+func TestAMatchBlockIsReportedAsAGapRatherThanScannedPast(t *testing.T) {
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"sshd_config": "PermitRootLogin no\nPasswordAuthentication no\n" +
+			"Match Address 0.0.0.0/0\n    PasswordAuthentication yes\n",
+	})
+
+	c := &Checker{ConfigPath: filepath.Join(dir, "sshd_config")}
+	fs, err := c.Check(context.Background(), platform.Env{})
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("a config whose Match block was never evaluated must report a gap, got %v", err)
+	}
+	if !strings.Contains(partial.Reason, "Match") {
+		t.Errorf("the reason does not say what went unexamined: %q", partial.Reason)
+	}
+	// The findings derived before the Match are real and are kept, exactly as
+	// they are for an include that could not be read.
+	if _, ok := idsOf(fs)["ssh.passwordauth"]; ok {
+		t.Error("the global section disables password auth; the finding should come from the audit, not the gap")
+	}
+}
+
+// And both at once, which is the case check.Coverage exists for.
+//
+// A checker with more than one possible blind spot has to report all of them:
+// deciding at the point a gap is discovered is how one gets kept and the other
+// discarded, and both container checkers did exactly that before Coverage. A
+// host with an unreadable include AND a Match block must hear about both, and
+// the counters must describe what was covered rather than crediting a file
+// only half of which was read.
+func TestBothSSHGapsAreReportedTogether(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can read mode-000 files")
+	}
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"sshd_config": "Include conf.d/*.conf\nPermitRootLogin yes\n" +
+			"Match User deploy\n    PermitRootLogin no\n",
+		"conf.d/50-secret.conf": "PasswordAuthentication no\n",
+	})
+	if err := os.Chmod(filepath.Join(dir, "conf.d/50-secret.conf"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+
+	c := &Checker{ConfigPath: filepath.Join(dir, "sshd_config")}
+	_, err := c.Check(context.Background(), platform.Env{})
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("expected a PartialError, got %v", err)
+	}
+	for _, want := range []string{"could not read", "Match"} {
+		if !strings.Contains(partial.Reason, want) {
+			t.Errorf("the reason drops one of the two gaps (%q missing): %q", want, partial.Reason)
+		}
+	}
+	if partial.Covered >= partial.Total {
+		t.Errorf("coverage %d/%d does not report the unread file", partial.Covered, partial.Total)
 	}
 }
 
@@ -370,12 +441,12 @@ func TestAnOverlongLineDegradesRatherThanTruncatingSilently(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, unread, err := parseConfigFile(main)
+	cfg, gaps, err := parseConfigFile(main)
 	if err != nil {
 		t.Fatalf("parseConfigFile: %v", err)
 	}
-	if len(unread) != 1 || unread[0] != main {
-		t.Errorf("a truncated parse must be reported as unread, got %v", unread)
+	if len(gaps.unread) != 1 || gaps.unread[0] != main {
+		t.Errorf("a truncated parse must be reported as unread, got %v", gaps.unread)
 	}
 	// What was read before the long line is still valid and worth keeping.
 	if cfg.values["permitrootlogin"] != "no" {
@@ -402,7 +473,7 @@ func TestANormalConfigIsNotReportedAsUnread(t *testing.T) {
 	if err := os.WriteFile(main, []byte("PermitRootLogin no\nPasswordAuthentication no\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, unread, err := parseConfigFile(main); err != nil || len(unread) != 0 {
-		t.Errorf("unread = %v, err = %v; want neither", unread, err)
+	if _, gaps, err := parseConfigFile(main); err != nil || len(gaps.unread) != 0 {
+		t.Errorf("unread = %v, err = %v; want neither", gaps.unread, err)
 	}
 }
