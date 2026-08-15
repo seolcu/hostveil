@@ -332,3 +332,37 @@ func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
 		t.Error("the download client does not follow redirects, so every asset download fails on GitHub's 302")
 	}
 }
+
+// TestTheBuiltInHelpDocumentsEveryFlag.
+//
+// The site's flag tables are held to the flag sets by the test above, and
+// `hostveil help` was held to a hand-written list of four flags — so six
+// drifted out of it and nothing said anything. `fix --review`,
+// `history --scans`, `update --yes` and `uninstall --yes` all existed,
+// worked, and were absent from the only reference a user has without a
+// browser; the `--all` line went further and stated that Review fixes are
+// left alone, which `--review` had made untrue.
+//
+// The site pages and the built-in help are the same claim in two places, and
+// only one of them was pinned. This is the other one.
+func TestTheBuiltInHelpDocumentsEveryFlag(t *testing.T) {
+	help, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(help)
+
+	declared := declaredFlags(t)
+	if len(declared) == 0 {
+		t.Fatal("no flag sets found; the harvest is broken and this test would pass on anything")
+	}
+	for section, flags := range declared {
+		for _, flag := range flags {
+			if !strings.Contains(text, "--"+flag) {
+				t.Errorf("`hostveil %s` accepts --%s and `hostveil help` never mentions it.\n"+
+					"  help is the reference a user reaches without a browser, and a flag missing "+
+					"from it is a feature the offline documentation denies.", section, flag)
+			}
+		}
+	}
+}

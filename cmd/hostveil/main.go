@@ -156,12 +156,15 @@ Usage:
   hostveil tui [--theme]         Open the interactive TUI explicitly
   hostveil fix <id> [flags]      Preview and apply the fix for a finding
   hostveil fix --all             Apply every safe (Auto) fix at once
+  hostveil fix --all --review    ...and the Review ones, through their first
+                                 alternative, after reading what they are
   hostveil explain <id> [flags]  Explain a finding (optionally via local AI)
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id> [flags] Undo a previously applied fix
-  hostveil history               List applied fixes and their rollback IDs
-  hostveil update [--check]      Update hostveil to the latest release
-  hostveil uninstall             Remove hostveil, keeping its saved state
+  hostveil history [--scans]     List applied fixes and their rollback IDs;
+                                 --scans lists the score of every saved scan
+  hostveil update [flags]        Update hostveil to the latest release
+  hostveil uninstall [--yes]     Remove hostveil, keeping its saved state
   hostveil version               Print the version (also: --version, -V)
   hostveil help                  Show this help (also: --help, -h)
 
@@ -180,8 +183,15 @@ Scan flags:
 
 Fix flags:
   --all           Apply every safe (Auto) fix; Review and Manual are left alone
+  --review        With --all, apply the Review fixes too, each through its
+                  first alternative. Manual is still left alone.
   --service NAME  Disambiguate a finding that affects multiple services
   --action N      For Review fixes, pick alternative N (0-based)
+  --yes           Apply without an interactive confirmation
+
+Update and uninstall flags:
+  --check         update only: report whether a newer release exists and stop.
+                  Exit 10 means one is available, so a cron job can act on it.
   --yes           Apply without an interactive confirmation
 
 Explain flags:
@@ -223,7 +233,10 @@ Exit status:
        host than it should have — a clean-looking result you cannot trust
   A domain skipped for a missing dependency, or degraded to partial coverage,
   does not change the status; both are reported in the output instead.
-  Other commands exit 0 on success, 1 on failure, and 2 on a usage error.
+  hostveil update --check adds 10: a newer release is available. Without
+  --check, update and every other command exit 0 on success, 1 on failure,
+  and 2 on a usage error. fix --all exits 1 if any fix failed or the batch
+  was interrupted.
 
 Environment:
   HOSTVEIL_DEBUG=1     Trace every command hostveil runs against the host, to
@@ -233,6 +246,10 @@ Environment:
                        thing. Command output is deliberately not logged — it
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
+  HOSTVEIL_NO_UPDATE_CHECK
+                       Set to any value and hostveil never contacts GitHub on
+                       its own. Without it, scan, tui and serve refresh a
+                       cached answer to "is there a newer release" once a day.
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   HOSTVEIL_GLYPHS=SET  Symbol set for the TUI and scan: plain or nerd
   HOSTVEIL_LAYOUT=NAME Screen arrangement for the TUI and the dashboard
