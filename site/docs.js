@@ -98,6 +98,11 @@
       var seen = {};
       var out = [];
       document.querySelectorAll(".docs-nav-group a").forEach(function (a) {
+        /* data-noindex marks a page that is in the sidebar and not in the
+           index. The changelog carries it: it is an archive of release notes,
+           and indexing it would put thirty-one versions of prose about
+           scoring, fixes and checks ahead of the pages that document them. */
+        if (a.hasAttribute("data-noindex")) return;
         var url = a.getAttribute("href") || "";
         var key = pageKey(url.replace(/\/$/, "/index"));
         if (seen[key]) return;

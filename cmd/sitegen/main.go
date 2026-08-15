@@ -7,6 +7,10 @@
 //	go run ./cmd/sitegen         # writes into ./site
 //	go run ./cmd/sitegen out     # writes into ./out
 //
+// Run it from the repository root. The output directory is resolved against
+// the working directory, and so are CHANGELOG.md and CHANGELOG.ko.md, which
+// the changelog page is generated from — see changelog.go.
+//
 // The output is meant to stay byte-identical unless a template, fragment, or
 // manifest entry changes — CI enforces that with a git status check on site/.
 package main
@@ -109,8 +113,11 @@ var chrome = map[string]Strings{
 
 var langName = map[string]string{"en": "English", "ko": "한국어"}
 
-// Item is one sidebar link; Group is one labelled sidebar section.
-type Item struct{ Href, Label, ActiveAttr string }
+// Group is one labelled sidebar section.
+// Item is one sidebar link. ExtraAttrs carries anything the link needs beyond
+// its href and active state — today only the flag that keeps a page out of the
+// docs search index.
+type Item struct{ Href, Label, ActiveAttr, ExtraAttrs string }
 type Group struct {
 	Heading string
 	Items   []Item
@@ -231,7 +238,18 @@ func sidebar(m Manifest, lang, current string) []Group {
 			if d.Slug == current {
 				active = ` class="active"`
 			}
-			g.Items = append(g.Items, Item{Href: href, Label: escText(nav), ActiveAttr: active})
+			// The changelog stays out of the docs search index. The index is
+			// built in the browser by fetching every page in this sidebar and
+			// splitting it per heading, and the changelog is thirty-one
+			// releases of prose about the same subjects the docs cover — it
+			// would outweigh every real page in the results and blow the
+			// sessionStorage cache the index is kept in. It is an archive with
+			// a heading per release, which is what its own page is for.
+			extra := ""
+			if d.Slug == changelogSlug {
+				extra = ` data-noindex`
+			}
+			g.Items = append(g.Items, Item{Href: href, Label: escText(nav), ActiveAttr: active, ExtraAttrs: extra})
 		}
 		groups = append(groups, g)
 	}
@@ -283,8 +301,36 @@ func fragment(kind, lang, slug string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimRight(string(b), "\n"), nil
+	frag := strings.TrimRight(string(b), "\n")
+
+	// The changelog page is its introduction, the releases themselves, and
+	// its pager — and only the middle one is generated. It is converted from
+	// CHANGELOG.md / CHANGELOG.ko.md so the page cannot say a different thing
+	// from the file; see cmd/sitegen/changelog.go.
+	//
+	// A marker rather than an append, so the fragment keeps deciding what
+	// comes before the entries and what comes after. Appending would have put
+	// the page's own footer above three thousand lines of release notes.
+	if kind == "docs" && slug == changelogSlug {
+		if !strings.Contains(frag, changelogMarker) {
+			return "", fmt.Errorf("content/%s/docs/%s.html has no %s, so the releases have nowhere to go",
+				lang, changelogSlug, changelogMarker)
+		}
+		entries, err := renderChangelog(lang)
+		if err != nil {
+			return "", err
+		}
+		frag = strings.Replace(frag, changelogMarker, entries, 1)
+	}
+	return frag, nil
 }
+
+// changelogSlug is the one page whose body is partly generated, and
+// changelogMarker is where the generated part goes.
+const (
+	changelogSlug   = "changelog"
+	changelogMarker = "<!--releases-->"
+)
 
 // prune removes previously-generated HTML so a removed or renamed slug does not
 // leave an orphaned page behind. It only touches the generated locations;
