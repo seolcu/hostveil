@@ -83,6 +83,7 @@ type Strings struct {
 	SearchPlaceholder, SearchAria, SearchResultsAria                 string
 	GroupGettingStarted, GroupGuide, GroupReference                  string
 	FooterTagline, FooterNavAria, FooterDocs, FooterReleases         string
+	FooterChangelog                                                  string
 	LightboxAria                                                     string
 }
 
@@ -96,7 +97,8 @@ var chrome = map[string]Strings{
 		GroupGettingStarted: "Getting started", GroupGuide: "Guide", GroupReference: "Reference",
 		FooterTagline: "Guided security hardening for self-hosted Linux servers.", FooterNavAria: "Footer links",
 		FooterDocs: "Docs", FooterReleases: "Releases",
-		LightboxAria: "Enlarged screenshot",
+		FooterChangelog: "Changelog",
+		LightboxAria:    "Enlarged screenshot",
 	},
 	"ko": {
 		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "hostveil 홈",
@@ -107,7 +109,8 @@ var chrome = map[string]Strings{
 		GroupGettingStarted: "시작하기", GroupGuide: "가이드", GroupReference: "레퍼런스",
 		FooterTagline: "셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.", FooterNavAria: "푸터 링크",
 		FooterDocs: "문서", FooterReleases: "릴리스",
-		LightboxAria: "확대된 스크린샷",
+		FooterChangelog: "변경 이력",
+		LightboxAria:    "확대된 스크린샷",
 	},
 }
 
@@ -131,7 +134,7 @@ type View struct {
 	Canonical, HrefEn, HrefKo                          string
 	OGLocaleLine, AssetLinks                           string
 	BrandHref, DocsCurrentAttr                         string
-	LDocsHref, FooterDocsHref                          string
+	LDocsHref, FooterDocsHref, FooterChangelogHref     string
 	LangHref, LangLang, LangLabel                      string
 	Groups                                             []Group
 	Content                                            string
@@ -387,6 +390,7 @@ func main() {
 		v.BrandHref = "#top"
 		v.LDocsHref = docsPath(lang, "index")
 		v.FooterDocsHref = v.LDocsHref
+		v.FooterChangelogHref = docsPath(lang, changelogSlug)
 		v.AssetLinks = assetLinks("landing", lang)
 		frag, err := fragment("landing", lang, "")
 		must(err)
@@ -410,6 +414,7 @@ func main() {
 			v.LangHref = docsPath(other(lang), d.Slug)
 			v.BrandHref = "../"
 			v.FooterDocsHref = "./"
+			v.FooterChangelogHref = changelogSlug
 			v.AssetLinks = assetLinks("docs", lang)
 			v.Groups = sidebar(m, lang, d.Slug)
 			if d.Slug == "index" {
