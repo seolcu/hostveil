@@ -85,6 +85,7 @@ type Strings struct {
 	FooterTagline, FooterNavAria, FooterDocs, FooterReleases         string
 	FooterChangelog                                                  string
 	LightboxAria                                                     string
+	OGImageAlt                                                       string
 }
 
 var chrome = map[string]Strings{
@@ -99,6 +100,7 @@ var chrome = map[string]Strings{
 		FooterDocs: "Docs", FooterReleases: "Releases",
 		FooterChangelog: "Changelog",
 		LightboxAria:    "Enlarged screenshot",
+		OGImageAlt:      "hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes",
 	},
 	"ko": {
 		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "hostveil 홈",
@@ -111,6 +113,7 @@ var chrome = map[string]Strings{
 		FooterDocs: "문서", FooterReleases: "릴리스",
 		FooterChangelog: "변경 이력",
 		LightboxAria:    "확대된 스크린샷",
+		OGImageAlt:      "hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정",
 	},
 }
 
@@ -132,6 +135,7 @@ type View struct {
 	Lang                                               string
 	Title, Description, OGTitle, OGDescription, OGType string
 	Canonical, HrefEn, HrefKo                          string
+	OGImageW, OGImageH                                 int
 	OGLocaleLine, AssetLinks                           string
 	BrandHref, DocsCurrentAttr                         string
 	LDocsHref, FooterDocsHref, FooterChangelogHref     string
@@ -261,6 +265,7 @@ func sidebar(m Manifest, lang, current string) []Group {
 
 func base(lang string, meta Meta, ogType string) View {
 	oth := other(lang)
+	w, h := ogImageSize()
 	return View{
 		Strings:       chrome[lang],
 		Lang:          lang,
@@ -272,6 +277,8 @@ func base(lang string, meta Meta, ogType string) View {
 		OGLocaleLine:  ogLocaleLine(lang),
 		LangLang:      oth,
 		LangLabel:     langName[oth],
+		OGImageW:      w,
+		OGImageH:      h,
 	}
 }
 
@@ -339,7 +346,7 @@ const (
 // leave an orphaned page behind. It only touches the generated locations;
 // styles.css/docs.js/assets/ etc. live outside these globs and are untouched.
 func prune(outDir string) error {
-	for _, g := range []string{"*.html", "ko/*.html", "docs/*.html", "ko/docs/*.html"} {
+	for _, g := range []string{"*.html", "ko/*.html", "docs/*.html", "ko/docs/*.html", "sitemap.xml", "robots.txt"} {
 		matches, err := filepath.Glob(filepath.Join(outDir, g))
 		if err != nil {
 			return err
@@ -377,6 +384,9 @@ func main() {
 	must(prune(outDir))
 
 	count := 0
+	// Captured as pages are rendered, so the sitemap cannot list a page that
+	// was not written or miss one that was. See sitemap.go.
+	var pages []page
 	for _, lang := range []string{"en", "ko"} {
 		landingMeta := m.Landing.En
 		if lang == "ko" {
@@ -400,6 +410,7 @@ func main() {
 			out = filepath.Join(outDir, "ko", "index.html")
 		}
 		must(render(t, "page", out, v))
+		pages = append(pages, page{canonical: v.Canonical, en: v.HrefEn, ko: v.HrefKo})
 		count++
 
 		for _, d := range m.Docs {
@@ -428,10 +439,12 @@ func main() {
 				out = filepath.Join(outDir, "ko", "docs", d.Slug+".html")
 			}
 			must(render(t, "docs", out, v))
+			pages = append(pages, page{canonical: v.Canonical, en: v.HrefEn, ko: v.HrefKo})
 			count++
 		}
 	}
-	fmt.Printf("sitegen: wrote %d pages into %s/\n", count, outDir)
+	must(writeSitemap(outDir, pages))
+	fmt.Printf("sitegen: wrote %d pages, a sitemap and a robots.txt into %s/\n", count, outDir)
 }
 
 func must(err error) {

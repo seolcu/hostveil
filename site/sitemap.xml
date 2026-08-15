@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://hostveil.seolcu.com/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/installation</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/installation"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/installation"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/installation"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/quickstart</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/quickstart"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/quickstart"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/quickstart"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/checks</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/checks"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/checks"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/checks"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/scoring</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/scoring"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/scoring"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/scoring"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/measurements</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/measurements"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/measurements"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/measurements"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/fixing</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/fixing"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/fixing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/fixing"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/interfaces</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/interfaces"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/interfaces"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/interfaces"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/ai"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/ai"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/ai"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/cli</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/cli"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/cli"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/cli"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/environment</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/environment"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/environment"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/environment"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/faq</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/faq"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/faq"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/faq"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/troubleshooting</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/troubleshooting"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/troubleshooting"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/troubleshooting"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/contributing</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/contributing"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/contributing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/contributing"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/docs/changelog</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/changelog"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/changelog"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/changelog"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/installation</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/installation"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/installation"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/installation"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/quickstart</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/quickstart"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/quickstart"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/quickstart"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/checks</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/checks"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/checks"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/checks"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/scoring</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/scoring"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/scoring"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/scoring"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/measurements</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/measurements"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/measurements"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/measurements"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/fixing</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/fixing"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/fixing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/fixing"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/interfaces</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/interfaces"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/interfaces"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/interfaces"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/ai</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/ai"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/ai"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/ai"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/cli</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/cli"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/cli"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/cli"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/environment</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/environment"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/environment"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/environment"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/faq</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/faq"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/faq"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/faq"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/troubleshooting</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/troubleshooting"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/troubleshooting"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/troubleshooting"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/contributing</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/contributing"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/contributing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/contributing"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/changelog</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/changelog"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/changelog"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/changelog"/>
+  </url>
+</urlset>
