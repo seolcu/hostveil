@@ -132,6 +132,49 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.20.2"><a href="https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2">3.20.2</a> <span class="changelog-date">2026-08-16</span></h2>
+          <p>A release about things that were published and wrong. The screenshot on the website named findings hostveil cannot report, four pages contradicted the binary, the built-in help had lost six flags, and the meters were drawn twice as wide as their budget on any terminal that draws the East Asian Ambiguous class wide.</p>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>tui:</strong> meters and the trend line are drawn in columns, not runes (<a href="https://github.com/seolcu/hostveil/issues/749">#749</a>). <code>internal/ui/tui/alignment_test.go</code> had skipped itself since 3.16 with "meters are built by rune count, so every strip overflows under <code>RUNEWIDTH_EASTASIAN</code>; that is its own fix". Every glyph a meter is drawn from is in that class, so the axes rail, the score gauge and the domain meters all composed past the edge of the terminal and were clipped — in the mode a Korean or Japanese operator is most likely to be in. The trend line had it too, unnamed by that skip: a 100-column terminal drew 162 columns of sparkline.</p>
+              <p><code>█</code> is ambiguous and <code>░</code> is not, so a meter cannot divide by one cell size either; it is laid out in columns and occupies exactly its budget in both modes. Three tests were asserting the narrow condition rather than the property, one of them measuring runes as columns — the exact fault it existed to catch. CI now runs the layout packages a second time under the variable, which is what no job did and why this survived every release that has had a meter.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> a systemd drop-in has to win, and this one was not checked (<a href="https://github.com/seolcu/hostveil/issues/750">#750</a>). <code>systemd.unit(5)</code> applies drop-ins in lexicographic order <em>regardless of which directory they are in</em> — the <code>/etc</code>-over-<code>/usr</code> rule covers same-named files only — so a vendor's <code>90-vendor.conf</code> beat the <code>50-hostveil.conf</code> <code>systemd.no-new-privileges</code> has written since 3.20.0. A losing drop-in is the outcome <code>persistSysctl</code> exists to avoid: the file appears, the fix reports success, a checkpoint is recorded, and the value returns at the next <code>daemon-reload</code>.</p>
+              <p>The checker reads <code>DropInPaths</code> and names the file to sort after every drop-in systemd loaded, which wins whatever those files contain. Where no name would win there is nothing to offer: the fix refuses and the finding's how-to-fix names the drop-in that decides. This also settles a contradiction — <code>dockerd.socket-world-writable</code> was declined partly because nothing here resolved precedence, while this domain wrote one without asking.</p>
+            </li>
+            <li>
+              <p><strong>cmd:</strong> the built-in help had drifted from the binary (<a href="https://github.com/seolcu/hostveil/issues/742">#742</a>). <code>fix --review</code>, <code>history --scans</code>, <code>update --yes</code>, <code>uninstall --yes</code>, <code>HOSTVEIL_NO_UPDATE_CHECK</code> and exit code 10 were all missing, and the <code>--all</code> line said Review fixes are left alone, which <code>--review</code> had made untrue. <code>update</code> and <code>uninstall</code> had no flag block at all. The site's flag tables have been pinned to the flag sets for releases; help was pinned to a hand-written list of four. Both copies answer to the same harvest now.</p>
+            </li>
+            <li>
+              <p><strong>docs:</strong> the published screenshot named findings hostveil cannot report (<a href="https://github.com/seolcu/hostveil/issues/740">#740</a>). <code>site/assets/tui.png</code>, on the website and at the top of both READMEs, showed <code>ssh.maxauth</code> (the real id is <code>ssh.maxauthtries</code>) and <code>fileperms.envfile</code>, which is not a finding. Four more were in the every-mode fixture. <code>TestSiteFrameIsCurrent</code> pins that the picture matches the code that drew it, not that what it says is true; no test read an id. One does now, over every fixture that reaches a reader.</p>
+            </li>
+            <li>
+              <p><strong>docs:</strong> pages that contradict the binary (<a href="https://github.com/seolcu/hostveil/issues/741">#741</a>). Two published pages gave opposite upgrade advice and the READMEs' route would leave a <code>.deb</code> or <code>.rpm</code> install inconsistent — <code>hostveil update</code> shipped in 3.18 and appeared in neither. <code>cli.html</code> documented a <code>-o</code> flag that exits 2. Four pages denied <code>fix --all --review</code>, including a README contradicting itself two sections apart. Five environment rows had two cells in a four-column table, so their descriptions rendered in the wrong column in both languages. AGENTS.md named three of five fuzz targets.</p>
+            </li>
+          </ul>
+          <h3>Documentation</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>site:</strong> the changelog is on the website (<a href="https://github.com/seolcu/hostveil/issues/739">#739</a>), in both languages and generated from <code>CHANGELOG.md</code> rather than written out, so the page cannot say a different thing from the file. No Markdown dependency: the converter implements the subset the file uses and fails the build, naming file and line, on anything it cannot render.</p>
+            </li>
+            <li>
+              <p><strong>site:</strong> supply-chain integrity where people install, and the Lynis question (<a href="https://github.com/seolcu/hostveil/issues/745">#745</a>). Every release ships an SBOM per archive and a signed provenance attestation, and the website never mentioned either outside the CLI reference. The install page now says what a checksum proves, what it does not, and what an attestation adds. The FAQ answers how this differs from Lynis or a CIS benchmark — by being measured <em>by</em> them.</p>
+            </li>
+            <li>
+              <p>the READMEs open in English and lead with the proof (<a href="https://github.com/seolcu/hostveil/issues/746">#746</a>). The measurement against Lynis, the CIS Docker Benchmark and an off-host port scan was an H3 nested under scoring, 65% of the way down. It is an H2 after the fold. The first content an English reader met was an untranslated Korean award line; it is in English now, in the words <code>CITATION.cff</code> already used.</p>
+            </li>
+            <li>
+              <p>what 3.20.1 changed, where people will look (<a href="https://github.com/seolcu/hostveil/issues/743">#743</a>). The <code>Match</code>-block coverage gap shipped with no documentation, and hosts with an ordinary <code>Match User</code> go Degraded on upgrade. <code>Pending</code> was published in one paragraph. Both are documented across the pages a reader reaches, and the daily update check is disclosed in the READMEs, which claimed nothing leaves the host while never mentioning it.</p>
+            </li>
+            <li>
+              <p><strong>site:</strong> a sitemap, a robots.txt and a link card (<a href="https://github.com/seolcu/hostveil/issues/744">#744</a>), generated from the URLs the render loops already compute. No <code>&lt;lastmod&gt;</code>: it is either non-deterministic or false.</p>
+            </li>
+            <li>
+              <p>a social preview card and metadata with an owner (<a href="https://github.com/seolcu/hostveil/issues/747">#747</a>, <a href="https://github.com/seolcu/hostveil/issues/748">#748</a>). The repository carried no topics and appeared on no topic page. <code>CITATION.cff</code>'s keywords are the list now, and the card is drawn from the site's palette and the geometry of the product's own mark.</p>
+            </li>
+          </ul>
           <h2 id="v3.20.1"><a href="https://github.com/seolcu/hostveil/compare/v3.20.0...v3.20.1">3.20.1</a> <span class="changelog-date">2026-08-15</span></h2>
           <p>Three things that were wrong, two of them in public. A score that credited a fix the host had not seen, four published figures that contradicted the run they were measured from, and an SSH audit that ended at a <code>Match</code> block without saying so.</p>
           <h3>Bug Fixes</h3>
