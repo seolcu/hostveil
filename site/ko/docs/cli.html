@@ -320,7 +320,7 @@ hostveil update --check</code></pre></div>
 
             <h3 id="update-check">하루 한 번 확인</h3>
             <p>스캔, 대시보드, TUI는 각각 하루에 한 번 GitHub에 새 릴리스가 있는지 묻고, 있으면 한 줄로 알립니다. 요청은 백그라운드에서 돌기 때문에 아무것도 그것을 기다리지 않으며, 실패해도 아무 말을 하지 않습니다. 프록시 뒤에 있는 호스트는 hostveil이 보고할 문제를 가진 호스트가 아닙니다.</p>
-            <p>이 줄은 <code>--json</code>, SARIF, <code>-o</code>로 파일에 쓴 보고서에는 절대 실리지 않습니다. 그것들은 기계가, 나중에 읽습니다.</p>
+            <p>이 줄은 <code>--json</code>, SARIF, <code>--output</code>으로 파일에 쓴 보고서에는 절대 실리지 않습니다. 그것들은 기계가, 나중에 읽습니다.</p>
             <p>hostveil은 스스로 무언가를 설치하지 않습니다. <code>HOSTVEIL_NO_UPDATE_CHECK=1</code>을 설정하면 <code>hostveil update</code>를 직접 실행할 때를 빼고는 GitHub에 연결하지 않습니다.</p>
 
             <h2 id="uninstall">uninstall</h2>

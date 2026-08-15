@@ -28,7 +28,14 @@ var (
 	fuzzMatrixPackage = regexp.MustCompile(`(?m)^\s*-?\s*package:\s*(\S+)\s*$`)
 )
 
-func TestEveryFuzzTargetIsFuzzedNightly(t *testing.T) {
+// fuzzTargets walks the repository for Fuzz functions, returning each target
+// name against the package path it lives in.
+//
+// Extracted so more than one thing can be held to the real list. It was inline
+// in the test below, which is why AGENTS.md was free to name three of the five
+// — the workflow was pinned and the prose beside it was not.
+func fuzzTargets(t *testing.T) map[string]string {
+	t.Helper()
 	root := repoRoot(t)
 	found := map[string]string{} // target -> ./package/path
 
@@ -70,9 +77,14 @@ func TestEveryFuzzTargetIsFuzzedNightly(t *testing.T) {
 	}
 	if len(found) == 0 {
 		t.Fatal("found no Fuzz targets in the repository, which cannot be right — " +
-			"the walk or the signature check above stopped working, and this test " +
-			"would now pass whatever the workflow lists")
+			"the walk or the signature check above stopped working, and every test " +
+			"built on this list would now pass on anything")
 	}
+	return found
+}
+
+func TestEveryFuzzTargetIsFuzzedNightly(t *testing.T) {
+	found := fuzzTargets(t)
 
 	wf := readRepoFile(t, filepath.Join(".github", "workflows", "nightly.yml"))
 	targets := captured(fuzzMatrixTarget, wf)
@@ -147,5 +159,27 @@ func TestOneFailingFuzzTargetDoesNotCancelTheOthers(t *testing.T) {
 	if !strings.Contains(wf, "fail-fast: false") {
 		t.Error("nightly.yml's fuzz matrix no longer sets fail-fast: false, so the " +
 			"first target to crash cancels the rest and their corpora are never uploaded")
+	}
+}
+
+// TestAgentsMdNamesEveryFuzzTarget.
+//
+// The line above the nightly matrix in AGENTS.md tells an agent which targets
+// exist, and it named three of the five. FuzzUnified and FuzzJSON5Edit were
+// fuzzed nightly and invisible to anyone reading the file that is supposed to
+// be the orientation — TestEveryFuzzTargetIsFuzzedNightly pins the workflow
+// against the source and nothing pinned the sentence beside it.
+//
+// It is the same shape as the drift AGENTS.md's own header warns about: "a
+// workflow is YAML, so nothing in it can be held to the code by a compiler".
+// A comment is not YAML and cannot be either.
+func TestAgentsMdNamesEveryFuzzTarget(t *testing.T) {
+	agents := readRepoFile(t, "AGENTS.md")
+	for name := range fuzzTargets(t) {
+		if !strings.Contains(agents, name) {
+			t.Errorf("AGENTS.md does not name the fuzz target %s.\n"+
+				"  It is the list an agent reads to know what exists, and a short list reads "+
+				"exactly like a complete one.", name)
+		}
 	}
 }

@@ -87,8 +87,10 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>And the score is a number, not N/A: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown, not the headline. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of hostveil.</p>
 
             <h2 id="upgrade">Upgrading and uninstalling</h2>
-            <p>To upgrade, re-run the install command. The binary is replaced in place and your saved scans and rollback checkpoints are left alone.</p>
-            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall</code></pre></div>
+            <p>hostveil does both itself, and the reason it does rather than telling you to re-run the installer is that it knows how this binary got here.</p>
+            <div class="code-block"><pre><code>hostveil update      # --check to ask without changing anything
+hostveil uninstall</code></pre></div>
+            <p><code>update</code> works out the origin &mdash; the install script, a <code>.deb</code>, an <code>.rpm</code>, or <code>go install</code> &mdash; and updates it the same way. Re-running the install script over a packaged install replaces a file <code>dpkg</code> or <code>rpm</code> still believes it owns, which is the state this command exists to avoid. The download is checked against the release&rsquo;s checksums and, where the GitHub CLI is present, against the signed build provenance. If hostveil cannot tell how the binary was installed it does nothing and says so. See the <a href="cli#update">CLI reference</a> for the full origin table.</p>
             <p>Uninstalling removes <code>/usr/bin/hostveil</code> and prints where the state directory is — <strong>without deleting it</strong>. Those checkpoints are the backups of every file hostveil has edited on this host, and removing the tool is not a decision to give up the ability to undo its fixes. The command to delete them is printed if you want it. Trivy is left alone too: it is a general-purpose scanner that may predate hostveil or be used by something else.</p>
 
             <h2>Build from source</h2>

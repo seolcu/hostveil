@@ -205,8 +205,10 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>그리고 점수는 N/A가 아니라 숫자로 나옵니다. 도메인 두 개가 실행됐으니 평균 낼 것이 있으니까요. 다만 그것은 100점 중 19점어치의 가중치에 대한 평균이고, 실행되지 않은 열 개 도메인에 대해서는 아무 말도 하지 않습니다. 헤드라인 말고 축별 분해를 읽으세요. <code>pf</code>, 응용 방화벽, Homebrew의 업데이트 상태, launchd 서비스, System Integrity Protection — 그 어느 것도 hostveil의 어떤 부분도 살펴보지 않습니다.</p>
 
             <h2 id="upgrade">업그레이드와 제거</h2>
-            <p>업그레이드하려면 설치 명령을 다시 실행하세요. 바이너리만 교체되고, 저장된 스캔 기록과 롤백 체크포인트는 그대로 남습니다.</p>
-            <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --uninstall</code></pre></div>
+            <p>둘 다 hostveil이 직접 합니다. 설치 스크립트를 다시 실행하라고 안내하지 않는 이유는, 이 바이너리가 어떻게 여기 왔는지를 hostveil이 알고 있기 때문입니다.</p>
+            <div class="code-block"><pre><code>hostveil update      # --check을 붙이면 아무것도 바꾸지 않고 확인만 합니다
+hostveil uninstall</code></pre></div>
+            <p><code>update</code>는 설치 경로 &mdash; 설치 스크립트, <code>.deb</code>, <code>.rpm</code>, <code>go install</code> &mdash; 를 알아내 같은 방식으로 갱신합니다. 패키지로 설치한 곳에 설치 스크립트를 다시 돌리면 <code>dpkg</code>나 <code>rpm</code>이 여전히 자기 것으로 아는 파일을 덮어쓰게 되는데, 이 명령은 바로 그 상태를 막으려고 있습니다. 내려받은 파일은 릴리스의 체크섬과, GitHub CLI가 있으면 서명된 빌드 프로버넌스와도 대조합니다. 설치 경로를 알 수 없으면 아무것도 하지 않고 그렇게 말합니다. 전체 표는 <a href="cli#update">CLI 레퍼런스</a>에 있습니다.</p>
             <p>제거는 <code>/usr/bin/hostveil</code>을 삭제하고 상태 디렉터리의 위치를 알려주되, <strong>그 디렉터리는 지우지 않습니다</strong>. 그 안의 체크포인트는 hostveil이 이 호스트에서 수정한 모든 파일의 백업이며, 도구를 지운다는 것이 그 수정들을 되돌릴 능력을 포기하겠다는 뜻은 아니기 때문입니다. 지우고 싶다면 필요한 명령도 함께 출력됩니다. trivy도 건드리지 않습니다. 범용 스캐너라서 hostveil보다 먼저 설치되었거나 다른 용도로 쓰이고 있을 수 있습니다.</p>
 
             <h2>소스에서 빌드하기</h2>
