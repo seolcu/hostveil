@@ -47,7 +47,10 @@ func SARIF(r model.Report, version string) (string, error) {
 	ruleIndex := map[string]bool{}
 	var results []result
 	for _, f := range r.Findings {
-		if f.Fixed {
+		// Active, not !Fixed. A High whose fix is written and waiting on a
+		// restart is an unfixed High, and a SARIF file with no result for it
+		// reads to a consumer as a host where it was dealt with.
+		if !f.Active() {
 			continue
 		}
 		if !ruleIndex[f.ID] {

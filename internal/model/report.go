@@ -163,7 +163,12 @@ type Filter struct {
 
 // Matches reports whether a finding passes the filter.
 func (flt Filter) Matches(f Finding) bool {
-	if !flt.IncludeFixed && f.Fixed {
+	// Active, not !Fixed. A fix that is applied and not in force is still
+	// charged in the score, so hiding its row would leave a number with
+	// nothing behind it — the operator runs `fix --all`, the list empties,
+	// and the score does not move, with no row anywhere to explain why.
+	// See Finding.Pending.
+	if !flt.IncludeFixed && !f.Active() {
 		return false
 	}
 	if flt.Source != SourceUnset && f.Source != flt.Source {
@@ -207,10 +212,15 @@ func (r Report) AutoFixable(flt Filter) []Finding { return AutoFixable(r.Select(
 // AutoFixable is the same question asked of a slice a caller already has,
 // so a renderer holding the filtered findings does not have to rebuild them
 // to count what the key would apply.
+// Fixed here and not Active, deliberately. This is the other question — has
+// hostveil already applied a fix here — and a pending fix has. Asking Active
+// would put it back in the batch, so `fix --all` would rewrite a file it
+// already wrote and record a second checkpoint over unchanged content, every
+// time it ran, until the operator restarted the service.
 func AutoFixable(findings []Finding) []Finding {
 	out := make([]Finding, 0, len(findings))
 	for _, f := range findings {
-		if !f.Fixed && f.Remediation == RemediationAuto {
+		if f.IsAutoFixable() {
 			out = append(out, f)
 		}
 	}

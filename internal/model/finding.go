@@ -19,6 +19,26 @@ type Finding struct {
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	Fixed       bool              `json:"fixed"`
 
+	// Pending means hostveil applied a fix for this finding and the host has
+	// not changed yet: the artifact on disk is correct and whatever reads it
+	// has not read it again.
+	//
+	// It exists because "hostveil wrote the file" and "the risk is gone" are
+	// different claims, and the score was crediting the first. Applying a
+	// compose fix marked the finding Fixed and moved the number while the
+	// container still ran the old configuration — the same mismatch
+	// Action.TakesEffectOn and VerifyPending were added to *describe*, arriving
+	// in the one place that is supposed to be measuring the host rather than
+	// hostveil's own activity.
+	//
+	// Ask Active, not this field, for whether a risk is still standing; Fixed
+	// keeps its own meaning of "hostveil applied a fix here" and is what the
+	// apply paths test so a pending fix is never applied twice.
+	//
+	// Never trust it from a snapshot. It describes an apply that happened in
+	// this process, and the next scan re-derives everything from the checkers.
+	Pending bool `json:"pending,omitempty"`
+
 	// WhyNoFix is one sentence saying what stops hostveil fixing this
 	// finding for you. It is set by the engine, never by a checker, and only
 	// on findings that reach a UI with no fix to offer.
@@ -107,6 +127,34 @@ func (f Finding) Validate() error {
 func (f Finding) IsFixable() bool {
 	return f.Remediation.IsFixable()
 }
+
+// IsAutoFixable reports whether "fix all safe" would apply this row right
+// now. It is IsFixable's narrower cousin: that one asks what kind of
+// remediation exists, this one asks whether the batch is going to act.
+//
+// The !Fixed half is what stops a pending row being offered. Its fix has been
+// applied and what is outstanding is a restart, so the batch skips it — and a
+// UI that let the operator mark it anyway would put it in a batch that
+// reported it back under "skipped", the same word that means "there is no fix
+// for this one".
+func (f Finding) IsAutoFixable() bool {
+	return !f.Fixed && f.Remediation == RemediationAuto
+}
+
+// Active reports whether this risk is still standing on the host — either
+// nothing has been applied, or something has and it is not in force yet.
+//
+// It is the question the score, the SARIF results, the exit status, the delta
+// and every visible list are asking, and it is deliberately one named
+// predicate rather than "!f.Fixed || f.Pending" written out at each of them.
+// A rule that lives in prose until one renderer forgets it is the drift
+// internal/docs/afterfixes_test.go exists to catch, and there is no reason to
+// hand it a fresh instance.
+//
+// The other question — has hostveil already applied a fix here — is Fixed on
+// its own, and the two diverge exactly on a pending fix: it stays charged and
+// visible, and it is not applied again.
+func (f Finding) Active() bool { return !f.Fixed || f.Pending }
 
 // Key uniquely identifies a finding within a report for deduplication
 // and cascade matching: (source, id, service).

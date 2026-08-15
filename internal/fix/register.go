@@ -396,30 +396,56 @@ package fix
 // improving the host is the objection already recorded for compose.ds016,
 // arriving by a different route.
 //
-// Half of that is now answerable and half is not, and the split is worth
-// recording so the next reader does not have to derive it again.
+// Both halves of that objection are now answered, and neither answer is what
+// unblocks this domain — which is worth recording, because "the shared reason
+// went away" reads like "these are registerable now" and they are not.
 //
-// Answered: Action.TakesEffectOn and model.VerifyPending exist, so hostveil
-// can write the file and say plainly that the change reaches the host at the
-// next daemon restart, instead of re-checking `docker info` and calling the
-// finding gone. The compose domain was doing exactly that — confirming a fix
-// over a container still running the old configuration — and it is the same
-// mismatch between the artifact a fix writes and the oracle a checker reads.
+// The message was answered first: Action.TakesEffectOn and model.VerifyPending
+// mean hostveil can write the file and say plainly that the change reaches the
+// host at the next daemon restart, instead of re-checking `docker info` and
+// calling the finding gone.
 //
-// Not answered: the score. markFixed and rescore run on a successful apply,
-// before any verification, so a pending fix still moves the number on a host
-// nothing has changed about. Until "applied" and "in force" are separated
-// there as well, registering these would put the second half of the original
-// objection back — improving the score without improving the host — with the
-// message alone being honest about it.
+// The score is answered now too. model.Finding.Pending keeps a fix charged
+// until it is in force, so an applied-and-waiting fix no longer moves the
+// number — the objection this paragraph used to record, that registering these
+// would improve the score without improving the host, no longer follows from
+// registering them.
 //
-// And one blocker that has appeared since: daemon.json. internal/json5
-// replaces the value at a key path that ALREADY EXISTS and neither creates
-// nor deletes, so it cannot add `"no-new-privileges": true` to a file that
-// does not carry the key — which is every host that has not already set it,
-// i.e. every host with this finding. Editing it any other way means
-// re-encoding through encoding/json and reordering the operator's keys,
-// which is precisely the damage internal/json5 was written to prevent.
+// What that leaves is one blocker doing nearly all the work, and it is the one
+// that arrived last: daemon.json. internal/json5 replaces the value at a key
+// path that ALREADY EXISTS and neither creates nor deletes, so it cannot add
+// `"no-new-privileges": true` to a file that does not carry the key — which is
+// every host that has not already set it, i.e. every host with this finding —
+// and it cannot remove the `tcp://` endpoint the two API findings are about.
+// Editing daemon.json any other way means re-encoding through encoding/json
+// and reordering the operator's keys, which is precisely the damage
+// internal/json5 was written to prevent. That covers five of the seven, and
+// the remaining two never rested on the score at all: group-members is exec
+// and may remove the operator's own account, and the API pair fails
+// firewall.inactive's recoverability criterion whatever edits the file.
+//
+// dockerd.socket-world-writable is the one whose recorded reason genuinely
+// falls, and it still is not a registration. Its objection was that the honest
+// remediation is a unit drop-in "which needs a restart to apply", and that is
+// now a thing a fix can say rather than a thing that stops it. Three pieces of
+// new work stand where the old reason stood, none of them removed by this
+// change: the checker declares RemediationManual, so resolvedKind floors it
+// there whatever the registry offers; systemd sorts drop-ins lexically and
+// hostveil does not resolve which one wins for a socket unit, so writing
+// 50-hostveil.conf without that would repeat exactly the failure persistSysctl
+// exists to avoid; and restarting docker.socket under a running docker.service
+// is not the clean operation it looks like.
+//
+// One thing Pending does not do, so that nobody reads it as more than it is:
+// it corrects the score between an apply and the next scan, and nothing more.
+// A rescan builds findings from the checkers, so for a domain whose checker
+// reads the artifact rather than the running state — compose above all — the
+// scan after a fix still reports the finding gone while the container runs the
+// old configuration. That gap is older than this and is what TakesEffectOn was
+// introduced to describe rather than to close; it is why
+// scripts/measure/run.sh has a separate phase for after the services are
+// restarted. Closing it would mean the compose checker reading containers, and
+// that is a different change.
 //
 // The asymmetry with SSH is what makes this consistent rather than
 // arbitrary. The ssh checker reads sshd_config, which is the same artifact
@@ -437,24 +463,30 @@ package fix
 //     member it removes may be the operator's own account and the access
 //     they administer the daemon with. That is accounts.emptypassword's
 //     objection.
-//   - dockerd.socket-world-writable — the socket's mode is not durable
-//     state. dockerd recreates the socket from the systemd docker.socket
-//     unit on every start, so a chmod is undone at the next restart and the
-//     honest remediation is a unit drop-in — which needs a restart to apply.
+//   - dockerd.socket-world-writable — the only one of the seven that does not
+//     touch daemon.json, and so the only one whose reason had to be rewritten
+//     rather than re-pointed. The socket's mode is not durable state: dockerd
+//     recreates the socket from the systemd docker.socket unit on every
+//     start, so a chmod is undone at the next restart and the honest
+//     remediation is a unit drop-in. "Which needs a restart to apply" used to
+//     end that sentence and no longer ends anything — Action.TakesEffectOn
+//     says exactly that. What stands in its place is precedence: systemd
+//     merges drop-ins in lexical order and nothing here resolves which one
+//     sets SocketMode, so hostveil would be writing a file it cannot show
+//     wins. That is persistSysctl's rule, which this domain has not yet had
+//     to face because it has never written anything. The checker also
+//     declares RemediationManual, so resolvedKind floors it there until that
+//     moves too.
 //   - dockerd.live-restore — the one setting `systemctl reload docker` picks
 //     up without bouncing containers, which is what makes it look fixable.
-//     The reload is exec and has no checkpoint, and pairing it with the
-//     daemon.json edit is "write it, then apply it" — sequential steps, the
-//     shape Review forbids. Docker has no `sysctl -w` equivalent, no way to
-//     change a running daemon's setting in place, so there is no second
-//     independent alternative to pair with. That leaves one action, which
-//     would have to be Auto: `fix --all`, unattended, re-encoding the
-//     operator's daemon.json through encoding/json and reordering every key
-//     for a one-line change.
+//     Its shape objection has weakened: "write it, then apply it" is one
+//     action and a TakesEffectOn now, not two sequential steps pretending to
+//     be alternatives. The editor is what stops it, as above.
 //   - dockerd.no-new-privileges and dockerd.userns-remap — the shared reason
-//     alone. Both are daemon defaults that take effect only for containers
-//     started after a restart, and userns-remap additionally rewrites the
-//     ownership of every bind mount on the host.
+//     alone, which is now the editor. Both are also daemon defaults that take
+//     effect only for containers started after a restart — describable, since
+//     3.17 — and userns-remap additionally rewrites the ownership of every
+//     bind mount on the host, which is not.
 //
 // # The one CVE finding that does have a fix
 //

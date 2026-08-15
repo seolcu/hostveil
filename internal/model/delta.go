@@ -153,10 +153,16 @@ func ComputeDelta(prev, curr Report) Delta {
 	return d
 }
 
+// All three of these ask Finding.Active rather than testing Fixed, so a fix
+// that is applied and not yet in force reads as what it is: still there. A
+// delta that counted it under Fixed would announce the risk resolved one scan
+// before anything on the host had changed, and then have nothing to say at the
+// scan where it actually was.
+
 func activeByKey(r Report) map[string]Finding {
 	out := make(map[string]Finding, len(r.Findings))
 	for _, f := range r.Findings {
-		if !f.Fixed {
+		if f.Active() {
 			out[f.Key()] = f
 		}
 	}
@@ -166,7 +172,7 @@ func activeByKey(r Report) map[string]Finding {
 func activeFindings(r Report) []Finding {
 	out := make([]Finding, 0, len(r.Findings))
 	for _, f := range r.Findings {
-		if !f.Fixed {
+		if f.Active() {
 			out = append(out, f)
 		}
 	}
@@ -176,7 +182,7 @@ func activeFindings(r Report) []Finding {
 func activeKeySet(r Report) map[string]bool {
 	set := make(map[string]bool, len(r.Findings))
 	for _, f := range r.Findings {
-		if !f.Fixed {
+		if f.Active() {
 			set[f.Key()] = true
 		}
 	}

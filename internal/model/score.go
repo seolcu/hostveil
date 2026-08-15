@@ -406,6 +406,12 @@ func withOfferedFixesApplied(findings []Finding) []Finding {
 	for i := range out {
 		if out[i].Remediation == RemediationAuto || out[i].Remediation == RemediationReview {
 			out[i].Fixed = true
+			// And in force. This pass answers "where does the number land once
+			// the fixes have done their work", so a fix already applied and
+			// waiting on a restart has to count as done here — otherwise the
+			// headroom disappears on exactly the domains it is most needed for,
+			// which are the ones whose fixes are never immediate.
+			out[i].Pending = false
 		}
 	}
 	return out
@@ -457,7 +463,10 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	groups := make(map[group][]Finding, len(findings))
 	order := make([]group, 0, len(findings))
 	for _, f := range findings {
-		if f.Fixed {
+		// Active, not !Fixed: a fix whose artifact is written and not yet in
+		// force has changed nothing an attacker can see, and the score is the
+		// one place that must not say otherwise. See Finding.Pending.
+		if !f.Active() {
 			continue
 		}
 		idx, ok := idxBySource[f.Source]

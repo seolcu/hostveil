@@ -182,8 +182,16 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	if !engine.state.current.Findings[0].Fixed {
 		t.Fatal("apply did not mark the finding fixed")
 	}
-	if outcome.NewScore.Overall <= before {
-		t.Fatalf("apply did not improve the score: %d -> %d", before, outcome.NewScore.Overall)
+	// Deliberately not asserted here any more: that the score went up. A
+	// compose edit is not in force until the container is recreated, so this
+	// apply leaves the number alone on purpose — see
+	// TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot, which owns that
+	// claim now and owns both halves of it. What this test is about is the
+	// rollback tail, and for that the pending case is the harder one: the
+	// score never moved, so an unmark that quietly did nothing would look
+	// exactly like a correct one.
+	if !engine.state.current.Findings[0].Pending {
+		t.Fatal("a compose edit is not in force when it is written; apply did not record that")
 	}
 
 	rb, err := engine.Rollback(outcome.CheckpointID)
@@ -193,12 +201,144 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	if engine.state.current.Findings[0].Fixed {
 		t.Error("rollback left the finding marked fixed — it stays hidden in every UI")
 	}
+	if engine.state.current.Findings[0].Pending {
+		t.Error("rollback left the finding marked pending — the fix it was waiting on is gone")
+	}
 	if len(rb.Unfixed) != 1 || rb.Unfixed[0] != "compose.ds018" {
 		t.Errorf("unexpected Unfixed: %v", rb.Unfixed)
 	}
 	if rb.NewScore.Overall != before {
 		t.Errorf("rollback did not restore the score: want %d, got %d", before, rb.NewScore.Overall)
 	}
+}
+
+// TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot is the pair that pins
+// this whole rule, and it has to be a pair.
+//
+// The score is what hostveil says about the host, so it may only move when the
+// host has moved. A fix whose artifact is what the domain reads — a file mode
+// is the plainest case, since chmod IS the state — is in force the moment it
+// is applied, and the number must follow. A fix whose artifact is read by
+// something that has not read it again is not, and the number must not: the
+// compose file says one thing and the running container still does another.
+//
+// Asserting only the second half would pass for an engine that had simply
+// stopped scoring fixes at all, which is the failure mode this replaced —
+// a number that ignores what happened is no better than one that overstates
+// it. So the first half is the control, and neither assertion means anything
+// without the other.
+func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
+	inForce, _ := permFinding(t, 0o644, "0640")
+	pending := composeFindingOn(t, "compose.ds018")
+
+	for _, tc := range []struct {
+		name        string
+		finding     model.Finding
+		wantPending bool
+	}{
+		{"a mode change is the state it describes", inForce, false},
+		{"a compose file is read at the next recreate", pending, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			engine := fixEngine(t)
+			engine.state.current = model.Report{
+				Findings: []model.Finding{tc.finding},
+				Domains: []model.DomainResult{{
+					Source: tc.finding.Source, State: model.ScanDone, FindingCount: 1,
+				}},
+			}
+			engine.state.hasRun = true
+			before := engine.state.rescore().Overall
+
+			out, err := engine.ApplyFix(context.Background(), tc.finding, 0)
+			if err != nil {
+				t.Fatalf("apply: %v", err)
+			}
+			if out.Pending != tc.wantPending {
+				t.Fatalf("Pending = %v, want %v (verified %s)", out.Pending, tc.wantPending, out.Verified)
+			}
+			// Fixed either way. Applied and in force are two facts, and this
+			// change separates them rather than collapsing the first into the
+			// second — see model.FixVerification.
+			if !engine.state.current.Findings[0].Fixed {
+				t.Error("the fix was applied and the finding is not marked fixed")
+			}
+
+			switch {
+			case tc.wantPending && out.NewScore.Overall != before:
+				t.Errorf("a fix that is not in force moved the score: %d -> %d",
+					before, out.NewScore.Overall)
+			case !tc.wantPending && out.NewScore.Overall <= before:
+				t.Errorf("a fix that is in force did not move the score: %d -> %d",
+					before, out.NewScore.Overall)
+			}
+
+			// And the operator is told which it was. A score that stays put
+			// with nothing saying why is the complaint this rule invites.
+			if tc.wantPending && out.TakesEffectOn == "" {
+				t.Error("a pending fix did not say what would put it in force")
+			}
+		})
+	}
+}
+
+// TestABatchChargesAPendingFixToo is the path-independence half.
+//
+// ApplyBatch deliberately does not re-check — twenty compose findings would
+// mean twenty enumerations of every container on the host — so if pending were
+// decided by verification rather than by the fix's own declaration, the batch
+// would be the optimistic path and `fix --all` would score a host higher than
+// applying the same fixes one at a time. Action.TakesEffectOn is on the fix
+// precisely so both paths reach the same answer with no re-check.
+func TestABatchChargesAPendingFixToo(t *testing.T) {
+	f := composeFindingOn(t, "compose.ds006")
+
+	engine := fixEngine(t)
+	engine.state.current = model.Report{
+		Findings: []model.Finding{f},
+		Domains:  []model.DomainResult{{Source: model.SourceCompose, State: model.ScanDone, FindingCount: 1}},
+	}
+	engine.state.hasRun = true
+	before := engine.state.rescore().Overall
+
+	out := engine.ApplyBatch(context.Background(), []model.Finding{f})
+	if len(out.Applied) != 1 {
+		t.Fatalf("batch applied %v, want the one finding", out.Applied)
+	}
+	if out.NewScore.Overall != before {
+		t.Errorf("the batch credited a fix that is not in force: %d -> %d", before, out.NewScore.Overall)
+	}
+	if len(out.Pending) != 1 || out.Pending[0] != f.ID {
+		t.Fatalf("Pending = %v, want [%s]", out.Pending, f.ID)
+	}
+	// Without this the change trades a dishonest number for an inexplicable
+	// one: "Applied 1. New score: 50/100." with 50 unchanged reads as a tool
+	// that did nothing.
+	if !strings.Contains(out.Message, "not in force") {
+		t.Errorf("the summary does not explain the score that did not move: %q", out.Message)
+	}
+	// The batch must not offer it again. It was applied; what is outstanding
+	// is the restart, and re-applying would write a second checkpoint over a
+	// file that has not changed.
+	again := engine.ApplyBatch(context.Background(), engine.state.current.Findings)
+	if len(again.Applied) != 0 {
+		t.Errorf("a second batch re-applied a pending fix: %v", again.Applied)
+	}
+}
+
+// composeFindingOn builds a compose finding against a real temp compose file.
+func composeFindingOn(t *testing.T, id string) model.Finding {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "docker-compose.yml")
+	body := "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return model.NewFinding(id, "t", model.SeverityHigh,
+		model.SourceCompose, model.RemediationAuto,
+		model.WithService("cache"),
+		model.WithMetadata("file", path),
+		model.WithEvidence("port", "6379"))
 }
 
 // TestRollbackUnmarksOnlyTheCheckpointedService pins the reason checkpoints
@@ -614,7 +754,7 @@ func TestCurrentIsASnapshot(t *testing.T) {
 	e.state.mu.Unlock()
 
 	snapshot, _ := e.Current()
-	e.state.markFixed(snapshot.Findings[0])
+	e.state.markFixed(snapshot.Findings[0], false)
 
 	if snapshot.Findings[0].Fixed {
 		t.Error("Current() shares its findings with the engine; a later fix mutated the caller's copy")

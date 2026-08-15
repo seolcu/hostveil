@@ -136,6 +136,10 @@ func fixAll(ctx context.Context, yes, review bool) int {
 
 	var auto, reviewed []model.Finding
 	for _, f := range report.Findings {
+		// Fixed, not !Active: this is the batch's own question — has hostveil
+		// already applied something here — and for a pending fix it has. It
+		// covers the Review branch below as well, which is why it is not
+		// IsAutoFixable.
 		if f.Fixed {
 			continue
 		}
@@ -215,8 +219,11 @@ func fixAll(ctx context.Context, yes, review bool) int {
 }
 
 func findFinding(r model.Report, id, service string) (model.Finding, bool) {
+	// Active, not !Fixed: this resolves which finding the operator named, and
+	// a fix that is written and waiting on a restart is still one they can ask
+	// about. The dashboard's lookup answers the same question the same way.
 	for _, f := range r.Findings {
-		if f.Fixed || f.ID != id {
+		if !f.Active() || f.ID != id {
 			continue
 		}
 		if service == "" || f.Service == service {

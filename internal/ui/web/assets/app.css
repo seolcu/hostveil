@@ -226,6 +226,12 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding .title { min-width: 0; }
 .finding .title .name { color: var(--bone); }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
+/* A finding whose fix is applied and not yet in force. It keeps its severity
+   colour on the left edge because the risk is still standing and the score
+   still charges it — the row is not resolved, it is waiting. The accent on
+   the sub-line is the same "there is something for you here" this interface
+   spends everywhere else; the something is a restart. */
+.finding.pending .title .rem { color: var(--accent); }
 /* Bounded + ellipsised: Service can hold a full image reference
    (registry/namespace/name:tag) from a CVE finding, which is easily long
    enough that, left unbounded in this nowrap auto-track, it forced the whole

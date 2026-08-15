@@ -125,8 +125,17 @@ function topSeverity() {
 function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
 function remLabel(r) { return (REM[r] && REM[r].label) || "Unclassified"; }
 function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
-function isAuto(f) { return !!(REM[f.remediation] && REM[f.remediation].auto); }
-function active(findings) { return findings.filter((x) => !x.fixed); }
+// isAuto asks whether "fix all safe" would apply this row now, so a pending
+// row answers false: its fix has been applied and what is left is the
+// restart. Marking one would put it in a batch that reported it back as
+// skipped, the word that also means "there is no fix for this".
+function isAuto(f) { return !f.fixed && !!(REM[f.remediation] && REM[f.remediation].auto); }
+// A pending finding is still active: the file is written and the host has not
+// changed, so the score still charges it and the row has to stay on the page
+// to account for the number. This is the copy of model.Finding.Active that
+// cannot call into Go, so it is the copy that has to be read.
+function active(findings) { return findings.filter((x) => !x.fixed || x.pending); }
+function isPending(f) { return !!f.pending; }
 
 // A domain that did not cover all of its ground. Degraded counts: it ran,
 // and it is scored, but it cannot vouch for what it did not look at.
@@ -548,12 +557,13 @@ function render() {
 
   const rows = new Map(); // finding key -> its <li>, so the overview can jump to one
   const row = (f) => {
-    const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") },
+    const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") + (isPending(f) ? " pending" : "") },
       isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
       el("span", { class: "sev" }, sevAbbr(f)),
       el("div", { class: "title" },
         el("div", { class: "name" }, f.title),
-        el("div", { class: "rem" }, f.id + "  ·  " + remLabel(f.remediation))
+        el("div", { class: "rem" }, f.id + "  ·  " +
+          (isPending(f) ? "Applied — not in force yet" : remLabel(f.remediation)))
       ),
       f.service ? el("span", { class: "svc" }, f.service) : ""
     );

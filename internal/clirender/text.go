@@ -103,7 +103,15 @@ func Text(r model.Report, opts Options) string {
 		if f.Service != "" {
 			fmt.Fprintf(&b, " %s(%s)%s", c.dim, f.Service, c.reset)
 		}
-		fmt.Fprintf(&b, " %s%s%s\n", c.dim, f.Remediation.Label(), c.reset)
+		// A pending row reports what is outstanding rather than its
+		// remediation kind. The fix has been applied; "Auto-fix" there would
+		// point at a button that has already been pressed, on the one row
+		// where pressing it again achieves nothing.
+		if f.Pending {
+			fmt.Fprintf(&b, " %sapplied — not in force yet%s\n", c.yellow, c.reset)
+		} else {
+			fmt.Fprintf(&b, " %s%s%s\n", c.dim, f.Remediation.Label(), c.reset)
+		}
 		if opts.Verbose {
 			if f.Description != "" {
 				fmt.Fprintf(&b, "      %s\n", wrap(f.Description, 72, "      "))

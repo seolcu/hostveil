@@ -85,8 +85,17 @@ func newStyles(t theme.Theme) *styles {
 // "there is a key here that does something"; and the muted grey for the three
 // kinds that offer no button at all, which is what the grey means everywhere
 // else on the screen.
-func (s *styles) kindStyle(r model.RemediationKind) lipgloss.Style {
-	switch r {
+func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
+	// Pending is drawn in the accent rather than the safe green, and the
+	// distinction is the point: green on this column has meant "hostveil can
+	// deal with this" since the column existed, and a row whose fix is
+	// written but not in force is not dealt with. The accent is what this
+	// interface spends on "there is something for you here", which is exactly
+	// what is true — the something is a restart.
+	if f.Pending {
+		return s.accent
+	}
+	switch f.Remediation {
 	case model.RemediationAuto:
 		return s.safe
 	case model.RemediationReview:
@@ -765,7 +774,7 @@ func (m *appModel) laneRows(w int) ([]string, int) {
 				continue
 			}
 			idx = append(idx, i)
-			if f.Remediation == model.RemediationAuto {
+			if f.IsAutoFixable() {
 				autos++
 			}
 		}
@@ -788,7 +797,7 @@ func (m *appModel) laneRows(w int) ([]string, int) {
 func (m *appModel) activeTotal() int {
 	n := 0
 	for _, f := range m.report.Findings {
-		if !f.Fixed {
+		if f.Active() {
 			n++
 		}
 	}
@@ -816,7 +825,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// the whole list stepping in and out down the left edge.
 	markW := m.markColumns()
 	mark := padRight("", markW)
-	if f.Remediation == model.RemediationAuto {
+	if f.IsAutoFixable() {
 		if m.selected[f.Key()] {
 			mark = s.safe.Render(padRight(m.gl.Of(glyph.OK)+" ", markW))
 		} else {
@@ -829,7 +838,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		}
 	}
 	sev := sevAbbr(f.Severity)
-	kind := kindAbbr(f.Remediation)
+	kind := kindCell(f)
 
 	// Budget the row from what is actually drawn rather than a fixed 46.
 	// The old constant did not account for the trailing service suffix at
@@ -902,7 +911,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// the pane separator. Two visible faults, one missing pad.
 	return gutter + mark +
 		lipgloss.NewStyle().Foreground(sevC).Render(fmt.Sprintf("%-4s", sev)) +
-		s.kindStyle(f.Remediation).Render(fmt.Sprintf(" %-*s", kindColumns, kind)) +
+		s.kindStyle(f).Render(fmt.Sprintf(" %-*s", kindColumns, kind)) +
 		s.dim.Render(fmt.Sprintf(" %-*s ", idW, truncate(f.ID, idW))) +
 		s.bone.Render(title) + s.dim.Render(plainSuffix)
 }
@@ -912,6 +921,28 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 // is padded to it so the id column below it does not step left and right
 // down the list.
 const kindColumns = 6
+
+// kindCell is what the remediation column says for a row.
+//
+// A pending row does not report its RemediationKind. The kind answers "what
+// is there to do about this", and for a row hostveil has already fixed the
+// answer is no longer "auto" — nothing is going to be pressed here, and the
+// row is still on the list only because the change has not reached the host.
+// Showing AUTO there would invite the operator to apply a fix that has
+// already been applied, on the one row where doing so achieves nothing.
+//
+// Abbreviated to fit the column rather than widening it, which is what this
+// column has always done — HIGH, MED, AUTO and N/A are all short for
+// something. "PENDING" would have cost every row on every screen a column of
+// title, permanently, to carry a state most rows never enter. The full word
+// is in the JSON, on the dashboard chip and in the sentence under the row,
+// all three of which have the room.
+func kindCell(f model.Finding) string {
+	if f.Pending {
+		return "PEND"
+	}
+	return kindAbbr(f.Remediation)
+}
 
 func kindAbbr(r model.RemediationKind) string {
 	return strings.ToUpper(r.Abbr())
