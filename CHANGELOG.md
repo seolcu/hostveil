@@ -1,5 +1,52 @@
 # Changelog
 
+## [3.20.0](https://github.com/seolcu/hostveil/compare/v3.19.0...v3.20.0) (2026-08-15)
+
+The service-hardening domain had no registered fix for any of its four
+findings. Three of them keep it, and the split is what this release is about.
+
+### Features
+
+* **check:** `systemd.no-new-privileges` is a fix, not a note
+  ([#733](https://github.com/seolcu/hostveil/issues/733)). Its decline reason
+  read "a drop-in plus a restart is one procedure in two steps rather than two
+  alternatives, and a service that does not come back fails at the next
+  restart." The first half is what `Action.TakesEffectOn` was built for —
+  write the artifact now, name what has to happen for it to be in force — and
+  every compose fix has stood on it since 3.17. The sentence predates the
+  machinery. The second half still holds, so this is Review rather than Auto.
+
+  `ProtectSystem`, `ProtectHome` and `PrivateTmp` stay declined and are now
+  named one by one instead of covered by a `systemd.*` glob that would have
+  covered this one too. Each breaks something the unit does not show: a
+  service that hands another files through `/tmp`, one whose data lives in a
+  home directory, one that writes under `/usr`. That is missing information,
+  and no machinery fixes it. `NoNewPrivileges` has no such blind spot — it is
+  the same protection the container domain has fixed automatically under the
+  same name all along.
+
+  Nothing in the model changed. The checker declares Review, the registration
+  is one action, and `resolvedKind` shows the operator the more cautious of
+  the two — the mechanism `firewall.inactive` already reaches the screen
+  through. The re-check afterwards still reports the finding, because this
+  checker asks systemd for the effective configuration and systemd has not
+  re-read the file; `VerifyStillPresent` says exactly that, in the sentence it
+  was written for.
+
+  Fix coverage is 38 of 74, and the systemd domain is no longer zero.
+
+### Bug Fixes
+
+* **core:** `CreateIfMissing` now creates the directory as well as the file
+  ([#733](https://github.com/seolcu/hostveil/issues/733)). Nothing had
+  noticed, because the sysctl and apt drop-ins land in directories every
+  distribution ships — while `/etc/systemd/system/<unit>.d/` is created by
+  whoever first overrides that unit, which is usually nobody.
+  `WriteFileAtomic` stages its temp file beside the target, so a missing
+  directory failed there, after the checkpoint was already on disk. Rollback
+  deletes the file and leaves the directory: by then it may hold a drop-in
+  somebody else put there.
+
 ## [3.19.0](https://github.com/seolcu/hostveil/compare/v3.18.0...v3.19.0) (2026-08-15)
 
 Two things the terminal did not say, one address it could not give you, and
