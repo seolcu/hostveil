@@ -2,6 +2,8 @@ package systemd
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -138,8 +140,66 @@ func (r rule) severityFor(u unit) model.Severity {
 // dropInPath is where the operator's own override for a unit belongs. Under
 // /etc, so it outranks the unit file and any drop-in a package ships, and
 // numbered so a later file of the operator's own still wins.
-func dropInPath(unitID string) string {
-	return "/etc/systemd/system/" + unitID + ".d/50-hostveil.conf"
+// dropInPath is where the fix writes, and the name is chosen rather than
+// fixed.
+//
+// systemd.unit(5): "Multiple drop-in files with different names are applied in
+// lexicographic order, regardless of which of the directories they reside in."
+// So a vendor's /usr/lib/systemd/system/<unit>.d/90-vendor.conf beats
+// /etc/systemd/system/<unit>.d/50-hostveil.conf — the /etc-over-/usr rule
+// applies only to files with the *same* name. A drop-in that loses is the
+// worst available outcome and the one persistSysctl exists to avoid: the file
+// appears, the fix reports success, a checkpoint is recorded, and the value
+// comes back at the next daemon-reload with nothing to explain it.
+//
+// The name is picked to sort after everything systemd says it loaded, which
+// wins whatever those files contain — reading them to find out whether they
+// set this particular directive would be a second parser answering a question
+// systemd has already answered. 50- stays the name on the ordinary host,
+// because that is what the docs and the finding's own instructions say.
+//
+// "" means no name wins, and the fix refuses rather than writing one that
+// cannot work.
+func dropInPath(unitID, loaded string) string {
+	dir := "/etc/systemd/system/" + unitID + ".d/"
+	last := ""
+	for _, p := range strings.Fields(loaded) {
+		if b := path.Base(p); b > last {
+			last = b
+		}
+	}
+	for _, name := range []string{"50-hostveil.conf", "99-hostveil.conf"} {
+		if name > last {
+			return dir + name
+		}
+	}
+	return ""
+}
+
+// howToFix is the instruction, which has to name a file — and there is one
+// case where no file it could name would work.
+//
+// A drop-in wins on filename, so when systemd has already loaded one that
+// sorts after anything hostveil would write, the honest instruction is not
+// "create this file": it is that the operator has to deal with the file that
+// outranks it. Telling them to write one that loses would be advice that
+// cannot work, which the environment reference test calls the worst kind.
+func howToFix(u unit, r rule) string {
+	dropIn := dropInPath(u.ID, u.DropInPaths)
+	if dropIn == "" {
+		return fmt.Sprintf(
+			"A drop-in that systemd loads after anything hostveil could write is already in "+
+				"place for this unit (%s), and drop-ins are applied in filename order whichever "+
+				"directory they are in — so a new file under /etc/systemd/system/%s.d/ would be "+
+				"overridden. Set `%s` in the file that sorts last, or rename it, then run "+
+				"`systemctl daemon-reload` and `systemctl restart %s`.",
+			u.DropInPaths, u.ID, r.directive, u.ID)
+	}
+	return fmt.Sprintf(
+		"Create %s containing:\n\n    [Service]\n    %s\n\nThen run `systemctl daemon-reload` and `systemctl restart %s`. "+
+			"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start rather than misbehaving quietly. "+
+			"Remove the file to undo it.",
+		dropIn, r.directive, u.ID)
 }
 
 func (r rule) finding(u unit) model.Finding {
@@ -158,13 +218,9 @@ func (r rule) finding(u unit) model.Finding {
 		// internal/fix cannot import this package, and a path recomputed
 		// there would be a second answer to a question with one — the same
 		// reason the compose checker carries "file".
-		model.WithMetadata("dropin", dropInPath(u.ID)),
+		model.WithMetadata("dropin", dropInPath(u.ID, u.DropInPaths)),
 		model.WithDescription(r.desc),
-		model.WithHowToFix(fmt.Sprintf(
-			"Create %s containing:\n\n    [Service]\n    %s\n\nThen run `systemctl daemon-reload` and `systemctl restart %s`. "+
-				"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start rather than misbehaving quietly. "+
-				"Remove the file to undo it.",
-			dropInPath(u.ID), r.directive, u.ID)),
+		model.WithHowToFix(howToFix(u, r)),
 		model.WithEvidence("unit", u.FragmentPath),
 		model.WithEvidence("runs as", runAs),
 	)

@@ -62,6 +62,10 @@ var showProperties = []string{
 	"ProtectSystem",
 	"ProtectHome",
 	"PrivateTmp",
+	// Which drop-ins systemd actually loaded for this unit, in the order it
+	// applied them. Asked for because the fix writes a drop-in, and a drop-in
+	// competes on filename: see dropInPath.
+	"DropInPaths",
 }
 
 // Checker reports services running with systemd's protections switched off.
@@ -146,6 +150,9 @@ type unit struct {
 	ProtectSystem   string
 	ProtectHome     string
 	PrivateTmp      string
+	// DropInPaths is the space-separated list systemd reports, which is every
+	// drop-in it loaded for this unit from /etc, /run and /usr/lib alike.
+	DropInPaths string
 }
 
 // root reports whether the service runs as root, which is what decides how
@@ -176,6 +183,7 @@ func parseUnits(out string) []unit {
 			ProtectSystem:   cur["ProtectSystem"],
 			ProtectHome:     cur["ProtectHome"],
 			PrivateTmp:      cur["PrivateTmp"],
+			DropInPaths:     cur["DropInPaths"],
 		})
 		cur = map[string]string{}
 	}
