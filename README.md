@@ -281,7 +281,7 @@ afterwards. So the repository carries a harness that measures a seeded host
 with tools that have never heard of hostveil: Lynis, Docker's CIS benchmark, a
 TCP scan from off the host, and the kernel's own list of listening sockets.
 
-The host is a real ARM64 server seeded like an ordinary self-hosted box.
+The host is a real server seeded like an ordinary self-hosted box.
 Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower,
 every port on `0.0.0.0`, root SSH login allowed, no firewall, no automatic
 updates.
@@ -310,16 +310,16 @@ sockets are still bound to a routable address, and one of them is reachable
 from off the host. A bind address and a packet filter are different claims
 about a port, so the page reports both.
 
-Rollback restored every file the fixes changed, byte for byte: 5 of 5, across
-33 checkpoints. Eight of the seventeen reviewed fixes leave nothing to roll
-back at all — six image updates, enabling the firewall, and switching on
-unattended-upgrades — and hostveil marks each of those `[not reversible]` in
-its own history rather than implying the undo is total.
+Rollback restored every file the fixes changed, byte for byte: 6 of 6, across
+37 checkpoints. Another 7 of the 16 reviewed fixes leave nothing to roll back
+at all — six image updates and switching on unattended-upgrades — and hostveil
+marks each of those `[not reversible]` in its own history rather than implying
+the undo is total.
 
 What did *not* move is published too. The container domain goes 0 → 2 out of
 100, because what remains there is Manual by design: a Docker socket mounted
 into Portainer, host networking, secrets in the environment. Two of Lynis's
-three warnings are a second UID 0 account that hostveil finds and refuses to
+4 warnings are a second UID 0 account that hostveil finds and refuses to
 delete, since `userdel` cannot be undone from a checkpoint. The AI-agent
 domain barely moves either, 0 → 1: the file-mode findings are fixed and the
 config ones are not, because OpenClaw's config is JSON5 that users comment
