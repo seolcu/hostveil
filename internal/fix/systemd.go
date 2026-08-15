@@ -55,9 +55,18 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 // that checker's own how-to tells the operator to create, which is what makes
 // the fix and the instructions the same instruction.
 func systemdDropIn(f model.Finding, key, value, warning string) (Fix, error) {
+	// Empty means the checker found a drop-in systemd loads after anything
+	// hostveil could write. Drop-ins are applied in filename order whichever
+	// directory they live in (systemd.unit(5)), so the file this fix would
+	// create is one the next daemon-reload overrides — it would appear, report
+	// success, take a checkpoint, and change nothing. That is persistSysctl's
+	// rule, and refusing here is what makes it true of this domain too: the
+	// finding falls back to Manual and its how-to-fix names the file that
+	// outranks it.
 	path := f.Metadata["dropin"]
 	if path == "" {
-		return Fix{}, fmt.Errorf("finding %s carries no drop-in path", f.ID)
+		return Fix{}, fmt.Errorf("no drop-in filename for %s would sort after the ones systemd "+
+			"has already loaded for %s, so any file written here would be overridden", f.ID, f.Service)
 	}
 	unit := f.Service
 	if unit == "" {

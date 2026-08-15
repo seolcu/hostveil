@@ -20,7 +20,7 @@ var showArgv = []string{"systemctl", "show", "*.service", "--property=" + string
 // order they were asked for.
 func unitRecord(props map[string]string) string {
 	// Deliberately not the request order — the parser must key by name.
-	order := []string{"FragmentPath", "User", "PrivateTmp", "ProtectHome", "Id", "ProtectSystem", "LoadState", "NoNewPrivileges"}
+	order := []string{"FragmentPath", "DropInPaths", "User", "PrivateTmp", "ProtectHome", "Id", "ProtectSystem", "LoadState", "NoNewPrivileges"}
 	var b strings.Builder
 	for _, k := range order {
 		if v, ok := props[k]; ok {
@@ -373,5 +373,44 @@ func TestParsesRealSystemctlOutput(t *testing.T) {
 		if c.operatorInstalled(u) {
 			t.Errorf("%s is a distribution unit", u.ID)
 		}
+	}
+}
+
+// A unit whose loaded drop-ins outrank anything hostveil would write.
+//
+// The finding is still real — systemd reports the protection off — and what
+// changes is the remediation: there is no file to create, so the metadata the
+// fix reads is empty and the instruction names the drop-in that decides
+// instead. Writing a losing file would report success, take a checkpoint, and
+// be overridden at the next daemon-reload with nothing anywhere to explain it.
+func TestAUnitWhoseDropInsOutrankUsOffersNoFileToWrite(t *testing.T) {
+	fs := scan(t, operatorUnit("gitea.service", map[string]string{
+		"DropInPaths": "/etc/systemd/system/gitea.service.d/zz-operator.conf",
+	}))
+	f, ok := find(fs, "systemd.no-new-privileges", "gitea.service")
+	if !ok {
+		t.Fatalf("the finding disappeared; it is still true, only unfixable by a new file: %v", ids(fs))
+	}
+	if f.Metadata["dropin"] != "" {
+		t.Errorf("dropin = %q, want empty — every name hostveil would write sorts before "+
+			"zz-operator.conf, so systemd would apply that one last", f.Metadata["dropin"])
+	}
+	if !strings.Contains(f.HowToFix, "zz-operator.conf") {
+		t.Errorf("the instruction does not name the file that outranks it:\n%s", f.HowToFix)
+	}
+}
+
+// And the ordinary host, where nothing outranks it: 50- stays the name, which
+// is what the docs and the finding's own instructions say.
+func TestAVendorDropInThatSortsBeforeUsChangesNothing(t *testing.T) {
+	fs := scan(t, operatorUnit("gitea.service", map[string]string{
+		"DropInPaths": "/usr/lib/systemd/system/service.d/10-timeout-abort.conf",
+	}))
+	f, ok := find(fs, "systemd.no-new-privileges", "gitea.service")
+	if !ok {
+		t.Fatal("finding missing")
+	}
+	if want := "/etc/systemd/system/gitea.service.d/50-hostveil.conf"; f.Metadata["dropin"] != want {
+		t.Errorf("dropin = %q, want %q", f.Metadata["dropin"], want)
 	}
 }

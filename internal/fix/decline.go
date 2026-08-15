@@ -109,7 +109,7 @@ var declineReasons = map[string]string{
 	"dockerd.group-members":         "Removing a member has no checkpoint, and the account it removes may be your own and the access you administer the daemon with.",
 	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
 	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
-	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and hostveil cannot yet tell which docker.socket drop-in wins, so the one it wrote might never decide the mode.",
+	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and this checker does not read the socket's drop-ins, so a file it wrote might never decide the mode.",
 	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that hostveil can only rewrite, not create.",
 
 	// systemd

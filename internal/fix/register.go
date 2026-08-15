@@ -430,11 +430,19 @@ package fix
 // now a thing a fix can say rather than a thing that stops it. Three pieces of
 // new work stand where the old reason stood, none of them removed by this
 // change: the checker declares RemediationManual, so resolvedKind floors it
-// there whatever the registry offers; systemd sorts drop-ins lexically and
-// hostveil does not resolve which one wins for a socket unit, so writing
-// 50-hostveil.conf without that would repeat exactly the failure persistSysctl
-// exists to avoid; and restarting docker.socket under a running docker.service
-// is not the clean operation it looks like.
+// there whatever the registry offers; the dockerd checker does not read
+// DropInPaths, so nothing here knows which drop-in wins for docker.socket, and
+// writing 50-hostveil.conf without that would repeat exactly the failure
+// persistSysctl exists to avoid; and restarting docker.socket under a running
+// docker.service is not the clean operation it looks like.
+//
+// That middle one used to be true of the systemd domain as well, which made it
+// an odd thing to decline dockerd over: systemd.no-new-privileges wrote
+// 50-hostveil.conf with no resolution at all. It resolves now — the checker
+// asks systemd which drop-ins it loaded and picks a name that sorts after all
+// of them, or refuses when none would — so the reason is a statement about
+// what the dockerd checker reads rather than about what this project is
+// willing to do.
 //
 // One thing Pending does not do, so that nobody reads it as more than it is:
 // it corrects the score between an apply and the next scan, and nothing more.
