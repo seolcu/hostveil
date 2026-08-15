@@ -88,9 +88,15 @@ gh repo edit --description "<CITATION.cff's abstract, first sentence>" \
 ```
 
 `gh` cannot set the **social preview image** at all — there is no REST endpoint
-for it. Settings → General → Social preview, 1280×640. It is what every link to
-this repository unfurls as, on every platform, so an empty one is a grey card
-carrying whatever the description says.
+for it. Settings → General → Social preview, and the file to upload is
+`site/assets/social-preview.png` — drawn by `scripts/social-preview.py` from
+the site's own palette and the geometry of `internal/ui/web/assets/mark.svg`,
+rather than photographed, because a card is rendered at a fraction of its size
+and a screenshot is unreadable there. It is what every link to this repository
+unfurls as, on every platform, so an empty one is a grey card carrying whatever
+the description says. Re-run the script after editing it; the finding ids drawn
+on the card are held to the real ones by `internal/docs/fixtures_test.go`, the
+same guard that covers the two screenshots.
 
 Topics are not decoration here: a repository with none appears on no topic page
 and is findable only by its own name.
