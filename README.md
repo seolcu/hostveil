@@ -2,10 +2,9 @@
 
 **English** · [한국어](README.ko.md)
 
-> 2026-1 Ajou SoftCon 개발부문 최우수상 수상
-
 **hostveil finds the security mistakes on your self-hosted Linux server, explains them in plain language, and fixes them safely.**
-One binary, no config file, no cloud account.
+One binary, no config file, no cloud account. Every fix is previewed,
+backed up, and reversible with one command.
 
 [![CI](https://github.com/seolcu/hostveil/actions/workflows/ci.yml/badge.svg)](https://github.com/seolcu/hostveil/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/seolcu/hostveil)](https://github.com/seolcu/hostveil/releases/latest)
@@ -13,6 +12,8 @@ One binary, no config file, no cloud account.
 [![License: GPL-3.0](https://img.shields.io/github/license/seolcu/hostveil)](LICENSE)
 
 [Website](https://hostveil.seolcu.com/) · [Docs](https://hostveil.seolcu.com/docs/) · [Changelog](CHANGELOG.md) · [Latest release](https://github.com/seolcu/hostveil/releases/latest)
+
+> Winner of the Grand Prize (Development) at the 2026-1 Ajou University SoftCon.
 
 <p align="center">
   <img src="site/assets/web.png" width="900"
@@ -27,6 +28,88 @@ hostveil is a hardening tool for those servers. Run it and it checks the places
 that matter most, gives you a single 0–100 score, describes each problem
 without jargon, and offers to fix it. It shows you the change before making it,
 backs up the file first, and lets you undo any fix with one command.
+
+## Does it actually work?
+
+hostveil's own score going up after hostveil's own fixes proves nothing. The
+same code decides what counts as a finding and what the number should be
+afterwards. So the repository carries a harness that measures a seeded host
+with tools that have never heard of hostveil: Lynis, Docker's CIS benchmark, a
+TCP scan from off the host, and the kernel's own list of listening sockets.
+
+The host is a real server seeded like an ordinary self-hosted box.
+Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower,
+every port on `0.0.0.0`, root SSH login allowed, no firewall, no automatic
+updates.
+
+| Measured by | Before | After `fix --all --review` |
+| --- | --- | --- |
+| **Ports answering from off the host** | 7 | **1** |
+| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
+| Lynis hardening index | 57 | **61** |
+| hostveil's SSH domain | 18/100 | **100/100** |
+| hostveil score | 40 | **59** |
+
+The host that produces those numbers is `scripts/measure/seed.sh`, in this
+repository, so the run above is one you can reproduce rather than one you have
+to take on trust.
+
+Five of those ports went quiet when the services restarted into their new
+Compose files: PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The sixth
+is the interesting one. It is a natively installed Redis that hostveil reports
+and then declines to fix, because the config file differs per datastore and the
+finding does not carry its path — and it stopped answering anyway, because
+hostveil turned the firewall on. Only SSH still answers.
+
+The kernel and the scanner disagree at that point, and both are right: two
+sockets are still bound to a routable address, and one of them is reachable
+from off the host. A bind address and a packet filter are different claims
+about a port, so the page reports both.
+
+Rollback restored every file the fixes changed, byte for byte: 6 of 6, across
+37 checkpoints. Another 7 of the 16 reviewed fixes leave nothing to roll back
+at all — six image updates and switching on unattended-upgrades — and hostveil
+marks each of those `[not reversible]` in its own history rather than implying
+the undo is total.
+
+What did *not* move is published too. The container domain goes 0 → 2 out of
+100, because what remains there is Manual by design: a Docker socket mounted
+into Portainer, host networking, secrets in the environment. Two of Lynis's
+4 warnings are a second UID 0 account that hostveil finds and refuses to
+delete, since `userdel` cannot be undone from a checkpoint. The AI-agent
+domain barely moves either, 0 → 1: the file-mode findings are fixed and the
+config ones are not, because OpenClaw's config is JSON5 that users comment
+heavily and hostveil has no round-tripper for it. And the CVE domain went
+*down*, 44 → 16: updating six images pulled six current tags, each with its
+own published vulnerabilities. A newer image is not a patched one.
+
+The numbers, the method, the instruments that did not move and the one that
+cleared for the wrong reason are on the
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run it
+yourself with `scripts/measure/run.sh -c`, on a container or a throwaway VM
+rather than your own machine.
+
+## How it compares
+
+Most server-hardening tools are auditors: they hand you a report and leave the
+fixing to you. hostveil is built to close that loop for people who aren't
+security experts.
+
+- **[Lynis](https://github.com/CISOfy/lynis)** is a thorough, expert-oriented
+  host auditor. It prints a long list of suggestions but doesn't apply them,
+  and reading the output assumes you already know which ones matter.
+- **[docker-bench-security](https://github.com/docker/docker-bench-security)**
+  checks a Docker host against the CIS benchmark. It's container-only, and it
+  reports rather than fixes.
+- **[Trivy](https://github.com/aquasecurity/trivy)** scans images and
+  filesystems for known CVEs and misconfigurations. It's excellent at that one
+  job, and hostveil actually *runs* Trivy for its CVE domain, but it doesn't
+  look at your SSH config, firewall or accounts.
+
+hostveil's angle is to merge the host, your containers and image CVEs into a
+single 0–100 score, explain each finding in plain language, and then apply the
+fix, with a preview, a backup and one-command rollback. One binary, and no
+report to interpret.
 
 ## What it checks
 
@@ -294,66 +377,6 @@ Two adjustments sit on top of that.
 The full model, including why each cap is the size it is, is on the
 [Scoring](https://hostveil.seolcu.com/docs/scoring) page.
 
-### Does it actually work?
-
-hostveil's own score going up after hostveil's own fixes proves nothing. The
-same code decides what counts as a finding and what the number should be
-afterwards. So the repository carries a harness that measures a seeded host
-with tools that have never heard of hostveil: Lynis, Docker's CIS benchmark, a
-TCP scan from off the host, and the kernel's own list of listening sockets.
-
-The host is a real server seeded like an ordinary self-hosted box.
-Nextcloud with PostgreSQL, Jellyfin with Redis, Portainer with Watchtower,
-every port on `0.0.0.0`, root SSH login allowed, no firewall, no automatic
-updates.
-
-| Measured by | Before | After `fix --all --review` |
-| --- | --- | --- |
-| **Ports answering from off the host** | 7 | **1** |
-| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
-| Lynis hardening index | 57 | **61** |
-| hostveil's SSH domain | 18/100 | **100/100** |
-| hostveil score | 40 | **59** |
-
-The host that produces those numbers is `scripts/measure/seed.sh`, in this
-repository, so the run above is one you can reproduce rather than one you have
-to take on trust.
-
-Five of those ports went quiet when the services restarted into their new
-Compose files: PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The sixth
-is the interesting one. It is a natively installed Redis that hostveil reports
-and then declines to fix, because the config file differs per datastore and the
-finding does not carry its path — and it stopped answering anyway, because
-hostveil turned the firewall on. Only SSH still answers.
-
-The kernel and the scanner disagree at that point, and both are right: two
-sockets are still bound to a routable address, and one of them is reachable
-from off the host. A bind address and a packet filter are different claims
-about a port, so the page reports both.
-
-Rollback restored every file the fixes changed, byte for byte: 6 of 6, across
-37 checkpoints. Another 7 of the 16 reviewed fixes leave nothing to roll back
-at all — six image updates and switching on unattended-upgrades — and hostveil
-marks each of those `[not reversible]` in its own history rather than implying
-the undo is total.
-
-What did *not* move is published too. The container domain goes 0 → 2 out of
-100, because what remains there is Manual by design: a Docker socket mounted
-into Portainer, host networking, secrets in the environment. Two of Lynis's
-4 warnings are a second UID 0 account that hostveil finds and refuses to
-delete, since `userdel` cannot be undone from a checkpoint. The AI-agent
-domain barely moves either, 0 → 1: the file-mode findings are fixed and the
-config ones are not, because OpenClaw's config is JSON5 that users comment
-heavily and hostveil has no round-tripper for it. And the CVE domain went
-*down*, 44 → 16: updating six images pulled six current tags, each with its
-own published vulnerabilities. A newer image is not a patched one.
-
-The numbers, the method, the instruments that did not move and the one that
-cleared for the wrong reason are on the
-[Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run it
-yourself with `scripts/measure/run.sh -c`, on a container or a throwaway VM
-rather than your own machine.
-
 ## Interfaces
 
 <p align="center">
@@ -411,28 +434,6 @@ version exists. It sends nothing about your host and the answer is cached.
 `HOSTVEIL_NO_UPDATE_CHECK=1` turns it off; nothing else in hostveil contacts
 the network unless you ask it to — `update`, and Trivy pulling vulnerability
 data during a CVE scan.
-
-## How it compares
-
-Most server-hardening tools are auditors: they hand you a report and leave the
-fixing to you. hostveil is built to close that loop for people who aren't
-security experts.
-
-- **[Lynis](https://github.com/CISOfy/lynis)** is a thorough, expert-oriented
-  host auditor. It prints a long list of suggestions but doesn't apply them,
-  and reading the output assumes you already know which ones matter.
-- **[docker-bench-security](https://github.com/docker/docker-bench-security)**
-  checks a Docker host against the CIS benchmark. It's container-only, and it
-  reports rather than fixes.
-- **[Trivy](https://github.com/aquasecurity/trivy)** scans images and
-  filesystems for known CVEs and misconfigurations. It's excellent at that one
-  job, and hostveil actually *runs* Trivy for its CVE domain, but it doesn't
-  look at your SSH config, firewall or accounts.
-
-hostveil's angle is to merge the host, your containers and image CVEs into a
-single 0–100 score, explain each finding in plain language, and then apply the
-fix, with a preview, a backup and one-command rollback. One binary, and no
-report to interpret.
 
 ## Build from source
 
