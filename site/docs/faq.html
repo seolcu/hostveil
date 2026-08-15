@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FAQ — hostveil docs</title>
-    <meta name="description" content="Common questions about hostveil: data privacy, whether fixes can break your server, Review tradeoffs, sudo, and optional Docker/Trivy/AI tooling.">
+    <meta name="description" content="Common questions about hostveil: what it uploads, whether a fix can break a server, and how it differs from Lynis or a CIS benchmark.">
     <meta name="theme-color" content="#07100f">
     <meta property="og:title" content="FAQ — hostveil docs">
     <meta property="og:description" content="Common questions about hostveil — privacy, safety, tradeoffs, sudo, and optional tooling.">
@@ -145,6 +145,11 @@
 
             <h2>What does the 0–100 score mean?</h2>
             <p>Each domain is scored on its own axis, and the axes are combined by weight. Every unfixed finding takes a share of what its axis still has: a <strong>High</strong> finding — one reachable right now — takes half of the remainder, and the two lesser levels proportionally less, and a vulnerability with no upstream patch a quarter as much as one you could act on. Because the shares compound rather than add, an axis never bottoms out after two findings. A host with nothing to flag shows <strong>Clean</strong> rather than a hollow 100, and <code>scan</code> exits non-zero when any unfixed finding is High. See <a href="scoring">Scoring</a> for the whole model.</p>
+
+            <h2 id="vs-lynis">How is this different from Lynis or a CIS benchmark?</h2>
+            <p>They audit. hostveil audits and then offers to fix, with a preview, a backup, and one-command rollback &mdash; which is the whole difference for someone who is not a security engineer. A report that tells a Jellyfin owner their SSH configuration is weak has moved the problem, not solved it.</p>
+            <p>Lynis is broader and deeper than hostveil and will stay that way: it runs hundreds of tests across territory hostveil does not cover, and it is the better tool if what you want is a thorough audit you will read yourself. A CIS benchmark is a standard rather than a program &mdash; a document to be complied with, usually in an organisation that has someone to do it.</p>
+            <p>The interesting answer is that <strong>this is not a claim we ask you to take on faith.</strong> hostveil&rsquo;s own score going up after hostveil&rsquo;s own fixes proves nothing, so the repository carries a harness that measures a deliberately weakened host with Lynis, Docker&rsquo;s CIS benchmark, a TCP scan from off the host, and the kernel&rsquo;s own socket table &mdash; before the fixes, after them, after the services restart, after the Review fixes are accepted, and after everything is rolled back. Every figure is committed as JSON and every number on the page is pinned to it. <a href="measurements">The results, including what did not improve</a>, are published in full.</p>
 
             <h2>Which platforms are supported?</h2>
             <p><strong>hostveil audits Linux hosts.</strong> Prebuilt binaries target Linux and macOS on <code>amd64</code> and <code>arm64</code>, and the macOS build runs — but every detection rule in it is about Linux. On a Mac ten of the twelve domains report N/A, two run (SSH and file permissions), and the score is an average over a fifth of the weight. <a href="installation#macos">Running it on macOS</a> is the detail.</p>

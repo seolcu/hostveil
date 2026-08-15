@@ -66,6 +66,14 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>There is no service to enable and no config file to edit. Removing the package leaves <code>/var/lib/hostveil</code> in place, for the same reason <code>--uninstall</code> does: those checkpoints are the backups of every file hostveil has edited.</p>
             <p>Packages are Linux-only.</p>
 
+            <h2 id="verify">Verifying what you downloaded</h2>
+            <p>You are being asked to pipe a script into a shell and then run a tool as root. Here is what you can check before you do.</p>
+            <p>The installer already verifies the checksum of the archive it fetches against the release&rsquo;s own <code>hostveil-checksums.txt</code>, and discards anything that does not match. That proves the bytes arrived intact. It does not prove who produced them &mdash; a checksum file published beside a tampered archive matches it perfectly.</p>
+            <p>Every release archive carries a <strong>signed build provenance attestation</strong>, which does prove that: the archive was built by this repository&rsquo;s release workflow, from a named commit, at a named tag. Nothing running on a maintainer&rsquo;s laptop can produce one.</p>
+            <div class="code-block"><pre><code>gh attestation verify hostveil-linux-amd64.tar.gz --repo seolcu/hostveil</code></pre></div>
+            <p><code>hostveil update</code> runs that check for you where the GitHub CLI is present. A provenance check that <em>fails</em> stops the update; one that cannot run because <code>gh</code> is not installed is a note rather than an error, because a checksum still proves the bytes are intact and it would be dishonest to imply otherwise.</p>
+            <p>Each archive also ships an SBOM (<code>.sbom.json</code>) listing everything that went into the binary, so you can answer &ldquo;does this contain the library in today&rsquo;s advisory&rdquo; without building it yourself.</p>
+
             <h2 id="macos">Running it on macOS</h2>
             <p>The macOS build is a real build — the installer takes it, it runs, and it produces a report. It is published because hostveil is often driven from a laptop and because a build that is not published is a build nobody notices breaking. What it is not is a macOS auditor: there is no Darwin-specific rule anywhere in the tool.</p>
             <p>On a Mac with no Docker, ten of the twelve domains report <strong>N/A</strong>. Seven find nothing to look at on their own — no <code>/proc/sys</code>, no systemd, no <code>apt</code> or <code>dnf</code>, no <code>ss</code> — and three more are excluded deliberately, because on macOS they would have answered a question they had not asked:</p>
