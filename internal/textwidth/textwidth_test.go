@@ -1,6 +1,7 @@
 package textwidth
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,6 @@ func TestOfCountsColumns(t *testing.T) {
 		{"한", 2},
 		{"한글", 4},
 		{"a한b", 4},
-		{"…", 1},
 	} {
 		if got := Of(tc.s); got != tc.want {
 			t.Errorf("Of(%q) = %d, want %d", tc.s, got, tc.want)
@@ -149,17 +149,66 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 	}
 }
 
-// The locale trap. runewidth picks its default condition from LANG and
-// LC_ALL at init, so its package-level StringWidth reports two columns for
-// these under ko_KR.UTF-8 and one under en_US.UTF-8. Every one of them is
-// drawn by hostveil, so using the default would lay the same screen out
-// differently for different operators — and would disagree with lipgloss,
+// The locale trap, pinned at the rule rather than through the process
+// environment.
+//
+// runewidth picks its default condition from LANG and LC_ALL at init, so its
+// package-level StringWidth reports two columns for the ambiguous class under
+// ko_KR.UTF-8 and one under en_US.UTF-8. Every one of those glyphs is drawn by
+// hostveil, so using that default would lay the same screen out differently
+// for two operators with the same terminal — and would disagree with lipgloss,
 // which the TUI already uses to measure and pad the same rows.
-func TestAmbiguousWidthIsNotLocaleDependent(t *testing.T) {
-	for _, s := range []string{"…", "→", "±", "·", "✓", "⚠", "▚"} {
-		if got := Of(s); got != 1 {
-			t.Errorf("Of(%q) = %d, want 1 — an ambiguous-width glyph must not depend on the operator's locale", s, got)
+//
+// RUNEWIDTH_EASTASIAN is a different thing and is honoured: it is the operator
+// saying their terminal draws that class wide, which is a fact about the
+// terminal rather than about their language. This is the distinction the
+// package doc argues for, and it is checked here directly — the seam exists
+// (eastAsianEnv, eastAsianWidth) precisely so a test does not have to mutate a
+// process-wide setting that was read at init.
+func TestOnlyTheVariableTurnsOnEastAsianWidth(t *testing.T) {
+	for _, v := range []string{"", "0", "false", "FALSE", "ko_KR.UTF-8", "ja_JP.UTF-8", "yes", "wide"} {
+		if eastAsianWidth(v) {
+			t.Errorf("%s=%q turned on east-asian width; only a value that parses as true may, "+
+				"or the same binary lays out differently in Seoul and Berlin", eastAsianEnv, v)
 		}
+	}
+	for _, v := range []string{"1", "true", "TRUE", "t"} {
+		if !eastAsianWidth(v) {
+			t.Errorf("%s=%q did not turn on east-asian width; ignoring it means disagreeing "+
+				"with lipgloss, which reads the same variable", eastAsianEnv, v)
+		}
+	}
+}
+
+// And what Of does with the ambiguous class, in whichever mode this process is
+// running in. Written against the rule rather than a constant, so it asserts
+// something real under RUNEWIDTH_EASTASIAN=1 instead of being skipped there —
+// which is how a whole class of layout defect stayed invisible until #711.
+func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
+	want := 1
+	if eastAsianWidth(os.Getenv(eastAsianEnv)) {
+		want = 2
+	}
+	// Genuinely East Asian Ambiguous, and all four are drawn by hostveil: the
+	// ellipsis Truncate appends, the arrow in a delta, the ± in a score
+	// change, and the domain-status bullet.
+	for _, s := range []string{"…", "→", "±", "·"} {
+		if got := Of(s); got != want {
+			t.Errorf("Of(%q) = %d, want %d with %s=%q", s, got, want, eastAsianEnv, os.Getenv(eastAsianEnv))
+		}
+	}
+	// And these are not, which is worth pinning because they look like they
+	// should be. ✓ ⚠ ▚ are one column in both modes — and so is ░, while █ is
+	// two, which is why internal/ui/tui builds a meter in columns rather than
+	// dividing by one cell size. A change here would move that layout.
+	for _, s := range []string{"✓", "⚠", "▚", "░"} {
+		if got := Of(s); got != 1 {
+			t.Errorf("Of(%q) = %d, want 1 in both modes", s, got)
+		}
+	}
+	if got := Of("█"); got != want {
+		t.Errorf("Of(%q) = %d, want %d — the filled block is ambiguous and the empty one "+
+			"is not, which is the asymmetry the meter is laid out around", "█", got, want)
 	}
 	// Genuinely wide characters are still wide; the condition narrows only
 	// the ambiguous class.

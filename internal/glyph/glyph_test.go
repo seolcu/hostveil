@@ -20,6 +20,18 @@ import (
 // named in the package doc; the Font Awesome block was chosen partly
 // because it is one cell wide in every build, Mono or not.
 func TestEverySymbolIsOneColumn(t *testing.T) {
+	// Under RUNEWIDTH_EASTASIAN the operator has said their terminal draws the
+	// ambiguous class wide, and ▣, · and the whole Private Use Area block are
+	// in it. The property below is genuinely false there — and it is also not
+	// what keeps the layout right in that mode, because the renderers measure
+	// rather than assume: internal/ui/tui's markColumns is the marker column
+	// "measured rather than assumed to be two", and the alignment sweep and
+	// TestNoRowOverrunsItsColumn both hold every row to its budget with
+	// lipgloss.Width. Those run in this mode; this assertion is about the
+	// condition hostveil pins by default.
+	if textwidth.Of("·") > 1 {
+		t.Skip("the operator's terminal draws the ambiguous class wide; the renderers measure there")
+	}
 	for _, s := range Symbols() {
 		for set, got := range map[string]string{"plain": s.Plain, "nerd": s.Nerd} {
 			if n := textwidth.Of(got); n != 1 {

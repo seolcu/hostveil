@@ -1,6 +1,7 @@
 package tui
 
 import (
+	lipgloss "charm.land/lipgloss/v2"
 	"strings"
 	"testing"
 
@@ -71,6 +72,13 @@ func TestTheCursorRowStillNamesItsService(t *testing.T) {
 // equality. The ceiling is the one that matters: a row wider than its column
 // pushes every column right of it off the screen, and the service name is
 // host-supplied so it has no safe upper bound.
+// Measured with lipgloss.Width, not len([]rune(...)).
+//
+// A rune count used as a column budget is the exact fault this test exists to
+// catch, and it was how this test measured: under RUNEWIDTH_EASTASIAN the
+// row's ▌ and ░ are two columns each, so a correct row counted 99 runes for a
+// 100-column budget and the test reported the selection bar stopping short.
+// It was measuring the wrong thing and reporting the product as broken for it.
 func TestNoRowOverrunsItsColumn(t *testing.T) {
 	m := &appModel{width: 120, selected: map[string]bool{}}
 	const w = 100
@@ -78,15 +86,38 @@ func TestNoRowOverrunsItsColumn(t *testing.T) {
 		f := rowFinding("compose.ds018", svc, model.RemediationManual)
 		m.active = []model.Finding{f}
 		for _, cursor := range []bool{false, true} {
-			got := len([]rune(plain(m.findingRow(f, cursor, w))))
+			got := lipgloss.Width(plain(m.findingRow(f, cursor, w)))
 			if got > w {
 				t.Errorf("service %q, cursor=%v: row is %d columns for a budget of %d",
 					svc, cursor, got, w)
 			}
 		}
-		if got := len([]rune(plain(m.findingRow(f, true, w)))); got != w {
+		if got := lipgloss.Width(plain(m.findingRow(f, true, w))); got != w {
 			t.Errorf("service %q: the cursor row is %d columns, so its selection bar "+
 				"stops %d short of the column edge", svc, got, w-got)
+		}
+	}
+}
+
+// TestTheTrendLineFitsTheTerminal.
+//
+// The sparkline is one glyph per saved scan and the budget is computed in
+// scans, which is only the same thing while a glyph is one column. Every bar
+// in the ramp is East Asian Ambiguous, so on a terminal that draws that class
+// wide the whole line was twice the space allowed for it — the same defect the
+// meters had, on the screen that carries the history.
+//
+// Measured with lipgloss.Width in whichever mode the test runs in, so it is a
+// real assertion under RUNEWIDTH_EASTASIAN rather than a tautology.
+func TestTheTrendLineFitsTheTerminal(t *testing.T) {
+	var trend []model.ScorePoint
+	for i := range 200 {
+		trend = append(trend, model.ScorePoint{Overall: uint8(i % 101), Applicable: i%7 != 0})
+	}
+	for _, w := range []int{40, 60, 80, 100, 120, 151, 200} {
+		m := &appModel{width: w, trend: trend}
+		if got := lipgloss.Width(plain(m.trendLine())); got > w {
+			t.Errorf("width %d: the trend line is %d columns", w, got)
 		}
 	}
 }
