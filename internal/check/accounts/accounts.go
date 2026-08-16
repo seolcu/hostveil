@@ -1,11 +1,16 @@
-// Package accounts implements a native host account-hygiene checker. It
-// parses /etc/passwd and /etc/shadow to catch two classic, high-impact
-// mistakes a self-hoster can make without realizing: a second account with
-// root's UID, and a login account with no password at all.
+// Package accounts implements a native host account-hygiene checker. Its
+// question is who can become root and what stands in their way, and it asks it
+// three times: a second account carrying root's UID, a login account with no
+// password at all, and — through sudo itself rather than by reading sudoers —
+// an account that can run anything as root without being asked for one.
+//
+// The first two come out of /etc/passwd and /etc/shadow. The third does not,
+// on purpose: see sudoListArgv.
 package accounts
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sort"
 	"strconv"
@@ -55,13 +60,23 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 }
 
 // Check parses the user databases and emits account-hygiene findings.
-func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
+func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	passwd, err := os.ReadFile(c.PasswdPath) // fixed system path
 	if err != nil {
 		return nil, err
 	}
 
+	// Three questions, and each can go unanswered on its own: the UID-0 scan
+	// needs only /etc/passwd, the empty-password scan needs /etc/shadow, and
+	// the sudo scan needs sudo installed and hostveil running as root. A
+	// ledger rather than an early return, because a non-root scan misses two
+	// of the three and reporting only the first would under-state what went
+	// unexamined — see check.Coverage.
+	var cov check.Coverage
+	cov.Covered(1) // /etc/passwd was read, or there would be no findings at all
+
 	loginShell := map[string]bool{} // username -> has an interactive login shell
+	var logins []string
 	var rogueRoot []string
 	for _, line := range strings.Split(string(passwd), "\n") {
 		fields := strings.Split(line, ":")
@@ -75,6 +90,9 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		// nologin at any other path — Arch's /usr/bin/nologin, NixOS's under
 		// /run/current-system — read as an ordinary login shell.
 		loginShell[name] = !platform.IsNonLoginShell(shell)
+		if loginShell[name] {
+			logins = append(logins, name)
+		}
 		// Compare the UID numerically: the kernel parses "00"/"000" as 0, so
 		// a string compare against "0" would let a leading-zero UID-0
 		// backdoor slip past the very check that exists to catch it.
@@ -106,33 +124,65 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	// score on an unscanned host.
 	shadow, err := os.ReadFile(c.ShadowPath) // fixed system path
 	if err != nil {
-		return findings, &check.PartialError{
-			Reason: "cannot read " + c.ShadowPath +
-				" — checked for UID-0 accounts, but not for accounts with an empty password; re-run with sudo",
-			Covered: 1,
-			Total:   2,
+		cov.Missed(1, "cannot read "+c.ShadowPath+
+			" — did not check for accounts with an empty password; re-run with sudo")
+	} else {
+		cov.Covered(1)
+		var passwordless []string
+		for _, line := range strings.Split(string(shadow), "\n") {
+			fields := strings.Split(line, ":")
+			if len(fields) < 2 {
+				continue
+			}
+			name, hash := fields[0], fields[1]
+			if hash == "" && loginShell[name] {
+				passwordless = append(passwordless, name)
+			}
+		}
+		if len(passwordless) > 0 {
+			sort.Strings(passwordless)
+			findings = append(findings, model.NewFinding(
+				"accounts.emptypassword", "Login account with an empty password",
+				model.SeverityHigh, model.SourceAccounts, model.RemediationManual,
+				model.WithDescription("A login account has no password set, so anyone who can reach a login prompt (console, SSH with password auth, su) can log in as that user with no credentials at all."),
+				model.WithHowToFix("Set a strong password (`passwd "+passwordless[0]+"`) or lock the account (`passwd -l "+passwordless[0]+"`) if it should not log in. Affected: "+strings.Join(passwordless, ", ")+"."),
+				model.WithEvidence("accounts", strings.Join(passwordless, ", ")),
+			))
 		}
 	}
-	var passwordless []string
-	for _, line := range strings.Split(string(shadow), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) < 2 {
-			continue
-		}
-		name, hash := fields[0], fields[1]
-		if hash == "" && loginShell[name] {
-			passwordless = append(passwordless, name)
+
+	// Who can become root, and what stands in their way. An empty password is
+	// the classic version of that question and sudo is the one people actually
+	// hit: a NOPASSWD rule turns "holds this account's SSH key" into "is root",
+	// with nothing in between.
+	//
+	// A host with no sudo at all is covered rather than missed. That is the
+	// direction dockerd's config merge got wrong: an absent file is a complete
+	// answer about that file, and no sudo binary means no sudo rule can be
+	// granting anyone anything. Calling it a gap would mark every sudo-less
+	// host Degraded for a question that has an answer.
+	sudoers, err := passwordlessSudoers(ctx, env.Runner, logins)
+	switch {
+	case errors.Is(err, errNoSudo):
+		cov.Covered(1)
+	case errors.Is(err, errNotRoot):
+		cov.Missed(1, "sudo will not report another account's privileges unless hostveil is root — "+
+			"did not check whether any account can become root without a password; re-run with sudo")
+	default:
+		cov.Covered(1)
+		if len(sudoers) > 0 {
+			findings = append(findings, model.NewFinding(
+				"accounts.sudo-nopasswd", "An account can become root without a password",
+				model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
+				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately rather than needing its password as well. "+
+					"Cloud and VM images ship this on purpose so the first login works, and it is usually still there years later."),
+				model.WithHowToFix("Run `sudo visudo` (or `sudo visudo -f /etc/sudoers.d/<file>` for a drop-in) and change the rule for "+strings.Join(sudoers, ", ")+" from `NOPASSWD: ALL` to `ALL`, so sudo asks for the account's password. "+
+					"Set that password first with `passwd "+sudoers[0]+"` and confirm it works in a second session: images that ship NOPASSWD often ship no password either, and an account with neither cannot use sudo at all once the rule is gone. "+
+					"Keep a root shell open until you have checked."),
+				model.WithEvidence("accounts", strings.Join(sudoers, ", ")),
+			))
 		}
 	}
-	if len(passwordless) > 0 {
-		sort.Strings(passwordless)
-		findings = append(findings, model.NewFinding(
-			"accounts.emptypassword", "Login account with an empty password",
-			model.SeverityHigh, model.SourceAccounts, model.RemediationManual,
-			model.WithDescription("A login account has no password set, so anyone who can reach a login prompt (console, SSH with password auth, su) can log in as that user with no credentials at all."),
-			model.WithHowToFix("Set a strong password (`passwd "+passwordless[0]+"`) or lock the account (`passwd -l "+passwordless[0]+"`) if it should not log in. Affected: "+strings.Join(passwordless, ", ")+"."),
-			model.WithEvidence("accounts", strings.Join(passwordless, ", ")),
-		))
-	}
-	return findings, nil
+
+	return findings, cov.Err()
 }

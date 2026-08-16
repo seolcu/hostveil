@@ -118,7 +118,7 @@ hostveil은 호스트와 컨테이너, 이미지 CVE를 0–100 점수 하나로
 | **방화벽** | `firewall.*` | ufw, firewalld, nftables, iptables 중 무엇이 실제로 켜져 있는지, 그리고 컨테이너가 게시한 포트가 그것을 조용히 우회하고 있지는 않은지 | — |
 | **자동 업데이트** | `updates.*` | unattended-upgrades(apt)나 dnf-automatic(dnf)이 켜져 있는지 | — |
 | **노출된 서비스** | `ports.*` | 루프백이 아닌 주소에서 대기 중인 호스트 프로세스를 `ss`에서 읽습니다. Compose 감사로는 보이지 않는, 직접 설치한 데이터베이스나 관리자 패널, 앱이 여기서 잡힙니다 | `ss` |
-| **계정** | `accounts.*` | root의 UID(0)를 가진 root 아닌 계정과 비밀번호가 빈 로그인 계정. `/etc/passwd`와 `/etc/shadow`에서 읽습니다 | root (`/etc/shadow` 때문에) |
+| **계정** | `accounts.*` | 누가 root가 될 수 있고 그 사이에 무엇이 서 있는가. root의 UID(0)를 가진 root 아닌 계정, 비밀번호가 빈 로그인 계정, 그리고 비밀번호를 묻지 않고 무엇이든 root로 실행할 수 있는 계정 — 첫 로그인이 되도록 클라우드와 VM 이미지가 넣어 두는 그 규칙입니다. `/etc/sudoers`를 다시 파싱하는 대신 sudo에게 각 계정이 실제로 무엇을 실행할 수 있는지 물어봅니다 | root (`/etc/shadow`와 sudo 때문에) |
 | **파일 권한** | `fileperms.*` | `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, SSH 호스트 개인 키의 과도한 권한 | — |
 | **AI 에이전트 런타임** | `agent.*` | 셀프호스팅 에이전트 런타임인 OpenClaw와 Hermes Agent를 봅니다. 호스트 밖에서 닿는 게이트웨이, 그런 게이트웨이에서 꺼져 있는 인증, 제한 없는 셸과 권한 상승 도구, 꺼진 샌드박스, 설정 파일과 그 옆 API 키의 느슨한 권한 | — |
 | **커널 강화** | `sysctl.*` | `/proc/sys`에서 바로 읽는 커널 파라미터 여덟 개. 로컬 발판이 root가 되는 것과 위조된 패킷이 경로가 되는 것을 막는, 눈에 잘 안 띄는 설정들입니다. `sysctl` 바이너리는 필요 없습니다 | — |

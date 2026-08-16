@@ -294,13 +294,15 @@
             </div>
 
             <h2 id="accounts">계정 <code>accounts.</code></h2>
-            <p><code>/etc/passwd</code>와 <code>/etc/shadow</code>에서 직접 파싱합니다. <code>/etc/shadow</code> 읽기에는 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 승격해 이를 얻습니다. 권한이 없으면 빈 비밀번호 점검은 건너뛰고 UID 0 점검은 계속 실행됩니다.</p>
+            <p>하나의 질문을 세 가지 방식으로 던집니다. 누가 root가 될 수 있고, 그 사이에 무엇이 서 있는가. 앞의 두 답은 <code>/etc/passwd</code>와 <code>/etc/shadow</code>에서 직접 파싱합니다. <code>/etc/shadow</code> 읽기에는 root 권한이 필요하며, <code>hostveil</code>은 <code>sudo</code>로 자동 승격해 이를 얻습니다. 권한이 없으면 빈 비밀번호 점검은 건너뛰고 UID 0 점검은 계속 실행됩니다.</p>
+            <p>세 번째 답은 파일에서 나오지 않습니다. sudo 규칙은 별칭과, <code>/etc/group</code>이 아니라 LDAP로 해석될 수도 있는 그룹 지정과, include 순서를 가진 계층형 설정입니다. 그래서 hostveil은 <code>/etc/sudoers</code>를 다시 해석하는 대신 sudo 자신에게 각 계정이 실제로 무엇을 실행할 수 있는지 물어봅니다. 여기에도 root 권한이 필요하며, 권한이 없으면 아무도 발견되지 않았다고 보고하는 대신 확인하지 못했다고 보고합니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
