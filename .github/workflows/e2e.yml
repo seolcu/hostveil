@@ -44,6 +44,15 @@ jobs:
     # rude and unrepeatable. A container gives a disposable root filesystem.
     container:
       image: debian:13
+    # This job uses a container *as* a host filesystem — the comment above says
+    # so, and it writes /etc/ssh/sshd_config to prove it. hostveil now declines
+    # two domains inside a container, because neither can be acted on from in
+    # there: the firewall it cannot see and the kernel parameters it cannot
+    # change. That is right for an operator who ran a scan in a container by
+    # mistake, and wrong for this job, whose whole subject is the domains it
+    # would remove. See platform.AssumeHostEnv.
+    env:
+      HOSTVEIL_ASSUME_HOST: "1"
     steps:
       - name: Install the host tooling hostveil probes for
         run: |
@@ -296,7 +305,11 @@ jobs:
           grep -q sbin /tmp/path.txt && exit 1
           su - hvtest -c 'command -v ufw' && exit 1   # invisible to this user
 
-          su - hvtest -c 'HOSTVEIL_NO_SUDO=1 HOSTVEIL_NO_UPDATE_CHECK=1 hostveil scan' \
+          # HOSTVEIL_ASSUME_HOST inline, not from the job env: `su -` starts a
+          # login shell and resets the environment, the same way it resets
+          # PATH above. Without it the firewall domain skips for being in a
+          # container and this step stops testing the thing it is named for.
+          su - hvtest -c 'HOSTVEIL_ASSUME_HOST=1 HOSTVEIL_NO_SUDO=1 HOSTVEIL_NO_UPDATE_CHECK=1 hostveil scan' \
             >/tmp/fw.txt 2>&1 || true
 
           # ufw is installed. Saying otherwise is a fabricated High finding,
@@ -421,5 +434,12 @@ jobs:
           # And it did not simply skip everything, which would satisfy the
           # rule above while testing nothing.
           jq -e '[.domains[] | select(.state == "done")] | length > 0' /tmp/scan.json
+
+          # These images really are containers, so the container gate must
+          # fire — and the firewall domain must be the one that goes. Before
+          # it existed both of these scored the firewall axis 50/100 on a
+          # fabricated High about a firewall a container cannot have.
+          jq -e '.domains[] | select(.source == "firewall") | select(.state != "done")' /tmp/scan.json
+          jq -e '[.findings[]? | select(.id == "firewall.inactive")] | length == 0' /tmp/scan.json
 
           jq -r '.domains[] | "\(.source)\t\(.state)\t\(.reason // "")"' /tmp/scan.json

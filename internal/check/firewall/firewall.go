@@ -20,10 +20,22 @@ type Checker struct {
 	// DaemonConfigPath is Docker's daemon.json. Overridable for tests;
 	// empty means the real /etc/docker/daemon.json.
 	DaemonConfigPath string
+	// InContainer answers whether this scan is running inside a container.
+	// Injected for the same reason sysctl's is: the real gate reads
+	// /.dockerenv and /proc/1, and a test cannot make this process be in a
+	// container. nil means the real one.
+	InContainer func() (bool, string)
 }
 
 // New returns a firewall checker.
 func New() *Checker { return &Checker{} }
+
+func (c *Checker) containerGate() (bool, string) {
+	if c.InContainer != nil {
+		return c.InContainer()
+	}
+	return platform.ContainerRuntime()
+}
 
 func (c *Checker) daemonConfig() string {
 	if c.DaemonConfigPath != "" {
@@ -49,8 +61,24 @@ func (*Checker) Source() model.Source { return model.SourceFirewall }
 // and the application firewall is socketfilterfw, and neither string appears
 // anywhere in this repository, so hostveil is not reporting an absence — it
 // is reporting its own blindness as one. See platform.AuditableOS.
-func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
-	return platform.AuditableOS()
+//
+// Inside a container it is a false finding for the same reason and on a path
+// this project publishes. A container has no host firewall and never will; the
+// packet filter that decides whether its ports answer belongs to the host and
+// cannot be seen from inside. So every one of those four probes finds nothing,
+// nothing fails, and the absence of a failure is read as the absence of a
+// firewall — a guaranteed top-severity finding on any container that runs a
+// scan, and an unactionable one, since there is nothing inside to install or
+// enable. Verified on bare Fedora and Alpine images: 50/100 on a fabricated
+// High. See platform.ContainerRuntime.
+func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
+	if ok, why := platform.AuditableOS(); !ok {
+		return false, why
+	}
+	if in, why := c.containerGate(); in {
+		return false, why + ", and a container's ports are governed by its host's firewall, which cannot be read from inside"
+	}
+	return true, ""
 }
 
 // Check probes the known firewall front-ends and, if none is active,
