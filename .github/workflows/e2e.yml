@@ -267,6 +267,46 @@ jobs:
       #
       # Last, because the second half deletes the binary every step above
       # depends on.
+      # The bug: Debian drops sbin from a non-root user's login PATH, and ufw,
+      # nft and iptables all live in /usr/sbin. exec.LookPath therefore failed
+      # for a firewall that was installed and running, the firewall domain read
+      # a front-end it could not find as one that was not installed, and every
+      # front-end missing as "no firewall is active" — so the host was handed
+      # the tool's most severe finding telling it to install a firewall it was
+      # already running.
+      #
+      # The unit tests in internal/platform cover LookPath. This covers the
+      # whole path, because the defect was never in LookPath's own behaviour:
+      # it was in what three layers above it concluded from a lookup that
+      # failed. It has to run unprivileged, in a login shell, or the PATH that
+      # causes it is never the PATH in effect — which is exactly why every
+      # scan that auto-elevated hid this.
+      - name: an unprivileged scan does not invent a missing firewall
+        run: |
+          set -eux
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw >/dev/null
+          test -x /usr/sbin/ufw
+          useradd -m -s /bin/bash hvtest
+
+          # A login shell, so PATH is the one login.defs hands a non-root user.
+          # shellcheck disable=SC2016 # $PATH must expand inside that shell,
+          # not in this one — expanding it here would print root's PATH, which
+          # is the very difference being tested.
+          su - hvtest -c 'echo "$PATH"' | tee /tmp/path.txt
+          grep -q sbin /tmp/path.txt && exit 1
+          su - hvtest -c 'command -v ufw' && exit 1   # invisible to this user
+
+          su - hvtest -c 'HOSTVEIL_NO_SUDO=1 HOSTVEIL_NO_UPDATE_CHECK=1 hostveil scan' \
+            >/tmp/fw.txt 2>&1 || true
+
+          # ufw is installed. Saying otherwise is a fabricated High finding,
+          # and it is the most severe thing this program can say.
+          grep -q 'firewall.inactive' /tmp/fw.txt && exit 1
+
+          # And the honest answer in its place: a coverage gap, because a
+          # non-root user cannot read the firewall state either.
+          grep -q 'firewall partial' /tmp/fw.txt
+
       - name: update and uninstall refuse a binary they did not install
         run: |
           set -eux
@@ -279,6 +319,33 @@ jobs:
           hostveil uninstall --yes >/tmp/un.txt 2>&1 && exit 1
           grep -qi 'could not tell how this binary was installed' /tmp/un.txt
           test -x /usr/local/bin/hostveil   # and it is still there
+
+          # The update half of the same promise, which had no coverage at all
+          # despite this step's name. update reaches the network before it
+          # looks at the origin, so the unconditional assertion is the one
+          # that holds either way: nothing was written. A self-updater that
+          # half-writes on a path it does not understand is the failure worth
+          # pinning, and it is the failure a checkpoint cannot undo.
+          before=$(sha256sum /usr/local/bin/hostveil | cut -d' ' -f1)
+          hostveil update --yes >/tmp/up.txt 2>&1 || true
+          test "$(sha256sum /usr/local/bin/hostveil | cut -d' ' -f1)" = "$before"
+
+          # And if it got as far as having an opinion about the origin, it
+          # refused there, in the documented words. Conditional on the release
+          # lookup having worked, and said out loud when it did not: a GitHub
+          # outage must not turn into a red build over something this step
+          # never got to observe, and it must not pass quietly either.
+          if grep -q 'is available' /tmp/up.txt; then
+            grep -qi 'could not tell how this binary was installed' /tmp/up.txt
+          else
+            echo "NOTE: could not reach the release API; origin refusal unchecked"
+            cat /tmp/up.txt
+          fi
+
+          # --check writes nothing, whatever it finds. That is its whole
+          # contract: a cron job runs it on hosts nobody is watching.
+          hostveil update --check >/tmp/upc.txt 2>&1 || true
+          test "$(sha256sum /usr/local/bin/hostveil | cut -d' ' -f1)" = "$before"
 
       - name: uninstall removes the binary and keeps the checkpoints
         run: |
