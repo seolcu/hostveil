@@ -455,7 +455,10 @@ func TestThePageOnlyNamesAnArchitectureTheRunRecorded(t *testing.T) {
 	}
 
 	for _, lang := range []string{"en", "ko"} {
-		for _, m := range archWords.FindAllString(measuredPage(t, lang), -1) {
+		// Through proseOnly for the reason given there: the rule is about
+		// what the page tells a reader, and a run cited by filename puts an
+		// architecture in an attribute without claiming anything.
+		for _, m := range archWords.FindAllString(proseOnly(measuredPage(t, lang)), -1) {
 			word := strings.ToLower(m)
 			switch {
 			case got == "":

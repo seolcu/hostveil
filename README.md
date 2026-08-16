@@ -45,43 +45,50 @@ updates.
 | Measured by | Before | After `fix --all --review` |
 | --- | --- | --- |
 | **Ports answering from off the host** | 7 | **1** |
-| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
-| Lynis hardening index | 57 | **61** |
+| CIS Docker Benchmark (pass / warn) | 17 / 15 | **20 / 12** |
+| Lynis hardening index | 57 | **60** |
 | hostveil's SSH domain | 18/100 | **100/100** |
-| hostveil score | 40 | **59** |
+| hostveil score | 29 | **51** |
 
 The host that produces those numbers is `scripts/measure/seed.sh`, in this
 repository, so the run above is one you can reproduce rather than one you have
 to take on trust.
 
-Five of those ports went quiet when the services restarted into their new
-Compose files: PostgreSQL, Redis, Nextcloud, Jellyfin and Portainer. The sixth
-is the interesting one. It is a natively installed Redis that hostveil reports
-and then declines to fix, because the config file differs per datastore and the
-finding does not carry its path — and it stopped answering anyway, because
-hostveil turned the firewall on. Only SSH still answers.
+Four of those ports went quiet when the services restarted into their new
+Compose files: PostgreSQL, a Redis published on 6380, Portainer and Jellyfin.
+Two more went at the reviewed stage, and they are the interesting ones. One is
+the Docker daemon's own API on 2375 — unauthenticated root for anyone who can
+reach it. The other is a natively installed Redis that hostveil reports and
+then declines to fix, because the config file differs per datastore and the
+finding does not carry its path. Neither was edited shut: hostveil turned the
+firewall on. Only SSH still answers.
 
-The kernel and the scanner disagree at that point, and both are right: two
+The kernel and the scanner disagree at that point, and both are right: three
 sockets are still bound to a routable address, and one of them is reachable
 from off the host. A bind address and a packet filter are different claims
 about a port, so the page reports both.
 
-Rollback restored every file the fixes changed, byte for byte: 6 of 6, across
-37 checkpoints. Another 7 of the 16 reviewed fixes leave nothing to roll back
-at all — six image updates and switching on unattended-upgrades — and hostveil
-marks each of those `[not reversible]` in its own history rather than implying
-the undo is total.
+Rollback restored every file the fixes changed, byte for byte: 8 of 8, across
+48 checkpoints. Another 7 of the 18 reviewed fixes leave nothing to roll back
+at all — the ones that are not file edits — and hostveil marks each of those
+`[not reversible]` in its own history rather than implying the undo is total.
 
 What did *not* move is published too. The container domain goes 0 → 2 out of
 100, because what remains there is Manual by design: a Docker socket mounted
-into Portainer, host networking, secrets in the environment. Two of Lynis's
-4 warnings are a second UID 0 account that hostveil finds and refuses to
-delete, since `userdel` cannot be undone from a checkpoint. The AI-agent
-domain barely moves either, 0 → 1: the file-mode findings are fixed and the
-config ones are not, because OpenClaw's config is JSON5 that users comment
-heavily and hostveil has no round-tripper for it. And the CVE domain went
-*down*, 44 → 16: updating six images pulled six current tags, each with its
-own published vulnerabilities. A newer image is not a patched one.
+into Portainer, host networking, secrets in the environment. Account hygiene
+does not move at all, 25 → 25, and Lynis agrees from the outside.
+Two of Lynis's 4 warnings are the same accounts hostveil reports and refuses
+to touch, since `userdel` cannot be undone from a checkpoint. The AI-agent
+domain moves a
+little, 0 → 5: the file-mode findings are fixed and the config ones are not,
+because OpenClaw's config is JSON5 that users comment heavily and hostveil will
+not re-encode it. The CVE domain is flat at 16, and the Docker daemon at 10.
+
+Lynis is the sharpest instrument here for a reason that cuts against us: its
+index moved 57 → 60 while **not one** of its 37 suggestions or 4 warnings
+cleared. The index scores tests it does not print, so three points moved with
+nothing in the printed list to show for it. A harness that reported only the
+index would have looked better and said less.
 
 The numbers, the method, the instruments that did not move and the one that
 cleared for the wrong reason are on the

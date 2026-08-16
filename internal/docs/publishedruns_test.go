@@ -268,4 +268,21 @@ func squash(s string) string { return strings.Join(strings.Fields(s), " ") }
 // actually publishes.
 var codeSpans = regexp.MustCompile("(?s)```.*?```|`[^`\n]*`|<code[^>]*>.*?</code>|<pre[^>]*>.*?</pre>")
 
-func proseOnly(doc string) string { return codeSpans.ReplaceAllString(doc, " ") }
+// proseOnly reduces a page to the words a reader actually sees.
+//
+// Code spans go first, because a command or a path may legitimately name an
+// architecture. Then the tags themselves, keeping their inner text and
+// dropping their attributes: an attribute is markup, never rendered, and the
+// rule this feeds is about a page *telling* someone the host was arm64.
+//
+// The attribute half was added when a run was cited by filename —
+// data-measured-run="…-arm64-….json" — and the guard read the citation as the
+// claim. That is a reference to a committed file, resolved by
+// TestEveryPublishedFigureCameOffTheCommittedRun against the run it names; the
+// reader sees the figure, not the filename. Stripping tags leaves the guard
+// exactly as strong over everything that reaches a screen.
+func proseOnly(doc string) string {
+	return htmlTags.ReplaceAllString(codeSpans.ReplaceAllString(doc, " "), " ")
+}
+
+var htmlTags = regexp.MustCompile(`<[^<>]*>`)
