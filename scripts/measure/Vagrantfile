@@ -1,0 +1,128 @@
+# Throwaway hosts for the distribution seam.
+#
+# seed.sh resolves Debian, Fedora and Alpine through a package-manager seam,
+# and every published measurement was taken on Ubuntu — not a decision, just
+# the only host the fixture had ever been built on. This is the other hosts.
+#
+# Deliberately not demo/Vagrantfile. That VM is the *demo*: it is pinned to
+# Ubuntu, its provisioning seeds Ubuntu-specific stacks, and it is what
+# `demo/run.sh up` gives somebody who wants to try hostveil. These are
+# disposable measurement hosts and nobody should be pointed at them.
+#
+# Provisioning stops at "Go is installed and hostveil is built". Seeding and
+# measuring are separate commands on purpose, because the interesting failures
+# are in seed.sh and watching them scroll past inside a provisioner is how a
+# first run of anything gets misread.
+#
+#   cd scripts/measure
+#   vagrant up fedora
+#   vagrant ssh fedora -c 'sudo /hostveil/scripts/measure/seed.sh'
+#   vagrant ssh fedora -c 'sudo /hostveil/scripts/measure/run.sh -c /tmp/m.json'
+#   vagrant destroy -f fedora
+#
+# It edits the host it runs on, irreversibly. That is the whole point of the
+# host being disposable, and it is why this file exists rather than a note
+# telling somebody to find a Fedora box themselves.
+
+GO_VERSION = "1.26.3"
+
+# One entry per host the seam claims to support. Ubuntu is here too, not
+# because it needs proving, but because a seam is only a seam if the runs are
+# comparable — and the box the demo uses is the one the published figures came
+# off.
+#
+# STATUS, so the next attempt starts from what was learned rather than from
+# zero:
+#
+#   ubuntu   works. Provisions, builds hostveil, ready to seed.
+#   fedora   DOES NOT COME UP on libvirt here, and it is the box rather than
+#            anything in this file. cloud-image/fedora-42 downloads, the
+#            domain boots, and it never takes a DHCP lease on the
+#            vagrant-libvirt network — `virsh net-dhcp-leases vagrant-libvirt`
+#            shows the Ubuntu guest and nothing else, and vagrant gives up in
+#            "Waiting for domain to get an IP address". Dropping
+#            machine_virtual_size (in case the resize broke the image) changes
+#            nothing. fedora/40-cloud-base and cloud-image/fedora-41 both
+#            advertise libvirt and 404 on the artifact itself.
+#
+# So the dnf half of seed.sh is still unexercised end to end. What has been
+# confirmed, in a Fedora container: distro detection resolves to
+# "fedora, dnf, systemd" and the base-package install runs against real dnf.
+# It stops at `require docker`, which a container cannot satisfy without
+# either privileges or the host's own docker socket — and neither is a thing
+# to do to somebody's workstation. It needs a Fedora host that boots.
+HOSTS = {
+  "fedora" => { box: "cloud-image/fedora-42", disk: nil, bootstrap: <<~SH },
+    dnf install -y -q curl tar git >/dev/null 2>&1 || true
+  SH
+  "ubuntu" => { box: "cloud-image/ubuntu-24.04", bootstrap: <<~SH },
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq >/dev/null 2>&1 || true
+    apt-get install -y -qq curl tar git >/dev/null 2>&1 || true
+  SH
+}
+
+Vagrant.configure("2") do |config|
+  HOSTS.each do |name, spec|
+    config.vm.define name, autostart: false do |node|
+      node.vm.box = spec[:box]
+      node.vm.hostname = "hostveil-#{name}"
+
+      # rsync, like the demo, so the guest builds the CURRENT source rather
+      # than whatever was committed. It does NOT re-sync on `provision` — edit
+      # the tree, then `vagrant rsync`.
+      node.vm.synced_folder "../..", "/hostveil",
+        type: "rsync", rsync__exclude: [".vagrant/", ".git/", "demo/.vagrant/"]
+
+      node.vm.provider "libvirt" do |lv|
+        lv.memory = 2048
+        lv.cpus = 2
+        # The seeded stacks pull seven images. The demo VM sat at 95% full on
+        # the box's own disk, so this asks for room up front.
+        if spec.key?(:disk) && spec[:disk].nil?
+          # fedora-42's image does not survive vagrant-libvirt growing it: the
+          # domain boots and never takes a DHCP lease. Left at the box's own
+          # size, which is enough for a seeded host without the demo's seven
+          # images.
+        else
+          lv.machine_virtual_size = spec[:disk] || 24
+        end
+      end
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = 2048
+        vb.cpus = 2
+      end
+
+      node.vm.provision "shell", inline: <<~SHELL
+        set -euo pipefail
+
+        # libvirt's NAT usually has no IPv6 egress, and every package manager
+        # here will sit on a v6 route until it times out.
+        sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
+        sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+
+        #{spec[:bootstrap]}
+
+        # The distribution's Go is too old to build hostveil on most of these.
+        ARCH=$(uname -m); case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; esac
+        if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go#{GO_VERSION}"; then
+          curl -fsSL "https://go.dev/dl/go#{GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz
+          rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tgz
+        fi
+
+        cd /hostveil
+        GOFLAGS=-buildvcs=false /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil
+        hostveil version
+
+        cat <<'EOF'
+
+        Ready. Nothing is seeded yet — that is the next command, and it is
+        separate so its output can be read:
+
+          sudo /hostveil/scripts/measure/seed.sh
+          sudo /hostveil/scripts/measure/run.sh -c /tmp/m.json
+        EOF
+      SHELL
+    end
+  end
+end
