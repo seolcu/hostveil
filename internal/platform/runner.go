@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -243,9 +244,54 @@ func cleanStderr(b []byte) string {
 	return msg
 }
 
-// LookPath resolves a binary on PATH.
+// adminDirs are the directories a distribution puts administrative binaries
+// in, in the order PATH would search them.
+//
+// They are searched because on Debian and its derivatives they are *not* on a
+// non-root user's PATH. Debian dropped sbin from the user PATH, so ufw, nft
+// and iptables all live somewhere `exec.LookPath` will not look unless the
+// caller is already root — and hostveil is not always root: HOSTVEIL_NO_SUDO=1
+// is documented for scripts and CI, elevation can fail, and a container may
+// run as nobody.
+//
+// What that cost was a false High finding, on the most common firewall
+// arrangement there is. The firewall domain reads a front-end it cannot find
+// as a front-end that is not installed, and every front-end missing as "no
+// firewall is active" — so a Debian host running ufw was told it had no
+// firewall at all, and advised to install one it was already running. It is
+// only visible without root, which is why every scan that auto-elevated hid
+// it. Verified against a real Debian 13 host: firewall 50/100 with a High
+// finding unprivileged, 100/100 clean as root, same machine, same minute.
+//
+// The probe was already careful about the *other* half of this — a tool that
+// is present and errors is recorded unreadable, and "no firewall" is only
+// claimed when every installed tool answered — so finding the binary is the
+// whole fix. An unreadable ufw becomes StatusUnknown, which is a coverage gap
+// rather than an accusation.
+var adminDirs = []string{"/usr/local/sbin", "/usr/sbin", "/sbin"}
+
+// LookPath resolves a binary on PATH, then in the administrative directories.
+//
+// Appended, never prepended: this only adds resolution where PATH had none, so
+// a host that deliberately shadows a tool earlier on PATH keeps its answer.
 func (DefaultRunner) LookPath(name string) (string, error) {
-	return exec.LookPath(name)
+	path, err := exec.LookPath(name)
+	if err == nil {
+		return path, nil
+	}
+	// Only a bare name may be resolved this way. A name with a separator is a
+	// path the caller chose, and looking for its basename under /usr/sbin
+	// would run a different program than the one they named.
+	if strings.ContainsRune(name, os.PathSeparator) {
+		return "", err
+	}
+	for _, dir := range adminDirs {
+		candidate := filepath.Join(dir, name)
+		if info, statErr := os.Stat(candidate); statErr == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
+			return candidate, nil
+		}
+	}
+	return "", err
 }
 
 // Has reports whether a binary is available on PATH via the runner.
