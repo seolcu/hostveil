@@ -8,6 +8,11 @@
             <h2>Will a fix break my server?</h2>
             <p>You see the exact change before it applies, the original file is backed up to a checkpoint first, and <code>hostveil rollback</code> restores it byte-for-byte. Fixes that can't be automated safely are classified <strong>Manual</strong> and only explained, never applied. See <a href="fixing">Fixing &amp; rollback</a>.</p>
 
+            <h2>How is hostveil itself tested?</h2>
+            <p>It runs as root and edits configuration files on servers people depend on, so the question is fair. There is <strong>more test code in this repository than product code</strong> &mdash; not a ratio anyone targets, just what auditing an operating system honestly costs. <strong data-counted="fuzz.targets">5</strong> fuzz targets run nightly, five minutes each, over the YAML and JSON5 editors that rewrite your config files. Every pull request drives the real binary end to end &mdash; scan, fix, history, rollback, rescan &mdash; inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem.</p>
+            <p>This site is held to the program the same way. A package whose only job is to fail the build when a published page drifts from the code checks every domain table, every finding ID in a screenshot, every figure on <a href="measurements">Measured results</a>, and the counts on <a href="checks">What it checks</a>. A stale number on this site is a failing build rather than something you have to catch.</p>
+            <p>And if you would rather see it than read about it, the repository carries a <strong>Vagrant VM seeded to be vulnerable</strong>. You can watch a hardening tool edit a server, roll the changes back, and rescan &mdash; before you let it near one of yours. See <a href="contributing">Contributing</a>.</p>
+
             <h2>What if a fix has tradeoffs?</h2>
             <p>Then it's a <strong>Review</strong> fix, not Auto-fix. hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you, unless you add <code>--review</code> &mdash; which applies each Review fix through its first alternative, the one its how-to-fix describes.</p>
 
