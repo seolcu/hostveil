@@ -132,6 +132,35 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.21.0"><a href="https://github.com/seolcu/hostveil/compare/v3.20.2...v3.21.0">3.21.0</a> <span class="changelog-date">2026-08-16</span></h2>
+          <p>Two findings changed on the strength of one afternoon on a real server: one hostveil had never looked for, and one it was reporting on hosts that did not have it.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> sudo can hand out root with no password, and nothing looked (<a href="https://github.com/seolcu/hostveil/issues/753">#753</a>). The accounts domain asked who can become root twice — a second UID 0, and an empty password — and missed the mechanism people actually hit. Cloud and VM images ship <code>NOPASSWD: ALL</code> so the first login works, and it is usually still there years later: anyone holding that account's SSH key is root immediately, with no second credential in the way.</p>
+              <p>It asks sudo rather than reading sudoers, because that configuration has aliases, group specs that may resolve through LDAP rather than <code>/etc/group</code>, netgroups and include ordering — re-deriving the effective answer through all of it is the mistake <code>internal/compose.Discover</code> exists to demonstrate. Only the unrestricted case is flagged: a <code>NOPASSWD</code> rule on one named command is ordinary administration.</p>
+              <p>Three things the obvious implementation gets wrong, each with a test that fails on it. Within one privilege line <code>NOPASSWD</code> holds until a later <code>PASSWD</code> turns the prompt back on. <code>Defaults !authenticate</code> turns the password off for every rule on the host and the privilege lines carry no tag saying so. And <code>sudo -l -U someone</code> exits non-zero both for an account with no sudo rights and for "a non-root user cannot use <code>-U</code>" — so root is asked first, where the answer is known, and without that control run a non-root scan reports that nobody can become root without a password having never been allowed to ask.</p>
+              <p>Manual by decision: images ship the rule <em>because</em> the account has no password, so removing it can leave that account unable to use sudo at all.</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>platform:</strong> a running ufw read as no firewall at all on Debian (<a href="https://github.com/seolcu/hostveil/issues/755">#755</a>). Debian dropped sbin from a non-root user's <code>PATH</code>, and <code>ufw</code>, <code>nft</code> and <code>iptables</code> all live in <code>/usr/sbin</code>. <code>exec.LookPath</code> therefore failed for a firewall that was installed and running, the firewall domain read a front-end it could not find as one that was not installed, and every front-end missing as "no firewall is active" — so the host was handed the tool's most severe finding telling it to install a firewall it was already running, and the ports domain raised a second finding of its own on the same mistake.</p>
+              <p>Same machine, minutes apart: 50/100 with a High finding unprivileged, 100/100 clean as root. hostveil auto-elevates, which is why this was never seen; <code>HOSTVEIL_NO_SUDO=1</code> is documented for scripts and CI, elevation can fail, and a container may run as nobody.</p>
+              <p><code>LookPath</code> falls back to the administrative directories — appended, never prepended, and never for a name carrying a separator. Finding the binary is the whole fix: the probe was already careful about the other half, so an unreadable ufw becomes a coverage gap rather than an accusation.</p>
+            </li>
+          </ul>
+          <h3>Documentation</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>measurements:</strong> the published run was eleven releases stale, and is re-measured on 3.20.2 (<a href="https://github.com/seolcu/hostveil/issues/754">#754</a>). It is also the first committed run to record the architecture it ran on and a manifest of what was seeded — both fields existed and had never produced an artifact, which is why an earlier release had to <em>strip</em> the architecture claim off the page rather than correct it.</p>
+              <p>The score fell on the same seed, 40 to 29, and the page says why: hostveil finds more on it, and 3.20.1 stopped crediting fixes that were written but not yet in force. Three prose claims that the figure guard cannot see had stopped being true and are corrected — including "every number came back to where it started", which was wrong in an interesting way: ufw survives a rollback because enabling a firewall has no checkpoint, so five container-published ports answer straight <em>through</em> it. That is <code>firewall.docker-bypass</code> demonstrating itself in an instrument that has never heard of it.</p>
+            </li>
+            <li>
+              <p>publish what the repository can prove about itself (<a href="https://github.com/seolcu/hostveil/issues/757">#757</a>). Fix coverage was published only inside a release note, the testing regime appeared in no README and on no page, and the VM seeded to be vulnerable was published as a contributor note. Every number added is computed rather than typed: pages carry <code>data-counted="findings.fixable"</code> and a test resolves it against the fix registry, so registering a fix for a finding that did not have one fails the build until the pages move with it.</p>
+            </li>
+          </ul>
           <h2 id="v3.20.2"><a href="https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2">3.20.2</a> <span class="changelog-date">2026-08-16</span></h2>
           <p>A release about things that were published and wrong. The screenshot on the website named findings hostveil cannot report, four pages contradicted the binary, the built-in help had lost six flags, and the meters were drawn twice as wide as their budget on any terminal that draws the East Asian Ambiguous class wide.</p>
           <h3>Bug Fixes</h3>
