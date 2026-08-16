@@ -85,6 +85,11 @@ type Checker struct {
 	// origin.go; overridable for tests.
 	ConfDirs []string
 	ConfFile string
+	// InContainer answers whether this scan is running inside a container.
+	// Injected so the demotion below can be tested at all: the real gate
+	// reads /.dockerenv and /proc/1, and a test cannot make this process be
+	// in a container. nil means the real one — see New.
+	InContainer func() (bool, string)
 }
 
 // New returns a sysctl checker with the default rule set.
@@ -95,6 +100,16 @@ func New() *Checker {
 		ConfDirs: defaultConfDirs(),
 		ConfFile: defaultConfFile,
 	}
+}
+
+// containerGate is the check's own view of the question, defaulting to the
+// platform one. Kept as a method so every call site reads the same whether or
+// not a test replaced it.
+func (c *Checker) containerGate() (bool, string) {
+	if c.InContainer != nil {
+		return c.InContainer()
+	}
+	return platform.ContainerRuntime()
 }
 
 // The predicates the rules use. A rule with one key reads as `is(0)`, and
@@ -232,6 +247,10 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // read is ground not covered, and the domain says so with a PartialError
 // rather than letting "could not look" pass for "nothing there".
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
+	// Asked once for the whole scan rather than per rule: it is a question
+	// about the host, and the answer cannot change between two rules.
+	inContainer, containerWhy := c.containerGate()
+
 	var findings []model.Finding
 	var unreadable []string
 	covered := 0
@@ -281,8 +300,12 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			opts = append(opts, model.WithHowToFix(fmt.Sprintf(
 				"Add `%s` to a file under /etc/sysctl.d (e.g. 99-hardening.conf), then run `sysctl --system` to apply it without a reboot.", r.Want)))
 		}
-		findings = append(findings, model.NewFinding(r.ID, r.Title, r.Sev,
-			model.SourceSysctl, model.RemediationReview, opts...))
+		f := model.NewFinding(r.ID, r.Title, r.Sev,
+			model.SourceSysctl, model.RemediationReview, opts...)
+		if inContainer {
+			demoteForContainer(&f, containerWhy, r.Want)
+		}
+		findings = append(findings, f)
 	}
 	if len(unreadable) > 0 {
 		return findings, &check.PartialError{
@@ -292,6 +315,52 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		}
 	}
 	return findings, nil
+}
+
+// demoteForContainer turns a sysctl finding into a Manual one when the scan is
+// running inside a container.
+//
+// The *reading* is not wrong and the finding stays: /proc/sys inside a
+// container shows the host kernel's value for every knob that is not
+// namespaced — kernel.kptr_restrict and kernel.dmesg_restrict among them — so
+// the weakness being reported is real and it is the host's.
+//
+// The *fix* is the problem. It writes /etc/sysctl.d/60-hostveil-*.conf and
+// declares it takes effect on `sysctl --system` or the next boot. Neither can
+// reach the host kernel from in here, and the drop-in disappears with the
+// container besides. So the file would appear, the fix would report success, a
+// checkpoint would be recorded, and the value would never move — which
+// internal/fix/sysctl.go already calls the worst available outcome, and
+// declines for a drop-in that would lose to a file under /usr or /run. This is
+// the same refusal, for a stronger version of the same reason.
+//
+// It is done here rather than in the fix registry because this is a statement
+// about how much human judgement the finding needs, which is the checker's
+// half of that decision. Engine.classify resolves the two by taking whichever
+// is more cautious, so declaring Manual is enough on its own — the registered
+// Review fix is never offered, and nothing in internal/fix has to learn what a
+// container is.
+//
+// Reachable through instructions this project publishes: the README and the
+// measured-results page both say to try it on a container, and
+// `fix --all --review` applies these.
+func demoteForContainer(f *model.Finding, why, want string) {
+	f.Remediation = model.RemediationManual
+	f.WhyNoFix = "This is a container. The value is the host kernel's, and no file written in here can change it."
+	f.HowToFix = why + ", so a drop-in written in here cannot change the value — it belongs to the host kernel, " +
+		"and this filesystem goes away with the container. Set `" + want + "` on the host instead, under its /etc/sysctl.d, " +
+		"then run `sysctl --system` there."
+	f.Evidence = mergeEvidence(f.Evidence, "scanned_from", "inside a container")
+}
+
+// mergeEvidence adds a key to a finding's evidence, which NewFinding built and
+// may have left nil.
+func mergeEvidence(m map[string]string, key, val string) map[string]string {
+	if m == nil {
+		return map[string]string{key: val}
+	}
+	m[key] = val
+	return m
 }
 
 // readKey reads one dotted sysctl key from Root and parses its first field

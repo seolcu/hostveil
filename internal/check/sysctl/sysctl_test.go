@@ -33,13 +33,26 @@ func writeKeys(t *testing.T, keys map[string]string) string {
 // search path that does not exist. Leaving ConfDirs at the default would read
 // the developer's own /etc/sysctl.d, so whether a finding names an origin
 // would depend on the machine running the test.
+//
+// It also pins the container gate to "this is a host". Left at the default it
+// reads /.dockerenv and /proc/1 on whatever is running the test, so every
+// assertion below about a Review remediation would invert the day these tests
+// ran inside a container — which is a normal thing for a CI job to do, and
+// would read as the sysctl domain having broken rather than as the test
+// having asked the wrong question.
 func checkerFor(root string) *Checker {
 	c := New()
 	c.Root = root
 	c.ConfDirs = []string{filepath.Join(root, "no-such-sysctl.d")}
 	c.ConfFile = filepath.Join(root, "no-such-sysctl.conf")
+	c.InContainer = onAHost
 	return c
 }
+
+// onAHost and inAContainer are the two answers the gate can give.
+func onAHost() (bool, string) { return false, "" }
+
+func inAContainer() (bool, string) { return true, "this is a container (/.dockerenv)" }
 
 // withConf gives the checker a sysctl.d directory holding dropIns (name →
 // body) and, when legacy is non-empty, an /etc/sysctl.conf holding it.
@@ -348,5 +361,75 @@ func TestGarbageValueIsPartialNotGuessed(t *testing.T) {
 	}
 	if len(fs) != 0 {
 		t.Errorf("no finding should be invented from garbage, got %v", fs)
+	}
+}
+
+// Inside a container the reading is right and the fix is not.
+//
+// /proc/sys shows the host kernel's value for every knob that is not
+// namespaced, so the weakness is real and worth reporting. But the registered
+// fix writes /etc/sysctl.d in here, and no amount of `sysctl --system` in a
+// container reaches the host kernel — so the file would appear, the fix would
+// report success, a checkpoint would be recorded, and the value would never
+// move. internal/fix/sysctl.go calls that the worst available outcome and
+// declines it for a drop-in that would lose to /usr or /run; this is the same
+// refusal for a stronger version of the same reason.
+//
+// The finding survives. Only the offer of a fix goes.
+func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
+	root := writeKeys(t, map[string]string{"kernel.yama.ptrace_scope": "0"})
+	c := checkerFor(root)
+	c.InContainer = inAContainer
+
+	fs, err := c.Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got *model.Finding
+	for i := range fs {
+		if fs[i].ID == "sysctl.ptrace-scope" {
+			got = &fs[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("the host kernel really is weak and the finding must survive, got %v", fs)
+	}
+	if got.Remediation != model.RemediationManual {
+		t.Errorf("remediation = %v, want manual: a fix that writes a file it knows cannot "+
+			"take effect is worse than no fix", got.Remediation)
+	}
+	if got.WhyNoFix == "" {
+		t.Error("a finding with no fix and no reason is the gap WhyNoFix exists to close")
+	}
+	for _, want := range []string{"container", "host"} {
+		if !strings.Contains(strings.ToLower(got.HowToFix), want) {
+			t.Errorf("how-to-fix does not mention %q, so it does not say where the value "+
+				"actually has to be set:\n  %s", want, got.HowToFix)
+		}
+	}
+	if got.Evidence["scanned_from"] == "" {
+		t.Error("nothing in the evidence records that this was read from inside a container")
+	}
+}
+
+// And on a host nothing changes, which is the whole point of the gate being a
+// gate rather than a rewrite.
+func TestOnAHostTheFixIsStillOffered(t *testing.T) {
+	root := writeKeys(t, map[string]string{"kernel.yama.ptrace_scope": "0"})
+	fs, err := checkerFor(root).Check(context.Background(), platform.Env{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fs {
+		if f.ID != "sysctl.ptrace-scope" {
+			continue
+		}
+		if f.Remediation != model.RemediationReview {
+			t.Errorf("remediation = %v, want review", f.Remediation)
+		}
+		if f.WhyNoFix != "" {
+			t.Errorf("a fixable finding must carry no WhyNoFix, got %q", f.WhyNoFix)
+		}
 	}
 }

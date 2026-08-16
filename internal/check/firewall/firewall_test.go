@@ -216,3 +216,42 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("nginx",pid=9,fd=6))
 		t.Errorf("ssh_port = %q, want %q", got, want)
 	}
 }
+
+// A container has no host firewall and never will.
+//
+// probe knows ufw, firewall-cmd, nft and iptables. None of them is installed
+// in a container, so none fails, `unreadable` stays false, and StatusInactive
+// becomes "No active host firewall" at the top severity — on a machine where
+// there is nothing to install and nothing to enable, because the packet filter
+// that decides whether its ports answer belongs to the host and cannot be seen
+// from inside.
+//
+// Verified against bare Fedora and Alpine images before this gate existed:
+// both scored the firewall axis 50/100 on that fabricated High.
+func TestAContainerIsSkippedRatherThanAccused(t *testing.T) {
+	c := New()
+	c.InContainer = func() (bool, string) { return true, "this is a container (/.dockerenv)" }
+
+	ok, why := c.Available(context.Background(), platform.Env{})
+	if ok {
+		t.Fatal("a container must not be audited for a host firewall it cannot have; " +
+			"reporting one is hostveil describing its own blindness as a finding")
+	}
+	for _, want := range []string{"container", "host"} {
+		if !strings.Contains(strings.ToLower(why), want) {
+			t.Errorf("skip reason does not mention %q, so the operator cannot tell why the "+
+				"domain went away:\n  %s", want, why)
+		}
+	}
+}
+
+// And an ordinary host is still audited, which is the point of the gate being
+// a gate. A machine that *runs* containers is not a container.
+func TestAHostIsStillAudited(t *testing.T) {
+	c := New()
+	c.InContainer = func() (bool, string) { return false, "" }
+
+	if ok, why := c.Available(context.Background(), platform.Env{}); !ok {
+		t.Errorf("Available = false (%q); the absence of a firewall on a host is a finding", why)
+	}
+}
