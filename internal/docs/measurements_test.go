@@ -100,6 +100,21 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 		if err := json.Unmarshal(b, &d); err != nil {
 			t.Fatalf("%s is not valid JSON: %v", n, err)
 		}
+		// Only the profile the published pages describe. A control run —
+		// before and after control.sh hardens the host from the CIS
+		// Benchmarks, with hostveil applying nothing — is a different
+		// experiment with different phases, and it is committed here beside
+		// the seeded runs. Selecting it as "the newest" would resolve every
+		// data-measured cell on both measurement pages and both landing pages
+		// against a document that has no phases.reviewed, and the build would
+		// fail in a way that reads as pages citing figures no run supports.
+		//
+		// Keyed on the profile the run recorded rather than on its filename,
+		// because the filename is a convention and the profile is a field
+		// run.sh sets from the mode it ran in.
+		if pr, _ := d["profile"].(string); pr != publishedProfile {
+			continue
+		}
 		s, _ := d["measured_at"].(string)
 		at, err := time.Parse(time.RFC3339, s)
 		if err != nil {
@@ -112,7 +127,49 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 			name, doc, newest = n, d, at
 		}
 	}
+	if name == "" {
+		t.Fatalf("docs/measurements/ holds %d runs and none has profile %q — the pages "+
+			"describe a seeded host, and if that run stops being committed every figure "+
+			"on them is resting on nothing", len(names), publishedProfile)
+	}
 	return name, doc
+}
+
+// publishedProfile is the experiment the site's figures come from: a seeded
+// host, fixed by hostveil, rolled back. Other profiles are committed beside it
+// and are deliberately not what the pages cite — see newestMeasurement.
+const publishedProfile = "seeded"
+
+// TestEveryCommittedRunNamesItsProfile.
+//
+// newestMeasurement selects on the profile, so a run that does not record one
+// is invisible to it. That is the safe direction for a control run and the
+// wrong one for a seeded run, and the two are indistinguishable from here —
+// so every committed run has to say which it is, and the older ones did not
+// until this rule existed.
+func TestEveryCommittedRunNamesItsProfile(t *testing.T) {
+	dir := filepath.Join(repoRoot(t), "docs", "measurements")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		b, rerr := os.ReadFile(filepath.Join(dir, e.Name()))
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		var d map[string]any
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatalf("%s is not valid JSON: %v", e.Name(), err)
+		}
+		if pr, _ := d["profile"].(string); pr == "" {
+			t.Errorf("%s records no profile, so nothing can tell which experiment it was "+
+				"and the pages will never cite it", e.Name())
+		}
+	}
 }
 
 // resolve walks a dotted path through the decoded JSON. A path segment that

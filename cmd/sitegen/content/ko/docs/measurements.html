@@ -93,6 +93,33 @@
               <p>이것을 싣는 이유는 이 페이지가 다루는 실패 양식이 우리 쪽이 아니라 독립 계측기 쪽 문으로 들어온 사례이기 때문입니다. 외부 숫자가 움직였다는 것이 그 밑의 성질이 바뀌었다는 증명은 아닙니다. 여기 네 계측기 중 셋은 일관되었고, 넷째는 읽어 보면 무너지는 이유로 동의했습니다.</p>
             </div>
 
+            <h2 id="control">남이 한 하드닝에도 점수가 움직이는가?</h2>
+            <p>위의 모든 것은 hostveil이 호스트를 고치고, 독립적인 계측기들이 무언가 바뀌었다고 동의한 기록입니다. 그런데 가장 날카로운 질문 하나가 남습니다. hostveil 자신의 수정에만 반응하는 숫자는 보안 점수가 아닙니다. 백분율이 붙은 할 일 목록일 뿐입니다.</p>
+            <p>그래서 두 번째 실험이 있고, 3.21 전까지 이 페이지에 없던 것이 바로 이것입니다. <code>scripts/measure/control.sh</code>는 같은 시드 호스트를 CIS 벤치마크와 Lynis 자신의 제안에 따라 하드닝합니다. sshd 설정, 커널 파라미터, 파일 모드, 두 번째 root 계정, Docker 데몬입니다. 그리고 <strong>hostveil은 아무것도 적용하지 않습니다.</strong> 모든 변경은 남의 기준으로 거슬러 올라가고, 그중 어느 것도 hostveil의 수정 레지스트리를 보고 고른 것이 아닙니다. 그다음 hostveil이 스캔하고, 질문은 그것이 알아챘느냐입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>측정 항목</th><th>시드 직후</th><th>control.sh 이후</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>hostveil 점수</strong></td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.hostveil.overall">29</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.overall">44</td></tr>
+                  <tr><td>hostveil SSH 축</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.hostveil.axes.ssh">18</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.axes.ssh">100</td></tr>
+                  <tr><td>hostveil 계정 위생 축</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.hostveil.axes.accounts">22</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.axes.accounts">44</td></tr>
+                  <tr><td>hostveil 파일 권한 축</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.hostveil.axes.fileperms">50</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.axes.fileperms">100</td></tr>
+                  <tr><td>Lynis 하드닝 지수</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.lynis.hardening_index">57</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.lynis.hardening_index">62</td></tr>
+                  <tr><td>Lynis 경고</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.lynis.warnings">4</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.lynis.warnings">2</td></tr>
+                  <tr><td>CIS Docker 통과</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.docker_bench.results.PASS">16</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.docker_bench.results.PASS">17</td></tr>
+                  <tr><td>호스트 밖에서 응답하는 포트</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.before.external_scan.count">8</td><td data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.external_scan.count">3</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><strong>움직였고, 움직여야 할 이유로 움직였습니다.</strong> 축 세 개가 올랐고 hostveil은 그중 어느 것에도 관여하지 않았습니다. SSH는 CIS 드롭인이 root 로그인과 비밀번호 인증을 껐기 때문이고, 계정 위생은 시드해 둔 두 번째 root 계정이 삭제됐기 때문이며, 파일 권한은 <code>/etc/shadow</code>와 SSH 호스트 키의 모드가 조여졌기 때문입니다. hostveil은 그 뒤에 호스트를 읽고, 찾은 것을 점수로 매겼습니다.</p>
+            <p>바깥에서 본 Lynis도 같은 말을 하는데, <em>구체적으로</em> 같은 말을 합니다. 사라진 경고 둘은 <code data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="deltas.lynis_warnings.controlled.cleared">AUTH-9204, AUTH-9208</code>이고, 둘 다 그 두 번째 root 계정입니다. hostveil이 보고를 멈춘 바로 그 계정을, hostveil을 한 번도 들어본 적 없는 도구가 찾아낸 것입니다.</p>
+            <p>움직이지 <em>않은</em> 것이 답의 나머지 절반입니다. 방화벽 축은 <span data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.axes.firewall">50</span>에 그대로인데 <code>control.sh</code>가 방화벽을 켜지 않기 때문이고, 컨테이너 축은 <span data-measured-run="2026-08-16-control-x86_64-v3.21.0.json" data-measured="phases.controlled.hostveil.axes.container">0</span>에 그대로인데 그 축을 바닥에 붙들고 있는 것이 CIS Docker 절이 건드리지 않는 수동 항목들이기 때문입니다. Portainer에 마운트된 소켓, 호스트 네트워킹, 환경 변수 속 비밀값이 그렇습니다. 응답을 멈춘 포트 다섯 개는 외부 스캐너와 docker-bench에는 보이지만, 그 축을 바닥에서 들어 올리지는 못합니다. 호스트에 무엇을 했든 모든 축이 오르는 점수라면 그쪽이 더 의심스러운 결과일 것입니다.</p>
+            <div class="callout warn">
+              <span class="callout-label">이 스크립트의 첫 실행이 이 스크립트의 버그를 찾았습니다</span>
+              <p><code>control.sh</code>는 작성돼 있었지만 한 번도 실행된 적이 없었습니다. 계정 단계는 <em>&ldquo;removing UID 0 account backdoor&rdquo;</em>라고 찍고, 아무것도 지우지 않고, 0으로 종료했습니다. <code>userdel</code>은 계정이 사용 중인지를 <em>uid</em>로 판단하는데 UID 0 쌍둥이는 root와 uid를 공유하므로, pid 1을 발견하고 거절합니다. 이건 지금까지 존재한 모든 호스트에서 참이고, 따라서 한 번도 성공할 수 없었던 단계였습니다. 그것을 가린 것이 <code>2>/dev/null || true</code>였습니다.</p>
+              <p>대조군은 계정 위생 절반을 조용히 빼먹고 있었고, 그것을 찾아낸 실행이 그것을 고친 실행입니다. 단계를 조용히 건너뛰는 대조군은 실패하는 대조군보다 나쁩니다. 그렇게 나온 숫자도 여전히 측정처럼 보이기 때문입니다.</p>
+            </div>
+
             <h2 id="rollback">롤백 복원율</h2>
             <p>보안 측정이 아니라 복구 계층에 대한 주장이며, 나머지가 의미를 가지려면 먼저 성립해야 하는 것입니다. hostveil은 운영자에게 서버의 파일을 편집하게 해 달라고 요청하고, "되돌릴 수 있다"가 그 요청이 합당한 이유의 전부입니다.</p>
             <div class="docs-table-wrap">

@@ -131,6 +131,16 @@ def rollback_verdict(work):
 # The labels carry no dots. The documentation test addresses a figure in this
 # document by dotted path, so a key containing one would be unreachable from
 # the page that publishes it.
+# The order phases are reported in, which is the order they happen in. A run
+# carries a subset: hostveil runs take before → after → restarted → reviewed →
+# restored, and a control run takes before → controlled, because nothing
+# hostveil does is involved in one.
+#
+# "restored" sorts last on purpose even though a control run never reaches it:
+# every delta is measured against "before", so this list is about reading
+# order rather than arithmetic.
+PHASE_ORDER = ("before", "controlled", "after", "restarted", "reviewed", "restored")
+
 SETS = [
     ("lynis_suggestions", "lynis", "suggestion_ids"),
     ("lynis_warnings", "lynis", "warning_ids"),
@@ -152,13 +162,17 @@ def deltas(phases):
     thing this harness has to say.
     """
     out = {}
+    if "before" not in phases:
+        return out
     for label, instrument, field in SETS:
         base = phases["before"].get(instrument, {})
         if not isinstance(base.get(field), list):
             continue
         before = set(base[field])
         row = {"before": len(before)}
-        for phase in ("after", "restarted", "reviewed"):
+        for phase in PHASE_ORDER:
+            if phase == "before" or phase not in phases:
+                continue
             values = phases[phase].get(instrument, {}).get(field)
             if not isinstance(values, list):
                 continue
@@ -238,7 +252,14 @@ def main():
     work, profile = sys.argv[1], sys.argv[2]
 
     phases = {}
-    for phase in ("before", "after", "restarted", "reviewed", "restored"):
+    for phase in PHASE_ORDER:
+        # Only the phases that actually ran. A control run has two of them and
+        # a hostveil run has five, and reading a fixed list would put an
+        # {"error": "No such file"} object under every phase the other kind of
+        # run does not have — a report that looks like five failed
+        # measurements rather than like two that were never asked for.
+        if not os.path.exists(os.path.join(work, phase + ".hostveil.json")):
+            continue
         phases[phase] = {
             "hostveil": read_json(os.path.join(work, phase + ".hostveil.json")),
             "lynis": read_json(os.path.join(work, phase + ".lynis.json")),
@@ -256,11 +277,18 @@ def main():
         "host": host(),
         "hostveil_version": version(),
         "phases": phases,
-        "fixes": fix_phase(work),
-        "reviewed": read_json(os.path.join(work, "reviewed.json")),
         "deltas": deltas(phases),
-        "rollback": rollback_verdict(work),
     }
+    # The hostveil-driven keys are omitted rather than zeroed when nothing
+    # applied a fix. "attempted: 0, failed: []" is a claim that hostveil tried
+    # nothing and succeeded, which is not what a control run means — it means
+    # hostveil was never asked.
+    if os.path.exists(os.path.join(work, "fix.log")):
+        doc["fixes"] = fix_phase(work)
+    if os.path.exists(os.path.join(work, "reviewed.json")):
+        doc["reviewed"] = read_json(os.path.join(work, "reviewed.json"))
+    if os.path.exists(os.path.join(work, "hash.restored")):
+        doc["rollback"] = rollback_verdict(work)
     json.dump(doc, sys.stdout, indent=2, sort_keys=False)
     print()
     return 0
