@@ -142,6 +142,43 @@ If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
+hostveil can report **75 findings** across those domains, and **38 of them
+carry a fix** — 25 hostveil will apply unattended, 13 only after you have read
+the diff. The rest are Manual on purpose, and each one is named in the register
+in [`internal/fix/register.go`](internal/fix/register.go) with the reason
+hostveil will not touch it: deleting an account cannot be undone from a
+checkpoint, removing a Docker socket mount breaks the tool that needs it, and
+so on. Manual by decision, never Manual because nobody looked — a test fails
+the build on the difference.
+
+## How it's tested
+
+hostveil runs as root and edits configuration files on servers people depend
+on. That is a lot to ask, so this is what stands behind it.
+
+- **There is more test code in this repository than product code.** Not a ratio
+  anyone targets — it is what auditing an operating system honestly costs. A
+  test enforces the inequality rather than a number that would be stale by the
+  afternoon.
+- **[`internal/docs/`](internal/docs) exists to fail the build when a published
+  page drifts from the code.** Every domain table, every finding ID in a
+  screenshot, every figure on the measured-results page, and the counts in the
+  paragraph above are checked against what the program actually does. A stale
+  number here is a failing build rather than something a reader has to catch.
+- **5 fuzz targets run nightly**, five minutes each, over the YAML and JSON5
+  editors that rewrite your config files and the parsers that feed them.
+- **Every pull request drives the real binary end to end** — scan, fix,
+  history, rollback, rescan — inside a seeded Debian container. It is the only
+  place the apply and rollback machinery meets a real filesystem.
+- **Every release target is cross-compiled on every pull request**, so a break
+  appears while it is still a pull request rather than during a release.
+- **[`demo/`](demo/README.md) is a Vagrant VM** seeded to be vulnerable, so you
+  can watch a hardening tool edit a server before you let it near one of yours.
+
+None of that answers whether the fixes change anything real. That is what the
+harness in [`scripts/measure/`](scripts/measure) is for, and it is the section
+above.
+
 ## Install
 
 ```bash
