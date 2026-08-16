@@ -24,6 +24,7 @@ var readmeSections = []struct{ en, ko string }{
 	{"## Does it actually work?", "## 정말 효과가 있나요?"},
 	{"## How it compares", "## 다른 도구와의 비교"},
 	{"## What it checks", "## 점검 범위"},
+	{"## How it's tested", "## 어떻게 테스트하나요?"},
 	{"## Install", "## 설치"},
 	{"## Usage", "## 사용법"},
 	{"### Using it as a CI or cron gate", "### CI나 cron 게이트로 쓰기"},
