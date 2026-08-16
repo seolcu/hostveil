@@ -23,6 +23,14 @@
 #
 #   scripts/measure/run.sh [-c] [-p profile] [output.json]
 #
+# -C measures the control group instead: the same instruments, before and
+# after control.sh hardens the host from the CIS Benchmarks *without*
+# hostveil. It answers the question the run above cannot — does the score go
+# up when the host is hardened by somebody else's standard? A number that only
+# responds to hostveil's own fixes is not a security score, it is a to-do list
+# with a percentage on it. No fix, no rollback, and the profile defaults to
+# "control".
+#
 # Requires root. Lynis and docker-bench-security are optional — a missing one
 # is recorded as absent rather than passed over silently.
 #
@@ -39,15 +47,24 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-PROFILE=seeded
+PROFILE=
 CHECK=0
-while getopts ":cp:" opt; do
+CONTROL=0
+while getopts ":cCp:" opt; do
   case "$opt" in
     c) CHECK=1 ;;
+    C) CONTROL=1 ;;
     p) PROFILE=$OPTARG ;;
-    *) echo "usage: $0 [-c] [-p profile] [output.json]" >&2; exit 2 ;;
+    *) echo "usage: $0 [-c] [-C] [-p profile] [output.json]" >&2; exit 2 ;;
   esac
 done
+# The default names the experiment rather than the host, because that is what
+# distinguishes the two runs in docs/measurements/ and what the docs tests
+# select on: the published pages describe the seeded run, and a control run
+# that landed under the same profile would be read as the newest of them.
+if [ -z "$PROFILE" ]; then
+  if [ "$CONTROL" = 1 ]; then PROFILE=control; else PROFILE=seeded; fi
+fi
 shift $((OPTIND - 1))
 OUT=${1:-/dev/stdout}
 
@@ -134,6 +151,36 @@ say "$(wc -l < "$WORK/paths.before" | tr -d ' ') paths watched"
 
 say "BEFORE"
 measure_all before
+
+# The control group. Everything below this branch is about hostveil applying
+# fixes and undoing them, and a control run does none of it: the point is to
+# harden the host by somebody else's standard and ask whether hostveil's score
+# notices. There is nothing to roll back because hostveil changed nothing, and
+# control.sh does not undo itself — which is why it says to run it on
+# something disposable.
+if [ "$CONTROL" = 1 ]; then
+  say "hardening the host from the CIS Benchmarks, without hostveil"
+  "$HERE/control.sh" >&2
+
+  # Same reload the fixed path gets, for the same reason: control.sh writes an
+  # sshd drop-in, and sshd keeps serving from the config it already loaded.
+  restart_services
+
+  say "CONTROLLED"
+  measure_all controlled
+
+  "$HERE/report.py" "$WORK" "$PROFILE" > "$OUT"
+  say "wrote $OUT"
+
+  if [ "$CHECK" = 1 ]; then
+    if [ "$OUT" = /dev/stdout ]; then
+      echo "measure: -c needs an output file to read back" >&2
+      exit 2
+    fi
+    "$HERE/check.py" "$OUT"
+  fi
+  exit 0
+fi
 
 say "applying every Auto fix"
 hostveil fix --all --yes > "$WORK/fix.log" 2>&1 || true

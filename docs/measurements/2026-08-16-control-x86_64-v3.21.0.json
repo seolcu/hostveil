@@ -1,0 +1,385 @@
+{
+  "profile": "control",
+  "seeded": {
+    "distro": "ubuntu",
+    "distro_like": "debian",
+    "seeded": [
+      "docker",
+      "weak-ssh",
+      "firewall-off",
+      "updates-off",
+      "exposed-datastore",
+      "uid0-twin",
+      "shadow-readable",
+      "agent-configs",
+      "compose-stacks"
+    ],
+    "not_expressible": {}
+  },
+  "measured_at": "2026-08-16T08:59:40+00:00",
+  "host": {
+    "pretty_name": "Ubuntu 24.04.4 LTS",
+    "version_id": "24.04",
+    "id": "ubuntu",
+    "kernel": "6.8.0-134-generic",
+    "arch": "x86_64"
+  },
+  "hostveil_version": "hostveil v3.21.0",
+  "phases": {
+    "before": {
+      "hostveil": {
+        "overall": 29,
+        "applicable": true,
+        "findings": 107,
+        "by_severity": {
+          "high": 50,
+          "medium": 24,
+          "low": 33
+        },
+        "axes": {
+          "container": 0,
+          "ssh": 18,
+          "firewall": 50,
+          "updates": 44,
+          "cve": 16,
+          "ports": 18,
+          "accounts": 22,
+          "fileperms": 50,
+          "agent": 0,
+          "sysctl": 100,
+          "dockerd": 10,
+          "systemd": 100
+        },
+        "domains_run": 12,
+        "domains_complete": 12
+      },
+      "lynis": {
+        "hardening_index": 57,
+        "tests_executed": 264,
+        "warnings": 4,
+        "suggestions": 37,
+        "warning_ids": [
+          "AUTH-9204",
+          "AUTH-9208",
+          "AUTH-9283",
+          "PKGS-7392"
+        ],
+        "suggestion_ids": [
+          "ACCT-9622",
+          "ACCT-9626",
+          "ACCT-9628",
+          "AUTH-9230",
+          "AUTH-9262",
+          "AUTH-9284",
+          "AUTH-9286",
+          "AUTH-9328",
+          "BANN-7126",
+          "BANN-7130",
+          "BOOT-5122",
+          "BOOT-5264",
+          "DBS-1884",
+          "DBS-1886",
+          "DBS-1888",
+          "DEB-0280",
+          "DEB-0810",
+          "DEB-0811",
+          "DEB-0880",
+          "FILE-6310",
+          "FILE-7524",
+          "FINT-4350",
+          "FIRE-4513",
+          "HRDN-7230",
+          "KRNL-5820",
+          "KRNL-6000",
+          "LOGG-2154",
+          "LOGG-2190",
+          "LYNIS",
+          "NAME-4028",
+          "NETW-3200",
+          "PKGS-7370",
+          "PKGS-7392",
+          "PKGS-7394",
+          "SSH-7408",
+          "TOOL-5002",
+          "USB-1000"
+        ]
+      },
+      "docker_bench": {
+        "version": "1.6.0",
+        "checks": 44,
+        "score": -3,
+        "results": {
+          "WARN": 16,
+          "NOTE": 9,
+          "INFO": 3,
+          "PASS": 16
+        },
+        "warn_ids": [
+          "4.1",
+          "4.5",
+          "4.6",
+          "5.11",
+          "5.12",
+          "5.13",
+          "5.14",
+          "5.2",
+          "5.26",
+          "5.27",
+          "5.29",
+          "5.3",
+          "5.32",
+          "5.4",
+          "5.5",
+          "5.9"
+        ]
+      },
+      "external_scan": {
+        "from": "container on the docker bridge",
+        "target": "172.17.0.1",
+        "reachable_tcp": [
+          22,
+          2375,
+          5432,
+          6379,
+          6380,
+          8080,
+          8096,
+          9000
+        ],
+        "refused_tcp": [
+          80,
+          443,
+          2376,
+          3306,
+          8086,
+          9090,
+          11211,
+          11434,
+          18789,
+          27017
+        ],
+        "filtered_tcp": [],
+        "count": 8
+      },
+      "listeners": {
+        "wildcard_or_routable_tcp": [
+          22,
+          2375,
+          5432,
+          6379,
+          6380,
+          8080,
+          8096,
+          9000
+        ],
+        "loopback_only_tcp": [
+          53
+        ],
+        "count": 8
+      }
+    },
+    "controlled": {
+      "hostveil": {
+        "overall": 44,
+        "applicable": true,
+        "findings": 99,
+        "by_severity": {
+          "high": 46,
+          "medium": 23,
+          "low": 30
+        },
+        "axes": {
+          "container": 0,
+          "ssh": 100,
+          "firewall": 50,
+          "updates": 44,
+          "cve": 16,
+          "ports": 18,
+          "accounts": 44,
+          "fileperms": 100,
+          "agent": 0,
+          "sysctl": 100,
+          "dockerd": 10,
+          "systemd": 100
+        },
+        "domains_run": 12,
+        "domains_complete": 12
+      },
+      "lynis": {
+        "hardening_index": 62,
+        "tests_executed": 264,
+        "warnings": 2,
+        "suggestions": 37,
+        "warning_ids": [
+          "AUTH-9283",
+          "PKGS-7392"
+        ],
+        "suggestion_ids": [
+          "ACCT-9622",
+          "ACCT-9626",
+          "ACCT-9628",
+          "AUTH-9230",
+          "AUTH-9262",
+          "AUTH-9284",
+          "AUTH-9286",
+          "AUTH-9328",
+          "BANN-7126",
+          "BANN-7130",
+          "BOOT-5122",
+          "BOOT-5264",
+          "DBS-1884",
+          "DBS-1886",
+          "DBS-1888",
+          "DEB-0280",
+          "DEB-0810",
+          "DEB-0811",
+          "DEB-0880",
+          "FILE-6310",
+          "FILE-7524",
+          "FINT-4350",
+          "FIRE-4513",
+          "HRDN-7230",
+          "KRNL-5820",
+          "KRNL-6000",
+          "LOGG-2154",
+          "LOGG-2190",
+          "LYNIS",
+          "NAME-4028",
+          "NETW-3200",
+          "PKGS-7370",
+          "PKGS-7392",
+          "PKGS-7394",
+          "SSH-7408",
+          "TOOL-5002",
+          "USB-1000"
+        ]
+      },
+      "docker_bench": {
+        "version": "1.6.0",
+        "checks": 44,
+        "score": -1,
+        "results": {
+          "WARN": 15,
+          "NOTE": 9,
+          "INFO": 3,
+          "PASS": 17
+        },
+        "warn_ids": [
+          "4.1",
+          "4.5",
+          "4.6",
+          "5.11",
+          "5.12",
+          "5.13",
+          "5.14",
+          "5.2",
+          "5.27",
+          "5.29",
+          "5.3",
+          "5.32",
+          "5.4",
+          "5.5",
+          "5.9"
+        ]
+      },
+      "external_scan": {
+        "from": "container on the docker bridge",
+        "target": "172.17.0.1",
+        "reachable_tcp": [
+          22,
+          2375,
+          6379
+        ],
+        "refused_tcp": [
+          80,
+          443,
+          2376,
+          3306,
+          8086,
+          9090,
+          11211,
+          11434,
+          18789,
+          27017
+        ],
+        "filtered_tcp": [
+          5432,
+          6380,
+          8080,
+          8096,
+          9000
+        ],
+        "count": 3
+      },
+      "listeners": {
+        "wildcard_or_routable_tcp": [
+          22,
+          2375,
+          5432,
+          6379,
+          6380,
+          8080,
+          8096,
+          9000
+        ],
+        "loopback_only_tcp": [
+          53
+        ],
+        "count": 8
+      }
+    }
+  },
+  "deltas": {
+    "lynis_suggestions": {
+      "before": 37,
+      "controlled": {
+        "cleared": [],
+        "appeared": [],
+        "total": 37
+      }
+    },
+    "lynis_warnings": {
+      "before": 4,
+      "controlled": {
+        "cleared": [
+          "AUTH-9204",
+          "AUTH-9208"
+        ],
+        "appeared": [],
+        "total": 2
+      }
+    },
+    "docker_bench_warnings": {
+      "before": 16,
+      "controlled": {
+        "cleared": [
+          "5.26"
+        ],
+        "appeared": [],
+        "total": 15
+      }
+    },
+    "external_scan_reachable_tcp": {
+      "before": 8,
+      "controlled": {
+        "cleared": [
+          5432,
+          6380,
+          8080,
+          8096,
+          9000
+        ],
+        "appeared": [],
+        "total": 3
+      }
+    },
+    "listeners_public_tcp": {
+      "before": 8,
+      "controlled": {
+        "cleared": [],
+        "appeared": [],
+        "total": 8
+      }
+    }
+  }
+}

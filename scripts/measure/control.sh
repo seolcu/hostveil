@@ -84,9 +84,24 @@ chown root:root /etc/passwd /etc/group 2>/dev/null || true
 # CIS Debian 5.4.2: no account other than root may have UID 0. The seeded
 # host has a second one.
 say "accounts: CIS 5.4.2"
-awk -F: '$3 == 0 && $1 != "root" {print $1}' /etc/passwd | while read -r u; do
+# -f, and the error is not swallowed. Both were wrong the first time this
+# script was ever run, and the second is what hid the first.
+#
+# userdel identifies "is this account in use" by *uid*, and a UID-0 twin
+# shares root's — so it finds pid 1 running as that uid and refuses with
+# "user backdoor is currently used by process 1". That is true of every host
+# there has ever been, which makes it a step that could never once have
+# succeeded. `2>/dev/null || true` meant the script said "removing UID 0
+# account backdoor", removed nothing, and exited 0; the control group was
+# quietly missing its account-hygiene half, and hostveil went on reporting
+# accounts.uid0 about a host this script claimed to have hardened.
+#
+# A control group that silently skips a step is worse than one that fails,
+# because the number it produces still looks like a measurement.
+mapfile -t uid0 < <(awk -F: '$3 == 0 && $1 != "root" {print $1}' /etc/passwd)
+for u in "${uid0[@]}"; do
   say "  removing UID 0 account $u"
-  userdel "$u" 2>/dev/null || true
+  userdel -f "$u"
 done
 
 # CIS Docker Benchmark 2.x and 5.x, applied to the daemon and to every
