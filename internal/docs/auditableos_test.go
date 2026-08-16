@@ -12,11 +12,11 @@ import (
 // osGated are the checkers whose Available must consult platform.AuditableOS,
 // and the reason each one has to.
 //
-// The other nine do not need it: they probe something a non-Linux host
-// genuinely lacks — /proc/sys, systemd, apt-get, ss, a reachable Docker
-// daemon — and skip cleanly on their own. These three probe something that
-// exists on macOS and means something else there, so without the gate each
-// produces an answer about a host it never examined.
+// The others do not need it: they probe something a non-Linux host genuinely
+// lacks — /proc/sys, systemd, apt-get, ss, a reachable Docker daemon — and
+// skip cleanly on their own. These probe something that exists on macOS and
+// means something else there, so without the gate each produces an answer
+// about a host it never examined.
 var osGated = map[string]string{
 	"firewall": "probes only ufw, firewall-cmd, nft and iptables; on a host with none of them " +
 		"nothing fails, and the absence of a failure was read as the absence of a firewall — a " +
@@ -27,6 +27,10 @@ var osGated = map[string]string{
 	"agent": "enumerates homes out of that same /etc/passwd keeping uid 0 and 1000..65533; macOS " +
 		"accounts start at 501, so it finds only /var/root and reports 'no agent runtime' about a " +
 		"host whose /Users it never opened",
+	"proxy": "reads /etc/nginx, which Homebrew's nginx does not use — its configuration is under " +
+		"the prefix, so the domain would report a clean proxy on a Mac that is running one, and " +
+		"the Traefik half would be deciding from a Docker daemon on a host whose own reverse " +
+		"proxy it never opened",
 }
 
 // TestTheOSGateIsWhereItHasToBe pins which checkers consult platform.Auditable

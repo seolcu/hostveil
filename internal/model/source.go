@@ -24,6 +24,7 @@ const (
 	SourceSysctl
 	SourceDockerd
 	SourceSystemd
+	SourceProxy
 
 	sourceCount // sentinel, not a domain; keep last
 )
@@ -88,18 +89,19 @@ type sourceDef struct {
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
-	{SourceCompose, "compose", "Container", "container", "Container exposure", 14},
-	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 14},
-	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 9},
+	{SourceCompose, "compose", "Container", "container", "Container exposure", 13},
+	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 13},
+	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 8},
 	{SourceUpdates, "updates", "Updates", "updates", "Auto-updates", 7},
-	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 10},
+	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 9},
 	{SourcePorts, "ports", "Ports", "ports", "Exposed services", 8},
 	{SourceAccounts, "accounts", "Accounts", "accounts", "Account hygiene", 7},
 	{SourceFilePerms, "fileperms", "File perms", "fileperms", "File permissions", 5},
-	{SourceAgent, "agent", "AI agents", "agent", "AI agent runtimes", 8},
+	{SourceAgent, "agent", "AI agents", "agent", "AI agent runtimes", 6},
 	{SourceSysctl, "sysctl", "Kernel", "sysctl", "Kernel hardening", 5},
 	{SourceDockerd, "dockerd", "Dockerd", "dockerd", "Docker daemon", 7},
 	{SourceSystemd, "systemd", "Services", "systemd", "Service hardening", 6},
+	{SourceProxy, "proxy", "Proxy", "proxy", "Reverse proxy", 6},
 }
 
 var sourceIndex = indexBy(sourceDefs, func(d sourceDef) Source { return d.source })

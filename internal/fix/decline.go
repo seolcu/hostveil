@@ -92,9 +92,12 @@ var declineReasons = map[string]string{
 	"ports.exposed-datastore": "Binding a native datastore to loopback takes a config file, syntax, and path that differ per daemon and per distro, none of which the finding carries.",
 
 	// accounts
-	"accounts.emptypassword": "Locking the account has no checkpoint and it may be the only one you can reach the machine with; /etc/shadow does not say which kind it is.",
-	"accounts.sudo-nopasswd": "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
-	"accounts.uid0":          "userdel orphans every file the account owns with no checkpoint to undo it, and hostveil cannot tell a backdoor from a deliberate second root.",
+	"accounts.emptypassword":         "Locking the account has no checkpoint and it may be the only one you can reach the machine with; /etc/shadow does not say which kind it is.",
+	"proxy.traefik-api-insecure":     "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware hostveil cannot pick.",
+	"proxy.tls-deprecated-protocols": "nginx inherits ssl_protocols from http into every server that does not set its own, and hostveil sees which files name the directive rather than which block each one sits in.",
+	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and hostveil cannot tell which location you meant.",
+	"accounts.sudo-nopasswd":         "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
+	"accounts.uid0":                  "userdel orphans every file the account owns with no checkpoint to undo it, and hostveil cannot tell a backdoor from a deliberate second root.",
 
 	// fileperms
 	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",

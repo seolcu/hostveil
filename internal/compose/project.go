@@ -35,21 +35,27 @@ type Project struct {
 // Service is the subset of a compose service definition hostveil audits.
 type Service struct {
 	Name        string
-	Image       string            `yaml:"image"`
-	Privileged  bool              `yaml:"privileged"`
-	ReadOnly    bool              `yaml:"read_only"`
-	Pid         string            `yaml:"pid"`
-	Ipc         string            `yaml:"ipc"`
-	UsernsMode  string            `yaml:"userns_mode"`
-	NetworkMode string            `yaml:"network_mode"`
-	User        string            `yaml:"user"`
-	Restart     string            `yaml:"restart"`
-	CapAdd      []string          `yaml:"cap_add"`
-	SecurityOpt []string          `yaml:"security_opt"`
-	Ports       []Port            `yaml:"ports"`
-	Volumes     []Volume          `yaml:"volumes"`
-	Environment Environment       `yaml:"environment"`
-	EnvFile     StringOrList      `yaml:"env_file"`
+	Image       string       `yaml:"image"`
+	Privileged  bool         `yaml:"privileged"`
+	ReadOnly    bool         `yaml:"read_only"`
+	Pid         string       `yaml:"pid"`
+	Ipc         string       `yaml:"ipc"`
+	UsernsMode  string       `yaml:"userns_mode"`
+	NetworkMode string       `yaml:"network_mode"`
+	User        string       `yaml:"user"`
+	Restart     string       `yaml:"restart"`
+	CapAdd      []string     `yaml:"cap_add"`
+	SecurityOpt []string     `yaml:"security_opt"`
+	Ports       []Port       `yaml:"ports"`
+	Volumes     []Volume     `yaml:"volumes"`
+	Environment Environment  `yaml:"environment"`
+	EnvFile     StringOrList `yaml:"env_file"`
+	// Command is the service's argv override, and it is where a reverse
+	// proxy's most dangerous setting usually lives: nearly every Traefik
+	// tutorial passes `--api.insecure=true` here rather than in a config
+	// file. StringOrList because compose accepts both the shell form and the
+	// exec form.
+	Command     StringOrList      `yaml:"command"`
 	Healthcheck *yaml.Node        `yaml:"healthcheck"`
 	Deploy      *Deploy           `yaml:"deploy"`
 	MemLimit    string            `yaml:"mem_limit"`

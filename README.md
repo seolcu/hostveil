@@ -136,13 +136,14 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys`: the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
 | **Docker daemon** | `dockerd.*` | The daemon underneath your containers. An API served over TCP without TLS client verification is unauthenticated root for anyone who can reach the port; hostveil also checks for a world-writable socket, who holds the socket's group, and the defaults for no-new-privileges, userns-remap and live-restore | Docker |
 | **Service hardening** | `systemd.*` | The units you installed yourself, read as systemd's own *effective* configuration: whether a service can gain privileges through setuid, write to `/usr` and `/etc`, read every user's home directory, or share `/tmp` with the rest of the host. Distribution units are left to the distribution | systemd |
+| **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
 If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
-hostveil can report **75 findings** across those domains, and **38 of them
+hostveil can report **78 findings** across those domains, and **38 of them
 carry a fix** — 25 hostveil will apply unattended, 13 only after you have read
 the diff. The rest are Manual on purpose, and each one is named in the register
 in [`internal/fix/register.go`](internal/fix/register.go) with the reason
