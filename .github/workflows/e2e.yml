@@ -366,3 +366,60 @@ jobs:
           # than run.
           test -d /var/lib/hostveil
           grep -q '/var/lib/hostveil' /tmp/un2.txt
+
+  # hostveil publishes archives and packages for hosts that are not Debian,
+  # and until now it had never been run on one. Both gaps are real: the CVE
+  # and container domains sit behind a daemon, the updates domain branches on
+  # apt versus dnf and skips on apk, and the binary is only static because
+  # CGO_ENABLED=0 is set in one place that nothing checks — enable cgo by
+  # accident and Alpine support disappears with no test to notice.
+  #
+  # The assertion is the invariant this repository states most often, in the
+  # one form that holds on every distribution: a domain that is not `done`
+  # must say why. "I could not look" and "there is nothing there" produce the
+  # same empty list and mean opposite things, and a reason is the only thing
+  # separating them on the operator's screen.
+  #
+  # The binary is built on the runner and mounted in, rather than built inside
+  # each image. That is what an operator downloads, so it is what should be
+  # tested — and running it under musl is the point on Alpine.
+  distros:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [fedora:latest, alpine:latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build the binary an operator would download
+        run: CGO_ENABLED=0 go build -o /tmp/hostveil ./cmd/hostveil
+
+      - name: scan on ${{ matrix.image }}
+        run: |
+          set -eux
+          docker run --rm -v /tmp/hostveil:/usr/local/bin/hostveil:ro \
+            -e HOSTVEIL_NO_SUDO=1 -e HOSTVEIL_NO_UPDATE_CHECK=1 \
+            ${{ matrix.image }} hostveil scan --json > /tmp/scan.json || true
+
+          # It ran at all. On Alpine that is the musl check, and it is the
+          # whole reason this image is in the matrix.
+          jq -e '.score.overall != null' /tmp/scan.json
+
+          # Every domain that did not complete says why, in words.
+          jq -e '[.domains[] | select(.state != "done") | select((.reason // "") == "")] | length == 0' \
+            /tmp/scan.json || {
+              echo "a domain reported a non-done state with no reason:"
+              jq '.domains[] | select(.state != "done")' /tmp/scan.json
+              exit 1
+            }
+
+          # And it did not simply skip everything, which would satisfy the
+          # rule above while testing nothing.
+          jq -e '[.domains[] | select(.state == "done")] | length > 0' /tmp/scan.json
+
+          jq -r '.domains[] | "\(.source)\t\(.state)\t\(.reason // "")"' /tmp/scan.json
