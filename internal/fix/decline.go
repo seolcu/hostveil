@@ -93,6 +93,7 @@ var declineReasons = map[string]string{
 
 	// accounts
 	"accounts.emptypassword": "Locking the account has no checkpoint and it may be the only one you can reach the machine with; /etc/shadow does not say which kind it is.",
+	"accounts.sudo-nopasswd": "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
 	"accounts.uid0":          "userdel orphans every file the account owns with no checkpoint to undo it, and hostveil cannot tell a backdoor from a deliberate second root.",
 
 	// fileperms

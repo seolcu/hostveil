@@ -202,6 +202,19 @@ package fix
 //     SSH in as, and /etc/shadow does not say which this is. Setting a
 //     password instead cannot be done unattended by definition — hostveil
 //     would have to invent one, and then it would know it.
+//   - accounts.sudo-nopasswd — removing NOPASSWD is one line and hostveil
+//     will not touch it, for the reason that makes this finding common in
+//     the first place. Cloud and VM images ship the rule *because* the
+//     account they create has no password; take the rule away and that
+//     account cannot use sudo at all, so the fix that closes the hole also
+//     removes the operator's only route to root. The edit reverts cleanly
+//     and that is not the test — "recoverable in practice" asks whether
+//     they can still get in to revert it. hostveil cannot check the
+//     precondition either: whether a usable password exists is a question
+//     about a hash in /etc/shadow, and a hash being present does not mean
+//     anybody knows what it is. So the finding names the accounts, and the
+//     how-to-fix says to set the password and confirm it in a second
+//     session before removing the rule.
 //
 // (sysctl.* was in this list and is not any more; see below.)
 //

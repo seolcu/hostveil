@@ -171,13 +171,15 @@
             </div>
 
             <h2 id="accounts">Accounts <code>accounts.</code></h2>
-            <p>Parsed natively from <code>/etc/passwd</code> and <code>/etc/shadow</code>. Reading <code>/etc/shadow</code> needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>; without it, the empty-password check is skipped and the UID-0 check still runs.</p>
+            <p>One question asked three ways: who can become root, and what stands in their way. The first two answers come out of <code>/etc/passwd</code> and <code>/etc/shadow</code>, parsed natively. Reading <code>/etc/shadow</code> needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>; without it, the empty-password check is skipped and the UID-0 check still runs.</p>
+            <p>The third answer does not come from a file. sudo rules are a layered configuration with aliases, group specs that may resolve through LDAP rather than <code>/etc/group</code>, and include ordering — so hostveil asks sudo itself what each account may actually run, rather than re-deriving it from <code>/etc/sudoers</code>. That needs root too: without it the domain reports the gap instead of reporting that nobody was found.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

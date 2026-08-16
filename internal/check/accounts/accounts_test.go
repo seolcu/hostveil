@@ -9,9 +9,38 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
+
+// noSudo is a host with no sudo installed, which is the arrangement every test
+// below that is not about sudo wants: the question has an answer, so the domain
+// stays fully covered and these tests keep asserting what they were written to
+// assert.
+func noSudo() platform.Env { return checktest.New().Without("sudo").Env() }
+
+// withSudo scripts `sudo -l -U <user>` for each named user through the very
+// argv the checker builds, so a change to the flags breaks the fixture instead
+// of falling through to the fake's unscripted-command error — which every
+// checker reads as a tool that would not answer, the same value a broken host
+// produces. A fixture that spelled the argv out again would go on passing while
+// covering the opposite case.
+//
+// The root entry is the control run passwordlessSudoers makes before trusting
+// any failure; a host that omits it is one where hostveil is not root.
+func withSudo(replies map[string]string) platform.Env {
+	r := checktest.New()
+	for user, out := range replies {
+		argv := sudoListArgv(user)
+		r.Script(out, argv...)
+	}
+	return r.Env()
+}
+
+// rootMayRunAnything is what `sudo -l -U root` prints on any ordinary host, and
+// is what tells passwordlessSudoers that -U worked at all.
+const rootMayRunAnything = "User root may run the following commands on host:\n    (ALL : ALL) ALL\n"
 
 func writeFile(t *testing.T, name, content string) string {
 	t.Helper()
@@ -40,7 +69,7 @@ func TestCleanAccountsNoFindings(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd)
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nalice:$6$def:19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +82,7 @@ func TestRogueUID0(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:0:0::/root:/bin/bash\n")
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +107,7 @@ func TestRogueUID0LeadingZero(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:00:0::/root:/bin/bash\n")
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +121,7 @@ func TestEmptyPasswordLoginAccount(t *testing.T) {
 	// alice has an empty password field and a login shell -> flagged.
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nalice::19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +135,7 @@ func TestEmptyPasswordOnNonLoginAccountIgnored(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd)
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\ndaemon::19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +152,7 @@ func TestEmptyPasswordOnNonLoginAccountIgnored(t *testing.T) {
 func TestShadowUnreadableIsPartialNotClean(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:0:0::/root:/bin/bash\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: filepath.Join(t.TempDir(), "missing-shadow")}
-	fs, err := c.Check(context.Background(), platform.Env{})
+	fs, err := c.Check(context.Background(), noSudo())
 
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
@@ -168,7 +197,7 @@ func TestEmptyPasswordIgnoresNonLoginShellsAtAnyPath(t *testing.T) {
 			pw := writeFile(t, "passwd", cleanPasswd+"svc:x:998:998::/var/lib/svc:"+shell+"\n")
 			sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nsvc::19000:0:99999:7:::\n")
 			c := &Checker{PasswdPath: pw, ShadowPath: sh}
-			fs, err := c.Check(context.Background(), platform.Env{})
+			fs, err := c.Check(context.Background(), noSudo())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -187,7 +216,7 @@ func TestEmptyPasswordStillFiresOnARealLoginShell(t *testing.T) {
 			pw := writeFile(t, "passwd", cleanPasswd+"weak:x:1001:1001::/home/weak:"+shell+"\n")
 			sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\nweak::19000:0:99999:7:::\n")
 			c := &Checker{PasswdPath: pw, ShadowPath: sh}
-			fs, err := c.Check(context.Background(), platform.Env{})
+			fs, err := c.Check(context.Background(), noSudo())
 			if err != nil {
 				t.Fatal(err)
 			}
