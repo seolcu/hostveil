@@ -2,6 +2,93 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.21.0](https://github.com/seolcu/hostveil/compare/v3.20.2...v3.21.0) (2026-08-16)
+
+Two findings changed on the strength of one afternoon on a real server: one
+hostveil had never looked for, and one it was reporting on hosts that did not
+have it.
+
+### Features
+
+* **check:** sudo can hand out root with no password, and nothing looked
+  ([#753](https://github.com/seolcu/hostveil/issues/753)). The accounts domain
+  asked who can become root twice — a second UID 0, and an empty password —
+  and missed the mechanism people actually hit. Cloud and VM images ship
+  `NOPASSWD: ALL` so the first login works, and it is usually still there
+  years later: anyone holding that account's SSH key is root immediately,
+  with no second credential in the way.
+
+  It asks sudo rather than reading sudoers, because that configuration has
+  aliases, group specs that may resolve through LDAP rather than
+  `/etc/group`, netgroups and include ordering — re-deriving the effective
+  answer through all of it is the mistake `internal/compose.Discover` exists
+  to demonstrate. Only the unrestricted case is flagged: a `NOPASSWD` rule on
+  one named command is ordinary administration.
+
+  Three things the obvious implementation gets wrong, each with a test that
+  fails on it. Within one privilege line `NOPASSWD` holds until a later
+  `PASSWD` turns the prompt back on. `Defaults !authenticate` turns the
+  password off for every rule on the host and the privilege lines carry no
+  tag saying so. And `sudo -l -U someone` exits non-zero both for an account
+  with no sudo rights and for "a non-root user cannot use `-U`" — so root is
+  asked first, where the answer is known, and without that control run a
+  non-root scan reports that nobody can become root without a password having
+  never been allowed to ask.
+
+  Manual by decision: images ship the rule *because* the account has no
+  password, so removing it can leave that account unable to use sudo at all.
+
+### Bug Fixes
+
+* **platform:** a running ufw read as no firewall at all on Debian
+  ([#755](https://github.com/seolcu/hostveil/issues/755)). Debian dropped
+  sbin from a non-root user's `PATH`, and `ufw`, `nft` and `iptables` all
+  live in `/usr/sbin`. `exec.LookPath` therefore failed for a firewall that
+  was installed and running, the firewall domain read a front-end it could
+  not find as one that was not installed, and every front-end missing as "no
+  firewall is active" — so the host was handed the tool's most severe finding
+  telling it to install a firewall it was already running, and the ports
+  domain raised a second finding of its own on the same mistake.
+
+  Same machine, minutes apart: 50/100 with a High finding unprivileged,
+  100/100 clean as root. hostveil auto-elevates, which is why this was never
+  seen; `HOSTVEIL_NO_SUDO=1` is documented for scripts and CI, elevation can
+  fail, and a container may run as nobody.
+
+  `LookPath` falls back to the administrative directories — appended, never
+  prepended, and never for a name carrying a separator. Finding the binary is
+  the whole fix: the probe was already careful about the other half, so an
+  unreadable ufw becomes a coverage gap rather than an accusation.
+
+### Documentation
+
+* **measurements:** the published run was eleven releases stale, and is
+  re-measured on 3.20.2
+  ([#754](https://github.com/seolcu/hostveil/issues/754)). It is also the
+  first committed run to record the architecture it ran on and a manifest of
+  what was seeded — both fields existed and had never produced an artifact,
+  which is why an earlier release had to *strip* the architecture claim off
+  the page rather than correct it.
+
+  The score fell on the same seed, 40 to 29, and the page says why: hostveil
+  finds more on it, and 3.20.1 stopped crediting fixes that were written but
+  not yet in force. Three prose claims that the figure guard cannot see had
+  stopped being true and are corrected — including "every number came back to
+  where it started", which was wrong in an interesting way: ufw survives a
+  rollback because enabling a firewall has no checkpoint, so five
+  container-published ports answer straight *through* it. That is
+  `firewall.docker-bypass` demonstrating itself in an instrument that has
+  never heard of it.
+
+* publish what the repository can prove about itself
+  ([#757](https://github.com/seolcu/hostveil/issues/757)). Fix coverage was
+  published only inside a release note, the testing regime appeared in no
+  README and on no page, and the VM seeded to be vulnerable was published as
+  a contributor note. Every number added is computed rather than typed:
+  pages carry `data-counted="findings.fixable"` and a test resolves it
+  against the fix registry, so registering a fix for a finding that did not
+  have one fails the build until the pages move with it.
+
 ## [3.20.2](https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2) (2026-08-16)
 
 A release about things that were published and wrong. The screenshot on

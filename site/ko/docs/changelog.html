@@ -132,6 +132,35 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.21.0"><a href="https://github.com/seolcu/hostveil/compare/v3.20.2...v3.21.0">3.21.0</a> <span class="changelog-date">2026-08-16</span></h2>
+          <p>실제 서버에서 보낸 오후 하나로 발견 항목 둘이 바뀌었습니다. 하나는 hostveil이 한 번도 찾아본 적 없던 것이고, 하나는 그렇지 않은 호스트에 대고 보고하고 있던 것입니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> sudo가 비밀번호 없이 root를 내줄 수 있는데, 아무도 보지 않았습니다 (<a href="https://github.com/seolcu/hostveil/issues/753">#753</a>). 계정 영역은 누가 root가 될 수 있는지를 두 번 물었습니다. 두 번째 UID 0과 빈 비밀번호입니다. 그런데 사람들이 실제로 부딪히는 경로를 놓치고 있었습니다. 클라우드와 VM 이미지는 첫 로그인이 되도록 <code>NOPASSWD: ALL</code>을 넣어 두고, 그건 대개 몇 년 뒤에도 그대로 있습니다. 그 계정의 SSH 키를 쥔 사람은 두 번째 자격 증명 없이 즉시 root입니다.</p>
+              <p>sudoers를 읽는 대신 sudo에게 물어봅니다. 그 설정에는 별칭이 있고, <code>/etc/group</code>이 아니라 LDAP로 해석될 수도 있는 그룹 지정이 있고, 넷그룹과 include 순서가 있습니다. 그 전부를 거쳐 실효 값을 다시 유도하는 것은 <code>internal/compose.Discover</code>가 보여 주려고 존재하는 바로 그 실수입니다. 그리고 제한 없는 경우만 표시합니다. 이름 붙은 명령 하나에 걸린 <code>NOPASSWD</code> 규칙은 평범한 운영입니다.</p>
+              <p>뻔한 구현이 틀리는 지점이 셋이고, 각각 그 지점에서 실패하는 테스트가 있습니다. 한 권한 줄 안에서 <code>NOPASSWD</code>는 뒤에 <code>PASSWD</code>가 나와 프롬프트를 되살릴 때까지 유지됩니다. <code>Defaults !authenticate</code>는 호스트의 모든 규칙에서 비밀번호를 끄는데 권한 줄에는 그렇다는 태그가 없습니다. 그리고 <code>sudo -l -U 누군가</code>는 sudo 권한이 아예 없는 계정에 대해서도, "root가 아니면 <code>-U</code>를 못 쓴다"에 대해서도 0이 아닌 값으로 끝나서 상태만으로는 구분되지 않습니다. 그래서 답을 아는 root를 먼저 물어봅니다. 그 대조 실행이 없으면 root 아닌 스캔이, 물어볼 기회조차 얻지 못한 채로 "비밀번호 없이 root가 될 수 있는 사람은 없다"고 보고합니다.</p>
+              <p>판단해서 수동입니다. 이미지가 그 규칙을 넣어 둔 것은 그 계정에 비밀번호가 없기 때문이고, 그래서 규칙을 떼면 그 계정이 sudo를 아예 못 쓰게 될 수 있습니다.</p>
+            </li>
+          </ul>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>platform:</strong> Debian에서 돌고 있는 ufw가 방화벽 없음으로 읽혔습니다 (<a href="https://github.com/seolcu/hostveil/issues/755">#755</a>). Debian은 root가 아닌 사용자의 <code>PATH</code>에서 sbin을 뺐고, <code>ufw</code>와 <code>nft</code>와 <code>iptables</code>는 전부 <code>/usr/sbin</code>에 있습니다. 그래서 설치돼 돌고 있는 방화벽에 대해 <code>exec.LookPath</code>가 실패했고, 방화벽 영역은 찾지 못한 프런트엔드를 설치되지 않은 것으로 읽었고, 프런트엔드가 전부 없는 것을 "활성 방화벽 없음"으로 읽었습니다. 이미 돌고 있는 방화벽을 설치하라는, 이 도구에서 가장 심각한 등급의 발견 항목을 호스트에 건넨 셈입니다. 포트 영역도 같은 실수 위에서 자기 발견 항목을 하나 더 냈습니다.</p>
+              <p>같은 기계에서 몇 분 사이에, 권한 없이는 High 하나와 함께 50/100, root로는 100/100 깨끗함이었습니다. hostveil은 자동으로 권한을 올리기 때문에 지금까지 보이지 않았습니다. <code>HOSTVEIL_NO_SUDO=1</code>은 스크립트와 CI를 위해 문서화돼 있고, 권한 상승은 실패할 수 있고, 컨테이너는 nobody로 돌 수 있습니다.</p>
+              <p><code>LookPath</code>가 관리자 디렉터리로 물러나 찾습니다. 앞이 아니라 뒤에 붙이고, 구분자가 들어간 이름에는 적용하지 않습니다. 바이너리를 찾는 것이 수정의 전부입니다. 탐침은 나머지 절반에 대해서는 이미 조심스러웠기 때문에, 읽을 수 없는 ufw는 이제 비난이 아니라 확인하지 못한 영역이 됩니다.</p>
+            </li>
+          </ul>
+          <h3>문서</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>measurements:</strong> 공개된 실측이 열한 릴리스나 낡아 있었고, 3.20.2에서 다시 측정했습니다 (<a href="https://github.com/seolcu/hostveil/issues/754">#754</a>). 아울러 실행한 아키텍처와 무엇을 심었는지에 대한 명세를 기록한 첫 실행입니다. 두 필드 모두 만들어져 있었지만 결과물을 낸 적이 없었고, 그래서 이전 릴리스는 페이지의 아키텍처 주장을 고치는 대신 <em>지워야</em> 했습니다.</p>
+              <p>같은 씨앗인데 점수가 40에서 29로 내려갔고, 페이지가 그 이유를 말합니다. hostveil이 더 많이 찾아냈고, 3.20.1이 기록만 되고 발효되지 않은 수정을 자기 공으로 세는 것을 그만뒀기 때문입니다. 수치 검사가 볼 수 없는 산문 주장 셋이 사실이 아니게 돼 있었고 바로잡았습니다. 그중 "모든 숫자가 시작한 자리로 돌아왔다"는 흥미로운 방식으로 틀려 있었습니다. 방화벽을 켜는 것은 체크포인트가 없어서 ufw가 롤백을 살아남고, 컨테이너가 공개한 포트 다섯 개는 그것을 <em>통과해서</em> 응답합니다. <code>firewall.docker-bypass</code>가, 그것을 한 번도 들어본 적 없는 계측기 안에서 스스로를 증명한 셈입니다.</p>
+            </li>
+            <li>
+              <p>이 저장소가 스스로에 대해 증명할 수 있는 것을 공개합니다 (<a href="https://github.com/seolcu/hostveil/issues/757">#757</a>). 수정 커버리지는 릴리스 노트 안에만 있었고, 테스트 체계는 어느 README에도 어느 페이지에도 없었고, 취약하게 시드된 VM은 기여자용 안내로만 적혀 있었습니다. 추가한 숫자는 전부 타이핑한 것이 아니라 계산한 것입니다. 페이지가 <code>data-counted="findings.fixable"</code>을 달고 테스트가 그것을 수정 레지스트리에 맞춰 풀기 때문에, 수정이 없던 발견 항목에 수정을 등록하면 페이지가 따라 움직일 때까지 빌드가 깨집니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.20.2"><a href="https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2">3.20.2</a> <span class="changelog-date">2026-08-16</span></h2>
           <p>공개돼 있었는데 틀린 것들에 대한 릴리스입니다. 웹사이트의 스크린샷이 hostveil이 낼 수 없는 발견 항목을 보여주고 있었고, 네 페이지가 바이너리와 어긋나 있었고, 내장 도움말에서 플래그 여섯 개가 빠져 있었고, 동아시아 모호 폭 문자를 넓게 그리는 터미널에서는 미터가 배정된 폭의 두 배로 그려지고 있었습니다.</p>
           <h3>버그 수정</h3>
