@@ -1,0 +1,132 @@
+/* Korean typography. Linked from the Korean pages only, after styles.css and
+   docs.css so the overrides below land at equal specificity.
+ *
+ * Two jobs. It supplies the Hangul the design has no glyph for — the body is
+ * Georgia and the labels are monospace, and neither has ever had one, so until
+ * this existed every Korean character on the site was drawn by whatever the
+ * reader's machine fell back to. And it retunes the handful of measurements
+ * that were set for uppercase Latin and do not transfer: tracking, leading,
+ * and where a line is allowed to break.
+ *
+ * The faces are subsets built by scripts/korean-subset.py and carry the site's
+ * own 766 syllables and nothing else; internal/docs/koreanfont_test.go fails
+ * the build when Korean copy uses one they lack. */
+
+/* unicode-range is what keeps this off the English pages' bill and out of the
+   Latin's way: a browser fetches a @font-face only when it has to draw a
+   codepoint inside the range, so Georgia and the monospace stack still set
+   every Latin letter, digit, dash and arrow on the page — including the ones
+   inside a Korean sentence. The English pages do not link this file at all,
+   which is a separate guard for the same thing: they contain three Hangul
+   syllables (the 한국어 switcher) and should not pull 112KB to draw them.
+
+   size-adjust is not a fudge factor. Noto Serif KR's syllables ink at 0.94em
+   against Georgia's 0.695em cap and 0.485em x-height, so at a shared font-size
+   the Hangul runs 1.94x the Latin x-height and reads a size larger than the
+   words beside it; 95% puts it at 1.84x, which is where a Korean/Latin pairing
+   sits. The sans needs none — Noto Sans KR inks at 0.885em, and 0.94 x 0.95 is
+   0.893, so after the adjustment the two faces agree and a label and a
+   paragraph render Hangul at the same optical size. */
+
+@font-face {
+  font-family: "Noto Serif KR";
+  src: url(assets/fonts/NotoSerifKR-400.woff2) format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 95%;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+
+@font-face {
+  font-family: "Noto Serif KR";
+  src: url(assets/fonts/NotoSerifKR-700.woff2) format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 95%;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+
+@font-face {
+  font-family: "Noto Sans KR";
+  src: url(assets/fonts/NotoSansKR-400.woff2) format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+
+@font-face {
+  font-family: "Noto Sans KR";
+  src: url(assets/fonts/NotoSansKR-700.woff2) format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+
+:root {
+  /* One value for every tracked micro-label on the Korean pages, rather than a
+     Korean counterpart for each of the seven the Latin design uses. Those seven
+     are a distinction between widths of uppercase Latin; Hangul is square and
+     already carries its own sidebearings, so what it needs is a single small
+     opening — and a constant cannot go stale against a number it was never
+     derived from. TestKoreanTypographyRetracksEveryWideLabel is what keeps the
+     selector list below in step with styles.css and docs.css. */
+  --track-ko-label: 0.04em;
+}
+
+body {
+  /* Korean prose wants more air between lines than a Latin serif does, and it
+     wants to break between 어절 rather than mid-word: keep-all is the whole
+     reason a Korean page reads as typeset rather than as reflowed. It turns a
+     space-free run into one unbreakable word, so overflow-wrap is what stops a
+     long command or URL from pushing the layout sideways. */
+  line-height: 1.78;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* Negative tracking is a Latin display trick — it closes the gaps that
+   capitals leave. Hangul has no such gaps, and at -0.04em a 3rem headline sets
+   its syllables touching. Enough is kept to hold the Latin in a mixed
+   headline together. */
+h1,
+h2,
+.docs-prose > h1,
+.docs-prose h2 {
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  line-height: 1.3;
+}
+
+h2,
+.docs-prose > h1 {
+  line-height: 1.28;
+}
+
+h3 {
+  line-height: 1.45;
+}
+
+/* Every rule in styles.css and docs.css that tracks a label wider than 0.05em,
+   minus .hero-panel::before, whose text is a CSS string and is Latin in both
+   languages. Adding a wide-tracked label to either stylesheet without adding
+   it here fails the build. */
+.eyebrow,
+.nav-links,
+.site-footer nav,
+.score-card span,
+.finding span,
+.card-kicker,
+.check-stack strong,
+figcaption strong,
+.docs-nav-group > p,
+.docs-sidebar-toggle,
+.docs-breadcrumb,
+.callout .callout-label {
+  letter-spacing: var(--track-ko-label);
+}
