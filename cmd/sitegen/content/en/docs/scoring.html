@@ -57,7 +57,7 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             <h3 id="score-vs-penalty">Score and penalty are two different numbers</h3>
             <p>Each axis reports both, and they are rounded independently from the same <code>remaining</code>. The <strong>score</strong> is the axis on its own terms, 0–100. The <strong>penalty</strong> is what that axis contributed to the headline number, expressed in the axis&rsquo;s own cap.</p>
             <p>The score is <code>round(100 × remaining)</code> and not <code>100 - penalty × 100 / cap</code>, for resolution: a cap-6 axis has only seven possible integer penalties, so deriving the score from the penalty would give that axis seven distinct scores. Drawing from <code>remaining</code> gives every axis the full range no matter how small its cap.</p>
-            <p>The visible consequence is that <strong>the displayed penalties do not have to add up to <code>100 - overall</code></strong>, and this is not a bug. With all twelve domains running and exactly one Low finding on File permissions (cap 5), one on Kernel hardening (cap 5), and one on Service hardening (cap 6):</p>
+            <p>The visible consequence is that <strong>the displayed penalties do not have to add up to <code>100 - overall</code></strong>, and this is not a bug. With all thirteen domains running and exactly one Low finding on File permissions (cap 5), one on Kernel hardening (cap 5), and one on Service hardening (cap 6):</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Axis</th><th>Cap</th><th>remaining</th><th>Score</th><th>Penalty</th></tr></thead>
@@ -92,6 +92,10 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
 
             <h2 id="worked">A worked example</h2>
             <p>A real scan of a deliberately messy host: 83 findings, <code>scan</code> exiting 1. Twelve domains were attempted and ten ran — Trivy was not installed and systemd did not answer. One of the ten, the Docker daemon, covered only part of its ground, so the 83 findings come from ten domains of which nine were complete.</p>
+            <div class="callout">
+              <span class="callout-label">This capture is from before the Reverse proxy axis</span>
+              <p>Twelve domains, and the caps of the release it was taken on — so the numbers in this section no longer match the table above, and are left alone rather than restated at today&rsquo;s caps. The reason is worth stating plainly, because it is a gap in how this page is maintained rather than a property of the model: <strong>the exact contributions here were derived by hand, the scan they came from is not kept anywhere, and <code>ScoreAxis</code> reports only a rounded score and an integer penalty — so nothing in the repository can reproduce or check them.</strong> Restating them at new caps would mean re-deriving figures nobody can verify, which is the opposite of what this section is for. What it teaches is unaffected: a cap enters only at the last step, scaling a <code>remaining</code> that is computed without it, and every figure below is still exact for the scan it came from.</p>
+            </div>
 
             <h3>One axis, step by step</h3>
             <p>SSH completed, and reported five findings:</p>
@@ -189,7 +193,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
             <p>The container axis is the cleanest statement of the point. It carries 52 findings — 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
 
             <h2 id="caps">A cap is a weight, never a threshold</h2>
-            <p>Each axis carries a cap, and the twelve caps sum to exactly 100. The sum is a readability decision rather than an arithmetic requirement: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
+            <p>Each axis carries a cap, and the thirteen caps sum to exactly 100. The sum is a readability decision rather than an arithmetic requirement: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
             <p>A cap is <strong>the axis&rsquo;s share of the overall score and nothing else</strong>. It is purely how much this domain matters. In particular:</p>
             <p><strong>The cap is not a budget of damage the axis can absorb before it fails.</strong> It does not appear in the per-axis score at all. Every axis is scored 0–100 on its own terms, by the same erosion. A cap-5 axis and a cap-14 axis with identical findings show the identical axis score.</p>
             <p><strong>The cap enters exactly once, at the aggregate</strong>, as <code>cap × (1 - remaining)</code>. So Kernel hardening at 40/100 drags the overall about a third as hard as Container exposure at 40/100 — not because kernel findings are less true, but because that domain was argued to matter less to a self-hosted server.</p>
@@ -201,16 +205,17 @@ overall   = 100 - round(57.246554 × 100 / 84)
               <table>
                 <thead><tr><th>Axis</th><th>Cap</th><th>The argument</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>14</td><td>No positive argument for 14. It is one of only two axes large enough that giving a point away does not change what it can express. It used to be priced to cover the daemon as well, because it was the only place any Docker risk landed; it no longer has to, and its findings are now strictly about what a service declares.</td></tr>
-                  <tr><td>SSH hardening</td><td>14</td><td>No positive argument for 14. The other axis large enough to give from the top without losing resolution, and the benchmark for remote-administration blast radius that the Docker daemon axis is argued against.</td></tr>
-                  <tr><td>Vulnerabilities</td><td>10</td><td>No positive argument for 10. Characterised as already generous, and Docker-conditional like the daemon axis but slower-moving: an open API hands over every container today, while an image&rsquo;s patch level is a slower problem.</td></tr>
-                  <tr><td>Host firewall</td><td>9</td><td>No positive argument for 9. Already had a share argued as generous, and <code>firewall.docker-bypass</code> already says the daemon walks straight through it.</td></tr>
-                  <tr><td>Exposed services</td><td>8</td><td>No positive argument for 8. It is the anchor the AI-agent tie is argued from, and it cannot judge the most dangerous port a Docker host publishes — the number alone does not say whether TLS verification is in force.</td></tr>
-                  <tr><td>AI agent runtimes</td><td>8</td><td><strong>Ties with Exposed services deliberately, and the tie is the argument.</strong> Both describe a network service that should not be reachable. The agent&rsquo;s worst case is strictly worse — an unauthenticated gateway is remote code execution as a real user — but it applies to far fewer hosts and is excluded entirely where no agent runtime is installed, so a generous cap costs a typical host nothing and carries real weight where it applies.</td></tr>
+                  <tr><td>Container exposure</td><td>13</td><td>No positive argument for 13. It is one of only two axes large enough that giving a point away does not change what it can express. It used to be priced to cover the daemon as well, because it was the only place any Docker risk landed; it no longer has to, and its findings are now strictly about what a service declares.</td></tr>
+                  <tr><td>SSH hardening</td><td>13</td><td>No positive argument for 13. The other axis large enough to give from the top without losing resolution, and the benchmark for remote-administration blast radius that the Docker daemon axis is argued against.</td></tr>
+                  <tr><td>Vulnerabilities</td><td>9</td><td>No positive argument for 9. Characterised as already generous, and Docker-conditional like the daemon axis but slower-moving: an open API hands over every container today, while an image&rsquo;s patch level is a slower problem.</td></tr>
+                  <tr><td>Host firewall</td><td>8</td><td>No positive argument for 8. Already had a share argued as generous, and <code>firewall.docker-bypass</code> already says the daemon walks straight through it.</td></tr>
+                  <tr><td>Exposed services</td><td>7</td><td>No positive argument for 7. It is the anchor the AI-agent tie is argued from, and it cannot judge the two most dangerous ports a self-hosted machine publishes: the number alone does not say whether the Docker API demands TLS verification, nor what the thing answering on 443 does with what it is handed.</td></tr>
+                  <tr><td>AI agent runtimes</td><td>7</td><td><strong>Ties with Exposed services deliberately, and the tie is the argument.</strong> Both describe a network service that should not be reachable. The agent&rsquo;s worst case is strictly worse — an unauthenticated gateway is remote code execution as a real user — but it applies to far fewer hosts and is excluded entirely where no agent runtime is installed, so a generous cap costs a typical host nothing and carries real weight where it applies.</td></tr>
                   <tr><td>Account hygiene</td><td>7</td><td>An anchor. A small rule set where one member is catastrophic and the rest are hygiene; it is excluded only where the user databases cannot be read at all.</td></tr>
                   <tr><td>Auto-updates</td><td>7</td><td>An anchor, and one of the two the Docker daemon axis deliberately ties with.</td></tr>
                   <tr><td>Docker daemon</td><td>7</td><td><strong>Ties with Account hygiene and Auto-updates deliberately, and the tie is the argument.</strong> Like account hygiene it is a small rule set where one member is catastrophic and the rest are hygiene; like both, it is excluded entirely on a host it does not apply to.</td></tr>
                   <tr><td>Service hardening</td><td>6</td><td><strong>Sits one step under that 7-band, and the gap is the argument.</strong> It covers the same ground for a unit-started service that Container exposure covers for a Compose one — can it gain privileges, can it write outside its own data, can it read every home directory — so on a host running services natively it does that axis&rsquo;s job. It sits lower because none of its findings is by itself an entry: each widens what a compromise reaches rather than granting it.</td></tr>
+                  <tr><td>Reverse proxy</td><td>6</td><td><strong>Ties with Service hardening deliberately.</strong> It is the component this audience is most likely to have and least likely to have configured, and everything else here sits behind whatever answers on 443 — which argues for more. Three things hold it to 6. Its rule set is deliberately narrow: three findings chosen for being unambiguous, with a proxy serving plain HTTP, missing security headers and anything about certificates all declined because a correct configuration and a broken one are not distinguishable from the file. It is excluded entirely on a host running no proxy, like the 7-band axes it sits under. And like Service hardening, none of its findings is by itself the way in — an insecure Traefik dashboard enumerates the backends rather than opening them.</td></tr>
                   <tr><td>File permissions</td><td>5</td><td><strong>Ties with Kernel hardening deliberately.</strong> Both are quiet local-hardening backstops: neither is the hole an attacker comes in through, each is what stops a foothold from becoming root.</td></tr>
                   <tr><td>Kernel hardening</td><td>5</td><td>The same argument, the same sentence, the same number.</td></tr>
                   <tr><td><strong>Total</strong></td><td><strong>100</strong></td><td></td></tr>
@@ -218,8 +223,8 @@ overall   = 100 - round(57.246554 × 100 / 84)
               </table>
             </div>
 
-            <h3 id="funding">Two new axes, paid for out of the old ones</h3>
-            <p>The total has to stay 100, so adding a domain is always a transfer and never an inflation. Both recent axes were funded by naming who gave and why. This is the part of the table with the most argument in it, because a transfer has to be defended twice — once for the receiver and once for each giver.</p>
+            <h3 id="funding">Three new axes, paid for out of the old ones</h3>
+            <p>The total has to stay 100, so adding a domain is always a transfer and never an inflation. Each recent axis was funded by naming who gave and why. This is the part of the table with the most argument in it, because a transfer has to be defended twice — once for the receiver and once for each giver.</p>
             <p><strong>Docker daemon (7), from six axes:</strong></p>
             <div class="docs-table-wrap">
               <table>
@@ -249,7 +254,22 @@ overall   = 100 - round(57.246554 × 100 / 84)
               </table>
             </div>
             <p>Those last four share one argument: a service running unsandboxed is the step <em>after</em> every one of them. The exposed port, the unpatched image and the bypassed firewall all end at a process, and this axis is about what that process can then touch.</p>
-            <p>The arithmetic those two tables imply: before both transfers, Container exposure stood at 17 and SSH at 16, and Vulnerabilities, Exposed services, Host firewall and AI agent runtimes each stood two points higher than they do now.</p>
+            <p><strong>Reverse proxy (6), one point from each of the same six axes:</strong></p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Giver</th><th>Gave</th><th>Why</th></tr></thead>
+                <tbody>
+                  <tr><td>Container exposure</td><td>1</td><td>Gave from the top again, and for a second reason: on the hosts this domain reads, the proxy <em>is</em> a Compose service, and what its command line turns on was being scored only as a container until now.</td></tr>
+                  <tr><td>SSH hardening</td><td>1</td><td>Same reason as before: large enough that a point costs it nothing expressively.</td></tr>
+                  <tr><td>Vulnerabilities</td><td>1</td><td>Already generous, and the two are the same shape of claim about the same software — one about the version of what is listening, one about how it was configured. The configuration is the half the operator chose.</td></tr>
+                  <tr><td>Exposed services</td><td>1</td><td>The same custody argument the Docker daemon axis made. The port table can say 443 is open, which on a self-hosted machine is the intended state and therefore not a finding; this axis is the first thing that can judge what is answering on it.</td></tr>
+                  <tr><td>Host firewall</td><td>1</td><td>A firewall&rsquo;s job ends at deciding what may reach the port. Everything this axis reports is on the far side of a port the operator opened on purpose.</td></tr>
+                  <tr><td>AI agent runtimes</td><td>1</td><td>Its generous cap was argued from being N/A on most hosts, and that argument now has a third claimant: a host with no nginx and no Traefik is excluded from this axis exactly as it is from that one.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The arithmetic those three tables imply: before all three transfers, Container exposure stood at 17 and SSH at 16, and Vulnerabilities, Exposed services, Host firewall and AI agent runtimes each stood three points higher than they do now.</p>
+            <p>Two of those givers gave the same point twice, and the 7-band is where it shows: Exposed services and AI agent runtimes have now both come down from 8 and are still tied, which was the constraint the transfer was fitted to rather than a result of it. The tie is argued above and is not something a new axis is allowed to break in passing.</p>
 
             <h2 id="renormalization">Renormalization: what happens when a domain does not run</h2>
             <p>&ldquo;I could not look&rdquo; and &ldquo;there was nothing there&rdquo; produce the same empty list of findings and mean opposite things. The whole point of renormalization is to keep them apart in the arithmetic, not only in the prose.</p>
@@ -270,7 +290,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
 total     = Σ cap × lost over axes that ran
 
 overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
-            <p>With all twelve domains running, <code>ranCapSum</code> is 100 and the overall is <code>100 - round(total)</code>. With Trivy missing, it is 90, and the other ten axes are renormalized to fill the gap — you are neither penalized for not running Trivy nor handed a free 10 points for it.</p>
+            <p>With all thirteen domains running, <code>ranCapSum</code> is 100 and the overall is <code>100 - round(total)</code>. With Trivy missing, it is 91, and the other twelve axes are renormalized to fill the gap — you are neither penalized for not running Trivy nor handed a free 9 points for it.</p>
             <p><strong>Partial is scored, and always flagged.</strong> A domain that covered part of its ground has real findings and a real, if incomplete, picture; excluding it would throw away what it did see. But an unlabelled score drawn from half a domain is the same lie as scoring a skipped domain 100, so the flag is not optional — the TUI writes <code>42~</code>, the dashboard writes it in amber.</p>
             <div class="callout">
               <span class="callout-label">When nothing ran at all</span>
@@ -311,7 +331,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             <p><strong>The number can still move before a daemon does.</strong> The rule above keys on the fix knowing that something has to re-read its file, and one case is deliberately left out: an <code>sshd_config</code> edit. The SSH checker reads that same file, so a re-check genuinely confirms the change &mdash; while <code>sshd</code> keeps serving from the configuration it loaded at startup, which may still permit what you just switched off. Restart it, which is what the fix tells you to do, and the two agree again.</p>
             <p><strong>Two hosts&rsquo; scores are not comparable</strong>, as above. Neither are two scans of the same host across a change in what is installed: install Trivy and the Vulnerabilities axis joins the average, which will move the overall without anything about your configuration having changed.</p>
             <p><strong>It says nothing about what your services do.</strong> No score derived from configuration can. An application with an authentication bypass on a perfectly hardened host scores 100, and the score is right about the host and useless about your situation.</p>
-            <p><strong>It says nothing about what hostveil does not check.</strong> Backups, secrets in your git history, the reverse proxy&rsquo;s TLS configuration, whether anyone is reading the logs. The score is silent about all of it, and silence is not a pass.</p>
+            <p><strong>It says nothing about what hostveil does not check.</strong> Backups, secrets in your git history, the certificate your reverse proxy serves, whether anyone is reading the logs. The score is silent about all of it, and silence is not a pass.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="checks">← What it checks</a>

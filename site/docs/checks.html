@@ -141,12 +141,13 @@
                   <tr><td>Kernel hardening</td><td><code>sysctl.</code></td><td>—</td></tr>
                   <tr><td>Docker daemon</td><td><code>dockerd.</code></td><td>Docker</td></tr>
                   <tr><td>Service hardening</td><td><code>systemd.</code></td><td>systemd</td></tr>
+                  <tr><td>Reverse proxy</td><td><code>proxy.</code></td><td>nginx or Docker</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains hostveil can report <strong data-counted="findings.total">75</strong> findings, and <strong data-counted="findings.fixable">38</strong> of them carry a fix — <span data-counted="findings.auto">25</span> it will apply unattended, <span data-counted="findings.review">13</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains hostveil can report <strong data-counted="findings.total">78</strong> findings, and <strong data-counted="findings.fixable">38</strong> of them carry a fix — <span data-counted="findings.auto">25</span> it will apply unattended, <span data-counted="findings.review">13</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
 
             <h2 id="severity">Severity &amp; the score</h2>
             <p>hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
@@ -175,12 +176,13 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>14</td></tr>
-                  <tr><td>SSH hardening</td><td>14</td></tr>
-                  <tr><td>Vulnerabilities</td><td>10</td></tr>
-                  <tr><td>Host firewall</td><td>9</td></tr>
-                  <tr><td>Exposed services</td><td>8</td></tr>
-                  <tr><td>AI agent runtimes</td><td>8</td></tr>
+                  <tr><td>Container exposure</td><td>13</td></tr>
+                  <tr><td>SSH hardening</td><td>13</td></tr>
+                  <tr><td>Vulnerabilities</td><td>9</td></tr>
+                  <tr><td>Host firewall</td><td>8</td></tr>
+                  <tr><td>Exposed services</td><td>7</td></tr>
+                  <tr><td>AI agent runtimes</td><td>7</td></tr>
+                  <tr><td>Reverse proxy</td><td>6</td></tr>
                   <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
                   <tr><td>Docker daemon</td><td>7</td></tr>
@@ -304,6 +306,20 @@
                   <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 id="proxy">Reverse proxy <code>proxy.</code></h2>
+            <p>The component this audience is most likely to have and least likely to have configured: everything else here sits behind whatever answers on 443. Two surfaces, because there are two ways people run one — nginx from a package, read out of <code>/etc/nginx</code> and following <code>include</code> into <code>conf.d</code> and <code>sites-enabled</code>; and Traefik as a container, read out of the Compose files the container domain already discovers.</p>
+            <p>Three things are <em>deliberately</em> not checked. A proxy serving plain HTTP, because a vhost whose only job is to redirect to HTTPS and a proxy behind something that already terminates TLS are both correct and neither is distinguishable from the config. Missing security headers, because they are worth having and are not what gets somebody breached. And anything about certificates, because expiry and issuer are facts about the network rather than about a file.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

@@ -202,6 +202,32 @@ package fix
 //     SSH in as, and /etc/shadow does not say which this is. Setting a
 //     password instead cannot be done unattended by definition — hostveil
 //     would have to invent one, and then it would know it.
+//   - proxy.traefik-api-insecure — the remediation is deleting one flag, and
+//     it is exec-shaped rather than edit-shaped in the way that matters:
+//     Traefik reads it at start, so the change is not in force until the
+//     container is recreated, and recreating the container that fronts every
+//     other service on the host is not a thing to do while nobody is
+//     watching. The honest fix is also not just a deletion — an operator who
+//     wanted the dashboard still wants it, through a router with
+//     authentication, and hostveil cannot invent which hostname or which
+//     middleware. Deleting the flag alone takes the dashboard away without
+//     saying so.
+//   - proxy.tls-deprecated-protocols — the line to write is unambiguous and
+//     the file to write it in is not. nginx resolves ssl_protocols by the
+//     usual inheritance: a value in `http` covers every server that does not
+//     set its own, and a server block that sets one wins for that vhost.
+//     hostveil sees which files name the directive, not which block each
+//     occurrence sits in, so it cannot tell an edit that fixes the host from
+//     one that fixes a single vhost and leaves the rest — and the finding
+//     would clear either way. This is persistSysctl's rule about writing the
+//     file that does not decide the value, in a configuration language whose
+//     precedence hostveil does not model.
+//   - proxy.directory-listing — the same shape and a sharper version of it:
+//     `autoindex on` is sometimes deliberate for one location, and the
+//     remediation is to narrow it rather than to remove it. A fix that
+//     deleted the directive would break a directory somebody meant to be
+//     browsable, and one that turned it off at the server level would change
+//     a vhost hostveil never looked inside.
 //   - accounts.sudo-nopasswd — removing NOPASSWD is one line and hostveil
 //     will not touch it, for the reason that makes this finding common in
 //     the first place. Cloud and VM images ship the rule *because* the

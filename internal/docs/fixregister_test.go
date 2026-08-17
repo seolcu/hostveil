@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/fix"
+	"github.com/seolcu/hostveil/internal/model"
 )
 
 // fix.Default()'s doc comment is the register of findings deliberately left
@@ -52,7 +53,23 @@ func TestEveryFindingIsEitherFixableOrDeclinedOnPurpose(t *testing.T) {
 
 // registerID matches an ID as the register writes it, including the
 // source-wide glob form.
-var registerID = regexp.MustCompile(`\b(ssh|compose|cve|ports|firewall|accounts|fileperms|updates|agent|sysctl|dockerd|systemd)\.(\*|[a-z0-9][a-z0-9.\-]*)`)
+//
+// The domain alternation is built from model.AllSources rather than typed out.
+// It was a literal list, and a literal list of the twelve domains is exactly
+// the thing this repository keeps having to fix: a thirteenth domain's entries
+// in the register were invisible to this pattern, so every one of its findings
+// read as Manual-by-omission while the register named all three of them.
+// A test that cannot see a whole domain fails in the direction that looks like
+// a product bug.
+var registerID = regexp.MustCompile(`\b(` + strings.Join(sourceNames(), "|") + `)\.(\*|[a-z0-9][a-z0-9.\-]*)`)
+
+func sourceNames() []string {
+	var out []string
+	for _, s := range model.AllSources() {
+		out = append(out, s.String())
+	}
+	return out
+}
 
 // declinedInRegister reads the doc comment on fix.Default and returns every
 // finding ID it names.
