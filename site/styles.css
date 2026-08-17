@@ -17,8 +17,28 @@
   --warning: #d6ae58;
   --shadow-cut: #020504;
   --max: 1080px;
-  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", monospace;
+  /* Hangul comes from the two families named in the middle of each stack.
+     site/korean.css claims both with @font-face — Korean pages link it, English
+     pages do not — and restricts them by unicode-range to the Hangul blocks, so
+     Latin resolves to Georgia and to the monospace stack exactly as it would
+     with no webfont at all.
+
+     The system families behind them are the names an OS actually registers.
+     This used to ask for "Apple SD Gothic Neo", "Noto Sans KR" and "Malgun
+     Gothic" in both stacks, of which only the first two exist and only on one
+     platform each: "Noto Sans KR" is the Google Fonts name, and what a Linux
+     distribution installs is "Noto Sans CJK KR". So on Fedora every Korean
+     entry in both stacks missed and Hangul fell through to the generic — and
+     the generic at the end of a monospace stack is a monospace CJK face, which
+     is how the Korean nav, buttons, eyebrows, card kickers and finding titles
+     came to be set in fixed-width Hangul with tracking on top of it.
+
+     Hence the asymmetry: --font-body falls back to Korean serifs and
+     --font-mono to Korean *sans* faces, because a label wants a 고딕 and Korean
+     has no monospace tradition to borrow one from. `monospace` stays last for
+     Latin, which never reaches it. */
+  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif KR", "Noto Serif CJK KR", "Source Han Serif K", AppleMyungjo, Batang, "바탕", serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Noto Sans KR", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", "맑은 고딕", monospace;
 }
 
 * {

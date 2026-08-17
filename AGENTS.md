@@ -235,7 +235,17 @@ Flow: `cmd/hostveil/app.go` builds the one engine (all twelve checkers + `fix.De
 
 ## Website
 
-`site/**/*.html` is **generated — never hand-edit it.** Source of truth is `cmd/sitegen/`: `pages.json` (metadata, **plain text** — the generator HTML-escapes it, so write `Fixing & rollback`), `templates/*.tmpl`, `content/{en,ko}/` (raw HTML fragments). Regenerate with `go run ./cmd/sitegen` and commit the output; CI fails if `site/` drifts. CSS/JS and `site/assets/` are *not* generated — edit directly.
+`site/**/*.html` is **generated — never hand-edit it.** Source of truth is `cmd/sitegen/`: `pages.json` (metadata, **plain text** — the generator HTML-escapes it, so write `Fixing & rollback`), `templates/*.tmpl`, `content/{en,ko}/` (raw HTML fragments). Regenerate with `go run ./cmd/sitegen` and commit the output; CI fails if `site/` drifts. CSS/JS and `site/assets/` are *not* generated — edit directly, with the one exception below.
+
+### The Korean pages carry a font
+
+Neither Georgia nor the monospace stack has a Hangul glyph, so every Korean character on the site was drawn by whatever the reader's machine fell back to — and both stacks asked for the wrong names. `"Noto Sans KR"` is the Google Fonts name; what a distribution installs is `"Noto Sans CJK KR"`, so on Fedora every Korean entry missed and Hangul fell through to the generic at the end of each list. At the end of a *monospace* list that generic is a monospace CJK face, which is how the Korean nav, buttons, eyebrows, card kickers and finding titles came to be set in fixed-width Hangul with 0.14em of tracking on top.
+
+`site/korean.css` answers that, and `cmd/sitegen` links it from the Korean pages only. It declares Noto Serif KR for the body and Noto Sans KR for the slots the Latin sets in monospace, each `unicode-range`d to the Hangul blocks so Latin still resolves to Georgia and an English page — which contains three Hangul syllables, the 한국어 switcher — downloads none of it. Alongside the faces it retunes what does not transfer between the scripts: `word-break: keep-all`, looser leading, and one tracking value in place of the seven the Latin design uses for uppercase labels.
+
+`site/assets/fonts/` **is** generated, by `scripts/korean-subset.py` (`pip install fonttools brotli`). The faces are subsets carrying the site's own repertoire — 766 of Korean's 11,172 syllables, which is what gets a serif weight to 112KB rather than megabytes — and a subset is the one asset that is wrong *silently*: one new Korean sentence with one syllable that was not there when it ran, and that character alone falls back to a system font mid-word, correct on either side, invisible in a diff. So the script writes `coverage.txt` beside the fonts and `internal/docs/koreanfont_test.go` reads it back — `TestEveryKoreanSyllableOnTheSiteHasAGlyph` is the one that matters; the others hold the fonts to the manifest, keep the retracked-label list in step with the two stylesheets, and keep the stylesheet off the English pages. **Re-run the script after editing Korean copy**, and note the order: it reads `site/ko/`, so `go run ./cmd/sitegen` comes first.
+
+The woff2 output is not byte-reproducible across fonttools and brotli versions, which is why the fonts are not part of the `git diff --exit-code site/` gate. Coverage is what is pinned, and that does not depend on either.
 
 ## AI
 

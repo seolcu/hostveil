@@ -194,6 +194,17 @@ func assetLinks(kind, lang string) string {
 	link(prefix + "styles.css")
 	if kind == "docs" {
 		link(prefix + "docs.css")
+	}
+	// Korean pages only, and last of the stylesheets: korean.css supplies the
+	// Hangul webfaces neither Georgia nor the monospace stack has a glyph for,
+	// and retunes the tracking and leading around them, which means overriding
+	// styles.css and docs.css at equal specificity. Linking it everywhere would
+	// have an English page fetch a 112KB serif to draw the three syllables in
+	// its 한국어 switcher.
+	if lang == "ko" {
+		link(prefix + "korean.css")
+	}
+	if kind == "docs" {
 		script(prefix + "docs.js")
 	} else {
 		script(prefix + "script.js")
