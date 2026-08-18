@@ -74,6 +74,9 @@ var declineReasons = map[string]string{
 	"compose.ds020": "A monitoring agent legitimately needs the host PID namespace, and deleting pid: host breaks that case silently — the service starts and sees nothing.",
 	"compose.ds021": "Processes that share memory legitimately need ipc: host, and deleting the line breaks that case silently — the service starts and stops working.",
 	"compose.ds022": "read_only: true breaks any image that writes inside its own filesystem, and a static audit cannot learn which paths need tmpfs mounts instead.",
+	"compose.ds023": "Removing seccomp:unconfined can break software that requires a blocked syscall, and only the application owner can choose a narrower profile.",
+	"compose.ds024": "Removing apparmor:unconfined can prevent the service starting, and hostveil cannot invent the application-specific profile it needs.",
+	"compose.ds026": "Removing host user-namespace mode can invalidate bind-mount ownership and stop the service, which needs an operator-planned migration.",
 
 	// firewall
 	"firewall.default-allow": "Default-deny takes effect the moment it is set, on the SSH session you are issuing it from, and an exec fix leaves no checkpoint to undo a lockout.",
@@ -98,6 +101,8 @@ var declineReasons = map[string]string{
 	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and hostveil cannot tell which location you meant.",
 	"accounts.sudo-nopasswd":         "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
 	"accounts.uid0":                  "userdel orphans every file the account owns with no checkpoint to undo it, and hostveil cannot tell a backdoor from a deliberate second root.",
+	"accounts.duplicate-uid":         "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
+	"accounts.weak-password-hash":    "Fixing the hash requires choosing and entering a new password; hostveil must never generate or handle that credential.",
 
 	// fileperms
 	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",
@@ -117,7 +122,17 @@ var declineReasons = map[string]string{
 	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that hostveil can only rewrite, not create.",
 
 	// systemd
-	"systemd.private-tmp":    "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",
-	"systemd.protect-home":   "ProtectHome=yes breaks anything whose data lives in a home directory, which the unit does not show, and the failure surfaces only at the next restart.",
-	"systemd.protect-system": "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
+	"systemd.private-tmp":               "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",
+	"systemd.protect-home":              "ProtectHome=yes breaks anything whose data lives in a home directory, which the unit does not show, and the failure surfaces only at the next restart.",
+	"systemd.protect-system":            "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
+	"systemd.private-devices":           "PrivateDevices=yes can hide devices the application requires, which the effective unit properties do not reveal.",
+	"systemd.protect-kernel-tunables":   "The service may deliberately manage network or kernel settings, and enabling this protection can stop it at restart.",
+	"systemd.protect-kernel-modules":    "Hardware and observability services may deliberately load modules, which the unit properties do not reveal.",
+	"systemd.protect-control-groups":    "Container and resource managers may need cgroup access, which cannot be inferred safely from the unit.",
+	"systemd.protect-kernel-logs":       "Diagnostics services may require kernel logs, and the unit does not reveal that runtime dependency.",
+	"systemd.protect-clock":             "Time synchronization services deliberately change clocks, and the unit name is not a safe basis for an automatic exception.",
+	"systemd.restrict-suid-sgid":        "Some installers legitimately create privileged files, and enabling this protection can make them fail only after restart.",
+	"systemd.restrict-namespaces":       "Container runtimes and sandboxes require namespaces, and the unit does not state which namespace types are load-bearing.",
+	"systemd.lock-personality":          "Compatibility workloads may require another execution personality, which cannot be inferred from the unit.",
+	"systemd.memory-deny-write-execute": "JIT runtimes require writable executable memory, and enabling this protection can stop them at restart.",
 }

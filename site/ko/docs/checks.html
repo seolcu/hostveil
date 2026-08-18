@@ -148,7 +148,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">78</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">38</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">25</span>개는 무인으로 적용하고, <span data-counted="findings.review">13</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">111</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">56</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">33</span>개는 무인으로 적용하고, <span data-counted="findings.review">23</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
 
             <h2 id="severity">심각도와 점수</h2>
             <p>hostveil은 발견 항목을 <strong>얼마나 급한지</strong>로 등급을 매깁니다. 얼마나 나쁜지가 아닙니다. 설정 파일을 읽는 스캐너는 "root로 도는 컨테이너"가 얼마나 나쁜지 말해 줄 수 없습니다. 그건 그 컨테이너가 무엇을 하느냐에 전적으로 달려 있으니까요. 스캐너가 <em>말할 수 있는</em> 것은 지금 이 순간 공격자와 그 문제 사이에 무엇이 얼마나 서 있느냐이고, 이 세 단계가 재는 것이 바로 그것입니다.</p>
@@ -223,6 +223,8 @@
                   <tr><td><code>ssh.gatewayports</code></td><td>원격 포워딩 포트가 네트워크에 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>ssh.hostbasedauth</code></td><td>호스트 기반 인증이 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>ssh.kbdinteractive</code></td><td>PasswordAuthentication no 이후에도 대화형 비밀번호 입력이 살아 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.permituserenvironment</code></td><td>SSH 세션에 사용자 환경 변수를 주입할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.permittunnel</code></td><td>SSH 네트워크 터널을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
@@ -253,6 +255,9 @@
                   <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds023</code></td><td>seccomp 필터가 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds024</code></td><td>AppArmor 격리가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
@@ -307,6 +312,8 @@
                   <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.duplicate-uid</code></td><td>여러 계정이 같은 UID를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.weak-password-hash</code></td><td>로그인 계정이 약한 비밀번호 해시를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>
@@ -335,6 +342,12 @@
                   <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.gshadow</code></td><td><code>/etc/gshadow</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.sudoers</code></td><td><code>/etc/sudoers</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.sudoers-dropins</code></td><td>sudoers 추가 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.cron</code></td><td>시스템 cron 정의를 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.systemd-units</code></td><td>시스템 서비스 유닛을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.docker-config</code></td><td>root의 Docker 자격 증명 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                 </tbody>
@@ -358,6 +371,16 @@
                   <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.accept-source-route</code></td><td>소스 라우팅 패킷을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.send-redirects</code></td><td>ICMP 리다이렉트를 전송함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.suid-dumpable</code></td><td>권한 프로세스가 core dump를 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.protected-regular</code></td><td>일반 파일 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>비권한 사용자가 BPF를 로드할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.perf-events</code></td><td>성능 이벤트가 사용자에게 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>브로드캐스트 ping을 허용함</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>잘못된 ICMP 오류를 무시하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.log-martians</code></td><td>의심스러운 출발지 주소를 로그하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -396,6 +419,16 @@
                   <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.private-devices</code></td><td>서비스가 호스트 디바이스에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>서비스가 커널 설정을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>서비스가 kernel module을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-control-groups</code></td><td>서비스가 제어 그룹을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>서비스가 커널 로그에 접근할 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-clock</code></td><td>서비스가 시스템 시계를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>서비스가 setuid 파일을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.restrict-namespaces</code></td><td>서비스가 네임스페이스를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.lock-personality</code></td><td>서비스가 실행 퍼스널리티를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>서비스가 쓰기와 실행이 모두 가능한 메모리를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                 </tbody>
               </table>
             </div>

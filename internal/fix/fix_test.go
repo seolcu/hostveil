@@ -104,6 +104,9 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"compose.ds020":       "removal-shaped: a monitoring agent legitimately needs the host PID namespace, and hostveil cannot tell that from a cargo-culted one",
 		"compose.ds021":       "removal-shaped: deliberate host-IPC sharing breaks silently when the line is deleted",
 		"compose.ds022":       "read_only: true breaks any image that writes to its own filesystem, and the audit cannot infer the tmpfs mounts that would make it safe",
+		"compose.ds023":       "removing a seccomp exception can break a workload that needs the syscall",
+		"compose.ds024":       "hostveil cannot invent an application-specific AppArmor profile",
+		"compose.ds026":       "changing user namespace mode can invalidate bind-mount ownership",
 		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 
 		// The agent.* config-key findings that internal/json5 did NOT
@@ -136,12 +139,24 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"dockerd.userns-remap":          "same, and it rewrites the ownership of every bind mount on the host",
 		"dockerd.live-restore":          "reload is exec with no checkpoint, and write-then-apply is sequential steps rather than Review's independent alternatives",
 
-		"fileperms.owner":        "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
-		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
-		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
-		"ports.exposed":          "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
-		"accounts.uid0":          "userdel is exec, irreversible, and takes the home directory with it; hostveil cannot tell a backdoor from a deliberate second root",
-		"accounts.emptypassword": "passwd -l is exec, and the account it locks may be the only way the operator reaches the machine",
+		"fileperms.owner":                   "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
+		"compose.ds012":                     "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
+		"compose.dr004":                     "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
+		"ports.exposed":                     "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
+		"accounts.uid0":                     "userdel is exec, irreversible, and takes the home directory with it; hostveil cannot tell a backdoor from a deliberate second root",
+		"accounts.emptypassword":            "passwd -l is exec, and the account it locks may be the only way the operator reaches the machine",
+		"accounts.duplicate-uid":            "UID migration spans every file the account owns and is not one reversible action",
+		"accounts.weak-password-hash":       "a password reset requires a human-chosen credential",
+		"systemd.private-devices":           "device access may be load-bearing",
+		"systemd.protect-kernel-tunables":   "network managers may require kernel tunables",
+		"systemd.protect-kernel-modules":    "hardware services may require kernel modules",
+		"systemd.protect-control-groups":    "container managers may require cgroup access",
+		"systemd.protect-kernel-logs":       "diagnostics may require kernel logs",
+		"systemd.protect-clock":             "time services must change clocks",
+		"systemd.restrict-suid-sgid":        "installers may create privileged files",
+		"systemd.restrict-namespaces":       "container runtimes require namespaces",
+		"systemd.lock-personality":          "compatibility workloads may require another personality",
+		"systemd.memory-deny-write-execute": "JIT runtimes require writable executable memory",
 	}
 	r := Default()
 	for id, why := range declined {
