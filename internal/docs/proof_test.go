@@ -57,7 +57,18 @@ func counts(t *testing.T) map[string]int {
 		"ssh.passwordauth": true, "ssh.gatewayports": true,
 		"ssh.hostbasedauth": true, "ssh.kbdinteractive": true,
 		"ssh.permituserenvironment": true, "ssh.permittunnel": true,
-		"agent.exec-unrestricted": true, "systemd.no-new-privileges": true,
+		"ssh.allowtcpforwarding": true, "ssh.clientaliveinterval": true,
+		"ssh.maxsessions": true, "ssh.tcpkeepalive": true,
+		"ssh.allowagentforwarding": true,
+		"accounts.default-umask":   true, "accounts.local-banner": true,
+		"accounts.remote-banner": true,
+		"sysctl.module-dccp":     true, "sysctl.module-sctp": true,
+		"sysctl.module-rds": true, "sysctl.module-tipc": true,
+		"sysctl.module-usbstorage": true,
+		"fileperms.compiler":       true,
+		"ports.redis-bind":         true, "ports.redis-protected-mode": true,
+		"ports.redis-disable-config": true,
+		"agent.exec-unrestricted":    true, "systemd.no-new-privileges": true,
 	}
 	for _, id := range ids {
 		fx, ok, err := registry.Build(fixtest.Finding(id))

@@ -83,8 +83,7 @@ var declineReasons = map[string]string{
 	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",
 
 	// updates
-	"updates.pending-security": "An upgrade is unbounded — a new kernel, restarted services, prompts about modified config files — and no checkpoint reverses any of it.",
-	"updates.reboot-required":  "The remediation is a reboot: no checkpoint, every service on the box down, and only you know when that downtime is acceptable.",
+	"updates.reboot-required": "The remediation is a reboot: no checkpoint, every service on the box down, and only you know when that downtime is acceptable.",
 
 	// cve
 	"cve.unpatched-image": "Re-pulling the tag is the only action hostveil has here, and no rebuild of the image carries a patch upstream has not published.",

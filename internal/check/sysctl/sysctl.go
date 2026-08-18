@@ -89,6 +89,8 @@ type Checker struct {
 	// origin.go; overridable for tests.
 	ConfDirs []string
 	ConfFile string
+	// ModprobePath records optional kernel drivers disabled by policy.
+	ModprobePath string
 	// InContainer answers whether this scan is running inside a container.
 	// Injected so the demotion below can be tested at all: the real gate
 	// reads /.dockerenv and /proc/1, and a test cannot make this process be
@@ -99,10 +101,11 @@ type Checker struct {
 // New returns a sysctl checker with the default rule set.
 func New() *Checker {
 	return &Checker{
-		Root:     "/proc/sys",
-		Rules:    defaultRules(),
-		ConfDirs: defaultConfDirs(),
-		ConfFile: defaultConfFile,
+		Root:         "/proc/sys",
+		Rules:        defaultRules(),
+		ConfDirs:     defaultConfDirs(),
+		ConfFile:     defaultConfFile,
+		ModprobePath: "/etc/modprobe.d/99-hostveil-hardening.conf",
 	}
 }
 
@@ -279,7 +282,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // built, IPv4 disabled) and is silently fine; one that exists but cannot be
 // read is ground not covered, and the domain says so with a PartialError
 // rather than letting "could not look" pass for "nothing there".
-func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
+func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, error) {
 	// Asked once for the whole scan rather than per rule: it is a question
 	// about the host, and the answer cannot change between two rules.
 	inContainer, containerWhy := c.containerGate()
@@ -343,6 +346,25 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		}
 		findings = append(findings, f)
 	}
+	if c.ModprobePath != "" && env.Runner != nil && platform.Has(env.Runner, "modprobe") {
+		data, _ := os.ReadFile(c.ModprobePath)
+		modules := []struct{ id, name string }{
+			{"sysctl.module-dccp", "dccp"},
+			{"sysctl.module-sctp", "sctp"},
+			{"sysctl.module-rds", "rds"},
+			{"sysctl.module-tipc", "tipc"},
+			{"sysctl.module-usbstorage", "usb-storage"},
+		}
+		for _, module := range modules {
+			if moduleBlocked(data, module.name) {
+				continue
+			}
+			findings = append(findings, model.NewFinding(module.id, "Optional kernel protocol or driver is available: "+module.name, model.SeverityLow, model.SourceSysctl, model.RemediationReview,
+				model.WithDescription("Unused kernel protocols and removable-storage drivers increase reachable kernel code and can be disabled on servers that do not need them."),
+				model.WithHowToFix("After confirming that "+module.name+" is not required, block it in "+c.ModprobePath+"."),
+				model.WithEvidence("config", c.ModprobePath), model.WithEvidence("module", module.name)))
+		}
+	}
 	if len(unreadable) > 0 {
 		return findings, &check.PartialError{
 			Reason:  "cannot read " + strings.Join(unreadable, ", ") + " — those kernel parameters were not audited",
@@ -351,6 +373,16 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		}
 	}
 	return findings, nil
+}
+
+func moduleBlocked(data []byte, module string) bool {
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(strings.SplitN(line, "#", 2)[0])
+		if len(fields) >= 3 && fields[0] == "install" && fields[1] == module && fields[2] == "/bin/false" {
+			return true
+		}
+	}
+	return false
 }
 
 // demoteForContainer turns a sysctl finding into a Manual one when the scan is

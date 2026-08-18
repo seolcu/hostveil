@@ -24,7 +24,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains hostveil can report <strong data-counted="findings.total">136</strong> findings, and <strong data-counted="findings.fixable">81</strong> of them carry a fix — <span data-counted="findings.auto">60</span> it will apply unattended, <span data-counted="findings.review">21</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">120</strong> of them carry a fix — <span data-counted="findings.auto">71</span> it will apply unattended, <span data-counted="findings.review">49</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
 
             <h2 id="severity">Severity &amp; the score</h2>
             <p>hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
@@ -104,6 +104,18 @@
                   <tr><td><code>ssh.maxauthtries</code></td><td>Too many auth attempts per connection</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.logingracetime</code></td><td>Unauthenticated connections are held open too long</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.clientalivecountmax</code></td><td>Dead SSH sessions survive too many keepalive failures</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.clientaliveinterval</code></td><td>Idle SSH sessions have no server-side timeout</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.fingerprinthash</code></td><td>Host-key fingerprints use a legacy hash</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.ignorerhosts</code></td><td>Legacy rhosts trust is not explicitly ignored</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.loglevel</code></td><td>SSH authentication logging is not verbose</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.maxsessions</code></td><td>One SSH connection may open many sessions</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.printlastlog</code></td><td>Users are not shown their previous login</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.strictmodes</code></td><td>SSH does not enforce ownership and mode checks</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH trusts spoofable TCP keepalives</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.usedns</code></td><td>SSH performs unnecessary reverse DNS lookups</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH agent forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -159,8 +171,19 @@
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.process-accounting</code></td><td>Process accounting is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.sysstat</code></td><td>System activity accounting is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.auditd</code></td><td>The Linux audit daemon is not installed</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.debsums</code></td><td>Installed package files cannot be verified</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.rkhunter</code></td><td>No rootkit scanner is installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.pam-pwquality</code></td><td>PAM has no password-quality module</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.apt-show-versions</code></td><td>Patch inventory tooling is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.sysstat-disabled</code></td><td>System activity collection is disabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>updates.apt-listchanges</code></td><td>APT changelog review is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.pam-tmpdir</code></td><td>PAM sessions share global temporary directories</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>updates.fail2ban</code></td><td>Repeated authentication failures are not automatically blocked</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -174,6 +197,9 @@
                   <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.redis-bind</code></td><td>Redis is configured to listen beyond loopback</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis protected mode is disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.redis-disable-config</code></td><td>Redis exposes the CONFIG command</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -190,6 +216,12 @@
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>Multiple accounts share one UID</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.password-rounds</code></td><td>Password hashing rounds are not hardened</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>accounts.default-umask</code></td><td>New files default to broad permissions</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>accounts.local-banner</code></td><td>The local login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>accounts.remote-banner</code></td><td>The remote login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>accounts.password-aging</code></td><td>Password aging defaults are too permissive</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>accounts.core-dumps</code></td><td>Core dumps are not explicitly disabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                 </tbody>
               </table>
             </div>
@@ -234,6 +266,7 @@
                   <tr><td><code>fileperms.passwd-backup</code></td><td>The passwd backup is writable by non-root</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.compiler</code></td><td>The system compiler is available to every local user</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -282,6 +315,11 @@
                   <tr><td><code>sysctl.multicast-forwarding</code></td><td>IPv4 multicast forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>sysctl.bootp-relay</code></td><td>BOOTP relay is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>sysctl.tcp-rfc1337</code></td><td>TCP TIME-WAIT protection is disabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>sysctl.module-dccp</code></td><td>The optional DCCP protocol is available</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.module-sctp</code></td><td>The optional SCTP protocol is available</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.module-rds</code></td><td>The optional RDS protocol is available</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.module-tipc</code></td><td>The optional TIPC protocol is available</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.module-usbstorage</code></td><td>The USB storage driver is available</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>

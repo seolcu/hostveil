@@ -26,11 +26,17 @@ type Checker struct {
 	// PasswdPath and ShadowPath are overridable for tests.
 	PasswdPath string
 	ShadowPath string
+	// LoginDefsPath and banner paths are overridable for tests. Empty paths
+	// disable the corresponding baseline check for focused fixtures.
+	LoginDefsPath string
+	IssuePath     string
+	IssueNetPath  string
+	LimitsPath    string
 }
 
 // New returns an accounts checker reading the standard system databases.
 func New() *Checker {
-	return &Checker{PasswdPath: "/etc/passwd", ShadowPath: "/etc/shadow"}
+	return &Checker{PasswdPath: "/etc/passwd", ShadowPath: "/etc/shadow", LoginDefsPath: "/etc/login.defs", IssuePath: "/etc/issue", IssueNetPath: "/etc/issue.net", LimitsPath: "/etc/security/limits.conf"}
 }
 
 // Source identifies the accounts domain.
@@ -132,6 +138,50 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			model.WithEvidence("uids", strings.Join(duplicateUIDs, model.EvidenceSeparator))))
 	}
 
+	if c.LoginDefsPath != "" {
+		if data, err := os.ReadFile(c.LoginDefsPath); err == nil {
+			defs := loginDefaults(data)
+			minRounds := atoiOrZero(defs["SHA_CRYPT_MIN_ROUNDS"])
+			maxRounds := atoiOrZero(defs["SHA_CRYPT_MAX_ROUNDS"])
+			if minRounds < 5000 || maxRounds < 5000 {
+				findings = append(findings, model.NewFinding("accounts.password-rounds", "Password hashing rounds are not hardened", model.SeverityLow, model.SourceAccounts, model.RemediationAuto,
+					model.WithDescription("Explicit SHA-crypt rounds make offline password guessing more expensive for hashes created after this setting is applied."),
+					model.WithHowToFix("Set SHA_CRYPT_MIN_ROUNDS and SHA_CRYPT_MAX_ROUNDS to at least 5000 in "+c.LoginDefsPath+"."), model.WithEvidence("config", c.LoginDefsPath)))
+			}
+			if mask := defs["UMASK"]; mask != "027" && mask != "077" && mask != "0027" && mask != "0077" {
+				findings = append(findings, model.NewFinding("accounts.default-umask", "New files default to broad permissions", model.SeverityLow, model.SourceAccounts, model.RemediationReview,
+					model.WithDescription("A 027 default umask prevents unrelated local users from reading newly created files while preserving access for the owner's group."),
+					model.WithHowToFix("Set UMASK 027 in "+c.LoginDefsPath+" after checking workflows that rely on world-readable files."), model.WithEvidence("config", c.LoginDefsPath), model.WithEvidence("value", mask)))
+			}
+			minDays := atoiOrZero(defs["PASS_MIN_DAYS"])
+			maxDays := atoiOrZero(defs["PASS_MAX_DAYS"])
+			if minDays < 1 || maxDays == 0 || maxDays > 365 {
+				findings = append(findings, model.NewFinding("accounts.password-aging", "Password aging defaults are too permissive", model.SeverityLow, model.SourceAccounts, model.RemediationAuto,
+					model.WithDescription("New local passwords can be changed repeatedly without delay and may remain valid indefinitely, weakening rotation and password-history controls."),
+					model.WithHowToFix("Set PASS_MIN_DAYS to 1 and PASS_MAX_DAYS to 365 in "+c.LoginDefsPath+"."), model.WithEvidence("config", c.LoginDefsPath)))
+			}
+		}
+	}
+	if c.LimitsPath != "" {
+		if data, err := os.ReadFile(c.LimitsPath); err == nil && !hasCoreLimit(data) {
+			findings = append(findings, model.NewFinding("accounts.core-dumps", "Core dumps are not explicitly disabled", model.SeverityLow, model.SourceAccounts, model.RemediationAuto,
+				model.WithDescription("Core files can preserve credentials and other process memory after a crash where local users or support tooling may expose them."),
+				model.WithHowToFix("Set a hard core-size limit of zero in "+c.LimitsPath+"."), model.WithEvidence("config", c.LimitsPath)))
+		}
+	}
+	for _, banner := range []struct{ id, path string }{{"accounts.local-banner", c.IssuePath}, {"accounts.remote-banner", c.IssueNetPath}} {
+		if banner.path == "" {
+			continue
+		}
+		data, err := os.ReadFile(banner.path)
+		if err == nil && hasAccessWarning(string(data)) {
+			continue
+		}
+		findings = append(findings, model.NewFinding(banner.id, "Login warning does not discourage unauthorized access", model.SeverityLow, model.SourceAccounts, model.RemediationReview,
+			model.WithDescription("A clear pre-login warning establishes that access is restricted and that activity may be monitored before credentials are accepted."),
+			model.WithHowToFix("Add an organization-approved access warning to "+banner.path+"."), model.WithEvidence("config", banner.path)))
+	}
+
 	// The empty-password check needs /etc/shadow, which is root-only. Losing
 	// it costs half the domain, so the result is Degraded — never clean.
 	//
@@ -214,4 +264,45 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	return findings, cov.Err()
+}
+
+func loginDefaults(data []byte) map[string]string {
+	out := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			out[fields[0]] = fields[1]
+		}
+	}
+	return out
+}
+
+func atoiOrZero(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
+}
+
+func hasAccessWarning(s string) bool {
+	s = strings.ToLower(s)
+	words := []string{"authorized", "access", "monitor", "prohibited", "unauthorized"}
+	for _, word := range words {
+		if !strings.Contains(s, word) {
+			return false
+		}
+	}
+	return true
+}
+
+func hasCoreLimit(data []byte) bool {
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(strings.SplitN(line, "#", 2)[0])
+		if len(fields) == 4 && fields[0] == "*" && fields[1] == "hard" && fields[2] == "core" && fields[3] == "0" {
+			return true
+		}
+	}
+	return false
 }

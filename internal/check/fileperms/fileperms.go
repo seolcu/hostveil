@@ -24,13 +24,15 @@ import (
 // A file is flagged when its permission bits include anything outside
 // MaxMode (i.e. perm &^ MaxMode != 0).
 type Rule struct {
-	Path    string      // exact path, or a glob when Glob is true
-	Glob    bool        // expand Path with filepath.Glob (e.g. SSH host keys)
-	MaxMode os.FileMode // strictest acceptable perm bits
-	Sev     model.Severity
-	ID      string
-	Title   string
-	Desc    string
+	Path        string      // exact path, or a glob when Glob is true
+	Patterns    []string    // multiple globs when one finding covers a toolchain
+	Glob        bool        // expand Path with filepath.Glob (e.g. SSH host keys)
+	MaxMode     os.FileMode // strictest acceptable perm bits
+	Sev         model.Severity
+	ID          string
+	Title       string
+	Desc        string
+	Remediation model.RemediationKind
 }
 
 // paths resolves the rule to the concrete files to stat. An error means the
@@ -45,6 +47,17 @@ type Rule struct {
 // It assumes the wildcard is in the last element, which is the shape Rule
 // documents and the only shape defaultRules uses.
 func (r Rule) paths() ([]string, error) {
+	if len(r.Patterns) > 0 {
+		var out []string
+		for _, pattern := range r.Patterns {
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				return nil, fmt.Errorf("cannot expand %s: %w", pattern, err)
+			}
+			out = append(out, matches...)
+		}
+		return out, nil
+	}
 	if !r.Glob {
 		return []string{r.Path}, nil
 	}
@@ -131,6 +144,9 @@ func defaultRules() []Rule {
 		{Path: "/etc/ssh/ssh_host_*_key", Glob: true, MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.hostkey",
 			Title: "SSH host private key is readable beyond root",
 			Desc:  "An SSH host private key readable by non-root users lets them impersonate this server, enabling man-in-the-middle attacks on anyone connecting over SSH."},
+		{Patterns: []string{"/usr/bin/*-linux-gnu-as", "/usr/bin/*-linux-gnu-ld.bfd"}, MaxMode: 0o750, Sev: model.SeverityLow, ID: "fileperms.compiler", Remediation: model.RemediationReview,
+			Title: "The system compiler is available to every local user",
+			Desc:  "Restricting compiler execution to administrators removes a convenient way for a local foothold to build exploit code, while development hosts may legitimately need broader access."},
 	}
 }
 
@@ -201,8 +217,12 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		}
 		sort.Strings(badPaths)
 		sort.Strings(badEvidence)
+		kind := rule.Remediation
+		if kind == model.RemediationUnset {
+			kind = model.RemediationAuto
+		}
 		findings = append(findings, model.NewFinding(rule.ID, rule.Title, rule.Sev,
-			model.SourceFilePerms, model.RemediationAuto,
+			model.SourceFilePerms, kind,
 			model.WithDescription(rule.Desc),
 			model.WithHowToFix(fmt.Sprintf("Tighten the mode to %#o or stricter, e.g. `chmod %#o %s`.", rule.MaxMode, rule.MaxMode, badPaths[0])),
 			model.WithEvidence("files", strings.Join(badEvidence, model.EvidenceSeparator)),

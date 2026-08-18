@@ -78,6 +78,13 @@ KbdInteractiveAuthentication no
 PermitEmptyPasswords no
 MaxAuthTries 3
 LoginGraceTime 30
+AllowTcpForwarding no
+ClientAliveCountMax 2
+ClientAliveInterval 300
+LogLevel VERBOSE
+MaxSessions 2
+TCPKeepAlive no
+AllowAgentForwarding no
 `
 	got := auditConfig(parseConfig([]byte(cfg)), "x")
 	if len(got) != 0 {

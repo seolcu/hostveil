@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -110,6 +111,10 @@ type Action struct {
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string
+	// Timeout overrides the runner's short interactive-command deadline for
+	// operations such as package upgrades that legitimately take minutes.
+	// Zero keeps the platform default.
+	Timeout time.Duration
 
 	// Mode: the files whose permission bits change, and a PURE function from
 	// a file's current mode to its desired one. Same contract as Transform —

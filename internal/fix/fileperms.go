@@ -35,6 +35,7 @@ func registerFilePerms(r *Registry) {
 		"fileperms.cron-deny",
 		"fileperms.crontab",
 		"fileperms.passwd-backup",
+		"fileperms.compiler",
 	} {
 		r.Register(id, buildTightenMode)
 	}

@@ -84,6 +84,27 @@ func registerSysctl(r *Registry) {
 		}
 		r.Register(id, builder)
 	}
+	for _, id := range []string{"sysctl.module-dccp", "sysctl.module-sctp", "sysctl.module-rds", "sysctl.module-tipc", "sysctl.module-usbstorage"} {
+		r.Register(id, buildModuleBlock)
+	}
+}
+
+func buildModuleBlock(f model.Finding) (Fix, error) {
+	path, module := f.Evidence["config"], f.Evidence["module"]
+	if path == "" || module == "" {
+		return Fix{}, fmt.Errorf("finding %s has incomplete module evidence", f.ID)
+	}
+	return Fix{Label: "Block optional kernel module " + module, Kind: model.RemediationAuto, Actions: []Action{{Label: "Persist a modprobe install block", Warning: "Confirm this host does not use " + module + " before applying.", Kind: ActionEdit, Path: path, CreateIfMissing: true, TakesEffectOn: "the next reboot", Transform: func(in []byte) ([]byte, error) {
+		line := "install " + module + " /bin/false"
+		if strings.Contains(string(in), line) {
+			return in, nil
+		}
+		out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
+		if len(out) > 0 {
+			out = append(out, '\n')
+		}
+		return append(out, []byte(line+"\n")...), nil
+	}}}}, nil
 }
 
 // buildSysctl persists the finding's exact key=value pairs. It deliberately
