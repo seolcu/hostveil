@@ -62,6 +62,16 @@ var showProperties = []string{
 	"ProtectSystem",
 	"ProtectHome",
 	"PrivateTmp",
+	"PrivateDevices",
+	"ProtectKernelTunables",
+	"ProtectKernelModules",
+	"ProtectControlGroups",
+	"ProtectKernelLogs",
+	"ProtectClock",
+	"RestrictSUIDSGID",
+	"RestrictNamespaces",
+	"LockPersonality",
+	"MemoryDenyWriteExecute",
 	// Which drop-ins systemd actually loaded for this unit, in the order it
 	// applied them. Asked for because the fix writes a drop-in, and a drop-in
 	// competes on filename: see dropInPath.
@@ -142,14 +152,24 @@ func (c *Checker) operatorInstalled(u unit) bool {
 
 // unit is one service's effective configuration as systemd reports it.
 type unit struct {
-	ID              string
-	LoadState       string
-	FragmentPath    string
-	User            string
-	NoNewPrivileges string
-	ProtectSystem   string
-	ProtectHome     string
-	PrivateTmp      string
+	ID                     string
+	LoadState              string
+	FragmentPath           string
+	User                   string
+	NoNewPrivileges        string
+	ProtectSystem          string
+	ProtectHome            string
+	PrivateTmp             string
+	PrivateDevices         string
+	ProtectKernelTunables  string
+	ProtectKernelModules   string
+	ProtectControlGroups   string
+	ProtectKernelLogs      string
+	ProtectClock           string
+	RestrictSUIDSGID       string
+	RestrictNamespaces     string
+	LockPersonality        string
+	MemoryDenyWriteExecute string
 	// DropInPaths is the space-separated list systemd reports, which is every
 	// drop-in it loaded for this unit from /etc, /run and /usr/lib alike.
 	DropInPaths string
@@ -175,15 +195,25 @@ func parseUnits(out string) []unit {
 			return
 		}
 		units = append(units, unit{
-			ID:              cur["Id"],
-			LoadState:       cur["LoadState"],
-			FragmentPath:    cur["FragmentPath"],
-			User:            cur["User"],
-			NoNewPrivileges: cur["NoNewPrivileges"],
-			ProtectSystem:   cur["ProtectSystem"],
-			ProtectHome:     cur["ProtectHome"],
-			PrivateTmp:      cur["PrivateTmp"],
-			DropInPaths:     cur["DropInPaths"],
+			ID:                     cur["Id"],
+			LoadState:              cur["LoadState"],
+			FragmentPath:           cur["FragmentPath"],
+			User:                   cur["User"],
+			NoNewPrivileges:        cur["NoNewPrivileges"],
+			ProtectSystem:          cur["ProtectSystem"],
+			ProtectHome:            cur["ProtectHome"],
+			PrivateTmp:             cur["PrivateTmp"],
+			PrivateDevices:         cur["PrivateDevices"],
+			ProtectKernelTunables:  cur["ProtectKernelTunables"],
+			ProtectKernelModules:   cur["ProtectKernelModules"],
+			ProtectControlGroups:   cur["ProtectControlGroups"],
+			ProtectKernelLogs:      cur["ProtectKernelLogs"],
+			ProtectClock:           cur["ProtectClock"],
+			RestrictSUIDSGID:       cur["RestrictSUIDSGID"],
+			RestrictNamespaces:     cur["RestrictNamespaces"],
+			LockPersonality:        cur["LockPersonality"],
+			MemoryDenyWriteExecute: cur["MemoryDenyWriteExecute"],
+			DropInPaths:            cur["DropInPaths"],
 		})
 		cur = map[string]string{}
 	}

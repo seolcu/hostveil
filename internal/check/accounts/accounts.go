@@ -78,6 +78,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	loginShell := map[string]bool{} // username -> has an interactive login shell
 	var logins []string
 	var rogueRoot []string
+	uids := map[int][]string{}
 	for _, line := range strings.Split(string(passwd), "\n") {
 		fields := strings.Split(line, ":")
 		if len(fields) < 7 {
@@ -96,8 +97,11 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		// Compare the UID numerically: the kernel parses "00"/"000" as 0, so
 		// a string compare against "0" would let a leading-zero UID-0
 		// backdoor slip past the very check that exists to catch it.
-		if uid, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil && uid == 0 && name != "root" {
-			rogueRoot = append(rogueRoot, name)
+		if uid, err := strconv.Atoi(strings.TrimSpace(fields[2])); err == nil {
+			uids[uid] = append(uids[uid], name)
+			if uid == 0 && name != "root" {
+				rogueRoot = append(rogueRoot, name)
+			}
 		}
 	}
 
@@ -111,6 +115,21 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, remove the account (`userdel`) or give it a normal, unique UID. Grant admin rights via sudo, not UID 0."),
 			model.WithEvidence("accounts", strings.Join(rogueRoot, ", ")),
 		))
+	}
+	var duplicateUIDs []string
+	for uid, names := range uids {
+		if uid == 0 || len(names) < 2 {
+			continue
+		}
+		sort.Strings(names)
+		duplicateUIDs = append(duplicateUIDs, strconv.Itoa(uid)+": "+strings.Join(names, ", "))
+	}
+	if len(duplicateUIDs) > 0 {
+		sort.Strings(duplicateUIDs)
+		findings = append(findings, model.NewFinding("accounts.duplicate-uid", "Multiple accounts share the same UID", model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
+			model.WithDescription("Linux authorizes a process by numeric UID, not account name. Accounts sharing one UID are indistinguishable to file ownership and audit logs."),
+			model.WithHowToFix("Assign every affected account a unique UID with `usermod -u`, then carefully migrate files owned by the old UID."),
+			model.WithEvidence("uids", strings.Join(duplicateUIDs, model.EvidenceSeparator))))
 	}
 
 	// The empty-password check needs /etc/shadow, which is root-only. Losing
@@ -128,7 +147,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			" — did not check for accounts with an empty password; re-run with sudo")
 	} else {
 		cov.Covered(1)
-		var passwordless []string
+		var passwordless, weakHashes []string
 		for _, line := range strings.Split(string(shadow), "\n") {
 			fields := strings.Split(line, ":")
 			if len(fields) < 2 {
@@ -137,6 +156,9 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			name, hash := fields[0], fields[1]
 			if hash == "" && loginShell[name] {
 				passwordless = append(passwordless, name)
+			}
+			if loginShell[name] && (strings.HasPrefix(hash, "$1$") || (!strings.HasPrefix(hash, "$") && hash != "" && hash != "!" && hash != "*" && !strings.HasPrefix(hash, "!"))) {
+				weakHashes = append(weakHashes, name)
 			}
 		}
 		if len(passwordless) > 0 {
@@ -148,6 +170,13 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				model.WithHowToFix("Set a strong password (`passwd "+passwordless[0]+"`) or lock the account (`passwd -l "+passwordless[0]+"`) if it should not log in. Affected: "+strings.Join(passwordless, ", ")+"."),
 				model.WithEvidence("accounts", strings.Join(passwordless, ", ")),
 			))
+		}
+		if len(weakHashes) > 0 {
+			sort.Strings(weakHashes)
+			findings = append(findings, model.NewFinding("accounts.weak-password-hash", "A login account uses a weak password hash", model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
+				model.WithDescription("DES and MD5 password hashes are fast to crack with modern hardware and should not protect an interactive account."),
+				model.WithHowToFix("Reset the affected account passwords after configuring yescrypt or SHA-512 as the system password hashing method."),
+				model.WithEvidence("accounts", strings.Join(weakHashes, ", "))))
 		}
 	}
 

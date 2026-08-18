@@ -365,7 +365,20 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
-// # The service-hardening domain, three of four declined
+// # The service-hardening domain, deliberately declined where runtime needs are unknown
+//
+// The same runtime-dependency rule covers systemd.private-devices,
+// systemd.protect-kernel-tunables, systemd.protect-kernel-modules,
+// systemd.protect-control-groups, systemd.protect-kernel-logs,
+// systemd.protect-clock, systemd.restrict-suid-sgid,
+// systemd.restrict-namespaces, systemd.lock-personality, and
+// systemd.memory-deny-write-execute. Each can stop a legitimate service only
+// when it next starts, and the effective property list cannot reveal that need.
+//
+// accounts.duplicate-uid requires migrating file ownership, while
+// accounts.weak-password-hash requires a human-chosen credential. Compose
+// rules compose.ds023, compose.ds024, and compose.ds026 remove deliberately
+// selected isolation exceptions whose application requirements are unknown.
 //
 // The edit is trivial for all four: a drop-in at
 // /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service] section

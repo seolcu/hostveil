@@ -44,6 +44,16 @@ func registerSysctl(r *Registry) {
 		"sysctl.dmesg-restrict",
 		"sysctl.sysrq",
 		"sysctl.rp-filter",
+		"sysctl.accept-source-route",
+		"sysctl.send-redirects",
+		"sysctl.suid-dumpable",
+		"sysctl.protected-fifos",
+		"sysctl.protected-regular",
+		"sysctl.unprivileged-bpf",
+		"sysctl.perf-events",
+		"sysctl.icmp-broadcasts",
+		"sysctl.bogus-icmp-errors",
+		"sysctl.log-martians",
 	} {
 		r.Register(id, buildSysctl)
 	}

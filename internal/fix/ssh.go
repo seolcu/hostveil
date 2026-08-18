@@ -20,6 +20,8 @@ func registerSSH(r *Registry) {
 	r.Register("ssh.hostbasedauth", buildSSHAuto("HostbasedAuthentication", "no", "Disable host-based authentication",
 		"If any user logs in via host-based trust rather than their own key, this removes that path."))
 	r.Register("ssh.kbdinteractive", buildKbdInteractive)
+	r.Register("ssh.permituserenvironment", buildSSHAuto("PermitUserEnvironment", "no", "Disable user-supplied SSH environments", "Login automation that relies on ~/.ssh/environment will stop receiving those variables."))
+	r.Register("ssh.permittunnel", buildSSHAuto("PermitTunnel", "no", "Disable SSH tun/tap tunnels", "Existing SSH VPN or tun/tap workflows will stop working."))
 }
 
 // buildKbdInteractive disables keyboard-interactive authentication by

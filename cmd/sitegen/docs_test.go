@@ -119,6 +119,8 @@ var checkerAsksForMore = map[string]string{
 	"ssh.gatewayports":          "a published tunnel may be the only route to a service, including the operator's",
 	"ssh.hostbasedauth":         "the trusting host may be how the operator gets in",
 	"ssh.kbdinteractive":        "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
+	"ssh.permituserenvironment": "login automation may depend on the supplied environment",
+	"ssh.permittunnel":          "the host may intentionally provide an SSH VPN",
 	"agent.exec-unrestricted":   "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
 	"systemd.no-new-privileges": "a service that deliberately escalates stops coming back, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
 }

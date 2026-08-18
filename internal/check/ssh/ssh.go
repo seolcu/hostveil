@@ -364,6 +364,22 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 			configFor(cfg, path, "HostbasedAuthentication")))
 	}
 
+	if effective(cfg, "PermitUserEnvironment", "no") == "yes" {
+		out = append(out, model.NewFinding("ssh.permituserenvironment", "SSH users can inject environment variables into sessions",
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
+			model.WithDescription("PermitUserEnvironment lets an account supply environment variables from ~/.ssh/environment and authorized_keys. Variables such as library and interpreter paths can change what privileged login scripts execute."),
+			model.WithHowToFix("Set `PermitUserEnvironment no` unless a reviewed login workflow explicitly depends on it."),
+			configFor(cfg, path, "PermitUserEnvironment")))
+	}
+
+	if effective(cfg, "PermitTunnel", "no") != "no" {
+		out = append(out, model.NewFinding("ssh.permittunnel", "SSH users can create layer-3 network tunnels",
+			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
+			model.WithDescription("PermitTunnel allows authenticated users to create tun/tap devices and route traffic through the server, bypassing network boundaries that ordinary port forwarding cannot cross."),
+			model.WithHowToFix("Set `PermitTunnel no` unless this server intentionally provides an SSH VPN."),
+			configFor(cfg, path, "PermitTunnel")))
+	}
+
 	// The contradiction case only: PasswordAuthentication no is meant to end
 	// password guessing, but keyboard-interactive runs the same PAM password
 	// prompt through a different door. KbdInteractiveAuthentication defaults

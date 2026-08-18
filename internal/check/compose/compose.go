@@ -225,6 +225,9 @@ var rules = []rule{
 	ruleNoHealthcheck,
 	ruleNoResourceLimits,
 	ruleWritableRootFS,
+	ruleSeccompUnconfined,
+	ruleAppArmorUnconfined,
+	ruleHostUserNamespace,
 	ruleInlineSecret,
 	ruleEnvFile,
 }
@@ -467,6 +470,37 @@ func ruleWritableRootFS(s compose.Service) (model.Finding, bool) {
 		model.WithDescription("Without `read_only: true`, a compromised process can modify the container's own binaries and drop tools anywhere in its filesystem, making an intrusion easier to deepen and harder to spot."),
 		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so hostveil does not change this automatically."),
 	), true
+}
+
+func ruleSeccompUnconfined(s compose.Service) (model.Finding, bool) {
+	for _, opt := range s.SecurityOpt {
+		if strings.EqualFold(strings.ReplaceAll(opt, " ", ""), "seccomp:unconfined") {
+			return f("ds023", "Container disables the seccomp syscall filter", model.SeverityHigh, model.RemediationManual, s.Name,
+				model.WithDescription("seccomp:unconfined removes Docker's default syscall denylist, exposing a compromised container to kernel interfaces that are normally blocked."),
+				model.WithHowToFix("Remove `seccomp:unconfined`, or replace it with a reviewed profile containing only the additional syscalls this application needs.")), true
+		}
+	}
+	return model.Finding{}, false
+}
+
+func ruleAppArmorUnconfined(s compose.Service) (model.Finding, bool) {
+	for _, opt := range s.SecurityOpt {
+		if strings.EqualFold(strings.ReplaceAll(opt, " ", ""), "apparmor:unconfined") {
+			return f("ds024", "Container disables its AppArmor profile", model.SeverityMedium, model.RemediationManual, s.Name,
+				model.WithDescription("apparmor:unconfined removes a host-enforced boundary around the container process and widens what a compromise can read or execute."),
+				model.WithHowToFix("Remove `apparmor:unconfined`, or assign a reviewed application-specific AppArmor profile.")), true
+		}
+	}
+	return model.Finding{}, false
+}
+
+func ruleHostUserNamespace(s compose.Service) (model.Finding, bool) {
+	if strings.EqualFold(strings.TrimSpace(s.UsernsMode), "host") {
+		return f("ds026", "Container shares the host user namespace", model.SeverityMedium, model.RemediationManual, s.Name,
+			model.WithDescription("userns_mode: host disables user-namespace remapping for this service when the daemon uses it, making container root map directly to host root."),
+			model.WithHowToFix("Remove `userns_mode: host` after confirming the image works with the daemon's user-namespace mapping.")), true
+	}
+	return model.Finding{}, false
 }
 
 func ruleInlineSecret(s compose.Service) (model.Finding, bool) {

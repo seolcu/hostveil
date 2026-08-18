@@ -147,7 +147,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains hostveil can report <strong data-counted="findings.total">78</strong> findings, and <strong data-counted="findings.fixable">38</strong> of them carry a fix — <span data-counted="findings.auto">25</span> it will apply unattended, <span data-counted="findings.review">13</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains hostveil can report <strong data-counted="findings.total">111</strong> findings, and <strong data-counted="findings.fixable">56</strong> of them carry a fix — <span data-counted="findings.auto">33</span> it will apply unattended, <span data-counted="findings.review">23</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
 
             <h2 id="severity">Severity &amp; the score</h2>
             <p>hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
@@ -222,6 +222,8 @@
                   <tr><td><code>ssh.gatewayports</code></td><td>Remote-forwarded ports are exposed to the network</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>ssh.hostbasedauth</code></td><td>Host-based authentication is enabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>ssh.kbdinteractive</code></td><td>Interactive password prompts survive PasswordAuthentication no</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.permituserenvironment</code></td><td>Users can supply SSH session environment variables</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.permittunnel</code></td><td>Users can create SSH network tunnels</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>ssh.maxauthtries</code></td><td>Too many auth attempts per connection</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.logingracetime</code></td><td>Unauthenticated connections are held open too long</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
@@ -252,6 +254,9 @@
                   <tr><td><code>compose.dr002</code></td><td>Port published on all interfaces</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds008</code></td><td>No restart policy set</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>compose.ds022</code></td><td>Container filesystem is writable</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds023</code></td><td>Seccomp filtering is disabled</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds024</code></td><td>AppArmor confinement is disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds026</code></td><td>Host user namespace is used</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
@@ -306,6 +311,8 @@
                   <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.duplicate-uid</code></td><td>Multiple accounts share one UID</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -334,6 +341,12 @@
                   <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code> is writable by non-root users</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code> is writable by non-root users</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.hostkey</code></td><td>An SSH host private key is readable beyond root</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.gshadow</code></td><td><code>/etc/gshadow</code> is too permissive</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.sudoers</code></td><td><code>/etc/sudoers</code> is too permissive</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.sudoers-dropins</code></td><td>A sudoers drop-in is too permissive</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.cron</code></td><td>A system cron definition is writable by non-root</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.systemd-units</code></td><td>A system service unit is writable by non-root</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
+                  <tr><td><code>fileperms.docker-config</code></td><td>Root's Docker credentials are too permissive</td><td><span class="sev high">HIGH</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
                 </tbody>
@@ -357,6 +370,16 @@
                   <tr><td><code>sysctl.dmesg-restrict</code></td><td>Any user can read the kernel log</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq is fully enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>sysctl.rp-filter</code></td><td>Source-address spoofing filter is off (strict and loose both pass)</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.accept-source-route</code></td><td>Source-routed packets are accepted</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.send-redirects</code></td><td>The host sends ICMP redirects</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.suid-dumpable</code></td><td>Privileged processes may write core dumps</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO protections are weak</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.protected-regular</code></td><td>Regular-file protections are weak</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>Unprivileged users can load BPF programs</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.perf-events</code></td><td>Performance events are exposed to users</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>Broadcast pings are accepted</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>Bogus ICMP errors are not ignored</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>sysctl.log-martians</code></td><td>Suspicious source addresses are not logged</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -395,6 +418,16 @@
                   <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>The service can alter kernel modules</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>The service can access kernel logs</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-clock</code></td><td>The service can change system clocks</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>The service can create setuid files</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.lock-personality</code></td><td>The service can change execution personality</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>

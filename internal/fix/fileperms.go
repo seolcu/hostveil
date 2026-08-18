@@ -21,6 +21,12 @@ func registerFilePerms(r *Registry) {
 		"fileperms.group",
 		"fileperms.sshd-config",
 		"fileperms.hostkey",
+		"fileperms.gshadow",
+		"fileperms.sudoers",
+		"fileperms.sudoers-dropins",
+		"fileperms.cron",
+		"fileperms.systemd-units",
+		"fileperms.docker-config",
 	} {
 		r.Register(id, buildTightenMode)
 	}
