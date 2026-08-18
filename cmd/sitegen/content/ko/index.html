@@ -2,8 +2,8 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">셀프호스터를 위한 가이드형 보안 강화</p>
-            <h1>당신의 홈 서버에 숨은 보안 실수, 찾아서 고쳐 드립니다.</h1>
-            <p class="lede">리눅스에서 셀프호스팅을 하지만 보안 전문가는 아니시죠. hostveil은 사람들이 해킹당하는 잘못된 설정을 찾아 쉬운 말로 설명하고 — 미리보기, 백업, 한 번의 명령으로 되돌리는 롤백과 함께 — 고쳐 줍니다.</p>
+            <h1>홈 서버에 숨은 보안 실수, 찾아서 고쳐 드립니다.</h1>
+            <p class="lede">hostveil은 셀프호스팅 중인 리눅스 서버에서 해킹으로 이어지는 잘못된 설정을 찾아 쉬운 말로 설명하고, 미리보기와 백업, 명령 한 번의 롤백과 함께 고쳐 줍니다.</p>
             <div class="hero-actions" aria-label="주요 동작">
               <a class="button primary" href="#install">설치</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">소스</a>
@@ -31,7 +31,7 @@
 
       <section class="trust-strip" aria-label="프로젝트 사실">
         <div class="container stats-grid">
-          <div><strong>바이너리 1개</strong><span>SaaS도 데이터베이스도 계정도 없이, 당신이 통제하는 호스트에서 실행</span></div>
+          <div><strong>바이너리 1개</strong><span>SaaS도 데이터베이스도 계정도 없이, 직접 통제하는 호스트에서 실행</span></div>
           <div><strong>네이티브 점검</strong><span>추가 도구 없이 SSH·방화벽·업데이트 점검</span></div>
           <div><strong>서명된 릴리스</strong><span>모든 아카이브에 SBOM과 빌드 프로버넌스</span></div>
           <div><strong>롤백 준비 완료</strong><span>모든 수정은 먼저 백업하고 되돌릴 수 있음</span></div>
@@ -43,7 +43,7 @@
           <div class="section-heading">
             <p class="eyebrow">왜 hostveil인가</p>
             <h2>또 하나의 보고서가 아니라, 안내자입니다.</h2>
-            <p>hostveil은 알기 어려운 호스트 상태를, 비전문가도 이해할 수 있는 구체적 문제의 우선순위 목록으로 바꾸고 — 안전하게 고치는 과정을 하나씩 안내합니다.</p>
+            <p>hostveil은 알기 어려운 호스트 상태를 구체적인 문제의 우선순위 목록으로 바꾸고, 안전하게 고치는 과정을 하나씩 안내합니다.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
@@ -62,9 +62,9 @@
               <p>Compose 파일과 호스트 설정을 로컬에서 읽습니다. 네이티브 점검 덕분에 SSH·방화벽·업데이트 강화를 위해 따로 설치할 것이 없습니다.</p>
             </article>
             <article class="feature-card accent-card">
-              <span class="card-kicker">원할 때만, 당신의 방식으로</span>
+              <span class="card-kicker">필요할 때만, 원하는 방식으로</span>
               <h3>원하면 CVE 스캔과 로컬 AI를 추가하세요.</h3>
-              <p>Trivy 이미지 스캔은 설치돼 있으면 사용하고, 없으면 깔끔히 건너뜁니다. AI 설명은 선택 사항이며 기본값이 로컬 모델이라 — 무엇도 호스트를 떠나지 않습니다.</p>
+              <p>Trivy 이미지 스캔은 설치돼 있으면 사용하고, 없으면 깔끔히 건너뜁니다. AI 설명은 선택 사항이고 기본값이 로컬 모델이라 무엇도 호스트를 떠나지 않습니다.</p>
             </article>
           </div>
         </div>
@@ -74,13 +74,13 @@
         <div class="container split-grid">
           <div>
             <p class="eyebrow">점검 범위</p>
-            <h2>실제로 당신을 해킹당하게 만드는 홈 서버 실수들.</h2>
-            <p>노출된 데이터베이스, 컨테이너에 넘겨진 Docker 소켓, root SSH 로그인, 방화벽 부재, 패치되지 않은 패키지 — hostveil은 영향이 가장 큰 경로들을 함께, 깊이 점검합니다.</p>
+            <h2>실제로 해킹으로 이어지는 홈 서버 실수들.</h2>
+            <p>노출된 데이터베이스, 컨테이너에 넘겨진 Docker 소켓, root SSH 로그인, 방화벽 부재, 패치되지 않은 패키지까지. hostveil은 영향이 가장 큰 경로들을 함께, 깊이 점검합니다.</p>
           </div>
           <div class="check-stack">
             <article>
               <strong>Docker &amp; Compose</strong>
-              <p>특권 모드, 호스트 네트워킹, Docker 소켓 마운트, 노출된 데이터 저장소와 관리자 패널, 누락된 no-new-privileges, 안전하지 않은 바인드 마운트, 하드코딩된 비밀값 — Compose 파일에 대한 네이티브 감사로 점검합니다.</p>
+              <p>특권 모드, 호스트 네트워킹, Docker 소켓 마운트, 노출된 데이터 저장소와 관리자 패널, 누락된 no-new-privileges, 안전하지 않은 바인드 마운트, 하드코딩된 비밀값까지 Compose 파일을 직접 감사해 찾아냅니다.</p>
             </article>
             <article>
               <strong>SSH, 방화벽 &amp; 업데이트</strong>
@@ -88,7 +88,7 @@
             </article>
             <article>
               <strong>이미지 CVE (선택)</strong>
-              <p>Trivy가 설치돼 있으면, hostveil은 Compose 서비스가 실행하는 이미지를 스캔하고 “아직 패치 없음”을 정식 상태로 다룹니다 — 스캔이 실행되지 않았는데도 오해를 주는 만점은 주지 않습니다.</p>
+              <p>Trivy가 설치돼 있으면 hostveil은 Compose 서비스가 실행하는 이미지를 스캔하고 “아직 패치 없음”을 정식 상태로 다룹니다. 스캔이 실행되지 않았다고 오해를 주는 만점을 주는 일은 없습니다.</p>
             </article>
           </div>
         </div>
@@ -183,7 +183,7 @@ hostveil fix --all</code></pre>
           <div class="faq-grid">
             <article>
               <h3>제 데이터를 업로드하나요?</h3>
-              <p>아니요. hostveil은 로컬에서 실행됩니다. 선택적 AI<br>설명조차 기본값이 당신의 컴퓨터에 있는 모델입니다.</p>
+              <p>아니요. hostveil은 로컬에서 실행됩니다. 선택적 AI<br>설명도 기본값은 로컬 컴퓨터에 있는 모델입니다.</p>
             </article>
             <article>
               <h3>수정이 서버를 망가뜨리진 않나요?</h3>
@@ -191,7 +191,7 @@ hostveil fix --all</code></pre>
             </article>
             <article>
               <h3>수정에 절충점이 있으면 어떻게 되나요?</h3>
-              <p>그건 자동이 아니라 검토 수정입니다. hostveil이 독립적인<br>대안을 보여 주고 당신이 선택하게 합니다.</p>
+              <p>그건 자동이 아니라 검토 수정입니다. hostveil이 독립적인<br>대안을 보여 주고 그중 하나를 고르게 합니다.</p>
             </article>
             <article>
               <h3>Docker나 Trivy가 필요한가요?</h3>
