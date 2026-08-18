@@ -244,7 +244,7 @@ func auditNginx(root string) ([]model.Finding, []string) {
 	listing := map[string]struct{}{} // files with autoindex on
 
 	for _, f := range files {
-		b, err := os.ReadFile(f) // #nosec G304 -- resolved from the configured nginx root
+		b, err := platform.ReadFileBounded(f, 4<<20)
 		if err != nil {
 			unread = append(unread, f)
 			continue
@@ -407,7 +407,7 @@ func nginxFiles(root string) ([]string, []string) {
 		}
 		seen[path] = true
 
-		b, err := os.ReadFile(path) // #nosec G304 -- reached from the configured nginx root
+		b, err := platform.ReadFileBounded(path, 4<<20)
 		if err != nil {
 			unread = append(unread, path)
 			return

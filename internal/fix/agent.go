@@ -3,6 +3,7 @@ package fix
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/json5"
@@ -61,14 +62,18 @@ func buildAgentConfigKey(f model.Finding) (Fix, error) {
 		return Fix{}, err
 	}
 
-	actions := []Action{agentEditAction(path, primary)}
+	root := f.Evidence["root"]
+	if root == "" {
+		root = pathRoot(path) // compatibility for findings built by older callers
+	}
+	actions := []Action{agentEditAction(root, path, primary)}
 	kind := model.RemediationAuto
 	if f.Evidence["set-alt"] != "" {
 		alt, err := agentAssignments(f, "set-alt")
 		if err != nil {
 			return Fix{}, err
 		}
-		actions = append(actions, agentEditAction(path, alt))
+		actions = append(actions, agentEditAction(root, path, alt))
 		kind = model.RemediationReview
 	}
 
@@ -81,7 +86,7 @@ func buildAgentConfigKey(f model.Finding) (Fix, error) {
 
 // agentEditAction is one alternative: set every named key to its value in the
 // runtime's config, preserving the rest of the file byte for byte.
-func agentEditAction(path string, as []assignment) Action {
+func agentEditAction(root, path string, as []assignment) Action {
 	return Action{
 		Label: "Set " + strings.Join(renderAssignments(as), ", "),
 		Kind:  ActionEdit,
@@ -89,6 +94,7 @@ func agentEditAction(path string, as []assignment) Action {
 		// The path is under a user's home, and the account owns every
 		// component of it. See fix.Action.NoFollow.
 		NoFollow: true,
+		SafeRoot: root,
 		// No VerifyCmd: neither runtime ships a config validator, and there
 		// is nothing on the host that would answer. The equivalent guarantee
 		// is inside the transform — json5.Doc.Bytes re-parses what it
@@ -116,6 +122,13 @@ func agentEditAction(path string, as []assignment) Action {
 			return doc.Bytes()
 		},
 	}
+}
+
+func pathRoot(path string) string {
+	// Agent findings carry an absolute config path below <home>/.openclaw or
+	// <home>/.hermes. The runtime directory is the first component controlled
+	// by that account; its parent is the trusted home root.
+	return filepath.Dir(filepath.Dir(path))
 }
 
 // assignment is one key and the value it should take.

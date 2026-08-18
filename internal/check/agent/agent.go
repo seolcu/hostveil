@@ -237,6 +237,7 @@ func modeFindings(s scan) []model.Finding {
 			// any path containing ", " or " (". A single path needs no
 			// separator, but it is read back with PathListSeparator.
 			model.WithEvidence("paths", path),
+			model.WithEvidence("root", s.in.user.Home),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.Max)),
 		}
 		if len(keys) > 0 {
@@ -449,6 +450,7 @@ func dangerFindings(s scan) []model.Finding {
 			model.WithHowToFix(first.HowToFix),
 			model.WithEvidence("settings", strings.Join(keys, model.EvidenceSeparator)),
 			model.WithEvidence("config", s.in.path(s.in.rt.Config)),
+			model.WithEvidence("root", s.in.user.Home),
 		}
 		kind, primary, alt := remediation(s.in.rt, h.rules)
 		if primary != "" {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/platform"
+
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/textwidth"
 )
@@ -32,7 +34,13 @@ type modeChange struct {
 func planModes(a fix.Action) ([]modeChange, error) {
 	var changes []modeChange
 	for _, p := range a.Paths {
-		fi, err := os.Lstat(p)
+		var fi os.FileInfo
+		var err error
+		if a.SafeRoot != "" {
+			fi, err = platform.StatBeneath(a.SafeRoot, p)
+		} else {
+			fi, err = os.Lstat(p)
+		}
 		if err != nil {
 			return nil, err
 		}

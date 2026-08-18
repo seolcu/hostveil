@@ -57,6 +57,11 @@ def first_int(path):
         return 0
 
 
+def rollback_failures(path):
+    """Checkpoint IDs whose rollback command failed."""
+    return [line.removeprefix("FAIL ") for line in read_lines(path) if line.startswith("FAIL ")]
+
+
 def host():
     out = {}
     try:
@@ -118,6 +123,7 @@ def rollback_verdict(work):
         "fidelity": (round(100 * len(restored_ok) / len(changed)) if changed else None),
         "checkpoints_before": first_int(os.path.join(work, "checkpoints.before")),
         "checkpoints_rolled_back": first_int(os.path.join(work, "undone")),
+        "checkpoint_failures": rollback_failures(os.path.join(work, "undone")),
         "changed": changed,
     }
 

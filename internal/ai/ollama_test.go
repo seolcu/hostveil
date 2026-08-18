@@ -96,6 +96,40 @@ func TestExplainReportsAnUnreachableServer(t *testing.T) {
 	}
 }
 
+func TestExplainRejectsUnsafeOrAmbiguousHostURLs(t *testing.T) {
+	for _, host := range []string{"file:///tmp/socket", "http://user:pass@localhost:11434", "http://localhost:11434?target=elsewhere"} {
+		o := &Ollama{Host: host, Model: "x", http: http.DefaultClient}
+		if _, err := o.Explain(context.Background(), finding()); err == nil {
+			t.Errorf("Explain accepted host %q", host)
+		}
+	}
+}
+
+func TestExplainBoundsAndCapsTheModelResponse(t *testing.T) {
+	long := strings.Repeat("word ", 140)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(generateResponse{Response: long})
+	}))
+	defer srv.Close()
+	o := &Ollama{Host: srv.URL, Model: "x", http: srv.Client()}
+	got, err := o.Explain(context.Background(), finding())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(strings.Fields(got)); n != 120 {
+		t.Fatalf("response has %d words, want 120", n)
+	}
+
+	tooLarge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"response":"`+strings.Repeat("x", maxOllamaResponse)+`"}`)
+	}))
+	defer tooLarge.Close()
+	o = &Ollama{Host: tooLarge.URL, Model: "x", http: tooLarge.Client()}
+	if _, err := o.Explain(context.Background(), finding()); err == nil {
+		t.Fatal("Explain accepted an oversized response")
+	}
+}
+
 func TestAvailable(t *testing.T) {
 	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/version" {

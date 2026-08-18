@@ -58,7 +58,23 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, path)
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	// fsyncing the file makes its contents durable, but not the directory
+	// entry created by rename. Without syncing the parent, a power loss can
+	// still resurrect the old name or lose the new one after this function
+	// returned success.
+	//nolint:gosec // G304: dir is the selected destination's parent and is opened only to fsync it
+	d, err := os.Open(dir)
+	if err != nil {
+		return fmt.Errorf("opening %s to persist the rename: %w", dir, err)
+	}
+	defer func() { _ = d.Close() }()
+	if err := d.Sync(); err != nil {
+		return fmt.Errorf("persisting the rename in %s: %w", dir, err)
+	}
+	return nil
 }
 
 // preserveOwner gives tmp the same uid/gid as the file it is about to

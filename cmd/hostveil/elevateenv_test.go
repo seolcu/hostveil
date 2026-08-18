@@ -111,6 +111,8 @@ var notCarried = map[string]string{
 	"HOSTVEIL_ELEVATED": "the marker whose non-arrival through sudo is the entire reason " +
 		"SUDO_USER is the loop guard; carrying it would re-create the loop it replaced",
 	"SUDO_USER": "sudo sets it in the child itself, which is what makes it the guard",
+	"SUDO_UID":  "sudo sets it in the child to the invoking account; preserving a caller value would let it forge report ownership",
+	"SUDO_GID":  "sudo sets it in the child to the invoking account; preserving a caller value would let it forge report ownership",
 	"USER": "sudo sets it to the target user, and that is the value to ignore rather than " +
 		"preserve — sshHint reads SUDO_USER first for exactly that reason, and falls back to " +
 		"this one only where no elevation happened and it is already correct",

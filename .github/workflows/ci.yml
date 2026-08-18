@@ -10,6 +10,9 @@ on:
   # passed. Adding this does not change when CI runs on its own.
   workflow_call:
 
+permissions:
+  contents: read
+
 # One run per pull request at a time: pushing twice in a minute used to leave
 # both runs queued for a runner, and the answer everyone waits for is the one
 # for the newest commit. Cancelling is scoped to pull requests — a push to
@@ -155,7 +158,7 @@ jobs:
         run: find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
 
       - name: Test
-        run: go test -race -coverprofile=coverage.out ./...
+        run: go test -race -coverprofile=coverage.out ./... | tee test.out
 
       # The same suite in the other width mode, which is the one hostveil's
       # own audience is most likely to be in.
@@ -188,6 +191,8 @@ jobs:
             echo "### Coverage"
             echo
             echo '```'
+            sed -n 's/^\(ok .*coverage:.*\)$/\1/p' test.out
+            echo
             go tool cover -func=coverage.out | tail -1
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

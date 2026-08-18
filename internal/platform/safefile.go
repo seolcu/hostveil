@@ -55,6 +55,41 @@ func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 	return b, nil
 }
 
+// ReadFileBounded reads a regular file without allowing a FIFO or device to
+// block the caller and without holding more than limit bytes in memory.
+// Symlinks are followed deliberately; system configuration commonly uses
+// them (for example /etc/sysctl.d/99-sysctl.conf on Ubuntu).
+func ReadFileBounded(path string, limit int64) ([]byte, error) {
+	//nolint:gosec // G304: this is the bounded, type-checked opener for variable paths
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s: not a regular file (%v)", path, fi.Mode().Type())
+	}
+	return readLimited(f, path, limit)
+}
+
+func readLimited(r io.Reader, path string, limit int64) ([]byte, error) {
+	if limit < 0 {
+		return nil, fmt.Errorf("%s: invalid size limit %d", path, limit)
+	}
+	b, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > limit {
+		return nil, fmt.Errorf("%s: larger than %d bytes", path, limit)
+	}
+	return b, nil
+}
+
 // ChmodNoFollow changes a file's or directory's permission bits without ever
 // following a symlink: the path is opened with O_NOFOLLOW and the mode is
 // applied through the descriptor, so the bits land on the inode that was
@@ -73,4 +108,24 @@ func ChmodNoFollow(path string, mode os.FileMode) error {
 	}
 	defer func() { _ = f.Close() }()
 	return f.Chmod(mode)
+}
+
+// ChownNoFollow changes ownership through an opened descriptor and refuses a
+// final symlink. It is used when an elevated command creates an output file
+// for the account that invoked sudo.
+func ChownNoFollow(path string, uid, gid int) error {
+	//nolint:gosec // G304: the descriptor is opened with O_NOFOLLOW
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !fi.Mode().IsRegular() {
+		return fmt.Errorf("%s: not a regular file", path)
+	}
+	return f.Chown(uid, gid)
 }

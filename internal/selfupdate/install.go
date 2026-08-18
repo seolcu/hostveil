@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/platform"
@@ -49,6 +48,7 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 	defer gz.Close()
 
 	tr := tar.NewReader(gz)
+	var found []byte
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -57,19 +57,31 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading the archive: %w", err)
 		}
-		if filepath.Base(hdr.Name) != "hostveil" || hdr.Typeflag != tar.TypeReg {
+		if hdr.Name != "hostveil" {
 			continue
 		}
-		bin, err := io.ReadAll(io.LimitReader(tr, maxArchive))
+		if hdr.Typeflag != tar.TypeReg {
+			return nil, fmt.Errorf("the archive's hostveil entry is not a regular file")
+		}
+		if found != nil {
+			return nil, fmt.Errorf("the archive contains more than one hostveil binary")
+		}
+		bin, err := io.ReadAll(io.LimitReader(tr, maxArchive+1))
 		if err != nil {
 			return nil, err
+		}
+		if len(bin) > maxArchive {
+			return nil, fmt.Errorf("the archive's hostveil entry is larger than %d bytes", maxArchive)
 		}
 		if len(bin) == 0 {
 			return nil, fmt.Errorf("the archive's hostveil entry is empty")
 		}
-		return bin, nil
+		found = bin
 	}
-	return nil, fmt.Errorf("the archive does not contain a hostveil binary")
+	if found == nil {
+		return nil, fmt.Errorf("the archive does not contain a hostveil binary")
+	}
+	return found, nil
 }
 
 // Replace writes the new binary over path, atomically.
@@ -89,32 +101,7 @@ func Replace(path string, binary []byte) error {
 	if err != nil {
 		return fmt.Errorf("reading the current binary: %w", err)
 	}
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".hostveil-update-*")
-	if err != nil {
-		return fmt.Errorf("writing into %s: %w", dir, err)
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // a no-op once the rename has succeeded
-
-	if _, err := tmp.Write(binary); err != nil {
-		_ = tmp.Close() // the write already failed; the close cannot improve on it
-		return err
-	}
-	// Flushed before the rename, not after. A rename that publishes a file
-	// whose contents are still in the page cache is the same torn write in a
-	// slower disguise.
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpName, info.Mode().Perm()); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, path)
+	return platform.WriteFileAtomic(path, binary, info.Mode().Perm())
 }
 
 // Remove deletes the binary. State is deliberately left alone; see StateNote.

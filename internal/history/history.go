@@ -32,6 +32,7 @@ import (
 // restore nine bits.
 type BackedFile struct {
 	Path string      `json:"path"` // original absolute path
+	Root string      `json:"root,omitempty"`
 	Blob string      `json:"blob,omitempty"`
 	Mode os.FileMode `json:"mode"`
 	// BlobSHA256 is the hash of the backup itself, checked before the blob is
@@ -93,6 +94,9 @@ type Checkpoint struct {
 	// to nil, and a nil entry means "cannot tell", which is not the same as
 	// "unchanged" and must not be treated as consent.
 	AppliedSHA256 map[string]string `json:"applied_sha256,omitempty"`
+	// SafeRoots records descriptor roots for paths controlled by another
+	// account. Older checkpoints omit it and retain their legacy behaviour.
+	SafeRoots map[string]string `json:"safe_roots,omitempty"`
 }
 
 // Reversible reports whether the checkpoint can be rolled back (i.e. it
@@ -147,7 +151,7 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 			return Checkpoint{}, err
 		}
 		cp.Files = append(cp.Files, BackedFile{
-			Path: path, Blob: blob, Mode: mode, BlobSHA256: SHA256Hex(data),
+			Path: path, Root: cp.SafeRoots[path], Blob: blob, Mode: mode, BlobSHA256: SHA256Hex(data),
 		})
 	}
 	sort.Slice(cp.Files, func(i, j int) bool { return cp.Files[i].Path < cp.Files[j].Path })
@@ -339,7 +343,7 @@ func (s *Store) pruneCheckpoints() {
 func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoint, error) {
 	files := make([]BackedFile, 0, len(modes))
 	for path, mode := range modes {
-		files = append(files, BackedFile{Path: path, Mode: mode})
+		files = append(files, BackedFile{Path: path, Root: cp.SafeRoots[path], Mode: mode})
 	}
 	return s.saveBlobless(cp, files)
 }
@@ -361,7 +365,7 @@ func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoi
 func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error) {
 	files := make([]BackedFile, 0, len(paths))
 	for _, path := range paths {
-		files = append(files, BackedFile{Path: path, Created: true})
+		files = append(files, BackedFile{Path: path, Root: cp.SafeRoots[path], Created: true})
 	}
 	return s.saveBlobless(cp, files)
 }
@@ -479,6 +483,9 @@ func IsDamaged(err error) bool {
 
 // Get loads one checkpoint by ID.
 func (s *Store) Get(id string) (Checkpoint, error) {
+	if id == "" || id == "." || filepath.Base(id) != id || strings.ContainsAny(id, `/\\`) {
+		return Checkpoint{}, fmt.Errorf("invalid checkpoint id %q", id)
+	}
 	// G304: the variable is a checkpoint ID, joined under the store's own
 	// directory. It reaches here from a UI that got it out of List, so it
 	// names something this process wrote — and the read is of hostveil's own
@@ -492,7 +499,39 @@ func (s *Store) Get(id string) (Checkpoint, error) {
 	if err := json.Unmarshal(data, &cp); err != nil {
 		return Checkpoint{}, err
 	}
+	if err := validateCheckpoint(id, cp); err != nil {
+		return Checkpoint{}, err
+	}
 	return cp, nil
+}
+
+func validateCheckpoint(id string, cp Checkpoint) error {
+	if cp.ID != "" && cp.ID != id {
+		return fmt.Errorf("checkpoint %s metadata claims id %q", id, cp.ID)
+	}
+	seen := map[string]bool{}
+	for _, bf := range cp.Files {
+		if !filepath.IsAbs(bf.Path) || seen[bf.Path] {
+			return fmt.Errorf("checkpoint %s contains an invalid or duplicate path %q", id, bf.Path)
+		}
+		seen[bf.Path] = true
+		if bf.Blob != "" && (filepath.Base(bf.Blob) != bf.Blob || strings.ContainsAny(bf.Blob, `/\\`)) {
+			return fmt.Errorf("checkpoint %s contains an invalid blob name %q", id, bf.Blob)
+		}
+		if bf.Root != "" {
+			rel, err := filepath.Rel(filepath.Clean(bf.Root), filepath.Clean(bf.Path))
+			if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return fmt.Errorf("checkpoint %s path %q escapes safe root %q", id, bf.Path, bf.Root)
+			}
+		}
+		if bf.BlobSHA256 != "" {
+			decoded, err := hex.DecodeString(bf.BlobSHA256)
+			if err != nil || len(decoded) != sha256.Size {
+				return fmt.Errorf("checkpoint %s has an invalid backup checksum for %s", id, bf.Path)
+			}
+		}
+	}
+	return nil
 }
 
 // ExternalEditError reports that a file changed after the fix wrote it, so
@@ -534,7 +573,13 @@ func checkUnmodified(cp Checkpoint, bf BackedFile, known recordedWrites) error {
 	if cp.AppliedSHA256[bf.Path] == "" {
 		return nil // this checkpoint predates the recording; cannot tell
 	}
-	data, err := os.ReadFile(bf.Path) // path recorded by a fix this tool applied
+	var data []byte
+	var err error
+	if bf.Root != "" {
+		data, err = platform.ReadFileBeneath(bf.Root, bf.Path, 64<<20)
+	} else {
+		data, err = os.ReadFile(bf.Path) // path recorded by a fix this tool applied
+	}
 	if err != nil {
 		return nil
 	}
@@ -694,8 +739,14 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// gets, so a drop-in the operator has since edited declines here
 		// rather than being deleted out from under them.
 		if bf.Created {
-			if err := os.Remove(bf.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				failed, errs = append(failed, bf.Path), append(errs, err)
+			var removeErr error
+			if bf.Root != "" {
+				removeErr = platform.RemoveBeneath(bf.Root, bf.Path)
+			} else {
+				removeErr = os.Remove(bf.Path)
+			}
+			if removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+				failed, errs = append(failed, bf.Path), append(errs, removeErr)
 				continue
 			}
 			restored = append(restored, bf.Path)
@@ -708,8 +759,22 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 			// has already gone wrong. os.WriteFile truncates first, so an
 			// interrupted restore destroys the very file it was recovering —
 			// and rollback keeps no backup of its own to try again from.
-			if err := platform.WriteFileAtomic(bf.Path, data, bf.Mode); err != nil {
-				failed, errs = append(failed, bf.Path), append(errs, err)
+			var writeErr error
+			if bf.Root != "" {
+				current, readErr := platform.ReadFileBeneath(bf.Root, bf.Path, 64<<20)
+				switch {
+				case readErr == nil:
+					writeErr = platform.WriteFileAtomicBeneath(bf.Root, bf.Path, data, bf.Mode, current, false)
+				case errors.Is(readErr, fs.ErrNotExist):
+					writeErr = platform.WriteFileAtomicBeneath(bf.Root, bf.Path, data, bf.Mode, nil, true)
+				default:
+					writeErr = readErr
+				}
+			} else {
+				writeErr = platform.WriteFileAtomic(bf.Path, data, bf.Mode)
+			}
+			if writeErr != nil {
+				failed, errs = append(failed, bf.Path), append(errs, writeErr)
 				continue
 			}
 		}
@@ -726,8 +791,14 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// branch above tolerates deliberately: the operator removed it, and
 		// failing to set the mode of something that does not exist is not a
 		// failure to restore it.
-		if err := platform.ChmodNoFollow(bf.Path, bf.Mode); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			failed, errs = append(failed, bf.Path), append(errs, err)
+		var chmodErr error
+		if bf.Root != "" {
+			chmodErr = platform.ChmodBeneath(bf.Root, bf.Path, bf.Mode)
+		} else {
+			chmodErr = platform.ChmodNoFollow(bf.Path, bf.Mode)
+		}
+		if chmodErr != nil && !errors.Is(chmodErr, fs.ErrNotExist) {
+			failed, errs = append(failed, bf.Path), append(errs, chmodErr)
 			continue
 		}
 		restored = append(restored, bf.Path)

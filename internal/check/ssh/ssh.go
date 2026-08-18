@@ -126,7 +126,7 @@ func parseConfigFile(path string) (sshdConfig, coverageGaps, error) {
 		},
 		visited: map[string]bool{},
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // caller-supplied fixed system path
+	data, err := platform.ReadFileBounded(path, 4<<20)
 	if err != nil {
 		return p.cfg, coverageGaps{}, err
 	}
@@ -246,15 +246,11 @@ func (p *includeParser) readInto(path string, depth int) {
 	}
 	p.visited[path] = true
 
-	// G703: path came from expanding an Include glob inside sshd_config,
-	// which is a root-owned file this checker only reads. An operator who
-	// can write it can already do anything this process could.
-	//nolint:gosec // G703: from sshd_config's own Include, read-only
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return // sshd ignores directories matched by a glob
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // path came from the config's own Include glob
+	data, err := platform.ReadFileBounded(path, 4<<20)
 	if err != nil {
 		p.unread = append(p.unread, path)
 		return

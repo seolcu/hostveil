@@ -6,13 +6,15 @@ package compose
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/platform"
 	"gopkg.in/yaml.v3"
 )
+
+const maxComposeFileBytes = 16 << 20
 
 // Project is one Docker Compose project: a name, the file it was parsed
 // from, and its services.
@@ -276,7 +278,7 @@ func (p Project) ServiceNames() []string {
 }
 
 func ParseFile(path string) (Project, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // path comes from docker compose ls
+	data, err := platform.ReadFileBounded(path, maxComposeFileBytes)
 	if err != nil {
 		return Project{}, err
 	}

@@ -158,6 +158,7 @@
                 <thead><tr><th>Variable</th><th>Default</th><th>Values</th><th>What it does</th></tr></thead>
                 <tbody>
                   <tr><td><code>SUDO_USER</code></td><td>set by <code>sudo</code>, never by hostveil</td><td>Any non-empty string means "already elevated"; the username itself is never inspected</td><td>The loop guard on auto-elevation. A non-empty value means <code>sudo</code> has already run, so hostveil does not invoke it again.</td></tr>
+                  <tr><td><code>SUDO_UID</code>, <code>SUDO_GID</code></td><td>set by <code>sudo</code>, never by hostveil</td><td>Non-negative numeric user and group IDs</td><td>When <code>scan --output</code> runs as a sudo child, the newly written report is assigned to the invoking account instead of being left root-owned. They are used only when the effective user is root and <code>SUDO_USER</code> is also set; an existing report keeps its current owner and mode.</td></tr>
                 </tbody>
               </table>
             </div>

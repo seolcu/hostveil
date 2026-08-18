@@ -56,9 +56,9 @@ paths = set()
 for f in json.load(sys.stdin)["findings"]:
     for src in (f.get("metadata") or {}, f.get("evidence") or {}):
         for v in src.values():
-            for part in str(v).split(","):
+            for part in str(v).replace("\x1f", ",").split(","):
                 part = part.strip()
-                if part.startswith("/") and os.path.isfile(part):
+                if part.startswith("/"):
                     paths.add(part)
 for d in os.environ["ENUMERATED_DIRS"].split(":"):
     if os.path.isdir(d):
@@ -81,12 +81,22 @@ mark)  ids > "$MARK"; wc -l < "$MARK" | tr -d ' ' ;;
 new)   comm -23 <(ids | sort) <(sort "$MARK" 2>/dev/null || true) ;;
 undo)
   n=0
+  failures=()
   # Newest first: two fixes to one file leave the second's content in place,
   # and a rollback verifies against what it wrote.
-  for id in $("$0" new | sort -r); do
-    if hostveil rollback "$id" >/dev/null 2>&1; then n=$((n+1)); fi
-  done
-  echo "$n"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    if hostveil rollback "$id" >/dev/null 2>&1; then
+      n=$((n+1))
+    else
+      failures+=("$id")
+      echo "rollback failed: $id" >&2
+    fi
+  done < <("$0" new | sort -r)
+  printf '%d\n' "$n"
+  if [ "${#failures[@]}" -gt 0 ]; then
+    printf 'FAIL %s\n' "${failures[@]}"
+  fi
   ;;
 *) echo "usage: $0 {candidates|dirs|hash|mark|new|undo}" >&2; exit 2 ;;
 esac

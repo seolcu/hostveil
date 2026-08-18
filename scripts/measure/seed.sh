@@ -59,6 +59,8 @@ say() { printf '\n==> %s\n' "$*"; }
 # where run.sh can put it in the measurement JSON, and a `require` that does
 # not arrive stops the script instead of producing a host nobody can interpret.
 MANIFEST=${SEED_MANIFEST:-/var/lib/hostveil-measure/seeded.json}
+DOCKER_BENCH_REV=154869da6418089decf7e1ab0cfca0e1cdfc5c49
+TRIVY_INSTALL_REV=dcbadb7b15076c405ce7d59f04cde9991b90da22
 SEEDED=()
 MISSING=()
 
@@ -104,6 +106,8 @@ write_manifest() {
   mkdir -p "$dir"
   {
     printf '{\n  "distro": "%s",\n  "distro_like": "%s",\n' "$DISTRO_ID" "$DISTRO_LIKE"
+    printf '  "instruments": {"docker_bench_revision": "%s", "trivy_installer_revision": "%s"},\n' \
+      "$DOCKER_BENCH_REV" "$TRIVY_INSTALL_REV"
     printf '  "seeded": ['
     local first=1 item
     for item in ${SEEDED+"${SEEDED[@]}"}; do
@@ -407,12 +411,18 @@ if [ "$INSTRUMENTS" = 1 ]; then
   # axis leaves the denominator rather than scoring zero.
   pkg_install lynis || echo "  lynis: install failed (no packaged lynis on $DISTRO_ID)"
   if [ ! -x /opt/docker-bench-security/docker-bench-security.sh ]; then
-    git clone -q --depth 1 https://github.com/docker/docker-bench-security.git \
-      /opt/docker-bench-security || echo "  docker-bench: clone failed"
+    if git init -q /opt/docker-bench-security &&
+      git -C /opt/docker-bench-security remote add origin https://github.com/docker/docker-bench-security.git &&
+      git -C /opt/docker-bench-security fetch -q --depth 1 origin "$DOCKER_BENCH_REV" &&
+      git -C /opt/docker-bench-security checkout -q --detach FETCH_HEAD; then
+      :
+    else
+      echo "  docker-bench: pinned checkout failed"
+    fi
   fi
   chmod +x /opt/docker-bench-security/docker-bench-security.sh 2>/dev/null || true
   if ! command -v trivy >/dev/null 2>&1; then
-    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+    curl -sfL "https://raw.githubusercontent.com/aquasecurity/trivy/$TRIVY_INSTALL_REV/contrib/install.sh" \
       | sh -s -- -b /usr/local/bin >/dev/null 2>&1 || echo "  trivy: install failed"
   fi
   trivy image --download-db-only >/dev/null 2>&1 || true

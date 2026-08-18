@@ -5,11 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/clirender"
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 func cmdScan(ctx context.Context, args []string) int {
@@ -95,12 +97,7 @@ func cmdScan(ctx context.Context, args []string) int {
 	}
 
 	if output != "" {
-		// G306: a report the operator asked to be written, and asked for by
-		// name. 0644 is what every other tool writes an output file as, and
-		// tightening it to 0600 would mean a scan run under sudo produced a
-		// SARIF file the user's own CI could not read.
-		//nolint:gosec // G306: an output file the caller named, not state
-		if err := os.WriteFile(output, []byte(rendered), 0o644); err != nil {
+		if err := writeReport(output, []byte(rendered)); err != nil {
 			fmt.Fprintln(os.Stderr, "hostveil:", err)
 			return 1
 		}
@@ -110,6 +107,31 @@ func cmdScan(ctx context.Context, args []string) int {
 	// The exit code is the CI contract and does not vary by output format
 	// or destination.
 	return exitCode(report)
+}
+
+func writeReport(path string, data []byte) error {
+	mode := os.FileMode(0o600)
+	creating := true
+	if fi, err := os.Lstat(path); err == nil {
+		if !fi.Mode().IsRegular() {
+			return fmt.Errorf("refusing to replace non-regular output %s", path)
+		}
+		creating = false
+		mode = fi.Mode().Perm()
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := platform.WriteFileAtomic(path, data, mode); err != nil {
+		return err
+	}
+	uid, uidErr := strconv.Atoi(os.Getenv("SUDO_UID"))
+	gid, gidErr := strconv.Atoi(os.Getenv("SUDO_GID"))
+	if creating && os.Geteuid() == 0 && os.Getenv("SUDO_USER") != "" && uidErr == nil && gidErr == nil && uid >= 0 && gid >= 0 {
+		if err := platform.ChownNoFollow(path, uid, gid); err != nil {
+			return fmt.Errorf("giving report ownership to the invoking user: %w", err)
+		}
+	}
+	return nil
 }
 
 // scanWithProgress runs a scan, showing which domains are still working

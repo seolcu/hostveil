@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -53,7 +54,7 @@ func Latest(ctx context.Context, c Client) (Release, error) {
 	}
 	tag := loc[strings.LastIndex(loc, "/")+1:]
 	version := strings.TrimPrefix(tag, "v")
-	if version == "" || version == "latest" || strings.ContainsAny(version, "/ ") {
+	if !validReleaseVersion(version) {
 		return Release{}, fmt.Errorf("could not read a version out of %q", loc)
 	}
 
@@ -99,14 +100,25 @@ func Download(ctx context.Context, c Client, rel Release) ([]byte, error) {
 // checksumFor reads one entry out of a sha256sum-format file. The asterisk
 // form is what sha256sum writes in binary mode and what goreleaser emits.
 func checksumFor(sums, asset string) (string, error) {
+	var found string
 	for _, line := range strings.Split(sums, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) != 2 {
 			continue
 		}
 		if name := strings.TrimPrefix(fields[1], "*"); name == asset {
-			return strings.ToLower(fields[0]), nil
+			decoded, err := hex.DecodeString(fields[0])
+			if err != nil || len(decoded) != sha256.Size {
+				return "", fmt.Errorf("%s has an invalid SHA-256 entry in the checksums file", asset)
+			}
+			if found != "" {
+				return "", fmt.Errorf("%s is listed more than once in the checksums file", asset)
+			}
+			found = strings.ToLower(fields[0])
 		}
+	}
+	if found != "" {
+		return found, nil
 	}
 	return "", fmt.Errorf("%s is not listed in the release's checksums file, so there is "+
 		"nothing to verify it against", asset)
@@ -125,5 +137,28 @@ func get(ctx context.Context, c Client, url string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s returned %s", url, resp.Status)
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, maxArchive))
+	b, err := io.ReadAll(io.LimitReader(resp.Body, maxArchive+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > maxArchive {
+		return nil, fmt.Errorf("%s returned more than %d bytes", url, maxArchive)
+	}
+	return b, nil
+}
+
+func validReleaseVersion(v string) bool {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+		if _, err := strconv.ParseUint(p, 10, 64); err != nil {
+			return false
+		}
+	}
+	return true
 }

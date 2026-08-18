@@ -67,6 +67,10 @@ type Action struct {
 	// /etc/sysctl.d/99-sysctl.conf as a link to /etc/sysctl.conf, which is
 	// exactly the file persistSysctl resolves to and edits on purpose.
 	NoFollow bool
+	// SafeRoot is the trusted directory under which Path or Paths must live.
+	// Every component below it is opened descriptor-relatively without
+	// following symlinks. It supersedes NoFollow for user-controlled trees.
+	SafeRoot string
 
 	// TakesEffectOn names what has to happen before this edit reaches the
 	// host — "recreated with `docker compose up -d`", "a docker daemon

@@ -11,7 +11,9 @@ set -euo pipefail
 BENCH=${DOCKER_BENCH_DIR:-/opt/docker-bench-security}
 [ -x "$BENCH/docker-bench-security.sh" ] || { echo '{"error":"docker-bench-security not installed"}'; exit 0; }
 
-log=$(mktemp -u /tmp/dbench-XXXX)
+work=$(mktemp -d /tmp/dbench-XXXXXX)
+trap 'rm -rf "$work"' EXIT
+log=$work/dbench
 (cd "$BENCH" && ./docker-bench-security.sh -l "$log" -c container_images,container_runtime >/dev/null 2>&1) || true
 
 python3 - "$log.json" <<'PY'
