@@ -335,23 +335,22 @@ package fix
 //
 // # The kernel-hardening fixes, and why they stopped being declined
 //
-// Every sysctl.* finding was on the list above, for one shared reason:
-// persisting a value means writing an /etc/sysctl.d drop-in that does not
-// exist — and if it did exist the value would already be set, so the
-// finding would not have fired — while edit actions could only modify a
-// file already on disk. That left one remediation, `sysctl --system`, with
-// no partner, and "write the drop-in, then apply it" is sequential steps,
-// exactly what Review's independent-alternatives shape forbids.
+// Sysctl findings used to be on the list above because persisting a value
+// means writing an /etc/sysctl.d drop-in that usually does not exist, while
+// edit actions could only modify a file already on disk.
 //
-// Action.CreateIfMissing removes the blocker, and what it reveals is that
-// there were two independent alternatives all along:
+// Action.CreateIfMissing removes that blocker. An unambiguous setting can now
+// be Auto as one persistent, reversible edit that deliberately leaves the
+// running kernel untouched. Topology-dependent settings remain Review and
+// retain two independent alternatives:
 //
 //   - write the drop-in — persistent, effective at the next boot;
 //   - `sysctl -w` — effective now, gone at the next boot.
 //
-// Neither dominates. An operator hardening a box they are about to reboot
-// wants the first; one who cannot restart a production host today wants
-// the second now and the first later. That is a choice, not a sequence.
+// Neither dominates for those controls. An operator hardening a box they are
+// about to reboot wants the first; one who cannot restart a production host
+// today wants the second now and the first later. That is a choice, not a
+// sequence.
 //
 // They are Review and not Auto, and the reason is not the shape. Writing
 // the drop-in is one mechanical, reversible file edit and would otherwise

@@ -116,12 +116,12 @@ func TestWeakValuesAreFlagged(t *testing.T) {
 		if err := f.Validate(); err != nil {
 			t.Errorf("%s: invalid finding: %v", f.ID, err)
 		}
-		// Review, not Manual: the fix registry now offers a drop-in and a
-		// `sysctl -w`, and the checker asks for a human eye because the
-		// unambiguous value is not the only defensible one on every host
-		// (rp_filter is 2 on a multi-homed box, sysrq has a bitmask form).
-		if f.Remediation != model.RemediationReview {
-			t.Errorf("%s: remediation = %v, want Review", f.ID, f.Remediation)
+		wantKind := model.RemediationAuto
+		if f.ID == "sysctl.rp-filter" || f.ID == "sysctl.sysrq" {
+			wantKind = model.RemediationReview
+		}
+		if f.Remediation != wantKind {
+			t.Errorf("%s: remediation = %v, want %v", f.ID, f.Remediation, wantKind)
 		}
 		// Every finding must carry the machine-readable recommendation the
 		// fix is built from. Without it the fix errors out at build time
@@ -425,8 +425,8 @@ func TestOnAHostTheFixIsStillOffered(t *testing.T) {
 		if f.ID != "sysctl.ptrace-scope" {
 			continue
 		}
-		if f.Remediation != model.RemediationReview {
-			t.Errorf("remediation = %v, want review", f.Remediation)
+		if f.Remediation != model.RemediationAuto {
+			t.Errorf("remediation = %v, want auto", f.Remediation)
 		}
 		if f.WhyNoFix != "" {
 			t.Errorf("a fixable finding must carry no WhyNoFix, got %q", f.WhyNoFix)

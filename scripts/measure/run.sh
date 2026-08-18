@@ -115,6 +115,10 @@ measure_all() {
 # Without the first, the report would quietly credit hostveil with a restart
 # it does not perform and deliberately does not offer as an Auto fix.
 restart_services() {
+  # AUTO sysctl fixes intentionally persist reversible drop-ins without
+  # mutating the running kernel. This phase is the explicit activation step
+  # that the report labels as restarted/applied, analogous to reloading sshd.
+  sysctl --system >/dev/null 2>&1 || say "  sysctl --system could not apply every persisted value"
   for f in $(hostveil scan --json 2>/dev/null |
     python3 -c '
 import json, sys

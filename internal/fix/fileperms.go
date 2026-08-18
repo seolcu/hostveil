@@ -27,6 +27,14 @@ func registerFilePerms(r *Registry) {
 		"fileperms.cron",
 		"fileperms.systemd-units",
 		"fileperms.docker-config",
+		"fileperms.grub-config",
+		"fileperms.grub2-config",
+		"fileperms.at-allow",
+		"fileperms.at-deny",
+		"fileperms.cron-allow",
+		"fileperms.cron-deny",
+		"fileperms.crontab",
+		"fileperms.passwd-backup",
 	} {
 		r.Register(id, buildTightenMode)
 	}

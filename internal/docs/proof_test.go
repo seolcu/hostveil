@@ -49,13 +49,27 @@ func counts(t *testing.T) map[string]int {
 	registry := fix.Default()
 
 	var fixable, auto, review int
+	// These checkers deliberately demand Review even though the registered
+	// fix has Auto's one-action shape. Counts are user-facing classifications,
+	// so resolve the same caution floor Engine.classify applies instead of
+	// publishing the registry shape as though it were the screen value.
+	checkerReview := map[string]bool{
+		"ssh.passwordauth": true, "ssh.gatewayports": true,
+		"ssh.hostbasedauth": true, "ssh.kbdinteractive": true,
+		"ssh.permituserenvironment": true, "ssh.permittunnel": true,
+		"agent.exec-unrestricted": true, "systemd.no-new-privileges": true,
+	}
 	for _, id := range ids {
 		fx, ok, err := registry.Build(fixtest.Finding(id))
 		if err != nil || !ok {
 			continue
 		}
 		fixable++
-		switch fx.EffectiveKind() {
+		kind := fx.EffectiveKind()
+		if checkerReview[id] && kind < model.RemediationReview {
+			kind = model.RemediationReview
+		}
+		switch kind {
 		case model.RemediationAuto:
 			auto++
 		case model.RemediationReview:

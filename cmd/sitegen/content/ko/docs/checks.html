@@ -24,7 +24,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">111</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">56</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">33</span>개는 무인으로 적용하고, <span data-counted="findings.review">23</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">136</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">81</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">60</span>개는 무인으로 적용하고, <span data-counted="findings.review">21</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
 
             <h2 id="severity">심각도와 점수</h2>
             <p>hostveil은 발견 항목을 <strong>얼마나 급한지</strong>로 등급을 매깁니다. 얼마나 나쁜지가 아닙니다. 설정 파일을 읽는 스캐너는 "root로 도는 컨테이너"가 얼마나 나쁜지 말해 줄 수 없습니다. 그건 그 컨테이너가 무엇을 하느냐에 전적으로 달려 있으니까요. 스캐너가 <em>말할 수 있는</em> 것은 지금 이 순간 공격자와 그 문제 사이에 무엇이 얼마나 서 있느냐이고, 이 세 단계가 재는 것이 바로 그것입니다.</p>
@@ -224,6 +224,14 @@
                   <tr><td><code>fileperms.cron</code></td><td>시스템 cron 정의를 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.systemd-units</code></td><td>시스템 서비스 유닛을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.docker-config</code></td><td>root의 Docker 자격 증명 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.grub-config</code></td><td>GRUB 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.grub2-config</code></td><td>GRUB2 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.at-allow</code></td><td>at 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.at-deny</code></td><td>at 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.cron-allow</code></td><td>cron 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                 </tbody>
@@ -232,31 +240,48 @@
 
             <h2 id="sysctl">커널 하드닝 <code>sysctl.</code></h2>
             <p><code>/proc/sys</code>에서 직접 읽습니다 — <code>sysctl</code> 바이너리가 필요 없습니다. 이 항목들은 사실상 모든 서버에서 안전한 값이 같은 조용한 손잡이들입니다. 공격자가 들어오는 구멍은 아니지만, 각각은 발판이 root가 되는 것과 위조된 패킷이 경로가 되는 것을 막아 줍니다. 이 커널에 없는 파라미터(예: Yama가 빌드되지 않은 경우)는 그냥 건너뜁니다.</p>
-            <p>여기의 모든 발견 항목은 <strong>검토</strong>이고, 두 대안은 한 절차의 앞뒤가 아니라 진짜 선택지입니다. <em>영구 적용</em>은 <code>/etc/sysctl.d</code> 아래에 발견 항목 이름을 딴 드롭인 파일을 하나 씁니다 — 재부팅해도 남고, 다음 부팅 때(또는 바로 <code>sysctl --system</code>을 실행하면 그 즉시) 적용됩니다. <em>지금 적용</em>은 <code>sysctl -w</code>로 실행 중인 커널을 이 순간 바꾸지만 다음 부팅에 사라집니다. 어느 쪽도 항상 낫지 않습니다. 곧 재부팅할 서버를 강화하는 중이라면 앞쪽을, 오늘 재시작할 수 없는 운영 호스트라면 지금은 뒤쪽을 그리고 나중에 앞쪽을 원하게 됩니다.</p>
-            <p>자동 수정이 아니라 검토인 이유는, 안전한 값이 언제나 유일하게 타당한 값은 아니기 때문입니다. <code>rp_filter</code>는 단일 회선 서버에서는 1이지만 VPN이나 다중 회선 호스트에서는 2이고, <code>sysrq</code>도 0만큼이나 정당한 제한 비트마스크 형태가 있습니다. hostveil은 각 항목에서 모호하지 않은 부분만 표시하고 표시한 것만 씁니다만, 이 호스트가 어느 쪽인지 아는 사람은 당신입니다. 영구 적용한 수정을 롤백하면 만들어진 드롭인 파일이 삭제되고, 그 파일을 그 뒤에 직접 고쳤다면 롤백은 거절됩니다.</p>
+            <p>값이 모호하지 않은 항목은 <strong>자동 수정</strong>입니다. hostveil은 <code>/etc/sysctl.d</code> 아래에 되돌릴 수 있는 드롭인 파일 하나를 쓰고 실행 중인 커널은 건드리지 않습니다. 다음 부팅 때 적용되며, 직접 <code>sysctl --system</code>을 실행하면 즉시 적용됩니다. 롤백은 파일을 삭제하거나 복원하고, 그 뒤 파일이 직접 수정됐다면 안전하게 거절합니다.</p>
+            <p>라우터·릴레이·다중 회선 구성에 따라 답이 달라지는 항목은 <strong>검토</strong>로 남습니다. 엄격한 역방향 경로 필터링은 비대칭 라우팅을 깨뜨릴 수 있고 Proxy ARP 비활성화는 의도적으로 릴레이 역할을 하는 호스트를 깨뜨릴 수 있습니다. 이런 항목은 영구 적용과 즉시 적용 대안을 유지해 운영자가 서버 구성에 맞게 선택합니다.</p>
             <p><code>net.ipv4.ip_forward</code>는 의도적으로 점검하지 않습니다. Docker, WireGuard, Tailscale 종료 노드, 가상화 호스트가 모두 정당하게 켜는 값이고, hostveil은 그것을 실수와 구별할 수 없습니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.accept-source-route</code></td><td>소스 라우팅 패킷을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.accept-source-route</code></td><td>소스 라우팅 패킷을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                   <tr><td><code>sysctl.send-redirects</code></td><td>ICMP 리다이렉트를 전송함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.suid-dumpable</code></td><td>권한 프로세스가 core dump를 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.protected-regular</code></td><td>일반 파일 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>비권한 사용자가 BPF를 로드할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.perf-events</code></td><td>성능 이벤트가 사용자에게 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>브로드캐스트 ping을 허용함</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>잘못된 ICMP 오류를 무시하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
-                  <tr><td><code>sysctl.log-martians</code></td><td>의심스러운 출발지 주소를 로그하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.suid-dumpable</code></td><td>권한 프로세스가 core dump를 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.protected-regular</code></td><td>일반 파일 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>비권한 사용자가 BPF를 로드할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.perf-events</code></td><td>성능 이벤트가 사용자에게 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>브로드캐스트 ping을 허용함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>잘못된 ICMP 오류를 무시하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.log-martians</code></td><td>의심스러운 출발지 주소를 로그하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.aslr</code></td><td>ASLR이 완전히 활성화되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.core-uses-pid</code></td><td>core dump 이름에 PID가 없음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ctrl-alt-del</code></td><td>Ctrl-Alt-Delete가 즉시 재부팅함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.bpf-jit-harden</code></td><td>BPF JIT 보호가 충분하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.tty-ldisc-autoload</code></td><td>TTY가 line discipline을 자동 로드함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-redirects-all</code></td><td>IPv6 redirect를 전역으로 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-redirects-default</code></td><td>새 IPv6 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-source-route-all</code></td><td>IPv6 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-source-route-default</code></td><td>새 IPv6 interface가 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv6-send-redirects</code></td><td>IPv6 redirect를 전송함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv4-default-accept-redirects</code></td><td>새 IPv4 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.ipv4-default-rp-filter</code></td><td>새 IPv4 interface에 출발지 검증이 없음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.proxy-arp-all</code></td><td>Proxy ARP가 전역으로 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.proxy-arp-default</code></td><td>새 interface가 Proxy ARP를 활성화함</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.multicast-forwarding</code></td><td>IPv4 multicast forwarding이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.bootp-relay</code></td><td>BOOTP relay가 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.tcp-rfc1337</code></td><td>TCP TIME-WAIT 보호가 꺼져 있음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>
