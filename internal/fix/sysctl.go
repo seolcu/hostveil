@@ -18,23 +18,29 @@ const dropInDir = "/etc/sysctl.d/"
 
 // registerSysctl wires the kernel-hardening fixes into the registry.
 //
-// Every sysctl finding is Review, and the two alternatives are genuinely
-// independent rather than two halves of one procedure:
+// Unambiguous sysctl findings are Auto: one reversible drop-in records the
+// desired value without changing the running kernel underneath an unattended
+// operator. Topology-dependent findings are Review, with two genuinely
+// independent alternatives rather than two halves of one procedure:
 //
 //   - write a drop-in — persistent, and takes effect at the next boot or
 //     the next `sysctl --system`;
 //   - `sysctl -w` — takes effect immediately, and is lost at the next boot.
 //
-// Neither is strictly better, which is what makes this a choice rather
-// than a sequence. An operator hardening a box they are about to reboot
-// wants the first; one who cannot reboot a production host today wants the
-// second now and the first later. Offering only "do both, in order" would
-// be the sequential shape Review exists to refuse.
+// Neither is strictly better for those topology-dependent controls, which is
+// what makes this a choice rather than a sequence. Offering only "do both, in
+// order" would be the sequential shape Review exists to refuse.
 //
 // This is the arrangement fix.Default's register anticipated: the blocker
 // was that an edit action could not create a file, so the drop-in
 // alternative could not exist and the remaining one had no partner.
 func registerSysctl(r *Registry) {
+	review := map[string]bool{
+		"sysctl.sysrq": true, "sysctl.rp-filter": true,
+		"sysctl.send-redirects": true, "sysctl.ipv4-default-rp-filter": true,
+		"sysctl.proxy-arp-all": true, "sysctl.proxy-arp-default": true,
+		"sysctl.multicast-forwarding": true, "sysctl.bootp-relay": true,
+	}
 	for _, id := range []string{
 		"sysctl.ptrace-scope",
 		"sysctl.syncookies",
@@ -54,39 +60,67 @@ func registerSysctl(r *Registry) {
 		"sysctl.icmp-broadcasts",
 		"sysctl.bogus-icmp-errors",
 		"sysctl.log-martians",
+		"sysctl.aslr",
+		"sysctl.core-uses-pid",
+		"sysctl.ctrl-alt-del",
+		"sysctl.bpf-jit-harden",
+		"sysctl.tty-ldisc-autoload",
+		"sysctl.ipv6-accept-redirects-all",
+		"sysctl.ipv6-accept-redirects-default",
+		"sysctl.ipv6-accept-source-route-all",
+		"sysctl.ipv6-accept-source-route-default",
+		"sysctl.ipv6-send-redirects",
+		"sysctl.ipv4-default-accept-redirects",
+		"sysctl.ipv4-default-rp-filter",
+		"sysctl.proxy-arp-all",
+		"sysctl.proxy-arp-default",
+		"sysctl.multicast-forwarding",
+		"sysctl.bootp-relay",
+		"sysctl.tcp-rfc1337",
 	} {
-		r.Register(id, buildSysctl)
+		builder := buildSysctl
+		if review[id] {
+			builder = buildSysctlReview
+		}
+		r.Register(id, builder)
 	}
 }
 
-// buildSysctl assembles both alternatives from the finding's "set"
-// evidence, which carries the exact key=value pairs the checker audited.
+// buildSysctl persists the finding's exact key=value pairs. It deliberately
+// does not change the running kernel: that keeps unattended application a
+// reversible file edit, while TakesEffectOn tells the operator that a reboot
+// or an explicit sysctl --system is still required.
 func buildSysctl(f model.Finding) (Fix, error) {
 	pairs, err := sysctlPairs(f)
 	if err != nil {
 		return Fix{}, err
 	}
 
-	var commands [][]string
+	return Fix{
+		Label:   "Harden " + strings.Join(keysOf(pairs), ", "),
+		Kind:    model.RemediationAuto,
+		Actions: []Action{persistSysctl(f, pairs)},
+	}, nil
+}
+
+// buildSysctlReview retains an immediate, non-persistent alternative for
+// settings whose correct persistent value depends on the host being a router,
+// relay, or multi-homed. Those choices remain explicitly human-approved.
+func buildSysctlReview(f model.Finding) (Fix, error) {
+	pairs, err := sysctlPairs(f)
+	if err != nil {
+		return Fix{}, err
+	}
+	commands := make([][]string, 0, len(pairs))
 	for _, kv := range pairs {
 		commands = append(commands, []string{"sysctl", "-w", kv})
 	}
-
 	return Fix{
 		Label: "Harden " + strings.Join(keysOf(pairs), ", "),
 		Kind:  model.RemediationReview,
 		Actions: []Action{
 			persistSysctl(f, pairs),
-			{
-				Label: "Apply it now: " + strings.Join(keysOf(pairs), ", "),
-				// Exec actions have no checkpoint, and this one genuinely
-				// has nothing to undo from: the previous value is in the
-				// finding's evidence, not on disk, and a reboot reverts it
-				// anyway. Say so rather than implying a rollback exists.
-				Warning:  "Changes the running kernel immediately and is lost at the next boot. There is no rollback checkpoint: exec fixes are not file-backed.",
-				Kind:     ActionExec,
-				Commands: commands,
-			},
+			{Label: "Apply it now: " + strings.Join(keysOf(pairs), ", "), Warning: "Changes the running kernel immediately and has no rollback checkpoint.", Kind: ActionExec, Commands: commands},
 		},
 	}, nil
 }

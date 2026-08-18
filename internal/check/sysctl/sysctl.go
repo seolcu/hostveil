@@ -72,6 +72,10 @@ type Rule struct {
 	// cannot confirm, and on a host with IPv6 disabled `sysctl -w` on an
 	// absent key fails outright — taking the rest of the fix with it.
 	Set []string
+	// Remediation is Review only where a safe value depends on the host being
+	// a router, relay, or multi-homed. Unset means the persistent file edit is
+	// unambiguous and therefore Auto.
+	Remediation model.RemediationKind
 }
 
 // Checker reports weak kernel-parameter values.
@@ -206,26 +210,28 @@ func defaultRules() []Rule {
 		},
 		{
 			ID: "sysctl.sysrq", Title: "Magic SysRq is fully enabled",
-			Sev:  model.SeverityLow,
-			Desc: "kernel.sysrq = 1 enables every SysRq function, letting anyone with console, serial, or IPMI access kill processes, remount filesystems, or crash the machine with a keystroke. Distributions default to 0 or a restricted bitmask for a reason.",
-			Keys: []string{"kernel.sysrq"},
-			Want: "kernel.sysrq = 0 (or a restricted bitmask such as 176)",
-			Set:  []string{"kernel.sysrq=0"},
+			Sev:         model.SeverityLow,
+			Remediation: model.RemediationReview,
+			Desc:        "kernel.sysrq = 1 enables every SysRq function, letting anyone with console, serial, or IPMI access kill processes, remount filesystems, or crash the machine with a keystroke. Distributions default to 0 or a restricted bitmask for a reason.",
+			Keys:        []string{"kernel.sysrq"},
+			Want:        "kernel.sysrq = 0 (or a restricted bitmask such as 176)",
+			Set:         []string{"kernel.sysrq=0"},
 			// Only the fully-enabled value is flagged: anything else is
 			// either off or a deliberate restricted mask.
 			Flagged: is(1),
 		},
 		{
 			ID: "sysctl.rp-filter", Title: "Source-address spoofing filter is off",
-			Sev:     model.SeverityLow,
-			Desc:    "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
-			Keys:    []string{"net.ipv4.conf.all.rp_filter"},
-			Want:    "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",
-			Set:     []string{"net.ipv4.conf.all.rp_filter=1"},
-			Flagged: is(0),
+			Sev:         model.SeverityLow,
+			Remediation: model.RemediationReview,
+			Desc:        "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
+			Keys:        []string{"net.ipv4.conf.all.rp_filter"},
+			Want:        "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",
+			Set:         []string{"net.ipv4.conf.all.rp_filter=1"},
+			Flagged:     is(0),
 		},
 		{ID: "sysctl.accept-source-route", Title: "Source-routed IPv4 packets are accepted", Sev: model.SeverityMedium, Desc: "Source routing lets a sender choose the path a packet takes and can bypass ordinary routing controls.", Keys: []string{"net.ipv4.conf.all.accept_source_route", "net.ipv4.conf.default.accept_source_route"}, Want: "net.ipv4.conf.all.accept_source_route = 0 and net.ipv4.conf.default.accept_source_route = 0", Set: []string{"net.ipv4.conf.all.accept_source_route=0", "net.ipv4.conf.default.accept_source_route=0"}, Flagged: anyIs(1)},
-		{ID: "sysctl.send-redirects", Title: "The host sends ICMP redirects", Sev: model.SeverityMedium, Desc: "A server that sends ICMP redirects can be abused to influence peers' routes and normally has no reason to act as a router.", Keys: []string{"net.ipv4.conf.all.send_redirects", "net.ipv4.conf.default.send_redirects"}, Want: "net.ipv4.conf.all.send_redirects = 0 and net.ipv4.conf.default.send_redirects = 0", Set: []string{"net.ipv4.conf.all.send_redirects=0", "net.ipv4.conf.default.send_redirects=0"}, Flagged: anyIs(1)},
+		{ID: "sysctl.send-redirects", Title: "The host sends ICMP redirects", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "A server that sends ICMP redirects can be abused to influence peers' routes and normally has no reason to act as a router.", Keys: []string{"net.ipv4.conf.all.send_redirects", "net.ipv4.conf.default.send_redirects"}, Want: "net.ipv4.conf.all.send_redirects = 0 and net.ipv4.conf.default.send_redirects = 0", Set: []string{"net.ipv4.conf.all.send_redirects=0", "net.ipv4.conf.default.send_redirects=0"}, Flagged: anyIs(1)},
 		{ID: "sysctl.suid-dumpable", Title: "Privileged processes may write core dumps", Sev: model.SeverityMedium, Desc: "Core dumps from setuid or otherwise privileged programs can expose secrets and privileged process memory.", Keys: []string{"fs.suid_dumpable"}, Want: "fs.suid_dumpable = 0", Set: []string{"fs.suid_dumpable=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.protected-fifos", Title: "FIFO protections are weak", Sev: model.SeverityMedium, Desc: "fs.protected_fifos prevents privileged programs from being tricked into writing through attacker-owned FIFOs in sticky directories.", Keys: []string{"fs.protected_fifos"}, Want: "fs.protected_fifos = 2", Set: []string{"fs.protected_fifos=2"}, Flagged: below(2)},
 		{ID: "sysctl.protected-regular", Title: "Regular-file protections are weak", Sev: model.SeverityMedium, Desc: "fs.protected_regular blocks unsafe opens of attacker-owned files in sticky directories, closing a common local race primitive.", Keys: []string{"fs.protected_regular"}, Want: "fs.protected_regular = 2", Set: []string{"fs.protected_regular=2"}, Flagged: below(2)},
@@ -234,6 +240,23 @@ func defaultRules() []Rule {
 		{ID: "sysctl.icmp-broadcasts", Title: "Broadcast ICMP echo requests are accepted", Sev: model.SeverityLow, Desc: "Responding to broadcast pings can make the server participate in amplification attacks.", Keys: []string{"net.ipv4.icmp_echo_ignore_broadcasts"}, Want: "net.ipv4.icmp_echo_ignore_broadcasts = 1", Set: []string{"net.ipv4.icmp_echo_ignore_broadcasts=1"}, Flagged: isNot(1)},
 		{ID: "sysctl.bogus-icmp-errors", Title: "Bogus ICMP error responses are not ignored", Sev: model.SeverityLow, Desc: "Ignoring malformed ICMP errors reduces noisy and potentially misleading network responses.", Keys: []string{"net.ipv4.icmp_ignore_bogus_error_responses"}, Want: "net.ipv4.icmp_ignore_bogus_error_responses = 1", Set: []string{"net.ipv4.icmp_ignore_bogus_error_responses=1"}, Flagged: isNot(1)},
 		{ID: "sysctl.log-martians", Title: "Suspicious source addresses are not logged", Sev: model.SeverityLow, Desc: "Logging impossible or spoofed source addresses gives operators evidence of routing mistakes and hostile traffic.", Keys: []string{"net.ipv4.conf.all.log_martians", "net.ipv4.conf.default.log_martians"}, Want: "net.ipv4.conf.all.log_martians = 1 and net.ipv4.conf.default.log_martians = 1", Set: []string{"net.ipv4.conf.all.log_martians=1", "net.ipv4.conf.default.log_martians=1"}, Flagged: anyIs(0)},
+		{ID: "sysctl.aslr", Title: "Full address-space randomization is disabled", Sev: model.SeverityMedium, Desc: "Full ASLR randomizes stack, library, heap, and data-segment locations, making memory-corruption exploits substantially less reliable.", Keys: []string{"kernel.randomize_va_space"}, Want: "kernel.randomize_va_space = 2", Set: []string{"kernel.randomize_va_space=2"}, Flagged: below(2)},
+		{ID: "sysctl.core-uses-pid", Title: "Core dump names do not include the process ID", Sev: model.SeverityLow, Desc: "Including the PID prevents concurrent crashes from overwriting one another and makes sensitive dump files easier to attribute and clean up.", Keys: []string{"kernel.core_uses_pid"}, Want: "kernel.core_uses_pid = 1", Set: []string{"kernel.core_uses_pid=1"}, Flagged: isNot(1)},
+		{ID: "sysctl.ctrl-alt-del", Title: "The secure attention key immediately reboots the host", Sev: model.SeverityLow, Desc: "With kernel.ctrl-alt-del enabled, console or virtual-console access can reboot the server immediately without a graceful shutdown.", Keys: []string{"kernel.ctrl-alt-del"}, Want: "kernel.ctrl-alt-del = 0", Set: []string{"kernel.ctrl-alt-del=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.bpf-jit-harden", Title: "BPF JIT hardening is not enabled for all users", Sev: model.SeverityMedium, Desc: "BPF JIT hardening blinds constants in generated kernel code, reducing information useful to kernel exploitation.", Keys: []string{"net.core.bpf_jit_harden"}, Want: "net.core.bpf_jit_harden = 2", Set: []string{"net.core.bpf_jit_harden=2"}, Flagged: below(2)},
+		{ID: "sysctl.tty-ldisc-autoload", Title: "Unprivileged TTY use can autoload line disciplines", Sev: model.SeverityMedium, Desc: "Automatic line-discipline module loading exposes additional kernel parsers to unprivileged users who open a TTY.", Keys: []string{"dev.tty.ldisc_autoload"}, Want: "dev.tty.ldisc_autoload = 0", Set: []string{"dev.tty.ldisc_autoload=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv6-accept-redirects-all", Title: "IPv6 ICMP redirects are accepted globally", Sev: model.SeverityMedium, Desc: "A neighboring system can use IPv6 redirects to alter this host's routing decisions.", Keys: []string{"net.ipv6.conf.all.accept_redirects"}, Want: "net.ipv6.conf.all.accept_redirects = 0", Set: []string{"net.ipv6.conf.all.accept_redirects=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv6-accept-redirects-default", Title: "New IPv6 interfaces accept ICMP redirects", Sev: model.SeverityMedium, Desc: "The default interface policy allows future IPv6 interfaces to trust redirects from neighboring systems.", Keys: []string{"net.ipv6.conf.default.accept_redirects"}, Want: "net.ipv6.conf.default.accept_redirects = 0", Set: []string{"net.ipv6.conf.default.accept_redirects=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv6-accept-source-route-all", Title: "IPv6 source routing is accepted globally", Sev: model.SeverityMedium, Desc: "IPv6 source routing lets a sender influence the packet path and can undermine normal routing controls.", Keys: []string{"net.ipv6.conf.all.accept_source_route"}, Want: "net.ipv6.conf.all.accept_source_route = 0", Set: []string{"net.ipv6.conf.all.accept_source_route=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv6-accept-source-route-default", Title: "New IPv6 interfaces accept source routing", Sev: model.SeverityMedium, Desc: "The default policy enables source-routed traffic on interfaces created later.", Keys: []string{"net.ipv6.conf.default.accept_source_route"}, Want: "net.ipv6.conf.default.accept_source_route = 0", Set: []string{"net.ipv6.conf.default.accept_source_route=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv6-send-redirects", Title: "The host sends IPv6 redirects", Sev: model.SeverityLow, Desc: "An ordinary server should not influence neighboring systems' IPv6 routes by sending redirects.", Keys: []string{"net.ipv6.conf.all.send_redirects"}, Want: "net.ipv6.conf.all.send_redirects = 0", Set: []string{"net.ipv6.conf.all.send_redirects=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv4-default-accept-redirects", Title: "New IPv4 interfaces accept ICMP redirects", Sev: model.SeverityMedium, Desc: "The default policy allows interfaces created later to trust routing redirects from the local network.", Keys: []string{"net.ipv4.conf.default.accept_redirects"}, Want: "net.ipv4.conf.default.accept_redirects = 0", Set: []string{"net.ipv4.conf.default.accept_redirects=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.ipv4-default-rp-filter", Title: "New IPv4 interfaces lack source validation", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "The default interface policy should reject packets whose source cannot be routed back through the interface on which they arrived.", Keys: []string{"net.ipv4.conf.default.rp_filter"}, Want: "net.ipv4.conf.default.rp_filter = 1", Set: []string{"net.ipv4.conf.default.rp_filter=1"}, Flagged: is(0)},
+		{ID: "sysctl.proxy-arp-all", Title: "Proxy ARP is enabled globally", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "Proxy ARP makes the host answer address-resolution requests for other systems and can unexpectedly bridge network boundaries.", Keys: []string{"net.ipv4.conf.all.proxy_arp"}, Want: "net.ipv4.conf.all.proxy_arp = 0", Set: []string{"net.ipv4.conf.all.proxy_arp=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.proxy-arp-default", Title: "Proxy ARP is enabled for new interfaces", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "The default interface policy can make future interfaces answer ARP requests on behalf of other systems.", Keys: []string{"net.ipv4.conf.default.proxy_arp"}, Want: "net.ipv4.conf.default.proxy_arp = 0", Set: []string{"net.ipv4.conf.default.proxy_arp=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.multicast-forwarding", Title: "IPv4 multicast forwarding is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "A server that is not a multicast router should not forward multicast traffic between interfaces.", Keys: []string{"net.ipv4.conf.all.mc_forwarding"}, Want: "net.ipv4.conf.all.mc_forwarding = 0", Set: []string{"net.ipv4.conf.all.mc_forwarding=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.bootp-relay", Title: "BOOTP relay is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "Relaying legacy BOOTP traffic crosses network boundaries and is unnecessary unless this host deliberately serves as a relay.", Keys: []string{"net.ipv4.conf.all.bootp_relay"}, Want: "net.ipv4.conf.all.bootp_relay = 0", Set: []string{"net.ipv4.conf.all.bootp_relay=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.tcp-rfc1337", Title: "TCP TIME-WAIT assassination protection is disabled", Sev: model.SeverityLow, Desc: "RFC 1337 protection prevents forged reset packets from prematurely terminating TIME-WAIT state and confusing later connections.", Keys: []string{"net.ipv4.tcp_rfc1337"}, Want: "net.ipv4.tcp_rfc1337 = 1", Set: []string{"net.ipv4.tcp_rfc1337=1"}, Flagged: isNot(1)},
 	}
 }
 
@@ -310,8 +333,11 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			opts = append(opts, model.WithHowToFix(fmt.Sprintf(
 				"Add `%s` to a file under /etc/sysctl.d (e.g. 99-hardening.conf), then run `sysctl --system` to apply it without a reboot.", r.Want)))
 		}
-		f := model.NewFinding(r.ID, r.Title, r.Sev,
-			model.SourceSysctl, model.RemediationReview, opts...)
+		kind := r.Remediation
+		if kind == model.RemediationUnset {
+			kind = model.RemediationAuto
+		}
+		f := model.NewFinding(r.ID, r.Title, r.Sev, model.SourceSysctl, kind, opts...)
 		if inContainer {
 			demoteForContainer(&f, containerWhy, r.Want)
 		}

@@ -143,8 +143,8 @@ If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
-hostveil can report **111 findings** across those domains, and **56 of them
-carry a fix** — 33 hostveil will apply unattended, 23 only after you have read
+hostveil can report **136 findings** across those domains, and **81 of them
+carry a fix** — 60 hostveil will apply unattended, 21 only after you have read
 the diff. The rest are Manual on purpose, and each one is named in the register
 in [`internal/fix/register.go`](internal/fix/register.go) with the reason
 hostveil will not touch it: deleting an account cannot be undone from a
