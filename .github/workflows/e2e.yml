@@ -193,7 +193,9 @@ jobs:
 
           hostveil fix --all --yes
           hostveil history > /tmp/history2.txt
-          id=$(grep -o 'hostveil rollback [^] ]*' /tmp/history2.txt | head -1 | awk '{print $3}')
+          # Auto fixes from later domains may have newer checkpoints. Select
+          # the newest SSH checkpoint because that is the file this test edits.
+          id=$(grep '  ssh\.' /tmp/history2.txt | head -1 | grep -o 'hostveil rollback [^] ]*' | awk '{print $3}')
 
           # The operator edits the file themselves, after hostveil wrote it.
           echo "# edited by the operator after the fix" >> "$conf"
