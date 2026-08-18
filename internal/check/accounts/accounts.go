@@ -149,7 +149,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 					model.WithHowToFix("Set SHA_CRYPT_MIN_ROUNDS and SHA_CRYPT_MAX_ROUNDS to at least 5000 in "+c.LoginDefsPath+"."), model.WithEvidence("config", c.LoginDefsPath)))
 			}
 			if mask := defs["UMASK"]; mask != "027" && mask != "077" && mask != "0027" && mask != "0077" {
-				findings = append(findings, model.NewFinding("accounts.default-umask", "New files default to broad permissions", model.SeverityLow, model.SourceAccounts, model.RemediationReview,
+				findings = append(findings, model.NewFinding("accounts.default-umask", "New files default to broad permissions", model.SeverityLow, model.SourceAccounts, model.RemediationAuto,
 					model.WithDescription("A 027 default umask prevents unrelated local users from reading newly created files while preserving access for the owner's group."),
 					model.WithHowToFix("Set UMASK 027 in "+c.LoginDefsPath+" after checking workflows that rely on world-readable files."), model.WithEvidence("config", c.LoginDefsPath), model.WithEvidence("value", mask)))
 			}
@@ -215,7 +215,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			sort.Strings(passwordless)
 			findings = append(findings, model.NewFinding(
 				"accounts.emptypassword", "Login account with an empty password",
-				model.SeverityHigh, model.SourceAccounts, model.RemediationManual,
+				model.SeverityHigh, model.SourceAccounts, model.RemediationReview,
 				model.WithDescription("A login account has no password set, so anyone who can reach a login prompt (console, SSH with password auth, su) can log in as that user with no credentials at all."),
 				model.WithHowToFix("Set a strong password (`passwd "+passwordless[0]+"`) or lock the account (`passwd -l "+passwordless[0]+"`) if it should not log in. Affected: "+strings.Join(passwordless, ", ")+"."),
 				model.WithEvidence("accounts", strings.Join(passwordless, ", ")),

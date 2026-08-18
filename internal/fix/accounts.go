@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -15,6 +16,45 @@ func registerAccounts(r *Registry) {
 	r.Register("accounts.core-dumps", buildCoreDumpLimit)
 	r.Register("accounts.local-banner", buildAccessBanner)
 	r.Register("accounts.remote-banner", buildAccessBanner)
+	r.Register("accounts.emptypassword", buildLockEmptyPasswordAccount)
+}
+
+// buildLockEmptyPasswordAccount locks the first account the finding names
+// rather than setting a new password: hostveil has no way to collect one
+// from the operator, and inventing a credential is the same mistake the
+// per-CVE fixes were declined for. `passwd -l` is exec, so EffectiveKind
+// floors this to Review whatever it declares here — and it should, since the
+// account it locks may be the operator's only way to reach the machine
+// (console, su) and /etc/shadow does not say which this is. That risk is
+// disclosed via Warning and left to the operator, the same shape
+// ssh.passwordauth and firewall.inactive already carry.
+//
+// Only the first account when several are affected. Locking is per-account
+// exec with no shared state, unlike firewall.inactive's ports which all need
+// to stay open together — batching several accounts into one action would
+// raise the blast radius of a single Fix for no offsetting benefit. The
+// remaining accounts are re-detected on the next scan.
+func buildLockEmptyPasswordAccount(f model.Finding) (Fix, error) {
+	accounts := strings.Split(f.Evidence["accounts"], ", ")
+	if len(accounts) == 0 || accounts[0] == "" {
+		return Fix{}, fmt.Errorf("finding %s names no accounts", f.ID)
+	}
+	account := accounts[0]
+
+	return Fix{
+		FindingID: f.ID,
+		Label:     "Lock the empty-password account " + account,
+		Kind:      model.RemediationAuto, // one action; exec floors it to Review
+		Actions: []Action{{
+			Label: "Lock " + account + " with `passwd -l`",
+			Warning: "If " + account + " is your only way to reach this machine locally (console, su) " +
+				"and it has no other credential, locking it removes that access. Confirm you have another " +
+				"route in — an SSH key, a different sudo-capable account — before applying. The remote SSH " +
+				"path is already closed by ssh.emptypasswords; this only closes the local one.",
+			Kind:     ActionExec,
+			Commands: [][]string{{"passwd", "-l", account}},
+		}},
+	}, nil
 }
 
 func buildCoreDumpLimit(f model.Finding) (Fix, error) {

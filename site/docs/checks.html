@@ -148,7 +148,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">120</strong> of them carry a fix — <span data-counted="findings.auto">71</span> it will apply unattended, <span data-counted="findings.review">49</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">127</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">52</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
 
             <h2 id="severity">Severity &amp; the score</h2>
             <p>Hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
@@ -230,14 +230,14 @@
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>ssh.clientalivecountmax</code></td><td>Dead SSH sessions survive too many keepalive failures</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>ssh.clientaliveinterval</code></td><td>Idle SSH sessions have no server-side timeout</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.clientaliveinterval</code></td><td>Idle SSH sessions have no server-side timeout</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.fingerprinthash</code></td><td>Host-key fingerprints use a legacy hash</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.ignorerhosts</code></td><td>Legacy rhosts trust is not explicitly ignored</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.loglevel</code></td><td>SSH authentication logging is not verbose</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.maxsessions</code></td><td>One SSH connection may open many sessions</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>ssh.printlastlog</code></td><td>Users are not shown their previous login</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.strictmodes</code></td><td>SSH does not enforce ownership and mode checks</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH trusts spoofable TCP keepalives</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH trusts spoofable TCP keepalives</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.usedns</code></td><td>SSH performs unnecessary reverse DNS lookups</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH agent forwarding is enabled</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
@@ -283,7 +283,7 @@
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, nftables, or iptables)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
-                  <tr><td><code>firewall.default-allow</code></td><td>A firewall is running but its default inbound policy accepts everything</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.default-allow</code></td><td>A firewall is running but its default inbound policy accepts everything</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>firewall.docker-bypass</code></td><td>Published container ports are reachable despite an active ufw</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
@@ -322,7 +322,7 @@
                   <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.redis-bind</code></td><td>Redis is configured to listen beyond loopback</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis protected mode is disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis protected mode is disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>ports.redis-disable-config</code></td><td>Redis exposes the CONFIG command</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
@@ -336,12 +336,12 @@
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>Multiple accounts share one UID</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.password-rounds</code></td><td>Password hashing rounds are not hardened</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
-                  <tr><td><code>accounts.default-umask</code></td><td>New files default to broad permissions</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>accounts.default-umask</code></td><td>New files default to broad permissions</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
                   <tr><td><code>accounts.local-banner</code></td><td>The local login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.remote-banner</code></td><td>The remote login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.password-aging</code></td><td>Password aging defaults are too permissive</td><td><span class="sev low">LOW</span></td><td>Auto-fix</td></tr>
@@ -484,13 +484,13 @@
                   <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>The service can alter kernel modules</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>The service can alter kernel modules</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>The service can access kernel logs</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-clock</code></td><td>The service can change system clocks</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>The service can create setuid files</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>The service can access kernel logs</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.protect-clock</code></td><td>The service can change system clocks</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>The service can create setuid files</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.lock-personality</code></td><td>The service can change execution personality</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.lock-personality</code></td><td>The service can change execution personality</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>

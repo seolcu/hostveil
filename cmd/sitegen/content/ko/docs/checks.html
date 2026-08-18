@@ -24,7 +24,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">120</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">71</span>개는 무인으로 적용하고, <span data-counted="findings.review">49</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">127</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">52</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
 
             <h2 id="severity">심각도와 점수</h2>
             <p>Hostveil은 발견 항목을 <strong>얼마나 급한지</strong>로 등급을 매깁니다. 얼마나 나쁜지가 아닙니다. 설정 파일을 읽는 스캐너는 "root로 도는 컨테이너"가 얼마나 나쁜지 말해 줄 수 없습니다. 그건 그 컨테이너가 무엇을 하느냐에 전적으로 달려 있으니까요. 스캐너가 <em>말할 수 있는</em> 것은 지금 이 순간 공격자와 그 문제 사이에 무엇이 얼마나 서 있느냐이고, 이 세 단계가 재는 것이 바로 그것입니다.</p>
@@ -106,14 +106,14 @@
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>ssh.clientalivecountmax</code></td><td>응답 없는 SSH 세션을 너무 오래 유지함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>ssh.clientaliveinterval</code></td><td>사용하지 않는 SSH 세션에 서버 측 제한 시간이 없음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.clientaliveinterval</code></td><td>사용하지 않는 SSH 세션에 서버 측 제한 시간이 없음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.fingerprinthash</code></td><td>호스트 키 지문에 오래된 해시를 사용함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.ignorerhosts</code></td><td>오래된 rhosts 인증을 명시적으로 무시하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.loglevel</code></td><td>SSH 인증 로그가 충분히 상세하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.maxsessions</code></td><td>SSH 연결 하나가 너무 많은 세션을 열 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>ssh.printlastlog</code></td><td>사용자에게 이전 로그인 기록을 보여 주지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.strictmodes</code></td><td>SSH가 소유권과 파일 권한을 검사하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH가 위조 가능한 TCP keepalive를 받아들임</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH가 위조 가능한 TCP keepalive를 받아들임</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.usedns</code></td><td>SSH가 불필요한 역방향 DNS 조회를 수행함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH 에이전트 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
@@ -159,7 +159,7 @@
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td>검토</td></tr>
-                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td>검토</td></tr>
                   <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                 </tbody>
               </table>
@@ -198,7 +198,7 @@
                   <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>ports.redis-bind</code></td><td>Redis가 루프백 밖에서 수신하도록 설정됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis 보호 모드가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis 보호 모드가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ports.redis-disable-config</code></td><td>Redis CONFIG 명령이 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                 </tbody>
               </table>
@@ -212,12 +212,12 @@
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td>검토</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>여러 계정이 같은 UID를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.weak-password-hash</code></td><td>로그인 계정이 약한 비밀번호 해시를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.password-rounds</code></td><td>비밀번호 해시 반복 횟수가 강화되지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
-                  <tr><td><code>accounts.default-umask</code></td><td>새 파일의 기본 권한이 너무 넓음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>accounts.default-umask</code></td><td>새 파일의 기본 권한이 너무 넓음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>accounts.local-banner</code></td><td>로컬 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>accounts.remote-banner</code></td><td>원격 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>accounts.password-aging</code></td><td>비밀번호 사용 기간 기본값이 너무 느슨함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
@@ -360,13 +360,13 @@
                   <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.private-devices</code></td><td>서비스가 호스트 디바이스에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>systemd.protect-kernel-tunables</code></td><td>서비스가 커널 설정을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>서비스가 kernel module을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>서비스가 kernel module을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>systemd.protect-control-groups</code></td><td>서비스가 제어 그룹을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>서비스가 커널 로그에 접근할 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-clock</code></td><td>서비스가 시스템 시계를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>서비스가 setuid 파일을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>서비스가 커널 로그에 접근할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>systemd.protect-clock</code></td><td>서비스가 시스템 시계를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>서비스가 setuid 파일을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>systemd.restrict-namespaces</code></td><td>서비스가 네임스페이스를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.lock-personality</code></td><td>서비스가 실행 퍼스널리티를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.lock-personality</code></td><td>서비스가 실행 퍼스널리티를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>systemd.memory-deny-write-execute</code></td><td>서비스가 쓰기와 실행이 모두 가능한 메모리를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                 </tbody>
               </table>
