@@ -178,6 +178,19 @@ func TestFullHeaderDowngradesOnASmallTerminal(t *testing.T) {
 	}
 }
 
+// The after-fixes number is useful context, but it is optional context. On a
+// 60-column terminal it used to be clipped to "61 after f", which reads as a
+// rendering failure rather than as a deliberate compact header.
+func TestHeadroomIsEitherWholeOrOmitted(t *testing.T) {
+	for _, w := range []int{44, 60, 80, 120} {
+		m := modeModels(w, 24)["list"]
+		first, _, _ := strings.Cut(plain(m.View().Content), "\n")
+		if strings.Contains(first, "after") && !strings.Contains(first, "after fixes") {
+			t.Errorf("width=%d clips the headroom phrase: %q", w, first)
+		}
+	}
+}
+
 // clip bounds a row that is already styled. truncate cannot: it measures
 // runes, so it would charge a dozen columns for one escape sequence and cut
 // through the middle of it.

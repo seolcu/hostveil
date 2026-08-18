@@ -557,6 +557,12 @@ main { position: relative; }
    being things in the way. */
 @media (max-width: 820px) {
   .rail[hidden] { display: none !important; }
+  /* The rail replaces the axes only while it is actually present. At this
+     breakpoint it collapses out of the way; leaving the axes hidden too made
+     Console — the default chosen specifically for visible coverage gaps —
+     the only phone layout with no domain scores or coverage at all. */
+  :root[data-layout="console"] .axes,
+  :root[data-layout="railverdict"] .axes { display: grid; }
   :root[data-layout="triage"] .detail,
   :root[data-layout="railverdict"] .detail {
     position: static; width: auto; box-shadow: none; border-left: 0; display: block;

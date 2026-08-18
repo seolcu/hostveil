@@ -255,7 +255,16 @@ func (m *appModel) gaugeRow(meterW int) string {
 	// number it started from would say the fixes are worth nothing, and this
 	// line is the one place every arrangement shares.
 	if after := m.report.Score.AfterFixes; m.report.Score.Applicable && after > sc {
-		row += s.dim.Render(fmt.Sprintf("   %d after fixes", after))
+		note := s.dim.Render(fmt.Sprintf("   %d after fixes", after))
+		// Both callers put this gauge after the brand and the same three-space
+		// gap. On a narrow terminal the meter already shrinks, but the optional
+		// headroom used to ignore the remaining width and was clipped halfway
+		// through "after fixes". A half sentence is not a compact label; omit
+		// the optional note when it cannot fit in full.
+		brand := m.gl.Of(glyph.Brand) + " hostveil   "
+		if lipgloss.Width(brand)+lipgloss.Width(row)+lipgloss.Width(note) <= m.width {
+			row += note
+		}
 	}
 	return row
 }
