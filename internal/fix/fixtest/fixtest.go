@@ -40,5 +40,7 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("set", "kernel.kptr_restrict=1"),
 		model.WithEvidence("ssh_port", "22"),
 		model.WithEvidence("available", "ufw"),
+		model.WithEvidence("firewall", "ufw"),
+		model.WithEvidence("accounts", "alice"),
 	)
 }

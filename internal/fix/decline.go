@@ -55,11 +55,6 @@ func DeclinedIDs() []string {
 // keeps JSON5 comments. internal/json5 is that editor, four of the seven are
 // registered now, and the three left each say something different — which is
 // what the shared sentence had been hiding.
-// G101: gosec reads the words "secret", "credentials" and "password" in
-// the sentences below and calls them hardcoded credentials. They are the
-// prose hostveil shows an operator to explain why it will not fix a finding.
-//
-//nolint:gosec // G101: these are explanations, not secrets
 var declineReasons = map[string]string{
 	// compose
 	"compose.dr001": "Removing host networking leaves the service unreachable unless the ports it needs are published in its place, and the finding does not carry them.",
@@ -79,7 +74,6 @@ var declineReasons = map[string]string{
 	"compose.ds026": "Removing host user-namespace mode can invalidate bind-mount ownership and stop the service, which needs an operator-planned migration.",
 
 	// firewall
-	"firewall.default-allow": "Default-deny takes effect the moment it is set, on the SSH session you are issuing it from, and an exec fix leaves no checkpoint to undo a lockout.",
 	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",
 
 	// updates
@@ -94,11 +88,10 @@ var declineReasons = map[string]string{
 	"ports.exposed-datastore": "Binding a native datastore to loopback takes a config file, syntax, and path that differ per daemon and per distro, none of which the finding carries.",
 
 	// accounts
-	"accounts.emptypassword":         "Locking the account has no checkpoint and it may be the only one you can reach the machine with; /etc/shadow does not say which kind it is.",
 	"proxy.traefik-api-insecure":     "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware Hostveil cannot pick.",
 	"proxy.tls-deprecated-protocols": "nginx inherits ssl_protocols from http into every server that does not set its own, and Hostveil sees which files name the directive rather than which block each one sits in.",
 	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and Hostveil cannot tell which location you meant.",
-	"accounts.sudo-nopasswd":         "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
+	"accounts.sudo-nopasswd":         "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
 	"accounts.uid0":                  "userdel orphans every file the account owns with no checkpoint to undo it, and Hostveil cannot tell a backdoor from a deliberate second root.",
 	"accounts.duplicate-uid":         "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 	"accounts.weak-password-hash":    "Fixing the hash requires choosing and entering a new password; Hostveil must never generate or handle that credential.",
@@ -112,9 +105,9 @@ var declineReasons = map[string]string{
 	"agent.sandbox-off":     "The sandbox is off and nothing in Hostveil names the mode that turns it on, so any value it wrote into your config would be a guess wearing a fix's clothes.",
 
 	// dockerd
-	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and the daemon only reads the file at a restart.",
-	"dockerd.api-unauthenticated":   "Removing the TCP endpoint severs the exact channel a remote operator may administer this host through: DOCKER_HOST, a Portainer agent, a CI runner.",
-	"dockerd.group-members":         "Removing a member has no checkpoint, and the account it removes may be your own and the access you administer the daemon with.",
+	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and there is no editor for deleting the endpoint either way.",
+	"dockerd.api-unauthenticated":   "Removing the TCP endpoint severs the exact channel a remote operator may administer this host through, and there is no editor for deleting a hosts entry or an ExecStart flag.",
+	"dockerd.group-members":         "A service account in the docker group is as likely a deliberate integration (Portainer, Watchtower, CI) as a forgotten grant, and nothing in the evidence tells them apart.",
 	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and Hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
 	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and Hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
 	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and this checker does not read the socket's drop-ins, so a file it wrote might never decide the mode.",
@@ -126,12 +119,7 @@ var declineReasons = map[string]string{
 	"systemd.protect-system":            "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
 	"systemd.private-devices":           "PrivateDevices=yes can hide devices the application requires, which the effective unit properties do not reveal.",
 	"systemd.protect-kernel-tunables":   "The service may deliberately manage network or kernel settings, and enabling this protection can stop it at restart.",
-	"systemd.protect-kernel-modules":    "Hardware and observability services may deliberately load modules, which the unit properties do not reveal.",
 	"systemd.protect-control-groups":    "Container and resource managers may need cgroup access, which cannot be inferred safely from the unit.",
-	"systemd.protect-kernel-logs":       "Diagnostics services may require kernel logs, and the unit does not reveal that runtime dependency.",
-	"systemd.protect-clock":             "Time synchronization services deliberately change clocks, and the unit name is not a safe basis for an automatic exception.",
-	"systemd.restrict-suid-sgid":        "Some installers legitimately create privileged files, and enabling this protection can make them fail only after restart.",
 	"systemd.restrict-namespaces":       "Container runtimes and sandboxes require namespaces, and the unit does not state which namespace types are load-bearing.",
-	"systemd.lock-personality":          "Compatibility workloads may require another execution personality, which cannot be inferred from the unit.",
 	"systemd.memory-deny-write-execute": "JIT runtimes require writable executable memory, and enabling this protection can stop them at restart.",
 }

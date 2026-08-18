@@ -100,7 +100,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 		switch defaultInbound(ctx, env.Runner, which) {
 		case policyAllow:
-			findings = append(findings, defaultAllowFinding(which))
+			findings = append(findings, withSSHPortEvidence(defaultAllowFinding(which), ctx, env.Runner))
 		case policyUnknown:
 			// The same rule the probe itself follows: not being able to read
 			// the policy degrades the domain, it does not accuse the host.
@@ -156,14 +156,25 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// known. Read from the kernel's socket table rather than sshd_config
 	// because a config that says one thing and a daemon that is serving on
 	// another is exactly the case that would lock someone out.
-	if ports, ok := sshPorts(ctx, env.Runner); ok {
-		parts := make([]string, 0, len(ports))
-		for _, p := range ports {
-			parts = append(parts, strconv.Itoa(p))
-		}
-		findings[0].Evidence["ssh_port"] = strings.Join(parts, ",")
-	}
+	findings[0] = withSSHPortEvidence(findings[0], ctx, env.Runner)
 	return findings, nil
+}
+
+// withSSHPortEvidence attaches the ssh_port evidence both firewall.inactive
+// and firewall.default-allow's fixes depend on: the port(s) sshd is actually
+// listening on, without which enabling or tightening a default-deny policy
+// could sever the very session used to apply it.
+func withSSHPortEvidence(f model.Finding, ctx context.Context, r platform.CommandRunner) model.Finding {
+	ports, ok := sshPorts(ctx, r)
+	if !ok {
+		return f
+	}
+	parts := make([]string, 0, len(ports))
+	for _, p := range ports {
+		parts = append(parts, strconv.Itoa(p))
+	}
+	f.Evidence["ssh_port"] = strings.Join(parts, ",")
+	return f
 }
 
 // mergePartial joins two coverage gaps into one, so a domain with two blind

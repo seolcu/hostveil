@@ -46,6 +46,13 @@ package fix
 // Review: the change cannot be rolled back and it takes every other inbound
 // port with it, both of which an operator should decide rather than discover.
 //
+// firewall.default-allow reuses the same evidence and the same fix, applied
+// to a firewall that happens to already be running: allow SSH first, then
+// flip the default inbound policy from accept to deny. It was declined for
+// exactly firewall.inactive's original reason — no known SSH port — and that
+// reason no longer holds here either. Both stay restricted to ufw; firewalld's
+// target flip has no registered fix yet.
+//
 // # Findings deliberately left without a fix
 //
 // These are fixable in principle and are demoted to Manual on purpose.
@@ -76,15 +83,6 @@ package fix
 //     wrong user, an archive extracted with its own uids — where chowning
 //     the files hostveil happens to know about fixes the visible part and
 //     leaves the rest. Revisit if BackedFile ever records uid/gid.
-//   - firewall.default-allow — the remediation is flipping the default
-//     inbound policy to deny, which is firewall.inactive's remediation
-//     applied to a firewall that happens to already be running, and it is
-//     declined for firewall.inactive's reason. The new policy takes effect
-//     the moment it is set, on every connection no rule already allows —
-//     including the SSH session the operator is issuing it from. Exec fixes
-//     have no checkpoint, so a lockout has no undo. The how-to-fix says to
-//     allow SSH first, which is advice a person can follow in order and a
-//     fix cannot: hostveil does not know which port that session is on.
 //   - ports.exposed-datastore, ports.exposed-admin — these describe
 //     natively-installed daemons, not containers. Binding one to loopback
 //     means editing redis.conf's `bind`, or postgresql.conf's
@@ -188,15 +186,6 @@ package fix
 //     how-to-fix recommends — this used to say otherwise.) Changing the
 //     UID instead orphans those same files, which the finding does not
 //     enumerate and could not restore.
-//   - accounts.emptypassword — `passwd -l` is a real, mechanical
-//     remediation and it is deliberately not registered. It is exec, so
-//     never Auto; and it fails the recoverability test in the way that
-//     matters most, because the account it locks may be the only one the
-//     operator can reach the machine with. An empty password on a console-
-//     only account is a different situation from one on the account you
-//     SSH in as, and /etc/shadow does not say which this is. Setting a
-//     password instead cannot be done unattended by definition — hostveil
-//     would have to invent one, and then it would know it.
 //   - proxy.traefik-api-insecure — the remediation is deleting one flag, and
 //     it is exec-shaped rather than edit-shaped in the way that matters:
 //     Traefik reads it at start, so the change is not in force until the
@@ -223,19 +212,23 @@ package fix
 //     deleted the directive would break a directory somebody meant to be
 //     browsable, and one that turned it off at the server level would change
 //     a vhost hostveil never looked inside.
-//   - accounts.sudo-nopasswd — removing NOPASSWD is one line and hostveil
-//     will not touch it, for the reason that makes this finding common in
-//     the first place. Cloud and VM images ship the rule *because* the
-//     account they create has no password; take the rule away and that
-//     account cannot use sudo at all, so the fix that closes the hole also
-//     removes the operator's only route to root. The edit reverts cleanly
-//     and that is not the test — "recoverable in practice" asks whether
-//     they can still get in to revert it. hostveil cannot check the
-//     precondition either: whether a usable password exists is a question
-//     about a hash in /etc/shadow, and a hash being present does not mean
-//     anybody knows what it is. So the finding names the accounts, and the
-//     how-to-fix says to set the password and confirm it in a second
-//     session before removing the rule.
+//   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
+//     accounts.emptypassword carries a comparable one and is registered
+//     below, disclosed through a Warning instead of declined. What actually
+//     stops this one is that the finding has nowhere to point an edit.
+//     passwordlessSudoers asks `sudo -n -l -U <user>` for the *effective*
+//     grant rather than reading /etc/sudoers, deliberately: the rule
+//     granting NOPASSWD could be a line naming the account, a line naming a
+//     group it belongs to (%sudo, %wheel), or reach it through an alias or
+//     an nsswitch-resolved group, across /etc/sudoers and every file
+//     #includedir pulls in. Resolving that the way sysctl/origin.go resolves
+//     which sysctl.d file wins is a real project and out of scope here — so
+//     the finding names the account, never a file or a line, and there is
+//     structurally nothing for an Edit action to target. Cloud and VM images
+//     shipping this rule because the account they create has no password is
+//     why the finding is common, not why it is declined; the how-to-fix
+//     tells the operator to set that password and confirm it in a second
+//     session before removing the rule themselves.
 //
 // (sysctl.* was in this list and is not any more; see below.)
 //
@@ -359,63 +352,73 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
-// # The service-hardening domain, deliberately declined where runtime needs are unknown
-//
-// The same runtime-dependency rule covers systemd.private-devices,
-// systemd.protect-kernel-tunables, systemd.protect-kernel-modules,
-// systemd.protect-control-groups, systemd.protect-kernel-logs,
-// systemd.protect-clock, systemd.restrict-suid-sgid,
-// systemd.restrict-namespaces, systemd.lock-personality, and
-// systemd.memory-deny-write-execute. Each can stop a legitimate service only
-// when it next starts, and the effective property list cannot reveal that need.
+// # The service-hardening domain, six registered and eight declined
 //
 // accounts.duplicate-uid requires migrating file ownership, while
 // accounts.weak-password-hash requires a human-chosen credential. Compose
 // rules compose.ds023, compose.ds024, and compose.ds026 remove deliberately
 // selected isolation exceptions whose application requirements are unknown.
 //
-// The edit is trivial for all four: a drop-in at
+// The edit is trivial for every rule in this domain: a drop-in at
 // /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service] section
 // and one directive, created by CreateIfMissing, reversed by deleting the
-// file. What is not trivial is knowing it is safe, and for three of them it
-// is not knowable. systemd.protect-system breaks a service that writes under
-// /usr; systemd.private-tmp breaks two services that hand each other files
-// through /tmp; systemd.protect-home breaks anything whose data lives in a
-// home directory, which on a self-hosted box is common. None of that is
-// visible from the unit — it depends on what the program does — so no amount
-// of reading gets hostveil to "unambiguous". Those three stay declined.
+// file. What is not trivial is knowing it is safe, and for eight of the
+// fourteen rules it is not knowable from a static read of the unit.
+//
+// Three carry the domain's original blind spot: systemd.protect-system
+// breaks a service that writes under /usr; systemd.private-tmp breaks two
+// services that hand each other files through /tmp; systemd.protect-home
+// breaks anything whose data lives in a home directory, which on a
+// self-hosted box is common. Five more collide, specifically and often, with
+// the workloads this project's own audience runs: systemd.private-devices
+// hides the GPU passthrough hardware transcoding needs and the TUN/TAP
+// devices WireGuard, OpenVPN, and Tailscale need; systemd.protect-kernel-
+// tunables blocks VPN and network daemons that legitimately touch /proc/sys;
+// systemd.protect-control-groups and systemd.restrict-namespaces are
+// exactly what a container runtime needs to do; systemd.memory-deny-write-
+// execute is documented to break JIT runtimes — Node.js, Java, Mono,
+// LuaJIT — common in self-hosted app stacks. None of that is visible from
+// the unit — it depends on what the program does — so no amount of reading
+// gets hostveil to "unambiguous". Those eight stay declined.
 //
 // Named one by one rather than as systemd.*, which is what this said while
-// the domain was declined whole. A glob now would cover the one that is not.
+// the domain was declined whole. A glob now would cover the six that are not.
 //
-// NoNewPrivileges is registered, and separating it from the other three is
-// the whole of the change. It has no such blind spot: it closes the setuid
-// path, and nothing about the unit hides whether a service deliberately
-// escalates the way a unit hides which directories a program writes to. It is
-// also the same protection the container domain fixes automatically under the
-// same name.
+// The other six carry no such blind spot, and NoNewPrivileges was the first:
+// it closes the setuid path, and nothing about the unit hides whether a
+// service deliberately escalates the way a unit hides which directories a
+// program writes to. It is also the same protection the container domain
+// fixes automatically under the same name. ProtectClock, LockPersonality,
+// RestrictSUIDSGID, ProtectKernelLogs, and ProtectKernelModules followed for
+// the same reason each other: the exception class is narrow and identifiable
+// (a time-sync daemon, an emulation layer, an installer, a diagnostics tool,
+// a service that loads modules at runtime rather than at boot), the way
+// ssh.passwordauth's Warning asks "do I have SSH keys set up" rather than
+// naming an invisible property of the host.
 //
-// This paragraph used to argue the domain away whole, and two of its three
-// legs were about the other three rules. The third was about shape: "a
-// drop-in and a restart are not two alternatives, they are one procedure in
-// two steps, and systemd has no equivalent of `sysctl -w`". That leg is gone.
-// Action.TakesEffectOn is precisely the shape of "written now, in force when
-// X happens", and every compose fix stands on it; the sentence predates it.
+// This paragraph used to argue the whole domain away, on two legs that no
+// longer hold for these six. One was about shape: "a drop-in and a restart
+// are not two alternatives, they are one procedure in two steps, and systemd
+// has no equivalent of `sysctl -w`". Action.TakesEffectOn is precisely the
+// shape that objection describes — write the artifact now, name what has to
+// happen for it to be in force — and every compose fix stands on it; the
+// sentence predates it. The other was that the failure surfaces late: a
+// service that does not come back is discovered at the next restart, which
+// on a host like this can be the next reboot. That rules out Auto, but it
+// does not rule out fixing it at all — it is exactly what Review is for. The
+// checker declares Review for each of the six, the registration here is one
+// action — Auto's shape and nothing more — and resolvedKind shows the
+// operator the more cautious of the two. firewall.inactive reaches the
+// screen the same way.
 //
-// What survives is the delayed failure: a service that does not come back is
-// discovered at the next restart, which on a host like this can be the next
-// reboot. That rules out Auto and it is exactly what Review is for. The
-// checker declares Review, the registration here is one action — Auto's shape
-// and nothing more — and resolvedKind shows the operator the more cautious of
-// the two. firewall.inactive reaches the screen the same way.
-//
-// The re-check after applying it will still report the finding, and that is
-// correct rather than a failure. This checker asks systemd for each unit's
-// effective configuration, and systemd has not re-read the file; VerifyStillPresent
-// says so in the sentence it was written for — "the change may not take
-// effect until '<unit>' restarts". For the same reason the fix is absent from
-// internal/fix/roundtrip_test.go: the loop needs a checker that reads what the
-// fix wrote, and this one deliberately does not.
+// The re-check after applying any of the six will still report the finding,
+// and that is correct rather than a failure. This checker asks systemd for
+// each unit's effective configuration, and systemd has not re-read the file;
+// VerifyStillPresent says so in the sentence it was written for — "the
+// change may not take effect until '<unit>' restarts". For the same reason
+// these fixes are absent from internal/fix/roundtrip_test.go: the loop needs
+// a checker that reads what the fix wrote, and this one deliberately does
+// not.
 //
 // # The Docker daemon domain, declined whole
 //
@@ -512,11 +515,25 @@ package fix
 //   - dockerd.api-unauthenticated and dockerd.api-tls-unverified — removing
 //     the TCP endpoint severs the exact channel a remote operator may be
 //     administering the host through: DOCKER_HOST, a Portainer agent, a CI
-//     runner. That is firewall.inactive's recoverability criterion.
-//   - dockerd.group-members — `gpasswd -d` is exec, so never Auto, and the
-//     member it removes may be the operator's own account and the access
-//     they administer the daemon with. That is accounts.emptypassword's
-//     objection.
+//     runner. That is firewall.inactive's recoverability criterion, and it
+//     is not the only one. The edit itself has no clean shape either: the
+//     endpoint lives in a `hosts` array entry in daemon.json, or in an
+//     `-H tcp://…` token among several on the unit's ExecStart= line, and
+//     removing either is a deletion. internal/json5 replaces an existing
+//     value; it does not remove an array entry. And there is no editor
+//     anywhere in this project for surgically dropping one flag from a
+//     multi-flag command line the way it edits a key's value. Recoverability
+//     alone would only argue for Review, the way accounts.emptypassword's
+//     comparable risk does; this pair fails on shape as well.
+//   - dockerd.group-members — `gpasswd -d` is exec, so never Auto. What
+//     actually blocks it is not recoverability — removing docker-group
+//     membership only takes away Docker admin capability, not SSH or host
+//     access, and is trivially reversible with the `usermod -aG docker` the
+//     operator already knows — it is that the finding cannot distinguish a
+//     forgotten grant from a deliberate one. A service account holding this
+//     group is exactly as likely to be Portainer's agent, Watchtower, or a
+//     CI runner as an oversight, and nothing in the evidence says which.
+//     That is compose.ds001's objection, not accounts.emptypassword's.
 //   - dockerd.socket-world-writable — the only one of the seven that does not
 //     touch daemon.json, and so the only one whose reason had to be rewritten
 //     rather than re-pointed. The socket's mode is not durable state: dockerd

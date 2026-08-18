@@ -136,9 +136,13 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // well be behind a router or a cloud security group, which is why the
 // description says so rather than the severity pretending to know.
 //
-// No fix is registered, for firewall.inactive's reason: changing a default
-// policy to deny on a machine reached over SSH can lock the operator out
-// irrecoverably, and exec fixes leave no checkpoint.
+// The fix carries the same reason firewall.inactive's does, and the same
+// resolution: with the port sshd is actually listening on in evidence, it
+// can allow that port first and only then flip the default policy, as two
+// commands of one action. It stays Review — the change cannot be rolled back
+// and it takes every other inbound port with it, which an operator should
+// decide rather than discover — and, like firewall.inactive, it is only
+// buildable for ufw; firewalld's target flip has no such fix registered yet.
 func defaultAllowFinding(which string) model.Finding {
 	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`) — the deny policy takes effect immediately and an unallowed session is the one you are using."
 	if which == "firewalld" {
@@ -146,7 +150,7 @@ func defaultAllowFinding(which string) model.Finding {
 	}
 	return model.NewFinding("firewall.default-allow",
 		"Firewall is running but accepts everything by default",
-		model.SeverityHigh, model.SourceFirewall, model.RemediationManual,
+		model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
 		model.WithDescription("A firewall is active, but its default policy for inbound traffic is to accept. Every port a service binds to a non-loopback address is reachable from any network this host is on, exactly as if no firewall were running — the difference is that `"+which+"` reports it as active, so the host looks protected. A firewall is only a backstop if what it does with traffic no rule matched is refuse it."),
 		model.WithHowToFix(how),
 		model.WithEvidence("firewall", which),

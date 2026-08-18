@@ -29,6 +29,7 @@ import (
 // changes is that hostveil can now carry it out, instead of describing it.
 func registerFirewall(r *Registry) {
 	r.Register("firewall.inactive", buildEnableFirewall)
+	r.Register("firewall.default-allow", buildFixDefaultAllow)
 }
 
 func buildEnableFirewall(f model.Finding) (Fix, error) {
@@ -75,6 +76,50 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 				"exec fixes are not file-backed — so undoing it means `ufw disable` by hand.",
 			Kind:     ActionExec,
 			Commands: allow,
+		}},
+	}, nil
+}
+
+// buildFixDefaultAllow flips a running firewall's default inbound policy
+// from allow to deny. It is buildEnableFirewall's fix applied to a firewall
+// that is already running rather than absent — same evidence, same ordering
+// (allow SSH first, then tighten the policy), same reason it stays Review —
+// restricted to ufw for the same reason: firewalld's target flip has no
+// registered fix yet.
+func buildFixDefaultAllow(f model.Finding) (Fix, error) {
+	ports, err := parseSSHPorts(f.Evidence["ssh_port"])
+	if err != nil {
+		return Fix{}, fmt.Errorf("finding %s does not name the port(s) sshd is listening on, "+
+			"so tightening the firewall's default policy could lock the operator out: %w", f.ID, err)
+	}
+	if f.Evidence["firewall"] != "ufw" {
+		return Fix{}, fmt.Errorf("finding %s reports %q, and only ufw's default policy "+
+			"has a registered fix", f.ID, f.Evidence["firewall"])
+	}
+	list := make([]string, 0, len(ports))
+	for _, p := range ports {
+		list = append(list, strconv.Itoa(p))
+	}
+	spelled := strings.Join(list, " and ")
+	commands := make([][]string, 0, len(list)+2)
+	for _, p := range list {
+		commands = append(commands, []string{"ufw", "allow", p + "/tcp"})
+	}
+	commands = append(commands, []string{"ufw", "default", "deny", "incoming"}, []string{"ufw", "reload"})
+
+	return Fix{
+		FindingID: f.ID,
+		Label:     "Allow SSH on port " + spelled + ", then deny inbound traffic by default",
+		// Same shape as firewall.inactive: one ordered procedure of exec
+		// commands, declared Auto and floored to Review by EffectiveKind.
+		Kind: model.RemediationAuto,
+		Actions: []Action{{
+			Label: "Allow SSH on " + spelled + "/tcp, then set ufw's default inbound policy to deny",
+			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
+				"runs, including anything a container publishes. There is no rollback checkpoint — " +
+				"exec fixes are not file-backed — so undoing it means `ufw default allow incoming` by hand.",
+			Kind:     ActionExec,
+			Commands: commands,
 		}},
 	}, nil
 }

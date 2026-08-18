@@ -9,28 +9,38 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// registerSystemd registers the one systemd finding whose remediation hostveil
+// registerSystemd registers the systemd findings whose remediation hostveil
 // can write down.
 //
-// The domain has four rules and three of them stay declined, because each
-// breaks something the unit does not show: PrivateTmp breaks two services that
-// hand each other files through /tmp, ProtectHome breaks anything whose data
-// lives in a home directory, ProtectSystem breaks a service that writes under
-// /usr. NoNewPrivileges carries no such blind spot — it closes the setuid path,
-// and nothing about the unit hides whether that matters.
+// The domain has fourteen rules. Eight stay declined, because each breaks
+// something the unit does not show: PrivateTmp breaks two services that hand
+// each other files through /tmp, ProtectHome breaks anything whose data lives
+// in a home directory, ProtectSystem breaks a service that writes under /usr,
+// and the other five collide with workloads this project's own audience
+// runs — container runtimes, GPU passthrough, VPN tunnels, JIT runtimes; see
+// register.go for the reasoning behind each. The other six — NoNewPrivileges
+// and the five below it — carry no such blind spot: each closes one narrow,
+// well-known capability, and nothing about the unit hides whether a
+// particular service needs it.
 //
-// The reason this one was declined has expired. It read "a drop-in plus a
-// restart is one procedure in two steps rather than two alternatives", and
-// Action.TakesEffectOn is exactly the shape that objection describes: write the
-// artifact now, name what has to happen for it to be in force. Every compose
-// fix runs on it. The sentence was written before it existed.
+// The reason this domain was declined whole has expired. It read "a drop-in
+// plus a restart is one procedure in two steps rather than two alternatives",
+// and Action.TakesEffectOn is exactly the shape that objection describes:
+// write the artifact now, name what has to happen for it to be in force.
+// Every compose fix runs on it. The sentence was written before it existed.
 //
-// The other half of that reason still holds — a service that deliberately
-// escalates stops coming back — so this is Review, declared by the checker.
-// The action here is one edit, which is Auto's shape; resolvedKind takes the
-// more cautious of the two.
+// The other half of that reason still holds for all six registered here — a
+// service that deliberately escalates, or that needs one of these narrow
+// capabilities, stops coming back — so every one is Review, declared by the
+// checker. The action in each case is one edit, which is Auto's shape;
+// resolvedKind takes the more cautious of the two.
 func registerSystemd(r *Registry) {
 	r.Register("systemd.no-new-privileges", buildSystemdNoNewPrivileges)
+	r.Register("systemd.protect-clock", buildSystemdProtectClock)
+	r.Register("systemd.lock-personality", buildSystemdLockPersonality)
+	r.Register("systemd.restrict-suid-sgid", buildSystemdRestrictSUIDSGID)
+	r.Register("systemd.protect-kernel-logs", buildSystemdProtectKernelLogs)
+	r.Register("systemd.protect-kernel-modules", buildSystemdProtectKernelModules)
 }
 
 // serviceDirective matches an existing assignment of the directive's key
@@ -45,6 +55,50 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 		"Closes the setuid path out of this service. A service that deliberately "+
 			"escalates — anything calling a setuid helper — stops working, and it "+
 			"stops at the next restart rather than now.")
+}
+
+// Five of the remaining thirteen protections registered below, alongside
+// no-new-privileges: chosen because the failure mode is narrow enough for an
+// operator reading the finding to actually assess it, the way ssh.passwordauth
+// asks "do I have SSH keys set up" rather than "does something on this host
+// depend on an invisible property of the unit". The other eight collide with
+// workloads this project's own audience runs — container runtimes needing
+// namespaces and cgroups, GPU passthrough and VPN tunnels needing /dev and
+// /proc/sys, JIT runtimes needing writable executable memory, and three whose
+// blind spot is unchanged from the domain's original three (/usr, /tmp, home
+// directories) — and stay declined; see register.go.
+
+func buildSystemdProtectClock(f model.Finding) (Fix, error) {
+	return systemdDropIn(f, "ProtectClock", "yes",
+		"Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need "+
+			"to change the system or hardware clock. A service that is not one of "+
+			"those stops being able to, at the next restart.")
+}
+
+func buildSystemdLockPersonality(f model.Finding) (Fix, error) {
+	return systemdDropIn(f, "LockPersonality", "yes",
+		"Needing an alternate execution personality is rare outside emulation and "+
+			"compatibility layers. An ordinary service is unaffected; one that "+
+			"needs one fails at the next restart.")
+}
+
+func buildSystemdRestrictSUIDSGID(f model.Finding) (Fix, error) {
+	return systemdDropIn(f, "RestrictSUIDSGID", "yes",
+		"Only a service that itself creates setuid or setgid files — a package "+
+			"manager, an installer — needs this off. An ordinary network daemon "+
+			"does not create such files and is unaffected.")
+}
+
+func buildSystemdProtectKernelLogs(f model.Finding) (Fix, error) {
+	return systemdDropIn(f, "ProtectKernelLogs", "yes",
+		"Only a service that reads kernel logs directly — a diagnostics tool, an "+
+			"agent reading /dev/kmsg — needs this off. Most services never touch it.")
+}
+
+func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
+	return systemdDropIn(f, "ProtectKernelModules", "yes",
+		"Only a service that loads or removes kernel modules itself at runtime — "+
+			"rather than modules already loaded at boot — needs this off.")
 }
 
 // systemdDropIn builds the edit that turns one [Service] directive on.
