@@ -28,6 +28,12 @@ type Checker struct {
 	// RebootRequiredPath is the flag file apt's packages touch when a
 	// installed update needs a reboot to take effect; overridable for tests.
 	RebootRequiredPath string
+	// PAMModulePaths are the distro locations checked for pam_pwquality.
+	// Overridable so tests never depend on packages installed on the runner.
+	PAMModulePaths []string
+	PAMTmpdirPaths []string
+	// SysstatConfigPath controls collection after the package is installed.
+	SysstatConfigPath string
 }
 
 // New returns an updates checker.
@@ -35,6 +41,17 @@ func New() *Checker {
 	return &Checker{
 		AptConfigPath:      "/etc/apt/apt.conf.d/20auto-upgrades",
 		RebootRequiredPath: "/var/run/reboot-required",
+		PAMModulePaths: []string{
+			"/usr/lib/x86_64-linux-gnu/security/pam_pwquality.so",
+			"/usr/lib/aarch64-linux-gnu/security/pam_pwquality.so",
+			"/usr/lib/security/pam_pwquality.so",
+		},
+		PAMTmpdirPaths: []string{
+			"/usr/lib/x86_64-linux-gnu/security/pam_tmpdir.so",
+			"/usr/lib/aarch64-linux-gnu/security/pam_tmpdir.so",
+			"/usr/lib/security/pam_tmpdir.so",
+		},
+		SysstatConfigPath: "/etc/default/sysstat",
 	}
 }
 
@@ -125,6 +142,61 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		findings = append(findings, rebootFinding("sudo reboot"))
 	}
 
+	// These tools provide independent host accounting, integrity, password
+	// quality, and malware coverage. Installation changes the package database
+	// and may start a service, so every remediation is Review despite being
+	// mechanically well-defined.
+	tools := []struct {
+		id, title, description, command, pkg string
+		severity                             model.Severity
+	}{
+		{"updates.process-accounting", "Process accounting is not installed", "Process accounting records commands after they exit, preserving an audit trail that ordinary process listings cannot reconstruct.", "lastcomm", "acct", model.SeverityLow},
+		{"updates.sysstat", "System activity accounting is not installed", "sysstat keeps historical CPU, memory, disk, and network activity that helps distinguish compromise from ordinary load after an incident.", "sar", "sysstat", model.SeverityLow},
+		{"updates.auditd", "The Linux audit daemon is not installed", "auditd records security-relevant kernel events under an explicit policy and preserves evidence that application logs do not contain.", "auditctl", "auditd", model.SeverityMedium},
+		{"updates.debsums", "Installed package files cannot be verified", "debsums compares installed files with package checksums, exposing modified system binaries and damaged installations.", "debsums", "debsums", model.SeverityLow},
+		{"updates.rkhunter", "No rootkit scanner is installed", "A second-opinion rootkit scanner checks the host for known persistence artifacts and suspicious system-file changes.", "rkhunter", "rkhunter", model.SeverityLow},
+		{"updates.apt-show-versions", "Patch inventory tooling is not installed", "apt-show-versions makes installed and available package versions independently visible to patch-management audits.", "apt-show-versions", "apt-show-versions", model.SeverityLow},
+		{"updates.apt-listchanges", "APT changelog review is not installed", "apt-listchanges surfaces important package changes before upgrades are committed.", "apt-listchanges", "apt-listchanges", model.SeverityLow},
+		{"updates.fail2ban", "Repeated authentication failures are not automatically blocked", "fail2ban can temporarily block sources that repeatedly fail authentication, reducing online guessing attempts.", "fail2ban-client", "fail2ban", model.SeverityMedium},
+	}
+	if c.SysstatConfigPath != "" && platform.Has(env.Runner, "sar") {
+		if data, err := os.ReadFile(c.SysstatConfigPath); err == nil && !strings.Contains(string(data), `ENABLED="true"`) {
+			findings = append(findings, model.NewFinding("updates.sysstat-disabled", "System activity collection is disabled", model.SeverityLow, model.SourceUpdates, model.RemediationAuto,
+				model.WithDescription("sysstat is installed, but its periodic collector is disabled, so no historical activity exists when an incident needs investigation."),
+				model.WithHowToFix("Set ENABLED=\"true\" in "+c.SysstatConfigPath+"."), model.WithEvidence("config", c.SysstatConfigPath)))
+		}
+	}
+	for _, tool := range tools {
+		if platform.Has(env.Runner, tool.command) {
+			continue
+		}
+		findings = append(findings, packageFinding(tool.id, tool.title, tool.description, tool.pkg, tool.severity))
+	}
+	if len(c.PAMModulePaths) > 0 {
+		pamFound := false
+		for _, path := range c.PAMModulePaths {
+			if _, err := os.Stat(path); err == nil {
+				pamFound = true
+				break
+			}
+		}
+		if !pamFound {
+			findings = append(findings, packageFinding("updates.pam-pwquality", "PAM has no password-quality module", "pam_pwquality rejects weak new passwords before they become reusable credentials on this host.", "libpam-pwquality", model.SeverityMedium))
+		}
+	}
+	if len(c.PAMTmpdirPaths) > 0 {
+		found := false
+		for _, path := range c.PAMTmpdirPaths {
+			if _, err := os.Stat(path); err == nil {
+				found = true
+				break
+			}
+		}
+		if !found {
+			findings = append(findings, packageFinding("updates.pam-tmpdir", "PAM sessions share global temporary directories", "pam_tmpdir gives each authenticated user private temporary directories instead of sharing predictable names in /tmp.", "libpam-tmpdir", model.SeverityLow))
+		}
+	}
+
 	// `apt`, not `apt-get`, despite apt printing that its CLI is not a stable
 	// scripting interface.
 	//
@@ -142,7 +214,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	if err != nil {
 		reasons = append(reasons, "cannot list pending updates")
 	} else if n := countAptSecurityUpdates(string(out)); n > 0 {
-		findings = append(findings, pendingFinding(n, "sudo apt update && sudo apt upgrade"))
+		findings = append(findings, pendingFinding(n, "apt", "sudo apt update && sudo apt dist-upgrade"))
 	}
 
 	// Two questions here, as on the dnf side: whether automatic updates are
@@ -156,6 +228,13 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		}
 	}
 	return findings, nil
+}
+
+func packageFinding(id, title, description, pkg string, severity model.Severity) model.Finding {
+	return model.NewFinding(id, title, severity, model.SourceUpdates, model.RemediationReview,
+		model.WithDescription(description),
+		model.WithHowToFix("Install the `"+pkg+"` package after reviewing its services and disk use."),
+		model.WithEvidence("package-manager", "apt"), model.WithEvidence("package", pkg))
 }
 
 func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Finding, error) {
@@ -226,7 +305,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		reasons = append(reasons, "cannot list pending security updates")
 	default:
 		if n := countDnfSecurityAdvisories(string(secOut)); n > 0 {
-			findings = append(findings, pendingFinding(n, "sudo dnf upgrade --security"))
+			findings = append(findings, pendingFinding(n, "dnf", "sudo dnf upgrade --security"))
 		}
 	}
 
@@ -351,16 +430,16 @@ func rebootFinding(howToFix string) model.Finding {
 // pendingFinding reports security updates that are available and not applied.
 // Severity scales with the count: a couple of pending patches is routine drift,
 // dozens means automatic updates are not actually working.
-func pendingFinding(n int, howToFix string) model.Finding {
+func pendingFinding(n int, mechanism, howToFix string) model.Finding {
 	sev := model.SeverityMedium
 	if n >= 10 {
 		sev = model.SeverityHigh
 	}
 	return model.NewFinding("updates.pending-security", fmt.Sprintf("%d security update(s) are available but not installed", n),
-		sev, model.SourceUpdates, model.RemediationManual,
+		sev, model.SourceUpdates, model.RemediationReview,
 		model.WithDescription("These packages have published security fixes that this host has not applied. Every one is a publicly documented vulnerability with a patch already written, which is the category attackers scan for first. A large backlog usually means automatic updates are configured but failing rather than simply switched off."),
 		model.WithHowToFix("Apply them: `"+howToFix+"`. If automatic updates are enabled and this backlog keeps growing, check `systemctl status unattended-upgrades` or the dnf-automatic timer for errors."),
-		model.WithEvidence("pending", strconv.Itoa(n)),
+		model.WithEvidence("pending", strconv.Itoa(n)), model.WithEvidence("package-manager", mechanism),
 	)
 }
 

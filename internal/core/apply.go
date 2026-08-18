@@ -375,13 +375,19 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 // and nothing about them can be recorded to undo. What is recorded is what
 // ran, which is what someone repairing this by hand needs.
 func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a fix.Action) (model.FixOutcome, error) {
+	runCtx := ctx
+	if a.Timeout > 0 {
+		var cancel context.CancelFunc
+		runCtx, cancel = context.WithTimeout(ctx, a.Timeout)
+		defer cancel()
+	}
 	var ran [][]string
 	var runErr error
 	for _, cmd := range a.Commands {
 		if len(cmd) == 0 {
 			continue
 		}
-		if _, err := e.runner.Run(ctx, cmd[0], cmd[1:]...); err != nil {
+		if _, err := e.runner.Run(runCtx, cmd[0], cmd[1:]...); err != nil {
 			runErr = fmt.Errorf("command %v failed: %w", cmd, err)
 			break
 		}

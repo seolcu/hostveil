@@ -24,7 +24,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">136</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">81</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">60</span>개는 무인으로 적용하고, <span data-counted="findings.review">21</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">120</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">71</span>개는 무인으로 적용하고, <span data-counted="findings.review">49</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
 
             <h2 id="severity">심각도와 점수</h2>
             <p>hostveil은 발견 항목을 <strong>얼마나 급한지</strong>로 등급을 매깁니다. 얼마나 나쁜지가 아닙니다. 설정 파일을 읽는 스캐너는 "root로 도는 컨테이너"가 얼마나 나쁜지 말해 줄 수 없습니다. 그건 그 컨테이너가 무엇을 하느냐에 전적으로 달려 있으니까요. 스캐너가 <em>말할 수 있는</em> 것은 지금 이 순간 공격자와 그 문제 사이에 무엇이 얼마나 서 있느냐이고, 이 세 단계가 재는 것이 바로 그것입니다.</p>
@@ -104,6 +104,18 @@
                   <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                   <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.clientalivecountmax</code></td><td>응답 없는 SSH 세션을 너무 오래 유지함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.clientaliveinterval</code></td><td>사용하지 않는 SSH 세션에 서버 측 제한 시간이 없음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.fingerprinthash</code></td><td>호스트 키 지문에 오래된 해시를 사용함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.ignorerhosts</code></td><td>오래된 rhosts 인증을 명시적으로 무시하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.loglevel</code></td><td>SSH 인증 로그가 충분히 상세하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.maxsessions</code></td><td>SSH 연결 하나가 너무 많은 세션을 열 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.printlastlog</code></td><td>사용자에게 이전 로그인 기록을 보여 주지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.strictmodes</code></td><td>SSH가 소유권과 파일 권한을 검사하지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH가 위조 가능한 TCP keepalive를 받아들임</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>ssh.usedns</code></td><td>SSH가 불필요한 역방향 DNS 조회를 수행함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH 에이전트 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -159,8 +171,19 @@
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
-                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                   <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>updates.process-accounting</code></td><td>프로세스 사용 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.sysstat</code></td><td>시스템 활동 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.auditd</code></td><td>Linux 감사 데몬이 설치되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.debsums</code></td><td>설치된 패키지 파일을 검증할 수 없음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.rkhunter</code></td><td>rootkit 점검기가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.pam-pwquality</code></td><td>PAM에 비밀번호 품질 구성 요소가 없음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.apt-show-versions</code></td><td>패치 목록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.sysstat-disabled</code></td><td>시스템 활동 수집이 비활성화됨</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>updates.apt-listchanges</code></td><td>APT 변경 기록 검토 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.pam-tmpdir</code></td><td>PAM 세션이 전역 임시 디렉터리를 공유함</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>updates.fail2ban</code></td><td>반복되는 인증 실패를 자동 차단하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -174,6 +197,9 @@
                   <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>ports.redis-bind</code></td><td>Redis가 루프백 밖에서 수신하도록 설정됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis 보호 모드가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
+                  <tr><td><code>ports.redis-disable-config</code></td><td>Redis CONFIG 명령이 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -190,6 +216,12 @@
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>여러 계정이 같은 UID를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
                   <tr><td><code>accounts.weak-password-hash</code></td><td>로그인 계정이 약한 비밀번호 해시를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>accounts.password-rounds</code></td><td>비밀번호 해시 반복 횟수가 강화되지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>accounts.default-umask</code></td><td>새 파일의 기본 권한이 너무 넓음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>accounts.local-banner</code></td><td>로컬 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>accounts.remote-banner</code></td><td>원격 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>accounts.password-aging</code></td><td>비밀번호 사용 기간 기본값이 너무 느슨함</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>accounts.core-dumps</code></td><td>core dump가 명시적으로 비활성화되지 않음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
                 </tbody>
               </table>
             </div>
@@ -234,6 +266,7 @@
                   <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td>자동 수정</td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>fileperms.compiler</code></td><td>모든 로컬 사용자가 시스템 컴파일러를 실행할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>
@@ -282,6 +315,11 @@
                   <tr><td><code>sysctl.multicast-forwarding</code></td><td>IPv4 multicast forwarding이 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>sysctl.bootp-relay</code></td><td>BOOTP relay가 활성화됨</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                   <tr><td><code>sysctl.tcp-rfc1337</code></td><td>TCP TIME-WAIT 보호가 꺼져 있음</td><td><span class="sev low">LOW</span></td><td>자동 수정</td></tr>
+                  <tr><td><code>sysctl.module-dccp</code></td><td>선택적 DCCP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.module-sctp</code></td><td>선택적 SCTP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.module-rds</code></td><td>선택적 RDS 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.module-tipc</code></td><td>선택적 TIPC 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
+                  <tr><td><code>sysctl.module-usbstorage</code></td><td>USB 저장 장치 드라이버를 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td>검토</td></tr>
                 </tbody>
               </table>
             </div>

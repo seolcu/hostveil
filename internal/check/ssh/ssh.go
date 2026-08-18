@@ -319,11 +319,11 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 			configFor(cfg, path, "PasswordAuthentication")))
 	}
 
-	if tries := atoiDefault(effective(cfg, "MaxAuthTries", "6"), 6); tries > 6 {
+	if tries := atoiDefault(effective(cfg, "MaxAuthTries", "6"), 6); tries > 3 {
 		out = append(out, model.NewFinding("ssh.maxauthtries", "SSH allows many authentication attempts per connection",
 			model.SeverityLow, model.SourceSSH, model.RemediationAuto,
 			model.WithDescription("A high MaxAuthTries lets an attacker try many passwords per connection, speeding up brute-force attacks."),
-			model.WithHowToFix("Lower `MaxAuthTries` to 3 or 4."),
+			model.WithHowToFix("Lower `MaxAuthTries` to 3."),
 			model.WithEvidence("value", strconv.Itoa(tries)), configFor(cfg, path, "MaxAuthTries")))
 	}
 
@@ -378,6 +378,41 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 			model.WithDescription("PermitTunnel allows authenticated users to create tun/tap devices and route traffic through the server, bypassing network boundaries that ordinary port forwarding cannot cross."),
 			model.WithHowToFix("Set `PermitTunnel no` unless this server intentionally provides an SSH VPN."),
 			configFor(cfg, path, "PermitTunnel")))
+	}
+
+	// Keep these aligned with sshd's effective defaults and with the controls
+	// Lynis evaluates from `sshd -T`. Defaults are supplied explicitly here so
+	// the checker reports behavior, not whether somebody happened to spell the
+	// directive out in a file.
+	type hardeningRule struct {
+		id, key, want, def, title, desc string
+		severity                        model.Severity
+		remediation                     model.RemediationKind
+		weak                            func(string) bool
+	}
+	rules := []hardeningRule{
+		{"ssh.allowtcpforwarding", "AllowTcpForwarding", "no", "yes", "SSH users can forward arbitrary TCP connections", "TCP forwarding lets an authenticated account tunnel traffic through this server and cross network boundaries that do not otherwise expose the destination.", model.SeverityMedium, model.RemediationReview, func(v string) bool { return v != "no" }},
+		{"ssh.clientalivecountmax", "ClientAliveCountMax", "2", "3", "SSH retains too many unanswered client keepalives", "Bounding unanswered keepalives clears abandoned authenticated sessions sooner and reduces the time a stolen connection remains usable.", model.SeverityLow, model.RemediationAuto, func(v string) bool { return atoiDefault(v, 3) > 2 }},
+		{"ssh.clientaliveinterval", "ClientAliveInterval", "300", "0", "SSH does not probe idle clients", "Without a client-alive interval, dead authenticated sessions can remain allocated indefinitely and are harder for operators to distinguish from active access.", model.SeverityLow, model.RemediationReview, func(v string) bool { return atoiDefault(v, 0) == 0 || atoiDefault(v, 0) > 300 }},
+		{"ssh.fingerprinthash", "FingerprintHash", "sha256", "sha256", "SSH host-key fingerprints are not pinned to SHA-256", "SHA-256 fingerprints avoid the collision weaknesses and confusing presentation of legacy MD5 host-key fingerprints.", model.SeverityLow, model.RemediationAuto, func(v string) bool { return v != "sha256" }},
+		{"ssh.ignorerhosts", "IgnoreRhosts", "yes", "yes", "SSH may honor legacy rhosts trust files", "Legacy rhosts trust delegates authentication to host names and local files instead of per-user credentials.", model.SeverityMedium, model.RemediationAuto, func(v string) bool { return v != "yes" }},
+		{"ssh.loglevel", "LogLevel", "verbose", "info", "SSH authentication logging lacks key fingerprints", "Verbose SSH logging records the key fingerprint used for authentication, giving incident responders a useful identity trail without logging session contents.", model.SeverityLow, model.RemediationAuto, func(v string) bool { return v != "verbose" }},
+		{"ssh.maxsessions", "MaxSessions", "2", "10", "One SSH connection can open many sessions", "A high multiplexed-session limit gives one authenticated connection more capacity for lateral movement and resource exhaustion.", model.SeverityLow, model.RemediationReview, func(v string) bool { return atoiDefault(v, 10) > 2 }},
+		{"ssh.printlastlog", "PrintLastLog", "yes", "yes", "SSH does not show the previous login", "Showing the previous login gives users an immediate signal that their account was accessed at an unexpected time.", model.SeverityLow, model.RemediationAuto, func(v string) bool { return v != "yes" }},
+		{"ssh.strictmodes", "StrictModes", "yes", "yes", "SSH does not enforce ownership of login files", "StrictModes refuses keys and login files whose ownership or permissions would let another user replace them.", model.SeverityMedium, model.RemediationAuto, func(v string) bool { return v != "yes" }},
+		{"ssh.tcpkeepalive", "TCPKeepAlive", "no", "yes", "SSH trusts unauthenticated TCP keepalive packets", "TCP keepalives are spoofable and do not prove the client is still present; encrypted client-alive messages provide the meaningful liveness check.", model.SeverityLow, model.RemediationReview, func(v string) bool { return v != "no" }},
+		{"ssh.usedns", "UseDNS", "no", "no", "SSH performs reverse DNS during login", "Reverse DNS adds a network dependency to authentication and can make logins stall when DNS is slow or attacker-controlled.", model.SeverityLow, model.RemediationAuto, func(v string) bool { return v != "no" }},
+		{"ssh.allowagentforwarding", "AllowAgentForwarding", "no", "yes", "SSH users can forward authentication agents", "Agent forwarding lets processes on this server ask a user's local agent to authenticate elsewhere, extending a compromised host's reach.", model.SeverityMedium, model.RemediationReview, func(v string) bool { return v != "no" }},
+	}
+	for _, r := range rules {
+		value := effective(cfg, r.key, r.def)
+		if !r.weak(value) {
+			continue
+		}
+		out = append(out, model.NewFinding(r.id, r.title, r.severity, model.SourceSSH, r.remediation,
+			model.WithDescription(r.desc),
+			model.WithHowToFix("Set `"+r.key+" "+r.want+"` in sshd_config."),
+			model.WithEvidence("value", value), configFor(cfg, path, r.key)))
 	}
 
 	// The contradiction case only: PasswordAuthentication no is meant to end

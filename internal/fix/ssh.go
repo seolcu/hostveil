@@ -9,7 +9,7 @@ import (
 // registerSSH wires the SSH-domain fixes into the registry.
 func registerSSH(r *Registry) {
 	r.Register("ssh.emptypasswords", buildSSHAuto("PermitEmptyPasswords", "no", "Disable empty passwords", ""))
-	r.Register("ssh.maxauthtries", buildSSHAuto("MaxAuthTries", "4", "Lower MaxAuthTries to 4", ""))
+	r.Register("ssh.maxauthtries", buildSSHAuto("MaxAuthTries", "3", "Lower MaxAuthTries to 3", ""))
 	r.Register("ssh.x11forwarding", buildSSHAuto("X11Forwarding", "no", "Disable X11 forwarding", ""))
 	r.Register("ssh.passwordauth", buildSSHAuto("PasswordAuthentication", "no", "Disable password authentication",
 		"Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH."))
@@ -22,6 +22,18 @@ func registerSSH(r *Registry) {
 	r.Register("ssh.kbdinteractive", buildKbdInteractive)
 	r.Register("ssh.permituserenvironment", buildSSHAuto("PermitUserEnvironment", "no", "Disable user-supplied SSH environments", "Login automation that relies on ~/.ssh/environment will stop receiving those variables."))
 	r.Register("ssh.permittunnel", buildSSHAuto("PermitTunnel", "no", "Disable SSH tun/tap tunnels", "Existing SSH VPN or tun/tap workflows will stop working."))
+	r.Register("ssh.allowtcpforwarding", buildSSHAuto("AllowTcpForwarding", "no", "Disable SSH TCP forwarding", "Existing local, remote, and dynamic SSH tunnels will stop working."))
+	r.Register("ssh.clientalivecountmax", buildSSHAuto("ClientAliveCountMax", "2", "Limit unanswered SSH keepalives", ""))
+	r.Register("ssh.clientaliveinterval", buildSSHAuto("ClientAliveInterval", "300", "Probe idle SSH clients every five minutes", "Long-running idle sessions may be disconnected when their clients stop responding."))
+	r.Register("ssh.fingerprinthash", buildSSHAuto("FingerprintHash", "sha256", "Use SHA-256 host-key fingerprints", ""))
+	r.Register("ssh.ignorerhosts", buildSSHAuto("IgnoreRhosts", "yes", "Ignore legacy rhosts trust files", ""))
+	r.Register("ssh.loglevel", buildSSHAuto("LogLevel", "VERBOSE", "Log SSH key fingerprints", ""))
+	r.Register("ssh.maxsessions", buildSSHAuto("MaxSessions", "2", "Limit multiplexed SSH sessions", "Clients opening more than two sessions over one SSH connection will be refused."))
+	r.Register("ssh.printlastlog", buildSSHAuto("PrintLastLog", "yes", "Show the previous login", ""))
+	r.Register("ssh.strictmodes", buildSSHAuto("StrictModes", "yes", "Enforce SSH login-file ownership", ""))
+	r.Register("ssh.tcpkeepalive", buildSSHAuto("TCPKeepAlive", "no", "Disable TCP keepalives for SSH", "Use ClientAliveInterval for encrypted liveness checks; dead connections may otherwise take longer to disappear from intermediate network devices."))
+	r.Register("ssh.usedns", buildSSHAuto("UseDNS", "no", "Disable SSH reverse-DNS lookups", ""))
+	r.Register("ssh.allowagentforwarding", buildSSHAuto("AllowAgentForwarding", "no", "Disable SSH agent forwarding", "Existing workflows that hop through this host using a forwarded agent will stop working."))
 }
 
 // buildKbdInteractive disables keyboard-interactive authentication by

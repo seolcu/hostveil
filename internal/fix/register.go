@@ -65,11 +65,6 @@ package fix
 //     down with it. Only the operator knows when that downtime is acceptable,
 //     and a tool that reboots a server as part of "fix all safe" would be
 //     indefensible whatever the finding said.
-//   - updates.pending-security — `apt upgrade` is exec, so never Auto, and it
-//     is also unbounded: it can pull in a new kernel, restart services, and
-//     prompt about modified config files. Nothing about that is reversible
-//     from a checkpoint, and a package upgrade that breaks a service leaves
-//     the operator worse off than the pending patch did.
 //   - fileperms.owner — the remediation is `chown root:root`, and hostveil
 //     cannot undo it. A checkpoint records a file's contents and its mode
 //     and has nowhere to put its previous owner, so this would be the only
@@ -575,10 +570,12 @@ package fix
 // report.
 func Default() *Registry {
 	r := NewRegistry()
+	registerAccounts(r)
 	registerCompose(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)
+	registerPorts(r)
 	registerFirewall(r)
 	registerAgent(r)
 	registerSysctl(r)

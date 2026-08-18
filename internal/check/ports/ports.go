@@ -8,6 +8,8 @@ package ports
 import (
 	"context"
 	"fmt"
+	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,10 +21,12 @@ import (
 )
 
 // Checker reports host services listening on non-loopback addresses.
-type Checker struct{}
+type Checker struct {
+	RedisConfigPath string
+}
 
 // New returns a ports checker.
-func New() *Checker { return &Checker{} }
+func New() *Checker { return &Checker{RedisConfigPath: "/etc/redis/redis.conf"} }
 
 // Source identifies the ports domain.
 func (*Checker) Source() model.Source { return model.SourcePorts }
@@ -68,7 +72,7 @@ var adminPorts = map[int]string{
 }
 
 // Check reads listening TCP sockets and flags non-loopback exposure.
-func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
+func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	listeners, err := platform.Listeners(ctx, env.Runner)
 	if err != nil {
 		return nil, err
@@ -131,7 +135,36 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 			}
 		}
 	}
+	if c.RedisConfigPath != "" {
+		if data, err := os.ReadFile(c.RedisConfigPath); err == nil {
+			findings = append(findings, redisFindings(data, c.RedisConfigPath)...)
+		}
+	}
 	return findings, nil
+}
+
+func redisFindings(data []byte, path string) []model.Finding {
+	text := string(data)
+	var out []model.Finding
+	add := func(id, title, desc, how string) {
+		out = append(out, model.NewFinding(id, title, model.SeverityMedium, model.SourcePorts, model.RemediationReview,
+			model.WithDescription(desc), model.WithHowToFix(how), model.WithEvidence("config", path)))
+	}
+	if !regexpLine(text, `bind\s+(127\.0\.0\.1|localhost)(\s|$)`) {
+		add("ports.redis-bind", "Redis is configured to listen beyond loopback", "Redis should normally be reached by local applications or a private proxy, not every network attached to the host.", "Bind Redis to 127.0.0.1 in "+path+" after confirming no remote client connects directly.")
+	}
+	if !regexpLine(text, `protected-mode\s+yes(\s|$)`) {
+		add("ports.redis-protected-mode", "Redis protected mode is disabled", "Protected mode refuses unsafe remote access when authentication and binding are incomplete.", "Set protected-mode yes in "+path+".")
+	}
+	if !regexpLine(text, `rename-command\s+CONFIG\s+""(\s|$)`) {
+		add("ports.redis-disable-config", "Redis exposes the CONFIG command", "A compromised Redis client can use CONFIG to rewrite runtime settings and persistence paths.", "Disable CONFIG with `rename-command CONFIG \"\"` in "+path+" after checking administration workflows.")
+	}
+	return out
+}
+
+func regexpLine(text, expression string) bool {
+	re := regexp.MustCompile(`(?mi)^\s*` + expression)
+	return re.MatchString(text)
 }
 
 func exposedFinding(l platform.Listener, id, title, desc string, sev model.Severity) model.Finding {
