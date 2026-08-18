@@ -57,6 +57,62 @@ fi
 # than hardcoded so a renamed checkout still gets a true error message.
 domain="$(basename "$PWD")_default"
 
+# vagrant-libvirt implements the forwarded port with a long-lived SSH -L
+# process. A hard host shutdown or removing an orphan domain with virsh can
+# leave that process behind: it still accepts localhost:8787, then forwards to
+# the IP of a VM that no longer exists, so a browser waits forever while the
+# next `vagrant up` appears to have configured the port successfully.
+#
+# Only remove a tunnel whose command names this checkout's generated private
+# key, and only when its domain is not running. That makes the target narrower
+# than "whatever owns 8787" and leaves a live demo entirely alone.
+clear_stale_forward() {
+  [ "$(uname -s)" = Linux ] || return 0
+  command -v virsh >/dev/null || return 0
+
+  state="$(virsh -c "${LIBVIRT_DEFAULT_URI:-qemu:///system}" domstate "$domain" 2>/dev/null || true)"
+  [ "$state" = running ] && return 0
+
+  key="$PWD/.vagrant/machines/default/libvirt/private_key"
+  pids="$(ps -eo pid=,comm=,args= 2>/dev/null | awk -v key="IdentityFile=\"$key\"" '
+    $2 == "ssh" && index($0, key) && index($0, " -L *:8787:") { print $1 }
+  ')"
+  [ -n "$pids" ] || return 0
+
+  echo "==> stopping stale demo port forward on localhost:8787…"
+  # Each PID came from an exact command-line match above, not from a port-wide
+  # kill. Split on newlines/spaces deliberately; kill accepts the resulting
+  # PID list as separate arguments.
+  # shellcheck disable=SC2086
+  kill $pids
+}
+
+# The libvirt forwarder binds IPv4 and IPv6 separately. If another process
+# already owns only one of them, `vagrant up` can still print a successful
+# 8787 mapping after binding the other; localhost then reaches one service or
+# the other depending on address-family order. Refuse that split-brain state
+# before booting. A running demo is exempt because its own forwarder is the
+# expected listener and `up` is intentionally idempotent.
+require_free_web_port() {
+  state="$(vagrant status --machine-readable 2>/dev/null | awk -F, '$3 == "state" { print $4; exit }')"
+  [ "$state" = running ] && return 0
+
+  used=false
+  if command -v ss >/dev/null; then
+    ss -H -ltn 'sport = :8787' 2>/dev/null | grep -q . && used=true
+  elif command -v lsof >/dev/null; then
+    lsof -nP -iTCP:8787 -sTCP:LISTEN >/dev/null 2>&1 && used=true
+  fi
+  [ "$used" = false ] && return 0
+
+  cat >&2 <<'EOF'
+Host port 8787 is already in use, so the demo dashboard cannot be forwarded
+there. Stop the process using it and run this again. The port is not changed
+silently because every demo command and URL intentionally uses localhost:8787.
+EOF
+  exit 1
+}
+
 # A defined domain that Vagrant has no record of is the wreckage of a
 # creation that did not finish — a host suspend, a Ctrl-C, or the session-URI
 # trap above before it was closed. Vagrant's own words for it are "already
@@ -122,7 +178,9 @@ EOF
 
 case "${1:-up}" in
   up)
+    clear_stale_forward
     warn_orphan_domain
+    require_free_web_port
     vagrant up
     echo "==> rebuilding hostveil from the synced source…"
     rebuild
@@ -154,8 +212,14 @@ case "${1:-up}" in
     start_stacks
     echo "Restored to the clean vulnerable baseline."
     ;;
-  halt)    vagrant halt ;;
-  destroy) vagrant destroy -f ;;
+  halt)
+    vagrant halt
+    clear_stale_forward
+    ;;
+  destroy)
+    vagrant destroy -f
+    clear_stale_forward
+    ;;
   *)
     echo "usage: ./run.sh {up|build|scan|web|shell|snapshot|reset|halt|destroy}" >&2
     exit 2

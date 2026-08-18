@@ -11,7 +11,10 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = "homelab"
 
   # The web dashboard: reach it at http://localhost:8787 on the host.
-  config.vm.network "forwarded_port", guest: 8787, host: 8787, auto_correct: true
+  # The helper and the dashboard both print localhost:8787. Silently choosing
+  # another host port makes those successful-looking instructions wrong, so a
+  # real collision must stop here and name the port that needs freeing.
+  config.vm.network "forwarded_port", guest: 8787, host: 8787, auto_correct: false
 
   # Mount the repo at /hostveil so provisioning builds the CURRENT source.
   # rsync works identically across providers (virtualbox/libvirt).

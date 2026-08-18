@@ -70,6 +70,15 @@ func TestDefaultLayoutIsTheChosenArrangement(t *testing.T) {
 	}
 }
 
+func TestRailLayoutsRestoreAxesWhenTheRailCollapses(t *testing.T) {
+	css := readAppCSS(t)
+	want := `:root[data-layout="console"] .axes,
+  :root[data-layout="railverdict"] .axes { display: grid; }`
+	if !strings.Contains(css, want) {
+		t.Fatal("the phone breakpoint hides the domain rail, so Console and Rail + verdict must restore the axes strip")
+	}
+}
+
 // The IDs go on <html data-layout> and into a CSS attribute selector and a
 // localStorage key, so they have to stay slug-shaped and distinct.
 func TestLayoutIDsAreUniqueSlugs(t *testing.T) {
