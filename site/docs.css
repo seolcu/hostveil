@@ -453,6 +453,124 @@
 .sev.medium { color: var(--warning); border-color: var(--warning); }
 .sev.low { color: var(--signal); border-color: var(--signal); }
 
+/* ── roadmap: one line, run out of certainty ─────────────
+   A shipped release is a fact, so it gets a solid rule and a filled
+   marker. Everything after the last one is progressively less certain —
+   "next" is real but unscheduled, "exploring" is a direction, not a
+   plan — so the line turns to dashes and the markers hollow out the
+   further down the page they sit. "Not planned" is not a fainter version
+   of the same line; it is not on it, which is why it renders as its own
+   boxed panel below rather than a fifth marker style. */
+
+.docs-prose .rm-track {
+  position: relative;
+  margin: 0 0 22px;
+  padding: 2px 0 2px 30px;
+  list-style: none;
+}
+
+.docs-prose .rm-track::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--accent);
+}
+
+.docs-prose .rm-track.ahead::before {
+  width: 0;
+  background: none;
+  border-left: 2px dashed var(--line-strong);
+}
+
+.docs-prose .rm-track .rm-item {
+  position: relative;
+  margin: 0 0 18px;
+  color: var(--paper-muted);
+}
+
+.docs-prose .rm-track .rm-item:last-child {
+  margin-bottom: 0;
+}
+
+.docs-prose .rm-track .rm-item::before {
+  content: "";
+  position: absolute;
+  left: -30px;
+  top: 5px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  box-shadow: 3px 3px 0 var(--shadow-cut);
+}
+
+.docs-prose .rm-track.ahead .rm-item::before {
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
+
+.docs-prose .rm-track.ahead .rm-item.exploring::before {
+  left: -28px;
+  width: 7px;
+  height: 7px;
+  border-width: 1px;
+  border-color: var(--muted);
+  border-style: dotted;
+}
+
+.docs-prose .rm-track .rm-version {
+  margin-right: 6px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.docs-prose .rm-track strong {
+  color: var(--text);
+}
+
+/* ── roadmap: off the line entirely ──────────────────────  */
+
+.rm-off-road {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border: 1px dashed var(--line-strong);
+}
+
+.docs-prose .rm-off-road ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-prose .rm-off-road li {
+  position: relative;
+  margin: 0 0 14px;
+  padding-left: 24px;
+  color: var(--paper-muted);
+}
+
+.docs-prose .rm-off-road li:last-child {
+  margin-bottom: 0;
+}
+
+.docs-prose .rm-off-road li::before {
+  content: "×";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+.docs-prose .rm-off-road strong {
+  color: var(--text);
+}
+
 /* ── responsive ───────────────────────────────────────── */
 
 @media (max-width: 900px) {

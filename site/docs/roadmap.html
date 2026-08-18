@@ -128,39 +128,41 @@
 
             <h2>How coverage has grown so far</h2>
             <p>A new detection domain is a bigger change than it looks from the outside: a new <a href="contributing#extending">axis, funded by taking weight from every existing domain</a>, so it does not ship often or quietly. Every one that has shipped is a named release, not a line in a patch note.</p>
-            <ul>
-              <li><strong data-shipped="3.1.0">3.1.0</strong> &mdash; self-hosted AI agent runtimes (OpenClaw, Hermes Agent): a reachable gateway, a disabled sandbox, credentials readable by more than their owner.</li>
-              <li><strong data-shipped="3.6.0">3.6.0</strong> &mdash; kernel hardening: eight <code>sysctl</code> values read straight from <code>/proc/sys</code>.</li>
-              <li><strong data-shipped="3.8.0">3.8.0</strong> &mdash; the Docker daemon itself: an unauthenticated TCP API is root for anyone who can reach the port, and nothing before this domain looked at the daemon underneath your containers.</li>
-              <li><strong data-shipped="3.9.0">3.9.0</strong> &mdash; service hardening: the units you installed yourself, read as systemd&rsquo;s own effective configuration rather than what a file says.</li>
-            </ul>
+            <ol class="rm-track shipped">
+              <li class="rm-item"><span class="rm-version" data-shipped="3.1.0">3.1.0</span> &mdash; self-hosted AI agent runtimes (OpenClaw, Hermes Agent): a reachable gateway, a disabled sandbox, credentials readable by more than their owner.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.6.0">3.6.0</span> &mdash; kernel hardening: eight <code>sysctl</code> values read straight from <code>/proc/sys</code>.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.8.0">3.8.0</span> &mdash; the Docker daemon itself: an unauthenticated TCP API is root for anyone who can reach the port, and nothing before this domain looked at the daemon underneath your containers.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.9.0">3.9.0</span> &mdash; service hardening: the units you installed yourself, read as systemd&rsquo;s own effective configuration rather than what a file says.</li>
+            </ol>
             <p>Everything between those releases &mdash; and there is a lot of it &mdash; is new findings, fixes and interface work inside the domains that already exist. That is the far more common kind of change, and it is what most releases in the <a href="changelog">changelog</a> are.</p>
 
             <h2>Next up</h2>
             <p>Low cost, same shape as what is already there &mdash; an entry in an existing registry, not a new domain or a new axis weight.</p>
-            <ul>
-              <li><strong>More self-hosted AI agent runtimes.</strong> The agent domain is built to name a runtime as data, not code &mdash; adding a third one is an entry in a registry, the same shape as OpenClaw and Hermes Agent are today.</li>
-              <li><strong>More reverse proxies.</strong> The proxy domain reads nginx and Traefik configuration today; Caddy is the next name self-hosters ask for.</li>
-              <li><strong>Wider distro coverage for the measurement harness.</strong> <code>scripts/measure/seed.sh</code> seeds Debian, Fedora and Alpine today through one distribution seam; a distro that resolves through that seam is one that can be measured, not just claimed to work.</li>
-            </ul>
+            <ol class="rm-track ahead">
+              <li class="rm-item next"><strong>More self-hosted AI agent runtimes.</strong> The agent domain is built to name a runtime as data, not code &mdash; adding a third one is an entry in a registry, the same shape as OpenClaw and Hermes Agent are today.</li>
+              <li class="rm-item next"><strong>More reverse proxies.</strong> The proxy domain reads nginx and Traefik configuration today; Caddy is the next name self-hosters ask for.</li>
+              <li class="rm-item next"><strong>Wider distro coverage for the measurement harness.</strong> <code>scripts/measure/seed.sh</code> seeds Debian, Fedora and Alpine today through one distribution seam; a distro that resolves through that seam is one that can be measured, not just claimed to work.</li>
+            </ol>
 
             <h2>Under exploration</h2>
             <p>Bigger changes, still being designed rather than committed to a release. Listed here so a duplicate feature request has somewhere to look first, not as a promise.</p>
-            <ul>
-              <li><strong>Proxmox VE host hardening.</strong> A hypervisor host is still a Linux host with a config surface &mdash; <code>pveproxy</code>, cluster join secrets, storage permissions &mdash; architecturally the same shape as the Docker daemon or systemd domains above. The most likely next whole domain.</li>
-              <li><strong>Single-node k3s/k0s hardening.</strong> Not a Kubernetes cluster manager &mdash; the common homelab pattern of one box running one node &mdash; scoped to the kubelet and API server flags a single-host audit can actually see.</li>
-              <li><strong>A fleet view across hosts you already reach over SSH.</strong> The read on &ldquo;multi-host management&rdquo; that does not require an account, a server, or a database: one local Hostveil calling <code>hostveil scan --json</code> on each host over SSH you already trust, and laying the scores side by side in the TUI or the dashboard. No new service to run, because that is the one line this project will not cross &mdash; see below.</li>
-              <li><strong>Languages beyond English and Korean.</strong> The Korean site carries its own font subset and a test that checks every glyph on the page has one; a third language needs the same rigor, not just a translated string table.</li>
-            </ul>
+            <ol class="rm-track ahead">
+              <li class="rm-item exploring"><strong>Proxmox VE host hardening.</strong> A hypervisor host is still a Linux host with a config surface &mdash; <code>pveproxy</code>, cluster join secrets, storage permissions &mdash; architecturally the same shape as the Docker daemon or systemd domains above. The most likely next whole domain.</li>
+              <li class="rm-item exploring"><strong>Single-node k3s/k0s hardening.</strong> Not a Kubernetes cluster manager &mdash; the common homelab pattern of one box running one node &mdash; scoped to the kubelet and API server flags a single-host audit can actually see.</li>
+              <li class="rm-item exploring"><strong>A fleet view across hosts you already reach over SSH.</strong> The read on &ldquo;multi-host management&rdquo; that does not require an account, a server, or a database: one local Hostveil calling <code>hostveil scan --json</code> on each host over SSH you already trust, and laying the scores side by side in the TUI or the dashboard. No new service to run, because that is the one line this project will not cross &mdash; see below.</li>
+              <li class="rm-item exploring"><strong>Languages beyond English and Korean.</strong> The Korean site carries its own font subset and a test that checks every glyph on the page has one; a third language needs the same rigor, not just a translated string table.</li>
+            </ol>
 
             <h2>Not planned, on purpose</h2>
             <p>Ruled out by what Hostveil is, not missing because nobody got to it yet &mdash; the same standard <a href="../#features">the product itself</a> is held to.</p>
-            <ul>
-              <li><strong>A plugin or rule-file system for third-party checks.</strong> <a href="contributing#extending">Every domain is one row</a> the score depends on summing to 100; a rule format would put that behind a file nobody signs.</li>
-              <li><strong>AI that applies a fix on its own.</strong> The preview-backup-apply loop is the reason this tool can be trusted with root; an agent that skips the preview breaks the one guarantee the whole design rests on. See <a href="ai">AI explanations</a> for where AI is actually used today.</li>
-              <li><strong>A hosted dashboard, an account system, or a SaaS tier.</strong> One binary and no cloud account is not a starting point this project is working away from &mdash; it is why the project exists.</li>
-              <li><strong>Auto-fixing findings classified Manual.</strong> Manual means Hostveil judged the change unsafe to apply unattended, not that the feature is unwritten. See <a href="fixing#auto-standard">how that classification is decided</a>.</li>
-            </ul>
+            <div class="rm-off-road">
+              <ul>
+                <li><strong>A plugin or rule-file system for third-party checks.</strong> <a href="contributing#extending">Every domain is one row</a> the score depends on summing to 100; a rule format would put that behind a file nobody signs.</li>
+                <li><strong>AI that applies a fix on its own.</strong> The preview-backup-apply loop is the reason this tool can be trusted with root; an agent that skips the preview breaks the one guarantee the whole design rests on. See <a href="ai">AI explanations</a> for where AI is actually used today.</li>
+                <li><strong>A hosted dashboard, an account system, or a SaaS tier.</strong> One binary and no cloud account is not a starting point this project is working away from &mdash; it is why the project exists.</li>
+                <li><strong>Auto-fixing findings classified Manual.</strong> Manual means Hostveil judged the change unsafe to apply unattended, not that the feature is unwritten. See <a href="fixing#auto-standard">how that classification is decided</a>.</li>
+              </ul>
+            </div>
 
             <div class="docs-pager">
               <a class="button secondary" href="ai">← AI explanations</a>
