@@ -335,5 +335,7 @@ avoids the issue cleanly.
 
 - **Trivy** enables image CVE scanning; hostveil skips that domain cleanly
   when it's absent. The demo VM installs it automatically.
-- **Ollama** (local LLM) powers the opt-in `hostveil explain --ai`; without
-  it, explanations are deterministic. Never required.
+- **Ollama** (local LLM) powers the opt-in `hostveil explain --ai` by
+  default; without it, explanations are deterministic. Never required —
+  `HOSTVEIL_AI_PROVIDER=anthropic` or `openai` uses an external API instead,
+  useful when the dev machine can't run a local model well.

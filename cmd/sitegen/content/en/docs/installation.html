@@ -52,7 +52,7 @@
                 <tbody>
                   <tr><td><strong>Docker</strong></td><td>The Docker / Compose audit</td><td>Hostveil reads your Compose files to audit services.</td></tr>
                   <tr><td><strong>Trivy</strong></td><td>Image CVE scanning</td><td>Used if present; the installer can set it up for you.</td></tr>
-                  <tr><td><strong>Ollama</strong></td><td>AI explanations (<code>explain --ai</code>)</td><td>Local by default — nothing leaves your host. See <a href="ai">AI explanations</a>.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI explanations (<code>explain --ai</code>)</td><td>Local by default — nothing leaves your host. Not required: set <code>HOSTVEIL_AI_PROVIDER=anthropic</code> or <code>openai</code> to use an external API instead, useful on a host too small to run a local model. See <a href="ai">AI explanations</a>.</td></tr>
                 </tbody>
               </table>
             </div>

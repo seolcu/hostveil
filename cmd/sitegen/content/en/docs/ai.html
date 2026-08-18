@@ -1,6 +1,6 @@
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / AI explanations</p>
             <h1>AI explanations</h1>
-            <p class="lead">AI in Hostveil is optional, advisory-only, and local-first. It can add a second opinion in plain words. It never applies changes, and everything works with no AI at all.</p>
+            <p class="lead">AI in Hostveil is optional, advisory-only, and local-first by default. It can add a second opinion in plain words. It never applies changes, and everything works with no AI at all.</p>
 
             <h2>Using it</h2>
             <p>Add <code>--ai</code> to <code>explain</code> for an advisory explanation of a finding:</p>
@@ -9,24 +9,39 @@
               <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
             </div>
             <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, Hostveil says so and continues. The command never fails because AI is unavailable.</p>
-            <p>The same explanation is one action away in the other interfaces: the dashboard's finding panel has an <em>Explain with AI</em> button, and the TUI's detail view answers <code>e</code>. Both degrade the same way the CLI does: no Ollama means a one-line note, never an error.</p>
+            <p>The same explanation is one action away in the other interfaces: the dashboard's finding panel has an <em>Explain with AI</em> button, and the TUI's detail view answers <code>e</code>. Both degrade the same way the CLI does: no provider reachable means a one-line note, never an error.</p>
 
-            <h2>Local by default</h2>
-            <p>The default provider is <strong>Ollama</strong>, running on your own machine, so nothing leaves the host. Defaults:</p>
+            <h2>Local by default, an external API by choice</h2>
+            <p><code>HOSTVEIL_AI_PROVIDER</code> selects the backend. It defaults to <strong>Ollama</strong>, running on your own machine, so nothing leaves the host unless you name a different provider explicitly.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>Setting</th><th>Default</th><th>Override</th></tr></thead>
+                <thead><tr><th><code>HOSTVEIL_AI_PROVIDER</code></th><th>Where it runs</th><th>Credential</th><th>Model</th></tr></thead>
                 <tbody>
-                  <tr><td>Host</td><td><code>http://127.0.0.1:11434</code></td><td><code>HOSTVEIL_OLLAMA_HOST</code></td></tr>
-                  <tr><td>Model</td><td><code>llama3.2</code></td><td><code>HOSTVEIL_OLLAMA_MODEL</code></td></tr>
+                  <tr><td><code>ollama</code> (default)</td><td>On this machine, via <a href="https://ollama.com">Ollama</a></td><td>none</td><td><code>HOSTVEIL_OLLAMA_MODEL</code> (default <code>llama3.2</code>)</td></tr>
+                  <tr><td><code>anthropic</code></td><td>The Claude API</td><td><code>ANTHROPIC_API_KEY</code></td><td><code>HOSTVEIL_ANTHROPIC_MODEL</code> (default <code>claude-opus-5</code>)</td></tr>
+                  <tr><td><code>openai</code></td><td>Any vendor speaking the OpenAI chat-completions shape — OpenAI itself, OpenRouter, Groq, Together, a self-hosted server on another machine</td><td><code>HOSTVEIL_OPENAI_API_KEY</code></td><td><code>HOSTVEIL_OPENAI_MODEL</code> — required, no cross-vendor default</td></tr>
                 </tbody>
               </table>
             </div>
+
+            <h3>Ollama, running locally</h3>
             <p>Install <a href="https://ollama.com">Ollama</a> and pull the model once:</p>
             <div class="code-block"><pre><code>ollama pull llama3.2
 hostveil explain ssh.rootlogin --ai</code></pre></div>
             <p>To use a different local model:</p>
             <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
+
+            <h3>An external API, when the machine can't run a local model</h3>
+            <p>A demo host or a small VPS is often not powerful enough to run even a small local model well. Point Hostveil at the Claude API instead:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-... \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>Or at any OpenAI-compatible vendor — this example uses OpenRouter:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=openai \
+  HOSTVEIL_OPENAI_BASE_URL=https://openrouter.ai/api/v1 \
+  HOSTVEIL_OPENAI_API_KEY=sk-or-... \
+  HOSTVEIL_OPENAI_MODEL=meta-llama/llama-3.1-8b-instruct \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>Set these in a shell profile or a systemd unit to make the choice permanent for that host, rather than repeating them on every command. Whichever provider is off-host, credentials and prompts leave the machine — see the privacy note below for exactly what that prompt contains.</p>
 
             <h2>Advisory only, and private by design</h2>
             <div class="callout">
@@ -35,7 +50,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             </div>
             <div class="callout warn">
               <span class="callout-label">Privacy</span>
-              <p>Only human-readable fields are sent to the model: a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in.</p>
+              <p>Only human-readable fields are sent to the model: a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in — including when you opt into an off-host provider. What does leave the host with <code>anthropic</code> or <code>openai</code> is that reduced prompt itself, sent to whichever API you configured; with the default <code>ollama</code> nothing leaves the host at all.</p>
             </div>
 
             <div class="docs-pager">

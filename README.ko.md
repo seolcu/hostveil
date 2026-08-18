@@ -181,7 +181,7 @@ hostveil fix --all --review  # 검토(Review) 항목까지, 무엇인지 읽고 
 hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
 hostveil history --scans # 저장된 모든 스캔의 점수, 오래된 것부터
-hostveil explain <id>    # 발견 항목 설명 (--ai로 로컬 LLM의 2차 소견 추가)
+hostveil explain <id>    # 발견 항목 설명 (--ai로 AI 2차 소견 추가)
 hostveil serve           # 127.0.0.1:8787 웹 대시보드 (출력된 URL을 여세요)
 hostveil update          # 설치된 방식 그대로 이 바이너리를 갱신
 hostveil uninstall       # 체크포인트는 남기고 제거
@@ -337,9 +337,15 @@ TUI와 `scan`은 평범한 유니코드 대신 패치된
 
 ## AI (선택, 조언 전용)
 
-`hostveil explain <id> --ai`는 로컬 LLM(기본은 Ollama)이 쓴 쉬운 설명을
-덧붙입니다. 아무것도 호스트를 떠나지 않습니다. AI는 조언만 할 뿐 변경을
-적용하지 않으며, 모든 설명과 점수와 수정은 AI 없이도 그대로 동작합니다.
+`hostveil explain <id> --ai`는 AI가 쓴 쉬운 설명을 덧붙입니다. 기본 프로바이더는
+Ollama이며 사용자 본인의 머신에서 실행되므로 아무것도 호스트를 떠나지
+않습니다. 로컬 모델을 감당하기엔 약한 기계라면 `HOSTVEIL_AI_PROVIDER=anthropic`
+또는 `openai`로 외부 API를 대신 쓸 수 있고, 이때 인증 정보는 `ANTHROPIC_API_KEY`나
+`HOSTVEIL_OPENAI_API_KEY`로 설정합니다. 전체 변수 목록은
+`hostveil explain --help`에 있습니다. 모델에는 발견 항목의 제목, 설명, 수정
+방법, 서비스 이름만 전송되며 원본 증거는 절대 보내지 않습니다. AI는 조언만
+할 뿐 변경을 적용하지 않으며, 모든 설명과 점수와 수정은 AI 없이도 그대로
+동작합니다.
 
 **Hostveil이 스스로 보내는 요청은 하나뿐입니다.** 하루에 한 번 GitHub
 릴리스 페이지를 확인해 새 버전이 있는지 봅니다. 호스트에 대한 정보는

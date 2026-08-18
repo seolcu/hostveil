@@ -187,7 +187,7 @@ hostveil fix --all --review  # and the Review ones too, after reading what they 
 hostveil rollback <id>   # undo a previously applied fix
 hostveil history         # list applied fixes and their rollback IDs
 hostveil history --scans # the score of every saved scan, oldest first
-hostveil explain <id>    # explain a finding (add --ai for a local-LLM second opinion)
+hostveil explain <id>    # explain a finding (add --ai for an AI second opinion)
 hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
 hostveil update          # update this binary the way it was installed
 hostveil uninstall       # remove it, keeping your checkpoints
@@ -337,10 +337,15 @@ screenshots and Nerd Font details.
 
 ## AI (optional, advisory only)
 
-`hostveil explain <id> --ai` adds a plain-language explanation from a local LLM
-(Ollama by default), so nothing leaves your host. AI is strictly advisory and
-never applies changes. Every explanation, score and fix works with no AI at
-all.
+`hostveil explain <id> --ai` adds a plain-language explanation from an AI
+model. The default provider is Ollama, running on your own machine, so
+nothing leaves your host. Set `HOSTVEIL_AI_PROVIDER=anthropic` or `openai` to
+use an external API instead — useful on a machine too small to run a local
+model — with `ANTHROPIC_API_KEY` or `HOSTVEIL_OPENAI_API_KEY` for
+credentials; see `hostveil explain --help` for the full list of variables.
+Only a finding's title, description, suggested fix, and service name are ever
+sent — never raw evidence. AI is strictly advisory and never applies changes.
+Every explanation, score and fix works with no AI at all.
 
 **The one request Hostveil makes on its own** is a once-a-day check of the
 GitHub releases page, to notice that a newer version exists. It sends nothing

@@ -1,13 +1,15 @@
 // Package ai provides OPTIONAL, advisory-only explanations. Everything
 // hostveil does — detection, scoring, fixes — works with no AI at all;
 // this only adds a plain-language second opinion when the user opts in.
-// The provider defaults to a local LLM (Ollama) so nothing leaves the
-// host, and it is never allowed to drive an action.
+// HOSTVEIL_AI_PROVIDER (see FromEnv) selects the backend and defaults to a
+// local LLM (Ollama), so nothing leaves the host unless an operator names
+// an off-host provider explicitly. AI is never allowed to drive an action.
 package ai
 
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -51,4 +53,18 @@ func buildPrompt(f model.Finding) string {
 		fmt.Fprintf(&b, "Suggested fix: %s\n", f.HowToFix)
 	}
 	return b.String()
+}
+
+// safeEndpoint appends path to a validated http(s) origin with no
+// credentials, query, or fragment, then returns the joined URL. Rejecting
+// those guards against a base URL smuggling a target the caller did not
+// intend — an embedded password, or a query string a proxy in front of the
+// provider might interpret.
+func safeEndpoint(base, path string) (string, error) {
+	u, err := url.Parse(base)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return "", fmt.Errorf("%q is not a usable http(s) origin: no credentials, query, or fragment", base)
+	}
+	u.Path = strings.TrimRight(u.Path, "/") + path
+	return u.String(), nil
 }

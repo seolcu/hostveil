@@ -17,7 +17,7 @@ func (e *Engine) Explain(ctx context.Context, f model.Finding, useAI bool) model
 		return exp
 	}
 	if e.ai == nil || !e.ai.Available(ctx) {
-		exp.AIError = "no AI provider is reachable (is Ollama running?)"
+		exp.AIError = "no AI provider is reachable (check HOSTVEIL_AI_PROVIDER and its credentials)"
 		return exp
 	}
 	text, err := e.ai.Explain(ctx, f)

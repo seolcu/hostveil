@@ -48,7 +48,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	}
 	layOpts := tui.LayoutOpts{Initial: lay.ID, Save: saveLayoutPref}
 	// The advisory AI provider is wired in for the detail view's `e` key.
-	// Construction does no I/O; with no Ollama reachable the view shows a
+	// Construction does no I/O; with no provider reachable the view shows a
 	// one-line note instead.
 	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: layOpts, Glyphs: gl}); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)

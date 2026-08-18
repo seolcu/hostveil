@@ -158,7 +158,7 @@ Usage:
   hostveil fix --all             Apply every safe (Auto) fix at once
   hostveil fix --all --review    ...and the Review ones, through their first
                                  alternative, after reading what they are
-  hostveil explain <id> [flags]  Explain a finding (optionally via local AI)
+  hostveil explain <id> [flags]  Explain a finding (optionally via AI)
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
@@ -196,7 +196,9 @@ Update and uninstall flags:
 
 Explain flags:
   --service NAME  Disambiguate a finding that affects multiple services
-  --ai            Add a plain-language explanation from a local Ollama model
+  --ai            Add a plain-language AI explanation. Ollama (local) by
+                  default; set HOSTVEIL_AI_PROVIDER=anthropic or openai to
+                  use an external API instead. See Environment below.
 
 Rollback flags:
   --force         Restore even if the file changed after the fix was applied.
@@ -255,11 +257,30 @@ Environment:
   HOSTVEIL_LAYOUT=NAME Screen arrangement for the TUI and the dashboard
   NO_COLOR=1           Disable colored output
 
-  HOSTVEIL_OLLAMA_HOST=URL     Where the optional local LLM listens
+  HOSTVEIL_AI_PROVIDER=NAME    Which AI backend 'explain --ai' and the AI
+                               buttons use: ollama (default — local, nothing
+                               leaves the host), anthropic (the Claude API),
+                               or openai (any vendor speaking the OpenAI
+                               chat-completions shape: OpenAI itself,
+                               OpenRouter, Groq, Together, ...).
+  HOSTVEIL_OLLAMA_HOST=URL     provider=ollama: where the server listens
                                (default http://127.0.0.1:11434)
-  HOSTVEIL_OLLAMA_MODEL=NAME   Which model to ask (default llama3.2)
-  Both are advisory-only: they affect 'explain --ai' and the AI buttons in the
-  TUI and dashboard, and nothing else. No score, finding, or fix depends on a
-  model being reachable.
+  HOSTVEIL_OLLAMA_MODEL=NAME   provider=ollama: which model to ask
+                               (default llama3.2)
+  ANTHROPIC_API_KEY=KEY        provider=anthropic: the Claude API key — the
+                               same variable every Anthropic tool reads
+  HOSTVEIL_ANTHROPIC_MODEL=NAME
+                               provider=anthropic: which model to ask
+                               (default claude-opus-5)
+  HOSTVEIL_OPENAI_BASE_URL=URL provider=openai: the API origin
+                               (default https://api.openai.com/v1)
+  HOSTVEIL_OPENAI_API_KEY=KEY  provider=openai: the API key
+  HOSTVEIL_OPENAI_MODEL=NAME   provider=openai: which model to ask —
+                               required; there is no cross-vendor default
+  All of the above are advisory-only: they affect 'explain --ai' and the AI
+  buttons in the TUI and dashboard, and nothing else. No score, finding, or
+  fix depends on a model being reachable, and only a finding's title,
+  description, suggested fix, and service name are ever sent to it — never
+  raw evidence.
 `)
 }

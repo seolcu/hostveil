@@ -125,7 +125,7 @@
           <article class="docs-prose">
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">문서</a> / AI 설명</p>
             <h1>AI 설명</h1>
-            <p class="lead">Hostveil의 AI는 선택 사항이며, 조언 전용이고, 로컬 우선입니다. 쉬운 말로 second opinion을 더해 줄 수 있지만, 절대 변경을 적용하지 않으며, AI 없이도 모든 기능이 그대로 동작합니다.</p>
+            <p class="lead">Hostveil의 AI는 선택 사항이며, 조언 전용이고, 기본은 로컬입니다. 쉬운 말로 second opinion을 더해 줄 수 있지만, 절대 변경을 적용하지 않으며, AI 없이도 모든 기능이 그대로 동작합니다.</p>
 
             <h2>사용 방법</h2>
             <p>발견 항목에 대한 조언성 설명을 얻으려면 <code>explain</code>에 <code>--ai</code>를 추가하세요:</p>
@@ -134,24 +134,39 @@
               <pre><code>hostveil explain ssh.rootlogin --ai</code></pre>
             </div>
             <p>내장된 쉬운 말 설명은 항상 먼저 출력되며, <code>--ai</code>는 <em>AI 설명(조언)</em> 섹션을 뒤에 덧붙입니다. 모델에 연결할 수 없으면 Hostveil은 그 사실을 알리고 계속 진행합니다. AI를 사용할 수 없다고 해서 명령이 실패하는 일은 없습니다.</p>
-            <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다. Ollama가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
+            <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다. 닿는 프로바이더가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
 
-            <h2>기본은 로컬</h2>
-            <p>기본 제공자는 <strong>Ollama</strong>이며, 사용자 본인의 머신에서 실행되므로 아무것도 호스트 밖으로 나가지 않습니다. 기본값:</p>
+            <h2>기본은 로컬, 선택하면 외부 API</h2>
+            <p>백엔드는 <code>HOSTVEIL_AI_PROVIDER</code>로 고릅니다. 기본값은 <strong>Ollama</strong>이며 사용자 본인의 머신에서 실행되므로, 다른 프로바이더를 직접 지정하지 않는 한 아무것도 호스트 밖으로 나가지 않습니다.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>설정</th><th>기본값</th><th>재정의</th></tr></thead>
+                <thead><tr><th><code>HOSTVEIL_AI_PROVIDER</code></th><th>실행 위치</th><th>인증 정보</th><th>모델</th></tr></thead>
                 <tbody>
-                  <tr><td>호스트</td><td><code>http://127.0.0.1:11434</code></td><td><code>HOSTVEIL_OLLAMA_HOST</code></td></tr>
-                  <tr><td>모델</td><td><code>llama3.2</code></td><td><code>HOSTVEIL_OLLAMA_MODEL</code></td></tr>
+                  <tr><td><code>ollama</code> (기본값)</td><td><a href="https://ollama.com">Ollama</a>를 통해 이 기계에서</td><td>없음</td><td><code>HOSTVEIL_OLLAMA_MODEL</code> (기본 <code>llama3.2</code>)</td></tr>
+                  <tr><td><code>anthropic</code></td><td>Claude API</td><td><code>ANTHROPIC_API_KEY</code></td><td><code>HOSTVEIL_ANTHROPIC_MODEL</code> (기본 <code>claude-opus-5</code>)</td></tr>
+                  <tr><td><code>openai</code></td><td>OpenAI의 chat-completions 형식을 쓰는 아무 벤더 — OpenAI 자신, OpenRouter, Groq, Together, 다른 기계의 자체 호스팅 서버</td><td><code>HOSTVEIL_OPENAI_API_KEY</code></td><td><code>HOSTVEIL_OPENAI_MODEL</code> — 필수이며, 벤더 공통 기본값은 없음</td></tr>
                 </tbody>
               </table>
             </div>
+
+            <h3>로컬에서 돌리는 Ollama</h3>
             <p><a href="https://ollama.com">Ollama</a>를 설치하고 모델을 한 번 내려받으세요:</p>
             <div class="code-block"><pre><code>ollama pull llama3.2
 hostveil explain ssh.rootlogin --ai</code></pre></div>
             <p>다른 로컬 모델을 사용하려면:</p>
             <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
+
+            <h3>기계가 로컬 모델을 감당하지 못할 때, 외부 API</h3>
+            <p>시연용 호스트나 작은 VPS는 작은 로컬 모델조차 제대로 돌리기 벅찬 경우가 많습니다. 그럴 때는 Claude API를 대신 가리키면 됩니다.</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-... \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>또는 OpenAI 호환 벤더라면 어디든 됩니다. 아래는 OpenRouter를 쓴 예시입니다.</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=openai \
+  HOSTVEIL_OPENAI_BASE_URL=https://openrouter.ai/api/v1 \
+  HOSTVEIL_OPENAI_API_KEY=sk-or-... \
+  HOSTVEIL_OPENAI_MODEL=meta-llama/llama-3.1-8b-instruct \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>매번 명령마다 반복하는 대신, 셸 프로필이나 systemd 유닛에 넣어 두면 그 호스트에서는 선택이 고정됩니다. 어느 프로바이더든 호스트를 벗어나면 인증 정보와 프롬프트도 함께 나갑니다. 그 프롬프트에 정확히 무엇이 담기는지는 아래 개인정보 항목을 보세요.</p>
 
             <h2>조언 전용이며, 설계상 비공개</h2>
             <div class="callout">
@@ -160,7 +175,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             </div>
             <div class="callout warn">
               <span class="callout-label">개인정보 보호</span>
-              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다. 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 선택적으로 참여하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다.</p>
+              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다. 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 외부 프로바이더를 선택하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다. <code>anthropic</code>이나 <code>openai</code>를 쓰면 호스트를 벗어나는 것은 그렇게 줄인 프롬프트 자체이며, 설정한 API로 전송됩니다. 기본값인 <code>ollama</code>에서는 애초에 아무것도 나가지 않습니다.</p>
             </div>
 
             <div class="docs-pager">

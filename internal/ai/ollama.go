@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -108,12 +107,11 @@ func (o *Ollama) Explain(ctx context.Context, f model.Finding) (string, error) {
 }
 
 func (o *Ollama) endpoint(path string) (string, error) {
-	u, err := url.Parse(o.Host)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return "", fmt.Errorf("invalid Ollama host %q: expected an http(s) origin without credentials, query, or fragment", o.Host)
+	s, err := safeEndpoint(o.Host, path)
+	if err != nil {
+		return "", fmt.Errorf("invalid Ollama host: %w", err)
 	}
-	u.Path = strings.TrimRight(u.Path, "/") + path
-	return u.String(), nil
+	return s, nil
 }
 
 func limitWords(s string, max int) string {

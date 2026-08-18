@@ -60,7 +60,7 @@ func cmdServe(ctx context.Context, args []string) int {
 
 	// The dashboard gets the advisory AI provider wired in: /api/explain
 	// offers an AI explanation on request. Construction does no I/O, and
-	// with no Ollama reachable the route degrades to the deterministic
+	// with no provider reachable the route degrades to the deterministic
 	// explanation plus a note, so this costs a host without AI nothing.
 	srv := web.New(buildEngineWithAI(true), addr, web.Opts{Theme: t.ID, Layout: lay.ID})
 	// The URL carries a one-off access token, because loopback keeps the

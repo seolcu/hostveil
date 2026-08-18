@@ -37,7 +37,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 		Runner:   debugRunner(),
 	}
 	if useAI {
-		cfg.AI = ai.NewOllama()
+		cfg.AI = ai.FromEnv()
 	}
 	return core.New(cfg)
 }

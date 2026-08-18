@@ -15,7 +15,7 @@ func cmdExplain(ctx context.Context, args []string) int {
 		useAI   bool
 	)
 	fs.StringVar(&service, "service", "", "disambiguate a finding by service name")
-	fs.BoolVar(&useAI, "ai", false, "add an advisory explanation from a local LLM (Ollama)")
+	fs.BoolVar(&useAI, "ai", false, "add an advisory AI explanation (Ollama by default; see HOSTVEIL_AI_PROVIDER)")
 
 	var findingID string
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {

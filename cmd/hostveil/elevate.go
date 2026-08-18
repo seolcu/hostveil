@@ -104,8 +104,18 @@ var carriedThroughSudo = []string{
 	"HOSTVEIL_THEME",
 	"HOSTVEIL_GLYPHS",
 	"HOSTVEIL_LAYOUT",
+	"HOSTVEIL_AI_PROVIDER",
 	"HOSTVEIL_OLLAMA_HOST",
 	"HOSTVEIL_OLLAMA_MODEL",
+	// explain elevates, same as above, and an API key that did not survive
+	// the re-exec would fail closed rather than open — Available() would
+	// just report the provider unreachable — but silently, which is exactly
+	// what this list exists to prevent.
+	"ANTHROPIC_API_KEY",
+	"HOSTVEIL_ANTHROPIC_MODEL",
+	"HOSTVEIL_OPENAI_BASE_URL",
+	"HOSTVEIL_OPENAI_API_KEY",
+	"HOSTVEIL_OPENAI_MODEL",
 	// Carried, not excused. scan elevates, so the process that would make the
 	// request is the child: a variable that did not survive the re-exec would
 	// look like it had turned the check off while the elevated run went on

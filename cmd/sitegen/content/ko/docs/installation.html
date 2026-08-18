@@ -52,7 +52,7 @@
                 <tbody>
                   <tr><td><strong>Docker</strong></td><td>Docker / Compose 점검</td><td>Hostveil은 Compose 파일을 읽어 서비스를 점검합니다.</td></tr>
                   <tr><td><strong>Trivy</strong></td><td>이미지 CVE 스캔</td><td>있으면 사용되며, 설치 스크립트가 대신 설정해 줄 수 있습니다.</td></tr>
-                  <tr><td><strong>Ollama</strong></td><td>AI 설명(<code>explain --ai</code>)</td><td>기본적으로 로컬에서 동작하며 — 호스트 밖으로 아무것도 나가지 않습니다. <a href="ai">AI 설명</a>을 참고하세요.</td></tr>
+                  <tr><td><strong>Ollama</strong></td><td>AI 설명(<code>explain --ai</code>)</td><td>기본적으로 로컬에서 동작하며 호스트 밖으로 아무것도 나가지 않습니다. 필수는 아닙니다 — 로컬 모델을 감당하기엔 약한 호스트라면 <code>HOSTVEIL_AI_PROVIDER=anthropic</code> 또는 <code>openai</code>로 외부 API를 대신 쓸 수 있습니다. <a href="ai">AI 설명</a>을 참고하세요.</td></tr>
                 </tbody>
               </table>
             </div>
