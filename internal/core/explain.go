@@ -49,7 +49,7 @@ func plainExplanation(f model.Finding) string {
 	// need to be told why it has one, and a paragraph explaining an absence
 	// above the instructions for handling it would bury the actionable half.
 	if f.WhyNoFix != "" {
-		b.WriteString("\n\nWhy hostveil will not do this for you: " + f.WhyNoFix)
+		b.WriteString("\n\nWhy Hostveil will not do this for you: " + f.WhyNoFix)
 	}
 	return strings.TrimSpace(b.String())
 }

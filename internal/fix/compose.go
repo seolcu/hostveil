@@ -135,7 +135,7 @@ func composePortTarget(f model.Finding, port string) (string, error) {
 	case 1:
 		return publishes[0], nil
 	case 0:
-		return "", fmt.Errorf("finding %s: port %s is published by the merge of %d files and by none of them alone, so hostveil cannot tell which one decides it",
+		return "", fmt.Errorf("finding %s: port %s is published by the merge of %d files and by none of them alone, so Hostveil cannot tell which one decides it",
 			f.ID, port, len(files))
 	default:
 		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings rather than replacing them — rewriting one would leave the others binding 0.0.0.0",
@@ -239,7 +239,7 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 		return Fix{}, fmt.Errorf("finding %s pins its image by digest; pulling cannot change it", f.ID)
 	}
 
-	noRollback := "There is no rollback checkpoint: exec fixes are not file-backed, so hostveil cannot undo this."
+	noRollback := "There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this."
 	pull := []string{"docker", "compose", "-f", path, "pull", svc}
 
 	return Fix{

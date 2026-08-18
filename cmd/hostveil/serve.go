@@ -77,7 +77,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	if note := updateNotice(); note != "" {
 		fmt.Println(note + "\n")
 	}
-	fmt.Printf("hostveil is scanning the host; the dashboard opens on %s when it finishes.\n", addr)
+	fmt.Printf("Hostveil is scanning the host; the dashboard opens on %s when it finishes.\n", addr)
 	// An SSH session is the common case for this command and the one where
 	// the URL below is correct and unusable: 127.0.0.1 typed into the browser
 	// on the operator's laptop is the laptop. Say so, and say what to run.

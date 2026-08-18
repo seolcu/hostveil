@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
     <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/contributing">
@@ -60,9 +60,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="주요 내비게이션">
-        <a class="brand" href="../" aria-label="hostveil 홈">
+        <a class="brand" href="../" aria-label="Hostveil 홈">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="./">문서</a>
@@ -122,9 +122,9 @@
 
         <main class="docs-content" id="main">
           <article class="docs-prose">
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 기여하기</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">문서</a> / 기여하기</p>
             <h1>기여하기</h1>
-            <p class="lead">hostveil은 Go로 작성되었으며, 의존성 트리가 작고 아키텍처 규칙이 엄격합니다. 이 페이지는 빠른 안내이며, 정식 개발자 가이드는 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, 데모 VM은 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 정리되어 있습니다.</p>
+            <p class="lead">Hostveil은 Go로 작성되었으며, 의존성 트리가 작고 아키텍처 규칙이 엄격합니다. 이 페이지는 빠른 안내이며, 정식 개발자 가이드는 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, 데모 VM은 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 정리되어 있습니다.</p>
 
             <h2>시작하기</h2>
             <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil.git
@@ -134,7 +134,7 @@ go test ./...</code></pre></div>
             <p>PR를 열기 전에 CI가 실행하는 전체 점검을 돌리세요 — <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, 그리고 <code>go test -race ./...</code>입니다. 정확한 명령과 고정된 Go 버전은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
             <div class="callout">
               <span class="callout-label">리눅스 도구, 이식 가능한 테스트</span>
-              <p>hostveil은 <strong>어떤 OS에서도 빌드되고 테스트가 통과</strong>하지만, 바이너리를 의미 있게 실행하려면 관련 도구가 설치된 리눅스가 필요합니다 — 본인의 머신 대신 데모 VM을 사용하세요.</p>
+              <p>Hostveil은 <strong>어떤 OS에서도 빌드되고 테스트가 통과</strong>하지만, 바이너리를 의미 있게 실행하려면 관련 도구가 설치된 리눅스가 필요합니다 — 본인의 머신 대신 데모 VM을 사용하세요.</p>
             </div>
 
             <h2>구조</h2>
@@ -142,7 +142,7 @@ go test ./...</code></pre></div>
 
             <h2 id="extending">확장하기</h2>
             <p>플러그인 시스템도, 룰 파일도, 설정 파일도 없습니다. 이건 빠진 기능이 아니라 결정입니다. 점수가 의미를 가지려면 축 가중치의 합이 100이어야 하고, 모든 발견 항목은 누군가 따져 본 조치를 달고 있어야 하며 — 일부러 수정을 붙이지 않은 항목들의 명부는 테스트가 파싱하는 <em>주석 속 산문</em>입니다 — 배포의 전부는 서명된 정적 바이너리 하나입니다. 룰 형식은 이 세 가지를 아무도 서명하지 않는 파일 뒤로 밀어 넣게 됩니다.</p>
-            <p>그래서 hostveil을 확장한다는 것은 Go를 쓰고 다시 빌드한다는 뜻이고, 추가하고 싶을 만한 세 가지는 규모가 자릿수만큼 다릅니다.</p>
+            <p>그래서 Hostveil을 확장한다는 것은 Go를 쓰고 다시 빌드한다는 뜻이고, 추가하고 싶을 만한 세 가지는 규모가 자릿수만큼 다릅니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>무엇을 더하는가</th><th>무엇이 필요한가</th></tr></thead>
@@ -166,7 +166,7 @@ go test ./...</code></pre></div>
             <p>각 단계를 마칠 때까지 테스트 열한 개쯤이 실패하며, 그중 대부분은 코드가 아니라 문서 가드입니다. 그게 의도된 경험입니다. 테스트가 곧 체크리스트이고, 문서가 실제로 존재하는 도구를 설명하는 이유가 바로 그것입니다.</p>
 
             <h2>실제로 실행해 보기: 데모 VM</h2>
-            <p><code>demo/</code>는 코드로 정의된, 의도적으로 취약하게 만든 Ubuntu 서버입니다. hostveil은 VM <em>내부</em>에서 여러분의 작업 트리로부터 빌드되므로 항상 현재 코드를 반영합니다. <code>./run.sh up</code>으로 띄우고 <code>./run.sh scan</code>으로 스캔하세요. 플랫폼별 프로바이더 설정, 5분 데모 스크립트, 초기화 절차, 문제 해결은 모두 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 있습니다.</p>
+            <p><code>demo/</code>는 코드로 정의된, 의도적으로 취약하게 만든 Ubuntu 서버입니다. Hostveil은 VM <em>내부</em>에서 여러분의 작업 트리로부터 빌드되므로 항상 현재 코드를 반영합니다. <code>./run.sh up</code>으로 띄우고 <code>./run.sh scan</code>으로 스캔하세요. 플랫폼별 프로바이더 설정, 5분 데모 스크립트, 초기화 절차, 문제 해결은 모두 <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>에 있습니다.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="troubleshooting">← 문제 해결</a>
@@ -180,7 +180,7 @@ go test ./...</code></pre></div>
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
         </div>
         <nav aria-label="푸터 링크">

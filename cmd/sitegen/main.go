@@ -90,7 +90,7 @@ type Strings struct {
 
 var chrome = map[string]Strings{
 	"en": {
-		SkipLink: "Skip to content", NavAria: "Primary navigation", BrandAria: "hostveil home",
+		SkipLink: "Skip to content", NavAria: "Primary navigation", BrandAria: "Hostveil home",
 		NavDocs: "Docs", NavFeatures: "Features", NavInstall: "Install",
 		LNavFeatures: "Features", LNavChecks: "Checks", LNavScreenshots: "Screenshots", LNavInstall: "Install", LNavDocs: "Docs",
 		SidebarAria: "Documentation navigation", SidebarToggle: "Documentation menu",
@@ -100,10 +100,10 @@ var chrome = map[string]Strings{
 		FooterDocs: "Docs", FooterReleases: "Releases",
 		FooterChangelog: "Changelog",
 		LightboxAria:    "Enlarged screenshot",
-		OGImageAlt:      "hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes",
+		OGImageAlt:      "Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes",
 	},
 	"ko": {
-		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "hostveil 홈",
+		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "Hostveil 홈",
 		NavDocs: "문서", NavFeatures: "기능", NavInstall: "설치",
 		LNavFeatures: "기능", LNavChecks: "점검", LNavScreenshots: "스크린샷", LNavInstall: "설치", LNavDocs: "문서",
 		SidebarAria: "문서 내비게이션", SidebarToggle: "문서 메뉴",
@@ -113,7 +113,7 @@ var chrome = map[string]Strings{
 		FooterDocs: "문서", FooterReleases: "릴리스",
 		FooterChangelog: "변경 이력",
 		LightboxAria:    "확대된 스크린샷",
-		OGImageAlt:      "hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정",
+		OGImageAlt:      "Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정",
 	},
 }
 

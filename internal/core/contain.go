@@ -36,7 +36,7 @@ import (
 // carries the trace.
 func crashError(what, id string, r any) error {
 	return fmt.Errorf("the fix for %s crashed while %s: %v\n\n"+
-		"This is a bug in hostveil and the host was not changed. "+
+		"This is a bug in Hostveil and the host was not changed. "+
 		"Please report it with the trace below.\n\n%s", id, what, r, debug.Stack())
 }
 

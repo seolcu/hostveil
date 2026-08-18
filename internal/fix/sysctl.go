@@ -346,7 +346,7 @@ func sameSysctlKey(lhs, key string) bool {
 // unattributed line in a file the operator maintains is indistinguishable
 // from something a compromise left behind.
 func sysctlStamp(f model.Finding) string {
-	return fmt.Sprintf("\n# Added by hostveil for %s (%s). Run: hostveil rollback <id> to revert.\n", f.ID, f.Title)
+	return fmt.Sprintf("\n# Added by Hostveil for %s (%s). Run: hostveil rollback <id> to revert.\n", f.ID, f.Title)
 }
 
 // sysctlPairs reads the key=value list the checker recorded.
@@ -384,7 +384,7 @@ func sysctlPairs(f model.Finding) ([]string, error) {
 // indistinguishable from something a compromise left behind.
 func sysctlDropIn(f model.Finding, pairs []string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# Written by hostveil for %s (%s).\n", f.ID, f.Title)
+	fmt.Fprintf(&b, "# Written by Hostveil for %s (%s).\n", f.ID, f.Title)
 	b.WriteString("# Remove this file to revert, or run: hostveil rollback <id>\n")
 	for _, kv := range pairs {
 		k, v, _ := strings.Cut(kv, "=")

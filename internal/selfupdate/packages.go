@@ -106,7 +106,7 @@ func RemovePackage(ctx context.Context, r platform.CommandRunner, o Origin) erro
 func Rebuild(ctx context.Context, r platform.CommandRunner) error {
 	if !platform.Has(r, "go") {
 		return fmt.Errorf("this binary was built with `go install` and the Go toolchain is no longer on PATH, " +
-			"so hostveil cannot rebuild it")
+			"so Hostveil cannot rebuild it")
 	}
 	target := "github.com/" + Repo + "/cmd/hostveil@latest"
 	if out, err := r.Run(ctx, "go", "install", target); err != nil {

@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://hostveil.seolcu.com/docs/scoring">
     <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/scoring">
@@ -59,9 +59,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="Primary navigation">
-        <a class="brand" href="../" aria-label="hostveil home">
+        <a class="brand" href="../" aria-label="Hostveil home">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="./">Docs</a>
@@ -121,16 +121,16 @@
 
         <main class="docs-content" id="main">
           <article class="docs-prose">
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Scoring</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Scoring</p>
             <h1>Scoring</h1>
-            <p class="lead">hostveil merges every finding into one 0–100 number. This page is the whole model: what the number measures, the arithmetic that produces it, why that arithmetic and not the obvious one, and the questions it cannot answer. Every figure below is exact, and the worked example is a real scan.</p>
+            <p class="lead">Hostveil merges every finding into one 0–100 number. This page is the whole model: what the number measures, the arithmetic that produces it, why that arithmetic and not the obvious one, and the questions it cannot answer. Every figure below is exact, and the worked example is a real scan.</p>
 
             <h2 id="what">What the score measures</h2>
             <p>The score measures <strong>configuration hardening on the domains that could be examined</strong>. It reads what your <code>sshd_config</code>, your Compose files, your firewall, your unit files and your kernel say, and grades the distance between that and a defensible setup. It is a measurement of your decisions, not of your luck.</p>
             <p>Three things it is deliberately not.</p>
-            <p><strong>It is not a risk score.</strong> Risk needs to know what a compromise would cost you, and a scanner reading files cannot know that. A privileged container is the same finding whether it serves a photo gallery or your accounting records. hostveil grades urgency — how much stands between an attacker and the problem right now — and stops there.</p>
+            <p><strong>It is not a risk score.</strong> Risk needs to know what a compromise would cost you, and a scanner reading files cannot know that. A privileged container is the same finding whether it serves a photo gallery or your accounting records. Hostveil grades urgency — how much stands between an attacker and the problem right now — and stops there.</p>
             <p><strong>It is not a comparison between hosts.</strong> Two hosts are frequently scored over different denominators, because a domain that could not run leaves the total entirely. A host with no Docker is not scored on container exposure, the Docker daemon, or image CVEs; its 88 and your 88 are averages over different sets of axes. Comparing them is comparing two different questions.</p>
-            <p><strong>It is not a certification.</strong> hostveil checks the paths that get self-hosters breached, which is a curated list and not an exhaustive one. A perfect score means the checks that ran found nothing material — it does not mean there is nothing to find.</p>
+            <p><strong>It is not a certification.</strong> Hostveil checks the paths that get self-hosters breached, which is a curated list and not an exhaustive one. A perfect score means the checks that ran found nothing material — it does not mean there is nothing to find.</p>
             <p>What it is good for is one host over time, and the axis breakdown underneath it. The headline number tells you whether last week&rsquo;s work moved anything; the per-axis scores tell you what to do next.</p>
 
             <h2 id="bands">What a score is called</h2>
@@ -208,7 +208,7 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             </div>
 
             <h2 id="why-multiplicative">Why multiplicative, and not additive</h2>
-            <p>The obvious model is to give each severity a number of points, add them up per axis, and clamp at the axis&rsquo;s weight. hostveil did that, and it produced a score that stopped responding to the host.</p>
+            <p>The obvious model is to give each severity a number of points, add them up per axis, and clamp at the axis&rsquo;s weight. Hostveil did that, and it produced a score that stopped responding to the host.</p>
             <p>Under 8 / 2 / 1 points and a cap-14 axis, two High findings sum to 16, clamp at 14, and the axis is at 0. <strong>Every finding after that is free.</strong> The third, the fourth and the fiftieth cost nothing, because there is nothing left to take. A host with 27 container findings scored identically to a host with 3, and both the CVE and container axes sat pinned at 0 on essentially every real machine.</p>
             <p>That is bad measurement, but the worse half is what it teaches. An operator who fixes two of their five SSH findings watches the number not move, because the axis was clamped before their work started and is still clamped after it. The tool tells them the work was pointless. A hardening score whose response to hardening is nothing is not a score.</p>
             <p>Multiplicative erosion has no clamp to hit. Each finding takes a share of what remains, so the axis asymptotes toward zero and never arrives — the fiftieth finding still costs something, and removing any one finding moves the number back. The cost of a finding falls as the axis degrades, which is the right shape: the marginal danger of the tenth exposed service genuinely is lower than the first. But it never reaches zero, so the model never stops listening.</p>
@@ -417,7 +417,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             <p><strong>Partial is scored, and always flagged.</strong> A domain that covered part of its ground has real findings and a real, if incomplete, picture; excluding it would throw away what it did see. But an unlabelled score drawn from half a domain is the same lie as scoring a skipped domain 100, so the flag is not optional — the TUI writes <code>42~</code>, the dashboard writes it in amber.</p>
             <div class="callout">
               <span class="callout-label">When nothing ran at all</span>
-              <p>If every domain was skipped or failed there is no denominator, and renormalizing over zero caps would fall out at a clean <strong>100</strong> — a host nobody could look at, reported as flawless. hostveil refuses the computation instead of performing it: a separate <em>applicable</em> flag is false when no axis ran, and all three UIs render <strong>N/A</strong> rather than a number. The value left behind is 0 and it means nothing; do not read it. An overall of 0 is either a genuinely terrible host or this placeholder, and the flag is the only thing that tells them apart.</p>
+              <p>If every domain was skipped or failed there is no denominator, and renormalizing over zero caps would fall out at a clean <strong>100</strong> — a host nobody could look at, reported as flawless. Hostveil refuses the computation instead of performing it: a separate <em>applicable</em> flag is false when no axis ran, and all three UIs render <strong>N/A</strong> rather than a number. The value left behind is 0 and it means nothing; do not read it. An overall of 0 is either a genuinely terrible host or this placeholder, and the flag is the only thing that tells them apart.</p>
             </div>
 
             <h2 id="unavailable">Findings with no fix weigh less</h2>
@@ -436,25 +436,25 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             <p><strong>Not full price</strong>, because every Debian-based image ships CVEs with no upstream fix. Charging those at full weight pins the Vulnerabilities axis near 0 for a host that pulls every image the day it is published and pins nothing stale. A score you cannot improve by doing everything right is not measuring your hardening; it is measuring the state of the world.</p>
             <div class="callout">
               <span class="callout-label">Unavailable is not the same as Manual</span>
-              <p>Only <strong>Unavailable</strong> gets the discount. <strong>Manual</strong> findings — the ones hostveil explains rather than fixes, like <code>compose.ds016</code> or every <code>dockerd.</code> finding — pay full weight. Manual means <em>no safe automation</em>; you can still go and fix it, so the score still charges you for not having. Unavailable means <em>no fix exists anywhere</em>. The discount is for the second thing only.</p>
+              <p>Only <strong>Unavailable</strong> gets the discount. <strong>Manual</strong> findings — the ones Hostveil explains rather than fixes, like <code>compose.ds016</code> or every <code>dockerd.</code> finding — pay full weight. Manual means <em>no safe automation</em>; you can still go and fix it, so the score still charges you for not having. Unavailable means <em>no fix exists anywhere</em>. The discount is for the second thing only.</p>
             </div>
 
             <h2 id="limits">What the score does not tell you</h2>
             <p>The honest limits, including the ones that look like bugs and are not.</p>
             <p><strong>100 does not mean no findings.</strong> One Low finding on a cap-5 axis with all domains running contributes 5 × 0.0625 = 0.3125, which rounds to 0 loss. The overall reads 100 with a finding on screen. Read it as <em>nothing material is outstanding</em>, never as <em>nothing was found</em> — and read the axis breakdown, which will show that axis at 94.</p>
             <h2 id="after-fixes">The second number: &ldquo;after fixes&rdquo;</h2>
-            <p>Beside the score, hostveil shows what it would become if you applied <em>every fix it offers</em> &mdash; the Auto ones and the Review ones both. On the axis breakdown the same figure appears per axis, so you can see where the headroom is.</p>
-            <p>It exists because the score alone answers a question nobody asked. Run <code>fix --all</code> on a container-heavy host and the container axis may still read 2. Nothing went wrong: the findings still standing are <strong>Manual by design</strong> &mdash; a Docker socket mounted into Portainer, a second UID&nbsp;0 account, host networking &mdash; and each is declined for a reason hostveil will tell you. But a number that barely moved reads as a tool that did nothing, and that reading is wrong. The second number says which it is.</p>
-            <p><strong>The gap to 100 is not a ceiling.</strong> It is what hostveil will not do <em>unattended</em>, which is a different thing from what cannot be done. You can delete that account or drop that socket mount this afternoon, and the score will follow you when you do.</p>
-            <p>The alternative was to charge Manual findings less, and it is the wrong trade in exactly the place it looks tempting. Unfixable vulnerabilities are already discounted &mdash; see below &mdash; because <em>nobody</em> can fix them: no upstream patch exists. Manual means hostveil will not touch it, not that the risk is smaller. Discounting a risk you are perfectly able to remove would be the flattery this model was rebuilt to refuse.</p>
+            <p>Beside the score, Hostveil shows what it would become if you applied <em>every fix it offers</em> &mdash; the Auto ones and the Review ones both. On the axis breakdown the same figure appears per axis, so you can see where the headroom is.</p>
+            <p>It exists because the score alone answers a question nobody asked. Run <code>fix --all</code> on a container-heavy host and the container axis may still read 2. Nothing went wrong: the findings still standing are <strong>Manual by design</strong> &mdash; a Docker socket mounted into Portainer, a second UID&nbsp;0 account, host networking &mdash; and each is declined for a reason Hostveil will tell you. But a number that barely moved reads as a tool that did nothing, and that reading is wrong. The second number says which it is.</p>
+            <p><strong>The gap to 100 is not a ceiling.</strong> It is what Hostveil will not do <em>unattended</em>, which is a different thing from what cannot be done. You can delete that account or drop that socket mount this afternoon, and the score will follow you when you do.</p>
+            <p>The alternative was to charge Manual findings less, and it is the wrong trade in exactly the place it looks tempting. Unfixable vulnerabilities are already discounted &mdash; see below &mdash; because <em>nobody</em> can fix them: no upstream patch exists. Manual means Hostveil will not touch it, not that the risk is smaller. Discounting a risk you are perfectly able to remove would be the flattery this model was rebuilt to refuse.</p>
             <p>Where nothing is fixable the figure equals the score, and every interface then shows nothing at all rather than an arrow pointing back at where it started.</p>
 
             <p><strong>An axis at 0 is not a floor.</strong> It is a display value; <code>remaining</code> is still positive and still moving. Fixing findings on a 0 axis does work, and the number will start climbing once enough of them are gone. That is why the axis breakdown lists counts as well as a score.</p>
-            <p><strong>A fix that is not in force yet does not move the number.</strong> Where the file hostveil writes is not the thing your host is running from &mdash; a Compose file the container has not been recreated from, a systemd drop-in the unit has not re-read, a sysctl drop-in that applies at the next boot &mdash; the fix is recorded as applied and the finding stays charged in the score. Those fixes say so, in the sentence under them and in <code>fix --all</code>&rsquo;s summary, and they name the command that puts them in force. Run it and the next scan collects the improvement.</p>
+            <p><strong>A fix that is not in force yet does not move the number.</strong> Where the file Hostveil writes is not the thing your host is running from &mdash; a Compose file the container has not been recreated from, a systemd drop-in the unit has not re-read, a sysctl drop-in that applies at the next boot &mdash; the fix is recorded as applied and the finding stays charged in the score. Those fixes say so, in the sentence under them and in <code>fix --all</code>&rsquo;s summary, and they name the command that puts them in force. Run it and the next scan collects the improvement.</p>
             <p><strong>The number can still move before a daemon does.</strong> The rule above keys on the fix knowing that something has to re-read its file, and one case is deliberately left out: an <code>sshd_config</code> edit. The SSH checker reads that same file, so a re-check genuinely confirms the change &mdash; while <code>sshd</code> keeps serving from the configuration it loaded at startup, which may still permit what you just switched off. Restart it, which is what the fix tells you to do, and the two agree again.</p>
             <p><strong>Two hosts&rsquo; scores are not comparable</strong>, as above. Neither are two scans of the same host across a change in what is installed: install Trivy and the Vulnerabilities axis joins the average, which will move the overall without anything about your configuration having changed.</p>
             <p><strong>It says nothing about what your services do.</strong> No score derived from configuration can. An application with an authentication bypass on a perfectly hardened host scores 100, and the score is right about the host and useless about your situation.</p>
-            <p><strong>It says nothing about what hostveil does not check.</strong> Backups, secrets in your git history, the certificate your reverse proxy serves, whether anyone is reading the logs. The score is silent about all of it, and silence is not a pass.</p>
+            <p><strong>It says nothing about what Hostveil does not check.</strong> Backups, secrets in your git history, the certificate your reverse proxy serves, whether anyone is reading the logs. The score is silent about all of it, and silence is not a pass.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="checks">← What it checks</a>
@@ -468,7 +468,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>Guided security hardening for self-hosted Linux servers.</p>
         </div>
         <nav aria-label="Footer links">

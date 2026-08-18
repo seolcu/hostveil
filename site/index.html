@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://hostveil.seolcu.com/">
     <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/">
@@ -58,9 +58,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="Primary navigation">
-        <a class="brand" href="#top" aria-label="hostveil home">
+        <a class="brand" href="#top" aria-label="Hostveil home">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="#features">Features</a>
@@ -80,14 +80,14 @@
           <div class="hero-copy">
             <p class="eyebrow">Guided security hardening for self-hosters</p>
             <h1>The security mistakes on your home server, found and fixed for you.</h1>
-            <p class="lede">hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them — with a preview, a backup, and one-command rollback.</p>
+            <p class="lede">Hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them — with a preview, a backup, and one-command rollback.</p>
             <div class="hero-actions" aria-label="Primary actions">
               <a class="button primary" href="#install">Install</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">Source</a>
             </div>
           </div>
 
-          <div class="hero-panel" aria-label="hostveil product summary">
+          <div class="hero-panel" aria-label="Hostveil product summary">
             <div class="score-card">
               <span>Security score</span>
               <strong>68/100</strong>
@@ -118,9 +118,9 @@
       <section class="section" id="features">
         <div class="container">
           <div class="section-heading">
-            <p class="eyebrow">Why hostveil</p>
+            <p class="eyebrow">Why Hostveil</p>
             <h2>A guide, not another report.</h2>
-            <p>hostveil turns opaque host state into a prioritized list of concrete, plain-language problems — and then walks you through fixing them safely.</p>
+            <p>Hostveil turns opaque host state into a prioritized list of concrete, plain-language problems — and then walks you through fixing them safely.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
@@ -152,7 +152,7 @@
           <div>
             <p class="eyebrow">Coverage</p>
             <h2>The home-server mistakes that actually get you hacked.</h2>
-            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages — hostveil checks the highest-impact paths together, deeply.</p>
+            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages — Hostveil checks the highest-impact paths together, deeply.</p>
           </div>
           <div class="check-stack">
             <article>
@@ -165,7 +165,7 @@
             </article>
             <article>
               <strong>Image CVEs (optional)</strong>
-              <p>When Trivy is installed, hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state — no misleading perfect score when the scan didn't run.</p>
+              <p>When Trivy is installed, Hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state — no misleading perfect score when the scan didn't run.</p>
             </article>
           </div>
         </div>
@@ -180,11 +180,11 @@
           </div>
           <div class="screens-grid">
             <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="Enlarge TUI screenshot">
-              <img src="assets/tui.png" alt="hostveil terminal UI — findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
+              <img src="assets/tui.png" alt="Hostveil terminal UI — findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
             </figure>
             <figure class="screenshot-card" data-lightbox="web" role="button" tabindex="0" aria-label="Enlarge Web UI screenshot">
-              <img src="assets/web.png" alt="hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
+              <img src="assets/web.png" alt="Hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
             </figure>
           </div>
@@ -196,13 +196,13 @@
           <div class="section-heading">
             <p class="eyebrow">Measured</p>
             <h2>Seven ports answered from off the host. Then one.</h2>
-            <p>hostveil's own score going up after hostveil's own fixes proves nothing, so a seeded server was measured by tools that have never heard of it: Lynis, Docker's CIS benchmark, and a TCP scan from another machine. Before the fixes, and after accepting every one it offered.</p>
+            <p>Hostveil's own score going up after Hostveil's own fixes proves nothing, so a seeded server was measured by tools that have never heard of it: Lynis, Docker's CIS benchmark, and a TCP scan from another machine. Before the fixes, and after accepting every one it offered.</p>
           </div>
           <div class="stats-grid measured-grid">
             <div><strong><span data-measured="phases.before.external_scan.count">7</span> &rarr; <span data-measured="phases.reviewed.external_scan.count">1</span></strong><span>Ports answering from off the host</span></div>
             <div><strong><span data-measured="phases.before.docker_bench.results.PASS">17</span> &rarr; <span data-measured="phases.reviewed.docker_bench.results.PASS">20</span></strong><span>CIS Docker Benchmark checks passing</span></div>
             <div><strong><span data-measured="phases.before.lynis.hardening_index">57</span> &rarr; <span data-measured="phases.reviewed.lynis.hardening_index">60</span></strong><span>Lynis hardening index</span></div>
-            <div><strong><span data-measured="phases.before.hostveil.overall">29</span> &rarr; <span data-measured="phases.reviewed.hostveil.overall">51</span></strong><span>hostveil score</span></div>
+            <div><strong><span data-measured="phases.before.hostveil.overall">29</span> &rarr; <span data-measured="phases.reviewed.hostveil.overall">51</span></strong><span>Hostveil score</span></div>
           </div>
           <p class="measured-note">One real server running Nextcloud, Jellyfin, Portainer and their datastores, every port on <code>0.0.0.0</code>, root SSH login allowed, no firewall. Every file the fixes touched was restored byte for byte on rollback. <a href="docs/measurements">How this was measured, and what did not move &rarr;</a></p>
         </div>
@@ -260,7 +260,7 @@ hostveil fix --all</code></pre>
           <div class="faq-grid">
             <article>
               <h3>Does it upload my data?</h3>
-              <p>No. hostveil runs locally. Even the optional AI<br>explanations default to a model on your own machine.</p>
+              <p>No. Hostveil runs locally. Even the optional AI<br>explanations default to a model on your own machine.</p>
             </article>
             <article>
               <h3>Will a fix break my server?</h3>
@@ -268,7 +268,7 @@ hostveil fix --all</code></pre>
             </article>
             <article>
               <h3>What if a fix has tradeoffs?</h3>
-              <p>It is a Review fix, not Auto. hostveil shows independent<br>alternatives and makes you choose.</p>
+              <p>It is a Review fix, not Auto. Hostveil shows independent<br>alternatives and makes you choose.</p>
             </article>
             <article>
               <h3>Do I need Docker or Trivy?</h3>
@@ -289,7 +289,7 @@ hostveil fix --all</code></pre>
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>Guided security hardening for self-hosted Linux servers.</p>
         </div>
         <nav aria-label="Footer links">

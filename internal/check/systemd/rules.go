@@ -198,7 +198,7 @@ func howToFix(u unit, r rule) string {
 	dropIn := dropInPath(u.ID, u.DropInPaths)
 	if dropIn == "" {
 		return fmt.Sprintf(
-			"A drop-in that systemd loads after anything hostveil could write is already in "+
+			"A drop-in that systemd loads after anything Hostveil could write is already in "+
 				"place for this unit (%s), and drop-ins are applied in filename order whichever "+
 				"directory they are in — so a new file under /etc/systemd/system/%s.d/ would be "+
 				"overridden. Set `%s` in the file that sorts last, or rename it, then run "+

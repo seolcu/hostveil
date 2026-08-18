@@ -171,9 +171,9 @@ func auditContainer(c compose.Container) []model.Finding {
 		// coming up empty here. fix.WhyNoFix answers from the declined list,
 		// and every one of these IDs *is* registered — it is the container
 		// that cannot be fixed, not the finding — so nothing filled it in.
-		f.WhyNoFix = "This container was started with `docker run`, not Compose, so there is no file for hostveil to edit."
+		f.WhyNoFix = "This container was started with `docker run`, not Compose, so there is no file for Hostveil to edit."
 		f.HowToFix = "This container was started with `docker run`, not Compose, so there is no file to edit. " +
-			"Recreate it with the corrected flag, or move it into a compose file where hostveil can fix it for you. " + f.HowToFix
+			"Recreate it with the corrected flag, or move it into a compose file where Hostveil can fix it for you. " + f.HowToFix
 		f.Evidence = mergeMeta(f.Evidence, map[string]string{"managed_by": "docker run"})
 		out = append(out, f)
 	}
@@ -468,7 +468,7 @@ func ruleWritableRootFS(s compose.Service) (model.Finding, bool) {
 	}
 	return f("ds022", "Container filesystem is writable", model.SeverityLow, model.RemediationManual, s.Name,
 		model.WithDescription("Without `read_only: true`, a compromised process can modify the container's own binaries and drop tools anywhere in its filesystem, making an intrusion easier to deepen and harder to spot."),
-		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so hostveil does not change this automatically."),
+		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so Hostveil does not change this automatically."),
 	), true
 }
 
@@ -525,7 +525,7 @@ func ruleEnvFile(s compose.Service) (model.Finding, bool) {
 	}
 	return f("dr004", "Service loads secrets from an env_file", model.SeverityLow, model.RemediationManual, s.Name,
 		model.WithDescription("Env files often hold credentials. Make sure the file is not world-readable and is excluded from version control and backups that leave the host."),
-		model.WithHowToFix("Verify the env_file has 0600 permissions and is listed in .gitignore. This one needs a human eye, so hostveil does not change it automatically."),
+		model.WithHowToFix("Verify the env_file has 0600 permissions and is listed in .gitignore. This one needs a human eye, so Hostveil does not change it automatically."),
 	), true
 }
 

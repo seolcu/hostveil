@@ -1,13 +1,13 @@
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Interfaces</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Interfaces</p>
             <h1>Interfaces</h1>
-            <p class="lead">hostveil has three faces: a terminal UI, a localhost web dashboard, and a scriptable CLI. All three are thin layers over one shared engine. Whatever you scan, fix, or roll back in one is reflected in the others.</p>
+            <p class="lead">Hostveil has three faces: a terminal UI, a localhost web dashboard, and a scriptable CLI. All three are thin layers over one shared engine. Whatever you scan, fix, or roll back in one is reflected in the others.</p>
 
             <h2>TUI: the default</h2>
             <p>Running <code>hostveil</code> with no arguments on an interactive terminal opens the keyboard-driven TUI. You can also launch it explicitly:</p>
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
             <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied. While a scan runs it names the domains still working, so a slow CVE scan on a host with many images reads as progress rather than as a hang.</p>
             <figure>
-              <img src="../assets/tui.png" alt="hostveil terminal UI showing findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
+              <img src="../assets/tui.png" alt="Hostveil terminal UI showing findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
             </figure>
             <div class="callout">
@@ -28,7 +28,7 @@
                   <tr><td><code>a</code></td><td>Apply the marked findings, or every Auto-fix one, if nothing is marked.</td></tr>
                   <tr><td><code>s</code></td><td>Cycle the minimum severity: High → Medium → Low → off.</td></tr>
                   <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan actually found something in.</td></tr>
-                  <tr><td><code>x</code></td><td>Show only findings hostveil can fix.</td></tr>
+                  <tr><td><code>x</code></td><td>Show only findings Hostveil can fix.</td></tr>
                   <tr><td><code>c</code></td><td>Clear every filter. <code>Esc</code> clears the batch marks.</td></tr>
                   <tr><td><code>h</code></td><td>Applied-fix history. Pick one and press <code>Enter</code> to see what rolling it back would restore, then confirm. If the file has changed since the fix wrote it, the rollback is declined and you are asked whether to overwrite anyway; only <code>y</code> does it, and it cannot be undone. The screen also carries a sparkline of the score across every saved scan, so the list of what was changed sits next to whether it helped.</td></tr>
                   <tr><td><code>e</code></td><td>In a finding's detail: add an advisory AI explanation from a local Ollama model. Without one, a one-line note appears instead. See <a href="ai">AI explanations</a>.</td></tr>
@@ -42,7 +42,7 @@
             <p>Anything that changes the host, whether applying a fix or rolling one back, shows you the diff and asks first. There is no key that writes to disk without a preview in front of it.</p>
 
             <h3 id="row">What a row says</h3>
-            <p>Each row carries the severity, the kind of fix, the finding id, the title, and the service it is about. The kind column is the one to scan down: <code>AUTO</code> in green means hostveil can apply it unattended, <code>REVIEW</code> in the accent means it will ask you to choose, and <code>MANUAL</code> or <code>N/A</code> in grey mean there is no button to press.</p>
+            <p>Each row carries the severity, the kind of fix, the finding id, the title, and the service it is about. The kind column is the one to scan down: <code>AUTO</code> in green means Hostveil can apply it unattended, <code>REVIEW</code> in the accent means it will ask you to choose, and <code>MANUAL</code> or <code>N/A</code> in grey mean there is no button to press.</p>
             <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet &mdash; a Compose file waiting on a recreate, a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
 
             <h2>Web: the localhost dashboard</h2>
@@ -54,14 +54,14 @@
             <p>It prints a URL carrying a one-off access token. Open that exact URL. Loopback keeps the dashboard off the network, but not away from other accounts on the same machine, and every route here applies fixes or reads a scan of <code>/etc/shadow</code> as root. The token closes that gap; the first page load exchanges it for a session cookie, so it does not reappear in later links.</p>
             <p>It binds to <code>127.0.0.1:8787</code>. The dashboard rejects any request not addressed to localhost, so <code>--addr</code> cannot expose it to the network: pointing it at a non-loopback address produces a listener that refuses anything addressed to this machine by IP or hostname, though a forwarded port still reaches it. To reach it from another machine, forward the port instead: <code>ssh -L 8787:127.0.0.1:8787 you@server</code>. (<code>hostveil web</code> is an alias for <code>serve</code>.)</p>
             <figure>
-              <img src="../assets/web.png" alt="hostveil web dashboard showing the score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
+              <img src="../assets/web.png" alt="Hostveil web dashboard showing the score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
             </figure>
             <p>Before you pick anything, the right-hand pane reads the scan back to you: the score in words, how the findings break down by severity, how many can be fixed with no decision from you, and the most severe handful as a jump list. Selecting a finding replaces it with that finding's detail and a <strong>Preview fix</strong> button; <strong>History</strong> puts every applied fix there instead, each with the diff it would revert and a <strong>Roll back</strong> button.</p>
             <p>The chips above the list filter by severity and domain with live counts, and the checkboxes select findings for one batch fix. Everything writes through the same engine as the CLI, so <code>hostveil history</code> in a terminal lists what you did in the browser.</p>
 
             <h3 id="delta">Since the last scan</h3>
-            <p>hostveil saves each scan, so the next one can say what moved. When anything has, both UIs show a one-line summary above the findings. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>, which is the fastest way to answer "did that round of fixes actually help?". Nothing is shown on a first scan, because there is nothing to compare against.</p>
+            <p>Hostveil saves each scan, so the next one can say what moved. When anything has, both UIs show a one-line summary above the findings. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>, which is the fastest way to answer "did that round of fixes actually help?". Nothing is shown on a first scan, because there is nothing to compare against.</p>
             <p>Just under it, either UI names any domain that could not be fully checked. A score built from a partial scan keeps saying so rather than flashing the notice once. See <a href="checks#coverage">when a domain can't be fully checked</a>.</p>
 
             <h2>CLI: scriptable</h2>

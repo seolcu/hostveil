@@ -122,7 +122,7 @@ func StateNote(dir string) string {
 		return ""
 	}
 	return "Saved scans and rollback checkpoints are still in:\n  " + dir +
-		"\nThose checkpoints are the backups of every file hostveil edited here.\n" +
+		"\nThose checkpoints are the backups of every file Hostveil edited here.\n" +
 		"Delete them only if you no longer need to undo any of its fixes:\n  rm -rf " + dir
 }
 

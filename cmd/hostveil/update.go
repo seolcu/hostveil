@@ -82,7 +82,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "\nhostveil: "+origin.Advice())
 		return 1
 	}
-	fmt.Printf("This binary came from %s, so hostveil will update it that way.\n", origin)
+	fmt.Printf("This binary came from %s, so Hostveil will update it that way.\n", origin)
 	if !yes && !promptYesNo("Update now?") {
 		return 1
 	}

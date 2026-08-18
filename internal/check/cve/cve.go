@@ -326,7 +326,7 @@ func demoteToManual(fs []model.Finding) []model.Finding {
 		// registered, so fix.WhyNoFix has nothing to say about them, and the
 		// panel that exists to answer "why is there no button" was blank.
 		fs[i].WhyNoFix = "This container was started with `docker run`, not Compose, so there is no compose file to pull through."
-		fs[i].HowToFix = "This container was started with `docker run`, not Compose, so hostveil cannot update it for you. " +
+		fs[i].HowToFix = "This container was started with `docker run`, not Compose, so Hostveil cannot update it for you. " +
 			"Pull the image and recreate the container yourself. " + fs[i].HowToFix
 		if fs[i].Evidence == nil {
 			fs[i].Evidence = map[string]string{}
@@ -539,7 +539,7 @@ func outdatedFinding(t target, g group) (model.Finding, bool) {
 	if !imageReferenceIsMutable(t.image) {
 		rem = model.RemediationManual
 		reference = "digest"
-		howToFix = "This service pins its image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. hostveil cannot compute which digest carries the fixes, so it will not guess."
+		howToFix = "This service pins its image by digest, so pulling cannot change it. Find a newer digest whose base layer ships the patched packages and update the pin. Hostveil cannot compute which digest carries the fixes, so it will not guess."
 	}
 
 	opts := append(imageOpts(t),

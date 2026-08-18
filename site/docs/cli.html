@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://hostveil.seolcu.com/docs/cli">
     <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/cli">
@@ -59,9 +59,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="Primary navigation">
-        <a class="brand" href="../" aria-label="hostveil home">
+        <a class="brand" href="../" aria-label="Hostveil home">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="./">Docs</a>
@@ -121,13 +121,13 @@
 
         <main class="docs-content" id="main">
           <article class="docs-prose">
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / CLI reference</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / CLI reference</p>
             <h1>CLI reference</h1>
             <p class="lead">Every subcommand, flag, and default. Commands that read root-owned files (SSH, firewall) or write to protected paths need root, so <code>hostveil</code> re-runs itself under <code>sudo</code> automatically (except <code>version</code>/<code>help</code>); set <code>HOSTVEIL_NO_SUDO=1</code> to opt out.</p>
 
             <h2>Synopsis</h2>
             <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>
-            <p>With no command on an interactive terminal, hostveil opens the <a href="interfaces">TUI</a>; when stdin/stdout are not a terminal, it runs <code>scan</code> instead. <code>hostveil version</code> (or <code>--version</code>) prints the version; <code>hostveil help</code> (or <code>--help</code>) prints usage.</p>
+            <p>With no command on an interactive terminal, Hostveil opens the <a href="interfaces">TUI</a>; when stdin/stdout are not a terminal, it runs <code>scan</code> instead. <code>hostveil version</code> (or <code>--version</code>) prints the version; <code>hostveil help</code> (or <code>--help</code>) prints usage.</p>
 
             <h2 id="scan">scan</h2>
             <p>Scan the host and report security findings.</p>
@@ -167,17 +167,17 @@
   ]
 }</code></pre></div>
             <p><code>severity</code> is one of <code>high</code>, <code>medium</code>, <code>low</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> — and a domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
-            <p>A finding also carries <code>fixed</code> and, once something has been applied in the same run, <code>pending</code>. <code>fixed</code> means hostveil applied a fix for it; <code>pending</code> means the host has not read that fix yet, so the finding is still charged in the score and still counts toward the exit status. A consumer deciding whether a risk is standing should read <code>fixed &amp;&amp; !pending</code> rather than <code>fixed</code> alone. Both are omitted when false, and neither survives a fresh scan &mdash; a scan re-derives everything from the checkers.</p>
+            <p>A finding also carries <code>fixed</code> and, once something has been applied in the same run, <code>pending</code>. <code>fixed</code> means Hostveil applied a fix for it; <code>pending</code> means the host has not read that fix yet, so the finding is still charged in the score and still counts toward the exit status. A consumer deciding whether a risk is standing should read <code>fixed &amp;&amp; !pending</code> rather than <code>fixed</code> alone. Both are omitted when false, and neither survives a fresh scan &mdash; a scan re-derives everything from the checkers.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.11</span>
-              <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>
+              <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. Hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>
             </div>
 
             <h3 id="sarif-levels">What SARIF export does with severity</h3>
-            <p>SARIF has three levels where hostveil has three, so the mapping is one to one:</p>
+            <p>SARIF has three levels where Hostveil has three, so the mapping is one to one:</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
+                <thead><tr><th>Hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
                 <tbody>
                   <tr><td><code>high</code></td><td><code>error</code></td><td>9.5</td></tr>
                   <tr><td><code>medium</code></td><td><code>warning</code></td><td>5.5</td></tr>
@@ -185,8 +185,8 @@
                 </tbody>
               </table>
             </div>
-            <p>The second number is the 0 to 10 scale GitHub code scanning sorts and filters by. Its buckets start at 9.0 for critical, 7.0 for high and 4.0 for medium, so <strong>a hostveil High appears in GitHub's <em>critical</em> band, not its high one.</strong></p>
-            <p>The mismatched words are deliberate. hostveil's top level means the problem is reachable right now, from off the host, by someone holding nothing, and the band that means act today in code scanning is critical. Mapping the word to the word would have put those findings in a band people triage next sprint.</p>
+            <p>The second number is the 0 to 10 scale GitHub code scanning sorts and filters by. Its buckets start at 9.0 for critical, 7.0 for high and 4.0 for medium, so <strong>a Hostveil High appears in GitHub's <em>critical</em> band, not its high one.</strong></p>
+            <p>The mismatched words are deliberate. Hostveil's top level means the problem is reachable right now, from off the host, by someone holding nothing, and the band that means act today in code scanning is critical. Mapping the word to the word would have put those findings in a band people triage next sprint.</p>
 
             <h2 id="fix">fix</h2>
             <p>Preview and apply the fix for a finding.</p>
@@ -197,7 +197,7 @@ hostveil fix --all [flags]</code></pre></div>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--all</code></td><td><code>false</code></td><td>Apply every safe (Auto-fix) finding at once.</td></tr>
-                  <tr><td><code>--review</code></td><td><code>false</code></td><td>With <code>--all</code>, apply the Review fixes too, each through its first alternative. They are listed separately and counted separately: a Review fix is one hostveil can perform and will not perform unattended, because it can cut off access to this host or runs a command with no checkpoint to undo.</td></tr>
+                  <tr><td><code>--review</code></td><td><code>false</code></td><td>With <code>--all</code>, apply the Review fixes too, each through its first alternative. They are listed separately and counted separately: a Review fix is one Hostveil can perform and will not perform unattended, because it can cut off access to this host or runs a command with no checkpoint to undo.</td></tr>
                   <tr><td><code>--action N</code></td><td><code>-1</code></td><td>For a Review fix, the 0-based alternative to apply.</td></tr>
                   <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
                   <tr><td><code>--yes</code></td><td><code>false</code></td><td>Apply without the interactive confirmation.</td></tr>
@@ -228,7 +228,7 @@ hostveil history --scans</code></pre></div>
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--scans</code></td><td>Show the score of every retained scan instead of the applied-fix log, oldest first, with the change from the one before it. hostveil keeps the last 30 scans. A scan where no domain could be examined shows <code>N/A</code> rather than a number, and no change is reported against it — a run nobody could score is not a drop to zero.</td></tr>
+                  <tr><td><code>--scans</code></td><td>Show the score of every retained scan instead of the applied-fix log, oldest first, with the change from the one before it. Hostveil keeps the last 30 scans. A scan where no domain could be examined shows <code>N/A</code> rather than a number, and no change is reported against it — a run nobody could score is not a drop to zero.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -236,7 +236,7 @@ hostveil history --scans</code></pre></div>
             <h3 id="serve-ssh">Over SSH</h3>
             <p>The dashboard listens on the loopback interface, so the address it prints is that address <em>on the server</em> — typing it into the browser on your laptop reaches your laptop. When <code>hostveil serve</code> sees it is running in an SSH session it prints the forwarding command to run on your own machine, using the address your client actually reached:</p>
             <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
-            <p>Leave that open, then open the printed URL on your own machine. hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
+            <p>Leave that open, then open the printed URL on your own machine. Hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
 
             <h2 id="explain">explain</h2>
             <p>Explain a finding in plain language.</p>
@@ -266,7 +266,7 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
             <p>The command prints a URL containing a one-off access token; open that URL rather than typing the bare address. Every route requires the token, because loopback does not separate the operator from other local accounts and the dashboard runs as root.</p>
-            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds, then refuses anything that reaches this machine by IP or hostname, and hostveil says so. A forwarded port keeps working, because the browser says localhost either way. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
+            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds, then refuses anything that reaches this machine by IP or hostname, and Hostveil says so. A forwarded port keeps working, because the browser says localhost either way. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
 
             <h2 id="tui">tui</h2>
             <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>
@@ -297,10 +297,10 @@ hostveil history --scans</code></pre></div>
             </div>
 
             <h2 id="update">update</h2>
-            <p>Update hostveil to the latest published release.</p>
+            <p>Update Hostveil to the latest published release.</p>
             <div class="code-block"><pre><code>hostveil update
 hostveil update --check</code></pre></div>
-            <p>hostveil works out how this binary was installed and updates it the same way, so nothing ends up disagreeing about what is on the host:</p>
+            <p>Hostveil works out how this binary was installed and updates it the same way, so nothing ends up disagreeing about what is on the host:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Installed by</th><th>What update does</th></tr></thead>
@@ -313,7 +313,7 @@ hostveil update --check</code></pre></div>
               </table>
             </div>
             <p>Verification is not optional. The download is checked against the release's own checksums file and discarded if it does not match, and where the GitHub CLI is present the signed build provenance is verified too. A provenance check that <em>fails</em> stops the update; one that cannot run because <code>gh</code> is not installed is a note, because a checksum proves the bytes arrived intact and nothing about who produced them.</p>
-            <p>If hostveil cannot tell how the binary was installed, it does nothing and says so. Guessing there means overwriting a file some other tool believes it owns.</p>
+            <p>If Hostveil cannot tell how the binary was installed, it does nothing and says so. Guessing there means overwriting a file some other tool believes it owns.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
@@ -325,15 +325,15 @@ hostveil update --check</code></pre></div>
             </div>
 
             <h3 id="update-check">The daily check</h3>
-            <p>A scan, a dashboard and the TUI each ask GitHub once a day whether a newer release exists, and print one line about it if there is. The request runs in the background, so nothing waits for it, and a run that fails is silent: a host behind a proxy is not a host with a problem hostveil should be reporting.</p>
+            <p>A scan, a dashboard and the TUI each ask GitHub once a day whether a newer release exists, and print one line about it if there is. The request runs in the background, so nothing waits for it, and a run that fails is silent: a host behind a proxy is not a host with a problem Hostveil should be reporting.</p>
             <p>The line never appears in <code>--json</code>, in SARIF, or in a report written to a file with <code>--output</code>. Those are read by machines and read later.</p>
-            <p>hostveil never installs anything on its own. Set <code>HOSTVEIL_NO_UPDATE_CHECK=1</code> and it stops contacting GitHub entirely, except when you type <code>hostveil update</code>.</p>
+            <p>Hostveil never installs anything on its own. Set <code>HOSTVEIL_NO_UPDATE_CHECK=1</code> and it stops contacting GitHub entirely, except when you type <code>hostveil update</code>.</p>
 
             <h2 id="uninstall">uninstall</h2>
-            <p>Remove hostveil, through whichever tool installed it.</p>
+            <p>Remove Hostveil, through whichever tool installed it.</p>
             <div class="code-block"><pre><code>hostveil uninstall</code></pre></div>
             <p>A packaged install is removed with <code>apt-get remove</code> or <code>dnf remove</code>; anything else deletes the binary.</p>
-            <p><strong>Your saved scans and rollback checkpoints are left alone</strong>, and hostveil prints where they are before it asks. Those checkpoints are the backups of every file it edited on this host, so removing the program is not a reason to throw away the ability to undo its work. Delete them yourself when you are sure.</p>
+            <p><strong>Your saved scans and rollback checkpoints are left alone</strong>, and Hostveil prints where they are before it asks. Those checkpoints are the backups of every file it edited on this host, so removing the program is not a reason to throw away the ability to undo its work. Delete them yourself when you are sure.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
@@ -356,7 +356,7 @@ hostveil update --check</code></pre></div>
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>Guided security hardening for self-hosted Linux servers.</p>
         </div>
         <nav aria-label="Footer links">

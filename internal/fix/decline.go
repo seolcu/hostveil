@@ -65,8 +65,8 @@ var declineReasons = map[string]string{
 	"compose.dr001": "Removing host networking leaves the service unreachable unless the ports it needs are published in its place, and the finding does not carry them.",
 	"compose.dr004": "The remediation is about the env_file's permissions and whether it reached git and backups, so there is nothing in the compose file to edit.",
 	"compose.dr005": "Moving the value into an env_file is a two-file change one action cannot make, and a secret already in backups and git history needs rotating instead.",
-	"compose.ds001": "Deleting privileged: true removes something the author added deliberately, and hostveil cannot tell a needless one from a load-bearing one.",
-	"compose.ds005": "Dropping a capability from cap_add removes something the author added deliberately, and hostveil cannot tell a needless one from a load-bearing one.",
+	"compose.ds001": "Deleting privileged: true removes something the author added deliberately, and Hostveil cannot tell a needless one from a load-bearing one.",
+	"compose.ds005": "Dropping a capability from cap_add removes something the author added deliberately, and Hostveil cannot tell a needless one from a load-bearing one.",
 	"compose.ds009": "Nothing in the finding says which UID the image supports, and forcing the wrong one stops an image that drops privileges in its own entrypoint.",
 	"compose.ds012": "The right healthcheck depends on what the service exposes, and a guessed probe marks a working container unhealthy and stalls whatever waits on it.",
 	"compose.ds016": "The only honest remediation deletes the mount, which breaks Portainer, Traefik, and Watchtower, and :ro changes nothing because the socket is an HTTP API.",
@@ -75,7 +75,7 @@ var declineReasons = map[string]string{
 	"compose.ds021": "Processes that share memory legitimately need ipc: host, and deleting the line breaks that case silently — the service starts and stops working.",
 	"compose.ds022": "read_only: true breaks any image that writes inside its own filesystem, and a static audit cannot learn which paths need tmpfs mounts instead.",
 	"compose.ds023": "Removing seccomp:unconfined can break software that requires a blocked syscall, and only the application owner can choose a narrower profile.",
-	"compose.ds024": "Removing apparmor:unconfined can prevent the service starting, and hostveil cannot invent the application-specific profile it needs.",
+	"compose.ds024": "Removing apparmor:unconfined can prevent the service starting, and Hostveil cannot invent the application-specific profile it needs.",
 	"compose.ds026": "Removing host user-namespace mode can invalidate bind-mount ownership and stop the service, which needs an operator-planned migration.",
 
 	// firewall
@@ -86,7 +86,7 @@ var declineReasons = map[string]string{
 	"updates.reboot-required": "The remediation is a reboot: no checkpoint, every service on the box down, and only you know when that downtime is acceptable.",
 
 	// cve
-	"cve.unpatched-image": "Re-pulling the tag is the only action hostveil has here, and no rebuild of the image carries a patch upstream has not published.",
+	"cve.unpatched-image": "Re-pulling the tag is the only action Hostveil has here, and no rebuild of the image carries a patch upstream has not published.",
 
 	// ports
 	"ports.exposed":           "The remediation is enabling a firewall, which can lock you out of a host reached over SSH; fixing the firewall clears this finding as a side effect.",
@@ -95,30 +95,30 @@ var declineReasons = map[string]string{
 
 	// accounts
 	"accounts.emptypassword":         "Locking the account has no checkpoint and it may be the only one you can reach the machine with; /etc/shadow does not say which kind it is.",
-	"proxy.traefik-api-insecure":     "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware hostveil cannot pick.",
-	"proxy.tls-deprecated-protocols": "nginx inherits ssl_protocols from http into every server that does not set its own, and hostveil sees which files name the directive rather than which block each one sits in.",
-	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and hostveil cannot tell which location you meant.",
+	"proxy.traefik-api-insecure":     "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware Hostveil cannot pick.",
+	"proxy.tls-deprecated-protocols": "nginx inherits ssl_protocols from http into every server that does not set its own, and Hostveil sees which files name the directive rather than which block each one sits in.",
+	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and Hostveil cannot tell which location you meant.",
 	"accounts.sudo-nopasswd":         "Images ship this rule because the account has no password, so removing it can leave that account unable to use sudo at all — set a password and confirm it first.",
-	"accounts.uid0":                  "userdel orphans every file the account owns with no checkpoint to undo it, and hostveil cannot tell a backdoor from a deliberate second root.",
+	"accounts.uid0":                  "userdel orphans every file the account owns with no checkpoint to undo it, and Hostveil cannot tell a backdoor from a deliberate second root.",
 	"accounts.duplicate-uid":         "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
-	"accounts.weak-password-hash":    "Fixing the hash requires choosing and entering a new password; hostveil must never generate or handle that credential.",
+	"accounts.weak-password-hash":    "Fixing the hash requires choosing and entering a new password; Hostveil must never generate or handle that credential.",
 
 	// fileperms
 	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",
 
 	// agent
-	"agent.auth-disabled":   "OpenClaw fails closed when this key is absent, so the safe posture is no key at all \u2014 and hostveil replaces values rather than removing them.",
+	"agent.auth-disabled":   "OpenClaw fails closed when this key is absent, so the safe posture is no key at all \u2014 and Hostveil replaces values rather than removing them.",
 	"agent.gateway-exposed": "Rebinding can cut you off from an agent you administer remotely, and the bind may come from an env file, a unit, or a docker flag rather than the config.",
-	"agent.sandbox-off":     "The sandbox is off and nothing in hostveil names the mode that turns it on, so any value it wrote into your config would be a guess wearing a fix's clothes.",
+	"agent.sandbox-off":     "The sandbox is off and nothing in Hostveil names the mode that turns it on, so any value it wrote into your config would be a guess wearing a fix's clothes.",
 
 	// dockerd
 	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and the daemon only reads the file at a restart.",
 	"dockerd.api-unauthenticated":   "Removing the TCP endpoint severs the exact channel a remote operator may administer this host through: DOCKER_HOST, a Portainer agent, a CI runner.",
 	"dockerd.group-members":         "Removing a member has no checkpoint, and the account it removes may be your own and the access you administer the daemon with.",
-	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
-	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
+	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and Hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
+	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and Hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
 	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and this checker does not read the socket's drop-ins, so a file it wrote might never decide the mode.",
-	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that hostveil can only rewrite, not create.",
+	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that Hostveil can only rewrite, not create.",
 
 	// systemd
 	"systemd.private-tmp":               "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",

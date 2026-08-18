@@ -223,7 +223,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 		if !s.authorize(w, r) {
-			http.Error(w, "missing or invalid access token — open the URL hostveil printed at startup",
+			http.Error(w, "missing or invalid access token — open the URL Hostveil printed at startup",
 				http.StatusUnauthorized)
 			return
 		}

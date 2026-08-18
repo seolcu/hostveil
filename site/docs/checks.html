@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://hostveil.seolcu.com/docs/checks">
     <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/checks">
@@ -59,9 +59,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="Primary navigation">
-        <a class="brand" href="../" aria-label="hostveil home">
+        <a class="brand" href="../" aria-label="Hostveil home">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="./">Docs</a>
@@ -121,9 +121,9 @@
 
         <main class="docs-content" id="main">
           <article class="docs-prose">
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / What it checks</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / What it checks</p>
             <h1>What it checks</h1>
-            <p class="lead">hostveil checks the highest-impact paths that actually get self-hosters breached, then merges everything into one 0–100 score. Each finding has a stable ID of the form <code>domain.rule</code> — use it with <code>explain</code>, <code>fix</code>, and <code>rollback</code>.</p>
+            <p class="lead">Hostveil checks the highest-impact paths that actually get self-hosters breached, then merges everything into one 0–100 score. Each finding has a stable ID of the form <code>domain.rule</code> — use it with <code>explain</code>, <code>fix</code>, and <code>rollback</code>.</p>
 
             <h2>Domains at a glance</h2>
             <div class="docs-table-wrap">
@@ -147,10 +147,10 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">120</strong> of them carry a fix — <span data-counted="findings.auto">71</span> it will apply unattended, <span data-counted="findings.review">49</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">120</strong> of them carry a fix — <span data-counted="findings.auto">71</span> it will apply unattended, <span data-counted="findings.review">49</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
 
             <h2 id="severity">Severity &amp; the score</h2>
-            <p>hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
+            <p>Hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Level</th><th>What it means</th><th>Takes</th></tr></thead>
@@ -164,11 +164,11 @@
             <p><strong>Three levels, not four, and the definitions above are the whole taxonomy.</strong> The names are ordinary because a name has one job here — carrying the order — and it has to do that on a chip, in one line of <code>--json</code>, and in a SARIF level, where there is no room for anything else. What each level <em>means</em> is the column beside it, and it is a claim about your host rather than an opinion about the finding.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.11</span>
-              <p>hostveil used to have four levels — Critical / High / Medium / Low — inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so what reaches a finding is one level for the whole image rather than a rating per CVE, and the fourth level was left asking a question a config file cannot answer.</p>
-              <p><strong>HIGH is exactly what Critical and High were together</strong>, so <code>scan</code>'s exit code and the SARIF export mean what they always did. If you are comparing against Trivy's own output, note that a vulnerability Trivy calls CRITICAL lands here as HIGH: hostveil has three levels and Trivy has four, and the top of one is not the top of the other by name.</p>
+              <p>Hostveil used to have four levels — Critical / High / Medium / Low — inherited from Trivy so a CVE's published rating could pass straight through. Vulnerabilities are rolled up per image now, so what reaches a finding is one level for the whole image rather than a rating per CVE, and the fourth level was left asking a question a config file cannot answer.</p>
+              <p><strong>HIGH is exactly what Critical and High were together</strong>, so <code>scan</code>'s exit code and the SARIF export mean what they always did. If you are comparing against Trivy's own output, note that a vulnerability Trivy calls CRITICAL lands here as HIGH: Hostveil has three levels and Trivy has four, and the top of one is not the top of the other by name.</p>
             </div>
             <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three. <a href="scoring">Scoring</a> is the whole model: the arithmetic, a worked example from a real scan, and what the number cannot tell you.</p>
-            <p>A finding hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
+            <p>A finding Hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
 
             <h3>What each domain is worth</h3>
             <p>The axes are weighted by how much they matter to a self-hosted server, and the weights sum to 100. When a domain does not run, its weight leaves the total and the rest are renormalized.</p>
@@ -193,7 +193,7 @@
               </table>
             </div>
             <h3 id="coverage">When a domain can't be fully checked</h3>
-            <p>"I couldn't look" and "there was nothing there" produce the same empty list, and they mean opposite things. hostveil never lets one pass for the other, so every domain reports how much ground it actually covered:</p>
+            <p>"I couldn't look" and "there was nothing there" produce the same empty list, and they mean opposite things. Hostveil never lets one pass for the other, so every domain reports how much ground it actually covered:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>State</th><th>What it means</th><th>Effect on the score</th></tr></thead>
@@ -244,7 +244,7 @@
             </div>
 
             <h2 id="compose">Docker / Compose <code>compose.</code></h2>
-            <p>A native audit of your Compose files — no external scanner required. Containers started with plain <code>docker run</code> are audited too, read from the daemon rather than a file. Those findings are always Manual: there is no file for a fix to edit, so hostveil tells you what to change when you recreate the container instead of offering a button that could not work.</p>
+            <p>A native audit of your Compose files — no external scanner required. Containers started with plain <code>docker run</code> are audited too, read from the daemon rather than a file. Those findings are always Manual: there is no file for a fix to edit, so Hostveil tells you what to change when you recreate the container instead of offering a button that could not work.</p>
             <p><strong>What counts as exposed.</strong> A published port is treated as reachable from every interface when its host address is <code>0.0.0.0</code>, <code>::</code>, or <strong>not written at all</strong>. That last case is the one that catches people: <code>"6379:6379"</code> names no address, and Docker binds it to every interface, so it is exposed by this rule and by the daemon. Only an explicit loopback address such as <code>"127.0.0.1:6379:6379"</code> is not, and a port with no host side at all is not published and never counts.</p>
             <p>The rule is applied to the <em>merged</em> project, which is what <code>docker compose config</code> prints, not to any single file. Compose appends port mappings across files rather than replacing them, so a base file binding a service to loopback and an override republishing it leaves the service exposed. Reading the base alone would call that host clean.</p>
             <div class="docs-table-wrap">
@@ -329,7 +329,7 @@
 
             <h2 id="accounts">Accounts <code>accounts.</code></h2>
             <p>One question asked three ways: who can become root, and what stands in their way. The first two answers come out of <code>/etc/passwd</code> and <code>/etc/shadow</code>, parsed natively. Reading <code>/etc/shadow</code> needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>; without it, the empty-password check is skipped and the UID-0 check still runs.</p>
-            <p>The third answer does not come from a file. sudo rules are a layered configuration with aliases, group specs that may resolve through LDAP rather than <code>/etc/group</code>, and include ordering — so hostveil asks sudo itself what each account may actually run, rather than re-deriving it from <code>/etc/sudoers</code>. That needs root too: without it the domain reports the gap instead of reporting that nobody was found.</p>
+            <p>The third answer does not come from a file. sudo rules are a layered configuration with aliases, group specs that may resolve through LDAP rather than <code>/etc/group</code>, and include ordering — so Hostveil asks sudo itself what each account may actually run, rather than re-deriving it from <code>/etc/sudoers</code>. That needs root too: without it the domain reports the gap instead of reporting that nobody was found.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
@@ -396,9 +396,9 @@
 
             <h2 id="sysctl">Kernel hardening <code>sysctl.</code></h2>
             <p>Read directly from <code>/proc/sys</code> — no <code>sysctl</code> binary needed. These are the quiet knobs whose safe value is the same on essentially every server: none of them is the hole an attacker comes in through, each is what stops a foothold from becoming root or a spoofed packet from becoming a route. A parameter this kernel does not have (Yama not built in, say) is simply skipped.</p>
-            <p>Unambiguous settings are <strong>Auto-fix</strong>: hostveil writes one reversible drop-in under <code>/etc/sysctl.d</code> and deliberately leaves the running kernel untouched. The change takes effect at the next boot, or when you explicitly run <code>sysctl --system</code>. Rollback removes or restores that file and refuses if it has since been edited.</p>
+            <p>Unambiguous settings are <strong>Auto-fix</strong>: Hostveil writes one reversible drop-in under <code>/etc/sysctl.d</code> and deliberately leaves the running kernel untouched. The change takes effect at the next boot, or when you explicitly run <code>sysctl --system</code>. Rollback removes or restores that file and refuses if it has since been edited.</p>
             <p>Router-, relay-, and multi-homing-dependent settings remain <strong>Review</strong>. For example, strict reverse-path filtering can break asymmetric routing and disabling Proxy ARP breaks a host deliberately acting as a relay. Those retain the persistent and immediate alternatives so the operator makes the topology-dependent choice.</p>
-            <p><code>net.ipv4.ip_forward</code> is deliberately not audited: Docker, WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately enable it, and hostveil cannot tell those apart from an accident.</p>
+            <p><code>net.ipv4.ip_forward</code> is deliberately not audited: Docker, WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately enable it, and Hostveil cannot tell those apart from an accident.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
@@ -449,7 +449,7 @@
 
             <h2 id="dockerd">Docker daemon <code>dockerd.</code></h2>
             <p>The Compose audit judges what your services declare and the CVE scan judges the images they run. This domain judges the daemon underneath both — the part of the stack that actually holds root.</p>
-            <p>It is worth being blunt about the worst finding here, because it is the worst finding hostveil has. A daemon listening on a TCP port without TLS client verification is root on the host for anyone who can reach that port: no password, no vulnerability, one HTTP request that starts a container with your filesystem mounted inside it. Membership in the socket's group is the same authority from a local account, and unlike <code>sudo</code> it asks for nothing and logs nothing.</p>
+            <p>It is worth being blunt about the worst finding here, because it is the worst finding Hostveil has. A daemon listening on a TCP port without TLS client verification is root on the host for anyone who can reach that port: no password, no vulnerability, one HTTP request that starts a container with your filesystem mounted inside it. Membership in the socket's group is the same authority from a local account, and unlike <code>sudo</code> it asks for nothing and logs nothing.</p>
             <p><strong>Three sources, and they disagree.</strong> Docker's settings live in <code>/etc/docker/daemon.json</code>, in flags on the service unit, and in the running daemon — and after an edit without a restart those are different answers. So the daemon defaults are read from <code>docker info</code>, which is what the daemon actually loaded rather than what someone wrote down; the socket and TLS settings are read from the file and the unit together, because <code>docker info</code> does not report them at all; and <code>ss</code> supplies the endpoint you can go and verify, without ever deciding whether a finding exists.</p>
             <p><strong>Every finding here is Manual, on purpose.</strong> The checker reads the running daemon, but a fix would edit a file the daemon does not read again until it restarts — and restarting Docker stops every container on the host. A fix that marked the finding resolved and raised your score while changing nothing an attacker can see would be worse than no fix, so the how-to-fix text carries the exact change and you choose the moment.</p>
             <div class="docs-table-wrap">
@@ -471,7 +471,7 @@
 
             <h2 id="systemd">Service hardening <code>systemd.</code></h2>
             <p>Roughly half of a self-hosted server is not in a container. The Compose domain reads what your containers declare — privileged, running as root, no-new-privileges off — and a service started by a unit file has exactly the same decisions made about it. Until this domain existed, nothing looked at them.</p>
-            <p>systemd already knows the answers. <code>systemctl show</code> reports the <strong>effective</strong> value of each property after the unit file, every drop-in, and every default have been merged — so what hostveil reads is what the service will actually run with, not what some file says.</p>
+            <p>systemd already knows the answers. <code>systemctl show</code> reports the <strong>effective</strong> value of each property after the unit file, every drop-in, and every default have been merged — so what Hostveil reads is what the service will actually run with, not what some file says.</p>
             <p><strong>Only your own units are audited.</strong> A unit counts if its file lives under <code>/etc/systemd/system</code> or <code>/usr/local/lib/systemd/system</code> — the ones you wrote or installed by hand. Your distribution hardens its own units on its own schedule, and second-guessing them means taking on maintenance of somebody else&rsquo;s service. Reporting on them would also bury your services under dozens of findings about software you did not choose, which is how a domain stops being read.</p>
             <div class="docs-table-wrap">
               <table>
@@ -495,13 +495,13 @@
               </table>
             </div>
             <p><strong>Two severities, and which one applies depends on the account.</strong> <code>no-new-privileges</code> is <span class="sev medium">MEDIUM</span> on a service running as somebody other than root and <span class="sev low">LOW</span> on one running as root — a root service can already do anything, so the setuid path it closes buys little there. The two filesystem protections go the other way for the same reason: they are worth most exactly where <code>no-new-privileges</code> is worth least.</p>
-            <p><strong>Every finding here is Manual, on purpose.</strong> The drop-in is two lines and hostveil could write it — but writing it is not the same as knowing it is safe. <code>ProtectSystem=full</code> breaks a service that writes under <code>/usr</code>; <code>PrivateTmp=yes</code> breaks two services that hand each other files through <code>/tmp</code>. Neither failure shows up until the next restart, which on a self-hosted box is the next reboot — and the service that does not come back is the one holding your data. So the how-to-fix carries the exact path and the exact two lines, and you pick the moment to restart and watch.</p>
+            <p><strong>Every finding here is Manual, on purpose.</strong> The drop-in is two lines and Hostveil could write it — but writing it is not the same as knowing it is safe. <code>ProtectSystem=full</code> breaks a service that writes under <code>/usr</code>; <code>PrivateTmp=yes</code> breaks two services that hand each other files through <code>/tmp</code>. Neither failure shows up until the next restart, which on a self-hosted box is the next reboot — and the service that does not come back is the one holding your data. So the how-to-fix carries the exact path and the exact two lines, and you pick the moment to restart and watch.</p>
             <p>A property this systemd does not implement is reported as nothing at all, and nothing is not evidence that a protection is off — those are left alone rather than turned into a finding.</p>
 
             <h2 id="agent">AI agent runtimes <code>agent.</code></h2>
             <p>Self-hosted AI agents — <a href="https://docs.openclaw.ai/">OpenClaw</a> and <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a> — run a network gateway and keep API keys on disk in your home directory. Misconfigured, the worst case is someone reaching that gateway and driving an agent that can read your files and run commands as you.</p>
-            <p>This domain is <strong>skipped entirely</strong> unless one of those runtimes is actually installed, so a host that has never run an agent is not scored on it. hostveil looks up home directories in <code>/etc/passwd</code> and stats only the paths listed below — it never walks your home.</p>
-            <p>These projects ship their own config auditors (<code>openclaw security audit</code>), which cover their settings far more thoroughly than hostveil tries to. What hostveil adds is the part those tools cannot see: whether the gateway is <em>actually</em> listening on a reachable address, whether a firewall stands behind it, and whether your credential files are readable by other accounts on the box.</p>
+            <p>This domain is <strong>skipped entirely</strong> unless one of those runtimes is actually installed, so a host that has never run an agent is not scored on it. Hostveil looks up home directories in <code>/etc/passwd</code> and stats only the paths listed below — it never walks your home.</p>
+            <p>These projects ship their own config auditors (<code>openclaw security audit</code>), which cover their settings far more thoroughly than Hostveil tries to. What Hostveil adds is the part those tools cannot see: whether the gateway is <em>actually</em> listening on a reachable address, whether a firewall stands behind it, and whether your credential files are readable by other accounts on the box.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
@@ -518,12 +518,12 @@
                 </tbody>
               </table>
             </div>
-            <p>Most of the config findings can now be fixed. OpenClaw's config is JSON5 and carries your own comments, so hostveil edits it by replacing exactly the bytes of the one value and leaving the rest of the file alone — then re-reads what it wrote and refuses to save it unless nothing else changed. A one-key change stays a one-line diff, and your comments stay where you put them.</p>
-            <p>Three are still <strong>Manual</strong>, each for its own reason. For <code>agent.sandbox-off</code> hostveil knows <code>off</code> is wrong and does not know which mode turns the sandbox on, and a guessed value is not a fix. For <code>agent.auth-disabled</code> the safe posture is no key at all — OpenClaw fails closed when it is absent — and hostveil replaces values rather than deleting them. And rebinding an exposed gateway can cut you off from the agent you administer remotely. Hermes settings are left alone throughout: they may come from the config, from <code>.env</code>, from a systemd unit, or from a <code>docker&nbsp;-e</code> flag, and a finding cannot tell which is in force.</p>
+            <p>Most of the config findings can now be fixed. OpenClaw's config is JSON5 and carries your own comments, so Hostveil edits it by replacing exactly the bytes of the one value and leaving the rest of the file alone — then re-reads what it wrote and refuses to save it unless nothing else changed. A one-key change stays a one-line diff, and your comments stay where you put them.</p>
+            <p>Three are still <strong>Manual</strong>, each for its own reason. For <code>agent.sandbox-off</code> Hostveil knows <code>off</code> is wrong and does not know which mode turns the sandbox on, and a guessed value is not a fix. For <code>agent.auth-disabled</code> the safe posture is no key at all — OpenClaw fails closed when it is absent — and Hostveil replaces values rather than deleting them. And rebinding an exposed gateway can cut you off from the agent you administer remotely. Hermes settings are left alone throughout: they may come from the config, from <code>.env</code>, from a systemd unit, or from a <code>docker&nbsp;-e</code> flag, and a finding cannot tell which is in force.</p>
             <p>Only the two permission findings are auto-fixable, and both are a <code>chmod</code> that only ever <em>removes</em> access, checkpointed so <code>hostveil rollback</code> restores the previous mode exactly.</p>
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
-            <p>When Trivy is installed, hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>, not per vulnerability — a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>
+            <p>When Trivy is installed, Hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>, not per vulnerability — a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>
             <p>Each scanned image produces up to two findings, split by what you can actually do about them:</p>
             <div class="docs-table-wrap">
               <table>
@@ -541,7 +541,7 @@
             </div>
             <div class="callout">
               <span class="callout-label">Honest about "no patch yet"</span>
-              <p>Vulnerabilities with no available patch get their own finding rather than being folded into the fixable ones or dropped. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong> instead of pretending it can be fixed.</p>
+              <p>Vulnerabilities with no available patch get their own finding rather than being folded into the fixable ones or dropped. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and Hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong> instead of pretending it can be fixed.</p>
             </div>
 
             <div class="docs-pager">
@@ -556,7 +556,7 @@
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>Guided security hardening for self-hosted Linux servers.</p>
         </div>
         <nav aria-label="Footer links">

@@ -120,7 +120,7 @@ func isSudoTag(s string) bool { return slices.Contains(sudoTags, s) }
 // apart would have to write one sentence covering both.
 var (
 	errNoSudo  = errors.New("sudo is not installed")
-	errNotRoot = errors.New("sudo will not answer for another user unless hostveil is root")
+	errNotRoot = errors.New("sudo will not answer for another user unless Hostveil is root")
 )
 
 // askSudo runs one `sudo -l -U user`.

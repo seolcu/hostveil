@@ -1,8 +1,8 @@
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / 문제 해결</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">문서</a> / 문제 해결</p>
             <h1>문제 해결</h1>
-            <p class="lead">덜 명확한 메시지들이 무슨 뜻인지, 그리고 hostveil이 실제로 무엇을 했는지 확인하는 방법.</p>
+            <p class="lead">덜 명확한 메시지들이 무슨 뜻인지, 그리고 Hostveil이 실제로 무엇을 했는지 확인하는 방법.</p>
 
-            <h2 id="debug">hostveil이 실행하는 모든 명령 보기</h2>
+            <h2 id="debug">Hostveil이 실행하는 모든 명령 보기</h2>
             <p>결과가 이상해 보이는 대부분의 경우, 원인은 어떤 명령 하나가 예상과 다르게 답했다는 것입니다. <code>HOSTVEIL_DEBUG=1</code>을 설정하면 그 명령들을 추적할 수 있습니다.</p>
             <pre><code>HOSTVEIL_DEBUG=1 hostveil scan</code></pre>
             <p>각 줄은 실행한 명령, 소요 시간, 실패 여부를 보여주며, 도메인 실행 여부를 결정하는 바이너리 조회도 포함됩니다. 추적은 <strong>stderr</strong>로 나가므로 <code>--json</code>이나 리다이렉트에 영향을 주지 않습니다. 버그 리포트에 첨부하기에 알맞습니다.</p>
@@ -10,30 +10,30 @@
 
             <h2 id="degraded">도메인이 “Degraded”로 표시됩니다</h2>
             <p>체커가 실행되었지만 검사 대상의 <em>일부만</em> 확인했다는 뜻입니다. 보고된 발견 항목은 실제이고 점수에 반영되며, 확인하지 못한 부분은 사유에 명시됩니다. 흔한 원인: <code>sshd_config</code>의 <code>Match</code> 블록, 읽을 수 없는 <code>Include</code> sshd 설정, 파싱할 수 없는 compose 파일, Trivy가 받아오지 못한 이미지, 열거하지 못한 컨테이너.</p>
-            <p><strong><code>Match</code> 블록은 그중 가장 최근에 추가된 원인이자, 대부분의 호스트가 실제로 마주치는 원인입니다.</strong> hostveil은 <code>sshd_config</code>를 첫 <code>Match</code>에서 읽기를 멈춥니다. sshd가 그 뒤의 지시어를 조건에 맞는 접속에만 적용하기 때문입니다 &mdash; 그 안의 지시어는 전역 지시어처럼 호스트를 설명하지 않습니다. 그래서 <code>Match User git</code>이나 <code>Match Address</code>가 있으면 SSH 도메인이 Degraded가 되고, 사유에 해당 파일이 적힙니다. 블록 위에서 찾은 항목은 실제이고 점수에도 반영되며, 블록 안은 읽지 않았습니다. 이건 의도한 동작입니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 허용되는데, 그런 호스트를 &ldquo;전부 점검했다&rdquo;고 보고하는 스캔은 확인하지도 않은 것을 말하는 셈이기 때문입니다.</p>
+            <p><strong><code>Match</code> 블록은 그중 가장 최근에 추가된 원인이자, 대부분의 호스트가 실제로 마주치는 원인입니다.</strong> Hostveil은 <code>sshd_config</code>를 첫 <code>Match</code>에서 읽기를 멈춥니다. sshd가 그 뒤의 지시어를 조건에 맞는 접속에만 적용하기 때문입니다 &mdash; 그 안의 지시어는 전역 지시어처럼 호스트를 설명하지 않습니다. 그래서 <code>Match User git</code>이나 <code>Match Address</code>가 있으면 SSH 도메인이 Degraded가 되고, 사유에 해당 파일이 적힙니다. 블록 위에서 찾은 항목은 실제이고 점수에도 반영되며, 블록 안은 읽지 않았습니다. 이건 의도한 동작입니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 허용되는데, 그런 호스트를 &ldquo;전부 점검했다&rdquo;고 보고하는 스캔은 확인하지도 않은 것을 말하는 셈이기 때문입니다.</p>
             <p>Degraded는 <strong>Skipped</strong>(의존성 부재 — 만점을 주는 대신 점수 산정에서 아예 제외)나 <strong>Error</strong>(체커가 완전히 실패)와 의도적으로 구분됩니다.</p>
 
             <h2 id="score-did-not-move">수정을 적용했는데 점수가 그대로입니다</h2>
             <p>컨테이너가 있는 호스트에서 <code>fix --all</code>의 결과로 이것은 정상이고, 정직한 결과입니다.</p>
-            <p>hostveil이 적용한 수정이 곧 호스트가 본 변경인 것은 아닙니다. Compose 파일은 컨테이너를 다시 만들 때, systemd 드롭인은 유닛을 다시 읽을 때, sysctl 드롭인은 다음 부팅이나 <code>sysctl --system</code> 때 읽힙니다. 그때까지 디스크의 파일은 올바르고 돌고 있는 시스템은 그대로입니다 &mdash; 그래서 해당 항목은 점수에서 계속 감점되고, 목록에도 남아 터미널에서는 <code>PEND</code>, 대시보드에서는 <em>적용됨 &mdash; 아직 반영 안 됨</em>으로 표시됩니다.</p>
+            <p>Hostveil이 적용한 수정이 곧 호스트가 본 변경인 것은 아닙니다. Compose 파일은 컨테이너를 다시 만들 때, systemd 드롭인은 유닛을 다시 읽을 때, sysctl 드롭인은 다음 부팅이나 <code>sysctl --system</code> 때 읽힙니다. 그때까지 디스크의 파일은 올바르고 돌고 있는 시스템은 그대로입니다 &mdash; 그래서 해당 항목은 점수에서 계속 감점되고, 목록에도 남아 터미널에서는 <code>PEND</code>, 대시보드에서는 <em>적용됨 &mdash; 아직 반영 안 됨</em>으로 표시됩니다.</p>
             <p><code>fix --all</code>은 몇 개가 기다리고 있는지 알려 주고, 각 수정은 무엇을 실행해야 반영되는지 함께 밝힙니다. 그 명령을 실행하고 다시 스캔하면 숫자가 움직입니다. 점수는 일한 양에 대한 영수증이 아니라 호스트에 대한 진술이고, 그 시점에 호스트는 아직 바뀌지 않았기 때문입니다.</p>
             <p>규칙은 <a href="scoring#limits">점수 산정</a>에, 수정 후 재점검이 무엇을 확인해 주고 무엇은 확인해 주지 못하는지는 <a href="fixing#verify">수정 및 롤백</a>에 있습니다.</p>
 
             <h2 id="declined">롤백이 “외부에서 편집됨”이라고 거부합니다</h2>
-            <p>해당 파일이 hostveil이 기록한 어떤 내용과도 일치하지 않습니다. 즉 수정 적용 이후 누군가 파일을 바꿨다는 뜻입니다. 롤백은 자체 백업을 남기지 않으므로, 복원하면 그 편집분이 되돌릴 수 없게 사라집니다. 그래서 대신 거부합니다.</p>
+            <p>해당 파일이 Hostveil이 기록한 어떤 내용과도 일치하지 않습니다. 즉 수정 적용 이후 누군가 파일을 바꿨다는 뜻입니다. 롤백은 자체 백업을 남기지 않으므로, 복원하면 그 편집분이 되돌릴 수 없게 사라집니다. 그래서 대신 거부합니다.</p>
             <p>그래도 백업을 되돌리려면 <code>hostveil rollback &lt;id&gt; --force</code>를 사용하세요. 다만 <code>--force</code>도 체크섬이 맞지 않는 손상된 백업은 밀어붙이지 <em>않습니다</em>. 손상된 백업 너머에는 올바른 내용이 없기 때문입니다.</p>
 
             <h2 id="empty-history">수정을 적용했는데 “아직 적용된 수정이 없습니다”라고 나옵니다</h2>
-            <p>거의 항상 상태 디렉터리 문제입니다. hostveil은 root로 실행될 때 <code>/var/lib/hostveil</code>에, 그렇지 않으면 <code>~/.local/share/hostveil</code>에 체크포인트를 저장합니다. 따라서 <code>sudo</code>로 적용한 수정은 권한 없이 실행한 <code>hostveil history</code>에서는 보이지 않습니다. <code>sudo</code>로 다시 실행하세요. <code>HOSTVEIL_NO_SUDO=1</code>이 설정되어 있거나 호스트에 <code>sudo</code>가 없을 때 자주 발생합니다.</p>
+            <p>거의 항상 상태 디렉터리 문제입니다. Hostveil은 root로 실행될 때 <code>/var/lib/hostveil</code>에, 그렇지 않으면 <code>~/.local/share/hostveil</code>에 체크포인트를 저장합니다. 따라서 <code>sudo</code>로 적용한 수정은 권한 없이 실행한 <code>hostveil history</code>에서는 보이지 않습니다. <code>sudo</code>로 다시 실행하세요. <code>HOSTVEIL_NO_SUDO=1</code>이 설정되어 있거나 호스트에 <code>sudo</code>가 없을 때 자주 발생합니다.</p>
 
             <h2 id="exit-codes">예약된 스캔이 3으로 종료됩니다</h2>
             <p>탐지 도메인이 완전히 실패해서, 스캔이 호스트를 검사해야 할 범위보다 좁게 검사했다는 뜻입니다. 깨끗해 보이지만 믿을 수 없는 결과입니다. 보통 Docker 소켓에 접근할 수 없는 경우입니다. 의존성이 없어 <em>건너뛴</em> 도메인이나 부분 커버리지로 <em>강등된</em> 도메인은 여기에 해당하지 않습니다. <a href="cli#exit-codes">종료 코드</a>를 참고하세요.</p>
 
             <h2 id="timeouts">검사가 명령이 “응답하지 않았다”고 보고합니다</h2>
-            <p>hostveil은 실행하는 모든 명령에 시간 제한을 둡니다. 연결은 받아들이지만 응답하지 않는 데몬 — 멈춘 Docker가 대표적입니다 — 은 스캔 전체를 멈추는 대신 해당 검사만 실패시킵니다. 영향받은 도메인은 깨끗하다고 점수를 매기지 않고 정직하게 보고됩니다. 메시지에 나온 데몬을 확인하세요. <code>HOSTVEIL_DEBUG=1</code>이 어떤 호출에서 멈췄는지 정확히 보여줍니다.</p>
+            <p>Hostveil은 실행하는 모든 명령에 시간 제한을 둡니다. 연결은 받아들이지만 응답하지 않는 데몬 — 멈춘 Docker가 대표적입니다 — 은 스캔 전체를 멈추는 대신 해당 검사만 실패시킵니다. 영향받은 도메인은 깨끗하다고 점수를 매기지 않고 정직하게 보고됩니다. 메시지에 나온 데몬을 확인하세요. <code>HOSTVEIL_DEBUG=1</code>이 어떤 호출에서 멈췄는지 정확히 보여줍니다.</p>
 
             <h2 id="ssh-fix">SSH 수정이 적용을 거부합니다</h2>
-            <p>파일을 쓰기 전에, hostveil은 만들어질 설정을 <code>sshd -t</code>로 검사합니다. sshd가 거부하면 수정을 포기하고 원본 파일은 그대로 둡니다. 아무것도 쓰지 않았으므로 되돌릴 것도 없습니다. sshd는 이미 로드한 설정으로 계속 동작하기 때문입니다. 깨진 파일은 다음 재시작 전까지 아무 문제 없어 보이다가, 그때 sshd가 시작을 거부하고, 그 파일을 고치려면 방금 사라진 SSH 접근이 필요해집니다.</p>
+            <p>파일을 쓰기 전에, Hostveil은 만들어질 설정을 <code>sshd -t</code>로 검사합니다. sshd가 거부하면 수정을 포기하고 원본 파일은 그대로 둡니다. 아무것도 쓰지 않았으므로 되돌릴 것도 없습니다. sshd는 이미 로드한 설정으로 계속 동작하기 때문입니다. 깨진 파일은 다음 재시작 전까지 아무 문제 없어 보이다가, 그때 sshd가 시작을 거부하고, 그 파일을 고치려면 방금 사라진 SSH 접근이 필요해집니다.</p>
 
             <h2 id="interrupt">Ctrl-C가 듣지 않는 것 같습니다</h2>
             <p>첫 번째 인터럽트는 진행 중인 작업을 취소하고 깔끔하게 마무리합니다. 스캔이 실행 중인 명령을 멈추고, 대시보드의 처리 중인 요청을 마저 끝냅니다. 한 번 더 누르면 즉시 종료합니다. 일괄 수정은 하나의 수정 도중이 아니라 수정과 수정 사이에서 멈추며, 시도하지 못한 개수를 알려줍니다. 이미 적용된 것은 <code>hostveil history</code>에 남습니다.</p>

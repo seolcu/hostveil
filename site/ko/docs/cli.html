@@ -13,8 +13,8 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
     <meta property="og:image:width" content="1500">
     <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
-    <meta property="og:site_name" content="hostveil">
+    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
     <link rel="canonical" href="https://hostveil.seolcu.com/ko/docs/cli">
@@ -60,9 +60,9 @@
 
     <header class="site-header">
       <nav class="nav container" aria-label="주요 내비게이션">
-        <a class="brand" href="../" aria-label="hostveil 홈">
+        <a class="brand" href="../" aria-label="Hostveil 홈">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>hostveil</span>
+          <span>Hostveil</span>
         </a>
         <div class="nav-links">
           <a href="./">문서</a>
@@ -122,13 +122,13 @@
 
         <main class="docs-content" id="main">
           <article class="docs-prose">
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">문서</a> / CLI 레퍼런스</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">문서</a> / CLI 레퍼런스</p>
             <h1>CLI 레퍼런스</h1>
             <p class="lead">모든 하위 명령, 플래그, 기본값입니다. root 소유 파일(SSH, 방화벽)을 읽거나 보호된 경로에 쓰는 명령은 root 권한이 필요하므로, <code>hostveil</code>은 (<code>version</code>/<code>help</code>를 제외하고) <code>sudo</code> 아래에서 자동으로 자신을 다시 실행합니다. 이를 원하지 않으면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요.</p>
 
             <h2>개요</h2>
             <div class="code-block"><pre><code>hostveil &lt;command&gt; [flags]</code></pre></div>
-            <p>대화형 터미널에서 명령 없이 실행하면 hostveil은 <a href="interfaces">TUI</a>를 엽니다. stdin/stdout이 터미널이 아니면 대신 <code>scan</code>을 실행합니다. <code>hostveil version</code>(또는 <code>--version</code>)은 버전을 출력하고, <code>hostveil help</code>(또는 <code>--help</code>)는 사용법을 출력합니다.</p>
+            <p>대화형 터미널에서 명령 없이 실행하면 Hostveil은 <a href="interfaces">TUI</a>를 엽니다. stdin/stdout이 터미널이 아니면 대신 <code>scan</code>을 실행합니다. <code>hostveil version</code>(또는 <code>--version</code>)은 버전을 출력하고, <code>hostveil help</code>(또는 <code>--help</code>)는 사용법을 출력합니다.</p>
 
             <h2 id="scan">scan</h2>
             <p>호스트를 스캔하고 보안 발견 항목을 보고합니다.</p>
@@ -168,17 +168,17 @@
   ]
 }</code></pre></div>
             <p><code>severity</code>는 <code>high</code>, <code>medium</code>, <code>low</code> 중 하나입니다. <code>remediation</code>은 <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code> 중 하나입니다. <code>source</code>는 도메인 이름이며 발견 항목 ID의 접두사와 같습니다. <code>state</code>는 <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> 중 하나입니다 — <code>done</code>이 아닌 도메인은 "아무것도 없다"와 "볼 수 없었다"를 가르는 지점이므로, 결과가 비었다고 깨끗한 호스트로 취급하기 전에 반드시 확인하세요.</p>
-            <p>발견 항목에는 <code>fixed</code>도 실리고, 같은 실행에서 무언가를 적용했다면 <code>pending</code>도 실립니다. <code>fixed</code>는 hostveil이 이 항목에 수정을 적용했다는 뜻이고, <code>pending</code>은 호스트가 그 수정을 아직 읽지 않았다는 뜻입니다. 그래서 이 항목은 점수에서 계속 감점되고 종료 코드에도 그대로 반영됩니다. 위험이 아직 서 있는지 판단하려는 소비자는 <code>fixed</code>만 볼 것이 아니라 <code>fixed &amp;&amp; !pending</code>을 읽어야 합니다. 둘 다 거짓이면 생략되며, 새로 스캔하면 남지 않습니다 &mdash; 스캔은 모든 것을 점검기 결과로 다시 만들기 때문입니다.</p>
+            <p>발견 항목에는 <code>fixed</code>도 실리고, 같은 실행에서 무언가를 적용했다면 <code>pending</code>도 실립니다. <code>fixed</code>는 Hostveil이 이 항목에 수정을 적용했다는 뜻이고, <code>pending</code>은 호스트가 그 수정을 아직 읽지 않았다는 뜻입니다. 그래서 이 항목은 점수에서 계속 감점되고 종료 코드에도 그대로 반영됩니다. 위험이 아직 서 있는지 판단하려는 소비자는 <code>fixed</code>만 볼 것이 아니라 <code>fixed &amp;&amp; !pending</code>을 읽어야 합니다. 둘 다 거짓이면 생략되며, 새로 스캔하면 남지 않습니다 &mdash; 스캔은 모든 것을 점검기 결과로 다시 만들기 때문입니다.</p>
             <div class="callout">
               <span class="callout-label">3.11에서 변경</span>
-              <p>이 필드들은 예전에는 정수였고, 그래서 소비하는 쪽마다 순서표를 따로 들고 있어야 했습니다. hostveil은 정수 형식을 <em>읽기</em>는 계속 하므로 이전 버전이 남긴 스캔 스냅샷은 그대로 살아 있지만, 쓸 때는 이름만 씁니다.</p>
+              <p>이 필드들은 예전에는 정수였고, 그래서 소비하는 쪽마다 순서표를 따로 들고 있어야 했습니다. Hostveil은 정수 형식을 <em>읽기</em>는 계속 하므로 이전 버전이 남긴 스캔 스냅샷은 그대로 살아 있지만, 쓸 때는 이름만 씁니다.</p>
             </div>
 
             <h3 id="sarif-levels">SARIF로 내보낼 때 심각도는 어떻게 되나</h3>
-            <p>SARIF의 등급도 셋이고 hostveil의 심각도도 셋이라 일대일로 대응합니다.</p>
+            <p>SARIF의 등급도 셋이고 Hostveil의 심각도도 셋이라 일대일로 대응합니다.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
+                <thead><tr><th>Hostveil</th><th>SARIF <code>level</code></th><th>GitHub <code>security-severity</code></th></tr></thead>
                 <tbody>
                   <tr><td><code>high</code></td><td><code>error</code></td><td>9.5</td></tr>
                   <tr><td><code>medium</code></td><td><code>warning</code></td><td>5.5</td></tr>
@@ -186,8 +186,8 @@
                 </tbody>
               </table>
             </div>
-            <p>두 번째 숫자는 GitHub code scanning이 정렬과 필터에 쓰는 0에서 10 사이의 척도입니다. 구간이 critical 9.0, high 7.0, medium 4.0에서 시작하므로 <strong>hostveil의 High는 GitHub의 high가 아니라 <em>critical</em> 구간에 뜹니다.</strong></p>
-            <p>이름이 어긋나는 것은 의도한 것입니다. hostveil의 최상위 등급은 아무것도 갖지 않은 사람이 호스트 밖에서 지금 당장 닿을 수 있다는 뜻이고, code scanning에서 오늘 처리하라는 뜻의 구간은 critical입니다. 이름을 이름에 맞췄다면 그 항목들이 다음 스프린트에 볼 구간으로 내려갔을 겁니다.</p>
+            <p>두 번째 숫자는 GitHub code scanning이 정렬과 필터에 쓰는 0에서 10 사이의 척도입니다. 구간이 critical 9.0, high 7.0, medium 4.0에서 시작하므로 <strong>Hostveil의 High는 GitHub의 high가 아니라 <em>critical</em> 구간에 뜹니다.</strong></p>
+            <p>이름이 어긋나는 것은 의도한 것입니다. Hostveil의 최상위 등급은 아무것도 갖지 않은 사람이 호스트 밖에서 지금 당장 닿을 수 있다는 뜻이고, code scanning에서 오늘 처리하라는 뜻의 구간은 critical입니다. 이름을 이름에 맞췄다면 그 항목들이 다음 스프린트에 볼 구간으로 내려갔을 겁니다.</p>
 
             <h2 id="fix">fix</h2>
             <p>발견 항목에 대한 수정을 미리 보고 적용합니다.</p>
@@ -198,7 +198,7 @@ hostveil fix --all [flags]</code></pre></div>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--all</code></td><td><code>false</code></td><td>안전한(자동 수정) 발견 항목을 모두 한 번에 적용합니다.</td></tr>
-                  <tr><td><code>--review</code></td><td><code>false</code></td><td><code>--all</code>과 함께 쓰면 검토(Review) 수정도 각 항목의 첫 번째 대안으로 함께 적용합니다. 목록과 개수는 따로 표시됩니다: 검토 수정은 hostveil이 할 수는 있지만 무인으로는 하지 않는 것들로, 이 호스트에 대한 접근을 끊을 수 있거나 되돌릴 체크포인트가 없는 명령을 실행합니다.</td></tr>
+                  <tr><td><code>--review</code></td><td><code>false</code></td><td><code>--all</code>과 함께 쓰면 검토(Review) 수정도 각 항목의 첫 번째 대안으로 함께 적용합니다. 목록과 개수는 따로 표시됩니다: 검토 수정은 Hostveil이 할 수는 있지만 무인으로는 하지 않는 것들로, 이 호스트에 대한 접근을 끊을 수 있거나 되돌릴 체크포인트가 없는 명령을 실행합니다.</td></tr>
                   <tr><td><code>--action N</code></td><td><code>-1</code></td><td>검토 수정에서 적용할, 0부터 시작하는 대안의 번호입니다.</td></tr>
                   <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>서비스 이름으로 발견 항목을 구분합니다.</td></tr>
                   <tr><td><code>--yes</code></td><td><code>false</code></td><td>대화형 확인 없이 적용합니다.</td></tr>
@@ -229,7 +229,7 @@ hostveil history --scans</code></pre></div>
               <table>
                 <thead><tr><th>플래그</th><th>동작</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--scans</code></td><td>적용된 수정 이력 대신, 보관된 모든 스캔의 점수를 오래된 순으로 보여 주고 직전 스캔 대비 변화를 함께 표시합니다. hostveil은 최근 30개 스캔을 보관합니다. 어떤 영역도 확인하지 못한 스캔은 숫자가 아니라 <code>N/A</code>로 표시되고 변화도 계산하지 않습니다 — 아무도 채점할 수 없었던 실행은 0점으로 떨어진 것이 아니기 때문입니다.</td></tr>
+                  <tr><td><code>--scans</code></td><td>적용된 수정 이력 대신, 보관된 모든 스캔의 점수를 오래된 순으로 보여 주고 직전 스캔 대비 변화를 함께 표시합니다. Hostveil은 최근 30개 스캔을 보관합니다. 어떤 영역도 확인하지 못한 스캔은 숫자가 아니라 <code>N/A</code>로 표시되고 변화도 계산하지 않습니다 — 아무도 채점할 수 없었던 실행은 0점으로 떨어진 것이 아니기 때문입니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -267,7 +267,7 @@ hostveil history --scans</code></pre></div>
               </table>
             </div>
             <p>이 명령은 일회용 접근 토큰이 포함된 URL을 출력합니다 — 주소만 입력하지 말고 그 URL을 그대로 여세요. loopback은 운영자와 다른 로컬 계정을 구분해 주지 않고 대시보드는 root로 실행되므로, 모든 경로가 토큰을 요구합니다.</p>
-            <p>대시보드는 localhost로 향한 요청에만 응답하므로 <code>--addr</code>로는 네트워크에 공개할 수 없습니다 — 루프백이 아닌 주소로 바인딩하면 이 머신을 IP나 호스트 이름으로 찾아온 요청은 거부하며, hostveil이 이를 알려 줍니다. 포트 포워딩으로 접근하면 그대로 동작합니다 — 브라우저는 어느 쪽이든 localhost로 요청하기 때문입니다. 원격 접근에는 <code>ssh -L 8787:127.0.0.1:8787 you@server</code>를 쓰세요.</p>
+            <p>대시보드는 localhost로 향한 요청에만 응답하므로 <code>--addr</code>로는 네트워크에 공개할 수 없습니다 — 루프백이 아닌 주소로 바인딩하면 이 머신을 IP나 호스트 이름으로 찾아온 요청은 거부하며, Hostveil이 이를 알려 줍니다. 포트 포워딩으로 접근하면 그대로 동작합니다 — 브라우저는 어느 쪽이든 localhost로 요청하기 때문입니다. 원격 접근에는 <code>ssh -L 8787:127.0.0.1:8787 you@server</code>를 쓰세요.</p>
 
             <h2 id="tui">tui</h2>
             <p>대화형 터미널 UI를 엽니다(터미널에서 명령 없이 실행할 때의 기본값이기도 합니다).</p>
@@ -298,7 +298,7 @@ hostveil history --scans</code></pre></div>
             </div>
 
             <h2 id="update">update</h2>
-            <p>hostveil을 최신 릴리스로 업데이트합니다.</p>
+            <p>Hostveil을 최신 릴리스로 업데이트합니다.</p>
             <div class="code-block"><pre><code>hostveil update
 hostveil update --check</code></pre></div>
             <p>이 바이너리가 어떻게 설치됐는지 확인해 같은 방식으로 업데이트합니다. 호스트에 무엇이 있는지를 두고 서로 다른 말을 하는 도구가 생기지 않도록 하기 위해서입니다.</p>
@@ -326,15 +326,15 @@ hostveil update --check</code></pre></div>
             </div>
 
             <h3 id="update-check">하루 한 번 확인</h3>
-            <p>스캔, 대시보드, TUI는 각각 하루에 한 번 GitHub에 새 릴리스가 있는지 묻고, 있으면 한 줄로 알립니다. 요청은 백그라운드에서 돌기 때문에 아무것도 그것을 기다리지 않으며, 실패해도 아무 말을 하지 않습니다. 프록시 뒤에 있는 호스트는 hostveil이 보고할 문제를 가진 호스트가 아닙니다.</p>
+            <p>스캔, 대시보드, TUI는 각각 하루에 한 번 GitHub에 새 릴리스가 있는지 묻고, 있으면 한 줄로 알립니다. 요청은 백그라운드에서 돌기 때문에 아무것도 그것을 기다리지 않으며, 실패해도 아무 말을 하지 않습니다. 프록시 뒤에 있는 호스트는 Hostveil이 보고할 문제를 가진 호스트가 아닙니다.</p>
             <p>이 줄은 <code>--json</code>, SARIF, <code>--output</code>으로 파일에 쓴 보고서에는 절대 실리지 않습니다. 그것들은 기계가, 나중에 읽습니다.</p>
-            <p>hostveil은 스스로 무언가를 설치하지 않습니다. <code>HOSTVEIL_NO_UPDATE_CHECK=1</code>을 설정하면 <code>hostveil update</code>를 직접 실행할 때를 빼고는 GitHub에 연결하지 않습니다.</p>
+            <p>Hostveil은 스스로 무언가를 설치하지 않습니다. <code>HOSTVEIL_NO_UPDATE_CHECK=1</code>을 설정하면 <code>hostveil update</code>를 직접 실행할 때를 빼고는 GitHub에 연결하지 않습니다.</p>
 
             <h2 id="uninstall">uninstall</h2>
-            <p>설치할 때 쓴 도구로 hostveil을 제거합니다.</p>
+            <p>설치할 때 쓴 도구로 Hostveil을 제거합니다.</p>
             <div class="code-block"><pre><code>hostveil uninstall</code></pre></div>
             <p>패키지로 설치했다면 <code>apt-get remove</code>나 <code>dnf remove</code>로 제거하고, 그 외에는 바이너리를 지웁니다.</p>
-            <p><strong>저장된 스캔 기록과 롤백 체크포인트는 건드리지 않으며</strong>, 묻기 전에 그 위치를 먼저 알려 줍니다. 그 체크포인트는 이 호스트에서 hostveil이 고친 모든 파일의 백업이라, 프로그램을 지운다는 것이 그 작업을 되돌릴 능력까지 버릴 이유는 되지 않습니다. 확신이 서면 직접 지우세요.</p>
+            <p><strong>저장된 스캔 기록과 롤백 체크포인트는 건드리지 않으며</strong>, 묻기 전에 그 위치를 먼저 알려 줍니다. 그 체크포인트는 이 호스트에서 Hostveil이 고친 모든 파일의 백업이라, 프로그램을 지운다는 것이 그 작업을 되돌릴 능력까지 버릴 이유는 되지 않습니다. 확신이 서면 직접 지우세요.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>하는 일</th></tr></thead>
@@ -357,7 +357,7 @@ hostveil update --check</code></pre></div>
     <footer class="site-footer">
       <div class="container footer-grid">
         <div>
-          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>hostveil</span></a>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
           <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
         </div>
         <nav aria-label="푸터 링크">

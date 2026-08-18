@@ -1458,7 +1458,7 @@ func (m *appModel) previewRows() []string {
 		// half leaves the operator to infer the safe half from its absence.
 		out = append(out, "")
 		out = append(out, indentRows([]string{s.safe.Render(
-			m.gl.Of(glyph.OK) + " hostveil backs the file up before writing, and h undoes this.")}, bodyInset)...)
+			m.gl.Of(glyph.OK) + " Hostveil backs the file up before writing, and h undoes this.")}, bodyInset)...)
 	case "exec":
 		out = append(out, indentRows([]string{s.dim.Render("These commands will run:")}, bodyInset)...)
 		for _, cmd := range a.Commands {
@@ -1720,7 +1720,7 @@ func (m *appModel) forceRows() []string {
 		m.proseWidth(bodyInset), bodyInset)...)
 	out = append(out, "")
 	out = append(out, m.wrapRows(s.bone,
-		"Forcing the rollback restores hostveil's backup over the current file, discarding those changes. "+
+		"Forcing the rollback restores Hostveil's backup over the current file, discarding those changes. "+
 			"Rollback writes no checkpoint of its own, so this cannot be undone.",
 		m.proseWidth(bodyInset), bodyInset)...)
 	if len(m.checkpoints) > 0 {

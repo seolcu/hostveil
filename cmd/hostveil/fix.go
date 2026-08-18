@@ -154,7 +154,7 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	}
 	if len(auto)+len(reviewed) == 0 {
 		if review {
-			fmt.Println("Nothing hostveil can fix. Manual findings are explained by `hostveil explain <id>`.")
+			fmt.Println("Nothing Hostveil can fix. Manual findings are explained by `hostveil explain <id>`.")
 		} else {
 			fmt.Println("No auto-fixable findings. Nothing to do.")
 		}

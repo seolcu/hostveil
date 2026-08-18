@@ -245,7 +245,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	case errors.Is(err, errNoSudo):
 		cov.Covered(1)
 	case errors.Is(err, errNotRoot):
-		cov.Missed(1, "sudo will not report another account's privileges unless hostveil is root — "+
+		cov.Missed(1, "sudo will not report another account's privileges unless Hostveil is root — "+
 			"did not check whether any account can become root without a password; re-run with sudo")
 	default:
 		cov.Covered(1)

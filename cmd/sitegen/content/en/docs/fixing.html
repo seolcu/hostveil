@@ -1,6 +1,6 @@
-            <p class="docs-breadcrumb"><a href="../">hostveil</a> / <a href="./">Docs</a> / Fixing &amp; rollback</p>
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Fixing &amp; rollback</p>
             <h1>Fixing &amp; rollback</h1>
-            <p class="lead">hostveil never mutates blindly. Every fix is classified by how safely it can be automated, always shows the exact change first, backs up the original to a checkpoint, and can be undone with one command.</p>
+            <p class="lead">Hostveil never mutates blindly. Every fix is classified by how safely it can be automated, always shows the exact change first, backs up the original to a checkpoint, and can be undone with one command.</p>
 
             <h2>How a finding is classified</h2>
             <p>Each finding is tagged with a remediation kind that decides how much automation is appropriate:</p>
@@ -10,7 +10,7 @@
                 <tbody>
                   <tr><td><strong>Auto-fix</strong></td><td>One clearly-correct change. You still see it before it applies.</td><td>Yes</td></tr>
                   <tr><td><strong>Review</strong></td><td>Several valid alternatives; you choose which one to apply.</td><td>Yes</td></tr>
-                  <tr><td><strong>Manual</strong></td><td>No safe automation — hostveil explains what to do instead.</td><td>No</td></tr>
+                  <tr><td><strong>Manual</strong></td><td>No safe automation — Hostveil explains what to do instead.</td><td>No</td></tr>
                   <tr><td><strong>Unavailable</strong></td><td>Known issue with no fix yet (e.g. a CVE with no patch).</td><td>No</td></tr>
                 </tbody>
               </table>
@@ -19,23 +19,23 @@
 
             <h3 id="auto-standard">What an Auto-fix has to be</h3>
             <p>Auto-fix is the only kind <code>fix --all</code> applies unless you add <code>--review</code>, so the bar is what makes a change defensible when nobody has looked at it first. Three things have to hold at once.</p>
-            <p><strong>Reversible.</strong> The action has to leave something a rollback can restore: an edit stores the original bytes, a permission change stores the original mode. A fix that runs a command has nothing to store — <code>hostveil history</code> records that it ran and marks the entry <em>not reversible</em> — so a fix that runs a command is never Auto-fix, and hostveil applies that floor to the fix itself rather than trusting each check to declare it. <code>updates.disabled</code> is the shape the floor exists for: its whole remediation is a single action — install <code>unattended-upgrades</code>, enable the service — which is all &ldquo;Auto-shaped&rdquo; means, and it is still a command, so you get Review. <code>fileperms.shadow</code> and <code>fileperms.owner</code> are the same criterion landing on opposite sides: tightening <code>/etc/shadow</code>&rsquo;s mode is Auto-fix because a checkpoint records the old mode, and <code>chown root:root</code> is Manual because a checkpoint has nowhere to record the old <em>owner</em>.</p>
+            <p><strong>Reversible.</strong> The action has to leave something a rollback can restore: an edit stores the original bytes, a permission change stores the original mode. A fix that runs a command has nothing to store — <code>hostveil history</code> records that it ran and marks the entry <em>not reversible</em> — so a fix that runs a command is never Auto-fix, and Hostveil applies that floor to the fix itself rather than trusting each check to declare it. <code>updates.disabled</code> is the shape the floor exists for: its whole remediation is a single action — install <code>unattended-upgrades</code>, enable the service — which is all &ldquo;Auto-shaped&rdquo; means, and it is still a command, so you get Review. <code>fileperms.shadow</code> and <code>fileperms.owner</code> are the same criterion landing on opposite sides: tightening <code>/etc/shadow</code>&rsquo;s mode is Auto-fix because a checkpoint records the old mode, and <code>chown root:root</code> is Manual because a checkpoint has nowhere to record the old <em>owner</em>.</p>
             <p><strong>Recoverable in practice, not just on disk.</strong> If the change is wrong, you have to still be able to reach the machine to undo it. Anything that can cut off your own access fails this even when the edit reverts perfectly. That is why several SSH findings are Review despite being a one-line change to <code>sshd_config</code>. <code>ssh.passwordauth</code> writes <code>PasswordAuthentication no</code>, which is byte-for-byte reversible and no help at all if key-based login was not already working, because rolling it back needs the session it just ended. <code>ssh.gatewayports</code>, <code>ssh.hostbasedauth</code> and <code>ssh.kbdinteractive</code> each close a route that may be the one you are on. <code>firewall.inactive</code> is the same objection taken far enough to leave the finding Manual: a default-deny policy takes effect immediately, on every connection no rule already allows, and a command leaves no checkpoint to undo it with.</p>
-            <p><strong>Unambiguous.</strong> There has to be exactly one correct value, and applying it must not break a legitimate configuration. The kernel-hardening findings all fail this and are all Review: writing a <code>sysctl.d</code> drop-in is one mechanical, reversible edit, but <code>rp_filter</code> is <code>1</code> on a single-homed server and <code>2</code> on a VPN or multi-homed one, and you are the one who knows which host this is. hostveil still writes the value — after you have looked at it. What passes looks like <code>fileperms.shadow</code>, whose fix only ever <em>removes</em> permission bits — <code>0604</code> becomes <code>0600</code>, never <code>0640</code>, so it cannot grant access the file did not have — or <code>agent.config-perms</code>, where the mode it sets is the one the runtime&rsquo;s own hardening guide ships.</p>
+            <p><strong>Unambiguous.</strong> There has to be exactly one correct value, and applying it must not break a legitimate configuration. The kernel-hardening findings all fail this and are all Review: writing a <code>sysctl.d</code> drop-in is one mechanical, reversible edit, but <code>rp_filter</code> is <code>1</code> on a single-homed server and <code>2</code> on a VPN or multi-homed one, and you are the one who knows which host this is. Hostveil still writes the value — after you have looked at it. What passes looks like <code>fileperms.shadow</code>, whose fix only ever <em>removes</em> permission bits — <code>0604</code> becomes <code>0600</code>, never <code>0640</code>, so it cannot grant access the file did not have — or <code>agent.config-perms</code>, where the mode it sets is the one the runtime&rsquo;s own hardening guide ships.</p>
 
             <h4>Why a failing criterion sometimes means Manual instead of Review</h4>
-            <p>Failing one of the three makes a finding Review <em>when there are two or more independent alternatives to choose between</em>. Review is a choice, not a warning: hostveil shows you the options and you pick one. Where the only mechanical remediation is a single action, there is nothing to choose between, and the finding is Manual instead.</p>
+            <p>Failing one of the three makes a finding Review <em>when there are two or more independent alternatives to choose between</em>. Review is a choice, not a warning: Hostveil shows you the options and you pick one. Where the only mechanical remediation is a single action, there is nothing to choose between, and the finding is Manual instead.</p>
             <p>The kernel findings have a genuine pair — write the drop-in, which survives a reboot, or <code>sysctl -w</code>, which takes effect now and does not — so they are Review. <code>compose.ds017</code> does not: adding <code>:ro</code> is the one mechanical remediation and it breaks any service that legitimately writes to the mount, and the alternative the finding names, mounting a narrower subdirectory, needs to know which paths the service touches. One option and no way to make it safe is Manual.</p>
-            <p>Every Manual finding carries one sentence saying what stopped the fix, next to the finding itself — in <code>hostveil explain</code>, in the terminal&rsquo;s detail pane, and in the dashboard. The reasons on <a href="checks">What it checks</a> are not a policy hostveil applies to your host; they are a decision someone made about each finding, and you should be able to read it where you meet it.</p>
+            <p>Every Manual finding carries one sentence saying what stopped the fix, next to the finding itself — in <code>hostveil explain</code>, in the terminal&rsquo;s detail pane, and in the dashboard. The reasons on <a href="checks">What it checks</a> are not a policy Hostveil applies to your host; they are a decision someone made about each finding, and you should be able to read it where you meet it.</p>
 
             <h3 id="kind-decided">How the kind is decided</h3>
             <p>Two sources settle the kind on your scan output, and the more cautious of the two wins.</p>
             <p><strong>The fix registry decides whether a fix exists at all.</strong> A finding whose check asked for a fix but has none registered is shown as <strong>Manual</strong>, so a fix button never leads nowhere. (A finding the check marked <strong>Unavailable</strong> — <code>cve.unpatched-image</code>, vulnerabilities nobody has published a fix for — stays Unavailable.) <code>compose.ds016</code>, the Docker socket mounted into a container, is the clearest case: the compose check asks for a fix and the registry declines to offer one, because the only honest remediation deletes the mount and breaks Portainer, Traefik and Watchtower.</p>
-            <p><strong>The check decides how much judgement applying it needs.</strong> A fix registered as Auto-fix is a statement about its shape — one mechanical action — not a claim that resolving the finding is safe to do unattended, and it cannot talk a check down. Where the check asked for Review, you get Review. <code>ssh.passwordauth</code> is where you can watch this happen: its fix is a single edit setting a single directive, which is the shape hostveil registers as Auto-fix, and the SSH check asks for Review because of what disabling password login can do to your own access. You are shown <strong>Review</strong>, and <code>fix --all</code> leaves it alone.</p>
+            <p><strong>The check decides how much judgement applying it needs.</strong> A fix registered as Auto-fix is a statement about its shape — one mechanical action — not a claim that resolving the finding is safe to do unattended, and it cannot talk a check down. Where the check asked for Review, you get Review. <code>ssh.passwordauth</code> is where you can watch this happen: its fix is a single edit setting a single directive, which is the shape Hostveil registers as Auto-fix, and the SSH check asks for Review because of what disabling password login can do to your own access. You are shown <strong>Review</strong>, and <code>fix --all</code> leaves it alone.</p>
             <p>The rule runs in both directions: a check that says Manual is not overruled by a fix that happens to match the finding ID. <code>compose.ds018</code> shows it — a datastore published on all interfaces is <strong>Auto-fix</strong> when it comes from a Compose service, because there is a file to edit, and <strong>Manual</strong> for the same rule on a container started with <code>docker run</code>, because there is not. Only the check knows which it is looking at. <code>accounts.uid0</code> and every <code>dockerd.</code> finding are Manual the same way — declared so by the check that found them, not by an absent fix.</p>
             <p>Preview, <code>fix</code>, the TUI and the dashboard all resolve the kind through the same code, so the kind you read in a report is the one that decides what <code>fix --all</code> will touch.</p>
             <h4>The procedure, in four steps</h4>
-            <p>You can work out any finding's kind yourself. hostveil applies these in order:</p>
+            <p>You can work out any finding's kind yourself. Hostveil applies these in order:</p>
             <ol>
               <li>The check declares how much judgement it thinks the finding needs.</li>
               <li>Is a fix registered for this ID, and does it build for <em>this</em> finding? If not, the answer is <strong>Manual</strong>, and nothing below can change that.</li>
@@ -45,7 +45,7 @@
             <p>Step 3 is why a fix cannot be Review with only one option: there would be nothing to choose between, and a warning attached to a single action is not a choice. That is the rule the section above turns into Manual.</p>
             <div class="callout">
               <span class="callout-label">Review is not a weaker fix</span>
-              <p>A Review finding is one hostveil can fix completely — it will not do so while you are not looking. Applying one takes the same command plus the alternative you want, which is the next section.</p>
+              <p>A Review finding is one Hostveil can fix completely — it will not do so while you are not looking. Applying one takes the same command plus the alternative you want, which is the next section.</p>
             </div>
 
             <h2 id="verify">Applying a fix</h2>
@@ -55,7 +55,7 @@
               <pre><code>hostveil fix ssh.rootlogin</code></pre>
             </div>
             <p>Applying always: <strong>1)</strong> shows the exact diff or command, <strong>2)</strong> backs up the original file to a checkpoint, <strong>3)</strong> applies the change, then <strong>4)</strong> re-runs that finding's own domain to see whether it is actually gone. You confirm at a <code>[y/N]</code> prompt unless you pass <code>--yes</code>.</p>
-            <p>That last step exists because <em>"hostveil wrote the file"</em> and <em>"the finding is gone"</em> are different claims, and only the first used to be established. The result is reported, never guessed at:</p>
+            <p>That last step exists because <em>"Hostveil wrote the file"</em> and <em>"the finding is gone"</em> are different claims, and only the first used to be established. The result is reported, never guessed at:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Result</th><th>What it means</th></tr></thead>
@@ -68,7 +68,7 @@
                 </tbody>
               </table>
             </div>
-            <p>The middle two rows are worth telling apart. <em>Still reported</em> means the checker can see the old state; <em>not in force yet</em> means it cannot, because the checker reads the file the fix just wrote. The second is the more dangerous one to get wrong, so hostveil reports it separately rather than calling the finding gone over a host nothing has changed about.</p>
+            <p>The middle two rows are worth telling apart. <em>Still reported</em> means the checker can see the old state; <em>not in force yet</em> means it cannot, because the checker reads the file the fix just wrote. The second is the more dangerous one to get wrong, so Hostveil reports it separately rather than calling the finding gone over a host nothing has changed about.</p>
             <p>Verification does <em>not</em> change whether the finding is marked fixed. What it can change is the <strong>score</strong>: a fix that is not in force has changed nothing an attacker can see, so the finding stays charged until it is. That does not depend on the re-check &mdash; a fix that needs a restart declares so itself, which is how <code>fix --all</code> reaches the same answer without re-checking anything, and reports how many of the fixes it applied are still waiting.</p>
             <p><code>fix --all</code> skips the per-fix re-check for a different reason: running a checker after each of twenty fixes would run it twenty times, and a batch ends with a rescan anyway.</p>
             <p>The names in <code>--json</code> are the ones in the second column.</p>
@@ -98,7 +98,7 @@
             </div>
 
             <h3 id="retention">How long a checkpoint is kept</h3>
-            <p>hostveil keeps the most recent <strong>200</strong> checkpoints, and never discards one written in the last <strong>hour</strong> however many arrive at once.</p>
+            <p>Hostveil keeps the most recent <strong>200</strong> checkpoints, and never discards one written in the last <strong>hour</strong> however many arrive at once.</p>
             <p>The second rule is the one that matters. Pruning runs on every save, so a count cap on its own would let a single large <code>fix --all</code> delete its own earliest checkpoints: on a host with a hundred Compose services, the fixes applied first would stop being rollbackable the moment they were applied. The hour covers any one run plus the time it takes to notice the host misbehaving and reach for <code>rollback</code>.</p>
             <p>Scan snapshots are pruned far more aggressively, because losing one loses a trend line rather than the ability to undo something.</p>
 
@@ -112,7 +112,7 @@
             <p>The dashboard asks the same question in a confirmation dialog rather than a flag. Fixing the same file twice is <em>not</em> treated as an external edit, so <code>fix --all</code> over one Compose file leaves every one of its checkpoints rollback-able.</p>
 
             <h3>Fixes that leave nothing to restore</h3>
-            <p>A fix that runs a command — pulling a new image, restarting a service — has no file to back up, so it gets a history record but no restore point. hostveil says so in the preview, before you apply it, and <code>history</code> marks the entry <em>not reversible</em>. Undoing one is a manual job.</p>
+            <p>A fix that runs a command — pulling a new image, restarting a service — has no file to back up, so it gets a history record but no restore point. Hostveil says so in the preview, before you apply it, and <code>history</code> marks the entry <em>not reversible</em>. Undoing one is a manual job.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="measurements">← Measured results</a>
