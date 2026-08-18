@@ -5,13 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
+
+const maxOllamaResponse = 256 << 10
 
 // Ollama is an Explainer backed by a local Ollama server. It keeps all
 // data on the host by default.
@@ -41,7 +45,11 @@ func NewOllama() *Ollama {
 func (o *Ollama) Available(ctx context.Context) bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.Host+"/api/version", nil)
+	endpoint, err := o.endpoint("/api/version")
+	if err != nil {
+		return false
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return false
 	}
@@ -69,7 +77,11 @@ func (o *Ollama) Explain(ctx context.Context, f model.Finding) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.Host+"/api/generate", bytes.NewReader(body))
+	endpoint, err := o.endpoint("/api/generate")
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -84,10 +96,32 @@ func (o *Ollama) Explain(ctx context.Context, f model.Finding) (string, error) {
 		return "", fmt.Errorf("ollama returned %s (is the model %q pulled?)", resp.Status, o.Model)
 	}
 	var gr generateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&gr); err != nil {
+	limited := io.LimitReader(resp.Body, maxOllamaResponse+1)
+	decoder := json.NewDecoder(limited)
+	if err := decoder.Decode(&gr); err != nil {
 		return "", err
 	}
-	return gr.Response, nil
+	if decoder.InputOffset() > maxOllamaResponse {
+		return "", fmt.Errorf("ollama response exceeds %d bytes", maxOllamaResponse)
+	}
+	return limitWords(gr.Response, 120), nil
+}
+
+func (o *Ollama) endpoint(path string) (string, error) {
+	u, err := url.Parse(o.Host)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return "", fmt.Errorf("invalid Ollama host %q: expected an http(s) origin without credentials, query, or fragment", o.Host)
+	}
+	u.Path = strings.TrimRight(u.Path, "/") + path
+	return u.String(), nil
+}
+
+func limitWords(s string, max int) string {
+	words := strings.Fields(s)
+	if len(words) <= max {
+		return s
+	}
+	return strings.Join(words[:max], " ") + "…"
 }
 
 func envOr(key, def string) string {

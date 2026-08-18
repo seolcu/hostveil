@@ -30,6 +30,19 @@ rollback checkpoints are left alone.
 EOF
 }
 
+package_owner() {
+  local path=$1
+  if command -v dpkg >/dev/null 2>&1 && dpkg -S "$path" 2>/dev/null | grep -q '^hostveil:'; then
+    echo "the hostveil .deb package"
+    return 0
+  fi
+  if command -v rpm >/dev/null 2>&1 && rpm -qf "$path" 2>/dev/null | grep -q '^hostveil-'; then
+    echo "the hostveil RPM package"
+    return 0
+  fi
+  return 1
+}
+
 # uninstall removes what this script installed, and nothing else.
 #
 # It deliberately does not delete the state directory. That is where the
@@ -45,6 +58,11 @@ uninstall() {
   local removed=false
 
   if [[ -e /usr/bin/hostveil ]]; then
+    if owner=$(package_owner /usr/bin/hostveil); then
+      echo "ERROR: /usr/bin/hostveil is owned by ${owner}; the install script will not bypass its package database." >&2
+      echo "  Use: hostveil uninstall --yes" >&2
+      return 1
+    fi
     "${SUDO[@]}" rm -f /usr/bin/hostveil
     echo "  ✓ removed /usr/bin/hostveil"
     removed=true
@@ -136,6 +154,10 @@ if [[ "$VERSION_EXPLICIT" == true && -z "$VERSION" ]]; then
   echo "ERROR: --version requires a non-empty version (e.g. v2.6.0)" >&2
   exit 1
 fi
+if [[ "$VERSION_EXPLICIT" == true && ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "ERROR: --version must be a release version such as v3.21.0" >&2
+  exit 1
+fi
 
 # ─── OS / ARCH ────────────────────────────────────────────────────────────
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -196,12 +218,12 @@ require_sha256() {
 
 install_packages() {
   case "$PM" in
-    apt) apt install -y "$@" ;;
-    dnf) dnf install -y "$@" ;;
-    yum) yum install -y "$@" ;;
-    pacman) pacman -S --noconfirm "$@" ;;
-    apk) apk add "$@" ;;
-    zypper) zypper install -y "$@" ;;
+    apt) "${SUDO[@]}" apt install -y "$@" ;;
+    dnf) "${SUDO[@]}" dnf install -y "$@" ;;
+    yum) "${SUDO[@]}" yum install -y "$@" ;;
+    pacman) "${SUDO[@]}" pacman -S --noconfirm "$@" ;;
+    apk) "${SUDO[@]}" apk add "$@" ;;
+    zypper) "${SUDO[@]}" zypper install -y "$@" ;;
     brew) brew install "$@" ;;
     *)
       echo "  • $1: no package manager found, skipping (install manually)"
@@ -305,12 +327,12 @@ install_tool() {
         return 1
       fi
 
-      tar xzf "${TRIVY_DIR}/${TRIVY_TAR}" -C "$TRIVY_DIR" || {
+      tar xzf "${TRIVY_DIR}/${TRIVY_TAR}" -C "$TRIVY_DIR" -- trivy || {
         echo "  ERROR: trivy extraction failed" >&2
         return 1
       }
-      TRIVY_BIN=$(find "$TRIVY_DIR" -name 'trivy' -type f 2>/dev/null | head -1)
-      if [[ -n "$TRIVY_BIN" ]]; then
+      TRIVY_BIN="${TRIVY_DIR}/trivy"
+      if [[ -f "$TRIVY_BIN" && ! -L "$TRIVY_BIN" ]]; then
         "${SUDO[@]}" install -m 755 "$TRIVY_BIN" /usr/bin/trivy
       else
         echo "  ERROR: trivy binary not found after extraction" >&2
@@ -333,6 +355,16 @@ if [[ -z "$VERSION" ]]; then
     echo "  Try again later or specify a version with --version vX.Y.Z" >&2
     exit 1
   fi
+fi
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "  ERROR: GitHub returned an invalid release version: ${VERSION}" >&2
+  exit 1
+fi
+
+if [[ -e /usr/bin/hostveil ]] && owner=$(package_owner /usr/bin/hostveil); then
+  echo "  ERROR: /usr/bin/hostveil is owned by ${owner}." >&2
+  echo "  Run 'hostveil update' so the package manager remains authoritative." >&2
+  exit 1
 fi
 
 echo "  • hostveil: downloading v${VERSION}..."
@@ -395,21 +427,35 @@ else
   echo "      gh attestation verify ${TAR} --repo ${REPO}"
 fi
 
-tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" || {
+tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" -- hostveil || {
   echo "  ERROR: extraction failed" >&2
   exit 1
 }
-"${SUDO[@]}" install -m 755 "${TMPDIR}/hostveil" /usr/bin/hostveil || {
+if [[ ! -f "${TMPDIR}/hostveil" || -L "${TMPDIR}/hostveil" ]]; then
+  echo "  ERROR: archive entry 'hostveil' is not a regular file" >&2
+  exit 1
+fi
+INSTALL_TMP="/usr/bin/.hostveil-install-${RANDOM}-$$"
+"${SUDO[@]}" install -m 755 "${TMPDIR}/hostveil" "$INSTALL_TMP" || {
   echo "  ERROR: install failed" >&2
   exit 1
 }
+if ! "${SUDO[@]}" mv -f "$INSTALL_TMP" /usr/bin/hostveil; then
+  "${SUDO[@]}" rm -f "$INSTALL_TMP" || true
+  echo "  ERROR: atomic install failed" >&2
+  exit 1
+fi
 
-if ! hostveil --version >/dev/null 2>&1; then
+if ! INSTALLED=$(/usr/bin/hostveil --version 2>/dev/null); then
   echo "  ERROR: hostveil installed but --version check failed" >&2
+  exit 1
+fi
+if [[ "${INSTALLED##* }" != "v${VERSION}" ]]; then
+  echo "  ERROR: /usr/bin/hostveil reports '${INSTALLED}', expected v${VERSION}" >&2
   exit 1
 fi
 
 echo ""
-echo "  hostveil v${VERSION} installed ($(hostveil --version))."
+echo "  hostveil v${VERSION} installed (${INSTALLED})."
 echo "  Run: hostveil"
 echo "  Upgrade later by re-running this script; uninstall with: install.sh --uninstall"

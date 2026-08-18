@@ -1,6 +1,9 @@
 package selfupdate
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -187,6 +190,59 @@ func TestDownloadRefusesAnArchiveThatDoesNotMatch(t *testing.T) {
 			t.Fatalf("an unlisted asset was accepted: %v", err)
 		}
 	})
+
+	t.Run("malformed checksum", func(t *testing.T) {
+		c := stubClient{body: map[string]string{
+			rel.Sums: "abcd  a.tar.gz\n",
+			rel.URL:  good,
+		}}
+		if _, err := Download(context.Background(), c, rel); err == nil {
+			t.Fatal("a short checksum was accepted")
+		}
+	})
+
+	t.Run("duplicate checksum", func(t *testing.T) {
+		line := hex.EncodeToString(sum[:]) + "  a.tar.gz\n"
+		c := stubClient{body: map[string]string{rel.Sums: line + line, rel.URL: good}}
+		if _, err := Download(context.Background(), c, rel); err == nil {
+			t.Fatal("duplicate checksum entries were accepted")
+		}
+	})
+}
+
+func TestBinaryFromArchiveRejectsUnsafeShapes(t *testing.T) {
+	archive := func(entries []tar.Header) []byte {
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gz)
+		for i := range entries {
+			h := entries[i]
+			if h.Size == 0 && h.Typeflag == tar.TypeReg {
+				h.Size = 1
+			}
+			if err := tw.WriteHeader(&h); err != nil {
+				t.Fatal(err)
+			}
+			if h.Typeflag == tar.TypeReg {
+				_, _ = tw.Write([]byte("x"))
+			}
+		}
+		_ = tw.Close()
+		_ = gz.Close()
+		return buf.Bytes()
+	}
+
+	for name, entries := range map[string][]tar.Header{
+		"nested":    {{Name: "bin/hostveil", Typeflag: tar.TypeReg}},
+		"symlink":   {{Name: "hostveil", Typeflag: tar.TypeSymlink, Linkname: "/tmp/evil"}},
+		"duplicate": {{Name: "hostveil", Typeflag: tar.TypeReg}, {Name: "hostveil", Typeflag: tar.TypeReg}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := BinaryFromArchive(archive(entries)); err == nil {
+				t.Fatalf("%s archive was accepted", name)
+			}
+		})
+	}
 }
 
 // gh missing is a note; gh saying no is a refusal. The asymmetry is the point:

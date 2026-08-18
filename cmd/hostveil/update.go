@@ -122,7 +122,9 @@ func runUpdate(ctx context.Context, r platform.CommandRunner, o selfupdate.Origi
 		if asset, err = selfupdate.PackageAsset(o, rel.Version); err != nil {
 			return err
 		}
-		rel = rel.WithAsset(asset)
+		if rel, err = rel.WithAsset(asset); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("  · downloading %s\n", asset)

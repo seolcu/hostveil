@@ -316,6 +316,9 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 		opts := []model.FindingOption{
 			model.WithDescription(r.Desc),
 			model.WithEvidence("value", evidenceFor(r.Keys, vals)),
+			// Name the file the default persistent action may create so
+			// rollback measurements can record its absence before fixing.
+			model.WithEvidence("fix-target", "/etc/sysctl.d/60-hostveil-"+strings.TrimPrefix(r.ID, "sysctl.")+".conf"),
 			// The machine-readable form of the same recommendation, so the
 			// fix registry can build an action from the finding alone — a
 			// fix never sees the Rule it came from.
@@ -329,6 +332,7 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 			// /etc/sysctl.conf — it is read before it and loses silently.
 			opts = append(opts,
 				model.WithEvidence("set-by", origin.String()),
+				model.WithEvidence("fix-origin", origin.Path),
 				model.WithHowToFix(fmt.Sprintf(
 					"`%s` sets this value and is read after anything in /etc/sysctl.d, so a new drop-in there would not take effect. Change that line to `%s`, then run `sysctl --system` to apply it without a reboot.",
 					origin, r.Want)))

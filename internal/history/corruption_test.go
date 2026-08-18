@@ -176,6 +176,28 @@ func TestHealthyStoreReportsNoDamage(t *testing.T) {
 	}
 }
 
+func TestGetRejectsCheckpointAndBlobPathTraversal(t *testing.T) {
+	s, _, cp := savedCheckpoint(t)
+	for _, id := range []string{"../outside", "a/b", ""} {
+		if _, err := s.Get(id); err == nil {
+			t.Errorf("Get accepted checkpoint id %q", id)
+		}
+	}
+
+	cp.Files[0].Blob = "../outside"
+	data, err := json.Marshal(cp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta := filepath.Join(s.checkpointsDir(), cp.ID, "meta.json")
+	if err := os.WriteFile(meta, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Get(cp.ID); err == nil {
+		t.Fatal("Get accepted a blob path outside the checkpoint")
+	}
+}
+
 // Every new checkpoint carries a blob hash. Without this the guard above is
 // dead code on real data.
 func TestSaveRecordsTheBackupHash(t *testing.T) {

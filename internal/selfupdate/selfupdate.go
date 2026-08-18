@@ -139,8 +139,11 @@ func ctxErr(ctx context.Context, err error) error {
 // WithAsset points a release at a different published file, which is how the
 // package paths reuse the checksum machinery: the .deb and the .rpm are listed
 // in the same checksums file as the tarball.
-func (r Release) WithAsset(name string) Release {
-	base := r.URL[:len(r.URL)-len(r.Asset)]
+func (r Release) WithAsset(name string) (Release, error) {
+	if r.Asset == "" || !strings.HasSuffix(r.URL, r.Asset) {
+		return Release{}, errors.New("release asset URL does not end in its asset name")
+	}
+	base := strings.TrimSuffix(r.URL, r.Asset)
 	r.Asset, r.URL = name, base+name
-	return r
+	return r, nil
 }

@@ -111,6 +111,53 @@ func TestChmodNoFollowRefusesASymlink(t *testing.T) {
 	}
 }
 
+func TestBeneathRefusesASymlinkInAParentComponent(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "config"), []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "runtime")); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, "runtime", "config")
+	if _, err := ReadFileBeneath(root, target, 1<<20); err == nil {
+		t.Fatal("ReadFileBeneath followed a symlink in a parent component")
+	}
+	if err := ChmodBeneath(root, target, 0o644); err == nil {
+		t.Fatal("ChmodBeneath followed a symlink in a parent component")
+	}
+	fi, err := os.Stat(filepath.Join(outside, "config"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o600 {
+		t.Fatalf("outside mode = %v, want unchanged", fi.Mode().Perm())
+	}
+}
+
+func TestWriteFileAtomicBeneathDetectsAnExternalEdit(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "runtime")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "config")
+	if err := os.WriteFile(target, []byte("operator edit"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFileAtomicBeneath(root, target, []byte("fixed"), 0o600, []byte("scanned value"), false); err == nil {
+		t.Fatal("a file changed after the scan was overwritten")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "operator edit" {
+		t.Fatalf("target = %q, want the external edit preserved", got)
+	}
+}
+
 // WriteFileAtomic must be able to create a file that does not exist yet —
 // that is the checkpoint store writing a fresh backup blob. Preserving the
 // owner of a file with no prior owner is not an error.

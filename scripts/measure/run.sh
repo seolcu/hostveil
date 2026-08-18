@@ -68,8 +68,6 @@ fi
 shift $((OPTIND - 1))
 OUT=${1:-/dev/stdout}
 
-export MEASURE_MARK=${MEASURE_MARK:-/tmp/hostveil-measure-mark}
-
 [ "$(id -u)" = 0 ] || { echo "measure: needs root — it reads /etc/shadow and edits system files" >&2; exit 1; }
 command -v hostveil >/dev/null || { echo "measure: hostveil is not on PATH" >&2; exit 1; }
 
@@ -78,6 +76,7 @@ export HOSTVEIL_NO_SUDO=1
 
 WORK=$(mktemp -d /tmp/hostveil-measure-XXXXXX)
 trap 'rm -rf "$WORK"' EXIT
+export MEASURE_MARK=${MEASURE_MARK:-"$WORK/checkpoints.mark"}
 
 say() { printf '==> %s\n' "$*" >&2; }
 rb() { "$HERE/instruments/rollback.sh" "$@"; }
@@ -119,7 +118,11 @@ restart_services() {
   # mutating the running kernel. This phase is the explicit activation step
   # that the report labels as restarted/applied, analogous to reloading sshd.
   sysctl --system >/dev/null 2>&1 || say "  sysctl --system could not apply every persisted value"
-  for f in $(hostveil scan --json 2>/dev/null |
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    say "  docker compose -f $f up -d"
+    docker compose -f "$f" up -d >/dev/null 2>&1 || true
+  done < <(hostveil scan --json 2>/dev/null |
     python3 -c '
 import json, sys
 try:
@@ -133,10 +136,7 @@ for f in r["findings"]:
             v = str(v)
             if v.endswith((".yml", ".yaml")) and v.startswith("/") and v not in seen:
                 seen.add(v)
-                print(v)' || true); do
-    say "  docker compose -f $f up -d"
-    docker compose -f "$f" up -d >/dev/null 2>&1 || true
-  done
+                print(v)' || true)
   # sshd reloads its configuration without dropping established sessions,
   # which is the only reason this is safe to do to a host you are on.
   systemctl reload ssh >/dev/null 2>&1 ||

@@ -79,6 +79,11 @@ def main():
                 "no before-state was recorded for: %s"
                 % ", ".join(rollback["paths_with_unobserved_before_state"])
             )
+        if rollback.get("checkpoint_failures"):
+            failures.append(
+                "checkpoint rollback commands failed: %s"
+                % ", ".join(rollback["checkpoint_failures"])
+            )
         if failed := (doc.get("fixes") or {}).get("failed"):
             failures.append("fixes failed: %s" % ", ".join(failed))
 

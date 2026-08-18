@@ -94,7 +94,9 @@ func previewEdit(a fix.Action, id string) (string, error) {
 // permission denial or an EISDIR must not be mistaken for "not there yet"
 // and answered by creating something.
 func readEditTarget(a fix.Action) (data []byte, creating bool, err error) {
-	if a.NoFollow {
+	if a.SafeRoot != "" {
+		data, err = platform.ReadFileBeneath(a.SafeRoot, a.Path, maxEditBytes)
+	} else if a.NoFollow {
 		// A target inside somebody's home. See fix.Action.NoFollow: the
 		// account owns every component of the path, and root must not be
 		// walked into reading a file it was not pointed at.

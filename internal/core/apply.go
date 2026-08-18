@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -188,6 +189,9 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 	}
+	if a.SafeRoot != "" {
+		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
+	}
 	// A file that did not exist has nothing to back up, and the checkpoint
 	// has to say so rather than record an empty backup: restoring an empty
 	// file is not the same as restoring its absence, and a host left with a
@@ -232,7 +236,25 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 			return model.FixOutcome{}, fmt.Errorf("creating the directory for %s: %w", a.Path, err)
 		}
 	}
-	if err := platform.WriteFileAtomic(a.Path, next, mode); err != nil {
+	write := func() error {
+		if a.SafeRoot != "" {
+			return platform.WriteFileAtomicBeneath(a.SafeRoot, a.Path, next, mode, orig, creating)
+		}
+		if creating {
+			if _, err := os.Lstat(a.Path); err == nil {
+				return fmt.Errorf("%s appeared after it was scanned; re-scan before fixing", a.Path)
+			} else if !os.IsNotExist(err) {
+				return err
+			}
+		} else {
+			current, err := platform.ReadFileBounded(a.Path, int64(len(orig)))
+			if err != nil || !bytes.Equal(current, orig) {
+				return fmt.Errorf("%s changed after it was scanned; re-scan before fixing", a.Path)
+			}
+		}
+		return platform.WriteFileAtomic(a.Path, next, mode)
+	}
+	if err := write(); err != nil {
 		// The checkpoint is already on disk and `hostveil history` will list
 		// it as an applied, reversible fix — for a change that never landed.
 		// Worse, its AppliedSHA256 permanently asserts to recordedWrites that
@@ -339,6 +361,12 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		CreatedAt:  time.Now(),
 		Diff:       summary,
 	}
+	if a.SafeRoot != "" {
+		cp.SafeRoots = make(map[string]string, len(changes))
+		for _, c := range changes {
+			cp.SafeRoots[c.path] = a.SafeRoot
+		}
+	}
 	saved, err := e.store.SaveModes(cp, prior)
 	if err != nil {
 		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
@@ -348,14 +376,20 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		// Through the descriptor, not the path: planModes vetted the type,
 		// but the file can be swapped for a symlink between the plan and this
 		// line, and os.Chmod would follow it.
-		if err := platform.ChmodNoFollow(c.path, c.to); err != nil {
+		var chmodErr error
+		if a.SafeRoot != "" {
+			chmodErr = platform.ChmodBeneath(a.SafeRoot, c.path, c.to)
+		} else {
+			chmodErr = platform.ChmodNoFollow(c.path, c.to)
+		}
+		if chmodErr != nil {
 			// The checkpoint is already on disk and covers every path in the
 			// plan, so the ones that did change can still be rolled back.
 			// Naming how far it got is the part that was missing: the outcome
 			// said only "failed", while some files really had been tightened.
 			return model.FixOutcome{}, fmt.Errorf(
 				"%w — %d of %d paths were already changed; undo them with `hostveil rollback %s`",
-				err, i, len(changes), saved.ID)
+				chmodErr, i, len(changes), saved.ID)
 		}
 	}
 	return model.FixOutcome{Diff: summary, CheckpointID: saved.ID}, nil

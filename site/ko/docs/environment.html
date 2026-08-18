@@ -282,6 +282,7 @@
                 <thead><tr><th>변수</th><th>기본값</th><th>값</th><th>동작</th></tr></thead>
                 <tbody>
                   <tr><td><code>SUDO_USER</code></td><td><code>sudo</code>가 설정. hostveil은 설정하지 않음</td><td>비어 있지 않으면 "이미 권한이 올라갔다"는 뜻. 사용자 이름 자체는 보지 않음</td><td>자동 권한 상승의 무한 반복 방지 장치입니다. 값이 비어 있지 않으면 <code>sudo</code>가 이미 실행되었다는 뜻이므로, hostveil은 다시 부르지 않습니다.</td></tr>
+                  <tr><td><code>SUDO_UID</code>, <code>SUDO_GID</code></td><td><code>sudo</code>가 설정. hostveil은 설정하지 않음</td><td>0 이상의 숫자 사용자/그룹 ID</td><td><code>scan --output</code>이 sudo 자식으로 실행될 때, 새 보고서가 root 소유로 남지 않고 실행한 계정의 소유가 되게 합니다. 실효 사용자가 root이고 <code>SUDO_USER</code>도 설정된 경우에만 사용하며, 기존 보고서는 소유자와 모드를 유지합니다.</td></tr>
                 </tbody>
               </table>
             </div>

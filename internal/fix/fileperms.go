@@ -103,10 +103,11 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 		Label: label,
 		Kind:  model.RemediationAuto,
 		Actions: []Action{{
-			Label: label,
-			Kind:  ActionMode,
-			Paths: paths,
-			Mode:  func(cur fs.FileMode) fs.FileMode { return tighten(cur, mask) },
+			Label:    label,
+			Kind:     ActionMode,
+			Paths:    paths,
+			SafeRoot: f.Evidence["root"],
+			Mode:     func(cur fs.FileMode) fs.FileMode { return tighten(cur, mask) },
 		}},
 	}, nil
 }
