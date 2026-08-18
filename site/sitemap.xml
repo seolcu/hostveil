@@ -62,6 +62,12 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/ai"/>
   </url>
   <url>
+    <loc>https://hostveil.seolcu.com/docs/roadmap</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/roadmap"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/roadmap"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/roadmap"/>
+  </url>
+  <url>
     <loc>https://hostveil.seolcu.com/docs/cli</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/cli"/>
     <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/cli"/>
@@ -156,6 +162,12 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/ai"/>
     <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/ai"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/ai"/>
+  </url>
+  <url>
+    <loc>https://hostveil.seolcu.com/ko/docs/roadmap</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/roadmap"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/roadmap"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/roadmap"/>
   </url>
   <url>
     <loc>https://hostveil.seolcu.com/ko/docs/cli</loc>

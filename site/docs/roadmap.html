@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Roadmap — Hostveil docs</title>
+    <meta name="description" content="Where Hostveil's detection coverage is headed, and what stays out of scope on purpose: no plugin system, no AI that applies fixes on its own, no hosted dashboard or account.">
+    <meta name="theme-color" content="#07100f">
+    <meta property="og:title" content="Roadmap — Hostveil docs">
+    <meta property="og:description" content="How detection coverage has grown so far, what's next, what's under exploration, and what's not planned on purpose.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://hostveil.seolcu.com/docs/roadmap">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
+    <meta property="og:image:width" content="1500">
+    <meta property="og:image:height" content="760">
+    <meta property="og:image:alt" content="Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes">
+    <meta property="og:site_name" content="Hostveil">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://hostveil.seolcu.com/docs/roadmap">
+    <link rel="alternate" hreflang="en" href="https://hostveil.seolcu.com/docs/roadmap">
+    <link rel="alternate" hreflang="ko" href="https://hostveil.seolcu.com/ko/docs/roadmap">
+    <link rel="alternate" hreflang="x-default" href="https://hostveil.seolcu.com/docs/roadmap">
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../docs.css">
+    <script src="../docs.js" defer></script>
+    <script src="../lang-suggest.js" defer></script>
+    <script>
+      // Send a Korean-speaking reader to the Korean page, once.
+      //
+      // GitHub Pages serves files, not content negotiation, so the only place
+      // this decision can be made is here — and the risk of making it here is
+      // trapping someone: a reader who deliberately clicked "English" must not
+      // be bounced back on the next click. So the switcher records that choice
+      // and this defers to it forever after.
+      //
+      // Only from the English page, only when the browser's own preference
+      // list actually leads with Korean, and never when a crawler is reading
+      // (they do not run this) — the hreflang links above are what they read.
+      (function () {
+        try {
+          if (document.documentElement.lang !== "en") return;
+          if (localStorage.getItem("hostveil.lang")) return;
+          var prefs = navigator.languages || [navigator.language || ""];
+          for (var i = 0; i < prefs.length; i++) {
+            var tag = String(prefs[i]).toLowerCase();
+            if (tag === "ko" || tag.indexOf("ko-") === 0) {
+              location.replace("/ko/docs/roadmap" + location.hash);
+              return;
+            }
+            if (tag.indexOf("en") === 0) return; // English first: stay
+          }
+        } catch (e) { /* private mode, no storage: the English page is fine */ }
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="../" aria-label="Hostveil home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Hostveil</span>
+        </a>
+        <div class="nav-links">
+          <a href="./">Docs</a>
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a class="lang-switch" href="/ko/docs/roadmap" lang="ko" hreflang="ko" onclick="try{localStorage.setItem('hostveil.lang','ko')}catch(e){}">한국어</a>
+        </div>
+      </nav>
+    </header>
+
+    <div class="docs-container">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar">
+        Documentation menu
+      </button>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+          <form class="docs-search" role="search" autocomplete="off">
+            <input type="search" id="docs-search-input" class="docs-search-input"
+                   placeholder="Search the docs…" aria-label="Search documentation"
+                   role="combobox" aria-expanded="false" aria-controls="docs-search-results"
+                   aria-autocomplete="list">
+            <ul class="docs-search-results" id="docs-search-results" role="listbox" aria-label="Search results" hidden></ul>
+          </form>
+          <div class="docs-nav-group">
+            <p>Getting started</p>
+            <ul>
+              <li><a href="./">Introduction</a></li>
+              <li><a href="installation">Installation</a></li>
+              <li><a href="quickstart">Quick start</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Guide</p>
+            <ul>
+              <li><a href="checks">What it checks</a></li>
+              <li><a href="scoring">Scoring</a></li>
+              <li><a href="measurements">Measured results</a></li>
+              <li><a href="fixing">Fixing &amp; rollback</a></li>
+              <li><a href="interfaces">Interfaces</a></li>
+              <li><a href="ai">AI explanations</a></li>
+              <li><a href="roadmap" class="active">Roadmap</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav-group">
+            <p>Reference</p>
+            <ul>
+              <li><a href="cli">CLI reference</a></li>
+              <li><a href="environment">Environment variables</a></li>
+              <li><a href="faq">FAQ</a></li>
+              <li><a href="troubleshooting">Troubleshooting</a></li>
+              <li><a href="contributing">Contributing</a></li>
+              <li><a href="changelog" data-noindex>Changelog</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="docs-content" id="main">
+          <article class="docs-prose">
+            <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Roadmap</p>
+            <h1>Roadmap</h1>
+            <p class="lead">Where detection coverage is headed, and what is deliberately staying out of scope. Not a schedule &mdash; a tool that will not publish a figure it has not measured is not going to publish a date it cannot keep.</p>
+
+            <h2>How coverage has grown so far</h2>
+            <p>A new detection domain is a bigger change than it looks from the outside: a new <a href="contributing#extending">axis, funded by taking weight from every existing domain</a>, so it does not ship often or quietly. Every one that has shipped is a named release, not a line in a patch note.</p>
+            <ul>
+              <li><strong data-shipped="3.1.0">3.1.0</strong> &mdash; self-hosted AI agent runtimes (OpenClaw, Hermes Agent): a reachable gateway, a disabled sandbox, credentials readable by more than their owner.</li>
+              <li><strong data-shipped="3.6.0">3.6.0</strong> &mdash; kernel hardening: eight <code>sysctl</code> values read straight from <code>/proc/sys</code>.</li>
+              <li><strong data-shipped="3.8.0">3.8.0</strong> &mdash; the Docker daemon itself: an unauthenticated TCP API is root for anyone who can reach the port, and nothing before this domain looked at the daemon underneath your containers.</li>
+              <li><strong data-shipped="3.9.0">3.9.0</strong> &mdash; service hardening: the units you installed yourself, read as systemd&rsquo;s own effective configuration rather than what a file says.</li>
+            </ul>
+            <p>Everything between those releases &mdash; and there is a lot of it &mdash; is new findings, fixes and interface work inside the domains that already exist. That is the far more common kind of change, and it is what most releases in the <a href="changelog">changelog</a> are.</p>
+
+            <h2>Next up</h2>
+            <p>Low cost, same shape as what is already there &mdash; an entry in an existing registry, not a new domain or a new axis weight.</p>
+            <ul>
+              <li><strong>More self-hosted AI agent runtimes.</strong> The agent domain is built to name a runtime as data, not code &mdash; adding a third one is an entry in a registry, the same shape as OpenClaw and Hermes Agent are today.</li>
+              <li><strong>More reverse proxies.</strong> The proxy domain reads nginx and Traefik configuration today; Caddy is the next name self-hosters ask for.</li>
+              <li><strong>Wider distro coverage for the measurement harness.</strong> <code>scripts/measure/seed.sh</code> seeds Debian, Fedora and Alpine today through one distribution seam; a distro that resolves through that seam is one that can be measured, not just claimed to work.</li>
+            </ul>
+
+            <h2>Under exploration</h2>
+            <p>Bigger changes, still being designed rather than committed to a release. Listed here so a duplicate feature request has somewhere to look first, not as a promise.</p>
+            <ul>
+              <li><strong>Proxmox VE host hardening.</strong> A hypervisor host is still a Linux host with a config surface &mdash; <code>pveproxy</code>, cluster join secrets, storage permissions &mdash; architecturally the same shape as the Docker daemon or systemd domains above. The most likely next whole domain.</li>
+              <li><strong>Single-node k3s/k0s hardening.</strong> Not a Kubernetes cluster manager &mdash; the common homelab pattern of one box running one node &mdash; scoped to the kubelet and API server flags a single-host audit can actually see.</li>
+              <li><strong>A fleet view across hosts you already reach over SSH.</strong> The read on &ldquo;multi-host management&rdquo; that does not require an account, a server, or a database: one local Hostveil calling <code>hostveil scan --json</code> on each host over SSH you already trust, and laying the scores side by side in the TUI or the dashboard. No new service to run, because that is the one line this project will not cross &mdash; see below.</li>
+              <li><strong>Languages beyond English and Korean.</strong> The Korean site carries its own font subset and a test that checks every glyph on the page has one; a third language needs the same rigor, not just a translated string table.</li>
+            </ul>
+
+            <h2>Not planned, on purpose</h2>
+            <p>Ruled out by what Hostveil is, not missing because nobody got to it yet &mdash; the same standard <a href="../#features">the product itself</a> is held to.</p>
+            <ul>
+              <li><strong>A plugin or rule-file system for third-party checks.</strong> <a href="contributing#extending">Every domain is one row</a> the score depends on summing to 100; a rule format would put that behind a file nobody signs.</li>
+              <li><strong>AI that applies a fix on its own.</strong> The preview-backup-apply loop is the reason this tool can be trusted with root; an agent that skips the preview breaks the one guarantee the whole design rests on. See <a href="ai">AI explanations</a> for where AI is actually used today.</li>
+              <li><strong>A hosted dashboard, an account system, or a SaaS tier.</strong> One binary and no cloud account is not a starting point this project is working away from &mdash; it is why the project exists.</li>
+              <li><strong>Auto-fixing findings classified Manual.</strong> Manual means Hostveil judged the change unsafe to apply unattended, not that the feature is unwritten. See <a href="fixing#auto-standard">how that classification is decided</a>.</li>
+            </ul>
+
+            <div class="docs-pager">
+              <a class="button secondary" href="ai">← AI explanations</a>
+              <a class="button primary" href="cli">CLI reference →</a>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
+          <p>Guided security hardening for self-hosted Linux servers.</p>
+        </div>
+        <nav aria-label="Footer links">
+          <a href="./">Docs</a>
+          <a href="changelog">Changelog</a>
+          <a href="https://github.com/seolcu/hostveil">GitHub</a>
+          <a href="https://github.com/seolcu/hostveil/releases/latest">Releases</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -2,15 +2,15 @@
   "landing": {
     "ogType": "website",
     "en": {
-      "title": "hostveil — guided security hardening for self-hosted Linux servers",
-      "description": "hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.",
-      "ogTitle": "hostveil — guided hardening for self-hosters",
+      "title": "Hostveil — guided security hardening for self-hosted Linux servers",
+      "description": "Hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.",
+      "ogTitle": "Hostveil — guided hardening for self-hosters",
       "ogDescription": "One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI."
     },
     "ko": {
-      "title": "hostveil — 셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화",
-      "description": "hostveil은 셀프호스터가 해킹당하는 보안 실수 — Docker Compose, SSH, 방화벽, 자동 업데이트 — 를 리눅스 홈 서버에서 찾아, 쉬운 말로 설명하고, 미리보기·백업·한 번의 명령으로 되돌리는 롤백과 함께 고쳐 줍니다.",
-      "ogTitle": "hostveil — 셀프호스터를 위한 가이드형 보안 강화",
+      "title": "Hostveil — 셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화",
+      "description": "Hostveil은 셀프호스터가 해킹당하는 보안 실수 — Docker Compose, SSH, 방화벽, 자동 업데이트 — 를 리눅스 홈 서버에서 찾아, 쉬운 말로 설명하고, 미리보기·백업·한 번의 명령으로 되돌리는 롤백과 함께 고쳐 줍니다.",
+      "ogTitle": "Hostveil — 셀프호스터를 위한 가이드형 보안 강화",
       "ogDescription": "리눅스 홈 서버의 보안 실수를 찾아 쉽게 설명하고 안전하게 고치는 로컬 바이너리 하나 — 미리보기, 백업, 롤백. 선택적 CVE 스캔과 로컬 AI 지원."
     }
   },
@@ -20,16 +20,16 @@
       "group": "getting-started",
       "ogType": "website",
       "en": {
-        "title": "hostveil docs — guided security hardening for self-hosted Linux",
-        "description": "Official documentation for hostveil: install it, run a scan, understand the findings, and fix them safely with preview, backup, and one-command rollback.",
-        "ogTitle": "hostveil documentation",
+        "title": "Hostveil docs — guided security hardening for self-hosted Linux",
+        "description": "Official documentation for Hostveil: install it, run a scan, understand the findings, and fix them safely with preview, backup, and one-command rollback.",
+        "ogTitle": "Hostveil documentation",
         "ogDescription": "Install, scan, understand, and safely fix the security misconfigurations on your self-hosted Linux server.",
         "nav": "Introduction"
       },
       "ko": {
-        "title": "hostveil 문서 — 셀프호스팅 리눅스를 위한 가이드형 보안 강화",
-        "description": "hostveil 공식 문서: 설치하고, 스캔을 실행하고, 발견 항목을 이해하고, 미리보기·백업·한 번의 명령 롤백으로 안전하게 고치세요.",
-        "ogTitle": "hostveil 문서",
+        "title": "Hostveil 문서 — 셀프호스팅 리눅스를 위한 가이드형 보안 강화",
+        "description": "Hostveil 공식 문서: 설치하고, 스캔을 실행하고, 발견 항목을 이해하고, 미리보기·백업·한 번의 명령 롤백으로 안전하게 고치세요.",
+        "ogTitle": "Hostveil 문서",
         "ogDescription": "셀프호스팅 리눅스 서버의 잘못된 보안 설정을 설치·스캔·이해하고 안전하게 고치세요.",
         "nav": "소개"
       }
@@ -39,17 +39,17 @@
       "group": "getting-started",
       "ogType": "article",
       "en": {
-        "title": "Installation — hostveil docs",
-        "description": "Install hostveil with one command, a .deb or .rpm, or go install — and verify what you downloaded against the release's checksums and its signed build provenance.",
-        "ogTitle": "Installation — hostveil docs",
-        "ogDescription": "Install hostveil with one command, or build from source. Optional Docker, Trivy, and Ollama integrations.",
+        "title": "Installation — Hostveil docs",
+        "description": "Install Hostveil with one command, a .deb or .rpm, or go install — and verify what you downloaded against the release's checksums and its signed build provenance.",
+        "ogTitle": "Installation — Hostveil docs",
+        "ogDescription": "Install Hostveil with one command, or build from source. Optional Docker, Trivy, and Ollama integrations.",
         "nav": "Installation"
       },
       "ko": {
-        "title": "설치 — hostveil 문서",
-        "description": "명령 한 줄, .deb·.rpm, 또는 go install로 hostveil을 설치하고, 내려받은 것을 릴리스의 체크섬과 서명된 빌드 프로버넌스로 확인하세요.",
-        "ogTitle": "설치 — hostveil 문서",
-        "ogDescription": "한 줄 명령으로 hostveil을 설치하거나 소스에서 빌드하세요. 선택적인 Docker, Trivy, Ollama 연동.",
+        "title": "설치 — Hostveil 문서",
+        "description": "명령 한 줄, .deb·.rpm, 또는 go install로 Hostveil을 설치하고, 내려받은 것을 릴리스의 체크섬과 서명된 빌드 프로버넌스로 확인하세요.",
+        "ogTitle": "설치 — Hostveil 문서",
+        "ogDescription": "한 줄 명령으로 Hostveil을 설치하거나 소스에서 빌드하세요. 선택적인 Docker, Trivy, Ollama 연동.",
         "nav": "설치"
       }
     },
@@ -58,17 +58,17 @@
       "group": "getting-started",
       "ogType": "article",
       "en": {
-        "title": "Quick start — hostveil docs",
-        "description": "Scan your server, understand a finding, apply a fix with preview and backup, then roll it back — the full hostveil loop in a few minutes.",
-        "ogTitle": "Quick start — hostveil docs",
-        "ogDescription": "Scan, understand, apply, and roll back — the full hostveil loop in a few minutes.",
+        "title": "Quick start — Hostveil docs",
+        "description": "Scan your server, understand a finding, apply a fix with preview and backup, then roll it back — the full Hostveil loop in a few minutes.",
+        "ogTitle": "Quick start — Hostveil docs",
+        "ogDescription": "Scan, understand, apply, and roll back — the full Hostveil loop in a few minutes.",
         "nav": "Quick start"
       },
       "ko": {
-        "title": "빠른 시작 — hostveil 문서",
-        "description": "서버를 스캔하고, 발견 항목을 이해하고, 미리보기와 백업으로 수정을 적용한 뒤 되돌리세요 — 몇 분 만에 익히는 hostveil의 전체 흐름.",
-        "ogTitle": "빠른 시작 — hostveil 문서",
-        "ogDescription": "스캔, 이해, 적용, 롤백 — 몇 분 만에 익히는 hostveil의 전체 흐름.",
+        "title": "빠른 시작 — Hostveil 문서",
+        "description": "서버를 스캔하고, 발견 항목을 이해하고, 미리보기와 백업으로 수정을 적용한 뒤 되돌리세요 — 몇 분 만에 익히는 Hostveil의 전체 흐름.",
+        "ogTitle": "빠른 시작 — Hostveil 문서",
+        "ogDescription": "스캔, 이해, 적용, 롤백 — 몇 분 만에 익히는 Hostveil의 전체 흐름.",
         "nav": "빠른 시작"
       }
     },
@@ -77,16 +77,16 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "What it checks — hostveil docs",
-        "description": "hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.",
-        "ogTitle": "What it checks — hostveil docs",
+        "title": "What it checks — Hostveil docs",
+        "description": "Hostveil's coverage: Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — the finding IDs, severities, and how the 0–100 score is built.",
+        "ogTitle": "What it checks — Hostveil docs",
         "ogDescription": "Docker/Compose, SSH, firewall, auto-updates, exposed services, accounts, file permissions, and optional image CVEs — finding IDs, severities, and the score model.",
         "nav": "What it checks"
       },
       "ko": {
-        "title": "점검 항목 — hostveil 문서",
-        "description": "hostveil의 점검 범위: Docker/Compose, SSH, 방화벽, 자동 업데이트, 노출된 서비스, 계정, 파일 권한, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 0–100 점수가 만들어지는 방식.",
-        "ogTitle": "점검 항목 — hostveil 문서",
+        "title": "점검 항목 — Hostveil 문서",
+        "description": "Hostveil의 점검 범위: Docker/Compose, SSH, 방화벽, 자동 업데이트, 노출된 서비스, 계정, 파일 권한, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 0–100 점수가 만들어지는 방식.",
+        "ogTitle": "점검 항목 — Hostveil 문서",
         "ogDescription": "Docker/Compose, SSH, 방화벽, 자동 업데이트, 노출된 서비스, 계정, 파일 권한, 선택적 이미지 CVE — 발견 항목 ID, 심각도, 점수 모델.",
         "nav": "점검 항목"
       }
@@ -96,16 +96,16 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "Scoring — hostveil docs",
-        "description": "How hostveil turns findings into one 0-100 score: each domain is an axis eroded multiplicatively by severity, the axis weights sum to 100, a domain that could not run is renormalized out instead of scored perfect, and a finding with no upstream fix still counts.",
-        "ogTitle": "Scoring — hostveil docs",
+        "title": "Scoring — Hostveil docs",
+        "description": "How Hostveil turns findings into one 0-100 score: each domain is an axis eroded multiplicatively by severity, the axis weights sum to 100, a domain that could not run is renormalized out instead of scored perfect, and a finding with no upstream fix still counts.",
+        "ogTitle": "Scoring — Hostveil docs",
         "ogDescription": "The 0-100 score, exactly: multiplicative erosion per axis, what each domain is worth, renormalization when a domain does not run, and what the number cannot tell you.",
         "nav": "Scoring"
       },
       "ko": {
-        "title": "점수 산정 — hostveil 문서",
-        "description": "hostveil이 발견 항목을 하나의 0-100 점수로 만드는 방법: 도메인마다 축이 하나씩 있고 심각도에 따라 곱셈으로 깎이며, 축 가중치의 합은 100이고, 실행되지 못한 도메인은 만점 대신 재정규화로 빠지며, 상위에 패치가 없는 항목도 점수에 반영됩니다.",
-        "ogTitle": "점수 산정 — hostveil 문서",
+        "title": "점수 산정 — Hostveil 문서",
+        "description": "Hostveil이 발견 항목을 하나의 0-100 점수로 만드는 방법: 도메인마다 축이 하나씩 있고 심각도에 따라 곱셈으로 깎이며, 축 가중치의 합은 100이고, 실행되지 못한 도메인은 만점 대신 재정규화로 빠지며, 상위에 패치가 없는 항목도 점수에 반영됩니다.",
+        "ogTitle": "점수 산정 — Hostveil 문서",
         "ogDescription": "0-100 점수의 전 과정: 축별 곱셈 감점, 도메인마다의 가중치, 실행되지 않은 도메인의 재정규화, 그리고 이 숫자가 알려주지 않는 것.",
         "nav": "점수 산정"
       }
@@ -115,17 +115,17 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "Measured results — hostveil docs",
-        "description": "What independent instruments say about a host hostveil has fixed: Lynis, the CIS Docker Benchmark, and a TCP scan from off the host, before and after — including where they did not move, and whether rolling every fix back restores the filesystem byte for byte.",
-        "ogTitle": "Measured results — hostveil docs",
-        "ogDescription": "Lynis, docker-bench-security and an off-host TCP scan, run before and after hostveil's fixes on a deliberately misconfigured server. The numbers, the method, and the ones that did not move.",
+        "title": "Measured results — Hostveil docs",
+        "description": "What independent instruments say about a host Hostveil has fixed: Lynis, the CIS Docker Benchmark, and a TCP scan from off the host, before and after — including where they did not move, and whether rolling every fix back restores the filesystem byte for byte.",
+        "ogTitle": "Measured results — Hostveil docs",
+        "ogDescription": "Lynis, docker-bench-security and an off-host TCP scan, run before and after Hostveil's fixes on a deliberately misconfigured server. The numbers, the method, and the ones that did not move.",
         "nav": "Measured results"
       },
       "ko": {
-        "title": "실측 결과 — hostveil 문서",
-        "description": "hostveil이 고친 호스트를 독립 계측기로 잰 결과: Lynis, CIS Docker Benchmark, 호스트 밖에서의 TCP 스캔을 수정 전후로 실행한 수치 — 움직이지 않은 항목까지, 그리고 모든 수정을 되돌렸을 때 파일이 바이트 단위로 복원되는지.",
-        "ogTitle": "실측 결과 — hostveil 문서",
-        "ogDescription": "일부러 잘못 설정한 서버에서 hostveil의 수정 전후를 Lynis, docker-bench-security, 외부 TCP 스캔으로 잰 수치. 방법과 결과, 그리고 움직이지 않은 것들.",
+        "title": "실측 결과 — Hostveil 문서",
+        "description": "Hostveil이 고친 호스트를 독립 계측기로 잰 결과: Lynis, CIS Docker Benchmark, 호스트 밖에서의 TCP 스캔을 수정 전후로 실행한 수치 — 움직이지 않은 항목까지, 그리고 모든 수정을 되돌렸을 때 파일이 바이트 단위로 복원되는지.",
+        "ogTitle": "실측 결과 — Hostveil 문서",
+        "ogDescription": "일부러 잘못 설정한 서버에서 Hostveil의 수정 전후를 Lynis, docker-bench-security, 외부 TCP 스캔으로 잰 수치. 방법과 결과, 그리고 움직이지 않은 것들.",
         "nav": "실측 결과"
       }
     },
@@ -134,16 +134,16 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "Fixing & rollback — hostveil docs",
-        "description": "How hostveil fixes findings: Auto-fix, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.",
-        "ogTitle": "Fixing & rollback — hostveil docs",
+        "title": "Fixing & rollback — Hostveil docs",
+        "description": "How Hostveil fixes findings: Auto-fix, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.",
+        "ogTitle": "Fixing & rollback — Hostveil docs",
         "ogDescription": "Auto-fix, Review, and Manual fixes; preview, backup, history, and one-command rollback.",
         "nav": "Fixing & rollback"
       },
       "ko": {
-        "title": "수정 및 롤백 — hostveil 문서",
-        "description": "hostveil이 발견 항목을 고치는 방식: 자동 수정, 검토, 수동 분류; 미리보기 우선, 체크포인트 백업, 이력, 한 번의 명령 롤백.",
-        "ogTitle": "수정 및 롤백 — hostveil 문서",
+        "title": "수정 및 롤백 — Hostveil 문서",
+        "description": "Hostveil이 발견 항목을 고치는 방식: 자동 수정, 검토, 수동 분류; 미리보기 우선, 체크포인트 백업, 이력, 한 번의 명령 롤백.",
+        "ogTitle": "수정 및 롤백 — Hostveil 문서",
         "ogDescription": "자동 수정, 검토, 수동 수정; 미리보기, 백업, 이력, 한 번의 명령 롤백.",
         "nav": "수정 및 롤백"
       }
@@ -153,16 +153,16 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "Interfaces — hostveil docs",
-        "description": "hostveil's three interfaces — the keyboard-driven TUI, the localhost web dashboard, and the scriptable CLI — all drive one shared fix-and-rollback engine.",
-        "ogTitle": "Interfaces — hostveil docs",
+        "title": "Interfaces — Hostveil docs",
+        "description": "Hostveil's three interfaces — the keyboard-driven TUI, the localhost web dashboard, and the scriptable CLI — all drive one shared fix-and-rollback engine.",
+        "ogTitle": "Interfaces — Hostveil docs",
         "ogDescription": "The TUI, the localhost web dashboard, and the scriptable CLI — one shared engine.",
         "nav": "Interfaces"
       },
       "ko": {
-        "title": "인터페이스 — hostveil 문서",
-        "description": "hostveil의 세 가지 인터페이스 — 키보드 기반 TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 모두 하나의 공유 수정·롤백 엔진을 구동합니다.",
-        "ogTitle": "인터페이스 — hostveil 문서",
+        "title": "인터페이스 — Hostveil 문서",
+        "description": "Hostveil의 세 가지 인터페이스 — 키보드 기반 TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 모두 하나의 공유 수정·롤백 엔진을 구동합니다.",
+        "ogTitle": "인터페이스 — Hostveil 문서",
         "ogDescription": "TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 하나의 공유 엔진.",
         "nav": "인터페이스"
       }
@@ -172,18 +172,37 @@
       "group": "guide",
       "ogType": "article",
       "en": {
-        "title": "AI explanations — hostveil docs",
-        "description": "hostveil's optional, advisory-only AI: local Ollama by default, never applies changes, and sends only human-readable fields — never raw secrets or paths.",
-        "ogTitle": "AI explanations — hostveil docs",
+        "title": "AI explanations — Hostveil docs",
+        "description": "Hostveil's optional, advisory-only AI: local Ollama by default, never applies changes, and sends only human-readable fields — never raw secrets or paths.",
+        "ogTitle": "AI explanations — Hostveil docs",
         "ogDescription": "Optional, advisory-only, local-first AI second opinions with explain --ai.",
         "nav": "AI explanations"
       },
       "ko": {
-        "title": "AI 설명 — hostveil 문서",
-        "description": "hostveil의 선택적·조언 전용 AI: 기본값은 로컬 Ollama이며, 절대 변경을 적용하지 않고, 사람이 읽을 수 있는 필드만 전송합니다 — 원본 비밀 값이나 경로는 절대 보내지 않습니다.",
-        "ogTitle": "AI 설명 — hostveil 문서",
+        "title": "AI 설명 — Hostveil 문서",
+        "description": "Hostveil의 선택적·조언 전용 AI: 기본값은 로컬 Ollama이며, 절대 변경을 적용하지 않고, 사람이 읽을 수 있는 필드만 전송합니다 — 원본 비밀 값이나 경로는 절대 보내지 않습니다.",
+        "ogTitle": "AI 설명 — Hostveil 문서",
         "ogDescription": "explain --ai로 얻는 선택적·조언 전용·로컬 우선 AI second opinion.",
         "nav": "AI 설명"
+      }
+    },
+    {
+      "slug": "roadmap",
+      "group": "guide",
+      "ogType": "article",
+      "en": {
+        "title": "Roadmap — Hostveil docs",
+        "description": "Where Hostveil's detection coverage is headed, and what stays out of scope on purpose: no plugin system, no AI that applies fixes on its own, no hosted dashboard or account.",
+        "ogTitle": "Roadmap — Hostveil docs",
+        "ogDescription": "How detection coverage has grown so far, what's next, what's under exploration, and what's not planned on purpose.",
+        "nav": "Roadmap"
+      },
+      "ko": {
+        "title": "로드맵 — Hostveil 문서",
+        "description": "Hostveil의 점검 범위가 앞으로 어디로 향하는지, 그리고 일부러 다루지 않는 것은 무엇인지: 플러그인 시스템 없음, 스스로 수정을 적용하는 AI 없음, 호스팅형 대시보드나 계정 없음.",
+        "ogTitle": "로드맵 — Hostveil 문서",
+        "ogDescription": "지금까지 점검 범위가 늘어온 과정, 다음 단계, 탐색 중인 것, 그리고 일부러 하지 않는 것.",
+        "nav": "로드맵"
       }
     },
     {
@@ -191,17 +210,17 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "CLI reference — hostveil docs",
-        "description": "Complete hostveil command-line reference: scan, fix, rollback, history, explain, serve, and tui — every flag, default, and exit code.",
-        "ogTitle": "CLI reference — hostveil docs",
-        "ogDescription": "Every hostveil subcommand and flag: scan, fix, rollback, history, explain, serve, tui.",
+        "title": "CLI reference — Hostveil docs",
+        "description": "Complete Hostveil command-line reference: scan, fix, rollback, history, explain, serve, and tui — every flag, default, and exit code.",
+        "ogTitle": "CLI reference — Hostveil docs",
+        "ogDescription": "Every Hostveil subcommand and flag: scan, fix, rollback, history, explain, serve, tui.",
         "nav": "CLI reference"
       },
       "ko": {
-        "title": "CLI 레퍼런스 — hostveil 문서",
-        "description": "hostveil 명령줄 완전 레퍼런스: scan, fix, rollback, history, explain, serve, tui — 모든 플래그, 기본값, 종료 코드.",
-        "ogTitle": "CLI 레퍼런스 — hostveil 문서",
-        "ogDescription": "hostveil의 모든 하위 명령과 플래그: scan, fix, rollback, history, explain, serve, tui.",
+        "title": "CLI 레퍼런스 — Hostveil 문서",
+        "description": "Hostveil 명령줄 완전 레퍼런스: scan, fix, rollback, history, explain, serve, tui — 모든 플래그, 기본값, 종료 코드.",
+        "ogTitle": "CLI 레퍼런스 — Hostveil 문서",
+        "ogDescription": "Hostveil의 모든 하위 명령과 플래그: scan, fix, rollback, history, explain, serve, tui.",
         "nav": "CLI 레퍼런스"
       }
     },
@@ -210,17 +229,17 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "Environment variables — hostveil docs",
-        "description": "Every environment variable hostveil reads, honours from your shell, or sets for the commands it runs: its own settings, the sudo behaviour, colour and terminal detection, the LC_ALL pin, and the proxy variables that reach its one network request.",
-        "ogTitle": "Environment variables — hostveil docs",
-        "ogDescription": "One place for every variable: hostveil's own settings, what it honours from your shell, what it sets for child commands, and what it reads from the tooling around it.",
+        "title": "Environment variables — Hostveil docs",
+        "description": "Every environment variable Hostveil reads, honours from your shell, or sets for the commands it runs: its own settings, the sudo behaviour, colour and terminal detection, the LC_ALL pin, and the proxy variables that reach its one network request.",
+        "ogTitle": "Environment variables — Hostveil docs",
+        "ogDescription": "One place for every variable: Hostveil's own settings, what it honours from your shell, what it sets for child commands, and what it reads from the tooling around it.",
         "nav": "Environment variables"
       },
       "ko": {
-        "title": "환경 변수 — hostveil 문서",
-        "description": "hostveil이 읽거나, 셸에서 따르거나, 실행하는 명령에 설정해 주는 모든 환경 변수: 자체 설정, sudo 동작, 색과 터미널 감지, LC_ALL 고정, 그리고 유일한 네트워크 요청에 걸리는 프록시 변수까지.",
-        "ogTitle": "환경 변수 — hostveil 문서",
-        "ogDescription": "모든 변수를 한곳에: hostveil 자체 설정, 셸에서 따르는 것, 자식 명령에 설정해 주는 것, 그리고 주변 도구에서 읽는 것.",
+        "title": "환경 변수 — Hostveil 문서",
+        "description": "Hostveil이 읽거나, 셸에서 따르거나, 실행하는 명령에 설정해 주는 모든 환경 변수: 자체 설정, sudo 동작, 색과 터미널 감지, LC_ALL 고정, 그리고 유일한 네트워크 요청에 걸리는 프록시 변수까지.",
+        "ogTitle": "환경 변수 — Hostveil 문서",
+        "ogDescription": "모든 변수를 한곳에: Hostveil 자체 설정, 셸에서 따르는 것, 자식 명령에 설정해 주는 것, 그리고 주변 도구에서 읽는 것.",
         "nav": "환경 변수"
       }
     },
@@ -229,17 +248,17 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "FAQ — hostveil docs",
-        "description": "Common questions about hostveil: what it uploads, whether a fix can break a server, and how it differs from Lynis or a CIS benchmark.",
-        "ogTitle": "FAQ — hostveil docs",
-        "ogDescription": "Common questions about hostveil — privacy, safety, tradeoffs, sudo, and optional tooling.",
+        "title": "FAQ — Hostveil docs",
+        "description": "Common questions about Hostveil: what it uploads, whether a fix can break a server, and how it differs from Lynis or a CIS benchmark.",
+        "ogTitle": "FAQ — Hostveil docs",
+        "ogDescription": "Common questions about Hostveil — privacy, safety, tradeoffs, sudo, and optional tooling.",
         "nav": "FAQ"
       },
       "ko": {
-        "title": "자주 묻는 질문 — hostveil 문서",
-        "description": "hostveil에 대해 자주 묻는 질문: 무엇을 전송하는지, 수정이 서버를 망가뜨릴 수 있는지, Lynis나 CIS 벤치마크와 무엇이 다른지.",
-        "ogTitle": "자주 묻는 질문 — hostveil 문서",
-        "ogDescription": "hostveil에 대한 흔한 질문들 — 프라이버시, 안전성, 절충안, sudo, 선택적 도구.",
+        "title": "자주 묻는 질문 — Hostveil 문서",
+        "description": "Hostveil에 대해 자주 묻는 질문: 무엇을 전송하는지, 수정이 서버를 망가뜨릴 수 있는지, Lynis나 CIS 벤치마크와 무엇이 다른지.",
+        "ogTitle": "자주 묻는 질문 — Hostveil 문서",
+        "ogDescription": "Hostveil에 대한 흔한 질문들 — 프라이버시, 안전성, 절충안, sudo, 선택적 도구.",
         "nav": "자주 묻는 질문"
       }
     },
@@ -248,17 +267,17 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "Troubleshooting — hostveil docs",
-        "description": "What hostveil's less obvious messages mean and how to diagnose them: HOSTVEIL_DEBUG command tracing, Degraded domains, declined rollbacks, an empty history, exit code 3, and command timeouts.",
-        "ogTitle": "Troubleshooting — hostveil docs",
-        "ogDescription": "Diagnose a hostveil result: trace every command it runs, and read Degraded, declined rollback, empty history, and exit code 3.",
+        "title": "Troubleshooting — Hostveil docs",
+        "description": "What Hostveil's less obvious messages mean and how to diagnose them: HOSTVEIL_DEBUG command tracing, Degraded domains, declined rollbacks, an empty history, exit code 3, and command timeouts.",
+        "ogTitle": "Troubleshooting — Hostveil docs",
+        "ogDescription": "Diagnose a Hostveil result: trace every command it runs, and read Degraded, declined rollback, empty history, and exit code 3.",
         "nav": "Troubleshooting"
       },
       "ko": {
-        "title": "문제 해결 — hostveil 문서",
-        "description": "hostveil의 덜 명확한 메시지들이 무슨 뜻인지, 어떻게 진단하는지: HOSTVEIL_DEBUG 명령 추적, Degraded 도메인, 거부된 롤백, 빈 히스토리, 종료 코드 3, 명령 시간 초과.",
-        "ogTitle": "문제 해결 — hostveil 문서",
-        "ogDescription": "hostveil 결과 진단하기: 실행되는 모든 명령을 추적하고 Degraded, 거부된 롤백, 빈 히스토리, 종료 코드 3을 읽는 법.",
+        "title": "문제 해결 — Hostveil 문서",
+        "description": "Hostveil의 덜 명확한 메시지들이 무슨 뜻인지, 어떻게 진단하는지: HOSTVEIL_DEBUG 명령 추적, Degraded 도메인, 거부된 롤백, 빈 히스토리, 종료 코드 3, 명령 시간 초과.",
+        "ogTitle": "문제 해결 — Hostveil 문서",
+        "ogDescription": "Hostveil 결과 진단하기: 실행되는 모든 명령을 추적하고 Degraded, 거부된 롤백, 빈 히스토리, 종료 코드 3을 읽는 법.",
         "nav": "문제 해결"
       }
     },
@@ -267,16 +286,16 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "Contributing — hostveil docs",
-        "description": "Build hostveil from source, run the checks CI runs, learn the repository layout and architecture rule, add a new check, and use the demo VM.",
-        "ogTitle": "Contributing — hostveil docs",
+        "title": "Contributing — Hostveil docs",
+        "description": "Build Hostveil from source, run the checks CI runs, learn the repository layout and architecture rule, add a new check, and use the demo VM.",
+        "ogTitle": "Contributing — Hostveil docs",
         "ogDescription": "Build from source, run the checks, the repo layout, adding a check, and the demo VM.",
         "nav": "Contributing"
       },
       "ko": {
-        "title": "기여하기 — hostveil 문서",
-        "description": "소스에서 hostveil을 빌드하고, CI가 실행하는 점검을 직접 실행하고, 저장소 구조와 아키텍처 규칙을 배우고, 새 점검 항목을 추가하고, 데모 VM을 사용하는 법.",
-        "ogTitle": "기여하기 — hostveil 문서",
+        "title": "기여하기 — Hostveil 문서",
+        "description": "소스에서 Hostveil을 빌드하고, CI가 실행하는 점검을 직접 실행하고, 저장소 구조와 아키텍처 규칙을 배우고, 새 점검 항목을 추가하고, 데모 VM을 사용하는 법.",
+        "ogTitle": "기여하기 — Hostveil 문서",
         "ogDescription": "소스에서 빌드하기, 점검 실행, 저장소 구조, 점검 항목 추가, 데모 VM.",
         "nav": "기여하기"
       }
@@ -286,17 +305,17 @@
       "group": "reference",
       "ogType": "article",
       "en": {
-        "title": "Changelog — hostveil docs",
-        "description": "Every hostveil release and what changed in it, generated from the repository's own CHANGELOG so the page and the file cannot disagree.",
-        "ogTitle": "hostveil changelog",
-        "ogDescription": "Every hostveil release and what changed in it.",
+        "title": "Changelog — Hostveil docs",
+        "description": "Every Hostveil release and what changed in it, generated from the repository's own CHANGELOG so the page and the file cannot disagree.",
+        "ogTitle": "Hostveil changelog",
+        "ogDescription": "Every Hostveil release and what changed in it.",
         "nav": "Changelog"
       },
       "ko": {
-        "title": "변경 이력 — hostveil 문서",
-        "description": "hostveil의 모든 릴리스와 각각에서 바뀐 것. 저장소의 CHANGELOG에서 생성되므로 이 페이지와 파일이 어긋날 수 없습니다.",
-        "ogTitle": "hostveil 변경 이력",
-        "ogDescription": "hostveil의 모든 릴리스와 각각에서 바뀐 것.",
+        "title": "변경 이력 — Hostveil 문서",
+        "description": "Hostveil의 모든 릴리스와 각각에서 바뀐 것. 저장소의 CHANGELOG에서 생성되므로 이 페이지와 파일이 어긋날 수 없습니다.",
+        "ogTitle": "Hostveil 변경 이력",
+        "ogDescription": "Hostveil의 모든 릴리스와 각각에서 바뀐 것.",
         "nav": "변경 이력"
       }
     }

@@ -33,6 +33,7 @@ var readmeSections = []struct{ en, ko string }{
 	{"## How the score works", "## 점수는 어떻게 매겨지나"},
 	{"## Interfaces", "## 인터페이스"},
 	{"## AI (optional, advisory only)", "## AI (선택, 조언 전용)"},
+	{"## Roadmap", "## 로드맵"},
 	{"## Build from source", "## 소스에서 빌드하기"},
 	{"## License", "## 라이선스"},
 }

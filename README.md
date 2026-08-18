@@ -22,8 +22,9 @@ backed up, and reversible with one command.
 
 ---
 
-Most self-hosted boxes — Jellyfin, Nextcloud, a game server, a local LLM —
-run on whatever defaults the install left behind, and one bad default is
+Most self-hosted boxes — Jellyfin, Nextcloud, a game server, a local LLM, a
+self-hosted AI agent like OpenClaw or Hermes Agent — run on whatever defaults
+the install left behind, and one bad default is
 enough to lose the box. Point Hostveil at one and it checks the places that
 matter most, gives you a single 0–100 score, describes each problem without
 jargon, and offers to fix it: preview first, backup, then apply, with one
@@ -346,6 +347,22 @@ GitHub releases page, to notice that a newer version exists. It sends nothing
 about your host and the answer is cached; `HOSTVEIL_NO_UPDATE_CHECK=1` turns
 it off. Nothing else in Hostveil contacts the network unless you ask it to —
 `update`, and Trivy pulling vulnerability data during a CVE scan.
+
+## Roadmap
+
+A new detection domain is a bigger change than it looks — a new axis, funded
+by taking weight from every existing one — so it ships as a named release, not
+a line in a patch note: AI agent runtimes (3.1.0), kernel hardening (3.6.0),
+the Docker daemon (3.8.0), service hardening (3.9.0). Next up, at the same low
+cost as adding an entry to an existing registry: more self-hosted AI agent
+runtimes, more reverse proxies, wider distro coverage for the measurement
+harness. Under active exploration, not committed: Proxmox VE host hardening, a
+scoped single-node k3s/k0s domain, and a fleet view across hosts reached over
+SSH — with no new account, server or database, because that line is one this
+project does not cross. And a short list of things ruled out on purpose, not
+missing because nobody got to them: a plugin/rule system, AI that applies
+fixes unattended, a hosted dashboard. The full list, and why, is on the
+[Roadmap](https://hostveil.seolcu.com/docs/roadmap) page.
 
 ## Build from source
 
