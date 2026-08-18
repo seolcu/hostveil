@@ -352,16 +352,45 @@ it off. Nothing else in Hostveil contacts the network unless you ask it to —
 
 A new detection domain is a bigger change than it looks — a new axis, funded
 by taking weight from every existing one — so it ships as a named release, not
-a line in a patch note: AI agent runtimes (3.1.0), kernel hardening (3.6.0),
-the Docker daemon (3.8.0), service hardening (3.9.0). Next up, at the same low
-cost as adding an entry to an existing registry: more self-hosted AI agent
-runtimes, more reverse proxies, wider distro coverage for the measurement
-harness. Under active exploration, not committed: Proxmox VE host hardening, a
-scoped single-node k3s/k0s domain, and a fleet view across hosts reached over
-SSH — with no new account, server or database, because that line is one this
-project does not cross. And a short list of things ruled out on purpose, not
-missing because nobody got to them: a plugin/rule system, AI that applies
-fixes unattended, a hosted dashboard. The full list, and why, is on the
+a line in a patch note. Solid is shipped, dashed is planned but not scheduled,
+and the boxed list at the bottom is not on this line at all — those items were
+never headed anywhere to fall off of.
+
+```mermaid
+graph TD
+    v1["3.1.0: AI agent runtimes"] --> v2["3.6.0: Kernel hardening"]
+    v2 --> v3["3.8.0: Docker daemon"]
+    v3 --> v4["3.9.0: Service hardening"]
+    v4 -.-> n1["More agent runtimes"]
+    n1 -.-> n2["More reverse proxies"]
+    n2 -.-> n3["Wider distro coverage"]
+    n3 -.-> e1(["Proxmox VE hardening"])
+    e1 -.-> e2(["Single-node k3s / k0s"])
+    e2 -.-> e3(["SSH fleet view"])
+    e3 -.-> e4(["More languages"])
+
+    subgraph np["Not planned, on purpose"]
+        x1["Plugin / rule system"]
+        x2["AI applies fixes alone"]
+        x3["Hosted dashboard"]
+        x4["Auto-fix Manual findings"]
+    end
+
+    classDef shipped fill:#16231f,stroke:#d2bc74,stroke-width:2px,color:#f5ead2
+    classDef next fill:#101816,stroke:#d2bc74,stroke-width:2px,stroke-dasharray:6 3,color:#f5ead2
+    classDef exploring fill:#0b1512,stroke:#9aa89f,stroke-width:1px,stroke-dasharray:2 3,color:#c8bea7
+    classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
+    classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
+
+    class v1,v2,v3,v4 shipped
+    class n1,n2,n3 next
+    class e1,e2,e3,e4 exploring
+    class x1,x2,x3,x4 notplanned
+    class np npTitle
+```
+
+The reasoning behind every item, and why each "not planned" one is ruled out
+rather than just missing, is on the
 [Roadmap](https://hostveil.seolcu.com/docs/roadmap) page.
 
 ## Build from source

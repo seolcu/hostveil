@@ -349,19 +349,48 @@ TUI와 `scan`은 평범한 유니코드 대신 패치된
 
 ## 로드맵
 
-새 점검 영역은 겉보기보다 큰 변화입니다. 기존 영역 전부에서 가중치를 나눠
-받는 새 축이 하나 생기는 셈이라, 매번 이름 붙은 릴리스로 나왔습니다. AI
-에이전트 런타임(3.1.0), 커널 강화(3.6.0), Docker 데몬(3.8.0), 서비스
-강화(3.9.0)가 그렇게 나왔습니다. 다음 단계는 비용이 훨씬 낮습니다. 기존
-레지스트리에 항목 하나를 더하는 정도라, 셀프호스팅 AI 에이전트 런타임과
-리버스 프록시를 더 지원하고, 측정 하네스가 다루는 배포판을 늘립니다. 아직
-설계만 하는 단계인 것도 있습니다. Proxmox VE 호스트 강화, 범위를 좁힌 단일
-노드 k3s·k0s 점검, 그리고 SSH로 닿는 호스트들을 한 화면에서 보는 기능인데,
-새 계정도 서버도 데이터베이스도 없이 만듭니다. 이 프로젝트가 넘지 않는
-선이기 때문입니다. 일부러 하지 않는 것도 있습니다. 아직 손을 못 대서가
-아니라 이유가 있어서 뺐습니다. 플러그인·룰 시스템, 사람 확인 없이 스스로
-수정을 적용하는 AI, 호스팅형 대시보드가 그렇습니다. 전체 목록과 이유는
-[로드맵](https://hostveil.seolcu.com/ko/docs/roadmap) 페이지에 있습니다.
+새 점검 영역을 추가하는 일은 겉보기보다 큽니다. 기존 영역 전부에서 가중치를
+나눠 받는 새 축이 생기는 셈이라, 이름 붙은 릴리스로만 나옵니다. 실선은
+이미 나온 것이고, 점선은 계획은 됐지만 일정이 없는 것입니다. 맨 아래
+박스에 담긴 목록은 이 선 위에 아예 없습니다. 애초에 이 선을 타고 오다가
+떨어진 게 아니니까요.
+
+```mermaid
+graph TD
+    v1["3.1.0: AI 에이전트 런타임"] --> v2["3.6.0: 커널 강화"]
+    v2 --> v3["3.8.0: Docker 데몬"]
+    v3 --> v4["3.9.0: 서비스 강화"]
+    v4 -.-> n1["에이전트 런타임 확대"]
+    n1 -.-> n2["리버스 프록시 확대"]
+    n2 -.-> n3["배포판 커버리지 확대"]
+    n3 -.-> e1(["Proxmox VE 강화"])
+    e1 -.-> e2(["단일 노드 k3s·k0s"])
+    e2 -.-> e3(["SSH 플릿 뷰"])
+    e3 -.-> e4(["다국어 지원"])
+
+    subgraph np["일부러 하지 않는 것"]
+        x1["플러그인·룰 시스템"]
+        x2["스스로 수정 적용하는 AI"]
+        x3["호스팅형 대시보드"]
+        x4["Manual 항목 자동 수정"]
+    end
+
+    classDef shipped fill:#16231f,stroke:#d2bc74,stroke-width:2px,color:#f5ead2
+    classDef next fill:#101816,stroke:#d2bc74,stroke-width:2px,stroke-dasharray:6 3,color:#f5ead2
+    classDef exploring fill:#0b1512,stroke:#9aa89f,stroke-width:1px,stroke-dasharray:2 3,color:#c8bea7
+    classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
+    classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
+
+    class v1,v2,v3,v4 shipped
+    class n1,n2,n3 next
+    class e1,e2,e3,e4 exploring
+    class x1,x2,x3,x4 notplanned
+    class np npTitle
+```
+
+각 항목의 이유, 그리고 "일부러 하지 않는 것"이 왜 그냥 빠진 게 아니라 뺀
+것인지는 [로드맵](https://hostveil.seolcu.com/ko/docs/roadmap) 페이지에
+있습니다.
 
 ## 소스에서 빌드하기
 

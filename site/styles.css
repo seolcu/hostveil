@@ -774,6 +774,74 @@ figcaption strong {
   margin-top: 10px;
 }
 
+/* ── roadmap teaser: the homepage's compact cut of the docs/roadmap
+   timeline. Same idea, one axis instead of two — a solid line of shipped
+   releases ending in a hollow "more ahead" marker, because the full
+   next/exploring/not-planned breakdown belongs on its own page, not
+   competing with the pitch. ─────────────────────────────────────── */
+
+.rt-track {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 26px;
+  margin: 0 0 30px;
+  padding: 26px 0 0;
+  list-style: none;
+}
+
+.rt-track::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 25px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.rt-track li {
+  position: relative;
+  flex: 1 1 150px;
+  padding-right: 14px;
+}
+
+.rt-track li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -21px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  box-shadow: 3px 3px 0 var(--shadow-cut);
+}
+
+.rt-version {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.rt-label {
+  display: block;
+  color: var(--paper-muted);
+  font-size: 0.92rem;
+}
+
+.rt-more::before {
+  background: var(--bg);
+  border: 2px solid var(--line-strong);
+  box-shadow: none;
+}
+
+.rt-more .rt-label {
+  color: var(--muted);
+}
+
 @media (max-width: 980px) {
   .hero-grid,
   .split-grid,
@@ -830,6 +898,10 @@ figcaption strong {
   .stats-grid div:last-child {
     border-inline: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .rt-track li {
+    flex-basis: 42%;
   }
 
   figcaption {
