@@ -60,7 +60,7 @@ func counts(t *testing.T) map[string]int {
 		"ssh.allowtcpforwarding": true, "ssh.maxsessions": true,
 		"ssh.allowagentforwarding": true,
 		"accounts.local-banner":    true, "accounts.remote-banner": true,
-		"sysctl.module-dccp":     true, "sysctl.module-sctp": true,
+		"sysctl.module-dccp": true, "sysctl.module-sctp": true,
 		"sysctl.module-rds": true, "sysctl.module-tipc": true,
 		"sysctl.module-usbstorage": true,
 		"fileperms.compiler":       true,
