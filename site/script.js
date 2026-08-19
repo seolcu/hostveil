@@ -130,124 +130,93 @@
     });
   });
 
-  /* ── hero scan canvas ─────────────────────────────────────
-     Illustrative only: cell outcomes/ratios below are not the real
-     Auto/Review/Manual fix split (see docs/checks for that) — this is a
-     decorative echo of "scan finds issues, hostveil resolves most of them,"
-     drawn with the site's real severity colors. Plays once on load; never
-     loops. */
+  /* ── hero panel veil reveal ───────────────────────────────
+     Hostveil = "host" + "veil": the product panel starts covered by a
+     redacted-document overlay, and a scanline sweeps it clear to reveal
+     the real score/findings markup underneath. The canvas only ever
+     draws a cover-and-uncover effect over real HTML that was already
+     there — nothing is hidden from a screen reader or a no-JS client,
+     and nothing is redrawn. Plays once on load; never loops. */
 
-  var heroCanvas = document.getElementById("hero-scan");
-  if (heroCanvas && heroCanvas.getContext) {
+  var veilCanvas = document.querySelector(".hero-panel .veil-canvas");
+  if (veilCanvas && veilCanvas.getContext && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     (function () {
-      var ctx = heroCanvas.getContext("2d");
-      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var panel = veilCanvas.closest(".hero-panel");
+      var ctx = veilCanvas.getContext("2d");
       var rootStyle = getComputedStyle(document.documentElement);
+      var colorBar = rootStyle.getPropertyValue("--line-strong").trim();
       var colorDanger = rootStyle.getPropertyValue("--danger").trim();
       var colorWarning = rootStyle.getPropertyValue("--warning").trim();
-      var colorSignal = rootStyle.getPropertyValue("--signal").trim();
-      var colorLine = rootStyle.getPropertyValue("--line").trim();
+      var colorAccent = rootStyle.getPropertyValue("--accent").trim();
+      var colorShadow = rootStyle.getPropertyValue("--shadow-cut").trim();
 
-      var CELL = 36;
-      var GAP = 5;
-      var SWEEP = 1500;
-      var cells = [];
+      var BAR_H = 7;
+      var BAR_GAP = 3;
+      var DURATION = 950;
+      var width = 0;
+      var height = 0;
       var rafId = null;
       var startTime = null;
+      var finished = false;
 
-      // Deterministic per-index pseudo-random outcome, so a resize (which
-      // rebuilds the grid at a new size) redraws the same-looking mix
-      // rather than reshuffling it.
-      function outcomeFor(i) {
-        var r = ((i * 2654435761) % 100 + 100) % 100;
-        if (r < 55) return "dim";
-        if (r < 72) return "warning";
-        return "signal";
+      // Deterministic per-row pseudo-random accent, so a resize redraws
+      // the same-looking mix of bars rather than reshuffling it.
+      function barColor(row) {
+        var r = ((row * 2654435761) % 100 + 100) % 100;
+        if (r < 10) return colorDanger;
+        if (r < 22) return colorWarning;
+        return colorBar;
       }
 
-      function buildGrid() {
-        var rect = heroCanvas.getBoundingClientRect();
+      function size() {
+        var rect = panel.getBoundingClientRect();
         var dpr = window.devicePixelRatio || 1;
-        heroCanvas.width = Math.max(1, Math.round(rect.width * dpr));
-        heroCanvas.height = Math.max(1, Math.round(rect.height * dpr));
+        width = rect.width;
+        height = rect.height;
+        veilCanvas.width = Math.max(1, Math.round(width * dpr));
+        veilCanvas.height = Math.max(1, Math.round(height * dpr));
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
 
-        var cols = Math.max(1, Math.floor(rect.width / CELL));
-        var rows = Math.max(1, Math.floor(rect.height / CELL));
-        cells = [];
-        var i = 0;
-        for (var y = 0; y < rows; y++) {
-          for (var x = 0; x < cols; x++) {
-            cells.push({
-              x: x,
-              y: y,
-              outcome: outcomeFor(i),
-              delay: (i * 37) % (SWEEP * 0.6),
-              flash: 130 + ((i * 53) % 160),
-            });
-            i++;
-          }
+      function drawBars(fromY, toY) {
+        var row = Math.floor(fromY / (BAR_H + BAR_GAP));
+        for (var y = row * (BAR_H + BAR_GAP); y < toY; y += BAR_H + BAR_GAP) {
+          if (y + BAR_H < fromY) continue;
+          ctx.fillStyle = barColor(row);
+          ctx.fillRect(0, y, width, BAR_H);
+          row++;
         }
       }
 
-      function colorForOutcome(outcome) {
-        if (outcome === "warning") return colorWarning;
-        if (outcome === "signal") return colorSignal;
-        return null; // "dim" cells never fill, only outline
-      }
-
-      function stateColorAt(cell, elapsed) {
-        var t = elapsed - cell.delay;
-        if (t < 0) return null;
-        if (cell.outcome === "dim") return null;
-        if (t < cell.flash) {
-          return cell.outcome === "signal" ? colorDanger : colorWarning;
+      function drawFrame(sweepY) {
+        ctx.clearRect(0, 0, width, height);
+        drawBars(sweepY, height);
+        if (sweepY < height) {
+          ctx.fillStyle = colorShadow;
+          ctx.fillRect(0, sweepY + 2, width, 2);
+          ctx.fillStyle = colorAccent;
+          ctx.fillRect(0, sweepY, width, 2);
         }
-        return colorForOutcome(cell.outcome);
-      }
-
-      function drawFrame(elapsed) {
-        ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
-        for (var i = 0; i < cells.length; i++) {
-          var cell = cells[i];
-          var px = cell.x * CELL;
-          var py = cell.y * CELL;
-          var size = CELL - GAP;
-          var fill = stateColorAt(cell, elapsed);
-          if (fill) {
-            ctx.fillStyle = fill;
-            ctx.fillRect(px, py, size, size);
-          } else {
-            ctx.strokeStyle = colorLine;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
-          }
-        }
-      }
-
-      function settledDuration() {
-        return SWEEP * 0.6 + 160 + 160 + 40; // last cell's delay + flash + margin
       }
 
       function step(now) {
         if (startTime === null) startTime = now;
-        var elapsed = now - startTime;
-        drawFrame(elapsed);
-        if (elapsed < settledDuration()) {
+        var t = Math.min(1, (now - startTime) / DURATION);
+        var sweepY = t * height;
+        drawFrame(sweepY);
+        if (t < 1) {
           rafId = requestAnimationFrame(step);
         } else {
           rafId = null;
+          finished = true;
+          ctx.clearRect(0, 0, width, height);
         }
       }
 
       function start() {
-        buildGrid();
-        if (reduceMotion) {
-          drawFrame(settledDuration() + 1); // final state, no animation ever runs
-          return;
-        }
+        size();
+        drawFrame(0);
         startTime = null;
-        if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(step);
       }
 
@@ -255,8 +224,14 @@
       window.addEventListener("resize", function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-          buildGrid();
-          drawFrame(settledDuration() + 1); // redraw settled state only, never replay the sweep
+          if (finished) {
+            size(); // stays fully transparent; resizing a canvas clears it
+            return;
+          }
+          if (rafId) cancelAnimationFrame(rafId);
+          finished = true;
+          size();
+          ctx.clearRect(0, 0, width, height); // skip to the end rather than replay mid-sweep
         }, 150);
       });
 
