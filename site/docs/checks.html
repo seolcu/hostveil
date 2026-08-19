@@ -563,6 +563,692 @@
               <p>Vulnerabilities with no available patch get their own finding rather than being folded into the fixable ones or dropped. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and Hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong> instead of pretending it can be fixed.</p>
             </div>
 
+            <h2 id="fix-actions">What each fix actually does</h2>
+            <p>Every finding above with an <code>Auto-fix</code> or <code>Review</code> in its Fix column has a fix registered for it in <code>internal/fix</code>, and this is exactly what that fix does — generated from the current build, so it can never say something the code doesn't do. A <code>Review</code> finding with more than one entry lists every alternative it offers; the first is the one preselected everywhere, including <code>fix --all --review</code>.</p>
+                      <h3>Container</h3>
+          <dl class="fix-actions">
+            <dt><code>compose.dr002</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Bind published port to 127.0.0.1</p>
+              <p class="fix-warning">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt><code>compose.ds006</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Add security_opt no-new-privileges:true</p>
+              <p class="fix-warning">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt><code>compose.ds008</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set restart: unless-stopped</p>
+              <p class="fix-warning">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt><code>compose.ds010</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Limit app to 1g — typical application container (recommended)</p>
+              <p class="fix-warning">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+                <li>
+              <p>Limit app to 512m — small service (proxy, exporter, static site)</p>
+              <p class="fix-warning">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+                <li>
+              <p>Limit app to 2g — database or JVM service</p>
+              <p class="fix-warning">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>compose.ds018</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Bind published port to 127.0.0.1</p>
+              <p class="fix-warning">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt><code>compose.ds019</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Bind published port to 127.0.0.1</p>
+              <p class="fix-warning">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+          </dl>
+          <h3>SSH</h3>
+          <dl class="fix-actions">
+            <dt><code>ssh.allowagentforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable SSH agent forwarding</p>
+              <p class="fix-warning">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
+            </dd>
+            <dt><code>ssh.allowtcpforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable SSH TCP forwarding</p>
+              <p class="fix-warning">⚠ Existing local, remote, and dynamic SSH tunnels will stop working.</p>
+            </dd>
+            <dt><code>ssh.clientalivecountmax</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Limit unanswered SSH keepalives</p>
+            </dd>
+            <dt><code>ssh.clientaliveinterval</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Probe idle SSH clients every five minutes</p>
+              <p class="fix-warning">⚠ Long-running idle sessions may be disconnected when their clients stop responding.</p>
+            </dd>
+            <dt><code>ssh.emptypasswords</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable empty passwords</p>
+            </dd>
+            <dt><code>ssh.fingerprinthash</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Use SHA-256 host-key fingerprints</p>
+            </dd>
+            <dt><code>ssh.gatewayports</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Bind remote-forwarded ports to loopback only</p>
+              <p class="fix-warning">⚠ If you rely on <code>ssh -R</code> tunnels being reachable from other machines, this closes them to loopback.</p>
+            </dd>
+            <dt><code>ssh.hostbasedauth</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable host-based authentication</p>
+              <p class="fix-warning">⚠ If any user logs in via host-based trust rather than their own key, this removes that path.</p>
+            </dd>
+            <dt><code>ssh.ignorerhosts</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Ignore legacy rhosts trust files</p>
+            </dd>
+            <dt><code>ssh.kbdinteractive</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable keyboard-interactive authentication</p>
+              <p class="fix-warning">⚠ PAM-based one-time codes (2FA prompts) also use this mechanism — keep it enabled if your logins go through one.</p>
+            </dd>
+            <dt><code>ssh.logingracetime</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Lower LoginGraceTime to 60 seconds</p>
+            </dd>
+            <dt><code>ssh.loglevel</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Log SSH key fingerprints</p>
+            </dd>
+            <dt><code>ssh.maxauthtries</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Lower MaxAuthTries to 3</p>
+            </dd>
+            <dt><code>ssh.maxsessions</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Limit multiplexed SSH sessions</p>
+              <p class="fix-warning">⚠ Clients opening more than two sessions over one SSH connection will be refused.</p>
+            </dd>
+            <dt><code>ssh.passwordauth</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable password authentication</p>
+              <p class="fix-warning">⚠ Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH.</p>
+            </dd>
+            <dt><code>ssh.permittunnel</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable SSH tun/tap tunnels</p>
+              <p class="fix-warning">⚠ Existing SSH VPN or tun/tap workflows will stop working.</p>
+            </dd>
+            <dt><code>ssh.permituserenvironment</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable user-supplied SSH environments</p>
+              <p class="fix-warning">⚠ Login automation that relies on ~/.ssh/environment will stop receiving those variables.</p>
+            </dd>
+            <dt><code>ssh.printlastlog</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Show the previous login</p>
+            </dd>
+            <dt><code>ssh.rootlogin</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Allow root only with an SSH key (prohibit-password) (recommended)</p>
+              <p class="fix-warning">⚠ Keep a working key for root, or use a sudo user instead.</p>
+                </li>
+                <li>
+              <p>Disable root login entirely (no)</p>
+              <p class="fix-warning">⚠ Make sure another user can log in and use sudo before applying this.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>ssh.strictmodes</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Enforce SSH login-file ownership</p>
+            </dd>
+            <dt><code>ssh.tcpkeepalive</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable TCP keepalives for SSH</p>
+              <p class="fix-warning">⚠ Use ClientAliveInterval for encrypted liveness checks; dead connections may otherwise take longer to disappear from intermediate network devices.</p>
+            </dd>
+            <dt><code>ssh.usedns</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable SSH reverse-DNS lookups</p>
+            </dd>
+            <dt><code>ssh.x11forwarding</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable X11 forwarding</p>
+            </dd>
+          </dl>
+          <h3>Firewall</h3>
+          <dl class="fix-actions">
+            <dt><code>firewall.default-allow</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Allow SSH on 22/tcp, then set ufw's default inbound policy to deny</p>
+              <p class="fix-warning">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw default allow incoming</code> by hand.</p>
+            </dd>
+            <dt><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
+              <p class="fix-warning">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw disable</code> by hand.</p>
+            </dd>
+          </dl>
+          <h3>Updates</h3>
+          <dl class="fix-actions">
+            <dt><code>updates.apt-listchanges</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.apt-show-versions</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.auditd</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.debsums</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.disabled</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable dnf-automatic</p>
+              <p class="fix-warning">⚠ Installs dnf-automatic and enables its timer. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.fail2ban</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.pam-pwquality</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.pam-tmpdir</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.pending-security</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Refresh apt metadata and fully upgrade installed packages</p>
+              <p class="fix-warning">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon — and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to actually take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
+            </dd>
+            <dt><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.sysstat</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Install and enable auditd</p>
+              <p class="fix-warning">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt><code>updates.sysstat-disabled</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set ENABLED to true</p>
+            </dd>
+          </dl>
+          <h3>CVEs</h3>
+          <dl class="fix-actions">
+            <dt><code>cve.outdated-image</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Pull the new image and recreate app now (recommended)</p>
+              <p class="fix-warning">⚠ This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. Note the current image ID (<code>docker compose -f /opt/example/docker-compose.yml images</code>) before applying, so you can pin it back if the new one misbehaves.</p>
+                </li>
+                <li>
+              <p>Download the new image only; recreate app on your own schedule</p>
+              <p class="fix-warning">⚠ This changes nothing that is running: the image is downloaded but the container keeps using the old one until you recreate it, and the finding will still be reported until then. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this.</p>
+                </li>
+              </ul>
+            </dd>
+          </dl>
+          <h3>Ports</h3>
+          <dl class="fix-actions">
+            <dt><code>ports.redis-bind</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Bind Redis to loopback</p>
+              <p class="fix-warning">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
+            </dd>
+            <dt><code>ports.redis-disable-config</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Disable the Redis CONFIG command</p>
+              <p class="fix-warning">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
+            </dd>
+            <dt><code>ports.redis-protected-mode</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Enable Redis protected mode</p>
+              <p class="fix-warning">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
+            </dd>
+          </dl>
+          <h3>Accounts</h3>
+          <dl class="fix-actions">
+            <dt><code>accounts.core-dumps</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set a hard core-size limit of zero</p>
+            </dd>
+            <dt><code>accounts.default-umask</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set the default umask to 027</p>
+            </dd>
+            <dt><code>accounts.emptypassword</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p>Lock alice with <code>passwd -l</code></p>
+              <p class="fix-warning">⚠ If alice is your only way to reach this machine locally (console, su) and it has no other credential, locking it removes that access. Confirm you have another route in — an SSH key, a different sudo-capable account — before applying. The remote SSH path is already closed by ssh.emptypasswords; this only closes the local one.</p>
+            </dd>
+            <dt><code>accounts.local-banner</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Append the standard access warning</p>
+              <p class="fix-warning">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
+            </dd>
+            <dt><code>accounts.password-aging</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Harden password aging defaults</p>
+            </dd>
+            <dt><code>accounts.password-rounds</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Harden password hashing rounds</p>
+            </dd>
+            <dt><code>accounts.remote-banner</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Append the standard access warning</p>
+              <p class="fix-warning">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
+            </dd>
+          </dl>
+          <h3>File perms</h3>
+          <dl class="fix-actions">
+            <dt><code>fileperms.at-allow</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.at-deny</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.compiler</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.cron</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.cron-allow</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.cron-deny</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.crontab</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.docker-config</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.group</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.grub-config</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.grub2-config</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.gshadow</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.hostkey</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.passwd</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.passwd-backup</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.shadow</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.sshd-config</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.sudoers</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.sudoers-dropins</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>fileperms.systemd-units</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+          </dl>
+          <h3>AI agents</h3>
+          <dl class="fix-actions">
+            <dt><code>agent.config-perms</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>agent.control-ui-insecure</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set kernel.kptr_restrict to 1</p>
+            </dd>
+            <dt><code>agent.elevated-enabled</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set kernel.kptr_restrict to 1</p>
+            </dd>
+            <dt><code>agent.exec-unrestricted</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set kernel.kptr_restrict to 1</p>
+            </dd>
+            <dt><code>agent.secret-exposed</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Tighten /etc/shadow to 0640</p>
+            </dd>
+            <dt><code>agent.ssrf-private-network</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set kernel.kptr_restrict to 1</p>
+            </dd>
+          </dl>
+          <h3>Kernel</h3>
+          <dl class="fix-actions">
+            <dt><code>sysctl.accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-accept-redirects.conf</p>
+            </dd>
+            <dt><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-accept-source-route.conf</p>
+            </dd>
+            <dt><code>sysctl.aslr</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-aslr.conf</p>
+            </dd>
+            <dt><code>sysctl.bogus-icmp-errors</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-bogus-icmp-errors.conf</p>
+            </dd>
+            <dt><code>sysctl.bootp-relay</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-bootp-relay.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.bpf-jit-harden</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-bpf-jit-harden.conf</p>
+            </dd>
+            <dt><code>sysctl.core-uses-pid</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-core-uses-pid.conf</p>
+            </dd>
+            <dt><code>sysctl.ctrl-alt-del</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ctrl-alt-del.conf</p>
+            </dd>
+            <dt><code>sysctl.dmesg-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-dmesg-restrict.conf</p>
+            </dd>
+            <dt><code>sysctl.icmp-broadcasts</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-icmp-broadcasts.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv4-default-accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv4-default-accept-redirects.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv4-default-rp-filter</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv4-default-rp-filter.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.ipv6-accept-redirects-all</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-all.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv6-accept-redirects-default</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-default.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv6-accept-source-route-all</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-all.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv6-accept-source-route-default</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-default.conf</p>
+            </dd>
+            <dt><code>sysctl.ipv6-send-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ipv6-send-redirects.conf</p>
+            </dd>
+            <dt><code>sysctl.kptr-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-kptr-restrict.conf</p>
+            </dd>
+            <dt><code>sysctl.log-martians</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-log-martians.conf</p>
+            </dd>
+            <dt><code>sysctl.module-dccp</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist a modprobe install block</p>
+              <p class="fix-warning">⚠ Confirm this host does not use dccp before applying.</p>
+            </dd>
+            <dt><code>sysctl.module-rds</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist a modprobe install block</p>
+              <p class="fix-warning">⚠ Confirm this host does not use dccp before applying.</p>
+            </dd>
+            <dt><code>sysctl.module-sctp</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist a modprobe install block</p>
+              <p class="fix-warning">⚠ Confirm this host does not use dccp before applying.</p>
+            </dd>
+            <dt><code>sysctl.module-tipc</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist a modprobe install block</p>
+              <p class="fix-warning">⚠ Confirm this host does not use dccp before applying.</p>
+            </dd>
+            <dt><code>sysctl.module-usbstorage</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist a modprobe install block</p>
+              <p class="fix-warning">⚠ Confirm this host does not use dccp before applying.</p>
+            </dd>
+            <dt><code>sysctl.multicast-forwarding</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-multicast-forwarding.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.perf-events</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-perf-events.conf</p>
+            </dd>
+            <dt><code>sysctl.protected-fifos</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-protected-fifos.conf</p>
+            </dd>
+            <dt><code>sysctl.protected-links</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-protected-links.conf</p>
+            </dd>
+            <dt><code>sysctl.protected-regular</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-protected-regular.conf</p>
+            </dd>
+            <dt><code>sysctl.proxy-arp-all</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-proxy-arp-all.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.proxy-arp-default</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-proxy-arp-default.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.ptrace-scope</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-ptrace-scope.conf</p>
+            </dd>
+            <dt><code>sysctl.rp-filter</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-rp-filter.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.send-redirects</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-send-redirects.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.suid-dumpable</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-suid-dumpable.conf</p>
+            </dd>
+            <dt><code>sysctl.syncookies</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-syncookies.conf</p>
+            </dd>
+            <dt><code>sysctl.sysrq</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-sysrq.conf (recommended)</p>
+                </li>
+                <li>
+              <p>Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-warning">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt><code>sysctl.tcp-rfc1337</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-tcp-rfc1337.conf</p>
+            </dd>
+            <dt><code>sysctl.tty-ldisc-autoload</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-tty-ldisc-autoload.conf</p>
+            </dd>
+            <dt><code>sysctl.unprivileged-bpf</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Persist it: write /etc/sysctl.d/60-hostveil-unprivileged-bpf.conf</p>
+            </dd>
+          </dl>
+          <h3>Services</h3>
+          <dl class="fix-actions">
+            <dt><code>systemd.lock-personality</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set LockPersonality=yes for app</p>
+              <p class="fix-warning">⚠ Needing an alternate execution personality is rare outside emulation and compatibility layers. An ordinary service is unaffected; one that needs one fails at the next restart.</p>
+            </dd>
+            <dt><code>systemd.no-new-privileges</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set NoNewPrivileges=yes for app</p>
+              <p class="fix-warning">⚠ Closes the setuid path out of this service. A service that deliberately escalates — anything calling a setuid helper — stops working, and it stops at the next restart rather than now.</p>
+            </dd>
+            <dt><code>systemd.protect-clock</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set ProtectClock=yes for app</p>
+              <p class="fix-warning">⚠ Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need to change the system or hardware clock. A service that is not one of those stops being able to, at the next restart.</p>
+            </dd>
+            <dt><code>systemd.protect-kernel-logs</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set ProtectKernelLogs=yes for app</p>
+              <p class="fix-warning">⚠ Only a service that reads kernel logs directly — a diagnostics tool, an agent reading /dev/kmsg — needs this off. Most services never touch it.</p>
+            </dd>
+            <dt><code>systemd.protect-kernel-modules</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set ProtectKernelModules=yes for app</p>
+              <p class="fix-warning">⚠ Only a service that loads or removes kernel modules itself at runtime — rather than modules already loaded at boot — needs this off.</p>
+            </dd>
+            <dt><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">Auto-fix</span></dt>
+            <dd>
+              <p>Set RestrictSUIDSGID=yes for app</p>
+              <p class="fix-warning">⚠ Only a service that itself creates setuid or setgid files — a package manager, an installer — needs this off. An ordinary network daemon does not create such files and is unaffected.</p>
+            </dd>
+          </dl>
+
             <div class="docs-pager">
               <a class="button secondary" href="quickstart">← Quick start</a>
               <a class="button primary" href="scoring">Scoring →</a>
