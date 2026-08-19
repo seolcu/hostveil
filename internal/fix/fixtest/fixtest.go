@@ -19,12 +19,20 @@ import "github.com/seolcu/hostveil/internal/model"
 // belongs to. The source and severity are placeholders — no builder reads
 // either — and the declared remediation is deliberately Review, the value
 // that resolves against anything without hiding it.
+//
+// Several builders interpolate a value straight into the Action.Label or
+// .Warning a user reads, and cmd/sitegen's fix-actions page renders those
+// strings verbatim on the public docs site — so a path here is picked to
+// read as a plausible real one, not as test scaffolding. That is why "file"
+// and "dropin" are not under /tmp: cmd/sitegen/fixactions_test.go fails the
+// build if a rendered action text contains "/tmp/", specifically to catch a
+// value added here without that in mind.
 func Finding(id string) model.Finding {
 	return model.NewFinding(id, "t", model.SeverityHigh, model.SourceCompose, model.RemediationReview,
 		model.WithService("app"),
-		model.WithMetadata("file", "/tmp/docker-compose.yml"),
+		model.WithMetadata("file", "/opt/example/docker-compose.yml"),
 		model.WithMetadata("service", "app"),
-		model.WithMetadata("dropin", "/tmp/50-hostveil.conf"),
+		model.WithMetadata("dropin", "/etc/systemd/system/app.service.d/50-hostveil.conf"),
 		model.WithEvidence("port", "6379"),
 		model.WithEvidence("config", "/etc/ssh/sshd_config"),
 		model.WithEvidence("mechanism", "dnf-automatic"),

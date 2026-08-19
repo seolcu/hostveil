@@ -453,6 +453,65 @@
 .sev.medium { color: var(--warning); border-color: var(--warning); }
 .sev.low { color: var(--signal); border-color: var(--signal); }
 
+/* ── fix actions (checks page, generated) ─────────────── */
+
+.fix-actions {
+  margin: 0 0 30px;
+}
+
+.fix-actions dt {
+  margin: 22px 0 6px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.fix-actions dt:first-child {
+  margin-top: 0;
+}
+
+.fix-actions dd {
+  margin: 0 0 0 0;
+  padding: 0 0 0 18px;
+  border-left: 2px solid var(--line);
+}
+
+.fix-actions dd ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fix-actions dd li {
+  margin: 0 0 14px;
+}
+
+.fix-actions dd li:last-child {
+  margin-bottom: 0;
+}
+
+.fix-actions dd p {
+  margin: 0 0 6px;
+  color: var(--paper-muted);
+}
+
+.fix-kind {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font: 800 0.72rem/1.5 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--line-strong);
+  color: var(--signal);
+  border-color: var(--signal);
+}
+
+.fix-kind.review { color: var(--warning); border-color: var(--warning); }
+
+.fix-warning {
+  color: var(--orange);
+}
+
 /* ── roadmap: one line, run out of certainty ─────────────
    A shipped release is a fact, so it gets a solid rule and a filled
    marker. Everything after the last one is progressively less certain —
