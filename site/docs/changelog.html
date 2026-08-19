@@ -133,6 +133,26 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.23.0"><a href="https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0">3.23.0</a> <span class="changelog-date">2026-08-20</span></h2>
+          <p>The checks page now explains what each fix actually does, cross-linked from the table that names it, and the marketing site traded its one gradient band for a chart component built on the same numbers the docs already pin. The rest is two fixes: a Review batch used to preview a warning next to <code>firewall.inactive</code> and nothing next to a package upgrade that can restart sshd with no rollback checkpoint, and a compose edit could trust a yaml.v3 re-encode that could not be read back.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>sitegen:</strong> generate a "what each fix does" section on the checks page, rendered at generation time straight from the fix registry so a changed <code>Label</code>/<code>Warning</code> string and a forgotten <code>go run ./cmd/sitegen</code> fails CI instead of publishing stale prose (<a href="https://github.com/seolcu/hostveil/issues/785">#785</a>), and link the checks table's Fix column to the matching entry, re-verified against the registry on every generation run rather than trusted from the row's own label (<a href="https://github.com/seolcu/hostveil/issues/786">#786</a>).</p>
+            </li>
+            <li>
+              <p><strong>site:</strong> replace the cream <code>.split-section</code>/<code>.install-section</code> gradient band with a dark-palette treatment, and add a reusable "ledger bar" chart component wired to real, test-pinned data — homepage before/after stats, the checks page's Auto/Review/Manual split, and the measurements page's five-phase score trajectory (<a href="https://github.com/seolcu/hostveil/issues/778">#778</a>).</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> warn before every exec-based Review fix, not just firewall's — package upgrades, ten hardening-package installs, and both auto-update installers previewed with no warning at all, next to a firewall fix that carried a detailed one. <code>firewall.inactive</code>/<code>firewall.default-allow</code> also get the real-checker round-trip test the rest of the registry already had (<a href="https://github.com/seolcu/hostveil/issues/783">#783</a>).</p>
+            </li>
+            <li>
+              <p><strong>compose:</strong> verify a full re-encode parses back before trusting it — <code>Doc.Bytes()</code> trusted yaml.v3's full re-encode without confirming it was reloadable, and fuzzing found a source it could parse but not faithfully write back (<a href="https://github.com/seolcu/hostveil/issues/782">#782</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.22.0"><a href="https://github.com/seolcu/hostveil/compare/v3.21.0...v3.22.0">3.22.0</a> <span class="changelog-date">2026-08-19</span></h2>
           <p>The registry roughly doubled this cycle — new Lynis-aligned kernel, account, package and Redis checks, a reverse-proxy domain, and more of the existing catalog promoted from Review to Auto — and <code>explain --ai</code> stopped requiring a local Ollama. The rest is fixes: a container was scored as if it owned its own firewall, several privileged file paths trusted a pathname over what was actually there, and both UIs went quiet for as long as a slow scan or a slow fix took, with nothing on screen to say so.</p>
           <h3>Features</h3>

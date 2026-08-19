@@ -7,6 +7,47 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.23.0](https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0) (2026-08-20)
+
+검사 페이지에 이제 각 fix가 실제로 무엇을 하는지 설명이 붙었고, 그 항목을
+가리키는 표에서 바로 연결됩니다. 마케팅 사이트는 유일하게 그라데이션이
+있던 띠를 걷어내고, 문서에 이미 고정돼 있는 수치로 그리는 차트 컴포넌트로
+바꿨습니다. 나머지는 버그 수정 둘입니다. Review 일괄 적용 화면에서
+`firewall.inactive` 옆에는 자세한 경고가 뜨는데 sshd를 재시작할 수 있고
+롤백 체크포인트도 없는 패키지 업그레이드 옆에는 아무 경고도 없었고, compose
+편집기가 다시 읽어들일 수 없는 yaml.v3 재인코딩 결과를 그대로 믿고
+있었습니다.
+
+### 새 기능
+
+* **sitegen:** 검사 페이지에 "각 fix가 하는 일" 섹션을 생성합니다. fix
+  레지스트리에서 생성 시점에 바로 렌더링하므로, `Label`/`Warning` 문구를
+  고치고 `go run ./cmd/sitegen`을 깜빡하면 오래된 설명을 그대로 배포하는
+  대신 CI가 실패합니다 ([#785](https://github.com/seolcu/hostveil/issues/785)).
+  검사 표의 Fix 열도 해당 항목으로 연결했습니다. 링크는 매 생성마다
+  레지스트리와 다시 대조하며, 행에 적힌 라벨을 그대로 믿지 않습니다
+  ([#786](https://github.com/seolcu/hostveil/issues/786)).
+* **site:** 유일하게 그라데이션이 들어가 있던 `.split-section`/
+  `.install-section` 크림색 띠를 어두운 팔레트로 바꿨습니다. 실제 수치로
+  그리는 "레저 바" 차트 컴포넌트도 새로 추가했습니다. 홈페이지의 적용
+  전/후 수치, 검사 페이지의 Auto/Review/Manual 비율, 측정 페이지의 5단계
+  점수 추이 모두 테스트로 값이 고정돼 있습니다
+  ([#778](https://github.com/seolcu/hostveil/issues/778)).
+
+### 버그 수정
+
+* **fix:** exec 기반 Review fix 전체에 경고를 답니다. 그동안은 firewall
+  쪽 fix만 자세한 경고를 달고 있었고, 패키지 업그레이드나 강화 패키지
+  설치 열 개, 자동 업데이트 설치 프로그램 둘 다 경고 없이 미리보기됐습니다.
+  `firewall.inactive`/`firewall.default-allow`에도 나머지 레지스트리가
+  이미 갖고 있던 실제 검사기 왕복 테스트를 추가했습니다
+  ([#783](https://github.com/seolcu/hostveil/issues/783)).
+* **compose:** 재인코딩 결과를 다시 읽을 수 있는지 확인한 뒤에야 신뢰하도록
+  고쳤습니다. `Doc.Bytes()`는 yaml.v3의 전체 재인코딩 결과가 다시 로드
+  가능한지 확인하지 않고 그대로 믿고 있었는데, 퍼징으로 파싱은 되지만
+  그대로 다시 쓸 수는 없는 입력을 찾아냈습니다
+  ([#782](https://github.com/seolcu/hostveil/issues/782)).
+
 ## [3.22.0](https://github.com/seolcu/hostveil/compare/v3.21.0...v3.22.0) (2026-08-19)
 
 이번 주기에는 등록된 검사 항목이 거의 두 배로 늘었습니다. Lynis 기준에 맞춘

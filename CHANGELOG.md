@@ -2,6 +2,46 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.23.0](https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0) (2026-08-20)
+
+The checks page now explains what each fix actually does, cross-linked from
+the table that names it, and the marketing site traded its one gradient band
+for a chart component built on the same numbers the docs already pin. The
+rest is two fixes: a Review batch used to preview a warning next to
+`firewall.inactive` and nothing next to a package upgrade that can restart
+sshd with no rollback checkpoint, and a compose edit could trust a yaml.v3
+re-encode that could not be read back.
+
+### Features
+
+* **sitegen:** generate a "what each fix does" section on the checks page,
+  rendered at generation time straight from the fix registry so a changed
+  `Label`/`Warning` string and a forgotten `go run ./cmd/sitegen` fails CI
+  instead of publishing stale prose
+  ([#785](https://github.com/seolcu/hostveil/issues/785)), and link the
+  checks table's Fix column to the matching entry, re-verified against the
+  registry on every generation run rather than trusted from the row's own
+  label ([#786](https://github.com/seolcu/hostveil/issues/786)).
+* **site:** replace the cream `.split-section`/`.install-section` gradient
+  band with a dark-palette treatment, and add a reusable "ledger bar" chart
+  component wired to real, test-pinned data — homepage before/after stats,
+  the checks page's Auto/Review/Manual split, and the measurements page's
+  five-phase score trajectory
+  ([#778](https://github.com/seolcu/hostveil/issues/778)).
+
+### Bug Fixes
+
+* **fix:** warn before every exec-based Review fix, not just firewall's —
+  package upgrades, ten hardening-package installs, and both auto-update
+  installers previewed with no warning at all, next to a firewall fix that
+  carried a detailed one. `firewall.inactive`/`firewall.default-allow` also
+  get the real-checker round-trip test the rest of the registry already had
+  ([#783](https://github.com/seolcu/hostveil/issues/783)).
+* **compose:** verify a full re-encode parses back before trusting it —
+  `Doc.Bytes()` trusted yaml.v3's full re-encode without confirming it was
+  reloadable, and fuzzing found a source it could parse but not faithfully
+  write back ([#782](https://github.com/seolcu/hostveil/issues/782)).
+
 ## [3.22.0](https://github.com/seolcu/hostveil/compare/v3.21.0...v3.22.0) (2026-08-19)
 
 The registry roughly doubled this cycle — new Lynis-aligned kernel, account,
