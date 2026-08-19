@@ -143,7 +143,7 @@ func (e *Engine) buildFix(f model.Finding) (built fix.Fix, ok bool, err error) {
 	// both can go wrong. See contain.go.
 	defer func() {
 		if r := recover(); r != nil {
-			built, ok, err = fix.Fix{}, false, crashError("deciding what to change", f.ID, r)
+			built, ok, err = fix.Fix{}, false, e.crashError("deciding what to change", f.ID, r)
 		}
 	}()
 	fx, ok, err := e.fixes.Build(f)
@@ -161,7 +161,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if err != nil {
 		return model.FixOutcome{}, err
 	}
-	next, err := safeTransform(a, f.ID, orig)
+	next, err := e.safeTransform(a, f.ID, orig)
 	if err != nil {
 		return model.FixOutcome{}, err
 	}

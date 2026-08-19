@@ -111,6 +111,12 @@ type Store struct {
 // NewStore returns a Store rooted at dir.
 func NewStore(dir string) *Store { return &Store{dir: dir} }
 
+// Dir returns the directory the store is rooted at, so a caller that already
+// holds a Store (rather than calling DefaultDir itself) can put something
+// else — a diagnostics record, say — beside checkpoints and scans without
+// guessing where a test pointed it.
+func (s *Store) Dir() string { return s.dir }
+
 // DefaultDir returns the per-user (or system, when root) hostveil data
 // directory for checkpoints and reports.
 func DefaultDir() string {

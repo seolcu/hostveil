@@ -268,6 +268,19 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 			slots <- struct{}{}
 			defer func() { <-slots }()
 
+			// check.runOne's recover only covers the goroutine it runs the
+			// whole Checker in, which is not this one — scanAll spawns its
+			// own, so a panic scanning one image would otherwise take down
+			// the process this domain is supposed to only ever degrade. One
+			// bad image becomes a normal per-target failure instead, folded
+			// into the same Covered/Total accounting a Trivy error already
+			// produces below.
+			defer func() {
+				if p := recover(); p != nil {
+					results[i] = result{err: fmt.Errorf("panic scanning %s: %v", t.image, p)}
+				}
+			}()
+
 			fs, err := scanImage(ctx, r, cacheArgs, t)
 			if err == nil && t.standalone {
 				fs = demoteToManual(fs)

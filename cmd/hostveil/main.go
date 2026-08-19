@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 )
@@ -67,7 +68,25 @@ func notifyContext(parent context.Context) (context.Context, func()) {
 	}
 }
 
-func run(ctx context.Context, args []string) int {
+func run(ctx context.Context, args []string) (code int) {
+	// The recover of last resort. check.runOne catches a panic in one
+	// checker, internal/core/contain.go catches one in a fix — both scoped
+	// on purpose, so the rest of a scan or a batch keeps going. This is
+	// everything else: a bug in flag parsing, in the TUI's rendering, in
+	// dispatch itself. Without it, that bug printed a raw Go stack straight
+	// to a terminal that then scrolled it away, which is exactly the "bug
+	// report hostveil wants back" internal/core/contain.go already talks
+	// about, with no way for anyone to give it one.
+	//
+	// debug.Stack() runs here, directly in the recover, not inside
+	// reportCrash — a stack captured one call further down would start from
+	// reportCrash's own frame instead of the one that actually panicked.
+	defer func() {
+		if r := recover(); r != nil {
+			code = reportCrash(args, r, debug.Stack())
+		}
+	}()
+
 	// Top-level help/version flags are handled before subcommand dispatch so
 	// they behave like the bare-word `help`/`version` subcommands. Otherwise a
 	// leading dash-flag is never promoted to a command and leaks into the
@@ -101,6 +120,8 @@ func run(ctx context.Context, args []string) int {
 		return cmdRollback(ctx, args)
 	case "history":
 		return cmdHistory(ctx, args)
+	case "bugreport":
+		return cmdBugreport(ctx, args)
 	case "update":
 		return cmdUpdate(ctx, args)
 	case "uninstall":
@@ -163,6 +184,9 @@ Usage:
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
                                  --scans lists the score of every saved scan
+  hostveil bugreport [flags]     Package a crash and scan summary for a bug
+                                 report; nothing is sent without --send and
+                                 your confirmation
   hostveil update [flags]        Update hostveil to the latest release
   hostveil uninstall [--yes]     Remove hostveil, keeping its saved state
   hostveil version               Print the version (also: --version, -V)
@@ -204,6 +228,16 @@ Rollback flags:
   --force         Restore even if the file changed after the fix was applied.
                   Rollback keeps no backup of its own, so it declines by
                   default rather than discard those edits.
+
+Bugreport flags:
+  --trace FILE    Attach a command trace produced with HOSTVEIL_DEBUG=1
+  --unredacted    Skip redacting IPs and home-directory usernames (local
+                  use only; refuses to combine with --send)
+  --send          Offer to open the report as a GitHub issue after printing
+                  it and asking for confirmation
+  --yes           Skip the confirmation prompt; --send is still required to
+                  transmit anything
+  --output FILE   Write the report to FILE instead of printing it
 
 TUI and dashboard flags:
   --theme NAME    Color theme: onedark (default), gruvbox, nord,
@@ -248,6 +282,15 @@ Environment:
                        thing. Command output is deliberately not logged — it
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
+  HOSTVEIL_GITHUB_TOKEN
+                       bugreport --send: a GitHub personal access token used
+                       to open the report as an issue via the API. Without
+                       it, bugreport falls back to the gh CLI if it is
+                       installed and already authenticated, or prints the
+                       report locally with instructions to paste it in by
+                       hand. Read only when --send is given, and even then
+                       nothing is sent until the confirmation prompt (or
+                       --yes) says so.
   HOSTVEIL_NO_UPDATE_CHECK
                        Set to any value and hostveil never contacts GitHub on
                        its own. Without it, scan, tui and serve refresh a

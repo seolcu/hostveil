@@ -12,6 +12,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/diagnostics"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
@@ -25,6 +26,12 @@ type Config struct {
 	Store    *history.Store         // nil = default per-user dir
 	Runner   platform.CommandRunner // nil = platform.DefaultRunner
 	AI       ai.Explainer           // nil = ai.Noop (advisory AI disabled)
+	// Version is the hostveil build version, carried only so a crash record
+	// (internal/diagnostics) written from inside a fix or a checker names the
+	// build it happened on. Empty is fine — cmd/hostveil is the only caller
+	// that has a real one to give, and every core test that never sets it
+	// still gets a usable, if blank, record.
+	Version string
 }
 
 // Engine holds the checker registry, fix registry, recovery store, and the
@@ -35,6 +42,7 @@ type Engine struct {
 	store    *history.Store
 	runner   platform.CommandRunner
 	ai       ai.Explainer
+	version  string
 
 	// applyMu serializes everything that mutates the host or replaces the
 	// current report: scans, fix applications, and rollbacks. It is always
@@ -67,7 +75,7 @@ func New(cfg Config) *Engine {
 	if explainer == nil {
 		explainer = ai.Noop{}
 	}
-	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer}
+	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer, version: cfg.Version}
 }
 
 // ScanOptions narrows what a scan covers. The zero value is a full scan.
@@ -167,6 +175,14 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 			Reason:       r.Reason,
 			FindingCount: len(valid),
 		})
+		// Stack is set only when the domain's own recover in check.runOne
+		// caught a panic. The domain has already degraded gracefully by the
+		// time this runs — this only decides whether a trace survives to be
+		// found by `hostveil bugreport` afterward.
+		if r.Stack != "" {
+			diagnostics.RecordCrash(e.store.Dir(),
+				diagnostics.NewRecord(e.version, "scan", "checker "+r.Source.String(), r.Reason, []byte(r.Stack)))
+		}
 	}
 
 	e.classify(findings)

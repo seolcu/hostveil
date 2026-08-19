@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/seolcu/hostveil/internal/diagnostics"
 	"github.com/seolcu/hostveil/internal/fix"
 )
 
@@ -30,14 +31,18 @@ import (
 // single-fix paths surface the message, and a batch records it under Failed
 // and carries on to the next finding.
 //
-// The stack goes into the error rather than to a log. There is no log all
-// three interfaces read, and a panic in a fix is a bug report hostveil wants
-// back — so the message names the finding, says the host was not changed, and
-// carries the trace.
-func crashError(what, id string, r any) error {
+// The stack goes into the error, and now also into a diagnostics.CrashRecord
+// under the engine's state directory. There is no log all three interfaces
+// read, and a panic in a fix is a bug report hostveil wants back — the error
+// message keeps the trace visible right where the fix failed, and the record
+// is what lets `hostveil bugreport` find it again afterward without the
+// operator having had to copy it out of a scrolled-away terminal.
+func (e *Engine) crashError(what, id string, r any) error {
+	stack := debug.Stack()
+	diagnostics.RecordCrash(e.store.Dir(), diagnostics.NewRecord(e.version, "fix", "fix "+id, r, stack))
 	return fmt.Errorf("the fix for %s crashed while %s: %v\n\n"+
 		"This is a bug in Hostveil and the host was not changed. "+
-		"Please report it with the trace below.\n\n%s", id, what, r, debug.Stack())
+		"Please report it with the trace below.\n\n%s", id, what, r, stack)
 }
 
 // safeTransform runs an edit action's transform with a crash contained.
@@ -46,10 +51,10 @@ func crashError(what, id string, r any) error {
 // from the writer: a transform that panicked partway has said nothing about
 // what the file should contain, and the named return would otherwise carry
 // whatever it had assembled so far.
-func safeTransform(a fix.Action, id string, in []byte) (out []byte, err error) {
+func (e *Engine) safeTransform(a fix.Action, id string, in []byte) (out []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			out, err = nil, crashError("rewriting "+a.Path, id, r)
+			out, err = nil, e.crashError("rewriting "+a.Path, id, r)
 		}
 	}()
 	return a.Transform(in)

@@ -240,6 +240,24 @@ hostveil history --scans</code></pre></div>
             <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
             <p>그것을 띄워 둔 채로 본인 기기에서 출력된 URL을 엽니다. 대신 대시보드를 외부에 노출되는 주소로 바인딩하도록 권하지는 않습니다. 이 대시보드의 모든 경로는 root 권한으로 조치를 적용하거나 <code>/etc/shadow</code>를 읽은 스캔 결과를 다루고, 포워딩된 포트는 인증이 이미 끝난 같은 접근이기 때문입니다.</p>
 
+            <h2 id="bugreport">bugreport</h2>
+            <p>크래시와 스캔 요약을 버그 리포트로 묶습니다. 리포트를 작성하는 단계는 네트워크에 전혀 닿지 않습니다. 전송하는 단계만 닿으며, 그마저도 <code>--send</code>와 명시적인 확인을 거친 뒤에만 이루어집니다.</p>
+            <div class="code-block"><pre><code>hostveil bugreport [flags]</code></pre></div>
+            <p>리포트에는 hostveil 버전, 호스트의 배포판과 플랫폼, 기록된 크래시 트레이스, 그리고 마지막으로 저장된 스캔의 점수·영역 상태·발견 항목 ID와 심각도가 담깁니다. 발견 항목의 설명, 조치 방법, 근거는 담기지 않습니다. 운영자가 도움을 요청하려는 바로 그 설정을 인용할 수 있는 정보이기 때문입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--trace FILE</code></td><td><code>""</code></td><td><code>HOSTVEIL_DEBUG=1</code>로 만든 명령 트레이스를 첨부합니다.</td></tr>
+                  <tr><td><code>--unredacted</code></td><td><code>false</code></td><td>IP 주소와 홈 디렉터리 사용자 이름을 가리지 않습니다. 로컬에서만 쓰는 용도이며 <code>--send</code>와 함께 쓸 수 없습니다.</td></tr>
+                  <tr><td><code>--send</code></td><td><code>false</code></td><td>리포트를 출력하고 확인을 물은 뒤, GitHub 이슈로 올릴지 제안합니다.</td></tr>
+                  <tr><td><code>--yes</code></td><td><code>false</code></td><td>확인 프롬프트를 건너뜁니다. 실제로 전송하려면 <code>--send</code>가 그래도 있어야 합니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>리포트를 출력하는 대신 파일로 씁니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p><code>--send</code>를 주면 hostveil은 먼저 <code>HOSTVEIL_GITHUB_TOKEN</code>을 시도하고, 그다음 이미 인증된 <code>gh</code> CLI를 시도합니다. 둘 다 없으면 리포트를 로컬에 저장하고 직접 이슈를 여는 방법을 안내합니다. 이 명령은 어드바이저리 AI 제공자와 업데이트 확인을 빼면 hostveil이 네트워크에 닿는 유일한 경로이고, 매번 이렇게 명시적으로 동의해야만 실행됩니다. 자세한 내용은 <a href="environment">환경 변수</a>를 참고하세요.</p>
+
             <h2 id="explain">explain</h2>
             <p>발견 항목을 쉬운 말로 설명합니다.</p>
             <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>

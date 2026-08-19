@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -196,12 +197,10 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// is the first scan there has ever been a chance to start — so unlike
 	// handleRescan there is nothing to do with the return value.
 	s.progress.begin()
-	//nolint:gosec // G118: runTrackedScan reads s.baseCtx, set to ctx two lines
-	// up, rather than taking a context argument — deliberately, since it also
-	// runs from handleRescan, where the request's own context must not be the
-	// one a scan runs under (see hostWork). gosec does not flag that call site
-	// only because handleRescan's signature has no context.Context parameter
-	// of its own for the heuristic to compare against; the pattern is the same.
+	// runTrackedScan reads s.baseCtx, set to ctx two lines up, rather than
+	// taking a context argument — deliberately, since it also runs from
+	// handleRescan, where the request's own context must not be the one a
+	// scan runs under (see hostWork).
 	go s.runTrackedScan()
 
 	srv := &http.Server{
@@ -525,11 +524,30 @@ func (s *Server) runTrackedScan() {
 		}
 	}()
 
-	ctx := s.baseCtx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	s.engine.Scan(ctx, events)
+	// The scan itself runs inside its own recover. Both handleRescan and
+	// Serve start this method with `go`, so there is no caller left to catch
+	// a panic that isn't a checker's own — check.runOne already contains
+	// those — but one in the scoring or persistence code ScanWith runs after
+	// every checker has returned. Without this, that panic ends the process
+	// mid-request, for every connection the dashboard is serving, not just
+	// this one. See internal/core/contain.go for the equivalent guard on the
+	// fix path; a crash here is not recorded there for internal/diagnostics
+	// the way a fix's is, because layering keeps this package from importing
+	// internal/history to find out where — surviving the panic is the load-
+	// bearing half, and it does not need that import to happen.
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintln(os.Stderr, "hostveil: dashboard scan crashed:", r)
+			}
+		}()
+		ctx := s.baseCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		s.engine.Scan(ctx, events)
+	}()
+
 	close(events)
 	<-drained
 	s.progress.finish()
