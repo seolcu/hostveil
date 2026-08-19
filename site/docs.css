@@ -512,6 +512,14 @@
   color: var(--orange);
 }
 
+/* Jumped to from the Fix column above: a moment of "you are here" rather
+   than landing silently partway down a long per-domain list. */
+.fix-actions dt:target {
+  scroll-margin-top: 20px;
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+}
+
 /* ── roadmap: one line, run out of certainty ─────────────
    A shipped release is a fact, so it gets a solid rule and a filled
    marker. Everything after the last one is progressively less certain —

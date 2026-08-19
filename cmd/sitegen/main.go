@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/seolcu/hostveil/internal/fix"
 )
 
 const siteURL = "https://hostveil.seolcu.com"
@@ -358,6 +360,7 @@ func fragment(kind, lang, slug string) (string, error) {
 			return "", err
 		}
 		frag = strings.Replace(frag, fixActionsMarker, actions, 1)
+		frag = linkFixColumnRows(frag, fix.Default())
 	}
 	return frag, nil
 }

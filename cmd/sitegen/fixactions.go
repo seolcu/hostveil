@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -116,8 +117,8 @@ func renderOneFix(registry *fix.Registry, id string) (string, error) {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "            <dt><code>%s</code> <span class=\"%s\">%s</span></dt>\n",
-		escText(id), kindClass, escText(kind))
+	fmt.Fprintf(&b, "            <dt id=\"fix-%s\"><code>%s</code> <span class=\"%s\">%s</span></dt>\n",
+		escAttr(id), escText(id), kindClass, escText(kind))
 	b.WriteString("            <dd>\n")
 	if len(fx.Actions) == 1 {
 		action, err := renderAction(fx.Actions[0], "")
@@ -172,4 +173,39 @@ func renderAction(a fix.Action, labelSuffix string) (string, error) {
 		fmt.Fprintf(&b, "              <p class=\"fix-warning\">⚠ %s</p>\n", inline(a.Warning))
 	}
 	return b.String(), nil
+}
+
+// checksFixKindCell matches one row of the checks table's existing 4-column
+// shape, up through its Fix column — the same row findingRow (docs_test.go)
+// pins, captured so only the Fix cell's text needs replacing. Left as a
+// single group up to that cell rather than three, because nothing here
+// needs to know the description or severity; changing that shape only where
+// this needs it is what keeps two regexes reading the same rows from
+// drifting apart.
+var checksFixKindCell = regexp.MustCompile(
+	`(<tr><td><code>([a-z0-9.\-]+)</code></td>.*?<td>)(Auto-fix|Review)(</td></tr>)`)
+
+// linkFixColumnRows rewrites the checks table's Fix column so "Auto-fix" and
+// "Review" link down to the matching entry renderFixActions produced,
+// instead of sitting as plain text next to a description of what running it
+// does with nothing connecting the two.
+//
+// This runs on the *rendered* fragment, never on
+// content/en/docs/checks.html itself — the source file the table's own
+// regex-pinned tests (findingRow, severityCell in docs_test.go) read stays
+// exactly as written, so this cannot touch what those tests check. Every
+// candidate is re-verified against the registry rather than trusted from
+// the row's own hand-typed label, so a row this function cannot back with a
+// real entry below is left as plain text instead of becoming a dead link —
+// the row read "Auto-fix" was already correct, wiring it to nothing at all
+// would not be.
+func linkFixColumnRows(html string, registry *fix.Registry) string {
+	return checksFixKindCell.ReplaceAllStringFunc(html, func(m string) string {
+		sub := checksFixKindCell.FindStringSubmatch(m)
+		before, id, kind, after := sub[1], sub[2], sub[3], sub[4]
+		if !registry.Has(id) {
+			return m
+		}
+		return before + `<a href="#fix-` + id + `">` + kind + `</a>` + after
+	})
 }

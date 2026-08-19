@@ -57,3 +57,34 @@ func TestFixActionsRendersNoLiteralBackticks(t *testing.T) {
 		t.Error("the generated fix-actions section contains a literal backtick; it should have gone through inline()")
 	}
 }
+
+// TestFixColumnLinksResolveAndCoverEveryFixableRow checks the two directions
+// linkFixColumnRows needs to get right on the real checks.html source: every
+// Auto-fix/Review row for a registered ID becomes a link, and every link it
+// produces points at an id renderFixActions actually emitted — a stray
+// anchor pointing at nothing would be a worse reading experience than the
+// plain text it replaced.
+func TestFixColumnLinksResolveAndCoverEveryFixableRow(t *testing.T) {
+	registry := fix.Default()
+	src, err := assets.ReadFile("content/en/docs/checks.html")
+	if err != nil {
+		t.Fatalf("reading checks.html: %v", err)
+	}
+	linked := linkFixColumnRows(string(src), registry)
+
+	actions, err := renderFixActions()
+	if err != nil {
+		t.Fatalf("renderFixActions: %v", err)
+	}
+
+	for _, id := range registry.Patterns() {
+		want := `href="#fix-` + id + `"`
+		if !strings.Contains(linked, want) {
+			t.Errorf("%s is registered but its Fix-column cell was not linked (%s)", id, want)
+		}
+		anchor := `id="fix-` + id + `"`
+		if !strings.Contains(actions, anchor) {
+			t.Errorf("%s has a Fix-column link but renderFixActions emits no %s to land on", id, anchor)
+		}
+	}
+}
