@@ -56,7 +56,7 @@ const LinuxOS = "linux"
 // hostveil builds and runs on darwin — goreleaser publishes those archives —
 // and every detection rule in it is about Linux. Most domains discover that
 // on their own and skip cleanly: there is no /proc/sys, no systemd, no
-// apt-get, no ss. Three did not, and each turned "I could not look" into an
+// apt-get, no ss. Four did not, and each turned "I could not look" into an
 // answer, which is the one thing this codebase says a checker must never do:
 //
 //   - firewall probes ufw, firewall-cmd, nft and iptables. None is installed
@@ -72,9 +72,15 @@ const LinuxOS = "linux"
 //     only /var/root and reports "no agent runtime found" without ever having
 //     looked at /Users — the exact confusion that package's doc comment says
 //     it exists to prevent.
+//   - proxy reads /etc/nginx, which Homebrew's nginx does not use — its
+//     configuration lives under the Homebrew prefix instead — so it would
+//     report a clean proxy on a Mac that is running one, deciding from a
+//     config file it never opened.
 //
-// The result was not an N/A score. firewall and fileperms are unconditionally
-// available, so a Mac produced a plausible number built on a false finding.
+// The result was not always an N/A score. firewall and fileperms are
+// unconditionally available, so a Mac produced a plausible number built on a
+// false finding; proxy's failure runs the other way, a false-clean axis
+// reporting a proxy that was never examined.
 //
 // This is a statement about the operating system and not about any tool, so
 // it lives here with the rest of the "what host is this" questions rather
