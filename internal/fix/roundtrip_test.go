@@ -206,6 +206,48 @@ func applyFirstAlternative(t *testing.T, f model.Finding) (before, after []byte)
 	return before, after
 }
 
+// applyFirstAlternativeMode is applyFirstAlternative's ActionMode twin: the
+// fileperms and agent mode findings carry a Mode transform (a permission
+// bits in, permission bits out function) rather than a Transform over file
+// contents, so there is no diff to read back — chmod is the whole write.
+//
+// Same contract as applyFirstAlternative otherwise: builds the real
+// registered fix, drives its first action, and fails loudly if that action
+// is not the kind it claims to close the loop over.
+func applyFirstAlternativeMode(t *testing.T, f model.Finding) {
+	t.Helper()
+	fx, ok, err := fix.Default().Build(f)
+	if err != nil {
+		t.Fatalf("building the fix for %s: %v", f.ID, err)
+	}
+	if !ok {
+		t.Fatalf("no fix is registered for %s", f.ID)
+	}
+	if len(fx.Actions) == 0 {
+		t.Fatalf("the fix for %s has no actions", f.ID)
+	}
+	a := fx.Actions[0]
+	if a.Kind != fix.ActionMode {
+		t.Fatalf("%s's first action is not a mode change, so this loop cannot close over it", f.ID)
+	}
+	if len(a.Paths) == 0 {
+		t.Fatalf("%s's mode action names no paths", f.ID)
+	}
+	for _, p := range a.Paths {
+		fi, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("stat %s: %v", p, err)
+		}
+		want := a.Mode(fi.Mode())
+		if want == fi.Mode() {
+			t.Fatalf("%s's Mode returned its input unchanged for %s", f.ID, p)
+		}
+		if err := os.Chmod(p, want); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func runChecker(t *testing.T, c check.Checker) map[string]model.Finding {
 	t.Helper()
 	env := checktest.New().Env()

@@ -10,19 +10,35 @@ import (
 
 // rule audits one property of one unit.
 //
-// Every finding is Manual. A drop-in under /etc/systemd/system/<unit>.d is a
-// two-line file and hostveil could certainly write it, but writing it is not
-// the same as knowing it is safe: ProtectSystem=full breaks a service that
-// writes under /usr, PrivateTmp=yes breaks two services that pass each other
-// files through /tmp, and neither failure appears until the next restart —
-// which on a self-hosted box is the next reboot, at which point the service
-// that did not come back is the one holding the operator's data.
-//
-// That is the "unambiguous" test in fix.Default's standard, and these do not
-// meet it. Nor is Review available: a Review fix needs two genuinely
-// independent alternatives, and there is only one thing to do here. So the
+// Eight of the fourteen rules stay Manual. A drop-in under
+// /etc/systemd/system/<unit>.d is a two-line file and hostveil could
+// certainly write it, but writing it is not the same as knowing it is safe:
+// ProtectSystem=full breaks a service that writes under /usr, ProtectHome
+// breaks anything whose data lives in a home directory, PrivateTmp=yes
+// breaks two services that pass each other files through /tmp, and neither
+// failure appears until the next restart — which on a self-hosted box is the
+// next reboot, at which point the service that did not come back is the one
+// holding the operator's data. The other five collide with workloads this
+// project's own audience runs — container runtimes needing namespaces and
+// cgroups, GPU passthrough and VPN tunnels needing /dev and /proc/sys, JIT
+// runtimes needing writable executable memory. That is the "unambiguous"
+// test in fix.Default's standard, and these eight do not meet it, so their
 // remediation is a precise instruction — the exact path and the exact two
 // lines — and the operator decides. See TestKnownUnregisteredFindings.
+//
+// The other six — NoNewPrivileges, ProtectClock, LockPersonality,
+// RestrictSUIDSGID, ProtectKernelLogs, ProtectKernelModules — carry no such
+// blind spot: each closes one narrow, well-known capability, and nothing
+// about the unit hides whether a particular service needs it. They are
+// registered in internal/fix/systemd.go as Review fixes, via
+// Action.TakesEffectOn (a drop-in plus `systemctl daemon-reload && systemctl
+// restart <unit>` is a fix that writes the artifact now and names what has
+// to happen for it to take effect, not two alternatives, so it does not
+// need to be Review for the "independent alternatives" reason — it is
+// Review because a service that deliberately escalates, or needs one of
+// these capabilities, stops coming back, and that is not a thing to do
+// while nobody is watching). See that file's registerSystemd doc comment
+// for the reasoning behind each.
 type rule struct {
 	id    string
 	title string

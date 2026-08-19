@@ -113,6 +113,14 @@ type Checker struct {
 // New returns a fileperms checker with the default sensitive-file rules.
 func New() *Checker { return &Checker{Rules: defaultRules(), OwnerUID: rootUID} }
 
+// DefaultRules is defaultRules, exported for one caller outside this
+// package: internal/fix's roundtrip tests need the same MaxMode table
+// production uses, the same reason agent.DefaultRuntimes is exported. A
+// fixture holding its own copy of these masks does not fail when the two
+// drift apart — it silently tests a mode that is no longer the one shipped,
+// and nothing catches that except a test that can read this table.
+func DefaultRules() []Rule { return defaultRules() }
+
 func defaultRules() []Rule {
 	return []Rule{
 		{Path: "/etc/shadow", MaxMode: 0o640, Sev: model.SeverityHigh, ID: "fileperms.shadow",
