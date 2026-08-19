@@ -130,13 +130,16 @@
     });
   });
 
-  /* ── hero panel veil reveal ───────────────────────────────
+  /* ── hero panel dissolve reveal ────────────────────────────
      Hostveil = "host" + "veil": the product panel starts covered by a
-     redacted-document overlay, and a scanline sweeps it clear to reveal
-     the real score/findings markup underneath. The canvas only ever
-     draws a cover-and-uncover effect over real HTML that was already
-     there — nothing is hidden from a screen reader or a no-JS client,
-     and nothing is redrawn. Plays once on load; never loops. */
+     solid veil, which dissolves tile by tile in a diagonal wave to
+     reveal the real score/findings markup underneath. The canvas only
+     ever draws a cover-and-uncover effect over real HTML that was
+     already there — nothing is hidden from a screen reader or a no-JS
+     client. Every tile is always in exactly one of three states — solid
+     cover, a brief solid accent flash, or fully cleared — so there is
+     never a partially-drawn frame that could show a jagged slice of the
+     real text underneath. Plays once on load; never loops. */
 
   var veilCanvas = document.querySelector(".hero-panel .veil-canvas");
   if (veilCanvas && veilCanvas.getContext && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -144,31 +147,22 @@
       var panel = veilCanvas.closest(".hero-panel");
       var ctx = veilCanvas.getContext("2d");
       var rootStyle = getComputedStyle(document.documentElement);
-      var colorBar = rootStyle.getPropertyValue("--line-strong").trim();
-      var colorDanger = rootStyle.getPropertyValue("--danger").trim();
-      var colorWarning = rootStyle.getPropertyValue("--warning").trim();
+      var colorCover = rootStyle.getPropertyValue("--bg").trim();
       var colorAccent = rootStyle.getPropertyValue("--accent").trim();
-      var colorShadow = rootStyle.getPropertyValue("--shadow-cut").trim();
 
-      var BAR_H = 7;
-      var BAR_GAP = 3;
-      var DURATION = 950;
+      var TILE = 15;
+      var FLASH = 90;
+      var DURATION = 900;
       var width = 0;
       var height = 0;
+      var cols = 0;
+      var rows = 0;
+      var delays = [];
       var rafId = null;
       var startTime = null;
       var finished = false;
 
-      // Deterministic per-row pseudo-random accent, so a resize redraws
-      // the same-looking mix of bars rather than reshuffling it.
-      function barColor(row) {
-        var r = ((row * 2654435761) % 100 + 100) % 100;
-        if (r < 10) return colorDanger;
-        if (r < 22) return colorWarning;
-        return colorBar;
-      }
-
-      function size() {
+      function build() {
         var rect = panel.getBoundingClientRect();
         var dpr = window.devicePixelRatio || 1;
         width = rect.width;
@@ -176,35 +170,46 @@
         veilCanvas.width = Math.max(1, Math.round(width * dpr));
         veilCanvas.height = Math.max(1, Math.round(height * dpr));
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
 
-      function drawBars(fromY, toY) {
-        var row = Math.floor(fromY / (BAR_H + BAR_GAP));
-        for (var y = row * (BAR_H + BAR_GAP); y < toY; y += BAR_H + BAR_GAP) {
-          if (y + BAR_H < fromY) continue;
-          ctx.fillStyle = barColor(row);
-          ctx.fillRect(0, y, width, BAR_H);
-          row++;
+        cols = Math.max(1, Math.ceil(width / TILE));
+        rows = Math.max(1, Math.ceil(height / TILE));
+        var maxDist = cols + rows;
+        delays = [];
+        for (var y = 0; y < rows; y++) {
+          for (var x = 0; x < cols; x++) {
+            // A diagonal wave (distance from the top-left corner) with a
+            // little deterministic per-tile jitter, so the dissolve reads
+            // as an organic sweep rather than a mechanical grid-scan.
+            var jitter = ((x * 928371 + y * 452930) % 17) - 8;
+            var dist = Math.max(0, x + y + jitter);
+            delays.push((dist / maxDist) * (DURATION - FLASH));
+          }
         }
       }
 
-      function drawFrame(sweepY) {
+      function drawFrame(elapsed) {
         ctx.clearRect(0, 0, width, height);
-        drawBars(sweepY, height);
-        if (sweepY < height) {
-          ctx.fillStyle = colorShadow;
-          ctx.fillRect(0, sweepY + 2, width, 2);
-          ctx.fillStyle = colorAccent;
-          ctx.fillRect(0, sweepY, width, 2);
+        var i = 0;
+        for (var y = 0; y < rows; y++) {
+          for (var x = 0; x < cols; x++, i++) {
+            var t = elapsed - delays[i];
+            if (t < 0) {
+              ctx.fillStyle = colorCover;
+            } else if (t < FLASH) {
+              ctx.fillStyle = colorAccent;
+            } else {
+              continue; // cleared — real panel content shows through
+            }
+            ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+          }
         }
       }
 
       function step(now) {
         if (startTime === null) startTime = now;
-        var t = Math.min(1, (now - startTime) / DURATION);
-        var sweepY = t * height;
-        drawFrame(sweepY);
-        if (t < 1) {
+        var elapsed = now - startTime;
+        drawFrame(elapsed);
+        if (elapsed < DURATION) {
           rafId = requestAnimationFrame(step);
         } else {
           rafId = null;
@@ -214,7 +219,7 @@
       }
 
       function start() {
-        size();
+        build();
         drawFrame(0);
         startTime = null;
         rafId = requestAnimationFrame(step);
@@ -224,14 +229,10 @@
       window.addEventListener("resize", function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-          if (finished) {
-            size(); // stays fully transparent; resizing a canvas clears it
-            return;
-          }
           if (rafId) cancelAnimationFrame(rafId);
           finished = true;
-          size();
-          ctx.clearRect(0, 0, width, height); // skip to the end rather than replay mid-sweep
+          build();
+          ctx.clearRect(0, 0, width, height); // skip to the end rather than replay mid-dissolve
         }, 150);
       });
 
