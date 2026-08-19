@@ -55,6 +55,7 @@ var modeNames = map[mode]string{
 	modeList:            "list",
 	modeDetail:          "detail",
 	modePreview:         "preview",
+	modeApplying:        "applying",
 	modeMessage:         "message",
 	modeHistory:         "history",
 	modeRollbackConfirm: "rollback",

@@ -26,6 +26,9 @@ const (
 	modeList
 	modeDetail
 	modePreview
+	// modeApplying is shown between confirming a fix (single or batch) and
+	// the engine's answer. See applyLabel/applyStartedAt/applyElapsed below.
+	modeApplying
 	modeMessage
 	modeHistory
 	modeRollbackConfirm
@@ -107,6 +110,17 @@ type appModel struct {
 	// state differ.
 	scanStartedAt time.Time
 	scanElapsed   time.Duration
+
+	// applyLabel names what is being applied — the finding's title for a
+	// single fix, a count for a batch — and applyStartedAt/applyElapsed are
+	// scanStartedAt/scanElapsed's counterpart for modeApplying, advanced by
+	// the same ticker. There is no per-item count the way scanning has a
+	// domain plan: ApplyFix and ApplyBatch each return one result with
+	// nothing emitted while they run, so the elapsed clock is the only
+	// signal modeApplying has that the wait is not hung — see applyingRows.
+	applyLabel     string
+	applyStartedAt time.Time
+	applyElapsed   time.Duration
 
 	// Advisory AI explanation state for the detail view. Cleared whenever
 	// the inspected finding changes, so a slow answer cannot land under the
@@ -294,16 +308,19 @@ func waitForScanEvent(ch chan model.ScanEvent) tea.Cmd {
 	}
 }
 
-// scanTickMsg advances the elapsed clock on the scanning screen.
-type scanTickMsg struct{}
+// elapsedTickMsg advances the elapsed clock on whichever screen is showing
+// one — scanning or applying. One message and one ticker for both, because
+// it is the same clock answering the same question ("is it hung?") in each:
+// duplicating it per mode would be the same code twice.
+type elapsedTickMsg struct{}
 
-// scanTick is how often the elapsed figure is refreshed. A second, because
-// that is the resolution the figure is shown at — a faster tick would redraw
-// the screen without changing a character on it.
-const scanTick = time.Second
+// elapsedTick is how often the elapsed figure is refreshed. A second,
+// because that is the resolution the figure is shown at — a faster tick
+// would redraw the screen without changing a character on it.
+const elapsedTick = time.Second
 
-func tickScan() tea.Cmd {
-	return tea.Tick(scanTick, func(time.Time) tea.Msg { return scanTickMsg{} })
+func tickElapsed() tea.Cmd {
+	return tea.Tick(elapsedTick, func(time.Time) tea.Msg { return elapsedTickMsg{} })
 }
 
 // startScan wires the halves together: the scan itself, the event waiter, and
@@ -328,7 +345,7 @@ func (m *appModel) startScan() tea.Cmd {
 	}
 	m.scanStartedAt, m.scanElapsed = time.Now(), 0
 	m.scanCh = make(chan model.ScanEvent, scanEventBuffer)
-	return tea.Batch(scanCmd(m.runCtx(), m.engine, m.scanCh), waitForScanEvent(m.scanCh), tickScan())
+	return tea.Batch(scanCmd(m.runCtx(), m.engine, m.scanCh), waitForScanEvent(m.scanCh), tickElapsed())
 }
 
 // noteScanEvent folds one event into the progress state.
@@ -511,17 +528,23 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.noteScanEvent(msg.event)
 		return m, waitForScanEvent(m.scanCh)
 
-	case scanTickMsg:
-		// The clock stops with the screen. Re-arming only while scanning is
-		// what keeps a finished run from redrawing the findings list once a
-		// second forever, and it is also why the elapsed figure is stored:
-		// View reads it, never the clock, so two renders of one state are
-		// identical whatever the wall time between them.
-		if m.mode != modeScanning {
+	case elapsedTickMsg:
+		// The clock stops with the screen. Re-arming only while the mode it
+		// belongs to is showing is what keeps a finished run from redrawing
+		// the findings list once a second forever, and it is also why the
+		// elapsed figure is stored: View reads it, never the clock, so two
+		// renders of one state are identical whatever the wall time between
+		// them.
+		switch m.mode {
+		case modeScanning:
+			m.scanElapsed = time.Since(m.scanStartedAt)
+			return m, tickElapsed()
+		case modeApplying:
+			m.applyElapsed = time.Since(m.applyStartedAt)
+			return m, tickElapsed()
+		default:
 			return m, nil
 		}
-		m.scanElapsed = time.Since(m.scanStartedAt)
-		return m, tickScan()
 
 	case scannedMsg:
 		m.report = msg.report
@@ -909,7 +932,10 @@ func (m *appModel) startBatch() tea.Cmd {
 		m.mode = modeMessage
 		return nil
 	}
-	return batchCmd(m.runCtx(), m.engine, sel)
+	m.mode = modeApplying
+	m.applyLabel = fmt.Sprintf("%d finding(s)", len(sel))
+	m.applyStartedAt, m.applyElapsed = time.Now(), 0
+	return tea.Batch(batchCmd(m.runCtx(), m.engine, sel), tickElapsed())
 }
 
 // presentSources lists the distinct sources among active findings, sorted,
@@ -980,7 +1006,11 @@ func (m *appModel) keyPreview(key string) (tea.Model, tea.Cmd) {
 			m.mode = modeList
 			return m, nil
 		}
-		return m, applyCmd(m.runCtx(), m.engine, m.active[m.cursor], m.previewAction)
+		f := m.active[m.cursor]
+		m.mode = modeApplying
+		m.applyLabel = f.Title
+		m.applyStartedAt, m.applyElapsed = time.Now(), 0
+		return m, tea.Batch(applyCmd(m.runCtx(), m.engine, f, m.previewAction), tickElapsed())
 	default:
 		// Number keys pick an alternative for Review fixes.
 		if n := int(key[0] - '0'); len(key) == 1 && n >= 0 && n < len(m.preview.Actions) {

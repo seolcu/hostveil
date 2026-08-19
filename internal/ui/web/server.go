@@ -161,8 +161,18 @@ func (s *Server) Handler() http.Handler {
 // that is nearly done and short enough that Ctrl-C still feels like Ctrl-C.
 const shutdownGrace = 5 * time.Second
 
-// ListenAndServe runs an initial scan, then serves the dashboard until ctx is
-// cancelled, at which point it stops accepting and drains in-flight requests.
+// ListenAndServe opens the listener immediately and serves the dashboard
+// until ctx is cancelled, at which point it stops accepting and drains
+// in-flight requests. The first scan runs the same way a rescan does — as a
+// tracked background scan behind s.progress — rather than blocking here.
+//
+// It used to run the initial scan synchronously before opening the
+// listener, on a host with many Docker images that is minutes during which
+// the printed URL connects to nothing at all. The dashboard already had
+// everything needed to show a scan in progress instead — POST /api/rescan,
+// s.progress, and the frontend's own polling loop — the first scan simply
+// never used any of it, so the operator's first look at hostveil was a
+// browser tab that appeared to hang.
 //
 // The context is the whole point of the signature. Before it, serve ignored
 // cancellation entirely: `cmdServe` took a context and never looked at it,
@@ -172,18 +182,27 @@ const shutdownGrace = 5 * time.Second
 // Ctrl-C nor `systemctl stop` and died only when systemd escalated to
 // SIGKILL — mid-fix, if that is what it happened to be doing.
 func (s *Server) ListenAndServe(ctx context.Context) error {
-	// Background rescans derive from this context, not from the requests
-	// that start them. Set before the listener opens, so no handler can
-	// observe it half-initialized.
+	// Background scans derive from this context, not from the requests that
+	// start them. Set before the listener opens, so no handler can observe
+	// it half-initialized.
 	s.baseCtx = ctx
 
-	// The startup scan gets the caller's context, so Ctrl-C during the slow
-	// first scan on a Trivy host stops it rather than being ignored until the
-	// listener is up.
-	s.engine.Scan(ctx, nil)
 	if err := ctx.Err(); err != nil {
-		return nil // interrupted before we ever served; not a failure
+		return nil // interrupted before the listener would ever open
 	}
+
+	// Same sequence handleRescan uses: mark a scan running, then let it feed
+	// s.progress in the background. begin() cannot answer false here — this
+	// is the first scan there has ever been a chance to start — so unlike
+	// handleRescan there is nothing to do with the return value.
+	s.progress.begin()
+	//nolint:gosec // G118: runTrackedScan reads s.baseCtx, set to ctx two lines
+	// up, rather than taking a context argument — deliberately, since it also
+	// runs from handleRescan, where the request's own context must not be the
+	// one a scan runs under (see hostWork). gosec does not flag that call site
+	// only because handleRescan's signature has no context.Context parameter
+	// of its own for the heuristic to compare against; the pattern is the same.
+	go s.runTrackedScan()
 
 	srv := &http.Server{
 		Addr:              s.addr,
@@ -412,9 +431,14 @@ func serveGenerated(w http.ResponseWriter, contentType, body string) {
 // every scan; without this the dashboard would throw away the one thing
 // that tells an operator whether their last round of fixes helped. Report
 // is embedded so its JSON stays flat and the shape only gains a field.
+//
+// HasRun is what tells a never-scanned report apart from a scan that found
+// nothing — both have Findings: null. Read it whenever Findings is empty
+// and rendering depends on which of the two it is.
 type resultPayload struct {
 	model.Report
-	Delta model.Delta `json:"delta"`
+	Delta  model.Delta `json:"delta"`
+	HasRun bool        `json:"hasRun"`
 }
 
 // handleTrend serves the score of every retained scan, plus the sparkline
@@ -442,8 +466,8 @@ func (s *Server) handleTrend(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {
-	report, _ := s.engine.Current()
-	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta()})
+	report, hasRun := s.engine.Current()
+	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta(), HasRun: hasRun})
 }
 
 // hostWork returns the context a host-mutating or host-scanning operation
