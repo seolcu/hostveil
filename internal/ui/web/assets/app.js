@@ -492,7 +492,7 @@ function render() {
   // after it was written fell through to the long label and rendered
   // truncated. The axis already carries its source; ask the domain table.
   document.getElementById("axes").replaceChildren(
-    ...score.axes.map((ax) =>
+    ...(score.axes || []).map((ax) =>
       el("div", { class: "axis" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") },
         el("span", { class: "axis-label" }, srcLabel(ax.source)),
         ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
@@ -1063,26 +1063,36 @@ rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   marked.clear();
   const res = await fetch("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
   if (!res.ok && res.status !== 409) throw new Error((await res.text()) || res.statusText);
-  await pollRescan();
-  report = await api("/api/result");
-  render();
-  // A scan is the one thing that moves the series, so this is the one place
-  // besides load that refetches it.
-  await refreshTrend();
+  await watchScan("Rescanning");
   flash("Rescan complete.");
 });
 
 // pollRescan resolves when the running scan finishes, updating the status
-// line with the per-domain picture roughly once a second.
-async function pollRescan() {
+// line with the per-domain picture roughly once a second. verb is what the
+// status line calls the scan in progress — "Rescanning" from the button
+// above, "Scanning" from boot() below, where there may be no prior result
+// to justify the "re-".
+async function pollRescan(verb) {
   for (;;) {
     const st = await api("/api/rescan/status");
     if (!st.running) return;
     const working = (st.domains || []).filter((d) => d.state === "running").map((d) => d.source);
     const done = (st.domains || []).filter((d) => d.state !== "running" && d.state !== "pending").length;
-    flash("Rescanning… " + (working.length ? "checking " + working.join(", ") : done + " domain(s) finished"));
+    flash(verb + "… " + (working.length ? "checking " + working.join(", ") : done + " domain(s) finished"));
     await new Promise((r) => setTimeout(r, 1000));
   }
+}
+
+// watchScan waits out a running scan and then reloads everything it moved —
+// the result and the trend line, the one place besides load that refetches
+// either. It is the sequence the rescan button and boot()'s first load both
+// need, pulled out so the two could not drift the way one inline copy of it
+// already had before this existed.
+async function watchScan(verb) {
+  await pollRescan(verb);
+  report = await api("/api/result");
+  render();
+  await refreshTrend();
 }
 
 const fixallBtn = document.getElementById("fixall");
@@ -1100,4 +1110,36 @@ fixallBtn.onclick = () => {
   });
 };
 
-refresh().then(refreshTrend).catch((e) => flash("Failed to load: " + e.message, true));
+// boot loads the page for the first time. hostveil's own first scan is now
+// asynchronous (ListenAndServe opens the listener before it finishes), so
+// the very first page load can land while it is still running — the same
+// state a rescan puts the page in, and answered the same way: disable the
+// buttons that would race it, narrate it, then load the result it produced.
+//
+// The status check and the result both fire at once rather than one after
+// the other. The ordinary case — a page opened long after the only scan
+// there has ever been — needs both regardless, so making the second wait on
+// the first would only have added a network round trip to every load for a
+// question the running flag alone can't answer. Fetched early and running
+// is false, rep is already the answer; running and it is a stale read of
+// whatever the last scan left behind, thrown away in favour of the fresh
+// one watchScan fetches once the running scan finishes.
+async function boot() {
+  const [st, rep] = await Promise.all([api("/api/rescan/status"), api("/api/result")]);
+  if (!st.running) {
+    report = rep;
+    render();
+    await refreshTrend();
+    return;
+  }
+  rescanBtn.disabled = true;
+  fixallBtn.disabled = true;
+  try {
+    await watchScan("Scanning");
+  } finally {
+    rescanBtn.disabled = false;
+    fixallBtn.disabled = false;
+  }
+}
+
+boot().catch((e) => flash("Failed to load: " + e.message, true));

@@ -42,6 +42,21 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 	return next
 }
 
+// applyMsg drives the tea.Cmd a single-fix or batch apply issues and returns
+// the message the apply itself produced.
+//
+// y and a now batch that command together with a ticker (see
+// keyPreview/startBatch) so the screen can show a ticking elapsed clock
+// while the apply is in flight, so cmd() answers with a tea.BatchMsg rather
+// than the appliedMsg/batchAppliedMsg Update actually branches on. The apply
+// command is always first in that batch; the ticker is never run here — its
+// function blocks for a real wall-clock second, and these tests only want
+// to know what the apply did.
+func applyMsg(cmd tea.Cmd) tea.Msg {
+	batch := cmd().(tea.BatchMsg)
+	return batch[0]()
+}
+
 // siteFrame renders the one frame the website publishes.
 //
 // It is a function rather than inline in the dumper because the pinning test
@@ -252,7 +267,7 @@ func TestMultiSelectBatchApply(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a should issue a batch command")
 	}
-	m = send(m, cmd())
+	m = send(m, applyMsg(cmd))
 	am = m.(*appModel)
 	if !strings.Contains(am.status, "Applied 2") {
 		t.Errorf("expected 'Applied 2' status, got %q", am.status)
@@ -394,7 +409,7 @@ func TestFixFlowThroughEngine(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("y should issue an apply command")
 	}
-	m = send(m, cmd()) // appliedMsg
+	m = send(m, applyMsg(cmd)) // appliedMsg
 
 	am := m.(*appModel)
 	if !strings.Contains(am.status, "Fix applied") {
@@ -454,7 +469,7 @@ func TestRollbackFlowThroughEngine(t *testing.T) {
 	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "f"}))
 	m = send(m, cmd())
 	_, cmd = m.Update(tea.KeyPressMsg(tea.Key{Text: "y"}))
-	m = send(m, cmd())
+	m = send(m, applyMsg(cmd))
 	if data, _ := os.ReadFile(path); string(data) == orig {
 		t.Fatal("fix was not applied")
 	}

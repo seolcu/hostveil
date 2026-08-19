@@ -115,7 +115,7 @@ func TestTheScanScreenReadsTheClockThroughTheModel(t *testing.T) {
 	// And the ticker is what moves it.
 	before := m.scanElapsed
 	m.scanStartedAt = time.Now().Add(-5 * time.Second)
-	next, _ := m.Update(scanTickMsg{})
+	next, _ := m.Update(elapsedTickMsg{})
 	if got := next.(*appModel).scanElapsed; got == before || got < 5*time.Second {
 		t.Errorf("scanElapsed = %v after a tick, want at least 5s", got)
 	}
@@ -127,7 +127,7 @@ func TestTheScanScreenReadsTheClockThroughTheModel(t *testing.T) {
 func TestTheScanClockStopsWhenTheScanDoes(t *testing.T) {
 	m := scanningModel(96, 34)
 	m.mode = modeList
-	if _, cmd := m.Update(scanTickMsg{}); cmd != nil {
+	if _, cmd := m.Update(elapsedTickMsg{}); cmd != nil {
 		t.Error("the ticker re-armed after the scan finished")
 	}
 }

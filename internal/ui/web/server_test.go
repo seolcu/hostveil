@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/platform"
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
@@ -878,8 +880,9 @@ func TestServeStopsWhenTheContextIsCancelled(t *testing.T) {
 	}
 }
 
-// Cancelled before the listener ever opens — during the slow first scan on a
-// Trivy host — is a clean stop, not a failure to report.
+// Cancelled before ListenAndServe is even called is a clean stop, not a
+// failure to report — there is no reason to open a socket for a context
+// that is already dead.
 func TestServeInterruptedDuringTheStartupScanIsNotAnError(t *testing.T) {
 	s, _ := testServer(t)
 	s.addr = "127.0.0.1:0"
@@ -888,6 +891,122 @@ func TestServeInterruptedDuringTheStartupScanIsNotAnError(t *testing.T) {
 	cancel()
 	if err := s.ListenAndServe(ctx); err != nil {
 		t.Errorf("interrupted before serving should be a clean exit, got %v", err)
+	}
+}
+
+// blockingChecker never returns from Check until the test says to, which is
+// what lets TestListenAndServeIsReachableBeforeTheInitialScanFinishes observe
+// the server mid-scan instead of racing a real one.
+type blockingChecker struct{ unblock <-chan struct{} }
+
+func (blockingChecker) Source() model.Source { return model.SourceFirewall }
+func (blockingChecker) Available(context.Context, platform.Env) (bool, string) {
+	return true, ""
+}
+func (c blockingChecker) Check(ctx context.Context, _ platform.Env) ([]model.Finding, error) {
+	select {
+	case <-c.unblock:
+	case <-ctx.Done():
+	}
+	return nil, nil
+}
+
+// ListenAndServe used to run the initial scan synchronously before ever
+// opening the listener, so the printed URL connected to nothing for the
+// whole first scan — minutes, on a host with many images. It now opens the
+// listener immediately and runs that scan the same tracked, backgrounded
+// way a rescan runs, and this pins the observable half of that: the server
+// answers, and says a scan is running, before the (deliberately blocked)
+// first scan ever finishes.
+func TestListenAndServeIsReachableBeforeTheInitialScanFinishes(t *testing.T) {
+	unblock := make(chan struct{})
+	engine := core.New(core.Config{
+		Registry: check.NewRegistry(blockingChecker{unblock: unblock}),
+		Fixes:    fix.Default(),
+		Store:    history.NewStore(t.TempDir()),
+	})
+	s := New(engine, "127.0.0.1:0", Opts{Theme: "nord", Layout: "lanes"})
+
+	// Claim a free port up front: ListenAndServe resolves ":0" internally
+	// and does not hand the chosen port back, so the test needs one it
+	// already knows before starting the server.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	ln.Close()
+	s.addr = addr
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = s.ListenAndServe(ctx) }()
+
+	base := "http://" + addr
+	get := func(path string) *http.Response {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			resp, err := http.Get(base + path + "?t=" + s.token)
+			if err == nil {
+				return resp
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("server never became reachable: %v", err)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+
+	var status struct {
+		Running bool `json:"running"`
+	}
+	resp := get("/api/rescan/status")
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if !status.Running {
+		t.Error("the initial scan should already be reported running by the time the server answers at all")
+	}
+
+	resp = get("/api/result")
+	var payload resultPayload
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if payload.HasRun {
+		t.Error("hasRun is true before the scan the server is running has ever finished")
+	}
+
+	close(unblock)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		resp := get("/api/rescan/status")
+		var st struct {
+			Running bool `json:"running"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&st)
+		resp.Body.Close()
+		if !st.Running {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the initial scan never finished")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp = get("/api/result")
+	var finished resultPayload
+	if err := json.NewDecoder(resp.Body).Decode(&finished); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if !finished.HasRun {
+		t.Error("hasRun is false after the initial scan finished")
 	}
 }
 

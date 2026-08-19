@@ -275,6 +275,10 @@ func (m *appModel) View() tea.View {
 			[]string{s.brand.Render(m.preview.Label)}, "y apply   n cancel",
 			func(n int) []string { return m.clipRows(m.previewRows(), n) })
 
+	case modeApplying:
+		content = m.compose(compactHeader("APPLYING"),
+			[]string{s.brand.Render(m.applyLabel)}, "ctrl+c quit", m.applyingRows)
+
 	case modeMessage:
 		content = m.compose(compactHeader(""), nil, "press any key to continue", m.messageRows)
 
@@ -501,6 +505,23 @@ func (m *appModel) scanningRows(n int) []string {
 		rows = append(rows, m.scanDomainRow(src, width))
 	}
 	return centerRows(indentRows(rows, bodyInset), n)
+}
+
+// applyingRows draws the wait between confirming a fix and the engine's
+// answer. There is no bar, for the reason scanningRows gives for not
+// estimating time remaining: ApplyFix and ApplyBatch return one result each
+// with nothing emitted in between, so a percentage here would have no real
+// denominator behind it. The elapsed clock is what answers "is it hung?" —
+// the same question scanningRows answers the same way, and often for the
+// same underlying reason: applying a fix re-checks its whole domain
+// afterward, and for a Review fix on a cve.* finding that domain is Trivy.
+func (m *appModel) applyingRows(n int) []string {
+	s := m.sty()
+	head := "Applying…"
+	if m.applyElapsed >= time.Second {
+		head += "   " + formatElapsed(m.applyElapsed)
+	}
+	return centerRows(m.wrapRows(s.dim, head, m.proseWidth(bodyInset), bodyInset), n)
 }
 
 // scanPercent is how much of the plan has finished, as a meter takes it.
