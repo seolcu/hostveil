@@ -133,6 +133,14 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.24.0"><a href="https://github.com/seolcu/hostveil/compare/v3.23.0...v3.24.0">3.24.0</a> <span class="changelog-date">2026-08-20</span></h2>
+          <p>A panic outside a checker or a fix had nowhere to go but a raw Go stack on whatever terminal happened to be watching, and there was no way to package what one looked like afterward. Every recover site now leaves a local crash record behind, two goroutines a checker's own recover cannot reach — one in the CVE scanner's parallel image scan, one in the web dashboard's background scan — get their own, and a new <code>hostveil bugreport</code> command turns those records plus a redacted scan summary into a report: previewed locally, and only ever sent after <code>--send</code> and an explicit confirmation.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>cmd:</strong> add crash recovery throughout the CLI, and <code>hostveil bugreport</code>, which packages recent crash traces and the last saved scan's score, domain states, and finding IDs/severities — never a finding's description or evidence — into a report. Sending it is opt-in: <code>--send</code> plus a confirmation, via <code>HOSTVEIL_GITHUB_TOKEN</code>, an already-authenticated <code>gh</code> CLI, or a local file with instructions to open an issue by hand. Hostveil runs no collection server of its own (<a href="https://github.com/seolcu/hostveil/issues/787">#787</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.23.0"><a href="https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0">3.23.0</a> <span class="changelog-date">2026-08-20</span></h2>
           <p>The checks page now explains what each fix actually does, cross-linked from the table that names it, and the marketing site traded its one gradient band for a chart component built on the same numbers the docs already pin. The rest is two fixes: a Review batch used to preview a warning next to <code>firewall.inactive</code> and nothing next to a package upgrade that can restart sshd with no rollback checkpoint, and a compose edit could trust a yaml.v3 re-encode that could not be read back.</p>
           <h3>Features</h3>
