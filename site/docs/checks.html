@@ -149,6 +149,24 @@
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
             <p>Across those domains Hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">127</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">52</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">How the 174 findings resolve</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Auto</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.auto">75</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Review</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:30%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">52</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Manual</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">47</span>
+              </div>
+            </div>
 
             <h2 id="severity">Severity &amp; the score</h2>
             <p>Hostveil grades a finding by <strong>how urgent it is</strong>, not by how bad it might turn out to be. A scanner reading your config cannot tell you how bad a container running as root is — that depends entirely on what the container does. What it <em>can</em> tell you is how much stands between an attacker and the problem right now, and that is what these three levels measure.</p>
