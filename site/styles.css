@@ -185,28 +185,11 @@ pre,
 }
 
 .hero {
-  position: relative;
   padding: clamp(64px, 9vw, 108px) 0 clamp(56px, 7vw, 88px);
   border-bottom: 1px solid var(--line);
-  overflow: hidden;
-}
-
-/* No-JS / pre-paint fallback so the hero never looks broken while script.js
-   loads (or if it's disabled): a faint static grid, echoed at full color by
-   the canvas scan animation once it runs. */
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 32px),
-    repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 32px);
-  opacity: 0.15;
 }
 
 .hero-grid {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
   align-items: start;
@@ -364,7 +347,6 @@ pre {
 
 .hero-panel {
   position: relative;
-  overflow: hidden;
   display: grid;
   gap: 14px;
   padding: clamp(16px, 3vw, 24px);
@@ -372,14 +354,6 @@ pre {
   background: var(--panel-strong);
   box-shadow: 12px 12px 0 var(--shadow-cut);
   clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
-}
-
-.veil-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
 }
 
 .hero-panel::before {
@@ -1007,7 +981,6 @@ figcaption strong {
 
 .command-box {
   position: relative;
-  z-index: 1;
   margin-top: 8px;
   border: 1px solid var(--line-strong);
   background: #050a09;
