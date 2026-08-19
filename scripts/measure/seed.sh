@@ -99,6 +99,9 @@ have_open_shadow() { [ "$(stat -c %a /etc/shadow 2>/dev/null)" = 644 ]; }
 have_agent_cfg()   { [ -f "$SEED_HOME/.openclaw/openclaw.json" ] && [ -f "$SEED_HOME/.hermes/.env" ]; }
 have_stacks()      { ls /opt/stacks/*/docker-compose.y*ml >/dev/null 2>&1; }
 have_exposed_redis() { ss -ltn 2>/dev/null | grep -qE '(0\.0\.0\.0|\*):6379'; }
+have_debug_sysctl()  { [ "$(sysctl -n kernel.yama.ptrace_scope 2>/dev/null)" = 0 ] \
+                          && [ "$(sysctl -n kernel.perf_event_paranoid 2>/dev/null)" -lt 2 ] 2>/dev/null; }
+have_unhardened_unit() { systemctl show stacks-backup.service -p LoadState --value 2>/dev/null | grep -q loaded; }
 
 write_manifest() {
   local dir
@@ -341,7 +344,12 @@ say "host-level weaknesses — a native datastore on 0.0.0.0, a uid-0 twin, loos
 pkg_install "$REDIS_PKG" || true
 if [ -f "$REDIS_CONF" ]; then
   sed -i 's/^bind .*/bind 0.0.0.0/; s/^protected-mode yes/protected-mode no/' "$REDIS_CONF" 2>/dev/null || true
-  svc_enable "$REDIS_SVC" \
+  # apt's postinst already starts the service before this edit runs, and
+  # `enable --now` on an already-running unit does not reload its config —
+  # it has to be a restart, or the listener stays on the package's default
+  # bind address and the weakness silently fails to seed.
+  svc_enable "$REDIS_SVC" || true
+  svc_restart "$REDIS_SVC" \
     || redis-server "$REDIS_CONF" --daemonize yes >/dev/null 2>&1 || true
 fi
 # The listener is the weakness, not the package. This is the exposure a Compose
@@ -359,12 +367,58 @@ fi
 if [ "$PKG" = apk ]; then
   pkg_install shadow >/dev/null 2>&1 || true
 fi
-id backdoor >/dev/null 2>&1 || useradd -o -u 0 -g 0 -M -s /bin/bash backdoor
-id demo_nopass >/dev/null 2>&1 || useradd -m -s /bin/bash demo_nopass
-passwd -d demo_nopass >/dev/null 2>&1 || true
+id breakglass >/dev/null 2>&1 || useradd -o -u 0 -g 0 -M -s /bin/bash breakglass
+id contractor >/dev/null 2>&1 || useradd -m -s /bin/bash contractor
+passwd -d contractor >/dev/null 2>&1 || true
 chmod 0644 /etc/shadow
 require uid0-twin have_uid0_twin
 require shadow-readable have_open_shadow
+
+say "sysctl overrides that fight the distribution's own defaults"
+# ptrace_scope=0 and perf_event_paranoid<2 are among the most-copied lines in
+# "gdb: Operation not permitted" and "perf: Permission denied" troubleshooting
+# guides — an operator running a game server or profiling a stuck daemon
+# applies both and drops them in sysctl.d to survive a reboot. This is an
+# operator undoing a hardened default, not merely leaving one alone; most of
+# the sysctl domain's other rules already match what these distributions ship
+# and would need a far less plausible edit to trip.
+cat > /etc/sysctl.d/98-local.conf <<'EOF'
+kernel.yama.ptrace_scope = 0
+kernel.perf_event_paranoid = -1
+EOF
+sysctl -p /etc/sysctl.d/98-local.conf >/dev/null 2>&1 || true
+require debug-sysctl have_debug_sysctl
+
+say "an unhardened operator-written systemd unit"
+case "$INIT" in
+  systemd)
+    # A hand-written backup unit with none of the sandboxing directives — what
+    # copying a tutorial's minimal [Unit]/[Service]/[Install] skeleton for a
+    # backup script produces, and one of the most common ways a self-hoster
+    # ends up with an *operator* unit (as opposed to a distro-packaged one) in
+    # the first place.
+    cat > /usr/local/bin/backup-stacks.sh <<'EOF'
+#!/bin/sh
+set -eu
+mkdir -p /var/backups
+tar -czf /var/backups/stacks-$(date +%F).tar.gz -C /opt stacks 2>/dev/null || true
+EOF
+    chmod 0755 /usr/local/bin/backup-stacks.sh
+    cat > /etc/systemd/system/stacks-backup.service <<'EOF'
+[Unit]
+Description=Back up /opt/stacks
+
+[Service]
+ExecStart=/usr/local/bin/backup-stacks.sh
+EOF
+    systemctl daemon-reload
+    systemctl start stacks-backup.service || true
+    require systemd-unhardened-unit have_unhardened_unit
+    ;;
+  openrc)
+    unseedable systemd-unhardened-unit "Alpine runs OpenRC — no systemd units to leave unhardened"
+    ;;
+esac
 
 say "AI agent runtime configs (OpenClaw + Hermes) under $SEED_HOME"
 # Neither project is packaged, and neither ships a daemon this could honestly

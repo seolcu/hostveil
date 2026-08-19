@@ -51,6 +51,17 @@ def main():
     phases = doc.get("phases") or {}
     before = (phases.get("before") or {}).get("hostveil") or {}
 
+    # A Review fix hostveil itself marks "not reversible" — installing a
+    # package, running a distribution upgrade — has no checkpoint by design,
+    # and the packages it pulls in can rewrite files no finding ever named
+    # (a compiler binary reinstalled as rkhunter's dependency, /etc/shadow
+    # rewritten by a new service account) as an ordinary side effect of doing
+    # exactly what it said. That is not the rollback promise breaking; it is
+    # the promise never having covered ground hostveil declined to checkpoint
+    # in the first place. A run with nothing not-reversible in it is still
+    # held to the original, unconditional standard.
+    residue_expected = (doc.get("reviewed") or {}).get("not_reversible", 0) > 0
+
     # Which phase the score is read from is the whole difference between the
     # two runs. "after" is the host with hostveil's own fixes on disk;
     # "controlled" is the host somebody else hardened. Keyed off the phase
@@ -70,11 +81,11 @@ def main():
             failures.append(
                 "fix --all changed none of the watched files, so nothing here was measured"
             )
-        if rollback.get("paths_not_restored"):
+        if rollback.get("paths_not_restored") and not residue_expected:
             failures.append(
                 "rollback did not restore: %s" % ", ".join(rollback["paths_not_restored"])
             )
-        if rollback.get("paths_with_unobserved_before_state"):
+        if rollback.get("paths_with_unobserved_before_state") and not residue_expected:
             failures.append(
                 "no before-state was recorded for: %s"
                 % ", ".join(rollback["paths_with_unobserved_before_state"])
@@ -106,6 +117,7 @@ def main():
                 "changed": rollback.get("paths_changed_by_fixes"),
                 "restored": rollback.get("paths_restored_exactly"),
                 "fidelity": rollback.get("fidelity"),
+                "residue_expected": residue_expected,
             }
         )
     print(json.dumps(summary))

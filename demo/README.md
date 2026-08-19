@@ -220,11 +220,13 @@ VirtualBox (macOS/Windows), whose NAT is independent of the host firewall.
 | Firewall | `ufw` installed but inactive | `firewall.inactive` |
 | Auto-updates | unattended-upgrades disabled | `updates.disabled` |
 | Exposed services | a native (non-Docker) Redis bound to `0.0.0.0` | `ports.exposed-datastore` |
-| Accounts | a second UID-0 account (`backdoor`) and a passwordless login account (`demo_nopass`) | `accounts.uid0`, `accounts.emptypassword` |
+| Accounts | a second UID-0 account (`breakglass`) and a passwordless login account (`contractor`) | `accounts.uid0`, `accounts.emptypassword` |
 | File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
 | CVEs | old image tags (redis 6.0, postgres 13, jellyfin 10.8, nextcloud 24, portainer 2.9) | `cve.*` (needs Trivy, installed in the VM) |
 | AI agents | an OpenClaw gateway on the LAN with auth off, unapproved shell exec, sandbox off; world-readable Hermes API keys | `agent.auth-disabled`, `agent.gateway-exposed`, `agent.secret-exposed`, … |
 | Docker daemon | the API published on `0.0.0.0:2375` with no TLS, a `0666` docker socket, and a `nologin` CI account in the docker group | `dockerd.api-unauthenticated`, `dockerd.socket-world-writable`, `dockerd.group-members` |
+| sysctl | `kernel.yama.ptrace_scope` and `kernel.perf_event_paranoid` relaxed in `/etc/sysctl.d/98-local.conf` (the two lines every `gdb`/`perf` "Operation not permitted" guide tells you to add) | `sysctl.ptrace-scope`, `sysctl.perf-events` |
+| systemd | a hand-written `stacks-backup.service` with no sandboxing directives | `systemd.no-new-privileges`, `systemd.protect-system`, … |
 
 The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
 `seed/`, and the whole build lives in `Vagrantfile` + `provision.sh`.

@@ -89,10 +89,10 @@ say "accounts: CIS 5.4.2"
 #
 # userdel identifies "is this account in use" by *uid*, and a UID-0 twin
 # shares root's — so it finds pid 1 running as that uid and refuses with
-# "user backdoor is currently used by process 1". That is true of every host
+# "user breakglass is currently used by process 1". That is true of every host
 # there has ever been, which makes it a step that could never once have
 # succeeded. `2>/dev/null || true` meant the script said "removing UID 0
-# account backdoor", removed nothing, and exited 0; the control group was
+# account breakglass", removed nothing, and exited 0; the control group was
 # quietly missing its account-hygiene half, and hostveil went on reporting
 # accounts.uid0 about a host this script claimed to have hardened.
 #
