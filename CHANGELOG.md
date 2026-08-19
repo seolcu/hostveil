@@ -2,6 +2,28 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.24.0](https://github.com/seolcu/hostveil/compare/v3.23.0...v3.24.0) (2026-08-20)
+
+A panic outside a checker or a fix had nowhere to go but a raw Go stack on
+whatever terminal happened to be watching, and there was no way to package
+what one looked like afterward. Every recover site now leaves a local crash
+record behind, two goroutines a checker's own recover cannot reach — one in
+the CVE scanner's parallel image scan, one in the web dashboard's background
+scan — get their own, and a new `hostveil bugreport` command turns those
+records plus a redacted scan summary into a report: previewed locally, and
+only ever sent after `--send` and an explicit confirmation.
+
+### Features
+
+* **cmd:** add crash recovery throughout the CLI, and `hostveil bugreport`,
+  which packages recent crash traces and the last saved scan's score, domain
+  states, and finding IDs/severities — never a finding's description or
+  evidence — into a report. Sending it is opt-in: `--send` plus a
+  confirmation, via `HOSTVEIL_GITHUB_TOKEN`, an already-authenticated `gh`
+  CLI, or a local file with instructions to open an issue by hand. Hostveil
+  runs no collection server of its own
+  ([#787](https://github.com/seolcu/hostveil/issues/787)).
+
 ## [3.23.0](https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0) (2026-08-20)
 
 The checks page now explains what each fix actually does, cross-linked from

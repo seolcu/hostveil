@@ -134,6 +134,14 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.24.0"><a href="https://github.com/seolcu/hostveil/compare/v3.23.0...v3.24.0">3.24.0</a> <span class="changelog-date">2026-08-20</span></h2>
+          <p>체커나 fix 밖에서 일어나는 panic은 지금까지 갈 곳이 없었습니다. 지켜보던 터미널에 Go 스택이 그대로 찍히고, 나중에 그걸 모아서 보고할 방법도 없었습니다. 이제는 모든 recover 지점이 크래시 기록을 로컬에 남깁니다. 체커 자신의 recover가 닿지 못하는 두 곳, CVE 스캐너의 병렬 이미지 스캔과 웹 대시보드의 백그라운드 스캔에도 각자 recover가 붙었습니다. 새로 생긴 <code>hostveil bugreport</code> 명령은 그 기록과 가려진 스캔 요약을 리포트로 묶습니다. 리포트는 로컬에서 미리 보여 주고, <code>--send</code>와 명시적인 확인을 거쳤을 때만 전송합니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>cmd:</strong> CLI 전체에 크래시 복구를 추가하고 <code>hostveil bugreport</code>를 새로 만들었습니다. 최근 크래시 트레이스와 마지막으로 저장된 스캔의 점수·영역 상태·발견 항목 ID/심각도를 리포트로 묶습니다. 발견 항목의 설명이나 근거는 담지 않습니다. 전송은 선택 사항이며 <code>--send</code>와 확인을 거쳐야 하고, <code>HOSTVEIL_GITHUB_TOKEN</code>, 이미 인증된 <code>gh</code> CLI, 또는 로컬 파일과 직접 이슈를 여는 안내 중 하나로 이루어집니다. Hostveil이 자체 수집 서버를 두는 일은 없습니다 (<a href="https://github.com/seolcu/hostveil/issues/787">#787</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.23.0"><a href="https://github.com/seolcu/hostveil/compare/v3.22.0...v3.23.0">3.23.0</a> <span class="changelog-date">2026-08-20</span></h2>
           <p>검사 페이지에 이제 각 fix가 실제로 무엇을 하는지 설명이 붙었고, 그 항목을 가리키는 표에서 바로 연결됩니다. 마케팅 사이트는 유일하게 그라데이션이 있던 띠를 걷어내고, 문서에 이미 고정돼 있는 수치로 그리는 차트 컴포넌트로 바꿨습니다. 나머지는 버그 수정 둘입니다. Review 일괄 적용 화면에서 <code>firewall.inactive</code> 옆에는 자세한 경고가 뜨는데 sshd를 재시작할 수 있고 롤백 체크포인트도 없는 패키지 업그레이드 옆에는 아무 경고도 없었고, compose 편집기가 다시 읽어들일 수 없는 yaml.v3 재인코딩 결과를 그대로 믿고 있었습니다.</p>
           <h3>새 기능</h3>
