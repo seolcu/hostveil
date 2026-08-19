@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -82,6 +83,11 @@ type Result struct {
 	State    model.ScanState
 	Reason   string
 	Findings []model.Finding
+	// Stack is set only when State is ScanError because the checker panicked,
+	// so core.ScanWith can hand it to internal/diagnostics without re-parsing
+	// Reason — which stays the short "panic: %v" summary every UI already
+	// renders and must not grow a multi-line trace inside.
+	Stack string
 }
 
 // Run executes every checker concurrently. One checker erroring or
@@ -107,10 +113,16 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 	res = Result{Source: src, State: model.ScanRunning}
 	emit(events, model.ScanEvent{Source: src, State: model.ScanRunning})
 
-	// A panic in one checker degrades only that domain.
+	// A panic in one checker degrades only that domain. debug.Stack() is
+	// called right here, in the recover, rather than by whatever eventually
+	// reads Stack — a stack captured anywhere else would show that caller's
+	// frames instead of the ones that actually panicked.
 	defer func() {
 		if r := recover(); r != nil {
-			res = Result{Source: src, State: model.ScanError, Reason: fmt.Sprintf("panic: %v", r)}
+			res = Result{
+				Source: src, State: model.ScanError, Reason: fmt.Sprintf("panic: %v", r),
+				Stack: string(debug.Stack()),
+			}
 			emit(events, model.ScanEvent{Source: src, State: model.ScanError, Reason: res.Reason})
 		}
 	}()

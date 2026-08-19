@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/seolcu/hostveil/internal/diagnostics"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
@@ -111,6 +112,35 @@ func TestACrashingBuilderIsAnErrorNotAnExit(t *testing.T) {
 	}
 	if _, err := crashEngine(t).ApplyFix(context.Background(), f, 0); err == nil {
 		t.Fatal("a builder that panicked applied successfully")
+	}
+}
+
+// A panic in a fix must also leave something for `hostveil bugreport` to
+// find afterward, not just an error message on whichever terminal happened
+// to be watching. crashError (internal/core/contain.go) is the one place
+// that writes it, so this is the same crash the two tests above already
+// exercise, read back from disk instead of from the returned error.
+func TestACrashingFixLeavesARecordForBugreport(t *testing.T) {
+	dir := t.TempDir()
+	e := New(Config{Fixes: crashingRegistry(t), Store: history.NewStore(dir), Version: "v3-test"})
+	f := crashFinding("panic.build", filepath.Join(t.TempDir(), "x.conf"))
+
+	if _, err := e.PreviewFix(f); err == nil {
+		t.Fatal("a builder that panicked previewed successfully")
+	}
+
+	got, err := diagnostics.Crashes(dir, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d crash records, want 1", len(got))
+	}
+	if got[0].Version != "v3-test" || got[0].Command != "fix" {
+		t.Errorf("crash record does not carry the engine's identity: %+v", got[0])
+	}
+	if !strings.Contains(got[0].Where, "panic.build") {
+		t.Errorf("crash record does not name the finding that crashed: %+v", got[0])
 	}
 }
 

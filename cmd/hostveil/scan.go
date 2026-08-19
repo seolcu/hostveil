@@ -150,6 +150,12 @@ func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOp
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		// A panic in the progress bar's own rendering must not take the scan
+		// with it: this goroutine has no caller left to catch one, and the
+		// caller below is blocked on <-done, which the deferred close still
+		// delivers even mid-panic — recovering here is what keeps that from
+		// continuing to unwind and killing the process once it does.
+		defer func() { _ = recover() }()
 		clirender.Progress(os.Stderr, events)
 	}()
 

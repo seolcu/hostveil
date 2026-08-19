@@ -184,6 +184,7 @@ hostveil fix --all --review  # 검토(Review) 항목까지, 무엇인지 읽고 
 hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
 hostveil history --scans # 저장된 모든 스캔의 점수, 오래된 것부터
+hostveil bugreport       # 크래시·스캔 요약 리포트 작성 (--send 없이는 아무것도 전송하지 않음)
 hostveil explain <id>    # 발견 항목 설명 (--ai로 AI 2차 소견 추가)
 hostveil serve           # 127.0.0.1:8787 웹 대시보드 (출력된 URL을 여세요)
 hostveil update          # 설치된 방식 그대로 이 바이너리를 갱신

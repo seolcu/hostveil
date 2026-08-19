@@ -115,6 +115,24 @@ hostveil history --scans</code></pre></div>
             <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
             <p>Leave that open, then open the printed URL on your own machine. Hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
 
+            <h2 id="bugreport">bugreport</h2>
+            <p>Package a crash and scan summary for a bug report. Building the report never touches the network; sending it does, and only after <code>--send</code> and an explicit confirmation.</p>
+            <div class="code-block"><pre><code>hostveil bugreport [flags]</code></pre></div>
+            <p>The report carries hostveil's version, the host's distro and platform, any recorded crash traces, and the last saved scan's score, domain states, and finding IDs and severities — never a finding's description, remediation text, or evidence, which can quote the very configuration an operator is asking about.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--trace FILE</code></td><td><code>""</code></td><td>Attach a command trace produced with <code>HOSTVEIL_DEBUG=1</code>.</td></tr>
+                  <tr><td><code>--unredacted</code></td><td><code>false</code></td><td>Skip redacting IP addresses and home-directory usernames. Local use only — refuses to combine with <code>--send</code>.</td></tr>
+                  <tr><td><code>--send</code></td><td><code>false</code></td><td>After printing the report and asking for confirmation, offer to open it as a GitHub issue.</td></tr>
+                  <tr><td><code>--yes</code></td><td><code>false</code></td><td>Skip the confirmation prompt. <code>--send</code> is still required to transmit anything.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>Write the report to a file instead of printing it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>With <code>--send</code>, hostveil tries <code>HOSTVEIL_GITHUB_TOKEN</code> first, then an already-authenticated <code>gh</code> CLI, and otherwise saves the report locally with instructions to open an issue by hand. This is the one command that reaches the network beyond the advisory AI providers and the update check, and it only ever does so on this explicit, per-run opt-in — see <a href="environment">Environment variables</a>.</p>
+
             <h2 id="explain">explain</h2>
             <p>Explain a finding in plain language.</p>
             <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>

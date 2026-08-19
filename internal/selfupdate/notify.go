@@ -125,6 +125,13 @@ func looksLikeRelease(v string) bool {
 func CheckInBackground(ctx context.Context, c Client, dir string, now time.Time) {
 	if LoadCache(dir).Due(now) {
 		go func() {
+			// This is a best-effort background nicety — scan, tui and serve
+			// all fire it and move on without waiting — and every other way
+			// it can fail (network down, GitHub unreachable, a bad redirect)
+			// already just returns quietly. A panic must degrade the same
+			// way: nothing here is worth ending the command that triggered
+			// it, on a goroutine whose caller has no way to know it existed.
+			defer func() { _ = recover() }()
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkTimeout)
 			defer cancel()
 			rel, err := Latest(ctx, c)

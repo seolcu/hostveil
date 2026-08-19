@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -151,5 +152,15 @@ func TestPanicIsContainedAsError(t *testing.T) {
 	}
 	if results[1].State != model.ScanDone || len(results[1].Findings) != 1 {
 		t.Error("a panic in one checker must not affect the others")
+	}
+	// Stack is what lets core.ScanWith hand this off to
+	// internal/diagnostics — see engine.go — without it a checker panic
+	// degraded gracefully but left nothing for `hostveil bugreport` to find
+	// afterward.
+	if !strings.Contains(results[0].Stack, "runOne") {
+		t.Errorf("a panicking checker's result carries no usable stack trace: %q", results[0].Stack)
+	}
+	if results[1].Stack != "" {
+		t.Errorf("a checker that did not panic must not carry a stack, got %q", results[1].Stack)
 	}
 }
