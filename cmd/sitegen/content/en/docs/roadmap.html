@@ -9,6 +9,7 @@
               <li class="rm-item"><span class="rm-version" data-shipped="3.6.0">3.6.0</span> &mdash; kernel hardening: eight <code>sysctl</code> values read straight from <code>/proc/sys</code>.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.8.0">3.8.0</span> &mdash; the Docker daemon itself: an unauthenticated TCP API is root for anyone who can reach the port, and nothing before this domain looked at the daemon underneath your containers.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.9.0">3.9.0</span> &mdash; service hardening: the units you installed yourself, read as systemd&rsquo;s own effective configuration rather than what a file says.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.22.0">3.22.0</span> &mdash; a reverse-proxy domain: nginx read out of <code>/etc/nginx</code>, Traefik read out of the Compose files the container domain already discovers &mdash; the component in front of everything else hostveil checks, and the one nothing had looked at.</li>
             </ol>
             <p>Everything between those releases &mdash; and there is a lot of it &mdash; is new findings, fixes and interface work inside the domains that already exist. That is the far more common kind of change, and it is what most releases in the <a href="changelog">changelog</a> are.</p>
 

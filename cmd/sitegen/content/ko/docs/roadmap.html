@@ -9,6 +9,7 @@
               <li class="rm-item"><span class="rm-version" data-shipped="3.6.0">3.6.0</span>: 커널 강화 점검을 추가했습니다. <code>/proc/sys</code>에서 <code>sysctl</code> 값 여덟 개를 직접 읽습니다.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.8.0">3.8.0</span>: Docker 데몬 자체를 점검 대상에 넣었습니다. TLS 인증 없이 열린 TCP API는 그 포트에 닿는 누구에게나 root 권한을 내주는데, 이전에는 아무도 이 데몬을 보지 않았습니다.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.9.0">3.9.0</span>: 서비스 강화 점검을 추가했습니다. 직접 설치한 유닛을, 파일이 아니라 systemd가 실제로 적용하는 설정 기준으로 읽습니다.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.22.0">3.22.0</span>: 리버스 프록시 점검을 추가했습니다. nginx는 <code>/etc/nginx</code>에서, Traefik은 컨테이너 영역이 이미 찾아낸 Compose 파일에서 읽습니다. hostveil이 점검하는 다른 모든 것 앞에 서 있으면서도, 그동안 아무도 들여다보지 않았던 구성 요소입니다.</li>
             </ol>
             <p>이 릴리스들 사이에 나온 나머지 변경은 대부분 기존 영역 안에서 발견 항목과 수정, 인터페이스를 늘린 것입니다. 이쪽이 훨씬 흔한 변화이고, <a href="changelog">변경 이력</a>의 대부분을 차지합니다.</p>
 

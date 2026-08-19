@@ -2,6 +2,122 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.22.0](https://github.com/seolcu/hostveil/compare/v3.21.0...v3.22.0) (2026-08-19)
+
+The registry roughly doubled this cycle — new Lynis-aligned kernel, account,
+package and Redis checks, a reverse-proxy domain, and more of the existing
+catalog promoted from Review to Auto — and `explain --ai` stopped requiring a
+local Ollama. The rest is fixes: a container was scored as if it owned its
+own firewall, several privileged file paths trusted a pathname over what was
+actually there, and both UIs went quiet for as long as a slow scan or a slow
+fix took, with nothing on screen to say so.
+
+### Features
+
+* **fix:** promote four Review findings to Auto where the checker's own
+  caution was weaker than its siblings' (`accounts.default-umask`,
+  `ssh.tcpkeepalive`, `ssh.clientaliveinterval`,
+  `ports.redis-protected-mode`), and register seven previously-Manual
+  findings as Review by reusing existing fix machinery rather than inventing
+  new mechanisms — an empty-password account is locked with `passwd -l`,
+  `firewall.default-allow` reuses `firewall.inactive`'s own mechanism, and
+  five systemd hardening flags reuse the generic drop-in fix builder
+  ([#774](https://github.com/seolcu/hostveil/issues/774)).
+* **ai:** `explain --ai` can now speak to Anthropic or any OpenAI-compatible
+  API, selected with `HOSTVEIL_AI_PROVIDER=anthropic` or `HOSTVEIL_AI_PROVIDER=openai`,
+  for a host that cannot run a local model well. Ollama stays the default and
+  nothing leaves the host unless a provider is named explicitly; both new
+  providers speak raw HTTP rather than pull in the Anthropic SDK, to keep the
+  zero-dependency footprint the rest of the tool has.
+* **check:** raise Lynis-aligned hardening coverage with SSH, account,
+  package, kernel-module, compiler and Redis checks and fixes, and promote
+  pending security updates into an executable fix with a bounded 20-minute
+  timeout for the package operation itself. The registry now holds 174
+  findings (71 Auto, 49 Review, 54 Manual/Unavailable); on a clean seeded
+  Ubuntu measurement VM, Lynis's own score moved from 57 to 81 after Auto and
+  Review fixes were applied and activated
+  ([#771](https://github.com/seolcu/hostveil/issues/771)).
+* **check:** a second round of Lynis-aligned kernel checks — 17 sysctl
+  checks with reversible drop-in fixes, and 8 FILE-7524 permission checks and
+  fixes — keeping topology-dependent sysctls in Review while promoting the
+  unambiguous, persistent edits to Auto. The catalog reached 136 findings (60
+  Auto, 21 Review, 54 Manual, 1 Unavailable); a clean Ubuntu 24.04 VM
+  measured with upstream Lynis moved from 66 to 71 after the Auto fixes were
+  activated.
+* **check:** expand hardening coverage from 78 to 111 static findings, with
+  8 unattended permission fixes, 12 review-gated SSH/sysctl fixes, and new
+  account, Compose and systemd detections that carry an explicit reason
+  wherever automation would be unsafe
+  ([#769](https://github.com/seolcu/hostveil/issues/769)).
+* **check:** a reverse-proxy domain, because the proxy is the component
+  self-hosters are most likely to have and least likely to have audited —
+  everything else hostveil checks sits behind whatever answers on 443. It
+  reads nginx from a package (following `include` the way `sshd_config`
+  taught this project to) and Traefik as a container, off the same Compose
+  files the container domain already discovers. Three narrow, unambiguous
+  findings ship — an unauthenticated Traefik dashboard, deprecated TLS
+  protocols, and directory listing — and three more (plain HTTP, missing
+  security headers, certificates) are declined by name in the package's own
+  documentation. Six scoring axes each give up one point to make room for the
+  new one, preserving every tie the scoring page argues for by name
+  ([#764](https://github.com/seolcu/hostveil/issues/764)).
+
+### Bug Fixes
+
+* **ui:** the dashboard ran its first scan synchronously before its
+  listener ever opened, so the URL it printed connected to nothing for the
+  whole first scan — minutes, on a host with many images. It now opens
+  immediately and runs that scan the same tracked, backgrounded way a rescan
+  already does, and the page shows the same live per-domain progress from
+  the moment it loads. The TUI had the mirror problem: confirming a fix (`y`
+  in a Review preview, or `a` for fix-all/batch) left the screen frozen on
+  its prior frame until the engine's final answer arrived, which for a
+  Review fix that re-checks its whole domain afterward (`cve.*` against
+  Trivy) can be minutes. It now shows a live-ticking elapsed clock the
+  moment the key is pressed
+  ([#776](https://github.com/seolcu/hostveil/issues/776)).
+* **ui:** keep the TUI's optional after-fixes label whole or omit it on
+  narrow terminals, restore the domain axes when the dashboard's rail
+  layouts collapse on mobile, and reject a demo port 8787 collision instead
+  of misbehaving against a stale libvirt SSH forward
+  ([#773](https://github.com/seolcu/hostveil/issues/773)).
+* **core:** harden privileged file reads, writes, chmods, checkpoints and
+  rollback against symlink traversal and concurrent file replacement; a fix
+  now stops and asks for a rescan when its input has changed underneath it
+  rather than acting on stale state. Self-update metadata and archives are
+  validated before use, the installer stages verified exact binaries without
+  overwriting a package-managed install, and Ollama responses and origins
+  are bounded and validated. Existing behavior is unchanged apart from
+  unsafe or malformed input now being rejected
+  ([#772](https://github.com/seolcu/hostveil/issues/772)).
+* **check:** a container was scored as if it owned the firewall deciding
+  whether its ports answer, which belongs to the host and cannot be seen
+  from inside — every container that had ever run a scan carried hostveil's
+  most severe finding for a firewall nothing inside it could act on. Worse,
+  the kernel-hardening Review fix wrote `/etc/sysctl.d` inside the container,
+  reported success, and never reached the host kernel that actually owned
+  the value. `platform.ContainerRuntime` is now asked once and shared by
+  every checker that needs it; the firewall domain skips (N/A) and the
+  sysctl fix is demoted to Manual, both reversed by
+  `HOSTVEIL_ASSUME_HOST=1` for the case where the container genuinely is the
+  host being audited
+  ([#761](https://github.com/seolcu/hostveil/issues/761)).
+* **site:** the Korean pages were set in a monospace fallback for their
+  entire existence, because neither Georgia nor the monospace stack has a
+  Hangul glyph and both asked for a font name no distribution registers.
+  A new Korean-only stylesheet now carries Noto Serif KR for body text and
+  Noto Sans KR for what the Latin design sets in monospace, each scoped to
+  the Hangul
+  blocks by `unicode-range` so the English pages download none of it, plus
+  the leading, tracking and word-break rules that do not transfer between
+  the two scripts
+  ([#767](https://github.com/seolcu/hostveil/issues/767)).
+* **site:** rebuild the shipped Korean font subset to add the five Hangul
+  syllables (`듦`, `줬`, `즘`, `폈`, `폐`) the reverse-proxy documentation
+  introduced, which had fallen outside it and were failing
+  `TestEveryKoreanSyllableOnTheSiteHasAGlyph`
+  ([#768](https://github.com/seolcu/hostveil/issues/768)).
+
 ## [3.21.0](https://github.com/seolcu/hostveil/compare/v3.20.2...v3.21.0) (2026-08-16)
 
 Two findings changed on the strength of one afternoon on a real server: one
