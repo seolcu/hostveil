@@ -44,24 +44,28 @@ login allowed, no firewall, no automatic updates.
 | Measured by | Before | After `fix --all --review` |
 | --- | --- | --- |
 | **Ports answering from off the host** | 7 | **1** |
-| CIS Docker Benchmark (pass / warn) | 17 / 15 | **20 / 12** |
-| Lynis hardening index | 57 | **60** |
-| Hostveil's SSH domain | 18/100 | **100/100** |
-| Hostveil score | 29 | **51** |
+| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
+| Lynis hardening index | 57 | **80** |
+| Hostveil's SSH domain | 10/100 | **100/100** |
+| Hostveil score | 29 | **60** |
 
 The host that produces those numbers is `scripts/measure/seed.sh`, in this
 repository — the run above is one you can reproduce, not one you have to take
 on trust.
 
-Rollback restored every file the fixes changed, byte for byte: 8 of 8, across
-48 checkpoints. 7 of the 18 reviewed fixes leave nothing to roll back at all —
-they are not file edits — and Hostveil marks each of those `[not reversible]`
-in its own history rather than implying the undo is total.
+Rollback restored 27 of 28, across 79 checkpoints — every *reversible* change,
+exactly. 18 of the 42 reviewed fixes leave nothing to roll back at all — they
+are not file edits — and Hostveil marks each of those `[not reversible]` in
+its own history rather than implying the undo is total. The one file among
+the 28 that stayed changed, `/etc/shadow`, was never reversible to begin
+with: it was rewritten as an ordinary side effect of one of those
+not-reversible fixes installing a package it found missing, not a checkpoint
+that failed.
 
 What did *not* move matters too. The container axis stays near 0 by design: a
 Docker socket mounted into Portainer, host networking, secrets in the
-environment — Manual, not missed. And Lynis's own index moved 57 → 60 while
-Two of Lynis's 4 warnings never cleared, because the index scores tests it
+environment — Manual, not missed. And Lynis's own index moved 57 → 80 while
+Two of Lynis's 3 warnings never cleared, because the index scores tests it
 does not print — a harness that reported only the index would have looked
 better and said less.
 

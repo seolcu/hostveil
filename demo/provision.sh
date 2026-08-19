@@ -121,7 +121,7 @@ EOF
 # ufw is installed but left INACTIVE → firewall.inactive fires.
 ufw --force disable || true
 
-echo "==> [7/10] host-level weaknesses (native exposed service, weak accounts, loose file perms)"
+echo "==> [7/10] host-level weaknesses (native exposed service, weak accounts, loose file perms, sysctl, systemd)"
 # A NON-Docker datastore bound to every interface → ports.exposed-datastore.
 # This is exactly the kind of exposure a Compose-file audit can never see,
 # because it is a native service, not a container.
@@ -132,14 +132,71 @@ systemctl enable --now redis-server || true
 systemctl restart redis-server || true
 
 # A second account with root's UID (0) → accounts.uid0 (a classic backdoor).
-id backdoor >/dev/null 2>&1 || useradd -o -u 0 -g 0 -M -s /bin/bash backdoor
+# Named "breakglass": a real, common mistake, not a hacker's — an emergency
+# admin account an ops team makes root-equivalent for out-of-band access and
+# then never locks back down.
+id breakglass >/dev/null 2>&1 || useradd -o -u 0 -g 0 -M -s /bin/bash breakglass
 
 # A login account with no password at all → accounts.emptypassword.
-id demo_nopass >/dev/null 2>&1 || useradd -m -s /bin/bash demo_nopass
-passwd -d demo_nopass || true
+# Named "contractor": a temp account made for an external contractor, its
+# password cleared during onboarding "just to get them in", never set or
+# removed afterward.
+id contractor >/dev/null 2>&1 || useradd -m -s /bin/bash contractor
+passwd -d contractor || true
 
 # World-readable /etc/shadow → fileperms.shadow (every password hash exposed).
 chmod 0644 /etc/shadow || true
+
+# Two sysctl overrides that fight Ubuntu's own hardened defaults, not two
+# that were merely left alone. ptrace_scope=0 and perf_event_paranoid<2 are
+# among the most-copied lines in "gdb: Operation not permitted" and
+# "perf: Permission denied" troubleshooting guides — self-hosters running a
+# game server, profiling a stuck daemon, or following a flamegraph tutorial
+# apply both and, to survive a reboot, drop them in sysctl.d. This is an
+# operator actively undoing a default, which is the case worth showing —
+# most of the sysctl domain's other rules already match Ubuntu's shipped
+# 50-default.conf and would need a much less plausible edit to trip.
+# → sysctl.ptrace-scope, sysctl.perf-events
+cat > /etc/sysctl.d/98-local.conf <<'EOF'
+kernel.yama.ptrace_scope = 0
+kernel.perf_event_paranoid = -1
+EOF
+sysctl -p /etc/sysctl.d/98-local.conf >/dev/null || true
+
+# A hand-written systemd unit with none of the sandboxing directives —
+# exactly what copying a tutorial's minimal [Unit]/[Service]/[Install]
+# skeleton for a backup script produces, and one of the most common ways a
+# self-hoster ends up with an *operator* unit (as opposed to a
+# distro-packaged one) in the first place.
+# → the systemd domain's hardening rules (NoNewPrivileges, ProtectSystem, …)
+cat > /usr/local/bin/backup-stacks.sh <<'EOF'
+#!/bin/sh
+set -eu
+mkdir -p /var/backups
+tar -czf /var/backups/stacks-$(date +%F).tar.gz -C /opt stacks 2>/dev/null || true
+EOF
+chmod 0755 /usr/local/bin/backup-stacks.sh
+cat > /etc/systemd/system/stacks-backup.service <<'EOF'
+[Unit]
+Description=Back up /opt/stacks
+
+[Service]
+ExecStart=/usr/local/bin/backup-stacks.sh
+EOF
+cat > /etc/systemd/system/stacks-backup.timer <<'EOF'
+[Unit]
+Description=Daily backup of /opt/stacks
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable --now stacks-backup.timer || true
+systemctl start stacks-backup.service || true
 
 echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
 # NOTE: neither project is packaged for apt, and neither ships a daemon we
