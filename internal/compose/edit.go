@@ -66,6 +66,20 @@ func (d *Doc) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The minimal path below is already checked against full — parsed,
+	// re-encoded, and compared byte for byte — before it is trusted. full
+	// itself never was: FuzzEdit found a source (a flow mapping keyed by
+	// another mapping) that yaml.v3 parses but cannot faithfully write back,
+	// so a fix landing on the no-edits-recorded or minimalOff path returned
+	// bytes no parser could read, with the caller none the wiser until the
+	// service that reads the file next fails to start. A fix is only ever
+	// built against a service and key the checker already read, so this
+	// should never actually fire outside the fuzz corpus — but a write this
+	// package cannot prove readable is exactly the case Auto fixes exist to
+	// never produce.
+	if err := verifyReloadable(full); err != nil {
+		return nil, fmt.Errorf("re-encoded document does not parse back as YAML: %w", err)
+	}
 	if d.minimalOff || len(d.edits) == 0 {
 		return full, nil
 	}
@@ -90,6 +104,15 @@ func (d *Doc) Bytes() ([]byte, error) {
 		return full, nil
 	}
 	return minimal, nil
+}
+
+// verifyReloadable reports whether b parses as YAML, without caring what it
+// parses into — Bytes' callers already know the shape they expect and will
+// fail their own way if it's wrong. This only guards against handing back
+// something no parser can read at all.
+func verifyReloadable(b []byte) error {
+	var n yaml.Node
+	return yaml.Unmarshal(b, &n)
 }
 
 // encodeNode renders a node through yaml.v3 with the project's 2-space indent.
