@@ -39,13 +39,29 @@ func buildEnableSysstat(f model.Finding) (Fix, error) {
 	}}}}, nil
 }
 
+// pendingSecurityWarning is shown before either package manager's upgrade
+// runs. Docker is named specifically, not just "the services they belong
+// to": a demo-VM rehearsal of this exact fix upgraded the Docker package,
+// which restarted the daemon, which took every container with it — and the
+// ones with no restart policy (or one written but not yet in force, see
+// model.Finding.Pending) stayed down until something ran `docker compose up
+// -d` by hand.
+const pendingSecurityWarning = "Upgrading packages can restart the services they belong to, including sshd " +
+	"and the Docker daemon — and a container whose compose file has no restart policy in force stays down " +
+	"until `docker compose up -d` brings it back. A kernel or libc update may also need a reboot to actually " +
+	"take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand."
+
 func buildApplySecurityUpdates(f model.Finding) (Fix, error) {
 	var built Fix
 	switch f.Evidence["package-manager"] {
 	case "apt":
-		built = execFix("Apply pending security updates", "Refresh apt metadata and fully upgrade installed packages", [][]string{{"apt-get", "update"}, {"env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "dist-upgrade", "-y"}})
+		built = execFix("Apply pending security updates", "Refresh apt metadata and fully upgrade installed packages",
+			pendingSecurityWarning,
+			[][]string{{"apt-get", "update"}, {"env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "dist-upgrade", "-y"}})
 	case "dnf":
-		built = execFix("Apply pending security updates", "Upgrade packages covered by security advisories", [][]string{{"dnf", "upgrade", "-y", "--security"}})
+		built = execFix("Apply pending security updates", "Upgrade packages covered by security advisories",
+			pendingSecurityWarning,
+			[][]string{{"dnf", "upgrade", "-y", "--security"}})
 	default:
 		return Fix{}, fmt.Errorf("finding %s has no known package manager", f.ID)
 	}
@@ -59,6 +75,7 @@ func buildInstallHardeningPackage(f model.Finding) (Fix, error) {
 	}
 	pkg := f.Evidence["package"]
 	commands := [][]string{{"env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "--no-install-recommends", pkg}}
+	warning := "Installs " + pkg + " and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand."
 	switch pkg {
 	case "acct":
 		commands = append(commands, []string{"systemctl", "enable", "--now", "acct.service"})
@@ -73,8 +90,14 @@ func buildInstallHardeningPackage(f model.Finding) (Fix, error) {
 			[]string{"systemctl", "enable", "--now", "auditd.service"})
 	case "debsums":
 		commands = append(commands, []string{"sed", "-i", `s/^CRON_CHECK=.*/CRON_CHECK=weekly/`, "/etc/default/debsums"})
+	case "fail2ban":
+		// The one package here that can act on this very session: it starts
+		// watching auth logs the moment it is enabled, and a ban is exactly
+		// the "sever the operator's own access" case Auto exists to rule out.
+		warning += " fail2ban starts watching auth logs immediately and can ban an IP after repeated failed " +
+			"logins — including the one this session is on."
 	}
-	built := execFix("Install host-hardening package "+pkg, "Install and enable "+pkg, commands)
+	built := execFix("Install host-hardening package "+pkg, "Install and enable "+pkg, warning, commands)
 	built.Actions[0].Timeout = 20 * time.Minute
 	return built, nil
 }
@@ -95,13 +118,19 @@ func buildEnableAutoUpdates(f model.Finding) (Fix, error) {
 			return enableAptPeriodic(f)
 		}
 		return execFix("Enable automatic security updates (unattended-upgrades)",
-			"Install and enable unattended-upgrades", [][]string{
+			"Install and enable unattended-upgrades",
+			"Installs unattended-upgrades and enables its service. There is no rollback checkpoint; "+
+				"undoing this means removing the package by hand.",
+			[][]string{
 				{"apt-get", "install", "-y", "unattended-upgrades"},
 				{"systemctl", "enable", "--now", "unattended-upgrades.service"},
 			}), nil
 	case "dnf-automatic":
 		return execFix("Enable automatic security updates (dnf-automatic)",
-			"Install and enable dnf-automatic", [][]string{
+			"Install and enable dnf-automatic",
+			"Installs dnf-automatic and enables its timer. There is no rollback checkpoint; "+
+				"undoing this means removing the package by hand.",
+			[][]string{
 				{"dnf", "install", "-y", "dnf-automatic"},
 				{"systemctl", "enable", "--now", "dnf-automatic.timer"},
 			}), nil
@@ -163,13 +192,20 @@ func setAptPeriodic(in []byte) ([]byte, error) {
 	return []byte(out), nil
 }
 
-// execFix builds a single-action Auto exec fix.
-func execFix(label, actionLabel string, commands [][]string) Fix {
+// execFix builds a single-action Auto exec fix. EffectiveKind floors every
+// caller to Review since the action is exec, so warning is what a person
+// reviewing it actually reads before deciding — the same job
+// firewall.go's hand-written Warnings do, and this package's calls were
+// missing entirely until a demo-VM rehearsal of the Review workflow found the
+// preview for updates.pending-security carrying no warning at all next to
+// one that did.
+func execFix(label, actionLabel, warning string, commands [][]string) Fix {
 	return Fix{
 		Label: label,
 		Kind:  model.RemediationAuto,
 		Actions: []Action{{
 			Label:    actionLabel,
+			Warning:  warning,
 			Kind:     ActionExec,
 			Commands: commands,
 		}},
