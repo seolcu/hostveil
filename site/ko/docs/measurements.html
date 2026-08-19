@@ -195,6 +195,34 @@
                 </tbody>
               </table>
             </div>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">다섯 단계에 걸친 Hostveil 점수</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:29%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.hostveil.overall">29</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">after</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:37%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.after.hostveil.overall">37</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">restarted</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:41%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.restarted.hostveil.overall">41</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">reviewed</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:60%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.hostveil.overall">60</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">restored</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:34%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.restored.hostveil.overall">34</span>
+              </div>
+            </div>
             <p><code>hostveil fix --all --yes</code>가 <strong data-measured="fixes.attempted">55</strong>건을 적용했고 실패는 없었습니다. 이어서 <code>fix --all --review --yes</code>가 <strong data-measured="reviewed.applied">42</strong>건을 더 제안했고, 그중 <span data-measured="reviewed.left_a_checkpoint">24</span>건이 체크포인트를 남겼으며 <span data-measured="reviewed.not_reversible">18</span>건은 남기지 않았습니다 — 파일 편집이 아닌 것들로, Hostveil이 자신의 히스토리에 각각 <code>[not reversible]</code>로 표시하고 아래의 롤백으로도 되돌아가지 않습니다.</p>
 
             <h3 id="moved">움직인 것</h3>

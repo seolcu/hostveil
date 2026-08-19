@@ -76,6 +76,7 @@
 
     <main id="main">
       <section class="hero" id="top">
+        <canvas id="hero-scan" class="hero-canvas" aria-hidden="true"></canvas>
         <div class="container hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">Guided security hardening for self-hosters</p>
@@ -198,11 +199,59 @@
             <h2>Seven ports answered from off the host. Then one.</h2>
             <p>Hostveil's own score going up after Hostveil's own fixes proves nothing, so a seeded server was measured by tools that have never heard of it: Lynis, Docker's CIS benchmark, and a TCP scan from another machine. Before the fixes, and after accepting every one it offered.</p>
           </div>
-          <div class="stats-grid measured-grid">
-            <div><strong><span data-measured="phases.before.external_scan.count">7</span> &rarr; <span data-measured="phases.reviewed.external_scan.count">1</span></strong><span>Ports answering from off the host</span></div>
-            <div><strong><span data-measured="phases.before.docker_bench.results.PASS">16</span> &rarr; <span data-measured="phases.reviewed.docker_bench.results.PASS">20</span></strong><span>CIS Docker Benchmark checks passing</span></div>
-            <div><strong><span data-measured="phases.before.lynis.hardening_index">57</span> &rarr; <span data-measured="phases.reviewed.lynis.hardening_index">80</span></strong><span>Lynis hardening index</span></div>
-            <div><strong><span data-measured="phases.before.hostveil.overall">29</span> &rarr; <span data-measured="phases.reviewed.hostveil.overall">60</span></strong><span>Hostveil score</span></div>
+          <div class="ledger-chart-grid">
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">Ports answering from off the host</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:100%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.external_scan.count">7</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">After</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:14%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.external_scan.count">1</span>
+              </div>
+            </div>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">CIS Docker Benchmark checks passing</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:36%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.docker_bench.results.PASS">16</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">After</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:45%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.docker_bench.results.PASS">20</span>
+              </div>
+            </div>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">Lynis hardening index</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:57%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.lynis.hardening_index">57</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">After</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:80%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.lynis.hardening_index">80</span>
+              </div>
+            </div>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">Hostveil score</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">Before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:29%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.hostveil.overall">29</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">After</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:60%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.hostveil.overall">60</span>
+              </div>
+            </div>
           </div>
           <p class="measured-note">One real server running Nextcloud, Jellyfin, Portainer and their datastores, every port on <code>0.0.0.0</code>, root SSH login allowed, no firewall. Every file the fixes touched was restored byte for byte on rollback. <a href="docs/measurements">How this was measured, and what did not move &rarr;</a></p>
         </div>

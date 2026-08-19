@@ -185,11 +185,37 @@ pre,
 }
 
 .hero {
+  position: relative;
   padding: clamp(64px, 9vw, 108px) 0 clamp(56px, 7vw, 88px);
   border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* No-JS / pre-paint fallback so the hero never looks broken while script.js
+   loads (or if it's disabled): a faint static grid, echoed at full color by
+   the canvas scan animation once it runs. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 32px);
+  opacity: 0.15;
+}
+
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.32;
+  pointer-events: none;
 }
 
 .hero-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
   align-items: start;
@@ -529,57 +555,94 @@ figcaption span {
 .split-section,
 .install-section {
   position: relative;
-  border-block: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--bg);
+  border-top: 3px solid var(--accent);
+  border-bottom: 3px solid var(--accent);
+  background: var(--panel-strong);
 }
 
-.split-section::before,
-.install-section::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 80px;
-  background: linear-gradient(to bottom, var(--bg-alt), transparent);
-  pointer-events: none;
+/* Ledger bar: a plain HTML/CSS comparison bar, not a canvas or SVG chart —
+   every number stays real text so it keeps matching the data-measured and
+   data-counted pinning tests. --pct is hand-set per bar against whichever
+   max the surrounding content states; it is never computed from another
+   value, so a chart's scale is always a deliberate choice, not a guess. */
+.ledger-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px clamp(28px, 4vw, 48px);
+  margin-top: 28px;
 }
 
-.split-section::after,
-.install-section::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 80px;
-  background: linear-gradient(to top, var(--bg), transparent);
-  pointer-events: none;
+.ledger-bar-title {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
 
-.split-section .eyebrow,
-.install-section .eyebrow,
-.split-section .check-stack strong {
-  color: #73551e;
+.ledger-bar-group {
+  display: grid;
+  gap: 8px;
 }
 
-.split-section p,
-.install-section p,
-.split-section .section-heading p,
-.install-section .install-grid p {
-  color: #445149;
+.ledger-bar {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 3rem;
+  align-items: center;
+  gap: 10px;
 }
 
-.split-section .check-stack article {
-  background: #f3ecd8;
-  color: var(--bg);
-  border-color: #b6aa8f;
-  box-shadow: 7px 7px 0 #cfc3a8;
+.ledger-bar-label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
 }
 
-.split-section .check-stack p {
-  color: #445149;
+.ledger-bar-track {
+  height: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: 3px 3px 0 var(--shadow-cut);
+  overflow: hidden;
+}
+
+.ledger-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--accent);
+}
+
+.ledger-bar-fill.danger {
+  background: var(--danger);
+}
+
+.ledger-bar-fill.warning {
+  background: var(--warning);
+}
+
+.ledger-bar-fill.signal {
+  background: var(--signal);
+}
+
+.ledger-bar-fill.muted {
+  background: var(--line-strong);
+}
+
+.ledger-bar.in-view .ledger-bar-fill {
+  width: var(--pct, 0%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ledger-bar-fill {
+    transition: width 900ms ease-out;
+  }
+}
+
+.ledger-bar-value {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: right;
 }
 
 .split-grid {
@@ -702,21 +765,6 @@ figcaption strong {
   background: var(--panel-strong);
   border: 1px solid var(--line);
   padding: 0.08rem 0.35rem;
-}
-
-.install-section {
-  border-top: 0;
-}
-
-.install-section .button.primary {
-  background: var(--bg);
-  border-color: var(--bg);
-  color: var(--paper);
-}
-
-.install-section .button.secondary {
-  border-color: #7c735f;
-  color: var(--bg);
 }
 
 .install-grid {
@@ -890,8 +938,13 @@ figcaption strong {
   .feature-grid,
   .flow-list,
   .faq-grid,
-  .stats-grid {
+  .stats-grid,
+  .ledger-chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ledger-bar {
+    grid-template-columns: 4.6rem 1fr 2.6rem;
   }
 
   .stats-grid div,
@@ -954,6 +1007,7 @@ figcaption strong {
 
 .command-box {
   position: relative;
+  z-index: 1;
   margin-top: 8px;
   border: 1px solid var(--line-strong);
   background: #050a09;
@@ -1079,20 +1133,6 @@ figcaption strong {
   color: var(--accent);
   border-color: var(--accent);
 }
-
-/* The measured band reuses .stats-grid, which is drawn for the trust strip
-   directly under the hero: no top border, because the header supplies one
-   there. In the middle of the page it needs its own, or the first row of
-   figures floats free of the heading above it. */
-.measured-grid {
-  margin-top: 28px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-/* No breakpoint of its own: .stats-grid already drops to two columns and
-   then to one, and a rule added down here would win against them by
-   position and pin the band at two on a phone. */
 
 .measured-note {
   margin-top: 18px;

@@ -194,6 +194,34 @@
                 </tbody>
               </table>
             </div>
+            <div class="ledger-bar-group">
+              <p class="ledger-bar-title">Hostveil score across all five phases</p>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">before</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:29%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.hostveil.overall">29</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">after</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:37%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.after.hostveil.overall">37</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">restarted</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:41%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.restarted.hostveil.overall">41</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">reviewed</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:60%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.hostveil.overall">60</span>
+              </div>
+              <div class="ledger-bar">
+                <span class="ledger-bar-label">restored</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill" style="--pct:34%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.restored.hostveil.overall">34</span>
+              </div>
+            </div>
             <p><code>hostveil fix --all --yes</code> applied <strong data-measured="fixes.attempted">55</strong> fixes and failed none. <code>fix --all --review --yes</code> then offered <strong data-measured="reviewed.applied">42</strong> more, of which <span data-measured="reviewed.left_a_checkpoint">24</span> left a checkpoint and <span data-measured="reviewed.not_reversible">18</span> did not — the ones that are not file edits, each marked <code>[not reversible]</code> in Hostveil&rsquo;s own history, and none of them undone by the rollback below.</p>
 
             <h3 id="moved">What moved</h3>
