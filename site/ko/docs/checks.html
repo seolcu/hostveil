@@ -149,21 +149,21 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">127</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">52</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>수동</strong>으로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 수동인 것이 아니라 <em>판단</em>해서 수동인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">127</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">52</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">174개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">자동</span>
+                <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.auto">75</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">검토</span>
+                <span class="ledger-bar-label">Review</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:30%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.review">52</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">수동</span>
+                <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.manual">47</span>
               </div>
@@ -188,7 +188,7 @@
               <p><strong>HIGH는 기존 심각과 높음을 합한 집합과 정확히 같으므로</strong>, <code>scan</code>의 종료 코드와 SARIF 내보내기는 예전과 똑같은 뜻입니다. Trivy 출력과 나란히 비교한다면 한 가지만 유의하세요. Trivy가 CRITICAL이라 부르는 취약점은 여기서 HIGH로 표시됩니다. Hostveil은 세 단계이고 Trivy는 네 단계라, 한쪽의 최상위와 다른 쪽의 최상위는 이름으로 맞출 수 없습니다.</p>
             </div>
             <p>고정된 점수가 아니라 <em>남은</em> 점수의 일부를 가져가는 방식이라, 항목 두 개만으로 축이 바닥나지 않습니다. 열 번째 항목도 여전히 대가를 치르고, 문제가 30개인 호스트는 3개인 호스트보다 낮은 점수를 받습니다. 전체 모형은 <a href="scoring">점수 산정</a>에 있습니다 — 계산식, 실제 스캔으로 만든 예시, 그리고 이 숫자가 알려주지 않는 것까지.</p>
-            <p>Hostveil이 <strong>사용 불가</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
+            <p>Hostveil이 <strong>Unavailable</strong>로 표시한 항목 — 업스트림 패치가 없는 취약점 — 은 1/4만 반영됩니다. 위험은 실재하므로 공짜는 아니지만, 어떤 이미지든 미패치 CVE를 조금씩 싣고 있어서 전부 반영하면 모든 걸 제대로 한 호스트조차 축이 0에 고정되기 때문입니다.</p>
 
             <h3>도메인별 비중</h3>
             <p>축은 셀프호스트 서버에서 얼마나 중요한지에 따라 가중치를 갖고, 합은 100입니다. 실행되지 않은 도메인은 가중치가 총합에서 빠지고 나머지가 재정규화됩니다.</p>
@@ -236,62 +236,62 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ssh.emptypasswords</code></td><td>빈 비밀번호가 허용됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ssh.emptypasswords">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.rootlogin</code></td><td>비밀번호를 사용한 root 로그인이 허용됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ssh.rootlogin">검토</a></td></tr>
-                  <tr><td><code>ssh.passwordauth</code></td><td>비밀번호 인증이 허용됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.passwordauth">검토</a></td></tr>
-                  <tr><td><code>ssh.gatewayports</code></td><td>원격 포워딩 포트가 네트워크에 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.gatewayports">검토</a></td></tr>
-                  <tr><td><code>ssh.hostbasedauth</code></td><td>호스트 기반 인증이 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.hostbasedauth">검토</a></td></tr>
-                  <tr><td><code>ssh.kbdinteractive</code></td><td>PasswordAuthentication no 이후에도 대화형 비밀번호 입력이 살아 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.kbdinteractive">검토</a></td></tr>
-                  <tr><td><code>ssh.permituserenvironment</code></td><td>SSH 세션에 사용자 환경 변수를 주입할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.permituserenvironment">검토</a></td></tr>
-                  <tr><td><code>ssh.permittunnel</code></td><td>SSH 네트워크 터널을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.permittunnel">검토</a></td></tr>
-                  <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.maxauthtries">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.logingracetime">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.x11forwarding">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.allowtcpforwarding">검토</a></td></tr>
-                  <tr><td><code>ssh.clientalivecountmax</code></td><td>응답 없는 SSH 세션을 너무 오래 유지함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.clientalivecountmax">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.clientaliveinterval</code></td><td>사용하지 않는 SSH 세션에 서버 측 제한 시간이 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.clientaliveinterval">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.fingerprinthash</code></td><td>호스트 키 지문에 오래된 해시를 사용함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.fingerprinthash">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.ignorerhosts</code></td><td>오래된 rhosts 인증을 명시적으로 무시하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.ignorerhosts">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.loglevel</code></td><td>SSH 인증 로그가 충분히 상세하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.loglevel">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.maxsessions</code></td><td>SSH 연결 하나가 너무 많은 세션을 열 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.maxsessions">검토</a></td></tr>
-                  <tr><td><code>ssh.printlastlog</code></td><td>사용자에게 이전 로그인 기록을 보여 주지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.printlastlog">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.strictmodes</code></td><td>SSH가 소유권과 파일 권한을 검사하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.strictmodes">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH가 위조 가능한 TCP keepalive를 받아들임</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.tcpkeepalive">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.usedns</code></td><td>SSH가 불필요한 역방향 DNS 조회를 수행함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.usedns">자동 수정</a></td></tr>
-                  <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH 에이전트 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.allowagentforwarding">검토</a></td></tr>
+                  <tr><td><code>ssh.emptypasswords</code></td><td>빈 비밀번호가 허용됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ssh.emptypasswords">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.rootlogin</code></td><td>비밀번호를 사용한 root 로그인이 허용됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ssh.rootlogin">Review</a></td></tr>
+                  <tr><td><code>ssh.passwordauth</code></td><td>비밀번호 인증이 허용됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.passwordauth">Review</a></td></tr>
+                  <tr><td><code>ssh.gatewayports</code></td><td>원격 포워딩 포트가 네트워크에 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.gatewayports">Review</a></td></tr>
+                  <tr><td><code>ssh.hostbasedauth</code></td><td>호스트 기반 인증이 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.hostbasedauth">Review</a></td></tr>
+                  <tr><td><code>ssh.kbdinteractive</code></td><td>PasswordAuthentication no 이후에도 대화형 비밀번호 입력이 살아 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.kbdinteractive">Review</a></td></tr>
+                  <tr><td><code>ssh.permituserenvironment</code></td><td>SSH 세션에 사용자 환경 변수를 주입할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.permituserenvironment">Review</a></td></tr>
+                  <tr><td><code>ssh.permittunnel</code></td><td>SSH 네트워크 터널을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ssh.permittunnel">Review</a></td></tr>
+                  <tr><td><code>ssh.maxauthtries</code></td><td>연결당 인증 시도 횟수가 너무 많음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.maxauthtries">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.logingracetime</code></td><td>미인증 연결을 너무 오래 열어 둠</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.logingracetime">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.x11forwarding</code></td><td>X11 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.x11forwarding">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.allowtcpforwarding</code></td><td>TCP 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.allowtcpforwarding">Review</a></td></tr>
+                  <tr><td><code>ssh.clientalivecountmax</code></td><td>응답 없는 SSH 세션을 너무 오래 유지함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.clientalivecountmax">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.clientaliveinterval</code></td><td>사용하지 않는 SSH 세션에 서버 측 제한 시간이 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.clientaliveinterval">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.fingerprinthash</code></td><td>호스트 키 지문에 오래된 해시를 사용함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.fingerprinthash">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.ignorerhosts</code></td><td>오래된 rhosts 인증을 명시적으로 무시하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.ignorerhosts">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.loglevel</code></td><td>SSH 인증 로그가 충분히 상세하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.loglevel">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.maxsessions</code></td><td>SSH 연결 하나가 너무 많은 세션을 열 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.maxsessions">Review</a></td></tr>
+                  <tr><td><code>ssh.printlastlog</code></td><td>사용자에게 이전 로그인 기록을 보여 주지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.printlastlog">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.strictmodes</code></td><td>SSH가 소유권과 파일 권한을 검사하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.strictmodes">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.tcpkeepalive</code></td><td>SSH가 위조 가능한 TCP keepalive를 받아들임</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.tcpkeepalive">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.usedns</code></td><td>SSH가 불필요한 역방향 DNS 조회를 수행함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.usedns">Auto-fix</a></td></tr>
+                  <tr><td><code>ssh.allowagentforwarding</code></td><td>SSH 에이전트 포워딩이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-ssh.allowagentforwarding">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
 
             <h2 id="compose">Docker / Compose <code>compose.</code></h2>
-            <p>Compose 파일에 대한 네이티브 감사입니다 — 외부 스캐너가 필요 없습니다. <code>docker run</code>으로 직접 띄운 컨테이너도 파일이 아니라 데몬에서 읽어 함께 점검합니다. 이 발견 항목들은 항상 수동입니다 — 수정할 파일이 없으므로, 동작하지 않을 버튼을 보여주는 대신 컨테이너를 다시 만들 때 무엇을 바꿔야 하는지 알려줍니다.</p>
+            <p>Compose 파일에 대한 네이티브 감사입니다 — 외부 스캐너가 필요 없습니다. <code>docker run</code>으로 직접 띄운 컨테이너도 파일이 아니라 데몬에서 읽어 함께 점검합니다. 이 발견 항목들은 항상 Manual입니다 — 수정할 파일이 없으므로, 동작하지 않을 버튼을 보여주는 대신 컨테이너를 다시 만들 때 무엇을 바꿔야 하는지 알려줍니다.</p>
             <p><strong>무엇을 노출로 보는가.</strong> 공개된 포트의 호스트 주소가 <code>0.0.0.0</code>이거나 <code>::</code>이거나 <strong>아예 적혀 있지 않으면</strong> 모든 인터페이스에서 닿을 수 있는 것으로 봅니다. 마지막 경우가 많이들 걸리는 자리입니다. <code>"6379:6379"</code>는 주소를 적지 않았고 Docker는 그것을 모든 인터페이스에 바인딩하므로, 이 규칙에서도 데몬에서도 노출입니다. <code>"127.0.0.1:6379:6379"</code>처럼 루프백을 명시한 경우만 아니며, 호스트 쪽이 아예 없는 포트는 공개된 것이 아니라 애초에 해당하지 않습니다.</p>
             <p>이 규칙은 어느 한 파일이 아니라 <code>docker compose config</code>가 출력하는 <em>병합된</em> 프로젝트에 적용합니다. Compose는 포트 매핑을 파일 간에 교체하지 않고 덧붙이므로, 베이스 파일이 루프백에 묶어 두고 오버라이드가 다시 공개하면 그 서비스는 노출된 상태입니다. 베이스만 읽으면 그 호스트를 깨끗하다고 부르게 됩니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds018">자동 수정</a></td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds019">자동 수정</a></td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds006">자동 수정</a></td></tr>
-                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.dr002">자동 수정</a></td></tr>
-                  <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds008">자동 수정</a></td></tr>
-                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds023</code></td><td>seccomp 필터가 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds024</code></td><td>AppArmor 격리가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds010">검토</a></td></tr>
-                  <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds018">Auto-fix</a></td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds019">Auto-fix</a></td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds006">Auto-fix</a></td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.dr002">Auto-fix</a></td></tr>
+                  <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds008">Auto-fix</a></td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds023</code></td><td>seccomp 필터가 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds024</code></td><td>AppArmor 격리가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds010">Review</a></td></tr>
+                  <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -301,9 +301,9 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-firewall.inactive">검토</a></td></tr>
-                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-firewall.default-allow">검토</a></td></tr>
-                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-firewall.inactive">Review</a></td></tr>
+                  <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-firewall.default-allow">Review</a></td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -313,20 +313,20 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.disabled">검토</a></td></tr>
-                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pending-security">검토</a></td></tr>
-                  <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>updates.process-accounting</code></td><td>프로세스 사용 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.process-accounting">검토</a></td></tr>
-                  <tr><td><code>updates.sysstat</code></td><td>시스템 활동 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat">검토</a></td></tr>
-                  <tr><td><code>updates.auditd</code></td><td>Linux 감사 데몬이 설치되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.auditd">검토</a></td></tr>
-                  <tr><td><code>updates.debsums</code></td><td>설치된 패키지 파일을 검증할 수 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.debsums">검토</a></td></tr>
-                  <tr><td><code>updates.rkhunter</code></td><td>rootkit 점검기가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.rkhunter">검토</a></td></tr>
-                  <tr><td><code>updates.pam-pwquality</code></td><td>PAM에 비밀번호 품질 구성 요소가 없음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pam-pwquality">검토</a></td></tr>
-                  <tr><td><code>updates.apt-show-versions</code></td><td>패치 목록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.apt-show-versions">검토</a></td></tr>
-                  <tr><td><code>updates.sysstat-disabled</code></td><td>시스템 활동 수집이 비활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat-disabled">자동 수정</a></td></tr>
-                  <tr><td><code>updates.apt-listchanges</code></td><td>APT 변경 기록 검토 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.apt-listchanges">검토</a></td></tr>
-                  <tr><td><code>updates.pam-tmpdir</code></td><td>PAM 세션이 전역 임시 디렉터리를 공유함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.pam-tmpdir">검토</a></td></tr>
-                  <tr><td><code>updates.fail2ban</code></td><td>반복되는 인증 실패를 자동 차단하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.fail2ban">검토</a></td></tr>
+                  <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.disabled">Review</a></td></tr>
+                  <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pending-security">Review</a></td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.process-accounting</code></td><td>프로세스 사용 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.process-accounting">Review</a></td></tr>
+                  <tr><td><code>updates.sysstat</code></td><td>시스템 활동 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat">Review</a></td></tr>
+                  <tr><td><code>updates.auditd</code></td><td>Linux 감사 데몬이 설치되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.auditd">Review</a></td></tr>
+                  <tr><td><code>updates.debsums</code></td><td>설치된 패키지 파일을 검증할 수 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.debsums">Review</a></td></tr>
+                  <tr><td><code>updates.rkhunter</code></td><td>rootkit 점검기가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.rkhunter">Review</a></td></tr>
+                  <tr><td><code>updates.pam-pwquality</code></td><td>PAM에 비밀번호 품질 구성 요소가 없음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pam-pwquality">Review</a></td></tr>
+                  <tr><td><code>updates.apt-show-versions</code></td><td>패치 목록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.apt-show-versions">Review</a></td></tr>
+                  <tr><td><code>updates.sysstat-disabled</code></td><td>시스템 활동 수집이 비활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat-disabled">Auto-fix</a></td></tr>
+                  <tr><td><code>updates.apt-listchanges</code></td><td>APT 변경 기록 검토 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.apt-listchanges">Review</a></td></tr>
+                  <tr><td><code>updates.pam-tmpdir</code></td><td>PAM 세션이 전역 임시 디렉터리를 공유함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.pam-tmpdir">Review</a></td></tr>
+                  <tr><td><code>updates.fail2ban</code></td><td>반복되는 인증 실패를 자동 차단하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.fail2ban">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -337,12 +337,12 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>ports.redis-bind</code></td><td>Redis가 루프백 밖에서 수신하도록 설정됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-bind">검토</a></td></tr>
-                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis 보호 모드가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-protected-mode">자동 수정</a></td></tr>
-                  <tr><td><code>ports.redis-disable-config</code></td><td>Redis CONFIG 명령이 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-disable-config">검토</a></td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>데이터스토어(Postgres, MySQL, Redis, MongoDB 등)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>관리 UI(예: Portainer)가 네트워크에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed</code></td><td>다른 서비스가 루프백이 아닌 주소에서 수신 대기 중이고 활성 호스트 방화벽이 없음</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.redis-bind</code></td><td>Redis가 루프백 밖에서 수신하도록 설정됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-bind">Review</a></td></tr>
+                  <tr><td><code>ports.redis-protected-mode</code></td><td>Redis 보호 모드가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-protected-mode">Auto-fix</a></td></tr>
+                  <tr><td><code>ports.redis-disable-config</code></td><td>Redis CONFIG 명령이 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-disable-config">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -354,17 +354,17 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-accounts.emptypassword">검토</a></td></tr>
-                  <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.duplicate-uid</code></td><td>여러 계정이 같은 UID를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.weak-password-hash</code></td><td>로그인 계정이 약한 비밀번호 해시를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>accounts.password-rounds</code></td><td>비밀번호 해시 반복 횟수가 강화되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.password-rounds">자동 수정</a></td></tr>
-                  <tr><td><code>accounts.default-umask</code></td><td>새 파일의 기본 권한이 너무 넓음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.default-umask">자동 수정</a></td></tr>
-                  <tr><td><code>accounts.local-banner</code></td><td>로컬 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.local-banner">검토</a></td></tr>
-                  <tr><td><code>accounts.remote-banner</code></td><td>원격 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.remote-banner">검토</a></td></tr>
-                  <tr><td><code>accounts.password-aging</code></td><td>비밀번호 사용 기간 기본값이 너무 느슨함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.password-aging">자동 수정</a></td></tr>
-                  <tr><td><code>accounts.core-dumps</code></td><td>core dump가 명시적으로 비활성화되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.core-dumps">자동 수정</a></td></tr>
+                  <tr><td><code>accounts.uid0</code></td><td>root가 아닌 계정이 root의 UID(0)를 가짐</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.emptypassword</code></td><td>로그인 계정에 빈 비밀번호가 설정됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-accounts.emptypassword">Review</a></td></tr>
+                  <tr><td><code>accounts.sudo-nopasswd</code></td><td>sudo 규칙이 비밀번호를 묻지 않고 무엇이든 root로 실행하도록 허용함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.duplicate-uid</code></td><td>여러 계정이 같은 UID를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.weak-password-hash</code></td><td>로그인 계정이 약한 비밀번호 해시를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.password-rounds</code></td><td>비밀번호 해시 반복 횟수가 강화되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.password-rounds">Auto-fix</a></td></tr>
+                  <tr><td><code>accounts.default-umask</code></td><td>새 파일의 기본 권한이 너무 넓음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.default-umask">Auto-fix</a></td></tr>
+                  <tr><td><code>accounts.local-banner</code></td><td>로컬 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.local-banner">Review</a></td></tr>
+                  <tr><td><code>accounts.remote-banner</code></td><td>원격 로그인 경고가 무단 접근을 경고하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.remote-banner">Review</a></td></tr>
+                  <tr><td><code>accounts.password-aging</code></td><td>비밀번호 사용 기간 기본값이 너무 느슨함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.password-aging">Auto-fix</a></td></tr>
+                  <tr><td><code>accounts.core-dumps</code></td><td>core dump가 명시적으로 비활성화되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.core-dumps">Auto-fix</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -376,9 +376,9 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik의 API와 대시보드가 인증 없이 떠 있어, 프록시 뒤의 모든 라우터와 백엔드 주소를 나열함</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code>가 아직 TLS 1.0이나 1.1을 제공함. RFC 8996이 폐기했고 요즘 브라우저는 전부 거절함</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code>이 인덱스 파일 없는 모든 디렉터리를 훑어볼 수 있게 만듦</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik의 API와 대시보드가 인증 없이 떠 있어, 프록시 뒤의 모든 라우터와 백엔드 주소를 나열함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code>가 아직 TLS 1.0이나 1.1을 제공함. RFC 8996이 폐기했고 요즘 브라우저는 전부 거절함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code>이 인덱스 파일 없는 모든 디렉터리를 훑어볼 수 있게 만듦</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -389,80 +389,80 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.shadow">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.group">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.hostkey">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.gshadow</code></td><td><code>/etc/gshadow</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.gshadow">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.sudoers</code></td><td><code>/etc/sudoers</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.sudoers">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.sudoers-dropins</code></td><td>sudoers 추가 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.sudoers-dropins">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.cron</code></td><td>시스템 cron 정의를 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.cron">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.systemd-units</code></td><td>시스템 서비스 유닛을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.systemd-units">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.docker-config</code></td><td>root의 Docker 자격 증명 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.docker-config">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.grub-config</code></td><td>GRUB 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub-config">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.grub2-config</code></td><td>GRUB2 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub2-config">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.at-allow</code></td><td>at 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.at-deny</code></td><td>at 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.cron-allow</code></td><td>cron 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">자동 수정</a></td></tr>
-                  <tr><td><code>fileperms.compiler</code></td><td>모든 로컬 사용자가 시스템 컴파일러를 실행할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.compiler">검토</a></td></tr>
+                  <tr><td><code>fileperms.shadow</code></td><td><code>/etc/shadow</code>가 <code>0640</code>보다 느슨함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.shadow">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.passwd</code></td><td><code>/etc/passwd</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.group</code></td><td><code>/etc/group</code>이 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.group">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.hostkey</code></td><td>SSH 호스트 개인 키를 root 외 사용자가 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.hostkey">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.gshadow</code></td><td><code>/etc/gshadow</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.gshadow">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.sudoers</code></td><td><code>/etc/sudoers</code> 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.sudoers">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.sudoers-dropins</code></td><td>sudoers 추가 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.sudoers-dropins">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.cron</code></td><td>시스템 cron 정의를 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.cron">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.systemd-units</code></td><td>시스템 서비스 유닛을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.systemd-units">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.docker-config</code></td><td>root의 Docker 자격 증명 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.docker-config">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.grub-config</code></td><td>GRUB 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub-config">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.grub2-config</code></td><td>GRUB2 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub2-config">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.at-allow</code></td><td>at 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.at-deny</code></td><td>at 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.cron-allow</code></td><td>cron 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아님 — 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">Auto-fix</a></td></tr>
+                  <tr><td><code>fileperms.compiler</code></td><td>모든 로컬 사용자가 시스템 컴파일러를 실행할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.compiler">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
 
             <h2 id="sysctl">커널 하드닝 <code>sysctl.</code></h2>
             <p><code>/proc/sys</code>에서 직접 읽습니다 — <code>sysctl</code> 바이너리가 필요 없습니다. 이 항목들은 사실상 모든 서버에서 안전한 값이 같은 조용한 손잡이들입니다. 공격자가 들어오는 구멍은 아니지만, 각각은 발판이 root가 되는 것과 위조된 패킷이 경로가 되는 것을 막아 줍니다. 이 커널에 없는 파라미터(예: Yama가 빌드되지 않은 경우)는 그냥 건너뜁니다.</p>
-            <p>값이 모호하지 않은 항목은 <strong>자동 수정</strong>입니다. Hostveil은 <code>/etc/sysctl.d</code> 아래에 되돌릴 수 있는 드롭인 파일 하나를 쓰고 실행 중인 커널은 건드리지 않습니다. 다음 부팅 때 적용되며, 직접 <code>sysctl --system</code>을 실행하면 즉시 적용됩니다. 롤백은 파일을 삭제하거나 복원하고, 그 뒤 파일이 직접 수정됐다면 안전하게 거절합니다.</p>
-            <p>라우터·릴레이·다중 회선 구성에 따라 답이 달라지는 항목은 <strong>검토</strong>로 남습니다. 엄격한 역방향 경로 필터링은 비대칭 라우팅을 깨뜨릴 수 있고 Proxy ARP 비활성화는 의도적으로 릴레이 역할을 하는 호스트를 깨뜨릴 수 있습니다. 이런 항목은 영구 적용과 즉시 적용 대안을 유지해 운영자가 서버 구성에 맞게 선택합니다.</p>
+            <p>값이 모호하지 않은 항목은 <strong>Auto-fix</strong>입니다. Hostveil은 <code>/etc/sysctl.d</code> 아래에 되돌릴 수 있는 드롭인 파일 하나를 쓰고 실행 중인 커널은 건드리지 않습니다. 다음 부팅 때 적용되며, 직접 <code>sysctl --system</code>을 실행하면 즉시 적용됩니다. 롤백은 파일을 삭제하거나 복원하고, 그 뒤 파일이 직접 수정됐다면 안전하게 거절합니다.</p>
+            <p>라우터·릴레이·다중 회선 구성에 따라 답이 달라지는 항목은 <strong>Review</strong>로 남습니다. 엄격한 역방향 경로 필터링은 비대칭 라우팅을 깨뜨릴 수 있고 Proxy ARP 비활성화는 의도적으로 릴레이 역할을 하는 호스트를 깨뜨릴 수 있습니다. 이런 항목은 영구 적용과 즉시 적용 대안을 유지해 운영자가 서버 구성에 맞게 선택합니다.</p>
             <p><code>net.ipv4.ip_forward</code>는 의도적으로 점검하지 않습니다. Docker, WireGuard, Tailscale 종료 노드, 가상화 호스트가 모두 정당하게 켜는 값이고, Hostveil은 그것을 실수와 구별할 수 없습니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ptrace-scope">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.syncookies">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.accept-redirects">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-links">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.kptr-restrict">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.dmesg-restrict">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.sysrq">검토</a></td></tr>
-                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.rp-filter">검토</a></td></tr>
-                  <tr><td><code>sysctl.accept-source-route</code></td><td>소스 라우팅 패킷을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.accept-source-route">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.send-redirects</code></td><td>ICMP 리다이렉트를 전송함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.send-redirects">검토</a></td></tr>
-                  <tr><td><code>sysctl.suid-dumpable</code></td><td>권한 프로세스가 core dump를 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.suid-dumpable">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-fifos">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.protected-regular</code></td><td>일반 파일 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-regular">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>비권한 사용자가 BPF를 로드할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.unprivileged-bpf">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.perf-events</code></td><td>성능 이벤트가 사용자에게 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.perf-events">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>브로드캐스트 ping을 허용함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.icmp-broadcasts">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>잘못된 ICMP 오류를 무시하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.bogus-icmp-errors">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.log-martians</code></td><td>의심스러운 출발지 주소를 로그하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.log-martians">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.aslr</code></td><td>ASLR이 완전히 활성화되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.aslr">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.core-uses-pid</code></td><td>core dump 이름에 PID가 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.core-uses-pid">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ctrl-alt-del</code></td><td>Ctrl-Alt-Delete가 즉시 재부팅함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ctrl-alt-del">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.bpf-jit-harden</code></td><td>BPF JIT 보호가 충분하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.bpf-jit-harden">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.tty-ldisc-autoload</code></td><td>TTY가 line discipline을 자동 로드함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.tty-ldisc-autoload">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv6-accept-redirects-all</code></td><td>IPv6 redirect를 전역으로 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-redirects-all">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv6-accept-redirects-default</code></td><td>새 IPv6 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-redirects-default">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv6-accept-source-route-all</code></td><td>IPv6 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-source-route-all">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv6-accept-source-route-default</code></td><td>새 IPv6 interface가 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-source-route-default">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv6-send-redirects</code></td><td>IPv6 redirect를 전송함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ipv6-send-redirects">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv4-default-accept-redirects</code></td><td>새 IPv4 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv4-default-accept-redirects">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.ipv4-default-rp-filter</code></td><td>새 IPv4 interface에 출발지 검증이 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ipv4-default-rp-filter">검토</a></td></tr>
-                  <tr><td><code>sysctl.proxy-arp-all</code></td><td>Proxy ARP가 전역으로 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.proxy-arp-all">검토</a></td></tr>
-                  <tr><td><code>sysctl.proxy-arp-default</code></td><td>새 interface가 Proxy ARP를 활성화함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.proxy-arp-default">검토</a></td></tr>
-                  <tr><td><code>sysctl.multicast-forwarding</code></td><td>IPv4 multicast forwarding이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.multicast-forwarding">검토</a></td></tr>
-                  <tr><td><code>sysctl.bootp-relay</code></td><td>BOOTP relay가 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.bootp-relay">검토</a></td></tr>
-                  <tr><td><code>sysctl.tcp-rfc1337</code></td><td>TCP TIME-WAIT 보호가 꺼져 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.tcp-rfc1337">자동 수정</a></td></tr>
-                  <tr><td><code>sysctl.module-dccp</code></td><td>선택적 DCCP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-dccp">검토</a></td></tr>
-                  <tr><td><code>sysctl.module-sctp</code></td><td>선택적 SCTP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-sctp">검토</a></td></tr>
-                  <tr><td><code>sysctl.module-rds</code></td><td>선택적 RDS 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-rds">검토</a></td></tr>
-                  <tr><td><code>sysctl.module-tipc</code></td><td>선택적 TIPC 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-tipc">검토</a></td></tr>
-                  <tr><td><code>sysctl.module-usbstorage</code></td><td>USB 저장 장치 드라이버를 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-usbstorage">검토</a></td></tr>
+                  <tr><td><code>sysctl.ptrace-scope</code></td><td>아무 프로세스나 형제 프로세스를 디버깅해 메모리를 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ptrace-scope">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.syncookies</code></td><td>TCP SYN 플러드 보호가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.syncookies">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.accept-redirects</code></td><td>ICMP 리다이렉트가 이 호스트의 라우팅을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.accept-redirects">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.protected-links</code></td><td>심볼릭/하드 링크 경쟁 보호가 비활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-links">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.kptr-restrict</code></td><td>커널 포인터 주소가 모든 사용자에게 보임</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.kptr-restrict">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.dmesg-restrict</code></td><td>아무 사용자나 커널 로그를 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.dmesg-restrict">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.sysrq</code></td><td>Magic SysRq가 전부 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.sysrq">Review</a></td></tr>
+                  <tr><td><code>sysctl.rp-filter</code></td><td>출발지 주소 위조 필터가 꺼져 있음 (strict와 loose 모두 통과)</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.rp-filter">Review</a></td></tr>
+                  <tr><td><code>sysctl.accept-source-route</code></td><td>소스 라우팅 패킷을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.accept-source-route">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.send-redirects</code></td><td>ICMP 리다이렉트를 전송함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.send-redirects">Review</a></td></tr>
+                  <tr><td><code>sysctl.suid-dumpable</code></td><td>권한 프로세스가 core dump를 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.suid-dumpable">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.protected-fifos</code></td><td>FIFO 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-fifos">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.protected-regular</code></td><td>일반 파일 보호가 약함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.protected-regular">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.unprivileged-bpf</code></td><td>비권한 사용자가 BPF를 로드할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.unprivileged-bpf">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.perf-events</code></td><td>성능 이벤트가 사용자에게 노출됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.perf-events">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.icmp-broadcasts</code></td><td>브로드캐스트 ping을 허용함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.icmp-broadcasts">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.bogus-icmp-errors</code></td><td>잘못된 ICMP 오류를 무시하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.bogus-icmp-errors">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.log-martians</code></td><td>의심스러운 출발지 주소를 로그하지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.log-martians">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.aslr</code></td><td>ASLR이 완전히 활성화되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.aslr">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.core-uses-pid</code></td><td>core dump 이름에 PID가 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.core-uses-pid">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ctrl-alt-del</code></td><td>Ctrl-Alt-Delete가 즉시 재부팅함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ctrl-alt-del">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.bpf-jit-harden</code></td><td>BPF JIT 보호가 충분하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.bpf-jit-harden">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.tty-ldisc-autoload</code></td><td>TTY가 line discipline을 자동 로드함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.tty-ldisc-autoload">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-redirects-all</code></td><td>IPv6 redirect를 전역으로 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-redirects-all">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-redirects-default</code></td><td>새 IPv6 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-redirects-default">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-source-route-all</code></td><td>IPv6 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-source-route-all">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv6-accept-source-route-default</code></td><td>새 IPv6 interface가 source routing을 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv6-accept-source-route-default">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv6-send-redirects</code></td><td>IPv6 redirect를 전송함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ipv6-send-redirects">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv4-default-accept-redirects</code></td><td>새 IPv4 interface가 redirect를 허용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.ipv4-default-accept-redirects">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.ipv4-default-rp-filter</code></td><td>새 IPv4 interface에 출발지 검증이 없음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.ipv4-default-rp-filter">Review</a></td></tr>
+                  <tr><td><code>sysctl.proxy-arp-all</code></td><td>Proxy ARP가 전역으로 활성화됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.proxy-arp-all">Review</a></td></tr>
+                  <tr><td><code>sysctl.proxy-arp-default</code></td><td>새 interface가 Proxy ARP를 활성화함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-sysctl.proxy-arp-default">Review</a></td></tr>
+                  <tr><td><code>sysctl.multicast-forwarding</code></td><td>IPv4 multicast forwarding이 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.multicast-forwarding">Review</a></td></tr>
+                  <tr><td><code>sysctl.bootp-relay</code></td><td>BOOTP relay가 활성화됨</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.bootp-relay">Review</a></td></tr>
+                  <tr><td><code>sysctl.tcp-rfc1337</code></td><td>TCP TIME-WAIT 보호가 꺼져 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.tcp-rfc1337">Auto-fix</a></td></tr>
+                  <tr><td><code>sysctl.module-dccp</code></td><td>선택적 DCCP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-dccp">Review</a></td></tr>
+                  <tr><td><code>sysctl.module-sctp</code></td><td>선택적 SCTP 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-sctp">Review</a></td></tr>
+                  <tr><td><code>sysctl.module-rds</code></td><td>선택적 RDS 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-rds">Review</a></td></tr>
+                  <tr><td><code>sysctl.module-tipc</code></td><td>선택적 TIPC 프로토콜을 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-tipc">Review</a></td></tr>
+                  <tr><td><code>sysctl.module-usbstorage</code></td><td>USB 저장 장치 드라이버를 사용할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-sysctl.module-usbstorage">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -471,18 +471,18 @@
             <p>Compose 점검은 서비스가 무엇을 선언했는지를 보고, CVE 점검은 그 서비스가 돌리는 이미지를 봅니다. 이 영역은 그 둘 밑에 있는 데몬 자체 — 실제로 root를 쥐고 있는 부분 — 을 봅니다.</p>
             <p>여기서 가장 심각한 항목은 Hostveil 전체에서 가장 심각한 항목이므로 분명히 말해 둘 필요가 있습니다. TLS 클라이언트 검증 없이 TCP 포트로 듣고 있는 데몬은 그 포트에 닿을 수 있는 누구에게나 호스트의 root입니다. 비밀번호도, 취약점도 필요 없고, 파일시스템을 통째로 마운트한 컨테이너를 시작하는 HTTP 요청 하나면 됩니다. 소켓 그룹의 멤버십은 로컬 계정에서 얻는 같은 권한이고, <code>sudo</code>와 달리 아무것도 묻지 않고 아무것도 기록하지 않습니다.</p>
             <p><strong>출처가 셋이고, 서로 어긋납니다.</strong> Docker 설정은 <code>/etc/docker/daemon.json</code>, 서비스 유닛의 플래그, 그리고 실행 중인 데몬 안에 각각 있습니다 — 재시작 없이 파일만 고쳤다면 이 셋은 서로 다른 답입니다. 그래서 데몬 기본값은 <code>docker info</code>에서 읽습니다. 누가 적어 둔 내용이 아니라 데몬이 실제로 적재한 내용이기 때문입니다. 소켓과 TLS 설정은 파일과 유닛을 함께 읽습니다. <code>docker info</code>가 아예 보고하지 않기 때문입니다. <code>ss</code>는 직접 확인해 볼 수 있는 엔드포인트를 증거로 덧붙이되, 발견 항목의 존재 여부를 결정하지는 않습니다.</p>
-            <p><strong>여기의 모든 항목은 의도적으로 수동입니다.</strong> 점검기는 실행 중인 데몬을 읽지만, 수정은 데몬이 재시작하기 전까지 다시 읽지 않는 파일을 고치는 셈입니다. 문제는 Docker를 재시작하면 호스트의 모든 컨테이너가 멈춘다는 것입니다. 공격자에게 보이는 것은 아무것도 바꾸지 않은 채 항목을 해결됨으로 표시하고 점수만 올리는 수정은 수정이 없는 편만 못합니다. 그래서 조치 안내에 정확한 변경 내용만 담아 두고, 적용 시점은 운영자가 직접 고르게 합니다.</p>
+            <p><strong>여기의 모든 항목은 의도적으로 Manual입니다.</strong> 점검기는 실행 중인 데몬을 읽지만, 수정은 데몬이 재시작하기 전까지 다시 읽지 않는 파일을 고치는 셈입니다. 문제는 Docker를 재시작하면 호스트의 모든 컨테이너가 멈춘다는 것입니다. 공격자에게 보이는 것은 아무것도 바꾸지 않은 채 항목을 해결됨으로 표시하고 점수만 올리는 수정은 수정이 없는 편만 못합니다. 그래서 조치 안내에 정확한 변경 내용만 담아 두고, 적용 시점은 운영자가 직접 고르게 합니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다 — 포트에 닿는 누구에게나 인증 없는 root</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다 — <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다 — 포트에 닿는 누구에게나 인증 없는 root</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다 — <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
@@ -497,25 +497,25 @@
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.no-new-privileges">검토</a></td></tr>
-                  <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.private-devices</code></td><td>서비스가 호스트 디바이스에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>서비스가 커널 설정을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>서비스가 kernel module을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.protect-kernel-modules">검토</a></td></tr>
-                  <tr><td><code>systemd.protect-control-groups</code></td><td>서비스가 제어 그룹을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>서비스가 커널 로그에 접근할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-kernel-logs">검토</a></td></tr>
-                  <tr><td><code>systemd.protect-clock</code></td><td>서비스가 시스템 시계를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-clock">검토</a></td></tr>
-                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>서비스가 setuid 파일을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.restrict-suid-sgid">검토</a></td></tr>
-                  <tr><td><code>systemd.restrict-namespaces</code></td><td>서비스가 네임스페이스를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
-                  <tr><td><code>systemd.lock-personality</code></td><td>서비스가 실행 퍼스널리티를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.lock-personality">검토</a></td></tr>
-                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>서비스가 쓰기와 실행이 모두 가능한 메모리를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>수동</td></tr>
+                  <tr><td><code>systemd.no-new-privileges</code></td><td>setuid 바이너리를 통해 서비스가 권한을 얻을 수 있습니다. 서비스 안의 발판이 서비스 밖의 발판으로 바뀌는 통상적인 경로입니다</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.no-new-privileges">Review</a></td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>서비스가 <code>/usr</code>, <code>/boot</code>, <code>/etc</code>에 쓸 수 있습니다. <code>/etc</code>를 고칠 수 있는 서비스는 이 호스트의 모든 로그인을 손에 넣습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>서비스가 <code>/home</code>, <code>/root</code>, <code>/run/user</code>를 읽을 수 있습니다. 모든 사용자의 SSH 키, 클라우드 자격 증명, 비밀번호 데이터베이스가 그 안에 있습니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>서비스가 다른 모든 프로세스와 <code>/tmp</code>를 공유합니다. 심볼릭 링크 경쟁이 벌어지는 바로 그 자리입니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.private-devices</code></td><td>서비스가 호스트 디바이스에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>서비스가 커널 설정을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-modules</code></td><td>서비스가 kernel module을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.protect-kernel-modules">Review</a></td></tr>
+                  <tr><td><code>systemd.protect-control-groups</code></td><td>서비스가 제어 그룹을 바꿀 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-kernel-logs</code></td><td>서비스가 커널 로그에 접근할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-kernel-logs">Review</a></td></tr>
+                  <tr><td><code>systemd.protect-clock</code></td><td>서비스가 시스템 시계를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-clock">Review</a></td></tr>
+                  <tr><td><code>systemd.restrict-suid-sgid</code></td><td>서비스가 setuid 파일을 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.restrict-suid-sgid">Review</a></td></tr>
+                  <tr><td><code>systemd.restrict-namespaces</code></td><td>서비스가 네임스페이스를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.lock-personality</code></td><td>서비스가 실행 퍼스널리티를 바꿀 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.lock-personality">Review</a></td></tr>
+                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>서비스가 쓰기와 실행이 모두 가능한 메모리를 만들 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                 </tbody>
               </table>
             </div>
             <p><strong>심각도가 두 가지이며, 어느 쪽인지는 실행 계정이 정합니다.</strong> <code>no-new-privileges</code>는 root가 아닌 계정으로 도는 서비스에서 <span class="sev medium">MEDIUM</span>, root로 도는 서비스에서 <span class="sev low">LOW</span>입니다. root 서비스는 이미 무엇이든 할 수 있으므로 이 설정이 막는 setuid 경로의 값어치가 거기서는 작습니다. 파일시스템 보호 두 가지는 같은 이유로 반대 방향입니다 — <code>no-new-privileges</code>의 값어치가 가장 작은 자리에서 가장 큽니다.</p>
-            <p><strong>여기의 모든 항목은 의도적으로 수동입니다.</strong> 드롭인은 두 줄이고 Hostveil이 쓸 수도 있습니다. 하지만 쓰는 것과 안전하다고 아는 것은 다릅니다. <code>ProtectSystem=full</code>은 <code>/usr</code> 아래에 쓰는 서비스를 망가뜨리고, <code>PrivateTmp=yes</code>는 <code>/tmp</code>로 파일을 주고받는 두 서비스를 망가뜨립니다. 어느 쪽도 다음 재시작 전까지는 드러나지 않는데, 자체 호스팅 환경에서 그 시점은 다음 재부팅입니다 — 그리고 돌아오지 못한 서비스가 하필 데이터를 쥐고 있던 쪽입니다. 그래서 수정 안내에 정확한 경로와 정확한 두 줄을 담고, 재시작해서 지켜볼 시점은 사용자가 고릅니다.</p>
+            <p><strong>여기의 모든 항목은 의도적으로 Manual입니다.</strong> 드롭인은 두 줄이고 Hostveil이 쓸 수도 있습니다. 하지만 쓰는 것과 안전하다고 아는 것은 다릅니다. <code>ProtectSystem=full</code>은 <code>/usr</code> 아래에 쓰는 서비스를 망가뜨리고, <code>PrivateTmp=yes</code>는 <code>/tmp</code>로 파일을 주고받는 두 서비스를 망가뜨립니다. 어느 쪽도 다음 재시작 전까지는 드러나지 않는데, 자체 호스팅 환경에서 그 시점은 다음 재부팅입니다 — 그리고 돌아오지 못한 서비스가 하필 데이터를 쥐고 있던 쪽입니다. 그래서 수정 안내에 정확한 경로와 정확한 두 줄을 담고, 재시작해서 지켜볼 시점은 사용자가 고릅니다.</p>
             <p>이 systemd가 구현하지 않은 속성은 아무 값도 보고되지 않으며, 값이 없다는 것은 보호가 꺼져 있다는 근거가 아닙니다. 그런 경우는 항목으로 만들지 않고 그대로 둡니다.</p>
 
             <h2 id="agent">AI 에이전트 런타임 <code>agent.</code></h2>
@@ -526,21 +526,21 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 잡아내는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.secret-exposed">자동 수정</a></td></tr>
-                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.exec-unrestricted">검토</a></td></tr>
-                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.elevated-enabled">자동 수정</a></td></tr>
-                  <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">HIGH</span></td><td>수동</td></tr>
-                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.control-ui-insecure">자동 수정</a></td></tr>
-                  <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.config-perms">자동 수정</a></td></tr>
-                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.ssrf-private-network">자동 수정</a></td></tr>
+                  <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.secret-exposed">Auto-fix</a></td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.exec-unrestricted">Review</a></td></tr>
+                  <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.elevated-enabled">Auto-fix</a></td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.control-ui-insecure">Auto-fix</a></td></tr>
+                  <tr><td><code>agent.config-perms</code></td><td>설정·상태 경로가 업스트림 기본값보다 느슨함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.config-perms">Auto-fix</a></td></tr>
+                  <tr><td><code>agent.ssrf-private-network</code></td><td>에이전트 브라우저가 사설망 주소에 접근할 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.ssrf-private-network">Auto-fix</a></td></tr>
                 </tbody>
               </table>
             </div>
             <p>설정 관련 항목은 이제 대부분 고칠 수 있습니다. OpenClaw 설정은 JSON5라 사용자가 직접 쓴 주석이 들어 있는데, Hostveil은 값 하나에 해당하는 바이트만 정확히 바꾸고 나머지 파일은 건드리지 않습니다. 그리고 자기가 쓴 결과를 다시 읽어, 지정한 키 외에 달라진 것이 있으면 저장을 거부합니다. 키 하나를 바꾼 변경은 한 줄 diff로 남고, 주석은 쓴 자리에 그대로 있습니다.</p>
-            <p>세 항목은 여전히 <strong>수동</strong>이며, 이유는 각각 다릅니다. <code>agent.sandbox-off</code>는 <code>off</code>가 잘못됐다는 것은 알아도 샌드박스를 켜는 값이 무엇인지 모르며, 찍어서 넣은 값은 조치가 아닙니다. <code>agent.auth-disabled</code>는 키가 아예 없는 상태가 안전한 설정인데(OpenClaw는 이 값이 없으면 닫힌 쪽으로 동작합니다) Hostveil은 값을 바꿀 뿐 지우지는 않습니다. 그리고 노출된 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수 있습니다. Hermes 설정은 전부 손대지 않습니다. 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 값인지 판별할 수 없기 때문입니다.</p>
-            <p>자동 수정되는 것은 권한 관련 두 항목뿐이며, 둘 다 접근 권한을 <em>줄이기만</em> 하는 <code>chmod</code>입니다. 체크포인트가 남으므로 <code>hostveil rollback</code>으로 이전 권한을 그대로 되돌릴 수 있습니다.</p>
+            <p>세 항목은 여전히 <strong>Manual</strong>이며, 이유는 각각 다릅니다. <code>agent.sandbox-off</code>는 <code>off</code>가 잘못됐다는 것은 알아도 샌드박스를 켜는 값이 무엇인지 모르며, 찍어서 넣은 값은 조치가 아닙니다. <code>agent.auth-disabled</code>는 키가 아예 없는 상태가 안전한 설정인데(OpenClaw는 이 값이 없으면 닫힌 쪽으로 동작합니다) Hostveil은 값을 바꿀 뿐 지우지는 않습니다. 그리고 노출된 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수 있습니다. Hermes 설정은 전부 손대지 않습니다. 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 값인지 판별할 수 없기 때문입니다.</p>
+            <p>Auto-fix되는 것은 권한 관련 두 항목뿐이며, 둘 다 접근 권한을 <em>줄이기만</em> 하는 <code>chmod</code>입니다. 체크포인트가 남으므로 <code>hostveil rollback</code>으로 이전 권한을 그대로 되돌릴 수 있습니다.</p>
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>
             <p>Trivy가 설치되어 있으면, Hostveil은 Compose 서비스가 실행하는 이미지를 스캔하여 알려진 심각·높음·보통 등급의 취약점을 찾습니다. 발견 항목은 취약점 단위가 아니라 <strong>이미지 단위</strong>로 보고됩니다 — 이미지 하나가 CVE 수백 개를 싣고 있는 건 흔한 일이고, 그 전부가 같은 조치 하나를 공유하기 때문입니다.</p>
@@ -549,8 +549,8 @@
               <table>
                 <thead><tr><th>ID</th><th>탐지 내용</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>cve.outdated-image</code></td><td>업스트림에 이미 패치가 나온 취약점들</td><td>해당 묶음 중 최악</td><td><a href="#fix-cve.outdated-image">검토</a></td></tr>
-                  <tr><td><code>cve.unpatched-image</code></td><td>아직 아무도 패치를 내놓지 않은 취약점들</td><td>해당 묶음 중 최악</td><td>사용 불가</td></tr>
+                  <tr><td><code>cve.outdated-image</code></td><td>업스트림에 이미 패치가 나온 취약점들</td><td>해당 묶음 중 최악</td><td><a href="#fix-cve.outdated-image">Review</a></td></tr>
+                  <tr><td><code>cve.unpatched-image</code></td><td>아직 아무도 패치를 내놓지 않은 취약점들</td><td>해당 묶음 중 최악</td><td>Unavailable</td></tr>
                 </tbody>
               </table>
             </div>
@@ -561,29 +561,29 @@
             </div>
             <div class="callout">
               <span class="callout-label">"아직 패치가 없음"에 대한 솔직함</span>
-              <p>패치가 없는 취약점은 수정 가능한 쪽에 섞거나 버리지 않고 별도 항목으로 남깁니다. 이걸 뭉개버리면 취약점이 <em>전부</em> 미패치인 이미지는 리포트에서 통째로 사라지고, Hostveil은 그저 손쓸 방법이 없을 뿐인 호스트를 깨끗하다고 말하게 됩니다. 그래서 고칠 수 있는 척하는 대신 <strong>사용 불가</strong>라는 정식 상태로 모델링합니다.</p>
+              <p>패치가 없는 취약점은 수정 가능한 쪽에 섞거나 버리지 않고 별도 항목으로 남깁니다. 이걸 뭉개버리면 취약점이 <em>전부</em> 미패치인 이미지는 리포트에서 통째로 사라지고, Hostveil은 그저 손쓸 방법이 없을 뿐인 호스트를 깨끗하다고 말하게 됩니다. 그래서 고칠 수 있는 척하는 대신 <strong>Unavailable</strong>이라는 정식 상태로 모델링합니다.</p>
             </div>
 
             <h2 id="fix-actions">각 fix가 실제로 하는 일</h2>
-            <p>위 표에서 Fix 열에 <code>자동 수정</code> 또는 <code>검토</code>가 적힌 항목은 모두 <code>internal/fix</code>에 등록된 fix를 갖고 있고, 아래는 그 fix가 실제로 하는 일입니다. 현재 빌드에서 바로 생성하므로 코드가 하지 않는 일을 적어 둘 수 없습니다. <code>검토</code> 항목 중 대안이 둘 이상인 것은 제공하는 모든 대안을 나열하며, 첫 번째가 <code>fix --all --review</code>를 포함해 어디서나 먼저 선택되는 대안입니다. 항목별 설명 문구는 아직 한국어로 새로 쓰지 않아 원문 그대로 영어로 보여 줍니다.</p>
+            <p>위 표에서 Fix 열에 <code>Auto-fix</code> 또는 <code>Review</code>가 적힌 항목은 모두 <code>internal/fix</code>에 등록된 fix를 갖고 있고, 아래는 그 fix가 실제로 하는 일입니다. 현재 빌드에서 바로 생성하므로 코드가 하지 않는 일을 적어 둘 수 없습니다. <code>Review</code> 항목 중 대안이 둘 이상인 것은 제공하는 모든 대안을 나열하며, 첫 번째가 <code>fix --all --review</code>를 포함해 어디서나 먼저 선택되는 대안입니다. 항목별 설명 문구는 아직 한국어로 새로 쓰지 않아 원문 그대로 영어로 보여 줍니다.</p>
                       <h3>컨테이너</h3>
           <dl class="fix-actions">
-            <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
-            <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Add security_opt no-new-privileges:true</p>
               <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
-            <dt id="fix-compose.ds008"><code>compose.ds008</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-compose.ds008"><code>compose.ds008</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set restart: unless-stopped</p>
               <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
-            <dt id="fix-compose.ds010"><code>compose.ds010</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-compose.ds010"><code>compose.ds010</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -600,12 +600,12 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-compose.ds018"><code>compose.ds018</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-compose.ds018"><code>compose.ds018</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
-            <dt id="fix-compose.ds019"><code>compose.ds019</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-compose.ds019"><code>compose.ds019</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
@@ -613,89 +613,89 @@
           </dl>
           <h3>SSH</h3>
           <dl class="fix-actions">
-            <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH agent forwarding</p>
               <p class="fix-warning" lang="en">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
             </dd>
-            <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH TCP forwarding</p>
               <p class="fix-warning" lang="en">⚠ Existing local, remote, and dynamic SSH tunnels will stop working.</p>
             </dd>
-            <dt id="fix-ssh.clientalivecountmax"><code>ssh.clientalivecountmax</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.clientalivecountmax"><code>ssh.clientalivecountmax</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Limit unanswered SSH keepalives</p>
             </dd>
-            <dt id="fix-ssh.clientaliveinterval"><code>ssh.clientaliveinterval</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.clientaliveinterval"><code>ssh.clientaliveinterval</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Probe idle SSH clients every five minutes</p>
               <p class="fix-warning" lang="en">⚠ Long-running idle sessions may be disconnected when their clients stop responding.</p>
             </dd>
-            <dt id="fix-ssh.emptypasswords"><code>ssh.emptypasswords</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.emptypasswords"><code>ssh.emptypasswords</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable empty passwords</p>
             </dd>
-            <dt id="fix-ssh.fingerprinthash"><code>ssh.fingerprinthash</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.fingerprinthash"><code>ssh.fingerprinthash</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Use SHA-256 host-key fingerprints</p>
             </dd>
-            <dt id="fix-ssh.gatewayports"><code>ssh.gatewayports</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.gatewayports"><code>ssh.gatewayports</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind remote-forwarded ports to loopback only</p>
               <p class="fix-warning" lang="en">⚠ If you rely on <code>ssh -R</code> tunnels being reachable from other machines, this closes them to loopback.</p>
             </dd>
-            <dt id="fix-ssh.hostbasedauth"><code>ssh.hostbasedauth</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.hostbasedauth"><code>ssh.hostbasedauth</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable host-based authentication</p>
               <p class="fix-warning" lang="en">⚠ If any user logs in via host-based trust rather than their own key, this removes that path.</p>
             </dd>
-            <dt id="fix-ssh.ignorerhosts"><code>ssh.ignorerhosts</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.ignorerhosts"><code>ssh.ignorerhosts</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Ignore legacy rhosts trust files</p>
             </dd>
-            <dt id="fix-ssh.kbdinteractive"><code>ssh.kbdinteractive</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.kbdinteractive"><code>ssh.kbdinteractive</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable keyboard-interactive authentication</p>
               <p class="fix-warning" lang="en">⚠ PAM-based one-time codes (2FA prompts) also use this mechanism — keep it enabled if your logins go through one.</p>
             </dd>
-            <dt id="fix-ssh.logingracetime"><code>ssh.logingracetime</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.logingracetime"><code>ssh.logingracetime</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Lower LoginGraceTime to 60 seconds</p>
             </dd>
-            <dt id="fix-ssh.loglevel"><code>ssh.loglevel</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.loglevel"><code>ssh.loglevel</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Log SSH key fingerprints</p>
             </dd>
-            <dt id="fix-ssh.maxauthtries"><code>ssh.maxauthtries</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.maxauthtries"><code>ssh.maxauthtries</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Lower MaxAuthTries to 3</p>
             </dd>
-            <dt id="fix-ssh.maxsessions"><code>ssh.maxsessions</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.maxsessions"><code>ssh.maxsessions</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Limit multiplexed SSH sessions</p>
               <p class="fix-warning" lang="en">⚠ Clients opening more than two sessions over one SSH connection will be refused.</p>
             </dd>
-            <dt id="fix-ssh.passwordauth"><code>ssh.passwordauth</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.passwordauth"><code>ssh.passwordauth</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable password authentication</p>
               <p class="fix-warning" lang="en">⚠ Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH.</p>
             </dd>
-            <dt id="fix-ssh.permittunnel"><code>ssh.permittunnel</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.permittunnel"><code>ssh.permittunnel</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH tun/tap tunnels</p>
               <p class="fix-warning" lang="en">⚠ Existing SSH VPN or tun/tap workflows will stop working.</p>
             </dd>
-            <dt id="fix-ssh.permituserenvironment"><code>ssh.permituserenvironment</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.permituserenvironment"><code>ssh.permituserenvironment</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable user-supplied SSH environments</p>
               <p class="fix-warning" lang="en">⚠ Login automation that relies on ~/.ssh/environment will stop receiving those variables.</p>
             </dd>
-            <dt id="fix-ssh.printlastlog"><code>ssh.printlastlog</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.printlastlog"><code>ssh.printlastlog</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Show the previous login</p>
             </dd>
-            <dt id="fix-ssh.rootlogin"><code>ssh.rootlogin</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-ssh.rootlogin"><code>ssh.rootlogin</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -708,32 +708,32 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-ssh.strictmodes"><code>ssh.strictmodes</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.strictmodes"><code>ssh.strictmodes</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Enforce SSH login-file ownership</p>
             </dd>
-            <dt id="fix-ssh.tcpkeepalive"><code>ssh.tcpkeepalive</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.tcpkeepalive"><code>ssh.tcpkeepalive</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable TCP keepalives for SSH</p>
               <p class="fix-warning" lang="en">⚠ Use ClientAliveInterval for encrypted liveness checks; dead connections may otherwise take longer to disappear from intermediate network devices.</p>
             </dd>
-            <dt id="fix-ssh.usedns"><code>ssh.usedns</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.usedns"><code>ssh.usedns</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH reverse-DNS lookups</p>
             </dd>
-            <dt id="fix-ssh.x11forwarding"><code>ssh.x11forwarding</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ssh.x11forwarding"><code>ssh.x11forwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable X11 forwarding</p>
             </dd>
           </dl>
           <h3>방화벽</h3>
           <dl class="fix-actions">
-            <dt id="fix-firewall.default-allow"><code>firewall.default-allow</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-firewall.default-allow"><code>firewall.default-allow</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then set ufw's default inbound policy to deny</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw default allow incoming</code> by hand.</p>
             </dd>
-            <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw disable</code> by hand.</p>
@@ -741,74 +741,74 @@
           </dl>
           <h3>업데이트</h3>
           <dl class="fix-actions">
-            <dt id="fix-updates.apt-listchanges"><code>updates.apt-listchanges</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.apt-listchanges"><code>updates.apt-listchanges</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.apt-show-versions"><code>updates.apt-show-versions</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.apt-show-versions"><code>updates.apt-show-versions</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.auditd"><code>updates.auditd</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.auditd"><code>updates.auditd</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.debsums"><code>updates.debsums</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.debsums"><code>updates.debsums</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.disabled"><code>updates.disabled</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.disabled"><code>updates.disabled</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable dnf-automatic</p>
               <p class="fix-warning" lang="en">⚠ Installs dnf-automatic and enables its timer. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.fail2ban"><code>updates.fail2ban</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.fail2ban"><code>updates.fail2ban</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.pam-pwquality"><code>updates.pam-pwquality</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.pam-pwquality"><code>updates.pam-pwquality</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.pam-tmpdir"><code>updates.pam-tmpdir</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.pam-tmpdir"><code>updates.pam-tmpdir</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.pending-security"><code>updates.pending-security</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.pending-security"><code>updates.pending-security</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Refresh apt metadata and fully upgrade installed packages</p>
               <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon — and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to actually take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
             </dd>
-            <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.sysstat"><code>updates.sysstat</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-updates.sysstat"><code>updates.sysstat</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
-            <dt id="fix-updates.sysstat-disabled"><code>updates.sysstat-disabled</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-updates.sysstat-disabled"><code>updates.sysstat-disabled</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ENABLED to true</p>
             </dd>
           </dl>
           <h3>CVE</h3>
           <dl class="fix-actions">
-            <dt id="fix-cve.outdated-image"><code>cve.outdated-image</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-cve.outdated-image"><code>cve.outdated-image</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -824,17 +824,17 @@
           </dl>
           <h3>포트</h3>
           <dl class="fix-actions">
-            <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind Redis to loopback</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
-            <dt id="fix-ports.redis-disable-config"><code>ports.redis-disable-config</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ports.redis-disable-config"><code>ports.redis-disable-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable the Redis CONFIG command</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
-            <dt id="fix-ports.redis-protected-mode"><code>ports.redis-protected-mode</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-ports.redis-protected-mode"><code>ports.redis-protected-mode</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Enable Redis protected mode</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
@@ -842,33 +842,33 @@
           </dl>
           <h3>계정</h3>
           <dl class="fix-actions">
-            <dt id="fix-accounts.core-dumps"><code>accounts.core-dumps</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.core-dumps"><code>accounts.core-dumps</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set a hard core-size limit of zero</p>
             </dd>
-            <dt id="fix-accounts.default-umask"><code>accounts.default-umask</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.default-umask"><code>accounts.default-umask</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set the default umask to 027</p>
             </dd>
-            <dt id="fix-accounts.emptypassword"><code>accounts.emptypassword</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-accounts.emptypassword"><code>accounts.emptypassword</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Lock alice with <code>passwd -l</code></p>
               <p class="fix-warning" lang="en">⚠ If alice is your only way to reach this machine locally (console, su) and it has no other credential, locking it removes that access. Confirm you have another route in — an SSH key, a different sudo-capable account — before applying. The remote SSH path is already closed by ssh.emptypasswords; this only closes the local one.</p>
             </dd>
-            <dt id="fix-accounts.local-banner"><code>accounts.local-banner</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.local-banner"><code>accounts.local-banner</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
               <p class="fix-warning" lang="en">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
             </dd>
-            <dt id="fix-accounts.password-aging"><code>accounts.password-aging</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.password-aging"><code>accounts.password-aging</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Harden password aging defaults</p>
             </dd>
-            <dt id="fix-accounts.password-rounds"><code>accounts.password-rounds</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.password-rounds"><code>accounts.password-rounds</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Harden password hashing rounds</p>
             </dd>
-            <dt id="fix-accounts.remote-banner"><code>accounts.remote-banner</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-accounts.remote-banner"><code>accounts.remote-banner</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
               <p class="fix-warning" lang="en">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
@@ -876,133 +876,133 @@
           </dl>
           <h3>파일 권한</h3>
           <dl class="fix-actions">
-            <dt id="fix-fileperms.at-allow"><code>fileperms.at-allow</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.at-allow"><code>fileperms.at-allow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.at-deny"><code>fileperms.at-deny</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.at-deny"><code>fileperms.at-deny</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.compiler"><code>fileperms.compiler</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.compiler"><code>fileperms.compiler</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.cron"><code>fileperms.cron</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.cron"><code>fileperms.cron</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.cron-allow"><code>fileperms.cron-allow</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.cron-allow"><code>fileperms.cron-allow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.cron-deny"><code>fileperms.cron-deny</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.cron-deny"><code>fileperms.cron-deny</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.crontab"><code>fileperms.crontab</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.crontab"><code>fileperms.crontab</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.docker-config"><code>fileperms.docker-config</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.docker-config"><code>fileperms.docker-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.group"><code>fileperms.group</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.group"><code>fileperms.group</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.grub-config"><code>fileperms.grub-config</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.grub-config"><code>fileperms.grub-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.grub2-config"><code>fileperms.grub2-config</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.grub2-config"><code>fileperms.grub2-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.gshadow"><code>fileperms.gshadow</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.gshadow"><code>fileperms.gshadow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.hostkey"><code>fileperms.hostkey</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.hostkey"><code>fileperms.hostkey</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.passwd-backup"><code>fileperms.passwd-backup</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.passwd-backup"><code>fileperms.passwd-backup</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.shadow"><code>fileperms.shadow</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.shadow"><code>fileperms.shadow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.sshd-config"><code>fileperms.sshd-config</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.sshd-config"><code>fileperms.sshd-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.sudoers"><code>fileperms.sudoers</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.sudoers"><code>fileperms.sudoers</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.sudoers-dropins"><code>fileperms.sudoers-dropins</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.sudoers-dropins"><code>fileperms.sudoers-dropins</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-fileperms.systemd-units"><code>fileperms.systemd-units</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-fileperms.systemd-units"><code>fileperms.systemd-units</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
           </dl>
           <h3>AI 에이전트</h3>
           <dl class="fix-actions">
-            <dt id="fix-agent.config-perms"><code>agent.config-perms</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.config-perms"><code>agent.config-perms</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-agent.control-ui-insecure"><code>agent.control-ui-insecure</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.control-ui-insecure"><code>agent.control-ui-insecure</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
             </dd>
-            <dt id="fix-agent.elevated-enabled"><code>agent.elevated-enabled</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.elevated-enabled"><code>agent.elevated-enabled</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
             </dd>
-            <dt id="fix-agent.exec-unrestricted"><code>agent.exec-unrestricted</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.exec-unrestricted"><code>agent.exec-unrestricted</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
             </dd>
-            <dt id="fix-agent.secret-exposed"><code>agent.secret-exposed</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.secret-exposed"><code>agent.secret-exposed</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
             </dd>
-            <dt id="fix-agent.ssrf-private-network"><code>agent.ssrf-private-network</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-agent.ssrf-private-network"><code>agent.ssrf-private-network</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
             </dd>
           </dl>
           <h3>커널</h3>
           <dl class="fix-actions">
-            <dt id="fix-sysctl.accept-redirects"><code>sysctl.accept-redirects</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.accept-redirects"><code>sysctl.accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-redirects.conf</p>
             </dd>
-            <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-source-route.conf</p>
             </dd>
-            <dt id="fix-sysctl.aslr"><code>sysctl.aslr</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.aslr"><code>sysctl.aslr</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-aslr.conf</p>
             </dd>
-            <dt id="fix-sysctl.bogus-icmp-errors"><code>sysctl.bogus-icmp-errors</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.bogus-icmp-errors"><code>sysctl.bogus-icmp-errors</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-bogus-icmp-errors.conf</p>
             </dd>
-            <dt id="fix-sysctl.bootp-relay"><code>sysctl.bootp-relay</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.bootp-relay"><code>sysctl.bootp-relay</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1014,31 +1014,31 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.bpf-jit-harden"><code>sysctl.bpf-jit-harden</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.bpf-jit-harden"><code>sysctl.bpf-jit-harden</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-bpf-jit-harden.conf</p>
             </dd>
-            <dt id="fix-sysctl.core-uses-pid"><code>sysctl.core-uses-pid</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.core-uses-pid"><code>sysctl.core-uses-pid</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-core-uses-pid.conf</p>
             </dd>
-            <dt id="fix-sysctl.ctrl-alt-del"><code>sysctl.ctrl-alt-del</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ctrl-alt-del"><code>sysctl.ctrl-alt-del</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ctrl-alt-del.conf</p>
             </dd>
-            <dt id="fix-sysctl.dmesg-restrict"><code>sysctl.dmesg-restrict</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.dmesg-restrict"><code>sysctl.dmesg-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-dmesg-restrict.conf</p>
             </dd>
-            <dt id="fix-sysctl.icmp-broadcasts"><code>sysctl.icmp-broadcasts</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.icmp-broadcasts"><code>sysctl.icmp-broadcasts</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-icmp-broadcasts.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv4-default-accept-redirects"><code>sysctl.ipv4-default-accept-redirects</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv4-default-accept-redirects"><code>sysctl.ipv4-default-accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv4-default-accept-redirects.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv4-default-rp-filter"><code>sysctl.ipv4-default-rp-filter</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.ipv4-default-rp-filter"><code>sysctl.ipv4-default-rp-filter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1050,60 +1050,60 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.ipv6-accept-redirects-all"><code>sysctl.ipv6-accept-redirects-all</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv6-accept-redirects-all"><code>sysctl.ipv6-accept-redirects-all</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-all.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv6-accept-redirects-default"><code>sysctl.ipv6-accept-redirects-default</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv6-accept-redirects-default"><code>sysctl.ipv6-accept-redirects-default</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-default.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv6-accept-source-route-all"><code>sysctl.ipv6-accept-source-route-all</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv6-accept-source-route-all"><code>sysctl.ipv6-accept-source-route-all</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-all.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv6-accept-source-route-default"><code>sysctl.ipv6-accept-source-route-default</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv6-accept-source-route-default"><code>sysctl.ipv6-accept-source-route-default</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-default.conf</p>
             </dd>
-            <dt id="fix-sysctl.ipv6-send-redirects"><code>sysctl.ipv6-send-redirects</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ipv6-send-redirects"><code>sysctl.ipv6-send-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-send-redirects.conf</p>
             </dd>
-            <dt id="fix-sysctl.kptr-restrict"><code>sysctl.kptr-restrict</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.kptr-restrict"><code>sysctl.kptr-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-kptr-restrict.conf</p>
             </dd>
-            <dt id="fix-sysctl.log-martians"><code>sysctl.log-martians</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.log-martians"><code>sysctl.log-martians</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-log-martians.conf</p>
             </dd>
-            <dt id="fix-sysctl.module-dccp"><code>sysctl.module-dccp</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.module-dccp"><code>sysctl.module-dccp</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-rds"><code>sysctl.module-rds</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.module-rds"><code>sysctl.module-rds</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-sctp"><code>sysctl.module-sctp</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.module-sctp"><code>sysctl.module-sctp</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-tipc"><code>sysctl.module-tipc</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.module-tipc"><code>sysctl.module-tipc</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-usbstorage"><code>sysctl.module-usbstorage</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.module-usbstorage"><code>sysctl.module-usbstorage</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.multicast-forwarding"><code>sysctl.multicast-forwarding</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.multicast-forwarding"><code>sysctl.multicast-forwarding</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1115,23 +1115,23 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.perf-events"><code>sysctl.perf-events</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.perf-events"><code>sysctl.perf-events</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-perf-events.conf</p>
             </dd>
-            <dt id="fix-sysctl.protected-fifos"><code>sysctl.protected-fifos</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.protected-fifos"><code>sysctl.protected-fifos</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-fifos.conf</p>
             </dd>
-            <dt id="fix-sysctl.protected-links"><code>sysctl.protected-links</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.protected-links"><code>sysctl.protected-links</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-links.conf</p>
             </dd>
-            <dt id="fix-sysctl.protected-regular"><code>sysctl.protected-regular</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.protected-regular"><code>sysctl.protected-regular</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-regular.conf</p>
             </dd>
-            <dt id="fix-sysctl.proxy-arp-all"><code>sysctl.proxy-arp-all</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.proxy-arp-all"><code>sysctl.proxy-arp-all</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1143,7 +1143,7 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.proxy-arp-default"><code>sysctl.proxy-arp-default</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.proxy-arp-default"><code>sysctl.proxy-arp-default</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1155,11 +1155,11 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.ptrace-scope"><code>sysctl.ptrace-scope</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.ptrace-scope"><code>sysctl.ptrace-scope</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ptrace-scope.conf</p>
             </dd>
-            <dt id="fix-sysctl.rp-filter"><code>sysctl.rp-filter</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.rp-filter"><code>sysctl.rp-filter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1171,7 +1171,7 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.send-redirects"><code>sysctl.send-redirects</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.send-redirects"><code>sysctl.send-redirects</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1183,15 +1183,15 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.suid-dumpable"><code>sysctl.suid-dumpable</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.suid-dumpable"><code>sysctl.suid-dumpable</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-suid-dumpable.conf</p>
             </dd>
-            <dt id="fix-sysctl.syncookies"><code>sysctl.syncookies</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.syncookies"><code>sysctl.syncookies</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-syncookies.conf</p>
             </dd>
-            <dt id="fix-sysctl.sysrq"><code>sysctl.sysrq</code> <span class="fix-kind review">검토</span></dt>
+            <dt id="fix-sysctl.sysrq"><code>sysctl.sysrq</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
@@ -1203,47 +1203,47 @@
                 </li>
               </ul>
             </dd>
-            <dt id="fix-sysctl.tcp-rfc1337"><code>sysctl.tcp-rfc1337</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.tcp-rfc1337"><code>sysctl.tcp-rfc1337</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-tcp-rfc1337.conf</p>
             </dd>
-            <dt id="fix-sysctl.tty-ldisc-autoload"><code>sysctl.tty-ldisc-autoload</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.tty-ldisc-autoload"><code>sysctl.tty-ldisc-autoload</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-tty-ldisc-autoload.conf</p>
             </dd>
-            <dt id="fix-sysctl.unprivileged-bpf"><code>sysctl.unprivileged-bpf</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-sysctl.unprivileged-bpf"><code>sysctl.unprivileged-bpf</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-unprivileged-bpf.conf</p>
             </dd>
           </dl>
           <h3>서비스</h3>
           <dl class="fix-actions">
-            <dt id="fix-systemd.lock-personality"><code>systemd.lock-personality</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.lock-personality"><code>systemd.lock-personality</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set LockPersonality=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Needing an alternate execution personality is rare outside emulation and compatibility layers. An ordinary service is unaffected; one that needs one fails at the next restart.</p>
             </dd>
-            <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that deliberately escalates — anything calling a setuid helper — stops working, and it stops at the next restart rather than now.</p>
             </dd>
-            <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectClock=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need to change the system or hardware clock. A service that is not one of those stops being able to, at the next restart.</p>
             </dd>
-            <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelLogs=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Only a service that reads kernel logs directly — a diagnostics tool, an agent reading /dev/kmsg — needs this off. Most services never touch it.</p>
             </dd>
-            <dt id="fix-systemd.protect-kernel-modules"><code>systemd.protect-kernel-modules</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.protect-kernel-modules"><code>systemd.protect-kernel-modules</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelModules=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Only a service that loads or removes kernel modules itself at runtime — rather than modules already loaded at boot — needs this off.</p>
             </dd>
-            <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">자동 수정</span></dt>
+            <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set RestrictSUIDSGID=yes for app</p>
               <p class="fix-warning" lang="en">⚠ Only a service that itself creates setuid or setgid files — a package manager, an installer — needs this off. An ordinary network daemon does not create such files and is unaffected.</p>

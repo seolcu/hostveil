@@ -8,44 +8,44 @@
               <table>
                 <thead><tr><th>종류</th><th>의미</th><th>수정 가능?</th></tr></thead>
                 <tbody>
-                  <tr><td><strong>자동 수정</strong></td><td>명백히 올바른 하나의 변경. 적용되기 전에 여전히 확인할 수 있습니다.</td><td>예</td></tr>
-                  <tr><td><strong>검토</strong></td><td>여러 유효한 대안이 있으며, 어느 것을 적용할지 직접 선택합니다.</td><td>예</td></tr>
-                  <tr><td><strong>수동</strong></td><td>안전한 자동화가 없음 — Hostveil이 대신 무엇을 해야 하는지 설명합니다.</td><td>아니오</td></tr>
-                  <tr><td><strong>사용 불가</strong></td><td>아직 수정 방법이 없는 알려진 문제 (예: 패치가 없는 CVE).</td><td>아니오</td></tr>
+                  <tr><td><strong>Auto-fix</strong></td><td>명백히 올바른 하나의 변경. 적용되기 전에 여전히 확인할 수 있습니다.</td><td>예</td></tr>
+                  <tr><td><strong>Review</strong></td><td>여러 유효한 대안이 있으며, 어느 것을 적용할지 직접 선택합니다.</td><td>예</td></tr>
+                  <tr><td><strong>Manual</strong></td><td>안전한 자동화가 없음 — Hostveil이 대신 무엇을 해야 하는지 설명합니다.</td><td>아니오</td></tr>
+                  <tr><td><strong>Unavailable</strong></td><td>아직 수정 방법이 없는 알려진 문제 (예: 패치가 없는 CVE).</td><td>아니오</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><strong>자동 수정</strong>과 <strong>검토</strong> 발견 항목만 Hostveil이 적용할 수 있습니다. <code>fix --all</code>은 자동 수정 항목만 적용하고, 판단이 필요한 것은 사용자에게 남깁니다. 검토 항목까지 받아들이겠다고 명령에서 밝히는 방법이 <code>fix --all --review</code>입니다.</p>
+            <p><strong>Auto-fix</strong>와 <strong>Review</strong> 발견 항목만 Hostveil이 적용할 수 있습니다. <code>fix --all</code>은 Auto-fix 항목만 적용하고, 판단이 필요한 것은 사용자에게 남깁니다. Review 항목까지 받아들이겠다고 명령에서 밝히는 방법이 <code>fix --all --review</code>입니다.</p>
 
-            <h3 id="auto-standard">자동 수정이 되려면</h3>
-            <p><code>--review</code>를 붙이지 않는 한, <strong>자동 수정</strong>은 <code>fix --all</code>이 혼자 적용하는 유일한 종류입니다. 그러니 기준은, 아무도 들여다보지 않은 채 적용해도 문제 삼을 데가 없으려면 무엇이 필요한가입니다. 세 가지가 동시에 성립해야 합니다.</p>
-            <p><strong>되돌릴 수 있을 것.</strong> 롤백이 복원할 무언가가 남아야 합니다 — 파일 편집은 원래 바이트를, 권한 변경은 원래 권한 비트를 저장합니다. 명령을 실행하는 수정은 남길 것이 없어서 <code>hostveil history</code>가 실행됐다는 사실만 기록하고 <em>되돌릴 수 없음</em>으로 표시합니다. 그래서 명령을 실행하는 수정은 절대 자동 수정이 되지 않으며, 이는 각 체커가 알아서 지키는 관례가 아니라 Hostveil이 수정 자체에 적용하는 규칙입니다. <code>updates.disabled</code>가 이 규칙이 존재하는 이유를 보여 줍니다. 조치는 하나뿐이고 — unattended-upgrades를 설치하고 서비스를 켜는 것 — 그게 &lsquo;자동 수정 모양&rsquo;이 뜻하는 전부인데, 여전히 명령이므로 사용자에게는 검토로 도착합니다. <code>fileperms.shadow</code>와 <code>fileperms.owner</code>는 같은 기준이 양쪽으로 갈리는 자리입니다. <code>/etc/shadow</code>의 권한을 조이는 것은 체크포인트가 이전 권한을 기록하므로 자동 수정이고, <code>chown root:root</code>는 체크포인트에 이전 <em>소유자</em>를 적을 자리가 없으므로 수동입니다.</p>
-            <p><strong>되돌릴 수 있을 뿐 아니라, 되돌릴 손이 남아 있을 것.</strong> 변경이 잘못됐을 때 그것을 되돌리려면 그 호스트에 접속할 수 있어야 합니다. 자기 접근을 끊어 버릴 수 있는 조치는 파일 편집 자체가 완벽하게 되돌아가더라도 이 조건에서 탈락합니다. <code>sshd_config</code> 한 줄을 바꾸는 것뿐인데도 여러 SSH 항목이 검토인 이유입니다. <code>ssh.passwordauth</code>는 <code>PasswordAuthentication no</code>를 쓰는데, 바이트 단위로 되돌릴 수 있지만 키 로그인이 아직 되지 않는 상태라면 아무 소용이 없습니다. 되돌리려면 방금 끊긴 그 세션이 필요하니까요. <code>ssh.gatewayports</code>, <code>ssh.hostbasedauth</code>, <code>ssh.kbdinteractive</code>도 지금 사용자가 타고 있을지 모르는 경로를 각각 닫습니다. <code>firewall.inactive</code>는 같은 반론을 끝까지 밀고 가서 수동에 이릅니다. 기본 거부 정책은 설정하는 순간 규칙이 허용하지 않는 모든 연결에 적용되고, 명령 실행에는 되돌릴 체크포인트가 없습니다.</p>
-            <p><strong>모호하지 않을 것.</strong> 옳은 값이 정확히 하나여야 하고, 그것을 적용해서 정상적인 설정이 깨지지 않아야 합니다. 커널 하드닝 항목은 전부 이 조건에서 걸려 전부 검토입니다. <code>sysctl.d</code> 드롭인을 쓰는 것은 기계적이고 되돌릴 수 있는 편집 하나이지만, <code>rp_filter</code>는 단일 회선 서버에서 <code>1</code>이고 VPN이나 다중 회선 호스트에서는 <code>2</code>이며, 이 호스트가 어느 쪽인지 아는 사람은 사용자뿐입니다. Hostveil은 값을 쓰기는 합니다 — 사용자가 먼저 보고 난 뒤에요. 통과하는 쪽은 <code>fileperms.shadow</code>처럼 생겼습니다. 이 수정은 권한 비트를 <em>빼기만</em> 하므로 — <code>0604</code>는 <code>0600</code>이 되지 <code>0640</code>이 되지 않습니다 — 파일이 갖고 있지 않던 접근 권한을 새로 내줄 수 없습니다. <code>agent.config-perms</code>가 설정하는 값도 해당 런타임의 하드닝 문서가 그대로 싣고 있는 기준값입니다.</p>
+            <h3 id="auto-standard">Auto-fix가 되려면</h3>
+            <p><code>--review</code>를 붙이지 않는 한, <strong>Auto-fix</strong>는 <code>fix --all</code>이 혼자 적용하는 유일한 종류입니다. 그러니 기준은, 아무도 들여다보지 않은 채 적용해도 문제 삼을 데가 없으려면 무엇이 필요한가입니다. 세 가지가 동시에 성립해야 합니다.</p>
+            <p><strong>되돌릴 수 있을 것.</strong> 롤백이 복원할 무언가가 남아야 합니다 — 파일 편집은 원래 바이트를, 권한 변경은 원래 권한 비트를 저장합니다. 명령을 실행하는 수정은 남길 것이 없어서 <code>hostveil history</code>가 실행됐다는 사실만 기록하고 <em>되돌릴 수 없음</em>으로 표시합니다. 그래서 명령을 실행하는 수정은 절대 Auto-fix가 되지 않으며, 이는 각 체커가 알아서 지키는 관례가 아니라 Hostveil이 수정 자체에 적용하는 규칙입니다. <code>updates.disabled</code>가 이 규칙이 존재하는 이유를 보여 줍니다. 조치는 하나뿐이고 — unattended-upgrades를 설치하고 서비스를 켜는 것 — 그게 &lsquo;Auto-fix 모양&rsquo;이 뜻하는 전부인데, 여전히 명령이므로 사용자에게는 Review로 도착합니다. <code>fileperms.shadow</code>와 <code>fileperms.owner</code>는 같은 기준이 양쪽으로 갈리는 자리입니다. <code>/etc/shadow</code>의 권한을 조이는 것은 체크포인트가 이전 권한을 기록하므로 Auto-fix이고, <code>chown root:root</code>는 체크포인트에 이전 <em>소유자</em>를 적을 자리가 없으므로 Manual입니다.</p>
+            <p><strong>되돌릴 수 있을 뿐 아니라, 되돌릴 손이 남아 있을 것.</strong> 변경이 잘못됐을 때 그것을 되돌리려면 그 호스트에 접속할 수 있어야 합니다. 자기 접근을 끊어 버릴 수 있는 조치는 파일 편집 자체가 완벽하게 되돌아가더라도 이 조건에서 탈락합니다. <code>sshd_config</code> 한 줄을 바꾸는 것뿐인데도 여러 SSH 항목이 Review인 이유입니다. <code>ssh.passwordauth</code>는 <code>PasswordAuthentication no</code>를 쓰는데, 바이트 단위로 되돌릴 수 있지만 키 로그인이 아직 되지 않는 상태라면 아무 소용이 없습니다. 되돌리려면 방금 끊긴 그 세션이 필요하니까요. <code>ssh.gatewayports</code>, <code>ssh.hostbasedauth</code>, <code>ssh.kbdinteractive</code>도 지금 사용자가 타고 있을지 모르는 경로를 각각 닫습니다. <code>firewall.inactive</code>는 같은 반론을 끝까지 밀고 가서 Manual에 이릅니다. 기본 거부 정책은 설정하는 순간 규칙이 허용하지 않는 모든 연결에 적용되고, 명령 실행에는 되돌릴 체크포인트가 없습니다.</p>
+            <p><strong>모호하지 않을 것.</strong> 옳은 값이 정확히 하나여야 하고, 그것을 적용해서 정상적인 설정이 깨지지 않아야 합니다. 커널 하드닝 항목은 전부 이 조건에서 걸려 전부 Review입니다. <code>sysctl.d</code> 드롭인을 쓰는 것은 기계적이고 되돌릴 수 있는 편집 하나이지만, <code>rp_filter</code>는 단일 회선 서버에서 <code>1</code>이고 VPN이나 다중 회선 호스트에서는 <code>2</code>이며, 이 호스트가 어느 쪽인지 아는 사람은 사용자뿐입니다. Hostveil은 값을 쓰기는 합니다 — 사용자가 먼저 보고 난 뒤에요. 통과하는 쪽은 <code>fileperms.shadow</code>처럼 생겼습니다. 이 수정은 권한 비트를 <em>빼기만</em> 하므로 — <code>0604</code>는 <code>0600</code>이 되지 <code>0640</code>이 되지 않습니다 — 파일이 갖고 있지 않던 접근 권한을 새로 내줄 수 없습니다. <code>agent.config-perms</code>가 설정하는 값도 해당 런타임의 하드닝 문서가 그대로 싣고 있는 기준값입니다.</p>
 
-            <h4>조건을 어겼는데 검토가 아니라 수동이 되는 경우</h4>
-            <p>세 조건 중 하나를 어기면 <em>서로 독립적인 대안이 둘 이상 있을 때</em> 검토가 됩니다. 검토는 경고가 아니라 선택입니다 — Hostveil이 선택지를 보여 주고 사용자가 하나를 고릅니다. 기계적인 조치가 하나뿐이면 고를 것이 없고, 그 항목은 수동이 됩니다.</p>
-            <p>커널 항목에는 진짜 짝이 있습니다. 재부팅해도 남는 드롭인을 쓰거나, 지금 바로 적용되고 재부팅하면 사라지는 <code>sysctl -w</code>를 쓰거나 — 그래서 검토입니다. <code>compose.ds017</code>에는 그 짝이 없습니다. <code>:ro</code>를 붙이는 것이 유일하게 기계적인 조치인데 그 마운트에 정당하게 쓰는 서비스를 그대로 멈춰 세우고, 항목이 함께 제시하는 대안인 더 좁은 하위 디렉터리 마운트는 서비스가 실제로 어느 경로를 건드리는지 알아야 합니다. 선택지가 하나이고 그걸 안전하게 만들 방법이 없으면 수동입니다.</p>
-            <p>수동 항목은 수정이 없는 이유를 한 문장으로 달고 다니며, 그 문장은 항목 바로 옆에 나옵니다 — <code>hostveil explain</code>에도, 터미널 상세 창에도, 대시보드에도. <a href="checks">점검 항목</a>의 이유들은 Hostveil이 호스트에 적용하는 정책이 아니라 각 항목에 대해 누군가 내린 판단이고, 그 판단은 그것을 마주치는 자리에서 읽을 수 있어야 합니다.</p>
+            <h4>조건을 어겼는데 Review가 아니라 Manual이 되는 경우</h4>
+            <p>세 조건 중 하나를 어기면 <em>서로 독립적인 대안이 둘 이상 있을 때</em> Review가 됩니다. Review는 경고가 아니라 선택입니다 — Hostveil이 선택지를 보여 주고 사용자가 하나를 고릅니다. 기계적인 조치가 하나뿐이면 고를 것이 없고, 그 항목은 Manual이 됩니다.</p>
+            <p>커널 항목에는 진짜 짝이 있습니다. 재부팅해도 남는 드롭인을 쓰거나, 지금 바로 적용되고 재부팅하면 사라지는 <code>sysctl -w</code>를 쓰거나 — 그래서 Review입니다. <code>compose.ds017</code>에는 그 짝이 없습니다. <code>:ro</code>를 붙이는 것이 유일하게 기계적인 조치인데 그 마운트에 정당하게 쓰는 서비스를 그대로 멈춰 세우고, 항목이 함께 제시하는 대안인 더 좁은 하위 디렉터리 마운트는 서비스가 실제로 어느 경로를 건드리는지 알아야 합니다. 선택지가 하나이고 그걸 안전하게 만들 방법이 없으면 Manual입니다.</p>
+            <p>Manual 항목은 수정이 없는 이유를 한 문장으로 달고 다니며, 그 문장은 항목 바로 옆에 나옵니다 — <code>hostveil explain</code>에도, 터미널 상세 창에도, 대시보드에도. <a href="checks">점검 항목</a>의 이유들은 Hostveil이 호스트에 적용하는 정책이 아니라 각 항목에 대해 누군가 내린 판단이고, 그 판단은 그것을 마주치는 자리에서 읽을 수 있어야 합니다.</p>
 
             <h3 id="kind-decided">종류는 어떻게 정해지는가</h3>
             <p>스캔 결과에 찍히는 종류를 정하는 곳이 둘이고, 둘 중 더 조심스러운 쪽이 이깁니다.</p>
-            <p><strong>수정 레지스트리는 고칠 수단이 있는지를 정합니다.</strong> 체커가 수정을 의도했는데 등록된 것이 없으면 그 항목은 <strong>수동</strong>으로 표시됩니다. 눌러도 아무 데도 닿지 않는 수정 버튼이 생기지 않도록요. (체커가 <strong>사용 불가</strong>로 표시한 항목은 — 아무도 수정을 내놓지 않은 취약점을 모은 <code>cve.unpatched-image</code> 같은 것은 — 그대로 사용 불가로 남습니다.) 컨테이너에 Docker 소켓을 마운트한 <code>compose.ds016</code>이 가장 분명한 사례입니다. compose 체커는 수정을 요청하지만 레지스트리가 내놓기를 거절합니다. 유일하게 정직한 조치가 마운트를 지우는 것이고, 그러면 Portainer와 Traefik과 Watchtower가 멈추기 때문입니다.</p>
-            <p><strong>체커는 그 수정에 사람 판단이 얼마나 필요한지를 정합니다.</strong> 레지스트리에 자동 수정으로 등록돼 있다는 것은 조치가 기계적인 하나라는 <em>모양</em>에 대한 진술이지, 그 항목을 사람이 보지 않고 처리해도 된다는 판단이 아닙니다. 그리고 이 진술은 체커를 낮추지 못합니다. 체커가 검토를 요구했으면 검토가 나옵니다. <code>ssh.passwordauth</code>에서 이 일이 벌어지는 것을 볼 수 있습니다. 등록된 수정은 지시어 한 줄을 쓰는 편집 하나로, 모양만 보면 Hostveil이 자동 수정으로 등록하는 그것입니다. 그런데 SSH 체커는 비밀번호 로그인을 끄는 일이 사용자 자신의 접근에 무엇을 할 수 있는지를 알기에 검토를 요구합니다. 화면에는 <strong>검토</strong>로 나오고, <code>fix --all</code>은 그냥 지나갑니다.</p>
-            <p>규칙은 반대 방향으로도 돕니다. 체커가 수동이라고 말하면, 그 ID에 우연히 맞는 수정이 등록돼 있어도 뒤집지 못합니다. <code>compose.ds018</code>이 이를 보여 줍니다. 모든 인터페이스에 열린 데이터스토어는 Compose 서비스에서 나왔으면 편집할 파일이 있으므로 <strong>자동 수정</strong>이고, <code>docker run</code>으로 띄운 컨테이너에서 나온 같은 규칙은 편집할 파일이 없으므로 <strong>수동</strong>입니다. 둘 중 어느 쪽을 보고 있는지 아는 것은 체커뿐입니다. <code>accounts.uid0</code>과 모든 <code>dockerd.</code> 항목도 같은 방식으로 수동입니다 — 수정이 없어서가 아니라, 그것을 찾은 체커가 그렇게 선언했기 때문입니다.</p>
+            <p><strong>수정 레지스트리는 고칠 수단이 있는지를 정합니다.</strong> 체커가 수정을 의도했는데 등록된 것이 없으면 그 항목은 <strong>Manual</strong>로 표시됩니다. 눌러도 아무 데도 닿지 않는 수정 버튼이 생기지 않도록요. (체커가 <strong>Unavailable</strong>로 표시한 항목은 — 아무도 수정을 내놓지 않은 취약점을 모은 <code>cve.unpatched-image</code> 같은 것은 — 그대로 Unavailable로 남습니다.) 컨테이너에 Docker 소켓을 마운트한 <code>compose.ds016</code>이 가장 분명한 사례입니다. compose 체커는 수정을 요청하지만 레지스트리가 내놓기를 거절합니다. 유일하게 정직한 조치가 마운트를 지우는 것이고, 그러면 Portainer와 Traefik과 Watchtower가 멈추기 때문입니다.</p>
+            <p><strong>체커는 그 수정에 사람 판단이 얼마나 필요한지를 정합니다.</strong> 레지스트리에 Auto-fix로 등록돼 있다는 것은 조치가 기계적인 하나라는 <em>모양</em>에 대한 진술이지, 그 항목을 사람이 보지 않고 처리해도 된다는 판단이 아닙니다. 그리고 이 진술은 체커를 낮추지 못합니다. 체커가 Review를 요구했으면 Review가 나옵니다. <code>ssh.passwordauth</code>에서 이 일이 벌어지는 것을 볼 수 있습니다. 등록된 수정은 지시어 한 줄을 쓰는 편집 하나로, 모양만 보면 Hostveil이 Auto-fix로 등록하는 그것입니다. 그런데 SSH 체커는 비밀번호 로그인을 끄는 일이 사용자 자신의 접근에 무엇을 할 수 있는지를 알기에 Review를 요구합니다. 화면에는 <strong>Review</strong>로 나오고, <code>fix --all</code>은 그냥 지나갑니다.</p>
+            <p>규칙은 반대 방향으로도 돕니다. 체커가 Manual이라고 말하면, 그 ID에 우연히 맞는 수정이 등록돼 있어도 뒤집지 못합니다. <code>compose.ds018</code>이 이를 보여 줍니다. 모든 인터페이스에 열린 데이터스토어는 Compose 서비스에서 나왔으면 편집할 파일이 있으므로 <strong>Auto-fix</strong>이고, <code>docker run</code>으로 띄운 컨테이너에서 나온 같은 규칙은 편집할 파일이 없으므로 <strong>Manual</strong>입니다. 둘 중 어느 쪽을 보고 있는지 아는 것은 체커뿐입니다. <code>accounts.uid0</code>과 모든 <code>dockerd.</code> 항목도 같은 방식으로 Manual입니다 — 수정이 없어서가 아니라, 그것을 찾은 체커가 그렇게 선언했기 때문입니다.</p>
             <p>미리보기와 적용, TUI, 대시보드가 모두 같은 코드로 종류를 정합니다. 보고서에서 읽은 종류가 곧 <code>fix --all</code>이 무엇을 건드릴지 정하는 그 종류입니다.</p>
             <h4>네 단계로 정리하면</h4>
             <p>어떤 발견 항목이든 종류를 직접 따져 볼 수 있습니다. Hostveil은 다음 순서로 판단합니다.</p>
             <ol>
               <li>체커가 이 항목에 사람의 판단이 얼마나 필요하다고 보는지 선언합니다.</li>
-              <li>이 ID에 조치가 등록돼 있고, <em>이</em> 발견 항목에 대해 실제로 만들어지는가? 아니면 답은 <strong>수동</strong>이고, 아래 어느 것도 그것을 뒤집지 못합니다.</li>
-              <li>등록된 조치에는 형태가 있습니다. <strong>자동 수정은 동작이 정확히 하나, 검토는 독립적인 대안이 둘 이상</strong>입니다. 형태로는 자동 수정이지만 파일을 고치는 대신 명령을 실행하는 조치는 여기서 검토가 됩니다. 명령은 되돌릴 체크포인트를 남기지 않기 때문입니다.</li>
-              <li>1단계와 3단계 중 사람의 개입을 더 많이 요구하는 쪽이 표시됩니다. 순서는 자동 수정 &lt; 검토 &lt; 수동 &lt; 사용 불가입니다.</li>
+              <li>이 ID에 조치가 등록돼 있고, <em>이</em> 발견 항목에 대해 실제로 만들어지는가? 아니면 답은 <strong>Manual</strong>이고, 아래 어느 것도 그것을 뒤집지 못합니다.</li>
+              <li>등록된 조치에는 형태가 있습니다. <strong>Auto-fix는 동작이 정확히 하나, Review는 독립적인 대안이 둘 이상</strong>입니다. 형태로는 Auto-fix이지만 파일을 고치는 대신 명령을 실행하는 조치는 여기서 Review가 됩니다. 명령은 되돌릴 체크포인트를 남기지 않기 때문입니다.</li>
+              <li>1단계와 3단계 중 사람의 개입을 더 많이 요구하는 쪽이 표시됩니다. 순서는 Auto-fix &lt; Review &lt; Manual &lt; Unavailable입니다.</li>
             </ol>
-            <p>3단계가 대안 하나짜리 검토가 있을 수 없는 이유입니다. 고를 것이 없고, 동작 하나에 경고를 붙인 것은 선택이 아닙니다. 위 절이 수동으로 돌리는 규칙이 바로 이것입니다.</p>
+            <p>3단계가 대안 하나짜리 Review가 있을 수 없는 이유입니다. 고를 것이 없고, 동작 하나에 경고를 붙인 것은 선택이 아닙니다. 위 절이 Manual로 돌리는 규칙이 바로 이것입니다.</p>
             <div class="callout">
-              <span class="callout-label">검토는 약한 수정이 아닙니다</span>
-              <p>검토 항목도 Hostveil이 완전히 고칠 수 있습니다 — 사용자가 보지 않는 사이에 하지 않을 뿐입니다. 적용하는 방법은 같은 명령에 원하는 대안을 하나 붙이는 것이고, 바로 다음 절에 있습니다.</p>
+              <span class="callout-label">Review는 약한 수정이 아닙니다</span>
+              <p>Review 항목도 Hostveil이 완전히 고칠 수 있습니다 — 사용자가 보지 않는 사이에 하지 않을 뿐입니다. 적용하는 방법은 같은 명령에 원하는 대안을 하나 붙이는 것이고, 바로 다음 절에 있습니다.</p>
             </div>
 
 
@@ -74,8 +74,8 @@
             <p><code>fix --all</code>이 수정마다의 재점검을 건너뛰는 이유는 따로 있습니다. 스무 개를 고칠 때마다 재점검하면 체커를 스무 번 돌리게 되고, 일괄 적용은 어차피 재스캔으로 끝나기 때문입니다.</p>
             <p><code>--json</code>에 실리는 이름은 두 번째 열의 값입니다.</p>
 
-            <h3>검토 대안 선택하기</h3>
-            <p>검토 발견 항목은 독립적인 대안을 제공합니다. 0부터 시작하는 인덱스를 <code>--action</code>으로 넘깁니다.</p>
+            <h3>Review 대안 선택하기</h3>
+            <p>Review 발견 항목은 독립적인 대안을 제공합니다. 0부터 시작하는 인덱스를 <code>--action</code>으로 넘깁니다.</p>
             <div class="code-block"><pre><code>hostveil fix ssh.passwordauth --action 0</code></pre></div>
             <p><strong>0번이 권장안입니다.</strong> 모든 인터페이스가 대안을 권장 순서대로 나열하고, TUI와 대시보드는 첫 번째를 미리 선택해 두며, <code>fix --all --review</code>는 묻지 않고 그것을 적용합니다. 목록을 읽지 않았을 때 얻게 되는 것도 그것입니다.</p>
             <p>여기서 권장은 <em>무인으로 적용하기에 권장</em>한다는 뜻이고, 사람이 먼저 고를 것과 늘 같지는 않습니다. 커널 하드닝 항목이 그 경우입니다. 드롭인에 영구히 쓰는 것과 <code>sysctl -w</code>로 실행 중인 커널에 적용하는 것은 진짜 선택이고 어느 쪽이 일반적으로 낫지 않습니다. 다만 일괄 적용에는 선택의 여지가 없습니다. 체크포인트를 남기고 재부팅을 견디는 쪽은 드롭인뿐이라, 그것이 0번이고 나머지가 뒤에 놓입니다.</p>
@@ -86,7 +86,7 @@
 
             <h3>안전한 모든 수정 적용하기</h3>
             <div class="code-block"><pre><code>hostveil fix --all</code></pre></div>
-            <p>각 자동 수정 발견 항목을 적용하며, 각각 자체 체크포인트를 가지므로 개별적으로 롤백할 수 있습니다.</p>
+            <p>각 Auto-fix 발견 항목을 적용하며, 각각 자체 체크포인트를 가지므로 개별적으로 롤백할 수 있습니다.</p>
 
             <h2>이력 및 롤백</h2>
             <p>적용된 모든 수정은 체크포인트로 기록됩니다. 최신순으로 나열합니다.</p>

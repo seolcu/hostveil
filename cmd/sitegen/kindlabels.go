@@ -11,6 +11,17 @@ import "github.com/seolcu/hostveil/internal/model"
 // nothing would say a word. The difference between those two is the whole
 // subject of the fixing page: one of them is what `fix --all` runs on its own.
 //
+// The Korean row is deliberately the same four English words as the English
+// one, not a translation of them. hostveil's CLI, TUI, and dashboard are
+// English-only and always print "Auto-fix"/"Review"/"Manual"/"Unavailable"
+// — there is no Korean build of the tool itself — so a Korean docs page that
+// called them "자동 수정"/"검토"/"수동"/"사용 불가" was teaching a vocabulary
+// the reader would never see again the moment they ran the binary it was
+// documenting. These four are classification names, not prose, and every
+// other classification name on the site (finding IDs, `HOSTVEIL_*` variable
+// names, flag names) already stays in its original form in Korean copy for
+// the same reason.
+//
 // RemediationUnset has no entry because no user can be shown one;
 // TestFixingPageDocumentsEveryKindAUserCanSee asserts that rather than
 // assuming it.
@@ -27,10 +38,10 @@ var kindLabels = map[string]map[model.RemediationKind]string{
 		model.RemediationUnavailable: "Unavailable",
 	},
 	"ko": {
-		model.RemediationAuto:        "자동 수정",
-		model.RemediationReview:      "검토",
-		model.RemediationManual:      "수동",
-		model.RemediationUnavailable: "사용 불가",
+		model.RemediationAuto:        "Auto-fix",
+		model.RemediationReview:      "Review",
+		model.RemediationManual:      "Manual",
+		model.RemediationUnavailable: "Unavailable",
 	},
 }
 
