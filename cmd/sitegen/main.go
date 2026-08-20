@@ -346,21 +346,22 @@ func fragment(kind, lang, slug string) (string, error) {
 		frag = strings.Replace(frag, changelogMarker, entries, 1)
 	}
 
-	// The checks page's "what each fix actually does" section, English only
-	// — see the doc comment on renderFixActions for why. Same marker shape
-	// as the changelog, deliberately not generalized into one mechanism for
-	// two cases.
-	if kind == "docs" && slug == checksSlug && lang == "en" {
+	// The checks page's "what each fix actually does" section. Same marker
+	// shape as the changelog, deliberately not generalized into one
+	// mechanism for two cases. Every language with the marker gets the
+	// section and its Fix-column links — see renderFixActions's doc comment
+	// for what is and is not localized within it.
+	if kind == "docs" && slug == checksSlug {
 		if !strings.Contains(frag, fixActionsMarker) {
 			return "", fmt.Errorf("content/%s/docs/%s.html has no %s, so the fix actions have nowhere to go",
 				lang, checksSlug, fixActionsMarker)
 		}
-		actions, err := renderFixActions()
+		actions, err := renderFixActions(lang)
 		if err != nil {
 			return "", err
 		}
 		frag = strings.Replace(frag, fixActionsMarker, actions, 1)
-		frag = linkFixColumnRows(frag, fix.Default())
+		frag = linkFixColumnRows(frag, fix.Default(), lang)
 	}
 	return frag, nil
 }
