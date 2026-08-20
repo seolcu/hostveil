@@ -193,7 +193,7 @@ func publishedProseClaims() []proseClaim {
 			file:   "README.ko.md",
 			what:   "how many reviewed fixes left nothing to roll back",
 			parts:  []string{"reviewed.applied", "reviewed.not_reversible"},
-			phrase: "검토 수정 %s건 중 %s건은 되돌릴 것이 애초에 없습니다",
+			phrase: "Review 수정 %s건 중 %s건은 되돌릴 것이 애초에 없습니다",
 		},
 		{
 			file:   "README.ko.md",

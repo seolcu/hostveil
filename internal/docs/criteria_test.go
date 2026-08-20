@@ -180,6 +180,13 @@ func TestTheFixingPagePublishesCheckpointRetention(t *testing.T) {
 
 // The README is where most people meet the classification, and it used to name
 // three of the four kinds and call the first one something the site does not.
+//
+// Both READMEs use the same four English words — "Auto-fix", "Review",
+// "Manual", "Unavailable" — rather than README.ko.md translating them.
+// hostveil's CLI, TUI, and dashboard are English-only and always print these
+// exact words; a Korean docs page that renamed them would be teaching a
+// vocabulary the reader never sees again the moment they run the binary. See
+// cmd/sitegen/kindlabels.go, which states the same rule for the site.
 func TestTheReadmesPublishEveryRemediationKind(t *testing.T) {
 	for _, path := range []string{"README.md", "README.ko.md"} {
 		body := readRepoFile(t, path)
@@ -188,14 +195,6 @@ func TestTheReadmesPublishEveryRemediationKind(t *testing.T) {
 				continue
 			}
 			label := k.Label()
-			if path == "README.ko.md" {
-				label = map[model.RemediationKind]string{
-					model.RemediationAuto:        "자동 수정",
-					model.RemediationReview:      "검토",
-					model.RemediationManual:      "수동",
-					model.RemediationUnavailable: "사용 불가",
-				}[k]
-			}
 			if !strings.Contains(body, "**"+label+"**") {
 				t.Errorf("%s does not name the %s kind as %q", path, k, label)
 			}
