@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -51,18 +50,20 @@ func cmdBugreport(ctx context.Context, args []string) int {
 	}
 
 	if output != "" {
-		if err := platform.WriteFileAtomic(output, []byte(bundle), 0o600); err != nil {
+		// bugreport auto-elevates to read the system state directory. Use the
+		// same writer as scan --output so a newly created report is handed
+		// back to the invoking user instead of being left root-owned.
+		if err := writeReport(output, []byte(bundle)); err != nil {
 			fmt.Fprintln(os.Stderr, "hostveil:", err)
 			return 1
 		}
 		fmt.Println("Wrote", output)
-		return 0
+	} else {
+		fmt.Print(bundle)
 	}
 
-	fmt.Print(bundle)
-
 	if !send {
-		fmt.Println("\nNothing was sent. Re-run with --send to offer to open this as a GitHub issue.")
+		fmt.Println("Nothing was sent. Re-run with --send to offer to open this as a GitHub issue.")
 		return 0
 	}
 	if !yes && !promptYesNo(fmt.Sprintf("\nSend this to https://github.com/%s/issues as a new issue?", selfupdate.Repo)) {
@@ -188,55 +189,80 @@ func writeScanSummary(b *strings.Builder) {
 }
 
 // sendBugReport is the only place in this command that reaches the network,
-// and it only runs after buildBugReport has already printed the report and
-// the operator has confirmed --send. It tries, in order, a personal access
-// token, an already-authenticated gh CLI, and finally falls back to saving
-// the report locally with instructions to paste it in — never blocking on
-// having credentials at all.
+// and it only runs after the report has already been built locally and the
+// operator has confirmed --send. It tries, in order, a personal access token
+// and an already-authenticated gh CLI. A failed credential or network path is
+// not allowed to lose the report: every failure ends at a local file the
+// invoking user can read and paste by hand.
 func sendBugReport(ctx context.Context, bundle string) error {
+	var failures []string
 	if token := os.Getenv("HOSTVEIL_GITHUB_TOKEN"); token != "" {
-		return sendViaGitHubAPI(ctx, token, bundle)
+		if err := sendViaGitHubAPI(ctx, token, bundle); err == nil {
+			return nil
+		} else {
+			failures = append(failures, "GitHub API: "+err.Error())
+		}
 	}
 	if ghPath, err := exec.LookPath("gh"); err == nil {
-		return sendViaGH(ctx, ghPath, bundle)
+		if err := sendViaGH(ctx, ghPath, bundle); err == nil {
+			return nil
+		} else {
+			failures = append(failures, "GitHub CLI: "+err.Error())
+		}
 	}
 
-	dir := history.DefaultDir()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
+	// The process is normally root here because bugreport needs to read
+	// /var/lib/hostveil. Saving back into that directory made the advertised
+	// fallback inaccessible to the person who ran the command. The current
+	// directory is the one place the operator already selected, and
+	// writeReport transfers a newly created file to SUDO_UID/SUDO_GID.
+	p := "hostveil-bugreport.md"
+	if err := writeReport(p, []byte(bundle)); err != nil {
+		if len(failures) == 0 {
+			return fmt.Errorf("saving unsent report to %s: %w", p, err)
+		}
+		return fmt.Errorf("sending failed (%s); saving %s: %w", strings.Join(failures, "; "), p, err)
 	}
-	p := filepath.Join(dir, "bugreport.md")
-	if err := platform.WriteFileAtomic(p, []byte(bundle), 0o600); err != nil {
-		return err
+	if len(failures) > 0 {
+		fmt.Println("Could not open the GitHub issue:", strings.Join(failures, "; "))
+	} else {
+		fmt.Println("Nothing to send with — set HOSTVEIL_GITHUB_TOKEN or install the GitHub CLI (gh).")
 	}
-	fmt.Printf("Nothing to send with — set HOSTVEIL_GITHUB_TOKEN or install the GitHub CLI (gh).\n"+
-		"Saved the report to %s; open https://github.com/%s/issues/new and paste it in.\n", p, selfupdate.Repo)
+	fmt.Printf("Saved the report to %s; open https://github.com/%s/issues/new and paste it in.\n", p, selfupdate.Repo)
 	return nil
 }
 
 func sendViaGH(ctx context.Context, ghPath, bundle string) error {
-	f, err := os.CreateTemp("", "hostveil-bugreport-*.md")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(f.Name()) }()
-	if _, err := f.WriteString(bundle); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-
 	// G204: ghPath came back from exec.LookPath, and every argument is
-	// either a fixed literal or the path this function just created itself
-	// — no operator input reaches argv.
-	//nolint:gosec // G204: fixed argv plus a path this function wrote itself
-	cmd := exec.CommandContext(ctx, ghPath, "issue", "create",
-		"--repo", selfupdate.Repo, "--title", "hostveil bug report", "--body-file", f.Name())
+	// a fixed literal — no operator input reaches argv. The report goes over
+	// stdin rather than a root-owned temp file, which the invoking user's gh
+	// process could not read after privileges are dropped below.
+	//nolint:gosec // G204: resolved executables and fixed argv, by design
+	args := []string{"issue", "create", "--repo", selfupdate.Repo,
+		"--title", "hostveil bug report", "--body-file", "-"}
+	program, argv := githubCLIInvocation(ghPath, args, os.Geteuid(), os.Getenv, exec.LookPath)
+	cmd := exec.CommandContext(ctx, program, argv...)
+	cmd.Stdin = strings.NewReader(bundle)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// githubCLIInvocation returns the process and argv used for gh. bugreport is
+// normally a sudo child so running gh directly would look in /root for its
+// authentication and report that the already-authenticated operator is not
+// logged in. Root can safely run the resolved gh binary as SUDO_USER without
+// another password prompt; -H points gh back at that user's config directory.
+func githubCLIInvocation(ghPath string, args []string, euid int, getenv func(string) string, lookPath func(string) (string, error)) (string, []string) {
+	if euid == 0 && getenv("SUDO_UID") != "" {
+		if invoking := getenv("SUDO_USER"); invoking != "" && invoking != "root" {
+			if sudoPath, err := lookPath("sudo"); err == nil {
+				sudoArgs := []string{"-H", "-u", invoking, "--", ghPath}
+				return sudoPath, append(sudoArgs, args...)
+			}
+		}
+	}
+	return ghPath, args
 }
 
 func sendViaGitHubAPI(ctx context.Context, token, bundle string) error {
