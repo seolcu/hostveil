@@ -191,7 +191,7 @@ hostveil fix --all --review  # and the Review ones too, after reading what they 
 hostveil rollback <id>   # undo a previously applied fix
 hostveil history         # list applied fixes and their rollback IDs
 hostveil history --scans # the score of every saved scan, oldest first
-hostveil bugreport       # package a crash/scan summary; nothing sent without --send
+hostveil diagnostics     # collect version/OS/crash/scan info to attach to a bug report
 hostveil explain <id>    # explain a finding (add --ai for an AI second opinion)
 hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
 hostveil update          # update this binary the way it was installed

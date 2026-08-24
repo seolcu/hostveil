@@ -120,8 +120,8 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdRollback(ctx, args)
 	case "history":
 		return cmdHistory(ctx, args)
-	case "bugreport":
-		return cmdBugreport(ctx, args)
+	case "diagnostics":
+		return cmdDiagnostics(ctx, args)
 	case "update":
 		return cmdUpdate(ctx, args)
 	case "uninstall":
@@ -184,9 +184,8 @@ Usage:
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
                                  --scans lists the score of every saved scan
-  hostveil bugreport [flags]     Package a crash and scan summary for a bug
-                                 report; nothing is sent without --send and
-                                 your confirmation
+  hostveil diagnostics [flags]   Collect version/OS/crash/scan info into one
+                                 file to attach to a bug report by hand
   hostveil update [flags]        Update hostveil to the latest release
   hostveil uninstall [--yes]     Remove hostveil, keeping its saved state
   hostveil version               Print the version (also: --version, -V)
@@ -229,14 +228,10 @@ Rollback flags:
                   Rollback keeps no backup of its own, so it declines by
                   default rather than discard those edits.
 
-Bugreport flags:
+Diagnostics flags:
   --trace FILE    Attach a command trace produced with HOSTVEIL_DEBUG=1
   --unredacted    Skip redacting IPs and home-directory usernames (local
-                  use only; refuses to combine with --send)
-  --send          Offer to open the report as a GitHub issue after printing
-                  it and asking for confirmation
-  --yes           Skip the confirmation prompt; --send is still required to
-                  transmit anything
+                  use only)
   --output FILE   Write the report to FILE instead of printing it
 
 TUI and dashboard flags:
@@ -282,15 +277,6 @@ Environment:
                        thing. Command output is deliberately not logged — it
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
-  HOSTVEIL_GITHUB_TOKEN
-                       bugreport --send: a GitHub personal access token used
-                       to open the report as an issue via the API. Without
-                       it, bugreport falls back to the gh CLI if it is
-                       installed and already authenticated, or prints the
-                       report locally with instructions to paste it in by
-                       hand. Read only when --send is given, and even then
-                       nothing is sent until the confirmation prompt (or
-                       --yes) says so.
   HOSTVEIL_NO_UPDATE_CHECK
                        Set to any value and hostveil never contacts GitHub on
                        its own. Without it, scan, tui and serve refresh a

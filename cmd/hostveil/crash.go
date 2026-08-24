@@ -10,7 +10,7 @@ import (
 
 // reportCrash is what a panic that reached run()'s top-level recover becomes:
 // a friendly message instead of a bare Go stack trace scrolling off the
-// terminal, and a local crash record `hostveil bugreport` can package up
+// terminal, and a local crash record `hostveil diagnostics` can package up
 // afterward.
 //
 // It never touches the network — see internal/diagnostics's own doc comment
@@ -30,6 +30,6 @@ func reportCrash(args []string, r any, stack []byte) int {
 	// a fix's backup-then-write, this is the generic catch-all and can be
 	// reached from other places a panic might happen mid-write. Silence on
 	// that question is more honest than a guarantee this path cannot back.
-	fmt.Fprintln(os.Stderr, "Run `hostveil bugreport` to package the details and, with your consent, send them to the project.")
+	fmt.Fprintln(os.Stderr, "Run `hostveil diagnostics` to package the details for a bug report.")
 	return 1
 }

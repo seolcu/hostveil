@@ -35,7 +35,7 @@ import (
 // under the engine's state directory. There is no log all three interfaces
 // read, and a panic in a fix is a bug report hostveil wants back — the error
 // message keeps the trace visible right where the fix failed, and the record
-// is what lets `hostveil bugreport` find it again afterward without the
+// is what lets `hostveil diagnostics` find it again afterward without the
 // operator having had to copy it out of a scrolled-away terminal.
 func (e *Engine) crashError(what, id string, r any) error {
 	stack := debug.Stack()
