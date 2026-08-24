@@ -115,12 +115,12 @@ func TestACrashingBuilderIsAnErrorNotAnExit(t *testing.T) {
 	}
 }
 
-// A panic in a fix must also leave something for `hostveil bugreport` to
+// A panic in a fix must also leave something for `hostveil diagnostics` to
 // find afterward, not just an error message on whichever terminal happened
 // to be watching. crashError (internal/core/contain.go) is the one place
 // that writes it, so this is the same crash the two tests above already
 // exercise, read back from disk instead of from the returned error.
-func TestACrashingFixLeavesARecordForBugreport(t *testing.T) {
+func TestACrashingFixLeavesARecordForDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	e := New(Config{Fixes: crashingRegistry(t), Store: history.NewStore(dir), Version: "v3-test"})
 	f := crashFinding("panic.build", filepath.Join(t.TempDir(), "x.conf"))

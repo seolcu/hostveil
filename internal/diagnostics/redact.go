@@ -22,7 +22,7 @@ var (
 // embedded in a home directory path.
 //
 // It is a heuristic pass over free-form text, not a guarantee — that is what
-// --unredacted's own warning in cmd/hostveil/bugreport.go says, and what
+// --unredacted's own warning in cmd/hostveil/diagnostics.go says, and what
 // keeps this from being sold as more than it is.
 func Redact(s string) string {
 	s = ipv4Pattern.ReplaceAllStringFunc(s, redactIPv4)

@@ -26,9 +26,9 @@ func (c panickingChecker) Check(context.Context, platform.Env) ([]model.Finding,
 
 // A checker's panic already degrades only its own domain (see
 // check.runOne). What ScanWith adds is a diagnostics.CrashRecord, so
-// `hostveil bugreport` has a trace for it afterward instead of nothing but
+// `hostveil diagnostics` has a trace for it afterward instead of nothing but
 // the one-line "panic: ..." reason every UI already renders.
-func TestAPanickingCheckerLeavesARecordForBugreport(t *testing.T) {
+func TestAPanickingCheckerLeavesARecordForDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	e := New(Config{
 		Registry: check.NewRegistry(panickingChecker{src: model.SourceSSH}),

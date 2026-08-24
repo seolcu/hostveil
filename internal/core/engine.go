@@ -178,7 +178,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 		// Stack is set only when the domain's own recover in check.runOne
 		// caught a panic. The domain has already degraded gracefully by the
 		// time this runs — this only decides whether a trace survives to be
-		// found by `hostveil bugreport` afterward.
+		// found by `hostveil diagnostics` afterward.
 		if r.Stack != "" {
 			diagnostics.RecordCrash(e.store.Dir(),
 				diagnostics.NewRecord(e.version, "scan", "checker "+r.Source.String(), r.Reason, []byte(r.Stack)))

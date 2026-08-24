@@ -155,7 +155,7 @@ func TestPanicIsContainedAsError(t *testing.T) {
 	}
 	// Stack is what lets core.ScanWith hand this off to
 	// internal/diagnostics — see engine.go — without it a checker panic
-	// degraded gracefully but left nothing for `hostveil bugreport` to find
+	// degraded gracefully but left nothing for `hostveil diagnostics` to find
 	// afterward.
 	if !strings.Contains(results[0].Stack, "runOne") {
 		t.Errorf("a panicking checker's result carries no usable stack trace: %q", results[0].Stack)

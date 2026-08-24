@@ -27,16 +27,16 @@ import (
 // docSection maps a function in this package to the <h2 id="…"> section of
 // the CLI reference that documents it.
 var docSection = map[string]string{
-	"cmdScan":      "scan",
-	"cmdFix":       "fix",
-	"cmdRollback":  "rollback",
-	"cmdExplain":   "explain",
-	"cmdServe":     "serve",
-	"cmdTUI":       "tui",
-	"cmdHistory":   "history",
-	"cmdBugreport": "bugreport",
-	"cmdUpdate":    "update",
-	"cmdUninstall": "uninstall",
+	"cmdScan":        "scan",
+	"cmdFix":         "fix",
+	"cmdRollback":    "rollback",
+	"cmdExplain":     "explain",
+	"cmdServe":       "serve",
+	"cmdTUI":         "tui",
+	"cmdHistory":     "history",
+	"cmdDiagnostics": "diagnostics",
+	"cmdUpdate":      "update",
+	"cmdUninstall":   "uninstall",
 }
 
 var docLangs = []string{"en", "ko"}

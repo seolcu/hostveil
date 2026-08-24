@@ -13,7 +13,7 @@ import (
 // of last resort — everything else check.runOne and internal/core's own
 // crash containment do not already catch. It must never itself be able to
 // panic (see its doc comment), and it must leave something for
-// `hostveil bugreport` to find.
+// `hostveil diagnostics` to find.
 func TestReportCrashRecordsAndReportsWithoutPanicking(t *testing.T) {
 	// history.DefaultDir prefers /var/lib/hostveil for root, which HOME
 	// cannot redirect.

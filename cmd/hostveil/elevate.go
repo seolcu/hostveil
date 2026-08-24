@@ -12,7 +12,7 @@ import (
 func needsRoot(cmd string) bool {
 	switch cmd {
 	case "scan", "tui", "fix", "serve", "web", "explain", "rollback", "history",
-		"bugreport", "update", "uninstall":
+		"diagnostics", "update", "uninstall":
 		return true
 	}
 	return false
@@ -136,12 +136,6 @@ var carriedThroughSudo = []string{
 	// now every remote run rather than the few that set a theme.
 	"SSH_CONNECTION",
 	"NO_COLOR",
-	// bugreport elevates too, so the process that would call the GitHub API
-	// is the child — a token that did not survive the re-exec would fail
-	// closed the same silent way an AI key above would: bugreport --send
-	// would fall through to the gh-CLI or local-save path with nothing to
-	// say the token was ever set.
-	"HOSTVEIL_GITHUB_TOKEN",
 }
 
 // elevatedArgv builds everything up to and including the executable path:

@@ -1,9 +1,11 @@
 // Package diagnostics records what a crash looked like, entirely on disk and
 // entirely local. It has no network client and imports nothing that has one
 // — that is the point of it: a panic anywhere in hostveil leaves a record
-// here, and nothing here ever decides on its own to send that record
-// anywhere. Only `hostveil bugreport` (cmd/hostveil), acting on the
-// operator's own explicit --send, reads these back and offers to.
+// here, and nothing here, nor `hostveil diagnostics` (cmd/hostveil) which
+// reads these back, ever sends that record anywhere. Packaging it for a bug
+// report and mailing it off are different acts, and this package and the
+// command that reads it only ever do the first — the operator pastes the
+// result into an issue by hand.
 //
 // A dependency-free leaf package on purpose, so internal/check and
 // internal/core (which the panics actually happen in) and cmd/hostveil (which
