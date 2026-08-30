@@ -2,6 +2,50 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.25.0](https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0) (2026-08-30)
+
+hostveil can now hand a scan result to someone who is not looking at a
+terminal: `hostveil export` (also reachable from the TUI and the web
+dashboard) renders it as Markdown, Word, or PDF for a colleague, or as JSON
+or SARIF for another program. Every registered fix now states what applying
+it actually gets you, next to the risk it already disclosed. `bugreport`'s
+network-send path is gone in favor of a local-only `hostveil diagnostics`,
+and the installer script gained color output and a startup banner.
+
+### Features
+
+* **core:** add `hostveil export`, rendering a scan report as JSON, SARIF,
+  Markdown, DOCX, or PDF. JSON and SARIF are byte-identical to
+  `scan --json`/`--sarif`, for another program to read; Markdown, DOCX, and
+  PDF explain each finding and its fix in plain language, for an operator
+  reading the result or handing it to a colleague. DOCX and PDF are
+  hand-written with no new dependency, the same call this project already
+  made for SARIF. Reachable from the CLI, the TUI's `e` key (with a new
+  free-text path prompt), and the web dashboard's Export button.
+* **fix:** add a `Benefit` to every registered fix action, shown next to its
+  existing `Warning` in every preview screen — what applying it actually
+  gets you, stated beside the risk, the way a medicine label states effect
+  and side effect together. `model.Finding` carries the recommended fix's
+  trade-off before a preview is even opened, and the export reports above
+  show it too. `cve.outdated-image`'s warning now says plainly that
+  re-pulling a floating tag is not a guaranteed fix and is not free — a real
+  cost to weigh on a host that is stable today.
+* **cmd:** replace `bugreport` with a local-only `hostveil diagnostics`,
+  removing the `--send` network path (a GitHub API token or the `gh` CLI
+  deciding when a report left the host) entirely. `diagnostics` collects
+  version, OS, recent crashes, and the last scan's summary into one file;
+  the operator pastes it into an issue by hand.
+* **install:** color error/success/warning lines in the install script
+  (gated on a terminal and `NO_COLOR`, matching the CLI's own palette), and
+  print a short banner naming what is about to be installed.
+
+### Bug Fixes
+
+* **sitegen:** wire up the checks page's Fix-column links on the Korean
+  site — the link-rewriting regex was hardcoded to the English "Auto-fix"/
+  "Review" labels, so the same click that opened a fix's detail on the
+  English page did nothing on the Korean one.
+
 ## [3.24.0](https://github.com/seolcu/hostveil/compare/v3.23.0...v3.24.0) (2026-08-20)
 
 A panic outside a checker or a fix had nowhere to go but a raw Go stack on
