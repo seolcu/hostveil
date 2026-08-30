@@ -133,6 +133,13 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.26.2"><a href="https://github.com/seolcu/hostveil/compare/v3.26.1...v3.26.2">3.26.2</a> <span class="changelog-date">2026-08-31</span></h2>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>model:</strong> stop discounting <code>RemediationUnavailable</code> findings — a vulnerability with no upstream patch used to cost a quarter of what an otherwise identical actionable finding costs, via a fixed divisor with no derivation behind the number 4 the way the rest of the scoring model has one for its constants (one High costing exactly half of what an axis has left, the harmonic damping for repeats). It now costs exactly the same. The accepted consequence: a host with even one un-patchable CVE may never reach 100 on its Vulnerabilities axis, because the risk is real whether or not a patch happens to exist for it yet. Updated every doc page that described the old discount, in both languages.</p>
+            </li>
+          </ul>
           <h2 id="v3.26.1"><a href="https://github.com/seolcu/hostveil/compare/v3.26.0...v3.26.1">3.26.1</a> <span class="changelog-date">2026-08-31</span></h2>
           <h3>Bug Fixes</h3>
           <ul class="changelog-entries">
