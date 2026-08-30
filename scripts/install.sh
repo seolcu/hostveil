@@ -12,6 +12,18 @@ UNINSTALL=false
 # identity being verified can never drift apart.
 REPO="seolcu/hostveil"
 
+# Colors mean one thing across all of hostveil: risk and success/failure,
+# never structure. This matches internal/clirender/text.go, the only other
+# place in the codebase that colors raw sequential terminal output — plain
+# 16-color ANSI rather than truecolor, since a shell script can't assume
+# 24-bit support, and gated the same way `colorEnabled()` gates the CLI.
+if [[ -t 1 && -z "${NO_COLOR+x}" ]]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
+  RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'
+else
+  BOLD=''; DIM=''; RESET=''; RED=''; GREEN=''; YELLOW=''
+fi
+
 usage() {
   cat <<'EOF'
 Usage: install.sh [options]
@@ -59,12 +71,12 @@ uninstall() {
 
   if [[ -e /usr/bin/hostveil ]]; then
     if owner=$(package_owner /usr/bin/hostveil); then
-      echo "ERROR: /usr/bin/hostveil is owned by ${owner}; the install script will not bypass its package database." >&2
+      echo "${RED}ERROR:${RESET} /usr/bin/hostveil is owned by ${owner}; the install script will not bypass its package database." >&2
       echo "  Use: hostveil uninstall --yes" >&2
       return 1
     fi
     "${SUDO[@]}" rm -f /usr/bin/hostveil
-    echo "  ✓ removed /usr/bin/hostveil"
+    echo "  ${GREEN}✓${RESET} removed /usr/bin/hostveil"
     removed=true
   else
     echo "  hostveil is not installed at /usr/bin/hostveil"
@@ -102,7 +114,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --version)
       if [[ $# -lt 2 ]]; then
-        echo "ERROR: --version requires a value" >&2
+        echo "${RED}ERROR:${RESET} --version requires a value" >&2
         usage >&2
         exit 1
       fi
@@ -116,12 +128,16 @@ while [[ $# -gt 0 ]]; do
     --uninstall) UNINSTALL=true; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
-      echo "Unknown option: $1" >&2
+      echo "${RED}ERROR:${RESET} Unknown option: $1" >&2
       usage >&2
       exit 1
       ;;
   esac
 done
+
+if [[ "$UNINSTALL" != true ]]; then
+  echo "${BOLD}▣ hostveil${RESET}${DIM} — guided hardening for self-hosted Linux${RESET}"
+fi
 
 # ─── privilege ────────────────────────────────────────────────────────────
 # Installing into /usr/bin needs root. Which is not the same as needing sudo,
@@ -139,7 +155,7 @@ if [[ ${EUID} -ne 0 ]]; then
   if command -v sudo &>/dev/null; then
     SUDO=(sudo)
   else
-    echo "ERROR: installing into /usr/bin needs root, and sudo is not available." >&2
+    echo "${RED}ERROR:${RESET} installing into /usr/bin needs root, and sudo is not available." >&2
     echo "  Re-run this as root, or install sudo first." >&2
     exit 1
   fi
@@ -151,11 +167,11 @@ if [[ "$UNINSTALL" == true ]]; then
 fi
 
 if [[ "$VERSION_EXPLICIT" == true && -z "$VERSION" ]]; then
-  echo "ERROR: --version requires a non-empty version (e.g. v2.6.0)" >&2
+  echo "${RED}ERROR:${RESET} --version requires a non-empty version (e.g. v2.6.0)" >&2
   exit 1
 fi
 if [[ "$VERSION_EXPLICIT" == true && ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "ERROR: --version must be a release version such as v3.21.0" >&2
+  echo "${RED}ERROR:${RESET} --version must be a release version such as v3.21.0" >&2
   exit 1
 fi
 
@@ -166,14 +182,14 @@ case "$ARCH" in
   x86_64|amd64) ARCH="amd64" ;;
   aarch64|arm64) ARCH="arm64" ;;
   *)
-    echo "Unsupported architecture: $ARCH" >&2
+    echo "${RED}ERROR:${RESET} Unsupported architecture: $ARCH" >&2
     exit 1
     ;;
 esac
 case "$OS" in
   linux|darwin) ;;
   *)
-    echo "Unsupported OS: $OS" >&2
+    echo "${RED}ERROR:${RESET} Unsupported OS: $OS" >&2
     exit 1
     ;;
 esac
@@ -210,7 +226,7 @@ require_sha256() {
   local actual
   actual=$(sha256_hash "$file")
   if [[ -z "$actual" ]]; then
-    echo "  ERROR: no sha256 tool available to verify ${file##*/}" >&2
+    echo "  ${RED}ERROR:${RESET} no sha256 tool available to verify ${file##*/}" >&2
     exit 1
   fi
   echo "$actual"
@@ -226,7 +242,7 @@ install_packages() {
     zypper) "${SUDO[@]}" zypper install -y "$@" ;;
     brew) brew install "$@" ;;
     *)
-      echo "  • $1: no package manager found, skipping (install manually)"
+      echo "  ${DIM}•${RESET} $1: no package manager found, skipping (install manually)"
       return 1
       ;;
   esac
@@ -267,27 +283,27 @@ fi
 install_tool() {
   local name=$1 && shift
   if command -v "$name" &>/dev/null; then
-    echo "  • $name: already installed"
+    echo "  ${DIM}•${RESET} $name: already installed"
     return 0
   fi
   if [[ -z "$PM" ]]; then
-    echo "  • $name: no package manager found, skipping (install manually)"
+    echo "  ${DIM}•${RESET} $name: no package manager found, skipping (install manually)"
     return 0
   fi
   if package_available "$name"; then
-    echo "  • $name: installing via $PM..."
+    echo "  ${DIM}•${RESET} $name: installing via $PM..."
     if install_packages "$@"; then
       return 0
     fi
-    echo "  • $name: package install failed, trying binary download..."
+    echo "  ${DIM}•${RESET} $name: package install failed, trying binary download..."
   else
-    echo "  • $name: not in $PM repos, downloading binary..."
+    echo "  ${DIM}•${RESET} $name: not in $PM repos, downloading binary..."
   fi
 
   case "$name" in
     trivy)
       TRIVY_VER=$(github_latest_tag aquasecurity/trivy) || {
-        echo "  ERROR: failed to determine latest trivy version" >&2
+        echo "  ${RED}ERROR:${RESET} failed to determine latest trivy version" >&2
         return 1
       }
       case "$OS" in linux) TRIVY_OS="Linux" ;; darwin) TRIVY_OS="Darwin" ;; esac
@@ -300,7 +316,7 @@ install_tool() {
       mkdir -p "$TRIVY_DIR"
 
       curl -fsSL --retry 3 "${TRIVY_BASE}/${TRIVY_TAR}" -o "${TRIVY_DIR}/${TRIVY_TAR}" || {
-        echo "  ERROR: trivy download failed" >&2
+        echo "  ${RED}ERROR:${RESET} trivy download failed" >&2
         return 1
       }
 
@@ -311,31 +327,31 @@ install_tool() {
       # one open.
       curl -fsSL --retry 3 "${TRIVY_BASE}/trivy_${TRIVY_VER}_checksums.txt" \
         -o "${TRIVY_DIR}/checksums.txt" || {
-        echo "  ERROR: could not download trivy's checksums; refusing to install it unverified" >&2
+        echo "  ${RED}ERROR:${RESET} could not download trivy's checksums; refusing to install it unverified" >&2
         return 1
       }
       TRIVY_EXPECTED=$(awk -v f="$TRIVY_TAR" '$2 == f || $2 == "*" f {print $1}' "${TRIVY_DIR}/checksums.txt")
       if [[ -z "$TRIVY_EXPECTED" ]]; then
-        echo "  ERROR: ${TRIVY_TAR} is not listed in trivy's checksums file" >&2
+        echo "  ${RED}ERROR:${RESET} ${TRIVY_TAR} is not listed in trivy's checksums file" >&2
         return 1
       fi
       TRIVY_ACTUAL=$(require_sha256 "${TRIVY_DIR}/${TRIVY_TAR}")
       if [[ "$TRIVY_EXPECTED" != "$TRIVY_ACTUAL" ]]; then
-        echo "  ERROR: checksum mismatch for ${TRIVY_TAR}" >&2
+        echo "  ${RED}ERROR:${RESET} checksum mismatch for ${TRIVY_TAR}" >&2
         echo "    expected: $TRIVY_EXPECTED" >&2
         echo "    actual:   $TRIVY_ACTUAL" >&2
         return 1
       fi
 
       tar xzf "${TRIVY_DIR}/${TRIVY_TAR}" -C "$TRIVY_DIR" -- trivy || {
-        echo "  ERROR: trivy extraction failed" >&2
+        echo "  ${RED}ERROR:${RESET} trivy extraction failed" >&2
         return 1
       }
       TRIVY_BIN="${TRIVY_DIR}/trivy"
       if [[ -f "$TRIVY_BIN" && ! -L "$TRIVY_BIN" ]]; then
         "${SUDO[@]}" install -m 755 "$TRIVY_BIN" /usr/bin/trivy
       else
-        echo "  ERROR: trivy binary not found after extraction" >&2
+        echo "  ${RED}ERROR:${RESET} trivy binary not found after extraction" >&2
         return 1
       fi
       ;;
@@ -344,34 +360,34 @@ install_tool() {
 
 if [[ "$SKIP_TRIVY" != true && "$DEP_TRIVY" == true ]]; then
   # Trivy is optional: a failed install must not abort hostveil's install.
-  install_tool trivy trivy || echo "  ⚠ trivy not installed; CVE scanning will be skipped"
+  install_tool trivy trivy || echo "  ${YELLOW}⚠${RESET} trivy not installed; CVE scanning will be skipped"
 fi
 
 # ─── INSTALL HOSTVEIL ────────────────────────────────────────────────────
 if [[ -z "$VERSION" ]]; then
   VERSION=$(github_latest_tag "$REPO") || true
   if [[ -z "$VERSION" ]]; then
-    echo "  ERROR: failed to determine latest hostveil version" >&2
+    echo "  ${RED}ERROR:${RESET} failed to determine latest hostveil version" >&2
     echo "  Try again later or specify a version with --version vX.Y.Z" >&2
     exit 1
   fi
 fi
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "  ERROR: GitHub returned an invalid release version: ${VERSION}" >&2
+  echo "  ${RED}ERROR:${RESET} GitHub returned an invalid release version: ${VERSION}" >&2
   exit 1
 fi
 
 if [[ -e /usr/bin/hostveil ]] && owner=$(package_owner /usr/bin/hostveil); then
-  echo "  ERROR: /usr/bin/hostveil is owned by ${owner}." >&2
+  echo "  ${RED}ERROR:${RESET} /usr/bin/hostveil is owned by ${owner}." >&2
   echo "  Run 'hostveil update' so the package manager remains authoritative." >&2
   exit 1
 fi
 
-echo "  • hostveil: downloading v${VERSION}..."
+echo "  ${DIM}•${RESET} hostveil: downloading v${VERSION}..."
 TAR="hostveil-${OS}-${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/v${VERSION}/${TAR}"
 curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
-  echo "  ERROR: download failed for ${URL}" >&2
+  echo "  ${RED}ERROR:${RESET} download failed for ${URL}" >&2
   exit 1
 }
 
@@ -383,79 +399,76 @@ curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
 # any binary they like — and this binary is about to be installed to
 # /usr/bin and run as root. There is no partial credit here: either the
 # artifact matches what the release published, or it does not get installed.
-echo "  • hostveil: verifying checksum..."
+echo "  ${DIM}•${RESET} hostveil: verifying checksum..."
 CHECKSUM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/hostveil-checksums.txt"
 if ! curl -fsSL --retry 3 "$CHECKSUM_URL" -o "${TMPDIR}/hostveil-checksums.txt"; then
-  echo "  ERROR: could not download the checksums file for v${VERSION}" >&2
+  echo "  ${RED}ERROR:${RESET} could not download the checksums file for v${VERSION}" >&2
   echo "    ${CHECKSUM_URL}" >&2
   echo "    Refusing to install an unverified binary." >&2
   exit 1
 fi
 EXPECTED=$(awk -v f="$TAR" '$2 == f || $2 == "*" f {print $1}' "${TMPDIR}/hostveil-checksums.txt")
 if [[ -z "$EXPECTED" ]]; then
-  echo "  ERROR: ${TAR} is not listed in the release's checksums file" >&2
+  echo "  ${RED}ERROR:${RESET} ${TAR} is not listed in the release's checksums file" >&2
   echo "    Refusing to install an unverified binary." >&2
   exit 1
 fi
 ACTUAL=$(require_sha256 "${TMPDIR}/${TAR}")
 if [[ "$EXPECTED" != "$ACTUAL" ]]; then
-  echo "  ERROR: checksum mismatch for ${TAR}" >&2
+  echo "  ${RED}ERROR:${RESET} checksum mismatch for ${TAR}" >&2
   echo "    expected: $EXPECTED" >&2
   echo "    actual:   $ACTUAL" >&2
   exit 1
 fi
-echo "  ✓ checksum verified"
+echo "  ${GREEN}✓${RESET} checksum verified"
 
 # The checksums file comes from the same GitHub release as the tarball, so
 # matching it proves the download was not corrupted or partially swapped in
 # transit — not that the release itself is genuine. The release workflow
 # mints a signed build provenance attestation tying the archive to the
 # workflow run and commit that produced it, and that is the claim worth
-# checking. Verified when the tooling is present; skipped with a note when
-# it is not, because gh is not a dependency this installer can require.
+# checking. Verified when the tooling is present; silently skipped when it
+# is not, because gh is not a dependency this installer can require.
 if command -v gh >/dev/null 2>&1; then
   if gh attestation verify "${TMPDIR}/${TAR}" --repo "$REPO" >/dev/null 2>&1; then
-    echo "  ✓ build provenance verified (built by ${REPO}'s release workflow)"
+    echo "  ${GREEN}✓${RESET} build provenance verified (built by ${REPO}'s release workflow)"
   else
-    echo "  ERROR: build provenance could not be verified for ${TAR}." >&2
+    echo "  ${RED}ERROR:${RESET} build provenance could not be verified for ${TAR}." >&2
     echo "  The checksum matched, but nothing proves this archive came from" >&2
     echo "  ${REPO}'s release workflow. Refusing to install." >&2
     exit 1
   fi
-else
-  echo "  · provenance not checked (install the GitHub CLI to enable it):"
-  echo "      gh attestation verify ${TAR} --repo ${REPO}"
 fi
 
 tar xzf "${TMPDIR}/${TAR}" -C "$TMPDIR" -- hostveil || {
-  echo "  ERROR: extraction failed" >&2
+  echo "  ${RED}ERROR:${RESET} extraction failed" >&2
   exit 1
 }
 if [[ ! -f "${TMPDIR}/hostveil" || -L "${TMPDIR}/hostveil" ]]; then
-  echo "  ERROR: archive entry 'hostveil' is not a regular file" >&2
+  echo "  ${RED}ERROR:${RESET} archive entry 'hostveil' is not a regular file" >&2
   exit 1
 fi
 INSTALL_TMP="/usr/bin/.hostveil-install-${RANDOM}-$$"
 "${SUDO[@]}" install -m 755 "${TMPDIR}/hostveil" "$INSTALL_TMP" || {
-  echo "  ERROR: install failed" >&2
+  echo "  ${RED}ERROR:${RESET} install failed" >&2
   exit 1
 }
 if ! "${SUDO[@]}" mv -f "$INSTALL_TMP" /usr/bin/hostveil; then
   "${SUDO[@]}" rm -f "$INSTALL_TMP" || true
-  echo "  ERROR: atomic install failed" >&2
+  echo "  ${RED}ERROR:${RESET} atomic install failed" >&2
   exit 1
 fi
 
 if ! INSTALLED=$(/usr/bin/hostveil --version 2>/dev/null); then
-  echo "  ERROR: hostveil installed but --version check failed" >&2
+  echo "  ${RED}ERROR:${RESET} hostveil installed but --version check failed" >&2
   exit 1
 fi
 if [[ "${INSTALLED##* }" != "v${VERSION}" ]]; then
-  echo "  ERROR: /usr/bin/hostveil reports '${INSTALLED}', expected v${VERSION}" >&2
+  echo "  ${RED}ERROR:${RESET} /usr/bin/hostveil reports '${INSTALLED}', expected v${VERSION}" >&2
   exit 1
 fi
 
 echo ""
-echo "  hostveil v${VERSION} installed (${INSTALLED})."
+echo "  ${GREEN}✓${RESET} hostveil v${VERSION} installed (${INSTALLED})."
 echo "  Run: hostveil"
 echo "  Upgrade later by re-running this script; uninstall with: install.sh --uninstall"
