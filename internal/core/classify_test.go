@@ -75,8 +75,9 @@ func TestACheckerDeclaringManualIsNotOverruledByTheRegistry(t *testing.T) {
 
 // Unavailable is the same rule at the other unfixable value, and the one with
 // a live claimant: a CVE with no upstream patch stays Unavailable even where
-// a registered builder would match the ID. Scoring reads it (unavailableRelief
-// weights those findings down), so overruling it would move the score too.
+// a registered builder would match the ID. Scoring reads Remediation to
+// decide what a finding is worth, so overruling it here would move the
+// score too.
 func TestUnavailableSurvivesARegisteredFix(t *testing.T) {
 	e := New(Config{Fixes: registryOf("cve.outdated-image", editAction()), Store: history.NewStore(t.TempDir())})
 

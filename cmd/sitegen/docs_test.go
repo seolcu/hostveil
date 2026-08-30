@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -267,17 +266,6 @@ func TestDocumentedAxisWeightsMatchTheCode(t *testing.T) {
 	}
 }
 
-// reliefProse is how each language spells the Unavailable relief divisor.
-// Keying it by the number is what makes the constant and the sentence one
-// edit: changing the divisor lands on a key with no phrase, and the test says
-// so instead of passing.
-var reliefProse = map[int]map[string]string{
-	2: {"en": "half as much", "ko": "1/2만 반영"},
-	3: {"en": "a third as much", "ko": "1/3만 반영"},
-	4: {"en": "a quarter as much", "ko": "1/4만 반영"},
-	8: {"en": "an eighth as much", "ko": "1/8만 반영"},
-}
-
 // axisScoreWith returns the score of the axis one finding lands on. The
 // scoring constants are unexported and in another package, so the way to
 // read them is to ask the scorer what it does — which is also the claim the
@@ -312,25 +300,15 @@ func TestScoringProseTripwire(t *testing.T) {
 			"content/{en,ko}/docs/{scoring,checks,faq}.html say \"half\" and need rewriting", full)
 	}
 
-	// "…counts a quarter as much" — the same finding with nothing that can
-	// fix it. Derived from the erosion rather than the score, because the
-	// relieved score is not a round number for every divisor.
-	relieved := axisScoreWith(t, model.RemediationUnavailable)
-	if relieved <= full || relieved >= 100 {
-		t.Fatalf("an Unavailable Critical scored %d against %d — the relief is gone or inverted", relieved, full)
-	}
-	relief := int(math.Round(float64(100-full) / float64(100-relieved)))
-	phrases, known := reliefProse[relief]
-	if !known {
-		t.Fatalf("the Unavailable relief is now 1/%d and reliefProse has no phrase for it; "+
-			"add one and write it into content/{en,ko}/docs/checks.html", relief)
-	}
-	for _, lang := range docLangs {
-		if !strings.Contains(checksPage(t, lang), phrases[lang]) {
-			t.Errorf("%s: checks page does not state the Unavailable relief as %q "+
-				"(the constant makes it 1/%d); content/%s/docs/scoring.html states it too",
-				lang, phrases[lang], relief, lang)
-		}
+	// Unavailable findings carry no discount: the same severity costs the
+	// same weight regardless of Remediation. If this ever diverges again,
+	// every page that now says "the same" needs to go back to naming a
+	// ratio instead.
+	unavailable := axisScoreWith(t, model.RemediationUnavailable)
+	if unavailable != full {
+		t.Fatalf("an Unavailable High scored %d against an actionable %d — a discount is back; "+
+			"content/{en,ko}/docs/{scoring,checks,faq}.html say Unavailable findings cost the same "+
+			"as any other and need rewriting if that is no longer true", unavailable, full)
 	}
 }
 

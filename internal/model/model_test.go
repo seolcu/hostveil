@@ -382,41 +382,24 @@ func TestScoreIsMonotonic(t *testing.T) {
 }
 
 // A finding nobody can fix still counts — claiming otherwise would be its
-// own lie — but must not cost as much as one the user could act on.
-func TestScoreWeighsUnavailableLighter(t *testing.T) {
+// own lie. RemediationUnavailable used to be discounted (a fixed divisor on its
+// weight, on the argument that every image ships some CVE with no upstream
+// patch and charging those in full pins the axis at 0 for a well-maintained
+// host). That discount was removed as a deliberate simplification — the
+// divisor had no derivation the way topHalves or the harmonic repeat-damping
+// do — so an Unavailable finding must now cost exactly what an otherwise
+// identical actionable finding costs, severity for severity.
+func TestScoreChargesUnavailableAtFullWeight(t *testing.T) {
 	actionable := ScoreReport([]Finding{
 		NewFinding("cve.outdated-image", "a", SeverityHigh, SourceCVE, RemediationReview),
 	}, nil).Overall
-	unfixable := ScoreReport([]Finding{
+	unavailable := ScoreReport([]Finding{
 		NewFinding("cve.unpatched-image", "a", SeverityHigh, SourceCVE, RemediationUnavailable),
 	}, nil).Overall
 
-	if unfixable <= actionable {
-		t.Errorf("unavailable finding cost %d, actionable cost %d — unavailable must cost less",
-			100-unfixable, 100-actionable)
-	}
-	if unfixable >= 100 {
-		t.Error("an unavailable finding must still cost something; the risk is real")
-	}
-}
-
-// The point of the change: a host doing everything right still carries
-// vulnerabilities with no upstream patch, and must not be scored as if it
-// had done nothing. Under the additive model this axis read 0.
-func TestScoreRewardsAWellMaintainedHost(t *testing.T) {
-	var findings []Finding
-	for i := range 4 {
-		findings = append(findings, NewFinding("cve.unpatched-image", "no patch yet",
-			SeverityHigh, SourceCVE, RemediationUnavailable, WithService(string(rune('a'+i)))))
-	}
-	sb := ScoreReport(findings, nil)
-	for _, ax := range sb.Axes {
-		if ax.Source != SourceCVE {
-			continue
-		}
-		if ax.Score < 40 {
-			t.Errorf("cve axis = %d; a host with only unpatchable CVEs is not a neglected one", ax.Score)
-		}
+	if unavailable != actionable {
+		t.Errorf("unavailable finding scored %d, actionable scored %d — they must cost the same",
+			unavailable, actionable)
 	}
 }
 

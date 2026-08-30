@@ -187,7 +187,7 @@
               <p><strong>HIGH is exactly what Critical and High were together</strong>, so <code>scan</code>'s exit code and the SARIF export mean what they always did. If you are comparing against Trivy's own output, note that a vulnerability Trivy calls CRITICAL lands here as HIGH: Hostveil has three levels and Trivy has four, and the top of one is not the top of the other by name.</p>
             </div>
             <p>Because each finding takes a share of what is <em>left</em> rather than a fixed amount, an axis never bottoms out after two findings — the tenth issue still costs you something, and a host with thirty problems scores below one with three. <a href="scoring">Scoring</a> is the whole model: the arithmetic, a worked example from a real scan, and what the number cannot tell you.</p>
-            <p>A finding Hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — counts a quarter as much. The risk is real, so it is not free; but every image ships some unpatched CVEs, and charging them in full would pin the axis at zero for a host that is doing everything right.</p>
+            <p>A finding Hostveil marks <strong>Unavailable</strong> — a vulnerability with no upstream patch — costs exactly what its severity says, the same as one you could act on. Not being able to fix something yet does not make it less real, so there is no discount for it; a host that pulls unpatched images will see that reflected in its Vulnerabilities axis.</p>
 
             <h3>What each domain is worth</h3>
             <p>The axes are weighted by how much they matter to a self-hosted server, and the weights sum to 100. When a domain does not run, its weight leaves the total and the rest are renormalized.</p>
