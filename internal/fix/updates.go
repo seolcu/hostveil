@@ -30,13 +30,17 @@ func buildEnableSysstat(f model.Finding) (Fix, error) {
 	if path == "" {
 		return Fix{}, fmt.Errorf("finding %s names no sysstat config", f.ID)
 	}
-	return Fix{Label: "Enable sysstat activity collection", Kind: model.RemediationAuto, Actions: []Action{{Label: "Set ENABLED to true", Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
-		re := regexp.MustCompile(`(?m)^ENABLED=.*$`)
-		if re.Match(in) {
-			return re.ReplaceAll(in, []byte(`ENABLED="true"`)), nil
-		}
-		return append(bytes.TrimRight(in, "\n"), []byte("\nENABLED=\"true\"\n")...), nil
-	}}}}, nil
+	return Fix{Label: "Enable sysstat activity collection", Kind: model.RemediationAuto, Actions: []Action{{
+		Label: "Set ENABLED to true",
+		Benefit: "Turns on the data collection the sysstat package already has installed, so historical " +
+			"resource data actually starts accumulating instead of the package sitting present but silent.",
+		Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
+			re := regexp.MustCompile(`(?m)^ENABLED=.*$`)
+			if re.Match(in) {
+				return re.ReplaceAll(in, []byte(`ENABLED="true"`)), nil
+			}
+			return append(bytes.TrimRight(in, "\n"), []byte("\nENABLED=\"true\"\n")...), nil
+		}}}}, nil
 }
 
 // pendingSecurityWarning is shown before either package manager's upgrade
@@ -53,20 +57,48 @@ const pendingSecurityWarning = "Upgrading packages can restart the services they
 
 func buildApplySecurityUpdates(f model.Finding) (Fix, error) {
 	var built Fix
+	const benefit = "Applies whatever security patches are already sitting unapplied right now — closes " +
+		"today's already-known gaps rather than waiting for the next automatic run."
 	switch f.Evidence["package-manager"] {
 	case "apt":
 		built = execFix("Apply pending security updates", "Refresh apt metadata and fully upgrade installed packages",
-			pendingSecurityWarning,
+			benefit, pendingSecurityWarning,
 			[][]string{{"apt-get", "update"}, {"env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "dist-upgrade", "-y"}})
 	case "dnf":
 		built = execFix("Apply pending security updates", "Upgrade packages covered by security advisories",
-			pendingSecurityWarning,
+			benefit, pendingSecurityWarning,
 			[][]string{{"dnf", "upgrade", "-y", "--security"}})
 	default:
 		return Fix{}, fmt.Errorf("finding %s has no known package manager", f.ID)
 	}
 	built.Actions[0].Timeout = 20 * time.Minute
 	return built, nil
+}
+
+// hardeningPackageBenefit names what each package installed by
+// buildInstallHardeningPackage actually buys, since one generic builder is
+// shared across every package below.
+var hardeningPackageBenefit = map[string]string{
+	"acct": "Installs a forensic record of every command run on this host after the fact — turns " +
+		"\"something happened\" into \"here is exactly what ran and as whom.\"",
+	"sysstat": "Installs ongoing resource-usage history, so a crypto-miner, a DoS, or a runaway " +
+		"process shows up as a visible anomaly instead of vanishing the moment it stops.",
+	"auditd": "Installs a kernel-level audit trail of security-relevant actions — file access, " +
+		"privilege changes — that survives a process exiting or an application log being cleared.",
+	"debsums": "Lets the operator verify every installed package's files against their original " +
+		"checksums on demand — how a tampered binary gets noticed instead of trusted.",
+	"rkhunter": "Installs a rootkit and backdoor scanner, giving the host a second opinion on itself " +
+		"beyond what its own compromised binaries might report.",
+	"pam-pwquality": "Installs the PAM module that lets password-strength rules actually be enforced " +
+		"at login time, not only at account creation.",
+	"apt-show-versions": "Lets the operator ask, per package, whether a security update is pending " +
+		"from a specific origin — the same query hostveil's own updates domain depends on.",
+	"apt-listchanges": "Shows what actually changed before an upgrade lands, so a package upgrade is " +
+		"something the operator reads rather than something that just happens to them.",
+	"pam-tmpdir": "Gives every login session its own private /tmp, closing the shared-/tmp race and " +
+		"symlink-attack class of local privilege escalation.",
+	"fail2ban": "Automatically bans an IP after repeated failed logins, cutting off a brute-force " +
+		"attempt while it is still in progress rather than after it succeeds.",
 }
 
 func buildInstallHardeningPackage(f model.Finding) (Fix, error) {
@@ -97,10 +129,16 @@ func buildInstallHardeningPackage(f model.Finding) (Fix, error) {
 		warning += " fail2ban starts watching auth logs immediately and can ban an IP after repeated failed " +
 			"logins — including the one this session is on."
 	}
-	built := execFix("Install host-hardening package "+pkg, "Install and enable "+pkg, warning, commands)
+	built := execFix("Install host-hardening package "+pkg, "Install and enable "+pkg,
+		hardeningPackageBenefit[pkg], warning, commands)
 	built.Actions[0].Timeout = 20 * time.Minute
 	return built, nil
 }
+
+// autoUpdatesBenefit is shared by every path buildEnableAutoUpdates can
+// take — the edit path and both exec paths all end at the same outcome.
+const autoUpdatesBenefit = "Once enabled, security patches for every installed package arrive on " +
+	"their own instead of depending on someone remembering to run apt/dnf."
 
 // buildEnableAutoUpdates installs and enables the distro's automatic
 // security-update mechanism, chosen from the finding's evidence.
@@ -119,6 +157,7 @@ func buildEnableAutoUpdates(f model.Finding) (Fix, error) {
 		}
 		return execFix("Enable automatic security updates (unattended-upgrades)",
 			"Install and enable unattended-upgrades",
+			autoUpdatesBenefit,
 			"Installs unattended-upgrades and enables its service. There is no rollback checkpoint; "+
 				"undoing this means removing the package by hand.",
 			[][]string{
@@ -128,6 +167,7 @@ func buildEnableAutoUpdates(f model.Finding) (Fix, error) {
 	case "dnf-automatic":
 		return execFix("Enable automatic security updates (dnf-automatic)",
 			"Install and enable dnf-automatic",
+			autoUpdatesBenefit,
 			"Installs dnf-automatic and enables its timer. There is no rollback checkpoint; "+
 				"undoing this means removing the package by hand.",
 			[][]string{
@@ -167,6 +207,7 @@ func enableAptPeriodic(f model.Finding) (Fix, error) {
 		Kind:      model.RemediationAuto,
 		Actions: []Action{{
 			Label:           "Switch on apt's periodic update and unattended-upgrade keys",
+			Benefit:         autoUpdatesBenefit,
 			Kind:            ActionEdit,
 			Path:            path,
 			CreateIfMissing: true,
@@ -199,12 +240,13 @@ func setAptPeriodic(in []byte) ([]byte, error) {
 // missing entirely until a demo-VM rehearsal of the Review workflow found the
 // preview for updates.pending-security carrying no warning at all next to
 // one that did.
-func execFix(label, actionLabel, warning string, commands [][]string) Fix {
+func execFix(label, actionLabel, benefit, warning string, commands [][]string) Fix {
 	return Fix{
 		Label: label,
 		Kind:  model.RemediationAuto,
 		Actions: []Action{{
 			Label:    actionLabel,
+			Benefit:  benefit,
 			Warning:  warning,
 			Kind:     ActionExec,
 			Commands: commands,

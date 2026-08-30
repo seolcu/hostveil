@@ -50,7 +50,7 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 			Label: "add no-new-privileges",
 			Kind:  model.RemediationAuto,
 			Actions: []fix.Action{{
-				Label: "harden the service", Kind: fix.ActionEdit,
+				Label: "harden the service", Benefit: "test benefit", Kind: fix.ActionEdit,
 				Path: f.Metadata["file"],
 				Transform: func(in []byte) ([]byte, error) {
 					return append(in, []byte("    security_opt:\n      - no-new-privileges:true\n")...), nil

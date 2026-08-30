@@ -39,6 +39,10 @@ const (
 	modeTheme
 	// modeLayout is the arrangement picker.
 	modeLayout
+	// modeExport is the export-format picker, and modeExportPath is the
+	// free-text destination path typed after a format is chosen.
+	modeExport
+	modeExportPath
 
 	// modeCount bounds the enum so a test can walk every mode instead of
 	// listing them.
@@ -155,6 +159,18 @@ type appModel struct {
 	rowOffset    int
 	saveLayout   func(string) error
 
+	// Export picker + free-text path input. exportCursor indexes
+	// core.ExportFormats(); exportFormat is fixed once the picker's Enter
+	// carries the model into modeExportPath. exportPath is a rune buffer
+	// rather than a string because every keystroke inserts or deletes at
+	// exportPathCursor, and Go strings are not mutated in place.
+	exportCursor     int
+	exportFormat     string
+	exportPath       []rune
+	exportPathCursor int
+	exportPrev       mode // modeList or modeDetail, restored on cancel
+	saveExport       func(format, path string, data []byte) error
+
 	// gl is which symbol set the screen draws from. The zero value is
 	// glyph.Plain, so a model built as a bare struct literal — which is how
 	// every layout and frame test builds one — renders what hostveil has
@@ -174,12 +190,22 @@ type ThemeOpts struct {
 	Save    func(id string) error
 }
 
+// ExportOpts carries the export write path into the TUI, on the same
+// pattern as ThemeOpts and LayoutOpts and for the same reason: writing the
+// rendered report to disk needs platform.WriteFileAtomic's atomic-write and
+// elevation-aware ownership handling, which lives in cmd/hostveil, and the
+// layering test forbids this package from doing that itself.
+type ExportOpts struct {
+	Save func(format, path string, data []byte) error
+}
+
 // Opts is everything the TUI is told before it starts. It is one struct
 // rather than three parameters because the third would have been the one
 // that tipped the signature into being read wrong at a call site.
 type Opts struct {
 	Theme  ThemeOpts
 	Layout LayoutOpts
+	Export ExportOpts
 	// Glyphs is which symbol set to draw from. It has no Save callback
 	// because there is no picker for it: what a terminal's font can draw is
 	// a fact about the terminal, set once with --glyphs or HOSTVEIL_GLYPHS
@@ -197,7 +223,7 @@ func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
 	m := &appModel{
 		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
 		th: opts.Theme.Initial, saveTheme: opts.Theme.Save,
-		saveLayout: opts.Layout.Save, gl: opts.Glyphs,
+		saveLayout: opts.Layout.Save, saveExport: opts.Export.Save, gl: opts.Glyphs,
 	}
 	if l, ok := LookupLayout(opts.Layout.Initial); ok {
 		m.layout = l.ID
@@ -430,6 +456,26 @@ func applyCmd(ctx context.Context, e *core.Engine, f model.Finding, action int) 
 	}
 }
 
+type exportedMsg struct {
+	path string
+	err  error
+}
+
+// exportCmd renders the current report in format and hands the bytes to
+// save — the injected, elevation-aware write path (see ExportOpts).
+func exportCmd(e *core.Engine, r model.Report, format, path string, save func(string, string, []byte) error) tea.Cmd {
+	return func() tea.Msg {
+		data, _, _, err := e.Export(r, format)
+		if err != nil {
+			return exportedMsg{err: err}
+		}
+		if save != nil {
+			err = save(format, path, data)
+		}
+		return exportedMsg{path: path, err: err}
+	}
+}
+
 type batchAppliedMsg struct{ outcome model.BatchOutcome }
 
 func batchCmd(ctx context.Context, e *core.Engine, fs []model.Finding) tea.Cmd {
@@ -586,6 +632,15 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = modeMessage
 		return m, nil
 
+	case exportedMsg:
+		if msg.err != nil {
+			m.status = "Export failed: " + msg.err.Error()
+		} else {
+			m.status = "Exported to " + msg.path
+		}
+		m.mode = modeMessage
+		return m, nil
+
 	case batchAppliedMsg:
 		m.status = m.batchSummary(msg.outcome)
 		m.refreshFromEngine()
@@ -674,6 +729,10 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyTheme(key)
 	case modeLayout:
 		return m.keyLayout(key)
+	case modeExport:
+		return m.keyExport(key)
+	case modeExportPath:
+		return m.keyExportPath(key)
 	case modeMessage:
 		m.mode = modeList
 	}
@@ -725,6 +784,8 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		m.openThemePicker()
 	case "l":
 		m.openLayoutPicker()
+	case "e":
+		m.openExportPicker()
 	}
 	return m, nil
 }
@@ -801,6 +862,95 @@ func (m *appModel) keyLayout(key string) (tea.Model, tea.Cmd) {
 func (m *appModel) setLayout(id string) {
 	m.layout = id
 	m.offset, m.rowOffset = 0, 0
+}
+
+// openExportPicker starts the export flow: choose a format, then type a
+// destination path. Reachable even on a clean report — an operator with
+// nothing to fix may still want to hand a colleague proof of that.
+func (m *appModel) openExportPicker() {
+	m.exportCursor = 0
+	m.exportPrev = m.mode
+	m.mode = modeExport
+}
+
+// keyExport drives the format picker. Enter carries the choice into
+// modeExportPath rather than exporting immediately — a format with no
+// destination is not yet a complete request.
+func (m *appModel) keyExport(key string) (tea.Model, tea.Cmd) {
+	formats := core.ExportFormats()
+	switch key {
+	case "up", "k":
+		m.exportCursor = clamp(m.exportCursor-1, 0, len(formats)-1)
+	case "down", "j":
+		m.exportCursor = clamp(m.exportCursor+1, 0, len(formats)-1)
+	case "enter", "y":
+		if len(formats) == 0 {
+			return m, nil
+		}
+		f := formats[m.exportCursor]
+		m.exportFormat = f.ID
+		m.exportPath = []rune(defaultExportPath(f))
+		m.exportPathCursor = len(m.exportPath)
+		m.mode = modeExportPath
+	case "esc", "q", "backspace":
+		m.mode = m.exportPrev
+	}
+	return m, nil
+}
+
+// keyExportPath drives the free-text destination field — hand-rolled rather
+// than a general-purpose text-input component, since the whole need is a
+// single-line path buffer with basic editing. A rune slice rather than a
+// string because every keystroke inserts or deletes at exportPathCursor.
+func (m *appModel) keyExportPath(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		m.mode = modeExport
+	case "enter":
+		if len(m.exportPath) == 0 {
+			return m, nil // no default substituted; the field just stays open
+		}
+		path := string(m.exportPath)
+		m.mode = modeApplying
+		m.applyLabel = "Exporting " + m.exportFormat + "…"
+		m.applyStartedAt, m.applyElapsed = time.Now(), 0
+		return m, tea.Batch(exportCmd(m.engine, m.report, m.exportFormat, path, m.saveExport), tickElapsed())
+	case "backspace":
+		if m.exportPathCursor > 0 {
+			m.exportPath = append(m.exportPath[:m.exportPathCursor-1], m.exportPath[m.exportPathCursor:]...)
+			m.exportPathCursor--
+		}
+	case "delete":
+		if m.exportPathCursor < len(m.exportPath) {
+			m.exportPath = append(m.exportPath[:m.exportPathCursor], m.exportPath[m.exportPathCursor+1:]...)
+		}
+	case "left":
+		m.exportPathCursor = clamp(m.exportPathCursor-1, 0, len(m.exportPath))
+	case "right":
+		m.exportPathCursor = clamp(m.exportPathCursor+1, 0, len(m.exportPath))
+	case "home":
+		m.exportPathCursor = 0
+	case "end":
+		m.exportPathCursor = len(m.exportPath)
+	default:
+		// bubbletea reports named keys ("up", "enter", "ctrl+a", ...) as
+		// multi-rune strings, so len==1 is what excludes them and admits an
+		// ordinary printable character.
+		r := []rune(key)
+		if len(r) == 1 && r[0] >= 0x20 {
+			m.exportPath = append(m.exportPath[:m.exportPathCursor],
+				append([]rune{r[0]}, m.exportPath[m.exportPathCursor:]...)...)
+			m.exportPathCursor++
+		}
+	}
+	return m, nil
+}
+
+// defaultExportPath is the path the field starts pre-filled with — the
+// current directory, which is where an interactive user is already
+// sitting, and every character of it stays editable.
+func defaultExportPath(f core.FormatInfo) string {
+	return "hostveil-report-" + time.Now().Format("2006-01-02") + "." + f.Ext
 }
 
 // openThemePicker remembers the current theme so cancelling can restore it,

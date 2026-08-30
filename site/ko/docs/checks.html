@@ -571,16 +571,19 @@
             <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
+              <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all — only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Add security_opt no-new-privileges:true</p>
+              <p class="fix-benefit" lang="en">✓ A process that breaks into this container can no longer gain more privilege than it started with via a setuid binary — one of the more common container-escape stepping stones, closed.</p>
               <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds008"><code>compose.ds008</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set restart: unless-stopped</p>
+              <p class="fix-benefit" lang="en">✓ The service comes back on its own after a crash, an OOM kill, or a host reboot instead of silently staying down until someone notices.</p>
               <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds010"><code>compose.ds010</code> <span class="fix-kind review">Review</span></dt>
@@ -588,14 +591,17 @@
               <ul>
                 <li>
               <p lang="en">Limit app to 1g — typical application container (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
               <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
                 <li>
               <p lang="en">Limit app to 512m — small service (proxy, exporter, static site)</p>
+              <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
               <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
                 <li>
               <p lang="en">Limit app to 2g — database or JVM service</p>
+              <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
               <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
@@ -603,11 +609,13 @@
             <dt id="fix-compose.ds018"><code>compose.ds018</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
+              <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all — only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds019"><code>compose.ds019</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
+              <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all — only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
           </dl>
@@ -616,94 +624,114 @@
             <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH agent forwarding</p>
+              <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never actually stored here.</p>
               <p class="fix-warning" lang="en">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
             </dd>
             <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH TCP forwarding</p>
+              <p class="fix-benefit" lang="en">✓ Closes SSH's local, remote, and dynamic port forwarding — a common pivot and tunnel-out vector for anyone who gets a session on this host.</p>
               <p class="fix-warning" lang="en">⚠ Existing local, remote, and dynamic SSH tunnels will stop working.</p>
             </dd>
             <dt id="fix-ssh.clientalivecountmax"><code>ssh.clientalivecountmax</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Limit unanswered SSH keepalives</p>
+              <p class="fix-benefit" lang="en">✓ Bounds how long a dead or hung session is held open, freeing the session slot instead of leaving it reserved indefinitely.</p>
             </dd>
             <dt id="fix-ssh.clientaliveinterval"><code>ssh.clientaliveinterval</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Probe idle SSH clients every five minutes</p>
+              <p class="fix-benefit" lang="en">✓ Detects and disconnects idle or dead clients on a schedule, instead of leaving a session open for as long as the network happens to keep the TCP connection alive.</p>
               <p class="fix-warning" lang="en">⚠ Long-running idle sessions may be disconnected when their clients stop responding.</p>
             </dd>
             <dt id="fix-ssh.emptypasswords"><code>ssh.emptypasswords</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable empty passwords</p>
+              <p class="fix-benefit" lang="en">✓ Closes SSH login with a blank password — the one credential check an attacker never even has to guess.</p>
             </dd>
             <dt id="fix-ssh.fingerprinthash"><code>ssh.fingerprinthash</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Use SHA-256 host-key fingerprints</p>
+              <p class="fix-benefit" lang="en">✓ Uses a stronger hash for the host-key fingerprint shown to users and tooling verifying this server's identity.</p>
             </dd>
             <dt id="fix-ssh.gatewayports"><code>ssh.gatewayports</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind remote-forwarded ports to loopback only</p>
+              <p class="fix-benefit" lang="en">✓ Stops an <code>ssh -R</code> remote-forwarded port becoming reachable from other machines, closing a route around whatever this host's own firewall is doing.</p>
               <p class="fix-warning" lang="en">⚠ If you rely on <code>ssh -R</code> tunnels being reachable from other machines, this closes them to loopback.</p>
             </dd>
             <dt id="fix-ssh.hostbasedauth"><code>ssh.hostbasedauth</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable host-based authentication</p>
+              <p class="fix-benefit" lang="en">✓ Removes a trust-based login path that bypasses per-user keys entirely.</p>
               <p class="fix-warning" lang="en">⚠ If any user logs in via host-based trust rather than their own key, this removes that path.</p>
             </dd>
             <dt id="fix-ssh.ignorerhosts"><code>ssh.ignorerhosts</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Ignore legacy rhosts trust files</p>
+              <p class="fix-benefit" lang="en">✓ Ignores legacy .rhosts trust files, closing a decades-old authentication bypass that has no place on a hardened host.</p>
             </dd>
             <dt id="fix-ssh.kbdinteractive"><code>ssh.kbdinteractive</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable keyboard-interactive authentication</p>
+              <p class="fix-benefit" lang="en">✓ Closes the same password-equivalent prompt path PasswordAuthentication closes, for the keyboard-interactive method some clients use instead.</p>
               <p class="fix-warning" lang="en">⚠ PAM-based one-time codes (2FA prompts) also use this mechanism — keep it enabled if your logins go through one.</p>
             </dd>
             <dt id="fix-ssh.logingracetime"><code>ssh.logingracetime</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Lower LoginGraceTime to 60 seconds</p>
+              <p class="fix-benefit" lang="en">✓ Shortens the window an unauthenticated connection can hold a login slot open, reducing exposure to connection-slot exhaustion.</p>
             </dd>
             <dt id="fix-ssh.loglevel"><code>ssh.loglevel</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Log SSH key fingerprints</p>
+              <p class="fix-benefit" lang="en">✓ Logs the key fingerprint used on every login, giving the operator forensic evidence of exactly which key authenticated — not just that a login succeeded.</p>
             </dd>
             <dt id="fix-ssh.maxauthtries"><code>ssh.maxauthtries</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Lower MaxAuthTries to 3</p>
+              <p class="fix-benefit" lang="en">✓ Throttles how many credential guesses a single SSH connection gets before it is dropped, slowing a brute-force attempt against this host specifically.</p>
             </dd>
             <dt id="fix-ssh.maxsessions"><code>ssh.maxsessions</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Limit multiplexed SSH sessions</p>
+              <p class="fix-benefit" lang="en">✓ Caps multiplexed sessions per connection, limiting how much one compromised or stolen connection can do at once.</p>
               <p class="fix-warning" lang="en">⚠ Clients opening more than two sessions over one SSH connection will be refused.</p>
             </dd>
             <dt id="fix-ssh.passwordauth"><code>ssh.passwordauth</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable password authentication</p>
+              <p class="fix-benefit" lang="en">✓ Removes password-guessing as an SSH attack surface entirely — only a held key gets in from here on.</p>
               <p class="fix-warning" lang="en">⚠ Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH.</p>
             </dd>
             <dt id="fix-ssh.permittunnel"><code>ssh.permittunnel</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH tun/tap tunnels</p>
+              <p class="fix-benefit" lang="en">✓ Disables SSH's own VPN-like tun/tap tunneling, removing a route around whatever network controls this host is behind.</p>
               <p class="fix-warning" lang="en">⚠ Existing SSH VPN or tun/tap workflows will stop working.</p>
             </dd>
             <dt id="fix-ssh.permituserenvironment"><code>ssh.permituserenvironment</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable user-supplied SSH environments</p>
+              <p class="fix-benefit" lang="en">✓ Stops a user's ~/.ssh/environment overriding the server process's own environment — a known way to hijack LD_PRELOAD or similar into a login session.</p>
               <p class="fix-warning" lang="en">⚠ Login automation that relies on ~/.ssh/environment will stop receiving those variables.</p>
             </dd>
             <dt id="fix-ssh.printlastlog"><code>ssh.printlastlog</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Show the previous login</p>
+              <p class="fix-benefit" lang="en">✓ Shows the previous login on every connect, so a user has a chance to notice a login they did not make.</p>
             </dd>
             <dt id="fix-ssh.rootlogin"><code>ssh.rootlogin</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Allow root only with an SSH key (prohibit-password) (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Keeps key-based root access working while removing the one thing root logins are actually dangerous for: a guessable or stolen password.</p>
               <p class="fix-warning" lang="en">⚠ Keep a working key for root, or use a sudo user instead.</p>
                 </li>
                 <li>
               <p lang="en">Disable root login entirely (no)</p>
+              <p class="fix-benefit" lang="en">✓ Removes direct root login over SSH entirely, so compromising this host's authentication means compromising a named, sudo-capable user instead of the one account every attacker already knows the name of.</p>
               <p class="fix-warning" lang="en">⚠ Make sure another user can log in and use sudo before applying this.</p>
                 </li>
               </ul>
@@ -711,19 +739,23 @@
             <dt id="fix-ssh.strictmodes"><code>ssh.strictmodes</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Enforce SSH login-file ownership</p>
+              <p class="fix-benefit" lang="en">✓ Refuses to honor login files (keys, config) with loose ownership or permissions, closing a local tampering vector.</p>
             </dd>
             <dt id="fix-ssh.tcpkeepalive"><code>ssh.tcpkeepalive</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable TCP keepalives for SSH</p>
+              <p class="fix-benefit" lang="en">✓ Stops relying on spoofable TCP keepalives for liveness, leaving ClientAliveInterval's encrypted check as the one source of truth for whether a session is still alive.</p>
               <p class="fix-warning" lang="en">⚠ Use ClientAliveInterval for encrypted liveness checks; dead connections may otherwise take longer to disappear from intermediate network devices.</p>
             </dd>
             <dt id="fix-ssh.usedns"><code>ssh.usedns</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable SSH reverse-DNS lookups</p>
+              <p class="fix-benefit" lang="en">✓ Removes a DNS lookup from the login path — both a minor timing/DoS surface and a spoofing vector, for a lookup the login never actually needed.</p>
             </dd>
             <dt id="fix-ssh.x11forwarding"><code>ssh.x11forwarding</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable X11 forwarding</p>
+              <p class="fix-benefit" lang="en">✓ Removes an X11 forwarding channel that malware or an attacker with a foothold could otherwise ride out of the session.</p>
             </dd>
           </dl>
           <h3>방화벽</h3>
@@ -731,11 +763,13 @@
             <dt id="fix-firewall.default-allow"><code>firewall.default-allow</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then set ufw's default inbound policy to deny</p>
+              <p class="fix-benefit" lang="en">✓ Flips a firewall that is already running from allow-by-default to deny-by-default, closing every port nothing has explicitly opened on a host where a firewall was already assumed to be doing that job.</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw default allow incoming</code> by hand.</p>
             </dd>
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
+              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports hostveil confirmed sshd is actually listening on stay reachable — everything else stops accepting connections from off this host.</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw disable</code> by hand.</p>
             </dd>
           </dl>
@@ -744,66 +778,79 @@
             <dt id="fix-updates.apt-listchanges"><code>updates.apt-listchanges</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.apt-show-versions"><code>updates.apt-show-versions</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.auditd"><code>updates.auditd</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.debsums"><code>updates.debsums</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.disabled"><code>updates.disabled</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable dnf-automatic</p>
+              <p class="fix-benefit" lang="en">✓ Once enabled, security patches for every installed package arrive on their own instead of depending on someone remembering to run apt/dnf.</p>
               <p class="fix-warning" lang="en">⚠ Installs dnf-automatic and enables its timer. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.fail2ban"><code>updates.fail2ban</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.pam-pwquality"><code>updates.pam-pwquality</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.pam-tmpdir"><code>updates.pam-tmpdir</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.pending-security"><code>updates.pending-security</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Refresh apt metadata and fully upgrade installed packages</p>
+              <p class="fix-benefit" lang="en">✓ Applies whatever security patches are already sitting unapplied right now — closes today's already-known gaps rather than waiting for the next automatic run.</p>
               <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon — and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to actually take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
             </dd>
             <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.sysstat"><code>updates.sysstat</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
+              <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
             <dt id="fix-updates.sysstat-disabled"><code>updates.sysstat-disabled</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ENABLED to true</p>
+              <p class="fix-benefit" lang="en">✓ Turns on the data collection the sysstat package already has installed, so historical resource data actually starts accumulating instead of the package sitting present but silent.</p>
             </dd>
           </dl>
           <h3>CVE</h3>
@@ -813,10 +860,12 @@
               <ul>
                 <li>
               <p lang="en">Pull the new image and recreate app now (recommended)</p>
-              <p class="fix-warning" lang="en">⚠ This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. Note the current image ID (<code>docker compose -f /opt/example/docker-compose.yml images</code>) before applying, so you can pin it back if the new one misbehaves.</p>
+              <p class="fix-benefit" lang="en">✓ Re-resolves the tag to whatever it currently points at, which is how the vendor ships fixes for a floating-tag image — it may include a patch for the CVE that triggered this finding, though hostveil cannot guarantee it does, since the same tag can also move for unrelated reasons. On a host where staying current matters more than staying unchanged, this is the fastest way to find out.</p>
+              <p class="fix-warning" lang="en">⚠ This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. Note the current image ID (<code>docker compose -f /opt/example/docker-compose.yml images</code>) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled — on a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.</p>
                 </li>
                 <li>
               <p lang="en">Download the new image only; recreate app on your own schedule</p>
+              <p class="fix-benefit" lang="en">✓ Downloads the new image without touching the running container, so there is a chance to inspect it — its digest, its changed packages, its release notes — before deciding whether pulling it in is worth the risk to a service that is stable today.</p>
               <p class="fix-warning" lang="en">⚠ This changes nothing that is running: the image is downloaded but the container keeps using the old one until you recreate it, and the finding will still be reported until then. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this.</p>
                 </li>
               </ul>
@@ -827,16 +876,19 @@
             <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Bind Redis to loopback</p>
+              <p class="fix-benefit" lang="en">✓ Redis ships with no authentication by default; binding it to loopback means the only way to reach it is already being on this host — closes it to the network entirely.</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
             <dt id="fix-ports.redis-disable-config"><code>ports.redis-disable-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Disable the Redis CONFIG command</p>
+              <p class="fix-benefit" lang="en">✓ Removes remote CONFIG SET/GET, closing the well-known Redis-to-remote-code-execution chain that writes a webshell or SSH key to disk via CONFIG SET dir/dbfilename.</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
             <dt id="fix-ports.redis-protected-mode"><code>ports.redis-protected-mode</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Enable Redis protected mode</p>
+              <p class="fix-benefit" lang="en">✓ Turns on Redis's own built-in refusal to serve remote clients when no password is set — a second, independent barrier behind the bind address, so a firewall or compose slip elsewhere doesn't leave Redis exposed anyway.</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
           </dl>
@@ -845,32 +897,39 @@
             <dt id="fix-accounts.core-dumps"><code>accounts.core-dumps</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set a hard core-size limit of zero</p>
+              <p class="fix-benefit" lang="en">✓ Stops a crashed privileged process writing a core file to disk — the easiest place a live secret in memory (a password, a key) ends up sitting in plaintext after a crash.</p>
             </dd>
             <dt id="fix-accounts.default-umask"><code>accounts.default-umask</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set the default umask to 027</p>
+              <p class="fix-benefit" lang="en">✓ New files a user creates default to unreadable by other accounts on the box, closing the easiest way a stray world-readable file leaks something it shouldn't.</p>
             </dd>
             <dt id="fix-accounts.emptypassword"><code>accounts.emptypassword</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Lock alice with <code>passwd -l</code></p>
+              <p class="fix-benefit" lang="en">✓ Closes the one account whose password prompt currently succeeds for anyone who tries it, including a stranger who has never touched this host before.</p>
               <p class="fix-warning" lang="en">⚠ If alice is your only way to reach this machine locally (console, su) and it has no other credential, locking it removes that access. Confirm you have another route in — an SSH key, a different sudo-capable account — before applying. The remote SSH path is already closed by ssh.emptypasswords; this only closes the local one.</p>
             </dd>
             <dt id="fix-accounts.local-banner"><code>accounts.local-banner</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
+              <p class="fix-benefit" lang="en">✓ Puts a legal notice in front of anyone who logs into this host, local or remote, which several jurisdictions require before monitoring or logging a session can be used as evidence against an intruder.</p>
               <p class="fix-warning" lang="en">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
             </dd>
             <dt id="fix-accounts.password-aging"><code>accounts.password-aging</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Harden password aging defaults</p>
+              <p class="fix-benefit" lang="en">✓ Forces credentials to actually expire and blocks changing a password back to itself immediately, so a leaked password has a shelf life instead of being valid forever.</p>
             </dd>
             <dt id="fix-accounts.password-rounds"><code>accounts.password-rounds</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Harden password hashing rounds</p>
+              <p class="fix-benefit" lang="en">✓ Raises the SHA-512 rounds used to hash new or changed passwords, slowing an offline dictionary or brute-force attempt against a stolen /etc/shadow by roughly the same factor.</p>
             </dd>
             <dt id="fix-accounts.remote-banner"><code>accounts.remote-banner</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
+              <p class="fix-benefit" lang="en">✓ Puts a legal notice in front of anyone who logs into this host, local or remote, which several jurisdictions require before monitoring or logging a session can be used as evidence against an intruder.</p>
               <p class="fix-warning" lang="en">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
             </dd>
           </dl>
@@ -879,82 +938,102 @@
             <dt id="fix-fileperms.at-allow"><code>fileperms.at-allow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps control of who is allowed to schedule future one-off commands to root alone.</p>
             </dd>
             <dt id="fix-fileperms.at-deny"><code>fileperms.at-deny</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps control of who is blocked from scheduling future one-off commands to root alone.</p>
             </dd>
             <dt id="fix-fileperms.compiler"><code>fileperms.compiler</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Removes the system compiler from every local account's reach by default, taking away a convenient way to build exploit code from a local foothold.</p>
             </dd>
             <dt id="fix-fileperms.cron"><code>fileperms.cron</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account scheduling a command to run as root through a system cron definition.</p>
             </dd>
             <dt id="fix-fileperms.cron-allow"><code>fileperms.cron-allow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps control of who is allowed to schedule recurring cron jobs to root alone.</p>
             </dd>
             <dt id="fix-fileperms.cron-deny"><code>fileperms.cron-deny</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps control of who is blocked from scheduling recurring cron jobs to root alone.</p>
             </dd>
             <dt id="fix-fileperms.crontab"><code>fileperms.crontab</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Closes an avoidable persistence path: the system crontab can run commands as root, and this keeps it restricted to what the scheduler itself needs.</p>
             </dd>
             <dt id="fix-fileperms.docker-config"><code>fileperms.docker-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops other accounts on the host reading root's Docker registry credentials, which could otherwise pull private images or publish under this host's identity.</p>
             </dd>
             <dt id="fix-fileperms.group"><code>fileperms.group</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account adding itself to a privileged group — sudo, docker — by editing the group database directly.</p>
             </dd>
             <dt id="fix-fileperms.grub-config"><code>fileperms.grub-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account reading or rewriting the bootloader configuration, which controls what runs before any of the host's normal access controls are active.</p>
             </dd>
             <dt id="fix-fileperms.grub2-config"><code>fileperms.grub2-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as the GRUB config, for the GRUB2 variant.</p>
             </dd>
             <dt id="fix-fileperms.gshadow"><code>fileperms.gshadow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account reading group passwords and membership data that /etc/gshadow is supposed to keep to root and the shadow group alone.</p>
             </dd>
             <dt id="fix-fileperms.hostkey"><code>fileperms.hostkey</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account reading this server's SSH private host key — the one thing that would let them impersonate this host to anyone connecting.</p>
             </dd>
             <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account editing the account database directly, closing a path to adding an account or handing itself UID 0.</p>
             </dd>
             <dt id="fix-fileperms.passwd-backup"><code>fileperms.passwd-backup</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account planting a change in the passwd backup that becomes a live credential the next time it is restored.</p>
             </dd>
             <dt id="fix-fileperms.shadow"><code>fileperms.shadow</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops any account other than root (and the shadow group) reading password hashes off disk, closing the offline-cracking path entirely.</p>
             </dd>
             <dt id="fix-fileperms.sshd-config"><code>fileperms.sshd-config</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account weakening the SSH server's own config (re-enabling root login or password auth) to open a way back in.</p>
             </dd>
             <dt id="fix-fileperms.sudoers"><code>fileperms.sudoers</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account granting itself root by editing sudo's own policy file.</p>
             </dd>
             <dt id="fix-fileperms.sudoers-dropins"><code>fileperms.sudoers-dropins</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as the main sudoers file, for a drop-in carrying the exact same authority.</p>
             </dd>
             <dt id="fix-fileperms.systemd-units"><code>fileperms.systemd-units</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account replacing the command a systemd unit runs the next time it starts as root.</p>
             </dd>
           </dl>
           <h3>AI 에이전트</h3>
@@ -962,26 +1041,32 @@
             <dt id="fix-agent.config-perms"><code>agent.config-perms</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops other local accounts on this host reading the agent runtime's own configuration, which can carry API keys and tool permissions.</p>
             </dd>
             <dt id="fix-agent.control-ui-insecure"><code>agent.control-ui-insecure</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Closes the agent's control UI to unauthenticated access, so reaching it requires being someone the operator actually let in.</p>
             </dd>
             <dt id="fix-agent.elevated-enabled"><code>agent.elevated-enabled</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Stops the agent running with elevated or administrative privileges by default, so a prompt-injected or misused tool call can't act with more authority than the task ever needed.</p>
             </dd>
             <dt id="fix-agent.exec-unrestricted"><code>agent.exec-unrestricted</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Stops the agent executing shell commands at all without an explicit human decision each time — closes the most direct path from "the agent was tricked by its input" to "a shell command ran on this host."</p>
             </dd>
             <dt id="fix-agent.secret-exposed"><code>agent.secret-exposed</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Stops other local accounts reading a secret file the agent runtime keeps in its state directory.</p>
             </dd>
             <dt id="fix-agent.ssrf-private-network"><code>agent.ssrf-private-network</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Stops the agent's own tool calls reaching internal or private network addresses on the operator's behalf — closes the classic SSRF pivot from "the agent fetched a URL" to "the agent probed the internal network."</p>
             </dd>
           </dl>
           <h3>커널</h3>
@@ -989,27 +1074,33 @@
             <dt id="fix-sysctl.accept-redirects"><code>sysctl.accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-redirects.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel trusting ICMP redirects, closing an easy way for something on the local network to quietly re-route this host's outbound traffic through itself.</p>
             </dd>
             <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-source-route.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel honoring source-routed packets, closing a way to make traffic take a path chosen by whoever sent it rather than by this network's own routing.</p>
             </dd>
             <dt id="fix-sysctl.aslr"><code>sysctl.aslr</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-aslr.conf</p>
+              <p class="fix-benefit" lang="en">✓ Turns on full address space layout randomization, making a memory-corruption bug substantially harder to turn into a reliable exploit.</p>
             </dd>
             <dt id="fix-sysctl.bogus-icmp-errors"><code>sysctl.bogus-icmp-errors</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-bogus-icmp-errors.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel logging bogus ICMP error responses as if real, reducing log noise and a minor spoofing-detection blind spot.</p>
             </dd>
             <dt id="fix-sysctl.bootp-relay"><code>sysctl.bootp-relay</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-bootp-relay.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host forwarding BOOTP/DHCP broadcasts between networks it has no business relaying for.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host forwarding BOOTP/DHCP broadcasts between networks it has no business relaying for.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1017,35 +1108,43 @@
             <dt id="fix-sysctl.bpf-jit-harden"><code>sysctl.bpf-jit-harden</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-bpf-jit-harden.conf</p>
+              <p class="fix-benefit" lang="en">✓ Hardens the BPF JIT compiler's output against the spraying techniques used to turn a BPF bug into kernel code execution.</p>
             </dd>
             <dt id="fix-sysctl.core-uses-pid"><code>sysctl.core-uses-pid</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-core-uses-pid.conf</p>
+              <p class="fix-benefit" lang="en">✓ Includes the process ID in a core dump's filename, so a crash does not silently overwrite an earlier one a security investigation might still need.</p>
             </dd>
             <dt id="fix-sysctl.ctrl-alt-del"><code>sysctl.ctrl-alt-del</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ctrl-alt-del.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops Ctrl-Alt-Del triggering an instant reboot, closing a trivial denial-of-service available to anyone with physical or console access.</p>
             </dd>
             <dt id="fix-sysctl.dmesg-restrict"><code>sysctl.dmesg-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-dmesg-restrict.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops unprivileged users reading the kernel log, which can leak addresses and details useful for a kernel-level exploit.</p>
             </dd>
             <dt id="fix-sysctl.icmp-broadcasts"><code>sysctl.icmp-broadcasts</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-icmp-broadcasts.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host answering ICMP echo requests sent to a broadcast address, closing its use as an amplifier in a Smurf-style denial-of-service attack.</p>
             </dd>
             <dt id="fix-sysctl.ipv4-default-accept-redirects"><code>sysctl.ipv4-default-accept-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv4-default-accept-redirects.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as accept-redirects, as the IPv4 default template new interfaces inherit.</p>
             </dd>
             <dt id="fix-sysctl.ipv4-default-rp-filter"><code>sysctl.ipv4-default-rp-filter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv4-default-rp-filter.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as rp-filter, as the default template.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as rp-filter, as the default template.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1053,54 +1152,66 @@
             <dt id="fix-sysctl.ipv6-accept-redirects-all"><code>sysctl.ipv6-accept-redirects-all</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-all.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as accept-redirects, for IPv6, applied to every interface.</p>
             </dd>
             <dt id="fix-sysctl.ipv6-accept-redirects-default"><code>sysctl.ipv6-accept-redirects-default</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-redirects-default.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as accept-redirects, for IPv6, as the default template new interfaces inherit.</p>
             </dd>
             <dt id="fix-sysctl.ipv6-accept-source-route-all"><code>sysctl.ipv6-accept-source-route-all</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-all.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as accept-source-route, for IPv6, every interface.</p>
             </dd>
             <dt id="fix-sysctl.ipv6-accept-source-route-default"><code>sysctl.ipv6-accept-source-route-default</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-accept-source-route-default.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as accept-source-route, for IPv6, as the default template.</p>
             </dd>
             <dt id="fix-sysctl.ipv6-send-redirects"><code>sysctl.ipv6-send-redirects</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ipv6-send-redirects.conf</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as send-redirects, for IPv6.</p>
             </dd>
             <dt id="fix-sysctl.kptr-restrict"><code>sysctl.kptr-restrict</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-kptr-restrict.conf</p>
+              <p class="fix-benefit" lang="en">✓ Hides kernel pointer addresses from unprivileged reads of /proc, taking away information an attacker would otherwise use to build a kernel exploit.</p>
             </dd>
             <dt id="fix-sysctl.log-martians"><code>sysctl.log-martians</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-log-martians.conf</p>
+              <p class="fix-benefit" lang="en">✓ Logs packets carrying an impossible source or destination address, giving visibility into spoofing or misconfiguration attempts that would otherwise pass silently.</p>
             </dd>
             <dt id="fix-sysctl.module-dccp"><code>sysctl.module-dccp</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
+              <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the DCCP module at all — a rarely-used protocol on an ordinary self-hosted server, and one that has shown up repeatedly as a local attack vector when left loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
             <dt id="fix-sysctl.module-rds"><code>sysctl.module-rds</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
+              <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the RDS module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
             <dt id="fix-sysctl.module-sctp"><code>sysctl.module-sctp</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
+              <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the SCTP module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
             <dt id="fix-sysctl.module-tipc"><code>sysctl.module-tipc</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
+              <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the TIPC module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
             <dt id="fix-sysctl.module-usbstorage"><code>sysctl.module-usbstorage</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
+              <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the USB mass-storage driver, closing a common way to pull data off or introduce malware onto a physically-accessible server via a USB drive.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
             <dt id="fix-sysctl.multicast-forwarding"><code>sysctl.multicast-forwarding</code> <span class="fix-kind review">Review</span></dt>
@@ -1108,9 +1219,11 @@
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-multicast-forwarding.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host relaying multicast traffic between interfaces it has no business routing for.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host relaying multicast traffic between interfaces it has no business routing for.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1118,27 +1231,33 @@
             <dt id="fix-sysctl.perf-events"><code>sysctl.perf-events</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-perf-events.conf</p>
+              <p class="fix-benefit" lang="en">✓ Restricts performance-counter access so an unprivileged user can't use it to leak kernel addresses or run a side-channel attack against other processes.</p>
             </dd>
             <dt id="fix-sysctl.protected-fifos"><code>sysctl.protected-fifos</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-fifos.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops a process writing into a FIFO it does not own in a world-writable sticky directory — the same class protected-links closes for symlinks.</p>
             </dd>
             <dt id="fix-sysctl.protected-links"><code>sysctl.protected-links</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-links.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops a process following a symlink it does not own in a world-writable sticky directory, closing a classic local privilege-escalation and file-clobbering trick.</p>
             </dd>
             <dt id="fix-sysctl.protected-regular"><code>sysctl.protected-regular</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-protected-regular.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops a process writing into a regular file it does not own in a world-writable sticky directory, for the same reason.</p>
             </dd>
             <dt id="fix-sysctl.proxy-arp-all"><code>sysctl.proxy-arp-all</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-proxy-arp-all.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel answering ARP on behalf of other hosts across interfaces, closing an easy way to bridge or spoof between network segments this host sits on.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel answering ARP on behalf of other hosts across interfaces, closing an easy way to bridge or spoof between network segments this host sits on.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1148,9 +1267,11 @@
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-proxy-arp-default.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as proxy-arp-all, as the default template.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Same protection as proxy-arp-all, as the default template.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1158,15 +1279,18 @@
             <dt id="fix-sysctl.ptrace-scope"><code>sysctl.ptrace-scope</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-ptrace-scope.conf</p>
+              <p class="fix-benefit" lang="en">✓ Restricts ptrace to a process's own children, closing a well-known technique for one compromised process to read another's memory or inject code into it.</p>
             </dd>
             <dt id="fix-sysctl.rp-filter"><code>sysctl.rp-filter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-rp-filter.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Drops packets whose source address could not have arrived on the interface they came in on, closing a common IP-spoofing technique.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Drops packets whose source address could not have arrived on the interface they came in on, closing a common IP-spoofing technique.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1176,9 +1300,11 @@
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-send-redirects.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router — removes a route-injection tool a compromised host could use against its neighbors.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router — removes a route-injection tool a compromised host could use against its neighbors.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1186,19 +1312,23 @@
             <dt id="fix-sysctl.suid-dumpable"><code>sysctl.suid-dumpable</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-suid-dumpable.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops a crashed setuid process writing a core dump that can contain whatever secrets were in its memory at the moment it crashed.</p>
             </dd>
             <dt id="fix-sysctl.syncookies"><code>sysctl.syncookies</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-syncookies.conf</p>
+              <p class="fix-benefit" lang="en">✓ Enables SYN cookies, so a SYN-flood cannot exhaust the connection queue and deny the host's legitimate services.</p>
             </dd>
             <dt id="fix-sysctl.sysrq"><code>sysctl.sysrq</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-sysrq.conf (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Restricts the SysRq magic-key functions to the safe subset, closing the ones that can dump memory or force a reboot from an unprivileged local session.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
+              <p class="fix-benefit" lang="en">✓ Restricts the SysRq magic-key functions to the safe subset, closing the ones that can dump memory or force a reboot from an unprivileged local session.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1206,14 +1336,17 @@
             <dt id="fix-sysctl.tcp-rfc1337"><code>sysctl.tcp-rfc1337</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-tcp-rfc1337.conf</p>
+              <p class="fix-benefit" lang="en">✓ Protects against TIME-WAIT assassination, so an off-path attacker cannot reset a connection sitting in TIME_WAIT by spoofing packets at it.</p>
             </dd>
             <dt id="fix-sysctl.tty-ldisc-autoload"><code>sysctl.tty-ldisc-autoload</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-tty-ldisc-autoload.conf</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel auto-loading obscure TTY line disciplines on request, closing a local privilege-escalation path specific line-discipline modules have shipped in the past.</p>
             </dd>
             <dt id="fix-sysctl.unprivileged-bpf"><code>sysctl.unprivileged-bpf</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-unprivileged-bpf.conf</p>
+              <p class="fix-benefit" lang="en">✓ Removes unprivileged users' ability to load BPF programs into the kernel, closing a well-documented local privilege-escalation and kernel-exploit vector.</p>
             </dd>
           </dl>
           <h3>서비스</h3>
@@ -1221,31 +1354,37 @@
             <dt id="fix-systemd.lock-personality"><code>systemd.lock-personality</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set LockPersonality=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the unit switching to an alternate execution personality, closing an old technique for bypassing ASLR.</p>
               <p class="fix-warning" lang="en">⚠ Needing an alternate execution personality is rare outside emulation and compatibility layers. An ordinary service is unaffected; one that needs one fails at the next restart.</p>
             </dd>
             <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit — a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
               <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that deliberately escalates — anything calling a setuid helper — stops working, and it stops at the next restart rather than now.</p>
             </dd>
             <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectClock=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the unit changing the system or hardware clock, closing off a way a compromised service could hide its tracks by tampering with timestamps or break time-based authentication.</p>
               <p class="fix-warning" lang="en">⚠ Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need to change the system or hardware clock. A service that is not one of those stops being able to, at the next restart.</p>
             </dd>
             <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelLogs=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the unit reading /dev/kmsg directly, closing an information-leak path that can hand an attacker kernel addresses useful for a further exploit.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that reads kernel logs directly — a diagnostics tool, an agent reading /dev/kmsg — needs this off. Most services never touch it.</p>
             </dd>
             <dt id="fix-systemd.protect-kernel-modules"><code>systemd.protect-kernel-modules</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelModules=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the unit loading or removing kernel modules itself, closing a direct path to running arbitrary code in kernel space from what should be an ordinary service.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that loads or removes kernel modules itself at runtime — rather than modules already loaded at boot — needs this off.</p>
             </dd>
             <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">Auto-fix</span></dt>
             <dd>
               <p lang="en">Set RestrictSUIDSGID=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the unit creating new setuid or setgid files, closing a persistence and privilege-escalation path a compromised service could otherwise leave behind for later.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that itself creates setuid or setgid files — a package manager, an installer — needs this off. An ordinary network daemon does not create such files and is unaffected.</p>
             </dd>
           </dl>

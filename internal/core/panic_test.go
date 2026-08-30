@@ -28,8 +28,9 @@ func crashingRegistry(t *testing.T) *fix.Registry {
 			Label: "a fix that crashes while transforming",
 			Kind:  model.RemediationAuto,
 			Actions: []fix.Action{{
-				Kind:  fix.ActionEdit,
-				Label: "rewrite",
+				Kind:    fix.ActionEdit,
+				Label:   "rewrite",
+				Benefit: "test benefit",
 				// The finding's own path, so the transform is reached rather
 				// than the read failing first.
 				Path: f.Metadata["file"],

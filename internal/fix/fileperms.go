@@ -41,6 +41,52 @@ func registerFilePerms(r *Registry) {
 	}
 }
 
+// filePermsBenefit names what tightening each path actually buys, since
+// buildTightenMode is one generic builder shared by every ID above (and by
+// two agent-domain findings in agent.go) — there is no per-finding closure
+// to hang a Benefit string on directly, so this is keyed by finding ID
+// instead.
+var filePermsBenefit = map[string]string{
+	"agent.config-perms": "Stops other local accounts on this host reading the agent runtime's own " +
+		"configuration, which can carry API keys and tool permissions.",
+	"agent.secret-exposed": "Stops other local accounts reading a secret file the agent runtime keeps " +
+		"in its state directory.",
+	"fileperms.shadow": "Stops any account other than root (and the shadow group) reading password " +
+		"hashes off disk, closing the offline-cracking path entirely.",
+	"fileperms.passwd": "Stops a non-root account editing the account database directly, closing a " +
+		"path to adding an account or handing itself UID 0.",
+	"fileperms.group": "Stops a non-root account adding itself to a privileged group — sudo, docker " +
+		"— by editing the group database directly.",
+	"fileperms.sshd-config": "Stops a non-root account weakening the SSH server's own config " +
+		"(re-enabling root login or password auth) to open a way back in.",
+	"fileperms.hostkey": "Stops a non-root account reading this server's SSH private host key — the " +
+		"one thing that would let them impersonate this host to anyone connecting.",
+	"fileperms.gshadow": "Stops a non-root account reading group passwords and membership data that " +
+		"/etc/gshadow is supposed to keep to root and the shadow group alone.",
+	"fileperms.sudoers": "Stops a non-root account granting itself root by editing sudo's own policy file.",
+	"fileperms.sudoers-dropins": "Same protection as the main sudoers file, for a drop-in carrying " +
+		"the exact same authority.",
+	"fileperms.cron": "Stops a non-root account scheduling a command to run as root through a " +
+		"system cron definition.",
+	"fileperms.systemd-units": "Stops a non-root account replacing the command a systemd unit runs " +
+		"the next time it starts as root.",
+	"fileperms.docker-config": "Stops other accounts on the host reading root's Docker registry " +
+		"credentials, which could otherwise pull private images or publish under this host's identity.",
+	"fileperms.grub-config": "Stops a non-root account reading or rewriting the bootloader " +
+		"configuration, which controls what runs before any of the host's normal access controls are active.",
+	"fileperms.grub2-config": "Same protection as the GRUB config, for the GRUB2 variant.",
+	"fileperms.at-allow":     "Keeps control of who is allowed to schedule future one-off commands to root alone.",
+	"fileperms.at-deny":      "Keeps control of who is blocked from scheduling future one-off commands to root alone.",
+	"fileperms.cron-allow":   "Keeps control of who is allowed to schedule recurring cron jobs to root alone.",
+	"fileperms.cron-deny":    "Keeps control of who is blocked from scheduling recurring cron jobs to root alone.",
+	"fileperms.crontab": "Closes an avoidable persistence path: the system crontab can run commands " +
+		"as root, and this keeps it restricted to what the scheduler itself needs.",
+	"fileperms.passwd-backup": "Stops a non-root account planting a change in the passwd backup that " +
+		"becomes a live credential the next time it is restored.",
+	"fileperms.compiler": "Removes the system compiler from every local account's reach by default, " +
+		"taking away a convenient way to build exploit code from a local foothold.",
+}
+
 // tighten returns the mode with every permission bit outside mask cleared,
 // and nothing else changed.
 //
@@ -104,6 +150,7 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 		Kind:  model.RemediationAuto,
 		Actions: []Action{{
 			Label:    label,
+			Benefit:  filePermsBenefit[f.ID],
 			Kind:     ActionMode,
 			Paths:    paths,
 			SafeRoot: f.Evidence["root"],

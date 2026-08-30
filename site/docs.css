@@ -508,6 +508,10 @@
 
 .fix-kind.review { color: var(--warning); border-color: var(--warning); }
 
+.fix-benefit {
+  color: var(--signal);
+}
+
 .fix-warning {
   color: var(--orange);
 }

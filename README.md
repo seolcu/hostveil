@@ -193,6 +193,7 @@ hostveil history         # list applied fixes and their rollback IDs
 hostveil history --scans # the score of every saved scan, oldest first
 hostveil diagnostics     # collect version/OS/crash/scan info to attach to a bug report
 hostveil explain <id>    # explain a finding (add --ai for an AI second opinion)
+hostveil export --format markdown --output report.md  # or json, sarif, docx, pdf
 hostveil serve           # web dashboard on 127.0.0.1:8787 (open the printed URL)
 hostveil update          # update this binary the way it was installed
 hostveil uninstall       # remove it, keeping your checkpoints

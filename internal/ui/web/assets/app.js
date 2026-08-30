@@ -791,6 +791,7 @@ function showPreview(f, p) {
     head.textContent = p.label;
     body.replaceChildren(
       p.actions.length > 1 ? altPicker(p, chosen, (i) => { chosen = i; draw(); }) : "",
+      a.benefit ? el("div", { class: "benefit" }, "✓  " + a.benefit) : "",
       a.warning ? el("div", { class: "warn" }, "⚠  " + a.warning) : "",
       actionBody(a),
       el("div", { class: "row" },
@@ -1029,6 +1030,25 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("history").onclick = showHistory;
+
+// Export downloads /api/export as a file rather than navigating to it: the
+// route can answer 409 (no scan yet) or 400 (bad format), and a plain <a
+// href> navigation on an error response would replace this whole page with
+// a blank error document instead of leaving flash() to say what happened.
+const exportBtn = document.getElementById("export");
+exportBtn.onclick = () => whileBusy(exportBtn, "Exporting…", async () => {
+  const format = document.getElementById("export-format").value;
+  const res = await fetch("/api/export?format=" + encodeURIComponent(format));
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition") || "";
+  const name = /filename="([^"]+)"/.exec(cd)?.[1] || ("hostveil-report." + format);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 // whileBusy disables a button for the duration of the work it starts, and
 // reports a failure instead of leaving one unhandled.

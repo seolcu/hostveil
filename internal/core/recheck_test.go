@@ -68,7 +68,7 @@ func recheckEngine(t *testing.T, after check.Checker) *Engine {
 		return fix.Fix{
 			Label: "tighten it", Kind: model.RemediationAuto,
 			Actions: []fix.Action{{
-				Label: "tighten", Kind: fix.ActionEdit, Path: path,
+				Label: "tighten", Benefit: "test benefit", Kind: fix.ActionEdit, Path: path,
 				Transform: func([]byte) ([]byte, error) { return []byte("fixed\n"), nil },
 			}},
 		}, nil
@@ -262,7 +262,7 @@ func TestAnEditThatIsNotInForceYetIsNotReportedAsGone(t *testing.T) {
 		return fix.Fix{
 			Label: "edit the file", Kind: model.RemediationAuto,
 			Actions: []fix.Action{{
-				Label: "edit", Kind: fix.ActionEdit, Path: path,
+				Label: "edit", Benefit: "test benefit", Kind: fix.ActionEdit, Path: path,
 				TakesEffectOn: "`docker compose up -d redis`",
 				Transform:     func([]byte) ([]byte, error) { return []byte("fixed\n"), nil },
 			}},

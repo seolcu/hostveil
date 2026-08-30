@@ -10,9 +10,18 @@ import (
 )
 
 func registerAccounts(r *Registry) {
-	r.Register("accounts.password-rounds", buildLoginDefaults("Harden password hashing rounds", []loginDefault{{"SHA_CRYPT_MIN_ROUNDS", "5000"}, {"SHA_CRYPT_MAX_ROUNDS", "10000"}}))
-	r.Register("accounts.default-umask", buildLoginDefaults("Set the default umask to 027", []loginDefault{{"UMASK", "027"}}))
-	r.Register("accounts.password-aging", buildLoginDefaults("Harden password aging defaults", []loginDefault{{"PASS_MIN_DAYS", "1"}, {"PASS_MAX_DAYS", "365"}}))
+	r.Register("accounts.password-rounds", buildLoginDefaults("Harden password hashing rounds",
+		"Raises the SHA-512 rounds used to hash new or changed passwords, slowing an offline "+
+			"dictionary or brute-force attempt against a stolen /etc/shadow by roughly the same factor.",
+		[]loginDefault{{"SHA_CRYPT_MIN_ROUNDS", "5000"}, {"SHA_CRYPT_MAX_ROUNDS", "10000"}}))
+	r.Register("accounts.default-umask", buildLoginDefaults("Set the default umask to 027",
+		"New files a user creates default to unreadable by other accounts on the box, closing the "+
+			"easiest way a stray world-readable file leaks something it shouldn't.",
+		[]loginDefault{{"UMASK", "027"}}))
+	r.Register("accounts.password-aging", buildLoginDefaults("Harden password aging defaults",
+		"Forces credentials to actually expire and blocks changing a password back to itself "+
+			"immediately, so a leaked password has a shelf life instead of being valid forever.",
+		[]loginDefault{{"PASS_MIN_DAYS", "1"}, {"PASS_MAX_DAYS", "365"}}))
 	r.Register("accounts.core-dumps", buildCoreDumpLimit)
 	r.Register("accounts.local-banner", buildAccessBanner)
 	r.Register("accounts.remote-banner", buildAccessBanner)
@@ -47,6 +56,8 @@ func buildLockEmptyPasswordAccount(f model.Finding) (Fix, error) {
 		Kind:      model.RemediationAuto, // one action; exec floors it to Review
 		Actions: []Action{{
 			Label: "Lock " + account + " with `passwd -l`",
+			Benefit: "Closes the one account whose password prompt currently succeeds for anyone who " +
+				"tries it, including a stranger who has never touched this host before.",
 			Warning: "If " + account + " is your only way to reach this machine locally (console, su) " +
 				"and it has no other credential, locking it removes that access. Confirm you have another " +
 				"route in — an SSH key, a different sudo-capable account — before applying. The remote SSH " +
@@ -62,16 +73,20 @@ func buildCoreDumpLimit(f model.Finding) (Fix, error) {
 	if path == "" {
 		return Fix{}, fmt.Errorf("finding %s names no limits path", f.ID)
 	}
-	return Fix{Label: "Disable core dumps through PAM limits", Kind: model.RemediationAuto, Actions: []Action{{Label: "Set a hard core-size limit of zero", Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
-		if hasCoreLimit(in) {
-			return in, nil
-		}
-		out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
-		if len(out) > 0 {
-			out = append(out, '\n')
-		}
-		return append(out, []byte("* hard core 0\n")...), nil
-	}}}}, nil
+	return Fix{Label: "Disable core dumps through PAM limits", Kind: model.RemediationAuto, Actions: []Action{{
+		Label: "Set a hard core-size limit of zero",
+		Benefit: "Stops a crashed privileged process writing a core file to disk — the easiest place " +
+			"a live secret in memory (a password, a key) ends up sitting in plaintext after a crash.",
+		Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
+			if hasCoreLimit(in) {
+				return in, nil
+			}
+			out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
+			if len(out) > 0 {
+				out = append(out, '\n')
+			}
+			return append(out, []byte("* hard core 0\n")...), nil
+		}}}}, nil
 }
 
 func hasCoreLimit(data []byte) bool {
@@ -86,13 +101,13 @@ func hasCoreLimit(data []byte) bool {
 
 type loginDefault struct{ key, value string }
 
-func buildLoginDefaults(label string, values []loginDefault) Builder {
+func buildLoginDefaults(label, benefit string, values []loginDefault) Builder {
 	return func(f model.Finding) (Fix, error) {
 		path := f.Evidence["config"]
 		if path == "" {
 			return Fix{}, fmt.Errorf("finding %s names no login.defs path", f.ID)
 		}
-		return Fix{Label: label, Kind: model.RemediationAuto, Actions: []Action{{Label: label, Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
+		return Fix{Label: label, Kind: model.RemediationAuto, Actions: []Action{{Label: label, Benefit: benefit, Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
 			out := in
 			for _, setting := range values {
 				re := regexp.MustCompile(`(?m)^[ \t]*#?[ \t]*` + regexp.QuoteMeta(setting.key) + `[ \t]+.*$`)
@@ -115,14 +130,20 @@ func buildAccessBanner(f model.Finding) (Fix, error) {
 	if path == "" {
 		return Fix{}, fmt.Errorf("finding %s names no banner path", f.ID)
 	}
-	return Fix{Label: "Add a pre-login access warning", Kind: model.RemediationAuto, Actions: []Action{{Label: "Append the standard access warning", Warning: "Have counsel or the system owner approve login-banner wording for this organization.", Kind: ActionEdit, Path: path, CreateIfMissing: true, Transform: func(in []byte) ([]byte, error) {
-		if bytes.Contains(bytes.ToLower(in), []byte("authorized access only")) {
-			return in, nil
-		}
-		out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
-		if len(out) > 0 {
-			out = append(out, '\n')
-		}
-		return append(out, []byte(accessWarning+"\n")...), nil
-	}}}}, nil
+	return Fix{Label: "Add a pre-login access warning", Kind: model.RemediationAuto, Actions: []Action{{
+		Label: "Append the standard access warning",
+		Benefit: "Puts a legal notice in front of anyone who logs into this host, local or remote, which " +
+			"several jurisdictions require before monitoring or logging a session can be used as evidence " +
+			"against an intruder.",
+		Warning: "Have counsel or the system owner approve login-banner wording for this organization.",
+		Kind:    ActionEdit, Path: path, CreateIfMissing: true, Transform: func(in []byte) ([]byte, error) {
+			if bytes.Contains(bytes.ToLower(in), []byte("authorized access only")) {
+				return in, nil
+			}
+			out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
+			if len(out) > 0 {
+				out = append(out, '\n')
+			}
+			return append(out, []byte(accessWarning+"\n")...), nil
+		}}}}, nil
 }

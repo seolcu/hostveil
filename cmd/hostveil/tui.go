@@ -47,10 +47,17 @@ func cmdTUI(ctx context.Context, args []string) int {
 		Save:    func(id string) error { return theme.Save(dir, id) },
 	}
 	layOpts := tui.LayoutOpts{Initial: lay.ID, Save: saveLayoutPref}
+	// writeReport is the same atomic-write-plus-elevation-chown-back path
+	// `scan --output` uses. The TUI cannot do this itself: it has no way to
+	// tell whether it is running elevated, and the layering test forbids it
+	// from importing internal/platform to find out.
+	exportOpts := tui.ExportOpts{Save: func(_, path string, data []byte) error {
+		return writeReport(path, data)
+	}}
 	// The advisory AI provider is wired in for the detail view's `e` key.
 	// Construction does no I/O; with no provider reachable the view shows a
 	// one-line note instead.
-	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: layOpts, Glyphs: gl}); err != nil {
+	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: layOpts, Export: exportOpts, Glyphs: gl}); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

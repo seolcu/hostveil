@@ -27,9 +27,10 @@ func registerCompose(r *Registry) {
 // docker is running from — it is what docker was told, once. The container
 // keeps its old configuration until it is recreated, so an edit here is
 // correct and not yet in force, and the re-check has to say which.
-func composeEdit(path, label, warning, service string, mutate func(*compose.Doc) error) Action {
+func composeEdit(path, label, benefit, warning, service string, mutate func(*compose.Doc) error) Action {
 	return Action{
 		Label:         label,
+		Benefit:       benefit,
 		Warning:       warning,
 		Kind:          ActionEdit,
 		Path:          path,
@@ -152,7 +153,10 @@ func buildAddNoNewPrivileges(f model.Finding) (Fix, error) {
 	return Fix{
 		Label: "Add no-new-privileges to " + svc,
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Add security_opt no-new-privileges:true", recreateNote(svc), svc,
+		Actions: []Action{composeEdit(path, "Add security_opt no-new-privileges:true",
+			"A process that breaks into this container can no longer gain more privilege than it started "+
+				"with via a setuid binary — one of the more common container-escape stepping stones, closed.",
+			recreateNote(svc), svc,
 			func(d *compose.Doc) error { return d.AddSecurityOpt(svc, "no-new-privileges:true") })},
 	}, nil
 }
@@ -166,7 +170,10 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 	return Fix{
 		Label: "Set restart policy for " + svc,
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Set restart: unless-stopped", recreateNote(svc), svc,
+		Actions: []Action{composeEdit(path, "Set restart: unless-stopped",
+			"The service comes back on its own after a crash, an OOM kill, or a host reboot instead of "+
+				"silently staying down until someone notices.",
+			recreateNote(svc), svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "restart", "unless-stopped") })},
 	}, nil
 }
@@ -194,11 +201,14 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 		return Fix{}, err
 	}
 	svc := f.Service
+	benefit := "Gives the container a memory ceiling, so a leak or a runaway process inside it gets " +
+		"OOM-killed and restarted instead of exhausting the host's memory and taking every other " +
+		"service down with it."
 	warning := "Too low a limit gets the container OOM-killed under load. Start generous, watch `docker stats`, and tighten later. This is a file edit, so it is fully reversible. " + recreateNote(svc)
 	actions := make([]Action, 0, len(memLimits))
 	for _, m := range memLimits {
 		actions = append(actions, composeEdit(path,
-			fmt.Sprintf("Limit %s to %s — %s", svc, m.value, m.kind), warning, svc,
+			fmt.Sprintf("Limit %s to %s — %s", svc, m.value, m.kind), benefit, warning, svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "mem_limit", m.value) }))
 	}
 	return Fix{
@@ -247,8 +257,13 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 		Kind:  model.RemediationReview,
 		Actions: []Action{
 			{
-				Label:   "Pull the new image and recreate " + svc + " now",
-				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. " + noRollback + " Note the current image ID (`docker compose -f " + path + " images`) before applying, so you can pin it back if the new one misbehaves.",
+				Label: "Pull the new image and recreate " + svc + " now",
+				Benefit: "Re-resolves the tag to whatever it currently points at, which is how the vendor " +
+					"ships fixes for a floating-tag image — it may include a patch for the CVE that " +
+					"triggered this finding, though hostveil cannot guarantee it does, since the same tag " +
+					"can also move for unrelated reasons. On a host where staying current matters more than " +
+					"staying unchanged, this is the fastest way to find out.",
+				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. " + noRollback + " Note the current image ID (`docker compose -f " + path + " images`) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled — on a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.",
 				Kind:    ActionExec,
 				Commands: [][]string{
 					pull,
@@ -256,7 +271,10 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 				},
 			},
 			{
-				Label:    "Download the new image only; recreate " + svc + " on your own schedule",
+				Label: "Download the new image only; recreate " + svc + " on your own schedule",
+				Benefit: "Downloads the new image without touching the running container, so there is a " +
+					"chance to inspect it — its digest, its changed packages, its release notes — before " +
+					"deciding whether pulling it in is worth the risk to a service that is stable today.",
 				Warning:  "This changes nothing that is running: the image is downloaded but the container keeps using the old one until you recreate it, and the finding will still be reported until then. " + noRollback,
 				Kind:     ActionExec,
 				Commands: [][]string{pull},
@@ -283,7 +301,11 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 	return Fix{
 		Label: fmt.Sprintf("Bind %s port %s to localhost", svc, hostPort),
 		Kind:  model.RemediationAuto,
-		Actions: []Action{composeEdit(path, "Bind published port to 127.0.0.1", warning, svc,
+		Actions: []Action{composeEdit(path, "Bind published port to 127.0.0.1",
+			"Once recreated, the service stops being reachable from the network at all — only processes "+
+				"on this host can reach it, closing off whatever guessing or scanning the open port "+
+				"currently invites.",
+			warning, svc,
 			func(d *compose.Doc) error { return d.BindPortLoopback(svc, hostPort) })},
 	}, nil
 }

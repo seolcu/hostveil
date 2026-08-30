@@ -57,6 +57,7 @@ type severityDef struct {
 	name    string // lowercase name used in reports and exports
 	abbr    string // short form for width-constrained surfaces
 	penalty int    // per-finding score deduction
+	desc    string // one-paragraph definition, for a report's severity legend
 }
 
 // severityDefs describes the enum once. Unlike the other tables here this
@@ -75,9 +76,12 @@ type severityDef struct {
 // reach today and a thing you cannot are within a third of each other. They
 // are not.
 var severityDefs = []severityDef{
-	{SeverityHigh, "high", "high", 8},
-	{SeverityMedium, "medium", "med", 2},
-	{SeverityLow, "low", "low", 1},
+	{SeverityHigh, "high", "high", 8,
+		"Something is reachable or usable right now, from off-host, by someone who holds nothing. Nothing has to be broken first."},
+	{SeverityMedium, "medium", "med", 2,
+		"A boundary that gives way to a foothold, a guessed credential, or a local account. The attacker needs something they do not have yet."},
+	{SeverityLow, "low", "low", 1,
+		"Defence in depth. No known path today; it narrows what a future compromise reaches."},
 }
 
 var severityIndex = indexBy(severityDefs, func(d severityDef) Severity { return d.sev })
@@ -114,6 +118,17 @@ func (s Severity) Penalty() int {
 		return d.penalty
 	}
 	return 2
+}
+
+// Description is the one-paragraph definition of this severity level, for a
+// report's severity legend. The miss path returns a generic sentence rather
+// than "", for the same reason Penalty's miss path returns a real number:
+// an unrecognised severity should not render as blank.
+func (s Severity) Description() string {
+	if d, ok := severityIndex[s]; ok {
+		return d.desc
+	}
+	return "Severity could not be determined."
 }
 
 // AllSeverities lists every severity, most severe first. UIs that mirror

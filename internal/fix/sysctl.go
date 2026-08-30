@@ -16,6 +16,84 @@ import (
 // cannot take another's line with it.
 const dropInDir = "/etc/sysctl.d/"
 
+// sysctlBenefit names what each kernel parameter actually buys, keyed by
+// finding ID since buildSysctl/buildSysctlReview are two generic builders
+// shared across every ID below. The same text is used for both the persist
+// and (where offered) the immediate-apply alternative — TakesEffectOn and
+// each action's own Warning already say how the two differ in timing and
+// durability, so the benefit itself does not need to repeat that split.
+var sysctlBenefit = map[string]string{
+	"sysctl.ptrace-scope": "Restricts ptrace to a process's own children, closing a well-known " +
+		"technique for one compromised process to read another's memory or inject code into it.",
+	"sysctl.syncookies": "Enables SYN cookies, so a SYN-flood cannot exhaust the connection queue " +
+		"and deny the host's legitimate services.",
+	"sysctl.accept-redirects": "Stops the kernel trusting ICMP redirects, closing an easy way for " +
+		"something on the local network to quietly re-route this host's outbound traffic through itself.",
+	"sysctl.protected-links": "Stops a process following a symlink it does not own in a world-writable " +
+		"sticky directory, closing a classic local privilege-escalation and file-clobbering trick.",
+	"sysctl.kptr-restrict": "Hides kernel pointer addresses from unprivileged reads of /proc, taking " +
+		"away information an attacker would otherwise use to build a kernel exploit.",
+	"sysctl.dmesg-restrict": "Stops unprivileged users reading the kernel log, which can leak " +
+		"addresses and details useful for a kernel-level exploit.",
+	"sysctl.sysrq": "Restricts the SysRq magic-key functions to the safe subset, closing the ones " +
+		"that can dump memory or force a reboot from an unprivileged local session.",
+	"sysctl.rp-filter": "Drops packets whose source address could not have arrived on the interface " +
+		"they came in on, closing a common IP-spoofing technique.",
+	"sysctl.accept-source-route": "Stops the kernel honoring source-routed packets, closing a way to " +
+		"make traffic take a path chosen by whoever sent it rather than by this network's own routing.",
+	"sysctl.send-redirects": "Stops this host sending ICMP redirects itself, which it should not be " +
+		"doing unless it is actually a router — removes a route-injection tool a compromised host could " +
+		"use against its neighbors.",
+	"sysctl.suid-dumpable": "Stops a crashed setuid process writing a core dump that can contain " +
+		"whatever secrets were in its memory at the moment it crashed.",
+	"sysctl.protected-fifos": "Stops a process writing into a FIFO it does not own in a world-writable " +
+		"sticky directory — the same class protected-links closes for symlinks.",
+	"sysctl.protected-regular": "Stops a process writing into a regular file it does not own in a " +
+		"world-writable sticky directory, for the same reason.",
+	"sysctl.unprivileged-bpf": "Removes unprivileged users' ability to load BPF programs into the " +
+		"kernel, closing a well-documented local privilege-escalation and kernel-exploit vector.",
+	"sysctl.perf-events": "Restricts performance-counter access so an unprivileged user can't use it " +
+		"to leak kernel addresses or run a side-channel attack against other processes.",
+	"sysctl.icmp-broadcasts": "Stops this host answering ICMP echo requests sent to a broadcast " +
+		"address, closing its use as an amplifier in a Smurf-style denial-of-service attack.",
+	"sysctl.bogus-icmp-errors": "Stops the kernel logging bogus ICMP error responses as if real, " +
+		"reducing log noise and a minor spoofing-detection blind spot.",
+	"sysctl.log-martians": "Logs packets carrying an impossible source or destination address, giving " +
+		"visibility into spoofing or misconfiguration attempts that would otherwise pass silently.",
+	"sysctl.aslr": "Turns on full address space layout randomization, making a memory-corruption bug " +
+		"substantially harder to turn into a reliable exploit.",
+	"sysctl.core-uses-pid": "Includes the process ID in a core dump's filename, so a crash does not " +
+		"silently overwrite an earlier one a security investigation might still need.",
+	"sysctl.ctrl-alt-del": "Stops Ctrl-Alt-Del triggering an instant reboot, closing a trivial " +
+		"denial-of-service available to anyone with physical or console access.",
+	"sysctl.bpf-jit-harden": "Hardens the BPF JIT compiler's output against the spraying techniques " +
+		"used to turn a BPF bug into kernel code execution.",
+	"sysctl.tty-ldisc-autoload": "Stops the kernel auto-loading obscure TTY line disciplines on " +
+		"request, closing a local privilege-escalation path specific line-discipline modules have " +
+		"shipped in the past.",
+	"sysctl.ipv6-accept-redirects-all": "Same protection as accept-redirects, for IPv6, applied to " +
+		"every interface.",
+	"sysctl.ipv6-accept-redirects-default": "Same protection as accept-redirects, for IPv6, as the " +
+		"default template new interfaces inherit.",
+	"sysctl.ipv6-accept-source-route-all": "Same protection as accept-source-route, for IPv6, every " +
+		"interface.",
+	"sysctl.ipv6-accept-source-route-default": "Same protection as accept-source-route, for IPv6, as " +
+		"the default template.",
+	"sysctl.ipv6-send-redirects": "Same protection as send-redirects, for IPv6.",
+	"sysctl.ipv4-default-accept-redirects": "Same protection as accept-redirects, as the IPv4 default " +
+		"template new interfaces inherit.",
+	"sysctl.ipv4-default-rp-filter": "Same protection as rp-filter, as the default template.",
+	"sysctl.proxy-arp-all": "Stops the kernel answering ARP on behalf of other hosts across " +
+		"interfaces, closing an easy way to bridge or spoof between network segments this host sits on.",
+	"sysctl.proxy-arp-default": "Same protection as proxy-arp-all, as the default template.",
+	"sysctl.multicast-forwarding": "Stops this host relaying multicast traffic between interfaces it " +
+		"has no business routing for.",
+	"sysctl.bootp-relay": "Stops this host forwarding BOOTP/DHCP broadcasts between networks it has " +
+		"no business relaying for.",
+	"sysctl.tcp-rfc1337": "Protects against TIME-WAIT assassination, so an off-path attacker cannot " +
+		"reset a connection sitting in TIME_WAIT by spoofing packets at it.",
+}
+
 // registerSysctl wires the kernel-hardening fixes into the registry.
 //
 // Unambiguous sysctl findings are Auto: one reversible drop-in records the
@@ -89,22 +167,48 @@ func registerSysctl(r *Registry) {
 	}
 }
 
+// moduleBlockBenefit is keyed by finding ID rather than module name, since
+// usbstorage's benefit (physical media) is a different story from the other
+// four (rarely-used network protocols with a history of local kernel bugs).
+var moduleBlockBenefit = map[string]string{
+	"sysctl.module-dccp": "Removes the kernel's ability to load the DCCP module at all — a " +
+		"rarely-used protocol on an ordinary self-hosted server, and one that has shown up " +
+		"repeatedly as a local attack vector when left loadable.",
+	"sysctl.module-sctp": "Removes the kernel's ability to load the SCTP module at all — the same " +
+		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
+	"sysctl.module-rds": "Removes the kernel's ability to load the RDS module at all — the same " +
+		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
+	"sysctl.module-tipc": "Removes the kernel's ability to load the TIPC module at all — the same " +
+		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
+	"sysctl.module-usbstorage": "Removes the kernel's ability to load the USB mass-storage driver, " +
+		"closing a common way to pull data off or introduce malware onto a physically-accessible server " +
+		"via a USB drive.",
+}
+
 func buildModuleBlock(f model.Finding) (Fix, error) {
 	path, module := f.Evidence["config"], f.Evidence["module"]
 	if path == "" || module == "" {
 		return Fix{}, fmt.Errorf("finding %s has incomplete module evidence", f.ID)
 	}
-	return Fix{Label: "Block optional kernel module " + module, Kind: model.RemediationAuto, Actions: []Action{{Label: "Persist a modprobe install block", Warning: "Confirm this host does not use " + module + " before applying.", Kind: ActionEdit, Path: path, CreateIfMissing: true, TakesEffectOn: "the next reboot", Transform: func(in []byte) ([]byte, error) {
-		line := "install " + module + " /bin/false"
-		if strings.Contains(string(in), line) {
-			return in, nil
-		}
-		out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
-		if len(out) > 0 {
-			out = append(out, '\n')
-		}
-		return append(out, []byte(line+"\n")...), nil
-	}}}}, nil
+	return Fix{Label: "Block optional kernel module " + module, Kind: model.RemediationAuto, Actions: []Action{{
+		Label:           "Persist a modprobe install block",
+		Benefit:         moduleBlockBenefit[f.ID],
+		Warning:         "Confirm this host does not use " + module + " before applying.",
+		Kind:            ActionEdit,
+		Path:            path,
+		CreateIfMissing: true,
+		TakesEffectOn:   "the next reboot",
+		Transform: func(in []byte) ([]byte, error) {
+			line := "install " + module + " /bin/false"
+			if strings.Contains(string(in), line) {
+				return in, nil
+			}
+			out := append([]byte(nil), bytes.TrimRight(in, "\n")...)
+			if len(out) > 0 {
+				out = append(out, '\n')
+			}
+			return append(out, []byte(line+"\n")...), nil
+		}}}}, nil
 }
 
 // buildSysctl persists the finding's exact key=value pairs. It deliberately
@@ -120,7 +224,7 @@ func buildSysctl(f model.Finding) (Fix, error) {
 	return Fix{
 		Label:   "Harden " + strings.Join(keysOf(pairs), ", "),
 		Kind:    model.RemediationAuto,
-		Actions: []Action{persistSysctl(f, pairs)},
+		Actions: []Action{persistSysctl(f, pairs, sysctlBenefit[f.ID])},
 	}, nil
 }
 
@@ -140,8 +244,13 @@ func buildSysctlReview(f model.Finding) (Fix, error) {
 		Label: "Harden " + strings.Join(keysOf(pairs), ", "),
 		Kind:  model.RemediationReview,
 		Actions: []Action{
-			persistSysctl(f, pairs),
-			{Label: "Apply it now: " + strings.Join(keysOf(pairs), ", "), Warning: "Changes the running kernel immediately and has no rollback checkpoint.", Kind: ActionExec, Commands: commands},
+			persistSysctl(f, pairs, sysctlBenefit[f.ID]),
+			{
+				Label:   "Apply it now: " + strings.Join(keysOf(pairs), ", "),
+				Benefit: sysctlBenefit[f.ID],
+				Warning: "Changes the running kernel immediately and has no rollback checkpoint.",
+				Kind:    ActionExec, Commands: commands,
+			},
 		},
 	}, nil
 }
@@ -180,13 +289,14 @@ const legacyConfFile = "/etc/sysctl.conf"
 // that harness never reboots.
 const sysctlEffect = "`sysctl --system`, or the next boot"
 
-func persistSysctl(f model.Finding, pairs []string) Action {
+func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 	dropIn := dropInDir + "60-hostveil-" + strings.TrimPrefix(f.ID, "sysctl.") + ".conf"
 	origin := originPath(f)
 
 	if origin != "" && readAfter(origin, dropIn) && operatorOwned(origin) {
 		return Action{
 			Label:         "Persist it: correct " + origin,
+			Benefit:       benefit,
 			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden — this changes the line that actually decides the value.",
 			TakesEffectOn: sysctlEffect,
 			Kind:          ActionEdit,
@@ -214,6 +324,7 @@ func persistSysctl(f model.Finding, pairs []string) Action {
 	}
 	return Action{
 		Label:           "Persist it: write " + dropIn,
+		Benefit:         benefit,
 		Warning:         warning,
 		TakesEffectOn:   sysctlEffect,
 		Kind:            ActionEdit,

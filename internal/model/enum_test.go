@@ -74,6 +74,12 @@ func TestEverySeverityConstHasATableRow(t *testing.T) {
 			t.Errorf("severity %q has penalty %d; a finding that costs nothing is not a finding",
 				s, s.Penalty())
 		}
+		if s.Description() == "" {
+			t.Errorf("severity %q has no Description() — a report's severity legend would render nothing for it", s)
+		}
+	}
+	if got := (Severity(-1)).Description(); got == "" {
+		t.Error("Severity.Description() miss path returns \"\" instead of a safe fallback")
 	}
 	if got := len(AllSeverities()); got != int(severityCount) {
 		t.Errorf("AllSeverities has %d entries, %d constants declared", got, int(severityCount))

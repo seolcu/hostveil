@@ -62,6 +62,8 @@ var modeNames = map[mode]string{
 	modeForceConfirm:    "force",
 	modeTheme:           "theme",
 	modeLayout:          "layout",
+	modeExport:          "export",
+	modeExportPath:      "exportpath",
 }
 
 // A mode added without a name here is a mode no frame test renders, which is
@@ -107,6 +109,7 @@ func TestFooterIsPinned(t *testing.T) {
 		"scanning": "ctrl+c quit", "list": "q quit", "detail": "q list",
 		"preview": "n cancel", "message": "continue", "history": "q list",
 		"rollback": "n cancel", "theme": "esc cancel",
+		"export": "esc cancel", "exportpath": "esc back",
 	}
 	for name, m := range modeModels(100, 34) {
 		lines := strings.Split(m.View().Content, "\n")
