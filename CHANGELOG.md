@@ -2,6 +2,21 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.26.2](https://github.com/seolcu/hostveil/compare/v3.26.1...v3.26.2) (2026-08-31)
+
+### Bug Fixes
+
+* **model:** stop discounting `RemediationUnavailable` findings — a
+  vulnerability with no upstream patch used to cost a quarter of what an
+  otherwise identical actionable finding costs, via a fixed divisor with
+  no derivation behind the number 4 the way the rest of the scoring model
+  has one for its constants (one High costing exactly half of what an
+  axis has left, the harmonic damping for repeats). It now costs exactly
+  the same. The accepted consequence: a host with even one un-patchable
+  CVE may never reach 100 on its Vulnerabilities axis, because the risk
+  is real whether or not a patch happens to exist for it yet. Updated
+  every doc page that described the old discount, in both languages.
+
 ## [3.26.1](https://github.com/seolcu/hostveil/compare/v3.26.0...v3.26.1) (2026-08-31)
 
 ### Bug Fixes
