@@ -37,12 +37,13 @@ type ScoreBreakdown struct {
 	// a verdict on the effort rather than on the host.
 	//
 	// The alternative was to charge Manual findings less, and it is the wrong
-	// trade in the exact place it looks tempting. unavailableRelief is
-	// defensible because nobody can fix those — no upstream patch exists.
-	// Manual means hostveil will not do it unattended, not that it cannot be
-	// done: the operator can delete the account or drop the socket mount this
-	// afternoon. Discounting a risk the operator is fully able to remove is
-	// the flattery this scoring model was rebuilt to refuse.
+	// trade in the exact place it looks tempting. Manual means hostveil will
+	// not do it unattended, not that it cannot be done: the operator can
+	// delete the account or drop the socket mount this afternoon. Discounting
+	// a risk the operator is fully able to remove is the flattery this
+	// scoring model was rebuilt to refuse — and it is no longer a special
+	// case, since RemediationUnavailable findings (no upstream patch exists)
+	// are charged in full too, for the same reason.
 	//
 	// So the risk is charged in full and the headroom is published beside it.
 	// Named for what it is rather than "achievable": the difference between
@@ -322,16 +323,6 @@ var axisDefs = axisDefsFromSources()
 // whatever the top is called.
 const topHalves = 16
 
-// unavailableRelief divides the weight of a finding nothing can fix.
-//
-// It is not zero — the risk is real and claiming otherwise would be the
-// same lie as scoring an unscanned domain 100. But it cannot be full
-// either: every Debian-based image ships vulnerabilities with no upstream
-// patch, so charging them like actionable findings pins the axis at zero
-// for a perfectly maintained host. A score you cannot improve by doing
-// everything right is not measuring your hardening.
-const unavailableRelief = 4
-
 // weight returns the share of an axis's remaining credit a finding takes.
 //
 // nth is which instance of this finding's ID it is on this axis, counting
@@ -351,9 +342,6 @@ const unavailableRelief = 4
 // that needs no threshold to argue about.
 func weight(f Finding, nth int) float64 {
 	w := float64(f.Severity.Penalty()) / topHalves
-	if f.Remediation == RemediationUnavailable {
-		w /= unavailableRelief
-	}
 	if nth > 1 {
 		w /= float64(nth)
 	}

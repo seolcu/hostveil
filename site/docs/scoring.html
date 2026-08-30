@@ -159,7 +159,7 @@ for each finding on this axis:
 
 score   = round(100 × remaining)
 penalty = round(cap × (1 - remaining))</code></pre></div>
-            <p>The weight comes from severity, with one adjustment for findings nothing can fix (see <a href="#unavailable">Findings with no fix weigh less</a>):</p>
+            <p>The weight comes from severity, and only severity — see <a href="#unavailable">Findings with no fix weigh the same as anything else</a> for why an unpatched vulnerability gets no special treatment:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Severity</th><th>What it claims about your host</th><th>Takes</th><th>Decimal</th></tr></thead>
@@ -421,23 +421,22 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
               <p>If every domain was skipped or failed there is no denominator, and renormalizing over zero caps would fall out at a clean <strong>100</strong> — a host nobody could look at, reported as flawless. Hostveil refuses the computation instead of performing it: a separate <em>applicable</em> flag is false when no axis ran, and all three UIs render <strong>N/A</strong> rather than a number. The value left behind is 0 and it means nothing; do not read it. An overall of 0 is either a genuinely terrible host or this placeholder, and the flag is the only thing that tells them apart.</p>
             </div>
 
-            <h2 id="unavailable">Findings with no fix weigh less</h2>
-            <p>A finding marked <strong>Unavailable</strong> — a vulnerability nobody has published a patch for — has its weight divided by 4:</p>
+            <h2 id="unavailable">Findings with no fix weigh the same as anything else</h2>
+            <p>A finding marked <strong>Unavailable</strong> — a vulnerability nobody has published a patch for — takes exactly the share its severity says, with no adjustment:</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>Severity</th><th>Normally takes</th><th>Unavailable takes</th></tr></thead>
+                <thead><tr><th>Severity</th><th>Takes</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev high">HIGH</span></td><td>1/2</td><td>1/8 (0.125)</td></tr>
-                  <tr><td><span class="sev medium">MEDIUM</span></td><td>1/8</td><td>1/32 (0.03125)</td></tr>
-                  <tr><td><span class="sev low">LOW</span></td><td>1/16</td><td>1/64 (0.015625)</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>1/2</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>1/16</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><strong>Not zero</strong>, because the risk is real. An unpatched vulnerability is not less exploitable for being unpatched, and scoring it free would be the same class of lie as scoring an unscanned domain 100.</p>
-            <p><strong>Not full price</strong>, because every Debian-based image ships CVEs with no upstream fix. Charging those at full weight pins the Vulnerabilities axis near 0 for a host that pulls every image the day it is published and pins nothing stale. A score you cannot improve by doing everything right is not measuring your hardening; it is measuring the state of the world.</p>
+            <p>An earlier version of this model discounted these findings by dividing their weight by 4, on the argument that every Debian-based image ships CVEs with no upstream fix, so charging them in full pins the Vulnerabilities axis near 0 for a host that pulls every image the day it is published. That argument is still true, and the discount was removed anyway: unlike <a href="#formula">one High costing exactly half</a> or the harmonic damping for repeats, the divisor 4 had no derivation behind it — it was a number someone picked, not one the rest of the model implies. The consequence is accepted rather than solved: a host with even one un-patchable CVE may never reach 100 on the Vulnerabilities axis, because the risk is exactly as real whether or not a patch happens to exist for it yet.</p>
             <div class="callout">
               <span class="callout-label">Unavailable is not the same as Manual</span>
-              <p>Only <strong>Unavailable</strong> gets the discount. <strong>Manual</strong> findings — the ones Hostveil explains rather than fixes, like <code>compose.ds016</code> or every <code>dockerd.</code> finding — pay full weight. Manual means <em>no safe automation</em>; you can still go and fix it, so the score still charges you for not having. Unavailable means <em>no fix exists anywhere</em>. The discount is for the second thing only.</p>
+              <p>Both are charged in full now, so the distinction is about what &ldquo;unfixed&rdquo; means rather than about weight. <strong>Manual</strong> findings — the ones Hostveil explains rather than fixes, like <code>compose.ds016</code> or every <code>dockerd.</code> finding — mean <em>no safe automation exists</em>; you can still go and fix it yourself. <strong>Unavailable</strong> means <em>no fix exists anywhere</em> — there is nothing to go and do. Hostveil keeps them as separate states so the reason a finding is still open is never lost, even though neither one moves the score any differently from the other.</p>
             </div>
 
             <h2 id="limits">What the score does not tell you</h2>
@@ -447,7 +446,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             <p>Beside the score, Hostveil shows what it would become if you applied <em>every fix it offers</em> &mdash; the Auto ones and the Review ones both. On the axis breakdown the same figure appears per axis, so you can see where the headroom is.</p>
             <p>It exists because the score alone answers a question nobody asked. Run <code>fix --all</code> on a container-heavy host and the container axis may still read 2. Nothing went wrong: the findings still standing are <strong>Manual by design</strong> &mdash; a Docker socket mounted into Portainer, a second UID&nbsp;0 account, host networking &mdash; and each is declined for a reason Hostveil will tell you. But a number that barely moved reads as a tool that did nothing, and that reading is wrong. The second number says which it is.</p>
             <p><strong>The gap to 100 is not a ceiling.</strong> It is what Hostveil will not do <em>unattended</em>, which is a different thing from what cannot be done. You can delete that account or drop that socket mount this afternoon, and the score will follow you when you do.</p>
-            <p>The alternative was to charge Manual findings less, and it is the wrong trade in exactly the place it looks tempting. Unfixable vulnerabilities are already discounted &mdash; see below &mdash; because <em>nobody</em> can fix them: no upstream patch exists. Manual means Hostveil will not touch it, not that the risk is smaller. Discounting a risk you are perfectly able to remove would be the flattery this model was rebuilt to refuse.</p>
+            <p>The alternative was to charge Manual findings less, and it is the wrong trade in exactly the place it looks tempting. Manual means Hostveil will not touch it, not that the risk is smaller &mdash; you can still go and remove it yourself. Discounting a risk you are perfectly able to remove would be the flattery this model was rebuilt to refuse, and it is the same reason an unpatched vulnerability is not discounted either (see <a href="#unavailable">above</a>): being unable to fix something today does not make the risk any smaller.</p>
             <p>Where nothing is fixable the figure equals the score, and every interface then shows nothing at all rather than an arrow pointing back at where it started.</p>
 
             <p><strong>An axis at 0 is not a floor.</strong> It is a display value; <code>remaining</code> is still positive and still moving. Fixing findings on a 0 axis does work, and the number will start climbing once enough of them are gone. That is why the axis breakdown lists counts as well as a score.</p>

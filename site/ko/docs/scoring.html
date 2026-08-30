@@ -159,7 +159,7 @@ for each finding on this axis:
 
 score   = round(100 × remaining)
 penalty = round(cap × (1 - remaining))</code></pre></div>
-            <p>무게는 심각도에서 나오며, 아무도 고칠 수 없는 항목에 대해서만 한 가지 조정이 붙습니다(<a href="#unavailable">고칠 방법이 없는 항목은 덜 무겁습니다</a> 참고).</p>
+            <p>무게는 오직 심각도에서만 나옵니다. 패치가 없는 취약점이 왜 따로 봐주지 않는지는 <a href="#unavailable">고칠 방법이 없는 항목도 무게는 같습니다</a>에 있습니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>심각도</th><th>이 호스트에 대해 주장하는 것</th><th>가져가는 몫</th><th>소수</th></tr></thead>
@@ -421,23 +421,22 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
               <p>모든 도메인이 건너뛰거나 실패했다면 분모가 없고, 가중치 0으로 재정규화하면 깔끔한 <strong>100</strong>이 떨어집니다 — 아무도 들여다볼 수 없었던 호스트가 흠 없는 것으로 보고됩니다. Hostveil은 그 계산을 수행하는 대신 거부합니다. 실행된 축이 하나도 없으면 별도의 <em>적용 가능</em> 플래그가 거짓이 되고, 세 UI 모두 숫자 대신 <strong>N/A</strong>를 그립니다. 그 자리에 남는 값은 0이고 아무 뜻도 없으니 읽지 마십시오. 총점 0은 정말 형편없는 호스트이거나 이 자리 채우기이며, 둘을 구별하는 것은 그 플래그뿐입니다.</p>
             </div>
 
-            <h2 id="unavailable">고칠 방법이 없는 항목은 덜 무겁습니다</h2>
-            <p><strong>Unavailable</strong>로 표시된 항목 — 아무도 패치를 내놓지 않은 취약점 — 은 무게를 4로 나눠서 반영합니다.</p>
+            <h2 id="unavailable">고칠 방법이 없는 항목도 무게는 같습니다</h2>
+            <p><strong>Unavailable</strong>로 표시된 항목 — 아무도 패치를 내놓지 않은 취약점 — 도 심각도가 정한 몫을 그대로 가져갑니다. 따로 깎지 않습니다.</p>
             <div class="docs-table-wrap">
               <table>
-                <thead><tr><th>심각도</th><th>보통 가져가는 몫</th><th>Unavailable일 때</th></tr></thead>
+                <thead><tr><th>심각도</th><th>가져가는 몫</th></tr></thead>
                 <tbody>
-                  <tr><td><span class="sev high">HIGH</span></td><td>1/2</td><td>1/8 (0.125)</td></tr>
-                  <tr><td><span class="sev medium">MEDIUM</span></td><td>1/8</td><td>1/32 (0.03125)</td></tr>
-                  <tr><td><span class="sev low">LOW</span></td><td>1/16</td><td>1/64 (0.015625)</td></tr>
+                  <tr><td><span class="sev high">HIGH</span></td><td>1/2</td></tr>
+                  <tr><td><span class="sev medium">MEDIUM</span></td><td>1/8</td></tr>
+                  <tr><td><span class="sev low">LOW</span></td><td>1/16</td></tr>
                 </tbody>
               </table>
             </div>
-            <p><strong>0이 아닌 이유</strong>는 위험이 실재하기 때문입니다. 패치되지 않은 취약점이 패치가 없다는 이유로 덜 악용되지는 않으며, 그것을 공짜로 처리하는 것은 스캔하지 못한 도메인에 100점을 주는 것과 같은 종류의 거짓말입니다.</p>
-            <p><strong>전액이 아닌 이유</strong>는 Debian 계열 이미지가 전부 업스트림 수정이 없는 CVE를 싣고 있기 때문입니다. 그것을 전액으로 매기면, 이미지를 공개된 날 전부 받아 오고 오래된 것을 하나도 붙박아 두지 않은 호스트에서도 취약점 축이 0 근처에 고정됩니다. 모든 것을 제대로 해도 올릴 수 없는 점수는 하드닝을 재는 것이 아니라 세상의 상태를 재는 것입니다.</p>
+            <p>예전에는 이런 항목의 무게를 4로 나눠서 반영했습니다. Debian 계열 이미지는 전부 업스트림 수정이 없는 CVE를 싣고 있으니, 그걸 전액으로 매기면 이미지를 공개된 날 전부 받아 오는 호스트에서도 취약점 축이 0 근처에 고정된다는 논리였습니다. 그 논리 자체는 지금도 맞습니다. 그런데도 이 감면을 없앤 것은, <a href="#formula">HIGH 하나가 정확히 절반을 가져간다</a>는 기준이나 반복 항목의 조화급수 감쇠와 달리, 나눗값 4에는 그럴 만한 근거가 없었기 때문입니다 — 모델의 다른 부분에서 자연스럽게 나온 값이 아니라 그냥 골라잡은 숫자였습니다. 그 결과는 해결한 게 아니라 그대로 받아들인 것입니다: 고칠 수 없는 CVE가 하나라도 있는 호스트는 취약점 축에서 영영 100점에 못 미칠 수 있습니다. 패치가 있든 없든 위험은 똑같이 실재하니까요.</p>
             <div class="callout">
               <span class="callout-label">Unavailable은 Manual과 다릅니다</span>
-              <p>감면은 <strong>Unavailable</strong>에만 적용됩니다. <strong>Manual</strong> 항목 — Hostveil이 고치는 대신 설명하는 것들, <code>compose.ds016</code>이나 모든 <code>dockerd.</code> 항목 같은 — 은 무게를 온전히 냅니다. Manual은 <em>안전한 자동화가 없다</em>는 뜻이므로 사용자가 직접 가서 고칠 수 있고, 그래서 점수는 고치지 않은 것에 대해 여전히 값을 매깁니다. Unavailable은 <em>어디에도 수정이 존재하지 않는다</em>는 뜻입니다. 감면은 두 번째 것에만 주어집니다.</p>
+              <p>이제 둘 다 무게를 온전히 내므로, 차이는 무게가 아니라 &ldquo;안 고쳐진 이유&rdquo;에 있습니다. <strong>Manual</strong> 항목 — Hostveil이 고치는 대신 설명하는 것들, <code>compose.ds016</code>이나 모든 <code>dockerd.</code> 항목 같은 — 은 <em>안전하게 자동화할 방법이 없다</em>는 뜻이라 사용자가 직접 가서 고칠 수 있습니다. <strong>Unavailable</strong>은 <em>어디에도 수정이 존재하지 않는다</em>는 뜻이라 가서 할 일 자체가 없습니다. 점수에 미치는 영향은 이제 똑같지만, 왜 아직 열려 있는지는 이 두 상태로 계속 구분해 둡니다.</p>
             </div>
 
             <h2 id="limits">이 점수가 알려주지 않는 것</h2>
@@ -447,7 +446,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             <p>점수 옆에, Hostveil이 <em>제공하는 조치를 전부 적용하면</em> 몇 점이 되는지를 함께 보여 줍니다. Auto-fix 조치와 Review 조치 양쪽 모두를 적용한 값이고, 축별로도 같은 숫자가 나오므로 여유가 어디에 남아 있는지 바로 보입니다.</p>
             <p>이 숫자가 있는 이유는, 점수 하나만으로는 아무도 묻지 않은 질문에 답하기 때문입니다. 컨테이너가 많은 호스트에서 <code>fix --all</code>을 돌려도 컨테이너 축이 여전히 2로 보일 수 있습니다. 잘못된 것은 없습니다. 남아 있는 항목이 <strong>설계상 Manual</strong>이기 때문입니다 &mdash; Portainer에 마운트된 Docker 소켓, 두 번째 UID&nbsp;0 계정, 호스트 네트워킹. 각각 Hostveil이 이유를 말해 줍니다. 하지만 거의 움직이지 않은 숫자는 &ldquo;도구가 아무 일도 안 했다&rdquo;로 읽히고, 그 읽기는 틀렸습니다. 두 번째 숫자가 어느 쪽인지 말해 줍니다.</p>
             <p><strong>100까지의 간격은 천장이 아닙니다.</strong> 그것은 Hostveil이 <em>무인으로</em> 하지 않는 부분이지, 할 수 없는 부분이 아닙니다. 그 계정을 지우거나 소켓 마운트를 걷어내는 일은 오늘 오후에 할 수 있고, 그러면 점수도 따라옵니다.</p>
-            <p>다른 선택지는 Manual 항목의 가중치를 깎는 것이었고, 그럴듯해 보이는 바로 그 지점에서 잘못된 거래입니다. 고칠 수 없는 취약점은 이미 감면받고 있는데 그것은 <em>아무도</em> 고칠 수 없기 때문입니다. 업스트림에 패치가 없으니까요. Manual은 Hostveil이 손대지 않는다는 뜻이지 위험이 작다는 뜻이 아닙니다. 사용자가 충분히 제거할 수 있는 위험을 깎아 주는 것은, 이 모델이 다시 만들어지면서 거부한 바로 그 아첨입니다.</p>
+            <p>다른 선택지는 Manual 항목의 가중치를 깎는 것이었고, 그럴듯해 보이는 바로 그 지점에서 잘못된 거래입니다. Manual은 Hostveil이 손대지 않는다는 뜻이지 위험이 작다는 뜻이 아닙니다 — 사용자가 직접 가서 없앨 수 있으니까요. 충분히 제거할 수 있는 위험을 깎아 주는 것은 이 모델이 다시 만들어지면서 거부한 바로 그 아첨이고, 고칠 방법이 없는 취약점을 깎지 않는 것도(<a href="#unavailable">위 참고</a>) 같은 이유입니다 — 오늘 당장 손댈 수 없다고 위험이 작아지지는 않습니다.</p>
             <p>고칠 것이 하나도 없으면 이 숫자는 점수와 같아지고, 그럴 때 모든 인터페이스는 제자리를 가리키는 화살표 대신 아무것도 표시하지 않습니다.</p>
 
             <p><strong>축의 0은 바닥이 아닙니다.</strong> 표시용 값일 뿐이고, <code>remaining</code>은 여전히 양수이며 여전히 움직이고 있습니다. 0인 축에서 항목을 고치는 일은 실제로 효과가 있고, 충분히 없애고 나면 숫자가 올라가기 시작합니다. 축별 내역이 점수뿐 아니라 개수까지 함께 싣는 이유가 이것입니다.</p>
