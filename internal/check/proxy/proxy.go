@@ -54,6 +54,10 @@ type Checker struct {
 	// Discover finds Compose projects. nil means the real one — injected so a
 	// test can exercise the Traefik half without a Docker daemon.
 	Discover func(ctx context.Context, r platform.CommandRunner) ([]compose.Project, []string, error)
+	// Fail2banConfDir is fail2ban's configuration directory (holding
+	// jail.local and jail.d/); overridable for tests, same pattern as
+	// NginxRoot.
+	Fail2banConfDir string
 }
 
 // New returns a proxy checker reading the standard locations.
@@ -102,6 +106,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			cov.Missed(0, "could not read "+strings.Join(unread, ", ")+
 				" — directives there were not audited; re-run with sudo")
 		}
+		findings = append(findings, c.auditScanProtection(ctx, env.Runner, &cov)...)
 	}
 
 	if ok, why := platform.DockerReachable(ctx, env.Runner); ok {

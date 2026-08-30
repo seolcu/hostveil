@@ -597,5 +597,6 @@ func Default() *Registry {
 	registerAgent(r)
 	registerSysctl(r)
 	registerSystemd(r)
+	registerProxy(r)
 	return r
 }

@@ -149,9 +149,9 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">174</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">127</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">52</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">175</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">174개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title">175개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -160,7 +160,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:30%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">52</span>
+                <span class="ledger-bar-value" data-counted="findings.review">53</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
@@ -379,6 +379,7 @@
                   <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik의 API와 대시보드가 인증 없이 떠 있어, 프록시 뒤의 모든 라우터와 백엔드 주소를 나열함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code>가 아직 TLS 1.0이나 1.1을 제공함. RFC 8996이 폐기했고 요즘 브라우저는 전부 거절함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code>이 인덱스 파일 없는 모든 디렉터리를 훑어볼 수 있게 만듦</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.no-scan-jail</code></td><td>fail2ban은 설치돼 있지만, 존재하지 않는 경로나 취약점 스캔 시도를 잡아내는 nginx-botsearch 규칙이 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.no-scan-jail">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1386,6 +1387,24 @@
               <p lang="en">Set RestrictSUIDSGID=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit creating new setuid or setgid files, closing a persistence and privilege-escalation path a compromised service could otherwise leave behind for later.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that itself creates setuid or setgid files — a package manager, an installer — needs this off. An ordinary network daemon does not create such files and is unaffected.</p>
+            </dd>
+          </dl>
+          <h3>프록시</h3>
+          <dl class="fix-actions">
+            <dt id="fix-proxy.no-scan-jail"><code>proxy.no-scan-jail</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Enable it (fail2ban's own default: 10 minute ban) (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically — no more finding it and banning it yourself.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic — never SSH, and never the operator's own access to the host.</p>
+                </li>
+                <li>
+              <p lang="en">Enable it with a longer ban (1 week)</p>
+              <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically — no more finding it and banning it yourself.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic — never SSH, and never the operator's own access to the host.</p>
+                </li>
+              </ul>
             </dd>
           </dl>
 
