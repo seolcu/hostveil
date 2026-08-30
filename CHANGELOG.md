@@ -2,6 +2,23 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.26.1](https://github.com/seolcu/hostveil/compare/v3.26.0...v3.26.1) (2026-08-31)
+
+### Bug Fixes
+
+* **fix:** make `proxy.no-scan-jail`'s fix actually watch nginx's logs.
+  It shipped in 3.26.0 writing `[nginx-botsearch]\nenabled = true` and
+  nothing else, which — verified against a real fail2ban process, not
+  assumed from its docs — silently watches nothing at all: `auto` prefers
+  the systemd journal over the jail's own `logpath` whenever the filter
+  defines a `journalmatch`, which `nginx-botsearch` does, and nginx never
+  writes request-level entries to the journal. The fix now always states
+  `backend = auto` explicitly, which is what actually switches the jail
+  onto the log files, and always names both the access and error log
+  (falling back to fail2ban's own path macros rather than conditionally
+  omitting the line) — a bare vhost returning nginx's own 404 never
+  reaches a static-file lookup, so only the access log carries it.
+
 ## [3.26.0](https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0) (2026-08-31)
 
 A fix's trade-off used to be stated once, in general — hostveil can now
